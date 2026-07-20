@@ -5,17 +5,39 @@
 | app | repo | ramo → dove | backend |
 |---|---|---|---|
 | **Admin PROD** (staff) | `padel-match-organizer` | `main` → Pages `app.padelvillage.club` | Supabase `qqbfphyslczzkxoncgex` |
-| **Admin TEST** | `padel-match-organizer` | `test-preview` → `/test/`, che carica l'`index.html` di quel ramo | Supabase `cudiqnrrlbyqryrtaprd` |
+| **Admin TEST** | `padel-match-organizer` | `test-preview` → **`test.padelvillage.club`**, il cui caricatore sta in un repo a parte (sotto) | Supabase `cudiqnrrlbyqryrtaprd` |
 | **Consumer soci** | `padel-match-assistant` | `main` → Pages `soci.padelvillage.club` | Supabase `aylykijfirtegyxzdwgu` |
 | **Emulatore** | `chat-giocatori-emulatore` | `main` → Pages | nessuno (solo localStorage) |
 
 Admin PROD e Admin TEST sono **file diversi su rami diversi** dello stesso repo: non è un
 ambiente che "punta" a due database, sono due copie dell'app.
 
+**Il caricatore di TEST vive in un 5° repo**: `padel-match-organizer-test` (public), che
+contiene solo `index.html` (scarica l'app da `test-preview`), `config-test.js` e `CNAME`.
+⚠️ **L'app di TEST NON si modifica lì**: si lavora su `test-preview` di questo repo, e ogni
+push è **subito live** (nessun workflow: il caricatore prende l'ultimo commit del ramo).
+`config-test.js` sta anche là perché l'app cerca la configurazione nella **radice del dominio
+da cui è servita**: senza, TEST non saprebbe a quale database collegarsi.
+
+🚨 **TEST è riconosciuto in DUE modi indipendenti** (dalla v6.112/6.113) — `PMO_FORCE_ENV`
+dichiarato dal caricatore, **e** l'hostname che inizia per `test.` (`pmoIsTestHostname`, usata
+da `pmoDetectRuntimeEnv`, `pmoDetectPublicBaseUrl` e dal gemello `isTestEnv` del modulo
+WhatsApp). Ridondanti di proposito: se salta uno, l'altro evita che l'app di TEST parli col
+Supabase di **PRODUZIONE** e scriva sul **Matchpoint vero**. Toccando quelle funzioni,
+cambiarle **tutte e tre**.
+
+**Il vecchio `app.padelvillage.club/test/` è un rimando** (v6.114), non è più l'app: serviva
+sulla stessa origine di PROD e le due si dividevano la quota di `localStorage` (~2-3 MB
+ciascuna contro un tetto di 5-10 MB) — causa di fondo del guasto del 20/07. Il resto di
+`/test/` è invece **vivo e si usa dal percorso**: `handle-test.html` (rete di regressione),
+`parser-test.html`, `autovalutazione.html`, `config-test.js`.
+
 **Worker** (`tools/matchpoint-browser-worker/src/server.mjs`): **UN solo processo** su Hetzner,
 **condiviso TEST+PROD**, deploy **solo da `main`** (`deploy-worker-hetzner.yml`). Il `server.mjs`
-di `test-preview` **non gira MAI**. Provare il worker da `/test/` significa già usare quello di
-PROD e scrivere sul **Matchpoint vero**: `/test/` non è una sandbox.
+di `test-preview` **non gira MAI**. Provare il worker da TEST significa già usare quello di
+PROD e scrivere sul **Matchpoint vero**: TEST non è una sandbox. Quello che lo trattiene è la
+simulazione gated `PMO_IS_TEST_ENV` (`PMO_BOOKINGS_SIMULATE`), non l'indirizzo — motivo per cui
+il riconoscimento dell'ambiente è un fatto di **sicurezza**, non di configurazione.
 
 **Edge functions**, tre destinazioni diverse dallo stesso repo:
 
