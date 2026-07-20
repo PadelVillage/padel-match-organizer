@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.113';
+    const APP_VERSION = '6.115';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8054,6 +8054,48 @@ body.assessment-public-mode .assessment-public-only-card {
     // e poi gated dal permesso view_assistante_ai (vedi blocco "Assistente AI — voce barra").
     const PMO_AI_ASSISTANT_ENABLED = true;
     const PMO_ENV_STORAGE_PREFIX = PMO_IS_TEST_ENV ? 'test:' : '';
+    // ── Sfratto una-tantum dei residui di TEST rimasti sull'origine di PROD ────────
+    // Fino al 20/07/2026 TEST viveva su app.padelvillage.club/test/, cioè sulla STESSA
+    // origine di PROD: le due app si dividevano la quota di localStorage (~2-3 MB
+    // ciascuna contro un tetto di 5-10 MB). È la causa di fondo del guasto del 20/07 —
+    // save('staffBookings') falliva per quota e l'app diceva «✅ Salvata» lo stesso
+    // (v6.109 lo rende rumoroso, v6.110 lo cura). Ora TEST sta su test.padelvillage.club
+    // (v6.112/6.113) e le chiavi "test:" rimaste QUI non le legge più nessuno: sono
+    // spazzatura pura, e finché restano il posto liberato non si vede.
+    // La rete di sfratto esistente (pmoSetItemResilient) le toglierebbe comunque, ma solo
+    // SOTTO PRESSIONE: questo le rimuove subito, una volta sola, su ogni dispositivo.
+    //
+    // 🚨 Gated su !PMO_IS_TEST_ENV: girando in TEST queste chiavi sono i dati VIVI e
+    // cancellarle butterebbe la sessione e i dati di lavoro. Il gate è lo stesso
+    // riconoscimento d'ambiente messo in sicurezza con la v6.112.
+    const PMO_TEST_LEFTOVER_MARK = 'pmoTestLeftoverSweepV1';
+    function pmoSweepTestLeftovers() {
+      if (PMO_IS_TEST_ENV) return null;                     // in TEST sono dati vivi
+      try {
+        if (localStorage.getItem(PMO_TEST_LEFTOVER_MARK)) return null;  // già fatto
+        const doomed = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('test:')) doomed.push(k);
+        }
+        let chars = 0;
+        // Raccolgo PRIMA e rimuovo POI: togliere durante la scansione sposta gli indici
+        // e lascerebbe indietro una chiave sì e una no.
+        doomed.forEach(k => {
+          try {
+            const v = localStorage.getItem(k);
+            chars += k.length + (v ? v.length : 0);
+            localStorage.removeItem(k);
+          } catch (e) {}
+        });
+        try { localStorage.setItem(PMO_TEST_LEFTOVER_MARK, new Date().toISOString().slice(0, 10)); } catch (e) {}
+        return { removed: doomed.length, chars };
+      } catch (e) { return null; }
+    }
+    const _pmoSweep = pmoSweepTestLeftovers();
+    if (_pmoSweep && _pmoSweep.removed) {
+      console.info(`[PMO] rimossi ${_pmoSweep.removed} residui del vecchio /test/ (~${Math.round(_pmoSweep.chars / 1024)} kB liberati)`);
+    }
     const PMO_DEFAULT_CONFIG_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}config-test.js` : `${PMO_PUBLIC_BASE_URL}config.js`;
     const PMO_DEFAULT_ASSESSMENT_BASE_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}autovalutazione.html?env=test` : `${PMO_PUBLIC_BASE_URL}autovalutazione.html`;
     const PMO_DEFAULT_FEEDBACK_BASE_URL = PMO_IS_TEST_ENV ? `${PMO_PUBLIC_BASE_URL}feedback-partita.html?env=test` : `${PMO_PUBLIC_BASE_URL}feedback-partita.html`;
