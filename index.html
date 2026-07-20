@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.107';
+    const APP_VERSION = '6.109';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41786,7 +41786,10 @@ Per confermare scrivi ELIMINA.`);
     try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.add(_optimKey); } catch (e) {}
     try { staffCalRtBroadcastPending(parsed); } catch (e) {}
     const _sbId = _staffCalNewSbId();
-    staffCalSetStatus(`✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome} · ↻ sto scrivendo su Matchpoint…`, 'done');
+    // La riga di stato è UNA sola e si sovrascrive: se la card non è stata disegnata lo si dice QUI,
+    // al posto del "✓ prenotata", altrimenti l'operatore legge un successo e non vede nulla a schermo.
+    if (_optimId === null) staffCalSetStatus(`⚠️ ${parsed.campo} · ${parsed.ora}–${parsed.oraFine}: non riesco a mostrarla nel calendario (${_staffCalLocalSaveWhy()}). La mando lo stesso a Matchpoint: comparirà da sé entro un paio di minuti.`, 'pending');
+    else staffCalSetStatus(`✓ ${tipoLabel} prenotata: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome} · ↻ sto scrivendo su Matchpoint…`, 'done');
     if (input) { input.value = ''; staffCalAutoResize(input); }
     if (sendBtn) sendBtn.disabled = false;
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca lo staff) ──
@@ -41804,11 +41807,16 @@ Per confermare scrivi ELIMINA.`);
         if (!jobId) throw new Error('Avvio prenotazione non riuscito (nessun codice lavoro).');
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
-          staffCalSaveLocal(parsed, _sbId, result.idReserva || null);
+          // Qui staffCalSaveLocal era NUDA: se il salvataggio locale falliva, l'errore finiva nel catch
+          // esterno e _failStatus annunciava «NON salvata su Matchpoint. Rimossa dal calendario» —
+          // falso, su Matchpoint c'era eccome. L'errore ora resta suo e il messaggio dice il vero.
+          let _localOk = true;
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
           try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
           try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
           if (parsed.data === isoDate) renderStaffCalendar();
-          staffCalSetStatus(`✅ ${tipoLabel} salvata su Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+          if (_localOk) staffCalSetStatus(`✅ ${tipoLabel} salvata su Matchpoint: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'done');
+          else staffCalSetStatus(`⚠️ ${parsed.campo} · ${parsed.ora}–${parsed.oraFine}: su Matchpoint è SALVATA, ma questa pagina non è riuscita a tenerne copia (${_staffCalLocalSaveWhy()}). Non rifarla: ricarica la pagina.`, 'pending');
         } else if (result.status === 'error') {
           _failStatus(result.error || 'errore sconosciuto');
         } else {
@@ -41822,6 +41830,20 @@ Per confermare scrivi ELIMINA.`);
     })();
   }
 
+  // Il salvataggio in locale (localStorage) può fallire, e fino alla v6.108 falliva MUTO: la card
+  // non veniva disegnata, il deposito nell'archivio condiviso saltava e l'app diceva lo stesso
+  // "✅ Salvata su Matchpoint". Caso reale del 20/07: due prenotazioni comparse solo ~2 minuti
+  // dopo, riportate indietro dal sync di Matchpoint, senza un avviso da nessuna parte.
+  // Qui teniamo l'ultimo errore per poterlo DIRE all'operatore. Causa tipica: quota piena — PROD e
+  // /test/ sono la stessa origine e si dividono la memoria (stessa radice del login rotto del
+  // 05/07, dove la cura fu pmoSetItemResilient; 'staffBookings' però non è coperta da quella rete).
+  let _staffCalLastLocalSaveError = null;
+  function _staffCalLocalSaveWhy() {
+    const e = _staffCalLastLocalSaveError;
+    if (!e) return 'salvataggio locale non riuscito';
+    if (typeof pmoIsStorageQuotaError === 'function' && pmoIsStorageQuotaError(e)) return 'memoria del browser piena';
+    return (e && e.message) ? String(e.message) : 'salvataggio locale non riuscito';
+  }
   // Aggiunge una prenotazione "ottimistica" (in attesa di conferma worker) e ridisegna subito.
   // È solo locale (non spinta al cloud) finché il worker non conferma.
   function staffCalAddOptimistic(parsed) {
@@ -41849,7 +41871,7 @@ Per confermare scrivi ELIMINA.`);
       if (typeof save === 'function') save('staffBookings', kept);
       if (typeof renderStaffCalendar === 'function') renderStaffCalendar();
       return optimId;
-    } catch (e) { console.warn('staffCalAddOptimistic:', e); return null; }
+    } catch (e) { _staffCalLastLocalSaveError = e; console.warn('staffCalAddOptimistic:', e); return null; }
   }
 
   // Rimuove la prenotazione ottimistica (su errore/timeout): la card "⏳ in corso" sparisce.
@@ -43147,6 +43169,10 @@ Per confermare scrivi ELIMINA.`);
     } else {
       _msgEl = svcAddMessage('system', '✅ <strong>Partita prenotata</strong>: Campo ' + campo + ' \xb7 ' + parsed.data + ' \xb7 ' + ora + '–' + parsed.oraFine + '<br>👥 ' + parsed.nome + _syncNote, 'ok');
     }
+    // ⚠️ Card ottimistica NON disegnata (salvataggio locale fallito): senza questo avviso l'operatore
+    //    legge "✅ prenotata" ma il calendario resta vuoto finché il sync non la rilegge da Matchpoint
+    //    (~2 min). Era muto: è il caso del 20/07, dove le prenotazioni sono comparse prima su MP.
+    if (_optimId === null) svcAddMessage('system', '⚠️ <strong>Non riesco a mostrarla nel calendario</strong> (' + _staffCalLocalSaveWhy() + '). La prenotazione parte lo stesso e comparirà da sé entro un paio di minuti. Se succede spesso, chiudi e riapri la pagina.');
     const _setSyncNote = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} svcMpSyncConfirmed(color); };
     // Ciclo concluso lato app: smonta la flow-card; su mobile la chiusura del bottom-sheet
     // avviene alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde). L'esito ✅ resta.
@@ -43169,11 +43195,19 @@ Per confermare scrivi ELIMINA.`);
         if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
-          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
+          // Il salvataggio locale può fallire (tipicamente memoria piena) e l'errore veniva inghiottito
+          // qui, dichiarando comunque "✅ Salvata": su Matchpoint è vero, in casa no. Ora l'esito guida
+          // il messaggio — l'operatore deve sapere che la copia locale NON c'è, o rifà la prenotazione.
+          let _localOk = true;
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
           try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
           try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
-          _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+          if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+          else {
+            _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
+            svcAddMessage('system', '⚠️ <strong>Campo ' + campo + ' \xb7 ' + ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _staffCalLocalSaveWhy() + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
+          }
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
         } else if (result.status === 'error') {
           _failMsg(result.error || 'rifiutata da Matchpoint');
@@ -47601,6 +47635,9 @@ Per confermare scrivi ELIMINA.`);
       } else {
         _msgEl = _say(_done + 'Partita · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👥 ' + _escapeHtml(parsed.nome) + _syncNote, 'ok');
       }
+      // ⚠️ Card ottimistica non disegnata: senza avviso la chat dice "✅ Fatto!" e il calendario resta
+      //    vuoto finché non la rilegge il sync (~2 min). Stesso caso del 20/07, percorso assistente.
+      if (_optimId === null) _say('⚠️ <strong>Non riesco a mostrarla nel calendario</strong> (' + _escapeHtml(_staffCalLocalSaveWhy()) + '). La prenotazione parte lo stesso e comparirà da sé entro un paio di minuti. Se succede spesso, chiudi e riapri la pagina.');
       // Aggiorna la nota "↻ scrivo…" quando Matchpoint conferma (o fallisce).
       const _setSyncNote = function (html, color) {
         try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
@@ -47632,11 +47669,18 @@ Per confermare scrivi ELIMINA.`);
           if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
           const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
           if (result.status === 'done') {
-            try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) {}
+            // Stesso trattamento del percorso manuale: se la copia locale non entra, non si dichiara
+            // "✅ Salvata" e basta — su Matchpoint c'è, ma qui no, e va detto. v6.109.
+            let _localOk = true;
+            try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
             try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
             try { renderStaffCalendar(); } catch (e) {}
             try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
-            _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+            if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+            else {
+              _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
+              _say('⚠️ <strong>Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _escapeHtml(_staffCalLocalSaveWhy()) + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
+            }
             _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
           } else if (result.status === 'error') {
             _failMsg(result.error || 'rifiutata da Matchpoint');
