@@ -32,6 +32,7 @@ type ParsedMember = {
   surname: string;
   name: string;
   phone: string;
+  phoneImportRejected: boolean;
   email: string;
   gender: string;
   birthDate: string;
@@ -238,6 +239,11 @@ function phoneDigits(value: unknown) {
 // mentre la pagina cliente mostra quello pieno. Un numero italiano plausibile dopo
 // normalizePhone ha almeno 11 cifre ("39" + ≥9): sotto questa soglia il numero in arrivo
 // non deve mai sovrascrivere un numero pieno già presente nel record.
+// La soglia ha DUE usi, e il secondo è quello che chiude il buco del primo:
+//   · qui sotto in applyMatchpointContacts, per non sovrascrivere un numero pieno — ma
+//     protegge solo chi sta GIÀ bene: chi arriva monco la prima volta non ha niente da
+//     proteggere, il monco entra e da lì è congelato (monco == monco ⇒ nessun cambiamento);
+//   · in parseMemberRow, per non farlo entrare proprio — nemmeno come chiave d'identità.
 const PLAUSIBLE_PHONE_MIN_DIGITS = 11;
 
 function emailKey(value: unknown) {
@@ -291,14 +297,27 @@ function parseMemberRow(row: JsonMap, importedAt: string): ParsedMember | null {
   const fullName = compactSpaces(`${firstName} ${surname}`);
   if (!firstName || !surname) return null;
   if (normalizeKey(fullName).includes('tpcappnoncancellare')) return null;
-  const keySource = memberCloudKey({ phone: getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']), email: getCell(row, ['E-mail', 'Email', 'Mail']), name: fullName });
+  // L'export Excel di Matchpoint a volte consegna il cellulare in notazione scientifica
+  // ("3,93385E+11"): togliendo i non-cifra resta "+39338511", dove il "11" finale è
+  // l'ESPONENTE. Non è un telefono accorciato, è un numero INVENTATO — e siccome il campo
+  // risulta pieno, il difetto è invisibile. Si scarta qui, PRIMA della chiave: memberCloudKey
+  // usa il telefono come identità del socio, quindi un numero storpiato lo fa sembrare
+  // un'altra persona e apre una scheda NUOVA invece di riagganciare la sua (è così che sono
+  // nati i doppioni di Longato e Carnevale). Scartandolo, la chiave ricade su `email:`.
+  // Il campo resta VUOTO — un socio senza telefono è visibilmente incompleto e recuperabile —
+  // e `phoneImportRejected` lo consegna al report giornaliero (anagrafica-report-telefoni).
+  const importedPhone = normalizePhone(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
+  const phoneImportRejected = !!importedPhone && phoneDigits(importedPhone).length < PLAUSIBLE_PHONE_MIN_DIGITS;
+  const phone = phoneImportRejected ? '' : importedPhone;
+  const keySource = memberCloudKey({ phone, email: getCell(row, ['E-mail', 'Email', 'Mail']), name: fullName });
   return {
     id: `matchpoint_${shortHash(keySource || fullName)}`,
     memberId: '',
     firstName,
     surname,
     name: fullName,
-    phone: normalizePhone(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile'])),
+    phone,
+    phoneImportRejected,
     email: clean(getCell(row, ['E-mail', 'Email', 'Mail'])),
     gender: genderFromValue(getCell(row, ['Sesso', 'Genere', 'Gender']), firstName),
     birthDate: parseDateValue(getCell(row, ['Data di nascita', 'Data nascita', 'Nascita', 'Birth Date', 'Birthday', 'DOB'])),
@@ -488,6 +507,13 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
     surname,
     name: compactSpaces(`${firstName} ${surname}`),
     phone,
+    // Marcatore letto dal report giornaliero. Vale solo se il record RESTA senza un numero
+    // usabile: se in archivio c'è già quello pieno (guardia `phoneSuspectKept`, caso Aprea e
+    // Comes) non c'è niente da segnalare, e marcarlo comunque riempirebbe la mail di soci a
+    // posto — il report controlla questo campo PRIMA del telefono, quindi vincerebbe lui.
+    // Si azzera da solo il giorno che Matchpoint torna a mandare il numero buono.
+    phoneImportRejected: imported.phoneImportRejected === true
+      && phoneDigits(phone).length < PLAUSIBLE_PHONE_MIN_DIGITS,
     email,
     gender,
     birthDate: existing.birthDate || imported.birthDate || '',
@@ -1167,7 +1193,9 @@ async function downloadReportFromSession(
       },
     });
   } else {
-    const fields = {
+    // JsonMap esplicito: lo spread perde l'index signature di form.fields e il tipo
+    // si stringe alle due chiavi letterali, impedendo la scrittura dinamica qui sotto.
+    const fields: JsonMap = {
       ...form.fields,
       __EVENTTARGET: discoveredPostback.target,
       __EVENTARGUMENT: '',
@@ -1556,25 +1584,72 @@ async function loadExistingMemberRecords(admin: any) {
     if (page === 49) throw new Error('SUPABASE_MEMBER_PAGE_LIMIT_EXCEEDED');
   }
   const byKey = new Map<string, any[]>();
+  // Identità distinte viste sotto ogni chiave `name:` — serve alla guardia anti-omonimia
+  // (vedi collectExistingMemberCandidates): due CLIENTI Matchpoint diversi con lo stesso
+  // nome non devono poter essere riagganciati per nome.
+  const nameIdentities = new Map<string, Set<string>>();
   for (const record of records) {
     const payload = record.payload || {};
     for (const key of memberLookupKeys(payload)) {
       const list = byKey.get(key) || [];
       list.push(record);
       byKey.set(key, list);
+      if (!key.startsWith('name:')) continue;
+      const identity = phoneDigits(payload.phone || payload.telefono || '')
+        || emailKey(payload.email || '')
+        || clean(payload.memberId || '');
+      if (!identity) continue;
+      const seen = nameIdentities.get(key) || new Set<string>();
+      seen.add(identity);
+      nameIdentities.set(key, seen);
     }
   }
-  return { records, byKey };
+  const ambiguousNameKeys = new Set<string>();
+  for (const [key, identities] of nameIdentities) {
+    if (identities.size > 1) ambiguousNameKeys.add(key);
+  }
+  return { records, byKey, ambiguousNameKeys };
 }
 
-function collectExistingMemberCandidates(existing: { byKey: Map<string, any[]> }, member: ParsedMember) {
+type ExistingMemberIndex = { byKey: Map<string, any[]>; ambiguousNameKeys?: Set<string> };
+
+function collectExistingMemberCandidates(
+  existing: ExistingMemberIndex,
+  member: ParsedMember,
+  importAmbiguousNameKeys?: Set<string>,
+) {
   const candidates = new Map<string, any>();
   for (const key of memberLookupKeys(member)) {
+    // GUARDIA ANTI-OMONIMIA. La chiave `name:` serve a riagganciare i soci senza contatti
+    // (vedi commento su nameCodes) e chi ha cambiato numero in Matchpoint. Ma se lo stesso
+    // nome corrisponde a PIÙ identità — o fra i record esistenti, o dentro l'export stesso —
+    // riagganciare per nome fonde due persone diverse su un unico record (ne eredita
+    // `id` e `memberId`). Stessa filosofia della nameMap dell'arricchimento codice, che
+    // accetta «SOLO nomi univoci nel report».
+    if (key.startsWith('name:')
+      && (existing.ambiguousNameKeys?.has(key) || importAmbiguousNameKeys?.has(key))) continue;
     for (const record of existing.byKey.get(key) || []) {
       if (record?.local_key) candidates.set(record.local_key, record);
     }
   }
   return [...candidates.values()];
+}
+
+// Nomi che compaiono più di una volta NELL'EXPORT: due clienti Matchpoint omonimi. Senza
+// questa guardia il secondo importato si aggancerebbe per nome al record del primo.
+function collectAmbiguousImportedNameKeys(members: ParsedMember[]) {
+  const counts = new Map<string, number>();
+  for (const member of members) {
+    const name = normalizeKey(memberName(member));
+    if (!name) continue;
+    const key = `name:${name}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const ambiguous = new Set<string>();
+  for (const [key, count] of counts) {
+    if (count > 1) ambiguous.add(key);
+  }
+  return ambiguous;
 }
 
 function chooseExistingMemberRecord(candidates: any[], member: ParsedMember) {
@@ -1830,6 +1905,11 @@ Deno.serve(async (req) => {
     const exported = syncResult.main;
     const validation = validateClientWorkbook(exported.bytes, importedAt);
     if (!validation.ok) {
+      // Il ramo di errore è un'unione e non tutte le varianti portano missing/sheetNames
+      // (SHEET_MISSING non ha missing, altre non hanno nessuno dei due): i `|| []` qui sotto
+      // lo davano già per scontato. Stesso allargamento che saveValidationDiagnostic fa
+      // nella propria firma, dove infatti le righe identiche compilano.
+      const validationInfo: JsonMap = validation;
       const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
       const diagnosticSaved = await saveValidationDiagnostic(admin, actor, importedAt, exported, validation, diagnosticFile);
       await logAudit(admin, actor, 'matchpoint_clients_auto_import_blocked', {
@@ -1844,9 +1924,9 @@ Deno.serve(async (req) => {
           diagnosticFile,
         },
         validation: {
-          missing: validation.missing || [],
-          headers: validation.headers || [],
-          sheetNames: validation.sheetNames || [],
+          missing: validationInfo.missing || [],
+          headers: validationInfo.headers || [],
+          sheetNames: validationInfo.sheetNames || [],
         },
       });
       return errorResponse(422, validation.error, validation.message, {
@@ -1932,9 +2012,24 @@ Deno.serve(async (req) => {
     const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
     let phoneSuspectKept = 0;
     const phoneSuspectKeptSample: Array<{ memberId: string; firstName: string; surname: string; importedPhone: string }> = [];
+    // Guardia anti-omonimia: nomi ambigui nell'export + nomi già ambigui fra gli esistenti.
+    const importAmbiguousNameKeys = collectAmbiguousImportedNameKeys(validation.members);
+    const homonymNameKeys = new Set<string>([
+      ...importAmbiguousNameKeys,
+      ...(existing.ambiguousNameKeys || new Set<string>()),
+    ]);
+    let homonymGuardApplied = 0;
+    const homonymGuardSample: string[] = [];
 
     for (const member of validation.members) {
-      const candidates = collectExistingMemberCandidates(existing, member);
+      const memberNameKey = `name:${normalizeKey(memberName(member))}`;
+      if (homonymNameKeys.has(memberNameKey)) {
+        homonymGuardApplied += 1;
+        if (homonymGuardSample.length < 20 && !homonymGuardSample.includes(memberNameKey)) {
+          homonymGuardSample.push(memberNameKey);
+        }
+      }
+      const candidates = collectExistingMemberCandidates(existing, member, importAmbiguousNameKeys);
       const match = chooseExistingMemberRecord(candidates, member);
       const canonicalKey = memberCloudKey(member);
       const localKey = clean((match && !shouldNormalizeMemberLocalKey(match) && match.local_key)
@@ -2047,6 +2142,7 @@ Deno.serve(async (req) => {
         legacyDuplicateDeleted,
         legacyDuplicateReview,
         phoneSuspectKept,
+        homonymGuardApplied,
         added,
         updated,
       },
@@ -2120,6 +2216,8 @@ Deno.serve(async (req) => {
       legacyDuplicateReviewSample,
       phoneSuspectKept,
       phoneSuspectKeptSample,
+      homonymGuardApplied,
+      homonymGuardSample,
       diagnosticFile,
       upserted: finalRecords.length,
       memberIdEnrichment,
