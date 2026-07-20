@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.111';
+    const APP_VERSION = '6.113';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -7920,6 +7920,23 @@ body.assessment-public-mode .assessment-public-only-card {
       if (o) o.classList.remove('is-open');
     }
     const PMO_PROD_PUBLIC_BASE_URL = 'https://app.padelvillage.club/';
+    // ── TEST riconosciuto anche dall'INDIRIZZO, non solo dal percorso ──────────────
+    // Storicamente TEST = app.padelvillage.club/test/, quindi bastava cercare "/test/"
+    // nel percorso. Con TEST su un sottodominio suo (test.padelvillage.club) il percorso
+    // è "/" e quel riconoscimento tornerebbe 'prod': l'app di TEST parlerebbe col
+    // Supabase di PRODUZIONE e, con PMO_IS_TEST_ENV falso, scriverebbe sul Matchpoint
+    // VERO (la simulazione "ambiente chiuso" è gated su quel flag). Il riconoscimento per
+    // hostname si AGGIUNGE a quello per percorso — che resta valido finché /test/ è vivo —
+    // così il passaggio non è un cambio secco. Vale anche per gli host di collaudo locale
+    // (es. test.localhost). Regola UNICA: la usano pmoDetectRuntimeEnv, questo
+    // pmoDetectPublicBaseUrl e il gemello isTestEnv del modulo WhatsApp.
+    function pmoIsTestHostname(host) {
+      try {
+        const h = String(host == null ? (window.location.hostname || '') : host).toLowerCase();
+        return /^test\./.test(h);
+      } catch {}
+      return false;
+    }
     function pmoDetectPublicBaseUrl() {
       try {
         const forced = String(window.PMO_PUBLIC_BASE_URL || '').trim();
@@ -7929,6 +7946,9 @@ body.assessment-public-mode .assessment-public-only-card {
         const testMarker = '/test/';
         const markerIndex = path.indexOf(testMarker);
         if (markerIndex >= 0) return `${current.origin}${path.slice(0, markerIndex + testMarker.length)}`;
+        // TEST sul suo indirizzo: la base pubblica è la RADICE di quell'origine (lì stanno
+        // config-test.js e le pagine pubbliche di TEST), non la /test/ di PROD.
+        if (pmoIsTestHostname()) return `${current.origin}/`;
       } catch {}
       return PMO_PROD_PUBLIC_BASE_URL;
     }
@@ -7941,6 +7961,7 @@ body.assessment-public-mode .assessment-public-only-card {
         const requested = String(params.get('env') || params.get('ambiente') || window.PMO_FORCE_ENV || '').trim().toLowerCase();
         if (['test', 'staging', 'collaudo'].includes(requested)) return 'test';
         if (/\/(?:test|staging|collaudo)(?:\/|\.html?$)/i.test(window.location.pathname || '')) return 'test';
+        if (pmoIsTestHostname()) return 'test';
       } catch {}
       return 'prod';
     }
@@ -35753,6 +35774,10 @@ Per confermare scrivi ELIMINA.`);
         const r = String(p.get('env') || p.get('ambiente') || window.PMO_FORCE_ENV || '').trim().toLowerCase();
         if (['test','staging','collaudo'].includes(r)) return true;
         if (/\/(?:test|staging|collaudo)(?:\/|\.html?$)/i.test(window.location.pathname || '')) return true;
+        // Come sopra: TEST su un indirizzo suo. Qui NON è cosmetico — da questo dipende
+        // waTestOverrideNumero(), che in TEST dirotta i messaggi sul numero interno: se
+        // tornasse false, un invio di prova finirebbe al CLIENTE VERO.
+        if (typeof pmoIsTestHostname === 'function' && pmoIsTestHostname()) return true;
       } catch {}
       return false;
     }
