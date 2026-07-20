@@ -3,61 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Padel Match Organizer TEST</title>
+  <title>TEST si è spostato — Padel Match Organizer</title>
+  <!-- Rete di sicurezza se lo script non parte (JS disattivato, errore di rete). -->
+  <meta http-equiv="refresh" content="3; url=https://test.padelvillage.club/" />
   <style>
     body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:Arial,sans-serif; background:#f6f8fb; color:#1f4788; }
-    .loader { width:min(520px, calc(100vw - 32px)); background:#fff; border:1px solid #dfe8f3; border-radius:10px; padding:22px; box-shadow:0 8px 28px rgba(15,23,42,.08); }
+    .box { width:min(520px, calc(100vw - 32px)); background:#fff; border:1px solid #dfe8f3; border-radius:10px; padding:22px; box-shadow:0 8px 28px rgba(15,23,42,.08); }
     h1 { margin:0 0 8px; font-size:24px; }
-    p { margin:0; color:#667085; line-height:1.45; }
-    .error { color:#b42318; margin-top:12px; white-space:pre-line; }
+    p { margin:0 0 10px; color:#667085; line-height:1.45; }
+    a { color:#1f4788; font-weight:bold; }
   </style>
 </head>
 <body>
-  <main class="loader">
-    <h1>Padel Match Organizer TEST</h1>
-    <p>Caricamento dell'ultima versione pubblicata sul canale test-preview...</p>
-    <p id="testLoaderError" class="error" hidden></p>
+  <main class="box">
+    <h1>TEST si è spostato</h1>
+    <p>L'ambiente di prova ora vive su un indirizzo suo. Ti sto portando là…</p>
+    <p>Se non succede nulla: <a href="https://test.padelvillage.club/">test.padelvillage.club</a></p>
   </main>
   <script>
-    (async function loadTestPreview() {
-      const repo = 'PadelVillage/padel-match-organizer';
-      const branch = 'test-preview';
-      const errEl = document.getElementById('testLoaderError');
-      const showErr = function (m) { if (errEl) { errEl.hidden = false; errEl.textContent = 'TEST non caricato: ' + m; } };
-
-      async function fetchAppHtml() {
-        // 1) ISTANTANEO: ultimo commit del branch → file pinnato al SHA (raw-by-SHA è immutabile, niente cache 5 min)
-        try {
-          const shaResp = await fetch(
-            'https://api.github.com/repos/' + repo + '/commits/' + branch,
-            { cache: 'no-store', headers: { 'Accept': 'application/vnd.github.sha' } }
-          );
-          if (shaResp.ok) {
-            const sha = (await shaResp.text()).trim();
-            if (/^[0-9a-f]{7,40}$/i.test(sha)) {
-              const r = await fetch('https://raw.githubusercontent.com/' + repo + '/' + sha + '/index.html', { cache: 'no-store' });
-              if (r.ok) return await r.text();
-            }
-          }
-        } catch (e) { /* passa al fallback */ }
-        // 2) FALLBACK: branch raw (può avere la cache ~5 min, ma non si rompe mai — es. rate limit API)
-        const r2 = await fetch(
-          'https://raw.githubusercontent.com/' + repo + '/' + branch + '/index.html?cache=' + Date.now(),
-          { cache: 'no-store' }
-        );
-        if (!r2.ok) throw new Error('HTTP ' + r2.status);
-        return await r2.text();
-      }
-
-      try {
-        const html = await fetchAppHtml();
-        window.PMO_FORCE_ENV = 'test';
-        window.PMO_PUBLIC_BASE_URL = 'https://app.padelvillage.club/test/';
-        document.open(); document.write(html); document.close();
-      } catch (err) {
-        showErr(err && err.message ? err.message : String(err));
-      }
-    })();
+    // TEST ha un indirizzo suo dal 20/07/2026: prima stava QUI, cioè sulla stessa origine
+    // di PROD, e le due app si dividevano la quota di localStorage (~2-3 MB ciascuna
+    // contro un tetto di 5-10 MB). È la causa di fondo del guasto del 20/07 (prenotazione
+    // non salvata e «✅ Salvata» detto lo stesso, v6.109/6.110): separare gli indirizzi è
+    // la cura vera, la v6.110 era la medicazione.
+    //
+    // Questa pagina resta come rimando invece di sparire: i segnalibri e la cronologia
+    // continuano a funzionare, e la guardia della PROD non accetta cancellazioni di file.
+    //
+    // Il resto di /test/ NON è toccato e continua a servire dal percorso: handle-test.html
+    // (rete di regressione), parser-test.html, autovalutazione.html, config-test.js.
+    // Quelle pagine non dipendono da questo file.
+    //
+    // replace() e non href: così il tasto "indietro" non riporta qui, in un rimbalzo.
+    try { location.replace('https://test.padelvillage.club/' + (location.search || '') + (location.hash || '')); } catch (e) {}
   </script>
 </body>
 </html>
