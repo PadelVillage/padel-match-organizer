@@ -41736,14 +41736,24 @@ Per confermare scrivi ELIMINA.`);
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         // ⭐ LAZY Matchpoint: crea al volo i soci "solo app" una volta, prima delle N date.
         await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => staffCalSetStatus(msg, 'pending'));
-        let ok = 0, fail = 0;
+        let ok = 0, fail = 0, localKo = 0;
         for (let i = 0; i < dates.length; i++) {
           const singleParsed = { ...parsed, data: dates[i] };
           staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
           try {
             const _sbId = _staffCalNewSbId();
             const _createRes = await staffCalSubmitSingle(singleParsed, staff, supabaseUrl, supabaseKey, { sbId: _sbId });
-            staffCalSaveLocal(singleParsed, _sbId, (_createRes && _createRes.idReserva) ? String(_createRes.idReserva) : null);
+            // Da qui in poi su Matchpoint la prenotazione C'È: se non riesce la copia in pagina
+            // NON è una prenotazione fallita. Prima staffCalSaveLocal era nuda e l'errore cadeva
+            // nel catch qui sotto → contata tra le "fallite", con l'operatore spinto a rifarla e
+            // a creare un doppione VERO su Matchpoint. Stesso inganno chiuso dalla v6.109 sulle
+            // prenotazioni singole; questo percorso, quello ricorrente, era rimasto fuori.
+            try {
+              staffCalSaveLocal(singleParsed, _sbId, (_createRes && _createRes.idReserva) ? String(_createRes.idReserva) : null);
+            } catch (e) {
+              localKo++; _staffCalLastLocalSaveError = e;
+              console.warn('STAFF_CAL_RICORRENZA_COPIA_LOCALE', dates[i], e);
+            }
             ok++;
           } catch (e) {
             fail++;
@@ -41754,11 +41764,17 @@ Per confermare scrivi ELIMINA.`);
         }
         if (input) { input.value = ''; staffCalAutoResize(input); }
         renderStaffCalendar();
+        // Le create che non si vedono nel calendario si dicono a parte: sono su Matchpoint, NON
+        // vanno rifatte. Senza questa coda il messaggio resterebbe un "✓ N create" che l'operatore
+        // non ritrova a schermo — l'inganno all'opposto di quello appena tolto.
+        const _localNota = localKo
+          ? ` · ⚠️ ${localKo} ${localKo === 1 ? 'non è mostrata' : 'non sono mostrate'} nel calendario (${_staffCalLocalSaveWhy()}): ${localKo === 1 ? 'c\'è' : 'ci sono'} lo stesso, NON ${localKo === 1 ? 'rifarla' : 'rifarle'} — ricarica la pagina.`
+          : '';
         staffCalSetStatus(
           fail === 0
-            ? `✓ ${ok} prenotazioni ricorrenti create (${parsed.ricorrenza.giorno})`
-            : `⚠ ${ok} create, ${fail} fallite — vedi console`,
-          fail === 0 ? 'done' : 'error'
+            ? `✓ ${ok} prenotazioni ricorrenti create (${parsed.ricorrenza.giorno})${_localNota}`
+            : `⚠ ${ok} create, ${fail} fallite — vedi console${_localNota}`,
+          fail === 0 ? (localKo ? 'pending' : 'done') : 'error'
         );
       } catch (err) {
         staffCalSetStatus('Errore: ' + (err.message || err), 'error');
