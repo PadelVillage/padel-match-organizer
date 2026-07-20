@@ -124,7 +124,20 @@ function titleCaseNamePart(value: string) {
 // Via emoji/simboli/cifre/punteggiatura spuria, preservando lettere accentate, apostrofi, trattini.
 function cleanNamePart(s: unknown) { return String(s ?? '').replace(/[^\p{L}\p{M}\s'\-]/gu, ' ').replace(/\s+/g, ' ').trim(); }
 
-// ── Telefono (VERBATIM index.html 10602-10661, SENZA il caso di test "Mauro Fresch") ─
+// ── Telefono (da index.html 10602-10661, SENZA il caso di test "Mauro Fresch") ───
+// ⚠️ NON è più verbatim: sotto c'è la guardia ITALIAN_LOCAL_MOBILE_RE, che in index.html
+// non esiste. Risincronizzando alla cieca da lì si riaprirebbe il bug qui accanto.
+
+// Mobile italiano storico scritto senza prefisso: 9 cifre che iniziano per 3 (335…, 347…, 360…).
+// Esiste solo per NON far scattare il ramo internazionale qui sotto su un italiano che qualcuno
+// ha scritto col "+": senza questa guardia perderebbe il 39 e nascerebbe una chiave d'identità
+// storpiata (`phone:335228405` invece di `phone:39335228405`), cioè una scheda doppia.
+// È lo stesso scalino di matchpoint-clients-sync (#549): era il loro DISACCORDO ad aprire due
+// schede allo stesso socio, e le due funzioni scrivono nella stessa anagrafica.
+// Gli E.164 esteri lunghi esattamente 9 cifre e inizianti per 3 sono solo Andorra (+376 + 6):
+// nessuno in anagrafica.
+const ITALIAN_LOCAL_MOBILE_RE = /^3\d{8}$/;
+
 function getWhatsAppPhoneInfo(value: unknown) {
   const raw = cleanCell(value ?? '').trim();
   let digits = raw.replace(/\D/g, '');
@@ -149,7 +162,7 @@ function getWhatsAppPhoneInfo(value: unknown) {
   } else if (digits.startsWith('0') && digits.length >= 7 && digits.length <= 11) {
     notes.push('Numero italiano locale non mobile: aggiunto prefisso 39.');
     digits = '39' + digits;
-  } else if (raw.startsWith('+') && digits.length >= 8) {
+  } else if (raw.startsWith('+') && digits.length >= 8 && !ITALIAN_LOCAL_MOBILE_RE.test(digits)) {
     notes.push('Numero internazionale con prefisso già presente.');
   } else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11) {
     notes.push('Fallback: trattato come numero italiano locale.');
