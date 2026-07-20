@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.109';
+    const APP_VERSION = '6.110';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8423,6 +8423,15 @@ Grazie.`
     // quindi il login di un ambiente può liberare le cache dell'altro (era la causa del
     // "setItem exceeded the quota" su /test/: PROD+TEST riempivano insieme la memoria).
     const PMO_EVICTABLE_CACHE_BASENAMES = ['pmoAutoDataSnapshotV1', 'storicoPrenotazioni', 'prenotazioni', 'prenotazioniOccupazione'];
+    // Chiavi CRITICHE in scrittura: contengono roba che il cloud NON ha ancora. Una prenotazione
+    // appena creata vive SOLO qui finché il push non è partito, quindi a memoria piena non ci si
+    // può arrendere: si sfrattano le cache ricostruibili e si ritenta, esattamente come fa il
+    // login dal 05/07. Il 20/07 la mancanza di questa rete è costata due prenotazioni comparse
+    // solo ~2 minuti dopo (riportate indietro dal sync di Matchpoint) con l'app che diceva
+    // «✅ Salvata»: save('staffBookings') lanciava e nessuno lo raccoglieva.
+    // ⚠️ Queste chiavi NON vanno MAI aggiunte a PMO_EVICTABLE_CACHE_BASENAMES: sfrattarle per far
+    // posto a sé stesse butterebbe via proprio la prenotazione che stiamo cercando di salvare.
+    const PMO_RESILIENT_SAVE_KEYS = new Set(['staffBookings']);
     function pmoEvictableStorageKeys() {
       const keys = [];
       for (const p of ['', 'test:']) for (const b of PMO_EVICTABLE_CACHE_BASENAMES) keys.push(p + b);
@@ -8471,6 +8480,13 @@ Grazie.`
       try {
         pmoLocalSetItem(key, next);
       } catch (error) {
+        // Chiave critica + memoria piena: prima di arrendersi si fa spazio (sfratto delle cache
+        // ricostruibili) e si ritenta. Se nemmeno così entra si rilancia l'errore ORIGINALE, così
+        // gli avvisi della v6.109 continuano a dire il vero invece di annunciare un falso successo.
+        if (PMO_RESILIENT_SAVE_KEYS.has(key) && pmoIsStorageQuotaError(error)) {
+          if (pmoSetItemResilient(pmoStorageKey(key), next)) return true;
+          throw error;
+        }
         pmoSetStorageWithCompactFallback(key, next, error);
       }
       return true;
@@ -26431,7 +26447,11 @@ Per confermare scrivi ELIMINA.`);
 	      }
 	      pmoCloudState.lastSyncAt = new Date().toISOString();
 	      pmoCloudState.lastSyncCount = result.count || list.length;
-	      save('pmoCloudState', pmoCloudState);
+	      // Promemoria di servizio: qui il dato è GIÀ sul cloud (la RPC sopra è andata). Se la
+	      // memoria del browser è piena questo save lancia, e prima si portava dietro l'avviso
+	      // realtime agli altri dispositivi facendo pure sembrare fallito un push riuscito.
+	      // È ricostruibile e non vale un push: si annota e si tira dritto (come a 10982/11090).
+	      try { save('pmoCloudState', pmoCloudState); } catch (e) { console.warn('pmoCloudState non salvato in locale:', e); }
 	      try { if (typeof staffCalRtBroadcast === 'function' && list.some(function (r) { return r && (r.record_type === 'staff_booking' || r.record_type === 'staff_suppress'); })) staffCalRtBroadcast(); } catch (e) { console.warn('staff-cal realtime notify:', e); }
       try {
         if (typeof staffCalRtBroadcastMemberChanged === 'function') {
@@ -41980,8 +42000,20 @@ Per confermare scrivi ELIMINA.`);
       idReserva: (idReserva && String(idReserva).trim()) || null,
     };
     kept.push(entry);
-    if (typeof save === 'function') save('staffBookings', kept);
-    _staffCalClearSuppressed(parsed.data, parsed.campoNum, parsed.ora);
+    // ⭐ La copia locale NON deve più poter bloccare il deposito nell'archivio condiviso.
+    // Fino alla v6.109 il save() stava qui NUDO e, lanciando (memoria piena), si portava via
+    // tutto quello che segue: la pulizia dei "cancellati" E il push al cloud. È esattamente
+    // perché il 20/07 mancava il record scritto dall'app — c'era solo quello della edge
+    // function — e la prenotazione non arrivava agli altri dispositivi.
+    // Ora l'errore si mette da parte, il resto prosegue, e si rilancia in FONDO: chi chiama
+    // deve continuare a sapere che la copia in pagina non c'è (avvisi v6.109).
+    // Nota: il record spinto al cloud si ri-scarica da sé al giro di sync successivo, quindi
+    // il locale si ricuce anche quando questo save fallisce.
+    let _localErr = null;
+    try { if (typeof save === 'function') save('staffBookings', kept); }
+    catch (e) { _localErr = e; console.warn('staffCalSaveLocal (copia locale):', e); }
+    try { _staffCalClearSuppressed(parsed.data, parsed.campoNum, parsed.ora); }
+    catch (e) { console.warn('staffCalSaveLocal (pulizia cancellati):', e); }
     // Push al cloud per visibilità cross-dispositivo (fire-and-forget)
     try {
       if (typeof pmoSyncCloudRecordsNow === 'function') {
@@ -42004,6 +42036,7 @@ Per confermare scrivi ELIMINA.`);
         pmoSyncCloudRecordsNow(records, 'sincronizzare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff_booking cloud push:', e); });
       }
     } catch (e) { console.warn('staff_booking cloud push:', e); }
+    if (_localErr) throw _localErr;
     return true;
   }
 
