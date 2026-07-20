@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.115';
+    const APP_VERSION = '6.116';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15607,7 +15607,7 @@ Grazie.`
       const box = document.getElementById('matchpointRoutineScheduleInfo');
       if (!box) return;
       box.innerHTML = PMO_IS_TEST_ENV
-        ? `<strong>TEST manuale</strong> Scheduler automatico disattivato in TEST. Usa i bottoni Aggiorna ora per collaudi controllati; la routine automatica resta attiva solo in PROD.`
+        ? `<strong>TEST · automatico solo per i clienti</strong> Ogni notte alle 04:30 si aggiornano i Clienti Matchpoint (un solo giro; in PROD sono sei). Le altre routine, rubrica Google compresa, restano manuali: usa i bottoni Aggiorna ora.`
         : `<strong>Sequenza automatica PROD</strong> Clienti 04:30, storico 05:00, backup cloud 06:00. Prenotazioni future: aggiornamento continuo ogni 2 minuti, in pausa dall'01:00 alle 06:00.`;
     }
 
@@ -15626,6 +15626,9 @@ Grazie.`
           info:getLatestMatchpointImportSummaryByTypes(['clienti']),
           lastValid:'',
           nextTimes:['04:30'],
+          // In TEST il cron notturno (jobid 13 su cudi…) chiede lo slot 04:30: è l'unica
+          // routine che parte da sola, le altre restano manuali.
+          testNextTimes:['04:30'],
           manualLabel:'Aggiorna ora'
         },
         {
@@ -15678,7 +15681,9 @@ Grazie.`
       rows.forEach(row => {
         row.lastValid = formatMatchpointRoutineDate(row.info, row.formatter || formatImportDateTime);
         row.status = getMatchpointRoutineStatus(row);
-        row.next = PMO_IS_TEST_ENV ? 'Manuale in TEST' : (row.nextLabel || formatMatchpointRoutineNextExecution(row.nextTimes));
+        row.next = PMO_IS_TEST_ENV
+          ? (row.testNextTimes ? formatMatchpointRoutineNextExecution(row.testNextTimes) : 'Manuale in TEST')
+          : (row.nextLabel || formatMatchpointRoutineNextExecution(row.nextTimes));
         // Contatti Google: se c'è il record cloud, mostra i conteggi al posto della nota generica.
         if (row.key === 'contacts' && row.info && row.info.rows && (row.info.rows.new != null || row.info.rows.discard != null)) {
           const r = row.info.rows;
