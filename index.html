@@ -21,7 +21,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Padel Village" />
+  <meta name="apple-mobile-web-app-title" content="ADMIN" />
   <script>
     (function markPublicAccessBoot() {
       try {
@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.118';
+    const APP_VERSION = '6.120';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38458,7 +38458,10 @@ Per confermare scrivi ELIMINA.`);
   // Il cobro/storno simulato scrive/aggiorna un record `payment` nel cloud di TEST con la
   // STESSA forma che produce matchpoint-payments-sync (vedi _incassiFetch/renderIncassi:
   // method/amount_cents/data/id_cliente/player_name/voided), così la sezione Incassi lo
-  // legge dal percorso genuino. Taggato source:'pmo_simulate' (distinguibile e pulibile);
+  // legge dal percorso genuino. Taggato source:'pmo_simulate' (distinguibile e pulibile):
+  // il bottone 🧹 «Pulisci simulazioni» in Incassi chiama _pmoSimCleanupPayments(), che
+  // marca deleted tutti i record `payment` con quel source e lascia intatti quelli veri.
+
   // ── Quota OFFERTA (omaggio) → record `payment` a 0 € ─────────────────────────────
   // La ficha MP è l'UNICA fonte che vede gli omaggi (riscosso a importo 0): il report
   // 11.13 registra i pagamenti e un omaggio non lo è. Alla lettura autorevole della
@@ -40671,7 +40674,7 @@ Per confermare scrivi ELIMINA.`);
   // come risposta di ERRORE — ma il worker spesso completa l'operazione LO STESSO poco dopo. In
   // questi casi l'esito è INCERTO, non fallito: NON si deve ripristinare/revertire alla cieca
   // (è l'origine dei "fantasmi": annullo passato su MP ma rollback locale → l'app la ri-mostra e
-  // ogni modifica successiva dà PRENOTAZIONE_NON_TROVATA). Vale anche per i gateway 502/504/524 e
+  // ogni modifica successiva dà PRENOTAZIONE_NON_TROVATA). Vale anche per i gateway 504/524/408 e
   // per i messaggi di deadline. (Il 502 "WORKER_ERROR" generico NON è qui: lo intercettiamo solo
   // se il MESSAGGIO parla di timeout/deadline, per non silenziare i rifiuti veri.)
   function _staffCalIsTimeoutClass(raw, status) {
