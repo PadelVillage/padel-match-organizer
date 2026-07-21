@@ -3532,6 +3532,12 @@ async function readTabelloneWithBrowser(options = {}) {
           giocatori,
           manutenzione,
           nota,
+          // Testo grezzo della casella. La 2ª riga porta il TIPO ("Partita 0,00 - 7,00 misto",
+          // "Lezione. Santiago Carabajal . : …"): è l'UNICA fonte per le prenotazioni SENZA
+          // giocatori, che l'export "Elenco utenti negli spazi" non descrive affatto (elenca
+          // ATTRAVERSO gli occupanti → 0 giocatori = 0 righe). Qui lo trasportiamo e basta; il
+          // riconoscimento sta in tabellone-rescue.ts, che è puro e ha i test.
+          testo: fullText,
         };
       });
     });
@@ -3624,6 +3630,9 @@ async function readTabelloneWithBrowser(options = {}) {
             // Campi additivi (manutenzione import 2026-06-19): i consumatori che non li conoscono
             // li ignorano. Solo per i blocchi manutenzione (senza giocatori, solo nota).
             ...(ev.manutenzione ? { tipo: 'manutenzione', nota: ev.nota || '' } : {}),
+            // Additivo anch'esso (2026-07-21): serve al recupero delle prenotazioni senza
+            // giocatori per NON doversi inventare il tipo. Chi non lo conosce lo ignora.
+            ...(ev.testo ? { testo: ev.testo } : {}),
           }))
           .filter((ev) => ev.campo > 0);
       } catch (err) {
