@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { planHistoryReconcile } from './history-reconcile.ts';
+import { resolveHistoryDays, DEFAULT_HISTORY_DAYS, MAX_HISTORY_DAYS } from './history-window.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -41,7 +42,6 @@ const CORS_HEADERS = {
 
 const REQUIRED_HISTORY_COLUMNS = ['Nome', 'Numero', 'Giorno', 'Ora', 'Ore', 'Spazio'];
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
-const DEFAULT_HISTORY_DAYS = 30;
 const PAGE_SIZE = 1000;
 // Freno della riconciliazione: se il file chiedesse di ritirare piu di questa frazione
 // delle righe che ha nel periodo, il ritiro viene saltato (export venuto male). Le righe
@@ -412,7 +412,7 @@ function workerHealthUrl(rawUrl: string) {
   return `${workerBaseUrl(rawUrl)}/health`;
 }
 
-async function exportHistoryViaBrowserWorker(): Promise<MatchpointExport> {
+async function exportHistoryViaBrowserWorker(historyDays: number = DEFAULT_HISTORY_DAYS): Promise<MatchpointExport> {
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
   if (!workerUrl || !workerApiKey) {
@@ -427,14 +427,14 @@ async function exportHistoryViaBrowserWorker(): Promise<MatchpointExport> {
 
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const toDate = todayIsoRome();
-  const fromDate = addDaysIso(toDate, -DEFAULT_HISTORY_DAYS);
+  const fromDate = addDaysIso(toDate, -historyDays);
   const endpoint = workerHistoryExportUrl(workerUrl);
   const healthEndpoint = workerHealthUrl(workerUrl);
   const requestBody = JSON.stringify({
     username,
     password,
     baseUrl,
-    days: DEFAULT_HISTORY_DAYS,
+    days: historyDays,
     fromDate,
     toDate,
     credentialSource: 'supabase_secret',
@@ -498,7 +498,7 @@ async function exportHistoryViaBrowserWorker(): Promise<MatchpointExport> {
     contentType: clean(payload.contentType) || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     finalUrl: clean(payload.diagnostic?.historyResultsUrl || payload.diagnostic?.downloadUrl || endpoint),
     mode: 'browser_worker_headless',
-    range: payload.range || { fromDate, toDate, days: DEFAULT_HISTORY_DAYS },
+    range: payload.range || { fromDate, toDate, days: historyDays },
     diagnostic: {
       mode: 'browser_worker_headless',
       worker: payload.diagnostic || null,
@@ -792,7 +792,29 @@ Deno.serve(async (req) => {
       return errorResponse(403, 'PERMISSION_DENIED', 'Il profilo staff non ha il permesso cloud_sync.');
     }
 
-    const exported = await exportHistoryViaBrowserWorker();
+    // Quanto indietro va l'export. Di norma 30 giorni: la routine notturna chiama senza
+    // corpo e deve continuare a fare esattamente quello che faceva. Il chiamante puo
+    // chiederne di piu (entro MAX_HISTORY_DAYS) per le passate una tantum che devono
+    // riconciliare anche prenotazioni spostate prima che la riconciliazione esistesse:
+    // quelle stanno fuori dai 30 giorni e nessun import normale le raggiunge piu.
+    let requestPayload: JsonMap = {};
+    try {
+      const parsed = await req.json();
+      if (parsed && typeof parsed === 'object') requestPayload = parsed as JsonMap;
+    } catch {
+      // Nessun corpo (routine notturna) o corpo illeggibile: si resta sul default.
+    }
+    const historyWindow = resolveHistoryDays(requestPayload.days);
+    if (historyWindow.requested !== null) {
+      console.log(JSON.stringify({
+        event: 'history_window_override',
+        requestedDays: historyWindow.requested,
+        days: historyWindow.days,
+        maxDays: MAX_HISTORY_DAYS,
+      }));
+    }
+
+    const exported = await exportHistoryViaBrowserWorker(historyWindow.days);
     const validation = validateHistoryWorkbook(exported.bytes);
     if (!validation.ok) {
       const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
@@ -925,6 +947,8 @@ Deno.serve(async (req) => {
         toDate: validation.toDate || range.toDate || '',
         requestedFromDate: range.fromDate || '',
         requestedToDate: range.toDate || '',
+        windowDays: historyWindow.days,
+        requestedDays: historyWindow.requested,
       },
       file: {
         filename: exported.filename,
@@ -967,10 +991,17 @@ Deno.serve(async (req) => {
       totalAfter,
       diagnosticFile,
       upserted: records.length,
+      windowDays: historyWindow.days,
+      requestedDays: historyWindow.requested,
     });
 
     // Manutenzioni storiche (finestra recente) dal tabellone — non bloccante: lo storico Excel
     // è già stato upsertato sopra, quindi un eventuale fallimento qui non lo compromette.
+    // Resta ferma a DEFAULT_HISTORY_DAYS anche quando la finestra dello storico si allarga:
+    // qui il tabellone si legge un giorno alla volta (costo lineare) e le manutenzioni non
+    // vengono mai ritirate, quindi allargare aggiungerebbe righe vecchie senza correggere
+    // nulla. Restando ferma, il loro numero è anche la taratura per accorgersi di una
+    // riconciliazione sbagliata: nell'Excel non compaiono mai, quindi devono restare tutte.
     let manutenzione: { rows: ParsedBooking[]; daysScanned: number; error?: string } = { rows: [], daysScanned: 0 };
     try {
       manutenzione = await importManutenzioneStorico(admin, existingByKey, importedAt, DEFAULT_HISTORY_DAYS);
