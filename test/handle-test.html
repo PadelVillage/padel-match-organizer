@@ -1602,6 +1602,64 @@ const CASES = [
       if (!gone || !pushed) ctx.diag['57'] = chatTranscript(win);
       return checks;
     }
+  },
+  {
+    // Regressione: «Sincronizza dati locali» ripubblicava TUTTO lo storico locale con deleted:false,
+    // quindi un browser con la copia vecchia rimetteva nel cloud le righe che l'import aveva ritirato
+    // (134 il 21/07) → disfaceva la riconciliazione. Ora quali siano lo dice il cloud e si saltano.
+    // ⚠️ Si prova pmoHistoryUploadRecords e NON pmoBuildCloudRecordsFromLocalState: là il blocco sta
+    // sotto `if (!PMO_IS_TEST_ENV)` e questo harness carica l'app con ?env=test, quindi un controllo
+    // di lì sarebbe CIECO — passerebbe identico col fix e senza, non misurando nulla.
+    id: 60, flow: 'Cloud/Storico', name: 'sync locale→cloud: le righe RITIRATE dal cloud non vengono ripubblicate (niente resurrezione)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      checks.push({ label: 'pmoHistoryUploadRecords raggiungibile dall\'harness', ok: typeof win.pmoHistoryUploadRecords === 'function' });
+      if (typeof win.pmoHistoryUploadRecords !== 'function') return checks;
+      // Date del 2027: fuori dai dati veri, così il caso non dipende da cosa c'è in archivio.
+      const rows = [
+        { numero:'9001', data:'2027-03-01', ora:'18:00', campo:'Campo 1', giocatore:'Tizio Prova',      durata:'1.5' },
+        { numero:'9002', data:'2027-03-01', ora:'19:30', campo:'Campo 2', giocatore:'Caio Prova',       durata:'1'   },
+        { numero:'9003', data:'2027-03-02', ora:'21:00', campo:'Campo 3', giocatore:'Sempronio Prova',  durata:'2'   }
+      ];
+      const kRitirata = 'history|9002|2027-03-01|19:30|Campo 2|Caio Prova|1';
+      const out = win.pmoHistoryUploadRecords(rows, new Set([kRitirata]));
+      const keys = out.map(r => r.local_key);
+      checks.push({ label: 'la riga ritirata NON viene caricata', ok: !keys.includes(kRitirata) });
+      checks.push({ label: 'le altre due salgono comunque', ok: keys.length === 2
+        && keys.includes('history|9001|2027-03-01|18:00|Campo 1|Tizio Prova|1.5')
+        && keys.includes('history|9003|2027-03-02|21:00|Campo 3|Sempronio Prova|2') });
+      checks.push({ label: 'la riga ritirata si SALTA, non si ricarica come tombstone', ok: out.every(r => r.deleted === undefined) });
+      // Il Set arriva da un'altra finestra (questo harness), come nel test: se il riconoscimento
+      // tornasse a `instanceof Set` il filtro salterebbe in silenzio e questo caso lo becca.
+      const conLista = win.pmoHistoryUploadRecords(rows, [kRitirata]);
+      checks.push({ label: 'accetta anche una lista di chiavi, non solo un Set', ok: conLista.length === 2 });
+      return checks;
+    }
+  },
+  {
+    // ⭐ Taratura: sorveglia l'errore OPPOSTO al 60 — filtrare quando non si deve. Il pulsante
+    // «Sincronizza dati locali» compare proprio quando il cloud è VUOTO (primo popolamento): lì non
+    // c'è niente di ritirato e TUTTO deve salire.
+    // I due casi discriminano in direzioni opposte, verificato sabotando il codice apposta:
+    //   · filtro disattivato               → 60 ROSSO, 61 verde
+    //   · `||` invece di `&&` nella guardia → 60 verde, 61 ROSSO  (il ramo «nessun elenco passato»)
+    // Da solo nessuno dei due basta. Nota: un fix che non pubblicasse MAI lo storico farebbe
+    // fallire anche il 60 (che pretende le altre due righe), quindi non è quello il buco coperto qui.
+    id: 61, flow: 'Cloud/Storico', name: 'primo popolamento (cloud senza ritiri): TUTTE le righe salgono — taratura opposta al caso 60',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoHistoryUploadRecords !== 'function') return [{ label: 'pmoHistoryUploadRecords assente', ok: false }];
+      const rows = [
+        { numero:'9001', data:'2027-03-01', ora:'18:00', campo:'Campo 1', giocatore:'Tizio Prova',     durata:'1.5' },
+        { numero:'9002', data:'2027-03-01', ora:'19:30', campo:'Campo 2', giocatore:'Caio Prova',      durata:'1'   },
+        { numero:'9003', data:'2027-03-02', ora:'21:00', campo:'Campo 3', giocatore:'Sempronio Prova', durata:'2'   }
+      ];
+      checks.push({ label: 'cloud vuoto (Set senza chiavi): salgono tutte e 3', ok: win.pmoHistoryUploadRecords(rows, new Set()).length === 3 });
+      // Nessun elenco passato = nessun filtro: è la strada del conteggio «Record locali pronti».
+      checks.push({ label: 'nessun elenco passato: salgono tutte e 3', ok: win.pmoHistoryUploadRecords(rows, undefined).length === 3 });
+      checks.push({ label: 'una chiave che non c\'entra non toglie niente', ok: win.pmoHistoryUploadRecords(rows, new Set(['history|0000|2027-01-01|10:00|Campo 9|Nessuno|1'])).length === 3 });
+      return checks;
+    }
   }
 ];
 
