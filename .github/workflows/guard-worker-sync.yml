@@ -14,6 +14,13 @@ name: Guard sync main↔test-preview (worker, CI, istruzioni)
 #    divergenti significano due sessioni che lavorano con regole diverse.
 #
 # Questo guard fallisce se uno qualunque diverge, così il drift non passa mai inosservato.
+#
+# Il job `version-order` sorveglia invece la cosa OPPOSTA: APP_VERSION è un contatore
+# UNICO condiviso dai due rami, e index.html deve legittimamente differire. Lì la regola
+# non è "identici" ma "TEST davanti a PROD" — la ritualità che nello storico compare come
+# «chore(version): TEST a vX — riallineo davanti a PROD dopo promozione». Serve perché una
+# promozione può portarsi dietro il numero: in quel momento i due rami sono pari, e se il
+# riallineo si dimentica non si distinguono più i due ambienti guardando la versione.
 
 on:
   push:
@@ -22,6 +29,7 @@ on:
       - 'tools/matchpoint-browser-worker/src/server.mjs'
       - '.github/workflows/**'
       - 'CLAUDE.md'
+      - 'index.html'          # per far scattare version-order sui bump di APP_VERSION
   schedule:
     - cron: '0 6 * * *'   # backstop giornaliero (06:00 UTC)
   workflow_dispatch:
@@ -73,3 +81,59 @@ jobs:
           echo "Se invece la versione giusta è quella di test-preview, portala su main con una PR:"
           echo "la direzione va scelta, non subita."
           exit 1
+
+  version-order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: APP_VERSION di test-preview deve stare DAVANTI a quella di main
+        run: |
+          set -euo pipefail
+          git fetch -q origin main test-preview
+
+          # Estrae il numero dalla riga `const APP_VERSION = 'X.YYY';`
+          ver_of() {
+            git show "$1:index.html" \
+              | grep -m1 -oE "APP_VERSION *= *'[0-9]+\.[0-9]+'" \
+              | grep -oE "[0-9]+\.[0-9]+" \
+              | head -1
+          }
+
+          PROD_V="$(ver_of origin/main || true)"
+          TEST_V="$(ver_of origin/test-preview || true)"
+
+          if [ -z "$PROD_V" ] || [ -z "$TEST_V" ]; then
+            echo "::error::APP_VERSION non trovata (main='$PROD_V' test-preview='$TEST_V')."
+            echo "È cambiata la forma della riga in index.html? Il guard non sa più dove guardare;"
+            echo "meglio fallire che dare un verde che non ha controllato nulla."
+            exit 1
+          fi
+
+          echo "PROD (main)         : $PROD_V"
+          echo "TEST (test-preview) : $TEST_V"
+
+          if [ "$PROD_V" = "$TEST_V" ]; then
+            echo "::error::APP_VERSION IDENTICA sui due rami ($TEST_V)."
+            echo ""
+            echo "Succede dopo una promozione che si porta dietro il numero: manca il passo di"
+            echo "'riallineo davanti a PROD'. Finché resta così i due ambienti non si distinguono"
+            echo "guardando la versione, e l'app di TEST si presenta col numero della produzione."
+            echo ""
+            echo "RIMEDIO: su test-preview bumpa APP_VERSION al numero successivo."
+            exit 1
+          fi
+
+          # sort -V confronta per componenti numeriche: 6.99 < 6.100 (una sort normale sbaglierebbe).
+          if [ "$(printf '%s\n%s\n' "$PROD_V" "$TEST_V" | sort -V | head -1)" = "$TEST_V" ]; then
+            echo "::error::TEST ($TEST_V) è DIETRO a PROD ($PROD_V)."
+            echo ""
+            echo "test-preview è il ramo di lavoro e deve stare davanti: altrimenti, guardando TEST,"
+            echo "non sai se hai davanti qualcosa di più nuovo o di più vecchio della produzione."
+            echo ""
+            echo "RIMEDIO: su test-preview porta APP_VERSION sopra $PROD_V."
+            exit 1
+          fi
+
+          echo "✅ TEST ($TEST_V) sta davanti a PROD ($PROD_V)."
