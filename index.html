@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.114';
+    const APP_VERSION = '6.117';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15325,7 +15325,11 @@ Grazie.`
       return text && text !== 'non disponibile' ? text : '-';
     }
 
-    function formatMatchpointRoutineNextExecution(times) {
+    // options.utc: gli orari arrivano in UTC (cron pg_cron) invece che in ora locale. In quel
+    // caso l'ora mostrata si RICAVA dall'istante calcolato, così segue da sola CET/CEST invece
+    // di restare inchiodata al numero dichiarato.
+    function formatMatchpointRoutineNextExecution(times, options={}) {
+      const utc = options.utc === true;
       const values = (times || []).map(value => cleanCell(value)).filter(Boolean);
       if (!values.length) return '-';
       const now = new Date();
@@ -15334,8 +15338,12 @@ Grazie.`
         const [hour, minute] = value.split(':').map(part => parseInt(part, 10));
         if (!Number.isFinite(hour) || !Number.isFinite(minute)) return;
         const candidate = new Date(now);
-        candidate.setHours(hour, minute, 0, 0);
-        if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 1);
+        if (utc) candidate.setUTCHours(hour, minute, 0, 0);
+        else candidate.setHours(hour, minute, 0, 0);
+        if (candidate.getTime() <= now.getTime()) {
+          if (utc) candidate.setUTCDate(candidate.getUTCDate() + 1);
+          else candidate.setDate(candidate.getDate() + 1);
+        }
         candidates.push({ value, date:candidate });
       });
       if (!candidates.length) return '-';
@@ -15346,7 +15354,10 @@ Grazie.`
       const day = String(next.date.getDate()).padStart(2, '0');
       const month = String(next.date.getMonth() + 1).padStart(2, '0');
       const year = next.date.getFullYear();
-      return `${dayName} ${day}/${month}/${year} • ${next.value}`;
+      const time = utc
+        ? `${String(next.date.getHours()).padStart(2, '0')}:${String(next.date.getMinutes()).padStart(2, '0')}`
+        : next.value;
+      return `${dayName} ${day}/${month}/${year} • ${time}`;
     }
 
     function getMatchpointRoutineStatus(row) {
@@ -15542,7 +15553,13 @@ Grazie.`
           anchorId:'anchor-rubrica-google',
           info:getLatestGoogleContactsImportInfo(),
           lastValid:'',
-          nextTimes:['04:15'],
+          // Unica routine con un cron TUTTO SUO (jobid 11 `pmo-google-contacts-import-prod`,
+          // `15 3 * * *`) e un dispatcher SENZA gate sull'orario: parte quando il cron la
+          // chiama, cioè alle 03:15 UTC secche. Le altre righe qui sotto passano invece da
+          // `pmo_dispatch_data_routines`, che gira ogni 2 minuti e confronta l'ora di
+          // Europe/Rome: i loro orari sono già ora locale vera. Questo va dichiarato in UTC,
+          // altrimenti il numero mostrato è giusto solo sei mesi l'anno (04:15 CET, 05:15 CEST).
+          nextTimesUtc:['03:15'],
           manualLabel:'Aggiorna ora'
         },
         {
@@ -15584,7 +15601,11 @@ Grazie.`
       rows.forEach(row => {
         row.lastValid = formatMatchpointRoutineDate(row.info, row.formatter || formatImportDateTime);
         row.status = getMatchpointRoutineStatus(row);
-        row.next = PMO_IS_TEST_ENV ? 'Manuale in TEST' : (row.nextLabel || formatMatchpointRoutineNextExecution(row.nextTimes));
+        row.next = PMO_IS_TEST_ENV
+          ? 'Manuale in TEST'
+          : (row.nextLabel || (row.nextTimesUtc
+              ? formatMatchpointRoutineNextExecution(row.nextTimesUtc, { utc:true })
+              : formatMatchpointRoutineNextExecution(row.nextTimes)));
         // Contatti Google: se c'è il record cloud, mostra i conteggi al posto della nota generica.
         if (row.key === 'contacts' && row.info && row.info.rows && (row.info.rows.new != null || row.info.rows.discard != null)) {
           const r = row.info.rows;
