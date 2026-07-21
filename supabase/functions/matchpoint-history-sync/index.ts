@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import { planHistoryReconcile } from './history-reconcile.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -42,6 +43,10 @@ const REQUIRED_HISTORY_COLUMNS = ['Nome', 'Numero', 'Giorno', 'Ora', 'Ore', 'Spa
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
 const DEFAULT_HISTORY_DAYS = 30;
 const PAGE_SIZE = 1000;
+// Freno della riconciliazione: se il file chiedesse di ritirare piu di questa frazione
+// delle righe che ha nel periodo, il ritiro viene saltato (export venuto male). Le righe
+// nuove e gli aggiornamenti passano lo stesso: si rinuncia solo a togliere.
+const RECONCILE_MAX_WITHDRAW_RATIO = 0.4;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -822,11 +827,14 @@ Deno.serve(async (req) => {
     const records = [];
     let newRows = 0;
     let alreadyPresentRows = 0;
-    let protectedDifferentRows = 0;
+    let updatedRows = 0;
     const newHistoryRows: ParsedBooking[] = [];
+    const fileKeys = new Set<string>();
+    const updatedByKey = new Map<string, ParsedBooking>();
 
     validation.bookings.forEach((booking, index) => {
       const localKey = bookingCloudKey(booking, index, 'history');
+      fileKeys.add(localKey);
       const existing = existingByKey.get(localKey);
       if (!existing) {
         newRows += 1;
@@ -842,14 +850,58 @@ Deno.serve(async (req) => {
         existingByKey.set(localKey, { local_key: localKey, payload: booking });
         return;
       }
-      if (stableStringify(existing.payload || {}) === stableStringify(booking)) alreadyPresentRows += 1;
-      else protectedDifferentRows += 1;
+      if (stableStringify(existing.payload || {}) === stableStringify(booking)) {
+        alreadyPresentRows += 1;
+        return;
+      }
+      // Matchpoint fa fede: la riga cambiata si aggiorna, non si tiene la copia vecchia.
+      updatedRows += 1;
+      updatedByKey.set(localKey, booking);
+      records.push({
+        record_type: 'booking_history',
+        local_key: localKey,
+        payload: booking,
+        payload_hash: null,
+        deleted: false,
+        synced_at: importedAt,
+      });
     });
+
+    // Ritiro delle righe che il file non contiene piu: prenotazioni disdette, oppure spostate
+    // (la chiave include ora/campo/durata, quindi uno spostamento lascia indietro la versione
+    // vecchia e la persona risulta due volte). Vincoli:
+    //  - solo dentro il periodo che il file copre DAVVERO: fuori non ne parla, non si tocca;
+    //  - solo il namespace 'history|': le manutenzioni ('manut|') vengono dal tabellone,
+    //    nell'Excel non ci sono e verrebbero ritirate a ogni giro;
+    //  - deleted:true, non cancellazione: il ritiro e reversibile.
+    const exportRange = exported.range || {};
+    const reconcilePlan = planHistoryReconcile(
+      existingRecords,
+      fileKeys,
+      clean(validation.fromDate || exportRange.fromDate || ''),
+      clean(validation.toDate || exportRange.toDate || ''),
+      RECONCILE_MAX_WITHDRAW_RATIO,
+    );
+    const reconcileBlocked = reconcilePlan.blocked;
+    const withdrawnKeys = new Set<string>(reconcilePlan.withdrawKeys);
+    // existingByKey basta: una chiave da ritirare e per costruzione una che il file NON ha,
+    // quindi il ciclo sopra non l'ha toccata e il payload e ancora quello dell'archivio.
+    for (const localKey of withdrawnKeys) {
+      records.push({
+        record_type: 'booking_history',
+        local_key: localKey,
+        payload: existingByKey.get(localKey)?.payload,
+        payload_hash: null,
+        deleted: true,
+        synced_at: importedAt,
+      });
+    }
+    const withdrawnRows = withdrawnKeys.size;
 
     const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
     const totalBefore = existingRecords.length;
-    const totalAfter = totalBefore + newRows;
-    const range = exported.range || {};
+    const totalAfter = totalBefore + newRows - withdrawnRows;
+    const range = exportRange;
     const summaryPayload = {
       id: 'matchpoint_history_auto_import_last',
       type: 'storico prenotazioni',
@@ -863,7 +915,10 @@ Deno.serve(async (req) => {
         skipped: validation.skipped,
         newRows,
         alreadyPresentRows,
-        protectedDifferentRows,
+        updatedRows,
+        withdrawnRows,
+        reconcileBlocked,
+        reconcileWindowRows: reconcilePlan.windowRows,
         totalBefore,
         totalAfter,
         fromDate: validation.fromDate || range.fromDate || '',
@@ -904,7 +959,9 @@ Deno.serve(async (req) => {
       importableRows: validation.importableRows,
       newRows,
       alreadyPresentRows,
-      protectedDifferentRows,
+      updatedRows,
+      withdrawnRows,
+      reconcileBlocked,
       skipped: validation.skipped,
       totalBefore,
       totalAfter,
@@ -923,8 +980,13 @@ Deno.serve(async (req) => {
       console.warn(JSON.stringify({ event: 'manutenzione_storico_failed', error: manutenzione.error }));
     }
 
+    // L'archivio restituito all'app deve gia riflettere ritiri e aggiornamenti: se rimandasse
+    // i payload vecchi, il browser si riporterebbe dentro le righe appena tolte dal cloud.
     const cloudHistory = [
-      ...existingRecords.map((record) => record?.payload).filter(Boolean),
+      ...existingRecords
+        .filter((record) => !withdrawnKeys.has(clean(record?.local_key || '')))
+        .map((record) => updatedByKey.get(clean(record?.local_key || '')) || record?.payload)
+        .filter(Boolean),
       ...newHistoryRows,
       ...manutenzione.rows,
     ].sort((a, b) => `${a.data || ''} ${a.ora || ''}`.localeCompare(`${b.data || ''} ${b.ora || ''}`));
@@ -939,7 +1001,9 @@ Deno.serve(async (req) => {
         historyRows: validation.bookings.length,
         newRows,
         alreadyPresentRows,
-        protectedDifferentRows,
+        updatedRows,
+        withdrawnRows,
+        reconcileBlocked,
         totalBefore,
         totalAfter,
         history: cloudHistory,
