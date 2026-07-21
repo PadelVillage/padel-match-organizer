@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.119';
+    const APP_VERSION = '6.120';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8036,6 +8036,9 @@ body.assessment-public-mode .assessment-public-only-card {
     const PMO_STAFF_AUTH_TTL_MS = 12 * 60 * 60 * 1000;
     const PMO_SUPABASE_AUTH_TIMEOUT_MS = 20000;
     const HISTORY_RETENTION_MONTHS = 12;
+    // Se la sorgente chiedesse di ritirare piu di questa frazione delle righe che ha nel periodo,
+    // il ritiro viene saltato: e il sintomo di un export parziale, non di 400 disdette.
+    const HISTORY_RECONCILE_MAX_WITHDRAW_RATIO = 0.4;
     const DAILY_DIFF_HISTORY_LIMIT = 10;
     const DAILY_DIFF_DETAIL_LIMIT = 30;
     const PMO_COMPACT_BOOKING_STORAGE_KEYS = new Set(['prenotazioni', 'prenotazioniOccupazione', 'storicoPrenotazioni']);
@@ -11811,7 +11814,7 @@ Grazie.`
       if (normalizeText(type) === 'clienti') {
         entry.addedGenderCounts = source.addedGenderCounts || countGenderRows(added);
       }
-      ['alreadyPresentRows', 'protectedDifferentRows'].forEach(key => {
+      ['alreadyPresentRows', 'protectedDifferentRows', 'updatedRows', 'withdrawnRows'].forEach(key => {
         if (source[key] !== undefined) entry[key] = parseInt(source[key], 10) || 0;
       });
       ['fromDate', 'toDate'].forEach(key => {
@@ -11869,7 +11872,7 @@ Grazie.`
       const isMembers = diff.type === 'clienti';
       const isHistorical = diff.type === 'storico prenotazioni';
       const title = isMembers ? '👥 Differenze clienti' : (isHistorical ? '📚 Import storico prenotazioni' : '📅 Differenze prenotazioni');
-      const bookingNote = isMembers ? '' : (isHistorical ? '<div class="diff-mini">Nota: lo storico è cumulativo: vengono aggiunte solo righe nuove, senza sovrascrivere quelle già presenti.</div>' : '<div class="diff-mini">Nota: il confronto prenotazioni è per singolo giocatore dentro la prenotazione Matchpoint.</div>');
+      const bookingNote = isMembers ? '' : (isHistorical ? '<div class="diff-mini">Nota: dentro il periodo importato Matchpoint fa fede (le righe cambiate si aggiornano, quelle disdette o spostate si ritirano). Fuori dal periodo lo storico resta cumulativo: si aggiungono solo righe nuove.</div>' : '<div class="diff-mini">Nota: il confronto prenotazioni è per singolo giocatore dentro la prenotazione Matchpoint.</div>');
       const removedLabel = isMembers ? 'Non più nel file' : (isHistorical ? 'Rimosse' : 'Cancellate');
       const addedLabel = isMembers ? 'Nuovi soci' : (isHistorical ? 'Nuove righe storico' : 'Nuove prenotazioni');
       const modifiedLabel = isHistorical ? 'Protette/non sovrascritte' : 'Modificate';
@@ -11884,7 +11887,7 @@ Grazie.`
       const addedCount = parseInt(diff.addedCount, 10) || addedRows.length;
       const removedCount = parseInt(diff.removedCount, 10) || removedRows.length;
       const modifiedCount = parseInt(diff.modifiedCount, 10) || modifiedRows.length;
-      const historicalExtra = isHistorical ? `<div class="diff-summary"><div class="diff-chip">Già presenti: <strong>${escapeHtml(String(diff.alreadyPresentRows || 0))}</strong></div><div class="diff-chip">Diverse protette: <strong>${escapeHtml(String(diff.protectedDifferentRows || 0))}</strong></div><div class="diff-chip">Periodo: <strong>${escapeHtml((diff.fromDate || '') + ' → ' + (diff.toDate || ''))}</strong></div></div>` : '';
+      const historicalExtra = isHistorical ? `<div class="diff-summary"><div class="diff-chip">Già presenti: <strong>${escapeHtml(String(diff.alreadyPresentRows || 0))}</strong></div><div class="diff-chip">Aggiornate: <strong>${escapeHtml(String(diff.updatedRows || 0))}</strong></div><div class="diff-chip">Ritirate: <strong>${escapeHtml(String(diff.withdrawnRows || 0))}</strong></div><div class="diff-chip">Diverse fuori periodo: <strong>${escapeHtml(String(diff.protectedDifferentRows || 0))}</strong></div><div class="diff-chip">Periodo: <strong>${escapeHtml((diff.fromDate || '') + ' → ' + (diff.toDate || ''))}</strong></div></div>` : '';
       panel.innerHTML = `
         <h3>${title}</h3>
         <div class="muted">Ultimo controllo: ${escapeHtml(diff.createdAtDisplay || '')}</div>
@@ -13303,6 +13306,8 @@ Grazie.`
           newRows:0,
           alreadyPresentRows:0,
           protectedDifferentRows:0,
+          updatedRows:0,
+          withdrawnRows:0,
           totalBefore:storicoPrenotazioni.length,
           totalAfter:storicoPrenotazioni.length
         };
@@ -13320,17 +13325,27 @@ Grazie.`
       const importedRows = Math.max(0, parseInt(options.importedRows ?? imported.length, 10) || imported.length);
       const cloudNewRows = options.cloudNewRows !== undefined ? Math.max(0, parseInt(options.cloudNewRows, 10) || 0) : null;
 
-      // Storico protetto: lo storico e cumulativo. L'import non cancella e non sostituisce
-      // righe gia presenti; aggiunge solo prenotazioni nuove evitando duplicati.
+      // Fuori dal periodo coperto dalla sorgente lo storico resta cumulativo: aggiunge righe
+      // nuove e non tocca quelle presenti, perche la sorgente di quel periodo non parla.
+      // DENTRO il periodo invece Matchpoint fa fede (options.authoritativeFrom/To): le righe
+      // cambiate si aggiornano e quelle sparite si ritirano. Senza, una prenotazione disdetta
+      // o spostata restava in archivio per sempre, e falsava playerHistoricalStats.
+      const reconcileFrom = cleanCell(options.authoritativeFrom || '');
+      const reconcileTo = cleanCell(options.authoritativeTo || '');
+      const canReconcile = !!(reconcileFrom && reconcileTo);
+      const inReconcileWindow = row => canReconcile && !!row && !!row.data && row.data >= reconcileFrom && row.data <= reconcileTo;
       const existingMap = new Map(storicoPrenotazioni.map(p => [bookingKey(p), p]));
 
       let newRows = 0;
       let alreadyPresentRows = 0;
       let protectedDifferentRows = 0;
+      let updatedRows = 0;
       const newHistoryRows = [];
+      const importedKeys = new Set();
 
       imported.forEach(newBooking => {
         const key = bookingKey(newBooking);
+        importedKeys.add(key);
         const oldBooking = existingMap.get(key);
         if (!oldBooking) {
           storicoPrenotazioni.push(newBooking);
@@ -13339,9 +13354,25 @@ Grazie.`
           newHistoryRows.push(newBooking);
           return;
         }
-        if (JSON.stringify(oldBooking) === JSON.stringify(newBooking)) alreadyPresentRows++;
-        else protectedDifferentRows++;
+        if (JSON.stringify(oldBooking) === JSON.stringify(newBooking)) { alreadyPresentRows++; return; }
+        if (!inReconcileWindow(newBooking)) { protectedDifferentRows++; return; }
+        // Sostituzione sul posto: existingMap tiene i riferimenti agli elementi dell'array.
+        Object.keys(oldBooking).forEach(field => { delete oldBooking[field]; });
+        Object.assign(oldBooking, newBooking);
+        updatedRows++;
       });
+
+      let withdrawnRows = 0;
+      if (canReconcile) {
+        const windowRows = storicoPrenotazioni.filter(inReconcileWindow);
+        const toWithdraw = windowRows.filter(row => !importedKeys.has(bookingKey(row)));
+        // Stesso freno del lato cloud: una sorgente parziale non deve poter svuotare il periodo.
+        if (toWithdraw.length <= Math.floor(windowRows.length * HISTORY_RECONCILE_MAX_WITHDRAW_RATIO)) {
+          const withdrawKeys = new Set(toWithdraw.map(bookingKey));
+          storicoPrenotazioni = storicoPrenotazioni.filter(row => !(inReconcileWindow(row) && withdrawKeys.has(bookingKey(row))));
+          withdrawnRows = toWithdraw.length;
+        }
+      }
 
       storicoPrenotazioni.sort((a, b) => `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
       const removedOld12Months = pruneHistoricalBookings(false);
@@ -13361,6 +13392,8 @@ Grazie.`
         skipped,
         alreadyPresentRows,
         protectedDifferentRows,
+        updatedRows,
+        withdrawnRows,
         fromDate,
         toDate,
         totalBefore: previousTotal,
@@ -13372,7 +13405,9 @@ Grazie.`
         'Totale dopo': storicoPrenotazioni.length,
         'Nuove righe': newRows,
         'Gia presenti': alreadyPresentRows,
-        'Diverse protette': protectedDifferentRows,
+        'Aggiornate da Matchpoint': updatedRows,
+        'Ritirate (non piu su Matchpoint)': withdrawnRows,
+        'Diverse fuori periodo (non toccate)': protectedDifferentRows,
         'Eliminate oltre 12 mesi': removedOld12Months,
         'Righe saltate o duplicate': skipped
       };
@@ -13384,7 +13419,9 @@ Grazie.`
         createdAt: importedAtIso,
         createdAtDisplay: importedAt.toLocaleString('it-IT'),
         metrics,
-        message: options.message || 'Storico aggiornato in modalita cumulativa, senza sovrascrivere record gia presenti.'
+        message: options.message || (canReconcile
+          ? 'Storico allineato a Matchpoint nel periodo importato; fuori dal periodo resta cumulativo.'
+          : 'Storico aggiornato in modalita cumulativa, senza sovrascrivere record gia presenti.')
       });
       refreshAfterDataImport();
       markDataActionDone('history', source === 'automatic' ? 'Storico aggiornato da Matchpoint' : 'Storico importato e salvato');
@@ -13404,6 +13441,8 @@ Grazie.`
         newRows,
         alreadyPresentRows,
         protectedDifferentRows,
+        updatedRows,
+        withdrawnRows,
         removedOld12Months,
         skipped,
         totalAfter: storicoPrenotazioni.length
@@ -13464,12 +13503,17 @@ Grazie.`
           fromDate: rows.fromDate || rows.requestedFromDate || '',
           toDate: rows.toDate || rows.requestedToDate || '',
           cloudNewRows: rows.newRows || 0,
+          // Il cloud ha gia riconciliato il periodo: qui si allinea il browser alla stessa
+          // finestra, altrimenti le righe ritirate dal cloud resterebbero in questo localStorage.
+          // Solo il percorso automatico: un file scelto a mano non dichiara un periodo affidabile.
+          authoritativeFrom: rows.fromDate || '',
+          authoritativeTo: rows.toDate || '',
           message: 'Storico aggiornato da Matchpoint automatico e sincronizzato in locale.'
         });
         updateMatchpointHistoryMetrics(rows, cloud.history.length);
         await pmoSaveCloudBackupAfterDataUpdate('Storico Matchpoint');
         showAlert(
-          `✅ Storico Matchpoint aggiornato. Nuove righe cloud: ${rows.newRows || 0}. Righe aggiunte in questo browser: ${localResult.newRows}. Totale prenotazioni storiche locale: ${localResult.totalAfter}.`,
+          `✅ Storico Matchpoint aggiornato (${rows.fromDate || '?'} → ${rows.toDate || '?'}). Cloud: ${rows.newRows || 0} nuove, ${rows.updatedRows || 0} aggiornate, ${rows.withdrawnRows || 0} ritirate perché non più su Matchpoint${rows.reconcileBlocked ? ' (RITIRO SOSPESO: troppe righe mancanti, export sospetto)' : ''}. In questo browser: ${localResult.newRows} aggiunte, ${localResult.updatedRows} aggiornate, ${localResult.withdrawnRows} ritirate. Totale locale: ${localResult.totalAfter}.`,
           'success'
         );
       } catch (err) {
