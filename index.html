@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.122';
+    const APP_VERSION = '6.123';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8039,6 +8039,9 @@ body.assessment-public-mode .assessment-public-only-card {
     // Se la sorgente chiedesse di ritirare piu di questa frazione delle righe che ha nel periodo,
     // il ritiro viene saltato: e il sintomo di un export parziale, non di 400 disdette.
     const HISTORY_RECONCILE_MAX_WITHDRAW_RATIO = 0.4;
+    // Sotto questa cifra la potatura dei fantasmi non si frena mai: e il pavimento che impedisce
+    // alla quota qui sopra di bloccare potature minuscole su archivi piccoli.
+    const HISTORY_GHOST_MIN_ABSOLUTE = 25;
     const DAILY_DIFF_HISTORY_LIMIT = 10;
     const DAILY_DIFF_DETAIL_LIMIT = 30;
     const PMO_COMPACT_BOOKING_STORAGE_KEYS = new Set(['prenotazioni', 'prenotazioniOccupazione', 'storicoPrenotazioni']);
@@ -13374,6 +13377,25 @@ Grazie.`
         }
       }
 
+      // Il ritiro qui sopra guarda solo DENTRO la finestra dichiarata dalla sorgente, e la routine
+      // notturna non ne dichiara nessuna: le righe che il cloud ha ritirato fuori da li restavano
+      // in questo browser per sempre e si riaccumulavano ogni notte. Qui si toglie quel residuo,
+      // ma solo dove il cloud e esplicito (chiave ritirata) e senza gemella viva — vedi la
+      // trappola delle 48 in pmoHistoryGhostRowsToDrop. Elenco assente = nessuna potatura.
+      let ghostRows = 0;
+      let ghostBlocked = false;
+      if (options.retiredCloudKeys) {
+        const ghosts = pmoHistoryGhostRowsToDrop(storicoPrenotazioni, options.retiredCloudKeys, importedKeys);
+        ghostBlocked = ghosts.blocked;
+        if (ghosts.drop.length) {
+          // Confronto per IDENTITA della riga, non per chiave: due righe locali diverse possono
+          // condividere la stessa bookingKey e qui non devono trascinarsi a vicenda.
+          const ghostSet = new Set(ghosts.drop);
+          storicoPrenotazioni = storicoPrenotazioni.filter(row => !ghostSet.has(row));
+          ghostRows = ghosts.drop.length;
+        }
+      }
+
       storicoPrenotazioni.sort((a, b) => `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
       const removedOld12Months = pruneHistoricalBookings(false);
       save('storicoPrenotazioni', storicoPrenotazioni);
@@ -13394,6 +13416,7 @@ Grazie.`
         protectedDifferentRows,
         updatedRows,
         withdrawnRows,
+        ghostRows,
         fromDate,
         toDate,
         totalBefore: previousTotal,
@@ -13407,6 +13430,7 @@ Grazie.`
         'Gia presenti': alreadyPresentRows,
         'Aggiornate da Matchpoint': updatedRows,
         'Ritirate (non piu su Matchpoint)': withdrawnRows,
+        'Fantasmi rimossi (ritirati dal cloud)': ghostBlocked ? `0 (SOSPESO: troppe righe, potatura annullata)` : ghostRows,
         'Diverse fuori periodo (non toccate)': protectedDifferentRows,
         'Eliminate oltre 12 mesi': removedOld12Months,
         'Righe saltate o duplicate': skipped
@@ -13443,6 +13467,8 @@ Grazie.`
         protectedDifferentRows,
         updatedRows,
         withdrawnRows,
+        ghostRows,
+        ghostBlocked,
         removedOld12Months,
         skipped,
         totalAfter: storicoPrenotazioni.length
@@ -13495,8 +13521,16 @@ Grazie.`
         const cloud = syncHistory.length ? { history: syncHistory, summary: syncResult?.summary || null } : await pmoLoadMatchpointHistoryFromCloud();
         if (!cloud.history.length) throw new Error('Nessuno storico trovato nel cloud dopo l’export Matchpoint.');
         const rows = syncResult?.summary?.rows || cloud.summary?.rows || {};
+        // Quali righe il cloud ha gia ritirato. Serve perche la finestra qui sotto copre solo il
+        // periodo di QUESTO import: i fantasmi piu vecchi resterebbero in archivio per sempre.
+        // Lettura fallita = elenco assente = nessuna potatura, e l'import prosegue lo stesso:
+        // meglio un browser ancora disallineato che uno potato al buio.
+        let retiredCloudKeys = null;
+        try { retiredCloudKeys = await pmoLoadRetiredHistoryKeysFromCloud(); }
+        catch (err) { console.warn('PMO_HISTORY_RETIRED_KEYS_LOAD_FAILED', err); }
         const localResult = applyHistoricalBookingsToLocal(cloud.history, {
           source: 'automatic',
+          retiredCloudKeys,
           sourceRows: rows.sourceRows || syncResult?.cloud?.historyRows || cloud.history.length,
           importedRows: rows.importableRows || syncResult?.cloud?.historyRows || cloud.history.length,
           skipped: rows.skipped || 0,
@@ -13513,7 +13547,7 @@ Grazie.`
         updateMatchpointHistoryMetrics(rows, cloud.history.length);
         await pmoSaveCloudBackupAfterDataUpdate('Storico Matchpoint');
         showAlert(
-          `✅ Storico Matchpoint aggiornato (${rows.fromDate || '?'} → ${rows.toDate || '?'}). Cloud: ${rows.newRows || 0} nuove, ${rows.updatedRows || 0} aggiornate, ${rows.withdrawnRows || 0} ritirate perché non più su Matchpoint${rows.reconcileBlocked ? ' (RITIRO SOSPESO: troppe righe mancanti, export sospetto)' : ''}. In questo browser: ${localResult.newRows} aggiunte, ${localResult.updatedRows} aggiornate, ${localResult.withdrawnRows} ritirate. Totale locale: ${localResult.totalAfter}.`,
+          `✅ Storico Matchpoint aggiornato (${rows.fromDate || '?'} → ${rows.toDate || '?'}). Cloud: ${rows.newRows || 0} nuove, ${rows.updatedRows || 0} aggiornate, ${rows.withdrawnRows || 0} ritirate perché non più su Matchpoint${rows.reconcileBlocked ? ' (RITIRO SOSPESO: troppe righe mancanti, export sospetto)' : ''}. In questo browser: ${localResult.newRows} aggiunte, ${localResult.updatedRows} aggiornate, ${localResult.withdrawnRows} ritirate${localResult.ghostBlocked ? ', potatura dei fantasmi SOSPESA (troppe righe)' : `, ${localResult.ghostRows || 0} fantasmi rimossi`}. Totale locale: ${localResult.totalAfter}.`,
           'success'
         );
       } catch (err) {
@@ -15555,8 +15589,15 @@ Grazie.`
         const cloud = await pmoLoadMatchpointHistoryFromCloud();
         const rows = cloud.summary?.rows || summaries.history?.rows || {};
         if (cloud.history.length) {
+          // Questa strada non dichiara nessuna finestra autorevole, quindi da sola non ritira mai
+          // niente: senza l'elenco dei ritiri il disallineamento si ricostruirebbe ogni notte.
+          // Lettura fallita = nessuna potatura (fallisce chiuso), la sincronizzazione prosegue.
+          let retiredCloudKeys = null;
+          try { retiredCloudKeys = await pmoLoadRetiredHistoryKeysFromCloud(); }
+          catch (err) { console.warn('PMO_HISTORY_RETIRED_KEYS_LOAD_FAILED', err); }
           applyHistoricalBookingsToLocal(cloud.history, {
             source:'automatic',
+            retiredCloudKeys,
             importedAt: summaries.history.createdAt,
             sourceRows: rows.sourceRows || cloud.history.length,
             importedRows: rows.importableRows || cloud.history.length,
@@ -26949,6 +26990,14 @@ Per confermare scrivi ELIMINA.`);
 	        .map(row => cleanCell(row.local_key || ''))
 	        .filter(Boolean));
 	    }
+	    // Riconoscimento per forma, non `instanceof`: un Set creato in un'altra finestra (la rete
+	    // di regressione vive fuori dall'iframe) non e `instanceof Set` qui dentro, e il filtro
+	    // sarebbe saltato senza dirlo. Accetta anche una lista. Assente = nessun elenco.
+	    function pmoHistoryKeySet(value) {
+	      if (value && typeof value.has === 'function') return value;
+	      if (Array.isArray(value)) return new Set(value);
+	      return null;
+	    }
 	    // Quali righe di storico vanno caricate sul cloud. Isolata dal chiamante APPOSTA per poterla
 	    // provare: dentro pmoBuildCloudRecordsFromLocalState il blocco e sotto `if (!PMO_IS_TEST_ENV)`
 	    // e la rete di regressione gira in ambiente test, quindi li un controllo sarebbe CIECO —
@@ -26962,18 +27011,53 @@ Per confermare scrivi ELIMINA.`);
 	    // resuscitare.
 	    function pmoHistoryUploadRecords(rows, retiredHistoryKeys) {
 	      const records = [];
-	      // Riconoscimento per forma, non `instanceof`: un Set creato in un'altra finestra (la rete
-	      // di regressione vive fuori dall'iframe) non e `instanceof Set` qui dentro, e il filtro
-	      // sarebbe saltato senza dirlo. Accetta anche una lista.
-	      const retired = retiredHistoryKeys && typeof retiredHistoryKeys.has === 'function'
-	        ? retiredHistoryKeys
-	        : (Array.isArray(retiredHistoryKeys) ? new Set(retiredHistoryKeys) : null);
+	      const retired = pmoHistoryKeySet(retiredHistoryKeys);
 	      (Array.isArray(rows) ? rows : []).forEach((item, index) => {
 	        const historyKey = pmoBookingCloudKey(item, index, 'history');
 	        if (retired && retired.has(cleanCell(historyKey))) return;
 	        pmoAddCloudRecord(records, 'booking_history', historyKey, item);
 	      });
 	      return records;
+	    }
+	    // Il verso OPPOSTO di pmoHistoryUploadRecords: non «cosa non far salire», ma «cosa togliere
+	    // da questo browser». Serve perche la riconciliazione dello storico gira nel cloud, e finche
+	    // il browser non se ne accorge tiene righe che Matchpoint non ha piu (149 il 21/07).
+	    //
+	    // 🚨 La regola NON e «togli tutte le chiavi che il cloud ha ritirato»: cosi si distruggono
+	    // righe BUONE, in silenzio. Le due chiavi non sono lo stesso spazio —
+	    //   locale  bookingKey          = numero + giocatore
+	    //   cloud   pmoBookingCloudKey  = numero + data + ORA + CAMPO + giocatore + DURATA
+	    // Ora, campo e durata stanno solo in quella del cloud, quindi una prenotazione SPOSTATA e
+	    // due chiavi cloud (vecchia ritirata + nuova viva) ma UNA sola riga qui. Misurato su PROD il
+	    // 21/07: delle 208 ritirate, 48 avevano ancora una gemella viva — 48 righe vere che un fix
+	    // scritto alla leggera avrebbe cancellato.
+	    //
+	    // Quindi si toglie solo cio che e ritirato nel cloud E non ha una gemella viva. Il guardiano
+	    // e gratis: `liveLocalKeys` e l'`importedKeys` gia costruito da chi importa, cioe l'insieme
+	    // delle chiavi LOCALI arrivate vive dal cloud.
+	    // Conservativo per costruzione: una riga che il cloud non conosce affatto non e ne ritirata
+	    // ne viva, quindi non viene toccata (e il caso delle righe fuori dalla copertura del cloud).
+	    function pmoHistoryGhostRowsToDrop(rows, retiredCloudKeys, liveLocalKeys, maxRatio) {
+	      const list = Array.isArray(rows) ? rows : [];
+	      const retired = pmoHistoryKeySet(retiredCloudKeys);
+	      // Nessun elenco di ritiri = non si tocca niente. E il caso della lettura fallita: meglio
+	      // un browser disallineato che uno potato al buio.
+	      if (!retired || !list.length) return { drop: [], blocked: false };
+	      const live = pmoHistoryKeySet(liveLocalKeys);
+	      const drop = list.filter((row, index) => {
+	        if (!retired.has(cleanCell(pmoBookingCloudKey(row, index, 'history')))) return false;
+	        return !(live && live.has(bookingKey(row)));
+	      });
+	      // Freno contro le potature di massa, qualunque cosa dica il cloud. Il 21/07 erano 160 righe
+	      // su 7690, il 2%: lontanissimo dalla soglia.
+	      // ⚠️ La sola quota non basta: su un archivio piccolo `floor(n * 0.4)` vale 0 o 1 e il freno
+	      // scatterebbe per UNA riga, sospendendo la potatura proprio dove non c'e nessuna massa da
+	      // temere (trovato dalla rete di regressione, non a tavolino). Da cui il pavimento assoluto:
+	      // sotto quella cifra non si frena mai, sopra comanda la quota.
+	      const ratio = typeof maxRatio === 'number' ? maxRatio : HISTORY_RECONCILE_MAX_WITHDRAW_RATIO;
+	      const limite = Math.max(HISTORY_GHOST_MIN_ABSOLUTE, Math.floor(list.length * ratio));
+	      if (drop.length > limite) return { drop: [], blocked: true };
+	      return { drop, blocked: false };
 	    }
 	    function pmoBuildCloudRecordsFromLocalState(options={}) {
 	      const records = [];
