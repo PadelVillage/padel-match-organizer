@@ -508,7 +508,9 @@ async function enrichBookingsWithTabellone(
   if (!dates.length) return;
 
   const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
-  let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[] }>> = {};
+  // `testo` (dal 21/07) è il testo della casella: lo usa il recupero delle prenotazioni senza
+  // giocatori per leggere il TIPO invece di inventarlo. Assente se il worker è più vecchio.
+  let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[]; testo?: string }>> = {};
 
   try {
     const res = await fetch(endpoint, {
