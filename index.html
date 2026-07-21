@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.120';
+    const APP_VERSION = '6.121';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -12100,7 +12100,7 @@ Grazie.`
         '1. Verifica che il tipo import sia quello appena eseguito.',
         '2. Controlla che Totale dopo sia coerente con Totale prima e nuove righe.',
         '3. Se ci sono righe saltate o duplicate, verifica che il numero sia plausibile rispetto al file importato.',
-        '4. Se “Diverse protette” è maggiore di zero, controlla manualmente i record coinvolti.',
+        '4. Se “Ritirate” è maggiore di zero, sono prenotazioni che Matchpoint non ha più: normale dopo disdette o spostamenti. Se invece leggi “ritiro sospeso”, l’export era parziale: rilancia l’aggiornamento.',
         '5. Se l’import non è di oggi, valuta se aggiornare Matchpoint prima di organizzare nuove partite.',
         '',
         'Nota: questi controlli non modificano dati e non bloccano il lavoro.'
