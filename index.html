@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.121';
+    const APP_VERSION = '6.122';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -26934,7 +26934,48 @@ Per confermare scrivi ELIMINA.`);
 	      if (!record) return;
 	      pmoSyncCloudRecordsNow([record], actionLabel).catch(error => pmoNotifyImmediateMemberCloudFailure(error, actionLabel));
 	    }
-	    function pmoBuildCloudRecordsFromLocalState() {
+	    // Chiavi che il cloud ha RITIRATO (deleted:true): servono a pmoBuildCloudRecordsFromLocalState
+	    // per non ripubblicarle. Le righe ritirate restano in tabella col tombstone, quindi
+	    // pmo_get_records_admin_page le restituisce (non filtra su deleted) — se le nascondesse
+	    // questa guardia sarebbe cieca e sembrerebbe funzionare.
+	    async function pmoLoadRetiredHistoryKeysFromCloud() {
+	      const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
+	        p_record_types: ['booking_history'],
+	        p_since: null
+	      }, 'cloud_sync', 'controllare quali righe di storico il cloud ha gia ritirato');
+	      const list = Array.isArray(rows) ? rows : [];
+	      return new Set(list
+	        .filter(row => row?.record_type === 'booking_history' && row.deleted)
+	        .map(row => cleanCell(row.local_key || ''))
+	        .filter(Boolean));
+	    }
+	    // Quali righe di storico vanno caricate sul cloud. Isolata dal chiamante APPOSTA per poterla
+	    // provare: dentro pmoBuildCloudRecordsFromLocalState il blocco e sotto `if (!PMO_IS_TEST_ENV)`
+	    // e la rete di regressione gira in ambiente test, quindi li un controllo sarebbe CIECO —
+	    // passerebbe uguale col fix e senza. Qui dentro c'e solo la regola, senza gate d'ambiente.
+	    // Regola: NON ripubblicare cio che il cloud ha gia ritirato. Stesso motivo delle occupancy
+	    // `_retained`, ma qui il marcatore locale non c'e — una riga fantasma e identica a una buona —
+	    // perche chi sia stato ritirato lo sa solo il cloud (la riconciliazione dello storico gira li).
+	    // Senza questo filtro l'upload rimetterebbe deleted:false sulle righe che l'import aveva
+	    // tolto, disfacendo la riconciliazione.
+	    // Set assente = nessun filtro: e il caso del primo popolamento, cloud vuoto e niente da
+	    // resuscitare.
+	    function pmoHistoryUploadRecords(rows, retiredHistoryKeys) {
+	      const records = [];
+	      // Riconoscimento per forma, non `instanceof`: un Set creato in un'altra finestra (la rete
+	      // di regressione vive fuori dall'iframe) non e `instanceof Set` qui dentro, e il filtro
+	      // sarebbe saltato senza dirlo. Accetta anche una lista.
+	      const retired = retiredHistoryKeys && typeof retiredHistoryKeys.has === 'function'
+	        ? retiredHistoryKeys
+	        : (Array.isArray(retiredHistoryKeys) ? new Set(retiredHistoryKeys) : null);
+	      (Array.isArray(rows) ? rows : []).forEach((item, index) => {
+	        const historyKey = pmoBookingCloudKey(item, index, 'history');
+	        if (retired && retired.has(cleanCell(historyKey))) return;
+	        pmoAddCloudRecord(records, 'booking_history', historyKey, item);
+	      });
+	      return records;
+	    }
+	    function pmoBuildCloudRecordsFromLocalState(options={}) {
 	      const records = [];
 	      (Array.isArray(giocatori) ? giocatori : []).forEach((item, index) => {
 	        const record = pmoBuildMemberCloudRecord(item, { fallbackKey:`member|${index}|${pmoShortHash(item)}` });
@@ -26945,7 +26986,7 @@ Per confermare scrivi ELIMINA.`);
 	      // LIVE di date passate che il cloud ha già tombstonato → NON vanno ripushate (le resusciterebbe).
 	      (Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : []).filter(item => !(item && item._retained)).forEach((item, index) => pmoAddCloudRecord(records, 'booking_occupancy', pmoBookingCloudKey(item, index, 'occupancy'), item));
 	      if (!PMO_IS_TEST_ENV) {
-	        (Array.isArray(storicoPrenotazioni) ? storicoPrenotazioni : []).forEach((item, index) => pmoAddCloudRecord(records, 'booking_history', pmoBookingCloudKey(item, index, 'history'), item));
+	        pmoHistoryUploadRecords(storicoPrenotazioni, options.retiredHistoryKeys).forEach(record => records.push(record));
 	      }
 	      pmoCloudObjectEntries(lunchMatchInvitations).forEach(([key, item]) => pmoAddCloudRecord(records, 'match_invitation', item.key || key, item));
 	      pmoCloudObjectEntries(fillSlotCreatedMatches).forEach(([key, item]) => pmoAddCloudRecord(records, 'fill_slot_created_match', item.key || key, item));
@@ -28194,7 +28235,10 @@ Per confermare scrivi ELIMINA.`);
 	    async function pmoUploadLocalDataToCloud() {
 	      try {
 	        const staff = await pmoRequireStaffPermission('cloud_sync', 'sincronizzare i dati locali su Supabase');
-	        const records = pmoBuildCloudRecordsFromLocalState();
+	        // Prima di caricare, chiedi al cloud cosa ha gia ritirato. Se questa lettura fallisce si
+	        // esce dal catch senza caricare nulla: meglio un sync non fatto che uno che resuscita.
+	        const retiredHistoryKeys = await pmoLoadRetiredHistoryKeysFromCloud();
+	        const records = pmoBuildCloudRecordsFromLocalState({ retiredHistoryKeys });
 	        if (!records.length) return showAlert('⚠️ Nessun dato locale da sincronizzare.', 'warning');
 	        pmoSetCloudStatus(`Sincronizzazione in corso: 0/${records.length}`, 'info');
 	        const chunkSize = 200;
