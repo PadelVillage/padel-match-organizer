@@ -99,7 +99,7 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT, CLOUD_READ_FAIL;
 // Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
 let CLOUD_LESSICO = [];
@@ -117,6 +117,7 @@ function captureReset() {
   PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
   VOID_NEXT = { ok: true };        // risposta edge matchpoint-payment-void programmabile
   CORRECT_NEXT = { ok: true };     // risposta edge matchpoint-wallet-correct programmabile
+  CLOUD_READ_FAIL = false;         // true → pmo_get_records_admin risponde 403 (per provare i fallimenti in lettura)
 }
 function jsonResponse(win, obj, status) {
   const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
@@ -168,6 +169,7 @@ function installFetchMock(win) {
       return jsonResponse(win, { ok: true, count: list.length }, 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_records_admin/.test(u)) {
+      if (CLOUD_READ_FAIL) return jsonResponse(win, { message: 'PERMISSION_DENIED' }, 403);
       return jsonResponse(win, CLOUD_FAKEROWS || [], 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
@@ -177,6 +179,16 @@ function installFetchMock(win) {
     // (prima finivano nel fallthrough LEAKS a ogni run: note e innocue, ma sporcavano il conto).
     if (/\/rest\/v1\/rpc\/(pmo_get_staff_users_admin|get_assessment_tokens_admin)/.test(u)) {
       return jsonResponse(win, [], 200);
+    }
+    // Card «Consumi WhatsApp» + specchio WhatsApp: partono dal render del centro routine, che
+    // pmoUploadLocalDataToCloud richiama a fine sync (caso 62). Vuoti e stabili, altrimenti
+    // finiscono nel fallthrough LEAKS. ⚠️ wa_usage_stats vive sul progetto CONSUMER (ayly…),
+    // non sul gestionale: senza questa riga il banco di prova lo nomina a ogni giro.
+    if (/\/rest\/v1\/rpc\/wa_usage_stats/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
+    if (/\/functions\/v1\/wa-shadow-proxy/.test(u)) {
+      return jsonResponse(win, { ok: true, messages: [] }, 200);
     }
     if (/\/auth\/v1\/token/.test(u)) {
       return jsonResponse(win, { access_token: 'test-access-token', refresh_token: 'test-refresh-token', expires_in: 3600 }, 200);
@@ -1658,6 +1670,24 @@ const CASES = [
       // Nessun elenco passato = nessun filtro: è la strada del conteggio «Record locali pronti».
       checks.push({ label: 'nessun elenco passato: salgono tutte e 3', ok: win.pmoHistoryUploadRecords(rows, undefined).length === 3 });
       checks.push({ label: 'una chiave che non c\'entra non toglie niente', ok: win.pmoHistoryUploadRecords(rows, new Set(['history|0000|2027-01-01|10:00|Campo 9|Nessuno|1'])).length === 3 });
+      return checks;
+    }
+  },
+  {
+    // Il collegamento, non più la sola regola: pmoUploadLocalDataToCloud deve CHIEDERE al cloud i
+    // ritiri PRIMA di caricare. Se quella lettura fallisce non si carica niente — meglio un sync
+    // non fatto che uno che resuscita. Le due metà si tarano a vicenda: da sola «zero caricamenti»
+    // passerebbe anche con la funzione rotta del tutto, quindi accanto c'è il caso che DEVE caricare.
+    id: 62, flow: 'Cloud/Storico', name: 'sync locale→cloud: lettura dei ritiri fallita → NON carica niente (fallisce chiuso); lettura ok → carica',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoUploadLocalDataToCloud !== 'function') return [{ label: 'pmoUploadLocalDataToCloud assente', ok: false }];
+      CLOUD_READ_FAIL = true;
+      await win.pmoUploadLocalDataToCloud();
+      checks.push({ label: 'lettura dei ritiri fallita → NESSUN upsert partito', ok: CAPTURED.cloud.length === 0 });
+      CLOUD_READ_FAIL = false;
+      await win.pmoUploadLocalDataToCloud();
+      checks.push({ label: 'controllo opposto: con la lettura ok il caricamento parte davvero', ok: CAPTURED.cloud.length > 0 });
       return checks;
     }
   }
