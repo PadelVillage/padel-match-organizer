@@ -1690,6 +1690,137 @@ const CASES = [
       checks.push({ label: 'controllo opposto: con la lettura ok il caricamento parte davvero', ok: CAPTURED.cloud.length > 0 });
       return checks;
     }
+  },
+  {
+    // Il verso opposto del 60: non «cosa non far salire» ma «cosa togliere da questo browser».
+    // 🚨 Il caso esiste per una trappola precisa: locale e cloud NON usano la stessa chiave —
+    // ora, campo e durata stanno solo in quella del cloud. Una prenotazione SPOSTATA e quindi due
+    // chiavi cloud (vecchia ritirata + nuova viva) ma UNA sola riga qui. Un fix scritto come «togli
+    // tutte le chiavi ritirate» avrebbe cancellato 48 righe VERE su PROD, in silenzio.
+    id: 63, flow: 'Cloud/Storico', name: 'potatura fantasmi: si toglie solo cio che il cloud ha ritirato E che non ha una gemella viva',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      checks.push({ label: 'pmoHistoryGhostRowsToDrop raggiungibile dall\'harness', ok: typeof win.pmoHistoryGhostRowsToDrop === 'function' });
+      if (typeof win.pmoHistoryGhostRowsToDrop !== 'function' || typeof win.bookingKey !== 'function') return checks;
+      // La PREMESSA della trappola, verificata e non affermata: due righe che differiscono per
+      // ora e campo hanno la STESSA chiave locale. Se un giorno smettesse di essere vero, il
+      // guardiano qui sotto misurerebbe un'altra cosa e questo check lo direbbe.
+      checks.push({ label: 'premessa: spostare ora/campo NON cambia la chiave locale', ok:
+        win.bookingKey({ numero:'9102', giocatore:'Bruno Prova', data:'2027-04-01', ora:'19:30', campo:'Campo 2' })
+        === win.bookingKey({ numero:'9102', giocatore:'Bruno Prova', data:'2027-04-01', ora:'21:00', campo:'Campo 5' }) });
+      // Date del 2027: fuori dai dati veri, il caso non dipende da cosa c'e in archivio.
+      const A = { numero:'9101', data:'2027-04-01', ora:'18:00', campo:'Campo 1', giocatore:'Anna Prova',  durata:'1' };
+      const B = { numero:'9102', data:'2027-04-01', ora:'19:30', campo:'Campo 2', giocatore:'Bruno Prova', durata:'1' };
+      const C = { numero:'9103', data:'2027-04-02', ora:'20:00', campo:'Campo 3', giocatore:'Carla Prova', durata:'1' };
+      const D = { numero:'9104', data:'2027-04-03', ora:'21:00', campo:'Campo 4', giocatore:'Dario Prova', durata:'1' };
+      const retired = new Set([
+        'history|9101|2027-04-01|18:00|Campo 1|Anna Prova|1',   // A: fantasma vero
+        'history|9102|2027-04-01|19:30|Campo 2|Bruno Prova|1'   // B: la versione VECCHIA di una spostata
+      ]);
+      // Solo B ha una gemella viva: il cloud l'ha rimandata con altra ora/campo, stessa chiave locale.
+      const live = new Set([win.bookingKey(B)]);
+      const out = win.pmoHistoryGhostRowsToDrop([A, B, C, D], retired, live);
+      checks.push({ label: 'la riga ritirata SENZA gemella viva viene tolta', ok: out.drop.includes(A) });
+      checks.push({ label: '🚨 la riga SPOSTATA (ritirata ma con gemella viva) RESTA', ok: !out.drop.includes(B) });
+      checks.push({ label: 'una riga che il cloud non ha ritirato resta', ok: !out.drop.includes(C) });
+      checks.push({ label: 'una riga che il cloud non conosce affatto resta', ok: !out.drop.includes(D) });
+      checks.push({ label: 'in tutto cade una riga sola', ok: out.drop.length === 1 && out.blocked === false });
+      // Il Set arriva da un'altra finestra: con `instanceof` il filtro salterebbe in silenzio.
+      const conListe = win.pmoHistoryGhostRowsToDrop([A, B, C, D], [...retired], [...live]);
+      checks.push({ label: 'accetta anche liste al posto dei Set (realm diversi)', ok: conListe.drop.length === 1 && conListe.drop[0] === A });
+      return checks;
+    }
+  },
+  {
+    // ⭐ Taratura: sorveglia l'errore OPPOSTO al 63 — potare quando non si deve. Verificato
+    // sabotando il codice apposta:
+    //   · guardia «gemella viva» tolta      → 63 ROSSO (cade anche B), 64 verde
+    //   · elenco assente trattato come Set vuoto senza uscire → 63 verde, 64 ROSSO
+    //   · freno tolto                        → 63 verde, 64 ROSSO (l'ultimo check)
+    // Il ramo «elenco assente» e quello che protegge la lettura fallita: senza, un cloud
+    // irraggiungibile diventerebbe «nessuna chiave ritirata»… che e diverso da «non lo so».
+    id: 64, flow: 'Cloud/Storico', name: 'potatura fantasmi: senza elenco non si tocca niente, e il freno ferma le potature di massa',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoHistoryGhostRowsToDrop !== 'function') return [{ label: 'pmoHistoryGhostRowsToDrop assente', ok: false }];
+      const A = { numero:'9101', data:'2027-04-01', ora:'18:00', campo:'Campo 1', giocatore:'Anna Prova',  durata:'1' };
+      const B = { numero:'9102', data:'2027-04-01', ora:'19:30', campo:'Campo 2', giocatore:'Bruno Prova', durata:'1' };
+      const C = { numero:'9103', data:'2027-04-02', ora:'20:00', campo:'Campo 3', giocatore:'Carla Prova', durata:'1' };
+      const kA = 'history|9101|2027-04-01|18:00|Campo 1|Anna Prova|1';
+      checks.push({ label: 'lettura fallita (elenco assente): non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], null, new Set()).drop.length === 0 });
+      checks.push({ label: 'elenco non passato: non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], undefined, new Set()).drop.length === 0 });
+      checks.push({ label: 'cloud senza ritiri (Set vuoto): non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set(), new Set()).drop.length === 0 });
+      checks.push({ label: 'una chiave ritirata che non c\'entra non tocca nessuno', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set(['history|0000|2027-01-01|10:00|Campo 9|Nessuno|1']), new Set()).drop.length === 0 });
+      // Controllo positivo accanto ai negativi: senza, «zero righe tolte» passerebbe anche a
+      // funzione morta del tutto.
+      checks.push({ label: 'controllo opposto: con una chiave che c\'entra la riga cade davvero', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set([kA]), new Set()).drop.length === 1 });
+      // Il freno, tarato su numeri sopra il pavimento assoluto (25). Archivio finto di 100 righe.
+      const molte = Array.from({ length: 100 }, (_, i) => ({
+        numero: '93' + String(i).padStart(2, '0'), data: '2027-06-01', ora: '18:00',
+        campo: 'Campo 1', giocatore: 'Giocatore ' + i, durata: '1'
+      }));
+      const primeNRitirate = n => new Set(molte.slice(0, n).map(r => `history|${r.numero}|2027-06-01|18:00|Campo 1|${r.giocatore}|1`));
+      const massa = win.pmoHistoryGhostRowsToDrop(molte, primeNRitirate(60), new Set());
+      checks.push({ label: 'freno: 60 righe su 100 = potatura di massa sospesa e segnalata', ok: massa.drop.length === 0 && massa.blocked === true });
+      // Taratura opposta del freno: appena sotto la soglia deve passare, altrimenti «blocked»
+      // sarebbe solo una funzione che dice sempre di no.
+      const sotto = win.pmoHistoryGhostRowsToDrop(molte, primeNRitirate(30), new Set());
+      checks.push({ label: 'controllo opposto: 30 su 100 passano, il freno non scatta', ok: sotto.drop.length === 30 && sotto.blocked === false });
+      // ⚠️ Il pavimento assoluto, che serve agli archivi piccoli: la sola quota li bloccherebbe
+      // per pochissime righe (trovato da questo banco, non a tavolino). I numeri sono scelti per
+      // DISCRIMINARE: con 10 righe la quota vale floor(10*0.4)=4, quindi 5 righe verrebbero
+      // frenate; col pavimento (25) passano. Con «1 riga su 3» il check sarebbe passato in
+      // entrambi i casi — verificato risabotando, non dedotto.
+      const piccolo = win.pmoHistoryGhostRowsToDrop(molte.slice(0, 10), primeNRitirate(5), new Set());
+      checks.push({ label: 'pavimento: 5 righe su 10 si potano lo stesso (la sola quota le fermerebbe)', ok: piccolo.drop.length === 5 && piccolo.blocked === false });
+      return checks;
+    }
+  },
+  {
+    // Il collegamento, non piu la sola regola: applyHistoricalBookingsToLocal deve davvero togliere
+    // le righe dall'archivio di questo browser. Riproduce la trappola END-TO-END: la riga spostata
+    // arriva dal cloud con ora/campo NUOVI ma fuori dalla finestra autorevole, quindi in locale
+    // resta con i dati VECCHI — cioe con la chiave cloud RITIRATA. Deve sopravvivere lo stesso.
+    id: 65, flow: 'Cloud/Storico', name: 'potatura fantasmi collegata: applyHistoricalBookingsToLocal toglie il fantasma e salva la spostata',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.applyHistoricalBookingsToLocal !== 'function') return [{ label: 'applyHistoricalBookingsToLocal assente', ok: false }];
+      const fantasma = { numero:'9201', data:'2027-05-01', ora:'18:00', campo:'Campo 1', giocatore:'Elsa Prova',  durata:'1' };
+      const spostataVecchia = { numero:'9202', data:'2027-05-01', ora:'19:30', campo:'Campo 2', giocatore:'Fabio Prova', durata:'1' };
+      const spostataNuova   = { numero:'9202', data:'2027-05-01', ora:'21:00', campo:'Campo 5', giocatore:'Fabio Prova', durata:'1' };
+      // 1) Le due righe sono in archivio. Senza elenco di ritiri non deve cadere niente.
+      // ⚠️ Si guarda la PRESENZA, non `newRows`: questo caso scrive nell'archivio vero dell'app e
+      // il seed non lo azzera fra un giro e l'altro, quindi al secondo giro il fantasma e gia stato
+      // potato e la spostata e gia li — `newRows` varrebbe 1 e non 2. Cosi com'e il caso e
+      // idempotente: parte e finisce sempre con la sola spostata in archivio.
+      const primo = win.applyHistoricalBookingsToLocal([fantasma, spostataVecchia], { source:'test' });
+      const dopoPrimo = typeof win.safeLoad === 'function' ? win.safeLoad('storicoPrenotazioni', []) : [];
+      const c1 = dopoPrimo.some(r => r && r.numero === '9201') && dopoPrimo.some(r => r && r.numero === '9202');
+      checks.push({ label: 'le due righe sono in archivio e senza elenco non si pota niente', ok: c1 && primo.ghostRows === 0 });
+      const totaleDopoPrimo = primo.totalAfter;
+      // 2) Ora il cloud rimanda SOLO la spostata, in versione nuova, e dichiara ritirate le chiavi
+      //    vecchie di entrambe. Nessuna finestra autorevole: e la strada della routine notturna.
+      const secondo = win.applyHistoricalBookingsToLocal([spostataNuova], {
+        source:'test',
+        retiredCloudKeys: new Set([
+          'history|9201|2027-05-01|18:00|Campo 1|Elsa Prova|1',
+          'history|9202|2027-05-01|19:30|Campo 2|Fabio Prova|1'
+        ])
+      });
+      checks.push({ label: 'cade una riga sola: il fantasma', ok: secondo.ghostRows === 1 });
+      checks.push({ label: 'l\'archivio si accorcia davvero di una riga', ok: secondo.totalAfter === totaleDopoPrimo - 1 });
+      checks.push({ label: 'il freno non e scattato', ok: secondo.ghostBlocked === false });
+      // La prova che la spostata e sopravvissuta: cercarla nell'archivio SALVATO, riletto con la
+      // funzione dell'app (`save` usa prefisso e codifica sue, il localStorage grezzo non basta).
+      // Cosi si prova anche che la potatura e finita su disco, non solo nella variabile in memoria.
+      const archivio = typeof win.safeLoad === 'function' ? win.safeLoad('storicoPrenotazioni', []) : [];
+      checks.push({ label: 'l\'archivio salvato e rileggibile', ok: Array.isArray(archivio) && archivio.length === secondo.totalAfter });
+      const restaSpostata = archivio.some(r => r && r.numero === '9202' && r.giocatore === 'Fabio Prova');
+      const restaFantasma = archivio.some(r => r && r.numero === '9201' && r.giocatore === 'Elsa Prova');
+      checks.push({ label: '🚨 la riga SPOSTATA e ancora in archivio', ok: restaSpostata });
+      checks.push({ label: 'il fantasma invece non c\'e piu', ok: !restaFantasma });
+      return checks;
+    }
   }
 ];
 
