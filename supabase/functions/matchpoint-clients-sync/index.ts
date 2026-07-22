@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 // provate da sole: phone-guard.test.ts le tara sabotandole. Vedi la testata di phone-guard.ts.
 import {
   decidePhoneImport,
+  keepPhoneImportRejected,
   normalizePhone,
   phoneDigits,
   PLAUSIBLE_PHONE_MIN_DIGITS,
@@ -439,6 +440,15 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
   // numero WhatsApp usato dal ponte consumer F2.x).
   let phone = clean(existing.phone);
   let phoneSuspectKept = false;
+  // ⚠️ NOTO E NON CHIUSO (22/07) — stessa forma del difetto sistemato in `keepPhoneImportRejected`:
+  // `imported.phone` esce già da `decidePhoneImport` ed `existing.phone` è già in archivio, quindi
+  // qui `phoneDigits` RINORMALIZZA e gonfia i numeri di 10 cifre che iniziano per 3 (misurati su
+  // PROD: 2 soci vivi). Effetto: la soglia li crede pieni e la guardia protegge un numero rotto.
+  // Non toccato di proposito: qui il valore decide QUALE numero vince, e il numero è l'identità
+  // del socio — `memberCloudKey` ri-chiava chi non ha `source`. Va con la misura del punto ⑥
+  // («quante chiavi si spostano, quante collidono»), non come correzione di passaggio.
+  // Il confronto di disuguaglianza (riga sotto) resta invece corretto: entrambi i lati passano
+  // per la stessa funzione, quindi si gonfiano insieme.
   const importedPhoneDigits = phoneDigits(imported.phone);
   const existingPhoneDigits = phoneDigits(existing.phone);
   if (clean(imported.phone) && importedPhoneDigits !== existingPhoneDigits) {
@@ -474,13 +484,10 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
     surname,
     name: compactSpaces(`${firstName} ${surname}`),
     phone,
-    // Marcatore letto dal report giornaliero. Vale solo se il record RESTA senza un numero
-    // usabile: se in archivio c'è già quello pieno (guardia `phoneSuspectKept`, caso Aprea e
-    // Comes) non c'è niente da segnalare, e marcarlo comunque riempirebbe la mail di soci a
-    // posto — il report controlla questo campo PRIMA del telefono, quindi vincerebbe lui.
-    // Si azzera da solo il giorno che Matchpoint torna a mandare il numero buono.
-    phoneImportRejected: imported.phoneImportRejected === true
-      && phoneDigits(phone).length < PLAUSIBLE_PHONE_MIN_DIGITS,
+    // Marcatore letto dal report giornaliero: regola, taratura e il difetto che chiudeva stanno
+    // in ./phone-guard.ts (`keepPhoneImportRejected`). Si azzera da solo il giorno che
+    // Matchpoint torna a mandare il numero buono.
+    phoneImportRejected: keepPhoneImportRejected(imported.phoneImportRejected, phone),
     email,
     gender,
     birthDate: existing.birthDate || imported.birthDate || '',
