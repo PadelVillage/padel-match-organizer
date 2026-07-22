@@ -1,6 +1,18 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+// ⚠️ GEMELLO: questo file è byte-identico a matchpoint-payments-sync/member-code-guard.ts e i due
+// vanno cambiati INSIEME — la copia sta dentro la function e non in _shared/ perché il workflow
+// di deploy sceglie le funzioni da deployare dalle cartelle toccate e SCARTA quelle che iniziano
+// per "_": un modulo condiviso, modificato da solo, non deployerebbe nulla. La divergenza è
+// sorvegliata da un test (member-code-guard.test.ts, "i due gemelli sono IDENTICI").
+import {
+  buildMemberIndex,
+  lookupMemberForRow,
+  normalizeCode,
+  type MemberIndex as GuardMemberIndex,
+  type MemberRecord,
+} from './member-code-guard.ts';
 
 // matchpoint-wallet-sync — sincronizza i SALDI BORSELLINO (Monedero) di TUTTI i soci da
 // Matchpoint, in un colpo solo, dal report "Clienti con credito residuo" (Inf. e statistiche →
@@ -66,15 +78,8 @@ function mpMoneyToCents(text: unknown): number | null {
 function normalizeHeader(value: unknown) {
   return clean(value).toLowerCase().replace(/[\s._-]+/g, '').replace(/[àáâ]/g, 'a').replace(/[èé]/g, 'e').replace(/[ìí]/g, 'i').replace(/[òó]/g, 'o').replace(/[ùú]/g, 'u');
 }
-// Codice cliente comparabile: solo cifre, senza zeri iniziali ("000004" → "4", "4" → "4").
-function normalizeCode(value: unknown) {
-  const digits = clean(value).replace(/\D/g, '').replace(/^0+/, '');
-  return digits;
-}
-function normalizeEmail(value: unknown) { return clean(value).toLowerCase(); }
-function normalizeName(value: unknown) {
-  return clean(value).toLowerCase().replace(/[àáâ]/g, 'a').replace(/[èé]/g, 'e').replace(/[ìí]/g, 'i').replace(/[òó]/g, 'o').replace(/[ùú]/g, 'u').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
-}
+// normalizeCode / normalizeEmail / normalizeName vivono in ./member-code-guard.ts insieme alle
+// regole di aggancio (vedi la nota sul gemello in testa al file).
 
 function getCell(row: JsonMap, names: string[]) {
   const normalized = new Map<string, string>();
@@ -205,8 +210,9 @@ function parseWalletWorkbook(bytes: Uint8Array): { ok: true; rows: WalletRow[]; 
   return { ok: true, rows, headers, sourceRows: rawRows.length };
 }
 
-type MemberRecord = { local_key: string; payload: JsonMap };
-type MemberIndex = { records: MemberRecord[]; byCode: Map<string, MemberRecord>; byEmail: Map<string, MemberRecord>; byName: Map<string, MemberRecord> };
+// Come l'indice dei pagamenti, più l'elenco piatto: qui serve anche a scorrere TUTTI i soci
+// (i saldi si scrivono per socio, non per riga di report).
+type MemberIndex = GuardMemberIndex & { records: MemberRecord[] };
 
 async function loadMembers(admin: ReturnType<typeof createClient>): Promise<MemberIndex> {
   const records: MemberRecord[] = [];
@@ -222,19 +228,7 @@ async function loadMembers(admin: ReturnType<typeof createClient>): Promise<Memb
     records.push(...pageRecords);
     if (pageRecords.length < SUPABASE_PAGE_SIZE) break;
   }
-  const byCode = new Map<string, MemberRecord>();
-  const byEmail = new Map<string, MemberRecord>();
-  const byName = new Map<string, MemberRecord>();
-  for (const rec of records) {
-    const p = rec.payload || {};
-    const code = normalizeCode(p.memberId);
-    if (code && !byCode.has(code)) byCode.set(code, rec);
-    const email = normalizeEmail(p.email);
-    if (email && !byEmail.has(email)) byEmail.set(email, rec);
-    const name = normalizeName(p.name || `${clean(p.firstName)} ${clean(p.surname)}`);
-    if (name && !byName.has(name)) byName.set(name, rec);
-  }
-  return { records, byCode, byEmail, byName };
+  return { records, ...buildMemberIndex(records) };
 }
 
 function memberLocalId(rec: MemberRecord): string {
@@ -338,9 +332,7 @@ Deno.serve(async (req: Request) => {
   let totalBalanceCents = 0;
 
   for (const row of parsed.rows) {
-    const rec = members.byCode.get(row.cod)
-      || (row.email ? members.byEmail.get(normalizeEmail(row.email)) : undefined)
-      || (row.name ? members.byName.get(normalizeName(row.name)) : undefined);
+    const rec = lookupMemberForRow(members, row);
     if (!rec) {
       if (unmatchedSample.length < 50) unmatchedSample.push({ cod: row.cod, name: row.name });
       continue;
