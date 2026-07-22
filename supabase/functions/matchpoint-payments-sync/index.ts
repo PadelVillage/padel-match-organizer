@@ -8,6 +8,11 @@ import {
   type MemberIndex,
   type MemberRecord,
 } from './member-code-guard.ts';
+import {
+  RECONCILE_DATE_FIELD,
+  resolveReconcileWindow,
+  selectTombstoneKeys,
+} from './reconcile-window.ts';
 
 // matchpoint-payments-sync — sincronizza gli INCASSI delle prenotazioni dei campi da Matchpoint,
 // dal report 11.13 "Pagamenti effettuati nelle prenotazioni" (Estadisticas/Reservas/
@@ -153,10 +158,16 @@ async function verifyRoutineSecret(admin: ReturnType<typeof createClient>, secre
   return data === true;
 }
 
-// Chiama il worker per generare ed esportare il report pagamenti. Ritorna i bytes Excel.
+// Chiama il worker per generare ed esportare il report pagamenti. Ritorna i bytes Excel **e la
+// finestra che il worker ha davvero applicato al filtro del report**.
+// 🚨 Quella finestra è il dato che chiude il guasto del 22/07: il worker la calcola (`days` →
+// [oggi−days, oggi], server.mjs), la digita nel report e la restituisce — e qui veniva SCARTATA,
+// costringendo la riconciliazione a ri-dedurla a valle dal contenuto del report, sull'asse
+// sbagliato. Nel percorso cron non c'è alternativa: il dispatch manda solo `days: 14`, quindi
+// senza l'eco del worker nessuno sa su che intervallo il report sia completo. → ./reconcile-window.ts
 async function callWorkerExportPayments(opts: {
   workerUrl: string; workerApiKey: string; username: string; password: string; baseUrl: string; dateFrom?: string; dateTo?: string; days?: number;
-}): Promise<Uint8Array> {
+}): Promise<{ bytes: Uint8Array; dateFrom: string; dateTo: string }> {
   const { workerUrl, workerApiKey, username, password, baseUrl, dateFrom, dateTo, days } = opts;
   let res: Response;
   try {
@@ -184,7 +195,7 @@ async function callWorkerExportPayments(opts: {
     e.code = 'WORKER_EMPTY_DOWNLOAD';
     throw e;
   }
-  return base64ToBytes(b64);
+  return { bytes: base64ToBytes(b64), dateFrom: clean(body.dateFrom), dateTo: clean(body.dateTo) };
 }
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -303,6 +314,10 @@ Deno.serve(async (req: Request) => {
   const dateFrom = clean(body.dateFrom) || undefined;
   const dateTo = clean(body.dateTo) || undefined;
   const days = Number(body.days) > 0 ? Number(body.days) : undefined;
+  // Finestra realmente applicata al report dal worker (vuota nel percorso manuale `xlsxBase64`,
+  // dove nessun worker gira e si ripiega sul body o sui giorni prenotati osservati).
+  let workerDateFrom = '';
+  let workerDateTo = '';
   try {
     if (manualB64) {
       source = 'manual';
@@ -315,7 +330,10 @@ Deno.serve(async (req: Request) => {
       const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
       if (!workerUrl || !workerApiKey) return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato.');
       if (!username || !password) return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
-      bytes = await callWorkerExportPayments({ workerUrl, workerApiKey, username, password, baseUrl, dateFrom, dateTo, days });
+      const exported = await callWorkerExportPayments({ workerUrl, workerApiKey, username, password, baseUrl, dateFrom, dateTo, days });
+      bytes = exported.bytes;
+      workerDateFrom = exported.dateFrom;
+      workerDateTo = exported.dateTo;
     }
   } catch (e) {
     const code = clean((e as { code?: string })?.code) || 'WORKER_ERROR';
@@ -340,12 +358,12 @@ Deno.serve(async (req: Request) => {
   let matched = 0;
   const byMethod: Record<string, number> = { cash: 0, card: 0, wallet: 0, other: 0 };
   let totalCents = 0;
-  // #3 — per la riconciliazione tombstone: chiavi dei pagamenti PRESENTI nel report + la
-  // finestra effettiva coperta (min/max data-pagamento). Il report è completo per finestra
-  // date, quindi ciò che è in [minPayDate,maxPayDate] ma NON in newPaymentKeys è stato stornato.
+  // #3 — per la riconciliazione tombstone: chiavi dei pagamenti PRESENTI nel report + i GIORNI
+  // PRENOTATI che vi compaiono (ripiego per la finestra quando non c'è né worker né body).
+  // ⚠️ Qui prima si accumulavano min/max delle DATE DI PAGAMENTO: era il difetto. Il report è
+  // completo per finestra di PRENOTAZIONE, non di pagamento. → ./reconcile-window.ts
   const newPaymentKeys = new Set<string>();
-  let minPayDate = '';
-  let maxPayDate = '';
+  const reportBookingDays: string[] = [];
 
   for (const row of parsed.rows) {
     const rec = lookupMemberForRow(members, row);
@@ -361,10 +379,7 @@ Deno.serve(async (req: Request) => {
     seqByKey.set(baseKey, seq);
     const localKey = `pay|${baseKey}|${seq}`;
     newPaymentKeys.add(localKey);
-    if (row.payDateIso) {
-      if (!minPayDate || row.payDateIso < minPayDate) minPayDate = row.payDateIso;
-      if (!maxPayDate || row.payDateIso > maxPayDate) maxPayDate = row.payDateIso;
-    }
+    if (row.bookDayIso) reportBookingDays.push(row.bookDayIso);
     byMethod[row.method] += row.amountCents;
     totalCents += row.amountCents;
     records.push({
@@ -398,16 +413,27 @@ Deno.serve(async (req: Request) => {
 
   // 3b) #3 — TOMBSTONE dei cobros spariti dal report (stornati/mutati in Matchpoint). Senza
   // questa passata un pagamento annullato in MP resterebbe come record `payment` ATTIVO e la
-  // sezione Incassi lo conterebbe ancora (doppio conteggio). Riconciliazione sulla FINESTRA
-  // effettiva del report [minPayDate,maxPayDate] (completa per finestra date): ogni `payment`
-  // esistente in quella finestra la cui chiave non è più nel report → deleted:true.
-  // NB: se il report è VUOTO (minPayDate assente) NON si tombstona nulla (evita che un export
-  // fallito/vuoto cancelli pagamenti veri).
+  // sezione Incassi lo conterebbe ancora (doppio conteggio).
+  //
+  // 🚨 Finestra e ASSE di questa riconciliazione sono la radice del guasto del 22/07 (768 incassi
+  // cancellati per €9.866, invisibili in app): la finestra veniva DEDOTTA da min/max delle date
+  // di PAGAMENTO del report, che è invece filtrato per GIORNO DI PRENOTAZIONE — quindi ai bordi
+  // il report è incompleto per costruzione e la riconciliazione lo trattava come completo.
+  // Ora: la finestra arriva da chi l'ha imposta (eco del worker → body → giorni osservati) e il
+  // confronto sta sull'asse del filtro. Le regole e il perché stanno in ./reconcile-window.ts.
+  // NB: report VUOTO ⇒ non si tombstona nulla. Protezione conservata e ora PIÙ importante, non
+  // meno: prima una finestra assente si auto-annullava, adesso la finestra è sempre valida e
+  // senza questa riga un export fallito cancellerebbe l'intero periodo in un colpo.
   // NB2: si riconciliano SOLO le chiavi `pay|…` generate da QUESTA sync: i record `payment`
   // scritti dall'app (omaggi `paygift|…`, simulazioni `pmo_sim_pay|…`) non vengono dal report,
   // quindi «assente dal report» non significa stornato — senza questo filtro morirebbero qui.
+  const reconcileWindow = resolveReconcileWindow({
+    workerDateFrom, workerDateTo,
+    bodyDateFrom: dateFrom, bodyDateTo: dateTo,
+    reportBookingDays,
+  });
   let tombstoned = 0;
-  if (minPayDate && maxPayDate) {
+  if (reconcileWindow.from && reconcileWindow.to && parsed.rows.length > 0) {
     const existing: { local_key: string; payload: JsonMap }[] = [];
     for (let from = 0, page = 0; page < 200; page += 1, from += SUPABASE_PAGE_SIZE) {
       const { data, error } = await admin
@@ -416,26 +442,34 @@ Deno.serve(async (req: Request) => {
         .eq('record_type', 'payment')
         .eq('deleted', false)
         .like('local_key', 'pay|%')
-        .gte('payload->>data', minPayDate)
-        .lte('payload->>data', maxPayDate)
+        // Stesso campo che il modulo ricontrolla riga per riga: la query RESTRINGE (costo),
+        // `selectTombstoneKeys` DECIDE (correttezza). Tenerli sulla stessa costante evita che
+        // i due lati divergano — è così che l'asse sbagliato era rimasto invisibile.
+        .gte(`payload->>${RECONCILE_DATE_FIELD}`, reconcileWindow.from)
+        .lte(`payload->>${RECONCILE_DATE_FIELD}`, reconcileWindow.to)
         .range(from, from + SUPABASE_PAGE_SIZE - 1);
       if (error) { await logAudit(admin, actor, 'matchpoint_payments_sync_error', { source, message: 'tombstone_scan: ' + errorText(error) }); break; }
       const rows = (Array.isArray(data) ? data : []) as { local_key: string; payload: JsonMap }[];
       existing.push(...rows);
       if (rows.length < SUPABASE_PAGE_SIZE) break;
     }
+    const toTombstone = new Set(selectTombstoneKeys({
+      existing: existing.map((r) => ({ local_key: r.local_key, payload: (r.payload || {}) as Record<string, unknown> })),
+      reportKeys: newPaymentKeys,
+      window: reconcileWindow,
+      reportRowCount: parsed.rows.length,
+    }));
     for (const exRow of existing) {
-      if (!newPaymentKeys.has(exRow.local_key)) {
-        records.push({
-          record_type: 'payment',
-          local_key: exRow.local_key,
-          payload: { ...(exRow.payload || {}), status: 'voided', voided_at: importedAt, synced_at: importedAt },
-          payload_hash: null,
-          deleted: true,
-          synced_at: importedAt,
-        });
-        tombstoned += 1;
-      }
+      if (!toTombstone.has(exRow.local_key)) continue;
+      records.push({
+        record_type: 'payment',
+        local_key: exRow.local_key,
+        payload: { ...(exRow.payload || {}), status: 'voided', voided_at: importedAt, synced_at: importedAt },
+        payload_hash: null,
+        deleted: true,
+        synced_at: importedAt,
+      });
+      tombstoned += 1;
     }
   }
 
@@ -445,6 +479,11 @@ Deno.serve(async (req: Request) => {
     local_key: 'matchpoint_payments_sync_last',
     payload: {
       synced_at: importedAt, source, dateFrom: dateFrom || null, dateTo: dateTo || null,
+      // Su quale intervallo e da quale sorgente si è riconciliato. Registrarlo è metà della
+      // difesa: un `tombstoned` inatteso si VERIFICA contro la finestra invece di essere
+      // spiegato a voce — ed è esattamente così che i 778 storni del 22/07 erano stati
+      // archiviati come «la finestra è mobile» sei ore prima di scoprire cos'erano davvero.
+      reconcileWindow,
       reportRows: parsed.rows.length, written: paymentsWritten, matched, tombstoned,
       unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers,
     },
@@ -480,5 +519,5 @@ Deno.serve(async (req: Request) => {
 
   await logAudit(admin, actor, 'matchpoint_payments_sync_success', { source, reportRows: parsed.rows.length, matched, totalCents, byMethod });
 
-  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reportRows: parsed.rows.length, written: paymentsWritten, tombstoned, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
+  return ok({ source, dateFrom: dateFrom || null, dateTo: dateTo || null, reconcileWindow, reportRows: parsed.rows.length, written: paymentsWritten, tombstoned, matched, unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers, broadcast });
 });
