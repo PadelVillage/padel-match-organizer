@@ -1,6 +1,13 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import {
+  buildMemberIndex,
+  lookupMemberForRow,
+  normalizeCode,
+  type MemberIndex,
+  type MemberRecord,
+} from './member-code-guard.ts';
 
 // matchpoint-payments-sync — sincronizza gli INCASSI delle prenotazioni dei campi da Matchpoint,
 // dal report 11.13 "Pagamenti effettuati nelle prenotazioni" (Estadisticas/Reservas/
@@ -99,11 +106,9 @@ function itDateToIso(value: unknown): string {
 function normalizeHeader(value: unknown) {
   return clean(value).toLowerCase().replace(/[\s._-]+/g, '').replace(/[àáâ]/g, 'a').replace(/[èé]/g, 'e').replace(/[ìí]/g, 'i').replace(/[òó]/g, 'o').replace(/[ùú]/g, 'u');
 }
-function normalizeCode(value: unknown) { return clean(value).replace(/\D/g, '').replace(/^0+/, ''); }
-function normalizeEmail(value: unknown) { return clean(value).toLowerCase(); }
-function normalizeName(value: unknown) {
-  return clean(value).toLowerCase().replace(/[àáâ]/g, 'a').replace(/[èé]/g, 'e').replace(/[ìí]/g, 'i').replace(/[òó]/g, 'o').replace(/[ùú]/g, 'u').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
-}
+// normalizeCode / normalizeEmail / normalizeName vivono in ./member-code-guard.ts insieme alle
+// regole di aggancio: erano la stessa cosa scritta in due punti, e il difetto del 22/07 stava
+// proprio nella distanza fra "come si riduce un codice" e "chi ha diritto di essere indicizzato".
 
 function getCell(row: JsonMap, names: string[]) {
   const normalized = new Map<string, string>();
@@ -236,9 +241,6 @@ function parsePaymentsWorkbook(bytes: Uint8Array): { ok: true; rows: PaymentRow[
   return { ok: true, rows, headers, sourceRows: rawRows.length };
 }
 
-type MemberRecord = { local_key: string; payload: JsonMap };
-type MemberIndex = { byCode: Map<string, MemberRecord>; byEmail: Map<string, MemberRecord>; byName: Map<string, MemberRecord> };
-
 async function loadMembers(admin: ReturnType<typeof createClient>): Promise<MemberIndex> {
   const records: MemberRecord[] = [];
   for (let from = 0, page = 0; page < 50; page += 1, from += SUPABASE_PAGE_SIZE) {
@@ -253,27 +255,7 @@ async function loadMembers(admin: ReturnType<typeof createClient>): Promise<Memb
     records.push(...pageRecords);
     if (pageRecords.length < SUPABASE_PAGE_SIZE) break;
   }
-  const byCode = new Map<string, MemberRecord>();
-  const byEmail = new Map<string, MemberRecord>();
-  const byName = new Map<string, MemberRecord>();
-  const nameCount = new Map<string, number>();
-  for (const rec of records) {
-    const p = rec.payload || {};
-    const code = normalizeCode(p.memberId);
-    if (code && !byCode.has(code)) byCode.set(code, rec);
-    const email = normalizeEmail(p.email);
-    if (email && !byEmail.has(email)) byEmail.set(email, rec);
-    const name = normalizeName(p.name || `${clean(p.firstName)} ${clean(p.surname)}`);
-    if (name) {
-      nameCount.set(name, (nameCount.get(name) || 0) + 1);
-      if (!byName.has(name)) byName.set(name, rec);
-    }
-  }
-  // #4 — i nomi AMBIGUI (≥2 soci OMONIMI) vengono ESCLUSI dal match-per-nome: altrimenti il
-  // "primo vince" attribuirebbe il pagamento al socio sbagliato (borsellino/incassi errati).
-  // Meglio nessun match → member_local_id null: l'incasso resta in cassa, ma non mal-attribuito.
-  for (const [name, n] of nameCount) { if (n > 1) byName.delete(name); }
-  return { byCode, byEmail, byName };
+  return buildMemberIndex(records);
 }
 
 function memberLocalId(rec: MemberRecord): string {
@@ -366,9 +348,7 @@ Deno.serve(async (req: Request) => {
   let maxPayDate = '';
 
   for (const row of parsed.rows) {
-    const rec = (row.cod ? members.byCode.get(row.cod) : undefined)
-      || (row.email ? members.byEmail.get(normalizeEmail(row.email)) : undefined)
-      || (row.name ? members.byName.get(normalizeName(row.name)) : undefined);
+    const rec = lookupMemberForRow(members, row);
     const memberLid = rec ? memberLocalId(rec) : '';
     if (memberLid) matched += 1;
     // Rif. Pagamento è spesso vuoto → chiave composta deterministica (id_cliente_mp, id_cliente,
