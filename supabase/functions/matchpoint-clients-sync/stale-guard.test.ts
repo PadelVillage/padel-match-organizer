@@ -4,29 +4,51 @@
 // ⭐ TARATURA — tabella MISURATA sabotando il codice una modifica alla volta, non prevista a
 // tavolino. (Vedi la testata di stale-guard.ts per il perché delle regole.)
 //
-//   sabotaggio                                              casi che diventano rossi
-//   ─────────────────────────────────────────────────────── ────────────────────────
-//   nessuno                                                 —  (tutti verdi)
-//   tolto il controllo churn (codice presente nell'import)   A, G
-//   tolta la guardia isMatchpointCode                        E, F
-//   `active === false` valutato PRIMA del churn              G
-//   tolto del tutto il controllo su `active === false`       D
-//   tolto il filtro «è un record Matchpoint»                 C
-//   MP riconosciuto dal solo `source` (via matchpointImportedAt)  H
-//   la disattivazione scrive `deleted: true`                 I
-//   activeFieldsOnImport non riattiva mai (= comportamento vecchio)  L
-//   activeFieldsOnImport riattiva sempre (ignora la scelta a mano)   K
-//   esito ② = tombstone  (= IL CODICE DI PRIMA della modifica)  B, H
+//   sabotaggio                                                    casi che diventano rossi
+//   ───────────────────────────────────────────────────────────── ────────────────────────
+//   nessuno                                                       —  (tutti verdi)
+//   tolto il controllo churn (codice presente nell'import)         A, G
+//   tolta la guardia isMatchpointCode                              E, F
+//   `active === false` valutato PRIMA del churn                    G
+//   tolto del tutto il controllo su `active === false`             D
+//   isMatchpointGoverned sempre vero                               C, T
+//   isMatchpointGoverned senza `matchpointImportedAt`              H, T
+//   la disattivazione scrive `deleted: true`                       I
+//   activeFieldsOnImport non riattiva mai (= comportamento vecchio) L
+//   activeFieldsOnImport riattiva sempre (ignora la scelta a mano)  K
+//   esito ② = tombstone  (= IL CODICE DI PRIMA della modifica)      B, H
+//   ── tetto per passata (22/07) ─────────────────────────────────
+//   tetto spento del tutto (= IL CODICE DI PRIMA)                  N, O, Q, R
+//   tetto sulle sole disattivazioni                                M, O, Q, R
+//   tetto RELATIVO alla popolazione (il primo disegno, scartato)    R
+//   confine `<=` scritto `<`                                       P
+//   count() senza guardia su NaN/negativi                          S
 //
 // Ogni sabotaggio ne fa cadere almeno uno: nessuna metà della regola è priva del caso che la
 // isola. L'unico caso che non discrimina nulla è J — è la linea di base (socio normale, nessun
 // marcatore), tenuta apposta perché documenta il comportamento invariato.
+//
+// 🚨⭐⭐ DUE SORPRESE, e sono il motivo per cui questa tabella si MISURA invece di prevederla:
+//  · **N non discrimina la somma.** È il caso costruito di punta — export troncato, 900
+//    disattivazioni — e resta VERDE col tetto ridotto alle sole disattivazioni, perché lì i
+//    tombstone sono 0 e il totale non cambia. A isolare quella scelta è il solo **O**, che è
+//    l'esatto complementare (400 tombstone, 0 disattivazioni). Il caso più drammatico non è
+//    il più informativo.
+//  · **P è l'unico** che prende il confine: Q resta verde se `<=` diventa `<`, perché 26 blocca
+//    comunque. Un solo caso al bordo non basta: ne servono due, uno per lato.
+//
+// ⚠️ Le due righe su `isMatchpointGoverned` erano prima «tolto il filtro è-un-record-Matchpoint»
+// e «MP riconosciuto dal solo source»: l'estrazione del predicato ha SPOSTATO il punto di
+// sabotaggio, e la tabella è stata rimisurata invece che ricopiata.
 import assert from 'node:assert/strict';
 import {
   activeFieldsOnImport,
   buildDeactivatedMemberRecord,
   decideStaleMember,
+  decideStaleSweep,
+  isMatchpointGoverned,
   MATCHPOINT_INACTIVE_REASON,
+  STALE_SWEEP_MAX_PER_PASS,
 } from './stale-guard.ts';
 
 let passed = 0;
@@ -164,6 +186,77 @@ test('L · disattivato da noi e tornato nell\'export → riattivato, marcatori a
     activeFieldsOnImport({ active: false, matchpointInactiveReason: MATCHPOINT_INACTIVE_REASON, matchpointInactiveAt: '2026-07-22T20:00:00.000Z' }),
     { active: true, matchpointInactiveAt: '', matchpointInactiveReason: '' },
   );
+});
+
+// ── decideStaleSweep · il tetto per passata ──────────────────────────────────
+
+// M) LINEA DI BASE, ed è il caso REALE: la passata di PROD del 22/07 17:30 ha prodotto
+//    staleDeleted 1 · staleDeactivated 0 su 1050 soci. Deve passare senza accorgersi del tetto.
+//    ⚠️ Da solo NON discrimina niente (vedi N): documenta che il tetto non disturba il normale.
+test('M · passata normale (1 su 1050, caso reale del 22/07) → applica', () => {
+  const v = decideStaleSweep({ tombstones: 1, deactivations: 0, considered: 1050 });
+  assert.equal(v.apply, true);
+  assert.equal(v.total, 1);
+});
+
+// N) ⭐ IL CASO COSTRUITO, quello per cui il tetto esiste: export troncato/diverso, 900 soci
+//    dell'archivio non compaiono e prenderebbero tutti la strada ②. Va bloccato.
+test('N · export troncato (900 disattivazioni su 1050) → BLOCCA', () => {
+  const v = decideStaleSweep({ tombstones: 0, deactivations: 900, considered: 1050 });
+  assert.equal(v.apply, false);
+  assert.equal(v.total, 900);
+  assert.equal(v.cap, STALE_SWEEP_MAX_PER_PASS);
+});
+
+// O) ⭐ ISOLA LA SOMMA dei due esiti. Zero disattivazioni, 400 tombstone: se il tetto guardasse
+//    le sole disattivazioni — che è come la richiesta è formulata a parole, «tetto alle
+//    DISATTIVAZIONI» — questo passerebbe, ed è la strada PEGGIORE, quella che cancella le schede.
+test('O · 400 tombstone e 0 disattivazioni → BLOCCA lo stesso (il tetto è sul totale)', () => {
+  const v = decideStaleSweep({ tombstones: 400, deactivations: 0, considered: 1050 });
+  assert.equal(v.apply, false);
+  assert.equal(v.total, 400);
+});
+
+// P/Q) ⭐ I DUE LATI DEL CONFINE. Separati apposta: un `<` scritto per `<=` (o viceversa) sposta
+//      il limite di uno e nessun caso lontano dal bordo se ne accorgerebbe.
+test('P · esattamente al tetto → applica (confine incluso)', () => {
+  assert.equal(decideStaleSweep({ tombstones: 20, deactivations: 5, considered: 1050 }).apply, true);
+});
+test('Q · uno sopra il tetto → BLOCCA (confine escluso)', () => {
+  assert.equal(decideStaleSweep({ tombstones: 20, deactivations: 6, considered: 1050 }).apply, false);
+});
+
+// R) ⭐ ISOLA «considered è solo diagnostica»: stessi conteggi, popolazione dichiarata opposta
+//    (enorme contro assente) ⇒ stesso esito. È la prova che il tetto NON è tornato relativo:
+//    il primo disegno lo era, e un 2% della popolazione avrebbe fatto divergere queste due.
+test('R · considered non entra nella decisione (50 su 100000 e 50 su 0 → stesso esito)', () => {
+  const grande = decideStaleSweep({ tombstones: 50, deactivations: 0, considered: 100000 });
+  const assente = decideStaleSweep({ tombstones: 50, deactivations: 0 });
+  assert.equal(grande.apply, false);
+  assert.equal(assente.apply, false);
+  assert.equal(grande.cap, assente.cap);
+});
+
+// S) Input sporchi: il giro stale gira anche quando qualcosa a monte è andato storto, e un
+//    `undefined` che diventasse NaN renderebbe `total <= cap` falso — cioè un blocco fantasma
+//    su una passata sana. Devono valere zero.
+test('S · conteggi assenti/negativi/NaN valgono 0 → applica', () => {
+  const v = decideStaleSweep({ tombstones: undefined, deactivations: -5, considered: NaN });
+  assert.equal(v.total, 0);
+  assert.equal(v.apply, true);
+});
+
+// ── isMatchpointGoverned · il predicato estratto ─────────────────────────────
+
+// T) È lo stesso predicato che apre `decideStaleMember` (casi C e H), ora esportato perché fa
+//    anche da denominatore diagnostico. Se le due definizioni divergessero, il report conterebbe
+//    una popolazione diversa da quella che la regola può toccare.
+test('T · isMatchpointGoverned riconosce entrambe le firme e nient\'altro', () => {
+  assert.equal(isMatchpointGoverned({ source: 'matchpoint_auto' }), true);
+  assert.equal(isMatchpointGoverned({ matchpointImportedAt: '2026-07-01T05:00:00.000Z' }), true);
+  assert.equal(isMatchpointGoverned({ source: 'rubrica-google' }), false);
+  assert.equal(isMatchpointGoverned({}), false);
+  assert.equal(isMatchpointGoverned(null), false);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
