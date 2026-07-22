@@ -9,6 +9,15 @@ import {
   phoneDigits,
   PLAUSIBLE_PHONE_MIN_DIGITS,
 } from './phone-guard.ts';
+// Stessa ragione per la regola sui soci spariti dall'export: distinguere il churn di chiave
+// (tombstone) dalla disiscrizione su Matchpoint (active:false) è una decisione a sé, e
+// stale-guard.test.ts la tara sabotandola. Vedi la testata di stale-guard.ts.
+import {
+  activeFieldsOnImport,
+  buildDeactivatedMemberRecord,
+  decideStaleMember,
+  MATCHPOINT_INACTIVE_REASON,
+} from './stale-guard.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -392,7 +401,9 @@ function mergeProtectedMember(existing: JsonMap, imported: ParsedMember, importe
     address: existing.address || imported.address || '',
     level: existing.level || imported.level || 0.5,
     playingPosition: existing.playingPosition || existing.position || imported.playingPosition || '',
-    active: existing.active !== false,
+    // Riattiva SOLO chi era stato disattivato da noi perché assente dall'export (il socio è
+    // tornato ⇒ su Matchpoint l'hanno riattivato). Una disattivazione fatta a mano resta intatta.
+    ...activeFieldsOnImport(existing),
     prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
     prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : [],
     source: existing.source || 'matchpoint_auto',
@@ -480,7 +491,9 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
     address: existing.address || imported.address || '',
     level: existing.level || imported.level || 0.5, // Livello: curato nell'app, mai sovrascritto da Matchpoint
     playingPosition: existing.playingPosition || existing.position || imported.playingPosition || '',
-    active: existing.active !== false,
+    // Riattiva SOLO chi era stato disattivato da noi perché assente dall'export (il socio è
+    // tornato ⇒ su Matchpoint l'hanno riattivato). Una disattivazione fatta a mano resta intatta.
+    ...activeFieldsOnImport(existing),
     prefDays: Array.isArray(existing.prefDays) ? existing.prefDays : [],
     prefHours: Array.isArray(existing.prefHours) ? existing.prefHours : [],
     source: existing.source || 'matchpoint_auto',
@@ -1683,18 +1696,30 @@ function shouldNormalizeMemberLocalKey(record: any) {
   return !source || source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
 }
 
-function buildStaleMatchpointMemberDeletes(records: any[], excludedLocalKeys: Set<string>, importedAt: string) {
-  const deletes = [];
+// Soci Matchpoint non più presenti nell'export. Due esiti, non uno: chi è sparito solo perché
+// l'import l'ha ri-chiavato va potato (tombstone), chi è uscito davvero dall'elenco va
+// DISATTIVATO, non fatto sparire con livello e note. Regola, discriminante e taratura in
+// ./stale-guard.ts — qui resta solo l'attraversamento.
+function buildStaleMatchpointMemberOutcomes(
+  records: any[],
+  excludedLocalKeys: Set<string>,
+  importedAt: string,
+  importedMemberIds: Set<string>,
+) {
+  const tombstones = [];
+  const deactivations = [];
   for (const record of records || []) {
     const localKey = clean(record?.local_key || '');
     if (!localKey || excludedLocalKeys.has(localKey)) continue;
-    const payload = record.payload || {};
-    const source = clean(payload.source || '');
-    const isMatchpointRecord = source === 'matchpoint_auto' || !!payload.matchpointImportedAt;
-    if (!isMatchpointRecord) continue;
-    deletes.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
+    const outcome = decideStaleMember(record.payload || {}, importedMemberIds);
+    if (outcome === 'keep') continue;
+    if (outcome === 'deactivate') {
+      deactivations.push(buildDeactivatedMemberRecord(record, importedAt));
+      continue;
+    }
+    tombstones.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
   }
-  return deletes;
+  return { tombstones, deactivations };
 }
 
 function cloudRecordBatchKey(record: any) {
@@ -1958,11 +1983,14 @@ Deno.serve(async (req) => {
     const broadcastMembers: JsonMap[] = [];
     const memberRecordKeys = new Set<string>();
     const duplicateDeletesByKey = new Map<string, any>();
+    const importedMemberIds = new Set<string>();
     let added = 0;
     let updated = 0;
     let duplicateRows = 0;
     let duplicateDeleted = 0;
     let staleDeleted = 0;
+    let staleDeactivated = 0;
+    const staleDeactivatedSample: Array<{ memberId: string; name: string }> = [];
     let legacyDuplicateDeleted = 0;
     let legacyDuplicateReview = 0;
     const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
@@ -2018,6 +2046,10 @@ Deno.serve(async (req) => {
         continue;
       }
       memberRecordKeys.add(memberRecordKey);
+      // Codici visti in QUESTA passata: è il discriminante fra churn di chiave e uscita vera
+      // (vedi ./stale-guard.ts). Va raccolto qui, dopo l'arricchimento dal report Codice.
+      const importedMemberId = clean(payload.memberId || '');
+      if (importedMemberId) importedMemberIds.add(importedMemberId);
       if (match) updated += 1;
       else added += 1;
       if (memberChangedForBroadcast) broadcastMembers.push(payload);
@@ -2076,9 +2108,23 @@ Deno.serve(async (req) => {
     duplicateDeleted = duplicateDeletes.length;
     records.push(...duplicateDeletes);
     const staleDeleteExclusions = new Set([...currentMemberLocalKeys, ...duplicateDeletesByKey.keys()]);
-    const staleDeletes = buildStaleMatchpointMemberDeletes(existing.records, staleDeleteExclusions, importedAt);
-    staleDeleted = staleDeletes.length;
-    records.push(...staleDeletes);
+    const staleOutcomes = buildStaleMatchpointMemberOutcomes(
+      existing.records,
+      staleDeleteExclusions,
+      importedAt,
+      importedMemberIds,
+    );
+    staleDeleted = staleOutcomes.tombstones.length;
+    staleDeactivated = staleOutcomes.deactivations.length;
+    // Campione nel report: una disattivazione automatica è silenziosa e va potuta controllare.
+    for (const record of staleOutcomes.deactivations) {
+      if (staleDeactivatedSample.length >= 50) break;
+      staleDeactivatedSample.push({
+        memberId: clean(record.payload?.memberId || ''),
+        name: clean(record.payload?.name || ''),
+      });
+    }
+    records.push(...staleOutcomes.tombstones, ...staleOutcomes.deactivations);
 
     const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
     const summaryPayload = {
@@ -2095,6 +2141,7 @@ Deno.serve(async (req) => {
         duplicateRows,
         duplicateDeleted,
         staleDeleted,
+        staleDeactivated,
         legacyDuplicateDeleted,
         legacyDuplicateReview,
         phoneSuspectKept,
@@ -2102,6 +2149,7 @@ Deno.serve(async (req) => {
         added,
         updated,
       },
+      staleDeactivatedSample,
       file: {
         filename: exported.filename,
         size: exported.bytes.byteLength,
@@ -2141,6 +2189,12 @@ Deno.serve(async (req) => {
     )).length;
     summaryPayload.rows.duplicateDeleted = duplicateDeleted;
     summaryPayload.rows.staleDeleted = staleDeleted;
+    staleDeactivated = finalRecords.filter((record) => (
+      record.record_type === 'member' &&
+      record.deleted === false &&
+      record.payload?.matchpointInactiveReason === MATCHPOINT_INACTIVE_REASON
+    )).length;
+    summaryPayload.rows.staleDeactivated = staleDeactivated;
     legacyDuplicateDeleted = finalRecords.filter((record) => (
       record.record_type === 'member' &&
       record.deleted === true &&
@@ -2167,6 +2221,8 @@ Deno.serve(async (req) => {
       duplicateRows,
       duplicateDeleted,
       staleDeleted,
+      staleDeactivated,
+      staleDeactivatedSample,
       legacyDuplicateDeleted,
       legacyDuplicateReview,
       legacyDuplicateReviewSample,
@@ -2191,6 +2247,7 @@ Deno.serve(async (req) => {
         duplicateRows,
         duplicateDeleted,
         staleDeleted,
+        staleDeactivated,
         added,
         updated,
         broadcast: broadcastResult,
