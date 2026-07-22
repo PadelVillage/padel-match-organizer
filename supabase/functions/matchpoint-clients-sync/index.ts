@@ -17,6 +17,8 @@ import {
   activeFieldsOnImport,
   buildDeactivatedMemberRecord,
   decideStaleMember,
+  decideStaleSweep,
+  isMatchpointGoverned,
   MATCHPOINT_INACTIVE_REASON,
 } from './stale-guard.ts';
 
@@ -1715,9 +1717,17 @@ function buildStaleMatchpointMemberOutcomes(
 ) {
   const tombstones = [];
   const deactivations = [];
+  // Denominatore del tetto (./stale-guard.ts): la popolazione Matchpoint IN ARCHIVIO, contata
+  // PRIMA dell'esclusione, quindi anche i soci presenti in questa passata.
+  // ⚠️ Contarla dopo l'esclusione sarebbe inutile: lì restano i soli ASSENTI, cioè un numero
+  // che sotto un export troncato cresce insieme al danno — il tetto si alzerebbe proprio
+  // quando deve tenere.
+  let considered = 0;
   for (const record of records || []) {
     const localKey = clean(record?.local_key || '');
-    if (!localKey || excludedLocalKeys.has(localKey)) continue;
+    if (!localKey) continue;
+    if (isMatchpointGoverned(record.payload || {})) considered += 1;
+    if (excludedLocalKeys.has(localKey)) continue;
     const outcome = decideStaleMember(record.payload || {}, importedMemberIds);
     if (outcome === 'keep') continue;
     if (outcome === 'deactivate') {
@@ -1726,7 +1736,7 @@ function buildStaleMatchpointMemberOutcomes(
     }
     tombstones.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
   }
-  return { tombstones, deactivations };
+  return { tombstones, deactivations, considered };
 }
 
 function cloudRecordBatchKey(record: any) {
@@ -1998,6 +2008,10 @@ Deno.serve(async (req) => {
     let staleDeleted = 0;
     let staleDeactivated = 0;
     const staleDeactivatedSample: Array<{ memberId: string; name: string }> = [];
+    // Esito del tetto per passata. Il valore di partenza descrive «non c'era niente da fare»:
+    // se l'import fallisce prima del giro stale, il report non deve far credere a un blocco.
+    let staleSweep = { apply: true, total: 0, cap: 0, considered: 0 };
+    const staleSweepBlockedSample: Array<{ memberId: string; name: string; outcome: string }> = [];
     let legacyDuplicateDeleted = 0;
     let legacyDuplicateReview = 0;
     const legacyDuplicateReviewSample: Array<{ firstName: string; surname: string }> = [];
@@ -2121,17 +2135,39 @@ Deno.serve(async (req) => {
       importedAt,
       importedMemberIds,
     );
-    staleDeleted = staleOutcomes.tombstones.length;
-    staleDeactivated = staleOutcomes.deactivations.length;
-    // Campione nel report: una disattivazione automatica è silenziosa e va potuta controllare.
-    for (const record of staleOutcomes.deactivations) {
-      if (staleDeactivatedSample.length >= 50) break;
-      staleDeactivatedSample.push({
-        memberId: clean(record.payload?.memberId || ''),
-        name: clean(record.payload?.name || ''),
-      });
+    // 🚨 TETTO PER PASSATA (taratura e motivazione in ./stale-guard.ts). Se l'export ha fatto
+    // sparire molti più soci di quanti ne sparisca una giornata normale, non è l'anagrafica a
+    // essersi svuotata: è l'export a non essere credibile. Il giro stale si salta INTERO — le
+    // righe presenti si scrivono lo stesso, perché quelle sono buone.
+    staleSweep = decideStaleSweep({
+      tombstones: staleOutcomes.tombstones.length,
+      deactivations: staleOutcomes.deactivations.length,
+      considered: staleOutcomes.considered,
+    });
+    if (staleSweep.apply) {
+      // Campione nel report: una disattivazione automatica è silenziosa e va potuta controllare.
+      for (const record of staleOutcomes.deactivations) {
+        if (staleDeactivatedSample.length >= 50) break;
+        staleDeactivatedSample.push({
+          memberId: clean(record.payload?.memberId || ''),
+          name: clean(record.payload?.name || ''),
+        });
+      }
+      records.push(...staleOutcomes.tombstones, ...staleOutcomes.deactivations);
+    } else {
+      // Bloccato: il campione dice COSA sarebbe successo, altrimenti resta solo un numero e
+      // nessun modo di capire se il tetto ha salvato l'anagrafica o ha soffocato un'uscita vera.
+      for (const record of [...staleOutcomes.deactivations, ...staleOutcomes.tombstones]) {
+        if (staleSweepBlockedSample.length >= 50) break;
+        staleSweepBlockedSample.push({
+          memberId: clean(record.payload?.memberId || ''),
+          name: clean(record.payload?.name || ''),
+          outcome: record.deleted === true ? 'tombstone' : 'deactivate',
+        });
+      }
     }
-    records.push(...staleOutcomes.tombstones, ...staleOutcomes.deactivations);
+    // I contatori NON si scrivono qui: li ricalcola `finalRecords` più sotto, da ciò che è stato
+    // davvero spinto. Se il giro è stato saltato escono 0 da soli, senza una seconda verità.
 
     const diagnosticFile = await saveDiagnosticExport(admin, exported, importedAt);
     const summaryPayload = {
@@ -2149,6 +2185,12 @@ Deno.serve(async (req) => {
         duplicateDeleted,
         staleDeleted,
         staleDeactivated,
+        // Il tetto per passata: `staleSweepBlocked` è il campanello, gli altri due dicono
+        // «quanto voleva fare» contro «quanto gli era concesso» — senza i due numeri il
+        // blocco non è diagnosticabile e resta un rifiuto muto.
+        staleSweepBlocked: !staleSweep.apply,
+        staleSweepTotal: staleSweep.total,
+        staleSweepCap: staleSweep.cap,
         legacyDuplicateDeleted,
         legacyDuplicateReview,
         phoneSuspectKept,
@@ -2157,6 +2199,7 @@ Deno.serve(async (req) => {
         updated,
       },
       staleDeactivatedSample,
+      staleSweepBlockedSample,
       file: {
         filename: exported.filename,
         size: exported.bytes.byteLength,
@@ -2230,6 +2273,10 @@ Deno.serve(async (req) => {
       staleDeleted,
       staleDeactivated,
       staleDeactivatedSample,
+      staleSweepBlocked: !staleSweep.apply,
+      staleSweepTotal: staleSweep.total,
+      staleSweepCap: staleSweep.cap,
+      staleSweepBlockedSample,
       legacyDuplicateDeleted,
       legacyDuplicateReview,
       legacyDuplicateReviewSample,
@@ -2255,6 +2302,7 @@ Deno.serve(async (req) => {
         duplicateDeleted,
         staleDeleted,
         staleDeactivated,
+        staleSweepBlocked: !staleSweep.apply,
         added,
         updated,
         broadcast: broadcastResult,
