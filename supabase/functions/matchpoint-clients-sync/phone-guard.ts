@@ -47,6 +47,16 @@ export function phoneDigits(value: unknown) {
   return normalizePhone(value).replace(/\D/g, '');
 }
 
+// Cifre di un valore GIÀ normalizzato — cioè senza ripassare da `normalizePhone`.
+// ⚠️ Esiste solo per non usare `phoneDigits` su un numero che è già uscito da lì: quella
+// rinormalizza, e `normalizePhone` NON è idempotente (un `+39`+8cifre rientra come «10 cifre
+// che iniziano per 3» e ne esce a 12). Misurare una soglia con `phoneDigits` su un valore già
+// normalizzato la fa quindi misurare un numero GONFIATO — è il difetto chiuso il 22/07 dentro
+// `decidePhoneImport`, e il suo residuo nel marcatore del report (sotto).
+export function normalizedPhoneDigits(value: unknown) {
+  return String(value ?? '').replace(/\D/g, '');
+}
+
 // Guardia telefono corto/sospetto (stile anti-churn v6.090): l'export Excel di Matchpoint
 // a volte emette per un socio un numero MONCO (es. "+39335811", 8 cifre, socio 000004)
 // mentre la pagina cliente mostra quello pieno. Un numero italiano plausibile dopo
@@ -88,6 +98,29 @@ export function decidePhoneImport(cell: unknown): { phone: string; phoneImportRe
   const isScientific = SCIENTIFIC_NOTATION_RE.test(raw);
   const importedPhone = isScientific ? '' : normalizePhone(raw);
   const phoneImportRejected = isScientific
-    || (!!importedPhone && importedPhone.replace(/\D/g, '').length < PLAUSIBLE_PHONE_MIN_DIGITS);
+    || (!!importedPhone && normalizedPhoneDigits(importedPhone).length < PLAUSIBLE_PHONE_MIN_DIGITS);
   return { phone: phoneImportRejected ? '' : importedPhone, phoneImportRejected };
+}
+
+/**
+ * Il marcatore `phoneImportRejected` che finisce nel PAYLOAD, e da lì nel report giornaliero.
+ *
+ * È *gated* sulla decisione presa all'import: può solo SPEGNERE, mai accendere. La ragione sta
+ * nel report — se in archivio c'è già un numero pieno (guardia `phoneSuspectKept`, casi Aprea e
+ * Comes) non c'è niente da segnalare, e marcarlo comunque riempirebbe la mail di soci a posto.
+ *
+ * 🚨 Il difetto che chiude, aperto dal 22/07: la soglia era misurata con `phoneDigits(phone)`,
+ * cioè rinormalizzando un valore GIÀ normalizzato. Sui numeri di 10 cifre che iniziano per `3`
+ * la rinormalizzazione aggiunge un `39` e porta a 12 — sopra soglia — quindi il marcatore si
+ * spegneva **proprio sui numeri rotti che doveva segnalare**. Misurato su PROD il 22/07: 2 soci
+ * vivi in quello stato (`000704` Carla Tpc `+39363359+11`, `000827` Vitagliano `+3939544457`),
+ * entrambi col marcatore spento, e 0 marcatori accesi su 1050 record che lo portano.
+ *
+ * ⚠️ Perché non era «solo formalmente sbagliato»: cella SCARTATA e cella VUOTA danno entrambe
+ * `phone: ''`, e il marcatore è l'unico segnale che le distingue. Spegnendolo a torto si perde
+ * la prova che serve a capire se Matchpoint sta mandando un numero rotto o non ne manda affatto.
+ */
+export function keepPhoneImportRejected(importedRejected: unknown, mergedPhone: unknown) {
+  return importedRejected === true
+    && normalizedPhoneDigits(mergedPhone).length < PLAUSIBLE_PHONE_MIN_DIGITS;
 }
