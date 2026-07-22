@@ -1,6 +1,14 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+// Le regole sul telefono stanno in un modulo a parte perché sono l'identità del socio e vanno
+// provate da sole: phone-guard.test.ts le tara sabotandole. Vedi la testata di phone-guard.ts.
+import {
+  decidePhoneImport,
+  normalizePhone,
+  phoneDigits,
+  PLAUSIBLE_PHONE_MIN_DIGITS,
+} from './phone-guard.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -197,54 +205,8 @@ function parseDateValue(value: unknown) {
   return '';
 }
 
-// Mobile italiano storico scritto senza prefisso: 9 cifre che iniziano per 3 (335…, 347…, 360…).
-// Esiste solo per NON far scattare lo scalino internazionale qui sotto su un italiano che
-// qualcuno ha scritto col "+": senza questa guardia perderebbe il 39, scenderebbe sotto
-// PLAUSIBLE_PHONE_MIN_DIGITS e verrebbe scartato dall'import — l'opposto del fix del 19/07.
-// Gli E.164 esteri lunghi esattamente 9 cifre e inizianti per 3 sono solo Andorra (+376 + 6):
-// nessuno in anagrafica, e sbagliarne uno ipotetico è meglio che azzerare il numero a 5 soci veri.
-const ITALIAN_LOCAL_MOBILE_RE = /^3\d{8}$/;
-
-function normalizePhone(value: unknown) {
-  const raw = clean(value);
-  let digits = raw.replace(/\D/g, '');
-  if (!digits) return '';
-  // "Era già internazionale" si decide ORA: lo 00 sparisce alla riga sotto e il + non è mai
-  // entrato in `digits`. Valgono entrambe le forme perché non sappiamo quale usi l'export.
-  const hadIntlPrefix = raw.startsWith('+') || digits.startsWith('00');
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  // v6.090: collassa prefisso 39 duplicato (dato sporco Matchpoint "+39+39..." / "+3939...").
-  // Rende canonici i soci MP double-39 → agganciano per telefono il gemello Google e si fondono.
-  if (digits.length === 14 && digits.startsWith('3939') && /^393\d{9}$/.test(digits.slice(2))) digits = digits.slice(2);
-  if (digits.length === 10 && digits.startsWith('3')) digits = `39${digits}`;
-  else if (digits.startsWith('0') && digits.length >= 7 && digits.length <= 11) digits = `39${digits}`;
-  else if (hadIntlPrefix && digits.length >= 8 && !ITALIAN_LOCAL_MOBILE_RE.test(digits)) {
-    // Numero estero già completo di prefisso paese: lasciarlo stare. Lo stesso scalino c'è già
-    // in google-contacts-import (getWhatsAppPhoneInfo): era il loro disaccordo ad aprire due
-    // schede allo stesso socio estero, una chiavata +39<estero> e una corretta.
-  }
-  else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11) digits = `39${digits}`;
-  if (['3939561626', '393939561626', '03939561626'].includes(raw.replace(/\D/g, '')) || digits === '393939561626') {
-    digits = '393939561626';
-  }
-  return digits ? `+${digits}` : '';
-}
-
-function phoneDigits(value: unknown) {
-  return normalizePhone(value).replace(/\D/g, '');
-}
-
-// Guardia telefono corto/sospetto (stile anti-churn v6.090): l'export Excel di Matchpoint
-// a volte emette per un socio un numero MONCO (es. "+39335811", 8 cifre, socio 000004)
-// mentre la pagina cliente mostra quello pieno. Un numero italiano plausibile dopo
-// normalizePhone ha almeno 11 cifre ("39" + ≥9): sotto questa soglia il numero in arrivo
-// non deve mai sovrascrivere un numero pieno già presente nel record.
-// La soglia ha DUE usi, e il secondo è quello che chiude il buco del primo:
-//   · qui sotto in applyMatchpointContacts, per non sovrascrivere un numero pieno — ma
-//     protegge solo chi sta GIÀ bene: chi arriva monco la prima volta non ha niente da
-//     proteggere, il monco entra e da lì è congelato (monco == monco ⇒ nessun cambiamento);
-//   · in parseMemberRow, per non farlo entrare proprio — nemmeno come chiave d'identità.
-const PLAUSIBLE_PHONE_MIN_DIGITS = 11;
+// `normalizePhone`, `phoneDigits`, `PLAUSIBLE_PHONE_MIN_DIGITS` e la decisione «questo telefono
+// entra?» vivono in ./phone-guard.ts: sono l'identità del socio, e lì sono provabili da sole.
 
 function emailKey(value: unknown) {
   return clean(value).toLocaleLowerCase('it-IT').replace(/\s+/g, '');
@@ -297,18 +259,12 @@ function parseMemberRow(row: JsonMap, importedAt: string): ParsedMember | null {
   const fullName = compactSpaces(`${firstName} ${surname}`);
   if (!firstName || !surname) return null;
   if (normalizeKey(fullName).includes('tpcappnoncancellare')) return null;
-  // L'export Excel di Matchpoint a volte consegna il cellulare in notazione scientifica
-  // ("3,93385E+11"): togliendo i non-cifra resta "+39338511", dove il "11" finale è
-  // l'ESPONENTE. Non è un telefono accorciato, è un numero INVENTATO — e siccome il campo
-  // risulta pieno, il difetto è invisibile. Si scarta qui, PRIMA della chiave: memberCloudKey
-  // usa il telefono come identità del socio, quindi un numero storpiato lo fa sembrare
-  // un'altra persona e apre una scheda NUOVA invece di riagganciare la sua (è così che sono
-  // nati i doppioni di Longato e Carnevale). Scartandolo, la chiave ricade su `email:`.
-  // Il campo resta VUOTO — un socio senza telefono è visibilmente incompleto e recuperabile —
-  // e `phoneImportRejected` lo consegna al report giornaliero (anagrafica-report-telefoni).
-  const importedPhone = normalizePhone(getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']));
-  const phoneImportRejected = !!importedPhone && phoneDigits(importedPhone).length < PLAUSIBLE_PHONE_MIN_DIGITS;
-  const phone = phoneImportRejected ? '' : importedPhone;
+  // Il telefono si decide PRIMA della chiave: `memberCloudKey` lo usa come identità del socio,
+  // quindi un numero storpiato lo fa sembrare un'altra persona e gli apre una scheda NUOVA
+  // invece di riagganciare la sua. Regola, motivi e taratura in ./phone-guard.ts.
+  const { phone, phoneImportRejected } = decidePhoneImport(
+    getCell(row, ['Telefono cellulare', 'Cellulare', 'Telefono', 'Phone', 'Mobile']),
+  );
   const keySource = memberCloudKey({ phone, email: getCell(row, ['E-mail', 'Email', 'Mail']), name: fullName });
   return {
     id: `matchpoint_${shortHash(keySource || fullName)}`,
