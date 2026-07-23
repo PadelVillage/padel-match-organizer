@@ -2,23 +2,33 @@
 // Esegui:  node supabase/functions/matchpoint-clients-sync/phone-guard.test.ts
 //
 // ⭐ TARATURA — questa suite è stata verificata SABOTANDO il codice, non solo guardandola verde.
-// Ogni metà del fix ha il caso che la isola, e il primo giro l'aveva rivelata monca:
+// La tabella è MISURATA (sabota davvero → guarda i rossi), RI-misurata il 23/07 dopo il ridisegno
+// della riga 39: estrarre/ridisegnare sposta i punti di sabotaggio, e un verde non ri-verificato
+// non vale.
 //
-//   sabotaggio                                        casi che diventano rossi
-//   ───────────────────────────────────────────────── ────────────────────────
-//   nessuno                                           —  (tutti verdi)
-//   phoneCellIsScientific = false                     B
-//   soglia d'import misurata con phoneDigits()        G    ← senza G il sabotaggio passava INOSSERVATO
-//   tutti e due (= il codice del 21/07)               A B G
-//   ── marcatore del report (22/07 sera) ────────────
-//   marcatore misurato con phoneDigits() (= IL RESIDUO)  H
-//   marcatore senza soglia (solo il gate)             I
-//   marcatore senza gate (solo la soglia)             J
-//   marcatore sempre spento                           H, K
-//   normalizedPhoneDigits che NORMALIZZA              G, H, L
+//   sabotaggio                                             casi rossi (MISURATI)
+//   ─────────────────────────────────────────────────────  ─────────────────────
+//   nessuno                                                —  (15 verdi)
+//   guard /^[30]/ tolto dalla riga 39 (= la regola vecchia)  M, G
+//   controllo notazione scientifica spento                 B
+//   soglia d'import misurata con phoneDigits()             (NESSUNO — vedi ⓘ)
+//   soglia d'import spenta                                 G
+//   ── marcatore del report (keepPhoneImportRejected) ───
+//   marcatore misurato con phoneDigits() (= IL RESIDUO)    H
+//   marcatore senza soglia (solo il gate)                  I
+//   marcatore senza gate (solo la soglia)                  J
+//   marcatore sempre spento                                H, K
+//   normalizedPhoneDigits che RINORMALIZZA                 H, L
 //
-// Il caso A da solo NON discrimina la doppia normalizzazione: il controllo sulla notazione
-// scientifica lo intercetta prima. Serviva G — cella non scientifica che normalizza a 10 cifre.
+// ⓘ Il ridisegno del 23/07 ha reso MOOT il sabotaggio «soglia d'import con phoneDigits()», che il
+//   22/07 accendeva G. Togliendo il "39" fittizio, sul percorso d'IMPORT phoneDigits e
+//   normalizedPhoneDigits coincidono (importedPhone esce già canonico da normalizePhone), quindi
+//   nessun caso li distingue più lì. Non è un buco: è che quel bug non può più avvenire sull'import.
+//   Il residuo che li distingue vive ora solo nel MARCATORE (riga H), su un valore d'ARCHIVIO.
+//
+// Il caso A (scientifica reale, 001070) da solo NON discrimina: il controllo scientifica lo
+// intercetta prima. Servono B (scientifica ad alta precisione) per isolare quel controllo, ed M
+// (estero col "+" perso) per isolare il guard /^[30]/ del ridisegno.
 //
 // ⭐ NOTA CONTROCORRENTE su H, che vale la pena tenere. La regola di questo archivio è «il caso
 // reale non discrimina quasi mai», perché nel mondo vero il guasto ha più difese addosso e una
@@ -33,6 +43,7 @@ import {
   keepPhoneImportRejected,
   normalizePhone,
   normalizedPhoneDigits,
+  phoneDigits,
   PLAUSIBLE_PHONE_MIN_DIGITS,
 } from './phone-guard.ts';
 
@@ -57,22 +68,24 @@ test('la cella in notazione scientifica non entra (caso 001070)', () => {
   assert.deepEqual(decidePhoneImport('1,13149E+11'), { phone: '', phoneImportRejected: true });
 });
 
-// B) ⭐ ISOLA il controllo sulla cella grezza. Con più cifre significative il resto è più lungo,
-//    il "39" lo porta a 12 e la SOGLIA DA SOLA non lo vedrebbe: solo riconoscere la notazione
-//    scientifica sulla cella lo ferma. Togli quel controllo e questo caso diventa rosso.
-test('TARATURA scientifica: anche una scientifica lunga (12 cifre) viene fermata', () => {
-  assert.deepEqual(decidePhoneImport('1,1314891E+11'), { phone: '', phoneImportRejected: true });
-  // la prova che senza il controllo sarebbe passata: da sola la soglia la promuove
-  assert.equal(normalizePhone('1,1314891E+11').replace(/\D/g, '').length >= PLAUSIBLE_PHONE_MIN_DIGITS, true);
+// B) ⭐ ISOLA il controllo sulla cella grezza. Una scientifica ad alta precisione strippa a ≥11
+//    cifre da sé: la SOGLIA non la vede, e — dopo il ridisegno della riga 39, che non incolla più
+//    un "39" fittizio (inizia per 1) — nemmeno quel gonfiaggio la ferma. La scarta SOLO il
+//    riconoscere la notazione scientifica sulla cella grezza. Togli quel controllo e diventa rosso.
+test('TARATURA scientifica: una scientifica ad alta precisione (12 cifre) viene fermata', () => {
+  assert.deepEqual(decidePhoneImport('1,131489111E+11'), { phone: '', phoneImportRejected: true });
+  // la prova che senza il controllo sarebbe passata: strippa a 12 cifre, sopra soglia da sola
+  assert.equal(normalizePhone('1,131489111E+11').replace(/\D/g, '').length >= PLAUSIBLE_PHONE_MIN_DIGITS, true);
 });
 
-// G) ⭐ ISOLA la soglia. Cella NON scientifica che normalizza a 10 cifre: il controllo del
-//    punto B non c'entra nulla, decide solo la soglia. E la soglia funziona SOLO se misura il
-//    valore salvato: `normalizePhone` non è idempotente e rimisurando gonfia 10 → 12.
+// G) ⭐ ISOLA la soglia. Cella NON scientifica e corta: la scientifica del punto B non c'entra,
+//    decide solo la soglia. Dopo il ridisegno della riga 39 un "11314911" (inizia per 1) non
+//    prende più il "39" fittizio e resta "+11314911" (8 cifre) — sotto soglia, scartato. Togli la
+//    soglia e questo passerebbe come identità buona.
 test('TARATURA soglia: una cella corta non scientifica viene scartata', () => {
   assert.deepEqual(decidePhoneImport('11314911'), { phone: '', phoneImportRejected: true });
-  // la non-idempotenza, messa nero su bianco: è la trappola che rendeva cieca la guardia
-  assert.equal(normalizePhone('11314911'), '+3911314911');
+  assert.equal(normalizePhone('11314911'), '+11314911');
+  // la non-idempotenza resta reale sui 10-cifre-che-iniziano-per-3 (ramo riga 32, non toccato):
   assert.equal(normalizePhone('+3911314911'), '+393911314911');
 });
 
@@ -104,6 +117,30 @@ test('gli italiani a 9 cifre col + restano italiani', () => {
 
 test('cella vuota: nessun telefono e nessuno scarto da segnalare', () => {
   assert.deepEqual(decidePhoneImport(''), { phone: '', phoneImportRejected: false });
+});
+
+// ── il ridisegno della riga 39: il "39" fittizio SOLO per numeri plausibilmente italiani (23/07) ──
+
+// M) ⭐ IL CASO CHE DISCRIMINA il ridisegno, ed è il socio 001070. Se Matchpoint scrive
+//    "+13148914544" senza separatore, Excel legge la cella come numero e mangia il "+": arriva
+//    "13148914544". Regola VECCHIA: !inizia-per-39 && 8..11 cifre → gli incolla "39" →
+//    "+3913148914544", un numero inesistente usato come IDENTITÀ (memberCloudKey). Nuova: inizia
+//    per 1, non può essere italiano → lasciato bare. Togli il guard `/^[30]/` e questo è rosso.
+test('M · un estero che ha perso il + resta bare, non diventa +39<estero> (001070)', () => {
+  assert.equal(normalizePhone('13148914544'), '+13148914544');
+  // ⭐ la PROPRIETÀ che rompe il ciclo tombstone+resurrezione: col + o senza, la CHIAVE è la
+  //    stessa. È ciò che rende stabili i 18 esteri MP il giorno che l'export perde il separatore.
+  assert.equal(phoneDigits('13148914544'), phoneDigits('+13148914544'));
+  assert.equal(phoneDigits('13148914544'), '13148914544');
+});
+
+// N) ⭐ CONTROLLO del ridisegno: i numeri plausibilmente italiani prendono ANCORA il "39", col
+//    ridisegno o senza. Senza questo, un pigro «non incollare mai il 39» passerebbe la suite — e
+//    toglierebbe il prefisso a mezza anagrafica. Copre il ramo riga 32 (10 cifre) e il rescue dei
+//    9-cifre col + (riga 39, che inizia per 3 → ancora italiano).
+test('N · gli italiani plausibili prendono ancora il 39 (controllo)', () => {
+  assert.equal(normalizePhone('3474994381'), '+393474994381');
+  assert.equal(normalizePhone('+335228405'), '+39335228405');
 });
 
 // ── keepPhoneImportRejected · il marcatore del report (residuo chiuso il 22/07 sera) ─────────

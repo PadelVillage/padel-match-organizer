@@ -7,6 +7,7 @@ import {
   decidePhoneImport,
   keepPhoneImportRejected,
   normalizePhone,
+  normalizedPhoneDigits,
   phoneDigits,
   PLAUSIBLE_PHONE_MIN_DIGITS,
 } from './phone-guard.ts';
@@ -442,19 +443,20 @@ function applyMatchpointContacts(existing: JsonMap, imported: ParsedMember, impo
   // numero WhatsApp usato dal ponte consumer F2.x).
   let phone = clean(existing.phone);
   let phoneSuspectKept = false;
-  // ⚠️ NOTO E NON CHIUSO (22/07) — stessa forma del difetto sistemato in `keepPhoneImportRejected`:
-  // `imported.phone` esce già da `decidePhoneImport` ed `existing.phone` è già in archivio, quindi
-  // qui `phoneDigits` RINORMALIZZA e gonfia i numeri di 10 cifre che iniziano per 3 (misurati su
-  // PROD: 2 soci vivi). Effetto: la soglia li crede pieni e la guardia protegge un numero rotto.
-  // Non toccato di proposito: qui il valore decide QUALE numero vince, e il numero è l'identità
-  // del socio — `memberCloudKey` ri-chiava chi non ha `source`. Va con la misura del punto ⑥
-  // («quante chiavi si spostano, quante collidono»), non come correzione di passaggio.
-  // Il confronto di disuguaglianza (riga sotto) resta invece corretto: entrambi i lati passano
-  // per la stessa funzione, quindi si gonfiano insieme.
+  // ✅ 3ª occorrenza della doppia normalizzazione — CHIUSA il 23/07, insieme al ridisegno della
+  // riga 39 (stessa forma del difetto sistemato in `keepPhoneImportRejected`). Le LUNGHEZZE si
+  // misurano con `normalizedPhoneDigits`, che conta le cifre SENZA ripassare da `normalizePhone`:
+  // `phoneDigits` rientrerebbe e gonfia i 10-cifre-che-iniziano-per-3 a 12, facendo credere PIENO
+  // un numero corto e proteggendo così un numero rotto dalla sovrascrittura (misurati su PROD il
+  // 23/07: 2 soci vivi, `000704` e `000827`). Qui il valore decide QUALE numero vince, e il numero
+  // è l'identità del socio — perciò andava con la misura del ⑥, non come correzione di passaggio.
+  // Il CONFRONTO di disuguaglianza (riga sotto) resta invece su `phoneDigits`: entrambi i lati
+  // passano per la stessa funzione, quindi si gonfiano INSIEME ed è già corretto.
   const importedPhoneDigits = phoneDigits(imported.phone);
   const existingPhoneDigits = phoneDigits(existing.phone);
   if (clean(imported.phone) && importedPhoneDigits !== existingPhoneDigits) {
-    if (importedPhoneDigits.length < PLAUSIBLE_PHONE_MIN_DIGITS && existingPhoneDigits.length >= PLAUSIBLE_PHONE_MIN_DIGITS) {
+    if (normalizedPhoneDigits(imported.phone).length < PLAUSIBLE_PHONE_MIN_DIGITS
+        && normalizedPhoneDigits(existing.phone).length >= PLAUSIBLE_PHONE_MIN_DIGITS) {
       phoneSuspectKept = true;
     } else {
       phone = clean(imported.phone);
