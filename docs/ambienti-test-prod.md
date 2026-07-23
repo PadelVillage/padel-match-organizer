@@ -101,7 +101,7 @@ A partire dal **2026-05-21**, il bot Playwright per l'automazione del browser Ma
 * **Integrazione Supabase PROD**:
   * Configurato nei Secret del progetto Supabase PROD (`qqbfphyslczzkxoncgex`):
     * `MATCHPOINT_BROWSER_WORKER_URL` = `http://91.99.131.243:8787`
-    * `MATCHPOINT_BROWSER_WORKER_API_KEY` = `pmo_wk_auth_key_prod_8b31a547d2c9`
+    * `MATCHPOINT_BROWSER_WORKER_API_KEY` = _(secret — non versionato: vive solo nei Secret di Supabase e nel `.env` del worker. **Ruotato il 2026-07-23** perché il valore precedente era rimasto in chiaro in questo file, in un repo pubblico.)_
 
 Stato operativo scheduler PROD verificato e riattivato il 2026-05-21 11:00:
 
