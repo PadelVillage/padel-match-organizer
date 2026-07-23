@@ -36,7 +36,16 @@ export function normalizePhone(value: unknown) {
     // in google-contacts-import (getWhatsAppPhoneInfo): era il loro disaccordo ad aprire due
     // schede allo stesso socio estero, una chiavata +39<estero> e una corretta.
   }
-  else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11) digits = `39${digits}`;
+  // Fallback "assume italiano": incolla 39 SOLO a un numero che PUÒ essere italiano, cioè che
+  // inizia per 3 (mobile, inclusi i 9-cifre esclusi dal ramo estero sopra) o 0 (fisso, che la
+  // riga 33 intercetta già — tenuto qui per intento). Un numero che inizia per ALTRA cifra e
+  // arriva fin qui è un ESTERO che ha perso il "+" (Excel lo mangia sulle celle senza separatore):
+  // incollargli 39 ne sposta l'IDENTITÀ (memberCloudKey → phone:39<estero>), com'è successo al
+  // socio 001070. Lasciandolo bare, la chiave resta le sole cifre internazionali — quella corretta,
+  // e STABILE fra un export e l'altro. Misurato su PROD il 23/07 PRIMA di toccarlo: 0 chiavi vive
+  // spostate, 0 collisioni (nessun socio è oggi in questo stato); il ridisegno protegge i 18 esteri
+  // MP il giorno che un export perde il "+", senza toccare nulla oggi.
+  else if (!digits.startsWith('39') && digits.length >= 8 && digits.length <= 11 && /^[30]/.test(digits)) digits = `39${digits}`;
   if (['3939561626', '393939561626', '03939561626'].includes(raw.replace(/\D/g, '')) || digits === '393939561626') {
     digits = '393939561626';
   }
