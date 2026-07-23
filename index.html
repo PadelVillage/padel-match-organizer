@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.124';
+    const APP_VERSION = '6.125';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39810,7 +39810,10 @@ Per confermare scrivi ELIMINA.`);
             if (mp) staffCalPromoteAndEdit(iso, cc, oo, nm, du, tp);
             else staffCalEditPlayers(iso, cc, oo, nm, du, tp);
           });
-        })(isoDate, c, b.ora, b.nome, b.durata, b.tipoReale, isMP);
+          // Le prenotazioni Matchpoint portano il tipo in `b.tipo` (non in `b.tipoReale`, riempito solo
+          // per gli staff_booking): senza il fallback una LEZIONE MP arriva all'editor come 'partita' e
+          // il selettore Maestro non compare. Stesso fallback già usato qui sopra per label/istruttore.
+        })(isoDate, c, b.ora, b.nome, b.durata, b.tipoReale || b.tipo, isMP);
         lane.appendChild(blk);
       }
       content.appendChild(lane);
