@@ -35,6 +35,7 @@ const DURATA_MAX = 180;
 const ORARIO_APERTURA = '07:00';    // limiti larghi: l'autorità vera è Matchpoint
 const ORARIO_CHIUSURA = '23:30';
 const MAX_GIORNI_AVANTI = 30;
+const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: griglia orari operativa
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -91,7 +92,7 @@ function minToTime(min: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-type MemberHit = { id: string; name: string; firstName: string; surname: string };
+type MemberHit = { id: string; memberId: string; name: string; firstName: string; surname: string };
 
 type SlotInput = { data: string; ora: string; durata: number; oraFine: string };
 
@@ -110,38 +111,139 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'create', 'cancel'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
+  // Identità: phone OPPURE member_id (mai insieme), stessa ricetta di
+  // consumer-player-readmodel. Telegram non consegna il telefono: l'unico
+  // appiglio è member_id (whitelist chat_id→member_id). whatsapp-webhook e il
+  // consumer continuano a passare phone → retrocompatibile.
+  const memberIdInput = clean(body.member_id);
   const digits = phoneDigits(body.phone);
-  if (digits.length < 9) return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto.');
   const last10 = digits.slice(-10);
+  if (memberIdInput && digits) {
+    return err(400, 'AMBIGUOUS_INPUT', 'Indicare phone OPPURE member_id, non entrambi.');
+  }
+  if (memberIdInput) {
+    if (!/^[0-9]{6}$/.test(memberIdInput)) {
+      return err(400, 'BAD_MEMBER_ID', 'member_id deve essere il codice socio a 6 cifre.');
+    }
+  } else if (digits.length < 9) {
+    return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare member_id).');
+  }
+  const etichetta = memberIdInput ? `socio ${memberIdInput}` : `…${last10.slice(-4)}`;
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!supabaseUrl || !serviceKey) return err(503, 'MISSING_ENV', 'SUPABASE_URL/SERVICE_ROLE_KEY non configurati.');
   const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  // ── Identità: telefono → member (ricetta readmodel, ultime 10 cifre) ──────
-  const { data: memberRows, error: memberErr } = await service
+  // ── Identità → member (per member_id o phone) ────────────────────────────
+  let memberQuery = service
     .from('pmo_cloud_records')
     .select('payload')
     .eq('record_type', 'member')
     .not('deleted', 'is', true)
-    .ilike('payload->>phone', `%${last10}`)
     .limit(5);
+  memberQuery = memberIdInput
+    ? memberQuery.eq('payload->>memberId', memberIdInput)
+    : memberQuery.ilike('payload->>phone', `%${last10}`);
+  const { data: memberRows, error: memberErr } = await memberQuery;
   if (memberErr) return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
 
   const hits: MemberHit[] = [];
   for (const row of memberRows ?? []) {
     const p = (row.payload ?? {}) as JsonMap;
-    if (!clean(p.id) || !phoneDigits(p.phone).endsWith(last10)) continue;
-    hits.push({ id: clean(p.id), name: clean(p.name), firstName: clean(p.firstName), surname: clean(p.surname) });
+    if (!clean(p.id)) continue;
+    // Conferma in-code del match (evita falsi positivi dell'ilike / sorprese PostgREST).
+    if (memberIdInput) {
+      if (clean(p.memberId) !== memberIdInput) continue;
+    } else if (!phoneDigits(p.phone).endsWith(last10)) continue;
+    hits.push({
+      id: clean(p.id),
+      memberId: clean(p.memberId),
+      name: clean(p.name),
+      firstName: clean(p.firstName),
+      surname: clean(p.surname),
+    });
   }
   if (hits.length === 0) return ok({ member: null, reason: 'not_found' });
   if (hits.length > 1) return ok({ member: null, reason: 'ambiguous' });
   const member = hits[0];
+
+  // ── availability_day: disponibilità di un INTERO giorno, fascia per fascia ─
+  // Per ogni slot della griglia operativa (potentialSlotSchedule) del giorno, i
+  // campi liberi = quelli senza prenotazione sovrapposta. Stessa griglia che
+  // l'app mostra come "orari"; qui vi si incrocia l'occupazione (booking +
+  // staff_booking, mirror del sync ~2 min: quasi-realtime, non al secondo).
+  // È lettura pura; non tocca il Matchpoint. Blocco a sé: availability/create/
+  // cancel restano identici sotto (loro validano data+ora, qui basta la data).
+  if (action === 'availability_day') {
+    const dayData = clean(body.data);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dayData)) return err(400, 'INVALID_DATA', 'data deve essere YYYY-MM-DD.');
+    const { date: today, time: nowTime } = romeNow();
+    if (dayData < today) return err(400, 'SLOT_IN_PAST', 'Il giorno richiesto è nel passato.');
+    const maxDate = new Date(`${today}T12:00:00Z`);
+    maxDate.setUTCDate(maxDate.getUTCDate() + MAX_GIORNI_AVANTI);
+    if (dayData > maxDate.toISOString().slice(0, 10)) {
+      return err(400, 'SLOT_TOO_FAR', `Si può guardare al massimo a ${MAX_GIORNI_AVANTI} giorni.`);
+    }
+
+    // Griglia del giorno (indice 0=domenica, convenzione getDay()).
+    const dow = new Date(`${dayData}T12:00:00Z`).getUTCDay();
+    const { data: schedRows, error: schedErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'app_setting')
+      .eq('local_key', SLOT_SCHEDULE_KEY)
+      .not('deleted', 'is', true)
+      .limit(1);
+    if (schedErr) return err(500, 'DB_ERROR', 'Errore lettura griglia slot.');
+    const schedule = (schedRows?.[0]?.payload as JsonMap | undefined)?.value as JsonMap | undefined;
+    const rawSlots = schedule && Array.isArray(schedule[String(dow)])
+      ? (schedule[String(dow)] as JsonMap[]) : [];
+
+    // Prenotazioni del giorno → intervalli occupati per campo (ora_fine assente = +90').
+    const { data: dayRows, error: dayErr } = await service
+      .from('pmo_cloud_records')
+      .select('record_type, payload')
+      .in('record_type', ['booking', 'staff_booking'])
+      .not('deleted', 'is', true)
+      .eq('payload->>data', dayData)
+      .limit(500);
+    if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
+    const occupied: { campo: number; startMin: number; endMin: number }[] = [];
+    for (const row of dayRows ?? []) {
+      const p = (row.payload ?? {}) as JsonMap;
+      const campoNum = parseInt(String(p.campo ?? '').replace(/\D/g, ''), 10);
+      const ora = clean(p.ora);
+      if (!campoNum || !/^\d{2}:\d{2}$/.test(ora)) continue;
+      const startMin = timeToMin(ora);
+      const oraFine = clean(p.ora_fine);
+      const endMin = /^\d{2}:\d{2}$/.test(oraFine) ? timeToMin(oraFine) : startMin + DURATA_DEFAULT;
+      occupied.push({ campo: campoNum, startMin, endMin });
+    }
+
+    const nowMin = timeToMin(nowTime);
+    const slots: JsonMap[] = [];
+    for (const s of rawSlots) {
+      const start = clean(s.start);
+      const end = clean(s.end);
+      if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) continue;
+      const sStart = timeToMin(start);
+      const sEnd = timeToMin(end);
+      if (dayData === today && sStart <= nowMin) continue; // oggi: salta le fasce già iniziate
+      const busy = new Set(
+        occupied.filter((b) => b.startMin < sEnd && sStart < b.endMin).map((b) => b.campo),
+      );
+      const freeCampi = CAMPI.filter((c) => !busy.has(c));
+      slots.push({ ora: start, ora_fine: end, free_campi: freeCampi, campi_totali: CAMPI.length });
+    }
+
+    console.log(`[booking-write] availability_day ${dayData} → ${slots.length} fasce per ${etichetta}`);
+    return ok({ member: { id: member.id, name: member.name }, data: dayData, slots, today });
+  }
 
   // ── Slot: validazione comune (data/ora/durata nel fuso del circolo) ───────
   const slotData = clean(body.data);
