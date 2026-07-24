@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // di un cliente su Matchpoint, via worker /correct-wallet ("Correzione del saldo"), in ENTRAMBE
 // le direzioni:
 //   • STORNO   → subtractCents>0 (sottrae credito, importo negativo). Validato dal vivo.
-//   • RICARICA → addCents>0      (aggiunge credito, importo positivo).
+//   • RICARICA → addCents>0      (aggiunge credito, importo positivo). Validato dal vivo 30/06.
 // ⚠️ DENARO REALE. NON-IDEMPOTENTE → nessun retry. Backstop server-side = kill-switch del worker
 // (env MATCHPOINT_PAYMENT_WRITE_ENABLED). Gemello di matchpoint-payment-void.
 

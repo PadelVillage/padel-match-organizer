@@ -69,6 +69,35 @@ function hasPermission(actor: StaffActor, perm: string) {
   return actor.permissions?.[perm] === true;
 }
 
+// Confronto in tempo costante (percorso consumer: il secret è l'unico gate).
+function safeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
+// Percorso interno CONSUMER (F2.1 «Prenota via chat»): la chiamata arriva da
+// consumer-booking-write con l'header X-Consumer-Secret = CONSUMER_BRIDGE_SECRET
+// (stesso gate del readmodel). Attore sintetico marcato: nei record staff_booking
+// le prenotazioni via chat restano riconoscibili (created_by_email). Env assente
+// → percorso disabilitato, resta solo il JWT staff.
+function consumerActor(req: Request): StaffActor | null {
+  const secret = clean(Deno.env.get('CONSUMER_BRIDGE_SECRET'));
+  if (!secret) return null;
+  const provided = clean(req.headers.get('x-consumer-secret'));
+  if (!provided || !safeEqual(provided, secret)) return null;
+  return {
+    userId: 'consumer-chat-wa',
+    email: 'chat-wa@padelvillage.club',
+    role: 'consumer',
+    permissions: { cloud_sync: true },
+  };
+}
+
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -239,8 +268,8 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
-  // Auth
-  const actor = await getActor(req).catch(() => null);
+  // Auth: percorso consumer (secret interno) O staff (JWT)
+  const actor = consumerActor(req) ?? await getActor(req).catch(() => null);
   if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
   if (!hasPermission(actor, 'cloud_sync')) {
     return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per prenotare su Matchpoint.');
