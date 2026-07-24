@@ -135,8 +135,14 @@ function rosterFromPayload(recordType: string, p: JsonMap): {
         const o = g as JsonMap;
         const nome = clean(o.nome);
         if (nome) names.push(nome);
-        const codice = clean(o.codice) || clean(o.codiceCliente);
-        if (/^[0-9]{6}$/.test(codice)) codes.push(codice);
+        // `codice` e `codiceCliente` sono DUE numerazioni diverse e nessuna delle due è
+        // garantita: su PROD (misura del 24/07) `codice` non è MAI il codice socio a 6 cifre
+        // (0 elementi su 218) e in 2 casi vale "4", che con un `||` secco faceva da tappo e
+        // oscurava il `codiceCliente` buono ("000004"). Si guardano ENTRAMBI e si tiene il
+        // primo che sia davvero a 6 cifre.
+        for (const c of [clean(o.codice), clean(o.codiceCliente)]) {
+          if (/^[0-9]{6}$/.test(c)) { codes.push(c); break; }
+        }
       } else {
         const nome = clean(g);
         if (nome) names.push(nome);
