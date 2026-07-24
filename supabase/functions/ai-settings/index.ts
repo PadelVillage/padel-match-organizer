@@ -18,7 +18,12 @@ const CORS_HEADERS = {
 };
 
 // Chiavi ammesse (whitelist anti-scrittura arbitraria).
-const ALLOWED_KEYS = new Set(['learning_mode']);
+// assistant_kb = base di conoscenza statica dell'assistente dei soci (indirizzo,
+// contatti, dotazioni, pagamenti, regola dei 15 giorni, numeri di escalation).
+// Sta qui e non nel codice del bot così si cambia senza redeploy; la rilegge
+// consumer-player-readmodel con l'azione 'kb'. Gli ORARI non ci entrano: sono
+// già un dato del sistema (app_setting/potentialSlotSchedule).
+const ALLOWED_KEYS = new Set(['learning_mode', 'assistant_kb']);
 const PROD_REF = 'qqbfphyslczzkxoncgex';
 
 function json(body: unknown, status = 200) {
