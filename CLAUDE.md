@@ -6,8 +6,16 @@
 |---|---|---|---|
 | **Admin PROD** (staff) | `padel-match-organizer` | `main` → Pages `app.padelvillage.club` | Supabase `qqbfphyslczzkxoncgex` |
 | **Admin TEST** | `padel-match-organizer` | `test-preview` → **`test.padelvillage.club`**, il cui caricatore sta in un repo a parte (sotto) | Supabase `cudiqnrrlbyqryrtaprd` |
-| **Consumer soci** | `padel-match-assistant` | `main` → Pages `soci.padelvillage.club` | Supabase `aylykijfirtegyxzdwgu` |
+| **Bot Telegram soci** `@loziocoach_bot` | `assistente-padel-agent` (**privato**) | nessun deploy automatico: gira in **pm2 sulla VM Hetzner** (`/opt/assistente-padel-agent`, Node 24 in `/opt/node24`) | ponti edge su `qqbf…` + memoria e whitelist su `aylykijfirtegyxzdwgu` |
 | **Emulatore** | `chat-giocatori-emulatore` | `main` → Pages | nessuno (solo localStorage) |
+
+⛔ **La web app dei soci (`soci.padelvillage.club`) è DISMESSA dal 25/07/2026**, per decisione del
+committente dopo che il bot Telegram è andato in servizio: Pages spento, repo `padel-match-assistant`
+tornato **privato**, record DNS `soci` eliminato, e le due edge di login (`consumer-auth-start`,
+`consumer-auth-verify`) **cancellate** da `ayly…`. Il canale verso i soci è ora **il bot**.
+⚠️ **I 3 ponti edge sul gestionale restano vivi**: sono il motore che il bot usa, non appartenevano
+alla web app. Copia di sicurezza (storico completo del repo + sorgenti delle due edge) **fuori dai
+repo**, in `~/Desktop/APP desktop/_dismissione-soci-20260725/`.
 
 Admin PROD e Admin TEST sono **file diversi su rami diversi** dello stesso repo: non è un
 ambiente che "punta" a due database, sono due copie dell'app.
@@ -42,31 +50,35 @@ il riconoscimento dell'ambiente è un fatto di **sicurezza**, non di configurazi
 **Edge functions**, tre destinazioni diverse dallo stesso repo:
 
 - `supabase/functions/**` → `qqbf…` da `main`, `cudi…` da `test-preview`
-- `consumer-app/edge-functions/**` → `ayly…` da `main` (`deploy-edge-functions-consumer.yml`)
+- `consumer-app/edge-functions/**` → `ayly…` da `main` (`deploy-edge-functions-consumer.yml`).
+  ⚠️ **Dal 25/07 su `ayly…` non vive più nessuna di queste funzioni** (erano il login della web app
+  dismessa): i sorgenti restano in git, quindi **toccare quella cartella le RICREEREBBE** al primo
+  push su `main`. Se un domani servono davvero, si rimettono con un `workflow_dispatch` esplicito.
 - `supabase/functions/_archive/**` → **nessuna destinazione**: cartelle con `_` iniziale sono
   saltate dai workflow. Ci stanno i sorgenti conservati ma non deployati (vedi il README lì dentro).
 
 Spostare una cartella tra le prime due la manda **sul progetto sbagliato**.
 
-⚠️ **Il frontend consumer si modifica in `padel-match-assistant`**, non in `consumer-app/web/`
-di questo repo: quella è una copia **non viva**, i soci non la vedono. Le edge function del
-consumer invece restano qui.
+⚠️ **`consumer-app/web/` è una copia morta**, e lo era già prima della dismissione: il frontend
+vivo stava in `padel-match-assistant`. Non è il punto da cui ripartire per una futura app dei soci.
 
-⚠️ **Il ponte identità del consumer punta a PROD**: `CONSUMER_IDENTITY_URL` in
-`consumer-auth-start` ha come default il gestionale `qqbf…`. Il ponte è però in **sola
-lettura** (`consumer-identity-lookup` fa un `.select()` e nulla più) e fallisce chiuso senza
-`CONSUMER_BRIDGE_SECRET` (503 `BRIDGE_DISARMED`): il consumer **non può sporcare** il
-gestionale. Dal 19/07 la stessa funzione sta anche su `cudi…`, così il contratto del ponte —
-che vive sui due lati e va cambiato insieme — si prova senza toccare la produzione. La copia
-su TEST nasce disarmata: va armata col secret quando serve.
+⚠️ **`consumer-identity-lookup` è rimasta orfana** (non rotta): la chiamava `consumer-auth-start`
+del login soci, cancellata il 25/07. Resta viva di proposito — costa nulla ed è l'unico pezzo che
+sa riconoscere un socio **dal telefono**, cosa che il bot non può fare (Telegram non consegna il
+numero). È in **sola lettura** (`.select()` e nulla più) e fallisce chiusa senza
+`CONSUMER_BRIDGE_SECRET` (503 `BRIDGE_DISARMED`): non può sporcare il gestionale. Dal 19/07 sta
+anche su `cudi…`, così il contratto del ponte — che vive sui due lati e va cambiato insieme — si
+prova senza toccare la produzione; la copia su TEST nasce disarmata.
 
 ⚠️ **`cudi…` NON è una sandbox di dati finti**: ha gli **stessi soci veri** di PROD (2811
 contro 2774 al 19/07), perché entrambi sincronizzano dallo stesso Matchpoint. Spostarsi su
 TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
 
-Il consumer resta comunque **senza anteprima**: `soci.padelvillage.club` esce da `main`, quindi
-ogni push è live. Finché gli utenti veri sono zero non è un problema; prima di invitare il
-primo socio, sì.
+Anche il **bot Telegram non ha anteprima né sandbox**: è **un solo processo** sulla VM, e per
+provarlo si sposta il suo `.env` fra TEST e PROD (due righe: `PMO_FUNCTIONS_URL` e
+`CONSUMER_BRIDGE_SECRET_FILE`). 🚨 **Una sola istanza per volta**: due processi in long polling
+sullo stesso token si rubano i messaggi e Telegram risponde **409** — quindi mentre gira sulla VM
+non si lancia il bot sul Mac.
 
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
