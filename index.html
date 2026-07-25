@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.125';
+    const APP_VERSION = '6.126';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10405,10 +10405,19 @@ Grazie.`
     // rimettere questo flag a false. Non tocca l'autovalutazione PUBBLICA dei soci
     // (modalità assessment-public-mode / autovalutazione.html), che resta attiva.
     const PMO_ASSESSMENT_PARKED = true;
-    // "Messaggi WhatsApp" (libreria template + triage messaggi in arrivo) è OPERATIVA anche
-    // in PROD dal 18/07: il «Rispondi» consegna davvero via wa-shadow-proxy → whatsapp-send.
-    // Gate sganciato: la visibilità è governata dai normali permessi sezione (view_contact).
+    // "Messaggi WhatsApp" (libreria template + triage messaggi in arrivo) è stata OPERATIVA
+    // anche in PROD dal 18/07: il «Rispondi» consegnava davvero via wa-shadow-proxy →
+    // whatsapp-send. Gate sganciato: visibilità dai normali permessi sezione (view_contact).
     const PMO_WHATSAPP_TEST_ONLY = false;
+    // 📴 CANALE WHATSAPP DISMESSO (decisione del committente, 25/07/2026): dei soci si occupa
+    // il bot Telegram, e l'automatismo WhatsApp era già spento dal 25/07 (allowlist svuotata).
+    // Qui si congela la SEZIONE, con lo stesso meccanismo usato per l'Autovalutazione: il tab
+    // sparisce a tutti, owner incluso. NON è una cancellazione — il codice resta al suo posto
+    // e per riaccenderlo basta rimettere questo flag a false. Si è scelto il flag invece di
+    // rimuovere le ~150 righe del pannello perché è reversibile e non tocca nient'altro.
+    // ⚠️ A valle sono stati spenti anche i pezzi che lo alimentavano: il vecchio webhook
+    // /opt/whatsapp-backend sulla VM (servizio systemd disabilitato) e shadow-backend-staging.
+    const PMO_WHATSAPP_PARKED = true;
     const PMO_SECTION_TREE = [
       { key:'view_dashboard', tab:'dashboard', label:'Calendario' },
       { key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
@@ -10468,8 +10477,10 @@ Grazie.`
       // Sezione Autovalutazione congelata operativamente: nascosta a tutti tranne
       // che in modalità pubblica (form di autovalutazione compilato dai soci).
       if (PMO_ASSESSMENT_PARKED && tabName === 'assessment' && !pmoIsPublicAccessMode()) return false;
-      // "Messaggi WhatsApp" sperimentale: forzata nascosta in PROD (visibile solo in TEST).
-      if (PMO_WHATSAPP_TEST_ONLY && tabName === 'contact') return false;
+      // "Messaggi WhatsApp": congelata dal 25/07/2026 (canale dismesso, vedi PMO_WHATSAPP_PARKED).
+      // Il vecchio flag TEST_ONLY resta per non perdere la storia: se un domani si riaccende il
+      // canale solo in TEST, quella strada è ancora percorribile.
+      if ((PMO_WHATSAPP_PARKED || PMO_WHATSAPP_TEST_ONLY) && tabName === 'contact') return false;
       profile = pmoResolveVisibilityProfile(profile);
       if (!profile) return true;                                   // pre-login / pubblico
       if (['owner', 'admin'].includes(String(profile.role || ''))) return true;
