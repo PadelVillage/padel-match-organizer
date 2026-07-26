@@ -1,9 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente WhatsApp
-// consumer (F2.1 «Prenota + Disdici via chat»). Chiamato dal webhook dell'assistente
-// (progetto Supabase separato) DOPO la conferma a pulsanti del socio.
+// consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente dei soci
+// (oggi il bot Telegram). Chiamato dall'assistente DOPO la conferma a pulsanti del socio.
 //
 // Azioni:
 // - availability: { phone, data, ora, durata? } → campi liberi nello slot (proposta).
@@ -11,6 +10,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 //                 matchpoint-bookings-create (riuso: job/record/audit restano lì).
 // - cancel:       { phone, data, ora, campo } → disdetta via matchpoint-bookings-cancel,
 //                 SOLO se il socio è nel roster della prenotazione (ownership).
+// - leave:        { member_id, data, ora, campo } → RITIRO DELLA PRESENZA: toglie il solo
+//                 socio dal roster via matchpoint-bookings-edit. La partita RESTA in piedi
+//                 per gli altri. Rifiuta se il socio è l'unico giocatore (lì servirebbe una
+//                 disdetta, che resta alla segreteria).
+//                 🧪 `dry_run: true` → PROVA A VUOTO: fa tutto (trova la prenotazione,
+//                 ricompone il roster su tutte le righe dello slot, applica le stesse
+//                 guardie, sceglie il nome da togliere) e si ferma UN PASSO PRIMA della
+//                 scrittura, dicendo cosa avrebbe fatto. Esiste perché questo percorso
+//                 altrimenti non gira MAI prima della produzione: l'assistente in
+//                 simulazione non arriva nemmeno a chiamare il ponte, e chiamarlo da TEST
+//                 non è innocuo — le edge non hanno simulazione, e a valle worker e sistema
+//                 del circolo sono UNO SOLO, condiviso con la produzione.
+//                 🚨 `left` resta `false`: chi non conosce il campo `dry_run` legge «non è
+//                 successo niente», che è la verità. L'equivoco cade dalla parte sicura.
 //
 // Identità: telefono → member con la STESSA ricetta di consumer-player-readmodel
 // (ultime 10 cifre su pmo_cloud_records/member). Nessun JWT consumer: gate =
@@ -111,8 +124,16 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
+  }
+
+  // 🧪 Prova a vuoto (oggi solo per `leave`). Deve essere chiesta ESPLICITAMENTE con un
+  // booleano vero: qualunque altra cosa — «true», 1, la chiave assente — vale spento, così
+  // un refuso non trasforma una scrittura vera in una prova silenziosa (né viceversa).
+  const dryRun = body.dry_run === true;
+  if (dryRun && action !== 'leave') {
+    return err(400, 'DRY_RUN_NOT_SUPPORTED', `La prova a vuoto esiste solo per «leave», non per «${action}».`);
   }
 
   // Identità: phone OPPURE member_id (mai insieme), stessa ricetta di
@@ -284,7 +305,7 @@ Deno.serve(async (req: Request) => {
     .limit(500);
   if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
 
-  type DayBooking = { campo: number; startMin: number; endMin: number; roster: string[]; idReserva: string; ora: string };
+  type DayBooking = { campo: number; startMin: number; endMin: number; roster: string[]; idReserva: string; ora: string; tipo: string };
   const dayBookings: DayBooking[] = [];
   for (const row of dayRows ?? []) {
     const p = (row.payload ?? {}) as JsonMap;
@@ -304,6 +325,7 @@ Deno.serve(async (req: Request) => {
     dayBookings.push({
       campo: campoNum, startMin, endMin, roster, ora,
       idReserva: clean(p.id_reserva ?? p.idReserva),
+      tipo: clean(p.tipo),
     });
   }
 
@@ -330,6 +352,13 @@ Deno.serve(async (req: Request) => {
     'Content-Type': 'application/json',
     'X-Consumer-Secret': bridgeSecret,
   };
+
+  // Varianti del nome socio accettate nel roster (serve a `leave` e a `cancel`):
+  // il gestionale scrive ora «Nome Cognome», ora «Cognome Nome».
+  const nameVariants = new Set(
+    [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
+      .map(normName).filter(Boolean),
+  );
 
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
@@ -370,17 +399,140 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ── leave: RITIRO DELLA PRESENZA ──────────────────────────────────────────
+  // Il socio esce da una partita che RESTA in piedi per gli altri: si toglie un solo
+  // nome dal roster, non si disdice il campo. Due differenze da `cancel`:
+  //  · la prenotazione sopravvive e torna INCOMPLETA (riaccende gli avvisi di scadenza);
+  //  · se il socio è l'UNICO giocatore qui non si fa nulla: uscire da soli equivarrebbe a
+  //    disdire, e per quello il chiamante usa `cancel`. Regola del committente (26/07):
+  //    si annulla una partita SOLO se non c'è nessun altro dentro — nessuno può far
+  //    sparire il campo agli altri tre, che il bot non ha modo di avvisare.
+  //
+  // 🚨 Il roster va ricomposto su TUTTE le righe dello stesso slot: una partita di quattro
+  // sono QUATTRO record `booking`, e uno solo porta l'elenco completo (verificato sui dati
+  // veri il 26/07). Contando i giocatori su una riga sola si direbbe «sei solo» a chi solo
+  // non è, e gli si proporrebbe di annullare la partita degli altri.
+  if (action === 'leave') {
+    // 🧪 Su ogni risposta di `leave`, quando la prova a vuoto è accesa, si rimanda indietro
+    // `dry_run: true`. Serve a chi prova: se quel campo non torna, la richiesta è arrivata a
+    // una versione dell'edge che la prova a vuoto non ce l'ha — e uno zero sarebbe stato
+    // letto come «tutto a posto» invece che come «non ho misurato niente».
+    const prova = dryRun ? { dry_run: true } : {};
+    const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    // Ultimo cancello prima della scrittura: da una LEZIONE non si esce da soli (il
+    // maestro e la segreteria vanno avvisati). Il bot già non mostra il bottone; qui
+    // si difende anche dal bot sbagliato.
+    if (righe.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'non_e_una_partita', ...prova });
+    }
+    const rosterUnito = new Map<string, string>();   // chiave normalizzata → nome del gestionale
+    for (const r of righe) {
+      for (const g of r.roster) {
+        const nn = normName(g);
+        if (nn && !rosterUnito.has(nn)) rosterUnito.set(nn, g);
+      }
+    }
+    // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
+    // il confronto è per nome, e le due forme possono differire.
+    const mioNome = [...rosterUnito.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    if (!mioNome) {
+      return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'booking_not_found', ...prova });
+    }
+    if (rosterUnito.size < 2) {
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'unico_giocatore',
+        giocatori: rosterUnito.size,
+        ...prova,
+      });
+    }
+
+    // 🧪 Qui finisce la prova a vuoto: tutto ciò che sta SOPRA è già stato eseguito per
+    // davvero — le righe dello slot, il roster ricomposto, le guardie, il nome scelto —
+    // e sotto c'è l'unica riga che tocca qualcosa. Fermarsi altrove proverebbe un
+    // percorso diverso da quello che poi succederà in produzione.
+    if (dryRun) {
+      console.log(`[booking-write] leave PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: toglierei ${mioNome} (in ${rosterUnito.size}, su ${righe.length} righe)`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        dry_run: true,
+        would: {
+          remove: mioNome,
+          slot: { data: slot.data, ora: slot.ora, campo },
+          giocatori_prima: rosterUnito.size,
+          restano: rosterUnito.size - 1,
+          // Le due misure che hanno smascherato il difetto del 26/07: quante RIGHE
+          // compongono la partita, e il roster ricomposto su tutte.
+          righe: righe.length,
+          roster: [...rosterUnito.values()],
+          id_reserva: righe[0]?.idReserva || null,
+        },
+      });
+    }
+
+    const resLeave = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+      method: 'POST',
+      headers: internalHeaders,
+      body: JSON.stringify({
+        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+        campo,
+        data: slot.data,
+        ora: slot.ora,
+        players: { remove: [mioNome] },
+      }),
+    });
+    const dataLeave = await resLeave.json().catch(() => null) as JsonMap | null;
+    if (!resLeave.ok || !dataLeave?.ok) {
+      console.error(`[booking-write] leave KO HTTP ${resLeave.status}:`, JSON.stringify(dataLeave).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'worker_error',
+        detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
+      });
+    }
+    console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.size})`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      left: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      giocatori_prima: rosterUnito.size,
+      restano: rosterUnito.size - 1,
+    });
+  }
+
   // ── cancel ────────────────────────────────────────────────────────────────
   // Ownership: si disdice SOLO una prenotazione col socio nel roster.
-  const nameVariants = new Set(
-    [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
-      .map(normName).filter(Boolean),
-  );
   const target = dayBookings.find((b) =>
     b.campo === campo && b.ora === slot.ora &&
     b.roster.some((g) => nameVariants.has(normName(g))));
   if (!target) {
     return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found' });
+  }
+
+  // 🚨 Si annulla SOLO una partita in cui non c'è nessun altro (regola del committente,
+  // 26/07). Con altri dentro il socio può al massimo USCIRE (`leave`); chi vuole comunque
+  // annullare passa dalla segreteria. Motivo: l'annullamento toglie il campo anche agli
+  // altri, che l'assistente non ha modo di avvisare — Telegram non consente di scrivere a
+  // chi non ha mai scritto al bot. Il roster si conta su TUTTE le righe dello slot.
+  const rosterSlot = new Set<string>();
+  for (const b of dayBookings) {
+    if (b.campo !== campo || b.ora !== slot.ora) continue;
+    for (const g of b.roster) {
+      const nn = normName(g);
+      if (nn) rosterSlot.add(nn);
+    }
+  }
+  if (rosterSlot.size > 1) {
+    console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.size}`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      cancelled: false,
+      reason: 'ci_sono_altri_giocatori',
+      giocatori: rosterSlot.size,
+    });
   }
 
   const cancelPayload: JsonMap = target.idReserva
