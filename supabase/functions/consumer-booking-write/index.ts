@@ -50,6 +50,14 @@ const ORARIO_CHIUSURA = '23:30';
 const MAX_GIORNI_AVANTI = 30;
 const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: griglia orari operativa
 
+// 🚨⭐ «Una partita chiusa è formata da QUATTRO giocatori» — regola del committente
+// (26/07/2026), detta guardando un roster che ne contava cinque. Non è un limite che
+// imponiamo noi: è com'è fatto il padel, e proprio per questo un conteggio SUPERIORE è la
+// prova che abbiamo letto male il dato — non che c'è un quinto giocatore in campo.
+// Vive qui e non nella kb perché non è una regola del circolo che cambia (le finestre e le
+// soglie stanno nella kb): è la forma del gioco, come i 4 campi qui sopra.
+const GIOCATORI_PARTITA = 4;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -443,6 +451,28 @@ Deno.serve(async (req: Request) => {
         if (nn && !rosterUnito.has(nn)) rosterUnito.set(nn, g);
       }
     }
+    // 🚨⭐ La rete del «mai più di quattro», chiesta dal committente il 26/07 dopo aver
+    // visto un roster da cinque: se ne contiamo più di GIOCATORI_PARTITA, il dato non è
+    // sbagliato — è la NOSTRA lettura a esserlo, e non sappiamo QUALI quattro siano quelli
+    // veri. Si esce prima di guardare chiunque, perché se il roster non è affidabile non lo
+    // è nemmeno la domanda «questo socio è dentro?».
+    //
+    // Caso vero misurato su PROD lo stesso giorno (27/07 13:00 campo 3): la partita era
+    // stata prenotata in app il 20/07 con una giocatrice, poi SOSTITUITA nel sistema del
+    // circolo. Le righe sincronizzate portano il roster aggiornato, la copia in app è
+    // rimasta ferma a com'era: unendole vengono cinque persone, e in campo sono quattro.
+    // Toglierne una a caso sarebbe togliere la persona sbagliata da una partita vera.
+    // 📊 1 slot su 88 nella finestra futura: si perde quel caso, e si va in segreteria.
+    if (rosterUnito.size > GIOCATORI_PARTITA) {
+      console.error(`[booking-write] leave roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${rosterUnito.size} nomi su ${righe.length} righe → ${[...rosterUnito.values()].join(' | ')}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'roster_incoerente',
+        giocatori: rosterUnito.size,
+        ...prova,
+      });
+    }
     // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
     // il confronto è per nome, e le due forme possono differire.
     const mioNome = [...rosterUnito.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
@@ -535,6 +565,18 @@ Deno.serve(async (req: Request) => {
       const nn = normName(g);
       if (nn) rosterSlot.add(nn);
     }
+  }
+  // ⭐ La stessa rete del «mai più di quattro». Qui non cambia l'ESITO — con più di un
+  // giocatore si rifiuta comunque — ma cambia il MOTIVO, e dire «ci sono altri 4 giocatori»
+  // quando il quinto l'abbiamo inventato noi manda il socio a cercare qualcuno che non c'è.
+  if (rosterSlot.size > GIOCATORI_PARTITA) {
+    console.error(`[booking-write] cancel roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${rosterSlot.size} nomi`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      cancelled: false,
+      reason: 'roster_incoerente',
+      giocatori: rosterSlot.size,
+    });
   }
   if (rosterSlot.size > 1) {
     console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.size}`);
