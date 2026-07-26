@@ -321,7 +321,18 @@ Deno.serve(async (req: Request) => {
         clean(typeof g === 'object' && g !== null ? (g as JsonMap).nome : g)));
     }
     if (p.giocatore) roster.push(clean(p.giocatore));
-    if (p.nome) roster.push(clean(p.nome));
+    // 🚨 `staff_booking.nome` NON è una persona: è la lista dei giocatori unita da virgole
+    // e TRONCATA a metà parola («Aldo Bianchi, Bruna Conti, Nicola St»). Infilarla nel
+    // roster com'è aggiunge un giocatore FANTASMA che non è nessuno.
+    // Misurato sui dati veri di PROD il 26/07 con la prova a vuoto: la partita del
+    // committente contava 5 giocatori invece di 4, e avrebbe detto al socio «restano in
+    // campo 4» quando ne restavano 3. Su TEST non si vedeva: là quella riga non c'è.
+    // ⚠️ Non si può nemmeno buttare via: quando la riga non ha altra fonte (staff_booking
+    // a UN giocatore, dove `nome` è un nome vero) è l'unico roster che si ha. Perciò si usa
+    // SOLO come ripiego, e spezzata sulle virgole — un nome singolo non ne ha.
+    if (roster.every((g) => !g) && p.nome) {
+      roster.push(...String(p.nome).split(',').map((n) => clean(n)).filter(Boolean));
+    }
     dayBookings.push({
       campo: campoNum, startMin, endMin, roster, ora,
       idReserva: clean(p.id_reserva ?? p.idReserva),
