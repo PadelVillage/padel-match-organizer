@@ -1,5 +1,16 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Chi gioca in uno slot sta in un modulo a parte perché è la parte che ha già sbagliato due
+// volte, e sepolta qui dentro non era provabile: ora i payload VERI di PROD si danno in pasto
+// alla funzione senza scrivere niente da nessuna parte (`roster-slot.test.ts`).
+import {
+  clean,
+  normName,
+  rosterDaPayload,
+  rosterDelloSlot,
+  sostituito,
+  type RigaSlot,
+} from './roster-slot.ts';
 
 // consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente dei soci
 // (oggi il bot Telegram). Chiamato dall'assistente DOPO la conferma a pulsanti del socio.
@@ -68,8 +79,6 @@ function ok(body: JsonMap) { return json({ ok: true, ...body }); }
 function err(status: number, code: string, message: string) {
   return json({ ok: false, error: code, message }, status);
 }
-function clean(value: unknown) { return String(value ?? '').trim(); }
-
 function safeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ab = enc.encode(a);
@@ -82,15 +91,6 @@ function safeEqual(a: string, b: string): boolean {
 
 function phoneDigits(value: unknown): string {
   return clean(value).replace(/\D/g, '');
-}
-
-function normName(value: unknown): string {
-  return clean(value)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
 }
 
 function romeNow(): { date: string; time: string } {
@@ -313,7 +313,7 @@ Deno.serve(async (req: Request) => {
     .limit(500);
   if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
 
-  type DayBooking = { campo: number; startMin: number; endMin: number; roster: string[]; idReserva: string; ora: string; tipo: string };
+  type DayBooking = RigaSlot & { campo: number; startMin: number; endMin: number; idReserva: string; ora: string; tipo: string };
   const dayBookings: DayBooking[] = [];
   for (const row of dayRows ?? []) {
     const p = (row.payload ?? {}) as JsonMap;
@@ -323,26 +323,15 @@ Deno.serve(async (req: Request) => {
     const startMin = timeToMin(ora);
     const oraFine = clean(p.ora_fine);
     const endMin = /^\d{2}:\d{2}$/.test(oraFine) ? timeToMin(oraFine) : startMin + DURATA_DEFAULT;
-    const roster: string[] = [];
-    if (Array.isArray(p.giocatori)) {
-      roster.push(...p.giocatori.map((g: unknown) =>
-        clean(typeof g === 'object' && g !== null ? (g as JsonMap).nome : g)));
-    }
-    if (p.giocatore) roster.push(clean(p.giocatore));
-    // 🚨 `staff_booking.nome` NON è una persona: è la lista dei giocatori unita da virgole
-    // e TRONCATA a metà parola («Aldo Bianchi, Bruna Conti, Nicola St»). Infilarla nel
-    // roster com'è aggiunge un giocatore FANTASMA che non è nessuno.
-    // Misurato sui dati veri di PROD il 26/07 con la prova a vuoto: la partita del
-    // committente contava 5 giocatori invece di 4, e avrebbe detto al socio «restano in
-    // campo 4» quando ne restavano 3. Su TEST non si vedeva: là quella riga non c'è.
-    // ⚠️ Non si può nemmeno buttare via: quando la riga non ha altra fonte (staff_booking
-    // a UN giocatore, dove `nome` è un nome vero) è l'unico roster che si ha. Perciò si usa
-    // SOLO come ripiego, e spezzata sulle virgole — un nome singolo non ne ha.
-    if (roster.every((g) => !g) && p.nome) {
-      roster.push(...String(p.nome).split(',').map((n) => clean(n)).filter(Boolean));
-    }
     dayBookings.push({
-      campo: campoNum, startMin, endMin, roster, ora,
+      campo: campoNum, startMin, endMin, ora,
+      // Le tre forme del roster e il ripiego sul `nome` troncato stanno in `roster-slot.ts`,
+      // dove sono provate sui payload veri.
+      roster: rosterDaPayload(p),
+      // La scheda del circolo (`-Nome.-Nome.`): c'è sulle righe sincronizzate, mai sugli
+      // `staff_booking`. Serve solo quando le due copie si contraddicono, ma va portata fin
+      // qui perché a valle le righe sono già state ridotte a questo tipo.
+      descrizione: clean(p.descrizione),
       idReserva: clean(p.id_reserva ?? p.idReserva),
       tipo: clean(p.tipo),
     });
@@ -444,39 +433,39 @@ Deno.serve(async (req: Request) => {
     if (righe.some((b) => /lezione/i.test(b.tipo))) {
       return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'non_e_una_partita', ...prova });
     }
-    const rosterUnito = new Map<string, string>();   // chiave normalizzata → nome del gestionale
-    for (const r of righe) {
-      for (const g of r.roster) {
-        const nn = normName(g);
-        if (nn && !rosterUnito.has(nn)) rosterUnito.set(nn, g);
-      }
-    }
     // 🚨⭐ La rete del «mai più di quattro», chiesta dal committente il 26/07 dopo aver
     // visto un roster da cinque: se ne contiamo più di GIOCATORI_PARTITA, il dato non è
-    // sbagliato — è la NOSTRA lettura a esserlo, e non sappiamo QUALI quattro siano quelli
-    // veri. Si esce prima di guardare chiunque, perché se il roster non è affidabile non lo
-    // è nemmeno la domanda «questo socio è dentro?».
-    //
-    // Caso vero misurato su PROD lo stesso giorno (27/07 13:00 campo 3): la partita era
-    // stata prenotata in app il 20/07 con una giocatrice, poi SOSTITUITA nel sistema del
-    // circolo. Le righe sincronizzate portano il roster aggiornato, la copia in app è
-    // rimasta ferma a com'era: unendole vengono cinque persone, e in campo sono quattro.
-    // Toglierne una a caso sarebbe togliere la persona sbagliata da una partita vera.
-    // 📊 1 slot su 88 nella finestra futura: si perde quel caso, e si va in segreteria.
-    if (rosterUnito.size > GIOCATORI_PARTITA) {
-      console.error(`[booking-write] leave roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${rosterUnito.size} nomi su ${righe.length} righe → ${[...rosterUnito.values()].join(' | ')}`);
+    // sbagliato — è la NOSTRA lettura a esserlo, perché la copia in app e le righe
+    // sincronizzate raccontano la stessa partita in due momenti diversi.
+    // ⭐ Decisione del committente lo stesso giorno, davanti alla misura: in quel caso non ci
+    // si ferma più, si prendono i quattro dalla SCHEDA DEL CIRCOLO, che è l'unica aggiornata.
+    // Ci si ferma solo se nemmeno quella ne dà esattamente quattro. Tutto in `roster-slot.ts`.
+    const esito = rosterDelloSlot(righe, GIOCATORI_PARTITA);
+    const rosterUnito = esito.roster;
+    if (esito.incoerente) {
+      console.error(`[booking-write] leave roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi su ${righe.length} righe, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA} → ${[...esito.unione.values()].join(' | ')}`);
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
         reason: 'roster_incoerente',
-        giocatori: rosterUnito.size,
+        giocatori: esito.unione.size,
         ...prova,
       });
+    }
+    if (esito.fonte === 'circolo') {
+      console.log(`[booking-write] leave copie DISCORDI ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi sommando le righe, valgono i ${rosterUnito.size} della scheda del circolo → ${[...rosterUnito.values()].join(' | ')}`);
     }
     // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
     // il confronto è per nome, e le due forme possono differire.
     const mioNome = [...rosterUnito.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
     if (!mioNome) {
+      // ⭐ Due «non ci sei» molto diversi. Se il socio risulta nella nostra copia ma la scheda
+      // del circolo non lo elenca, è stato SOSTITUITO: la partita la vede ancora nel proprio
+      // elenco, e rispondergli «non la trovo» sarebbe un vicolo cieco. Glielo si dice.
+      if (sostituito(esito, nameVariants)) {
+        console.log(`[booking-write] leave ${slot.data} ${slot.ora} C${campo}: ${member.name} è nella nostra copia ma non nella scheda del circolo → sostituito`);
+        return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'non_piu_in_partita', ...prova });
+      }
       return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'booking_not_found', ...prova });
     }
     if (rosterUnito.size < 2) {
@@ -508,6 +497,11 @@ Deno.serve(async (req: Request) => {
           // compongono la partita, e il roster ricomposto su tutte.
           righe: righe.length,
           roster: [...rosterUnito.values()],
+          // Da dove vengono i giocatori: `nostra` = le righe concordavano; `circolo` = si
+          // contraddicevano e ha vinto la scheda aggiornata. Senza questo campo una prova a
+          // vuoto che dà quattro nomi non dice QUALE dei due percorsi ha girato.
+          fonte: esito.fonte,
+          sommando_le_righe: esito.unione.size,
           id_reserva: righe[0]?.idReserva || null,
         },
       });
@@ -558,24 +552,23 @@ Deno.serve(async (req: Request) => {
   // annullare passa dalla segreteria. Motivo: l'annullamento toglie il campo anche agli
   // altri, che l'assistente non ha modo di avvisare — Telegram non consente di scrivere a
   // chi non ha mai scritto al bot. Il roster si conta su TUTTE le righe dello slot.
-  const rosterSlot = new Set<string>();
-  for (const b of dayBookings) {
-    if (b.campo !== campo || b.ora !== slot.ora) continue;
-    for (const g of b.roster) {
-      const nn = normName(g);
-      if (nn) rosterSlot.add(nn);
-    }
-  }
-  // ⭐ La stessa rete del «mai più di quattro». Qui non cambia l'ESITO — con più di un
-  // giocatore si rifiuta comunque — ma cambia il MOTIVO, e dire «ci sono altri 4 giocatori»
-  // quando il quinto l'abbiamo inventato noi manda il socio a cercare qualcuno che non c'è.
-  if (rosterSlot.size > GIOCATORI_PARTITA) {
-    console.error(`[booking-write] cancel roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${rosterSlot.size} nomi`);
+  // ⭐ La stessa lettura di `leave`, con la stessa rete: si conta su TUTTE le righe dello
+  // slot, e se le due copie si contraddicono vale la scheda del circolo. Qui non cambia
+  // l'ESITO — con più di un giocatore si rifiuta comunque — ma cambia il MOTIVO, e dire «ci
+  // sono altri 4 giocatori» quando il quinto l'abbiamo inventato noi manda il socio a
+  // cercare qualcuno che non c'è.
+  const esitoCancel = rosterDelloSlot(
+    dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora),
+    GIOCATORI_PARTITA,
+  );
+  const rosterSlot = esitoCancel.roster;
+  if (esitoCancel.incoerente) {
+    console.error(`[booking-write] cancel roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esitoCancel.unione.size} nomi, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA}`);
     return ok({
       member: { id: member.id, name: member.name },
       cancelled: false,
       reason: 'roster_incoerente',
-      giocatori: rosterSlot.size,
+      giocatori: esitoCancel.unione.size,
     });
   }
   if (rosterSlot.size > 1) {
