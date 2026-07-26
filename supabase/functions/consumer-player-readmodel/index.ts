@@ -1,5 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  clean,
+  compagniDelloSlot,
+  normName,
+  playersFromDescrizione,
+  rosterFromPayload,
+} from './compagni-slot.ts';
 
 // consumer-player-readmodel — ponte dati READ-ONLY per gli assistenti dei SOCI
 // (WhatsApp consumer F2.0 "chat giocatori" e, dal 24/07, il bot Telegram).
@@ -50,7 +57,9 @@ function ok(body: JsonMap) { return json({ ok: true, ...body }); }
 function err(status: number, code: string, message: string) {
   return json({ ok: false, error: code, message }, status);
 }
-function clean(value: unknown) { return String(value ?? '').trim(); }
+// `clean` e `normName` stanno nel modulo `compagni-slot.ts` (vedi l'import in testa):
+// sono le stesse che decidono chi è compagno di chi, e una copia locale finirebbe
+// prima o poi per divergere da quella.
 
 // Confronto in tempo costante (il secret è l'unico gate della funzione).
 function safeEqual(a: string, b: string): boolean {
@@ -67,16 +76,10 @@ function phoneDigits(value: unknown): string {
   return clean(value).replace(/\D/g, '');
 }
 
-// Nome normalizzato per il match sui roster (le prenotazioni identificano i
-// giocatori SOLO per nome, non c'è id/telefono nel payload).
-function normName(value: unknown): string {
-  return clean(value)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+// `normName` — nome normalizzato per il match sui roster (le prenotazioni
+// identificano i giocatori SOLO per nome, non c'è id/telefono nel payload) —
+// arriva ora dal modulo `compagni-slot.ts` insieme alla regola dei compagni:
+// una definizione sola, così non possono divergere.
 
 // Data/ora correnti nel fuso del circolo (le date dei payload sono locali).
 function romeNow(): { date: string; time: string } {
@@ -89,76 +92,10 @@ function romeNow(): { date: string; time: string } {
   return { date, time };
 }
 
-// ROSTER AUTOREVOLE dei record `booking`: copia VERBATIM di playersFromDescrizione
-// in matchpoint-bookings-sync/index.ts (unica regola, non una seconda). Estrae i
-// nomi solo quando la descrizione è in formato lista "-Nome.-Nome." (inizia con
-// '-'); i titoli liberi ("Torneo aziendale") non iniziano con '-' → [].
-// Limite noto ed EREDITATO: uno split su '.' spezza i nomi che contengono un
-// punto ("Alessandro Sir. Amato" → due voci). L'app mostra la stessa cosa: si
-// preferisce restare identici al gestionale piuttosto che avere due parser.
-function playersFromDescrizione(descr: unknown): string[] {
-  const text = clean(descr);
-  if (!text.startsWith('-')) return [];
-  return text
-    .split('.')
-    .map((s) => s.replace(/^-+/, '').trim())
-    .filter(Boolean);
-}
-
-// Roster di una prenotazione: nomi (per il match e per i compagni) e codici
-// socio a 6 cifre, quando ci sono. Misurato su PROD il 24/07 (finestra 60gg):
-//  · booking      → `descrizione` sempre presente (144/144) ed è l'unica fonte
-//                   del roster in 53 record su 144; `giocatori` è un array di
-//                   STRINGHE quando c'è; `giocatore` è l'intestatario.
-//  · staff_booking→ `giocatori` sempre presente (94/94), con OGGETTI
-//                   {nome, codice?, codiceCliente?} in 86 record e stringhe in 20;
-//                   nessuna `descrizione`. `nome` è la lista dei giocatori unita
-//                   da virgole e TRONCATA: serve solo al match storico, mai come
-//                   compagno (per questo esce da `joined`).
-// Prima di questa versione gli oggetti passavano da clean() e diventavano
-// "[object Object]": il roster c'era ma era illeggibile, e il socio non vedeva
-// le proprie partite a 4 create dallo staff.
-function rosterFromPayload(recordType: string, p: JsonMap): {
-  names: string[];
-  codes: string[];
-  joined: string[];
-} {
-  const names: string[] = [];
-  const codes: string[] = [];
-  const joined: string[] = [];
-
-  for (const n of playersFromDescrizione(p.descrizione)) names.push(n);
-
-  if (Array.isArray(p.giocatori)) {
-    for (const g of p.giocatori as unknown[]) {
-      if (g && typeof g === 'object') {
-        const o = g as JsonMap;
-        const nome = clean(o.nome);
-        if (nome) names.push(nome);
-        // `codice` e `codiceCliente` sono DUE numerazioni diverse e nessuna delle due è
-        // garantita: su PROD (misura del 24/07) `codice` non è MAI il codice socio a 6 cifre
-        // (0 elementi su 218) e in 2 casi vale "4", che con un `||` secco faceva da tappo e
-        // oscurava il `codiceCliente` buono ("000004"). Si guardano ENTRAMBI e si tiene il
-        // primo che sia davvero a 6 cifre.
-        for (const c of [clean(o.codice), clean(o.codiceCliente)]) {
-          if (/^[0-9]{6}$/.test(c)) { codes.push(c); break; }
-        }
-      } else {
-        const nome = clean(g);
-        if (nome) names.push(nome);
-      }
-    }
-  }
-
-  if (p.giocatore) names.push(clean(p.giocatore));
-  if (recordType === 'staff_booking' && p.nome) joined.push(clean(p.nome));
-
-  return {
-    names: names.filter(Boolean),
-    codes,
-    joined: joined.filter(Boolean),
-  };
-}
+// `playersFromDescrizione` e `rosterFromPayload` stanno nel modulo `compagni-slot.ts`
+// (import in testa): sono la lettura del roster, cioè la stessa regola che decide chi
+// gioca — e stando in un modulo puro si possono provare coi payload VERI di PRODUZIONE
+// senza deployare niente e senza scrivere niente.
 
 type MemberHit = {
   id: string;
@@ -384,7 +321,7 @@ Deno.serve(async (req: Request) => {
   // data/ora/campo/tipo; dai gemelli si prendono solo i compagni mancanti,
   // perché le due copie hanno roster di completezza diversa.
   const byKey = new Map<string, JsonMap>();
-  const compagniByKey = new Map<string, Map<string, string>>();
+  const listeByKey = new Map<string, string[][]>();
   const order: string[] = [];
 
   for (const row of bookingRows ?? []) {
@@ -409,13 +346,12 @@ Deno.serve(async (req: Request) => {
     // codici, niente telefoni, niente email. Il socio stesso non è un compagno.
     // `roster.joined` (la stringa "Nome1, Nome2, …" troncata di staff_booking)
     // non entra mai qui: servirebbe un compagno inventato a metà.
-    let compagni = compagniByKey.get(key);
-    if (!compagni) { compagni = new Map<string, string>(); compagniByKey.set(key, compagni); }
-    for (const nome of roster.names) {
-      const nn = normName(nome);
-      if (!nn || nameVariants.has(nn) || compagni.has(nn)) continue;
-      compagni.set(nn, nome);
-    }
+    // Le liste della riga si ACCUMULANO separate e si uniscono alla fine, in un posto
+    // solo (`compagniDelloSlot`): unirle qui, nome per nome, fondeva gli «Ospite» di una
+    // stessa partita in uno solo e faceva risultare incompleta una partita di quattro.
+    const liste = listeByKey.get(key);
+    if (liste) liste.push(...roster.liste);
+    else listeByKey.set(key, [...roster.liste]);
 
     if (byKey.has(key)) continue;
     byKey.set(key, {
@@ -430,7 +366,7 @@ Deno.serve(async (req: Request) => {
 
   const bookings: JsonMap[] = order.map((key) => ({
     ...(byKey.get(key) as JsonMap),
-    compagni: [...(compagniByKey.get(key)?.values() ?? [])].slice(0, MAX_COMPAGNI),
+    compagni: compagniDelloSlot(listeByKey.get(key) ?? [], nameVariants, MAX_COMPAGNI),
   }));
   bookings.sort((a, b) =>
     `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
