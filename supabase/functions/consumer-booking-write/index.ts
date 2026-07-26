@@ -1,9 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente WhatsApp
-// consumer (F2.1 «Prenota + Disdici via chat»). Chiamato dal webhook dell'assistente
-// (progetto Supabase separato) DOPO la conferma a pulsanti del socio.
+// consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente dei soci
+// (oggi il bot Telegram). Chiamato dall'assistente DOPO la conferma a pulsanti del socio.
 //
 // Azioni:
 // - availability: { phone, data, ora, durata? } → campi liberi nello slot (proposta).
@@ -11,6 +10,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 //                 matchpoint-bookings-create (riuso: job/record/audit restano lì).
 // - cancel:       { phone, data, ora, campo } → disdetta via matchpoint-bookings-cancel,
 //                 SOLO se il socio è nel roster della prenotazione (ownership).
+// - leave:        { member_id, data, ora, campo } → RITIRO DELLA PRESENZA: toglie il solo
+//                 socio dal roster via matchpoint-bookings-edit. La partita RESTA in piedi
+//                 per gli altri. Rifiuta se il socio è l'unico giocatore (lì servirebbe una
+//                 disdetta, che resta alla segreteria).
 //
 // Identità: telefono → member con la STESSA ricetta di consumer-player-readmodel
 // (ultime 10 cifre su pmo_cloud_records/member). Nessun JWT consumer: gate =
@@ -111,7 +114,7 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
@@ -284,7 +287,7 @@ Deno.serve(async (req: Request) => {
     .limit(500);
   if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
 
-  type DayBooking = { campo: number; startMin: number; endMin: number; roster: string[]; idReserva: string; ora: string };
+  type DayBooking = { campo: number; startMin: number; endMin: number; roster: string[]; idReserva: string; ora: string; tipo: string };
   const dayBookings: DayBooking[] = [];
   for (const row of dayRows ?? []) {
     const p = (row.payload ?? {}) as JsonMap;
@@ -304,6 +307,7 @@ Deno.serve(async (req: Request) => {
     dayBookings.push({
       campo: campoNum, startMin, endMin, roster, ora,
       idReserva: clean(p.id_reserva ?? p.idReserva),
+      tipo: clean(p.tipo),
     });
   }
 
@@ -330,6 +334,13 @@ Deno.serve(async (req: Request) => {
     'Content-Type': 'application/json',
     'X-Consumer-Secret': bridgeSecret,
   };
+
+  // Varianti del nome socio accettate nel roster (serve a `leave` e a `cancel`):
+  // il gestionale scrive ora «Nome Cognome», ora «Cognome Nome».
+  const nameVariants = new Set(
+    [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
+      .map(normName).filter(Boolean),
+  );
 
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
@@ -370,17 +381,110 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ── leave: RITIRO DELLA PRESENZA ──────────────────────────────────────────
+  // Il socio esce da una partita che RESTA in piedi per gli altri: si toglie un solo
+  // nome dal roster, non si disdice il campo. Due differenze da `cancel`:
+  //  · la prenotazione sopravvive e torna INCOMPLETA (riaccende gli avvisi di scadenza);
+  //  · se il socio è l'UNICO giocatore qui non si fa nulla: uscire da soli equivarrebbe a
+  //    disdire, e per quello il chiamante usa `cancel`. Regola del committente (26/07):
+  //    si annulla una partita SOLO se non c'è nessun altro dentro — nessuno può far
+  //    sparire il campo agli altri tre, che il bot non ha modo di avvisare.
+  //
+  // 🚨 Il roster va ricomposto su TUTTE le righe dello stesso slot: una partita di quattro
+  // sono QUATTRO record `booking`, e uno solo porta l'elenco completo (verificato sui dati
+  // veri il 26/07). Contando i giocatori su una riga sola si direbbe «sei solo» a chi solo
+  // non è, e gli si proporrebbe di annullare la partita degli altri.
+  if (action === 'leave') {
+    const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    // Ultimo cancello prima della scrittura: da una LEZIONE non si esce da soli (il
+    // maestro e la segreteria vanno avvisati). Il bot già non mostra il bottone; qui
+    // si difende anche dal bot sbagliato.
+    if (righe.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'non_e_una_partita' });
+    }
+    const rosterUnito = new Map<string, string>();   // chiave normalizzata → nome del gestionale
+    for (const r of righe) {
+      for (const g of r.roster) {
+        const nn = normName(g);
+        if (nn && !rosterUnito.has(nn)) rosterUnito.set(nn, g);
+      }
+    }
+    // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
+    // il confronto è per nome, e le due forme possono differire.
+    const mioNome = [...rosterUnito.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    if (!mioNome) {
+      return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'booking_not_found' });
+    }
+    if (rosterUnito.size < 2) {
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'unico_giocatore',
+        giocatori: rosterUnito.size,
+      });
+    }
+
+    const resLeave = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+      method: 'POST',
+      headers: internalHeaders,
+      body: JSON.stringify({
+        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+        campo,
+        data: slot.data,
+        ora: slot.ora,
+        players: { remove: [mioNome] },
+      }),
+    });
+    const dataLeave = await resLeave.json().catch(() => null) as JsonMap | null;
+    if (!resLeave.ok || !dataLeave?.ok) {
+      console.error(`[booking-write] leave KO HTTP ${resLeave.status}:`, JSON.stringify(dataLeave).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'worker_error',
+        detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
+      });
+    }
+    console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.size})`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      left: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      giocatori_prima: rosterUnito.size,
+      restano: rosterUnito.size - 1,
+    });
+  }
+
   // ── cancel ────────────────────────────────────────────────────────────────
   // Ownership: si disdice SOLO una prenotazione col socio nel roster.
-  const nameVariants = new Set(
-    [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
-      .map(normName).filter(Boolean),
-  );
   const target = dayBookings.find((b) =>
     b.campo === campo && b.ora === slot.ora &&
     b.roster.some((g) => nameVariants.has(normName(g))));
   if (!target) {
     return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found' });
+  }
+
+  // 🚨 Si annulla SOLO una partita in cui non c'è nessun altro (regola del committente,
+  // 26/07). Con altri dentro il socio può al massimo USCIRE (`leave`); chi vuole comunque
+  // annullare passa dalla segreteria. Motivo: l'annullamento toglie il campo anche agli
+  // altri, che l'assistente non ha modo di avvisare — Telegram non consente di scrivere a
+  // chi non ha mai scritto al bot. Il roster si conta su TUTTE le righe dello slot.
+  const rosterSlot = new Set<string>();
+  for (const b of dayBookings) {
+    if (b.campo !== campo || b.ora !== slot.ora) continue;
+    for (const g of b.roster) {
+      const nn = normName(g);
+      if (nn) rosterSlot.add(nn);
+    }
+  }
+  if (rosterSlot.size > 1) {
+    console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.size}`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      cancelled: false,
+      reason: 'ci_sono_altri_giocatori',
+      giocatori: rosterSlot.size,
+    });
   }
 
   const cancelPayload: JsonMap = target.idReserva
