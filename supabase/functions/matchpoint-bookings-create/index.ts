@@ -83,16 +83,22 @@ function safeEqual(a: string, b: string): boolean {
 // Percorso interno CONSUMER (F2.1 «Prenota via chat»): la chiamata arriva da
 // consumer-booking-write con l'header X-Consumer-Secret = CONSUMER_BRIDGE_SECRET
 // (stesso gate del readmodel). Attore sintetico marcato: nei record staff_booking
-// le prenotazioni via chat restano riconoscibili (created_by_email). Env assente
+// le prenotazioni fatte dal socio restano riconoscibili (created_by_email). Env assente
 // → percorso disabilitato, resta solo il JWT staff.
+// ⚠️ Si chiamava `consumer-chat-wa` / `chat-wa@…` fino al 28/07/2026, quando il canale era
+// WhatsApp: smantellato. Il nome dell'attore finisce nella `local_key` del record, quindi
+// è un'identità, non un'etichetta — e legarla al canale la fa invecchiare a ogni cambio di
+// porta. Ora è quella già usata da matchpoint-bookings-edit per lo stesso percorso.
+// 📊 Sui due archivi, prima del cambio: 1 sola riga porta la firma vecchia (PROD, 17/07,
+// cancellata lo stesso giorno) e 0 su TEST ⇒ nessuno storico da spezzare.
 function consumerActor(req: Request): StaffActor | null {
   const secret = clean(Deno.env.get('CONSUMER_BRIDGE_SECRET'));
   if (!secret) return null;
   const provided = clean(req.headers.get('x-consumer-secret'));
   if (!provided || !safeEqual(provided, secret)) return null;
   return {
-    userId: 'consumer-chat-wa',
-    email: 'chat-wa@padelvillage.club',
+    userId: 'consumer-assistente-soci',
+    email: 'assistente-soci@padelvillage.club',
     role: 'consumer',
     permissions: { cloud_sync: true },
   };

@@ -69,14 +69,17 @@ function safeEqual(a: string, b: string): boolean {
 // (stesso gate del readmodel; l'ownership sul roster la verifica il chiamante).
 // Attore sintetico marcato nei record staff_cancel. Env assente → percorso
 // disabilitato, resta solo il JWT staff.
+// ⚠️ Si chiamava `consumer-chat-wa` / `chat-wa@…` fino al 28/07/2026, quando il canale era
+// WhatsApp: smantellato. Stessa identità di matchpoint-bookings-create e -edit, così le tre
+// scritture del socio si riconoscono come una cosa sola e non come tre canali diversi.
 function consumerActor(req: Request): StaffActor | null {
   const secret = clean(Deno.env.get('CONSUMER_BRIDGE_SECRET'));
   if (!secret) return null;
   const provided = clean(req.headers.get('x-consumer-secret'));
   if (!provided || !safeEqual(provided, secret)) return null;
   return {
-    userId: 'consumer-chat-wa',
-    email: 'chat-wa@padelvillage.club',
+    userId: 'consumer-assistente-soci',
+    email: 'assistente-soci@padelvillage.club',
     role: 'consumer',
     permissions: { cloud_sync: true },
   };
