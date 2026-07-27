@@ -14,6 +14,20 @@ import {
   sostituito,
   type RigaSlot,
 } from './roster-slot.ts';
+// ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
+// `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
+// che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
+// leggono insiemi di righe DIVERSI, e confonderle rimetterebbe in circolo il difetto che
+// `roster-slot.ts` esiste per chiudere.
+import {
+  TIPI_CHE_OCCUPANO,
+  TIPO_SOLO_OCCUPAZIONE,
+  campiOccupati,
+  minutiInOra,
+  occupazioneDellaRiga,
+  oraInMinuti,
+  type Occupazione,
+} from './occupazione.ts';
 
 // consumer-booking-write — ponte SCRITTURE prenotazioni per l'assistente dei soci
 // (oggi il bot Telegram). Chiamato dall'assistente DOPO la conferma a pulsanti del socio.
@@ -125,15 +139,10 @@ function romeNow(): { date: string; time: string } {
   return { date, time };
 }
 
-function timeToMin(t: string): number {
-  const [h, m] = String(t).split(':').map((x) => parseInt(x, 10));
-  return (h || 0) * 60 + (m || 0);
-}
-function minToTime(min: number): string {
-  const h = Math.floor(min / 60) % 24;
-  const m = min % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
+// Ora↔minuti vivono in `occupazione.ts` insieme alla regola che li usa: due copie della
+// stessa conversione sono un modo lento di far divergere due conti che devono coincidere.
+const timeToMin = oraInMinuti;
+const minToTime = minutiInOra;
 
 type MemberHit = { id: string; memberId: string; name: string; firstName: string; surname: string };
 
@@ -256,25 +265,21 @@ Deno.serve(async (req: Request) => {
     const rawSlots = schedule && Array.isArray(schedule[String(dow)])
       ? (schedule[String(dow)] as JsonMap[]) : [];
 
-    // Prenotazioni del giorno → intervalli occupati per campo (ora_fine assente = +90').
+    // Ciò che occupa un campo quel giorno: prenotazioni, copie in app E occupazioni «nude»
+    // (manutenzioni e lezioni che vivono solo come `booking_occupancy`). Regola e misure in
+    // `occupazione.ts` — qui non si decide niente, si legge e si dà in pasto al modulo.
     const { data: dayRows, error: dayErr } = await service
       .from('pmo_cloud_records')
       .select('record_type, payload')
-      .in('record_type', ['booking', 'staff_booking'])
+      .in('record_type', TIPI_CHE_OCCUPANO)
       .not('deleted', 'is', true)
       .eq('payload->>data', dayData)
       .limit(500);
     if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
-    const occupied: { campo: number; startMin: number; endMin: number }[] = [];
+    const occupied: Occupazione[] = [];
     for (const row of dayRows ?? []) {
-      const p = (row.payload ?? {}) as JsonMap;
-      const campoNum = parseInt(String(p.campo ?? '').replace(/\D/g, ''), 10);
-      const ora = clean(p.ora);
-      if (!campoNum || !/^\d{2}:\d{2}$/.test(ora)) continue;
-      const startMin = timeToMin(ora);
-      const oraFine = clean(p.ora_fine);
-      const endMin = /^\d{2}:\d{2}$/.test(oraFine) ? timeToMin(oraFine) : startMin + DURATA_DEFAULT;
-      occupied.push({ campo: campoNum, startMin, endMin });
+      const occ = occupazioneDellaRiga((row.payload ?? {}) as JsonMap);
+      if (occ) occupied.push(occ);
     }
 
     const nowMin = timeToMin(nowTime);
@@ -286,9 +291,7 @@ Deno.serve(async (req: Request) => {
       const sStart = timeToMin(start);
       const sEnd = timeToMin(end);
       if (dayData === today && sStart <= nowMin) continue; // oggi: salta le fasce già iniziate
-      const busy = new Set(
-        occupied.filter((b) => b.startMin < sEnd && sStart < b.endMin).map((b) => b.campo),
-      );
+      const busy = campiOccupati(occupied, sStart, sEnd);
       const freeCampi = CAMPI.filter((c) => !busy.has(c));
       slots.push({ ora: start, ora_fine: end, free_campi: freeCampi, campi_totali: CAMPI.length });
     }
@@ -326,28 +329,40 @@ Deno.serve(async (req: Request) => {
     oraFine: minToTime(timeToMin(slotOra) + durata),
   };
 
-  // ── Occupazione del giorno (booking + staff_booking, mirror sync 2 min) ───
+  // ── Le righe del giorno, lette UNA volta e smistate in DUE elenchi ────────
+  // 🚨⭐⭐ Lo smistamento è il punto delicato di tutto il file. Le stesse righe rispondono a
+  // due domande diverse, e la risposta si prende da insiemi diversi:
+  //   · «il campo è libero?» → TUTTO ciò che occupa, comprese le manutenzioni (`occupazioni`);
+  //   · «chi gioca?»         → solo `booking` + `staff_booking` (`dayBookings`).
+  // Un solo elenco per entrambe le domande metterebbe le manutenzioni nel roster — cioè
+  // proprio nella parte che ha già sbagliato due volte a contare i giocatori.
   const { data: dayRows, error: dayErr } = await service
     .from('pmo_cloud_records')
     .select('record_type, payload')
-    .in('record_type', ['booking', 'staff_booking'])
+    .in('record_type', TIPI_CHE_OCCUPANO)
     .not('deleted', 'is', true)
     .eq('payload->>data', slot.data)
     .limit(500);
   if (dayErr) return err(500, 'DB_ERROR', 'Errore lettura prenotazioni del giorno.');
 
-  type DayBooking = RigaSlot & { campo: number; startMin: number; endMin: number; idReserva: string; ora: string; tipo: string };
+  // ⛔ Niente `startMin`/`endMin` qui dentro: l'occupazione non si calcola più su questo
+  // elenco, e lasciarci i minuti sarebbe l'invito a rifarlo qui — dove le manutenzioni non ci
+  // sono. Chi occupa sta in `occupazioni`, chi gioca sta qui.
+  type DayBooking = RigaSlot & { campo: number; idReserva: string; ora: string; tipo: string };
   const dayBookings: DayBooking[] = [];
+  const occupazioni: Occupazione[] = [];
   for (const row of dayRows ?? []) {
     const p = (row.payload ?? {}) as JsonMap;
+    const occ = occupazioneDellaRiga(p);
+    if (occ) occupazioni.push(occ);
+    // Il terzo tipo si ferma QUI: porta l'occupazione del campo e mai un giocatore da cui si
+    // esca (una manutenzione non ha roster, i partecipanti di una lezione non sono una partita).
+    if (clean(row.record_type) === TIPO_SOLO_OCCUPAZIONE) continue;
     const campoNum = parseInt(String(p.campo ?? '').replace(/\D/g, ''), 10);
     const ora = clean(p.ora);
     if (!campoNum || !/^\d{2}:\d{2}$/.test(ora)) continue;
-    const startMin = timeToMin(ora);
-    const oraFine = clean(p.ora_fine);
-    const endMin = /^\d{2}:\d{2}$/.test(oraFine) ? timeToMin(oraFine) : startMin + DURATA_DEFAULT;
     dayBookings.push({
-      campo: campoNum, startMin, endMin, ora,
+      campo: campoNum, ora,
       // Le tre forme del roster e il ripiego sul `nome` troncato stanno in `roster-slot.ts`,
       // dove sono provate sui payload veri. ⭐ Liste SEPARATE, mai un elenco solo: è ciò che
       // permette di contare due «Ospite» come due persone invece che come una.
@@ -363,11 +378,10 @@ Deno.serve(async (req: Request) => {
 
   const slotStart = timeToMin(slot.ora);
   const slotEnd = slotStart + slot.durata;
-  const overlaps = (b: DayBooking) => b.startMin < slotEnd && slotStart < b.endMin;
 
   // ── availability ──────────────────────────────────────────────────────────
   if (action === 'availability') {
-    const busy = new Set(dayBookings.filter(overlaps).map((b) => b.campo));
+    const busy = campiOccupati(occupazioni, slotStart, slotEnd);
     const freeCampi = CAMPI.filter((c) => !busy.has(c));
     console.log(`[booking-write] availability ${slot.data} ${slot.ora}+${slot.durata} → liberi [${freeCampi.join(',')}] per …${last10.slice(-4)}`);
     return ok({
@@ -400,7 +414,9 @@ Deno.serve(async (req: Request) => {
     const prova = dryRun ? { dry_run: true } : {};
 
     // Ricontrollo occupazione: il tap sul pulsante può arrivare dopo minuti.
-    const occupati = new Set(dayBookings.filter(overlaps).map((b) => b.campo));
+    // ⭐ Guarda lo stesso insieme di `availability`, manutenzioni comprese: se guardasse meno,
+    // il socio potrebbe prenotare un campo che la griglia gli aveva già mostrato occupato.
+    const occupati = campiOccupati(occupazioni, slotStart, slotEnd);
     if (occupati.has(campo)) {
       return ok({ member: { id: member.id, name: member.name }, created: false, reason: 'slot_taken', ...prova });
     }
