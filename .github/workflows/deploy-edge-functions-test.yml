@@ -21,7 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Serve la storia intera per confrontare TUTTI i commit dell'invio: con una
+          # profondità di 2 il commit di partenza (github.event.before) spesso non c'è.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -38,12 +40,28 @@ jobs:
             exit 0
           fi
 
-          # Su push: confronta HEAD~1..HEAD e tira fuori le funzioni toccate.
+          # 🚨 Si confrontano TUTTI i commit dell'invio, non solo l'ultimo.
+          # Difetto misurato il 28/07/2026: con `HEAD~1..HEAD` un `git push` che porta
+          # DUE commit ne deployava uno solo — la funzione toccata dal primo restava
+          # indietro, in silenzio e col semaforo VERDE. È il difetto peggiore possibile
+          # per un deploy: si legge come «pubblicato» ciò che non è mai partito, e la
+          # prova successiva misura la versione vecchia credendola nuova.
+          # `github.event.before` è il commit da cui è partito l'invio; se manca (primo
+          # invio di un ramo, storia riscritta) si ripiega sull'ultimo commit.
+          DA="${{ github.event.before }}"
+          if [ -n "$DA" ] && [ "$DA" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "$DA^{commit}" 2>/dev/null; then
+            INTERVALLO="$DA HEAD"
+          else
+            INTERVALLO="HEAD~1 HEAD"
+            echo "::warning::commit di partenza non disponibile: guardo solo l'ultimo commit"
+          fi
+          echo "Intervallo esaminato: $INTERVALLO"
           # Considera solo le cartelle con un entrypoint index.ts: una cartella
           # senza index.ts (es. parser-rules/, che contiene solo parser_rules.json)
           # non è una Edge Function deployabile e va ignorata, altrimenti
           # `supabase functions deploy` fallisce con "Entrypoint path does not exist".
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'supabase/functions/**' \
+          CHANGED=$(git diff --name-only $INTERVALLO -- 'supabase/functions/**' \
             | awk -F/ '$1=="supabase" && $2=="functions" && $3 !~ /^_/ {print $3}' \
             | sort -u \
             | while read -r fn; do
