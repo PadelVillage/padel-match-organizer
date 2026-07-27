@@ -6,8 +6,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   clean,
   normName,
-  rosterDaPayload,
+  listeDaPayload,
+  nomiDellaRiga,
+  restanoSoloOspiti,
   rosterDelloSlot,
+  senzaDiMe,
   sostituito,
   type RigaSlot,
 } from './roster-slot.ts';
@@ -326,8 +329,9 @@ Deno.serve(async (req: Request) => {
     dayBookings.push({
       campo: campoNum, startMin, endMin, ora,
       // Le tre forme del roster e il ripiego sul `nome` troncato stanno in `roster-slot.ts`,
-      // dove sono provate sui payload veri.
-      roster: rosterDaPayload(p),
+      // dove sono provate sui payload veri. ⭐ Liste SEPARATE, mai un elenco solo: è ciò che
+      // permette di contare due «Ospite» come due persone invece che come una.
+      liste: listeDaPayload(p),
       // La scheda del circolo (`-Nome.-Nome.`): c'è sulle righe sincronizzate, mai sugli
       // `staff_booking`. Serve solo quando le due copie si contraddicono, ma va portata fin
       // qui perché a valle le righe sono già state ridotte a questo tipo.
@@ -453,11 +457,11 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (esito.fonte === 'circolo') {
-      console.log(`[booking-write] leave copie DISCORDI ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi sommando le righe, valgono i ${rosterUnito.size} della scheda del circolo → ${[...rosterUnito.values()].join(' | ')}`);
+      console.log(`[booking-write] leave vale la SCHEDA DEL CIRCOLO ${slot.data} ${slot.ora} C${campo}: la nostra copia ne dà ${esito.unione.size}, la scheda ${rosterUnito.length} → ${rosterUnito.join(' | ')}`);
     }
     // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
     // il confronto è per nome, e le due forme possono differire.
-    const mioNome = [...rosterUnito.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    const mioNome = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
     if (!mioNome) {
       // ⭐ Due «non ci sei» molto diversi. Se il socio risulta nella nostra copia ma la scheda
       // del circolo non lo elenca, è stato SOSTITUITO: la partita la vede ancora nel proprio
@@ -468,12 +472,31 @@ Deno.serve(async (req: Request) => {
       }
       return ok({ member: { id: member.id, name: member.name }, left: false, reason: 'booking_not_found', ...prova });
     }
-    if (rosterUnito.size < 2) {
+    if (rosterUnito.length < 2) {
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
         reason: 'unico_giocatore',
-        giocatori: rosterUnito.size,
+        giocatori: rosterUnito.length,
+        ...prova,
+      });
+    }
+
+    // 🚨⭐⭐ Decisione del committente (27/07): se uscendo NON resta in campo nessun socio —
+    // gli altri sono tutti ospiti — la partita non si lascia dal bot, la gestisce la
+    // segreteria. Quei giocatori il circolo non li conosce: il bot non può avvisarli, nessuno
+    // di loro può disdire, e il campo resterebbe occupato senza un socio dietro.
+    // ⭐ Sta QUI e non nel bot perché è una regola del circolo, e il conteggio di chi è in
+    // campo lo decide il gestionale: due sedi che la calcolano finirebbero per divergere,
+    // com'è già successo col conteggio degli «Ospite».
+    const restanti = senzaDiMe(rosterUnito, mioNome);
+    if (restanoSoloOspiti(restanti)) {
+      console.log(`[booking-write] leave SOLO OSPITI ${slot.data} ${slot.ora} C${campo}: uscendo ${mioNome} non resterebbe nessun socio (${restanti.length} ospiti) → segreteria`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        left: false,
+        reason: 'solo_ospiti',
+        giocatori: rosterUnito.length,
         ...prova,
       });
     }
@@ -483,7 +506,7 @@ Deno.serve(async (req: Request) => {
     // e sotto c'è l'unica riga che tocca qualcosa. Fermarsi altrove proverebbe un
     // percorso diverso da quello che poi succederà in produzione.
     if (dryRun) {
-      console.log(`[booking-write] leave PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: toglierei ${mioNome} (in ${rosterUnito.size}, su ${righe.length} righe)`);
+      console.log(`[booking-write] leave PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: toglierei ${mioNome} (in ${rosterUnito.length}, su ${righe.length} righe)`);
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
@@ -491,12 +514,12 @@ Deno.serve(async (req: Request) => {
         would: {
           remove: mioNome,
           slot: { data: slot.data, ora: slot.ora, campo },
-          giocatori_prima: rosterUnito.size,
-          restano: rosterUnito.size - 1,
+          giocatori_prima: rosterUnito.length,
+          restano: rosterUnito.length - 1,
           // Le due misure che hanno smascherato il difetto del 26/07: quante RIGHE
           // compongono la partita, e il roster ricomposto su tutte.
           righe: righe.length,
-          roster: [...rosterUnito.values()],
+          roster: [...rosterUnito],
           // Da dove vengono i giocatori: `nostra` = le righe concordavano; `circolo` = si
           // contraddicevano e ha vinto la scheda aggiornata. Senza questo campo una prova a
           // vuoto che dà quattro nomi non dice QUALE dei due percorsi ha girato.
@@ -528,13 +551,13 @@ Deno.serve(async (req: Request) => {
         detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
       });
     }
-    console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.size})`);
+    console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.length})`);
     return ok({
       member: { id: member.id, name: member.name },
       left: true,
       slot: { data: slot.data, ora: slot.ora, campo },
-      giocatori_prima: rosterUnito.size,
-      restano: rosterUnito.size - 1,
+      giocatori_prima: rosterUnito.length,
+      restano: rosterUnito.length - 1,
     });
   }
 
@@ -542,7 +565,7 @@ Deno.serve(async (req: Request) => {
   // Ownership: si disdice SOLO una prenotazione col socio nel roster.
   const target = dayBookings.find((b) =>
     b.campo === campo && b.ora === slot.ora &&
-    b.roster.some((g) => nameVariants.has(normName(g))));
+    nomiDellaRiga(b).some((g) => nameVariants.has(normName(g))));
   if (!target) {
     return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found' });
   }
@@ -571,13 +594,13 @@ Deno.serve(async (req: Request) => {
       giocatori: esitoCancel.unione.size,
     });
   }
-  if (rosterSlot.size > 1) {
-    console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.size}`);
+  if (rosterSlot.length > 1) {
+    console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.length}`);
     return ok({
       member: { id: member.id, name: member.name },
       cancelled: false,
       reason: 'ci_sono_altri_giocatori',
-      giocatori: rosterSlot.size,
+      giocatori: rosterSlot.length,
     });
   }
 
