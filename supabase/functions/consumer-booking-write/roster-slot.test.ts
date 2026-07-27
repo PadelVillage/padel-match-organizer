@@ -7,8 +7,11 @@
 import assert from 'node:assert/strict';
 import {
   playersFromDescrizione,
-  rosterDaPayload,
+  giocatoriDelleListe,
+  listeDaPayload,
+  restanoSoloOspiti,
   rosterDelloSlot,
+  senzaDiMe,
   sostituito,
   normName,
   type RigaSlot,
@@ -29,10 +32,11 @@ function test(name: string, fn: () => void) {
 
 const MAX = 4;
 const rigaDa = (payload: Record<string, unknown>): RigaSlot => ({
-  roster: rosterDaPayload(payload),
+  liste: listeDaPayload(payload),
   descrizione: (payload.descrizione ?? null) as string | null,
 });
-const nomi = (m: Map<string, string>) => [...m.values()].sort();
+const nomi = (r: string[] | Map<string, string>) =>
+  (Array.isArray(r) ? [...r] : [...r.values()]).sort();
 const varianti = (...n: string[]) => new Set(n.map(normName));
 
 // ── I dati VERI di PROD ───────────────────────────────────────────────────────────────────
@@ -81,10 +85,18 @@ test('1) caso VERO di PROD: le copie discordano → vincono i quattro della sche
   assert.ok(nomi(e.unione).includes('Federica Da Rios'));
 });
 
-test('2) caso VERO di PROD: lo slot con un «Ospite» NON viene toccato', () => {
-  // 26/07 16:00 campo 3: la nostra lettura dà 3 nomi, la scheda del circolo ne dà 4 perché
-  // include «Ospite». Sotto i quattro NON si consulta la scheda: cambiare qui vorrebbe dire
-  // cambiare di rimbalzo anche gli avvisi, che oggi funzionano. 4 slot su 88 sono così.
+test('2) caso VERO di PROD: l’«Ospite» che sta SOLO nella scheda del circolo entra nel conteggio', () => {
+  // 26/07 16:00 campo 3: la nostra copia dà 3 nomi, la scheda del circolo ne dà 4 perché
+  // include «Ospite».
+  // 🚨⭐⭐ QUESTO TEST DICEVA IL CONTRARIO fino al 27/07 («l’Ospite non deve entrare»), con la
+  // motivazione «sotto i quattro non si consulta la scheda, cambiare qui cambierebbe di
+  // rimbalzo gli avvisi». Quella motivazione è stata SUPERATA DAI FATTI: gli avvisi non
+  // passano di qui — li calcola il readmodel, che dal 26/07 l’Ospite lo conta già. Le due
+  // sedi dicevano quindi due numeri diversi sulla stessa partita, e la misura del 27/07 ha
+  // mostrato che a rimetterci era il socio: 11 slot su 68 contati in difetto, 4 dei quali si
+  // sentivano dire «sei solo» avendo il campo pieno.
+  // ⭐ La decisione del committente (26/07) vale in tutt’e due le sedi: «Ospite è una persona
+  // vera che verrà a giocare» ⇒ si conta.
   const D = '-Debora Barbarito.-federica dan.-Massimiliano Triches.-Ospite.';
   const slot: RigaSlot[] = [
     rigaDa({ giocatore: 'Debora Barbarito', descrizione: D }),
@@ -92,8 +104,14 @@ test('2) caso VERO di PROD: lo slot con un «Ospite» NON viene toccato', () => 
     rigaDa({ giocatore: 'Massimiliano Triches', descrizione: D }),
   ];
   const e = rosterDelloSlot(slot, MAX);
-  assert.equal(e.fonte, 'nostra');
-  assert.equal(e.roster.size, 3, 'l’Ospite della scheda non deve entrare');
+  assert.equal(e.fonte, 'circolo', 'la nostra copia non dà una partita piena, la scheda sì');
+  assert.equal(e.roster.length, 4, 'la partita è al completo: tre soci e un ospite');
+  assert.ok(e.roster.includes('Ospite'));
+  // ⚠️ Controllo che nessuno dei tre risulti «sostituito» solo perché ha vinto la scheda:
+  // ci sono tutti, e dirgli il contrario sarebbe un vicolo cieco.
+  for (const chi of ['Debora Barbarito', 'federica dan', 'Massimiliano Triches']) {
+    assert.equal(sostituito(e, varianti(chi)), false, `${chi} gioca eccome`);
+  }
 });
 
 test('3) caso VERO di PROD: uno slot sano resta identico, e la scheda non viene guardata', () => {
@@ -117,7 +135,7 @@ test('4) la scheda del circolo deve dare ESATTAMENTE quattro, non «al massimo»
   ];
   const e = rosterDelloSlot(slot, MAX);
   assert.equal(e.incoerente, true);
-  assert.equal(e.roster.size, 0, 'un roster incoerente non deve offrire nessun nome');
+  assert.equal(e.roster.length, 0, 'un roster incoerente non deve offrire nessun nome');
 });
 
 test('5) sfora e la scheda del circolo NON c’è → ci si ferma come prima', () => {
@@ -146,7 +164,7 @@ test('7) il confine si prova da tutt’e due i versi: 4 non consulta la scheda, 
   const cinque = [rigaDa({ giocatori: ['Uno Rossi', 'Due Rossi', 'Tre Rossi', 'Quattro Rossi', 'Cinque Rossi'], descrizione: D })];
   assert.equal(rosterDelloSlot(quattro, MAX).fonte, 'nostra');
   assert.equal(rosterDelloSlot(cinque, MAX).fonte, 'circolo');
-  assert.equal(rosterDelloSlot(cinque, MAX).roster.size, 4);
+  assert.equal(rosterDelloSlot(cinque, MAX).roster.length, 4);
 });
 
 test('8) chi è stato SOSTITUITO si riconosce, e non si confonde con chi non c’è mai stato', () => {
@@ -164,23 +182,23 @@ test('9) su uno slot sano nessuno è «sostituito» (la scheda non è stata usat
 
 test('10) il «nome» dello staff_booking è un RIPIEGO, mai un giocatore in più', () => {
   // Con `giocatori` valorizzato, il campo troncato non deve entrare: era il quinto fantasma.
-  const conGiocatori = rosterDaPayload({
+  const conGiocatori = listeDaPayload({
     nome: 'Aldo Bianchi, Bruna Conti, Nicola St',
     giocatori: [{ nome: 'Aldo Bianchi' }, { nome: 'Bruna Conti' }, { nome: 'Nicola Stella' }],
   });
-  assert.deepEqual(conGiocatori, ['Aldo Bianchi', 'Bruna Conti', 'Nicola Stella']);
+  assert.deepEqual(conGiocatori, [['Aldo Bianchi', 'Bruna Conti', 'Nicola Stella']]);
   // Senza altra fonte è l'unico roster che si ha, e va spezzato sulle virgole.
-  const soloNome = rosterDaPayload({ nome: 'Aldo Bianchi, Bruna Conti, Nicola St' });
-  assert.deepEqual(soloNome, ['Aldo Bianchi', 'Bruna Conti', 'Nicola St']);
+  const soloNome = listeDaPayload({ nome: 'Aldo Bianchi, Bruna Conti, Nicola St' });
+  assert.deepEqual(soloNome, [['Aldo Bianchi', 'Bruna Conti', 'Nicola St']]);
   // Il caso per cui il ripiego esiste: uno `staff_booking` a un giocatore solo.
-  assert.deepEqual(rosterDaPayload({ nome: 'Aldo Bianchi' }), ['Aldo Bianchi']);
+  assert.deepEqual(listeDaPayload({ nome: 'Aldo Bianchi' }), [['Aldo Bianchi']]);
 });
 
 test('11) le tre forme del roster di una riga si leggono tutte', () => {
-  assert.deepEqual(rosterDaPayload({ giocatori: [{ nome: 'Uno Rossi' }] }), ['Uno Rossi']);
-  assert.deepEqual(rosterDaPayload({ giocatori: ['Uno Rossi'] }), ['Uno Rossi']);
-  assert.deepEqual(rosterDaPayload({ giocatore: 'Uno Rossi' }), ['Uno Rossi']);
-  assert.deepEqual(rosterDaPayload({}), []);
+  assert.deepEqual(listeDaPayload({ giocatori: [{ nome: 'Uno Rossi' }] }), [['Uno Rossi']]);
+  assert.deepEqual(listeDaPayload({ giocatori: ['Uno Rossi'] }), [['Uno Rossi']]);
+  assert.deepEqual(listeDaPayload({ giocatore: 'Uno Rossi' }), [['Uno Rossi']]);
+  assert.deepEqual(listeDaPayload({}), []);
 });
 
 test('12) playersFromDescrizione resta identica alla regola del sync', () => {
@@ -194,7 +212,7 @@ test('13) la soglia arriva da FUORI, non è scritta qui dentro', () => {
   // Se qualcuno riscrivesse il 4 a mano nel modulo, questo cadrebbe.
   const slot = [rigaDa({ giocatori: ['A Rossi', 'B Rossi', 'C Rossi'], descrizione: '-A Rossi.-B Rossi.' })];
   assert.equal(rosterDelloSlot(slot, 2).fonte, 'circolo', 'con soglia 2, tre giocatori sforano');
-  assert.equal(rosterDelloSlot(slot, 2).roster.size, 2);
+  assert.equal(rosterDelloSlot(slot, 2).roster.length, 2);
   assert.equal(rosterDelloSlot(slot, 3).fonte, 'nostra', 'con soglia 3, tre giocatori vanno bene');
 });
 
@@ -211,6 +229,142 @@ test('14) l’ORDINE delle righe non conta: la scheda si cerca su tutte, non sul
   assert.equal(e.fonte, 'circolo');
   assert.deepEqual(nomi(e.roster),
     ['Giorgia Eporti', 'Pierangela Barbera', 'Silvia Balzarini', 'Valeria Moschet']);
+});
+
+// ── I casi del 27/07: il conteggio in difetto ─────────────────────────────────────────────
+// ⭐ Tutti e tre i primi sono payload VERI letti da PROD il 27/07 in sola lettura, e sono i
+// due estremi della misura: quelli contati male e quelli contati bene. Una batteria fatta di
+// soli «deve sbagliare» sarebbe superata anche da un codice che gonfia sempre a quattro.
+
+test('15) caso VERO di PROD: TRE «Ospite» sono tre persone, non la stessa tre volte', () => {
+  // 27/07 21:00 campi 1-4, Massimiliano Triches: una riga sola, l’elenco `giocatori` ce li ha
+  // tutti. Prima del 27/07 uscivano DUE giocatori (l’unione per nome li fondeva) e il socio
+  // avrebbe letto «restano in campo 1» mentre in campo restavano tre.
+  const D = '-Massimiliano Triches.-Ospite.-Ospite.-Ospite.';
+  const slot: RigaSlot[] = [rigaDa({
+    giocatore: 'Massimiliano Triches',
+    giocatori: ['Massimiliano Triches', 'Ospite', 'Ospite', 'Ospite'],
+    descrizione: D,
+  })];
+  const e = rosterDelloSlot(slot, MAX);
+  assert.equal(e.roster.length, 4, 'quattro persone in campo');
+  assert.equal(e.roster.filter((n) => n === 'Ospite').length, 3, 'tre ospiti distinti');
+  // ⭐ La nostra copia bastava: la scheda non è dovuta intervenire. Distinguere i due percorsi
+  // conta — un «4» ottenuto dalla scheda nasconderebbe che il conteggio nostro è ancora rotto.
+  assert.equal(e.fonte, 'nostra');
+});
+
+test('16) l’intestatario NON raddoppia: `giocatore` e `giocatori` sono liste separate', () => {
+  // 🚨 È il motivo per cui le liste non si concatenano mai. Concatenandole, Triches comparirebbe
+  // due volte e la partita ne conterebbe cinque — cioè il difetto opposto, che fa scattare la
+  // rete del «mai più di quattro» e blocca un socio che invece poteva uscire.
+  const slot: RigaSlot[] = [rigaDa({
+    giocatore: 'Uno Rossi',
+    giocatori: ['Uno Rossi', 'Due Rossi', 'Tre Rossi', 'Quattro Rossi'],
+  })];
+  const e = rosterDelloSlot(slot, MAX);
+  assert.equal(e.roster.length, 4);
+  assert.equal(e.roster.filter((n) => n === 'Uno Rossi').length, 1);
+  assert.equal(e.incoerente, false, 'non deve sforare per colpa dell’intestatario');
+});
+
+test('17) le righe sono COPIE: lo stesso elenco su due righe non si somma', () => {
+  // Quattro righe che ripetono la stessa partita (una per giocatore) devono dare quattro
+  // giocatori, non sedici. È il motivo per cui si prende il massimo e non la somma.
+  const gio = ['Uno Rossi', 'Due Rossi', 'Ospite', 'Ospite'];
+  const slot: RigaSlot[] = [
+    rigaDa({ giocatore: 'Uno Rossi', giocatori: gio }),
+    rigaDa({ giocatore: 'Due Rossi', giocatori: gio }),
+  ];
+  const e = rosterDelloSlot(slot, MAX);
+  assert.equal(e.roster.length, 4);
+  assert.equal(e.roster.filter((n) => n === 'Ospite').length, 2, 'due ospiti, non quattro');
+});
+
+test('18) caso VERO di PROD: un socio e tre ospiti su UNA riga → quattro, non uno', () => {
+  // 27/07 19:30 campo 2, Sergio Dal Bianco. La nostra copia ha SOLO l’intestatario: i tre
+  // ospiti stanno unicamente nella scheda del circolo. Prima del 27/07 da qui usciva UN
+  // giocatore e l’edge rispondeva «unico_giocatore» — cioè «sei solo, qui non si esce, si
+  // annulla» — mentre il bot, che li conta bene, gli rimostrava il bottone «Esci»: un giro
+  // chiuso. È il caso che ha fatto scoprire tutto.
+  const D = '-Ospite.-Ospite.-Ospite.-Sergio Dal Bianco.';
+  const slot: RigaSlot[] = [rigaDa({ giocatore: 'Sergio Dal Bianco', descrizione: D })];
+  const e = rosterDelloSlot(slot, MAX);
+  assert.equal(e.fonte, 'circolo');
+  assert.equal(e.roster.length, 4);
+  assert.ok(e.roster.includes('Sergio Dal Bianco'));
+  assert.equal(sostituito(e, varianti('Sergio Dal Bianco')), false, 'c’è nella scheda: non è sostituito');
+});
+
+test('19) chi resta in campo: soli ospiti sì, ma due soci e due ospiti NO', () => {
+  // ⭐ Decisione del committente (27/07): se uscendo non resta nessun socio, la partita la
+  // gestisce la segreteria. La coppia opposta è ciò che rende la regola misurabile: senza il
+  // secondo caso, un «rifiuta sempre» passerebbe.
+  assert.equal(restanoSoloOspiti(['Ospite', 'Ospite', 'Ospite']), true);
+  assert.equal(restanoSoloOspiti(['Ospite']), true);
+  assert.equal(restanoSoloOspiti(['Uno Rossi', 'Ospite', 'Ospite']), false, 'resta un socio');
+  assert.equal(restanoSoloOspiti([]), false, 'nessuno in campo non è «soli ospiti»: è un altro caso');
+  // Il confronto è sul nome normalizzato, non sulla grafia esatta.
+  assert.equal(restanoSoloOspiti(['OSPITE', ' ospite ']), true);
+});
+
+test('20) uscendo si toglie UNA occorrenza, non tutti gli omonimi', () => {
+  // 🚨 Se togliesse tutti i nomi uguali, un socio che esce da una partita con tre ospiti
+  // lascerebbe zero giocatori invece di tre — e la partita risulterebbe vuota.
+  assert.deepEqual(
+    senzaDiMe(['Ospite', 'Ospite', 'Ospite', 'Sergio Dal Bianco'], 'Sergio Dal Bianco'),
+    ['Ospite', 'Ospite', 'Ospite'],
+  );
+  assert.deepEqual(senzaDiMe(['Ospite', 'Ospite'], 'Ospite'), ['Ospite']);
+  assert.deepEqual(senzaDiMe(['Uno Rossi'], 'Due Rossi'), ['Uno Rossi'], 'chi non c’è non toglie nulla');
+});
+
+test('21) il conteggio delle liste: massimo dentro UNA lista, mai la somma fra liste', () => {
+  // La regola nuda, senza il contorno dello slot. Deve essere identica a `compagniDelloSlot`
+  // del readmodel: due conteggi della stessa cosa divergono, e questo decide se un socio è solo.
+  assert.deepEqual(giocatoriDelleListe([['A', 'Ospite', 'Ospite']]), ['A', 'Ospite', 'Ospite']);
+  assert.deepEqual(
+    giocatoriDelleListe([['A', 'Ospite', 'Ospite'], ['A', 'Ospite', 'Ospite']]),
+    ['A', 'Ospite', 'Ospite'],
+    'due copie della stessa lista non raddoppiano niente',
+  );
+  assert.deepEqual(
+    giocatoriDelleListe([['A', 'Ospite'], ['A', 'Ospite', 'Ospite', 'Ospite']]),
+    ['A', 'Ospite', 'Ospite', 'Ospite'],
+    'vince la lista più informativa',
+  );
+  assert.deepEqual(giocatoriDelleListe([]), []);
+});
+
+test('22) la scheda entra in gioco SOLO se dà una partita piena', () => {
+  // 🚨 Il confine della regola nuova, provato dai due versi. Una scheda che ne dà tre mentre
+  // noi ne leggiamo due NON deve vincere: non sapremmo se il terzo c’è davvero, e gonfiare il
+  // conteggio manderebbe la partita fra le complete zittendo gli avvisi.
+  const tre = [rigaDa({ giocatore: 'Uno Rossi', descrizione: '-Uno Rossi.-Due Rossi.-Tre Rossi.' })];
+  assert.equal(rosterDelloSlot(tre, MAX).fonte, 'nostra');
+  assert.equal(rosterDelloSlot(tre, MAX).roster.length, 1);
+  const quattro = [rigaDa({ giocatore: 'Uno Rossi', descrizione: '-Uno Rossi.-Due Rossi.-Tre Rossi.-Ospite.' })];
+  assert.equal(rosterDelloSlot(quattro, MAX).fonte, 'circolo');
+  assert.equal(rosterDelloSlot(quattro, MAX).roster.length, 4);
+});
+
+test('23) una scheda che ne dà PIÙ di quattro non vince: il tetto vale anche per lei', () => {
+  // 🚨 Caso nato da un sabotaggio rimasto VERDE il 27/07: sostituendo «esattamente quattro»
+  // con «almeno quattro» nessun test cadeva, perché nessuno aveva una scheda più lunga di
+  // quattro. Non è un caso di fantasia: `playersFromDescrizione` spezza sul punto, quindi un
+  // nome puntato («Alessandro Sir. Amato») conta due voci e una partita di quattro può
+  // presentarne cinque. Accettarla vorrebbe dire mettere in campo cinque giocatori — cioè
+  // proprio ciò che la rete del «mai più di quattro» esiste per impedire.
+  const D = '-Uno Rossi.-Due Rossi.-Tre Rossi.-Alessandro Sir. Amato.';
+  assert.equal(playersFromDescrizione(D).length, 5, 'il nome puntato si spezza: cinque voci');
+  const slot: RigaSlot[] = [
+    rigaDa({ giocatore: 'Uno Rossi', descrizione: D }),
+    rigaDa({ giocatore: 'Due Rossi', descrizione: D }),
+  ];
+  const e = rosterDelloSlot(slot, MAX);
+  assert.ok(e.roster.length <= MAX, 'mai più di quattro, da nessuna fonte');
+  assert.equal(e.fonte, 'nostra', 'una scheda troppo lunga non è affidabile: si resta alla nostra copia');
+  assert.equal(e.roster.length, 2);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
