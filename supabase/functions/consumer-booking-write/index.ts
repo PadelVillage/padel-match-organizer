@@ -22,6 +22,12 @@ import {
 // - availability: { phone, data, ora, durata? } → campi liberi nello slot (proposta).
 // - create:       { phone, data, ora, durata?, campo } → prenotazione VERA via
 //                 matchpoint-bookings-create (riuso: job/record/audit restano lì).
+//                 🧪 `dry_run: true` → PROVA A VUOTO, stessa forma di `leave`: fa tutto
+//                 (identità, validazione dello slot, occupazione RILETTA, richiesta
+//                 composta) e si ferma UN PASSO PRIMA della riga che occupa il campo,
+//                 restituendo in `would.richiesta` ciò che partirebbe davvero.
+//                 🚨 `created` resta `false`: chi non conosce il campo `dry_run` legge
+//                 «non ho prenotato», che è la verità.
 // - cancel:       { phone, data, ora, campo } → disdetta via matchpoint-bookings-cancel,
 //                 SOLO se il socio è nel roster della prenotazione (ownership).
 // - leave:        { member_id, data, ora, campo } → RITIRO DELLA PRESENZA: toglie il solo
@@ -71,6 +77,19 @@ const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: gri
 // Vive qui e non nella kb perché non è una regola del circolo che cambia (le finestre e le
 // soglie stanno nella kb): è la forma del gioco, come i 4 campi qui sopra.
 const GIOCATORI_PARTITA = 4;
+
+// La nota che resta scritta SULLA PRENOTAZIONE, e che lo staff legge nel gestionale.
+// ⚠️ Fino al 28/07/2026 diceva «Prenotata via chat WhatsApp»: falso da quando WhatsApp è
+// stato smantellato, e fragile in partenza perché legava la nota al CANALE — la parte che
+// invecchia per prima (WhatsApp è già la seconda porta chiusa in un mese). Dice invece la
+// cosa che allo staff serve davvero sapere e che resta vera cambiando canale: questa
+// prenotazione non l'ha fatta la segreteria, se l'è fatta il socio.
+const NOTA_PRENOTAZIONE = "Prenotata dal socio con l'assistente";
+
+// 🧪 Dove esiste la prova a vuoto. È un elenco e non un `if` sparso perché il rifiuto qui
+// sotto è ciò che rende la prova AFFIDABILE: un'edge che non conosce un'azione risponde
+// «non ce l'ho» invece di ignorare il campo e scrivere per davvero.
+const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create'];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -139,12 +158,13 @@ Deno.serve(async (req: Request) => {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
-  // 🧪 Prova a vuoto (oggi solo per `leave`). Deve essere chiesta ESPLICITAMENTE con un
-  // booleano vero: qualunque altra cosa — «true», 1, la chiave assente — vale spento, così
-  // un refuso non trasforma una scrittura vera in una prova silenziosa (né viceversa).
+  // 🧪 Prova a vuoto. Deve essere chiesta ESPLICITAMENTE con un booleano vero: qualunque
+  // altra cosa — «true», 1, la chiave assente — vale spento, così un refuso non trasforma
+  // una scrittura vera in una prova silenziosa (né viceversa).
   const dryRun = body.dry_run === true;
-  if (dryRun && action !== 'leave') {
-    return err(400, 'DRY_RUN_NOT_SUPPORTED', `La prova a vuoto esiste solo per «leave», non per «${action}».`);
+  if (dryRun && !AZIONI_CON_PROVA_A_VUOTO.includes(action)) {
+    const dove = AZIONI_CON_PROVA_A_VUOTO.map((a) => `«${a}»`).join(' e ');
+    return err(400, 'DRY_RUN_NOT_SUPPORTED', `La prova a vuoto esiste solo per ${dove}, non per «${action}».`);
   }
 
   // Identità: phone OPPURE member_id (mai insieme), stessa ricetta di
@@ -374,24 +394,59 @@ Deno.serve(async (req: Request) => {
 
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
+    // 🧪 Come per `leave`: quando la prova a vuoto è accesa, se la porta indietro OGNI
+    // risposta di `create`. Se non torna, la richiesta è arrivata a una versione dell'edge
+    // che non ce l'ha — e lì «non ho prenotato» andrebbe letto come «non ho misurato niente».
+    const prova = dryRun ? { dry_run: true } : {};
+
     // Ricontrollo occupazione: il tap sul pulsante può arrivare dopo minuti.
-    const taken = dayBookings.some((b) => b.campo === campo && overlaps(b));
-    if (taken) return ok({ member: { id: member.id, name: member.name }, created: false, reason: 'slot_taken' });
+    const occupati = new Set(dayBookings.filter(overlaps).map((b) => b.campo));
+    if (occupati.has(campo)) {
+      return ok({ member: { id: member.id, name: member.name }, created: false, reason: 'slot_taken', ...prova });
+    }
+
+    // ⭐ La richiesta si compone UNA volta sola e serve a tutt'e due le strade. Se la prova a
+    // vuoto ne stampasse una copia scritta accanto, proverebbe una richiesta che non è quella
+    // che parte — ed è proprio la divergenza fra le due che nessuno vedrebbe.
+    const richiesta = {
+      campo,
+      data: slot.data,
+      ora: slot.ora,
+      oraFine: slot.oraFine,
+      durata: slot.durata,
+      nome: member.name,
+      tipo: 'partita',
+      note: NOTA_PRENOTAZIONE,
+      giocatori: [{ nome: member.name }],
+    };
+
+    // 🧪 Qui finisce la prova a vuoto: tutto ciò che sta SOPRA è già stato eseguito per
+    // davvero — identità, slot validato, occupazione riletta un istante fa, richiesta
+    // composta — e sotto c'è l'unica riga che occupa il campo. Fermarsi altrove proverebbe
+    // un percorso diverso da quello che poi succederà in produzione.
+    if (dryRun) {
+      console.log(`[booking-write] create PROVA A VUOTO ${slot.data} ${slot.ora} C${campo} per ${member.name}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        created: false,
+        dry_run: true,
+        would: {
+          slot: { data: slot.data, ora: slot.ora, ora_fine: slot.oraFine, durata: slot.durata, campo },
+          // La richiesta ESATTA che partirebbe: è la sola cosa che questo percorso non ha mai
+          // mostrato a nessuno, ed è dove si legge la nota che resta scritta sulla prenotazione.
+          richiesta,
+          // L'occupazione del momento: dice PERCHÉ quel campo risultava prenotabile. Senza,
+          // un «avrei prenotato» non distingue «era libero» da «non ho guardato».
+          campi_liberi: CAMPI.filter((c) => !occupati.has(c)),
+          righe_nello_slot: dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora).length,
+        },
+      });
+    }
 
     const res = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
       method: 'POST',
       headers: internalHeaders,
-      body: JSON.stringify({
-        campo,
-        data: slot.data,
-        ora: slot.ora,
-        oraFine: slot.oraFine,
-        durata: slot.durata,
-        nome: member.name,
-        tipo: 'partita',
-        note: 'Prenotata via chat WhatsApp',
-        giocatori: [{ nome: member.name }],
-      }),
+      body: JSON.stringify(richiesta),
     });
     const data = await res.json().catch(() => null) as JsonMap | null;
     if (!res.ok || !data?.ok) {
