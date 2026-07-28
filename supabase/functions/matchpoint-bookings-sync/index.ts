@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
+import { decideFullTick, FULL_TICK_MARKER_KEY, type FullTickMarker } from './full-tick.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -975,11 +976,53 @@ Deno.serve(async (req) => {
     // I booking REALI arrivano SEMPRE dall'export Excel completo → la loro freschezza e
     // riconciliazione sono invariate su OGNI tick. Solo la manutenzione è a bassa cadenza.
     // Il manuale ("Aggiorna prenotazioni") è light = veloce: all'operatore servono le
-    // prenotazioni, non la manutenzione. Scelta stateless via orologio (niente cron da toccare).
+    // prenotazioni, non la manutenzione. Scelta via orologio + RECUPERO (28/07): se il giro
+    // pieno di un quarto d'ora salta (es. 502 del gateway), il primo tick utile diventa
+    // pieno, così la manutenzione non aspetta il quarto d'ora dopo. Decisione e paracadute
+    // (cooldown anti-504) in full-tick.ts; il marker sta in matchpoint_data.
     const reqBodyForMode = await req.clone().json().catch(() => ({} as JsonMap));
     const syncSource = clean((reqBodyForMode as JsonMap)?.source as string || '');
     const isManualSync = syncSource === 'pmo_dati_in_out';
-    const isFullTick = !isManualSync && ((new Date().getUTCMinutes() % 15) < 2);
+    let fullTickMarker: FullTickMarker | null = null;
+    if (!isManualSync) {
+      try {
+        const { data } = await admin
+          .from('pmo_cloud_records')
+          .select('payload')
+          .eq('record_type', 'matchpoint_data')
+          .eq('local_key', FULL_TICK_MARKER_KEY)
+          .maybeSingle();
+        fullTickMarker = (data?.payload as FullTickMarker) || null;
+      } catch (err) {
+        // Marker illeggibile → si torna alla sola regola dell'orologio (comportamento storico).
+        console.warn(JSON.stringify({ event: 'full_tick_marker_read_failed', error: errorText(err) }));
+      }
+    }
+    const fullTickDecision = decideFullTick({ isManualSync, nowMs: Date.now(), marker: fullTickMarker });
+    const isFullTick = fullTickDecision.isFullTick;
+    if (isFullTick) {
+      // Marker "tentativo" scritto PRIMA del lavoro pesante: se questo giro muore a metà
+      // (timeout), il prossimo recupero parte solo a cooldown scaduto — la protezione
+      // anti-504 del decoupling resta in piedi anche nel guasto cronico.
+      const attemptPayload: JsonMap = {
+        ...(fullTickMarker || {}),
+        id: FULL_TICK_MARKER_KEY,
+        lastFullAttemptAt: importedAt,
+      };
+      if (fullTickDecision.recovered) attemptPayload.lastRecoveredAt = importedAt;
+      const { error: markerError } = await admin
+        .from('pmo_cloud_records')
+        .upsert([{
+          record_type: 'matchpoint_data',
+          local_key: FULL_TICK_MARKER_KEY,
+          payload: attemptPayload,
+          payload_hash: null,
+          deleted: false,
+          synced_at: importedAt,
+        }], { onConflict: 'record_type,local_key' });
+      if (markerError) console.warn(JSON.stringify({ event: 'full_tick_marker_write_failed', error: errorText(markerError) }));
+      console.log(JSON.stringify({ event: 'full_tick_start', recovered: fullTickDecision.recovered }));
+    }
 
     const exported = await exportFutureBookingsViaBrowserWorker();
     const validation = validateFutureBookingsWorkbook(exported.bytes);
@@ -1281,6 +1324,23 @@ Deno.serve(async (req) => {
       deleted: false,
       synced_at: importedAt,
     });
+    if (isFullTick) {
+      // Giro pieno arrivato in fondo: da qui riparte il conto dei 15 minuti del recupero.
+      records.push({
+        record_type: 'matchpoint_data',
+        local_key: FULL_TICK_MARKER_KEY,
+        payload: {
+          ...(fullTickMarker || {}),
+          id: FULL_TICK_MARKER_KEY,
+          lastFullAttemptAt: importedAt,
+          lastFullSuccessAt: importedAt,
+          ...(fullTickDecision.recovered ? { lastRecoveredAt: importedAt } : {}),
+        },
+        payload_hash: null,
+        deleted: false,
+        synced_at: importedAt,
+      });
+    }
 
     const { error: upsertError } = await admin
       .from('pmo_cloud_records')
@@ -1305,6 +1365,8 @@ Deno.serve(async (req) => {
       totalOccupanciesAfter,
       diagnosticFile,
       upserted: records.length,
+      fullTick: isFullTick,
+      fullTickRecovered: fullTickDecision.recovered,
     });
 
     // Sveglia gli altri device se qualcosa e cambiato (incl. annullamenti diretti riconciliati).
