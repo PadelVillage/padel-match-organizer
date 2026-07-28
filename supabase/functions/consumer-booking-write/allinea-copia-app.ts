@@ -55,14 +55,24 @@ export type RigaCopiaInApp = {
  * · `invariata`   → il socio non c'era: non si scrive, e non è un errore;
  * · `non_svuotata`→ toglierlo lascerebbe la riga senza nessun nome ⇒ non si tocca (sotto).
  */
+/**
+ * I due campi che portano i nomi, tenuti SEPARATI anche quando si raccontano.
+ *
+ * 🚨⭐ Concatenarli sarebbe un misuratore che nasconde ciò che si sta cercando: una riga a
+ * quattro giocatori uscirebbe come otto nomi, e chi legge la prova a vuoto conterebbe il
+ * doppio. È lo stesso inciampo della sonda del 26/07 che univa i nomi con la virgola e
+ * nascondeva che una voce ne conteneva quattro.
+ */
+export type NomiDellaRiga = { giocatori: string[]; nome: string };
+
 export type EsitoRiga = {
   id: string;
   stato: 'allineata' | 'invariata' | 'non_svuotata';
   /** Presente solo se `allineata`: il payload da scrivere, com'è, senza altre modifiche. */
   payload?: Record<string, unknown>;
-  /** I nomi della riga prima e dopo. Servono a leggere la prova a vuoto: senza, un «allineata» non dice COSA. */
-  prima: string[];
-  dopo: string[];
+  /** La riga prima e dopo. Senza, un «allineata» non dice COSA è cambiato. */
+  prima: NomiDellaRiga;
+  dopo: NomiDellaRiga;
   /** Dove il socio è stato trovato. Due campi indipendenti: può stare in uno solo dei due. */
   da_giocatori: boolean;
   da_nome: boolean;
@@ -143,13 +153,18 @@ function togliDalNome(
   return { nuovo: nome, tolto: false };
 }
 
-/** Tutti i nomi che la riga porta, in un elenco solo: serve a dire se resterebbe vuota. */
-function nomiDellaCopia(payload: Record<string, unknown>): string[] {
-  const nomi: string[] = [];
+/** I nomi che la riga porta, nei DUE campi tenuti separati. */
+function nomiDellaCopia(payload: Record<string, unknown>): NomiDellaRiga {
   const gio = payload.giocatori;
-  if (Array.isArray(gio)) for (const g of gio) { const n = nomeDellElemento(g); if (n) nomi.push(n); }
-  for (const v of String(payload.nome ?? '').split(',')) { const n = clean(v); if (n) nomi.push(n); }
-  return nomi;
+  return {
+    giocatori: Array.isArray(gio) ? gio.map(nomeDellElemento).filter(Boolean) : [],
+    nome: clean(payload.nome),
+  };
+}
+
+/** Vero se la riga non porta più nessun nome, in nessuno dei due campi. */
+function senzaNessuno(n: NomiDellaRiga): boolean {
+  return !n.giocatori.length && !n.nome;
 }
 
 /**
@@ -206,7 +221,7 @@ export function allineaCopiaInApp(righe: RigaCopiaInApp[], varianti: Set<string>
     }
 
     const dopo = nomiDellaCopia(nuovo);
-    if (!dopo.length) {
+    if (senzaNessuno(dopo)) {
       esiti.push({ id: riga.id, stato: 'non_svuotata', prima, dopo: prima, da_giocatori: daGiocatori, da_nome: daNome });
       continue;
     }
