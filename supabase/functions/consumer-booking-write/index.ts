@@ -43,7 +43,17 @@ import {
 //                 🚨 `created` resta `false`: chi non conosce il campo `dry_run` legge
 //                 «non ho prenotato», che è la verità.
 // - cancel:       { phone, data, ora, campo } → disdetta via matchpoint-bookings-cancel,
-//                 SOLO se il socio è nel roster della prenotazione (ownership).
+//                 SOLO se il socio è nel roster della prenotazione (ownership) e SOLO se non
+//                 c'è nessun altro in campo.
+//                 🧪 `dry_run: true` → PROVA A VUOTO, stessa forma delle altre due: trova la
+//                 prenotazione, ricompone il roster su tutte le righe dello slot, applica le
+//                 guardie, compone la richiesta, e si ferma UN PASSO PRIMA della riga che
+//                 TOGLIE IL CAMPO. Aggiunta il 28/07 perché era l'unica azione che scriveva
+//                 senza poter essere provata: l'assistente in simulazione esce prima di
+//                 chiamare il ponte, quindi questo percorso non è mai girato NÉ su TEST NÉ su
+//                 PROD, e il primo a girarlo sarebbe stato un socio vero su una partita vera.
+//                 🚨 `cancelled` resta `false`: chi non conosce il campo `dry_run` legge «non
+//                 ho annullato niente», che è la verità. L'equivoco cade dalla parte sicura.
 // - leave:        { member_id, data, ora, campo } → RITIRO DELLA PRESENZA: toglie il solo
 //                 socio dal roster via matchpoint-bookings-edit. La partita RESTA in piedi
 //                 per gli altri. Rifiuta se il socio è l'unico giocatore (lì servirebbe una
@@ -103,7 +113,7 @@ const NOTA_PRENOTAZIONE = "Prenotata dal socio con l'assistente";
 // 🧪 Dove esiste la prova a vuoto. È un elenco e non un `if` sparso perché il rifiuto qui
 // sotto è ciò che rende la prova AFFIDABILE: un'edge che non conosce un'azione risponde
 // «non ce l'ho» invece di ignorare il campo e scrivere per davvero.
-const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create'];
+const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create', 'cancel'];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -633,12 +643,17 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── cancel ────────────────────────────────────────────────────────────────
+  // 🧪 Come per `leave` e `create`: acceso l'interruttore, la prova a vuoto si rimanda
+  // indietro su OGNI risposta di `cancel`. Se non torna, la richiesta è arrivata a una
+  // versione dell'edge che non ce l'ha — e un «non ho annullato niente» andrebbe letto
+  // come «non ho misurato niente», che è tutt'altro.
+  const prova = dryRun ? { dry_run: true } : {};
   // Ownership: si disdice SOLO una prenotazione col socio nel roster.
   const target = dayBookings.find((b) =>
     b.campo === campo && b.ora === slot.ora &&
     nomiDellaRiga(b).some((g) => nameVariants.has(normName(g))));
   if (!target) {
-    return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found' });
+    return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found', ...prova });
   }
 
   // 🚨 Si annulla SOLO una partita in cui non c'è nessun altro (regola del committente,
@@ -651,10 +666,8 @@ Deno.serve(async (req: Request) => {
   // l'ESITO — con più di un giocatore si rifiuta comunque — ma cambia il MOTIVO, e dire «ci
   // sono altri 4 giocatori» quando il quinto l'abbiamo inventato noi manda il socio a
   // cercare qualcuno che non c'è.
-  const esitoCancel = rosterDelloSlot(
-    dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora),
-    GIOCATORI_PARTITA,
-  );
+  const righeSlot = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+  const esitoCancel = rosterDelloSlot(righeSlot, GIOCATORI_PARTITA);
   const rosterSlot = esitoCancel.roster;
   if (esitoCancel.incoerente) {
     console.error(`[booking-write] cancel roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esitoCancel.unione.size} nomi, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA}`);
@@ -663,6 +676,7 @@ Deno.serve(async (req: Request) => {
       cancelled: false,
       reason: 'roster_incoerente',
       giocatori: esitoCancel.unione.size,
+      ...prova,
     });
   }
   if (rosterSlot.length > 1) {
@@ -672,12 +686,48 @@ Deno.serve(async (req: Request) => {
       cancelled: false,
       reason: 'ci_sono_altri_giocatori',
       giocatori: rosterSlot.length,
+      ...prova,
     });
   }
 
+  // ⭐ Come in `create`: la richiesta si compone UNA volta sola e serve a tutt'e due le
+  // strade. Se la prova a vuoto ne stampasse una copia scritta accanto, mostrerebbe una
+  // richiesta che non è quella che parte — ed è proprio quella divergenza che nessuno vedrebbe.
   const cancelPayload: JsonMap = target.idReserva
     ? { idReserva: target.idReserva }
     : { campo, data: slot.data, ora: slot.ora };
+
+  // 🧪 Qui finisce la prova a vuoto: tutto ciò che sta SOPRA è già stato eseguito per
+  // davvero — identità, proprietà della prenotazione, roster ricomposto su tutte le righe
+  // dello slot, la guardia «non c'è nessun altro», la richiesta composta — e sotto c'è
+  // l'unica riga che toglie il campo. Fermarsi altrove proverebbe un percorso diverso da
+  // quello che poi succederà in produzione.
+  if (dryRun) {
+    console.log(`[booking-write] cancel PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: annullerei per ${member.name} (roster ${rosterSlot.length}, su ${righeSlot.length} righe)`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      cancelled: false,
+      dry_run: true,
+      would: {
+        slot: { data: slot.data, ora: slot.ora, campo },
+        // La richiesta ESATTA che partirebbe. Qui porta l'informazione che più conta e che
+        // non si vede da nessun'altra parte: se va per `idReserva` o per la terna. Su tutti
+        // i record veri `id_reserva` è vuoto, quindi parte la terna — e un giorno in cui non
+        // fosse più così, questa è l'unica riga che lo direbbe prima e non dopo.
+        richiesta: cancelPayload,
+        // Chi c'è in campo secondo la lettura che ha DECISO l'esito: senza, un «annullerei»
+        // non distingue «era solo» da «non ho contato».
+        roster: [...rosterSlot],
+        // Da dove vengono i giocatori: `nostra` = le righe concordavano; `circolo` = si
+        // contraddicevano e ha vinto la scheda aggiornata (stessa forma di `leave`).
+        fonte: esitoCancel.fonte,
+        sommando_le_righe: esitoCancel.unione.size,
+        righe: righeSlot.length,
+        id_reserva: target.idReserva || null,
+      },
+    });
+  }
+
   const res = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
     method: 'POST',
     headers: internalHeaders,
