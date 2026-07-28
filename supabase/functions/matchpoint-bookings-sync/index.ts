@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
-import { decideFullTick, FULL_TICK_MARKER_KEY, type FullTickMarker } from './full-tick.ts';
+import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -488,30 +488,34 @@ async function enrichBookingsWithTabellone(
   username: string,
   password: string,
   baseUrl: string,
-  opts: { fullWindow?: boolean; settleMaxMs?: number } = {},
-): Promise<void> {
-  // fullWindow=true (tick "full", periodico): leggiamo il tabellone per OGNI giorno futuro
-  // (oggi..+DEFAULT_FUTURE_DAYS), non solo i prenotati. Motivo: la MANUTENZIONE vive solo sul
-  // tabellone e un giorno di SOLA manutenzione altrimenti non verrebbe mai letto (bug "sabato
-  // sì / domenica no"). Su questi tick la riconciliazione manutenzione resta coerente.
-  // fullWindow=false (tick "light", frequente): SOLO i giorni con prenotazioni → arricchiamo
+  opts: { windowDays?: number | null; settleMaxMs?: number } = {},
+): Promise<boolean> {
+  // windowDays=numero (tick "full" 31gg o "near" 7gg): leggiamo il tabellone per OGNI giorno
+  // di quella finestra, non solo i prenotati. Motivo: la MANUTENZIONE vive solo sul tabellone
+  // e un giorno di SOLA manutenzione altrimenti non verrebbe mai letto (bug "sabato sì /
+  // domenica no"). Su questi tick la riconciliazione manutenzione resta coerente (il reconcile
+  // la limita alla finestra letta: vedi handler).
+  // windowDays=null (tick "light", frequente): SOLO i giorni con prenotazioni → arricchiamo
   // roster/idReserva dei booking reali senza pagare la navigazione dei giorni vuoti. La
   // manutenzione NON viene toccata qui (l'add è gated sotto e il reconcile non la tombstona).
-  const fullWindow = opts.fullWindow !== false;
+  // Ritorna true SOLO se il tabellone è stato davvero letto: il reconcile tombstona
+  // manutenzione/lezioni-rescue solo in quel caso (un fetch fallito non deve farle lampeggiare).
+  const windowDays = opts.windowDays ?? null;
   const today = todayIsoRome();
   const dateSet = new Set<string>();
-  if (fullWindow) {
-    for (let i = 0; i <= DEFAULT_FUTURE_DAYS; i++) dateSet.add(addDaysIso(today, i));
+  if (windowDays != null) {
+    for (let i = 0; i <= windowDays; i++) dateSet.add(addDaysIso(today, i));
   }
   for (const b of bookings) { if (b.data && b.data >= today) dateSet.add(b.data); }
   const dates = [...dateSet].sort();
 
-  if (!dates.length) return;
+  if (!dates.length) return false;
 
   const endpoint = `${workerBaseUrl(workerUrl)}/read-tabellone`;
   // `testo` (dal 21/07) è il testo della casella: lo usa il recupero delle prenotazioni senza
   // giocatori per leggere il TIPO invece di inventarlo. Assente se il worker è più vecchio.
   let tabelloneData: Record<string, Array<{ id?: string; campo: number; ora: string; giocatori: string[]; testo?: string }>> = {};
+  let tabelloneOk = false;
 
   try {
     const res = await fetch(endpoint, {
@@ -527,11 +531,11 @@ async function enrichBookingsWithTabellone(
     });
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
-      if (data?.ok && data?.result) tabelloneData = data.result;
+      if (data?.ok && data?.result) { tabelloneData = data.result; tabelloneOk = true; }
     }
   } catch (err) {
+    // non bloccante: il roster dalla descrizione (fonte MP) si applica comunque, sotto.
     console.warn(JSON.stringify({ event: 'tabellone_enrich_failed', error: String(err) }));
-    return; // non bloccante
   }
 
   // Arricchisce ogni booking con i giocatori + idReserva (Tappa 43). Il ROSTER è AUTOREVOLE dalla
@@ -573,9 +577,10 @@ async function enrichBookingsWithTabellone(
 
   // Tick "light": abbiamo scrapato solo i giorni prenotati → NON ricalcolare la manutenzione
   // (i giorni di sola manutenzione non sono stati letti). La manutenzione esistente resta
-  // com'è: il reconcile NON la tombstona sui light tick (vedi handler principale). Il tick
-  // "full" periodico la ri-aggiunge/riconcilia sull'intera finestra.
-  if (!fullWindow) return;
+  // com'è: il reconcile NON la tombstona sui light tick (vedi handler principale). I tick
+  // "near"/"full" la ri-aggiungono/riconciliano sulla loro finestra.
+  if (windowDays == null) return tabelloneOk;
+  if (!tabelloneOk) return false;
 
   // MANUTENZIONE (import 2026-06-19): i blocchi del tabellone marcati 'manutenzione' (senza
   // giocatori, solo eventuale nota) NON sono nell'export Excel → li aggiungiamo come occupancy
@@ -620,6 +625,7 @@ async function enrichBookingsWithTabellone(
   const rescuedLezioni = collectTabelloneOnlyOccupancies(tabelloneData, matchedKeys, exportNumeri);
   for (const r of rescuedLezioni) bookings.push(r as unknown as ParsedBooking);
   console.log(JSON.stringify({ event: 'lezione_senza_giocatori_added', added: rescuedLezioni.length }));
+  return true;
 }
 
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
@@ -972,6 +978,9 @@ Deno.serve(async (req) => {
     //  • tick "light" (frequente): scrape SOLO i giorni con prenotazioni (roster/idReserva
     //    dei booking reali) + settle più corto → veloce, sotto i 150s. NON tocca la
     //    manutenzione (né la aggiunge né la tombstona: vedi reconcile sotto).
+    //  • tick "near" (~ogni 5 min, dal 28/07): finestra 7gg + manutenzione di quei giorni —
+    //    una manutenzione della settimana appare entro ~5 min. Costo marginale basso: i
+    //    giorni prenotati della finestra si scrapano già a ogni light, si pagano solo i vuoti.
     //  • tick "full" (periodico ~ogni 15 min): finestra piena 31gg + manutenzione, come prima.
     // I booking REALI arrivano SEMPRE dall'export Excel completo → la loro freschezza e
     // riconciliazione sono invariate su OGNI tick. Solo la manutenzione è a bassa cadenza.
@@ -998,8 +1007,8 @@ Deno.serve(async (req) => {
         console.warn(JSON.stringify({ event: 'full_tick_marker_read_failed', error: errorText(err) }));
       }
     }
-    const fullTickDecision = decideFullTick({ isManualSync, nowMs: Date.now(), marker: fullTickMarker });
-    const isFullTick = fullTickDecision.isFullTick;
+    const tickDecision = decideTick({ isManualSync, nowMs: Date.now(), marker: fullTickMarker });
+    const isFullTick = tickDecision.kind === 'full';
     if (isFullTick) {
       // Marker "tentativo" scritto PRIMA del lavoro pesante: se questo giro muore a metà
       // (timeout), il prossimo recupero parte solo a cooldown scaduto — la protezione
@@ -1009,7 +1018,7 @@ Deno.serve(async (req) => {
         id: FULL_TICK_MARKER_KEY,
         lastFullAttemptAt: importedAt,
       };
-      if (fullTickDecision.recovered) attemptPayload.lastRecoveredAt = importedAt;
+      if (tickDecision.recovered) attemptPayload.lastRecoveredAt = importedAt;
       const { error: markerError } = await admin
         .from('pmo_cloud_records')
         .upsert([{
@@ -1021,7 +1030,7 @@ Deno.serve(async (req) => {
           synced_at: importedAt,
         }], { onConflict: 'record_type,local_key' });
       if (markerError) console.warn(JSON.stringify({ event: 'full_tick_marker_write_failed', error: errorText(markerError) }));
-      console.log(JSON.stringify({ event: 'full_tick_start', recovered: fullTickDecision.recovered }));
+      console.log(JSON.stringify({ event: 'full_tick_start', recovered: tickDecision.recovered }));
     }
 
     const exported = await exportFutureBookingsViaBrowserWorker();
@@ -1051,6 +1060,9 @@ Deno.serve(async (req) => {
 
     // Arricchisci con giocatori completi dal tabellone (Tappa 38) — non bloccante.
     // workerUrl/credenziali non sono in scope qui: si leggono dalle env var.
+    // tabelloneRead=true SOLO se il tabellone è stato letto davvero: senza, il reconcile
+    // non tombstona manutenzione/lezioni-rescue (un fetch fallito non deve farle sparire).
+    let tabelloneRead = false;
     try {
       const enrichWorkerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
       const enrichWorkerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
@@ -1058,17 +1070,21 @@ Deno.serve(async (req) => {
       const enrichPassword = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
       const enrichBaseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
       if (enrichWorkerUrl && enrichWorkerApiKey && enrichUsername && enrichPassword) {
-        await enrichBookingsWithTabellone(
+        tabelloneRead = await enrichBookingsWithTabellone(
           validation.occupancyBookings,
           enrichWorkerUrl,
           enrichWorkerApiKey,
           enrichUsername,
           enrichPassword,
           enrichBaseUrl,
-          // Light tick: solo giorni prenotati, niente manutenzione, settle più corto (il
-          // roster è comunque autorevole dall'Excel + protetto dallo STICKY ROSTER sotto).
-          // Full tick: finestra piena + manutenzione, settle moderato (sotto i 150s edge).
-          { fullWindow: isFullTick, settleMaxMs: isFullTick ? 5000 : 3500 },
+          // Light: solo giorni prenotati, niente manutenzione, settle più corto (il roster
+          // è comunque autorevole dall'Excel + protetto dallo STICKY ROSTER sotto).
+          // Near: finestra 7gg + manutenzione di quei giorni, settle corto come il light.
+          // Full: finestra piena 31gg + manutenzione, settle moderato (sotto i 150s edge).
+          {
+            windowDays: isFullTick ? DEFAULT_FUTURE_DAYS : (tickDecision.kind === 'near' ? NEAR_WINDOW_DAYS : null),
+            settleMaxMs: isFullTick ? 5000 : 3500,
+          },
         );
       }
     } catch (err) {
@@ -1176,17 +1192,26 @@ Deno.serve(async (req) => {
 
     let deletedBookings = 0;
     let deletedOccupancies = 0;
+    // Ultimo giorno coperto dal tick "near": oltre, la manutenzione la possiede solo il full.
+    const nearWindowEnd = addDaysIso(todayIsoRome(), NEAR_WINDOW_DAYS);
     for (const record of existingRecords) {
       const type = clean(record?.record_type || '');
       const key = clean(record?.local_key || '');
       if (!type || !key) continue;
       if (currentKeysByType.get(type)?.has(key)) continue;
-      // LIVE/LIGHT TICK — decoupling manutenzione: sui tick frequenti non scrapiamo la
-      // finestra piena → le occupancy di MANUTENZIONE non sono nei current keys. NON vanno
-      // tombstonate qui (le possiede il tick "full" periodico): senza questo skip
-      // ri-lampeggerebbero ad ogni sync (regressione del fix PR#425). I booking REALI
-      // arrivano sempre dall'export Excel completo → la loro riconciliazione è invariata.
-      if (!isFullTick && type === 'booking_occupancy' && (clean((record?.payload as JsonMap)?.tipo as string) === 'manutenzione' || (record?.payload as JsonMap)?._tabelloneOnly === true)) continue;
+      // DECOUPLING MANUTENZIONE — tombstona manutenzione/lezioni-rescue SOLO chi ha riletto
+      // il tabellone di quel giorno: full = tutta la finestra, near = solo entro
+      // NEAR_WINDOW_DAYS, light = mai (non scrapa i giorni vuoti). E MAI se la lettura del
+      // tabellone è fallita (tabelloneRead=false): con lo scrape a vuoto i blocchi non sono
+      // nei current keys e sparirebbero per poi riapparire al giro dopo (lampeggio, come la
+      // regressione del fix PR#425). I booking REALI arrivano sempre dall'export Excel
+      // completo → la loro riconciliazione è invariata su ogni tick.
+      if (type === 'booking_occupancy' && (clean((record?.payload as JsonMap)?.tipo as string) === 'manutenzione' || (record?.payload as JsonMap)?._tabelloneOnly === true)) {
+        const dataRecord = String((record?.payload as JsonMap)?.data || '');
+        const withinNearWindow = !!dataRecord && dataRecord <= nearWindowEnd;
+        const owned = tabelloneRead && (isFullTick || (tickDecision.kind === 'near' && withinNearWindow));
+        if (!owned) continue;
+      }
       if (type === 'booking') deletedBookings += 1;
       if (type === 'booking_occupancy') deletedOccupancies += 1;
       records.push({
@@ -1334,7 +1359,7 @@ Deno.serve(async (req) => {
           id: FULL_TICK_MARKER_KEY,
           lastFullAttemptAt: importedAt,
           lastFullSuccessAt: importedAt,
-          ...(fullTickDecision.recovered ? { lastRecoveredAt: importedAt } : {}),
+          ...(tickDecision.recovered ? { lastRecoveredAt: importedAt } : {}),
         },
         payload_hash: null,
         deleted: false,
@@ -1366,7 +1391,8 @@ Deno.serve(async (req) => {
       diagnosticFile,
       upserted: records.length,
       fullTick: isFullTick,
-      fullTickRecovered: fullTickDecision.recovered,
+      fullTickRecovered: tickDecision.recovered,
+      tickKind: tickDecision.kind,
     });
 
     // Sveglia gli altri device se qualcosa e cambiato (incl. annullamenti diretti riconciliati).
