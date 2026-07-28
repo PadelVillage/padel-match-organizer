@@ -667,6 +667,19 @@ Deno.serve(async (req: Request) => {
   // sono altri 4 giocatori» quando il quinto l'abbiamo inventato noi manda il socio a
   // cercare qualcuno che non c'è.
   const righeSlot = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+  // 🚨⭐ Ultimo cancello, gemello di quello di `leave`: una LEZIONE non si annulla dal bot
+  // (il maestro e la segreteria vanno avvisati, e la regola della kb le tiene fuori). Il bot
+  // già non mostra il bottone — `partiteLasciabili` scarta le lezioni — ma qui ci si difende
+  // dal bot sbagliato, esattamente come si fa sull'uscita.
+  // 🚨 Mancava, e l'asimmetria era al contrario: la difesa stava sull'azione MENO
+  // distruttiva (esci = un giocatore) e non su questa, che toglie il CAMPO. Misurata a vuoto
+  // il 28/07 su una lezione vera di TEST: rispondeva «avrei annullato» (un partecipante, una
+  // riga). Su PROD le lezioni future sono 35 slot.
+  // ⭐ Sta DOPO il controllo di proprietà di proposito: di una prenotazione che non è sua, al
+  // socio non si dice nulla — nemmeno che tipo di prenotazione sia.
+  if (righeSlot.some((b) => /lezione/i.test(b.tipo))) {
+    return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'non_e_una_partita', ...prova });
+  }
   const esitoCancel = rosterDelloSlot(righeSlot, GIOCATORI_PARTITA);
   const rosterSlot = esitoCancel.roster;
   if (esitoCancel.incoerente) {
