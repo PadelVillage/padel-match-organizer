@@ -75,8 +75,13 @@ contro 2774 al 19/07), perché entrambi sincronizzano dallo stesso Matchpoint. S
 TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
 
 Anche il **bot Telegram non ha anteprima né sandbox**: è **un solo processo** sulla VM, e per
-provarlo si sposta il suo `.env` fra TEST e PROD (due righe: `PMO_FUNCTIONS_URL` e
-`CONSUMER_BRIDGE_SECRET_FILE`). 🚨 **Una sola istanza per volta**: due processi in long polling
+provarlo si sposta il suo `.env` fra TEST e PROD. 🚨⭐⭐ **Le righe sono TRE, non due**:
+`PMO_FUNCTIONS_URL`, `CONSUMER_BRIDGE_SECRET_FILE` e **`PMO_PRENOTAZIONI_SIMULA=1`** — e la terza
+si mette **prima** delle altre due. Verso TEST è l'**indirizzo** a far simulare le scritture,
+quindi là la terza riga non serve e **può mancare del tutto** (il 28/07 sulla VM non c'era, mentre
+nel `.env` del Mac sì: due file con lo stesso nome, uno solo protetto). Chi ne sposta **due** porta
+il bot su PROD **senza** la simulazione, e da quel momento prenota, disdice e fa uscire i giocatori
+**per davvero** dal sistema del circolo. 🚨 **Una sola istanza per volta**: due processi in long polling
 sullo stesso token si rubano i messaggi e Telegram risponde **409** — quindi mentre gira sulla VM
 non si lancia il bot sul Mac.
 
