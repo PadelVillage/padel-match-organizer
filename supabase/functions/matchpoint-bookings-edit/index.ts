@@ -73,6 +73,38 @@ function hasPermission(actor: StaffActor, perm: string) {
   return actor.permissions?.[perm] === true;
 }
 
+// Confronto in tempo costante (percorso consumer: il secret è l'unico gate).
+function safeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
+// Percorso interno CONSUMER — «ritiro della presenza»: un socio esce da una partita
+// che resta in piedi per gli altri. La chiamata arriva da consumer-booking-write con
+// l'header X-Consumer-Secret (stesso gate del readmodel); l'ownership sul roster la
+// verifica il chiamante. Env assente → percorso disabilitato, resta solo il JWT staff.
+//
+// 🚨 Questo attore è VOLUTAMENTE più debole dello staff: vale solo per togliere UN
+// giocatore (guardia CONSUMER_SCOPE più sotto). L'assistente dei soci non deve poter
+// spostare prenotazioni, cambiare maestro o svuotare un roster.
+function consumerActor(req: Request): StaffActor | null {
+  const secret = clean(Deno.env.get('CONSUMER_BRIDGE_SECRET'));
+  if (!secret) return null;
+  const provided = clean(req.headers.get('x-consumer-secret'));
+  if (!provided || !safeEqual(provided, secret)) return null;
+  return {
+    userId: 'consumer-assistente-soci',
+    email: 'assistente-soci@padelvillage.club',
+    role: 'consumer',
+    permissions: { cloud_sync: true },
+  };
+}
+
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -172,8 +204,10 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
-  // Auth
-  const actor = await getActor(req).catch(() => null);
+  // Auth: percorso consumer (secret interno) O staff (JWT). Il consumer è ristretto
+  // alla sola rimozione di un giocatore — guardia CONSUMER_SCOPE dopo il parse.
+  const consumer = consumerActor(req);
+  const actor = consumer ?? await getActor(req).catch(() => null);
   if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
   if (!hasPermission(actor, 'cloud_sync')) {
     return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per modificare su Matchpoint.');
@@ -218,6 +252,29 @@ Deno.serve(async (req: Request) => {
   );
   if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided && !istruttoreProvided) {
     return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note, descrizione e istruttore.');
+  }
+
+  // 🚨 Guardia CONSUMER_SCOPE — l'assistente dei soci può fare UNA cosa sola: togliere
+  // UN giocatore dal roster (il socio che ritira la propria presenza). Spostare, cambiare
+  // nota/descrizione/maestro, svuotare il roster o aggiungere giocatori restano allo staff
+  // autenticato. Fail closed: un campo di troppo fa FALLIRE la richiesta, non viene
+  // ignorato in silenzio — così un errore del chiamante si vede subito invece di
+  // trasformarsi in una modifica non voluta su una prenotazione vera.
+  if (consumer) {
+    const rimuovi = (Array.isArray(players?.remove) ? players?.remove : []) as string[];
+    const aggiungi = (Array.isArray(players?.add) ? players?.add : []) as unknown[];
+    const soloUnaRimozione = rimuovi.length === 1 && clean(rimuovi[0]).length > 0;
+    const altroSuiGiocatori = players?.removeAll === true || aggiungi.length > 0;
+    const altriBlocchi = hasMove || noteProvided || descrizioneProvided || istruttoreProvided || readOnly;
+    if (!soloUnaRimozione || altroSuiGiocatori || altriBlocchi) {
+      console.warn('[bookings-edit] CONSUMER_SCOPE rifiutato:', JSON.stringify({
+        remove: rimuovi.length, removeAll: players?.removeAll === true, add: aggiungi.length,
+        move: hasMove, note: noteProvided, descrizione: descrizioneProvided,
+        istruttore: istruttoreProvided, read: readOnly,
+      }));
+      return err(403, 'CONSUMER_SCOPE',
+        'Dal ponte dei soci si può solo togliere un singolo giocatore dal roster.');
+    }
   }
 
   const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, read: readOnly };
