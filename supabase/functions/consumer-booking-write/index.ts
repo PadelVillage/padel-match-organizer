@@ -14,6 +14,10 @@ import {
   sostituito,
   type RigaSlot,
 } from './roster-slot.ts';
+// E la COPIA IN APP dopo un'uscita sta in un terzo modulo, per la stessa ragione degli altri
+// due: TEST non contiene la forma del dato (zero righe `staff_booking` future, misurato il
+// 28/07), quindi l'unico modo di provarlo è dare i payload VERI di PROD a una funzione pura.
+import { allineaCopiaInApp } from './allinea-copia-app.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -68,6 +72,12 @@ import {
 //                 del circolo sono UNO SOLO, condiviso con la produzione.
 //                 🚨 `left` resta `false`: chi non conosce il campo `dry_run` legge «non è
 //                 successo niente», che è la verità. L'equivoco cade dalla parte sicura.
+//                 🚨⭐ Un'uscita riuscita fa DUE scritture, non una: dopo quella sul
+//                 gestionale allinea anche la COPIA IN APP (`staff_booking`), che nessuno
+//                 aggiornerebbe mai da sé — né l'edit né il sync — e che tenendo il socio
+//                 dentro lo rimetteva in campo alla lettura successiva. Esito in
+//                 `copia_in_app`, presente su OGNI risposta di `leave`, prova a vuoto
+//                 compresa.
 //
 // Identità: telefono → member con la STESSA ricetta di consumer-player-readmodel
 // (ultime 10 cifre su pmo_cloud_records/member). Nessun JWT consumer: gate =
@@ -348,7 +358,7 @@ Deno.serve(async (req: Request) => {
   // proprio nella parte che ha già sbagliato due volte a contare i giocatori.
   const { data: dayRows, error: dayErr } = await service
     .from('pmo_cloud_records')
-    .select('record_type, payload')
+    .select('id, record_type, payload')
     .in('record_type', TIPI_CHE_OCCUPANO)
     .not('deleted', 'is', true)
     .eq('payload->>data', slot.data)
@@ -358,7 +368,12 @@ Deno.serve(async (req: Request) => {
   // ⛔ Niente `startMin`/`endMin` qui dentro: l'occupazione non si calcola più su questo
   // elenco, e lasciarci i minuti sarebbe l'invito a rifarlo qui — dove le manutenzioni non ci
   // sono. Chi occupa sta in `occupazioni`, chi gioca sta qui.
-  type DayBooking = RigaSlot & { campo: number; idReserva: string; ora: string; tipo: string };
+  // ⭐ `id` e `payload` grezzo servono solo all'allineamento della copia in app dopo un'uscita
+  // (`allinea-copia-app.ts`): quella riga si riscrive per CHIAVE PRIMARIA, non per slot.
+  type DayBooking = RigaSlot & {
+    id: string; copiaInApp: boolean; payload: JsonMap;
+    campo: number; idReserva: string; ora: string; tipo: string;
+  };
   const dayBookings: DayBooking[] = [];
   const occupazioni: Occupazione[] = [];
   for (const row of dayRows ?? []) {
@@ -372,6 +387,11 @@ Deno.serve(async (req: Request) => {
     const ora = clean(p.ora);
     if (!campoNum || !/^\d{2}:\d{2}$/.test(ora)) continue;
     dayBookings.push({
+      id: clean(row.id),
+      // La COPIA IN APP: è l'unica che nessuno aggiorna quando il roster cambia da fuori
+      // l'app, ed è quella che dopo un'uscita va riallineata a mano → `allinea-copia-app.ts`.
+      copiaInApp: clean(row.record_type) === 'staff_booking',
+      payload: p,
       campo: campoNum, ora,
       // Le tre forme del roster e il ripiego sul `nome` troncato stanno in `roster-slot.ts`,
       // dove sono provate sui payload veri. ⭐ Liste SEPARATE, mai un elenco solo: è ciò che
@@ -582,6 +602,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ⭐ L'allineamento della copia in app si CALCOLA qui, prima del bivio, e vale per tutt'e
+    // due le strade: la prova a vuoto mostra esattamente ciò che poi verrà scritto. Se lo
+    // calcolasse solo il ramo vero, la prova direbbe una cosa e la produzione ne farebbe
+    // un'altra — ed è proprio la divergenza fra le due che nessuno vedrebbe.
+    const copie = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
+    const allineamento = allineaCopiaInApp(copie, nameVariants);
+
     // 🧪 Qui finisce la prova a vuoto: tutto ciò che sta SOPRA è già stato eseguito per
     // davvero — le righe dello slot, il roster ricomposto, le guardie, il nome scelto —
     // e sotto c'è l'unica riga che tocca qualcosa. Fermarsi altrove proverebbe un
@@ -607,6 +634,17 @@ Deno.serve(async (req: Request) => {
           fonte: esito.fonte,
           sommando_le_righe: esito.unione.size,
           id_reserva: righe[0]?.idReserva || null,
+          // 🚨⭐⭐ La seconda scrittura, quella che il 28/07 mancava: la copia in app. Sta
+          // SEMPRE nella risposta, anche a zero — se questo campo non torna, la richiesta è
+          // arrivata a una versione dell'edge che non allinea niente, e uno zero non si
+          // potrebbe distinguere da un «non c'era niente da allineare».
+          copia_in_app: {
+            ...allineamento.conteggi,
+            righe_dettaglio: allineamento.righe.map((r) => ({
+              id: r.id, stato: r.stato, prima: r.prima, dopo: r.dopo,
+              da_giocatori: r.da_giocatori, da_nome: r.da_nome,
+            })),
+          },
         },
       });
     }
@@ -632,6 +670,49 @@ Deno.serve(async (req: Request) => {
         detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
       });
     }
+    // 🚨⭐⭐ Seconda scrittura, e senza di lei l'uscita restava mezza fatta. Il gestionale ha
+    // tolto il socio, e il sync riporterà le righe `booking` entro ~2 minuti — ma la COPIA IN
+    // APP (`staff_booking`) non la aggiorna nessuno: né l'edit (che scrive solo il registro
+    // `staff_edit`), né il sync (scelta esplicita), né il tempo. Si riallinea soltanto quando
+    // uno staff apre quella prenotazione nell'app. Finché resta ferma, i ponti dei soci
+    // SOMMANO le due copie e rimettono in campo chi è uscito: la partita gli resta
+    // nell'elenco e un altro «Esci» rifà l'operazione. Misurato sui dati veri il 28/07 dopo
+    // la prima uscita vera → `allinea-copia-app.ts`.
+    //
+    // ⭐ Best effort, e il verso conta: qui l'uscita **è già riuscita**. Se questo passo
+    // fallisce si torna comunque `left: true` — dire al socio «non sei uscito» quando è
+    // uscito lo manderebbe a rifare un'operazione già fatta, che è il difetto al contrario.
+    // Il guasto si racconta in `copia_in_app.errore` e nel registro, dove lo legge chi indaga.
+    const copiaEsito: JsonMap = { ...allineamento.conteggi };
+    if (allineamento.daScrivere.length) {
+      try {
+        // ⚠️ Si tocca `payload` e `updated_at`, nient'altro: `synced_at` dice quando il sync
+        // ha visto la riga l'ultima volta, e riscriverlo racconterebbe una bugia. Alzare
+        // `updated_at` mette per un po' la riga fra le «fresche» per il reconcile del sync —
+        // cioè al riparo dalla cancellazione, che è il verso sicuro.
+        const adesso = new Date().toISOString();
+        const esiti = await Promise.all(allineamento.daScrivere.map((r) =>
+          service.from('pmo_cloud_records')
+            .update({ payload: r.payload, updated_at: adesso })
+            .eq('id', r.id)));
+        const rotte = esiti.filter((e) => e.error);
+        if (rotte.length) {
+          copiaEsito.errore = clean(rotte[0].error?.message ?? 'UPDATE fallito').slice(0, 200);
+          copiaEsito.scritte = allineamento.daScrivere.length - rotte.length;
+          console.error(`[booking-write] leave copia in app KO ${slot.data} ${slot.ora} C${campo}: ${rotte.length} righe su ${allineamento.daScrivere.length} non riscritte → ${copiaEsito.errore}`);
+        } else {
+          console.log(`[booking-write] leave copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${allineamento.daScrivere.length} righe, tolto ${mioNome}`);
+        }
+      } catch (e) {
+        copiaEsito.errore = clean((e as Error)?.message ?? 'errore').slice(0, 200);
+        console.error(`[booking-write] leave copia in app KO ${slot.data} ${slot.ora} C${campo}:`, copiaEsito.errore);
+      }
+    } else if (allineamento.conteggi.non_svuotate) {
+      // Non è un guasto: è la regola «mai svuotare la copia». Va detto lo stesso, perché da
+      // qui in poi quello slot resta discorde e nessuno lo saprebbe.
+      console.warn(`[booking-write] leave copia in app NON svuotata ${slot.data} ${slot.ora} C${campo}: ${allineamento.conteggi.non_svuotate} righe resterebbero senza nessuno`);
+    }
+
     console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.length})`);
     return ok({
       member: { id: member.id, name: member.name },
@@ -639,6 +720,7 @@ Deno.serve(async (req: Request) => {
       slot: { data: slot.data, ora: slot.ora, campo },
       giocatori_prima: rosterUnito.length,
       restano: rosterUnito.length - 1,
+      copia_in_app: copiaEsito,
     });
   }
 
