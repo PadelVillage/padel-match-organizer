@@ -1,7 +1,7 @@
 {
-  "versione": "v1.9",
-  "data_ultimo_aggiornamento": "2026-05-29T13:35:32.224Z",
-  "aggiornato_da": "admin_panel",
+  "versione": "v2.0",
+  "data_ultimo_aggiornamento": "2026-07-29T13:05:00.000Z",
+  "aggiornato_da": "claude_maestro_lucas_vidal",
   "intents": {
     "PRENOTA": {
       "keywords": [
@@ -125,7 +125,8 @@
       "valori_validi": [
         "Santiago",
         "LoZio",
-        "Spinazze"
+        "Spinazze",
+        "Lucas Vidal"
       ],
       "fuzzy_match": {
         "Santi": "Santiago",
@@ -133,9 +134,13 @@
         "Lo Zio": "LoZio",
         "lo zio": "LoZio",
         "Spinazzi": "Spinazze",
-        "spinazzi": "Spinazze"
+        "spinazzi": "Spinazze",
+        "Vidal": "Lucas Vidal",
+        "vidal": "Lucas Vidal",
+        "Luca Vidal": "Lucas Vidal",
+        "luca vidal": "Lucas Vidal"
       },
-      "domanda_se_manca": "Quale istruttore? (Santiago, LoZio, Spinazze)",
+      "domanda_se_manca": "Quale istruttore? (Santiago, LoZio, Spinazze, Lucas Vidal)",
       "attivata_quando": "tipo === 'lezione'"
     },
     "ricorrenza": {
@@ -212,6 +217,12 @@
       "data": "2026-05-29",
       "modifiche": "sinonimo_aggiunto",
       "aggiornato_da": "admin_panel"
+    },
+    {
+      "versione": "v2.0",
+      "data": "2026-07-29",
+      "modifiche": "Nuovo maestro 'Lucas Vidal' (4o istruttore). Il valore e' scritto ESATTAMENTE come la voce del dropdown Monitor di Matchpoint: il worker cerca l'opzione che CONTIENE questa stringa, quindi 'Luca Vidal' (senza la s) non troverebbe nulla. Fuzzy: solo 'Vidal' e 'Luca Vidal', mai 'Luca' da solo, che e' il nome di 95 soci e verrebbe scambiato per il maestro.",
+      "aggiornato_da": "claude_maestro_lucas_vidal"
     }
   ]
 }
