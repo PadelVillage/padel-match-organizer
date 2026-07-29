@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.125';
+    const APP_VERSION = '6.126';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37257,9 +37257,9 @@ Per confermare scrivi ELIMINA.`);
       campo: { tipo: 'numero 1-4', domanda_se_manca: 'Quale campo? (1, 2, 3 o 4)', default: null },
       tipo:  { tipo: 'partita|lezione', keywords_lezione: ['lezione','lesson'], default: 'partita' },
       istruttore: {
-        valori_validi: ['Santiago','LoZio','Spinazze'],
-        fuzzy_match: { 'Santi':'Santiago','santi':'Santiago','Lo Zio':'LoZio','lo zio':'LoZio','Spinazzi':'Spinazze','spinazzi':'Spinazze' },
-        domanda_se_manca: 'Quale istruttore? (Santiago, LoZio, Spinazze)',
+        valori_validi: ['Santiago','LoZio','Spinazze','Lucas Vidal'],
+        fuzzy_match: { 'Santi':'Santiago','santi':'Santiago','Lo Zio':'LoZio','lo zio':'LoZio','Spinazzi':'Spinazze','spinazzi':'Spinazze','Vidal':'Lucas Vidal','vidal':'Lucas Vidal','Luca Vidal':'Lucas Vidal','luca vidal':'Lucas Vidal' },
+        domanda_se_manca: 'Quale istruttore? (Santiago, LoZio, Spinazze, Lucas Vidal)',
         attivata_quando: "tipo === 'lezione'"
       },
       ricorrenza: { valori_validi: ['lunedì','martedì','mercoledì','giovedì','venerdì','sabato','domenica'], settimane_default: 4, default: null }
@@ -40235,7 +40235,7 @@ Per confermare scrivi ELIMINA.`);
       const maestroSec = mkSection('ti-school', 'Maestro');
       const validi = (PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && Array.isArray(PARSER_RULES.campi_opzionali.istruttore.valori_validi))
         ? PARSER_RULES.campi_opzionali.istruttore.valori_validi.slice()
-        : ['Santiago', 'LoZio', 'Spinazze'];
+        : ['Santiago', 'LoZio', 'Spinazze', 'Lucas Vidal'];
       const cur = String(st.istruttore || '').trim();
       // Se il maestro corrente non è tra i valori validi (es. rinominato su MP) lo mostro comunque.
       if (cur && !validi.some(function (v) { return v.toLowerCase() === cur.toLowerCase(); })) validi.unshift(cur);
@@ -43007,7 +43007,7 @@ Per confermare scrivi ELIMINA.`);
       { key:'Manutenzione', engine:'manutenzione', tipo:'manutenzione' },
       { key:'Torneo',       engine:null,      tipo:null, disabled:true }
     ];
-    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze'];
+    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES && PARSER_RULES.campi_opzionali && PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi) || ['Santiago','LoZio','Spinazze','Lucas Vidal'];
 
     // Leggibilità ADATTIVA: testi/controlli scalano in modo fluido sulla LARGHEZZA REALE del
     // contenitore (non sul device). Estremi preservati: contenitore stretto (~320px, es. sidebar
@@ -43314,7 +43314,7 @@ Per confermare scrivi ELIMINA.`);
   // Step 2b — maestro (solo lezione)
   function svcAskMaestro() {
     svcFlowState.step = 'maestro';
-    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES?.campi_opzionali?.istruttore?.valori_validi) || ['Santiago', 'LoZio', 'Spinazze'];
+    const maestri = (typeof PARSER_RULES !== 'undefined' && PARSER_RULES?.campi_opzionali?.istruttore?.valori_validi) || ['Santiago', 'LoZio', 'Spinazze', 'Lucas Vidal'];
     const div = svcAddMessage('system', '👨‍🏫 <strong>Quale maestro?</strong>', 'flow');
     svcFlowState.stepMsg = div;
     const btns = svcMakeStepButtons(
@@ -46893,7 +46893,7 @@ Per confermare scrivi ELIMINA.`);
           PARSER_RULES.campi_opzionali.istruttore && PARSER_RULES.campi_opzionali.istruttore.valori_validi);
         if (Array.isArray(v) && v.length) return v;
       } catch (e) {}
-      return ['Santiago', 'LoZio', 'Spinazze'];
+      return ['Santiago', 'LoZio', 'Spinazze', 'Lucas Vidal'];
     }
     function _detectTipo(n) {
       let kw = ['lezione', 'lesson'];
