@@ -136,7 +136,7 @@ async function getGmailAccessToken(): Promise<string> {
   return clean(data.access_token);
 }
 
-function corpoEmail(esito: Esito, ambiente: string, ramo: string): { subject: string; text: string; html: string } {
+function corpoEmail(esito: Esito, ambiente: string, ramo: string, prova = false): { subject: string; text: string; html: string } {
   const nuovi = esito.daAggiungere;
   const rotti = esito.rotti;
 
@@ -168,12 +168,19 @@ function corpoEmail(esito: Esito, ambiente: string, ramo: string): { subject: st
   righe.push('');
   righe.push(`(controllo automatico ${ambiente} — nessuna azione è stata fatta da solo)`);
 
-  const text = `${titolo}\n${righe.join('\n')}`;
+  const avvisoProvaTesto = prova
+    ? 'QUESTA È UNA PROVA. Nessun maestro è cambiato davvero: serve solo a verificare\n'
+      + 'che l\'avviso automatico sappia arrivarti. I nomi qui sotto sono inventati.\n'
+    : '';
+
+  const text = `${avvisoProvaTesto}${titolo}\n${righe.join('\n')}`;
 
   const lista = (items: string[], colore: string) => items
     .map((n) => `<li style="margin:4px 0"><strong style="color:${colore}">${escapeHtml(n)}</strong></li>`).join('');
 
   const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:600px;line-height:1.5">
+${prova ? `<div style="background:#fff4d6;border:1px solid #e0b400;border-radius:8px;padding:12px 14px;margin:0 0 16px">
+<strong>Questa è una prova.</strong><br><span style="font-size:14px;color:#555">Nessun maestro è cambiato davvero: serve solo a verificare che l'avviso automatico sappia arrivarti. I nomi qui sotto sono inventati.</span></div>` : ''}
 <h2 style="margin:0 0 12px">${escapeHtml(titolo)}</h2>
 ${nuovi.length ? `<p style="margin:16px 0 4px"><strong>Da aggiungere al gestionale</strong><br>
 <span style="color:#555;font-size:14px">Esistono su Matchpoint, ma nel gestionale non si possono selezionare.</span></p>
@@ -231,6 +238,32 @@ Deno.serve(async (req: Request) => {
   const body: JsonMap = await req.json().catch(() => ({}));
   const forza = body?.force === true; // rimanda l'email anche se già segnalata (per la prova)
   const ambiente = supabaseUrl.includes(PROD_PROJECT_REF) ? 'PROD' : 'TEST';
+
+  // ── Prova del canale email ────────────────────────────────────────────────
+  // Quando è tutto allineato il controllo tace — giustamente — e quindi non c'è
+  // modo di sapere se l'email saprebbe arrivare il giorno che serve davvero.
+  // Questo ramo manda un avviso di ESEMPIO, marcato come prova, con nomi
+  // inventati: non legge Matchpoint, non tocca la memoria degli avvisi già
+  // mandati, non cambia niente. Si invoca a mano, mai dal cron.
+  if (body?.provaEmail === true) {
+    const esitoFinto: Esito = {
+      allineato: false,
+      daAggiungere: ['Mario Rossi (nome di prova)'],
+      rotti: ['Maestro Inesistente (nome di prova)'],
+      coperti: [{ nostro: 'Santiago', matchpoint: 'Santiago Carabajal' }],
+    };
+    const to = clean(Deno.env.get('MAESTRI_ALERT_EMAIL_TO')) || DEFAULT_ALERT_TO;
+    const { subject, text, html } = corpoEmail(esitoFinto, ambiente, 'main', true);
+    const emailId = await mandaEmail(to, `[Padel Village] PROVA — ${subject}`, text, html);
+    await admin.from('pmo_audit_log').insert({
+      actor_user_id: '00000000-0000-0000-0000-000000000000',
+      actor_email: `routine-maestri@${ambiente.toLowerCase()}.padel-match-organizer`,
+      actor_role: 'system',
+      action: `${AUDIT_ACTION}_prova`,
+      detail: { destinatario: to, emailId },
+    });
+    return json({ ok: true, prova: true, emailInviata: true, destinatario: to, emailId });
+  }
 
   try {
     const [nostri, matchpoint] = await Promise.all([
