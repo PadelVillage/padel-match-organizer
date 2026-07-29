@@ -1821,6 +1821,106 @@ const CASES = [
       checks.push({ label: 'il fantasma invece non c\'e piu', ok: !restaFantasma });
       return checks;
     }
+  },
+  {
+    id: 66, flow: 'Organizzatore', name: 'la REGOLA: primo giocatore della partita, e nient\'altro (solo Partite, mai Ospite, mai il secondo)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      const org = H.organizzatorePartita;
+      if (typeof org !== 'function') return [{ label: 'hook organizzatorePartita assente', ok: false }];
+      const quattro = [{ idx:'0', nome:'Andrea Foltran' }, { idx:'1', nome:'Gianmario Gri' }, { idx:'2', nome:'Mattia Biz' }, { idx:'3', nome:'Mauro Schincariol' }];
+      // Caso vero misurato sui Movimenti di Matchpoint (partita 9126): chi ha creato la
+      // prenotazione dalla app mobile e Foltran, ed e il primo dell'elenco.
+      const r1 = org('partita', quattro);
+      checks.push({ label: 'partita a 4: organizzatore = il PRIMO (Foltran)', ok: !!r1 && r1.nome === 'Andrea Foltran' });
+      // ⭐ Controllo negativo: NON deve essere il secondo. Senza questo, un\'implementazione che
+      // pesca una voce qualsiasi passerebbe il caso sopra per caso.
+      checks.push({ label: '⭐ NON e il secondo (Gri)', ok: !!r1 && r1.nome !== 'Gianmario Gri' });
+      checks.push({ label: 'torna la VOCE del roster, non una copia (confronto per identita)', ok: r1 === quattro[0] });
+      // 🚨 IL CASO STORTO MISURATO: su 34 lezioni future di PROD, in 5 il primo nome era il
+      // MAESTRO. Sua decisione del 29/07: l\'organizzatore vale SOLO per le Partite.
+      checks.push({ label: '🚨 LEZIONE: nessun organizzatore (in 5 su 34 il primo e il maestro)', ok: org('lezione', quattro) === null });
+      checks.push({ label: 'manutenzione: nessun organizzatore', ok: org('manutenzione', quattro) === null });
+      checks.push({ label: 'tipo sconosciuto: nessun organizzatore (fail closed)', ok: org('torneo', quattro) === null });
+      checks.push({ label: 'tipo assente: nessun organizzatore (fail closed)', ok: org(null, quattro) === null && org('', quattro) === null });
+      // «Ospite» non e una persona: non puo essere responsabile di niente.
+      checks.push({ label: 'primo = Ospite: nessun organizzatore', ok: org('partita', [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      checks.push({ label: 'primo = OSPITE maiuscolo: nessun organizzatore', ok: org('partita', [{ idx:'0', nome:'OSPITE' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      // 🚨 Riga illeggibile al posto 0: si dice «non lo so», NON si scala al secondo — perche
+      // scalare vorrebbe dire nominare la persona SBAGLIATA.
+      checks.push({ label: '🚨 primo con nome vuoto: NULL, non scala al secondo', ok: org('partita', [{ idx:'0', nome:'' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      checks.push({ label: 'primo con nome di soli spazi: NULL', ok: org('partita', [{ idx:'0', nome:'   ' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      // Roster assente/vuoto: nessun organizzatore, e nessun errore.
+      checks.push({ label: 'roster vuoto: null', ok: org('partita', []) === null });
+      checks.push({ label: 'roster null/assente: null (niente eccezioni)', ok: org('partita', null) === null && org('partita') === null });
+      checks.push({ label: 'partita con UN solo giocatore: e lui', ok: (org('partita', [{ idx:'0', nome:'Jury Piovesan' }]) || {}).nome === 'Jury Piovesan' });
+      // Caso vero 8905: il primo entrato (Anna Quaglio) e USCITO ⇒ il primo dell\'elenco attuale
+      // e Borsoi, e il ruolo scala da se senza che nessuno intervenga.
+      const dopoUscita = [{ idx:'0', nome:'Stefano Borsoi' }, { idx:'1', nome:'Massimo Tonini' }];
+      checks.push({ label: '⭐ 8905: uscito il primo, il ruolo SCALA al successivo (Borsoi)', ok: (org('partita', dopoUscita) || {}).nome === 'Stefano Borsoi' });
+      return checks;
+    }
+  },
+  {
+    id: 67, flow: 'Organizzatore', name: 'il COLLEGAMENTO: la pastiglia compare nella scheda, UNA sola, sulla riga del primo',
+    run: async (win, H, ctx) => {
+      // ⭐ Questo caso esiste perche la regola giusta non basta: se nessuno GUARDA la scheda,
+      // togliere il pezzo che disegna la pastiglia lascerebbe tutti i test verdi e la
+      // pastiglia sparirebbe dallo schermo senza un rosso. Stessa forma del test su
+      // comandiDaRegistrare() del bot.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Mario Rossi', idCliente: '11' },
+        { idx: '1', nome: 'Luca Bianchi', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      checks.push({ label: 'la scheda disegna le due righe giocatori', ok: rows.length === 2 });
+      const conPastiglia = rows.filter(r => r.querySelector('.svc-pl-org'));
+      checks.push({ label: '🚨 la pastiglia c\'e, e ce n\'e UNA SOLA', ok: conPastiglia.length === 1 });
+      const nomeOrg = conPastiglia[0] ? String((conPastiglia[0].querySelector('.svc-pl-name') || {}).textContent || '') : '';
+      checks.push({ label: 'e sulla riga del PRIMO (Mario Rossi)', ok: /Mario Rossi/.test(nomeOrg) });
+      checks.push({ label: '⭐ la riga del secondo NON ce l\'ha', ok: !!rows[1] && !rows[1].querySelector('.svc-pl-org') });
+      const testo = conPastiglia[0] ? String(conPastiglia[0].querySelector('.svc-pl-org').textContent || '') : '';
+      checks.push({ label: 'la pastiglia dice «Organizzatore»', ok: /Organizzatore/.test(testo) });
+      H.resetCard();
+      return checks;
+    }
+  },
+  {
+    id: 68, flow: 'Organizzatore', name: 'la scheda di una LEZIONE non mostra nessun organizzatore (il caso storto, nella scheda vera)',
+    run: async (win, H, ctx) => {
+      // Il gemello del 67 sulla strada che sbagliava: la funzione da sola potrebbe essere
+      // giusta e la scheda passarle il tipo sbagliato. Qui si guarda lo SCHERMO.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso, { tipo: 'lezione' })]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Santiago Carabajal', idCliente: '21' },
+        { idx: '1', nome: 'Allievo Uno', idCliente: '22' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'lezione');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      checks.push({ label: 'la scheda della lezione disegna i giocatori', ok: rows.length === 2 });
+      checks.push({ label: '🚨 NESSUNA pastiglia Organizzatore sulla lezione', ok: box.querySelectorAll('.svc-pl-org').length === 0 });
+      checks.push({ label: 'il primo (che qui e il maestro) non e marcato', ok: !!rows[0] && !rows[0].querySelector('.svc-pl-org') });
+      H.resetCard();
+      return checks;
+    }
   }
 ];
 

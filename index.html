@@ -2888,6 +2888,11 @@
     .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
     .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
     .svc-pl-paidmeth-gift { color:#92600a; background:#fff7e6; border-color:#f5d98a; }
+    /* v6.129 — ORGANIZZATORE della partita: pastiglia sulla prima riga dei giocatori.
+       Colore ACCENT e non verde: in questa sezione il verde vuol già dire «ha pagato»,
+       e lo stesso colore su due significati diversi si legge male. */
+    .svc-pl-org { flex:0 0 auto; display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; color:var(--accent); background:var(--accent-light); border:1px solid rgba(37,99,235,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
+    .svc-pl-org i { font-size:12px; flex:0 0 auto; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7898,7 +7903,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.128';
+    const APP_VERSION = '6.129';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39999,6 +40004,41 @@ Per confermare scrivi ELIMINA.`);
     return [];
   }
 
+  // ── ORGANIZZATORE della partita — regola del committente (29/07/2026) ────────────────
+  // «L'organizzatore è la prima persona in alto che appare in una scheda», cioè il PRIMO
+  // GIOCATORE ANCORA DENTRO. Non è una convenzione grafica: l'ordine delle righe della
+  // ficha è la CRONOLOGIA DEGLI INGRESSI. Provato leggendo i «Movimenti» di Matchpoint su
+  // due partite con quattro nomi veri — 9126 (creata dalla app mobile da Foltran, che è il
+  // primo dell'elenco) e 8905 (creata dalla segreteria, con il primo entrato poi USCITO) —
+  // e i due elenchi combaciano minuto per minuto con i nostri.
+  // ⭐ Perciò il ruolo si CALCOLA e non si scrive: nessun record da mantenere, niente che il
+  // sync possa sovrascrivere ogni ~2 minuti, e «se esce, scala al successivo» (sua decisione)
+  // viene GRATIS dalla stessa lettura, senza che nessuno debba intervenire.
+  // ⭐ L'ordine arriva intatto fino qui: il worker scandisce le righe del repeater per indice
+  // crescente e `_normRoster` fa solo map/filter — nessuno dei due ordina.
+  // 🚨 FAIL CLOSED, e ognuna delle tre porte è una DECISIONE misurata, non cautela generica:
+  //  • SOLO le Partite (sua decisione del 29/07): su 34 lezioni future di PROD, in 5 il primo
+  //    nome era il MAESTRO ⇒ applicata alla cieca, la regola avrebbe fatto dell'istruttore
+  //    l'organizzatore della lezione. Il filtro sul tipo è parte della regola, non un extra.
+  //  • «Ospite» non è una persona e non può essere responsabile di niente.
+  //  • roster non ancora letto, o vuoto ⇒ NESSUN organizzatore, non un ripiego inventato.
+  // ⭐ Restituisce LA VOCE del roster, non una copia: chi disegna confronta per IDENTITÀ
+  // (`p === org`) e non per `idx`, che dal worker arriva come STRINGA e dal locale come
+  // NUMERO — un `===` su quello sarebbe muto e sbagliato.
+  function _pmoOrganizzatorePartita(tipoReale, roster) {
+    if (String(tipoReale == null ? '' : tipoReale).trim().toLowerCase() !== 'partita') return null;
+    const list = Array.isArray(roster) ? roster : [];
+    const primo = list.length ? list[0] : null;
+    if (!primo) return null;
+    const nome = String(primo.nome == null ? '' : primo.nome).trim();
+    // 🚨 Riga illeggibile: si torna NULL, NON si scala al secondo. Il posto 0 è occupato da
+    // qualcuno che non sappiamo nominare — dare il ruolo al secondo non sarebbe prudenza,
+    // sarebbe nominare la persona SBAGLIATA. «Non lo so» è l'unica risposta onesta.
+    if (!nome) return null;
+    if (/^ospite$/i.test(nome)) return null;
+    return primo;
+  }
+
   function _staffCalMpAutoLoad(iso, campo, ora) {
     const key = _staffCalMpKey(iso, campo, ora);
     const cur = _staffCalMpPlayers[key];
@@ -40538,6 +40578,10 @@ Per confermare scrivi ELIMINA.`);
         simNote.innerHTML = '🧪 <strong>Simulazione</strong> — gli incassi non toccano Matchpoint: appaiono solo nella sezione Incassi (cloud TEST).';
         playersSec.appendChild(simNote);
       }
+      // ORGANIZZATORE: calcolato UNA volta per scheda (non per riga). Vale solo per le
+      // Partite e può essere null — in quel caso la scheda non dice niente, che è meglio
+      // di un ruolo attribuito a caso.
+      const _org = _pmoOrganizzatorePartita(st.tipoReale, st.roster);
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
@@ -40576,6 +40620,16 @@ Per confermare scrivi ELIMINA.`);
           nm.textContent = p.nome;
           if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
           row.appendChild(nm);
+          // Pastiglia «Organizzatore» sulla sua riga. Confronto per IDENTITÀ e non per idx
+          // (che arriva stringa dal worker e numero dal locale).
+          if (_org && p === _org) {
+            const orgChip = document.createElement('span');
+            orgChip.className = 'svc-pl-org';
+            orgChip.innerHTML = '<i class="ti ti-star" aria-hidden="true"></i>Organizzatore';
+            orgChip.title = 'Organizzatore: il primo giocatore entrato ancora in partita. Se esce, il ruolo passa al successivo.';
+            if (marked) orgChip.style.opacity = '.5';
+            row.appendChild(orgChip);
+          }
           let amt = null;
           if (payRow && isPaid) {
             // Pagato → si ripiega: importo verde + icona storna.
@@ -44157,7 +44211,9 @@ Per confermare scrivi ELIMINA.`);
         giftKey: function (data, campo, ora, name) { return _pmoGiftKey(data, campo, ora, name); },
         giftRecord: function (data, campo, ora, p) { return _pmoGiftRecord(data, campo, ora, p); },
         giftSyncFromRoster: function (data, campo, ora, roster) { return _pmoGiftSyncFromRoster(data, campo, ora, roster); },
-        paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); }
+        paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); },
+        // Organizzatore della partita (regola del 29/07/2026): torna la VOCE del roster o null.
+        organizzatorePartita: function (tipoReale, roster) { return _pmoOrganizzatorePartita(tipoReale, roster); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
