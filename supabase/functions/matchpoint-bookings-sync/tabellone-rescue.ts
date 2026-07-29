@@ -28,6 +28,7 @@ export type RescuedOccupancy = {
   campo: string;
   tipo: string;
   descrizione: string;
+  istruttore: string;
   idReserva?: string;
   giocatori?: string[];
   _tabelloneOnly: true;
@@ -69,6 +70,45 @@ export function tipoDaTestoTabellone(testo: unknown): string {
   // riportiamo tali e quali: l'app le mostrerà come «Partita» per la sua regola di ripiego,
   // ma il dato salvato resta quello VERO e un domani si può renderlo meglio senza riscraparlo.
   return parola.charAt(0).toUpperCase() + parola.slice(1);
+}
+
+/**
+ * Ricava il MAESTRO (dropdown "Monitor" di Matchpoint) dal testo della casella del tabellone.
+ *
+ * Perché serve: l'export "Elenco utenti negli spazi" NON ha una colonna istruttore, e la sua
+ * "Descrizione" elenca solo gli ALLIEVI — provato sulla lezione del 30/07 21:00 creata dalla
+ * nostra app con maestro «LoZio», la cui descrizione porta i 4 allievi e non lui. Quindi per le
+ * lezioni nate su Matchpoint il maestro non arrivava affatto e la card restava senza nome.
+ *
+ * Dove sta l'informazione: la casella del tabellone stampa il monitor SUBITO DOPO la parola del
+ * tipo. Testo reale (letto da screenshot il 21/07, già usato dal test del tipo):
+ *   «18:00-19:30 (0p) Lezione. Santiago Carabajal . : scrivi su WhatsApp al … per prenotare.»
+ * ⭐ Quel «(0p)» è ciò che rende la lettura affidabile: quella lezione ha ZERO partecipanti, quindi
+ * il nome NON può essere un allievo. I giocatori, quando ci sono, Matchpoint li accoda in FONDO
+ * (cfr. «Partita 0,00 - 7,00 misto Fabio De Luca Nicola Stella») → fermarsi al primo «.» o «:»
+ * li lascia sempre fuori.
+ *
+ * Due prudenze deliberate:
+ *  1. si estrae SOLO dalle lezioni (la parola del tipo è dentro l'ancora): su una partita il posto
+ *     dopo il tipo è occupato da prezzo e categoria, che non sono nomi di nessuno;
+ *  2. si estrae SOLO se il nome è CHIUSO da «.» o «:». Senza un delimitatore non si può dire dove
+ *     finisce il maestro e dove cominciano gli allievi → si preferisce non dire nulla piuttosto
+ *     che tirare a indovinare un nome che sullo schermo sembrerebbe vero.
+ *
+ * Ritorna '' quando non c'è niente di riconoscibile: chi chiama distingue «non lo so» (nessun
+ * match sul tabellone) da «non c'è» (match letto, maestro assente).
+ */
+export function maestroDaTestoTabellone(testo: unknown): string {
+  const m = clean(testo).match(
+    /^\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2}\s*(?:\([^)]*\)\s*)?lezion\w*\s*\.?\s*([^.:]+?)\s*[.:]/i,
+  );
+  const cand = m ? clean(m[1]) : '';
+  // Deve somigliare a un NOME di persona: da 1 a 4 parole di sole lettere (accenti, apostrofi e
+  // trattini ammessi). Così una nota che finisse per sbaglio in questa posizione non diventa un
+  // maestro: niente cifre, niente stringhe lunghe.
+  if (!cand || cand.length > 40) return '';
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]*(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]*){0,3}$/.test(cand)) return '';
+  return cand;
 }
 
 /**
@@ -115,6 +155,10 @@ export function collectTabelloneOnlyOccupancies(
         // soprattutto NON si torna a dichiarare una lezione che nessuno ha mai visto.
         tipo: tipoDaTestoTabellone(ev.testo) || 'Partita',
         descrizione: roster.length ? roster.map((n) => `-${n}.`).join('') : '',
+        // Il maestro esce dallo STESSO testo del tipo: qui la casella è l'unica fonte che
+        // abbiamo (per definizione queste prenotazioni non hanno righe nell'export). Vuoto
+        // quando la casella non lo dichiara — mai un ripiego inventato.
+        istruttore: maestroDaTestoTabellone(ev.testo),
         ...(evId ? { idReserva: evId } : {}),
         ...(roster.length ? { giocatori: roster } : {}),
         _tabelloneOnly: true,
