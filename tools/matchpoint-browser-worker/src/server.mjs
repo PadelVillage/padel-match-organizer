@@ -5765,6 +5765,117 @@ async function selectIstruttore(formCtx, page, istruttore, diagnostic) {
   diagnostic.steps.push(`istruttore_selected:${target.text}`);
 }
 
+// ── /read-instructors — legge i MAESTRI dal dropdown "Monitor" del form Lezione ───
+// 🔒 SOLA LETTURA: apre la ficha "Nuova lezione" via URL, legge le <option> e naviga
+// via. Non compila campi, non seleziona nulla, NON tocca mai il bottone di salvataggio
+// → su Matchpoint non resta niente (la ficha nasce solo col postback di "Salvare").
+//
+// ⭐ Perché il dropdown e non la scheda "Programmazione → Maestri → Elenco istruttori":
+// sono liste DIVERSE. Un maestro può stare nell'elenco anagrafico e non comparire nella
+// tendina (es. disattivato) — e in quel caso il gestionale lo offrirebbe come
+// selezionabile salvo poi fallire al salvataggio. Questa tendina è ESATTAMENTE la lista
+// su cui selectIstruttore() qui sopra fa match: controllare questa significa controllare
+// ciò che davvero determina se un salvataggio riuscirà.
+//
+// Serve al controllo di allineamento notturno: la nostra lista di maestri è scritta a
+// mano in parser_rules.json e creare un maestro su Matchpoint non la aggiorna.
+async function readInstructorsWithBrowser(options = {}) {
+  const username = clean(options.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(options.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) {
+    throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint per read-instructors.');
+  }
+  const baseUrl = clean(options.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+
+  const diagnostic = {
+    mode: 'browser_worker_headless',
+    flow: 'read_instructors',
+    readOnly: true,
+    baseUrl,
+    startedAt: new Date().toISOString(),
+    steps: [],
+  };
+
+  // Data di comodo nel futuro: serve solo ad aprire il form. Il dropdown Monitor non
+  // dipende dallo slot, ma uno slot già occupato può impedire alla ficha di aprirsi →
+  // si provano più combinazioni campo/ora e ci si ferma alla prima che mostra il form.
+  const giorniAvanti = Math.max(1, Math.min(60, Number(options.giorniAvanti) || 21));
+  const d = new Date(Date.now() + giorniAvanti * 24 * 60 * 60 * 1000);
+  const fecha = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  const tentativi = [
+    { campo: 4, ora: '08:00', oraFine: '08:30' },
+    { campo: 1, ora: '07:00', oraFine: '07:30' },
+    { campo: 2, ora: '14:00', oraFine: '14:30' },
+  ];
+
+  const acquired = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acquired.page;
+  let failed = false;
+  try {
+    let opts = null;
+    for (const t of tentativi) {
+      const recurso = RECURSO_BY_CAMPO[t.campo];
+      const fichaUrl = `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx`
+        + `?modo=fancy&id_recurso=${recurso}`
+        + `&fecha=${encodeURIComponent(fecha)}`
+        + `&hora_inicio=${encodeURIComponent(t.ora)}`
+        + `&hora_fin=${encodeURIComponent(t.oraFine)}`;
+      diagnostic.steps.push(`goto_ficha:campo${t.campo}@${t.ora}`);
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+
+      let sel = page.locator('#CC_Datos_FormViewFicha_WUCCabeceraClaseSuelta_DropDownListMonitor');
+      if (!(await sel.count().catch(() => 0))) sel = page.locator('select[id*="DropDownListMonitor" i]');
+      if (!(await sel.count().catch(() => 0))) {
+        diagnostic.steps.push(`dropdown_assente:campo${t.campo}@${t.ora}`);
+        continue;
+      }
+      opts = await sel.first().evaluate((el) =>
+        [...el.options].map((o) => ({ value: o.value, text: (o.text || '').trim() })),
+      ).catch(() => null);
+      if (opts) { diagnostic.slotUsato = { ...t, fecha }; break; }
+    }
+
+    if (!opts) {
+      throw fail('DROPDOWN_MONITOR_NOT_FOUND',
+        `Dropdown Monitor non trovato in nessuno dei ${tentativi.length} slot provati (${fecha}).`, diagnostic);
+    }
+
+    // Stessa regola di selectIstruttore: la voce vuota e quella con value "0" non sono
+    // maestri selezionabili. Se le contassimo, il controllo segnalerebbe un maestro
+    // fantasma tutte le notti.
+    const istruttori = opts
+      .filter((o) => o.text && o.value && o.value !== '0')
+      .map((o) => o.text);
+
+    diagnostic.steps.push(`istruttori_letti:${istruttori.length}`);
+    diagnostic.optionsGrezze = opts.map((o) => o.text);
+
+    // Sgancia la sessione calda dalla ficha: lasciarla lì romperebbe la navigazione
+    // dell'operazione successiva (read/get-slots/sync). Stesso "park" di create-booking.
+    await page.goto(`${baseUrl}/Reservas/CuadroReservas.aspx?id_cuadro=3`, { waitUntil: 'commit', timeout: 20000 }).catch(() => {});
+    diagnostic.steps.push('park_tabellone');
+
+    return { ok: true, istruttori, diagnostic };
+  } catch (e) {
+    failed = true;
+    throw e;
+  } finally {
+    await acquired.release(failed);
+  }
+}
+
+async function handleReadInstructors(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  // In coda come ogni altra operazione browser: condivide la sessione calda, e senza
+  // coda navigherebbe la stessa pagina di un'op in corso.
+  const result = await mpQueueRun(
+    mpJobMeta('read-instructors', body),
+    () => mpReadRetry('read-instructors', () => readInstructorsWithBrowser(body)),
+  );
+  json(res, 200, result);
+}
+
 // ── Helper: attende che un postback parziale ASP.NET (UpdatePanel) sia concluso ──
 // Dopo aver aggiunto un giocatore, Matchpoint fa un postback async che ricostruisce
 // il blocco "Aggiungi giocatore". Se si digita il giocatore successivo PRIMA che il
@@ -8777,7 +8888,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
         routes: [
-          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone',
+          '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
@@ -8806,6 +8917,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/read-tabellone') {
       return await handleReadTabellone(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/read-instructors') {
+      return await handleReadInstructors(req, res);
     }
     if (req.method === 'POST' && req.url === '/export-slot-schedule') {
       return await handleSlotScheduleExport(req, res);
