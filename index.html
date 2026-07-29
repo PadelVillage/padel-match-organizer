@@ -7903,7 +7903,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.129';
+    const APP_VERSION = '6.130';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40605,7 +40605,7 @@ Per confermare scrivi ELIMINA.`);
           const isGift = !!(_payBadge && _payBadge.kind === 'gift');
           const item = document.createElement('div');
           item.className = 'svc-pl';
-          // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
+          // Riga principale: [icona stato] [pastiglia Organizzatore] nome [importo/€ inline] [storna] [✕]
           const row = document.createElement('div');
           row.className = 'svc-pl-row';
           if (payRow) {
@@ -40615,12 +40615,11 @@ Per confermare scrivi ELIMINA.`);
             ic.setAttribute('aria-hidden', 'true');
             row.appendChild(ic);
           }
-          const nm = document.createElement('span');
-          nm.className = 'svc-pl-name';
-          nm.textContent = p.nome;
-          if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
-          row.appendChild(nm);
-          // Pastiglia «Organizzatore» sulla sua riga. Confronto per IDENTITÀ, non per `idx`:
+          // Pastiglia «Organizzatore» PRIMA del nome — sua indicazione del 29/07: *«se la metti a
+          // destra c'è invece lì la spunta di quando hanno pagato, quindi la devi mettere dentro la
+          // schedina sulla sinistra del nome»*. A destra vivono già l'importo, la pastiglia verde
+          // «pagato» e lo storna: due significati nello stesso posto si confondono.
+          // Confronto per IDENTITÀ, non per `idx`:
           // `_normRoster` assegna `idx` col ripiego sulla POSIZIONE quando la voce non ce l'ha,
           // quindi in un elenco misto due voci possono ritrovarsi con lo stesso idx e la
           // pastiglia comparirebbe due volte. Con l'identità non può succedere per costruzione.
@@ -40636,6 +40635,11 @@ Per confermare scrivi ELIMINA.`);
             if (marked) orgChip.style.opacity = '.5';
             row.appendChild(orgChip);
           }
+          const nm = document.createElement('span');
+          nm.className = 'svc-pl-name';
+          nm.textContent = p.nome;
+          if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
+          row.appendChild(nm);
           let amt = null;
           if (payRow && isPaid) {
             // Pagato → si ripiega: importo verde + icona storna.
