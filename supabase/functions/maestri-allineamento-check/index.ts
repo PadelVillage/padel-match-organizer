@@ -136,7 +136,7 @@ async function getGmailAccessToken(): Promise<string> {
   return clean(data.access_token);
 }
 
-function corpoEmail(esito: Esito, ambiente: string, ramo: string, prova = false): { subject: string; text: string; html: string } {
+function corpoEmail(esito: Esito, ambiente: string, prova = false): { subject: string; text: string; html: string } {
   const nuovi = esito.daAggiungere;
   const rotti = esito.rotti;
 
@@ -161,12 +161,14 @@ function corpoEmail(esito: Esito, ambiente: string, ramo: string, prova = false)
   righe.push('');
   righe.push(`Maestri che invece corrispondono: ${esito.coperti.map((c) => c.nostro).join(', ') || '(nessuno)'}`);
   righe.push('');
-  righe.push('Come si sistema: la lista è scritta a mano in parser_rules.json (ramo ' + ramo + '),');
-  righe.push('più quattro copie di riserva in index.html. Il nome va scritto ESATTAMENTE come');
-  righe.push('compare nel menu «Istruttore» di Matchpoint: il salvataggio cerca la voce che');
-  righe.push('CONTIENE quel testo, quindi una lettera di differenza lo fa fallire in silenzio.');
+  // ⚠️ Chi legge questa email NON è un tecnico e non aprirà mai un file del progetto:
+  // qui ci va COSA FARE, non dove sta la lista. (Prima diceva parser_rules.json e i
+  // fallback in index.html: informazione giusta, lettore sbagliato.)
+  righe.push('COSA FARE: apri una chat con Claude e digli quale maestro aggiungere (o togliere).');
+  righe.push('Serve il nome ESATTO come compare nel menu «Istruttore» di Matchpoint: conviene');
+  righe.push('copiarlo da lì, perché anche una lettera di differenza basta a non farlo funzionare.');
   righe.push('');
-  righe.push(`(controllo automatico ${ambiente} — nessuna azione è stata fatta da solo)`);
+  righe.push(`(controllo automatico del gestionale${ambiente === 'PROD' ? '' : ' — ambiente di prova'}: nessuna azione è stata fatta da sola)`);
 
   const avvisoProvaTesto = prova
     ? 'QUESTA È UNA PROVA. Nessun maestro è cambiato davvero: serve solo a verificare\n'
@@ -190,8 +192,9 @@ ${rotti.length ? `<p style="margin:16px 0 4px"><strong style="color:#b00">Attenz
 <ul style="margin:4px 0">${lista(rotti, '#b00')}</ul>` : ''}
 <p style="margin:16px 0 4px;color:#555;font-size:14px">Maestri che invece corrispondono: ${escapeHtml(esito.coperti.map((c) => c.nostro).join(', ')) || '(nessuno)'}</p>
 <hr style="border:none;border-top:1px solid #ddd;margin:20px 0">
-<p style="color:#555;font-size:13px">La lista è scritta a mano in <code>parser_rules.json</code> (ramo <code>${escapeHtml(ramo)}</code>), più quattro copie di riserva in <code>index.html</code>. Il nome va scritto <strong>esattamente</strong> come compare nel menu «Istruttore» di Matchpoint: il salvataggio cerca la voce che <em>contiene</em> quel testo, quindi una lettera di differenza lo fa fallire in silenzio.</p>
-<p style="color:#888;font-size:12px">Controllo automatico ${escapeHtml(ambiente)} — nessuna azione è stata fatta da solo.</p>
+<p style="margin:0 0 6px"><strong>Cosa fare</strong></p>
+<p style="color:#555;font-size:14px;margin:0 0 12px">Apri una chat con Claude e digli quale maestro aggiungere (o togliere). Serve il nome <strong>esatto</strong> come compare nel menu «Istruttore» di Matchpoint: conviene copiarlo da lì, perché anche una lettera di differenza basta a non farlo funzionare.</p>
+<p style="color:#888;font-size:12px">Controllo automatico del gestionale${ambiente === 'PROD' ? '' : ' — ambiente di prova'}: nessuna azione è stata fatta da sola.</p>
 </div>`;
 
   return { subject: titolo, text, html };
@@ -253,7 +256,7 @@ Deno.serve(async (req: Request) => {
       coperti: [{ nostro: 'Santiago', matchpoint: 'Santiago Carabajal' }],
     };
     const to = clean(Deno.env.get('MAESTRI_ALERT_EMAIL_TO')) || DEFAULT_ALERT_TO;
-    const { subject, text, html } = corpoEmail(esitoFinto, ambiente, 'main', true);
+    const { subject, text, html } = corpoEmail(esitoFinto, ambiente, true);
     const emailId = await mandaEmail(to, `[Padel Village] PROVA — ${subject}`, text, html);
     await admin.from('pmo_audit_log').insert({
       actor_user_id: '00000000-0000-0000-0000-000000000000',
@@ -322,7 +325,7 @@ Deno.serve(async (req: Request) => {
     let emailId = '';
     if (!giaSegnalato) {
       const to = clean(Deno.env.get('MAESTRI_ALERT_EMAIL_TO')) || DEFAULT_ALERT_TO;
-      const { subject, text, html } = corpoEmail(esito, ambiente, nostri.ramo);
+      const { subject, text, html } = corpoEmail(esito, ambiente);
       emailId = await mandaEmail(to, `[Padel Village] ${subject}`, text, html);
       await admin.from('pmo_audit_log').insert({
         actor_user_id: '00000000-0000-0000-0000-000000000000',
