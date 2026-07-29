@@ -46,6 +46,16 @@ package-lock.json
 # per PR di guard-main-prs.yml.
 supabase/functions/*/deno.lock
 
-# Artefatti temporanei locali (debug/scratch)
-_chromerr.txt
-_doc.html
+# Artefatti scratch generati da skill/agent e dal debug locale (documenti prodotti
+# al volo, dump di errori): NON fanno parte del progetto → non versionare.
+# Sostituiscono le due voci puntuali `_chromerr.txt` e `_doc.html`, che ricadono
+# entrambe in `/_*.txt` e `/_*.html`.
+# 🚨 Ancorati alla RADICE con `/`, e NON scritti come `*.docx`: senza l'ancora il
+# pattern coprirebbe anche `docs/algoritmo-organizzazione-partite-mappa-funzioni.docx`,
+# che è documentazione VOLUTA — e un secondo documento in `docs/` sparirebbe in
+# silenzio. Gli scarti nascono nella radice o nello scratchpad, non in `docs/`.
+/*.docx
+/*.pdf
+/_*.html
+/_*.js
+/_*.txt
