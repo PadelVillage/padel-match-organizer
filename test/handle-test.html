@@ -1965,6 +1965,56 @@ const CASES = [
       H.resetCard();
       return checks;
     }
+  },
+  {
+    id: 69, flow: 'Scheda', name: 'IL NOME HA LA RIGA TUTTA PER SE: i soldi stanno sotto, non accanto',
+    run: async (win, H, ctx) => {
+      // Nasce da un difetto che ha visto LUI sullo schermo, non i test: nel pannello stretto
+      // al nome restavano ~65px e la scheda mostrava «Andr ea…» — importo, storna e pulsanti
+      // gli rubavano la riga. Scelta sua (opzione A, 30/07): sulla riga del nome solo stato,
+      // stellina e ✕; i soldi sulla riga sotto. Senza questo caso, il giorno che qualcuno
+      // rimette l'importo accanto al nome nessun rosso lo direbbe.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Andrea Foltran', idCliente: '11' },
+        { idx: '1', nome: 'Claudio Zambenedetti', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      const soldi = Array.from(box.querySelectorAll('.svc-pl-money'));
+      // 🚨 GUARDIA anti-cieco: se in questo giro i controlli di pagamento non si disegnano
+      // affatto, «nessun importo accanto al nome» e vero per il motivo sbagliato e il verde
+      // non misura niente (e la 6ª trappola: uno zero compatibile col meccanismo spento).
+      const controlli = box.querySelectorAll('.svc-pl-eur, .svc-pl-paid').length;
+      if (!controlli) {
+        checks.push({ label: '⚠️ nessun controllo di pagamento disegnato: questa prova non dice niente', ok: false });
+        H.resetCard();
+        return checks;
+      }
+      checks.push({ label: 'due righe nome, una per giocatore', ok: rows.length === 2 });
+      checks.push({ label: '🚨 sulla riga del NOME non ci sono soldi (ne importo, ne pastiglia pagato)',
+        ok: rows.length > 0 && rows.every(r => !r.querySelector('.svc-pl-eur') && !r.querySelector('.svc-pl-paid')) });
+      checks.push({ label: 'la ✕ resta sulla riga del nome (riguarda la persona)',
+        ok: rows.length > 0 && rows.every(r => !!r.querySelector('.svc-pl-iconbtn')) });
+      checks.push({ label: '⭐ ogni giocatore ha la sua riga dei soldi, sotto', ok: soldi.length === rows.length });
+      checks.push({ label: 'i soldi stanno DENTRO quella riga', ok: soldi.length > 0 && soldi.every(m => !!m.querySelector('.svc-pl-eur, .svc-pl-paid')) });
+      // ⭐ Il rientro non e un numero a mano: la riga dei soldi ripete i posti vuoti di sopra.
+      // Si contano i posti, non i pixel — la geometria in questo banco non e misurabile
+      // (iframe a display:none, larghezze a zero: misurato nel caso 67).
+      checks.push({ label: '⭐ il rientro e fatto ripetendo i posti vuoti della riga sopra',
+        ok: soldi.length > 0 && soldi.every(m => m.querySelectorAll('.svc-pl-lead').length === 1
+          && m.querySelectorAll('.svc-pl-org-slot').length === rows[0].querySelectorAll('.svc-pl-org-slot').length) });
+      H.resetCard();
+      return checks;
+    }
   }
 ];
 

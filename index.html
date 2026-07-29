@@ -2869,6 +2869,18 @@
     .svc-pl { padding:8px 0; }
     .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
     .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
+    /* v6.133 — «il nome ha la riga tutta per sé», sua scelta del 30/07 (opzione A) dopo aver
+       visto la scheda sul suo schermo: nel pannello stretto al nome restavano ~65px e ci
+       finiva «Andr ea…» — il nome perdeva contro l'importo e i pulsanti. Sulla riga del nome
+       restano solo lo stato, la stellina e la ✕ (l'unica azione che riguarda la PERSONA);
+       importo, storna e metodi scendono sulla riga sotto.
+       ⭐ Il rientro della riga dei soldi NON è un numero scritto a mano: si ottiene ripetendo
+       gli stessi posti vuoti della riga sopra (.svc-pl-lead + .svc-pl-org-slot), così i due
+       allineamenti non possono divergere il giorno che uno dei due cambia misura.
+       🚨 `min-width:0` per la stessa ragione della stellina: senza, il glifo dentro allarga
+       il posto (dimensione minima automatica dei flex item) e il rientro non combacia più. */
+    .svc-pl-lead { flex:0 0 22px; min-width:0; display:inline-flex; align-items:center; justify-content:center; }
+    .svc-pl-money { display:flex; align-items:center; gap:7px; min-height:26px; margin-top:5px; }
     .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
     .svc-pl-ic-gift { font-size:16px; color:#c98a04; flex:0 0 auto; }
     .svc-pl-ic-due { font-size:16px; color:#dc2626; flex:0 0 auto; }
@@ -7919,7 +7931,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.132';
+    const APP_VERSION = '6.133';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40646,15 +40658,19 @@ Per confermare scrivi ELIMINA.`);
           const isGift = !!(_payBadge && _payBadge.kind === 'gift');
           const item = document.createElement('div');
           item.className = 'svc-pl';
-          // Riga principale: [icona stato] [pastiglia Organizzatore] nome [importo/€ inline] [storna] [✕]
+          // Riga del NOME: [icona stato] [stellina Organizzatore] nome [✕] — e nient'altro.
+          // I soldi (importo, storna, metodi) stanno sulla riga sotto: v6.133, sua scelta.
           const row = document.createElement('div');
           row.className = 'svc-pl-row';
           if (payRow) {
+            const icSlot = document.createElement('span');
+            icSlot.className = 'svc-pl-lead';
             const ic = document.createElement('i');
             // ✓ verde = pagato · ✗ rossa = da incassare (come «In sospeso» su MP) · 🎁 = offerta
             ic.className = 'ti ' + (isGift ? 'ti-gift svc-pl-ic-gift' : (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle-x svc-pl-ic-due'));
             ic.setAttribute('aria-hidden', 'true');
-            row.appendChild(ic);
+            icSlot.appendChild(ic);
+            row.appendChild(icSlot);
           }
           // Stellina «Organizzatore» PRIMA del nome — sua indicazione del 29/07: *«se la metti a
           // destra c'è invece lì la spunta di quando hanno pagato, quindi la devi mettere dentro la
@@ -40694,14 +40710,49 @@ Per confermare scrivi ELIMINA.`);
           nm.textContent = p.nome;
           if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
           row.appendChild(nm);
+          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip). Sta sulla
+          // riga del NOME perché è l'unica azione che riguarda la PERSONA e non i soldi.
+          const x = document.createElement('button');
+          x.type = 'button'; x.className = 'svc-pl-iconbtn';
+          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
+          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
+          x.setAttribute('aria-label', x.title);
+          x.disabled = st.busy;
+          x.addEventListener('click', function () {
+            if (st.busy) return;
+            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+            staffCalRenderPlayersEditor();
+          });
+          row.appendChild(x);
+          item.appendChild(row);
+          // ── Riga dei SOLDI, sotto il nome ────────────────────────────────────────────
+          // v6.133 (sua scelta, opzione A): importo e storna non stanno più accanto al nome.
+          // Il rientro si costruisce ripetendo i posti vuoti della riga sopra, non con un
+          // padding a mano: se un giorno la stellina o l'icona di stato cambiano misura, le
+          // due righe si spostano INSIEME. Nessuna riga se i pagamenti non si mostrano
+          // (giocatore segnato per la rimozione, manutenzione): là il nome ha tutto lo spazio.
           let amt = null;
+          const money = payRow ? document.createElement('div') : null;
+          if (money) {
+            money.className = 'svc-pl-money';
+            const spIc = document.createElement('span');
+            spIc.className = 'svc-pl-lead';
+            spIc.setAttribute('aria-hidden', 'true');
+            money.appendChild(spIc);
+            if (_org) {
+              const spOrg = document.createElement('span');
+              spOrg.className = 'svc-pl-org-slot';
+              spOrg.setAttribute('aria-hidden', 'true');
+              money.appendChild(spOrg);
+            }
+          }
           if (payRow && isPaid) {
             // Pagato → si ripiega: importo verde + icona storna.
             const paid = document.createElement('span');
             paid.className = 'svc-pl-paid';
             paid.textContent = isGift ? 'Offerta'
               : ((importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato');
-            row.appendChild(paid);
+            money.appendChild(paid);
             // Offerta = nessun cobro registrato in MP → non c'è niente da stornare.
             if (_payWriteActive && !isGift) {
               const sBtn = document.createElement('button');
@@ -40721,7 +40772,7 @@ Per confermare scrivi ELIMINA.`);
                   sourceBtns: [sBtn],
                 });
               });
-              row.appendChild(sBtn);
+              money.appendChild(sBtn);
             }
           } else if (payRow) {
             // Da incassare → campo € inline editabile (default = pendente o importo letto, sennò 0).
@@ -40736,24 +40787,11 @@ Per confermare scrivi ELIMINA.`);
             amt.disabled = !_payWriteActive;
             amt.setAttribute('aria-label', 'Importo a carico di ' + p.nome);
             eur.appendChild(sym); eur.appendChild(amt);
-            row.appendChild(eur);
+            money.appendChild(eur);
             _payAmtInputs.push(amt);
             if (stato == null) _anyUnknown = true;
           }
-          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip).
-          const x = document.createElement('button');
-          x.type = 'button'; x.className = 'svc-pl-iconbtn';
-          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
-          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
-          x.setAttribute('aria-label', x.title);
-          x.disabled = st.busy;
-          x.addEventListener('click', function () {
-            if (st.busy) return;
-            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
-            staffCalRenderPlayersEditor();
-          });
-          row.appendChild(x);
-          item.appendChild(row);
+          if (money) item.appendChild(money);
           // Con che cosa ha pagato (solo per chi ha già pagato): una pastiglia per metodo —
           // più di una quando la stessa persona compare con metodi diversi (parziale + saldo,
           // o due "Ospite" nella stessa partita, indistinguibili per nome).
