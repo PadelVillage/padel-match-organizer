@@ -7903,7 +7903,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.130';
+    const APP_VERSION = '6.131';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8012,7 +8012,27 @@ body.assessment-public-mode .assessment-public-only-card {
                 const h = opts && opts.headers;
                 if (h) _real = (typeof h.get === 'function') ? !!h.get('X-PMO-Real-MP') : !!(h['X-PMO-Real-MP'] || h['x-pmo-real-mp']);
               } catch (e) {}
-              if (!_real) {
+              // 🔎 LETTURA, non scrittura — v6.131, col suo OK esplicito. `matchpoint-bookings-edit`
+              // con `read:true` chiede SOLTANTO l'elenco dei partecipanti della scheda Matchpoint:
+              // non tocca niente (l'edge stessa salta il record di modifica quando readOnly, e il
+              // worker legge gli input senza mai inviare il form). Finiva intercettata per un
+              // EFFETTO COLLATERALE dell'aggancio per INDIRIZZO: questa lettura condivide l'URL con
+              // la modifica, e la risposta simulata — «ok» ma SENZA giocatori — lasciava la scheda a
+              // «(nessuno)» per ogni prenotazione nata su Matchpoint ⇒ su TEST i giocatori non si
+              // vedevano MAI, e il difetto si travestiva da «stavi già modificando» (l'unico ramo
+              // rimasto a valle). Trovato dal committente aprendo la scheda, il 29/07.
+              // ⭐ Il commento in testa a questo blocco dichiarava GIÀ l'intenzione giusta — «i
+              // READ/IMPORT NON sono intercettati» —: questa riga la rende vera anche qui.
+              // 🚨 Restringe il meno possibile: quell'UNICO indirizzo e quell'UNICO flag. Ogni
+              // scrittura (create/edit/cancel senza `read`, e tutta l'anagrafica) resta SIMULATA.
+              let _isReadOnly = false;
+              try {
+                if (/matchpoint-bookings-edit\b/.test(u)) {
+                  const _rb = (opts && typeof opts.body === 'string') ? JSON.parse(opts.body) : null;
+                  _isReadOnly = !!(_rb && _rb.read === true);
+                }
+              } catch (e) { _isReadOnly = false; } // corpo illeggibile ⇒ si tratta come scrittura
+              if (!_real && !_isReadOnly) {
                 const isClients = /matchpoint-clients-/.test(u);
                 const kind = (u.match(/matchpoint-(?:bookings|clients)-(\w+)/) || [])[1] || 'edit';
                 const isJobPoll = /[?&]jobId=/.test(u);
