@@ -1889,8 +1889,52 @@ const CASES = [
       const nomeOrg = conPastiglia[0] ? String((conPastiglia[0].querySelector('.svc-pl-name') || {}).textContent || '') : '';
       checks.push({ label: 'e sulla riga del PRIMO (Mario Rossi)', ok: /Mario Rossi/.test(nomeOrg) });
       checks.push({ label: '⭐ la riga del secondo NON ce l\'ha', ok: !!rows[1] && !rows[1].querySelector('.svc-pl-org') });
-      const testo = conPastiglia[0] ? String(conPastiglia[0].querySelector('.svc-pl-org').textContent || '') : '';
-      checks.push({ label: 'la pastiglia dice «Organizzatore»', ok: /Organizzatore/.test(testo) });
+      // v6.132 — sua decisione: la parola «Organizzatore» non c'e piu, c'e SOLO la stellina.
+      // ⇒ il significato non sta piu nel testo visibile: lo portano `aria-label` (screen reader)
+      // e `title` (chi ci passa sopra). Sono l'unico testo rimasto, quindi si sorvegliano: senza,
+      // resta un segno che nessuno sa spiegare, e nessun altro test se ne accorgerebbe.
+      const segno = conPastiglia[0] ? conPastiglia[0].querySelector('.svc-pl-org') : null;
+      checks.push({ label: 'il segno e la STELLINA (ti-star)', ok: !!(segno && segno.querySelector('i.ti-star')) });
+      checks.push({ label: '🚨 e resta spiegato: aria-label + title dicono «Organizzatore»',
+        ok: !!segno && /Organizzatore/.test(String(segno.getAttribute('aria-label') || ''))
+                    && /Organizzatore/.test(String(segno.getAttribute('title') || '')) });
+      // ⭐ I NOMI RESTANO INCOLONNATI, e qui si sorveglia la CAUSA: il posto della stellina e
+      // riservato anche sulle righe di chi NON e organizzatore. Togliere quel posto vuoto fa
+      // slittare a destra il solo nome dell'organizzatore — l'effetto che gli aveva fatto
+      // scartare la pastiglia con la parola.
+      // 🚨 La misura GEOMETRICA (i due nomi partono dalla stessa x) e stata provata e QUI NON E
+      // MISURABILE: misurato che in questo banco le righe hanno larghezza ZERO (la scheda vive
+      // in un contenitore senza impaginazione) ⇒ `getBoundingClientRect().left` da 0 su tutte, e
+      // un confronto fra due zeri sarebbe verde con l'allineamento sano E con quello rotto. Si
+      // sorveglia la struttura, che invece e osservabile; la resa a schermo la giudica lui.
+      checks.push({ label: '⭐ il posto della stellina e riservato su OGNI riga (nomi incolonnati)',
+        ok: rows.length > 0 && rows.every(r => r.querySelectorAll('.svc-pl-org-slot').length === 1) });
+      // 🚨 …e il posto riservato NON BASTA: misurato che con `min-width:auto` (il valore di
+      // default dei flex item) il posto si allarga fino al glifo — stellina 21px contro un posto
+      // da 16 ⇒ il nome dell'organizzatore partiva 5px piu a destra. Il posto c'era su tutte le
+      // righe e i nomi erano comunque storti: il controllo strutturale qui sopra era VERDE.
+      // ⇒ si sorveglia la riga di stile che lo impedisce. Si legge dal CSSOM e non dal layout:
+      // il foglio di stile esiste anche con l'iframe a `display:none`, la geometria no.
+      // 🚨 Il `try` sta DENTRO il ciclo, uno per foglio: il primo della lista e quello delle
+      // icone servito dalla CDN, cioe un ALTRO dominio, e leggerne le regole solleva. Con un
+      // solo try intorno a tutto, quell'eccezione fermava la ricerca prima di arrivare al nostro
+      // foglio e la prova si dichiarava cieca (misurato: succedeva davvero).
+      const regola = (() => {
+        for (const ss of Array.from(win.document.styleSheets)) {
+          let rules = null;
+          try { rules = Array.from(ss.cssRules || []); } catch (e) { continue; } // foglio di altro dominio
+          for (const r of rules) {
+            if (r.selectorText === '.svc-pl-org-slot') return r.style;
+          }
+        }
+        return null;
+      })();
+      if (!regola) {
+        checks.push({ label: '⚠️ regola .svc-pl-org-slot NON TROVATA nel foglio di stile: questa prova non dice niente', ok: false });
+      } else {
+        checks.push({ label: '🚨 il posto ha min-width:0 (senza, il glifo lo allarga e i nomi si storgono)', ok: regola.minWidth === '0px' });
+        checks.push({ label: 'la larghezza del posto e FISSA in px', ok: /^\d+(\.\d+)?px$/.test(String(regola.flexBasis || '')) });
+      }
       H.resetCard();
       return checks;
     }

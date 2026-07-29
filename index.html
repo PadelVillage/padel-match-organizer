@@ -2888,11 +2888,27 @@
     .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
     .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
     .svc-pl-paidmeth-gift { color:#92600a; background:#fff7e6; border-color:#f5d98a; }
-    /* v6.129 — ORGANIZZATORE della partita: pastiglia sulla prima riga dei giocatori.
-       Colore ACCENT e non verde: in questa sezione il verde vuol già dire «ha pagato»,
-       e lo stesso colore su due significati diversi si legge male. */
-    .svc-pl-org { flex:0 0 auto; display:inline-flex; align-items:center; gap:4px; font-size:.7rem; font-weight:700; color:var(--accent); background:var(--accent-light); border:1px solid rgba(37,99,235,.35); border-radius:999px; padding:2px 8px; white-space:nowrap; }
-    .svc-pl-org i { font-size:12px; flex:0 0 auto; }
+    /* v6.129 — ORGANIZZATORE della partita: segno sulla prima riga dei giocatori.
+       v6.132, sua decisione: SOLO LA STELLINA, senza la parola «Organizzatore».
+       ⭐ Il posto della stellina è RISERVATO su tutte le righe (larghezza fissa, vuoto per chi
+       non è organizzatore): così i nomi restano INCOLONNATI. Senza, l'unico nome spostato a
+       destra sarebbe quello dell'organizzatore — l'effetto collaterale che aveva fatto
+       scartare la pastiglia con la parola.
+       Colore ACCENT e non verde: in questa sezione il verde vuol già dire «ha pagato», e lo
+       stesso colore su due significati diversi si legge male. Niente sfondo né bordo: intorno
+       a un solo glifo la pastiglia pesava più del segno che porta.
+       🚨 La stellina è OUTLINE (`ti-star`) e non piena: MISURATO che il webfont Tabler 3.44.0
+       servito dalla CDN (riga 41) non contiene NESSUNA variante piena (zero classi `*-filled`)
+       ⇒ `ti-star-filled` disegnerebbe un rettangolo vuoto proprio sulla riga da far notare. */
+    /* 🚨 `min-width:0` NON è ornamentale: senza, vale la «dimensione minima automatica» dei
+       flex item (`min-width:auto`) e il posto si ALLARGA fino al glifo — misurato: stellina
+       21px contro un posto da 16 ⇒ il nome dell'organizzatore partiva 5px più a destra degli
+       altri, cioè proprio il difetto che il posto riservato esiste per evitare. Con min-width:0
+       la larghezza è quella dichiarata qualunque cosa ci stia dentro, e i nomi restano
+       incolonnati anche se un domani il glifo cambia misura. */
+    .svc-pl-org-slot { flex:0 0 21px; min-width:0; display:inline-flex; align-items:center; justify-content:center; }
+    .svc-pl-org { color:var(--accent); }
+    .svc-pl-org i { font-size:15px; flex:0 0 auto; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7903,7 +7919,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.131';
+    const APP_VERSION = '6.132';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40043,8 +40059,13 @@ Per confermare scrivi ELIMINA.`);
   //  • «Ospite» non è una persona e non può essere responsabile di niente.
   //  • roster non ancora letto, o vuoto ⇒ NESSUN organizzatore, non un ripiego inventato.
   // ⭐ Restituisce LA VOCE del roster, non una copia: chi disegna confronta per IDENTITÀ
-  // (`p === org`) e non per `idx`, che dal worker arriva come STRINGA e dal locale come
-  // NUMERO — un `===` su quello sarebbe muto e sbagliato.
+  // (`p === org`) e non per `idx`. Il motivo è che `_normRoster` assegna `idx` col ripiego
+  // sulla POSIZIONE quando la voce non ce l'ha: in un elenco misto due voci possono ritrovarsi
+  // con lo stesso idx, e il segno comparirebbe DUE volte. L'identità lo esclude per costruzione.
+  // ⚠️ Qui c'era scritto un motivo SBAGLIATO — «idx arriva stringa dal worker e numero dal
+  // locale» —: impossibile, `p` e `org` vengono dallo stesso array, quindi i tipi non possono
+  // divergere. Corretto nel punto del disegno in `8fac207` e QUI in v6.132: la stessa ragione
+  // falsa era scritta in due posti, e il commit ne aveva riparato uno solo.
   function _pmoOrganizzatorePartita(tipoReale, roster) {
     if (String(tipoReale == null ? '' : tipoReale).trim().toLowerCase() !== 'partita') return null;
     const list = Array.isArray(roster) ? roster : [];
@@ -40635,25 +40656,38 @@ Per confermare scrivi ELIMINA.`);
             ic.setAttribute('aria-hidden', 'true');
             row.appendChild(ic);
           }
-          // Pastiglia «Organizzatore» PRIMA del nome — sua indicazione del 29/07: *«se la metti a
+          // Stellina «Organizzatore» PRIMA del nome — sua indicazione del 29/07: *«se la metti a
           // destra c'è invece lì la spunta di quando hanno pagato, quindi la devi mettere dentro la
           // schedina sulla sinistra del nome»*. A destra vivono già l'importo, la pastiglia verde
           // «pagato» e lo storna: due significati nello stesso posto si confondono.
+          // v6.132, sua decisione: solo la STELLINA, senza la parola.
+          // ⭐ Il posto si riserva su OGNI riga (span vuoto della stessa larghezza), non solo su
+          // quella dell'organizzatore: è ciò che tiene i nomi incolonnati.
+          // 🚨 Senza la parola il significato lo porta SOLTANTO l'etichetta: `aria-label` per chi
+          // legge con lo screen reader, `title` per chi ci passa sopra. Togliere l'una o l'altro
+          // lascia un segno che nessuno sa spiegare — non è decorazione, è l'unico testo rimasto.
           // Confronto per IDENTITÀ, non per `idx`:
           // `_normRoster` assegna `idx` col ripiego sulla POSIZIONE quando la voce non ce l'ha,
           // quindi in un elenco misto due voci possono ritrovarsi con lo stesso idx e la
-          // pastiglia comparirebbe due volte. Con l'identità non può succedere per costruzione.
+          // stellina comparirebbe due volte. Con l'identità non può succedere per costruzione.
           // ⚖️ Misurato (sabotaggio 7, 29/07): sostituire `p === _org` con `p.idx === _org.idx`
           // lascia la rete VERDE — `p` e `_org` vengono dallo stesso elenco, quindi nella prova
           // i due confronti sono equivalenti. È un sabotaggio INERTE, non un test debole: il
           // caso che li separa (idx duplicati) non esiste fra i dati di prova.
-          if (_org && p === _org) {
-            const orgChip = document.createElement('span');
-            orgChip.className = 'svc-pl-org';
-            orgChip.innerHTML = '<i class="ti ti-star" aria-hidden="true"></i>Organizzatore';
-            orgChip.title = 'Organizzatore: il primo giocatore entrato ancora in partita. Se esce, il ruolo passa al successivo.';
-            if (marked) orgChip.style.opacity = '.5';
-            row.appendChild(orgChip);
+          if (_org) {
+            const orgSlot = document.createElement('span');
+            orgSlot.className = 'svc-pl-org-slot';
+            if (p === _org) {
+              orgSlot.classList.add('svc-pl-org');
+              orgSlot.setAttribute('role', 'img');
+              orgSlot.setAttribute('aria-label', 'Organizzatore');
+              orgSlot.title = 'Organizzatore: il primo giocatore entrato ancora in partita. Se esce, il ruolo passa al successivo.';
+              orgSlot.innerHTML = '<i class="ti ti-star" aria-hidden="true"></i>';
+              if (marked) orgSlot.style.opacity = '.5';
+            } else {
+              orgSlot.setAttribute('aria-hidden', 'true');
+            }
+            row.appendChild(orgSlot);
           }
           const nm = document.createElement('span');
           nm.className = 'svc-pl-name';
