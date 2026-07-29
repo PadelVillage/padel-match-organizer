@@ -2869,6 +2869,19 @@
     .svc-pl { padding:8px 0; }
     .svc-pl + .svc-pl { border-top:1px solid #eef0f3; }
     .svc-pl-row { display:flex; align-items:center; gap:7px; min-height:30px; }
+    /* v6.128 — «il nome ha la riga tutta per sé», sua scelta dopo aver visto la scheda sul
+       proprio schermo: nel pannello stretto al nome restavano ~65px e ci finiva «Andr ea…» —
+       il nome perdeva contro l'importo e i pulsanti. Sulla riga del nome restano solo lo stato,
+       la stellina dell'organizzatore e la ✕ (l'unica azione che riguarda la PERSONA); importo,
+       storna e metodi scendono sulla riga sotto. Misurato a 240px: al nome restano 108px
+       invece di 65, e il nome più lungo che gira nei roster (20 caratteri) entra intero.
+       ⭐ Il rientro della riga dei soldi NON è un numero scritto a mano: si ottiene ripetendo
+       gli stessi posti vuoti della riga sopra (.svc-pl-lead + .svc-pl-org-slot), così i due
+       allineamenti non possono divergere il giorno che uno dei due cambia misura.
+       🚨 `min-width:0` per la stessa ragione della stellina: senza, il glifo dentro allarga
+       il posto (dimensione minima automatica dei flex item) e il rientro non combacia più. */
+    .svc-pl-lead { flex:0 0 22px; min-width:0; display:inline-flex; align-items:center; justify-content:center; }
+    .svc-pl-money { display:flex; align-items:center; gap:7px; min-height:26px; margin-top:5px; }
     .svc-pl-ic-paid { font-size:16px; color:var(--green); flex:0 0 auto; }
     .svc-pl-ic-gift { font-size:16px; color:#c98a04; flex:0 0 auto; }
     .svc-pl-ic-due { font-size:16px; color:#dc2626; flex:0 0 auto; }
@@ -2888,6 +2901,24 @@
     .svc-pl-paidmeth i { font-size:12px; flex:0 0 auto; }
     .svc-pl-paidmeth-wait { color:var(--text-muted); background:var(--surface2); border-color:var(--border); font-weight:600; font-style:italic; }
     .svc-pl-paidmeth-gift { color:#92600a; background:#fff7e6; border-color:#f5d98a; }
+    /* v6.128 — ORGANIZZATORE della partita: segno sulla prima riga dei giocatori.
+       Sua decisione: SOLO LA STELLINA, senza la parola «Organizzatore».
+       ⭐ Il posto della stellina è RISERVATO su tutte le righe (larghezza fissa, vuoto per chi
+       non è organizzatore): così i nomi restano INCOLONNATI. Senza, l'unico nome spostato a
+       destra sarebbe quello dell'organizzatore.
+       Colore ACCENT e non verde: in questa sezione il verde vuol già dire «ha pagato», e lo
+       stesso colore su due significati diversi si legge male. Niente sfondo né bordo: intorno
+       a un solo glifo la pastiglia pesava più del segno che porta.
+       🚨 La stellina è OUTLINE (`ti-star`) e non piena: MISURATO che il webfont Tabler 3.44.0
+       servito dalla CDN (riga 41) non contiene NESSUNA variante piena (zero classi `*-filled`)
+       ⇒ `ti-star-filled` disegnerebbe un rettangolo vuoto proprio sulla riga da far notare.
+       🚨 `min-width:0` NON è ornamentale: senza, vale la «dimensione minima automatica» dei
+       flex item (`min-width:auto`) e il posto si ALLARGA fino al glifo — misurato: stellina
+       21px contro un posto da 16 ⇒ il nome dell'organizzatore partiva 5px più a destra degli
+       altri, cioè proprio il difetto che il posto riservato esiste per evitare. */
+    .svc-pl-org-slot { flex:0 0 21px; min-width:0; display:inline-flex; align-items:center; justify-content:center; }
+    .svc-pl-org { color:var(--accent); }
+    .svc-pl-org i { font-size:15px; flex:0 0 auto; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7898,7 +7929,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.127';
+    const APP_VERSION = '6.128';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39759,6 +39790,45 @@ Per confermare scrivi ELIMINA.`);
     return [];
   }
 
+  // ── ORGANIZZATORE della partita — regola del committente (29/07/2026) ────────────────
+  // «L'organizzatore è la prima persona in alto che appare in una scheda», cioè il PRIMO
+  // GIOCATORE ANCORA DENTRO. Non è una convenzione grafica: l'ordine delle righe della
+  // ficha è la CRONOLOGIA DEGLI INGRESSI. Provato leggendo i «Movimenti» di Matchpoint su
+  // due partite con quattro nomi veri — 9126 (creata dalla app mobile da Foltran, che è il
+  // primo dell'elenco) e 8905 (creata dalla segreteria, con il primo entrato poi USCITO) —
+  // e i due elenchi combaciano minuto per minuto con i nostri.
+  // ⭐ Perciò il ruolo si CALCOLA e non si scrive: nessun record da mantenere, niente che il
+  // sync possa sovrascrivere ogni ~2 minuti, e «se esce, scala al successivo» (sua decisione)
+  // viene GRATIS dalla stessa lettura, senza che nessuno debba intervenire.
+  // ⭐ L'ordine arriva intatto fino qui: il worker scandisce le righe del repeater per indice
+  // crescente e `_normRoster` fa solo map/filter — nessuno dei due ordina.
+  // 🚨 FAIL CLOSED, e ognuna delle tre porte è una DECISIONE misurata, non cautela generica:
+  //  • SOLO le Partite (sua decisione del 29/07): su 34 lezioni future di PROD, in 5 il primo
+  //    nome era il MAESTRO ⇒ applicata alla cieca, la regola avrebbe fatto dell'istruttore
+  //    l'organizzatore della lezione. Il filtro sul tipo è parte della regola, non un extra.
+  //  • «Ospite» non è una persona e non può essere responsabile di niente.
+  //  • roster non ancora letto, o vuoto ⇒ NESSUN organizzatore, non un ripiego inventato.
+  // ⭐ Restituisce LA VOCE del roster, non una copia: chi disegna confronta per IDENTITÀ
+  // (`p === org`) e non per `idx`. Il motivo è che `_normRoster` assegna `idx` col ripiego
+  // sulla POSIZIONE quando la voce non ce l'ha: in un elenco misto due voci possono ritrovarsi
+  // con lo stesso idx, e il segno comparirebbe DUE volte. L'identità lo esclude per costruzione.
+  // ⚠️ In TEST qui era scritto un motivo SBAGLIATO — «idx arriva stringa dal worker e numero
+  // dal locale» —: impossibile, `p` e `org` vengono dallo stesso array, quindi i tipi non
+  // possono divergere. Arriva in PROD già corretto, in tutt'e due i punti che lo spiegavano.
+  function _pmoOrganizzatorePartita(tipoReale, roster) {
+    if (String(tipoReale == null ? '' : tipoReale).trim().toLowerCase() !== 'partita') return null;
+    const list = Array.isArray(roster) ? roster : [];
+    const primo = list.length ? list[0] : null;
+    if (!primo) return null;
+    const nome = String(primo.nome == null ? '' : primo.nome).trim();
+    // 🚨 Riga illeggibile: si torna NULL, NON si scala al secondo. Il posto 0 è occupato da
+    // qualcuno che non sappiamo nominare — dare il ruolo al secondo non sarebbe prudenza,
+    // sarebbe nominare la persona SBAGLIATA. «Non lo so» è l'unica risposta onesta.
+    if (!nome) return null;
+    if (/^ospite$/i.test(nome)) return null;
+    return primo;
+  }
+
   function _staffCalMpAutoLoad(iso, campo, ora) {
     const key = _staffCalMpKey(iso, campo, ora);
     const cur = _staffCalMpPlayers[key];
@@ -40298,6 +40368,10 @@ Per confermare scrivi ELIMINA.`);
         simNote.innerHTML = '🧪 <strong>Simulazione</strong> — gli incassi non toccano Matchpoint: appaiono solo nella sezione Incassi (cloud TEST).';
         playersSec.appendChild(simNote);
       }
+      // ORGANIZZATORE: calcolato UNA volta per scheda (non per riga). Vale solo per le
+      // Partite e può essere null — in quel caso la scheda non dice niente, che è meglio
+      // di un ruolo attribuito a caso.
+      const _org = _pmoOrganizzatorePartita(st.tipoReale, st.roster);
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
@@ -40321,29 +40395,95 @@ Per confermare scrivi ELIMINA.`);
           const isGift = !!(_payBadge && _payBadge.kind === 'gift');
           const item = document.createElement('div');
           item.className = 'svc-pl';
-          // Riga principale: [icona stato] nome [importo/€ inline] [storna] [✕]
+          // Riga del NOME: [icona stato] [stellina Organizzatore] nome [✕] — e nient'altro.
+          // I soldi (importo, storna, metodi) stanno sulla riga sotto: v6.128, sua scelta.
           const row = document.createElement('div');
           row.className = 'svc-pl-row';
           if (payRow) {
+            const icSlot = document.createElement('span');
+            icSlot.className = 'svc-pl-lead';
             const ic = document.createElement('i');
             // ✓ verde = pagato · ✗ rossa = da incassare (come «In sospeso» su MP) · 🎁 = offerta
             ic.className = 'ti ' + (isGift ? 'ti-gift svc-pl-ic-gift' : (isPaid ? 'ti-circle-check svc-pl-ic-paid' : 'ti-circle-x svc-pl-ic-due'));
             ic.setAttribute('aria-hidden', 'true');
-            row.appendChild(ic);
+            icSlot.appendChild(ic);
+            row.appendChild(icSlot);
+          }
+          // Stellina «Organizzatore» PRIMA del nome — sua indicazione: *«se la metti a destra
+          // c'è invece lì la spunta di quando hanno pagato, quindi la devi mettere dentro la
+          // schedina sulla sinistra del nome»*. A destra vivono già l'importo, la pastiglia
+          // verde «pagato» e lo storna: due significati nello stesso posto si confondono.
+          // ⭐ Il posto si riserva su OGNI riga (span vuoto della stessa larghezza), non solo su
+          // quella dell'organizzatore: è ciò che tiene i nomi incolonnati.
+          // 🚨 Senza la parola il significato lo porta SOLTANTO l'etichetta: `aria-label` per chi
+          // legge con lo screen reader, `title` per chi ci passa sopra. Togliere l'una o l'altro
+          // lascia un segno che nessuno sa spiegare — non è decorazione, è l'unico testo rimasto.
+          // Confronto per IDENTITÀ, non per `idx`: `_normRoster` assegna `idx` col ripiego sulla
+          // POSIZIONE quando la voce non ce l'ha, quindi in un elenco misto due voci possono
+          // ritrovarsi con lo stesso idx e la stellina comparirebbe due volte.
+          if (_org) {
+            const orgSlot = document.createElement('span');
+            orgSlot.className = 'svc-pl-org-slot';
+            if (p === _org) {
+              orgSlot.classList.add('svc-pl-org');
+              orgSlot.setAttribute('role', 'img');
+              orgSlot.setAttribute('aria-label', 'Organizzatore');
+              orgSlot.title = 'Organizzatore: il primo giocatore entrato ancora in partita. Se esce, il ruolo passa al successivo.';
+              orgSlot.innerHTML = '<i class="ti ti-star" aria-hidden="true"></i>';
+              if (marked) orgSlot.style.opacity = '.5';
+            } else {
+              orgSlot.setAttribute('aria-hidden', 'true');
+            }
+            row.appendChild(orgSlot);
           }
           const nm = document.createElement('span');
           nm.className = 'svc-pl-name';
           nm.textContent = p.nome;
           if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
           row.appendChild(nm);
+          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip). Sta sulla
+          // riga del NOME perché è l'unica azione che riguarda la PERSONA e non i soldi.
+          const x = document.createElement('button');
+          x.type = 'button'; x.className = 'svc-pl-iconbtn';
+          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
+          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
+          x.setAttribute('aria-label', x.title);
+          x.disabled = st.busy;
+          x.addEventListener('click', function () {
+            if (st.busy) return;
+            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
+            staffCalRenderPlayersEditor();
+          });
+          row.appendChild(x);
+          item.appendChild(row);
+          // ── Riga dei SOLDI, sotto il nome ────────────────────────────────────────────
+          // v6.128 (sua scelta): importo e storna non stanno più accanto al nome. Il rientro
+          // si costruisce ripetendo i posti vuoti della riga sopra, non con un padding a mano:
+          // se un giorno la stellina o l'icona di stato cambiano misura, le due righe si
+          // spostano INSIEME. Nessuna riga se i pagamenti non si mostrano (giocatore segnato
+          // per la rimozione, manutenzione): là il nome ha tutto lo spazio.
           let amt = null;
+          const money = payRow ? document.createElement('div') : null;
+          if (money) {
+            money.className = 'svc-pl-money';
+            const spIc = document.createElement('span');
+            spIc.className = 'svc-pl-lead';
+            spIc.setAttribute('aria-hidden', 'true');
+            money.appendChild(spIc);
+            if (_org) {
+              const spOrg = document.createElement('span');
+              spOrg.className = 'svc-pl-org-slot';
+              spOrg.setAttribute('aria-hidden', 'true');
+              money.appendChild(spOrg);
+            }
+          }
           if (payRow && isPaid) {
             // Pagato → si ripiega: importo verde + icona storna.
             const paid = document.createElement('span');
             paid.className = 'svc-pl-paid';
             paid.textContent = isGift ? 'Offerta'
               : ((importoCents != null && importoCents > 0) ? _incassiEuro(importoCents) : 'Pagato');
-            row.appendChild(paid);
+            money.appendChild(paid);
             // Offerta = nessun cobro registrato in MP → non c'è niente da stornare.
             if (_payWriteActive && !isGift) {
               const sBtn = document.createElement('button');
@@ -40363,7 +40503,7 @@ Per confermare scrivi ELIMINA.`);
                   sourceBtns: [sBtn],
                 });
               });
-              row.appendChild(sBtn);
+              money.appendChild(sBtn);
             }
           } else if (payRow) {
             // Da incassare → campo € inline editabile (default = pendente o importo letto, sennò 0).
@@ -40378,24 +40518,11 @@ Per confermare scrivi ELIMINA.`);
             amt.disabled = !_payWriteActive;
             amt.setAttribute('aria-label', 'Importo a carico di ' + p.nome);
             eur.appendChild(sym); eur.appendChild(amt);
-            row.appendChild(eur);
+            money.appendChild(eur);
             _payAmtInputs.push(amt);
             if (stato == null) _anyUnknown = true;
           }
-          // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip).
-          const x = document.createElement('button');
-          x.type = 'button'; x.className = 'svc-pl-iconbtn';
-          x.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
-          x.title = marked ? 'Ripristina giocatore' : 'Rimuovi giocatore';
-          x.setAttribute('aria-label', x.title);
-          x.disabled = st.busy;
-          x.addEventListener('click', function () {
-            if (st.busy) return;
-            if (st.remove[p.idx]) delete st.remove[p.idx]; else st.remove[p.idx] = true;
-            staffCalRenderPlayersEditor();
-          });
-          row.appendChild(x);
-          item.appendChild(row);
+          if (money) item.appendChild(money);
           // Con che cosa ha pagato (solo per chi ha già pagato): una pastiglia per metodo —
           // più di una quando la stessa persona compare con metodi diversi (parziale + saldo,
           // o due "Ospite" nella stessa partita, indistinguibili per nome).
