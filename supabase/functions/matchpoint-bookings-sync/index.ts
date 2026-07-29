@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import { collectTabelloneOnlyOccupancies } from './tabellone-rescue.ts';
+import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
 
@@ -35,6 +35,10 @@ type ParsedBooking = {
   campo: string;
   tipo: string;
   descrizione: string;
+  // Solo lezioni, e solo quando il tabellone ha agganciato lo slot: l'export Matchpoint non ha
+  // una colonna istruttore. Chiave ASSENTE = tabellone non letto; chiave VUOTA = letto, nessun
+  // maestro dichiarato. La differenza serve allo sticky (vedi il ramo occupancy).
+  istruttore?: string;
 };
 
 const CORS_HEADERS = {
@@ -570,6 +574,18 @@ async function enrichBookingsWithTabellone(
           }));
         }
         booking.idReserva = String(match.id);
+      }
+      // MAESTRO (solo lezioni): la casella del tabellone è l'UNICA fonte. L'export "Elenco utenti
+      // negli spazi" non ha una colonna istruttore e la sua Descrizione elenca solo gli allievi —
+      // provato sulla lezione del 30/07 21:00, creata dalla nostra app con maestro «LoZio», che
+      // nella descrizione porta i 4 allievi e non lui. Senza questo, per ogni lezione nata su
+      // Matchpoint la card restava muta sul maestro.
+      // Scriviamo la chiave SOLO qui dentro, cioè solo quando il tabellone ha davvero agganciato
+      // lo slot: a valle «chiave assente» significa «non ne so nulla» e lo sticky può proteggere
+      // il valore già salvato, mentre «chiave vuota» significa «letto, maestro non dichiarato» e
+      // deve poter cancellare un maestro tolto davvero su Matchpoint.
+      if (/lezion/i.test(clean(booking.tipo))) {
+        booking.istruttore = maestroDaTestoTabellone(match.testo);
       }
       matchedKeys.add(`${booking.data}|${campoNum}|${booking.ora}`);
     }
@@ -1172,6 +1188,15 @@ Deno.serve(async (req) => {
             booking.giocatori = prevG as string[];          // 1ª volta: mantieni il roster completo…
             (booking as JsonMap)._rosterShrinkSeen = true;   // …e marca, per confermare al giro dopo.
           }
+        }
+        // STICKY MAESTRO, con la stessa malattia del roster ma una cura più semplice: la lettura
+        // del tabellone è flaky e a volte non aggancia lo slot. In quel caso `istruttore` non
+        // viene proprio scritto (vedi enrichBookingsWithTabellone) → qui teniamo quello già
+        // salvato, altrimenti il nome del maestro lampeggerebbe sulla card a ogni giro andato a
+        // vuoto. Non serve la conferma a 2 sync del roster: lì il dubbio era fra «letto male» e
+        // «ridotto davvero», qui invece i due casi si distinguono già dalla PRESENZA della chiave.
+        if (!('istruttore' in (booking as JsonMap)) && typeof prevOcc.istruttore === 'string') {
+          (booking as JsonMap).istruttore = prevOcc.istruttore;
         }
       }
       // idReserva: tabellone (autorità) → sticky → `numero` dell'export (RIPIEGO, fix «🔒 manca
