@@ -40620,8 +40620,14 @@ Per confermare scrivi ELIMINA.`);
           nm.textContent = p.nome;
           if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
           row.appendChild(nm);
-          // Pastiglia «Organizzatore» sulla sua riga. Confronto per IDENTITÀ e non per idx
-          // (che arriva stringa dal worker e numero dal locale).
+          // Pastiglia «Organizzatore» sulla sua riga. Confronto per IDENTITÀ, non per `idx`:
+          // `_normRoster` assegna `idx` col ripiego sulla POSIZIONE quando la voce non ce l'ha,
+          // quindi in un elenco misto due voci possono ritrovarsi con lo stesso idx e la
+          // pastiglia comparirebbe due volte. Con l'identità non può succedere per costruzione.
+          // ⚖️ Misurato (sabotaggio 7, 29/07): sostituire `p === _org` con `p.idx === _org.idx`
+          // lascia la rete VERDE — `p` e `_org` vengono dallo stesso elenco, quindi nella prova
+          // i due confronti sono equivalenti. È un sabotaggio INERTE, non un test debole: il
+          // caso che li separa (idx duplicati) non esiste fra i dati di prova.
           if (_org && p === _org) {
             const orgChip = document.createElement('span');
             orgChip.className = 'svc-pl-org';
