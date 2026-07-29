@@ -7898,7 +7898,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.126';
+    const APP_VERSION = '6.127';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38276,7 +38276,10 @@ Per confermare scrivi ELIMINA.`);
       const _nomeOcc = (tipo === 'manutenzione')
         ? _nota
         : ((Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || ''));
-      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, note: _nota, durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : '') });
+      // MAESTRO delle lezioni nate su Matchpoint: arriva dal sync, che lo legge dalla casella del
+      // tabellone (l'export non ha una colonna istruttore). Fin qui lo mostravano SOLO le lezioni
+      // create dalla nostra app, che se lo salvano da sé nello staff_booking.
+      result.push({ ora: p.ora, campo: campoNum, nome: _nomeOcc, tipo, note: _nota, istruttore: String(p.istruttore || ''), durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : '') });
     }
     for (const p of bookings) {
       if (!p || p.data !== isoDate || !p.ora || !p.campo) continue;
@@ -39923,6 +39926,19 @@ Per confermare scrivi ELIMINA.`);
       });
       if (_lb && typeof _lb.note === 'string') _localNote = _lb.note;
       if (_lb && typeof _lb.istruttore === 'string') _localIstruttore = _lb.istruttore;
+      // Lezione NATA su Matchpoint: nessuno staff_booking locale, quindi nessun maestro da cui
+      // partire. Ora però ce l'ha l'occupazione (il sync lo legge dalla casella del tabellone):
+      // senza questo ripiego la scheda direbbe «— scegli maestro —» mentre la card lì sotto
+      // mostra il nome — due schermate della stessa lezione che si contraddicono.
+      if (!_localIstruttore) {
+        const _occ = (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione) ? prenotazioniOccupazione : [])
+          .find(function (x) {
+            return x && String(x.data).trim() === String(isoDate).trim()
+              && Number(String(x.campo).replace(/\D/g, '')) === campoNum
+              && String(x.ora).trim() === String(ora).trim();
+          });
+        if (_occ && typeof _occ.istruttore === 'string') _localIstruttore = _occ.istruttore;
+      }
     } catch (e) {}
 
     const buildState = function (roster, note0) {

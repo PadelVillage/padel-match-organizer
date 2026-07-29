@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   collectTabelloneOnlyOccupancies,
+  maestroDaTestoTabellone,
   tipoDaTestoTabellone,
   type TabelloneEvent,
 } from './tabellone-rescue.ts';
@@ -200,6 +201,94 @@ test('la parola lezione nella nota non traveste una partita', () => {
 test('formati diversi della stessa riga', () => {
   assert.equal(tipoDaTestoTabellone('20:30 – 22:30  Partita 0,00'), 'Partita');
   assert.equal(tipoDaTestoTabellone('8:00-9:30 Lezione.'), 'Lezione Libera');
+});
+
+// ── MAESTRO letto dalla casella (fix «non vedo il nome del maestro», 29/07) ────────────────
+
+// 14) La stringa VERA, e il motivo per cui prova qualcosa: «(0p)» = ZERO partecipanti, quindi
+//     quel nome non può essere un allievo — è il monitor. È il caso che rende la lettura lecita.
+test('maestro dalla lezione a ZERO partecipanti (il caso che discrimina)', () => {
+  assert.equal(
+    maestroDaTestoTabellone('18:00-19:30 (0p) Lezione. Santiago Carabajal . : scrivi su WhatsApp al 379 115 1472 per prenotare.'),
+    'Santiago Carabajal',
+  );
+});
+
+// 15) Stessa casella CON allievi in coda: si prende il monitor, non l'ultimo nome della riga.
+test('con allievi in coda si prende comunque il monitor', () => {
+  assert.equal(
+    maestroDaTestoTabellone('13:00-14:00 (2p) Lezione. Santiago Carabajal . : scrivi su WhatsApp al 379 115 1472 per prenotare. Santiago Carabajal'),
+    'Santiago Carabajal',
+  );
+});
+
+// 16) Maestro diverso dagli allievi: esce il maestro.
+//     ⚠️ MISURATO: questo test da solo NON discrimina. Sabotando la lettura con la versione
+//     ingenua («il primo nome proprio del testo, ovunque sia») resta VERDE, perché il monitor è
+//     comunque il primo nome della riga. A misurare l'ancoraggio al tipo e il rifiuto di
+//     indovinare sono i casi 17, 18 e 22, che infatti col sabotaggio diventano rossi.
+test('maestro DIVERSO dagli allievi: esce il maestro, non un allievo', () => {
+  const t = '21:00-22:30 (4p) Lezione. Lucas Vidal . : lezione di gruppo. Maurizio Aprea Maria Borsoi Valentina Pastorino Claudio Zambenedetti';
+  assert.equal(maestroDaTestoTabellone(t), 'Lucas Vidal');
+});
+
+// 17) Su una PARTITA non esiste maestro: dopo il tipo ci sono prezzo e categoria, non persone.
+test('la partita non produce mai un maestro', () => {
+  assert.equal(maestroDaTestoTabellone('09:00-10:30 (4/4p) Partita 0,00 - 7,00 misto Fabio De Luca Nicola Stella'), '');
+  assert.equal(maestroDaTestoTabellone('19:30-21:00 (1/4p) Partita 2,50 misto Frank Vitagliano recupero lezione saltata'), '');
+});
+
+// 18) Senza delimitatore dopo il nome non si sa dove finisce il maestro e dove cominciano gli
+//     allievi: si preferisce TACERE. (Sabotaggio del caso 16: tolto il « . », deve sparire.)
+test('senza delimitatore non si tira a indovinare', () => {
+  assert.equal(maestroDaTestoTabellone('21:00-22:30 (4p) Lezione Lucas Vidal Maurizio Aprea Maria Borsoi'), '');
+});
+
+// 19) Posizione occupata da qualcosa che non è un nome → niente maestro.
+test('nella posizione del maestro solo nomi, non note', () => {
+  assert.equal(maestroDaTestoTabellone('18:00-19:30 (0p) Lezione. 379 115 1472 : chiamare.'), '');
+  assert.equal(maestroDaTestoTabellone('18:00-19:30 (0p) Lezione. . : scrivi su WhatsApp per prenotare.'), '');
+  assert.equal(maestroDaTestoTabellone('18:00-19:30 (0p) Lezione. : scrivi su WhatsApp per prenotare.'), '');
+  assert.equal(maestroDaTestoTabellone(''), '');
+  assert.equal(maestroDaTestoTabellone(undefined), '');
+});
+
+// 20) Nomi veri: accenti, apostrofi, nomi composti.
+test('accenti e apostrofi nel nome del maestro', () => {
+  assert.equal(maestroDaTestoTabellone("10:00-11:00 (1p) Lezione. Niccolò D'Amico . : nota"), "Niccolò D'Amico");
+  assert.equal(maestroDaTestoTabellone('10:00-11:00 (1p) Lezione. Jean-Luc De La Fontaine : nota'), 'Jean-Luc De La Fontaine');
+});
+
+// 21) La lezione senza giocatori recuperata dal tabellone porta con sé il maestro.
+test('la lezione recuperata porta il maestro', () => {
+  const res = collectTabelloneOnlyOccupancies(
+    day([{
+      id: '8845',
+      campo: 1,
+      ora: '18:00',
+      oraFine: '19:30',
+      giocatori: [],
+      testo: '18:00-19:30 (0p) Lezione. Santiago Carabajal . : scrivi su WhatsApp al 379 115 1472 per prenotare.',
+    }]),
+    new Set<string>(),
+    new Set<string>(),
+  );
+  assert.equal(res.length, 1);
+  assert.equal(res[0].tipo, 'Lezione Libera');
+  assert.equal(res[0].istruttore, 'Santiago Carabajal');
+});
+
+// 22) Una PARTITA recuperata resta senza maestro (il campo c'è, ma vuoto: nessun nome inventato).
+//     Il testo porta di proposito due giocatori: se la lettura non fosse ancorata al tipo, qui
+//     un allievo finirebbe nella casella del maestro.
+test('la partita recuperata resta senza maestro', () => {
+  const res = collectTabelloneOnlyOccupancies(
+    day([{ id: '8737', campo: 1, ora: '20:30', oraFine: '22:30', giocatori: [], testo: '20:30-22:30 (0/4p) Partita 0,00 - 7,00 misto Fabio De Luca Nicola Stella' }]),
+    new Set<string>(),
+    new Set<string>(),
+  );
+  assert.equal(res[0].tipo, 'Partita');
+  assert.equal(res[0].istruttore, '');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
