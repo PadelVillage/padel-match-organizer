@@ -33,13 +33,29 @@ pmo_deploy_key.pub
 # Ignorarlo qui blinda la regola e toglie il rumore dal pannello source control.
 chat-frontend-giocatori/
 
-# Artefatti scratch generati da skill/agent (generazione documenti, debug locale):
-# NON fanno parte del progetto (l'app è il solo index.html) → non versionare.
+# Dipendenze npm locali (helper docx, non fanno parte del deploy index.html)
 node_modules/
 package.json
 package-lock.json
-*.docx
-*.pdf
-_*.html
-_*.js
-_*.txt
+
+# Lockfile generati da `deno check --node-modules-dir=auto` sulle edge function.
+# Non versionati: il deploy non li usa (`supabase functions deploy --use-api` bundla
+# server-side) e il gate typecheck e' differenziale, quindi base e head risolvono le
+# dipendenze nello stesso momento e una versione nuova a monte non fa rumore.
+# Sono 15 file: committati per sbaglio riempirebbero da soli il limite di 15 file
+# per PR di guard-main-prs.yml. Le edge si sviluppano QUI, quindi la rete serve
+# soprattutto su questo ramo.
+supabase/functions/*/deno.lock
+
+# Artefatti scratch generati da skill/agent (documenti, debug locale): NON fanno
+# parte del progetto (l'app è il solo index.html) → non versionare.
+# 🚨 Ancorati alla RADICE con `/`: senza, `*.docx` copriva anche
+# `docs/algoritmo-organizzazione-partite-mappa-funzioni.docx`, che è documentazione
+# VOLUTA. Quel file resta tracciato (le regole non tolgono ciò che c'è già), ma un
+# secondo documento in `docs/` sarebbe sparito in silenzio. Gli scarti nascono nella
+# radice o nello scratchpad, non in `docs/`.
+/*.docx
+/*.pdf
+/_*.html
+/_*.js
+/_*.txt
