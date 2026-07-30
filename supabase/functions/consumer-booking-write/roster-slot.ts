@@ -259,6 +259,153 @@ export function rosterDelloSlot(righe: RigaSlot[], maxGiocatori: number): EsitoR
   return { roster: [], chiavi: new Map(), unione, fonte: 'circolo', incoerente: true };
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ CHI HA ORGANIZZATO, E IL DIRITTO DI ANNULLARE — decisione del committente 30/07/2026
+//
+// Fino al 30/07 si annullava dal bot SOLO da soli in campo (sua regola del 26/07: «nessuno
+// toglie il campo agli altri tre, che il bot non ha modo di avvisare»). Quella regola è stata
+// SOSTITUITA sapendo cosa cambia: **l'organizzatore può annullare anche con gli altri dentro,
+// e avvisa lui gli altri**. Non è un ripensamento — la sua idea del 26/07 diceva già così
+// («gli altri tre… possono cancellarsi come singoli, ma NON POSSONO ANNULLARLA» ⇒
+// l'organizzatore sì): era la disdetta a essere stata disegnata prima che i ruoli esistessero.
+// ⚖️ Il fatto che gli ha fatto scegliere: anche prima quella partita si annullava — chiamando
+// la segreteria, che la annulla senza che noi avvisiamo nessuno. La regola vecchia non
+// impediva l'annullamento, lo faceva PASSARE DA UNA PERSONA.
+//
+// 🚨⭐⭐ E IL DIRITTO SI CONTROLLA QUI, NON NEL BOT. Fin qui il ponte portava il DATO e
+// lasciava la REGOLA al bot (l'elenco ordinato lo manda `consumer-player-readmodel`, la regola
+// vive in `lib/ruoli.ts`): giusto per le PAROLE — un bot che sbaglia una frase dice una cosa
+// storta — sbagliato per un PERMESSO, perché chi toglie il campo sul sistema del circolo è
+// QUESTA funzione. Se il «no» stesse solo nel bot, un difetto del bot lo aggirerebbe.
+// ⭐ E non diventa una terza copia della regola: l'ordine si legge dalla scheda del circolo con
+// `playersFromDescrizione`, che in questo file c'è già ed è la stessa del sync.
+//
+// 📊 MISURA su PROD (30/07, sola lettura; criterio: `booking`+`staff_booking` non cancellate,
+// `payload->>'data' >= 2026-07-30`, `tipo ~* 'partita'`, slot = data|ora|cifre del campo):
+// **59 partite future**. Il diritto nuovo conta solo dove ci sono **almeno due giocatori**, e
+// quelle sono **16**:
+//   | esito | slot | cosa risponde il bot |
+//   |---|---|---|
+//   | organizzatore determinabile | **13** | il primo può annullare, gli altri no |
+//   | copie DISCORDI ⇒ fail closed | **2** | «non lo so» → segreteria |
+//   | primo = «Ospite» | **1** | nessun organizzatore → segreteria |
+// ⇒ **3 su 16 mandano in segreteria**, e va detto prima: il potere nuovo non copre tutto.
+//
+// 🚨⭐⭐ E LA CAUSA DELLE COPIE DISCORDI È MISURATA, non generica: sono **righe rimaste
+// indietro**. Caso vero del 30/07 (slot 19:30 C3): quattro righe aggiornate alle 13:22
+// elencano `-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.-Silvia Balzarini.`, e una del
+// **24/07** comincia con **Anna Quaglio**, che da quella partita è USCITA. Senza il fail closed
+// il diritto di annullare finirebbe a **chi non gioca più**. La porta non è cautela: è la
+// ragione per cui questo modulo non indovina.
+
+/** Una riga dello slot col suo tipo: il tipo è parte della regola dell'organizzatore. */
+export type RigaSlotTipata = RigaSlot & { tipo?: string | null };
+
+/**
+ * L'ELENCO DEI GIOCATORI NELL'ORDINE DELLA SCHEDA — copia VERBATIM di
+ * `rosterOrdinatoDelloSlot` in `consumer-player-readmodel/compagni-slot.ts`.
+ *
+ * 🚨 Copiata e non condivisa perché le cartelle `_shared/` NON vengono deployate dai workflow
+ * (un `_` iniziale le fa saltare, e il deploy risulta verde senza aver caricato nulla): la
+ * stessa scelta già fatta per `playersFromDescrizione`. Se si cambia una, si cambiano TUTTE E
+ * DUE — il commento sta su entrambe apposta.
+ *
+ * ⭐ Solo le liste che vengono dalla scheda del circolo: è l'unica fonte ORDINATA (l'array
+ * `giocatori` e l'intestatario non portano un ordine confrontabile, e le righe arrivano dal
+ * database senza `order by`). Fra più copie della stessa partita vince la PIÙ COMPLETA.
+ * 🚨 FAIL CLOSED sulla contraddizione: due copie che cominciano con nomi DIVERSI tornano `[]`,
+ * cioè «non lo so». Scegliere la più lunga nominerebbe una persona a caso davanti alle altre.
+ */
+export function rosterOrdinatoDelloSlot(schede: string[][]): string[] {
+  const piene = schede.filter((l) => Array.isArray(l) && l.length > 0);
+  if (piene.length === 0) return [];
+  const primo = normName(piene[0][0]);
+  for (const l of piene) {
+    if (normName(l[0]) !== primo) return []; // due copie non concordi ⇒ non lo sappiamo
+  }
+  // Concordi sull'inizio: si tiene la più completa (le copie sono la stessa partita).
+  return piene.reduce((a, b) => (b.length > a.length ? b : a));
+}
+
+/**
+ * Lo slot è una PARTITA? Il filtro sul tipo è **parte della regola**, non un extra: su PROD, in
+ * 5 lezioni future su 34 il primo nome della scheda è il **MAESTRO** ⇒ applicata alla cieca, la
+ * regola dell'organizzatore darebbe all'istruttore il diritto di annullare la lezione.
+ *
+ * 🚨 Scritta sui valori VERI, misurati su PROD il 30/07 sulle righe future: `Partita` (righe
+ * sincronizzate dal circolo) · `partita` (copie in app) · `Lezione Libera` · `lezione` ·
+ * `manutenzione`. Perciò si confronta senza distinzione di maiuscole, e **non** con `=== 'partita'`.
+ * 🚨 FAIL CLOSED in tutt'e due i versi: serve almeno un tipo leggibile, e **ogni** tipo scritto
+ * deve dire partita. Un tipo vuoto, sconosciuto o misto ⇒ nessun organizzatore.
+ */
+export function ePartitaLoSlot(righe: RigaSlotTipata[]): boolean {
+  const tipi = righe.map((r) => clean(r.tipo)).filter(Boolean);
+  if (!tipi.length) return false;
+  return tipi.every((t) => /partita/i.test(t));
+}
+
+/**
+ * CHI HA ORGANIZZATO questa partita, o `null` se non lo sappiamo dire.
+ *
+ * Regola del committente (29/07): «l'organizzatore è la prima persona in alto che appare in una
+ * scheda», cioè il **primo giocatore ancora dentro** — l'ordine della scheda è la cronologia
+ * degli ingressi (provato sui Movimenti del gestionale). ⭐ Perciò si CALCOLA a ogni lettura e
+ * «se esce, il ruolo scala al successivo» viene gratis.
+ *
+ * 🚨 Gemella di `_pmoOrganizzatorePartita` (gestionale, `index.html`) e di
+ * `organizzatoreDellaPartita` (bot, `lib/ruoli.ts`): **tre sedi, una regola**. Le tre porte sono
+ * le stesse in tutti e tre i posti — solo le partite · «Ospite» non è una persona · primo nome
+ * illeggibile ⇒ `null` e **non si scala al secondo** (il posto 0 è occupato da qualcuno che non
+ * sappiamo nominare: dare il ruolo al successivo non è prudenza, è nominare la persona
+ * SBAGLIATA).
+ */
+export function organizzatoreDelloSlot(righe: RigaSlotTipata[]): string | null {
+  if (!ePartitaLoSlot(righe)) return null;
+  const ordinato = rosterOrdinatoDelloSlot(righe.map((r) => playersFromDescrizione(r.descrizione)));
+  const primo = clean(ordinato[0]);
+  if (!primo) return null;
+  if (normName(primo) === OSPITE) return null;
+  return primo;
+}
+
+export type DirittoAnnullare = {
+  /** Vero solo se questo socio può annullare una partita in cui c'è qualcun altro. */
+  permesso: boolean;
+  /** Chi ha organizzato, come lo scrive il gestionale. `null` = non lo sappiamo dire. */
+  organizzatore: string | null;
+  /**
+   * Perché no, e sono DUE motivi diversi perché il bot deve dire due cose diverse:
+   *  · `non_sei_organizzatore` → c'è una strada: «puoi uscire dalla partita»;
+   *  · `organizzatore_ignoto`  → non c'è: segreteria (mai un vicolo cieco).
+   * Distinguerli qui evita che il bot debba indovinare dal silenzio.
+   */
+  motivo: 'non_sei_organizzatore' | 'organizzatore_ignoto' | null;
+};
+
+/**
+ * IL DIRITTO: questo socio può annullare la partita, con altri in campo?
+ *
+ * ⭐ È una funzione a sé — e non due righe dentro l'edge — perché è la riga che decide se un
+ * campo sparisce a tre persone: così si prova sui payload VERI di PROD senza rete, e un
+ * sabotaggio si misura. L'edge chiama QUESTA (un test lo sorveglia): una regola provata in un
+ * posto e riscritta a mano in un altro è la strada per cui i test restano verdi mentre il
+ * comportamento cambia.
+ *
+ * @param varianti le forme normalizzate del nome del socio (il gestionale scrive ora «Nome
+ *   Cognome», ora «Cognome Nome») — le stesse che l'edge usa per la proprietà.
+ * ⚠️ Limite dichiarato e identico a quello della proprietà: due soci **omonimi** non si
+ *   distinguono. Qui il verso dell'errore è che un omonimo dell'organizzatore potrebbe
+ *   annullare; è lo stesso confronto con cui già oggi si stabilisce che la prenotazione è sua.
+ */
+export function dirittoDiAnnullare(righe: RigaSlotTipata[], varianti: Set<string>): DirittoAnnullare {
+  const organizzatore = organizzatoreDelloSlot(righe);
+  if (!organizzatore) return { permesso: false, organizzatore: null, motivo: 'organizzatore_ignoto' };
+  if (!varianti.has(normName(organizzatore))) {
+    return { permesso: false, organizzatore, motivo: 'non_sei_organizzatore' };
+  }
+  return { permesso: true, organizzatore, motivo: null };
+}
+
 /**
  * Il socio risulta nella nostra copia ma NON fra i giocatori scelti dalla scheda del circolo:
  * è stato sostituito. Va distinto da «non ti trovo in questa partita», perché il socio la

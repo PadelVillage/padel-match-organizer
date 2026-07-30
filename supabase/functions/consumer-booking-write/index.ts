@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // alla funzione senza scrivere niente da nessuna parte (`roster-slot.test.ts`).
 import {
   clean,
+  dirittoDiAnnullare,
   normName,
   listeDaPayload,
   nomiDellaRiga,
@@ -738,16 +739,26 @@ Deno.serve(async (req: Request) => {
     return ok({ member: { id: member.id, name: member.name }, cancelled: false, reason: 'booking_not_found', ...prova });
   }
 
-  // 🚨 Si annulla SOLO una partita in cui non c'è nessun altro (regola del committente,
-  // 26/07). Con altri dentro il socio può al massimo USCIRE (`leave`); chi vuole comunque
-  // annullare passa dalla segreteria. Motivo: l'annullamento toglie il campo anche agli
-  // altri, che l'assistente non ha modo di avvisare — Telegram non consente di scrivere a
-  // chi non ha mai scritto al bot. Il roster si conta su TUTTE le righe dello slot.
+  // 🚨⭐⭐ CHI PUÒ ANNULLARE — regola CAMBIATA il 30/07/2026 (decisione del committente).
+  // Prima: solo chi era rimasto SOLO in campo. Adesso: **anche l'ORGANIZZATORE**, cioè il
+  // primo dell'elenco ordinato della scheda, e avvisa lui gli altri (il bot glielo dice prima
+  // del «Confermo»). Chi non è organizzatore continua a poter solo USCIRE (`leave`), e chi
+  // vuole comunque annullare passa dalla segreteria.
+  // ⚖️ Il motivo della regola vecchia resta VERO — Telegram non consente di scrivere a chi non
+  // ha mai scritto al bot, quindi quei tre da noi non sentono nulla — e gli è stato detto prima
+  // della scelta: il fatto che l'ha convinto è che anche prima quella partita si annullava
+  // passando dalla segreteria, senza che nessuno avvisasse gli altri. Il perché sta accanto
+  // alla regola in `roster-slot.ts`, dove vive il diritto.
+  // Il roster si conta su TUTTE le righe dello slot.
   // ⭐ La stessa lettura di `leave`, con la stessa rete: si conta su TUTTE le righe dello
-  // slot, e se le due copie si contraddicono vale la scheda del circolo. Qui non cambia
-  // l'ESITO — con più di un giocatore si rifiuta comunque — ma cambia il MOTIVO, e dire «ci
-  // sono altri 4 giocatori» quando il quinto l'abbiamo inventato noi manda il socio a
-  // cercare qualcuno che non c'è.
+  // slot, e se le due copie si contraddicono vale la scheda del circolo. Dire «ci sono altri 4
+  // giocatori» quando il quinto l'abbiamo inventato noi manda il socio a cercare qualcuno che
+  // non c'è.
+  // ⚠️ Qui c'era scritto «non cambia l'ESITO, con più di un giocatore si rifiuta comunque»:
+  // era vero fino al 30/07 e la regola nuova l'ha reso FALSO — adesso con più giocatori
+  // l'organizzatore passa. Corretto qui perché una convinzione smontata va cercata DOVE ALTRO
+  // è scritta: è lo stesso errore che il 30/07 aveva lasciato nel bot la frase «non sappiamo
+  // chi ha organizzato» mentre sul gestionale la stellina lo mostrava già.
   const righeSlot = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
   // 🚨⭐ Ultimo cancello, gemello di quello di `leave`: una LEZIONE non si annulla dal bot
   // (il maestro e la segreteria vanno avvisati, e la regola della kb le tiene fuori). Il bot
@@ -774,15 +785,31 @@ Deno.serve(async (req: Request) => {
       ...prova,
     });
   }
+  // Con altri in campo si passa dal DIRITTO. `null` = era solo, e allora non c'è nessun ruolo
+  // da guardare: la strada di prima resta intatta per chi è rimasto solo.
+  let organizzatoreChePuo: string | null = null;
   if (rosterSlot.length > 1) {
-    console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.length}`);
-    return ok({
-      member: { id: member.id, name: member.name },
-      cancelled: false,
-      reason: 'ci_sono_altri_giocatori',
-      giocatori: rosterSlot.length,
-      ...prova,
-    });
+    // 🚨⭐⭐ La decisione sta in `dirittoDiAnnullare` e NON qui: è la riga che fa sparire un
+    // campo a tre persone, quindi vive dove si prova sui payload veri e dove un sabotaggio si
+    // misura. Riscriverla a mano qui sarebbe la strada per cui i test restano verdi mentre il
+    // comportamento cambia (un test sorveglia proprio che l'edge chiami questa funzione).
+    const diritto = dirittoDiAnnullare(righeSlot, nameVariants);
+    if (!diritto.permesso) {
+      // ⭐ Due motivi distinti, perché al socio si devono due risposte diverse:
+      // `non_sei_organizzatore` ha una strada (uscire), `organizzatore_ignoto` no (segreteria).
+      // 🚨 Il nome dell'organizzatore NON esce da qui: chi non ha il diritto non ha bisogno di
+      // sapere chi l'ha, e sarebbe il recapito di un terzo dato senza che l'abbia chiesto.
+      console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.length}, ${diritto.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        cancelled: false,
+        reason: diritto.motivo,
+        giocatori: rosterSlot.length,
+        ...prova,
+      });
+    }
+    organizzatoreChePuo = diritto.organizzatore;
+    console.log(`[booking-write] cancel diritto ORGANIZZATORE ${slot.data} ${slot.ora} C${campo}: ${member.name} è il primo di ${rosterSlot.length}`);
   }
 
   // ⭐ Come in `create`: la richiesta si compone UNA volta sola e serve a tutt'e due le
@@ -819,6 +846,11 @@ Deno.serve(async (req: Request) => {
         sommando_le_righe: esitoCancel.unione.size,
         righe: righeSlot.length,
         id_reserva: target.idReserva || null,
+        // ⭐ PER QUALE DIRITTO annullerebbe: senza, una prova a vuoto riuscita non distingue
+        // «era solo» (la strada di sempre) da «è l'organizzatore» (quella nuova) — e sono due
+        // percorsi diversi che finiscono nella stessa riga.
+        come: organizzatoreChePuo ? 'organizzatore' : 'unico_giocatore',
+        organizzatore: organizzatoreChePuo,
       },
     });
   }
@@ -838,10 +870,15 @@ Deno.serve(async (req: Request) => {
       detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
     });
   }
-  console.log(`[booking-write] cancel OK ${slot.data} ${slot.ora} C${campo} per ${member.name}`);
+  console.log(`[booking-write] cancel OK ${slot.data} ${slot.ora} C${campo} per ${member.name} (${organizzatoreChePuo ? `organizzatore, erano in ${rosterSlot.length}` : 'era solo'})`);
   return ok({
     member: { id: member.id, name: member.name },
     cancelled: true,
     slot: { data: slot.data, ora: slot.ora, campo },
+    // ⭐ Quante persone ha toccato l'annullamento, e per quale diritto. Serve al bot per dire la
+    // frase giusta — «avvisa gli altri» ha senso solo se gli altri c'erano — e serve al registro:
+    // un annullamento da organizzatore è l'unico che tolga il campo a qualcun altro.
+    come: organizzatoreChePuo ? 'organizzatore' : 'unico_giocatore',
+    giocatori: rosterSlot.length,
   });
 });
