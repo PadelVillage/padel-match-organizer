@@ -40121,12 +40121,14 @@ Per confermare scrivi ELIMINA.`);
   // locale» —: impossibile, `p` e `org` vengono dallo stesso array, quindi i tipi non possono
   // divergere. Corretto nel punto del disegno in `8fac207` e QUI in v6.132: la stessa ragione
   // falsa era scritta in due posti, e il commit ne aveva riparato uno solo.
-  // ⭐ Resta la porta d'ingresso storica — «chi prende la stellina?» — e ora è un involucro
-  // sottile sopra la regola unica: `null` quando nessun GIOCATORE è organizzatore, sia perché
-  // non lo sappiamo sia perché la partita è della segreteria. Chi deve distinguere i due casi
-  // chiama `_pmoRuoloOrganizzatore`. Tenuta separata di proposito: il suo contratto («torna la
-  // VOCE del roster, confrontabile per identità») è quello che il disegno della riga usa, e
-  // cambiarlo avrebbe costretto a toccare il codice che decide dove va la stellina.
+  // ⭐ La porta d'ingresso storica, ora involucro sottile sopra la regola unica: `null` quando
+  // nessun GIOCATORE è organizzatore, sia perché non lo sappiamo sia perché la partita è della
+  // segreteria. Chi deve distinguere i due casi chiama `_pmoRuoloOrganizzatore`.
+  // ⚠️ ONESTÀ SU CHI LA USA (v6.134): da qui in avanti il DISEGNO della riga non passa più di
+  // qua — legge `voce` direttamente, per non calcolare la regola due volte. Restano l'aggancio
+  // di prova e il caso 66, che sorvegliano la regola attraverso questo contratto. ⇒ Non può
+  // divergere (delega), ma non si scriva che «è la porta da cui esce la stellina»: MISURATO
+  // col sabotaggio 7 che questa può tornare null mentre la stellina si disegna lo stesso.
   // 🚨 Riga illeggibile: si torna NULL, NON si scala al secondo. Il posto 0 è occupato da
   // qualcuno che non sappiamo nominare — dare il ruolo al secondo non sarebbe prudenza,
   // sarebbe nominare la persona SBAGLIATA. «Non lo so» è l'unica risposta onesta.
