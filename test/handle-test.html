@@ -2112,6 +2112,39 @@ const CASES = [
       // 🚨 Sta SOPRA i nomi: sotto sembrerebbe riferita all'ultimo giocatore.
       checks.push({ label: '🚨 sta SOPRA l\'elenco dei nomi',
         ok: righeSeg.length === 1 && !!rows[0] && (righeSeg[0].compareDocumentPosition(rows[0]) & 4) !== 0 });
+      // ── v6.135: la RESA, dopo la sua correzione «c'e ma e poco evidente» ──────────────
+      // La prima versione era testo grigio come le etichette di servizio, e lui non la vedeva.
+      // ⇒ L'icona e la fascia NON sono decorazione: sono la cosa che ha chiesto, e vanno
+      // sorvegliate come il testo. Senza queste righe, tornare al grigio smorto sarebbe verde.
+      checks.push({ label: '🚨 c\'e la CUFFIA, e il testo non ne risente',
+        ok: righeSeg.length === 1 && !!righeSeg[0].querySelector('i.ti-headset') });
+      // 🚨 La geometria qui NON e misurabile (iframe a display:none ⇒ larghezze zero, misurato
+      // nel caso 67): si sorveglia la REGOLA che produce la fascia, leggibile dal CSSOM anche
+      // senza impaginazione. Il `try` sta DENTRO il ciclo: il primo foglio e quello delle icone
+      // servito da un ALTRO dominio e leggerne le regole solleva.
+      const regolaSeg = (() => {
+        for (const ss of Array.from(win.document.styleSheets)) {
+          let rules = null;
+          try { rules = Array.from(ss.cssRules || []); } catch (e) { continue; }
+          for (const r of rules) if (r.selectorText === '.svc-pl-org-seg') return r.style;
+        }
+        return null;
+      })();
+      if (!regolaSeg) {
+        checks.push({ label: '⚠️ regola .svc-pl-org-seg NON TROVATA: questa prova non dice niente', ok: false });
+      } else {
+        checks.push({ label: '🚨 e una FASCIA a tutta larghezza (display:flex), non una riga di testo', ok: regolaSeg.display === 'flex' });
+        // 🚑 MISURATO: `backgroundColor` qui torna VUOTO anche con lo sfondo dichiarato, perche
+        // la scorciatoia `background: var(--accent-light)` contiene una VARIABILE e il browser
+        // non la scompone nelle proprieta lunghe. Il primo giro dava rosso su un codice sano:
+        // era lo strumento a guardare la proprieta sbagliata. Si legge la scorciatoia.
+        const sfondo = String(regolaSeg.background || regolaSeg.backgroundColor || '');
+        checks.push({ label: '🚨 ha uno SFONDO che la stacca dal resto', ok: !!sfondo && !/^(none|transparent)$/.test(sfondo) });
+        // ⭐ Controllo opposto: il colore NON dev'essere il verde dei pagamenti — li dentro il
+        // verde vuol gia dire «ha pagato», e lo stesso colore su due significati si legge male.
+        checks.push({ label: '⭐ il colore e l\'accento, NON il verde di «ha pagato»',
+          ok: /accent/.test(String(regolaSeg.color || '')) || /2563eb|37,\s*99,\s*235/.test(String(regolaSeg.color || '')) });
+      }
       // 🚨 E nessuno prende la stellina — nemmeno l'«Ospite», che non e una persona, nemmeno il
       // socio dietro (il bordo che ha deciso lui).
       checks.push({ label: '🚨 NESSUNA stellina in tutta la scheda', ok: box.querySelectorAll('.svc-pl-org').length === 0 });
