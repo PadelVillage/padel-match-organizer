@@ -2919,6 +2919,27 @@
     .svc-pl-org-slot { flex:0 0 21px; min-width:0; display:inline-flex; align-items:center; justify-content:center; }
     .svc-pl-org { color:var(--accent); }
     .svc-pl-org i { font-size:15px; flex:0 0 auto; }
+    /* v6.134 — «se il primo è un Ospite, l'organizzatore è la SEGRETERIA» (sua regola del 30/07,
+       il gradino che mancava sotto quella del 29/07 «partite aperte dalla segreteria ⇒ il primo
+       socio entrato»: se di soci non ne entra nessuno, resta la segreteria).
+       🚨 Qui NON va la stellina, ed è una decisione: quel segno sta sulla riga di UNA PERSONA, e
+       su «Ospite» indicherebbe qualcuno che non è nessuno. Il ruolo si dice a PAROLE, sopra
+       l'elenco — testo scelto da lui fra tre, nella forma asciutta. */
+    /* 🚨 v6.135 — SUA CORREZIONE, guardando la scheda vera sul telefono: *«c'è ma è poco
+       evidente»*. La prima versione era testo `text-muted`, cioè lo **stesso grigio delle
+       etichette di servizio** della scheda: l'occhio ci passava sopra. Scelta da lui la forma
+       **B** fra sei mostrate affiancate — fascia a **tutta larghezza**, l'unica che si prende la
+       riga intera e non si può saltare.
+       ⭐ Colore ACCENT e non verde: è lo stesso blu della stellina dell'organizzatore, così in
+       tutta la scheda «chi ha organizzato» ha **un colore solo**; il verde lì dentro vuol già
+       dire «ha pagato». */
+    .svc-pl-org-seg { display:flex; align-items:center; gap:7px; font-size:.75rem; font-weight:700;
+      color:var(--accent); background:var(--accent-light); border:1px solid rgba(37,99,235,.30);
+      border-radius:8px; padding:7px 9px; margin:0 0 9px; line-height:1.25; }
+    /* 🚨 La cuffia è `ti-headset`, VERIFICATA nel webfont che il browser scarica davvero (Tabler
+       3.44.0 dalla CDN): un'icona «che c'è di sicuro» è una previsione, e ti-star-filled ci aveva
+       già fatto disegnare un rettangolo vuoto. */
+    .svc-pl-org-seg i { font-size:15px; flex:0 0 auto; }
     .svc-pl-methods { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
     .svc-pl-method { min-width:0; height:36px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--accent); font-size:.74rem; font-weight:600; cursor:pointer; box-sizing:border-box; overflow:hidden; white-space:nowrap; transition:background .15s; }
     .svc-pl-method:hover:not(:disabled) { background:var(--accent-light); }
@@ -7929,7 +7950,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.128';
+    const APP_VERSION = '6.135';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39808,6 +39829,42 @@ Per confermare scrivi ELIMINA.`);
   //    l'organizzatore della lezione. Il filtro sul tipo è parte della regola, non un extra.
   //  • «Ospite» non è una persona e non può essere responsabile di niente.
   //  • roster non ancora letto, o vuoto ⇒ NESSUN organizzatore, non un ripiego inventato.
+  //
+  // ⭐⭐ v6.134 — LE PORTE RESTANO TRE, ma una di esse ha ora una RISPOSTA invece del silenzio.
+  // Sua regola del 30/07 sera: *«può capitare una partita con 4 ospiti… l'organizzatore è la
+  // SEGRETERIA»*, e il meccanismo che la regge è suo: è la segreteria ad APRIRE quel tipo di
+  // partita. È il gradino che mancava in fondo alla scala del 29/07 («partite aperte dalla
+  // segreteria ⇒ organizzatore = il primo SOCIO entrato»): se di soci non ne entra nessuno,
+  // quella regola non ha più a chi appoggiarsi, e la risposta è la segreteria stessa.
+  // 🚨 IL BORDO L'HA DECISO LUI il 30/07 sera, ed era ambiguo: una partita col primo Ospite ma
+  // un SOCIO dietro è **della segreteria lo stesso**. Scartata di proposito l'alternativa «il
+  // ruolo scala al primo socio», perché non avrebbe cambiato solo le parole: avrebbe dato a
+  // quel socio il diritto di far sparire il campo agli altri tre, che oggi non ha — e le tre
+  // sedi della regola (qui, `roster-slot.ts` del ponte, `lib/ruoli.ts` del bot) avrebbero
+  // smesso di dire la stessa cosa.
+  // ⇒ Perciò questa funzione distingue «SEGRETERIA» da «NON LO SO», che prima erano lo stesso
+  // `null`: il POTERE non cambia (in tutt'e tre le sedi nessun giocatore è organizzatore, e il
+  // ponte manda in segreteria come ha sempre fatto), cambiano le PAROLE della scheda.
+  // 🚨 E la segreteria NON prende la stellina: quel segno vive sulla riga di una PERSONA, e su
+  // «Ospite» indicherebbe qualcuno che non è nessuno. Il ruolo si dice sopra l'elenco.
+  function _pmoRuoloOrganizzatore(tipoReale, roster) {
+    // `voce` è la voce del roster SOLO nel caso 'giocatore': è ciò che la scheda confronta per
+    // identità per decidere dove va la stellina. Negli altri due casi è null per costruzione,
+    // così un `if (voce)` non può mai disegnare una stellina per la segreteria.
+    const ignoto = { chi: 'ignoto', voce: null };
+    if (String(tipoReale == null ? '' : tipoReale).trim().toLowerCase() !== 'partita') return ignoto;
+    const list = Array.isArray(roster) ? roster : [];
+    const primo = list.length ? list[0] : null;
+    if (!primo) return ignoto;
+    const nome = String(primo.nome == null ? '' : primo.nome).trim();
+    // 🚨 Riga illeggibile: resta «non lo so», e NON diventa «segreteria». Sono due cose
+    // diverse: dell'Ospite sappiamo che non è un socio (quindi la partita l'ha aperta il
+    // circolo), di un nome vuoto non sappiamo NIENTE — potrebbe essere il socio che l'ha
+    // organizzata, scritto male. Dire «è della segreteria» sarebbe un'affermazione inventata.
+    if (!nome) return ignoto;
+    if (/^ospite$/i.test(nome)) return { chi: 'segreteria', voce: null };
+    return { chi: 'giocatore', voce: primo };
+  }
   // ⭐ Restituisce LA VOCE del roster, non una copia: chi disegna confronta per IDENTITÀ
   // (`p === org`) e non per `idx`. Il motivo è che `_normRoster` assegna `idx` col ripiego
   // sulla POSIZIONE quando la voce non ce l'ha: in un elenco misto due voci possono ritrovarsi
@@ -39815,18 +39872,20 @@ Per confermare scrivi ELIMINA.`);
   // ⚠️ In TEST qui era scritto un motivo SBAGLIATO — «idx arriva stringa dal worker e numero
   // dal locale» —: impossibile, `p` e `org` vengono dallo stesso array, quindi i tipi non
   // possono divergere. Arriva in PROD già corretto, in tutt'e due i punti che lo spiegavano.
+  // ⭐ La porta d'ingresso storica, ora involucro sottile sopra la regola unica: `null` quando
+  // nessun GIOCATORE è organizzatore, sia perché non lo sappiamo sia perché la partita è della
+  // segreteria. Chi deve distinguere i due casi chiama `_pmoRuoloOrganizzatore`.
+  // ⚠️ ONESTÀ SU CHI LA USA (v6.135): il DISEGNO della riga non passa più di qua — legge `voce`
+  // direttamente, per non calcolare la regola due volte. Qui resta il contratto storico, che su
+  // TEST è quello sorvegliato dalla rete. ⇒ Non può divergere (delega), ma non si scriva che «è
+  // la porta da cui esce la stellina»: MISURATO su TEST col sabotaggio 7 che questa può tornare
+  // null mentre la stellina si disegna lo stesso.
+  // 🚨 Riga illeggibile: si torna NULL, NON si scala al secondo. Il posto 0 è occupato da
+  // qualcuno che non sappiamo nominare — dare il ruolo al secondo non sarebbe prudenza,
+  // sarebbe nominare la persona SBAGLIATA. «Non lo so» è l'unica risposta onesta.
   function _pmoOrganizzatorePartita(tipoReale, roster) {
-    if (String(tipoReale == null ? '' : tipoReale).trim().toLowerCase() !== 'partita') return null;
-    const list = Array.isArray(roster) ? roster : [];
-    const primo = list.length ? list[0] : null;
-    if (!primo) return null;
-    const nome = String(primo.nome == null ? '' : primo.nome).trim();
-    // 🚨 Riga illeggibile: si torna NULL, NON si scala al secondo. Il posto 0 è occupato da
-    // qualcuno che non sappiamo nominare — dare il ruolo al secondo non sarebbe prudenza,
-    // sarebbe nominare la persona SBAGLIATA. «Non lo so» è l'unica risposta onesta.
-    if (!nome) return null;
-    if (/^ospite$/i.test(nome)) return null;
-    return primo;
+    const r = _pmoRuoloOrganizzatore(tipoReale, roster);
+    return r.chi === 'giocatore' ? r.voce : null;
   }
 
   function _staffCalMpAutoLoad(iso, campo, ora) {
@@ -40368,10 +40427,34 @@ Per confermare scrivi ELIMINA.`);
         simNote.innerHTML = '🧪 <strong>Simulazione</strong> — gli incassi non toccano Matchpoint: appaiono solo nella sezione Incassi (cloud TEST).';
         playersSec.appendChild(simNote);
       }
-      // ORGANIZZATORE: calcolato UNA volta per scheda (non per riga). Vale solo per le
-      // Partite e può essere null — in quel caso la scheda non dice niente, che è meglio
-      // di un ruolo attribuito a caso.
-      const _org = _pmoOrganizzatorePartita(st.tipoReale, st.roster);
+      // ORGANIZZATORE: calcolato UNA volta per scheda (non per riga). Vale solo per le Partite,
+      // e da v6.134 ha TRE esiti invece di due:
+      //  · un GIOCATORE  → stellina sulla sua riga (il primo ancora dentro);
+      //  · la SEGRETERIA → una riga a parole sopra l'elenco, e NESSUNA stellina a nessuno;
+      //  · non lo sappiamo → la scheda non dice niente, che è meglio di un ruolo a caso.
+      const _ruolo = _pmoRuoloOrganizzatore(st.tipoReale, st.roster);
+      const _org = _ruolo.voce;
+      // 🚨 La riga della segreteria sta SOPRA l'elenco perché parla della partita intera, non
+      // di una persona: quando il primo è un «Ospite» non esiste nessuna riga a cui attaccare
+      // il ruolo, ed è esattamente il caso in cui prima la scheda taceva. Testo nella forma
+      // asciutta, scelta da lui il 30/07 fra tre proposte.
+      // ⭐ Nessun posto riservato da compensare: con `_org` nullo la stellina non si disegna su
+      // NESSUNA riga, quindi i nomi restano incolonnati come in una scheda qualunque.
+      if (_ruolo.chi === 'segreteria') {
+        const seg = document.createElement('div');
+        seg.className = 'svc-pl-org-seg';
+        // ⭐ L'icona si aggiunge come ELEMENTO VUOTO (il glifo lo mette il CSS con `:before`),
+        // quindi il testo della fascia resta esattamente la frase che ha scelto lui — un test
+        // lo confronta carattere per carattere e non deve cadere per colpa dell'icona.
+        const segIc = document.createElement('i');
+        segIc.className = 'ti ti-headset';
+        segIc.setAttribute('aria-hidden', 'true');
+        seg.appendChild(segIc);
+        const segTxt = document.createElement('span');
+        segTxt.textContent = 'Organizzata dalla segreteria';
+        seg.appendChild(segTxt);
+        playersSec.appendChild(seg);
+      }
       if (!st.roster.length) {
         const none = document.createElement('div');
         none.textContent = '(nessuno)';
