@@ -5,16 +5,24 @@
 // lettura. Portare i dati veri alla funzione pura è il modo di provare una forma di dato che
 // l'ambiente di TEST non contiene — là quella partita non ha la riga che causa il difetto.
 import assert from 'node:assert/strict';
+// Serve al caso 34: il test del COLLEGAMENTO legge il sorgente dell'edge per verificare che
+// sia lui a chiedere il diritto, e non una copia della regola riscritta lì dentro.
+import { readFileSync } from 'node:fs';
 import {
   playersFromDescrizione,
+  dirittoDiAnnullare,
+  ePartitaLoSlot,
   giocatoriDelleListe,
   listeDaPayload,
+  organizzatoreDelloSlot,
   restanoSoloOspiti,
   rosterDelloSlot,
+  rosterOrdinatoDelloSlot,
   senzaDiMe,
   sostituito,
   normName,
   type RigaSlot,
+  type RigaSlotTipata,
 } from './roster-slot.ts';
 
 let passed = 0;
@@ -365,6 +373,216 @@ test('23) una scheda che ne dà PIÙ di quattro non vince: il tetto vale anche p
   assert.ok(e.roster.length <= MAX, 'mai più di quattro, da nessuna fonte');
   assert.equal(e.fonte, 'nostra', 'una scheda troppo lunga non è affidabile: si resta alla nostra copia');
   assert.equal(e.roster.length, 2);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// CHI HA ORGANIZZATO, E IL DIRITTO DI ANNULLARE (30/07/2026)
+//
+// ⭐ Le schede dei casi 24, 25 e 26 sono VERE, lette da PROD in sola lettura il 30/07.
+//
+// 🚨🚨⭐⭐ MA ATTENZIONE A COSA PROVANO, perché la prima stesura lo diceva SBAGLIATO: nei casi
+// 25 e 26 le righe che si contraddicono sono **CANCELLATE** (colonna `deleted = true`), e il
+// ponte quelle non le legge mai — il suo filtro è `.not('deleted','is',true)`. Le avevo contate
+// come vive perché il mio criterio guardava `payload->>'deleted'`, una chiave **sempre nulla**
+// che ha lo stesso nome della colonna. ⇒ In produzione, alla funzione quelle due liste
+// discordi **non arrivano**: la contraddizione fra copie non è mai stata osservata.
+// ⭐ I due casi RESTANO, e sono onesti se si legge cosa sono: non «la fotografia di uno slot
+// vero», ma **la forma di dato** (due schede che cominciano con nomi diversi) costruita con
+// nomi e schede veri. Sorvegliano il ramo che deve tacere il giorno in cui capiterà davvero.
+// → memoria [[metodo-il-caso-reale-non-discrimina]]
+const rigaTipata = (payload: Record<string, unknown>, tipo: string): RigaSlotTipata => ({
+  liste: listeDaPayload(payload),
+  descrizione: (payload.descrizione ?? null) as string | null,
+  tipo,
+});
+
+test('24) dati VERI: nella partita di sabato l\'organizzatore è il PRIMO della scheda', () => {
+  // PROD, slot 2026-08-01 15:00 C4 (#9172): quattro righe `booking`, una per giocatore, tutte
+  // con la stessa scheda e tutte rinfrescate dal sync alle 13:22 del 30/07.
+  const D = '-Maurizio Aprea.-Fabio De Luca.-Roberto Ruzzini.-Manuel Casagrande.';
+  const slot: RigaSlotTipata[] = [
+    rigaTipata({ giocatore: 'Roberto Ruzzini', descrizione: D }, 'Partita'),
+    rigaTipata({ giocatore: 'Maurizio Aprea', descrizione: D, giocatori: ['Maurizio Aprea', 'Fabio De Luca', 'Roberto Ruzzini', 'Manuel Casagrande'] }, 'Partita'),
+    rigaTipata({ giocatore: 'Manuel Casagrande', descrizione: D }, 'Partita'),
+    rigaTipata({ giocatore: 'Fabio De Luca', descrizione: D }, 'Partita'),
+    // La copia in app: NON ha descrizione, quindi non partecipa all'ordine.
+    rigaTipata({ nome: 'Maurizio Aprea, Fabio De Luca, Roberto Ruzzini, Manuel Casagrande' }, 'partita'),
+  ];
+  assert.equal(organizzatoreDelloSlot(slot), 'Maurizio Aprea');
+  // 🚨 Controllo negativo: NON è il secondo. Senza, un sabotaggio che prende `[1]` resterebbe
+  // verde su ogni caso in cui il primo nome è anche l'unico che ci aspettiamo.
+  assert.notEqual(organizzatoreDelloSlot(slot), 'Fabio De Luca');
+  // 🚨 E non dipende dall'ordine di ARRIVO delle righe: dal database escono senza `order by`.
+  assert.equal(organizzatoreDelloSlot([...slot].reverse()), 'Maurizio Aprea');
+});
+
+test('25) due schede discordi NON danno il potere a chi è USCITO', () => {
+  // Schede vere di PROD, slot 2026-07-30 19:30 C3: quattro righe vive elencano
+  // Borsoi · Tonini · Zaccaron · Balzarini, e una riga ferma al 24/07 comincia con Anna
+  // Quaglio, che da quella partita è USCITA (i Movimenti del gestionale: esce alle 18:44:04 del
+  // 24/07, ed entra Balzarini 14 secondi dopo).
+  // ⚠️ Quella quinta riga è `deleted = true` — il sync l'aveva già marcata — quindi al ponte
+  // NON arriva: qui la si mette accanto alle altre apposta, per esercitare il ramo. È la forma
+  // del dato, non la fotografia dello slot (vedi la nota in testa a questa sezione).
+  const FRESCA = '-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.-Silvia Balzarini.';
+  const VECCHIA = '-Anna Quaglio.-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.';
+  const slot: RigaSlotTipata[] = [
+    rigaTipata({ giocatore: 'Anna Quaglio', descrizione: VECCHIA }, 'Partita'),
+    rigaTipata({ giocatore: 'Stefano Borsoi', descrizione: FRESCA }, 'Partita'),
+    rigaTipata({ giocatore: 'Massimo Tonini', descrizione: FRESCA }, 'Partita'),
+    rigaTipata({ giocatore: 'Sheila Zaccaron', descrizione: FRESCA }, 'Partita'),
+    rigaTipata({ giocatore: 'Silvia Balzarini', descrizione: FRESCA }, 'Partita'),
+  ];
+  assert.equal(organizzatoreDelloSlot(slot), null, 'copie discordi ⇒ non lo sappiamo');
+  // 🚨⭐⭐ Il controllo che dice PERCHÉ la porta esiste: la riga vecchia è la PIÙ ANTICA e la
+  // più corta, ma se si scegliesse «la più completa» fra copie discordi (o semplicemente la
+  // prima che arriva) l'organizzatore sarebbe Anna Quaglio — che in quella partita non c'è
+  // più. Il fail closed non è prudenza generica: impedisce di dare il campo a chi è uscito.
+  assert.equal(rosterOrdinatoDelloSlot([playersFromDescrizione(VECCHIA)])[0], 'Anna Quaglio');
+  assert.deepEqual(rosterOrdinatoDelloSlot([playersFromDescrizione(VECCHIA), playersFromDescrizione(FRESCA)]), []);
+  // E nessuno dei quattro che giocano davvero ottiene il diritto.
+  for (const chi of ['Stefano Borsoi', 'Silvia Balzarini']) {
+    const d = dirittoDiAnnullare(slot, varianti(chi));
+    assert.equal(d.permesso, false);
+    assert.equal(d.motivo, 'organizzatore_ignoto');
+  }
+});
+
+test('26) dopo un\'uscita, la scheda vecchia accanto alla nuova tace', () => {
+  // Schede vere di PROD, slot 2026-08-01 17:00 C4 (#9204): il 29/07 il socio è uscito dalla
+  // partita col bot, e alle 17:15 la partita è stata annullata. La riga aggiornata diceva
+  // `-Lidia Comes.`, la sua era rimasta a `-Maurizio Aprea.-Lidia Comes.` ⇒ prese insieme,
+  // senza fail closed l'organizzatore sarebbe lui, che da quella partita era uscito.
+  // ⚠️ Come il 25: oggi quelle righe sono TUTTE `deleted` (l'annullamento ha fatto il suo
+  // lavoro, verificato nel registro del worker). Il caso prova la FORMA, non lo slot.
+  const slot: RigaSlotTipata[] = [
+    rigaTipata({ giocatore: 'Maurizio Aprea', descrizione: '-Maurizio Aprea.-Lidia Comes.', giocatori: ['Maurizio Aprea', 'Lidia Comes'] }, 'Partita'),
+    rigaTipata({ giocatore: 'Lidia Comes', descrizione: '-Lidia Comes.', giocatori: ['Lidia Comes'] }, 'Partita'),
+  ];
+  assert.equal(organizzatoreDelloSlot(slot), null);
+  assert.equal(dirittoDiAnnullare(slot, varianti('Maurizio Aprea')).permesso, false);
+});
+
+test('27) «Ospite» non organizza: è un posto occupato, non una persona', () => {
+  const slot = [rigaTipata({ descrizione: '-Ospite.-Uno Rossi.-Due Rossi.-Tre Rossi.' }, 'Partita')];
+  assert.equal(organizzatoreDelloSlot(slot), null);
+  // 🚨 E NON si scala al secondo: il posto 0 è occupato da qualcuno che non sappiamo nominare.
+  assert.notEqual(organizzatoreDelloSlot(slot), 'Uno Rossi');
+  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi')).motivo, 'organizzatore_ignoto');
+});
+
+test('28) le LEZIONI restano fuori — e i due valori veri sono diversi', () => {
+  // 🚨 Sui dati veri di PROD il tipo si scrive in cinque modi (misurato il 30/07):
+  // `Partita` sulle righe del circolo, `partita` sulle copie in app, e per le lezioni
+  // `Lezione Libera` e `lezione`. Il filtro è parte della regola: su 34 lezioni future, in 5
+  // il primo nome della scheda è il MAESTRO ⇒ alla cieca darebbe a lui il diritto di annullare.
+  const D = '-Marco Maestro.-Allievo Uno.-Allievo Due.';
+  assert.equal(organizzatoreDelloSlot([rigaTipata({ descrizione: D }, 'Lezione Libera')]), null);
+  assert.equal(organizzatoreDelloSlot([rigaTipata({ descrizione: D }, 'lezione')]), null);
+  assert.equal(organizzatoreDelloSlot([rigaTipata({ descrizione: D }, 'Partita')]), 'Marco Maestro',
+    'controllo negativo: sullo stesso dato, cambiando SOLO il tipo, la regola parla');
+});
+
+test('29) il tipo: manutenzione, sconosciuto, vuoto e MISTO ⇒ nessun organizzatore', () => {
+  const D = '-Uno Rossi.-Due Rossi.';
+  assert.equal(ePartitaLoSlot([rigaTipata({ descrizione: D }, 'manutenzione')]), false);
+  assert.equal(ePartitaLoSlot([rigaTipata({ descrizione: D }, 'torneo')]), false);
+  assert.equal(ePartitaLoSlot([rigaTipata({ descrizione: D }, '')]), false, 'tipo vuoto: non si indovina');
+  assert.equal(ePartitaLoSlot([{ liste: [], descrizione: D }]), false, 'tipo assente: non si indovina');
+  assert.equal(
+    ePartitaLoSlot([rigaTipata({ descrizione: D }, 'Partita'), rigaTipata({ descrizione: D }, 'lezione')]),
+    false,
+    'slot MISTO: basta un tipo che non dice partita per tacere',
+  );
+  assert.equal(ePartitaLoSlot([rigaTipata({ descrizione: D }, 'Partita'), rigaTipata({ descrizione: D }, 'partita')]), true);
+});
+
+test('30) senza scheda del circolo non si sa: è il caso della partita appena creata', () => {
+  // ⭐ Una partita prenotata dall'app o dal bot esiste da subito come `staff_booking`, che NON
+  // ha `descrizione`: per i ~2 minuti che il sync impiega a portare la scheda, l'organizzatore
+  // è ignoto. Non è un difetto — è il verso sicuro — ma va saputo: in quella finestra il
+  // diritto di annullare da organizzatore non c'è. (Chi ha appena prenotato è però SOLO in
+  // campo, e per lui vale la strada di sempre: quella non passa di qui.)
+  const soloCopiaInApp: RigaSlotTipata[] = [
+    rigaTipata({ nome: 'Uno Rossi, Due Rossi', giocatori: [{ nome: 'Uno Rossi' }, { nome: 'Due Rossi' }] }, 'partita'),
+  ];
+  assert.equal(organizzatoreDelloSlot(soloCopiaInApp), null);
+  assert.equal(dirittoDiAnnullare(soloCopiaInApp, varianti('Uno Rossi')).motivo, 'organizzatore_ignoto');
+});
+
+test('31) una descrizione che è un TITOLO non è un roster', () => {
+  // `playersFromDescrizione` dà nomi solo se la descrizione comincia per «-». Un titolo libero
+  // («Torneo aziendale») non è un elenco ordinato, e da lì non esce nessun organizzatore.
+  assert.equal(organizzatoreDelloSlot([rigaTipata({ descrizione: 'Torneo aziendale' }, 'Partita')]), null);
+});
+
+test('32) IL DIRITTO: l\'organizzatore sì, gli altri no — e i due motivi sono diversi', () => {
+  const D = '-Uno Rossi.-Due Rossi.-Tre Rossi.-Ospite.';
+  const slot = [rigaTipata({ descrizione: D }, 'Partita')];
+  const org = dirittoDiAnnullare(slot, varianti('Uno Rossi'));
+  assert.equal(org.permesso, true);
+  assert.equal(org.organizzatore, 'Uno Rossi');
+  assert.equal(org.motivo, null);
+  const altro = dirittoDiAnnullare(slot, varianti('Due Rossi'));
+  assert.equal(altro.permesso, false);
+  // ⭐ Il motivo NON è lo stesso di quando non si sa chi ha organizzato: qui il socio una strada
+  // ce l'ha (uscire dalla partita), là no (segreteria). Un motivo solo costringerebbe il bot a
+  // indovinare quale delle due frasi dire.
+  assert.equal(altro.motivo, 'non_sei_organizzatore');
+  assert.equal(altro.organizzatore, 'Uno Rossi', 'chi ha il ruolo si sa lo stesso: serve al registro, non al socio');
+  // Chi non è nemmeno in campo: stessa risposta di chi c'è ma non ha il ruolo.
+  assert.equal(dirittoDiAnnullare(slot, varianti('Estraneo Qualsiasi')).motivo, 'non_sei_organizzatore');
+});
+
+test('33) IL DIRITTO riconosce «Cognome Nome», come fa la proprietà', () => {
+  // Il gestionale scrive ora «Nome Cognome», ora «Cognome Nome»: le varianti sono le stesse che
+  // l'edge usa per stabilire che la prenotazione è del socio. Se qui si confrontasse in un modo
+  // diverso, l'organizzatore vero si vedrebbe rifiutare l'annullamento della propria partita.
+  const slot = [rigaTipata({ descrizione: '-Rossi Uno.-Due Rossi.' }, 'Partita')];
+  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi', 'Rossi Uno')).permesso, true);
+  // E gli accenti non contano (normName toglie i diacritici), come per la proprietà.
+  const conAccento = [rigaTipata({ descrizione: '-Niccolò Perù.-Due Rossi.' }, 'Partita')];
+  assert.equal(dirittoDiAnnullare(conAccento, varianti('Niccolo Peru')).permesso, true);
+});
+
+test('34) IL COLLEGAMENTO: l\'edge chiama la funzione, non una copia scritta a mano', () => {
+  // 🚨⭐⭐ Senza questo caso, togliendo da `index.ts` la chiamata a `dirittoDiAnnullare` e
+  // rimettendo il vecchio rifiuto secco, TUTTI i casi qui sopra resterebbero VERDI e
+  // l'organizzatore tornerebbe a non poter annullare — senza un rosso. È lo stesso buco trovato
+  // il 30/07 sul promemoria del bot: i casi provavano la regola, nessuno provava che il codice
+  // vero la usasse.
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(/dirittoDiAnnullare\(righeSlot, nameVariants\)/.test(src),
+    'index.ts deve chiedere il diritto a roster-slot.ts, passandogli le righe dello slot e le varianti del nome');
+  assert.ok(/reason: diritto\.motivo/.test(src),
+    'il motivo del rifiuto deve essere quello della funzione, non uno riscritto a mano');
+  // ⭐ Guardia anti-cieco: se un domani il file cambia nome o si svuota, questo test deve
+  // FALLIRE dicendo perché, invece di passare confrontando due stringhe vuote.
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+});
+
+test('35) le DUE copie di rosterOrdinatoDelloSlot sono identiche, carattere per carattere', () => {
+  // 🚨⭐⭐ Nato da un sabotaggio rimasto VERDE: cambiando qui «fra copie concordi vince la più
+  // completa» in «vince la prima» non cadeva niente — ed è giusto, perché a questo modulo serve
+  // solo la POSIZIONE 0, che fra copie concordi è la stessa. Il sabotaggio era INERTE, non un
+  // test debole. Ma indicava una cosa vera da difendere: che le due copie non divergano.
+  // ⭐ Perché sono due e non una: le cartelle `_shared/` NON vengono deployate (il `_` iniziale
+  // le fa saltare dai workflow, e il deploy risulta verde senza aver caricato nulla), quindi
+  // qui la strada è la copia VERBATIM — la stessa scelta di `playersFromDescrizione`. Una copia
+  // verbatim senza una guardia è solo una copia che un giorno divergerà.
+  const corpo = (url: URL) => {
+    const src = readFileSync(url, 'utf8');
+    const m = src.match(/export function rosterOrdinatoDelloSlot[\s\S]*?\n}/);
+    // Guardia anti-cieco: se la funzione cambia nome o sparisce, questo test deve FALLIRE
+    // dicendo perché, non passare confrontando due `null`.
+    assert.ok(m, `rosterOrdinatoDelloSlot non trovata in ${url.pathname}: la prova sarebbe cieca`);
+    return m![0];
+  };
+  assert.equal(
+    corpo(new URL('./roster-slot.ts', import.meta.url)),
+    corpo(new URL('../consumer-player-readmodel/compagni-slot.ts', import.meta.url)),
+    'le due copie sono divergute: chi tocca una deve toccare l\'altra',
+  );
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
