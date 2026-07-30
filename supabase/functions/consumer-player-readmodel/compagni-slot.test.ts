@@ -5,7 +5,7 @@
 // 26/07. È il modo di provare una forma di dato che l'ambiente di TEST non contiene — là
 // non esistono partite con più «Ospite».
 import assert from 'node:assert/strict';
-import { compagniDelloSlot, normName, rosterFromPayload } from './compagni-slot.ts';
+import { compagniDelloSlot, normName, rosterFromPayload, rosterOrdinatoDelloSlot } from './compagni-slot.ts';
 
 let passed = 0;
 let failed = 0;
@@ -215,6 +215,55 @@ test('16. una descrizione LIBERA non è un roster: nessun compagno inventato', (
   const r = rosterFromPayload('booking', riga);
   assert.deepEqual(r.liste, [['Mario Rossi']]);
   assert.deepEqual(compagniDaRighe([['booking', riga]], 'Mario Rossi'), []);
+});
+
+// ── L'ELENCO ORDINATO: chi ha organizzato la partita (30/07) ─────────────────────────────
+// Il ponte porta il DATO (l'elenco nell'ordine della scheda); la regola «l'organizzatore è
+// il primo» la applica il bot. Questi casi sorvegliano l'ORDINE, che è l'unica cosa che
+// rende utile il dato: rimescolarlo cambierebbe la persona nominata al socio.
+
+test('17. l\'elenco ordinato viene dalla SCHEDA, e l\'ordine è quello', () => {
+  // Roster vero di PROD (partita 9126 del 31/07): il primo è chi l'ha creata dal telefono.
+  const riga: Record<string, unknown> = {
+    descrizione: '-Andrea Foltran.-Gianmario Gri.-Mattia Biz.-Mauro Schincariol.',
+    giocatori: ['Mauro Schincariol'],   // l'array NON è ordinato: non deve vincere
+    giocatore: 'Mauro Schincariol',
+  };
+  const r = rosterFromPayload('booking', riga);
+  assert.deepEqual(r.scheda, ['Andrea Foltran', 'Gianmario Gri', 'Mattia Biz', 'Mauro Schincariol']);
+  assert.equal(rosterOrdinatoDelloSlot([r.scheda])[0], 'Andrea Foltran');
+});
+
+test('18. fra due copie della stessa partita vince la più COMPLETA', () => {
+  const corta = ['Andrea Foltran', 'Gianmario Gri'];
+  const lunga = ['Andrea Foltran', 'Gianmario Gri', 'Mattia Biz'];
+  assert.deepEqual(rosterOrdinatoDelloSlot([corta, lunga]), lunga);
+  assert.deepEqual(rosterOrdinatoDelloSlot([lunga, corta]), lunga, 'non dipende dall\'ordine di arrivo');
+});
+
+test('19. 🚨 due copie che si CONTRADDICONO sul primo nome ⇒ non lo sappiamo', () => {
+  // Le due copie di uno slot possono davvero discordare (la sincronizzata e quella creata
+  // dall'app). Scegliere la più lunga nominerebbe una persona a caso come organizzatore
+  // davanti agli altri tre: si torna vuoto, e a valle esce la frase generica.
+  const a = ['Andrea Foltran', 'Gianmario Gri'];
+  const b = ['Mattia Biz', 'Gianmario Gri', 'Andrea Foltran'];
+  assert.deepEqual(rosterOrdinatoDelloSlot([a, b]), []);
+});
+
+test('20. niente scheda ⇒ elenco vuoto (e nessun organizzatore a valle)', () => {
+  assert.deepEqual(rosterOrdinatoDelloSlot([]), []);
+  assert.deepEqual(rosterOrdinatoDelloSlot([[], []]), []);
+  // Uno staff_booking non ha descrizione: la sua lista non entra, e da solo non dà ordine.
+  const riga: Record<string, unknown> = { giocatori: [{ nome: 'Anna Neri' }, { nome: 'Bruno Sala' }] };
+  assert.deepEqual(rosterFromPayload('staff_booking', riga).scheda, []);
+});
+
+test('21. l\'accento non fa sembrare discordi due copie uguali', () => {
+  // Il confronto sul primo nome passa da normName: senza, «Filipe Neves De Sa» e
+  // «Filipe Neves De Sà» sarebbero due persone diverse e il caso 19 scatterebbe a torto.
+  const a = ['Filipe Neves De Sa', 'Anna Neri'];
+  const b = ['Filipe Neves De Sà', 'Anna Neri', 'Bruno Sala'];
+  assert.deepEqual(rosterOrdinatoDelloSlot([a, b]), b);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);

@@ -93,6 +93,34 @@ export function compagniDelloSlot(
   return compagni;
 }
 
+/**
+ * L'ELENCO DEI GIOCATORI NELL'ORDINE DELLA SCHEDA, socio compreso — serve a sapere CHI HA
+ * ORGANIZZATO la partita (regola del committente: è il primo dell'elenco, perché l'ordine
+ * della scheda è la cronologia degli ingressi).
+ *
+ * 🚨 Perché non basta `compagni`: quello è l'elenco MENO il socio, quindi la posizione del
+ * socio è persa e non si può più sapere se il primo è lui.
+ *
+ * ⭐ Si guardano SOLO le liste che vengono dalla scheda del circolo (`descrizione`), che è
+ * l'unica fonte ordinata: l'array `giocatori` e l'intestatario non portano un ordine
+ * confrontabile. Fra più copie della stessa partita vince la PIÙ COMPLETA.
+ *
+ * 🚨 FAIL CLOSED sulla contraddizione: se due copie dello stesso slot cominciano con nomi
+ * DIVERSI non si sceglie la più lunga — si torna `[]`, cioè «non lo so». Due copie possono
+ * davvero contraddirsi (la sincronizzata e quella creata dall'app), e in quel caso qualunque
+ * scelta nominerebbe una persona a caso come organizzatore davanti a tutti gli altri.
+ */
+export function rosterOrdinatoDelloSlot(schede: string[][]): string[] {
+  const piene = schede.filter((l) => Array.isArray(l) && l.length > 0);
+  if (piene.length === 0) return [];
+  const primo = normName(piene[0][0]);
+  for (const l of piene) {
+    if (normName(l[0]) !== primo) return []; // due copie non concordi ⇒ non lo sappiamo
+  }
+  // Concordi sull'inizio: si tiene la più completa (le copie sono la stessa partita).
+  return piene.reduce((a, b) => (b.length > a.length ? b : a));
+}
+
 // ROSTER AUTOREVOLE dei record `booking`: copia VERBATIM di playersFromDescrizione
 // in matchpoint-bookings-sync/index.ts (unica regola, non una seconda). Estrae i
 // nomi solo quando la descrizione è in formato lista "-Nome.-Nome." (inizia con
@@ -132,6 +160,12 @@ export function rosterFromPayload(recordType: string, p: JsonMap): {
   liste: string[][];
   codes: string[];
   joined: string[];
+  /**
+   * L'elenco della SOLA scheda del circolo, nel suo ordine. Esce a parte perché è l'unica
+   * fonte ORDINATA: dentro `liste` finisce mescolata alle altre e non si distingue più.
+   * Serve a `rosterOrdinatoDelloSlot` → chi ha organizzato.
+   */
+  scheda: string[];
 } {
   const names: string[] = [];
   const liste: string[][] = [];
@@ -180,5 +214,6 @@ export function rosterFromPayload(recordType: string, p: JsonMap): {
     liste,
     codes,
     joined: joined.filter(Boolean),
+    scheda: daScheda,
   };
 }
