@@ -280,23 +280,26 @@ export function rosterDelloSlot(righe: RigaSlot[], maxGiocatori: number): EsitoR
 // ⭐ E non diventa una terza copia della regola: l'ordine si legge dalla scheda del circolo con
 // `playersFromDescrizione`, che in questo file c'è già ed è la stessa del sync.
 //
-// 📊 MISURA su PROD (30/07, sola lettura; criterio: `booking`+`staff_booking` non cancellate,
-// `payload->>'data' >= 2026-07-30`, `tipo ~* 'partita'`, slot = data|ora|cifre del campo):
-// **59 partite future**. Il diritto nuovo conta solo dove ci sono **almeno due giocatori**, e
-// quelle sono **16**:
-//   | esito | slot | cosa risponde il bot |
-//   |---|---|---|
-//   | organizzatore determinabile | **13** | il primo può annullare, gli altri no |
-//   | copie DISCORDI ⇒ fail closed | **2** | «non lo so» → segreteria |
-//   | primo = «Ospite» | **1** | nessun organizzatore → segreteria |
-// ⇒ **3 su 16 mandano in segreteria**, e va detto prima: il potere nuovo non copre tutto.
+// 📊 MISURA su PROD (30/07, sola lettura; criterio: `booking`+`staff_booking` **vive per il
+// ponte**, `payload->>'data' >= 2026-07-30`, `tipo ~* 'partita'`, slot = data|ora|cifre del
+// campo): **44 partite future**, di cui **12 con altri in campo** — cioè le sole in cui il
+// diritto nuovo conta. Su quelle 12, l'organizzatore è determinabile **12 volte su 12**: zero
+// copie discordi, zero «Ospite» primo, zero senza scheda ordinata.
+// ⇒ Oggi il potere nuovo **copre tutte** le partite in cui serve. Le porte qui sotto non sono
+// perciò inutili: sono la risposta onesta al giorno in cui una di quelle condizioni capiterà.
 //
-// 🚨⭐⭐ E LA CAUSA DELLE COPIE DISCORDI È MISURATA, non generica: sono **righe rimaste
-// indietro**. Caso vero del 30/07 (slot 19:30 C3): quattro righe aggiornate alle 13:22
-// elencano `-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.-Silvia Balzarini.`, e una del
-// **24/07** comincia con **Anna Quaglio**, che da quella partita è USCITA. Senza il fail closed
-// il diritto di annullare finirebbe a **chi non gioca più**. La porta non è cautela: è la
-// ragione per cui questo modulo non indovina.
+// 🚨🚨⭐⭐ LA PRIMA VERSIONE DI QUESTA MISURA ERA SBAGLIATA, e l'errore vale più del numero.
+// Diceva «59 partite, 3 su 16 in segreteria per copie discordi». Il filtro era
+// `payload->>'deleted'` — la chiave **dentro il payload** — mentre il ponte filtra
+// `.not('deleted','is',true)`, cioè la **COLONNA**. Due cose diverse con lo stesso nome: la
+// chiave nel payload è **sempre nulla**, quindi contavo anche le righe CANCELLATE.
+// ⭐ E il caso che sembrava dimostrare il pericolo si è sciolto: nello slot 19:30 C3 la riga che
+// comincia con **Anna Quaglio** (uscita dalla partita il 24/07) è `deleted = true` — il sync
+// l'aveva già marcata, e il ponte non la vede. ⇒ La contraddizione fra copie, in produzione,
+// **non è mai stata osservata**: era un artefatto della misura.
+// 🚨 Il fail closed resta, e resta giusto — di fronte a due copie che si contraddicono non
+// esiste una scelta onesta — ma va raccontato per quello che è: una difesa **preventiva**, non
+// la cura di un male misurato. → [[metodo-il-caso-reale-non-discrimina]]
 
 /** Una riga dello slot col suo tipo: il tipo è parte della regola dell'organizzatore. */
 export type RigaSlotTipata = RigaSlot & { tipo?: string | null };

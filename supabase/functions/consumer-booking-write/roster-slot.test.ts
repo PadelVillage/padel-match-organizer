@@ -378,11 +378,18 @@ test('23) una scheda che ne dà PIÙ di quattro non vince: il tetto vale anche p
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // CHI HA ORGANIZZATO, E IL DIRITTO DI ANNULLARE (30/07/2026)
 //
-// ⭐ I casi 24, 25 e 26 NON sono inventati: sono le schede VERE lette da PROD in sola lettura
-// il 30/07 (criterio: righe `booking`/`staff_booking` non cancellate, `data >= 2026-07-30`,
-// `tipo ~* 'partita'`). Il 25 e il 26 sono i due slot su cui la regola DEVE tacere, e nessuno
-// dei due l'avrei saputo inventare: in tutt'e due la contraddizione nasce da una riga rimasta
-// indietro di giorni, non da un dato malformato.
+// ⭐ Le schede dei casi 24, 25 e 26 sono VERE, lette da PROD in sola lettura il 30/07.
+//
+// 🚨🚨⭐⭐ MA ATTENZIONE A COSA PROVANO, perché la prima stesura lo diceva SBAGLIATO: nei casi
+// 25 e 26 le righe che si contraddicono sono **CANCELLATE** (colonna `deleted = true`), e il
+// ponte quelle non le legge mai — il suo filtro è `.not('deleted','is',true)`. Le avevo contate
+// come vive perché il mio criterio guardava `payload->>'deleted'`, una chiave **sempre nulla**
+// che ha lo stesso nome della colonna. ⇒ In produzione, alla funzione quelle due liste
+// discordi **non arrivano**: la contraddizione fra copie non è mai stata osservata.
+// ⭐ I due casi RESTANO, e sono onesti se si legge cosa sono: non «la fotografia di uno slot
+// vero», ma **la forma di dato** (due schede che cominciano con nomi diversi) costruita con
+// nomi e schede veri. Sorvegliano il ramo che deve tacere il giorno in cui capiterà davvero.
+// → memoria [[metodo-il-caso-reale-non-discrimina]]
 const rigaTipata = (payload: Record<string, unknown>, tipo: string): RigaSlotTipata => ({
   liste: listeDaPayload(payload),
   descrizione: (payload.descrizione ?? null) as string | null,
@@ -409,11 +416,14 @@ test('24) dati VERI: nella partita di sabato l\'organizzatore è il PRIMO della 
   assert.equal(organizzatoreDelloSlot([...slot].reverse()), 'Maurizio Aprea');
 });
 
-test('25) dati VERI: la riga rimasta indietro NON dà il potere a chi è USCITO', () => {
-  // PROD, slot 2026-07-30 19:30 C3. Quattro righe aggiornate alle 13:22 del 30/07 elencano
-  // Borsoi · Tonini · Zaccaron · Balzarini; una riga ferma al 24/07 comincia con Anna Quaglio,
-  // che da quella partita è USCITA (i Movimenti del gestionale lo mostrano: esce alle 18:44:04
-  // del 24/07 ed entra Balzarini 14 secondi dopo).
+test('25) due schede discordi NON danno il potere a chi è USCITO', () => {
+  // Schede vere di PROD, slot 2026-07-30 19:30 C3: quattro righe vive elencano
+  // Borsoi · Tonini · Zaccaron · Balzarini, e una riga ferma al 24/07 comincia con Anna
+  // Quaglio, che da quella partita è USCITA (i Movimenti del gestionale: esce alle 18:44:04 del
+  // 24/07, ed entra Balzarini 14 secondi dopo).
+  // ⚠️ Quella quinta riga è `deleted = true` — il sync l'aveva già marcata — quindi al ponte
+  // NON arriva: qui la si mette accanto alle altre apposta, per esercitare il ramo. È la forma
+  // del dato, non la fotografia dello slot (vedi la nota in testa a questa sezione).
   const FRESCA = '-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.-Silvia Balzarini.';
   const VECCHIA = '-Anna Quaglio.-Stefano Borsoi.-Massimo Tonini.-Sheila Zaccaron.';
   const slot: RigaSlotTipata[] = [
@@ -438,10 +448,13 @@ test('25) dati VERI: la riga rimasta indietro NON dà il potere a chi è USCITO'
   }
 });
 
-test('26) dati VERI: dopo un\'uscita la riga di chi è uscito resta, e tace', () => {
-  // PROD, slot 2026-08-01 17:00 C4 (#9204): il 29/07 il socio è uscito dalla partita col bot.
-  // La riga aggiornata dice `-Lidia Comes.`, la SUA è rimasta a `-Maurizio Aprea.-Lidia Comes.`
-  // ⇒ senza fail closed l'organizzatore sarebbe lui, che da quella partita è uscito.
+test('26) dopo un\'uscita, la scheda vecchia accanto alla nuova tace', () => {
+  // Schede vere di PROD, slot 2026-08-01 17:00 C4 (#9204): il 29/07 il socio è uscito dalla
+  // partita col bot, e alle 17:15 la partita è stata annullata. La riga aggiornata diceva
+  // `-Lidia Comes.`, la sua era rimasta a `-Maurizio Aprea.-Lidia Comes.` ⇒ prese insieme,
+  // senza fail closed l'organizzatore sarebbe lui, che da quella partita era uscito.
+  // ⚠️ Come il 25: oggi quelle righe sono TUTTE `deleted` (l'annullamento ha fatto il suo
+  // lavoro, verificato nel registro del worker). Il caso prova la FORMA, non lo slot.
   const slot: RigaSlotTipata[] = [
     rigaTipata({ giocatore: 'Maurizio Aprea', descrizione: '-Maurizio Aprea.-Lidia Comes.', giocatori: ['Maurizio Aprea', 'Lidia Comes'] }, 'Partita'),
     rigaTipata({ giocatore: 'Lidia Comes', descrizione: '-Lidia Comes.', giocatori: ['Lidia Comes'] }, 'Partita'),
