@@ -2015,6 +2015,127 @@ const CASES = [
       H.resetCard();
       return checks;
     }
+  },
+  {
+    id: 70, flow: 'Organizzatore', name: 'la SEGRETERIA: primo «Ospite» ⇒ e della segreteria — e «non lo so» resta un\'ALTRA cosa',
+    run: async (win, H, ctx) => {
+      // Sua regola del 30/07 sera: «puo capitare una partita con 4 ospiti… l'organizzatore e la
+      // SEGRETERIA», perche e la segreteria ad APRIRE quel tipo di partita.
+      // 🚨 Il cuore di questo caso e la DISTINZIONE: prima «Ospite» e «nome illeggibile» davano
+      // lo stesso null, e da un null non si puo scrivere una frase diversa. Se un domani
+      // qualcuno li riunisce, la scheda tornera muta sulle partite del circolo senza un rosso.
+      const checks = [];
+      const ruolo = H.ruoloOrganizzatore;
+      const org = H.organizzatorePartita;
+      if (typeof ruolo !== 'function') return [{ label: 'hook ruoloOrganizzatore assente', ok: false }];
+      const conSocioDietro = [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Marco Rossi' }, { idx:'2', nome:'Ospite' }, { idx:'3', nome:'Ospite' }];
+      const tuttiOspiti = [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Ospite' }, { idx:'2', nome:'Ospite' }, { idx:'3', nome:'Ospite' }];
+      const normale = [{ idx:'0', nome:'Andrea Foltran' }, { idx:'1', nome:'Gianmario Gri' }];
+      // 🚨 IL BORDO, deciso da LUI il 30/07: col primo Ospite e un SOCIO dietro la partita e
+      // della segreteria LO STESSO. L'alternativa scartata («il ruolo scala al primo socio»)
+      // non avrebbe cambiato solo le parole: avrebbe dato a quel socio il diritto di far
+      // sparire il campo agli altri tre.
+      checks.push({ label: '🚨 primo Ospite CON un socio dietro: e della SEGRETERIA (suo bordo)', ok: ruolo('partita', conSocioDietro).chi === 'segreteria' });
+      checks.push({ label: 'quattro Ospite: e della segreteria (il caso che ha detto lui)', ok: ruolo('partita', tuttiOspiti).chi === 'segreteria' });
+      checks.push({ label: 'OSPITE maiuscolo / con spazi: sempre segreteria', ok: ruolo('partita', [{ idx:'0', nome:'  OSPITE ' }]).chi === 'segreteria' });
+      // ⭐ Controllo negativo dello stesso confronto: «Ospite Rossi» e una PERSONA che si chiama
+      // cosi, non un posto vuoto. Senza, una ricerca sbagliata (`indexOf('ospite')`) passerebbe
+      // tutti i controlli qui sopra e toglierebbe il ruolo a un socio vero.
+      checks.push({ label: '⭐ «Ospite Rossi» e una PERSONA: resta giocatore', ok: ruolo('partita', [{ idx:'0', nome:'Ospite Rossi' }]).chi === 'giocatore' });
+      // ⭐ Controllo negativo: la partita normale NON deve diventare della segreteria.
+      const rn = ruolo('partita', normale);
+      checks.push({ label: '⭐ partita normale: chi = giocatore, ed e il PRIMO', ok: rn.chi === 'giocatore' && rn.voce === normale[0] });
+      // 🚨 LA DISTINZIONE CHE VALE: illeggibile ≠ segreteria. Dell'Ospite sappiamo che non e un
+      // socio; di un nome vuoto non sappiamo niente, e dire «e della segreteria» sarebbe
+      // un'affermazione inventata su una partita che magari ha un organizzatore vero.
+      checks.push({ label: '🚨 primo con nome VUOTO: «ignoto», NON segreteria', ok: ruolo('partita', [{ idx:'0', nome:'' }, { idx:'1', nome:'Marco Rossi' }]).chi === 'ignoto' });
+      checks.push({ label: 'primo di soli spazi: «ignoto», non segreteria', ok: ruolo('partita', [{ idx:'0', nome:'   ' }]).chi === 'ignoto' });
+      checks.push({ label: 'roster vuoto o assente: «ignoto»', ok: ruolo('partita', []).chi === 'ignoto' && ruolo('partita', null).chi === 'ignoto' });
+      // 🚨 Il filtro sul TIPO viene PRIMA di tutto: una lezione col primo Ospite non e «della
+      // segreteria», e una lezione — sua decisione del 29/07, l'organizzatore vale solo per le
+      // Partite. Senza questo controllo la regola nuova rientrerebbe dalla finestra sulle
+      // lezioni, che sono 34 su 88.
+      checks.push({ label: '🚨 LEZIONE col primo Ospite: «ignoto», il filtro sul tipo viene prima', ok: ruolo('lezione', tuttiOspiti).chi === 'ignoto' });
+      checks.push({ label: 'manutenzione / tipo sconosciuto: «ignoto»', ok: ruolo('manutenzione', tuttiOspiti).chi === 'ignoto' && ruolo('torneo', tuttiOspiti).chi === 'ignoto' });
+      // 🚨 IL POTERE NON CAMBIA, e qui si sorveglia: la segreteria non e una persona, quindi non
+      // c'e nessuna VOCE del roster da marcare e la porta storica deve continuare a dire null.
+      // Se un domani `voce` tornasse il primo Ospite, la stellina finirebbe su «Ospite» —
+      // esattamente cio che lui ha escluso.
+      checks.push({ label: '🚨 segreteria ⇒ nessuna voce da marcare (voce null)', ok: ruolo('partita', conSocioDietro).voce === null && ruolo('partita', tuttiOspiti).voce === null });
+      // ⚠️ MISURATO col sabotaggio 7 («la segreteria si porta dietro la voce del primo Ospite»):
+      // la porta storica restava NULL e la stellina compariva lo stesso, perche la scheda legge
+      // `voce` direttamente. ⇒ La riga qui sotto sorveglia il CONTRATTO della porta storica (la
+      // usano l'aggancio e il caso 66), NON l'assenza della stellina: quella la sorveglia il 71,
+      // ed e l'unico posto che l'ha vista cadere. L'etichetta prima diceva «⇒ nessuna stellina
+      // possibile», che e falso — un'implicazione sbagliata scritta dentro un test verde.
+      checks.push({ label: 'la porta storica (aggancio + caso 66) resta null', ok: org('partita', conSocioDietro) === null && org('partita', tuttiOspiti) === null });
+      checks.push({ label: '⭐ mentre sulla partita normale le due porte concordano', ok: org('partita', normale) === rn.voce });
+      return checks;
+    }
+  },
+  {
+    id: 71, flow: 'Organizzatore', name: 'il COLLEGAMENTO: la scheda SCRIVE «Organizzata dalla segreteria» (e non lo scrive dove non va)',
+    run: async (win, H, ctx) => {
+      // ⭐ Gemello del caso 67: la regola giusta non basta. Se nessuno guarda la SCHEDA, togliere
+      // le righe che disegnano la frase lascerebbe il caso 70 tutto verde e sullo schermo non
+      // comparirebbe niente — cioe esattamente il difetto che questo lavoro doveva togliere
+      // («il codice copre il potere, non le PAROLE»).
+      const iso = ctx.iso;
+      const checks = [];
+      // ── Parte 1: la partita del circolo (primo Ospite) ────────────────────────────────
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Ospite', idCliente: '90' },
+        { idx: '1', nome: 'Marco Rossi', idCliente: '91' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      // 🚨 GUARDIA anti-cieco: se la scheda non ha disegnato i giocatori, «la riga c'e» e «non
+      // c'e la stellina» sarebbero veri per il motivo sbagliato e questo giro non misurerebbe
+      // niente (e la 6ª trappola: uno zero compatibile col meccanismo spento).
+      if (rows.length !== 2) {
+        checks.push({ label: '⚠️ la scheda non ha disegnato i due giocatori: questa prova non dice niente', ok: false });
+        H.resetCard();
+        return checks;
+      }
+      const righeSeg = Array.from(box.querySelectorAll('.svc-pl-org-seg'));
+      checks.push({ label: '🚨 la riga c\'e, e ce n\'e UNA SOLA', ok: righeSeg.length === 1 });
+      // Il testo si confronta ESATTO: e la forma che ha scelto lui fra tre, non un'idea vicina.
+      checks.push({ label: 'dice esattamente «Organizzata dalla segreteria»',
+        ok: righeSeg.length === 1 && String(righeSeg[0].textContent || '').trim() === 'Organizzata dalla segreteria' });
+      // 🚨 Sta SOPRA i nomi: sotto sembrerebbe riferita all'ultimo giocatore.
+      checks.push({ label: '🚨 sta SOPRA l\'elenco dei nomi',
+        ok: righeSeg.length === 1 && !!rows[0] && (righeSeg[0].compareDocumentPosition(rows[0]) & 4) !== 0 });
+      // 🚨 E nessuno prende la stellina — nemmeno l'«Ospite», che non e una persona, nemmeno il
+      // socio dietro (il bordo che ha deciso lui).
+      checks.push({ label: '🚨 NESSUNA stellina in tutta la scheda', ok: box.querySelectorAll('.svc-pl-org').length === 0 });
+      checks.push({ label: '⭐ e nessun posto riservato da compensare: i nomi restano incolonnati',
+        ok: box.querySelectorAll('.svc-pl-org-slot').length === 0 });
+      // ── Parte 2: IL CONTROLLO NEGATIVO, nello stesso giro ─────────────────────────────
+      // Senza, una riga scritta SEMPRE (o su ogni partita) passerebbe tutto quello di sopra.
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Andrea Foltran', idCliente: '11' },
+        { idx: '1', nome: 'Gianmario Gri', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const st2 = H.getPlayersState();
+      const box2 = st2 && st2.box;
+      if (!box2) return checks.concat([{ label: 'seconda scheda non aperta', ok: false }]);
+      checks.push({ label: '⭐ partita normale: la riga NON c\'e', ok: box2.querySelectorAll('.svc-pl-org-seg').length === 0 });
+      checks.push({ label: '⭐ …e li la stellina c\'e, UNA, sul primo', ok: box2.querySelectorAll('.svc-pl-org').length === 1 });
+      H.resetCard();
+      return checks;
+    }
   }
 ];
 
