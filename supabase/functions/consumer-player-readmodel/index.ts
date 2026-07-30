@@ -6,6 +6,7 @@ import {
   normName,
   playersFromDescrizione,
   rosterFromPayload,
+  rosterOrdinatoDelloSlot,
 } from './compagni-slot.ts';
 
 // consumer-player-readmodel — ponte dati READ-ONLY per gli assistenti dei SOCI
@@ -322,6 +323,9 @@ Deno.serve(async (req: Request) => {
   // perché le due copie hanno roster di completezza diversa.
   const byKey = new Map<string, JsonMap>();
   const listeByKey = new Map<string, string[][]>();
+  // Le liste della SOLA scheda del circolo, separate dalle altre: sono l'unica fonte
+  // ORDINATA, e l'ordine è ciò che dice chi ha organizzato (il primo dell'elenco).
+  const schedeByKey = new Map<string, string[][]>();
   const order: string[] = [];
 
   for (const row of bookingRows ?? []) {
@@ -353,6 +357,12 @@ Deno.serve(async (req: Request) => {
     if (liste) liste.push(...roster.liste);
     else listeByKey.set(key, [...roster.liste]);
 
+    if (roster.scheda.length) {
+      const schede = schedeByKey.get(key);
+      if (schede) schede.push(roster.scheda);
+      else schedeByKey.set(key, [roster.scheda]);
+    }
+
     if (byKey.has(key)) continue;
     byKey.set(key, {
       data,
@@ -367,6 +377,13 @@ Deno.serve(async (req: Request) => {
   const bookings: JsonMap[] = order.map((key) => ({
     ...(byKey.get(key) as JsonMap),
     compagni: compagniDelloSlot(listeByKey.get(key) ?? [], nameVariants, MAX_COMPAGNI),
+    // ⭐ L'elenco NELL'ORDINE della scheda, socio compreso: da qui si legge chi ha
+    // organizzato (il primo). `compagni` non basta — è l'elenco meno il socio, quindi la
+    // posizione del socio è persa. La REGOLA non sta qui: il ponte porta il DATO, il bot
+    // applica la regola (una sola implementazione per parte, non una terza copia).
+    // ⚠️ Nessun dato personale in più dei `compagni`: gli stessi nomi, più quello del socio
+    // stesso, che sta già in `member.name`.
+    giocatori: rosterOrdinatoDelloSlot(schedeByKey.get(key) ?? []),
   }));
   bookings.sort((a, b) =>
     `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
