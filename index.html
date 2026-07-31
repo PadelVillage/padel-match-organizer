@@ -27629,9 +27629,9 @@ Per confermare scrivi ELIMINA.`);
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'users';
 	      // 🚨 «supabase» NON e' piu' una sezione, ma puo' essere ancora l'ultima sezione
-      // aperta salvata nel browser di chi ci lavorava: senza questa riga si aprirebbe
-      // un'Amministrazione vuota, perche' nessun pannello risponde a quel nome.
-      if (key.includes('supabase') || key.includes('controll')) return 'users';
+	      // aperta salvata nel browser di chi ci lavorava: senza questa riga si aprirebbe
+	      // un'Amministrazione vuota, perche' nessun pannello risponde a quel nome.
+	      if (key.includes('supabase') || key.includes('controll')) return 'users';
 	      if (key.includes('calendario')) return 'calendario-staff';
 	      return 'users';
 	    }
