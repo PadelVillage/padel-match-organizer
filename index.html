@@ -6334,7 +6334,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
           <button class="side-sub-link" data-subsection-key="view_admin_telegram" data-parent-tab="administration" onclick="goToTabSection('administration','Bot Telegram')">Bot Telegram</button>
-          <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
         </div><!-- /.side-nav-chapters -->
 
@@ -6383,7 +6382,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button type="button" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
           <button type="button" data-subsection-key="view_admin_telegram" data-parent-tab="administration" onclick="goToTabSection('administration','Bot Telegram')">Bot Telegram</button>
-          <button type="button" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
       </div>
     </nav>
@@ -7557,11 +7555,39 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="section">
         <div class="dashboard-page-title pmo-section-head">
           <h2>Amministrazione</h2>
-          <p>Utenti, notifiche staff, dati Matchpoint e controlli tecnici separati.</p>
+          <p>Utenti e controlli tecnici, notifiche staff, dati Matchpoint e bot Telegram.</p>
         </div>
 
         <div id="pmoAdminUsersSection" class="admin-section-panel" data-pmo-admin-section="users">
           <div class="admin-panel" id="pmoStaffAccessPanel" data-admin-anchor="utenti"></div>
+
+          <!-- Controlli tecnici: stavano in una voce di menu a parte chiamata «Supabase».
+               Sono rimaste due cose sole, e parlano tutte e due di CHI accede: a quale
+               database e' collegata questa copia dell'app (TEST o PROD) e chi ha fatto
+               cosa. Il registro attivita' chiede gia' il permesso `manage_users`, quindi
+               la casa giusta e' Utenti: chi puo' gestire gli utenti puo' anche vedere il
+               registro di cio' che hanno fatto. Il riquadro sugli invii email
+               dell'Autovalutazione e' stato tolto: descriveva orari di invii automatici
+               che non esistono piu'. -->
+          <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="controlli-tecnici" style="margin-top:16px;">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Controlli tecnici</h3>
+                <p>Solo diagnostica: a quale database è collegata questa app, e chi ha fatto cosa.</p>
+              </div>
+              <div class="admin-actions">
+                <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRunSupabaseEnvironmentCheck()">Verifica TEST/PROD</button>
+                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attività</button>
+              </div>
+            </div>
+            <div class="admin-diagnostic-note">Usa questa parte solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.</div>
+            <div id="pmoSupabaseStatus" class="info-box" style="margin-top:12px;">Controlli tecnici disponibili solo per diagnosi.</div>
+            <div id="pmoEnvironmentCheckPanel"></div>
+            <details class="admin-technical-details">
+              <summary>Registro attività</summary>
+              <div id="pmoAuditLogTable"></div>
+            </details>
+          </div>
         </div>
 
         <div id="pmoAdminNotificationsSection" class="admin-section-panel" data-pmo-admin-section="notifications" hidden>
@@ -7843,29 +7869,6 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
 
-        <div id="pmoAdminSupabaseSection" class="admin-section-panel" data-pmo-admin-section="supabase" hidden>
-          <div class="admin-panel" id="pmoSupabaseDiagnosticsPanel" data-admin-anchor="supabase">
-            <div class="admin-panel-head">
-              <div>
-                <h3>Supabase</h3>
-                <p>Solo diagnostica: controlla collegamento, ambiente e funzioni tecniche.</p>
-              </div>
-              <div class="admin-actions">
-                <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRunSupabaseEnvironmentCheck()">Verifica TEST/PROD</button>
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoLoadAuditLog()">Registro attivita</button>
-              </div>
-            </div>
-            <div class="admin-diagnostic-note">Usa questa sezione solo se login, utenti, routine o cloud non tornano. La verifica legge lo stato tecnico e non modifica dati.</div>
-            <div id="pmoSupabaseStatus" class="info-box" style="margin-top:12px;">Controlli tecnici disponibili solo per diagnosi.</div>
-            <div id="pmoAssessmentEmailSchedulerPanel"></div>
-            <div id="pmoEnvironmentCheckPanel"></div>
-            <details class="admin-technical-details">
-              <summary>Registro attivita</summary>
-              <div id="pmoAuditLogTable"></div>
-            </details>
-          </div>
-        </div>
-
         <!-- Bot Telegram: chi e' entrato dal bot dei soci, con quale invito, e chi puo'
              continuare a usarlo. I dati vivono sul progetto Supabase del BOT, non su
              questo: li porta avanti e indietro l'edge `bot-telegram-admin`, che verifica
@@ -7995,7 +7998,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.137';
+    const APP_VERSION = '6.139';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10149,7 +10152,8 @@ Grazie.`
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
         else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff');
         else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
-        else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('supabase', { silent:true });
+        // I controlli tecnici vivono dentro Utenti: qualunque parola li cerchi porta li'.
+        else if (key.includes('supabase') || key.includes('controlli') || key.includes('verifica')) pmoSetAdminSection('users', { silent:true });
         else if (key.includes('utenti')) pmoSetAdminSection('users', { silent:true });
       }
       if (tabName === 'inviteResponses') {
@@ -10350,7 +10354,7 @@ Grazie.`
         tabName = 'administration';
       }
       if (tabName === 'routines') {
-        if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('supabase', { silent:true });
+        if (typeof pmoSetAdminSection === 'function') pmoSetAdminSection('users', { silent:true });
         tabName = 'administration';
       }
       if (typeof pmoSectionVisibleFor === 'function' && !pmoSectionVisibleFor(tabName)) {
@@ -10463,12 +10467,15 @@ Grazie.`
         { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
         { key:'view_admin_matchpoint', label:'Dati', adminSection:'matchpoint-data' },
         { key:'view_admin_telegram', label:'Bot Telegram', adminSection:'telegram' },
-        { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
       ]},
     ];
     const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', incassi:'view_incassi', contact:'view_contact', administration:'view_administration' };
     const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'incassi', 'contact', 'administration'];
-    const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', telegram:'view_admin_telegram', supabase:'view_admin_supabase' };
+    // Non c'e' piu' una voce «Supabase»: i controlli tecnici stanno dentro Utenti e
+    // seguono il permesso `view_admin_utenti`. La vecchia chiave `view_admin_supabase`
+    // puo' essere ancora scritta nei profili staff sul database: resta li' inerte,
+    // nessuno la legge piu'.
+    const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', telegram:'view_admin_telegram' };
     // Assistente AI: registriamo il permesso `view_assistante_ai` nell'albero ruoli in
     // TUTTI gli ambienti (TEST e PROD), così è gestibile dalla UI Gestione ruoli ovunque.
     // Il capitolo/chat è gated da questo permesso (owner/admin sempre). PMO_AI_ASSISTANT_ENABLED
@@ -10532,7 +10539,7 @@ Grazie.`
       return pmoSubsectionVisibleFor(subKey, 'administration', profile);
     }
     function pmoFirstAllowedAdminSection(profile) {
-      const order = ['users', 'notifications', 'matchpoint-data', 'telegram', 'supabase'];
+      const order = ['users', 'notifications', 'matchpoint-data', 'telegram'];
       return order.find(section => pmoAdminSectionViewAllowed(section, profile)) || 'users';
     }
     function pmoApplyTabVisibility() {
@@ -27489,64 +27496,19 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
 	      `;
 	    }
-	    function pmoRenderAssessmentEmailSchedulerPanel() {
-	      const target = document.getElementById('pmoAssessmentEmailSchedulerPanel');
-	      if (!target) return;
-	      const envLabel = PMO_IS_TEST_ENV ? 'TEST' : 'PROD';
-	      const intro = PMO_IS_TEST_ENV
-	        ? 'In TEST gli scheduler email restano disattivati: le verifiche sono manuali o simulate.'
-	        : 'In PROD il dispatcher email Autovalutazione e stato applicato e verificato da Promuovi Prod/Admin.';
-	      const rows = [
-	        {
-	          title: 'Ambiente attuale',
-	          detail: `${envLabel}: ${PMO_IS_TEST_ENV ? 'manuale, nessun cron email automatico attivo in TEST.' : 'dispatcher applicato e verificato da Promuovi Prod/Admin.'}`,
-	          state: PMO_IS_TEST_ENV ? 'warn' : 'ok',
-	          badge: PMO_IS_TEST_ENV ? 'Manuale' : 'OK'
-	        },
-	        {
-	          title: 'Lotto ore 07:00',
-	          detail: 'Fallback PROD: non crea il lotto, invia solo un lotto gia preparato, ancora pending, con righe selezionate e non gia inviate.',
-	          state: PMO_IS_TEST_ENV ? 'warn' : 'ok',
-	          badge: PMO_IS_TEST_ENV ? 'Solo PROD' : '07:00'
-	        },
-	        {
-	          title: 'Controllo stop',
-	          detail: 'Finestra prevista 09:00 Europe/Rome: controlli operativi prima dei richiami automatici.',
-	          state: PMO_IS_TEST_ENV ? 'pending' : 'ok',
-	          badge: '09:00'
-	        },
-	        {
-	          title: 'Follow-up automatici',
-	          detail: 'Finestra prevista 09:30 Europe/Rome: solo secondo/terzo richiamo, mai primo invio generato da zero.',
-	          state: PMO_IS_TEST_ENV ? 'pending' : 'ok',
-	          badge: '09:30'
-	        },
-	        {
-	          title: 'WhatsApp',
-	          detail: 'Nessun WhatsApp automatico collegato a questa routine.',
-	          state: 'ok',
-	          badge: 'Manuale'
-	        }
-	      ];
-	      target.innerHTML = `
-	        <div class="admin-diagnostic-note" style="margin-top:12px;">
-	          <strong>Scheduler email Autovalutazione</strong>
-	          <div class="routine-mini">${escapeHtml(intro)}</div>
-	          <div class="routine-mini">Job PROD: <strong>pmo-assessment-followup-dispatcher-prod</strong>. La UI non legge cron.job in tempo reale; la verifica tecnica resta nel preflight/promozione PROD.</div>
-	        </div>
-	        <div class="admin-check-list">${rows.map(pmoEnvironmentCheckRow).join('')}</div>
-	      `;
-	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'matchpoint-data', 'telegram', 'supabase', 'calendario-staff'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'telegram', 'calendario-staff'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
 	      // 🚨 «telegram» va PRIMA di «matchpoint/dati»: il nome della voce e' «Bot
 	      // Telegram», e senza questa riga nessuna parola la porterebbe qui.
 	      if (key.includes('telegram') || key.includes('bot')) return 'telegram';
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'users';
-	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
+	      // 🚨 «supabase» NON e' piu' una sezione, ma puo' essere ancora l'ultima sezione
+	      // aperta salvata nel browser di chi ci lavorava: senza questa riga si aprirebbe
+	      // un'Amministrazione vuota, perche' nessun pannello risponde a quel nome.
+	      if (key.includes('supabase') || key.includes('controll')) return 'users';
 	      if (key.includes('calendario')) return 'calendario-staff';
 	      return 'users';
 	    }
@@ -27986,7 +27948,6 @@ Per confermare scrivi ELIMINA.`);
 	      pmoRenderAdminAccountStrip();
 	      pmoRenderAdminSessionPanel();
 	      pmoRenderStaffNotificationsPanel();
-	      pmoRenderAssessmentEmailSchedulerPanel();
 	      pmoRenderEnvironmentCheck();
 	      pmoRenderMemberCountAuditPanel();
 	      pmoRenderStaffUsersTable();
@@ -28564,13 +28525,13 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    async function pmoLoadAuditLog() {
 	      try {
-	        pmoSetSupabaseStatus('Carico registro attivita...', 'info');
-	        const rows = await pmoStaffRpc('pmo_get_audit_log_admin', { p_limit: 80 }, 'manage_users', 'leggere il registro attivita');
+	        pmoSetSupabaseStatus('Carico registro attività...', 'info');
+	        const rows = await pmoStaffRpc('pmo_get_audit_log_admin', { p_limit: 80 }, 'manage_users', 'leggere il registro attività');
 	        pmoAdminState.auditLog = Array.isArray(rows) ? rows : [];
 	        pmoAdminState.lastAuditReadAt = new Date().toISOString();
 	        save('pmoAdminState', pmoAdminState);
 	        renderPmoAdministration();
-	        pmoSetSupabaseStatus(`✅ Registro attivita caricato: ${pmoAdminState.auditLog.length} righe.`, 'success');
+	        pmoSetSupabaseStatus(`✅ Registro attività caricato: ${pmoAdminState.auditLog.length} righe.`, 'success');
 	      } catch (err) {
 	        pmoSetSupabaseStatus('❌ Registro non letto: ' + (err.message || err), 'danger');
 	      }
@@ -28580,7 +28541,7 @@ Per confermare scrivi ELIMINA.`);
 	      if (!target) return;
 	      const rows = Array.isArray(pmoAdminState.auditLog) ? pmoAdminState.auditLog : [];
 	      if (!rows.length) {
-	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun evento caricato.</strong><br>Clicca “Registro attivita” nel pannello Supabase.</div>';
+	        target.innerHTML = '<div class="ux-empty-state"><strong>Nessun evento caricato.</strong><br>Clicca “Registro attività” qui sopra.</div>';
 	        return;
 	      }
 	      const html = rows.map(row => `<tr>
