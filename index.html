@@ -7879,7 +7879,7 @@ body.assessment-public-mode .assessment-public-only-card {
             <div class="admin-panel-head">
               <div>
                 <h3>Bot Telegram</h3>
-                <p>Chi e' entrato dal bot dei soci, chi ce l'ha portato, e chi puo' continuare a usarlo.</p>
+                <p>Chi è entrato dal bot dei soci, chi ce l'ha portato, e chi può continuare a usarlo.</p>
               </div>
               <div class="admin-actions">
                 <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoTelegramCarica({ forza:true })">Aggiorna</button>
@@ -7890,7 +7890,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="admin-box-head">
                 <div>
                   <div class="admin-box-title">Le persone</div>
-                  <div class="admin-box-subtitle">Chi ha completato l'ingresso nel bot. Togliere l'accesso non toglie nessuno dalle partite gia' fissate.</div>
+                  <div class="admin-box-subtitle">Chi ha completato l'ingresso nel bot. Togliere l'accesso non toglie nessuno dalle partite già fissate.</div>
                 </div>
               </div>
               <div class="admin-box-body">
@@ -7901,7 +7901,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="admin-box-head">
                 <div>
                   <div class="admin-box-title">Gli inviti</div>
-                  <div class="admin-box-subtitle">Ogni link mandato, chi l'ha fatto e com'e' finito. Si ritira solo quello ancora in giro.</div>
+                  <div class="admin-box-subtitle">Ogni link mandato, chi l'ha fatto e com'è finito. Si ritira solo quello ancora in giro.</div>
                 </div>
               </div>
               <div class="admin-box-body">
@@ -28021,11 +28021,13 @@ Per confermare scrivi ELIMINA.`);
 
 	    function pmoTelegramTabellaPersone(righe) {
 	      if (!righe.length) {
-	        return '<div class="ux-empty-state"><strong>Nessuno e\' ancora entrato dal bot in questo ambiente.</strong><div class="routine-mini">Si entra da un link d\'invito: il bot scrive la riga da se\'.</div></div>';
+	        return '<div class="ux-empty-state"><strong>Nessuno è ancora entrato dal bot in questo ambiente.</strong><div class="routine-mini">Si entra da un link d\'invito: il bot scrive la riga da sé.</div></div>';
 	      }
 	      const corpo = righe.map(p => {
+	        // Le due etichette sono PARALLELE e senza genere: dicono la stessa cosa
+	        // dai due versi e stanno su una riga sola nella colonna stretta.
 	        const stato = p.attivo
-	          ? '<span class="admin-status-pill active">Puo\' usare il bot</span>'
+	          ? '<span class="admin-status-pill active">Accesso attivo</span>'
 	          : '<span class="admin-status-pill paused">Accesso tolto</span>';
 	        const azione = p.attivo
 	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramCambiaAccesso('${escapeJs(p.chatId)}', '${escapeJs(p.nome)}', false)">Togli l'accesso</button>`
@@ -28037,13 +28039,15 @@ Per confermare scrivi ELIMINA.`);
 	        return `<tr>
 	          <td><strong>${escapeHtml(p.nome)}</strong>${telefono}${senzaScheda}<div class="routine-mini">socio ${escapeHtml(p.memberId || '—')} · Telegram ${escapeHtml(p.chatId)}</div></td>
 	          <td>${escapeHtml(p.livello || '—')}</td>
-	          <td>${p.invitatoDa ? escapeHtml(p.invitatoDa) : '<span class="routine-mini">nessuno (inserito a mano)</span>'}</td>
+	          <td>${p.invitatoDa ? escapeHtml(p.invitatoDa) : '<span class="routine-mini">nessuno — riga messa a mano</span>'}</td>
 	          <td>${escapeHtml(pmoTelegramQuando(p.entratoIl))}</td>
 	          <td>${stato}</td>
 	          <td><div class="admin-row-actions">${azione}</div></td>
 	        </tr>`;
 	      }).join('');
-	      return `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Persona</th><th>Livello</th><th>Invitata da</th><th>Dentro dal</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+	      // «Su invito di» e non «Invitata da»: da un nome il genere non si indovina,
+	      // ed e' la stessa regola che vale per come parla il bot.
+	      return `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Persona</th><th>Livello</th><th>Su invito di</th><th>Dentro dal</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
 	    }
 
 	    function pmoTelegramTabellaInviti(righe) {
@@ -28070,13 +28074,16 @@ Per confermare scrivi ELIMINA.`);
 	      const amb = cleanCell(pmoTelegramState.dati?.ambiente) === 'prod' ? 'PRODUZIONE' : 'TEST';
 	      const domanda = attivo
 	        ? `Rimettere l'accesso al bot a ${nome}?\n\nAmbiente: ${amb}.`
-	        : `Togliere l'accesso al bot a ${nome}?\n\nAmbiente: ${amb}.\nNON viene tolta da nessuna partita gia' fissata: perde solo il bot.`;
+	        // Senza genere, e dice esattamente cosa NON succede: togliere l'accesso e'
+	        // un atto amministrativo, non sportivo — le due cose non stanno sullo
+	        // stesso bottone, ed e' una regola sua.
+	        : `Togliere l'accesso al bot a ${nome}?\n\nAmbiente: ${amb}.\nNelle partite già fissate non cambia niente: perde solo il bot.`;
 	      if (!confirm(domanda)) return;
 	      try {
 	        await pmoTelegramChiama({ action: attivo ? 'riattiva' : 'revoca', chat_id: chatId });
-	        // ⏱️ La guardia del bot tiene in memoria i «si'» per 5 minuti: dirlo qui evita
+	        // ⏱️ La guardia del bot tiene in memoria i «sì» per 5 minuti: dirlo qui evita
 	        // che una prova fatta subito dopo sembri un bottone che non ha funzionato.
-	        showAlert(attivo ? `✅ ${nome} puo' di nuovo usare il bot.` : `✅ Accesso tolto a ${nome}. Puo' impiegare fino a 5 minuti a fare effetto.`, 'success');
+	        showAlert(attivo ? `✅ ${nome} può di nuovo usare il bot.` : `✅ Accesso tolto a ${nome}. Può impiegare fino a 5 minuti a fare effetto.`, 'success');
 	        await pmoTelegramCarica({ forza:true });
 	      } catch (err) {
 	        showAlert(`Non ho potuto cambiare l'accesso: ${(err && err.message) || err}`, 'error');
@@ -28084,7 +28091,7 @@ Per confermare scrivi ELIMINA.`);
 	    }
 
 	    async function pmoTelegramRitiraInvito(token, invitante) {
-	      if (!confirm(`Ritirare l'invito fatto da ${invitante}?\n\nChi ha il link non potra' piu' usarlo.`)) return;
+	      if (!confirm(`Ritirare l'invito fatto da ${invitante}?\n\nChi ha il link non potrà più usarlo.`)) return;
 	      try {
 	        await pmoTelegramChiama({ action:'ritira_invito', token });
 	        showAlert('✅ Invito ritirato.', 'success');
