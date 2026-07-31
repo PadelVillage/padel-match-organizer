@@ -6335,6 +6335,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button class="side-sub-link" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
+          <button class="side-sub-link" data-subsection-key="view_admin_telegram" data-parent-tab="administration" onclick="goToTabSection('administration','Bot Telegram')">Bot Telegram</button>
           <button class="side-sub-link" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
         </div><!-- /.side-nav-chapters -->
@@ -6383,6 +6384,7 @@ body.assessment-public-mode .assessment-public-only-card {
           <button type="button" data-subsection-key="view_admin_utenti" data-parent-tab="administration" onclick="goToTabSection('administration','Utenti')">Utenti Staff</button>
           <button type="button" data-subsection-key="view_admin_notifiche" data-parent-tab="administration" onclick="goToTabSection('administration','Notifiche staff')">Notifiche staff</button>
           <button type="button" data-subsection-key="view_admin_matchpoint" data-parent-tab="administration" onclick="goToTabSection('administration','Dati Matchpoint')">Dati</button>
+          <button type="button" data-subsection-key="view_admin_telegram" data-parent-tab="administration" onclick="goToTabSection('administration','Bot Telegram')">Bot Telegram</button>
           <button type="button" data-subsection-key="view_admin_supabase" data-parent-tab="administration" onclick="goToTabSection('administration','Supabase')">Supabase</button>
         </div>
       </div>
@@ -7865,6 +7867,49 @@ body.assessment-public-mode .assessment-public-only-card {
             </details>
           </div>
         </div>
+
+        <!-- Bot Telegram: chi e' entrato dal bot dei soci, con quale invito, e chi puo'
+             continuare a usarlo. I dati vivono sul progetto Supabase del BOT, non su
+             questo: li porta avanti e indietro l'edge `bot-telegram-admin`, che verifica
+             il permesso di chi chiede e tiene la chiave dell'altro database dalla parte
+             del server. L'ambiente (TEST o PROD) lo decide l'edge dal proprio indirizzo:
+             da qui non si tocca mai la whitelist dell'altro ambiente. -->
+        <div id="pmoAdminTelegramSection" class="admin-section-panel" data-pmo-admin-section="telegram" hidden>
+          <div class="admin-panel" id="pmoAdminTelegramPanel" data-admin-anchor="bot-telegram">
+            <div class="admin-panel-head">
+              <div>
+                <h3>Bot Telegram</h3>
+                <p>Chi e' entrato dal bot dei soci, chi ce l'ha portato, e chi puo' continuare a usarlo.</p>
+              </div>
+              <div class="admin-actions">
+                <button class="btn-primary small-btn" onclick="setActionAnchor(this); pmoTelegramCarica({ forza:true })">Aggiorna</button>
+              </div>
+            </div>
+            <div id="pmoTelegramStatus" class="info-box" style="margin-top:12px;">Caricamento in corso...</div>
+            <div class="admin-box" style="margin-top:14px;">
+              <div class="admin-box-head">
+                <div>
+                  <div class="admin-box-title">Le persone</div>
+                  <div class="admin-box-subtitle">Chi ha completato l'ingresso nel bot. Togliere l'accesso non toglie nessuno dalle partite gia' fissate.</div>
+                </div>
+              </div>
+              <div class="admin-box-body">
+                <div id="pmoTelegramPersone"></div>
+              </div>
+            </div>
+            <div class="admin-box" style="margin-top:14px;">
+              <div class="admin-box-head">
+                <div>
+                  <div class="admin-box-title">Gli inviti</div>
+                  <div class="admin-box-subtitle">Ogni link mandato, chi l'ha fatto e com'e' finito. Si ritira solo quello ancora in giro.</div>
+                </div>
+              </div>
+              <div class="admin-box-body">
+                <div id="pmoTelegramInviti"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -7952,7 +7997,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.136';
+    const APP_VERSION = '6.137';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10197,6 +10242,7 @@ Grazie.`
       }
       if (tabName === 'administration') {
         if (key.includes('notifiche')) pmoSetAdminSection('notifications', { silent:true });
+        else if (key.includes('telegram') || key.includes('bot')) pmoSetAdminSection('telegram', { silent:true });
         else if (key.includes('dati matchpoint') || key.includes('clienti matchpoint') || key.includes('prenotazioni future matchpoint') || key.includes('storico matchpoint') || key.includes('backup dati') || key.includes('slot potenziali matchpoint') || key.includes('routine dati')) pmoSetAdminSection('matchpoint-data', { silent:true });
         else if (key.includes('calendario staff') || key.includes('calendario campi') || key.includes('prenotazione staff')) pmoSetAdminSection('calendario-staff');
         else if (key.includes('sessione')) pmoSetAdminSection('users', { silent:true });
@@ -10513,12 +10559,13 @@ Grazie.`
         { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
         { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
         { key:'view_admin_matchpoint', label:'Dati', adminSection:'matchpoint-data' },
+        { key:'view_admin_telegram', label:'Bot Telegram', adminSection:'telegram' },
         { key:'view_admin_supabase', label:'Supabase', adminSection:'supabase' },
       ]},
     ];
     const PMO_TAB_VIEW_KEY = { dashboard:'view_dashboard', assessment:'view_assessment', members:'view_members', incassi:'view_incassi', contact:'view_contact', administration:'view_administration' };
     const PMO_SECTION_ORDER = ['dashboard', 'assessment', 'members', 'incassi', 'contact', 'administration'];
-    const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', supabase:'view_admin_supabase' };
+    const PMO_ADMIN_SECTION_VIEW_KEY = { users:'view_admin_utenti', notifications:'view_admin_notifiche', 'matchpoint-data':'view_admin_matchpoint', telegram:'view_admin_telegram', supabase:'view_admin_supabase' };
     // Assistente AI: registriamo il permesso `view_assistante_ai` nell'albero ruoli in
     // TUTTI gli ambienti (TEST e PROD), così è gestibile dalla UI Gestione ruoli ovunque.
     // Il capitolo/chat è gated da questo permesso (owner/admin sempre). PMO_AI_ASSISTANT_ENABLED
@@ -10582,7 +10629,7 @@ Grazie.`
       return pmoSubsectionVisibleFor(subKey, 'administration', profile);
     }
     function pmoFirstAllowedAdminSection(profile) {
-      const order = ['users', 'notifications', 'matchpoint-data', 'supabase'];
+      const order = ['users', 'notifications', 'matchpoint-data', 'telegram', 'supabase'];
       return order.find(section => pmoAdminSectionViewAllowed(section, profile)) || 'users';
     }
     function pmoApplyTabVisibility() {
@@ -27615,8 +27662,11 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    function pmoAdminSectionKey(section='users') {
 	      const key = cleanCell(section || '').toLowerCase();
-	      if (['users', 'notifications', 'matchpoint-data', 'supabase', 'calendario-staff'].includes(key)) return key;
+	      if (['users', 'notifications', 'matchpoint-data', 'telegram', 'supabase', 'calendario-staff'].includes(key)) return key;
 	      if (key.includes('notific')) return 'notifications';
+	      // 🚨 «telegram» va PRIMA di «matchpoint/dati»: il nome della voce e' «Bot
+	      // Telegram», e senza questa riga nessuna parola la porterebbe qui.
+	      if (key.includes('telegram') || key.includes('bot')) return 'telegram';
 	      if (key.includes('matchpoint') || key.includes('dati')) return 'matchpoint-data';
 	      if (key.includes('session')) return 'users';
 	      if (key.includes('supabase') || key.includes('controll')) return 'supabase';
@@ -27636,6 +27686,11 @@ Per confermare scrivi ELIMINA.`);
 	          try { refreshDataActionStatuses(); } catch (err) { console.warn('Dati Matchpoint non aggiornati:', err); }
 	          try { scheduleMatchpointRoutineCloudRefresh({ force:true }); } catch (err) { console.warn('Stato routine Matchpoint cloud non aggiornato:', err); }
 	        });
+	      }
+	      if (pmoAdminState.activeSection === 'telegram') {
+	        // La lettura passa da un altro database: si fa quando la sezione si apre,
+	        // non a ogni disegno del pannello (renderPmoAdministration gira spesso).
+	        requestAnimationFrame(() => { try { pmoTelegramCarica(); } catch (err) { console.warn('Bot Telegram non caricato:', err); } });
 	      }
 	      if (pmoAdminState.activeSection === 'calendario-staff') {
 	        requestAnimationFrame(() => { try { staffCalInit(); } catch (err) { console.warn('Calendario staff non inizializzato:', err); } });
@@ -27880,8 +27935,168 @@ Per confermare scrivi ELIMINA.`);
 	        </div>
 	      `;
 	    }
+	    // ── Bot Telegram ─────────────────────────────────────────────────────────
+	    // Chi e' entrato dal bot dei soci vive sul progetto Supabase del BOT, non su
+	    // questo: si passa SOLO dall'edge `bot-telegram-admin`, che verifica il
+	    // permesso di chi chiede e sa in quale ambiente sta girando. Da qui non si
+	    // sceglie l'ambiente e non si vede la chiave dell'altro database.
+	    const pmoTelegramState = { caricato:false, inCorso:false, dati:null, errore:'' };
+
+	    async function pmoTelegramChiama(payload) {
+	      const cfg = await loadAssessmentSupabaseConfig();
+	      const accessToken = await pmoGetSupabaseStaffAccessToken();
+	      if (!accessToken) throw new Error('Sessione scaduta: esci e rientra, poi riprova.');
+	      const resp = await fetch(cfg.supabaseUrl + '/functions/v1/bot-telegram-admin', {
+	        method: 'POST',
+	        headers: { 'Content-Type':'application/json', 'apikey': cfg.supabaseKey, 'Authorization': 'Bearer ' + accessToken },
+	        body: JSON.stringify(payload || {}),
+	      });
+	      const txt = await resp.text();
+	      let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+	      // 🚨 Un HTTP 200 non basta: l'edge risponde `ok:false` con il motivo dentro.
+	      // Fidarsi del solo stato farebbe passare per riuscita un'azione rifiutata.
+	      if (!resp.ok || !data || data.ok !== true) {
+	        throw new Error((data && (data.message || data.error)) || ('HTTP ' + resp.status));
+	      }
+	      return data;
+	    }
+
+	    function pmoTelegramSetStato(testo, tipo='info') {
+	      const el = document.getElementById('pmoTelegramStatus');
+	      if (!el) return;
+	      el.className = `info-box alert-${tipo}`;
+	      el.style.marginTop = '12px';
+	      el.innerHTML = testo;
+	    }
+
+	    function pmoTelegramQuando(iso) {
+	      const t = Date.parse(cleanCell(iso || ''));
+	      if (!Number.isFinite(t)) return '—';
+	      return new Date(t).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+	    }
+
+	    async function pmoTelegramCarica(options={}) {
+	      if (pmoTelegramState.inCorso) return;
+	      if (pmoTelegramState.caricato && !options.forza) { pmoRenderTelegramPanel(); return; }
+	      pmoTelegramState.inCorso = true;
+	      pmoTelegramSetStato('Lettura in corso...');
+	      try {
+	        pmoTelegramState.dati = await pmoTelegramChiama({ action:'list' });
+	        pmoTelegramState.caricato = true;
+	        pmoTelegramState.errore = '';
+	      } catch (err) {
+	        pmoTelegramState.dati = null;
+	        pmoTelegramState.errore = (err && err.message) || String(err);
+	      } finally {
+	        pmoTelegramState.inCorso = false;
+	        pmoRenderTelegramPanel();
+	      }
+	    }
+
+	    function pmoRenderTelegramPanel() {
+	      const persone = document.getElementById('pmoTelegramPersone');
+	      const inviti = document.getElementById('pmoTelegramInviti');
+	      if (!persone || !inviti) return;
+
+	      if (pmoTelegramState.errore) {
+	        // Un guasto NON si traveste da «non c'e' nessuno»: chi legge deve poter
+	        // distinguere una lista vuota da una lista che non si e' potuta leggere.
+	        pmoTelegramSetStato(`Non sono riuscito a leggere i dati del bot: ${escapeHtml(pmoTelegramState.errore)}`, 'warning');
+	        persone.innerHTML = '';
+	        inviti.innerHTML = '';
+	        return;
+	      }
+	      const dati = pmoTelegramState.dati;
+	      if (!dati) { pmoTelegramSetStato('Lettura in corso...'); return; }
+
+	      const amb = cleanCell(dati.ambiente) === 'prod' ? 'PRODUZIONE' : 'TEST';
+	      pmoTelegramSetStato(
+	        `Stai guardando l'ambiente <strong>${amb}</strong>: ${dati.persone.length} ${dati.persone.length === 1 ? 'persona' : 'persone'} e ${dati.inviti.length} ${dati.inviti.length === 1 ? 'invito' : 'inviti'}.`
+	        + ` <span class="routine-mini">TEST e PRODUZIONE hanno elenchi separati: da qui non si tocca l'altro.</span>`
+	      );
+
+	      persone.innerHTML = pmoTelegramTabellaPersone(dati.persone || []);
+	      inviti.innerHTML = pmoTelegramTabellaInviti(dati.inviti || []);
+	    }
+
+	    function pmoTelegramTabellaPersone(righe) {
+	      if (!righe.length) {
+	        return '<div class="ux-empty-state"><strong>Nessuno e\' ancora entrato dal bot in questo ambiente.</strong><div class="routine-mini">Si entra da un link d\'invito: il bot scrive la riga da se\'.</div></div>';
+	      }
+	      const corpo = righe.map(p => {
+	        const stato = p.attivo
+	          ? '<span class="admin-status-pill active">Puo\' usare il bot</span>'
+	          : '<span class="admin-status-pill paused">Accesso tolto</span>';
+	        const azione = p.attivo
+	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramCambiaAccesso('${escapeJs(p.chatId)}', '${escapeJs(p.nome)}', false)">Togli l'accesso</button>`
+	          : `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramCambiaAccesso('${escapeJs(p.chatId)}', '${escapeJs(p.nome)}', true)">Rimetti l'accesso</button>`;
+	        const senzaScheda = p.schedaTrovata
+	          ? ''
+	          : '<div class="routine-mini">⚠️ Scheda non trovata in anagrafica: nome e livello non sono leggibili.</div>';
+	        const telefono = p.telefono ? `<div class="routine-mini">${escapeHtml(p.telefono)}</div>` : '';
+	        return `<tr>
+	          <td><strong>${escapeHtml(p.nome)}</strong>${telefono}${senzaScheda}<div class="routine-mini">socio ${escapeHtml(p.memberId || '—')} · Telegram ${escapeHtml(p.chatId)}</div></td>
+	          <td>${escapeHtml(p.livello || '—')}</td>
+	          <td>${p.invitatoDa ? escapeHtml(p.invitatoDa) : '<span class="routine-mini">nessuno (inserito a mano)</span>'}</td>
+	          <td>${escapeHtml(pmoTelegramQuando(p.entratoIl))}</td>
+	          <td>${stato}</td>
+	          <td><div class="admin-row-actions">${azione}</div></td>
+	        </tr>`;
+	      }).join('');
+	      return `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Persona</th><th>Livello</th><th>Invitata da</th><th>Dentro dal</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+	    }
+
+	    function pmoTelegramTabellaInviti(righe) {
+	      if (!righe.length) {
+	        return '<div class="ux-empty-state"><strong>Nessun invito in questo ambiente.</strong></div>';
+	      }
+	      const pill = { 'in giro':'active', 'usato':'', 'ritirato':'paused', 'scaduto':'paused' };
+	      const corpo = righe.map(i => {
+	        const motivo = i.motivo ? `<div class="routine-mini">${escapeHtml(i.motivo)}</div>` : '';
+	        const azione = i.ritirabile
+	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramRitiraInvito('${escapeJs(i.token)}', '${escapeJs(i.invitante)}')">Ritira</button>`
+	          : '<span class="routine-mini">—</span>';
+	        return `<tr>
+	          <td><strong>${escapeHtml(i.invitante)}</strong><div class="routine-mini">${escapeHtml(i.partita)}</div></td>
+	          <td>${escapeHtml(pmoTelegramQuando(i.creatoIl))}</td>
+	          <td><span class="admin-status-pill ${pill[i.stato] || ''}">${escapeHtml(i.stato)}</span>${motivo}</td>
+	          <td><div class="admin-row-actions">${azione}</div></td>
+	        </tr>`;
+	      }).join('');
+	      return `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Chi ha invitato</th><th>Fatto il</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+	    }
+
+	    async function pmoTelegramCambiaAccesso(chatId, nome, attivo) {
+	      const amb = cleanCell(pmoTelegramState.dati?.ambiente) === 'prod' ? 'PRODUZIONE' : 'TEST';
+	      const domanda = attivo
+	        ? `Rimettere l'accesso al bot a ${nome}?\n\nAmbiente: ${amb}.`
+	        : `Togliere l'accesso al bot a ${nome}?\n\nAmbiente: ${amb}.\nNON viene tolta da nessuna partita gia' fissata: perde solo il bot.`;
+	      if (!confirm(domanda)) return;
+	      try {
+	        await pmoTelegramChiama({ action: attivo ? 'riattiva' : 'revoca', chat_id: chatId });
+	        // ⏱️ La guardia del bot tiene in memoria i «si'» per 5 minuti: dirlo qui evita
+	        // che una prova fatta subito dopo sembri un bottone che non ha funzionato.
+	        showAlert(attivo ? `✅ ${nome} puo' di nuovo usare il bot.` : `✅ Accesso tolto a ${nome}. Puo' impiegare fino a 5 minuti a fare effetto.`, 'success');
+	        await pmoTelegramCarica({ forza:true });
+	      } catch (err) {
+	        showAlert(`Non ho potuto cambiare l'accesso: ${(err && err.message) || err}`, 'error');
+	      }
+	    }
+
+	    async function pmoTelegramRitiraInvito(token, invitante) {
+	      if (!confirm(`Ritirare l'invito fatto da ${invitante}?\n\nChi ha il link non potra' piu' usarlo.`)) return;
+	      try {
+	        await pmoTelegramChiama({ action:'ritira_invito', token });
+	        showAlert('✅ Invito ritirato.', 'success');
+	        await pmoTelegramCarica({ forza:true });
+	      } catch (err) {
+	        showAlert(`Non ho potuto ritirare l'invito: ${(err && err.message) || err}`, 'error');
+	      }
+	    }
+
 	    function renderPmoAdministration() {
 	      pmoApplyAdminSectionVisibility();
+	      pmoRenderTelegramPanel();
 	      pmoRenderStaffAccessPanel();
 	      pmoRenderUsersGmailCheck();
 	      pmoRenderAdminAccountStrip();
