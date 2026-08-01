@@ -99,9 +99,28 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, JOB_NEXT;
+// Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
+// dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
+let CLOUD_LESSICO = [];
+// 🚨 Chiamate uscite dal routing del mock: devono restare ZERO. Fino a oggi il mock finiva con
+// `return realFetch(url, opts)` — cioè tutto ciò che non riconosceva andava sul Supabase VERO:
+// il banco dipendeva dalla rete (lento, non riproducibile) e nessuno se ne accorgeva, perché
+// una risposta vera somiglia a una risposta finta. Ora una falla nuova si VEDE invece di
+// sembrare che "funzioni". Allineato al banco di test-preview.
+const LEAKS = [];
+// Broadcast realtime ripiegati su HTTP (bloccati dal mock): attesi, contati a parte per non
+// sporcare LEAKS.
+const RT_BROADCASTS = [];
+// WebSocket tentate dall'app e bloccate da installWsMock: attese, contate a parte.
+const WS_BLOCKED = [];
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], jobPolls: [] };
+  // Esito del LAVORO asincrono della create (interrogazione `?jobId=`). Oggetto fisso, oppure
+  // funzione (n) => esito, per rispondere 'pending' le prime volte e poi 'done'/'error'.
+  // ⭐ Default 'done': la create asincrona si chiude SUBITO e i casi che guardano solo il payload
+  // non restano con un polling appeso che sanguina nel caso successivo.
+  JOB_NEXT = { status: 'done', worker_result: { idReserva: 'R-JOB-1' } };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
 }
@@ -116,6 +135,14 @@ function installFetchMock(win) {
     let body = null;
     try { body = opts && opts.body ? JSON.parse(opts.body) : null; } catch (e) { body = opts && opts.body; }
 
+    // 🚨 L'INTERROGAZIONE del lavoro (GET …/matchpoint-bookings-create?jobId=…) va intercettata
+    // PRIMA del ramo generico: altrimenti ogni giro di polling verrebbe contato come una create
+    // NUOVA e sballerebbe workerPushes('create') in tutti gli altri casi.
+    if (/\/functions\/v1\/matchpoint-bookings-create\?jobId=/.test(u)) {
+      CAPTURED.jobPolls.push({ url: String(u).slice(-32), t: Date.now() });
+      const esito = (typeof JOB_NEXT === 'function') ? JOB_NEXT(CAPTURED.jobPolls.length) : JOB_NEXT;
+      return jsonResponse(win, esito || { status: 'pending' }, 200);
+    }
     if (/\/functions\/v1\/matchpoint-bookings-(cancel|edit|create)/.test(u)) {
       const kind = u.match(/matchpoint-bookings-(\w+)/)[1];
       CAPTURED.worker.push({ url: u, kind, body });
@@ -123,7 +150,10 @@ function installFetchMock(win) {
         return jsonResponse(win, WORKER_NEXT.body || { ok: false, message: 'SLOT_OCCUPATO' }, WORKER_NEXT.status || 200);
       }
       if (WORKER_NEXT && WORKER_NEXT.throw) { throw new Error('network down (simulato)'); }
-      return jsonResponse(win, Object.assign({ ok: true }, WORKER_NEXT && WORKER_NEXT.body || {}), 200);
+      // La create ASINCRONA risponde col NUMERO del lavoro; l'esito arriva dall'interrogazione
+      // qui sopra. Senza jobId l'app dichiarava «Avvio non riuscito» e il polling non si provava.
+      const _job = (kind === 'create' && body && body.async) ? { jobId: 'job-test-1' } : {};
+      return jsonResponse(win, Object.assign({ ok: true }, _job, WORKER_NEXT && WORKER_NEXT.body || {}), 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
@@ -142,16 +172,75 @@ function installFetchMock(win) {
     if (/\/rest\/v1\/pmo_ai_turns/.test(u)) {
       return jsonResponse(win, [], 200);
     }
-    // Tutto il resto (realtime websocket non passa di qui) → rete reale.
-    return realFetch(url, opts);
+    // Boot del pannello admin: lista utenti staff e token autovalutazione. Vuoti e stabili.
+    if (/\/rest\/v1\/rpc\/(pmo_get_staff_users_admin|get_assessment_tokens_admin)/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
+    // Specchio WhatsApp: parte da un timer del boot. In PROD la sezione è nascosta, ma la chiamata
+    // esce lo stesso → senza questo ramo finisce fra le falle a ogni giro (misurato: 2 per giro).
+    if (/\/functions\/v1\/wa-shadow-proxy/.test(u)) {
+      return jsonResponse(win, { ok: true, messages: [] }, 200);
+    }
+    // Vocabolario appreso e impostazioni AI: select REST (non RPC) che sfuggivano al routing e
+    // andavano sul Supabase VERO → il parser dipendeva da dati remoti VIVI. Fixture fisse.
+    if (/\/rest\/v1\/pmo_lessico/.test(u)) {
+      return jsonResponse(win, CLOUD_LESSICO || [], 200);
+    }
+    if (/\/rest\/v1\/pmo_ai_settings/.test(u)) {
+      return jsonResponse(win, [], 200);
+    }
+    // Broadcast realtime via HTTP: è il ripiego di supabase-js quando la WS non è connessa.
+    // Atteso e bloccato: non è una falla, va contato a parte.
+    if (/\/realtime\/v1\/api\/broadcast/.test(u)) {
+      RT_BROADCASTS.push(String(u).slice(0, 120));
+      return jsonResponse(win, {}, 202);
+    }
+    // Regole del parser: l'app le scarica da raw.githubusercontent.com (branch REMOTO) → l'esito
+    // dipendeva da cosa c'è pushato, non dal working tree. Le serviamo dalla copia LOCALE del repo,
+    // che è la stessa che finirà in produzione ed è quella che stiamo testando.
+    if (/parser_rules\.json/.test(u)) {
+      return realFetch('/supabase/functions/parser-rules/parser_rules.json');
+    }
+    // Rete locale (l'app, config, le fixture qui sopra) → passa davvero.
+    if (/^\//.test(u) || u.indexOf(win.location.origin) === 0) return realFetch(url, opts);
+    // ⛔ Tutto il resto è una FALLA: prima finiva sulla rete vera e rendeva il banco di prova non
+    // riproducibile (e lento). Non la lasciamo passare: la registriamo e rispondiamo a vuoto.
+    LEAKS.push(String(u).slice(0, 120));
+    return jsonResponse(win, [], 200);
   };
+  win.fetch.__pmoFetchMock = true;
+}
+// ⛔ La WebSocket NON passa dal mock di fetch: supabase-js apriva una WS VERA verso il realtime.
+// Il canale è CONDIVISO con ogni altra copia dell'app viva nel browser: i broadcast dei nostri
+// test le arrivavano davvero, e quella rispondeva scrivendo nel localStorage condiviso della
+// stessa origin. Qui la WS resta per sempre CONNECTING: nessun canale si aggancia, i send() di
+// supabase-js ripiegano sul broadcast HTTP (bloccato dal mock di fetch) e il banco è sordo E muto
+// verso il realtime vero. Allineato al banco di test-preview.
+function installWsMock(win) {
+  function FakeWS(url) {
+    WS_BLOCKED.push(String(url).slice(0, 120));
+    this.url = String(url);
+    this.readyState = FakeWS.CONNECTING;      // per sempre: niente onopen, niente onclose
+    this.onopen = this.onclose = this.onerror = this.onmessage = null;
+  }
+  FakeWS.CONNECTING = FakeWS.prototype.CONNECTING = 0;
+  FakeWS.OPEN       = FakeWS.prototype.OPEN       = 1;
+  FakeWS.CLOSING    = FakeWS.prototype.CLOSING    = 2;
+  FakeWS.CLOSED     = FakeWS.prototype.CLOSED     = 3;
+  FakeWS.prototype.send = function () {};
+  FakeWS.prototype.close = function () { this.readyState = FakeWS.CLOSED; };
+  FakeWS.prototype.addEventListener = function () {};
+  FakeWS.prototype.removeEventListener = function () {};
+  FakeWS.__pmoWsMock = true;
+  win.WebSocket = FakeWS;
 }
 function installStubs(win) {
   try { win.confirm = function () { return true; }; } catch (e) {}
   try { win.alert = function () {}; } catch (e) {}
   try { win.prompt = function () { return ''; }; } catch (e) {}
   try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
-  installFetchMock(win);
+  if (!(win.fetch && win.fetch.__pmoFetchMock)) installFetchMock(win);
+  if (!(win.WebSocket && win.WebSocket.__pmoWsMock)) installWsMock(win);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -196,6 +285,21 @@ function chatTranscript(W) {
     const log = W.document.getElementById('svcChatMessages') || W.document.getElementById('svcChatLog') || W.document.getElementById('staffCalLog') || W.document.querySelector('.svc-chat-log');
     if (!log) return '(log non trovato)';
     return (log.innerText || log.textContent || '').replace(/\s+\n/g, '\n').trim().slice(-1200);
+  } catch (e) { return '(err ' + e.message + ')'; }
+}
+// 🚨 La trascrizione qui sopra è CUMULATIVA fra i casi: l'iframe non si ricrea a ogni caso, e la
+// finestra degli ultimi 1200 caratteri si porta dentro le frasi di quello PRIMA. Un controllo
+// «non deve dire X» diventa così rosso per colpa del vicino, e un «deve dire X» diventa verde per
+// merito suo (28ª trappola: l'atteso soddisfatto da un'ALTRA frase). Misurato sul caso 41: verde
+// da solo, rosso nel giro completo. Questi due leggono SOLO i messaggi aggiunti da un certo punto.
+function chatCount(W) {
+  try { const log = W.document.getElementById('svcChatMessages'); return log ? log.children.length : 0; } catch (e) { return 0; }
+}
+function chatSince(W, n) {
+  try {
+    const log = W.document.getElementById('svcChatMessages');
+    if (!log) return '';
+    return Array.from(log.children).slice(n).map(function (el) { return el.innerText || el.textContent || ''; }).join('\n').trim();
   } catch (e) { return '(err ' + e.message + ')'; }
 }
 // Imposta il giorno mostrato nel calendario (alcune azioni senza data usano #staffCalDate).
@@ -1060,8 +1164,19 @@ async function run() {
   const tbody = document.querySelector('#tbl tbody');
   tbody.innerHTML = '';
   let pass = 0; const rows = [];
-  for (const c of CASES) {
+  // Filtro opzionale ?only=<flow|id>[,<flow|id>…] per eseguire un sottoinsieme: serve a ISOLARE
+  // un caso senza pagare l'intero giro (e senza il bleed di stato dei casi precedenti).
+  const _only = (new URLSearchParams(location.search).get('only') || '').trim().toLowerCase();
+  const _onlyList = _only ? _only.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const CASES_RUN = _onlyList.length ? CASES.filter(c => _onlyList.includes(String(c.flow).toLowerCase()) || _onlyList.includes(String(c.id))) : CASES;
+  for (const c of CASES_RUN) {
     captureReset();
+    // 🚨 Isolamento fra i casi: azzera il flusso conversazionale e la scheda lasciati aperti dal
+    // caso precedente. Senza, un flow in sospeso cattura il primo comando del test seguente e
+    // quello resta APPESO — misurato: il caso 39 passa da solo e si pianta dopo il 38. Allineato
+    // al banco di test-preview, che questi due azzeramenti li ha da tempo.
+    try { W.PMOAi && W.PMOAi.resetFlow && W.PMOAi.resetFlow(); } catch (e) {}
+    try { H.resetCard && H.resetCard(); } catch (e) {}
     let checks, err = null;
     try { checks = await c.run(W, H, ctx); }
     catch (e) { checks = [{ label: 'EXCEPTION: ' + (e && e.message || e), ok: false }]; err = e; }
@@ -1080,10 +1195,11 @@ async function run() {
       '<td class="fail-reasons">' + failed.map(f => f.label).join('\n').replace(/</g, '&lt;') + '</td>';
     tbody.appendChild(tr);
   }
-  const total = CASES.length;
+  const total = CASES_RUN.length;
   summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
   summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
-  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows };
+  window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows,
+    leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length, rtBroadcastCount: RT_BROADCASTS.length };
 }
 
 document.getElementById('run').addEventListener('click', run);
