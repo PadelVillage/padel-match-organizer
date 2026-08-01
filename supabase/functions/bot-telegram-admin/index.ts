@@ -6,6 +6,7 @@ import {
   componiPersona,
   indicizzaSoci,
   vedeLaSezione,
+  type InvitiPerToken,
   type RigaInvito,
   type RigaOperatore,
 } from './logica.ts';
@@ -164,11 +165,11 @@ Deno.serve(async (req: Request) => {
 
     const [{ data: operatori, error: opErr }, { data: inviti, error: invErr }] = await Promise.all([
       bot.from('telegram_operatori')
-        .select('chat_id,member_id,etichetta,attivo,ambiente,created_at,invitato_da_member_id,invito_token')
+        .select('chat_id,member_id,persona_id,telefono_chiave,etichetta,attivo,ambiente,created_at,invitato_da_member_id,invito_token')
         .eq('ambiente', ambiente)
         .order('created_at', { ascending: false }),
       bot.from('telegram_inviti')
-        .select('token,ambiente,invitante_member_id,invitante_etichetta,partita,creato_il,scade_il,annullato,aperto_da_chat_id,aperto_il,usato_da_chat_id,usato_il,esito')
+        .select('token,ambiente,invitante_member_id,invitante_persona_id,invitante_etichetta,partita,creato_il,scade_il,annullato,aperto_da_chat_id,aperto_il,usato_da_chat_id,usato_il,esito')
         .eq('ambiente', ambiente)
         .order('creato_il', { ascending: false })
         .limit(MAX_INVITI),
@@ -180,34 +181,55 @@ Deno.serve(async (req: Request) => {
     const righeInviti = (inviti ?? []) as RigaInvito[];
 
     // I nomi, i telefoni e i livelli stanno nell'anagrafica del GESTIONALE: il bot
-    // conserva solo il codice socio. Si chiedono in una volta sola, per codice.
+    // conserva solo le chiavi. Si chiedono in una volta sola, per chiave.
+    //
+    // 🚨⭐⭐ Le chiavi sono DUE, e non sono intercambiabili: il **numero di scheda**
+    // (`payload.id`) ce l'hanno tutti ed è quello con cui il bot intesta i suoi cassetti;
+    // il **codice cliente** a 6 cifre ce l'ha una persona su tre. Cercare solo per codice
+    // — com'era prima del passo 1b — lascerebbe senza nome e senza livello proprio le
+    // persone nuove, e le farebbe leggere come «scheda non trovata», cioè come un guasto.
     const codici = new Set<string>();
+    const schedeIds = new Set<string>();
+    const aggiungi = (codice: unknown, scheda: unknown) => {
+      if (clean(codice)) codici.add(clean(codice));
+      if (clean(scheda)) schedeIds.add(clean(scheda));
+    };
     for (const r of righeOperatori) {
-      if (clean(r.member_id)) codici.add(clean(r.member_id));
-      if (clean(r.invitato_da_member_id)) codici.add(clean(r.invitato_da_member_id));
+      aggiungi(r.member_id, r.persona_id);
+      aggiungi(r.invitato_da_member_id, null);
     }
     for (const r of righeInviti) {
-      if (clean(r.invitante_member_id)) codici.add(clean(r.invitante_member_id));
+      aggiungi(r.invitante_member_id, r.invitante_persona_id);
     }
 
-    let schede: Array<{ payload?: unknown }> = [];
-    if (codici.size) {
+    // Due letture invece di una perché sono due colonne diverse dello stesso JSON: la
+    // seconda non è un ripiego della prima, e una riga può rispondere a tutt'e due.
+    const schede: Array<{ payload?: unknown }> = [];
+    const perChiave = async (colonna: string, valori: Set<string>) => {
+      if (!valori.size) return null;
       const { data, error: memErr } = await gestionale
         .from('pmo_cloud_records')
         .select('payload')
         .eq('record_type', 'member')
         .eq('deleted', false)
-        .in('payload->>memberId', Array.from(codici));
-      if (memErr) return err(500, 'ANAGRAFICA_ERROR', memErr.message);
-      schede = (data ?? []) as Array<{ payload?: unknown }>;
-    }
-    const soci = indicizzaSoci(schede);
+        .in(colonna, Array.from(valori));
+      if (memErr) return memErr.message;
+      schede.push(...((data ?? []) as Array<{ payload?: unknown }>));
+      return null;
+    };
+    const guasto = (await perChiave('payload->>id', schedeIds)) ?? (await perChiave('payload->>memberId', codici));
+    if (guasto) return err(500, 'ANAGRAFICA_ERROR', guasto);
+
+    const rubrica = indicizzaSoci(schede);
+    // Gli inviti indicizzati per token: da qui `componiPersona` recupera chi ha invitato
+    // quando la guardia non ha potuto scriverlo (invitante senza codice cliente).
+    const invitiPerToken: InvitiPerToken = new Map(righeInviti.map((r) => [clean(r.token), r] as [string, RigaInvito]));
     const adesso = new Date();
 
     return ok({
       ambiente,
-      persone: righeOperatori.map((r) => componiPersona(r, soci)),
-      inviti: righeInviti.map((r) => componiInvito(r, soci, adesso)),
+      persone: righeOperatori.map((r) => componiPersona(r, rubrica, invitiPerToken)),
+      inviti: righeInviti.map((r) => componiInvito(r, rubrica, adesso)),
       letto_il: adesso.toISOString(),
     });
   } catch (e) {

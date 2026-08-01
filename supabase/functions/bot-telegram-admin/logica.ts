@@ -21,11 +21,31 @@ export const CHIAVE_SEZIONE = 'view_admin_telegram';
  *  Mostrarlo come fosse un livello vero direbbe una bugia a chi guarda il pannello. */
 export const LIVELLO_DI_PARTENZA = '0.5';
 
+/** Il codice cliente del circolo: sei cifre esatte, com'è nell'Elenco clienti.
+ *
+ *  🚨⭐⭐ Specchio VOLUTO di `codiceSocio()` del bot (`lib/identita.ts`): è la stessa
+ *  regola dai due lati del filo, ed è quella che decide chi può prenotare. Conta
+ *  perché in anagrafica un `memberId` **c'è quasi sempre** — solo che spesso è un
+ *  `PMO-000060`, cioè un segnaposto messo da noi, non un codice del circolo.
+ *  Trattarlo come un codice vero direbbe «questa persona prenota» di chi non prenota. */
+const FORMA_CODICE = /^[0-9]{6}$/;
+
+export function codiceSocio(v: unknown): string {
+  const s = testo(v);
+  return FORMA_CODICE.test(s) ? s : '';
+}
+
 export type Permessi = Record<string, unknown>;
 
 export type RigaOperatore = {
   chat_id: number | string;
-  member_id: string;
+  /** 🚨 Dal passo 1b è NULL per chi al circolo non ha un codice cliente (1.722 soci
+   *  su 2.789 al 1/08/2026): non è più il modo di riconoscere una persona. */
+  member_id?: string | null;
+  /** Il numero di scheda della nostra app: il nome del cassetto del bot. Ce l'hanno tutti. */
+  persona_id?: string | null;
+  /** Le ultime 10 cifre del telefono — la CHIAVE con cui il ponte cerca, non il numero. */
+  telefono_chiave?: string | null;
   etichetta?: string | null;
   attivo: boolean;
   ambiente: string;
@@ -37,7 +57,9 @@ export type RigaOperatore = {
 export type RigaInvito = {
   token: string;
   ambiente: string;
-  invitante_member_id: string;
+  invitante_member_id?: string | null;
+  /** Chi ha invitato, per numero di scheda: c'è SEMPRE, anche quando il codice manca. */
+  invitante_persona_id?: string | null;
   invitante_etichetta?: string | null;
   partita?: string | null;
   creato_il: string;
@@ -51,6 +73,9 @@ export type RigaInvito = {
 };
 
 export type Socio = {
+  /** Il numero di scheda della nostra app (`payload.id`): ce l'hanno tutti. */
+  schedaId: string;
+  /** Il codice cliente del circolo, o stringa vuota se non ce l'ha. */
   memberId: string;
   nome: string;
   telefono: string;
@@ -58,15 +83,38 @@ export type Socio = {
   autovalutato: boolean;
 };
 
+/** L'anagrafica indicizzata nei DUE modi in cui la si può cercare. Due mappe e non
+ *  una perché le due chiavi non sono intercambiabili: il numero di scheda ce l'hanno
+ *  tutti, il codice solo chi è cliente del circolo. */
+export type Rubrica = { perScheda: Map<string, Socio>; perCodice: Map<string, Socio> };
+
 export type PersonaVista = {
   chatId: string;
   memberId: string;
+  personaId: string;
+  telefonoChiave: string;
   nome: string;
   telefono: string;
   livello: string;
   schedaTrovata: boolean;
+  /** 🚪 Vero se il BOT non ha un codice cliente per questa persona ⇒ da Telegram non
+   *  può prenotare, e riceve la scheda che glielo spiega. È il fatto che la segreteria
+   *  non può vedere da nessun'altra parte. */
+  senzaCodice: boolean;
+  /** Il codice che questa persona ha AL CIRCOLO adesso, letto dall'anagrafica. */
+  codiceAlCircolo: string;
+  /** 🚨⭐⭐ Il bot non sa quello che il circolo sa già.
+   *
+   *  La riga della guardia è una FOTOGRAFIA scattata il giorno dell'ingresso: il bot ci
+   *  scrive il codice che la persona aveva allora, e non la rilegge mai più. Quindi il
+   *  giorno in cui la segreteria la attiva davvero — cioè esattamente ciò che il bot le
+   *  ha chiesto di fare — il bot continua a rifiutarle la prenotazione, per sempre.
+   *  Qui si dichiara, perché è l'unico posto da cui qualcuno può accorgersene. */
+  daAllineare: boolean;
   invitatoDa: string;
   invitatoDaMemberId: string;
+  /** Vero se è entrata da un invito, anche quando di chi l'ha invitata non resta il nome. */
+  viaInvito: boolean;
   entratoIl: string;
   attivo: boolean;
 };
@@ -129,53 +177,121 @@ function nomeDaPayload(payload: Record<string, unknown>): string {
   return unito || testo(payload.name);
 }
 
-/** Indicizza le schede dei soci per codice, così la ricerca è una lettura sola
- *  invece di una query per riga. Le righe arrivano da `pmo_cloud_records`. */
-export function indicizzaSoci(records: Array<{ payload?: unknown }>): Map<string, Socio> {
-  const out = new Map<string, Socio>();
+/** Indicizza le schede dei soci nei due modi in cui si cercano, così la ricerca è una
+ *  lettura sola invece di una query per riga. Le righe arrivano da `pmo_cloud_records`.
+ *
+ *  🚨⭐⭐ Prima si indicizzava SOLO per codice, e chi non ce l'aveva veniva **saltato**
+ *  (`if (!memberId) continue`). Era giusto finché nel bot entrava solo chi il codice ce
+ *  l'ha; dal passo 1b sarebbe diventato il difetto peggiore di questo pannello — le
+ *  1.722 persone senza codice sarebbero comparse tutte come «scheda non trovata»,
+ *  cioè come un guasto, mentre la loro scheda c'è eccome. */
+export function indicizzaSoci(records: Array<{ payload?: unknown }>): Rubrica {
+  const perScheda = new Map<string, Socio>();
+  const perCodice = new Map<string, Socio>();
   for (const r of records || []) {
     const payload = (r && typeof r.payload === 'object' && r.payload) ? r.payload as Record<string, unknown> : null;
     if (!payload) continue;
-    const memberId = testo(payload.memberId);
-    if (!memberId) continue;
-    out.set(memberId, {
+    const schedaId = testo(payload.id);
+    // ⭐ Il codice si tiene solo se è quello VERO del circolo: un `PMO-000060` non
+    // apre nessuna porta, e indicizzarlo farebbe credere di aver trovato una persona
+    // per una chiave che il bot non userà mai.
+    const memberId = codiceSocio(payload.memberId);
+    if (!schedaId && !memberId) continue;
+    const socio: Socio = {
+      schedaId,
       memberId,
       nome: nomeDaPayload(payload),
       telefono: testo(payload.phone),
       livello: testo(payload.level),
       autovalutato: !!testo(payload.selfAssessmentDate),
-    });
+    };
+    if (schedaId) perScheda.set(schedaId, socio);
+    if (memberId) perCodice.set(memberId, socio);
   }
-  return out;
+  return { perScheda, perCodice };
 }
 
-/** Come si chiama chi ha invitato. Se la sua scheda non c'è si dice il codice:
+/** La scheda di una persona, cercata prima per numero di scheda e poi per codice.
+ *
+ *  ⭐ L'ordine non è indifferente: il numero di scheda ce l'hanno tutti e non cambia
+ *  mai, il codice ce l'ha una persona su tre e cambia il giorno in cui il circolo la
+ *  attiva. Si cerca prima per la chiave che non si muove. Il codice resta come ripiego
+ *  per le righe scritte prima del passo 1b, che il numero di scheda non ce l'hanno. */
+export function trovaSocio(rubrica: Rubrica, personaId: string, memberId: string): Socio | undefined {
+  const perScheda = testo(personaId) ? rubrica.perScheda.get(testo(personaId)) : undefined;
+  if (perScheda) return perScheda;
+  const codice = codiceSocio(memberId);
+  return codice ? rubrica.perCodice.get(codice) : undefined;
+}
+
+/** Come si chiama chi ha invitato. Se la sua scheda non c'è si dice quel che si sa:
  *  mai una riga vuota, perché «chi ha invitato chi» è la traccia su cui posa
  *  tutta la sicurezza del progetto — un trattino al suo posto sarebbe una perdita. */
-function nomeInvitante(memberId: string, soci: Map<string, Socio>, etichetta?: string | null): string {
-  const codice = testo(memberId);
-  const socio = codice ? soci.get(codice) : undefined;
+function nomeInvitante(
+  rubrica: Rubrica,
+  personaId: string,
+  memberId: string,
+  etichetta?: string | null,
+): string {
+  const socio = trovaSocio(rubrica, personaId, memberId);
   if (socio && socio.nome) return socio.nome;
   const dalBot = testo(etichetta);
   if (dalBot) return dalBot;
-  return codice ? `socio ${codice}` : '—';
+  const codice = codiceSocio(memberId);
+  if (codice) return `socio ${codice}`;
+  // Ultimo gradino: si dichiara che qualcuno c'è stato, anche senza saperne il nome.
+  return testo(personaId) ? 'socio senza scheda leggibile' : '—';
 }
 
-export function componiPersona(riga: RigaOperatore, soci: Map<string, Socio>): PersonaVista {
-  const memberId = testo(riga.member_id);
-  const socio = soci.get(memberId);
-  const invitatoDaId = testo(riga.invitato_da_member_id);
+/** Chi ha invitato, ricostruito dall'invito quando la riga della guardia non lo dice.
+ *
+ *  🚨⭐⭐ La guardia registra chi ha invitato SOLO come codice cliente
+ *  (`invitato_da_member_id`), e dal passo 1b anche chi invita può non averlo: in quel
+ *  caso la colonna resta vuota e questo pannello direbbe «riga messa a mano» di una
+ *  persona che invece è entrata regolarmente da un invito. Il dato però non è perso —
+ *  la riga porta il `invito_token`, e l'invito sa chi l'ha fatto anche per numero di
+ *  scheda. Si recupera di là. */
+export type InvitiPerToken = Map<string, RigaInvito>;
+
+export function componiPersona(
+  riga: RigaOperatore,
+  rubrica: Rubrica,
+  inviti: InvitiPerToken = new Map(),
+): PersonaVista {
+  const memberId = codiceSocio(riga.member_id);
+  const personaId = testo(riga.persona_id);
+  const socio = trovaSocio(rubrica, personaId, memberId);
+
+  // 🚪 «Senza codice» è un fatto del BOT, non dell'anagrafica: è la riga della guardia a
+  // decidere come il bot chiede questa persona al circolo, e quindi se può prenotare.
+  const senzaCodice = !memberId;
+  const codiceAlCircolo = socio ? socio.memberId : '';
+
+  const token = testo(riga.invito_token);
+  const invito = token ? inviti.get(token) : undefined;
+  const invitanteMemberId = codiceSocio(riga.invitato_da_member_id) || codiceSocio(invito?.invitante_member_id);
+  const invitantePersonaId = testo(invito?.invitante_persona_id);
+  const viaInvito = !!token || !!invitanteMemberId || !!invitantePersonaId;
+
   return {
     chatId: testo(riga.chat_id),
     memberId,
+    personaId,
+    telefonoChiave: testo(riga.telefono_chiave),
     // Senza scheda si mostra l'etichetta scritta dal bot, e `schedaTrovata` resta
     // false: chi guarda deve poter distinguere «non ha un nome» da «non l'ho trovato».
     nome: (socio && socio.nome) || testo(riga.etichetta) || (memberId ? `socio ${memberId}` : '—'),
     telefono: (socio && socio.telefono) || '',
     livello: socio ? livelloLeggibile(socio.livello, socio.autovalutato) : '—',
     schedaTrovata: !!socio,
-    invitatoDa: invitatoDaId ? nomeInvitante(invitatoDaId, soci) : '',
-    invitatoDaMemberId: invitatoDaId,
+    senzaCodice,
+    codiceAlCircolo,
+    daAllineare: senzaCodice && !!codiceAlCircolo,
+    invitatoDa: viaInvito
+      ? nomeInvitante(rubrica, invitantePersonaId, invitanteMemberId, invito?.invitante_etichetta)
+      : '',
+    invitatoDaMemberId: invitanteMemberId,
+    viaInvito,
     entratoIl: testo(riga.created_at),
     attivo: riga.attivo !== false,
   };
@@ -196,7 +312,7 @@ export function statoInvito(riga: RigaInvito, adesso: Date): InvitoVista['stato'
   return 'in giro';
 }
 
-export function componiInvito(riga: RigaInvito, soci: Map<string, Socio>, adesso: Date): InvitoVista {
+export function componiInvito(riga: RigaInvito, rubrica: Rubrica, adesso: Date): InvitoVista {
   const stato = statoInvito(riga, adesso);
   const partita = testo(riga.partita);
   const aperto = testo(riga.aperto_il);
@@ -207,8 +323,13 @@ export function componiInvito(riga: RigaInvito, soci: Map<string, Socio>, adesso
     token: testo(riga.token),
     stato,
     motivo,
-    invitante: nomeInvitante(testo(riga.invitante_member_id), soci, riga.invitante_etichetta),
-    invitanteMemberId: testo(riga.invitante_member_id),
+    invitante: nomeInvitante(
+      rubrica,
+      testo(riga.invitante_persona_id),
+      testo(riga.invitante_member_id),
+      riga.invitante_etichetta,
+    ),
+    invitanteMemberId: codiceSocio(riga.invitante_member_id),
     // Oggi la colonna `partita` non la scrive ancora nessuno: la forma è pronta e
     // spenta, e si accenderà da sé quando l'invito sarà legato a un posto.
     partita: partita || 'per entrare nel bot',
