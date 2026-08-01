@@ -8000,7 +8000,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.143';
+    const APP_VERSION = '6.144';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41607,6 +41607,11 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca l'operatore) ──
     (async function () {
+      // ⭐ «La richiesta è USCITA di casa?» — si accende un attimo prima della fetch. Serve al catch
+      // in fondo per distinguere "non è MAI partita" (allora non è scritto: ripristinare è giusto)
+      // da "è partita e non so com'è finita" (allora ripristinare alla cieca DISTRUGGE una scrittura
+      // magari riuscita). Non è un dettaglio: è la differenza fra un dubbio e un danno.
+      let _reqSent = false;
       try {
         // FASE B — se questa stessa prenotazione è ancora in CREAZIONE su Matchpoint, l'edit è già
         // applicato/visibile in locale ma aspetto che la prenotazione esista prima di chiamare il
@@ -41650,6 +41655,9 @@ Per confermare scrivi ELIMINA.`);
         const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
         const _ctrl = new AbortController();
         const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
+        // Da QUI in poi l'esito non è più nostro: la richiesta parte, e qualunque cosa vada storta
+        // dopo (rete caduta, telefono in sospensione, risposta persa) lascia l'esito IGNOTO.
+        _reqSent = true;
         const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
@@ -41692,13 +41700,34 @@ Per confermare scrivi ELIMINA.`);
         }
       } catch (err) {
         _staffCalPendingEdits.delete(pendKey);
+        // ⭐⭐ ESITO IGNOTO ≠ FALLIMENTO. Gli esiti sono TRE, non due: (1) la risposta è arrivata →
+        // si sa, ed è il ramo sopra; (2) la richiesta NON è mai partita (errore prima della fetch,
+        // o browser dichiaratamente offline) → non è scritto, e il ripristino è GIUSTO; (3) la
+        // richiesta è PARTITA e la risposta non è tornata → NON SI SA. Il caso 3 cadeva qui dentro
+        // come "fallito" e faceva un ripristino ALLA CIECA. È successo l'1/08 su PROD: l'edge aveva
+        // risposto 200 in 10s (i giocatori erano su Matchpoint), il telefono non ha ricevuto la
+        // risposta, e l'app ha tolto i 3 giocatori dalla NOSTRA copia annunciando «NON salvata» —
+        // un messaggio falso e un disallineamento da riparare a mano. È lo stesso pericolo già
+        // riconosciuto per il timeout (vedi _staffCalIsTimeoutClass): stessa cura, non toccare
+        // niente e DIRLO. ⚠️ `navigator.onLine` è attendibile solo in NEGATIVO (false = nessuna
+        // interfaccia di rete): lo usiamo solo per AUTORIZZARE il ripristino, mai per dedurre che
+        // la scrittura sia passata. Se mente dicendo "online", finiamo nel ramo del dubbio — che
+        // è il verso buono: si chiede di controllare, non si distrugge un dato.
+        const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
         if (err && err.name === 'AbortError') {
           // Timeout: NON revertire alla cieca (la modifica potrebbe essere passata lo stesso su MP).
           try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
           _setEditSyncNote('⌛ Esito non confermato', '#b54708');
           svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
           _aiExecSettle(false, 'timeout');
+        } else if (_reqSent && !_offline) {
+          // La richiesta era già uscita: esito IGNOTO, esattamente come il timeout. Niente ripristino.
+          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
+          svcAddMessage('system', '⌛ <strong>Connessione persa mentre salvavo</strong>: la richiesta era <strong>già partita</strong>, quindi la modifica <strong>potrebbe essere passata lo stesso</strong> su Matchpoint.<br>⚠️ Non ho cambiato niente: <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
+          _aiExecSettle(false, 'rete-caduta-esito-ignoto');
         } else {
+          // Qui la richiesta non è MAI partita: il ripristino rimette la verità, non la cancella.
           _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
           _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
           svcAddMessage('system', '❌ ' + _staffCalFriendlyOpError(err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');

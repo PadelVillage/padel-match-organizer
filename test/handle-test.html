@@ -2169,6 +2169,64 @@ const CASES = [
       H.resetCard();
       return checks;
     }
+  },
+  {
+    id: 72, flow: 'Giocatori', name: '🚨 rete caduta DOPO l\'invio ⇒ esito IGNOTO: NON ripristina (l\'1/08 su PROD tolse 3 giocatori VERI)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      // La lettura all'apertura scheda deve RIUSCIRE: il guasto va acceso dopo, se no il caso
+      // proverebbe un'altra cosa (una scheda che non si apre, non un salvataggio perso).
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { throw: true };   // la fetch parte e MUORE: è esattamente l'1/08
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      // 🚨 Guardia sulla BASE: se la richiesta non fosse mai uscita, tutto il resto direbbe verde
+      // provando il caso SBAGLIATO (quello in cui il ripristino è giusto).
+      const uscita = await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: '🚨 base: la richiesta è USCITA davvero (il mock l\'ha vista)', ok: uscita });
+      await waitFor(() => /esito non confermato|già partita/i.test(chatTranscript(win)), 5000);
+      // ⭐ Il cuore: Anna RESTA. Il vecchio codice la toglieva, e su Matchpoint c'era.
+      checks.push({ label: '⭐⭐ Anna RESTA nel roster: nessun ripristino alla cieca',
+        ok: /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')) });
+      // …e non è stata revertita nemmeno la copia CLOUD (il danno vero dell'1/08: il record
+      // staff_booking riscritto senza i giocatori, che poi si porta dietro gli altri device).
+      const sb = cloudRecords().filter(r => r.record_type === 'staff_booking');
+      checks.push({ label: '⭐ nemmeno il CLOUD è stato riportato indietro (Anna c\'è ancora)',
+        ok: sb.length > 0 && /Anna Verdi/.test(JSON.stringify(sb[sb.length - 1].payload || {})) });
+      const t = chatTranscript(win);
+      checks.push({ label: 'dice che l\'esito è INCERTO, non che è fallito', ok: /potrebbe essere passata/i.test(t) });
+      checks.push({ label: '⭐ e NON pronuncia la frase bugiarda «riportato com\'era prima»',
+        ok: !/riportato la prenotazione com/i.test(t) });
+      return checks;
+    }
+  },
+  {
+    id: 73, flow: 'Giocatori', name: '⭐ CONTROLLO OPPOSTO: stesso guasto, ma il telefono dichiara NESSUNA LINEA ⇒ il ripristino DEVE avvenire',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { throw: true };
+      // ⭐ Stessa chat, stesso guasto, stesso codice: cambia UN DATO — `navigator.onLine`. Senza
+      // questo caso, il 72 passerebbe anche se avessi semplicemente SPENTO il ripristino, e
+      // resterebbero sulla scheda giocatori che su Matchpoint non sono mai arrivati.
+      // (`onLine` sta sul prototipo: definisco una proprietà propria e poi la cancello.)
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false });
+      try {
+        await H.playersSave({ skipConfirm: true });
+        const checks = [];
+        const tolta = await waitFor(() => !/Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 5000);
+        checks.push({ label: '⭐⭐ Anna TOLTA: qui il ripristino è giusto e avviene', ok: tolta });
+        checks.push({ label: 'e lo dice: «NON salvata» / «com\'era prima»',
+          ok: /NON salvata|com'era prima|com’era prima/i.test(chatTranscript(win)) });
+        return checks;
+      } finally {
+        delete win.navigator.onLine;   // torna il getter vero del browser
+      }
+    }
   }
 ];
 
