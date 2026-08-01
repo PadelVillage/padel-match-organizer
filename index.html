@@ -7891,7 +7891,7 @@ body.assessment-public-mode .assessment-public-only-card {
               <div class="admin-box-head">
                 <div>
                   <div class="admin-box-title">Le persone</div>
-                  <div class="admin-box-subtitle">Chi ha completato l'ingresso nel bot. Togliere l'accesso non toglie nessuno dalle partite già fissate.</div>
+                  <div class="admin-box-subtitle">Chi ha completato l'ingresso nel bot. Togliere l'accesso non toglie nessuno dalle partite già fissate. Chi è segnato <em>(senza codice)</em> al circolo non risulta cliente: legge le sue partite e fa domande, ma dal bot non può prenotare. Da qui non c'è niente da approvare — appena gli fate la scheda cliente, il bot se ne accorge da solo.</div>
                 </div>
               </div>
               <div class="admin-box-body">
@@ -7998,7 +7998,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.139';
+    const APP_VERSION = '6.142';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -27849,8 +27849,16 @@ Per confermare scrivi ELIMINA.`);
 	      if (!dati) { pmoTelegramSetStato('Lettura in corso...'); return; }
 
 	      const amb = cleanCell(dati.ambiente) === 'prod' ? 'PRODUZIONE' : 'TEST';
+	      const elenco = dati.persone || [];
+	      const senzaCodice = elenco.filter(p => p.senzaCodice).length;
+	      // Il conto di chi non può prenotare sta in cima perché è l'unica cosa di questa
+	      // pagina su cui la segreteria deve fare qualcosa: nelle righe si perderebbe.
+	      const riga2 = senzaCodice
+	        ? ` <strong>${senzaCodice}</strong> ${senzaCodice === 1 ? 'non risulta cliente' : 'non risultano clienti'} del circolo: ${senzaCodice === 1 ? 'usa il bot, ma da lì non può prenotare' : 'usano il bot, ma da lì non possono prenotare'}.`
+	        : '';
 	      pmoTelegramSetStato(
-	        `Stai guardando l'ambiente <strong>${amb}</strong>: ${dati.persone.length} ${dati.persone.length === 1 ? 'persona' : 'persone'} e ${dati.inviti.length} ${dati.inviti.length === 1 ? 'invito' : 'inviti'}.`
+	        `Stai guardando l'ambiente <strong>${amb}</strong>: ${elenco.length} ${elenco.length === 1 ? 'persona' : 'persone'} e ${dati.inviti.length} ${dati.inviti.length === 1 ? 'invito' : 'inviti'}.`
+	        + riga2
 	        + ` <span class="routine-mini">TEST e PRODUZIONE hanno elenchi separati: da qui non si tocca l'altro.</span>`
 	      );
 
@@ -27871,14 +27879,40 @@ Per confermare scrivi ELIMINA.`);
 	        const azione = p.attivo
 	          ? `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramCambiaAccesso('${escapeJs(p.chatId)}', '${escapeJs(p.nome)}', false)">Togli l'accesso</button>`
 	          : `<button class="btn-secondary small-btn" onclick="setActionAnchor(this); pmoTelegramCambiaAccesso('${escapeJs(p.chatId)}', '${escapeJs(p.nome)}', true)">Rimetti l'accesso</button>`;
+	        // 🚪 «(senza codice)» sta accanto al NOME e non in una colonna sua: è una cosa di
+	        // quella persona, e in colonna sarebbe una casella vuota su tutte le altre righe.
+	        // Ed è l'unico posto del gestionale da cui questa differenza si vede.
+	        //
+	        // 🚨⭐⭐ Sotto ci va la SPIEGAZIONE, e sono le parole che contano di più di questa
+	        // pagina. Alla prima lettura (1/08, il committente sullo schermo) «(senza codice)»
+	        // da solo si era letto come «c'è qualcosa da approvare»: un'etichetta che dichiara
+	        // un problema e non dice cosa farne se la inventa chi la legge. Le tre cose da dire
+	        // sono: che cosa manca, che NON c'è niente da approvare qui, e che si sistema da sé.
+	        const senzaCodice = p.senzaCodice
+	          ? ' <span class="routine-mini">(senza codice)</span>'
+	            + '<div class="routine-mini">Al circolo non risulta cliente: dal bot non può prenotare.'
+	            + ' Non c\'è niente da approvare qui — si sblocca da sé quando le fate la scheda cliente.</div>'
+	          : '';
+	        // ⚠️ Senza scheda non c'è nemmeno il nome: l'unico appiglio che resta è il numero
+	        // che quella persona ha dato al bot, e va mostrato o non si sa più chi sia.
 	        const senzaScheda = p.schedaTrovata
 	          ? ''
-	          : '<div class="routine-mini">⚠️ Scheda non trovata in anagrafica: nome e livello non sono leggibili.</div>';
+	          : `<div class="routine-mini">⚠️ Scheda non trovata in anagrafica: nome e livello non sono leggibili.${p.telefonoChiave ? ` Numero dato al bot: …${escapeHtml(p.telefonoChiave)}` : ''}</div>`;
 	        const telefono = p.telefono ? `<div class="routine-mini">${escapeHtml(p.telefono)}</div>` : '';
+	        const riferimenti = p.memberId
+	          ? `socio ${escapeHtml(p.memberId)} · Telegram ${escapeHtml(p.chatId)}`
+	          : `Telegram ${escapeHtml(p.chatId)}`;
+	        // «Nessuno» si dice SOLO di chi non è arrivato da un invito. Chi c'è arrivato ma di
+	        // cui non sappiamo più il nome è un'altra cosa, e confonderle cancella la traccia.
+	        const invitante = p.invitatoDa
+	          ? escapeHtml(p.invitatoDa)
+	          : (p.viaInvito
+	            ? '<span class="routine-mini">da un invito, chi l\'ha fatto non è più leggibile</span>'
+	            : '<span class="routine-mini">nessuno — riga messa a mano</span>');
 	        return `<tr>
-	          <td><strong>${escapeHtml(p.nome)}</strong>${telefono}${senzaScheda}<div class="routine-mini">socio ${escapeHtml(p.memberId || '—')} · Telegram ${escapeHtml(p.chatId)}</div></td>
+	          <td><strong>${escapeHtml(p.nome)}</strong>${senzaCodice}${telefono}${senzaScheda}<div class="routine-mini">${riferimenti}</div></td>
 	          <td>${escapeHtml(p.livello || '—')}</td>
-	          <td>${p.invitatoDa ? escapeHtml(p.invitatoDa) : '<span class="routine-mini">nessuno — riga messa a mano</span>'}</td>
+	          <td>${invitante}</td>
 	          <td>${escapeHtml(pmoTelegramQuando(p.entratoIl))}</td>
 	          <td>${stato}</td>
 	          <td><div class="admin-row-actions">${azione}</div></td>
