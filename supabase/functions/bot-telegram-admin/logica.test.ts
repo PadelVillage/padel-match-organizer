@@ -174,26 +174,39 @@ Deno.test('senza codice: si DICHIARA, ed è il fatto che dice «da Telegram non 
 Deno.test('senza codice: un PMO-… in anagrafica NON è un codice del circolo', () => {
   // Controllo opposto del precedente: la persona HA un `memberId` scritto in anagrafica,
   // e se lo si prendesse per buono il pannello direbbe che può prenotare. Non può.
-  assertEquals(componiPersona(SENZA_CODICE, SOCI).codiceAlCircolo, '');
-  assertEquals(componiPersona(SENZA_CODICE, SOCI).daAllineare, false);
+  assertEquals(componiPersona(SENZA_CODICE, SOCI).memberId, '');
+  assertEquals(componiPersona(SENZA_CODICE, SOCI).senzaCodice, true);
 });
 
-Deno.test('senza codice: quando il circolo la attiva, il bot NON lo sa e si dice', () => {
-  // 🚨 Il caso che nasce dal percorso normale: la persona va in segreteria, il circolo
-  // la crea, l'anagrafica prende il codice — e la riga del bot resta quella di allora.
+Deno.test('🚪⭐⭐ quando il circolo la attiva, il pannello lo vede SUBITO', () => {
+  // 🚨 Il caso che nasce dal percorso normale: la persona va in segreteria, il circolo la
+  // crea, l'anagrafica prende il codice — e la riga del bot resta quella di allora.
+  // Se «senza codice» si leggesse dalla riga, questo pannello direbbe «senza codice» per
+  // sempre di una persona che da ieri prenota benissimo. Si legge dall'anagrafica, che è
+  // ciò che il bot richiede al circolo prima di rifiutare (fix del 1/08/2026).
   const soci = indicizzaSoci([
     { payload: { id: 'sch-giuliano', memberId: '001234', firstName: 'Giuliano', surname: 'Dal Cin', phone: '+39 347 7654321', level: '0.5' } },
   ]);
   const p = componiPersona(SENZA_CODICE, soci);
-  assertEquals(p.senzaCodice, true);
-  assertEquals(p.codiceAlCircolo, '001234');
-  assertEquals(p.daAllineare, true);
+  assertEquals(p.senzaCodice, false);
+  assertEquals(p.memberId, '001234');
 });
 
-Deno.test('senza codice: chi il codice ce l’ha davvero non finisce mai fra quelli da allineare', () => {
-  const p = componiPersona(OPERATORE, SOCI);
-  assertEquals(p.codiceAlCircolo, '000004');
-  assertEquals(p.daAllineare, false);
+Deno.test('🚨 CONTROLLO OPPOSTO: la riga del bot vale come RIPIEGO, non si butta via', () => {
+  // Se contasse solo l'anagrafica, una persona la cui scheda non si trova — ma che nella
+  // riga del bot il codice ce l'ha — comparirebbe come «senza codice» pur prenotando
+  // benissimo. Le due fonti si sommano: basta che UNA delle due abbia un codice vero.
+  const vuota = indicizzaSoci([]);
+  const p = componiPersona(OPERATORE, vuota);
+  assertEquals(p.schedaTrovata, false);
+  assertEquals(p.senzaCodice, false);
+  assertEquals(p.memberId, '000004');
+});
+
+Deno.test('senza codice: chi non ha il codice da NESSUNA delle due parti resta segnato', () => {
+  const p = componiPersona({ ...SENZA_CODICE, persona_id: 'sch-ignota' }, SOCI);
+  assertEquals(p.senzaCodice, true);
+  assertEquals(p.memberId, '');
 });
 
 Deno.test('senza codice: chi INVITA senza codice non diventa «riga messa a mano»', () => {

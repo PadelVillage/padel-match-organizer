@@ -97,20 +97,10 @@ export type PersonaVista = {
   telefono: string;
   livello: string;
   schedaTrovata: boolean;
-  /** 🚪 Vero se il BOT non ha un codice cliente per questa persona ⇒ da Telegram non
-   *  può prenotare, e riceve la scheda che glielo spiega. È il fatto che la segreteria
-   *  non può vedere da nessun'altra parte. */
+  /** 🚪 Vero se al circolo questa persona non risulta cliente ⇒ dal bot non può prenotare,
+   *  e riceve la scheda che glielo spiega. È il fatto che la segreteria non può vedere da
+   *  nessun'altra parte. */
   senzaCodice: boolean;
-  /** Il codice che questa persona ha AL CIRCOLO adesso, letto dall'anagrafica. */
-  codiceAlCircolo: string;
-  /** 🚨⭐⭐ Il bot non sa quello che il circolo sa già.
-   *
-   *  La riga della guardia è una FOTOGRAFIA scattata il giorno dell'ingresso: il bot ci
-   *  scrive il codice che la persona aveva allora, e non la rilegge mai più. Quindi il
-   *  giorno in cui la segreteria la attiva davvero — cioè esattamente ciò che il bot le
-   *  ha chiesto di fare — il bot continua a rifiutarle la prenotazione, per sempre.
-   *  Qui si dichiara, perché è l'unico posto da cui qualcuno può accorgersene. */
-  daAllineare: boolean;
   invitatoDa: string;
   invitatoDaMemberId: string;
   /** Vero se è entrata da un invito, anche quando di chi l'ha invitata non resta il nome. */
@@ -258,14 +248,23 @@ export function componiPersona(
   rubrica: Rubrica,
   inviti: InvitiPerToken = new Map(),
 ): PersonaVista {
-  const memberId = codiceSocio(riga.member_id);
+  const codiceNellaRiga = codiceSocio(riga.member_id);
   const personaId = testo(riga.persona_id);
-  const socio = trovaSocio(rubrica, personaId, memberId);
+  const socio = trovaSocio(rubrica, personaId, codiceNellaRiga);
 
-  // 🚪 «Senza codice» è un fatto del BOT, non dell'anagrafica: è la riga della guardia a
-  // decidere come il bot chiede questa persona al circolo, e quindi se può prenotare.
+  // 🚪⭐⭐ «Senza codice» si legge dall'ANAGRAFICA, non dalla riga del bot — e la riga del
+  // bot vale come ripiego, non come verità.
+  //
+  // 🚨 Il perché è una cosa che il bot ha imparato a fare il 1/08/2026. La sua riga è una
+  // FOTOGRAFIA del giorno dell'ingresso e nessuno la riscrive; se fosse lei a decidere,
+  // questo pannello direbbe «senza codice» per sempre anche di una persona che il circolo
+  // ha attivato ieri. Adesso il bot, prima di rifiutare una prenotazione, richiede al
+  // circolo — quindi ciò che decide davvero se questa persona prenota è l'anagrafica.
+  // ⇒ Le due fonti si sommano invece di escludersi: basta che UNA delle due abbia un codice
+  // vero. Prendere solo l'anagrafica renderebbe «senza codice» una persona che il bot
+  // servirebbe lo stesso (la sua riga il codice ce l'ha), e sarebbe un allarme falso.
+  const memberId = codiceNellaRiga || (socio ? socio.memberId : '');
   const senzaCodice = !memberId;
-  const codiceAlCircolo = socio ? socio.memberId : '';
 
   const token = testo(riga.invito_token);
   const invito = token ? inviti.get(token) : undefined;
@@ -285,8 +284,6 @@ export function componiPersona(
     livello: socio ? livelloLeggibile(socio.livello, socio.autovalutato) : '—',
     schedaTrovata: !!socio,
     senzaCodice,
-    codiceAlCircolo,
-    daAllineare: senzaCodice && !!codiceAlCircolo,
     invitatoDa: viaInvito
       ? nomeInvitante(rubrica, invitantePersonaId, invitanteMemberId, invito?.invitante_etichetta)
       : '',
