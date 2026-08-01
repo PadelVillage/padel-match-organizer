@@ -8000,7 +8000,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.145';
+    const APP_VERSION = '6.146';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -42316,6 +42316,10 @@ Per confermare scrivi ELIMINA.`);
       }
       if (resolved.length) giocatoriPayload = resolved;
     }
+    // ⭐ «Da qui la richiesta ESCE di casa»: lo dice il chiamante, che è l'unico a sapere cosa
+    // farne. Tutto quello che sta SOPRA (risoluzione nomi, omonimi ambigui) può sollevare senza
+    // che sia partito niente — e lì annullare la prenotazione ottimistica è giusto.
+    try { if (options && typeof options.onSent === 'function') options.onSent(); } catch (e) {}
     const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
@@ -42334,19 +42338,32 @@ Per confermare scrivi ELIMINA.`);
     let data = null;
     try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
     if (!response.ok || data?.ok === false) {
-      throw new Error(data?.message || data?.error || `Errore HTTP ${response.status}`);
+      // ⭐ Il server HA RISPOSTO, ed è un RIFIUTO: l'esito è NOTO (nessuna prenotazione creata) e
+      // togliere la card ottimistica è giusto. Il marchio serve a non confondere questo caso con
+      // una rete caduta, dove invece l'esito è IGNOTO e la card NON va tolta.
+      const _err = new Error(data?.message || data?.error || `Errore HTTP ${response.status}`);
+      _err.pmoAnswered = true;
+      throw _err;
     }
     if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
     return data;
   }
 
-  // Controlla lo stato del lavoro asincrono finché 'done' / 'error' / scade il tempo
-  async function staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, onTick) {
+  // Tempi delle due attese del lavoro asincrono. Raccolti qui invece che sparsi come numeri
+  // perché la rete di regressione deve poter provare il ramo «continua a chiedere» senza
+  // aspettare 3 minuti veri: è lo STESSO codice, con l'orologio più corto (hook setPollTimings).
+  const _STAFF_CAL_POLL = { maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 };
+  // Controlla lo stato del lavoro asincrono finché 'done' / 'error' / scade il tempo.
+  // ⚠️ Gli errori di rete qui sono già INGHIOTTITI e si ritenta: una linea che cade durante
+  // l'attesa non diventa mai un'eccezione, esce come 'timeout' — cioè come ESITO IGNOTO.
+  // ⭐ `opts {maxMs, stepMs}` serve alla seconda attesa, più lenta e più lunga: quando i 3 minuti
+  // scadono NON si tira a indovinare, si continua a CHIEDERE (il lavoro ha un numero).
+  async function staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, onTick, opts) {
     const url = `${supabaseUrl}/functions/v1/matchpoint-bookings-create?jobId=${encodeURIComponent(jobId)}`;
     const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` };
     const startedAt = Date.now();
-    const MAX_MS = 180000;   // 3 minuti
-    const STEP_MS = 1500;
+    const MAX_MS = (opts && Number(opts.maxMs)) || _STAFF_CAL_POLL.maxMs;    // 3 minuti
+    const STEP_MS = (opts && Number(opts.stepMs)) || _STAFF_CAL_POLL.stepMs;
     while (Date.now() - startedAt < MAX_MS) {
       await new Promise(r => setTimeout(r, STEP_MS));
       if (typeof onTick === 'function') onTick(Math.round((Date.now() - startedAt) / 1000));
@@ -44353,6 +44370,9 @@ Per confermare scrivi ELIMINA.`);
 
     // ── Propagazione su Matchpoint in BACKGROUND ──
     (async function () {
+      // ⭐ «La richiesta è USCITA di casa?» — gemello del segnalino della MODIFICA. Qui però c'è
+      // di più: se è uscita, il lavoro ha un NUMERO (jobId), e un numero si INTERROGA. Vedi sotto.
+      let _reqSent = false;
       const _failMsg = function (why) {
         try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
         try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
@@ -44361,36 +44381,67 @@ Per confermare scrivi ELIMINA.`);
         _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
         svcAddMessage('system', '⚠️ <strong>Attenzione</strong>: Campo ' + campo + ' \xb7 ' + ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _staffCalFriendlyOpError(why) + '). L\'ho <strong>rimossa</strong> dal calendario.');
       };
+      const _okMsg = function (result) {
+        // Il salvataggio locale può fallire (tipicamente memoria piena) e l'errore veniva inghiottito
+        // qui, dichiarando comunque "✅ Salvata": su Matchpoint è vero, in casa no. Ora l'esito guida
+        // il messaggio — l'operatore deve sapere che la copia locale NON c'è, o rifà la prenotazione.
+        let _localOk = true;
+        try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
+        try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
+        if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+        else {
+          _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
+          svcAddMessage('system', '⚠️ <strong>Campo ' + campo + ' \xb7 ' + ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _staffCalLocalSaveWhy() + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
+        }
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
+      };
+      // ⭐⭐ ESITO IGNOTO: la card RESTA. Toglierla è il fantasma del 20/07 — su Matchpoint c'è e
+      // in casa no, e da lì ogni modifica successiva risponde PRENOTAZIONE_NON_TROVATA. Il puntino
+      // «in corso» resta acceso, così si VEDE che non è confermata, e la frase dice cosa fare.
+      const _uncertainMsg = function (why) {
+        // `true` qui vuol dire «non più in volo», NON «riuscita»: sblocca un eventuale edit in
+        // attesa, che chiederà al gestionale invece di credere a una nostra supposizione.
+        try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
+        try { renderStaffCalendar(); } catch (e) {}
+        _setSyncNote('⌛ Esito non confermato', '#b54708');
+        svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> per Campo ' + campo + ' \xb7 ' + ora + ' (' + _staffCalFriendlyOpError(why) + '). <strong>Non l\'ho tolta dal calendario</strong>: potrebbe essere su Matchpoint lo stesso.<br>⚠️ <strong>Ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).');
+        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'esito-ignoto' }); } catch (e) {}
+      };
       try {
-        const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
+        const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
         const jobId = submit && submit.jobId;
         if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
-          // Il salvataggio locale può fallire (tipicamente memoria piena) e l'errore veniva inghiottito
-          // qui, dichiarando comunque "✅ Salvata": su Matchpoint è vero, in casa no. Ora l'esito guida
-          // il messaggio — l'operatore deve sapere che la copia locale NON c'è, o rifà la prenotazione.
-          let _localOk = true;
-          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
-          try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
-          try { renderStaffCalendar(); } catch (e) {}
-          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
-          if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
-          else {
-            _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
-            svcAddMessage('system', '⚠️ <strong>Campo ' + campo + ' \xb7 ' + ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _staffCalLocalSaveWhy() + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
-          }
-          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'confirmed', { via: 'slot calendario', campo: campo, data: parsed.data, ora: ora }); } catch (e) {}
+          _okMsg(result);
         } else if (result.status === 'error') {
           _failMsg(result.error || 'rifiutata da Matchpoint');
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(result.error || 'errore') }); } catch (e) {}
         } else {
-          _failMsg('esito non confermato (timeout)');
-          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'timeout' }); } catch (e) {}
+          // ⭐⭐ Scaduti i 3 minuti NON si tira a indovinare: il lavoro ha un numero, e l'esito è
+          // una DOMANDA. Si continua a chiedere, più piano e più a lungo, e si decide sul FATTO.
+          _setSyncNote('⌛ Matchpoint è lento: aspetto ancora la conferma…', '#b54708');
+          const late = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {}, { maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
+          if (late.status === 'done') _okMsg(late);
+          else if (late.status === 'error') {
+            _failMsg(late.error || 'rifiutata da Matchpoint');
+            try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(late.error || 'errore') }); } catch (e) {}
+          }
+          else _uncertainMsg('il gestionale non ha ancora risposto');
         }
       } catch (err) {
-        _failMsg((err && err.message) ? err.message : String(err));
-        try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+        // Tre esiti, non due (vedi il gemello nella MODIFICA). Qui il discriminante è migliore di
+        // `navigator.onLine`: se il server ha RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto.
+        const _answered = !!(err && err.pmoAnswered);
+        const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+        if (!_answered && _reqSent && !_offline) {
+          _uncertainMsg((err && err.message) ? err.message : String(err));
+        } else {
+          _failMsg((err && err.message) ? err.message : String(err));
+          try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: dateISO, ora: ora, reason: String((err && err.message) || err) }); } catch (e) {}
+        }
       } finally {
         try { _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
       }
@@ -44648,7 +44699,11 @@ Per confermare scrivi ELIMINA.`);
         // v6.134 — la regola COMPLETA: distingue «è della SEGRETERIA» da «non lo so», che per
         // la funzione qui sopra sono lo stesso null. Serve alla rete per provare il caso del
         // primo «Ospite» senza doverlo dedurre dall'assenza della stellina.
-        ruoloOrganizzatore: function (tipoReale, roster) { return _pmoRuoloOrganizzatore(tipoReale, roster); }
+        ruoloOrganizzatore: function (tipoReale, roster) { return _pmoRuoloOrganizzatore(tipoReale, roster); },
+        // v6.146 — accorcia l'orologio delle due attese del lavoro asincrono. Serve a provare il
+        // ramo «continua a CHIEDERE» (esito ignoto) sullo stesso codice, senza 3 minuti di attesa.
+        setPollTimings: function (t) { try { Object.assign(_STAFF_CAL_POLL, t || {}); } catch (e) {} },
+        getPollTimings: function () { return Object.assign({}, _STAFF_CAL_POLL); }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
@@ -48833,6 +48888,10 @@ Per confermare scrivi ELIMINA.`);
       const _aiCreateRef = _aiTurnExecBegin();
       // ── Propagazione su Matchpoint in BACKGROUND (non blocca la chat) ──
       (async function () {
+        // ⭐ Gemello ESATTO del percorso manuale (slot calendario): stesse tre uscite, stesse parole.
+        // Qui permesso e configurazione stanno DENTRO il try, quindi un errore può arrivare anche
+        // da prima che parta qualcosa — ed è proprio ciò che il segnalino distingue.
+        let _reqSent = false;
         const _failMsg = function (why) {
           try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
           try { staffCalRemoveOptimistic(_optimId); } catch (e) {}
@@ -48841,39 +48900,69 @@ Per confermare scrivi ELIMINA.`);
           _setSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
           _say('⚠️ <strong>Attenzione</strong>: la prenotazione di Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' <strong>non è andata a buon fine</strong> su Matchpoint (' + _escapeHtml(_staffCalFriendlyOpError(why)) + '). L\'ho <strong>rimossa</strong> dal calendario.');
         };
+        const _okMsg = function (result) {
+          // Stesso trattamento del percorso manuale: se la copia locale non entra, non si dichiara
+          // "✅ Salvata" e basta — su Matchpoint c'è, ma qui no, e va detto. v6.109.
+          let _localOk = true;
+          try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
+          try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
+          try { renderStaffCalendar(); } catch (e) {}
+          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
+          if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
+          else {
+            _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
+            _say('⚠️ <strong>Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _escapeHtml(_staffCalLocalSaveWhy()) + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
+          }
+          _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
+        };
+        // ⭐⭐ ESITO IGNOTO: la card RESTA (toglierla è il fantasma del 20/07). Il puntino «in corso»
+        // resta acceso, così si vede che non è confermata, e la frase dice cosa fare.
+        const _uncertainMsg = function (why) {
+          // `true` = «non più in volo», NON «riuscita»: sblocca un eventuale edit in attesa, che
+          // chiederà al gestionale invece di credere a una nostra supposizione.
+          try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
+          try { renderStaffCalendar(); } catch (e) {}
+          _setSyncNote('⌛ Esito non confermato', '#b54708');
+          _say('⌛ <strong>Non ho la conferma</strong> per Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ' (' + _escapeHtml(_staffCalFriendlyOpError(why)) + '). <strong>Non l\'ho tolta dal calendario</strong>: potrebbe essere su Matchpoint lo stesso.<br>⚠️ <strong>Ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).');
+          try { _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: 'esito-ignoto' }); } catch (e) {}
+        };
         try {
           // Permesso + config ora qui (background): se mancano, _failMsg annulla la card ottimistica.
           staff = await pmoRequireStaffPermission('cloud_sync', 'prenotare su Matchpoint');
           const cfg = await loadAssessmentSupabaseConfig();
           supabaseUrl = cfg && cfg.supabaseUrl; supabaseKey = cfg && cfg.supabaseKey;
-          const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId });
+          const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
           const jobId = submit && submit.jobId;
           if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
           const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
           if (result.status === 'done') {
-            // Stesso trattamento del percorso manuale: se la copia locale non entra, non si dichiara
-            // "✅ Salvata" e basta — su Matchpoint c'è, ma qui no, e va detto. v6.109.
-            let _localOk = true;
-            try { staffCalSaveLocal(parsed, _sbId, result.idReserva || null); } catch (e) { _localOk = false; _staffCalLastLocalSaveError = e; console.warn('staffCalSaveLocal:', e); }
-            try { staffCalRtBroadcastResolved(parsed, true); } catch (e) {}
-            try { renderStaffCalendar(); } catch (e) {}
-            try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
-            if (_localOk) _setSyncNote('✅ Salvata su Matchpoint', '#067647');
-            else {
-              _setSyncNote('⚠️ Su Matchpoint sì, in questa pagina no', '#b54708');
-              _say('⚠️ <strong>Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + ': su Matchpoint è salvata</strong>, ma questa pagina non è riuscita a tenerne copia (' + _escapeHtml(_staffCalLocalSaveWhy()) + '). <strong>Non rifarla</strong>: ricarica la pagina e la vedrai comparire.');
-            }
-            _aiTurnExecEnd(_aiCreateRef, true, { via: 'assistente', azione: 'crea' });
+            _okMsg(result);
           } else if (result.status === 'error') {
             _failMsg(result.error || 'rifiutata da Matchpoint');
             _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String(result.error || 'errore') });
           } else {
-            _failMsg('esito non confermato (timeout)');
-            _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: 'timeout' });
+            // ⭐⭐ Scaduti i 3 minuti NON si tira a indovinare: il lavoro ha un numero, e l'esito è
+            // una DOMANDA. Si continua a chiedere, più piano e più a lungo, e si decide sul FATTO.
+            _setSyncNote('⌛ Matchpoint è lento: aspetto ancora la conferma…', '#b54708');
+            const late = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {}, { maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
+            if (late.status === 'done') _okMsg(late);
+            else if (late.status === 'error') {
+              _failMsg(late.error || 'rifiutata da Matchpoint');
+              _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String(late.error || 'errore') });
+            }
+            else _uncertainMsg('il gestionale non ha ancora risposto');
           }
         } catch (err) {
-          _failMsg((err && err.message) ? err.message : String(err));
-          try { _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String((err && err.message) || err) }); } catch (e) {}
+          // Tre esiti, non due. Discriminante migliore di `navigator.onLine`: se il server ha
+          // RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto e togliere la card è giusto.
+          const _answered = !!(err && err.pmoAnswered);
+          const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+          if (!_answered && _reqSent && !_offline) {
+            _uncertainMsg((err && err.message) ? err.message : String(err));
+          } else {
+            _failMsg((err && err.message) ? err.message : String(err));
+            try { _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String((err && err.message) || err) }); } catch (e) {}
+          }
         } finally {
           try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
         }
