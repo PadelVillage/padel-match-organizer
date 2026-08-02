@@ -3853,6 +3853,230 @@ async function handleDebugFindClient(req, res) {
   json(res, 200, result);
 }
 
+// ── ANTI-DOPPIONE: si CERCA per telefono PRIMA di creare un cliente ──────────────
+// Regola sua del 2/08/2026: «dobbiamo far si' che non si creino doppioni ... la
+// discriminante unica e' il numero di telefono».
+//
+// 🚨 Il rischio nasce dai TEMPI, non da una svista: Matchpoint -> noi gira 6 volte al
+//    giorno, con un buco massimo di 5 ORE (23:30 -> 04:30). In quella finestra una
+//    persona iscritta allo sportello da noi NON esiste ancora, e chi la crea dal
+//    gestionale le fa la SECONDA scheda in Matchpoint, in silenzio.
+// 🚨 La ricerca si fa in MATCHPOINT, non nella nostra copia: e' proprio la nostra copia
+//    a poter essere vecchia di 5 ore, ed e' li' che nasce il problema.
+
+// Chiave di confronto fra telefoni: le ULTIME 10 CIFRE. Lo stesso numero e' scritto in
+// modi diversi (+39 / 0039 / senza prefisso / con spazi) e un confronto letterale non
+// troverebbe il doppione che deve trovare.
+function mpPhoneKey10(value) {
+  const digits = String(value == null ? '' : value).replace(/\D/g, '');
+  if (digits.length < 6) return '';   // troppo corto per essere un telefono: non si confronta
+  return digits.slice(-10);
+}
+
+// I termini da provare nel buscador, dal piu' probabile al meno. Matchpoint tiene di
+// solito il numero nudo; ogni tentativo costa una navigazione, quindi si deduplica.
+function mpPhoneSearchTerms(value) {
+  const raw = String(value == null ? '' : value).trim();
+  const out = [];
+  const push = (v) => { const s = String(v || '').trim(); if (s && !out.includes(s)) out.push(s); };
+  push(mpPhoneKey10(raw));                 // 3331234567
+  push(raw.replace(/\D/g, ''));            // 393331234567
+  push(raw);                               // +39 333 1234567
+  return out;
+}
+
+// Confronto fra nomi: senza accenti, senza punteggiatura, maiuscolo.
+function mpNomeToken(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+
+// Decide che cosa fare quando si sta per creare un cliente e il telefono e' gia' noto a
+// Matchpoint. TRE esiti, mai due:
+//   • 'crea'      -> quel telefono non esiste la' dentro: si crea come sempre;
+//   • 'adotta'    -> c'e' UNA scheda e l'intestatario e' la stessa persona (nome E
+//                    cognome): si prende il suo codice invece di fare la seconda scheda;
+//   • 'conflitto' -> il telefono c'e' ma intestato a un altro, o a piu' schede, o non si
+//                    riesce a leggere chi e': NON si crea e NON si adotta, decide lo staff.
+// 🚨 Il cognome DA SOLO non basta: padre e figlio hanno lo stesso cognome e capita che
+//    condividano il numero. Adottare li' significa dare al socio nuovo la scheda
+//    dell'altro — e con essa i suoi pagamenti e il suo borsellino.
+// ⭐ Scelta sua del 3/08, messa davanti alle tre possibilita': «si ferma e chiede a te».
+function mpDecideCreazioneCliente(opts = {}) {
+  if (!opts.trovato) return { azione: 'crea', motivo: opts.motivo || 'telefono_non_trovato' };
+  if (opts.motivo === 'piu_schede') return { azione: 'conflitto', motivo: 'piu_schede' };
+  const tokens = mpNomeToken(opts.intestatario).split(' ').filter(Boolean);
+  const cognomeTok = mpNomeToken(opts.cognome).split(' ').filter(Boolean);
+  const nomeTok = mpNomeToken(opts.nome).split(' ').filter(Boolean);
+  if (!tokens.length || !cognomeTok.length || !nomeTok.length) {
+    return { azione: 'conflitto', motivo: 'intestatario_illeggibile' };
+  }
+  const cognomeOk = cognomeTok.every((t) => tokens.includes(t));
+  const nomeOk = tokens.includes(nomeTok[0]);
+  if (cognomeOk && nomeOk) return { azione: 'adotta', motivo: 'stessa_persona' };
+  return { azione: 'conflitto', motivo: cognomeOk ? 'nome_diverso' : 'intestatario_diverso' };
+}
+
+// Cerca in Matchpoint una scheda col telefono dato. SOLA LETTURA: naviga e legge.
+// 🚨 Distingue «cercato e non trovato» da «non ho POTUTO cercare»: sono la stessa cosa
+//    solo per chi guarda l'esito. Se la pagina non si apre o il campo di ricerca non
+//    c'e', concludere «non trovato» farebbe creare il doppione proprio quando la difesa
+//    e' rotta — l'atteso soddisfatto da un guasto.
+async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
+  const key = mpPhoneKey10(telefono);
+  const esito = { trovato: false, motivo: 'telefono_assente', codice: '', idInterno: '',
+                  intestatario: '', telefonoScheda: '', tentativi: [] };
+  if (!key) return esito;
+  esito.motivo = 'ricerca_non_riuscita';   // finche' una ricerca vera non riesce
+  let cercatoDavvero = false;
+
+  // Legge la scheda APERTA dai campi del form (gli stessi che usa l'aggiornamento):
+  // piu' solido che spremere il titolo della pagina.
+  const leggiSchedaAperta = async () => {
+    const val = async (suffix) => {
+      const scoped = page.locator(`[id^="CC_Datos_FormViewFicha_"][id$="${suffix}"]`).first();
+      const loc = (await scoped.count().catch(() => 0)) ? scoped : page.locator(`[id$="${suffix}"]`).first();
+      if (!(await loc.count().catch(() => 0))) return '';
+      const v = await loc.evaluate((el) => (el.value != null ? el.value : (el.textContent || ''))).catch(() => '');
+      return String(v || '').trim();
+    };
+    const codice = await page.evaluate(() => {
+      const t = (document.body ? document.body.innerText : '');
+      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
+      return m ? m[1] : '';
+    }).catch(() => '');
+    const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
+    return {
+      codice,
+      idInterno: idm ? idm[1] : '',
+      nome: await val('TextBoxNombre'),
+      cognome: await val('TextBoxApellido1'),
+      telefono: await val('TextBoxMovil'),
+    };
+  };
+  const accetta = (s, come) => {
+    esito.trovato = true;
+    esito.motivo = 'trovato';
+    esito.codice = s.codice;
+    esito.idInterno = s.idInterno;
+    esito.intestatario = `${s.cognome} ${s.nome}`.trim();
+    esito.telefonoScheda = s.telefono;
+    esito.come = come;
+  };
+
+  for (const termine of mpPhoneSearchTerms(telefono)) {
+    const t = { termine, how: '' };
+    esito.tentativi.push(t);
+    try {
+      await page.goto(absoluteUrl(baseUrl, '/clientes/Listadoclientes.aspx?pagesize=15'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      // 🚨 GUARDIA sulla scelta del criterio, non ornamentale. Altrove nel worker questa
+      //    `selectOption` e' seguita da `.catch(() => {})`: li' e' un ripiego dentro una
+      //    CASCATA di termini, qui sarebbe fatale. Se la voce «Telefono cellulare» non
+      //    venisse selezionata, la ricerca girerebbe sul criterio di default (Cliente),
+      //    non troverebbe il numero e concluderebbe «non c'e'» — e la difesa sarebbe
+      //    INERTE pur sembrando a posto, cioe' il modo peggiore di essere rotta.
+      //    Percio' si RILEGGE che cosa e' rimasto selezionato.
+      const optSel = page.locator('#CC_ContentPlaceHolderBuscador_DropDownListOpcionesBusqueda, select[id$="DropDownListOpcionesBusqueda"]').first();
+      if (!(await optSel.count().catch(() => 0))) { t.how = 'criterio_ricerca_assente'; continue; }
+      await optSel.selectOption({ label: 'Telefono cellulare' }, { timeout: 5000 }).catch(() => {});
+      const criterio = await optSel.evaluate((el) => {
+        const o = el.options && el.options[el.selectedIndex];
+        return o ? (o.text || o.value || '') : (el.value || '');
+      }).catch(() => '');
+      t.criterio = criterio;
+      if (!/telefono/i.test(String(criterio))) { t.how = 'criterio_non_impostato'; continue; }
+
+      const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
+      if (!(await valBox.count().catch(() => 0))) { t.how = 'campo_ricerca_assente'; continue; }
+      await valBox.fill(String(termine), { timeout: 8000 });
+      const btnBuscar = page.locator('#CC_ContentPlaceHolderBuscador_ImageButtonBuscar, input[id$="ImageButtonBuscar"]').first();
+      if (await btnBuscar.count().catch(() => 0)) {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          btnBuscar.click({ timeout: 8000 }),
+        ]);
+      } else {
+        await Promise.all([
+          page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}),
+          valBox.press('Enter', { timeout: 5000 }),
+        ]);
+      }
+      await page.waitForTimeout(1200);
+
+      // Risultato UNICO -> Matchpoint apre direttamente la Ficha.
+      if (/FichaCliente\.aspx/i.test(page.url())) {
+        const s = await leggiSchedaAperta();
+        if (mpPhoneKey10(s.telefono) === key) { t.how = 'ficha_diretta'; accetta(s, 'ficha_diretta'); return esito; }
+        t.how = 'ficha_diretta_telefono_diverso';
+        cercatoDavvero = true;
+        continue;
+      }
+
+      const righe = await page.evaluate(() => {
+        const matchId = (str) => {
+          const s2 = decodeURIComponent(String(str || ''));
+          let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
+          m = s2.match(/[?&]id=(\d+)/i); if (m) return m[1];
+          return '';
+        };
+        const out = [];
+        for (const tr of document.querySelectorAll('table tr')) {
+          const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
+          if (!text) continue;
+          let id = '';
+          for (const a of tr.querySelectorAll('a')) {
+            id = matchId(a.getAttribute('href') || a.getAttribute('onclick') || '');
+            if (id) break;
+          }
+          if (id) out.push({ id, cifre: text.replace(/\D/g, '') });
+        }
+        return out;
+      }).catch(() => null);
+      if (righe == null) { t.how = 'lettura_righe_fallita'; continue; }
+      t.righe = righe.length;
+
+      // Le righe che mostrano il nostro numero valgono piu' delle altre; se la lista non
+      // mostra il telefono si ripiega su TUTTI i candidati e si verifica scheda per scheda.
+      const conNumero = righe.filter((r) => r.cifre.includes(key));
+      const candidati = [...new Set((conNumero.length ? conNumero : righe).map((r) => r.id))];
+      // 🚨 Nessuna riga col nostro numero E lista lunga = la ricerca NON ha filtrato
+      //    (ci ha restituito l'elenco). Non e' un «non trovato»: e' un guasto.
+      if (!conNumero.length && righe.length > 5) { t.how = 'lista_non_filtrata'; continue; }
+      if (!candidati.length) { t.how = 'nessun_risultato'; cercatoDavvero = true; continue; }
+
+      const MAX_VERIFICHE = 5;
+      if (candidati.length > MAX_VERIFICHE) t.troncato = candidati.length;   // niente tagli muti
+      const conferme = [];
+      for (const id of candidati.slice(0, MAX_VERIFICHE)) {
+        await page.goto(absoluteUrl(baseUrl, `/Clientes/FichaCliente.aspx?id=${encodeURIComponent(id)}`), { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+        const s = await leggiSchedaAperta();
+        if (mpPhoneKey10(s.telefono) === key) conferme.push(s);
+      }
+      cercatoDavvero = true;
+      if (conferme.length === 1) { t.how = 'verificata_sulla_scheda'; accetta(conferme[0], 'verificata_sulla_scheda'); return esito; }
+      if (conferme.length > 1) {
+        t.how = 'piu_schede';
+        esito.trovato = true;
+        esito.motivo = 'piu_schede';
+        esito.intestatario = conferme.map((s) => `${s.cognome} ${s.nome}`.trim()).join(' / ');
+        esito.codice = conferme.map((s) => s.codice).filter(Boolean).join(' / ');
+        return esito;
+      }
+      t.how = 'nessuna_conferma';
+    } catch (err) {
+      t.how = 'errore';
+      t.errore = (err && err.message) ? String(err.message).slice(0, 200) : String(err);
+    }
+  }
+
+  esito.motivo = cercatoDavvero ? 'telefono_non_trovato' : 'ricerca_non_riuscita';
+  if (diagnostic) diagnostic.ricercaTelefonoTentativi = esito.tentativi;
+  return esito;
+}
+
 // ── createClientWithBrowser: crea un cliente in Matchpoint, legge il Codice e
 //    gli assegna un livello (default 0,5) cosi' compare nel report livelli. ──
 async function createClientWithBrowser(options = {}) {
@@ -3943,6 +4167,52 @@ async function createClientWithBrowser(options = {}) {
       throw fail('MATCHPOINT_BROWSER_LOGIN_FAILED', 'Login Matchpoint non riuscito.', diagnostic);
     }
     await maybeClickCashEnter(page, diagnostic);
+
+    // ── 🛡️ ANTI-DOPPIONE: prima di creare, si cerca il telefono in Matchpoint ──
+    // `forzaCreazione` arriva SOLO da un gesto esplicito dello staff («e' un'altra
+    // persona, crea lo stesso»): e' l'unico modo di scavalcare la difesa, e passa da lui.
+    const forzaCreazione = !!(options.forzaCreazione || options.forceCreate
+      || client.forzaCreazione || client.forceCreate);
+    diagnostic.forzaCreazione = forzaCreazione;
+    if (telefono && !forzaCreazione) {
+      diagnostic.steps.push('cerca_telefono');
+      const gia = await mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic);
+      diagnostic.ricercaTelefono = { trovato: gia.trovato, motivo: gia.motivo, come: gia.come || '',
+                                     codice: gia.codice, intestatario: gia.intestatario, tentativi: gia.tentativi };
+      // 🚨 «Non ho potuto cercare» NON e' «non c'e'». Creare qui vorrebbe dire creare il
+      //    doppione proprio quando la difesa e' rotta: meglio fermarsi e farsi ripetere.
+      if (gia.motivo === 'ricerca_non_riuscita') {
+        throw fail('CLIENT_PHONE_CHECK_FAILED',
+          'Non sono riuscito a controllare se quel telefono e\' gia\' in Matchpoint: non ho creato niente, per non rischiare un doppione. Riprova fra poco.',
+          diagnostic);
+      }
+      const decisione = mpDecideCreazioneCliente({
+        trovato: gia.trovato, motivo: gia.motivo, intestatario: gia.intestatario, nome, cognome,
+      });
+      diagnostic.decisione = decisione;
+      // ADOTTA: la scheda c'e' gia' ed e' sua. Si restituisce il suo codice senza creare
+      // nulla — nessuna scrittura su Matchpoint.
+      if (decisione.azione === 'adotta') {
+        return {
+          ok: true, esito: 'adottato', creato: false,
+          codice: gia.codice, idInterno: gia.idInterno,
+          nome, cognome, telefono, email,
+          esistente: { codice: gia.codice, idInterno: gia.idInterno, intestatario: gia.intestatario, telefono: gia.telefonoScheda },
+          diagnostic,
+        };
+      }
+      // CONFLITTO: quel numero c'e' ma la scheda sembra di un altro. Non si crea e non si
+      // adotta: decide lo staff, che vede nome e codice di chi ha gia' quel numero.
+      if (decisione.azione === 'conflitto') {
+        return {
+          ok: true, esito: 'conflitto_telefono', creato: false, codice: '', idInterno: '',
+          nome, cognome, telefono, email,
+          conflitto: { motivo: decisione.motivo, codice: gia.codice, idInterno: gia.idInterno,
+                       intestatario: gia.intestatario, telefono: gia.telefonoScheda },
+          diagnostic,
+        };
+      }
+    }
 
     // ── Form creazione cliente ──
     diagnostic.steps.push('goto_alta_cliente');
@@ -4088,6 +4358,8 @@ async function createClientWithBrowser(options = {}) {
 
     return {
       ok: true,
+      esito: 'creato',
+      creato: true,
       codice,
       idInterno,
       nome,

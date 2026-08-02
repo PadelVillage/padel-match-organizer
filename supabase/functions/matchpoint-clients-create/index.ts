@@ -145,6 +145,11 @@ Deno.serve(async (req: Request) => {
     sesso: clean(c.sesso ?? c.gender ?? ''),
     dataNascita: clean(c.dataNascita ?? c.birthDate ?? ''),
     livello: c.livello,
+    // 🛡️ Il worker cerca il telefono in Matchpoint prima di creare, per non fare la
+    // seconda scheda a chi si e' iscritto allo sportello nelle ultime ore. Questa bandiera
+    // scavalca la difesa e arriva SOLO da un gesto esplicito dello staff («e' un'altra
+    // persona, crea lo stesso»): va passata, o quel bottone non potrebbe funzionare.
+    forzaCreazione: c.forzaCreazione === true || c.forceCreate === true,
   };
 
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -168,10 +173,29 @@ Deno.serve(async (req: Request) => {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });
   }
 
+  // ⭐ Il worker ha TRE esiti, non due: creato / adottato (il telefono era gia' di quella
+  // stessa persona: si prende il suo codice invece di fare la seconda scheda) / conflitto
+  // (quel numero c'e' ma la scheda sembra di un altro: non si crea e non si adotta).
+  // 🚨 Il messaggio va costruito sull'esito: dire «Cliente creato» quando NON e' stato
+  // creato niente e' esattamente il falso «✅ confermato» gia' pagato altrove.
   const codice = clean((workerResult as JsonMap).codice);
-  return ok({
-    message: `Cliente creato: ${nome} ${cognome}${codice ? ' · codice ' + codice : ''}`,
-    client,
-    worker: workerResult,
-  });
+  const esito = clean((workerResult as JsonMap).esito) || 'creato';
+  const conflitto = (workerResult as JsonMap).conflitto as JsonMap | undefined;
+
+  if (esito === 'conflitto_telefono') {
+    const chi = clean(conflitto?.intestatario) || 'un altro cliente';
+    const suoCodice = clean(conflitto?.codice);
+    return ok({
+      esito,
+      conflitto,
+      message: `Non ho creato niente: il telefono ${clean(client.telefono)} in Matchpoint è già di ${chi}${suoCodice ? ' · codice ' + suoCodice : ''}.`,
+      client,
+      worker: workerResult,
+    });
+  }
+
+  const message = esito === 'adottato'
+    ? `Quella persona era già in Matchpoint: uso la sua scheda${codice ? ' · codice ' + codice : ''} invece di crearne una seconda.`
+    : `Cliente creato: ${nome} ${cognome}${codice ? ' · codice ' + codice : ''}`;
+  return ok({ esito, message, client, worker: workerResult });
 });
