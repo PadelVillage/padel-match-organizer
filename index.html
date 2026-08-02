@@ -6314,6 +6314,12 @@ body.assessment-public-mode .assessment-public-only-card {
         <!-- Gli altri capitoli: su desktop ≥900px sono nascosti qui e mostrati nella barra
              orizzontale (.pmo-chapter-bar). Su mobile restano la navigazione del drawer. -->
         <div class="side-nav-chapters">
+        <!-- Anagrafica soci per prima anche nel menu di MOBILE: se l'ordine fosse diverso fra la
+             barra del desktop e il cassetto, sarebbero due menu diversi per la stessa app. -->
+        <button class="tab-button side-nav-main-item" data-section-key="members" onclick="switchTab('members', this)">
+          <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
+        </button>
+
         <button class="side-nav-parent side-nav-main-item" data-section-key="assessment" data-submenu-target="subAssessment" aria-expanded="false" onclick="switchSidebarParent('assessment','subAssessment')">
           <span class="nav-copy"><span class="nav-main">Autovalutazione</span><span class="nav-sub">Invio email e risposte</span></span>
           <span class="nav-caret">▾</span>
@@ -6325,10 +6331,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" data-subsection-key="view_assessment_strumenti" data-parent-tab="assessment" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
           <button class="side-sub-link" data-subsection-key="view_assessment_excel" data-parent-tab="assessment" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
         </div>
-
-        <button class="tab-button side-nav-main-item" data-section-key="members" onclick="switchTab('members', this)">
-          <span class="nav-copy"><span class="nav-main">Anagrafica soci</span><span class="nav-sub">Schede e contatti</span></span>
-        </button>
 
         <button class="tab-button side-nav-main-item" data-section-key="incassi" onclick="switchTab('incassi', this)">
           <span class="nav-copy"><span class="nav-main">Incassi</span><span class="nav-sub">Cassa e rendicontazione</span></span>
@@ -6375,6 +6377,10 @@ body.assessment-public-mode .assessment-public-only-card {
          il gating ruoli (pmoApplyTabVisibility) nasconda le voci non consentite. -->
     <nav class="pmo-chapter-bar" id="pmoChapterBar">
       <button type="button" class="pmo-chapter-item" data-section-key="dashboard" onclick="switchTab('dashboard', this)">Calendario</button>
+      <!-- Anagrafica soci sta SUBITO a destra di Calendario (scelta del committente, 2/08).
+           ⚠️ La voce «Assistente AI» è iniettata a runtime e si àncora a QUESTO bottone: se lo
+           si sposta di nuovo, guardare anche quell'inserimento o la voce torna in mezzo. -->
+      <button type="button" class="pmo-chapter-item" data-section-key="members" onclick="switchTab('members', this)">Anagrafica soci</button>
       <div class="pmo-chapter-group" data-section-key="assessment">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="assessment" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Autovalutazione <span class="pmo-chapter-caret">▾</span></button>
         <div class="pmo-chapter-dropdown">
@@ -6385,7 +6391,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <button type="button" data-subsection-key="view_assessment_excel" data-parent-tab="assessment" data-test-only-section="assessment-excel-import" onclick="goToTabSection('assessment','Import livelli Excel')">Import livelli Excel</button>
         </div>
       </div>
-      <button type="button" class="pmo-chapter-item" data-section-key="members" onclick="switchTab('members', this)">Anagrafica soci</button>
       <button type="button" class="pmo-chapter-item" data-section-key="incassi" onclick="switchTab('incassi', this)">Incassi</button>
       <button type="button" class="pmo-chapter-item" data-section-key="contact" onclick="switchTab('contact', this)">Messaggi WhatsApp</button>
       <div class="pmo-chapter-group" data-section-key="administration">
@@ -8015,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.148';
+    const APP_VERSION = '6.149';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37236,8 +37241,12 @@ Per confermare scrivi ELIMINA.`);
         btnAI.setAttribute('data-section-key', 'assistanteAI');
         btnAI.setAttribute('onclick', "switchTab('assistanteAI', this)");
         btnAI.textContent = 'Assistente AI';
-        const calItem = chapterBar.querySelector('.pmo-chapter-item[data-section-key="dashboard"]');
-        chapterBar.insertBefore(btnAI, calItem ? calItem.nextSibling : chapterBar.firstChild);
+        // Va DOPO «Anagrafica soci», che dal 2/08 è la prima voce a destra di Calendario (scelta
+        // del committente). Ripieghi in ordine: se l'Anagrafica non c'è si àncora a Calendario,
+        // e se manca anche quello finisce in testa — la voce compare comunque, mai persa.
+        const ancora = chapterBar.querySelector('.pmo-chapter-item[data-section-key="members"]')
+          || chapterBar.querySelector('.pmo-chapter-item[data-section-key="dashboard"]');
+        chapterBar.insertBefore(btnAI, ancora ? ancora.nextSibling : chapterBar.firstChild);
       }
 
       // v5.772 — Il tab "Assistente AI" non ospita più il dashboard WhatsApp: ora è il pannello
