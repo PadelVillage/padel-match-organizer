@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.150';
+    const APP_VERSION = '6.151';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38301,7 +38301,12 @@ Per confermare scrivi ELIMINA.`);
   // fine il cloud porta tombstone + staff_suppress condiviso (resta nascosto), se è FALLITO
   // (revert a monte) la prenotazione RICOMPARE. Nessun phantom.
   const _staffCalRemoteCancel = new Map();       // slotKey -> { timer }
-  const _staffCalRemoteCancelHide = new Set();   // slotKey nascosti in modo ottimistico (render)
+  // ⛔ v6.150: da qui in poi questo insieme resta SEMPRE VUOTO, ed è voluto. Serviva a nascondere
+  // sull'altro dispositivo uno slot che qualcuno stava annullando; con la regola «prima Matchpoint,
+  // poi il calendario» quella prenotazione, finché il circolo non conferma, ESISTE ANCORA e va
+  // mostrata. Il codice che lo consulta resta (costa nulla, unisce un insieme vuoto).
+  // 🚨 Non ripopolarlo: nasconderebbe di nuovo qualcosa prima di sapere com'è andata.
+  const _staffCalRemoteCancelHide = new Set();   // (vedi sopra: sempre vuoto dalla v6.150)
   function staffCalRtBroadcastCancelPending(isoDate, campo, ora) {
     try {
       if (_staffCalRtChannel && typeof _staffCalRtChannel.send === 'function') {
@@ -38325,21 +38330,17 @@ Per confermare scrivi ELIMINA.`);
       if (!payload || !payload.data || payload.ora == null) return;
       const key = _staffCalRemoteKey(payload);             // = data|campoNum|ora, identico a _staffCalEditKey
       if (_staffCalRemoteCancel.has(key)) return;          // già in corso per questo slot
-      // Nascondi SUBITO: gate del merge staffBooking + hide del render (copre anche l'occupazione).
+      // ⭐⭐ REGOLA DEL COMMITTENTE (v6.150): l'altro dispositivo NON nasconde più niente. Finché
+      // Matchpoint non ha confermato l'annullamento, quella prenotazione **esiste ancora**, e il
+      // calendario deve continuare a dirlo — nasconderla era un'anticipazione, cioè la stessa cosa
+      // che disegnare una card prima della risposta, vista dall'altro verso.
+      // Resta il gate sul merge: finché l'operazione è in volo, il pull dal cloud non tocca lo slot
+      // (se no un pull di mezzo lo riscriverebbe), e resta il segnaposto che frena chi lavora in due.
       try { if (typeof _staffCalPendingEdits !== 'undefined' && _staffCalPendingEdits) _staffCalPendingEdits.add(key); } catch (e) {}
-      _staffCalRemoteCancelHide.add(key);
-      // Rimuovi l'eventuale copia locale staffBooking dello slot (solo in-memory, niente cloud).
-      try {
-        const cur = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-        const wantCampo = Number(String(payload.campoNum).replace(/\D/g, ''));
-        const wantOra = String(payload.ora).trim();
-        const next = cur.filter(b => !(b && String(b.data).trim() === String(payload.data).trim()
-          && Number(String(b.campo).replace(/\D/g, '')) === wantCampo && String(b.ora).trim() === wantOra));
-        if (next.length !== cur.length && typeof save === 'function') save('staffBookings', next);
-      } catch (e) {}
-      try { if (typeof renderStaffCalendar === 'function') renderStaffCalendar(); } catch (e) {}
-      // Safety timeout: se non arriva 'staff-cancel-resolved' → smonta comunque e riconcilia dal cloud.
-      const timer = setTimeout(function () { staffCalRtResolveRemoteCancel(key); }, 30000);
+      // Safety timeout: se non arriva 'staff-cancel-resolved' → scioglie comunque e riconcilia dal
+      // cloud. ⏱️ Il tempo è quello vero dell'annullo (fino a 200 s), non i 30 s che bastavano a
+      // un nascondimento provvisorio: un segnaposto che scade prima dell'operazione non frena più.
+      const timer = setTimeout(function () { staffCalRtResolveRemoteCancel(key); }, 200000);
       _staffCalRemoteCancel.set(key, { timer });
     } catch (e) { console.warn('staff-cal rt on-cancel-pending:', e); }
   }
@@ -41750,8 +41751,9 @@ Per confermare scrivi ELIMINA.`);
       try { if (window.PMOAi && PMOAi.execEnd) PMOAi.execEnd(_aiExecRef, ok, { via: _aiExecVia, azione: _aiExecAzione, campo: op.origCampo, data: op.origIso, ora: op.origOra, reason: reason || null }); } catch (e) {}
     }
 
-    // ── OTTIMISTICO: applica SUBITO tutte le modifiche in locale; l'operatore è libero all'istante.
-    //    La scrittura su Matchpoint prosegue in BACKGROUND (anche ~60s). Su rifiuto → annullo + avviso.
+    // ── REGOLA DEL COMMITTENTE (v6.150): PRIMA Matchpoint, POI il calendario ──────────────────
+    //    La prenotazione resta com'è — stesso slot, stessi giocatori, stessa durata — finché il
+    //    circolo non conferma. Si chiude solo la scheda: è interfaccia, non calendario.
     staffCalPlayersState = null;
     // Lo "slot" della prenotazione è identificato da campo + data + ora di INIZIO. Una modifica di
     // sola durata (allunga/accorcia) NON cambia lo slot → non è uno spostamento, ma un edit in place.
@@ -41759,23 +41761,40 @@ Per confermare scrivi ELIMINA.`);
     const _curIso = _slotMoved ? op.mIso : op.origIso;
     const _curCampo = _slotMoved ? op.mCampo : op.origCampo;
     const _curOra = _slotMoved ? op.mOraIni : op.origOra;
-    if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
-    if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
-    if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
-    if (op.descrChanged) { try { staffCalApplyLocalDescrizione(_curIso, _curCampo, _curOra, op.descrizione); } catch (e) { console.warn('staff edit descrizione locale:', e); } }
-    if (op.istruttoreChanged) { try { staffCalApplyLocalIstruttore(_curIso, _curCampo, _curOra, op.istruttore); } catch (e) { console.warn('staff edit istruttore locale:', e); } }
-    // ⭐ CROSS-DEVICE OTTIMISTICO: spingi SUBITO lo stato al cloud, così un SECONDO device vede la
-    // modifica all'istante (come create/cancel), senza aspettare la conferma Matchpoint. Lo SLOT-move
-    // (campo/giorno/ora-inizio) va come reassign (annulla origine + crea destinazione); gli edit
-    // IN-PLACE (durata/giocatori/nota) vanno come sync del record corrente. Su rifiuto del worker,
-    // _staffCalEditRevertAll ri-spinge lo stato ripristinato (reassign inverso per il move, sync del
-    // record ripristinato per l'in-place). Il push di successo (sotto) ri-spinge col roster autorevole.
-    if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud optimistic:', e); } }
-    else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud optimistic:', e); } }
-    try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, true); } catch (e) {}
+    // ⭐ TUTTE le modifiche in UN SOLO posto, e si applicano SOLO alla conferma. Prima erano sparse
+    //    qui sopra, eseguite subito, e ognuna aveva bisogno del suo inverso per il caso «rifiutata»
+    //    (_staffCalEditRevertAll). Applicandole dopo il sì, gli inversi non servono più: il modo
+    //    più sicuro di annullare una modifica è non averla ancora fatta.
+    let _modificheApplicate = false;
+    const _applicaModifiche = function (finalRoster) {
+      if (_modificheApplicate) return;
+      _modificheApplicate = true;
+      if (moveChanged) { _staffCalApplyLocalEdit(op, true, durMin, null); }
+      if (op.hasPlayers && playersChanged) { try { staffCalApplyLocalGiocatori(_curIso, _curCampo, _curOra, addArr, remove); } catch (e) { console.warn('staff edit giocatori locale:', e); } }
+      if (op.noteChanged) { try { staffCalApplyLocalNote(_curIso, _curCampo, _curOra, op.note); } catch (e) { console.warn('staff edit nota locale:', e); } }
+      if (op.descrChanged) { try { staffCalApplyLocalDescrizione(_curIso, _curCampo, _curOra, op.descrizione); } catch (e) { console.warn('staff edit descrizione locale:', e); } }
+      if (op.istruttoreChanged) { try { staffCalApplyLocalIstruttore(_curIso, _curCampo, _curOra, op.istruttore); } catch (e) { console.warn('staff edit istruttore locale:', e); } }
+      // Riconcilia col roster AUTOREVOLE del worker, quando ce l'abbiamo: fissa i nomi reali.
+      try {
+        const nomi = (finalRoster && Array.isArray(finalRoster)) ? finalRoster.map(function (p) { return p && p.nome; }).filter(Boolean).join(', ') : null;
+        if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(_curIso, _curCampo, _curOra, nomi);
+      } catch (e) { console.warn('staff edit roster autorevole:', e); }
+      // Cloud (cross-device) solo adesso: un altro dispositivo non deve mai vedere una modifica
+      // che su Matchpoint non è passata. Lo SLOT-move va come reassign (annulla origine + crea
+      // destinazione); gli edit IN-PLACE come sync del record corrente.
+      if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud sync:', e); } }
+      else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud sync:', e); } }
+      try { renderStaffCalendar(); } catch (e) {}
+    };
+    // Il puntino «sto lavorando» va sulla card che ESISTE — quella di partenza. Non è una modifica
+    // mostrata in anticipo: è il segno che su quella prenotazione c'è un'operazione in volo.
+    try { _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, true); } catch (e) {}
+    const _spegniPuntino = function () {
+      try { _staffCalSetSyncing(op.origIso, op.origCampo, op.origOra, false); } catch (e) {}
+      try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
+    };
     renderStaffCalendar();
-    // Mobile: NON chiudere qui (app-done ottimistico). La chiusura del bottom-sheet
-    // avviene alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
+    // Mobile: la chiusura del bottom-sheet avviene alla conferma reale (svcMpSyncConfirmed sul verde).
     svcResetToNeutral();
 
     const destTxt = moveChanged
@@ -41787,10 +41806,16 @@ Per confermare scrivi ELIMINA.`);
     const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ((op.isManut ? 'Osservazioni: ' : 'Nota: ') + op.note) : (op.isManut ? 'Osservazioni rimosse' : 'Nota rimossa'))) : '';
     const _descrTxt = op.descrChanged ? ('<br>🔧 Descrizione: ' + (op.descrizione || '(vuota)')) : '';
     const _istrTxt = op.istruttoreChanged ? ('<br>🎓 Maestro: ' + (op.istruttore || '')) : '';
-    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto scrivendo su Matchpoint…</span>';
-    const _editMsgEl = svcAddMessage('system', '✅ <strong>Prenotazione aggiornata</strong>: ' + destTxt + _playersTxt + _istrTxt + _descrTxt + _noteTxt + _syncNote, 'ok');
-    const _setEditSyncNote = function (html, color) {
-      try { const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {}
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
+    const _editMsgEl = svcAddMessage('system', '<span class="mp-sync-head">⏳ <strong>In attesa di Matchpoint</strong></span> \xb7 modifica: ' + destTxt + _playersTxt + _istrTxt + _descrTxt + _noteTxt + _syncNote);
+    const _setEditSyncNote = function (html, color, head) {
+      try {
+        const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note');
+        if (n) { n.innerHTML = html; if (color) n.style.color = color; }
+        const h = _editMsgEl && _editMsgEl.querySelector('.mp-sync-head');
+        if (h && head) h.innerHTML = head;
+        if (_editMsgEl) _editMsgEl.classList.toggle('ok', color === '#067647');
+      } catch (e) {}
       svcMpSyncConfirmed(color);
     };
 
@@ -41801,16 +41826,55 @@ Per confermare scrivi ELIMINA.`);
       // da "è partita e non so com'è finita" (allora ripristinare alla cieca DISTRUGGE una scrittura
       // magari riuscita). Non è un dettaglio: è la differenza fra un dubbio e un danno.
       let _reqSent = false;
+      let _staffE = null, _urlE = null, _keyE = null;
+      // ⭐⭐ ESITO IGNOTO: non si indovina, si VA A GUARDARE (regola sua).
+      // ⚠️ Ma qui la verifica sa rispondere SOLO quando si aggiungono giocatori: la lettura di
+      // Matchpoint torna l'elenco dei partecipanti, quindi «il giocatore c'è» si può controllare,
+      // mentre una durata, una nota o un maestro da quell'elenco non si vedono. Fingere di poterlo
+      // dire sarebbe peggio che ammetterlo — e sarebbe l'atteso soddisfatto da una causa che non
+      // c'entra. Quando non è verificabile si dichiara, e la modifica NON si applica.
+      const _verificabile = !!(op.hasPlayers && addArr && addArr.length);
+      const _verifica = async function (perche) {
+        if (!_verificabile) {
+          _spegniPuntino();
+          _setEditSyncNote('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
+          svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e <strong>questa non posso verificarla da solo</strong>: Matchpoint mi lascia rileggere i giocatori, non la durata o il maestro.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.', 'error');
+          _aiExecSettle(false, 'esito-ignoto-non-verificabile');
+          renderStaffCalendar();
+          return;
+        }
+        _setEditSyncNote('⌛ Non ho la conferma — sto guardando su Matchpoint…', '#b54708');
+        const look = await staffCalAskMatchpoint({ campoNum: _curCampo, data: _curIso, ora: _curOra, nome: '', giocatori: addArr }, _staffE, _urlE, _keyE);
+        _spegniPuntino();
+        if (look.verdict === 'si') {
+          _applicaModifiche(null);
+          _setEditSyncNote('✅ Operazione confermata — l\'ho verificata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
+          _aiExecSettle(true, null);
+          return;
+        }
+        if (look.verdict === 'no') {
+          _setEditSyncNote('❌ Su Matchpoint la modifica non risulta', '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
+          svcAddMessage('system', '❌ <strong>Modifica non riuscita</strong> (' + destTxt + '): sono andato a guardare e su Matchpoint non risulta.<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
+          _aiExecSettle(false, 'verificato-non-passato');
+          renderStaffCalendar();
+          return;
+        }
+        _setEditSyncNote('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
+        svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e sono andato a guardare su Matchpoint: ' + look.why + '.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.', 'error');
+        _aiExecSettle(false, 'esito-ignoto');
+        renderStaffCalendar();
+      };
       try {
-        // FASE B — se questa stessa prenotazione è ancora in CREAZIONE su Matchpoint, l'edit è già
-        // applicato/visibile in locale ma aspetto che la prenotazione esista prima di chiamare il
-        // worker dell'edit (non si modifica ciò che non c'è ancora). Caso "crea → aggiungi X".
+        // FASE B — se questa stessa prenotazione è ancora in CREAZIONE su Matchpoint, aspetto che
+        // esista prima di chiamare il worker dell'edit (non si modifica ciò che non c'è ancora).
+        // Caso "crea → aggiungi X".
         if (_staffCalCreateState.get(pendKey) === 'pending') _setEditSyncNote('↻ aspetto che la prenotazione sia su Matchpoint, poi salvo…');
         const _creState = await _staffCalWaitCreate(pendKey, 90000);
         if (_creState === 'failed') {
-          // La creazione è fallita → la prenotazione non esiste: annullo l'edit locale e avviso.
-          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
-          _setEditSyncNote('⚠️ NON salvata: la prenotazione non è stata creata su Matchpoint', '#d92d20');
+          // La creazione è fallita → la prenotazione non esiste. Niente da annullare: la modifica
+          // non era stata applicata (regola v6.150).
+          _spegniPuntino();
+          _setEditSyncNote('❌ La prenotazione non è stata creata su Matchpoint', '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
           try { _staffCalPendingEdits.delete(pendKey); } catch (e) {}
           _aiExecSettle(false, 'create-failed');
           renderStaffCalendar();
@@ -41830,18 +41894,21 @@ Per confermare scrivi ELIMINA.`);
           try {
             await pmoEnsureBookingPlayersOnMatchpoint({ tipo: 'partita', giocatori: addArr }, function (m) { _setEditSyncNote(m); });
           } catch (eLazy) {
-            _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
-            _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-            svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(eLazy) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+            // Non è partito niente verso la prenotazione: la modifica non era stata applicata.
+            _spegniPuntino();
+            _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(eLazy), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
+            svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(eLazy) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
             try { _staffCalPendingEdits.delete(pendKey); } catch (e) {}
             _aiExecSettle(false, (eLazy && eLazy.message) ? eLazy.message : String(eLazy));
             renderStaffCalendar();
             return;
           }
         }
-        _setEditSyncNote('↻ La sto scrivendo su Matchpoint…');
-        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-        const staff = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+        _setEditSyncNote('⏳ Sto chiedendo a Matchpoint…');
+        const _cfgE = await loadAssessmentSupabaseConfig();
+        _urlE = _cfgE && _cfgE.supabaseUrl; _keyE = _cfgE && _cfgE.supabaseKey;
+        _staffE = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
+        const supabaseUrl = _urlE, supabaseKey = _keyE, staff = _staffE;
         const _ctrl = new AbortController();
         const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
         // Da QUI in poi l'esito non è più nostro: la richiesta parte, e qualunque cosa vada storta
@@ -41860,30 +41927,23 @@ Per confermare scrivi ELIMINA.`);
         _staffCalPendingEdits.delete(pendKey);
 
         if (response.ok && data && data.ok !== false) {
-          // Riconcilia col roster AUTOREVOLE del worker: fissa i nomi reali alla posizione corrente.
+          // ⭐ È QUI che la modifica entra nel calendario, e solo qui: Matchpoint ha detto sì.
+          //    Col roster AUTOREVOLE del worker, così i nomi sono quelli veri.
           const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
-          const nomi = finalRoster ? finalRoster.map(function (p) { return p.nome; }).filter(Boolean).join(', ') : null;
-          if (op.hasPlayers && nomi != null) staffCalUpdateLocalPlayers(_curIso, _curCampo, _curOra, nomi);
-          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
-          // Push cloud (con giocatori/nota correnti) solo a propagazione riuscita: un edit poi
-          // revertito non deve sporcare il cloud.
-          try { if (_slotMoved) { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } else { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } } catch (e) { console.warn('staff edit cloud sync:', e); }
-          _setEditSyncNote('✅ Salvata su Matchpoint', '#067647');
+          _spegniPuntino();
+          _applicaModifiche(finalRoster);
+          _setEditSyncNote('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
           _aiExecSettle(true, null);
-          renderStaffCalendar();
         } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
-          // TIMEOUT edge (worker in coda): esito INCERTO, la modifica può essere passata lo stesso.
-          // NON revertire alla cieca (eviti roster sfasato app↔MP e possibili doppioni al retry).
-          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
-          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
-          svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): la modifica <strong>potrebbe essere passata lo stesso</strong>. Non ho revertito niente — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
-          _aiExecSettle(false, 'timeout');
-          renderStaffCalendar();
+          // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.
+          await _verifica((data && (data.message || data.error)) || 'Matchpoint non ha risposto in tempo');
         } else {
+          // Rifiuto vero: esito NOTO. Non c'è niente da riportare indietro — la prenotazione non
+          // era stata toccata — ma va detto, se no sembra che la modifica sia andata a buon fine.
           const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
-          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
-          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          _spegniPuntino();
+          _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(msg), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
+          svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
           _aiExecSettle(false, String(msg || 'errore'));
           renderStaffCalendar();
         }
@@ -41903,26 +41963,17 @@ Per confermare scrivi ELIMINA.`);
         // la scrittura sia passata. Se mente dicendo "online", finiamo nel ramo del dubbio — che
         // è il verso buono: si chiede di controllare, non si distrugge un dato.
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        if (err && err.name === 'AbortError') {
-          // Timeout: NON revertire alla cieca (la modifica potrebbe essere passata lo stesso su MP).
-          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
-          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
-          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ La modifica <strong>potrebbe essere stata applicata lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
-          _aiExecSettle(false, 'timeout');
-        } else if (_reqSent && !_offline) {
-          // La richiesta era già uscita: esito IGNOTO, esattamente come il timeout. Niente ripristino.
-          try { _staffCalSetSyncing(_curIso, _curCampo, _curOra, false); } catch (e) {}
-          _setEditSyncNote('⌛ Esito non confermato', '#b54708');
-          svcAddMessage('system', '⌛ <strong>Connessione persa mentre salvavo</strong>: la richiesta era <strong>già partita</strong>, quindi la modifica <strong>potrebbe essere passata lo stesso</strong> su Matchpoint.<br>⚠️ Non ho cambiato niente: <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarla (rischi un doppione).', 'error');
-          _aiExecSettle(false, 'rete-caduta-esito-ignoto');
+        if ((err && err.name === 'AbortError') || (_reqSent && !_offline)) {
+          // La richiesta è uscita e la risposta non è tornata: esito IGNOTO ⇒ si va a guardare.
+          await _verifica((err && err.name === 'AbortError') ? 'il gestionale non ha risposto in tempo' : ((err && err.message) ? err.message : String(err)));
         } else {
-          // Qui la richiesta non è MAI partita: il ripristino rimette la verità, non la cancella.
-          _staffCalEditRevertAll(op, addArr, remove, _curIso, _curCampo, _curOra, _slotMoved, moveChanged);
-          _setEditSyncNote('⚠️ NON salvata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ ' + _staffCalFriendlyOpError(err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho riportato la prenotazione com\'era prima.</span>', 'error');
+          // Qui la richiesta non è MAI partita: esito noto, e non c'era niente da applicare.
+          _spegniPuntino();
+          _setEditSyncNote('❌ Non sono riuscito a mandarla a Matchpoint', '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
+          svcAddMessage('system', '❌ ' + _staffCalFriendlyOpError(err) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>. Riprova quando la connessione torna.</span>', 'error');
           _aiExecSettle(false, (err && err.message ? err.message : String(err)));
+          renderStaffCalendar();
         }
-        renderStaffCalendar();
       }
     })();
   }
@@ -41976,6 +42027,13 @@ Per confermare scrivi ELIMINA.`);
 
   // Annulla in locale un edit ottimistico fallito su Matchpoint: ripristina giocatori, nota e
   // posizione (spostamento) com'erano prima, e toglie il puntino di sincronizzazione.
+  // ⛔ SENZA CHIAMANTI dalla v6.150, ed è voluto (come _staffCalRevertMoveLocal qui sopra):
+  // servivano ad annullare una modifica già applicata al calendario prima di sapere com'era andata.
+  // Con la regola del committente la modifica si applica DOPO il sì di Matchpoint, quindi non c'è
+  // più niente da annullare. 🚨 Se qualcuno le richiama, vuol dire che è tornata l'applicazione in
+  // anticipo — ed è da lì che rientra il danno dell'1/08 (i 3 giocatori tolti dalla nostra copia
+  // mentre su Matchpoint c'erano). Tenute perché descrivono l'inverso esatto di ogni gesto, se un
+  // domani servisse un annullamento vero.
   function _staffCalEditRevertAll(op, addArr, removeArr, curIso, curCampo, curOra, slotMoved, moveChanged) {
     try { if (op.hasPlayers && ((addArr && addArr.length) || (removeArr && removeArr.length))) _staffCalRevertPlayersLocal(curIso, curCampo, curOra, addArr, removeArr); } catch (e) {}
     try { if (op.noteChanged) staffCalApplyLocalNote(curIso, curCampo, curOra, op.origNote); } catch (e) {}
@@ -43586,43 +43644,18 @@ Per confermare scrivi ELIMINA.`);
   // Inverso di _staffCalCommitLocalCancel: ripristina la prenotazione in locale (su rifiuto
   // Matchpoint dopo un annullo ottimistico), toglie la soppressione e annulla la propagazione
   // cloud (staff_booking deleted:false + staff_suppress deleted:true).
-  function _staffCalRevertLocalCancel(isoDate, campo, ora, removed) {
-    const wantCampo = Number(String(campo).replace(/\D/g, ''));
-    const wantOra = String(ora).trim();
-    const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
-    const present = (b) => existing.some(x =>
-      String(x.data).trim() === String(b.data).trim() &&
-      Number(String(x.campo).replace(/\D/g, '')) === Number(String(b.campo).replace(/\D/g, '')) &&
-      String(x.ora).trim() === String(b.ora).trim());
-    let changed = false;
-    (removed || []).forEach(b => { if (b && !present(b)) { existing.push(b); changed = true; } });
-    if (changed && typeof save === 'function') save('staffBookings', existing);
-    try { _staffCalClearSuppressed(isoDate, campo, ora); } catch (e) {}
-    try {
-      if (typeof pmoSyncCloudRecordsNow === 'function') {
-        const _campoNum = wantCampo || 0;
-        const records = (removed || []).filter(b => b && b.id).map(b => ({
-          record_type: 'staff_booking', local_key: b.id,
-          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo, giocatori: b.giocatori || [], id_reserva: (b.idReserva != null ? String(b.idReserva) : '') },
-          deleted: false
-        }));
-        records.push({
-          record_type: 'staff_suppress',
-          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
-          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
-          deleted: true
-        });
-        pmoSyncCloudRecordsNow(records, 'ripristinare la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel revert cloud:', e); });
-      }
-    } catch (e) { console.warn('staff cancel revert cloud:', e); }
-  }
+  // ⛔ RIMOSSA in v6.150: `_staffCalRevertLocalCancel` rimetteva a posto una prenotazione che era
+  // già stata tolta dal calendario prima di sapere come fosse andata. Con la regola del
+  // committente non si toglie più niente in anticipo, quindi non c'è più niente da rimettere:
+  // l'inverso di un gesto che non si fa più non serve. 🚨 Se un giorno tornasse la voglia di
+  // togliere la card «così l'operatore vede subito», è da lì che rientrerebbe il fantasma del 20/07.
 
   // Esegue l'annullamento su Matchpoint SENZA confirm() nativo: la conferma è già
   // avvenuta a monte (dialog a pulsanti del calendario, oppure dialogo in chat
   // dell'assistente AI). Estratto da staffCalAskCancel per riuso. v5.785.
-  // OTTIMISTICO (v5.877): rimuove in locale + chiude l'editor + ridisegna SUBITO ("fatto
-  // sull'app"); la cancellazione su Matchpoint prosegue in background con conferma esplicita;
-  // su rifiuto reale ripristina la prenotazione e avvisa.
+  // ⭐ v6.150: la card RESTA finché Matchpoint non conferma l'annullamento (regola del
+  // committente). Sparisce in _applicaAnnullo, che si chiama solo sul sì — o quando la verifica
+  // dice che su Matchpoint quella prenotazione non c'è più, che è lo stesso fatto visto da lì.
   async function staffCalDoCancel(isoDate, campo, ora, nome) {
     if (pmoBlockWriteIfReadonly('annullare una prenotazione')) return;
     const dataIt = isoDate.split('-').reverse().join('/');
@@ -43641,34 +43674,77 @@ Per confermare scrivi ELIMINA.`);
     const _pendCancelKey = _staffCalEditKey(isoDate, campo, ora);
     _staffCalPendingEdits.add(_pendCancelKey);
 
-    // ── OTTIMISTICO (app-done): chiudi l'editor se mostra questo slot, rimuovi in locale, ridisegna. ──
+    // ── REGOLA DEL COMMITTENTE (v6.150): PRIMA Matchpoint, POI il calendario ──────────────────
+    //    È il rovescio della stessa medaglia della prenotazione: qui la card NON sparisce finché
+    //    il circolo non ha confermato l'annullamento. Si chiude solo la scheda aperta, che è
+    //    interfaccia e non calendario: restare dentro un modulo già inviato non serve a nessuno.
     try {
       const st = staffCalPlayersState;
       if (st && String(st.origIso).trim() === isoDate && Number(String(st.origCampo).replace(/\D/g, '')) === _wantCampo && String(st.origOra).trim() === _wantOra) staffCalPlayersState = null;
     } catch (e) {}
-    _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore);
-    renderStaffCalendar();
-    // Cross-device (v5.913): avvisa SUBITO gli altri device così nascondono lo slot all'istante
-    // (no flicker), prima ancora che la scrittura sul cloud propaghi. Riconciliano al resolve.
+    // Il segnale agli altri dispositivi parte lo stesso: non nasconde più niente (nasconderebbe
+    // una prenotazione che su Matchpoint c'è ancora), serve a non lavorare in due sullo stesso slot.
     try { staffCalRtBroadcastCancelPending(isoDate, campo, ora); } catch (e) {}
-    // Mobile: chiusura rimandata alla conferma reale di Matchpoint (svcMpSyncConfirmed sul verde).
     svcResetToNeutral();
-    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">↻ La sto annullando su Matchpoint…</span>';
+    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
     const _msgEl = svcAddMessage('system',
-      '🗑️ <strong>Prenotazione annullata</strong>: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
-      (nome ? '<br>👥 ' + nome : '') + _syncNote, 'ok');
-    const _setSync = function (html, color) { try { const n = _msgEl && _msgEl.querySelector('.mp-sync-note'); if (n) { n.innerHTML = html; if (color) n.style.color = color; } } catch (e) {} svcMpSyncConfirmed(color); };
+      '<span class="mp-sync-head">⏳ <strong>In attesa di Matchpoint</strong></span> \xb7 annullamento: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+      (nome ? '<br>👥 ' + nome : '') + _syncNote);
+    const _setSync = function (html, color, head) {
+      try {
+        const n = _msgEl && _msgEl.querySelector('.mp-sync-note');
+        if (n) { n.innerHTML = html; if (color) n.style.color = color; }
+        const h = _msgEl && _msgEl.querySelector('.mp-sync-head');
+        if (h && head) h.innerHTML = head;
+        if (_msgEl) _msgEl.classList.toggle('ok', color === '#067647');
+      } catch (e) {}
+      svcMpSyncConfirmed(color);
+    };
+    // ⭐ La rimozione vera, in UN SOLO posto: si chiama solo quando Matchpoint ha detto sì (o ha
+    //    detto che quella prenotazione da lui non c'è più, che è la stessa cosa vista da lì).
+    const _applicaAnnullo = function () {
+      try { _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore); } catch (e) { console.warn('staff cancel commit:', e); }
+      try { renderStaffCalendar(); } catch (e) {}
+    };
+    // Serve alla verifica «vado a guardare»: chi e cosa cercare su quello slot.
+    const _lookParsed = {
+      campoNum: _wantCampo, data: isoDate, ora: _wantOra,
+      nome: (_removedBefore[0] && _removedBefore[0].nome) || nome || '',
+      giocatori: (_removedBefore[0] && _removedBefore[0].giocatori) || [],
+    };
 
     // ── Propagazione su Matchpoint in BACKGROUND ──
     (async function () {
+      let _staffC = null, _urlC = null, _keyC = null, _reqSent = false;
+      // ⭐⭐ ESITO IGNOTO: non si indovina, si VA A GUARDARE (regola sua). Qui la polarità è
+      // ROVESCIATA rispetto alla prenotazione, ed è la parte da leggere piano: se su Matchpoint
+      // la prenotazione NON c'è più, vuol dire che l'annullamento È passato. Se c'è ancora, no.
+      const _verifica = async function (perche) {
+        _setSync('⌛ Non ho la conferma — sto guardando su Matchpoint…', '#b54708');
+        const look = await staffCalAskMatchpoint(_lookParsed, _staffC, _urlC, _keyC);
+        if (look.verdict === 'no') {
+          _applicaAnnullo();
+          _setSync('✅ Operazione confermata — su Matchpoint non c\'è più', '#067647', '✅ <strong>Prenotazione annullata</strong>');
+          return;
+        }
+        if (look.verdict === 'si') {
+          _setSync('❌ NON annullata: su Matchpoint c\'è ancora', '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
+          svcAddMessage('system', '❌ <strong>L\'annullamento non è passato</strong> (' + _staffCalFriendlyOpError(perche) + '): sono andato a guardare e su Matchpoint la prenotazione <strong>c\'è ancora</strong>. L\'ho lasciata sul calendario — puoi riprovare.');
+          return;
+        }
+        _setSync('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
+        svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> dell\'annullamento (' + _staffCalFriendlyOpError(perche) + '), e sono andato a guardare su Matchpoint: ' + look.why + '.<br>⚠️ <strong>Ho lasciato la prenotazione sul calendario.</strong> Se su Matchpoint è stata tolta davvero, sparirà da sé entro un paio di minuti — oppure premi «Aggiorna prenotazioni». <strong>Controlla prima di rifare l\'annullamento.</strong>', 'error');
+      };
       try {
-        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
-        const staff = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
+        const cfg = await loadAssessmentSupabaseConfig();
+        _urlC = cfg && cfg.supabaseUrl; _keyC = cfg && cfg.supabaseKey;
+        _staffC = await pmoRequireStaffPermission('cloud_sync', 'annullare la prenotazione Matchpoint');
         const _ctrl = new AbortController();
         const _to = setTimeout(function () { _ctrl.abort(); }, 200000);
-        const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-cancel`, {
+        _reqSent = true;   // da qui in poi la richiesta è USCITA di casa: il silenzio è un dubbio, non un no
+        const response = await fetch(`${_urlC}/functions/v1/matchpoint-bookings-cancel`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+          headers: { 'Content-Type': 'application/json', 'apikey': _keyC, 'Authorization': `Bearer ${_staffC.accessToken}` },
           body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
           signal: _ctrl.signal,
         });
@@ -43684,38 +43760,39 @@ Per confermare scrivi ELIMINA.`);
         const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
 
         if (response.ok && data?.ok !== false) {
+          // ⭐ È QUI che la prenotazione esce dal calendario, e solo qui: Matchpoint ha detto sì.
+          _applicaAnnullo();
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
-          _setSync('✅ Annullata su Matchpoint', '#067647');
+          _setSync('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione annullata</strong>');
         } else if (notFoundOnMatchpoint) {
-          // Non era più su Matchpoint (ghost): la rimozione locale resta valida.
-          _setSync('🧹 Non era più su Matchpoint — rimossa', '#067647');
+          // Su Matchpoint non c'era più (card fantasma): toglierla dal calendario è giusto, ed è
+          // la stessa cosa che dice la verifica quando risponde 'no'.
+          _applicaAnnullo();
+          _setSync('🧹 Su Matchpoint non c\'era più — tolta dal calendario', '#067647', '✅ <strong>Prenotazione annullata</strong>');
         } else if (_staffCalIsTimeoutClass(_msgTxt, response.status)) {
-          // TIMEOUT edge (worker in coda): esito INCERTO, il worker può aver annullato lo stesso.
-          // NON ripristinare (evita il "fantasma": annullo passato su MP ma ri-mostrato in locale).
-          _setSync('⌛ Esito non confermato', '#b54708');
-          svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): l\'annullamento <strong>potrebbe essere passato lo stesso</strong>. Non ho ripristinato niente alla cieca — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarlo.', 'error');
+          // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.
+          await _verifica(_msgTxt || 'Matchpoint non ha risposto in tempo');
         } else {
-          // Rifiuto reale: RIPRISTINA la prenotazione in locale e avvisa.
+          // Rifiuto vero: esito NOTO. Non c'è niente da ripristinare — la prenotazione non se
+          // n'era mai andata dal calendario — ma va detto, se no sembra che sia stata annullata.
           const msg = _msgTxt || ('errore HTTP ' + response.status);
-          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
-          renderStaffCalendar();
-          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Annullamento non riuscito: ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+          _setSync('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(msg), '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
+          svcAddMessage('system', '❌ <strong>Annullamento non riuscito</strong>: ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta</strong> sul calendario, perché su Matchpoint c\'è ancora.</span>');
         }
       } catch (err) {
         _staffCalPendingEdits.delete(_pendCancelKey);
-        // Cross-device (v5.913): conclusa (anche su errore/timeout) → l'altro device smonta l'hide
-        // e riconcilia dal cloud (autorevole: ricompare se non è stata annullata davvero).
+        // Cross-device: conclusa (anche su errore/timeout) → l'altro device scioglie il segnaposto
+        // e riconcilia dal cloud, che è autorevole.
         try { staffCalRtBroadcastCancelResolved(isoDate, campo, ora); } catch (e) {}
-        if (err && err.name === 'AbortError') {
-          // Timeout: NON ripristinare alla cieca (potrebbe essere stata annullata lo stesso).
-          _setSync('⌛ Esito non confermato', '#b54708');
-          svcAddMessage('system', '⌛ <strong>Operazione troppo lenta</strong> (oltre 200s): il worker Matchpoint non ha risposto in tempo.<br>⚠️ L\'annullamento <strong>potrebbe essere passato lo stesso</strong>: <strong>ricarica il calendario e controlla</strong> prima di rifarlo.', 'error');
+        const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+        if ((err && err.name === 'AbortError') || (_reqSent && !_offline)) {
+          // La richiesta è uscita e la risposta non è tornata: esito IGNOTO ⇒ si va a guardare.
+          await _verifica((err && err.name === 'AbortError') ? 'il gestionale non ha risposto in tempo' : ((err && err.message) ? err.message : String(err)));
         } else {
-          _staffCalRevertLocalCancel(isoDate, campo, ora, _removedBefore);
-          renderStaffCalendar();
-          _setSync('⚠️ NON annullata su Matchpoint', '#d92d20');
-          svcAddMessage('system', '❌ Errore durante l\'annullamento: ' + _staffCalFriendlyOpError(err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">Ho ripristinato la prenotazione.</span>');
+          // Non è mai partita (o il telefono è senza linea): non è stato annullato niente, e la
+          // prenotazione è già dov'era. Niente da ripristinare.
+          _setSync('❌ Non sono riuscito a mandarlo a Matchpoint', '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
+          svcAddMessage('system', '❌ <strong>Annullamento non partito</strong>: ' + _staffCalFriendlyOpError(err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta</strong> sul calendario. Riprova quando la connessione torna.</span>');
         }
       }
     })();
