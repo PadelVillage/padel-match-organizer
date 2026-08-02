@@ -5961,11 +5961,26 @@ async function clickSaveActualizar(page, diagnostic, tag = 'salva') {
 // WUCUsuarioPartida o lezione WUCUsuarioClase_Listado) e ricava l'id cliente
 // sostituendo nello stesso id "TextBoxNombreValor" → "HiddenFieldIdCliente".
 // Match per nome (substring bidirezionale) o per id (onlyDigits, ignora zeri
-// iniziali) contro wantCode (codice cliente atteso) / wantPeople (id agganciato).
+// iniziali) contro wantPeople (id interno agganciato).
 // ⚠️ OSPITE / righe senza nome: il match per id copre i partecipanti che NON
 // espongono il nome nel campo (es. cliente "Ospite", codice 000001).
+//
+// 🚨⭐⭐ NON confrontare `HiddenFieldIdCliente` col CODICE CLIENTE (wantCode).
+// Matchpoint dà a ogni persona DUE numeri distinti: il codice cliente della tendina
+// ("000140-Laura Aprea") e l'id interno (HiddenFieldIdPeople / HiddenFieldIdCliente).
+// Vivono in numerazioni diverse e si sovrappongono: il 2/08/2026, in PRODUZIONE,
+// il codice cliente di Laura Aprea (000140 → "140") era identico all'ID INTERNO di
+// Marco Aprea (140). Con Marco già in scheda, il pre-check d'idempotenza credeva
+// Laura "già presente", SALTAVA l'aggiunta e restituiva added:true a vuoto — e a
+// valle l'app sostituisce il roster con quello riletto da Matchpoint, dove Laura non
+// c'era ⇒ il giocatore spariva dalla card sotto un "✅ confermato".
+// Il danno era MUTO: la verifica post-aggiunta lo notava (add_verify_inconclusive)
+// ma è soft-pass per scelta, quindi non faceva fallire nulla.
+// ⇒ Qui si confronta SOLO wantPeople, che è lo stesso namespace del campo letto.
+// `wantCode` resta giusto dov'è davvero il codice cliente: la guardia anti-omonimia
+// sull'ETICHETTA dell'autocomplete ("000140-Nome"), in searchAndAddPlayer.
 // Ritorna { idCliente, matchBy, righeViste }: idCliente === null se non trovato.
-async function scanParticipantRow(page, nome, wantCode, wantPeople) {
+async function scanParticipantRow(page, nome, _wantCodeIgnorato, wantPeople) {
   const _norm = (s) => String(s || '').toLowerCase().trim();
   const _onlyDigits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
   const righeViste = [];
@@ -5982,7 +5997,7 @@ async function scanParticipantRow(page, nome, wantCode, wantPeople) {
     const idCliDigits = _onlyDigits(idCliVal);
     righeViste.push(`${rowId}=${nomeVal}#${idCliVal}`);
     const matchByName = !!nomeVal && (nomeVal.includes(_norm(nome)) || _norm(nome).includes(nomeVal));
-    const matchById = !!idCliDigits && ((wantCode && idCliDigits === wantCode) || (wantPeople && idCliDigits === wantPeople));
+    const matchById = !!idCliDigits && !!wantPeople && idCliDigits === wantPeople;
     if (matchByName || matchById) {
       return { idCliente: idCliVal || '', matchBy: matchByName ? 'name' : 'id', righeViste };
     }
@@ -6194,7 +6209,9 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   if (!isGuest) {
     const pre = await scanParticipantRow(page, nome, wantCode, wantPeople);
     if (pre.idCliente !== null) {
-      diagnostic.steps.push('player_already_present:' + nome);
+      // ⭐ Dice anche PER COSA ha combaciato: quando questo pre-check sbaglia, il difetto
+      // è muto a valle (added:true a vuoto) e l'unico modo di vederlo è da qui.
+      diagnostic.steps.push('player_already_present:' + nome + ':by=' + pre.matchBy);
       diagnostic.partecipantiRighe = pre.righeViste.slice(0, 30);
       diagnostic.steps.push('player_added:' + nome);
       return { nome, added: true, alreadyPresent: true, idCliente: pre.idCliente, idPeople: lockedId, codiceCliente: expectedClientCode };
