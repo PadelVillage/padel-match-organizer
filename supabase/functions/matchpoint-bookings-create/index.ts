@@ -20,7 +20,11 @@ type BookingRequest = {
   tipo?: string;       // 'partita' | 'lezione' | 'manutenzione' (default: 'partita')
   istruttore?: string; // istruttore name override (Lezione) — defaults to nome
   note?: string;
-  giocatori?: { nome: string; codice?: string }[];
+  // ⚠️ `codice` e `codiceCliente` sono DUE numerazioni diverse di Matchpoint e non vanno
+  // scambiate: `codice` è l'id interno (HiddenFieldIdPeople), `codiceCliente` è il codice
+  // della tendina «000140-Nome». Confonderle è ciò che il 2/08/2026 ha fatto sparire un
+  // giocatore da una lezione (PR #624).
+  giocatori?: { nome: string; codice?: string; codiceCliente?: string }[];
 };
 
 const CORS_HEADERS = {
@@ -299,11 +303,25 @@ Deno.serve(async (req: Request) => {
 
   const tipo = clean(body.tipo || 'partita').toLowerCase();
   const istruttore = clean(body.istruttore);
+  // 🚨 Questa normalizzazione BUTTAVA `codiceCliente`, che l'app manda da sempre: il worker lo
+  // riceveva vuoto e quindi (1) cercava il socio per NOME invece che per codice, (2) non poteva
+  // accendere la guardia anti-omonimia che scarta i candidati col codice diverso, e (3) lo
+  // restituiva vuoto in `resolvedPlayers`, così l'app non sapeva a chi attribuire l'id interno.
+  // Misurato il 2/08/2026 su PROD: una lezione e una partita vere con `codiceCliente: ""` in
+  // risposta, benché l'app lo avesse mandato valorizzato. `bookings-edit` non ha il difetto —
+  // là i giocatori passano al worker intatti.
+  // ⚠️ `memberId` NON è più un ripiego per `codice`: memberId è il CODICE CLIENTE, mentre il
+  //    worker usa `codice` come id interno atteso. Metterlo lì significava passargli un numero
+  //    dell'altra numerazione — la stessa confusione del guasto di PR #624. Ora va dove deve.
   const giocatori = (Array.isArray(body.giocatori) ? body.giocatori : [])
     .map((g) => {
-      if (typeof g === 'string') return { nome: clean(g), codice: '' };
+      if (typeof g === 'string') return { nome: clean(g), codice: '', codiceCliente: '' };
       const o = (g ?? {}) as JsonMap;
-      return { nome: clean(o.nome ?? o.name), codice: clean(o.codice ?? o.memberId ?? o.id) };
+      return {
+        nome: clean(o.nome ?? o.name),
+        codice: clean(o.codice ?? o.id),
+        codiceCliente: clean(o.codiceCliente ?? o.memberId),
+      };
     })
     .filter((g) => g.nome);
   const VALID_TIPOS = ['partita', 'lezione', 'manutenzione', 'stagionale'];
