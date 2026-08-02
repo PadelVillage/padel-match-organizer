@@ -27,6 +27,11 @@ import {
 // `member.pmo_player_id`, così chi oggi chiama per telefono o per codice Matchpoint può
 // imparare il codice nuovo e passare alla via nuova gradualmente.
 //
+// 🆕⭐⭐ E riporta `member.puo_prenotare`: il ponte DICHIARA se quella persona è cliente
+// del circolo, invece di lasciarlo dedurre dalla presenza del codice Matchpoint. Regola
+// del committente (2/08): nel bot il codice Matchpoint non deve entrare, perché Matchpoint
+// un giorno non ci sarà più. Chi parla col circolo è questo ponte: la domanda sta qui.
+//
 // Autenticazione: la CI deploya con --no-verify-jwt, quindi il gate è l'header
 // X-Consumer-Secret confrontato (in tempo costante) col secret condiviso
 // CONSUMER_BRIDGE_SECRET. Secret assente in env → 503 (funzione disarmata).
@@ -434,6 +439,19 @@ Deno.serve(async (req: Request) => {
       // di chi oggi conosce solo per member_id o per telefono, e passare alla via nuova
       // senza che nessuno resti fuori.
       pmo_player_id: member.pmoPlayerId || null,
+      // 🆕⭐⭐ 2/08/2026 — «questa persona può prenotare?», detto come FATTO dal ponte.
+      // Regola del committente, 2/08: *«sul bot di Telegram non ci deve essere il codice
+      // Matchpoint, ma solamente il codice PMO, perché Matchpoint fra qualche tempo non ci
+      // sarà più»*. Finché c'è, però, la prenotazione finisce sul gestionale del circolo,
+      // che accetta solo i suoi clienti: la distinzione SERVE ancora, ma non deve vivere
+      // nel bot sotto forma di un codice che il bot conserva e interpreta.
+      // ⇒ La risponde CHI PARLA COL CIRCOLO, cioè questo ponte. Il bot chiede col codice
+      //   nostro e riceve un sì/no, senza mai vedere un codice Matchpoint.
+      // ⭐⭐ E il giorno del distacco NON si tocca il bot: qui questa riga diventa `true`
+      //   per tutti, e a valle non cambia nient'altro.
+      // ⚠️ `member_id` resta nella risposta per i chiamanti storici: si AGGIUNGE, non si
+      //   toglie — la stessa regola con cui è entrata la terza via dell'identità.
+      puo_prenotare: !!member.memberId,
       name: member.name,
       // Livello: proprietà dell'APP (Matchpoint lo riceve, non lo detta).
       // 0.5 è il valore di partenza delle schede nuove, cioè "da definire":
