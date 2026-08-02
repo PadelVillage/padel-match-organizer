@@ -182,11 +182,17 @@ caso('8. 🚨 OMONIMI: due persone con lo stesso nome non si scambiano la scheda
   const { ctx } = contesto(loc, righe);
   const p = ctx.pmoPianoRicollegamentoSchede(righe, loc);
   const perPrima = Object.fromEntries(p.azioni.map(a => [a.idPrima, a]));
+  // 🚨 I controlli DEVONO poggiare su un valore che viene dalla SCHEDA LOCALE agganciata —
+  //    `telefonoPrima` — non su `idDopo`/`codiceDopo`, che arrivano dalla riga del cloud e
+  //    restano giusti anche se si aggancia la scheda sbagliata. Scoperto sabotando: con
+  //    l'aggancio fatto per NOME questo caso restava VERDE, cioè non provava niente.
   return [p.azioni.length === 2,
           perPrima['zan-vecchio-A'].idDopo === 'cloud-A',
           perPrima['zan-vecchio-B'].idDopo === 'cloud-B',
-          perPrima['zan-vecchio-A'].codiceDopo === '000030',
-          perPrima['zan-vecchio-B'].codiceDopo === '000930'];
+          perPrima['zan-vecchio-A'].telefonoPrima === '+393386503339',
+          perPrima['zan-vecchio-B'].telefonoPrima === '+393318751694',
+          perPrima['zan-vecchio-A'].codicePrima === '000030',
+          perPrima['zan-vecchio-B'].codicePrima === '000930'];
 });
 
 // ── L'APPLICAZIONE ──────────────────────────────────────────────────────────────
