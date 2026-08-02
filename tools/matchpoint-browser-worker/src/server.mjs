@@ -9235,6 +9235,15 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         ok: true,
         service: 'pmo-matchpoint-browser-worker',
+        // 🚨 CHE COSA SA FARE questo processo, non che versione dice di essere. Nato da un
+        //    guasto vero del 3/08: il deploy era stato lanciato da un ramo NON ancora
+        //    spinto, quindi sulla VM era finito il codice VECCHIO — che non conosceva la
+        //    «prova a vuoto», ha ignorato la richiesta e ha CREATO un cliente vero mentre
+        //    l'interfaccia annunciava «niente è stato creato».
+        //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
+        //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
+        //    l'unico modo per accorgersi che il processo in servizio è indietro.
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',

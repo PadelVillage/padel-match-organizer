@@ -174,6 +174,26 @@ Deno.serve(async (req: Request) => {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
   }
 
+  // 🚨 PROVA A VUOTO: prima si CONTROLLA che il worker in servizio la sappia fare.
+  // Un worker vecchio non riconosce `soloRicerca`, lo ignora e CREA un cliente vero —
+  // successo il 3/08, con l'interfaccia che annunciava «niente è stato creato» mentre in
+  // Matchpoint nasceva la scheda 001099. Meglio rifiutarsi che creare per sbaglio.
+  if (client.soloRicerca === true) {
+    let sa: string[] = [];
+    try {
+      const h = await fetch(`${workerUrl}/health`, { headers: { 'Authorization': `Bearer ${workerApiKey}` } });
+      const hb = await h.json().catch(() => ({}));
+      sa = Array.isArray((hb as JsonMap).features) ? (hb as JsonMap).features as string[] : [];
+    } catch (_) {
+      return err(502, 'WORKER_UNREACHABLE', 'Non riesco a chiedere al worker che cosa sa fare: prova a vuoto annullata, non ho creato niente.');
+    }
+    if (!sa.includes('solo-ricerca')) {
+      return err(409, 'WORKER_TROPPO_VECCHIO',
+        'Il worker in servizio non conosce la prova a vuoto: se procedessi CREEREBBE un cliente vero. Non ho fatto niente. Aggiorna il worker e riprova.',
+        { featuresDelWorker: sa });
+    }
+  }
+
   let workerResult: JsonMap;
   try {
     workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client, operatore: actor.email });
