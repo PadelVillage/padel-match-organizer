@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.158';
+    const APP_VERSION = '6.159';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13194,6 +13194,49 @@ Grazie.`
       const localAll = Array.isArray(giocatori) ? giocatori : [];
       const localActive = localAll.filter(member => member && member.active !== false);
       const localTechnical = localActive.filter(isTechnicalMemberRecord);
+
+      // ── 🔎 CHI C'È NEL CLOUD E NON NEL BROWSER ────────────────────────────────────
+      // Chiesto da lui il 2/08/2026: dalla sua postazione risultavano 2778 soci contro i
+      // 2788 del cloud, 8 dei quali ATTIVI — gente che allo sportello non si trova. I conti
+      // qui sopra dicono QUANTI sono; questo dice CHI sono, che è l'unica cosa con cui si
+      // può capire il perché.
+      // ⭐ La colonna che conta è l'ultima: un record può mancare in due modi molto diversi,
+      //   e distinguerli separa due cause opposte —
+      //   · «non c'è»      → non è mai arrivato, o è stato scartato in ingresso;
+      //   · «altro ID»     → la persona c'è, ma la sua scheda locale ha un identificativo
+      //                      diverso da quello del cloud ⇒ da qualche parte se n'è creata una
+      //                      seconda copia, e le due non si riconoscono più fra loro.
+      // ⚠️ Sola lettura: nessun record viene toccato, né qui né altrove nel dry-run.
+      const localPerId = new Set();
+      const localPerTelefono = new Map();
+      const localPerCodice = new Map();
+      localAll.forEach(member => {
+        if (!member) return;
+        const id = cleanCell(member.id);
+        if (id) localPerId.add(id);
+        const tel = phoneDigitsForWhatsApp(member.phone);
+        if (tel && !localPerTelefono.has(tel)) localPerTelefono.set(tel, member);
+        const cod = cleanCell(member.memberId);
+        if (cod && !localPerCodice.has(cod)) localPerCodice.set(cod, member);
+      });
+      const missingRows = cloudRows
+        .filter(row => !row.deleted && !localPerId.has(cleanCell(row.payload?.id || '')))
+        .map(row => {
+          const gemello = (row.phoneKey && localPerTelefono.get(row.phoneKey))
+            || (row.memberId && localPerCodice.get(row.memberId))
+            || null;
+          return {
+            ...row,
+            cloudId: cleanCell(row.payload?.id || ''),
+            gemelloNome: gemello ? playerFullName(gemello) : '',
+            gemelloId: gemello ? cleanCell(gemello.id) : '',
+            modo: gemello ? 'altro_id' : 'assente'
+          };
+        })
+        .sort((a, b) => {
+          if (a.active !== b.active) return a.active ? -1 : 1;   // prima gli ATTIVI: sono quelli che pesano
+          return (a.fullName || '').localeCompare(b.fullName || '');
+        });
       const matchpointRows = cloudActiveRows.filter(row => !row.technical && row.matchpoint);
       const allMatchpointRows = cloudActiveRows.filter(row => row.matchpoint);
       const nonMatchpointRows = cloudActiveRows.filter(row => !row.technical && !row.matchpoint);
@@ -13268,6 +13311,10 @@ Grazie.`
           matchpointClientCount: parseInt(matchpointData?.clientCount, 10) || 0,
           cloudTechnical: technicalRows.length,
           localTechnical: localTechnical.length,
+          // Quanti record del cloud non si trovano nel browser, e in che modo mancano.
+          missingLocal: missingRows.length,
+          missingLocalActive: missingRows.filter(row => row.active).length,
+          missingLocalAltroId: missingRows.filter(row => row.modo === 'altro_id').length,
           matchpointMembers: matchpointRows.length,
           nonMatchpointMembers: nonMatchpointRows.length,
           approved: approvedRows.length,
@@ -13277,7 +13324,8 @@ Grazie.`
           deleted: deletedRows.length
         },
         rows: visibleRows,
-        allRows: classifiedRows
+        allRows: classifiedRows,
+        missingRows
       };
     }
 
@@ -13326,6 +13374,10 @@ Grazie.`
       const cards = [
         ['Cloud attivi', summary.cloudActive],
         ['Anagrafica attivi', summary.localActive],
+        // Il numero che spiega la differenza fra i due qui sopra: quanti record del cloud
+        // questo browser non ha. Sta subito dopo apposta — è la sottrazione che chiunque
+        // guardi quei due riquadri fa a mente.
+        ['Mancano a questo browser', summary.missingLocal || 0],
         ['Dashboard attivi', summary.dashboardActive],
         ['Clienti Matchpoint', summary.matchpointClientCount],
         ['Tecnici cloud esclusi', summary.cloudTechnical],
@@ -13365,9 +13417,38 @@ Grazie.`
       const capped = sourceRows.length > rows.length
         ? `<p class="member-count-audit-note">Vista limitata alle prime ${rows.length} righe operative. Il dry-run SQL allegato produce la lista completa.</p>`
         : '';
+      // ── 🔎 I soci che stanno nel cloud e NON in questo browser ────────────────────
+      // Sta PRIMA della tabella tecnica perché è la domanda che si fa chi lavora allo
+      // sportello — «quel socio esiste, perché non lo trovo?» — mentre il resto del
+      // pannello risponde a domande di manutenzione dei dati.
+      const missing = pmoMemberCountAuditState.missingRows || [];
+      const missingShown = missing.slice(0, 60);
+      const missingBlock = missing.length ? `
+        <div class="member-count-audit-note"><strong>🔎 ${escapeHtml(String(missing.length))} soci sono nel cloud ma non in questo browser</strong>
+          (${escapeHtml(String(missing.filter(r => r.active).length))} attivi). Non sono persi: la copia di questo computer è
+          incompleta. Aprendoli non li trovi nella ricerca soci.</div>
+        <div class="member-count-audit-table-wrap">
+          <table class="member-count-audit-table">
+            <thead><tr><th>Socio</th><th>Contatti</th><th>Stato</th><th>Aggiornato</th><th>In che modo manca</th></tr></thead>
+            <tbody>${missingShown.map(row => `
+              <tr>
+                <td><strong>${escapeHtml(row.fullName || '(senza nome)')}</strong><div class="routine-mini">Codice Matchpoint: ${escapeHtml(row.memberId || '—')}</div></td>
+                <td>${escapeHtml(row.phone || '—')}<div class="routine-mini">${escapeHtml(row.email || '—')}</div></td>
+                <td>${row.active ? 'Attivo' : 'Non attivo'}</td>
+                <td>${escapeHtml(pmoFormatDateTime(row.updatedAt) || '—')}</td>
+                <td>${row.modo === 'altro_id'
+                      ? `<strong>Doppia scheda</strong><div class="routine-mini">qui c'è come «${escapeHtml(row.gemelloNome || '?')}», ma con un altro identificativo</div>`
+                      : '<strong>Non c\'è proprio</strong><div class="routine-mini">nessuna scheda con questo telefono o codice</div>'}</td>
+              </tr>`).join('')}</tbody>
+          </table>
+        </div>
+        ${missing.length > missingShown.length ? `<p class="member-count-audit-note">Mostrati i primi ${missingShown.length} di ${missing.length}.</p>` : ''}
+      ` : `<div class="member-count-audit-note">✅ <strong>Nessun socio manca a questo browser</strong>: la copia locale ha tutti i record attivi del cloud.</div>`;
+
       target.innerHTML = `
         <div class="member-count-audit-summary">${cards}</div>
         <p class="member-count-audit-note">Dry-run generato ${escapeHtml(pmoFormatDateTime(pmoMemberCountAuditState.generatedAt))}. Nessun record e stato modificato. La vista principale mostra solo le correzioni approvate.</p>
+        ${missingBlock}
         ${approvedAction}
         ${diagnosticsToggle}
         ${table}
@@ -13461,7 +13542,7 @@ Grazie.`
           p_since: null
         }, 'cloud_sync', 'analizzare conteggi soci cloud');
         const result = pmoBuildMemberCountAudit(rows);
-        pmoMemberCountAuditState = { status:'ready', summary:result.summary, rows:result.rows, allRows:result.allRows, generatedAt:result.generatedAt };
+        pmoMemberCountAuditState = { status:'ready', summary:result.summary, rows:result.rows, allRows:result.allRows, missingRows:result.missingRows || [], generatedAt:result.generatedAt };
         pmoSetMemberCountAuditStatus(`Dry-run completato: ${result.summary.approved} soft-delete approvati, ${result.summary.restore || 0} ripristini approvati, ${result.summary.candidates} candidati verifica.`, 'success');
         pmoRenderMemberCountAuditPanel();
       } catch (err) {
