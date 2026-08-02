@@ -14857,6 +14857,23 @@ Grazie.`
       }
       return newMember;
     }
+    // Legge dalla risposta il «conflitto telefono» — quel numero in Matchpoint è già di
+    // un'altra persona — e ritorna chi ce l'ha, oppure null. 🚨 È una funzione a parte, non
+    // un `if` in mezzo alla chiamata di rete, perché è la parte che il banco può provare:
+    // una guardia che cerca solo la PAROLA «conflitto_telefono» nel file resta verde anche
+    // se qualcuno spegne il ramo, mentre qui sabotarla fa sparire la chiamata.
+    function pmoConflittoTelefonoDaRisposta(data, workerData) {
+      const esito = (data && data.esito) || (workerData && workerData.esito) || '';
+      if (esito !== 'conflitto_telefono') return null;
+      const c = (data && data.conflitto) || (workerData && workerData.conflitto) || {};
+      return {
+        intestatario: String((c && c.intestatario) || '').trim(),
+        codice: String((c && c.codice) || '').trim(),
+        idInterno: String((c && c.idInterno) || '').trim(),
+        motivo: String((c && c.motivo) || '').trim()
+      };
+    }
+
     async function pmoCreateMemberInMatchpoint(member, options = {}) {
       // notify=false → niente toast showAlert (lo usa l'assistente AI, che riporta l'esito in chat).
       const notify = options.notify !== false;
@@ -14898,8 +14915,8 @@ Grazie.`
         //    un'altra persona: non è stato creato NIENTE e non si adotta niente. Va
         //    riportato come tale — non come errore (non è rotto) e non come successo.
         const esito = (data && data.esito) || (workerData && workerData.esito) || '';
-        if (response.ok && data?.ok !== false && esito === 'conflitto_telefono') {
-          const conflitto = (data && data.conflitto) || (workerData && workerData.conflitto) || {};
+        const conflitto = pmoConflittoTelefonoDaRisposta(data, workerData);
+        if (response.ok && data?.ok !== false && conflitto) {
           if (notify) showAlert('⛔ Socio salvato in locale, ma NON creato in Matchpoint: quel telefono è già di '
             + (conflitto.intestatario || 'un altro cliente') + (conflitto.codice ? ' (codice ' + conflitto.codice + ')' : '') + '.', 'warning');
           return { status: 'conflitto', conflitto };

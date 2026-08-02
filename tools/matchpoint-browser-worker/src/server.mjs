@@ -3918,6 +3918,23 @@ function mpDecideCreazioneCliente(opts = {}) {
   return { azione: 'conflitto', motivo: cognomeOk ? 'nome_diverso' : 'intestatario_diverso' };
 }
 
+// Il criterio del buscador e' davvero quello del telefono? Predicato a parte, non un `if`
+// in mezzo al codice del browser: cosi' si puo' PROVARE, e sabotarlo si vede.
+function mpCriterioTelefonoOk(criterio) {
+  return /telefono/i.test(String(criterio == null ? '' : criterio));
+}
+
+// 🚨 «Cercato e non trovato» oppure «non ho POTUTO cercare»: da fuori sono identici, e
+// confonderli e' il difetto peggiore possibile qui — farebbe creare il doppione proprio
+// quando la difesa e' rotta. Percio' la distinzione e' una funzione PURA, provabile: legge
+// come e' andato ogni tentativo e dice se una ricerca vera c'e' stata.
+const MP_TENTATIVI_CERCATO_DAVVERO = ['nessun_risultato', 'nessuna_conferma', 'ficha_diretta_telefono_diverso'];
+function mpMotivoFinaleRicerca(tentativi) {
+  const lista = Array.isArray(tentativi) ? tentativi : [];
+  const cercatoDavvero = lista.some((t) => MP_TENTATIVI_CERCATO_DAVVERO.includes(t && t.how));
+  return cercatoDavvero ? 'telefono_non_trovato' : 'ricerca_non_riuscita';
+}
+
 // Cerca in Matchpoint una scheda col telefono dato. SOLA LETTURA: naviga e legge.
 // 🚨 Distingue «cercato e non trovato» da «non ho POTUTO cercare»: sono la stessa cosa
 //    solo per chi guarda l'esito. Se la pagina non si apre o il campo di ricerca non
@@ -3929,7 +3946,6 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
                   intestatario: '', telefonoScheda: '', tentativi: [] };
   if (!key) return esito;
   esito.motivo = 'ricerca_non_riuscita';   // finche' una ricerca vera non riesce
-  let cercatoDavvero = false;
 
   // Legge la scheda APERTA dai campi del form (gli stessi che usa l'aggiornamento):
   // piu' solido che spremere il titolo della pagina.
@@ -3986,7 +4002,7 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
         return o ? (o.text || o.value || '') : (el.value || '');
       }).catch(() => '');
       t.criterio = criterio;
-      if (!/telefono/i.test(String(criterio))) { t.how = 'criterio_non_impostato'; continue; }
+      if (!mpCriterioTelefonoOk(criterio)) { t.how = 'criterio_non_impostato'; continue; }
 
       const valBox = page.locator('#CC_ContentPlaceHolderBuscador_TextBoxValorBusqueda, input[id$="TextBoxValorBusqueda"]').first();
       if (!(await valBox.count().catch(() => 0))) { t.how = 'campo_ricerca_assente'; continue; }
@@ -4010,7 +4026,6 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
         const s = await leggiSchedaAperta();
         if (mpPhoneKey10(s.telefono) === key) { t.how = 'ficha_diretta'; accetta(s, 'ficha_diretta'); return esito; }
         t.how = 'ficha_diretta_telefono_diverso';
-        cercatoDavvero = true;
         continue;
       }
 
@@ -4044,7 +4059,7 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
       // 🚨 Nessuna riga col nostro numero E lista lunga = la ricerca NON ha filtrato
       //    (ci ha restituito l'elenco). Non e' un «non trovato»: e' un guasto.
       if (!conNumero.length && righe.length > 5) { t.how = 'lista_non_filtrata'; continue; }
-      if (!candidati.length) { t.how = 'nessun_risultato'; cercatoDavvero = true; continue; }
+      if (!candidati.length) { t.how = 'nessun_risultato'; continue; }
 
       const MAX_VERIFICHE = 5;
       if (candidati.length > MAX_VERIFICHE) t.troncato = candidati.length;   // niente tagli muti
@@ -4055,7 +4070,6 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
         const s = await leggiSchedaAperta();
         if (mpPhoneKey10(s.telefono) === key) conferme.push(s);
       }
-      cercatoDavvero = true;
       if (conferme.length === 1) { t.how = 'verificata_sulla_scheda'; accetta(conferme[0], 'verificata_sulla_scheda'); return esito; }
       if (conferme.length > 1) {
         t.how = 'piu_schede';
@@ -4072,7 +4086,7 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
     }
   }
 
-  esito.motivo = cercatoDavvero ? 'telefono_non_trovato' : 'ricerca_non_riuscita';
+  esito.motivo = mpMotivoFinaleRicerca(esito.tentativi);
   if (diagnostic) diagnostic.ricercaTelefonoTentativi = esito.tentativi;
   return esito;
 }

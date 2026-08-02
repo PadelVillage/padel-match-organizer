@@ -55,9 +55,19 @@ function estrai(sorgente, nome) {
 
 const ctx = { console: { log() {}, warn() {}, error() {} } };
 vm.createContext(ctx);
-vm.runInContext(['mpPhoneKey10', 'mpPhoneSearchTerms', 'mpNomeToken', 'mpDecideCreazioneCliente']
-  .map(n => estrai(worker, n)).join('\n'), ctx);
-const { mpPhoneKey10, mpPhoneSearchTerms, mpDecideCreazioneCliente } = ctx;
+vm.runInContext([
+  'const MP_TENTATIVI_CERCATO_DAVVERO = ' + (/const MP_TENTATIVI_CERCATO_DAVVERO = (\[[^\]]*\])/.exec(worker) || [, '[]'])[1] + ';',
+  ...['mpPhoneKey10', 'mpPhoneSearchTerms', 'mpNomeToken', 'mpDecideCreazioneCliente',
+      'mpCriterioTelefonoOk', 'mpMotivoFinaleRicerca'].map(n => estrai(worker, n)),
+].join('\n'), ctx);
+const { mpPhoneKey10, mpPhoneSearchTerms, mpDecideCreazioneCliente,
+        mpCriterioTelefonoOk, mpMotivoFinaleRicerca } = ctx;
+
+// La funzione dell'app che legge il conflitto dalla risposta: stessa estrazione, altro file.
+const ctxApp = { console: ctx.console };
+vm.createContext(ctxApp);
+vm.runInContext(estrai(app, 'pmoConflittoTelefonoDaRisposta'), ctxApp);
+const { pmoConflittoTelefonoDaRisposta } = ctxApp;
 
 const casi = [];
 const caso = (nome, fn) => casi.push({ nome, fn });
@@ -149,6 +159,59 @@ caso('15. secondo nome sulla scheda: basta il primo per riconoscersi', () => {
   return [d.azione === 'adotta'];
 });
 
+// ── 🚨 «CERCATO E NON TROVATO» ≠ «NON HO POTUTO CERCARE» ────────────────────────
+// Da fuori i due esiti sono identici: in tutti e due i casi non si è trovato niente.
+// Confonderli fa creare il doppione proprio quando la difesa è rotta.
+
+caso('16. 🚨 la ricerca ha girato a vuoto → «non c\'è»: si può creare', () => {
+  return [mpMotivoFinaleRicerca([{ how: 'nessun_risultato' }]) === 'telefono_non_trovato',
+          mpMotivoFinaleRicerca([{ how: 'criterio_non_impostato' }, { how: 'nessun_risultato' }]) === 'telefono_non_trovato'];
+});
+
+caso('17. 🚨 la ricerca non è MAI partita → «non ho potuto»: NON si crea', () => {
+  return [mpMotivoFinaleRicerca([{ how: 'criterio_ricerca_assente' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([{ how: 'criterio_non_impostato' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([{ how: 'campo_ricerca_assente' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([{ how: 'errore' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([]) === 'ricerca_non_riuscita'];
+});
+
+caso('18. 🚨 la lista tornata NON filtrata è un guasto, non un «non c\'è»', () => {
+  // Se il buscador ci restituisce l'elenco invece del risultato, concludere «non trovato»
+  // sarebbe l'atteso soddisfatto da un guasto.
+  return [mpMotivoFinaleRicerca([{ how: 'lista_non_filtrata' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([{ how: 'lettura_righe_fallita' }]) === 'ricerca_non_riuscita'];
+});
+
+caso('19. 🚨 il criterio di ricerca si riconosce, altrimenti la difesa è INERTE', () => {
+  return [mpCriterioTelefonoOk('Telefono cellulare') === true,
+          mpCriterioTelefonoOk('TELEFONO') === true,
+          mpCriterioTelefonoOk('Cliente') === false,
+          mpCriterioTelefonoOk('E-mail') === false,
+          mpCriterioTelefonoOk('') === false,
+          mpCriterioTelefonoOk(null) === false];
+});
+
+// ── L'APP legge il conflitto dalla risposta ─────────────────────────────────────
+
+caso('20. l\'app riconosce il conflitto e ne tira fuori chi ha quel numero', () => {
+  const c = pmoConflittoTelefonoDaRisposta(
+    { ok: true, esito: 'conflitto_telefono', conflitto: { intestatario: 'Rossi Mario', codice: '001234', idInterno: '1250', motivo: 'nome_diverso' } }, null);
+  return [!!c, c.intestatario === 'Rossi Mario', c.codice === '001234', c.idInterno === '1250'];
+});
+
+caso('21. gli altri esiti NON sono conflitti: creato e adottato passano oltre', () => {
+  return [pmoConflittoTelefonoDaRisposta({ ok: true, esito: 'creato', codice: '001300' }, null) === null,
+          pmoConflittoTelefonoDaRisposta({ ok: true, esito: 'adottato', codice: '001234' }, null) === null,
+          pmoConflittoTelefonoDaRisposta({ ok: true }, null) === null,
+          pmoConflittoTelefonoDaRisposta(null, null) === null];
+});
+
+caso('22. l\'esito letto anche quando arriva annidato sotto «worker»', () => {
+  const c = pmoConflittoTelefonoDaRisposta({ ok: true }, { esito: 'conflitto_telefono', conflitto: { intestatario: 'Bianchi Anna', codice: '000999' } });
+  return [!!c, c.intestatario === 'Bianchi Anna', c.codice === '000999'];
+});
+
 // ── 🚨 GUARDIE SULLA BASE E SULL'ANELLO DI MEZZO ─────────────────────────────────
 // I casi qui sopra proverebbero le funzioni anche se nessuno le chiamasse, e anche se il
 // dato che serve non arrivasse fin lì. La difesa vive su TRE file — app, edge, worker — e
@@ -166,24 +229,27 @@ const guardie = [
   //    nasce proprio quando la difesa è rotta — l'atteso soddisfatto da un guasto.
   ['«non ho potuto cercare» FERMA la creazione',
     /ricerca_non_riuscita/.test(corpoCreate) && /CLIENT_PHONE_CHECK_FAILED/.test(corpoCreate)],
-  ['la ricerca distingue i due modi di non trovare',
-    /ricerca_non_riuscita/.test(estrai(worker, 'mpCercaClientePerTelefono'))
-      && /telefono_non_trovato/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
+  // ⚠️ Queste due cercano la CHIAMATA, non la parola: una guardia che cerca un nome nel
+  //    testo resta verde anche quando il ramo è spento (tre sabotaggi su sei l'hanno
+  //    dimostrato). Spegnendo il controllo la chiamata sparisce, e qui si vede.
+  ['la ricerca chiama il giudice dei due modi di non trovare',
+    /mpMotivoFinaleRicerca\(/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
+  ['la ricerca RILEGGE il criterio invece di darlo per buono',
+    /mpCriterioTelefonoOk\(/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   ['si può scavalcare SOLO con forzaCreazione', /forzaCreazione/.test(corpoCreate)],
   ['la ricerca NON scrive niente su Matchpoint',
     !/ButtonActualizar|__doPostBack\('ctl01/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
-  // 🚨 La difesa INERTE: se la voce «Telefono cellulare» non venisse selezionata, la
-  //    ricerca girerebbe sul criterio di default e concluderebbe «non c'è» — verde da
-  //    fuori, spenta dentro. Perciò il criterio si RILEGGE dopo averlo impostato.
-  ['il criterio scelto viene RILETTO, non dato per buono',
-    /criterio_non_impostato/.test(estrai(worker, 'mpCercaClientePerTelefono'))
-      && /selectedIndex/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   // ── L'ANELLO DI MEZZO: i tre file devono dire gli stessi nomi ──
   ['l\'EDGE passa forzaCreazione al worker', /forzaCreazione/.test(edge)],
   ['l\'EDGE riconosce l\'esito «conflitto_telefono»', /conflitto_telefono/.test(edge)],
   ['l\'EDGE non dice «Cliente creato» quando ha adottato', /adottato/.test(edge)],
   ['l\'APP manda forzaCreazione', /forzaCreazione:\s*options\.forzaCreazione/.test(app)],
-  ['l\'APP riconosce «conflitto_telefono»', /conflitto_telefono/.test(app)],
+  // ⚠️ Si CONTANO le occorrenze, meno la definizione: cercare la firma
+  //    `pmoConflittoTelefonoDaRisposta(data, workerData)` faceva match sulla RIGA CHE LA
+  //    DEFINISCE, quindi il controllo trovava sé stesso e restava verde anche con la
+  //    chiamata cancellata. Scoperto sabotando, non leggendo.
+  ['l\'APP CHIAMA il lettore del conflitto (non solo lo definisce)',
+    (app.match(/pmoConflittoTelefonoDaRisposta\(/g) || []).length >= 2],
   ['l\'APP offre le due risposte invece di un vicolo cieco',
     /svcMakeStepButtons\(\[_stessa, _altra\]/.test(app)],
   ['il bottone «crea lo stesso» accende davvero forzaCreazione',
