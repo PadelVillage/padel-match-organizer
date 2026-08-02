@@ -195,6 +195,36 @@ caso('12. un socio senza codice Matchpoint non viene agganciato da un codice vuo
   return [esito.visti === 0, idDi(soci, 'g') === ''];
 });
 
+caso('13. 🚨 il codice cercato NON deve agganciare chi ha quel numero come ID INTERNO', () => {
+  // Rocco ha id interno 1068, che è identico al CODICE cliente di Longato (001068 → 1068).
+  // Cercando il codice 001068 si deve trovare Longato e nessun altro. Questo caso diventa
+  // rosso il giorno in cui qualcuno facesse entrare l'id interno nel confronto — che è
+  // esattamente il guasto riparato nel worker il 2/08/2026.
+  // 🚨 Si prova con Rocco PRIMA e DOPO Longato nell'elenco. Scritto solo nel secondo ordine
+  //    il caso restava verde anche col sabotaggio attivo: la ricerca si ferma al primo che
+  //    combacia, quindi trovava Longato per motivi di ORDINE, non di correttezza. Un verde
+  //    che dipende da com'è ordinato l'array non sta provando niente.
+  const esiti = [];
+  for (const roccoPrima of [true, false]) {
+    const soci = SOCI_VERI();
+    const rocco = { id: 'z', firstName: 'Rocco', surname: 'Collisione', memberId: '002000', matchpointIdInterno: '1068' };
+    if (roccoPrima) soci.unshift(rocco); else soci.push(rocco);
+    const b = nuovoBanco(soci);
+    const esito = b.ctx.pmoAssorbiIdInterniMatchpoint(
+      { worker: { resolvedPlayers: [{ nome: 'Stefano Longato', codiceCliente: '001068', idPeople: '1089' }] } }, 'prova');
+    esiti.push(esito.nuovi === 1, idDi(soci, 'a') === '1089', idDi(soci, 'z') === '1068');
+  }
+  return esiti;
+});
+
+// ⚠️ NOTA ONESTA sul banco, scritta dopo averlo sabotato (2/08/2026): i casi 2 e 3 restano
+// VERDI anche se la chiave normalizza togliendo gli zeri invece di aggiungerli. Non è un buco
+// del banco: è che quella normalizzazione non è ciò che protegge dalla collisione — si applica
+// a entrambi i lati del confronto, quindi cambiarla non cambia niente. A discriminare sul
+// serio sono il caso 8 (chi ripiegasse sul NOME diventa rosso) e il 13 (chi facesse entrare
+// l'id interno nel confronto diventa rosso). I casi 2 e 3 restano perché descrivono il
+// comportamento atteso su due persone vere, ma da soli non provano la difesa.
+
 // ── Esecuzione ───────────────────────────────────────────────────────────────────
 let passati = 0, falliti = 0;
 console.log('BANCO — raccolta degli ID interni Matchpoint\n');

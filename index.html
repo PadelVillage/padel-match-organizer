@@ -11067,10 +11067,16 @@ Grazie.`
       return /^\d+$/.test(v) ? v : '';
     }
 
-    // Chiave di confronto per i CODICI CLIENTE (solo fra loro). Normalizza a 6 cifre
-    // AGGIUNGENDO gli zeri davanti invece di toglierli: '140' e '000140' sono lo stesso
-    // codice, ma se si togliessero gli zeri il codice '000140' diventerebbe '140' e
-    // potrebbe passare per l'id interno 140 di un'altra persona. Si allunga, non si accorcia.
+    // Chiave di confronto per i CODICI CLIENTE, e SOLO fra loro. Porta tutti a 6 cifre così
+    // '140' e '000140' si riconoscono uguali: è tolleranza sul formato, niente di più.
+    // ⚠️ Attenzione a non scambiarla per la difesa contro la collisione fra le due numerazioni:
+    //    NON lo è, ed è stato provato — normalizzare togliendo gli zeri invece che aggiungendoli
+    //    lascia il comportamento IDENTICO, perché la chiave si applica a entrambi i lati.
+    // ⭐ La difesa vera sta nella forma del codice: un id interno non entra mai in un confronto,
+    //    in nessun ramo. Si confrontano codici con codici, e basta. Se un domani qualcuno lo
+    //    facesse entrare qui dentro, gli zeri davanti sarebbero l'ultima barriera rimasta
+    //    ('000140' resta diverso da '140') — ma è la seconda fila, non la prima.
+    //    Il banco se ne accorgerebbe: test/id-interno-matchpoint.test.mjs, caso 13.
     function pmoChiaveCodiceCliente(v) {
       const s = cleanCell(v || '');
       if (!/^\d+$/.test(s)) return '';
