@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.152';
+    const APP_VERSION = '6.153';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41554,6 +41554,60 @@ Per confermare scrivi ELIMINA.`);
     if (st && st.box && cont && cont.contains(st.box)) { cont.appendChild(st.box); cont.scrollTop = cont.scrollHeight; }
   }
 
+  // ⭐ Chi è GIÀ in questa prenotazione — chiesto dal committente il 2/08/2026 guardando
+  // l'elenco «Quale «aprea»?»: proponeva Marco e Laura anche dopo averli inseriti, perché
+  // i suggerimenti sono l'ANAGRAFICA filtrata per nome e non hanno mai guardato la scheda.
+  // «Già dentro» = il roster letto da Matchpoint MENO quelli che stai togliendo, PIÙ quelli
+  // appena aggiunti e non ancora salvati (se no ti ripropone chi hai messo un secondo fa).
+  //
+  // 🚨⭐⭐ SU COSA SI CONFRONTA, e perché non è il codice cliente.
+  // Matchpoint dà a ogni persona DUE numeri in numerazioni diverse: il codice cliente della
+  // tendina (memberId, es. 000140) e l'id interno (es. 147). Nel roster della scheda
+  // `idCliente` è l'ID INTERNO (o il `codice` del record, che è la stessa cosa — vedi la
+  // normalizzazione del roster), e l'anagrafica quell'id NON ce l'ha quasi mai
+  // (`matchpointIdInterno` è vuoto per la gran parte dei soci: Laura e Marco Aprea inclusi).
+  // ⇒ Per il ROSTER l'unico appiglio affidabile è il NOME, confrontato per INTERO e in modo
+  // ESATTO — mai per sottostringa: «Aprea» dentro «Marco Aprea» nasconderebbe Laura, che è
+  // esattamente il difetto del worker riparato lo stesso giorno (PR #624).
+  // Confrontare `idCliente` col codice cliente è LO STESSO ERRORE: qui non si fa.
+  // Per i chip in `st.add`, invece, l'app conosce i propri codici cliente → confronto esatto.
+  function _staffCalNrmNome(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  //
+  // 🚨⭐⭐ E QUANDO IL NOME NON BASTA, NON SI INDOVINA: si mostra. Obiezione del committente,
+  // 2/08/2026: *«se ti basi su nome e cognome ci possono essere degli omonimi»*. Vera e
+  // misurata su PROD: **12 gruppi di omonimi esatti, 24 soci**. Nascondere per nome uno di
+  // due omonimi vorrebbe dire IMPEDIRE di aggiungere l'altro — un danno peggiore del
+  // fastidio che si voleva togliere. Quindi con `nomeAmbiguo` il confronto per nome si
+  // spegne e resta solo l'id: nel dubbio il socio COMPARE, come faceva prima.
+  // ⇒ Questo filtro può sbagliare solo per ECCESSO (riproporre uno già dentro), mai per
+  // difetto (nascondere uno che manca).
+  function _staffCalGiaInPrenotazione(member, st, nomeAmbiguo) {
+    if (!st || !member) return false;
+    const nome = nomeAmbiguo ? '' : _staffCalNrmNome(_staffCalPlayerName(member, ''));
+    const idInterno = _staffCalPlayerCode(member);    // matchpointIdInterno — spesso VUOTO
+    const codCliente = _staffCalClientCode(member);   // memberId (codice cliente)
+    if (!nome && !idInterno && !codCliente) return false;
+    // 1) Aggiunti in questa sessione, non ancora salvati. Qui il codice cliente è dell'app
+    //    su ENTRAMBI i lati → confronto esatto, e regge anche fra omonimi.
+    const inAdd = (st.add || []).some(function (c) {
+      const cc = String((c && c.codiceCliente) || '').trim();
+      if (cc && codCliente) return cc === codCliente;
+      return !!nome && _staffCalNrmNome(c && c.nome) === nome;
+    });
+    if (inAdd) return true;
+    // 2) Già in scheda su Matchpoint, esclusi quelli marcati per la rimozione.
+    return (st.roster || []).some(function (p) {
+      if (!p || (st.remove && st.remove[p.idx])) return false;
+      const pid = String(p.idCliente == null ? '' : p.idCliente).replace(/\D/g, '').replace(/^0+/, '');
+      const mid = String(idInterno || '').replace(/\D/g, '').replace(/^0+/, '');
+      if (pid && mid) return pid === mid;           // stesso namespace: id interno
+      return !!nome && _staffCalNrmNome(p.nome) === nome;
+    });
+  }
+
   function staffCalPlayersAdd() {
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
@@ -41567,12 +41621,39 @@ Per confermare scrivi ELIMINA.`);
       staffCalBringEditorToTop();
       return;
     }
-    const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
+    // Si chiedono PIÙ candidati del necessario perché il filtro «già dentro» ne toglie: con i
+    // soliti 6, tre omonimi già in campo lascerebbero fuori quello buono. Si ritagliano dopo.
+    const _suggTutti = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 12) : [];
+    // Un nome è AMBIGUO se fra i candidati di questa stessa ricerca compare più di una volta:
+    // due omonimi esatti escono sempre insieme, quindi l'ambiguità si vede qui, senza
+    // interrogare tutta l'anagrafica. Per loro il filtro si spegne (vedi sopra).
+    const _quantiConQuelNome = {};
+    _suggTutti.forEach(function (s) {
+      const n = _staffCalNrmNome(_staffCalPlayerName(s.member, ''));
+      if (n) _quantiConQuelNome[n] = (_quantiConQuelNome[n] || 0) + 1;
+    });
+    const sugg = _suggTutti.filter(function (s) {
+      const n = _staffCalNrmNome(_staffCalPlayerName(s.member, ''));
+      return !_staffCalGiaInPrenotazione(s.member, st, !!n && _quantiConQuelNome[n] > 1);
+    }).slice(0, 6);
     const addResolved = function(member) {
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
       staffCalRenderPlayersEditor();
       staffCalBringEditorToTop();
     };
+    if (sugg.length === 0 && _suggTutti.length) {
+      // ⭐ I candidati C'ERANO, e sono tutti GIÀ in questa prenotazione. Va detto così: il
+      // messaggio «non è tra i soci» qui sotto sarebbe FALSO e manderebbe a cercarli in
+      // Anagrafica. E non è un vicolo cieco: si dice anche cosa fare se si cercava altro.
+      const _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return x; };
+      const _nomi = _suggTutti.map(function (s) { return _staffCalPlayerName(s.member, ''); })
+        .filter(Boolean).map(_e);
+      const _chi = (_nomi.length === 1)
+        ? '<strong>' + _nomi[0] + '</strong> è <strong>già in questa prenotazione</strong>'
+        : 'Sono <strong>già in questa prenotazione</strong>: <strong>' + _nomi.join('</strong>, <strong>') + '</strong>';
+      svcAddMessage('system', '👥 ' + _chi + '.<br><span style="color:var(--text-muted);font-size:.78rem;">Se cercavi un\'altra persona, scrivi <strong>nome e cognome per esteso</strong>; per un occasionale aggiungi <strong>Ospite</strong>.</span>');
+      return;
+    }
     if (sugg.length === 0) {
       // Regola (parità con l'assistente + no-nuovi-nomi su Matchpoint): un nome NON in anagrafica
       // NON va aggiunto grezzo. Il worker lo rifiuterebbe HARD (PLAYER_ID_NOT_LOCKED: autocomplete
