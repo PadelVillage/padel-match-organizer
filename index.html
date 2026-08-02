@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.156';
+    const APP_VERSION = '6.157';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -11046,6 +11046,102 @@ Grazie.`
       // SOLO il codice cliente numerico: un PMO- qui non è mai stato un codice Matchpoint.
       const v = cleanCell((g && g.memberId) || '');
       return /^\d{3,}$/.test(v) ? v : '';
+    }
+
+    // ── IL TERZO NUMERO: l'ID INTERNO di Matchpoint ──────────────────────────────
+    // Matchpoint dà a ogni cliente DUE numeri diversi: il «codice cliente» che si vede
+    // nella tendina («000140-Nome», qui sopra in pmoIdMatchpoint) e un «id interno» che
+    // usa lui per le sue pagine (FichaCliente.aspx?id=<N>). Sono SCORRELATI: Stefano
+    // Longato ha codice 001068 e id interno 1089, Alberto Modanese ha codice 001089.
+    // 🚨 Cioè il codice di uno è identico all'id interno di un altro — ed è esattamente
+    //   la coppia di numerazioni che il 2/08 ha fatto sparire Laura Aprea da una lezione
+    //   (il worker le confondeva). Perciò qui i due non si toccano MAI: il codice serve
+    //   solo a RICONOSCERE il socio, l'id interno solo a essere SCRITTO. Nessun confronto
+    //   fra i due, in nessun ramo: è una garanzia strutturale, non una promessa.
+    // ⭐ A cosa serve: senza id interno ogni confronto con una riga di Matchpoint deve
+    //   ripiegare sul NOME, e di omonimi esatti ce ne sono 12 gruppi (24 soci).
+    // ⚠️ NON sostituisce l'«ID giocatore Padel Village», che resta il perno: questo è un
+    //   attributo esterno, utile finché c'è il ponte con Matchpoint.
+    function pmoIdInternoMatchpoint(g) {
+      const v = cleanCell((g && g.matchpointIdInterno) || '');
+      return /^\d+$/.test(v) ? v : '';
+    }
+
+    // Chiave di confronto per i CODICI CLIENTE (solo fra loro). Normalizza a 6 cifre
+    // AGGIUNGENDO gli zeri davanti invece di toglierli: '140' e '000140' sono lo stesso
+    // codice, ma se si togliessero gli zeri il codice '000140' diventerebbe '140' e
+    // potrebbe passare per l'id interno 140 di un'altra persona. Si allunga, non si accorcia.
+    function pmoChiaveCodiceCliente(v) {
+      const s = cleanCell(v || '');
+      if (!/^\d+$/.test(s)) return '';
+      return s.length < 6 ? s.padStart(6, '0') : s;
+    }
+
+    // Il worker mette in `resolvedPlayers` i giocatori che ha davvero aggiunto, con il loro
+    // id interno. La risposta però arriva incartata in modi diversi a seconda dell'operazione
+    // (`worker_result` per la creazione, `worker` per la modifica), quindi si scarta l'involucro.
+    function pmoResolvedPlayersDaRisposta(risposta) {
+      if (!risposta || typeof risposta !== 'object') return [];
+      const rami = [risposta, risposta.worker_result, risposta.worker, risposta.result];
+      for (const r of rami) {
+        if (r && typeof r === 'object' && Array.isArray(r.resolvedPlayers)) return r.resolvedPlayers;
+      }
+      return [];
+    }
+
+    // 🆔 RACCOGLIE gli id interni che il worker ci ha già mandato e li attacca ai soci.
+    // Il worker quel numero lo aggancia a ogni giocatore che aggiunge a una prenotazione, e
+    // fino alla 6.156 l'app lo buttava via: così ce l'avevano 9 soci su 2788. Da qui in poi
+    // ogni socio che passa da una prenotazione se lo porta a casa da solo.
+    // 🚨 Se il socio non si riconosce dal codice NON si ripiega sul nome: tutto questo lavoro
+    //   serve proprio a smettere di usare il nome, e ripiegarci qui rimetterebbe dentro il
+    //   rischio omonimi dalla porta di servizio. Meglio non scrivere niente e dirlo nel log.
+    // ⚠️ Su TEST non passa mai di qui: le prenotazioni sono simulate, il worker non risponde
+    //   e `resolvedPlayers` non esiste. Provarlo dal vivo si può solo su PROD.
+    function pmoAssorbiIdInterniMatchpoint(risposta, contesto) {
+      const esito = { visti: 0, nuovi: 0, corretti: 0, ignoti: 0 };
+      const lista = pmoResolvedPlayersDaRisposta(risposta);
+      if (!lista.length) return esito;
+      const dove = String(contesto || 'prenotazione');
+      const toccati = [];
+      for (const voce of lista) {
+        const idInterno = cleanCell(voce && voce.idPeople);
+        const chiave = pmoChiaveCodiceCliente(voce && voce.codiceCliente);
+        if (!/^\d+$/.test(idInterno) || !chiave) continue;
+        esito.visti++;
+        const idx = giocatori.findIndex(g => pmoChiaveCodiceCliente(pmoIdMatchpoint(g)) === chiave);
+        if (idx < 0) {
+          esito.ignoti++;
+          console.info('[id-interno] codice ' + chiave + ' non è di nessun socio in anagrafica (' + dove + '): non scrivo niente.');
+          continue;
+        }
+        const prima = pmoIdInternoMatchpoint(giocatori[idx]);
+        if (prima === idInterno) continue;
+        giocatori[idx].matchpointIdInterno = idInterno;
+        toccati.push(giocatori[idx]);
+        if (prima) {
+          esito.corretti++;
+          // Non dovrebbe succedere: l'id interno di una persona non cambia. Se cambia, quello
+          // appena letto da Matchpoint è il più fresco — ma va visto, perché è un campanello.
+          console.warn('[id-interno] codice ' + chiave + ': era ' + prima + ', Matchpoint ora dice ' + idInterno + ' (' + dove + ').');
+        } else {
+          esito.nuovi++;
+        }
+      }
+      if (!toccati.length) return esito;
+      save('giocatori', giocatori);
+      try {
+        // Un solo giro di rete per prenotazione, non uno per giocatore.
+        const records = toccati.map(m => pmoBuildMemberCloudRecord(m)).filter(Boolean);
+        if (records.length) {
+          pmoSyncCloudRecordsNow(records, 'salvare l\'ID interno Matchpoint dei giocatori')
+            .catch(err => console.warn('[id-interno] non sono riuscito a salvarli nel cloud: ' + (err && err.message ? err.message : err)));
+        }
+      } catch (err) {
+        console.warn('[id-interno] errore preparando il salvataggio cloud: ' + (err && err.message ? err.message : err));
+      }
+      console.info('[id-interno] ' + dove + ': ' + esito.nuovi + ' nuovi, ' + esito.corretti + ' corretti, ' + esito.ignoti + ' non riconosciuti, su ' + esito.visti + ' visti.');
+      return esito;
     }
 
     function ensureMemberId(member) {
@@ -15354,6 +15450,7 @@ Grazie.`
               <div class="member-form-grid">
                 <div><label>ID giocatore Padel Village</label><input value="${escapeHtml(pmoIdPadelVillage(g) || '-')}" readonly title="Il nostro identificatore. È il riferimento del gestionale e del bot, e resta valido anche senza Matchpoint."></div>
                 <div><label>ID giocatore Matchpoint</label><input value="${escapeHtml(pmoIdMatchpoint(g) || '-')}" readonly title="Il codice cliente di Matchpoint (quello della tendina «000140-Nome»). Vuoto per chi non è cliente del circolo."></div>
+                ${pmoIdInternoMatchpoint(g) ? `<div><label>ID interno Matchpoint</label><input value="${escapeHtml(pmoIdInternoMatchpoint(g))}" readonly title="Il numero con cui Matchpoint identifica il socio nelle sue pagine. È DIVERSO dal codice cliente qui sopra e non si può calcolare: se lo prende da solo quando il socio entra in una prenotazione. Serve a riconoscerlo senza passare dal nome (gli omonimi)."></div>` : ''}
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
@@ -42083,6 +42180,9 @@ Per confermare scrivi ELIMINA.`);
           // ⭐ È QUI che la modifica entra nel calendario, e solo qui: Matchpoint ha detto sì.
           //    Col roster AUTOREVOLE del worker, così i nomi sono quelli veri.
           const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
+          // 🆔 Nella stessa risposta il worker dice l'id interno Matchpoint dei giocatori che ha
+          // aggiunto: si raccoglie prima che la risposta venga buttata. → pmoAssorbiIdInterniMatchpoint
+          try { pmoAssorbiIdInterniMatchpoint(data, 'modifica prenotazione'); } catch (e) { console.warn('[id-interno] ' + (e && e.message ? e.message : e)); }
           _spegniPuntino();
           _applicaModifiche(finalRoster);
           _setEditSyncNote('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
@@ -42774,7 +42874,17 @@ Per confermare scrivi ELIMINA.`);
         try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
       } catch { data = null; }
       if (!data) continue;
-      if (data.status === 'done') return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null };
+      if (data.status === 'done') {
+        // 🆔 Prima di buttare via la risposta: il worker ci ha appena detto l'id interno
+        // Matchpoint di ogni giocatore che ha aggiunto. Si raccoglie qui perché questo è
+        // l'UNICO punto in cui passano tutte e tre le strade della creazione (partita a
+        // mano, lezione, assistente): agganciarlo ai tre chiamanti sarebbe stato lo stesso
+        // lavoro fatto tre volte, con due occasioni in più di dimenticarsene.
+        // ⚠️ Non deve poter far fallire una prenotazione RIUSCITA: qualunque cosa vada
+        //    storta qui resta un guaio di anagrafica, non della prenotazione.
+        try { pmoAssorbiIdInterniMatchpoint(data, 'creazione prenotazione'); } catch (e) { console.warn('[id-interno] ' + (e && e.message ? e.message : e)); }
+        return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null };
+      }
       if (data.status === 'error') return { status: 'error', error: data.error || data.message };
       // 'pending' → continua
     }
