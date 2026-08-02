@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.154';
+    const APP_VERSION = '6.155';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10996,10 +10996,25 @@ Grazie.`
       return normalizeKey(playerFullName(member) || member?.name || '');
     }
 
-    function nextMemberId() {
-      memberIdCounter = (parseInt(memberIdCounter, 10) || 0) + 1;
-      save('memberIdCounter', memberIdCounter);
-      return `PMO-${String(memberIdCounter).padStart(6, '0')}`;
+    // 🆔 Il prossimo «ID giocatore Padel Village». Sostituisce nextMemberId(), che generava
+    // lo stesso formato ma lo scriveva in `memberId` — cioè nel campo del codice Matchpoint.
+    // 🚨⭐ Il numero si ricava dai DATI (il massimo già assegnato fra i soci in memoria, che
+    // arrivano dal cloud), NON più da un contatore in `localStorage`: quel contatore viveva
+    // nel singolo browser, e il 2/08/2026 si è misurato il danno — i codici di TEST e PROD
+    // erano completamente scorrelati (0 uguali su 15 confrontati), perché nati da postazioni
+    // diverse che contavano ognuna per conto suo.
+    // ⚠️ Limite noto e accettato: due postazioni che creano un socio nello STESSO momento
+    // leggono lo stesso massimo e propongono lo stesso numero. Resta molto meglio di prima
+    // (il contatore locale divergeva sempre, non solo in contemporanea), ma il giorno che
+    // servisse la garanzia piena il numero va chiesto al database, non al browser.
+    function nextPmoPlayerId() {
+      const list = Array.isArray(giocatori) ? giocatori : [];
+      let max = 0;
+      for (const m of list) {
+        const n = parseInt(String((m && m.pmoPlayerId) || '').replace(/\D/g, ''), 10);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+      return `PMO-${String(max + 1).padStart(6, '0')}`;
     }
 
     // Etichetta a VIDEO: codice Matchpoint numerico -> "ID-MP-001017". PMO-.../vuoto restano com'erano.
@@ -11036,7 +11051,14 @@ Grazie.`
     function ensureMemberId(member) {
       if (!member) return member;
       if (!member.id) member.id = makeId();
-      if (!member.memberId) member.memberId = nextMemberId();
+      // ⭐ Il codice PMO è l'«ID giocatore Padel Village» e vive in `pmoPlayerId`. In
+      //   `memberId` NON ci torna: quello da oggi è SOLO il codice cliente Matchpoint.
+      //   Se un PMO- è rimasto nel campo vecchio (soci di prima della separazione), è suo
+      //   e trasloca qui invece di essere buttato.
+      if (!member.pmoPlayerId) {
+        const _vecchio = cleanCell(member.memberId || '');
+        member.pmoPlayerId = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
+      }
       return member;
     }
 
@@ -11567,6 +11589,10 @@ Grazie.`
 
     function migrateMemberIds() {
       let changed = false;
+      // ⚠️ RESIDUO INERTE (2/08/2026): `memberIdCounter` non genera più niente — i codici
+      // Padel Village li dà nextPmoPlayerId(), che legge il massimo dai dati. Questo blocco
+      // resta solo perché la variabile è intrecciata con backup/ripristino/azzeramento, e
+      // toglierla di qui vorrebbe dire toccare quelle righe. Non fidarsi del suo valore.
       let maxCounter = parseInt(memberIdCounter, 10) || 0;
       (Array.isArray(giocatori) ? giocatori : []).forEach(g => {
         const match = cleanCell(g?.memberId || '').match(/^PMO-(\d+)$/i);
@@ -11579,7 +11605,15 @@ Grazie.`
       giocatori.forEach(g => {
         if (!g) return;
         if (!g.id) { g.id = makeId(); changed = true; }
-        if (!g.memberId) { g.memberId = nextMemberId(); changed = true; }
+        // ⭐ Si garantisce l'ID Padel Village, NON il codice Matchpoint: quello o ce l'ha
+        //   (perché è cliente del circolo) o resta vuoto — inventarlo non lo rende vero.
+        //   Un PMO- rimasto nel campo vecchio trasloca qui.
+        if (!g.pmoPlayerId) {
+          const _vecchio = cleanCell(g.memberId || '');
+          g.pmoPlayerId = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
+          changed = true;
+        }
+        if (/^PMO-/i.test(cleanCell(g.memberId || ''))) { g.memberId = ''; changed = true; }
         const normalized = normalizeImportedPlayerNameParts(g.firstName || '', g.surname || '');
         if (normalized.firstName && normalized.firstName !== g.firstName) { g.firstName = normalized.firstName; changed = true; }
         if (normalized.surname && normalized.surname !== g.surname) { g.surname = normalized.surname; changed = true; }
@@ -12547,9 +12581,18 @@ Grazie.`
               const isMatchpointCode = v => !!v && !/^PMO-/i.test(v);
               // Adotta il codice Matchpoint (es. 000004) al posto del segnaposto locale PMO-...
               if (isMatchpointCode(imported)) return imported;
-              if (local) return local;
-              if (imported) return imported;
-              return nextMemberId();
+              if (isMatchpointCode(local)) return local;
+              // 🚨⭐ Nessun codice Matchpoint da nessuna delle due parti ⇒ il campo resta VUOTO.
+              // Prima qui finiva un `PMO-...` inventato, e alla visita successiva il codice
+              // Matchpoint glielo scriveva sopra: l'ID nostro veniva CANCELLATO da quello loro.
+              // Ora il PMO ha un campo suo (pmoPlayerId, sotto) e nessuno glielo porta via.
+              return '';
+            })(),
+            pmoPlayerId: (function(){
+              const gia = cleanCell(existing.pmoPlayerId || '');
+              if (gia) return gia;
+              const vecchio = cleanCell(existing.memberId || '');
+              return /^PMO-/i.test(vecchio) ? vecchio : nextPmoPlayerId();
             })(),
             firstName: titleCaseNamePart(existing.firstName || member.firstName),
             surname: titleCaseNamePart(existing.surname || member.surname),
@@ -15537,7 +15580,12 @@ Grazie.`
       giocatori[idx] = {
         ...current,
         id: current.id || makeId(),
-        memberId: current.memberId || nextMemberId(),
+        // Il codice Matchpoint si lascia com'è: se non c'è, non si inventa (un PMO- qui
+        // non è mai stato un codice del circolo). L'ID nostro si garantisce, e se era
+        // rimasto nel campo vecchio trasloca.
+        memberId: /^PMO-/i.test(cleanCell(current.memberId || '')) ? '' : (current.memberId || ''),
+        pmoPlayerId: cleanCell(current.pmoPlayerId || '')
+          || (/^PMO-/i.test(cleanCell(current.memberId || '')) ? cleanCell(current.memberId) : nextPmoPlayerId()),
         ...nextEditable,
         name: fullName,
         availabilityProfile: {
