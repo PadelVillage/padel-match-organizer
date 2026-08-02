@@ -8021,7 +8021,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.165';
+    const APP_VERSION = '6.166';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43499,8 +43499,19 @@ Per confermare scrivi ELIMINA.`);
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       const ok = response.ok && data?.ok !== false;
-      const lines = [ok ? '🔎 Prova a vuoto completata — NIENTE è stato creato'
-                        : `❌ Errore HTTP ${response.status}`];
+      // 🚨 L'intestazione dice quello che è SUCCESSO, non quello che si sperava. La prima
+      //    versione annunciava «NIENTE è stato creato» come titolo fisso: il 3/08 l'ha
+      //    scritto sopra una risposta che diceva `"creato": true, "codice": "001099"`,
+      //    perché sulla VM girava un worker vecchio che aveva ignorato la richiesta di
+      //    prova a vuoto. Una frase rassicurante scritta senza guardare l'esito è
+      //    esattamente il falso successo che questo lavoro serve a togliere di mezzo —
+      //    e faceva più danno qui, nello strumento che dovrebbe smascherarlo.
+      const _es = data?.esito || (data?.worker && data.worker.esito) || '';
+      const _creato = _es === 'creato' || data?.worker?.creato === true;
+      const lines = [!ok ? `❌ Errore HTTP ${response.status}`
+                   : _creato ? '🚨 ATTENZIONE: NON era una prova a vuoto — è stata CREATA una scheda vera'
+                   : _es === 'solo_ricerca' ? '🔎 Prova a vuoto completata — niente è stato creato'
+                   : `⚠️ Esito inatteso «${_es || 'sconosciuto'}»: leggi la risposta qui sotto prima di fidarti`];
       if (data?.message) lines.push(data.message);
       if (data?.error) lines.push(`Codice: ${data.error}`);
       if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
