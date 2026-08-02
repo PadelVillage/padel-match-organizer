@@ -18,8 +18,14 @@ import {
 // / booking / staff_booking / app_setting) e di pmo_ai_settings.
 //
 // Due azioni (body.action, assente = 'player' → comportamento storico):
-//   'player' — { phone } OPPURE { member_id } → member + wallet + bookings
+//   'player' — { pmo_player_id } OPPURE { phone } OPPURE { member_id }
+//              → member + wallet + bookings
 //   'kb'     — griglia slot operativa + base di conoscenza statica dell'assistente
+//
+// 🆕 2/08/2026 — `pmo_player_id` («ID giocatore Padel Village», PMO-000000) è la via
+// NUOVA, aggiunta accanto alle due esistenti senza toccarle. La risposta riporta sempre
+// `member.pmo_player_id`, così chi oggi chiama per telefono o per codice Matchpoint può
+// imparare il codice nuovo e passare alla via nuova gradualmente.
 //
 // Autenticazione: la CI deploya con --no-verify-jwt, quindi il gate è l'header
 // X-Consumer-Secret confrontato (in tempo costante) col secret condiviso
@@ -101,6 +107,7 @@ function romeNow(): { date: string; time: string } {
 type MemberHit = {
   id: string;
   memberId: string;
+  pmoPlayerId: string;
   name: string;
   firstName: string;
   surname: string;
@@ -113,6 +120,9 @@ function memberFromPayload(payload: JsonMap): MemberHit | null {
   return {
     id,
     memberId: clean(payload.memberId),
+    // 🆔 «ID giocatore Padel Village» — il NOSTRO, assegnato a tutti i soci il 2/08/2026
+    // (PROD 2784/2787, TEST 2831/2833). È il perno che sopravvive al distacco da Matchpoint.
+    pmoPlayerId: clean(payload.pmoPlayerId),
     name: clean(payload.name),
     firstName: clean(payload.firstName),
     surname: clean(payload.surname),
@@ -210,29 +220,48 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── 1. Identità ──────────────────────────────────────────────────────────
-  // Due vie alternative, mai insieme:
+  // TRE vie alternative, mai insieme:
+  //  · pmo_player_id — 🆕 2/08/2026, «ID giocatore Padel Village» (payload.pmoPlayerId),
+  //    formato PMO-000000. ⭐ È la via NUOVA e destinata a diventare l'unica: sua regola
+  //    ferma, «l'ID che il bot deve leggere è l'ID PMO, non quello Matchpoint», perché un
+  //    giorno da Matchpoint ci staccheremo e quel numero non ci sarà più.
   //  · phone     — ultime 10 cifre (rubrica). La usa il consumer WhatsApp.
   //  · member_id — codice socio Matchpoint a 6 cifre (payload.memberId). Serve
   //    a Telegram, che NON consegna il numero di telefono: l'unico appiglio è
   //    una whitelist chat_id → member_id. Stesso formato di consumer_profiles e
   //    di consumer-identity-lookup (i memberId "PMO-…" generati dall'app non
   //    sono soci Matchpoint e restano fuori).
+  //
+  // 🚨⭐ Le due vie vecchie NON si toccano, e l'ordine non è opinabile: prima i ponti
+  // imparano la via nuova, poi il bot ci passa sopra, e solo alla fine — se servirà — si
+  // toglie la vecchia. Toglierla adesso spegnerebbe il riconoscimento ai soci veri, in
+  // produzione, perché il bot vivo cerca ancora per member_id.
+  const pmoPlayerIdInput = clean(body.pmo_player_id).toUpperCase();
   const memberIdInput = clean(body.member_id);
   const digits = phoneDigits(body.phone);
   const last10 = digits.slice(-10);
 
-  if (memberIdInput && digits) {
-    return err(400, 'AMBIGUOUS_INPUT', 'Indicare phone OPPURE member_id, non entrambi.');
+  const vieIndicate = [pmoPlayerIdInput, memberIdInput, digits].filter(Boolean).length;
+  if (vieIndicate > 1) {
+    return err(400, 'AMBIGUOUS_INPUT', 'Indicare pmo_player_id OPPURE phone OPPURE member_id, non più di uno.');
   }
-  if (memberIdInput) {
+  if (pmoPlayerIdInput) {
+    if (!/^PMO-[0-9]{6}$/.test(pmoPlayerIdInput)) {
+      return err(400, 'BAD_PMO_PLAYER_ID', 'pmo_player_id deve avere la forma PMO-000000.');
+    }
+  } else if (memberIdInput) {
     if (!/^[0-9]{6}$/.test(memberIdInput)) {
       return err(400, 'BAD_MEMBER_ID', 'member_id deve essere il codice socio a 6 cifre.');
     }
   } else if (digits.length < 9) {
-    return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare member_id).');
+    return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare pmo_player_id o member_id).');
   }
 
-  const etichetta = memberIdInput ? `socio ${memberIdInput}` : `…${last10.slice(-4)}`;
+  const etichetta = pmoPlayerIdInput
+    ? `giocatore ${pmoPlayerIdInput}`
+    : memberIdInput
+    ? `socio ${memberIdInput}`
+    : `…${last10.slice(-4)}`;
 
   let query = service
     .from('pmo_cloud_records')
@@ -240,7 +269,9 @@ Deno.serve(async (req: Request) => {
     .eq('record_type', 'member')
     .not('deleted', 'is', true)
     .limit(5);
-  query = memberIdInput
+  query = pmoPlayerIdInput
+    ? query.eq('payload->>pmoPlayerId', pmoPlayerIdInput)
+    : memberIdInput
     ? query.eq('payload->>memberId', memberIdInput)
     : query.ilike('payload->>phone', `%${last10}`);
 
@@ -255,9 +286,11 @@ Deno.serve(async (req: Request) => {
     const p = (row.payload ?? {}) as JsonMap;
     const m = memberFromPayload(p);
     if (!m) continue;
-    // Conferma in-code del match: evita falsi positivi dell'ilike (e, sul
-    // percorso member_id, qualunque sorpresa del confronto lato PostgREST).
-    if (memberIdInput) {
+    // Conferma in-code del match: evita falsi positivi dell'ilike (e, sui
+    // percorsi per codice, qualunque sorpresa del confronto lato PostgREST).
+    if (pmoPlayerIdInput) {
+      if (m.pmoPlayerId.toUpperCase() !== pmoPlayerIdInput) continue;
+    } else if (memberIdInput) {
       if (m.memberId !== memberIdInput) continue;
     } else if (!phoneDigits(p.phone).endsWith(last10)) continue;
     hits.push(m);
@@ -396,6 +429,11 @@ Deno.serve(async (req: Request) => {
     member: {
       id: member.id,
       member_id: member.memberId || null,
+      // 🆕 2/08/2026: sempre restituito, qualunque sia la via con cui il socio è stato
+      // riconosciuto. ⭐ Serve al passo successivo — il bot può IMPARARE il codice nuovo
+      // di chi oggi conosce solo per member_id o per telefono, e passare alla via nuova
+      // senza che nessuno resti fuori.
+      pmo_player_id: member.pmoPlayerId || null,
       name: member.name,
       // Livello: proprietà dell'APP (Matchpoint lo riceve, non lo detta).
       // 0.5 è il valore di partenza delle schede nuove, cioè "da definire":

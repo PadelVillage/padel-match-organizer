@@ -165,7 +165,10 @@ function romeNow(): { date: string; time: string } {
 const timeToMin = oraInMinuti;
 const minToTime = minutiInOra;
 
-type MemberHit = { id: string; memberId: string; name: string; firstName: string; surname: string };
+// `pmoPlayerId` = «ID giocatore Padel Village» (PMO-000000), il nostro. Qui serve a
+// confermare in-code il match quando il socio arriva per quella via; le risposte
+// operative continuano a portare id+nome, e l'identità completa la dà il readmodel.
+type MemberHit = { id: string; memberId: string; pmoPlayerId: string; name: string; firstName: string; surname: string };
 
 type SlotInput = { data: string; ora: string; durata: number; oraFine: string };
 
@@ -197,24 +200,40 @@ Deno.serve(async (req: Request) => {
     return err(400, 'DRY_RUN_NOT_SUPPORTED', `La prova a vuoto esiste solo per ${dove}, non per «${action}».`);
   }
 
-  // Identità: phone OPPURE member_id (mai insieme), stessa ricetta di
-  // consumer-player-readmodel. Telegram non consegna il telefono: l'unico
+  // Identità: pmo_player_id OPPURE phone OPPURE member_id (mai insieme), stessa
+  // ricetta di consumer-player-readmodel. Telegram non consegna il telefono: l'unico
   // appiglio è member_id (whitelist chat_id→member_id). whatsapp-webhook e il
   // consumer continuano a passare phone → retrocompatibile.
+  //
+  // 🆕⭐ 2/08/2026 — `pmo_player_id` («ID giocatore Padel Village», PMO-000000) è la via
+  // NUOVA e destinata a diventare l'unica: sua regola ferma, «l'ID che il bot deve leggere
+  // è l'ID PMO, non quello Matchpoint», perché da Matchpoint un giorno ci staccheremo.
+  // 🚨 Si AGGIUNGE, non sostituisce: il bot vivo cerca ancora per member_id, e togliere la
+  // via vecchia adesso spegnerebbe il riconoscimento ai soci veri, in produzione.
+  const pmoPlayerIdInput = clean(body.pmo_player_id).toUpperCase();
   const memberIdInput = clean(body.member_id);
   const digits = phoneDigits(body.phone);
   const last10 = digits.slice(-10);
-  if (memberIdInput && digits) {
-    return err(400, 'AMBIGUOUS_INPUT', 'Indicare phone OPPURE member_id, non entrambi.');
+  const vieIndicate = [pmoPlayerIdInput, memberIdInput, digits].filter(Boolean).length;
+  if (vieIndicate > 1) {
+    return err(400, 'AMBIGUOUS_INPUT', 'Indicare pmo_player_id OPPURE phone OPPURE member_id, non più di uno.');
   }
-  if (memberIdInput) {
+  if (pmoPlayerIdInput) {
+    if (!/^PMO-[0-9]{6}$/.test(pmoPlayerIdInput)) {
+      return err(400, 'BAD_PMO_PLAYER_ID', 'pmo_player_id deve avere la forma PMO-000000.');
+    }
+  } else if (memberIdInput) {
     if (!/^[0-9]{6}$/.test(memberIdInput)) {
       return err(400, 'BAD_MEMBER_ID', 'member_id deve essere il codice socio a 6 cifre.');
     }
   } else if (digits.length < 9) {
-    return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare member_id).');
+    return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare pmo_player_id o member_id).');
   }
-  const etichetta = memberIdInput ? `socio ${memberIdInput}` : `…${last10.slice(-4)}`;
+  const etichetta = pmoPlayerIdInput
+    ? `giocatore ${pmoPlayerIdInput}`
+    : memberIdInput
+    ? `socio ${memberIdInput}`
+    : `…${last10.slice(-4)}`;
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -228,7 +247,9 @@ Deno.serve(async (req: Request) => {
     .eq('record_type', 'member')
     .not('deleted', 'is', true)
     .limit(5);
-  memberQuery = memberIdInput
+  memberQuery = pmoPlayerIdInput
+    ? memberQuery.eq('payload->>pmoPlayerId', pmoPlayerIdInput)
+    : memberIdInput
     ? memberQuery.eq('payload->>memberId', memberIdInput)
     : memberQuery.ilike('payload->>phone', `%${last10}`);
   const { data: memberRows, error: memberErr } = await memberQuery;
@@ -239,12 +260,15 @@ Deno.serve(async (req: Request) => {
     const p = (row.payload ?? {}) as JsonMap;
     if (!clean(p.id)) continue;
     // Conferma in-code del match (evita falsi positivi dell'ilike / sorprese PostgREST).
-    if (memberIdInput) {
+    if (pmoPlayerIdInput) {
+      if (clean(p.pmoPlayerId).toUpperCase() !== pmoPlayerIdInput) continue;
+    } else if (memberIdInput) {
       if (clean(p.memberId) !== memberIdInput) continue;
     } else if (!phoneDigits(p.phone).endsWith(last10)) continue;
     hits.push({
       id: clean(p.id),
       memberId: clean(p.memberId),
+      pmoPlayerId: clean(p.pmoPlayerId),
       name: clean(p.name),
       firstName: clean(p.firstName),
       surname: clean(p.surname),
