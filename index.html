@@ -7792,6 +7792,7 @@ body.assessment-public-mode .assessment-public-only-card {
                           <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
                           <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
                           <button id="matchpointTestClientButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestClientCreate()">🧪 Test crea cliente</button>
+                          <button id="matchpointTestPhoneButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestCercaTelefono()">🔎 Prova a vuoto: cerca telefono (non crea)</button>
                           <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
@@ -8020,7 +8021,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.164';
+    const APP_VERSION = '6.165';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43455,6 +43456,76 @@ Per confermare scrivi ELIMINA.`);
   }
 
   // ── Test creazione cliente Matchpoint (solo TEST env) ─────────────
+  // ── 🔎 PROVA A VUOTO: cerca il telefono in Matchpoint e dice che cosa AVREBBE fatto ──
+  // Nata dal collaudo del 3/08: ogni prova fallita della difesa anti-doppione lasciava una
+  // scheda finta in Matchpoint, e una difesa che si può collaudare una volta sola non si
+  // collauda. Questa non crea MAI niente: cerca, e riferisce.
+  // 🚨 Porta X-PMO-Real-MP come gli altri pulsanti diagnostici: senza, la chiamata verrebbe
+  //    intercettata e SIMULATA dall'app, e la risposta «ok» non proverebbe nulla.
+  async function matchpointTestCercaTelefono() {
+    const btn = document.getElementById('matchpointTestPhoneButton');
+    const stateEl = document.getElementById('matchpointTestBookingState');
+    const resultEl = document.getElementById('matchpointTestBookingResult');
+    if (!isStaffSessionValid()) {
+      if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    const telefono = (prompt('Telefono da cercare in Matchpoint (non verrà creato niente):', '3492222564') || '').trim();
+    if (!telefono) return;
+    const nome = (prompt('Nome da confrontare con l\'intestatario trovato:', 'Prova') || '').trim();
+    const cognome = (prompt('Cognome da confrontare:', 'AntiDoppione') || '').trim();
+
+    if (btn) btn.disabled = true;
+    if (stateEl) { stateEl.textContent = 'Cerco in Matchpoint… (può durare fino a 60 s)'; stateEl.className = 'matchpoint-action-state pending'; }
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'provare la ricerca telefono Matchpoint');
+      const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-clients-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${staff.accessToken}`,
+          'X-PMO-Real-MP': '1'
+        },
+        body: JSON.stringify({ client: {
+          nome: nome || 'Prova', cognome: cognome || 'AntiDoppione',
+          telefono, email: 'prova@example.com', sesso: 'M',
+          soloRicerca: true
+        } }),
+      });
+      const respText = await response.text();
+      let data = null;
+      try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
+      const ok = response.ok && data?.ok !== false;
+      const lines = [ok ? '🔎 Prova a vuoto completata — NIENTE è stato creato'
+                        : `❌ Errore HTTP ${response.status}`];
+      if (data?.message) lines.push(data.message);
+      if (data?.error) lines.push(`Codice: ${data.error}`);
+      if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
+      if (stateEl) { stateEl.textContent = ok ? 'Completato' : 'Errore'; stateEl.className = `matchpoint-action-state ${ok ? 'done' : 'error'}`; }
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = ok ? '#eff6ff' : '#fff0f0';
+        resultEl.style.border = `1px solid ${ok ? '#bfdbfe' : '#fca5a5'}`;
+        resultEl.style.color = ok ? '#1d4ed8' : '#b42318';
+        resultEl.textContent = lines.join('\n');
+      }
+    } catch (err) {
+      if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+      if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = '#fff0f0';
+        resultEl.style.border = '1px solid #fca5a5';
+        resultEl.style.color = '#b42318';
+        resultEl.textContent = `❌ Errore di rete o configurazione: ${err?.message || err}`;
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function matchpointTestClientCreate() {
     const btn = document.getElementById('matchpointTestClientButton');
     const stateEl = document.getElementById('matchpointTestBookingState');

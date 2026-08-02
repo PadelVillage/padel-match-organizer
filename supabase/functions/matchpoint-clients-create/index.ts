@@ -12,11 +12,7 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  // 🚨 `x-pmo-real-mp` va DICHIARATA o il browser blocca la richiesta prima di spedirla:
-  // è l'intestazione con cui i pulsanti diagnostici di TEST scavalcano la simulazione.
-  // Il difetto stava nascosto perché senza quell'intestazione la chiamata viene simulata
-  // dall'app e non esce mai in rete — quindi il preflight non avveniva mai.
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-real-mp',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -154,6 +150,10 @@ Deno.serve(async (req: Request) => {
     // scavalca la difesa e arriva SOLO da un gesto esplicito dello staff («e' un'altra
     // persona, crea lo stesso»): va passata, o quel bottone non potrebbe funzionare.
     forzaCreazione: c.forzaCreazione === true || c.forceCreate === true,
+    // 🔎 Prova a vuoto: il worker cerca il telefono e RIFERISCE che cosa avrebbe fatto,
+    // senza creare niente. Serve a collaudare la difesa senza lasciare schede finte in
+    // Matchpoint — ogni prova fallita ne lasciava una.
+    soloRicerca: c.soloRicerca === true,
   };
 
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -185,6 +185,26 @@ Deno.serve(async (req: Request) => {
   const codice = clean((workerResult as JsonMap).codice);
   const esito = clean((workerResult as JsonMap).esito) || 'creato';
   const conflitto = (workerResult as JsonMap).conflitto as JsonMap | undefined;
+
+  // 🔎 Prova a vuoto: non è stato creato niente e non lo sarà. Si riferisce che cosa
+  // AVREBBE fatto, che è l'unica cosa interessante di questa modalità.
+  if (esito === 'solo_ricerca') {
+    const w = workerResult as JsonMap;
+    const avrebbe = clean(w.avrebbe);
+    const chi = clean(w.intestatario);
+    const suo = clean(w.codice);
+    const spiega = avrebbe === 'adotta'
+      ? `avrebbe USATO la scheda già esistente di ${chi}${suo ? ' · codice ' + suo : ''}, senza crearne una seconda`
+      : avrebbe === 'conflitto'
+        ? `si sarebbe FERMATO e te lo avrebbe chiesto: quel numero è di ${chi || 'un altro cliente'}${suo ? ' · codice ' + suo : ''}`
+        : 'avrebbe CREATO una scheda nuova: quel telefono in Matchpoint non risulta';
+    return ok({
+      esito,
+      message: `🔎 Prova a vuoto (non ho creato niente): ${spiega}.`,
+      avrebbe, motivo: clean(w.motivo), tentativi: w.tentativi,
+      client, worker: workerResult,
+    });
+  }
 
   if (esito === 'conflitto_telefono') {
     const chi = clean(conflitto?.intestatario) || 'un altro cliente';
