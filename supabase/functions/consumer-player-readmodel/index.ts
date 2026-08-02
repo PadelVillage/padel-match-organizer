@@ -8,6 +8,7 @@ import {
   rosterFromPayload,
   rosterOrdinatoDelloSlot,
 } from './compagni-slot.ts';
+import { clienteDelCircolo } from './cliente-del-circolo.ts';
 
 // consumer-player-readmodel — ponte dati READ-ONLY per gli assistenti dei SOCI
 // (WhatsApp consumer F2.0 "chat giocatori" e, dal 24/07, il bot Telegram).
@@ -451,7 +452,11 @@ Deno.serve(async (req: Request) => {
       //   per tutti, e a valle non cambia nient'altro.
       // ⚠️ `member_id` resta nella risposta per i chiamanti storici: si AGGIUNGE, non si
       //   toglie — la stessa regola con cui è entrata la terza via dell'identità.
-      puo_prenotare: !!member.memberId,
+      // 🚨 E la domanda NON è «il campo del codice è pieno?», che è come stava scritta qui
+      //   il 2/08 (`!!member.memberId`): in quel campo restano dei vecchi `PMO-…` — 14 su
+      //   PROD, 1709 su TEST — e a quelle persone avrebbe detto di sì. Il fatto, con i
+      //   numeri veri e il perché, sta in `cliente-del-circolo.ts`.
+      puo_prenotare: clienteDelCircolo(member.memberId),
       name: member.name,
       // Livello: proprietà dell'APP (Matchpoint lo riceve, non lo detta).
       // 0.5 è il valore di partenza delle schede nuove, cioè "da definire":
