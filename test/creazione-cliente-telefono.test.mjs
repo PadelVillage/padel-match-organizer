@@ -263,6 +263,12 @@ const guardie = [
     return i > 0 && j > 0 && i < j;   // il ritorno viene prima del modulo di inserimento
   })()],
   ['l\'EDGE passa la prova a vuoto al worker', /soloRicerca/.test(edge)],
+  // 🚨 Guardia nata da una REGRESSIONE vera del 3/08: la correzione CORS stava solo su un
+  //    ramo e riallineando l'edge è stata sovrascritta, riportando il «Failed to fetch».
+  //    Senza questa intestazione dichiarata, i pulsanti diagnostici di TEST non partono —
+  //    e il difetto è invisibile finché la simulazione li intercetta.
+  ['l\'EDGE dichiara «x-pmo-real-mp» fra le intestazioni ammesse',
+    /Access-Control-Allow-Headers[^\n]*x-pmo-real-mp/.test(edge)],
   ['la ricerca NON scrive niente su Matchpoint',
     !/ButtonActualizar|__doPostBack\('ctl01/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   // ── L'ANELLO DI MEZZO: i tre file devono dire gli stessi nomi ──
