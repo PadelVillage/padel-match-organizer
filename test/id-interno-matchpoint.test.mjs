@@ -29,7 +29,14 @@ const html = readFileSync(INDEX, 'utf8');
 function estrai(nome) {
   const inizio = html.indexOf(`function ${nome}(`);
   if (inizio < 0) throw new Error(`funzione «${nome}» non trovata in index.html`);
-  let i = html.indexOf('{', inizio), livello = 0, dentroStringa = null, prec = '';
+  // 🚨 Il corpo comincia DOPO la lista dei parametri: una firma come `funzione(row={})` ha
+  // una graffa dentro i parametri, e partire dalla prima `{` ritaglia mezza funzione.
+  let t = html.indexOf('(', inizio), tonde = 0;
+  for (; t < html.length; t++) {
+    if (html[t] === '(') tonde++;
+    else if (html[t] === ')') { tonde--; if (tonde === 0) { t++; break; } }
+  }
+  let i = html.indexOf('{', t), livello = 0, dentroStringa = null, prec = '';
   for (; i < html.length; i++) {
     const c = html[i];
     if (dentroStringa) {
