@@ -246,15 +246,41 @@ function installStubs(win) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper asincroni
 // ─────────────────────────────────────────────────────────────────────────────
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// ⏱️ Chrome strozza i timer dei tab NASCOSTI a 1 Hz (e a 1/minuto dopo 5 minuti): misurato,
+// `sleep(30)` durava 1000ms REALI → waitFor campionava ~4 volte invece di ~130, i budget
+// scadevano su un'app che aveva già fatto la cosa giusta, e il test 56 restava appeso.
+// I timer dei WORKER non subiscono il throttling di visibilità → lo sleep dell'harness passa
+// da un Worker dedicato (ripiego su setTimeout solo se il Worker non si può creare).
+const _timerWorker = (function () {
+  try {
+    const src = 'onmessage=function(e){setTimeout(function(){postMessage(e.data.id)},e.data.ms)}';
+    return new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  } catch (e) { return null; }
+})();
+const _timerWaiters = new Map(); let _timerSeq = 0;
+if (_timerWorker) _timerWorker.onmessage = function (e) {
+  const r = _timerWaiters.get(e.data);
+  if (r) { _timerWaiters.delete(e.data); r(); }
+};
+const sleep = (ms) => new Promise(r => {
+  if (!_timerWorker) { setTimeout(r, ms); return; }
+  const id = ++_timerSeq; _timerWaiters.set(id, r);
+  _timerWorker.postMessage({ id: id, ms: ms });
+});
+// Il predicato va valutato SEMPRE almeno una volta dopo l'ultima attesa, anche se il tempo è
+// già scaduto: il thread principale dell'app si blocca per secondi (render pesanti), e un
+// `await sleep(30)` può tornare dopo 7s. Controllando la scadenza PRIMA di valutare (com'era)
+// il ciclo usciva senza mai rivedere lo stato → falsi rossi su un'app che aveva già fatto la
+// cosa giusta (era il caso del test 2: il ripristino c'era, nessuno lo guardava più).
 async function waitFor(predicate, timeoutMs, stepMs) {
   const t0 = Date.now();
-  while (Date.now() - t0 < (timeoutMs || 4000)) {
+  const limit = timeoutMs || 4000;
+  for (;;) {
     let v = false; try { v = predicate(); } catch (e) { v = false; }
     if (v) return true;
+    if (Date.now() - t0 >= limit) return false;   // scaduto, ma il predicato è appena stato valutato
     await sleep(stepMs || 30);
   }
-  return false;
 }
 // Normalizza una booking per match: terna (data, campo, ora).
 function findBooking(bookings, iso, campo, ora) {
@@ -1121,6 +1147,132 @@ const CASES = [
         return checks;
       } finally {
         delete win.navigator.onLine;   // torna il getter vero del browser
+      }
+    }
+  },
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  // CREAZIONE — lo stesso principio dei casi 72/73, sull'altro percorso. Qui però toglierla
+  // significa far sparire dal calendario una prenotazione che su Matchpoint può ESSERCI: è
+  // il fantasma del 20/07, quello che poi fa rispondere PRENOTAZIONE_NON_TROVATA a ogni
+  // modifica successiva. E qui c'è un appiglio che la modifica non aveva: il NUMERO del lavoro.
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  {
+    id: 38, flow: 'Creazione', name: '🚨 create: rete caduta DOPO l\'invio ⇒ la card RESTA (toglierla è il fantasma del 20/07)',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+      WORKER_NEXT = { throw: true };   // la richiesta ESCE e muore: esito IGNOTO
+      const c0 = chatCount(win);       // leggo SOLO quello che dice da qui in poi (vedi chatSince)
+      await handleSeq(win, ['ospite', 'conferma']);
+      // 🚨 Guardia sulla BASE: senza la prova che la richiesta sia uscita, il caso proverebbe
+      // quello SBAGLIATO (la richiesta mai partita, dove togliere la card è giusto).
+      const uscita = await waitFor(() => workerPushes('create').length > 0, 4000);
+      checks.push({ label: '🚨 base: la create è USCITA davvero (il mock l\'ha vista)', ok: uscita });
+      await waitFor(() => /non ho la conferma/i.test(chatSince(win, c0)), 5000);
+      checks.push({ label: '⭐⭐ la prenotazione RESTA sul calendario (nessuna rimozione al buio)',
+        ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 1 });
+      const t = chatSince(win, c0);
+      checks.push({ label: 'dice che la conferma MANCA, non che è fallita', ok: /non ho la conferma/i.test(t) });
+      checks.push({ label: '⭐ e NON dice la frase bugiarda «L\'ho rimossa dal calendario»', ok: !/l'ho rimossa|ho rimossa/i.test(t) });
+      return checks;
+    }
+  },
+  {
+    id: 39, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: il gestionale RISPONDE un rifiuto ⇒ la card DEVE sparire',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+      // ⭐ Stesso percorso del 74, cambia UN DATO: qui il server ha RISPOSTO. Esito NOTO ⇒
+      // togliere è giusto. Senza questo caso, il 74 passerebbe anche se avessi semplicemente
+      // smesso di rimuovere, lasciando sul calendario prenotazioni mai nate.
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'SLOT_OCCUPATO' } };
+      const c0 = chatCount(win);
+      await handleSeq(win, ['ospite', 'conferma']);
+      const sparita = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0, 5000);
+      checks.push({ label: '⭐⭐ la prenotazione SPARISCE: il rifiuto è una risposta, non un dubbio', ok: sparita });
+      checks.push({ label: 'e lo dice: «non è andata a buon fine» / «rimossa»',
+        ok: /non è andata a buon fine|rimossa/i.test(chatSince(win, c0)) });
+      return checks;
+    }
+  },
+  {
+    id: 40, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: telefono senza linea ⇒ la card DEVE sparire (non è mai partita)',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+      WORKER_NEXT = { throw: true };
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false });
+      try {
+        await handleSeq(win, ['ospite', 'conferma']);
+        const sparita = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0, 5000);
+        checks.push({ label: '⭐⭐ senza linea la card sparisce: non c\'era niente da salvare', ok: sparita });
+        return checks;
+      } finally {
+        delete win.navigator.onLine;
+      }
+    }
+  },
+  {
+    id: 41, flow: 'Creazione', name: '⭐⭐ IL CUORE: scaduta l\'attesa NON indovina — continua a CHIEDERE, e quando il lavoro risponde conferma',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      // 🚨🚨 TRAPPOLA DELLO STRUMENTO, misurata: in un iframe NASCOSTO il browser blocca i timer
+      // a ~1 secondo. Uno `stepMs: 150` NON esiste — ogni giro costa comunque ~1 s. Il primo giro
+      // di questo caso era rosso per QUESTO, non per il codice: contavo i millisecondi invece dei
+      // GIRI. Quindi: prima attesa cortissima (fa ESATTAMENTE 1 interrogazione), seconda lunga, e
+      // l'esito cambia dopo un NUMERO di interrogazioni che la prima da sola non può raggiungere.
+      H.setPollTimings({ maxMs: 500, stepMs: 100, lateMaxMs: 12000, lateStepMs: 100 });
+      // Il lavoro resta 'pending' oltre la prima attesa, poi dice 'done': è il caso in cui il
+      // vecchio codice rimuoveva la prenotazione mentre su Matchpoint stava per esistere.
+      JOB_NEXT = (n) => (n <= 2 ? { status: 'pending' } : { status: 'done', worker_result: { idReserva: 'R-LATE' } });
+      try {
+        await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        const c0 = chatCount(win);
+        await handleSeq(win, ['ospite', 'conferma']);
+        const confermata = await waitFor(() => {
+          const b = findBooking(H.getBookings(), ctx.iso, 4, '19:00')[0];
+          return !!b && String(b.idReserva || '') === 'R-LATE';
+        }, 15000);
+        // 🚨 Guardia sulla BASE: la prima attesa da sola arriva a UNA interrogazione. Se ne sono
+        // partite almeno 3, ha per forza continuato a chiedere DOPO essersi arresa la prima volta.
+        checks.push({ label: '🚨 base: ha continuato a chiedere DOPO la prima attesa (≥3 interrogazioni)', ok: CAPTURED.jobPolls.length >= 3 });
+        checks.push({ label: '⭐⭐ conferma col numero arrivato TARDI (idReserva R-LATE)', ok: confermata });
+        checks.push({ label: 'la prenotazione è rimasta sul calendario per tutto il tempo',
+          ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 1 });
+        checks.push({ label: '⭐ non ha mai detto «rimossa»', ok: !/l'ho rimossa|ho rimossa/i.test(chatSince(win, c0)) });
+        return checks;
+      } finally {
+        H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
+      }
+    }
+  },
+  {
+    id: 42, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO del 77: se il lavoro risponde TARDI «errore», allora sì che la card sparisce',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      // Stesso orologio del 77 (vedi lì la trappola dei timer bloccati a ~1 s nell'iframe nascosto).
+      H.setPollTimings({ maxMs: 500, stepMs: 100, lateMaxMs: 12000, lateStepMs: 100 });
+      // Senza questo caso, il 77 passerebbe anche se la seconda attesa dicesse SEMPRE di sì.
+      JOB_NEXT = (n) => (n <= 2 ? { status: 'pending' } : { status: 'error', error: 'SLOT_OCCUPATO' });
+      try {
+        await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        await handleSeq(win, ['ospite', 'conferma']);
+        const sparita = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0, 15000);
+        checks.push({ label: '🚨 base: ha continuato a chiedere DOPO la prima attesa (≥3 interrogazioni)', ok: CAPTURED.jobPolls.length >= 3 });
+        checks.push({ label: '⭐⭐ risposta tardiva ma CHIARA ⇒ la card sparisce davvero', ok: sparita });
+        return checks;
+      } finally {
+        H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
       }
     }
   }
