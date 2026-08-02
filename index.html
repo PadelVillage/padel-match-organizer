@@ -8018,7 +8018,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.151';
+    const APP_VERSION = '6.155';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10899,10 +10899,25 @@ Grazie.`
       return normalizeKey(playerFullName(member) || member?.name || '');
     }
 
-    function nextMemberId() {
-      memberIdCounter = (parseInt(memberIdCounter, 10) || 0) + 1;
-      save('memberIdCounter', memberIdCounter);
-      return `PMO-${String(memberIdCounter).padStart(6, '0')}`;
+    // 🆔 Il prossimo «ID giocatore Padel Village». Sostituisce nextMemberId(), che generava
+    // lo stesso formato ma lo scriveva in `memberId` — cioè nel campo del codice Matchpoint.
+    // 🚨⭐ Il numero si ricava dai DATI (il massimo già assegnato fra i soci in memoria, che
+    // arrivano dal cloud), NON più da un contatore in `localStorage`: quel contatore viveva
+    // nel singolo browser, e il 2/08/2026 si è misurato il danno — i codici di TEST e PROD
+    // erano completamente scorrelati (0 uguali su 15 confrontati), perché nati da postazioni
+    // diverse che contavano ognuna per conto suo.
+    // ⚠️ Limite noto e accettato: due postazioni che creano un socio nello STESSO momento
+    // leggono lo stesso massimo e propongono lo stesso numero. Resta molto meglio di prima
+    // (il contatore locale divergeva sempre, non solo in contemporanea), ma il giorno che
+    // servisse la garanzia piena il numero va chiesto al database, non al browser.
+    function nextPmoPlayerId() {
+      const list = Array.isArray(giocatori) ? giocatori : [];
+      let max = 0;
+      for (const m of list) {
+        const n = parseInt(String((m && m.pmoPlayerId) || '').replace(/\D/g, ''), 10);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+      return `PMO-${String(max + 1).padStart(6, '0')}`;
     }
 
     // Etichetta a VIDEO: codice Matchpoint numerico -> "ID-MP-001017". PMO-.../vuoto restano com'erano.
@@ -10913,10 +10928,40 @@ Grazie.`
       return v;
     }
 
+    // ── I DUE ID DEL GIOCATORE, SEPARATI ─────────────────────────────────────────
+    // Deciso dal committente il 2/08/2026: «ID giocatore Padel Village» (il nostro) e
+    // «ID giocatore Matchpoint» (il loro) sono due cose diverse e stanno in due campi
+    // diversi. Fino a oggi `memberId` faceva DUE mestieri — il codice cliente Matchpoint
+    // per 1067 soci, un ripiego `PMO-xxxxxx` per 15, niente per 1705 — ed è la stessa
+    // famiglia di guaio che il 2/08 ha fatto sparire un giocatore da una lezione: due
+    // numerazioni diverse trattate come una sola.
+    // ⭐ Il nostro è il perno e sopravvive al distacco da Matchpoint (sua direzione, 2/08);
+    //   quello di Matchpoint è un attributo esterno, utile finché c'è il ponte.
+    function pmoIdPadelVillage(g) {
+      const v = cleanCell((g && g.pmoPlayerId) || '');
+      if (v) return v;
+      // TRANSIZIONE: finché la migrazione non è passata, il codice PMO può stare ancora nel
+      // campo vecchio. Lì dentro NON è un codice Matchpoint, quindi appartiene a questa riga.
+      const vecchio = cleanCell((g && g.memberId) || '');
+      return /^PMO-/i.test(vecchio) ? vecchio : '';
+    }
+    function pmoIdMatchpoint(g) {
+      // SOLO il codice cliente numerico: un PMO- qui non è mai stato un codice Matchpoint.
+      const v = cleanCell((g && g.memberId) || '');
+      return /^\d{3,}$/.test(v) ? v : '';
+    }
+
     function ensureMemberId(member) {
       if (!member) return member;
       if (!member.id) member.id = makeId();
-      if (!member.memberId) member.memberId = nextMemberId();
+      // ⭐ Il codice PMO è l'«ID giocatore Padel Village» e vive in `pmoPlayerId`. In
+      //   `memberId` NON ci torna: quello da oggi è SOLO il codice cliente Matchpoint.
+      //   Se un PMO- è rimasto nel campo vecchio (soci di prima della separazione), è suo
+      //   e trasloca qui invece di essere buttato.
+      if (!member.pmoPlayerId) {
+        const _vecchio = cleanCell(member.memberId || '');
+        member.pmoPlayerId = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
+      }
       return member;
     }
 
@@ -11447,6 +11492,10 @@ Grazie.`
 
     function migrateMemberIds() {
       let changed = false;
+      // ⚠️ RESIDUO INERTE (2/08/2026): `memberIdCounter` non genera più niente — i codici
+      // Padel Village li dà nextPmoPlayerId(), che legge il massimo dai dati. Questo blocco
+      // resta solo perché la variabile è intrecciata con backup/ripristino/azzeramento, e
+      // toglierla di qui vorrebbe dire toccare quelle righe. Non fidarsi del suo valore.
       let maxCounter = parseInt(memberIdCounter, 10) || 0;
       (Array.isArray(giocatori) ? giocatori : []).forEach(g => {
         const match = cleanCell(g?.memberId || '').match(/^PMO-(\d+)$/i);
@@ -11459,7 +11508,15 @@ Grazie.`
       giocatori.forEach(g => {
         if (!g) return;
         if (!g.id) { g.id = makeId(); changed = true; }
-        if (!g.memberId) { g.memberId = nextMemberId(); changed = true; }
+        // ⭐ Si garantisce l'ID Padel Village, NON il codice Matchpoint: quello o ce l'ha
+        //   (perché è cliente del circolo) o resta vuoto — inventarlo non lo rende vero.
+        //   Un PMO- rimasto nel campo vecchio trasloca qui.
+        if (!g.pmoPlayerId) {
+          const _vecchio = cleanCell(g.memberId || '');
+          g.pmoPlayerId = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
+          changed = true;
+        }
+        if (/^PMO-/i.test(cleanCell(g.memberId || ''))) { g.memberId = ''; changed = true; }
         const normalized = normalizeImportedPlayerNameParts(g.firstName || '', g.surname || '');
         if (normalized.firstName && normalized.firstName !== g.firstName) { g.firstName = normalized.firstName; changed = true; }
         if (normalized.surname && normalized.surname !== g.surname) { g.surname = normalized.surname; changed = true; }
@@ -12427,9 +12484,18 @@ Grazie.`
               const isMatchpointCode = v => !!v && !/^PMO-/i.test(v);
               // Adotta il codice Matchpoint (es. 000004) al posto del segnaposto locale PMO-...
               if (isMatchpointCode(imported)) return imported;
-              if (local) return local;
-              if (imported) return imported;
-              return nextMemberId();
+              if (isMatchpointCode(local)) return local;
+              // 🚨⭐ Nessun codice Matchpoint da nessuna delle due parti ⇒ il campo resta VUOTO.
+              // Prima qui finiva un `PMO-...` inventato, e alla visita successiva il codice
+              // Matchpoint glielo scriveva sopra: l'ID nostro veniva CANCELLATO da quello loro.
+              // Ora il PMO ha un campo suo (pmoPlayerId, sotto) e nessuno glielo porta via.
+              return '';
+            })(),
+            pmoPlayerId: (function(){
+              const gia = cleanCell(existing.pmoPlayerId || '');
+              if (gia) return gia;
+              const vecchio = cleanCell(existing.memberId || '');
+              return /^PMO-/i.test(vecchio) ? vecchio : nextPmoPlayerId();
             })(),
             firstName: titleCaseNamePart(existing.firstName || member.firstName),
             surname: titleCaseNamePart(existing.surname || member.surname),
@@ -15189,7 +15255,8 @@ Grazie.`
       const _anagraficaBody = showSecAnagrafica ? `
               <div class="member-tab-subhead">Dati socio</div>
               <div class="member-form-grid">
-                <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
+                <div><label>ID giocatore Padel Village</label><input value="${escapeHtml(pmoIdPadelVillage(g) || '-')}" readonly title="Il nostro identificatore. È il riferimento del gestionale e del bot, e resta valido anche senza Matchpoint."></div>
+                <div><label>ID giocatore Matchpoint</label><input value="${escapeHtml(pmoIdMatchpoint(g) || '-')}" readonly title="Il codice cliente di Matchpoint (quello della tendina «000140-Nome»). Vuoto per chi non è cliente del circolo."></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
@@ -15416,7 +15483,12 @@ Grazie.`
       giocatori[idx] = {
         ...current,
         id: current.id || makeId(),
-        memberId: current.memberId || nextMemberId(),
+        // Il codice Matchpoint si lascia com'è: se non c'è, non si inventa (un PMO- qui
+        // non è mai stato un codice del circolo). L'ID nostro si garantisce, e se era
+        // rimasto nel campo vecchio trasloca.
+        memberId: /^PMO-/i.test(cleanCell(current.memberId || '')) ? '' : (current.memberId || ''),
+        pmoPlayerId: cleanCell(current.pmoPlayerId || '')
+          || (/^PMO-/i.test(cleanCell(current.memberId || '')) ? cleanCell(current.memberId) : nextPmoPlayerId()),
         ...nextEditable,
         name: fullName,
         availabilityProfile: {
@@ -41285,6 +41357,60 @@ Per confermare scrivi ELIMINA.`);
     if (st && st.box && cont && cont.contains(st.box)) { cont.appendChild(st.box); cont.scrollTop = cont.scrollHeight; }
   }
 
+  // ⭐ Chi è GIÀ in questa prenotazione — chiesto dal committente il 2/08/2026 guardando
+  // l'elenco «Quale «aprea»?»: proponeva Marco e Laura anche dopo averli inseriti, perché
+  // i suggerimenti sono l'ANAGRAFICA filtrata per nome e non hanno mai guardato la scheda.
+  // «Già dentro» = il roster letto da Matchpoint MENO quelli che stai togliendo, PIÙ quelli
+  // appena aggiunti e non ancora salvati (se no ti ripropone chi hai messo un secondo fa).
+  //
+  // 🚨⭐⭐ SU COSA SI CONFRONTA, e perché non è il codice cliente.
+  // Matchpoint dà a ogni persona DUE numeri in numerazioni diverse: il codice cliente della
+  // tendina (memberId, es. 000140) e l'id interno (es. 147). Nel roster della scheda
+  // `idCliente` è l'ID INTERNO (o il `codice` del record, che è la stessa cosa — vedi la
+  // normalizzazione del roster), e l'anagrafica quell'id NON ce l'ha quasi mai
+  // (`matchpointIdInterno` è vuoto per la gran parte dei soci: Laura e Marco Aprea inclusi).
+  // ⇒ Per il ROSTER l'unico appiglio affidabile è il NOME, confrontato per INTERO e in modo
+  // ESATTO — mai per sottostringa: «Aprea» dentro «Marco Aprea» nasconderebbe Laura, che è
+  // esattamente il difetto del worker riparato lo stesso giorno (PR #624).
+  // Confrontare `idCliente` col codice cliente è LO STESSO ERRORE: qui non si fa.
+  // Per i chip in `st.add`, invece, l'app conosce i propri codici cliente → confronto esatto.
+  function _staffCalNrmNome(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  //
+  // 🚨⭐⭐ E QUANDO IL NOME NON BASTA, NON SI INDOVINA: si mostra. Obiezione del committente,
+  // 2/08/2026: *«se ti basi su nome e cognome ci possono essere degli omonimi»*. Vera e
+  // misurata su PROD: **12 gruppi di omonimi esatti, 24 soci**. Nascondere per nome uno di
+  // due omonimi vorrebbe dire IMPEDIRE di aggiungere l'altro — un danno peggiore del
+  // fastidio che si voleva togliere. Quindi con `nomeAmbiguo` il confronto per nome si
+  // spegne e resta solo l'id: nel dubbio il socio COMPARE, come faceva prima.
+  // ⇒ Questo filtro può sbagliare solo per ECCESSO (riproporre uno già dentro), mai per
+  // difetto (nascondere uno che manca).
+  function _staffCalGiaInPrenotazione(member, st, nomeAmbiguo) {
+    if (!st || !member) return false;
+    const nome = nomeAmbiguo ? '' : _staffCalNrmNome(_staffCalPlayerName(member, ''));
+    const idInterno = _staffCalPlayerCode(member);    // matchpointIdInterno — spesso VUOTO
+    const codCliente = _staffCalClientCode(member);   // memberId (codice cliente)
+    if (!nome && !idInterno && !codCliente) return false;
+    // 1) Aggiunti in questa sessione, non ancora salvati. Qui il codice cliente è dell'app
+    //    su ENTRAMBI i lati → confronto esatto, e regge anche fra omonimi.
+    const inAdd = (st.add || []).some(function (c) {
+      const cc = String((c && c.codiceCliente) || '').trim();
+      if (cc && codCliente) return cc === codCliente;
+      return !!nome && _staffCalNrmNome(c && c.nome) === nome;
+    });
+    if (inAdd) return true;
+    // 2) Già in scheda su Matchpoint, esclusi quelli marcati per la rimozione.
+    return (st.roster || []).some(function (p) {
+      if (!p || (st.remove && st.remove[p.idx])) return false;
+      const pid = String(p.idCliente == null ? '' : p.idCliente).replace(/\D/g, '').replace(/^0+/, '');
+      const mid = String(idInterno || '').replace(/\D/g, '').replace(/^0+/, '');
+      if (pid && mid) return pid === mid;           // stesso namespace: id interno
+      return !!nome && _staffCalNrmNome(p.nome) === nome;
+    });
+  }
+
   function staffCalPlayersAdd() {
     const st = staffCalPlayersState;
     if (!st || st.busy) return;
@@ -41298,12 +41424,39 @@ Per confermare scrivi ELIMINA.`);
       staffCalBringEditorToTop();
       return;
     }
-    const sugg = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 6) : [];
+    // Si chiedono PIÙ candidati del necessario perché il filtro «già dentro» ne toglie: con i
+    // soliti 6, tre omonimi già in campo lascerebbero fuori quello buono. Si ritagliano dopo.
+    const _suggTutti = (typeof findMemberNameSuggestions === 'function') ? findMemberNameSuggestions(raw, 12) : [];
+    // Un nome è AMBIGUO se fra i candidati di questa stessa ricerca compare più di una volta:
+    // due omonimi esatti escono sempre insieme, quindi l'ambiguità si vede qui, senza
+    // interrogare tutta l'anagrafica. Per loro il filtro si spegne (vedi sopra).
+    const _quantiConQuelNome = {};
+    _suggTutti.forEach(function (s) {
+      const n = _staffCalNrmNome(_staffCalPlayerName(s.member, ''));
+      if (n) _quantiConQuelNome[n] = (_quantiConQuelNome[n] || 0) + 1;
+    });
+    const sugg = _suggTutti.filter(function (s) {
+      const n = _staffCalNrmNome(_staffCalPlayerName(s.member, ''));
+      return !_staffCalGiaInPrenotazione(s.member, st, !!n && _quantiConQuelNome[n] > 1);
+    }).slice(0, 6);
     const addResolved = function(member) {
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
       staffCalRenderPlayersEditor();
       staffCalBringEditorToTop();
     };
+    if (sugg.length === 0 && _suggTutti.length) {
+      // ⭐ I candidati C'ERANO, e sono tutti GIÀ in questa prenotazione. Va detto così: il
+      // messaggio «non è tra i soci» qui sotto sarebbe FALSO e manderebbe a cercarli in
+      // Anagrafica. E non è un vicolo cieco: si dice anche cosa fare se si cercava altro.
+      const _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return x; };
+      const _nomi = _suggTutti.map(function (s) { return _staffCalPlayerName(s.member, ''); })
+        .filter(Boolean).map(_e);
+      const _chi = (_nomi.length === 1)
+        ? '<strong>' + _nomi[0] + '</strong> è <strong>già in questa prenotazione</strong>'
+        : 'Sono <strong>già in questa prenotazione</strong>: <strong>' + _nomi.join('</strong>, <strong>') + '</strong>';
+      svcAddMessage('system', '👥 ' + _chi + '.<br><span style="color:var(--text-muted);font-size:.78rem;">Se cercavi un\'altra persona, scrivi <strong>nome e cognome per esteso</strong>; per un occasionale aggiungi <strong>Ospite</strong>.</span>');
+      return;
+    }
     if (sugg.length === 0) {
       // Regola (parità con l'assistente + no-nuovi-nomi su Matchpoint): un nome NON in anagrafica
       // NON va aggiunto grezzo. Il worker lo rifiuterebbe HARD (PLAYER_ID_NOT_LOCKED: autocomplete
