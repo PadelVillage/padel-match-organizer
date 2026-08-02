@@ -52,6 +52,26 @@ const NOMI = ['cleanCell', 'pmoIdMatchpoint', 'pmoIdInternoMatchpoint', 'pmoChia
 const chiamate = (html.match(/pmoAssorbiIdInterniMatchpoint\(/g) || []).length - 1; // -1 = la definizione
 const AGGANCI_ATTESI = 2;
 
+// ── 🚨 Guardia sull'ANELLO DI MEZZO — aggiunta il 2/08/2026 dopo un guasto in produzione.
+// I 13 casi qui sotto erano tutti verdi e il meccanismo NON funzionava: l'edge function
+// `matchpoint-bookings-create` normalizzava i giocatori tenendo solo `{nome, codice}` e
+// BUTTAVA `codiceCliente` — che l'app manda da sempre e che è il campo con cui si riconosce
+// il socio. Il worker lo riceveva vuoto e lo restituiva vuoto.
+// ⭐ Perché il banco non poteva vederlo: i dati finti dei casi hanno `codiceCliente`
+//    valorizzato, cioè un valore che nella produzione NON arrivava mai. Un banco è cieco su
+//    tutto ciò che sta a monte del punto in cui inietta i dati — e qui il guasto stava lì.
+// ⇒ Si controlla che quella normalizzazione conservi il campo. Non prova che il dato arrivi
+//   davvero (solo una prenotazione vera lo prova), ma impedisce che sparisca di nuovo in
+//   silenzio da una riga a cui nessuno stava badando.
+const EDGE = join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'index.ts');
+let edgeConserva = false, edgeLetta = false;
+try {
+  const edge = readFileSync(EDGE, 'utf8');
+  edgeLetta = true;
+  const blocco = edge.slice(edge.indexOf('const giocatori ='), edge.indexOf('const VALID_TIPOS'));
+  edgeConserva = blocco.includes('codiceCliente');
+} catch { /* file non trovato: resta falso e il banco lo dice */ }
+
 // ── Il contesto finto in cui far girare il codice vero ───────────────────────────
 function nuovoBanco(soci) {
   const salvataggi = [];
@@ -231,6 +251,11 @@ console.log('BANCO — raccolta degli ID interni Matchpoint\n');
 console.log(`Guardia sulla base: ${chiamate} agganci nel file (attesi ${AGGANCI_ATTESI}) — ` +
             (chiamate === AGGANCI_ATTESI ? '✅' : '❌ se ne è perso uno: la funzione può essere perfetta e non venire MAI chiamata'));
 if (chiamate !== AGGANCI_ATTESI) falliti++;
+console.log(`Guardia sull'anello di mezzo: l'edge di creazione conserva «codiceCliente» — ` +
+            (edgeConserva ? '✅' : (edgeLetta
+              ? '❌ l\'edge lo BUTTA: il worker riceverà il codice vuoto e non si riconoscerà nessun socio'
+              : '❌ non ho potuto leggere l\'edge: controllo MANCATO, non un via libera')));
+if (!edgeConserva) falliti++;
 console.log('');
 for (const c of casi) {
   let esiti;
