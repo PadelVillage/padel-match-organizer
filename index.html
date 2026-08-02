@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.153';
+    const APP_VERSION = '6.154';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -11008,6 +11008,29 @@ Grazie.`
       const v = cleanCell(memberId || '');
       if (/^\d{3,}$/.test(v)) return `ID-MP-${v}`;
       return v;
+    }
+
+    // ── I DUE ID DEL GIOCATORE, SEPARATI ─────────────────────────────────────────
+    // Deciso dal committente il 2/08/2026: «ID giocatore Padel Village» (il nostro) e
+    // «ID giocatore Matchpoint» (il loro) sono due cose diverse e stanno in due campi
+    // diversi. Fino a oggi `memberId` faceva DUE mestieri — il codice cliente Matchpoint
+    // per 1067 soci, un ripiego `PMO-xxxxxx` per 15, niente per 1705 — ed è la stessa
+    // famiglia di guaio che il 2/08 ha fatto sparire un giocatore da una lezione: due
+    // numerazioni diverse trattate come una sola.
+    // ⭐ Il nostro è il perno e sopravvive al distacco da Matchpoint (sua direzione, 2/08);
+    //   quello di Matchpoint è un attributo esterno, utile finché c'è il ponte.
+    function pmoIdPadelVillage(g) {
+      const v = cleanCell((g && g.pmoPlayerId) || '');
+      if (v) return v;
+      // TRANSIZIONE: finché la migrazione non è passata, il codice PMO può stare ancora nel
+      // campo vecchio. Lì dentro NON è un codice Matchpoint, quindi appartiene a questa riga.
+      const vecchio = cleanCell((g && g.memberId) || '');
+      return /^PMO-/i.test(vecchio) ? vecchio : '';
+    }
+    function pmoIdMatchpoint(g) {
+      // SOLO il codice cliente numerico: un PMO- qui non è mai stato un codice Matchpoint.
+      const v = cleanCell((g && g.memberId) || '');
+      return /^\d{3,}$/.test(v) ? v : '';
     }
 
     function ensureMemberId(member) {
@@ -15286,7 +15309,8 @@ Grazie.`
       const _anagraficaBody = showSecAnagrafica ? `
               <div class="member-tab-subhead">Dati socio</div>
               <div class="member-form-grid">
-                <div><label>ID giocatore</label><input value="${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}" readonly></div>
+                <div><label>ID giocatore Padel Village</label><input value="${escapeHtml(pmoIdPadelVillage(g) || '-')}" readonly title="Il nostro identificatore. È il riferimento del gestionale e del bot, e resta valido anche senza Matchpoint."></div>
+                <div><label>ID giocatore Matchpoint</label><input value="${escapeHtml(pmoIdMatchpoint(g) || '-')}" readonly title="Il codice cliente di Matchpoint (quello della tendina «000140-Nome»). Vuoto per chi non è cliente del circolo."></div>
                 <div><label>Livello operativo</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
