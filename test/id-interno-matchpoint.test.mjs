@@ -36,12 +36,17 @@ function estrai(nome) {
     if (html[t] === '(') tonde++;
     else if (html[t] === ')') { tonde--; if (tonde === 0) { t++; break; } }
   }
+  // 🚨 I COMMENTI si saltano: in italiano sono pieni di apostrofi («c'è», «l'operatore»),
+  // e ognuno preso per un apice manda in tilt il conteggio delle graffe — l'estrazione
+  // tira dentro le funzioni successive e il banco giudica codice che non è quello in esame.
   let i = html.indexOf('{', t), livello = 0, dentroStringa = null, prec = '';
   for (; i < html.length; i++) {
-    const c = html[i];
+    const c = html[i], succ = html[i + 1];
     if (dentroStringa) {
       if (c === dentroStringa && prec !== '\\') dentroStringa = null;
-    } else if (c === '"' || c === "'" || c === '`') {
+    } else if (c === '/' && succ === '/') { const fine = html.indexOf('\n', i); i = fine < 0 ? html.length : fine; prec = '\n'; continue; }
+    else if (c === '/' && succ === '*') { const fine = html.indexOf('*/', i + 2); i = fine < 0 ? html.length : fine + 1; prec = '/'; continue; }
+    else if (c === '"' || c === "'" || c === '`') {
       dentroStringa = c;
     } else if (c === '{') livello++;
     else if (c === '}') { livello--; if (livello === 0) { i++; break; } }
