@@ -12,7 +12,12 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // 🚨 `x-pmo-real-mp` DEVE stare qui o il browser blocca la richiesta prima di spedirla
+  // («Failed to fetch»): è l'intestazione con cui i pulsanti diagnostici di TEST
+  // scavalcano la simulazione. Difetto nascosto per mesi: senza quell'intestazione la
+  // chiamata viene simulata dall'app e non esce mai in rete, quindi il preflight non
+  // avviene. Tolta una volta per sbaglio riallineando i rami: c'è una guardia nel banco.
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-real-mp',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
