@@ -1619,7 +1619,7 @@ const CASES = [
     }
   },
   {
-    id: 55, flow: 'Cancel', name: 'annullo con TIMEOUT edge ("idle timeout 150s") → NON ripristina (esito incerto: il worker può aver annullato lo stesso — origine dei fantasmi)',
+    id: 55, flow: 'Cancel', name: '⭐⭐ annullo con TIMEOUT edge ("idle timeout 150s") → va a GUARDARE su Matchpoint, e se lì non c\'è più l\'annullo era passato (v6.150)',
     run: async (win, H, ctx) => {
       const iso = ctx.iso;
       // Bug live 03/07: l'edge Supabase supera il suo idle-timeout (worker in coda) e torna
