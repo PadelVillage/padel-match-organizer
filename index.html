@@ -4967,6 +4967,17 @@ body.assessment-public-mode .assessment-public-only-card {
     .players-summary-note { display:block; margin-top:4px; color:#667085; font-size:11px; font-weight:800; }
     .members-hydration-notice { display:flex; align-items:center; gap:8px; margin:0 0 10px; padding:8px 12px; border:1px solid #fde68a; background:#fffbeb; border-radius:8px; color:#92400e; font-size:12px; font-weight:800; }
     .members-hydration-notice[hidden] { display:none !important; }
+    /* Fila dei doppioni: lo STATO si dichiara, e ha tre colori perché ha tre significati diversi
+       («sto guardando» / «guardato, pulito» / «non sono riuscito a guardare»). Un elenco vuoto
+       che li confonde è un verde a vuoto. */
+    .members-doppioni-notice { margin:0 0 10px; padding:8px 12px; border:1px solid; border-radius:8px; font-size:12px; font-weight:800; }
+    .members-doppioni-notice[hidden] { display:none !important; }
+    .members-doppioni-notice.is-loading { border-color:#fde68a; background:#fffbeb; color:#92400e; }
+    .members-doppioni-notice.is-clean   { border-color:#bbf7d0; background:#f0fdf4; color:#166534; }
+    .members-doppioni-notice.is-error,
+    .members-doppioni-notice.is-found   { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
+    .members-doppioni-notice button { margin-left:8px; }
+    .players-dup-why { margin-top:4px; display:inline-block; padding:3px 7px; border:1px solid #fecaca; background:#fef2f2; border-radius:6px; color:#991b1b; font-size:11px; font-weight:800; }
     .members-hydration-dot { flex:0 0 auto; width:8px; height:8px; border-radius:50%; background:#f59e0b; animation:pmoHydrationPulse 1s ease-in-out infinite; }
     @keyframes pmoHydrationPulse { 0%, 100% { opacity:.25; } 50% { opacity:1; } }
     @media (prefers-reduced-motion:reduce) { .members-hydration-dot { animation:none; opacity:1; } }
@@ -6620,6 +6631,10 @@ body.assessment-public-mode .assessment-public-only-card {
             <span class="members-hydration-dot" aria-hidden="true"></span>
             <span>Sto caricando i contatti della rubrica: i conteggi qui sotto si stanno completando…</span>
           </div>
+          <!-- Fila dei DOPPIONI. Lo stato si DICHIARA sempre: un elenco vuoto può voler dire
+               «nessun doppione» oppure «non ho ancora guardato / non ci sono riuscito», e da fuori
+               sono identici. Letto come il primo, il secondo è un verde a vuoto. -->
+          <div id="membersDoppioniNotice" class="members-doppioni-notice" hidden aria-live="polite"></div>
           <section class="players-summary-table-wrap" aria-label="Indicatori database soci">
             <table class="players-summary-table">
               <thead>
@@ -6692,7 +6707,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
                 <div><label>Livello giocatore</label><select id="levelFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
                 <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">Sesso da completare</option></select></div>
-                <div><label>Filtra per</label><select id="attentionFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti</option><option value="hasWallet">Con borsellino</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option></select></div>
+                <div><label>Filtra per</label><select id="attentionFilter" onchange="pmoOnAttentionFilterChange()"><option value="">Tutti</option><option value="hasWallet">Con borsellino</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option><option value="doppioni">Doppioni da rivedere</option></select></div>
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
@@ -8000,7 +8015,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.147';
+    const APP_VERSION = '6.148';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -12683,6 +12698,160 @@ Grazie.`
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
     }
 
+    // ── LA FILA DEI DOPPIONI ────────────────────────────────────────────────────────────────
+    // 🚨⭐⭐ Perché si INTERROGA IL CLOUD e non l'elenco locale, che sarebbe gratis: in locale una
+    // persona con DUE righe compare UNA volta sola. `pmoEnsureRubricaGoogleHydrated` scarta chi ha
+    // un `id` già visto (`seenIds`) — ed è esattamente la forma più frequente di doppione: la
+    // STESSA scheda salvata sotto due chiavi (`phone:…` che diventa `email:…` quando la persona
+    // entra da Matchpoint). Un filtro costruito sull'elenco locale sarebbe CIECO proprio sul caso
+    // che deve trovare, e direbbe «nessun doppione» mentre ce n'è uno: lo stesso difetto del
+    // pannello Telegram che cercava solo per codice.
+    // Le TRE forme, tutte misurate sulle righe VIVE del cloud:
+    //   1. stessa scheda (`payload.id`) sotto due chiavi → non c'è niente da scegliere
+    //   2. due schede diverse con lo STESSO numero → il ponte risponde «ambigua» e il bot non
+    //      serve quella persona: non resta fuori, viene buttata fuori pur essendo dentro
+    //   3. due schede diverse con lo STESSO codice a 6 cifre
+    const _pmoDoppioni = { stato: 'mai', at: 0, errore: '', gruppi: [], perId: new Map(), perCodice: new Map(), perNumero: new Map() };
+    function _pmoNumKey(v) { return String(v == null ? '' : v).replace(/\D/g, '').slice(-10); }
+    function _pmoOraBreve(ts) {
+      try { const d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); } catch (e) { return 'adesso'; }
+    }
+    async function pmoRicaricaDoppioni(opts = {}) {
+      if (_pmoDoppioni.stato === 'caricando') return;
+      if (!opts.force && _pmoDoppioni.stato === 'ok' && (Date.now() - _pmoDoppioni.at) < 600000) return;
+      if (typeof pmoStaffRpcPaged !== 'function') return;
+      _pmoDoppioni.stato = 'caricando'; _pmoDoppioni.errore = '';
+      try { pmoRenderDoppioniNotice(); } catch (e) {}
+      try {
+        const rows = await pmoStaffRpcPaged('pmo_get_records_admin', { p_record_types: ['member'], p_since: null },
+          'cloud_sync', 'cercare i soci scritti due volte');
+        const vive = (Array.isArray(rows) ? rows : [])
+          .filter(r => r && r.record_type === 'member' && !r.deleted && r.payload);
+        const perId = new Map(), perCodice = new Map(), perNumero = new Map();
+        const push = (mappa, chiave, riga) => { if (!chiave) return; if (!mappa.has(chiave)) mappa.set(chiave, []); mappa.get(chiave).push(riga); };
+        vive.forEach(r => {
+          const p = r.payload;
+          const cod = cleanCell(p.memberId);
+          push(perId, cleanCell(p.id), r);
+          push(perCodice, /^\d{6}$/.test(cod) ? cod : '', r);
+          push(perNumero, _pmoNumKey(p.phone), r);
+        });
+        const chiavi = (righe) => righe.map(r => cleanCell(r.local_key)).sort();
+        const nomi = (righe) => Array.from(new Set(righe.map(r => cleanCell(r.payload.name)).filter(Boolean))).join(' / ');
+        const gruppi = [];
+        perId.forEach((righe, id) => {
+          if (righe.length < 2) return;
+          gruppi.push({ motivo: 'stessa-scheda', chiave: id, righe: chiavi(righe), nome: nomi(righe), fonte: righe,
+            spiega: 'la STESSA scheda salvata sotto due chiavi' });
+        });
+        // Le altre due forme si contano solo se le schede sono DAVVERO diverse: altrimenti la
+        // coppia del caso 1 ricomparirebbe tre volte (stesso id ⇒ stesso numero ⇒ stesso codice).
+        const schedeDiverse = (righe) => new Set(righe.map(r => cleanCell(r.payload.id))).size > 1;
+        perNumero.forEach((righe, num) => {
+          if (righe.length < 2 || !schedeDiverse(righe)) return;
+          gruppi.push({ motivo: 'stesso-numero', chiave: num, righe: chiavi(righe), nome: nomi(righe), fonte: righe,
+            spiega: 'due schede diverse con lo STESSO numero — per il bot questa persona è «ambigua» e resta fuori' });
+        });
+        perCodice.forEach((righe, cod) => {
+          if (righe.length < 2 || !schedeDiverse(righe)) return;
+          gruppi.push({ motivo: 'stesso-codice', chiave: cod, righe: chiavi(righe), nome: nomi(righe), fonte: righe,
+            spiega: 'due schede diverse con lo STESSO codice a 6 cifre' });
+        });
+        // Indici per riconoscere il socio nell'elenco locale. L'id è il legame più forte, ma una
+        // riga della rubrica può essere finita in locale con un id inventato (`makeId`) → si
+        // ripiega su codice e numero, che sono gli altri due modi con cui la stessa persona si
+        // riconosce. Primo gruppo che vince: i motivi non si sommano, si mostra il più preciso.
+        const perIdOut = new Map(), perCodiceOut = new Map(), perNumeroOut = new Map();
+        gruppi.forEach(gr => {
+          (gr.fonte || []).forEach(r => {
+            const p = r.payload;
+            const id = cleanCell(p.id), cod = cleanCell(p.memberId), num = _pmoNumKey(p.phone);
+            if (id && !perIdOut.has(id)) perIdOut.set(id, gr);
+            if (/^\d{6}$/.test(cod) && !perCodiceOut.has(cod)) perCodiceOut.set(cod, gr);
+            if (num && !perNumeroOut.has(num)) perNumeroOut.set(num, gr);
+          });
+          delete gr.fonte;   // non serve più: tenerlo terrebbe in vita ~2800 righe di cloud
+        });
+        _pmoDoppioni.perId = perIdOut; _pmoDoppioni.perCodice = perCodiceOut; _pmoDoppioni.perNumero = perNumeroOut;
+        _pmoDoppioni.gruppi = gruppi;
+        _pmoDoppioni.at = Date.now();
+        _pmoDoppioni.stato = 'ok';
+      } catch (e) {
+        _pmoDoppioni.stato = 'errore';
+        _pmoDoppioni.errore = (e && e.message) ? e.message : String(e);
+      }
+      try { pmoRenderDoppioniNotice(); } catch (e) {}
+      try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
+    }
+    // Torna il gruppo di appartenenza, o null. Fuori dallo stato 'ok' torna SEMPRE null: un
+    // risultato calcolato su dati mai scaricati sarebbe una risposta inventata.
+    function pmoDoppioneDi(g) {
+      if (!g || _pmoDoppioni.stato !== 'ok') return null;
+      const id = cleanCell(g.id);
+      if (id && _pmoDoppioni.perId.has(id)) return _pmoDoppioni.perId.get(id);
+      const cod = cleanCell(g.memberId);
+      if (/^\d{6}$/.test(cod) && _pmoDoppioni.perCodice.has(cod)) return _pmoDoppioni.perCodice.get(cod);
+      const num = _pmoNumKey(g.phone);
+      if (num && _pmoDoppioni.perNumero.has(num)) return _pmoDoppioni.perNumero.get(num);
+      return null;
+    }
+    // `filtrati` = le righe che stanno per comparire qui sotto. Serve perché il conto del CLOUD e
+    // quello a SCHERMO possono non coincidere: un doppione può riguardare una scheda che questo
+    // dispositivo non ha in memoria, e allora non compare in elenco. Scrivere «3 persone» sopra
+    // un elenco di 2 è un numero che mente — quindi o coincidono, o si dice dove sono le altre.
+    function pmoRenderDoppioniNotice(filtrati) {
+      const el = document.getElementById('membersDoppioniNotice');
+      if (!el) return;
+      if ((document.getElementById('attentionFilter')?.value || '') !== 'doppioni') { el.hidden = true; return; }
+      el.hidden = false;
+      el.className = 'members-doppioni-notice';
+      if (_pmoDoppioni.stato === 'mai' || _pmoDoppioni.stato === 'caricando') {
+        el.classList.add('is-loading');
+        el.textContent = 'Sto controllando chi è scritto due volte…';
+        return;
+      }
+      if (_pmoDoppioni.stato === 'errore') {
+        el.classList.add('is-error');
+        el.innerHTML = '⚠️ <strong>Non sono riuscito a controllare</strong> (' + escapeHtml(_pmoDoppioni.errore)
+          + '). Questo elenco vuoto <strong>non</strong> vuol dire «nessun doppione»: vuol dire che non ho guardato.'
+          + '<button class="btn-secondary small-btn" onclick="pmoRicaricaDoppioni({force:true})">Riprova</button>';
+        return;
+      }
+      const n = _pmoDoppioni.gruppi.length;
+      const quando = ' Controllato alle ' + escapeHtml(_pmoOraBreve(_pmoDoppioni.at)) + '.';
+      const ricontrolla = '<button class="btn-secondary small-btn" onclick="pmoRicaricaDoppioni({force:true})">Ricontrolla</button>';
+      if (!n) {
+        el.classList.add('is-clean');
+        el.innerHTML = '✅ <strong>Nessun doppione</strong>: ogni socio ha una scheda sola.' + quando + ricontrolla;
+        return;
+      }
+      el.classList.add('is-found');
+      // Quanti dei gruppi trovati compaiono DAVVERO nell'elenco qui sotto.
+      let visti = null, nonVisti = [];
+      if (Array.isArray(filtrati)) {
+        const dentro = new Set();
+        filtrati.forEach(g => { const gr = pmoDoppioneDi(g); if (gr) dentro.add(gr.motivo + '|' + gr.chiave); });
+        visti = dentro.size;
+        nonVisti = _pmoDoppioni.gruppi.filter(gr => !dentro.has(gr.motivo + '|' + gr.chiave));
+      }
+      let testo = '🚨 <strong>' + n + (n === 1 ? ' persona è scritta due volte' : ' persone sono scritte due volte')
+        + '</strong> in anagrafica — sotto c\'è scritto perché.';
+      if (visti != null && nonVisti.length) {
+        const nomi = nonVisti.map(gr => gr.nome).filter(Boolean).slice(0, 6).join(', ');
+        testo += ' <br>⚠️ Qui sotto ne compaiono <strong>' + visti + '</strong>: '
+          + (n - visti) + (n - visti === 1 ? ' scheda non è' : ' schede non sono')
+          + ' in memoria su questo dispositivo' + (nomi ? ' (' + escapeHtml(nomi) + ')' : '')
+          + ' — cercale per nome, oppure ricarica la pagina.';
+      }
+      el.innerHTML = testo + quando + ricontrolla;
+    }
+    function pmoOnAttentionFilterChange() {
+      membersCurrentPage = 1;
+      if ((document.getElementById('attentionFilter')?.value || '') === 'doppioni') pmoRicaricaDoppioni();
+      try { pmoRenderDoppioniNotice(); } catch (e) {}
+      displayMembers();
+    }
+
     let _pmoRubricaGoogleHydratedAt = 0;
     let _pmoRubricaGoogleHydrating = false;
     // Avviso «sto caricando i contatti»: i conteggi soci partono parziali e si completano a
@@ -14510,6 +14679,10 @@ Grazie.`
       if (type === 'noId') return !g.memberId;
       if (type === 'level05AfterAssessment') return level05AfterAssessment;
       if (type === 'hasWallet') { const w = _walletResolve(g); return !!(w && typeof w.balance_cents === 'number' && w.balance_cents > 0); }
+      // Doppioni: la risposta arriva dal CLOUD (vedi pmoRicaricaDoppioni), non dall'elenco locale,
+      // dove una persona con due schede compare una volta sola. Finché il controllo non è andato
+      // a buon fine `pmoDoppioneDi` torna null e l'elenco resta vuoto: a dirlo è l'avviso sopra.
+      if (type === 'doppioni') return !!pmoDoppioneDi(g);
       return true;
     }
     function normalizeMemberContactsExportState(raw) {
@@ -14890,6 +15063,7 @@ Grazie.`
       const filtered = applyFilters();
       updateMemberCounts(filtered);
       renderMemberContactsExportPanel();
+      try { pmoRenderDoppioniNotice(filtered); } catch (e) {}
       const maxPage = Math.max(1, Math.ceil(filtered.length / MEMBERS_PAGE_SIZE));
       if (membersCurrentPage > maxPage) membersCurrentPage = maxPage;
       const start = (membersCurrentPage - 1) * MEMBERS_PAGE_SIZE;
@@ -14923,8 +15097,15 @@ Grazie.`
         } else {
           walletCell = '<span style="color:#bbb;" title="Socio senza id Matchpoint collegato">—</span>';
         }
+        // Doppione: si dice SEMPRE che c'è e PERCHÉ, non solo quando è acceso il filtro — chi
+        // arriva qui cercando un nome deve vederlo lo stesso. Un segno senza il motivo accanto
+        // lascerebbe inventare l'azione a chi legge. Le chiavi vere stanno nel titolo.
+        const _dup = (typeof pmoDoppioneDi === 'function') ? pmoDoppioneDi(g) : null;
+        const _dupWhy = _dup
+          ? `<div class="players-dup-why" title="${escapeHtml('Righe: ' + (_dup.righe || []).join('   +   '))}">🚨 Doppione — ${escapeHtml(_dup.spiega)}</div>`
+          : '';
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
-          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div></td>
+          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div>${_dupWhy}</td>
           <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
           <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
