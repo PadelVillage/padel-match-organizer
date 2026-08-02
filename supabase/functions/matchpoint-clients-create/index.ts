@@ -12,7 +12,11 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // 🚨 `x-pmo-real-mp` va DICHIARATA o il browser blocca la richiesta prima di spedirla:
+  // è l'intestazione con cui i pulsanti diagnostici di TEST scavalcano la simulazione.
+  // Il difetto stava nascosto perché senza quell'intestazione la chiamata viene simulata
+  // dall'app e non esce mai in rete — quindi il preflight non avveniva mai.
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-real-mp',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
