@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.159';
+    const APP_VERSION = '6.160';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13426,7 +13426,14 @@ Grazie.`
       const missingBlock = missing.length ? `
         <div class="member-count-audit-note"><strong>🔎 ${escapeHtml(String(missing.length))} soci sono nel cloud ma non in questo browser</strong>
           (${escapeHtml(String(missing.filter(r => r.active).length))} attivi). Non sono persi: la copia di questo computer è
-          incompleta. Aprendoli non li trovi nella ricerca soci.</div>
+          incompleta. Guarda l'ultima colonna, perché i due casi sono molto diversi: chi risulta
+          <strong>«Non c'è proprio»</strong> allo sportello non si trova, mentre chi è
+          <strong>«Scheda non collegata»</strong> si trova regolarmente cercandolo per nome.</div>
+        ${missing.filter(r => r.modo === 'assente').length ? `<div class="member-count-audit-note">
+          <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); pmoScaricaSociMancantiInQuestoBrowser()">Scarica in questo browser i ${escapeHtml(String(missing.filter(r => r.modo === 'assente').length))} soci che non si trovano</button>
+          <span>Li rimette nella copia locale prendendoli dal cloud, così tornano nella ricerca soci.
+          Non cancella niente e <strong>non tocca il cloud</strong>. Agisce solo sui «Non c'è proprio»:
+          per gli altri la scheda qui c'è già, e aggiungerla creerebbe un doppione vero.</span></div>` : ''}
         <div class="member-count-audit-table-wrap">
           <table class="member-count-audit-table">
             <thead><tr><th>Socio</th><th>Contatti</th><th>Stato</th><th>Aggiornato</th><th>In che modo manca</th></tr></thead>
@@ -13437,8 +13444,8 @@ Grazie.`
                 <td>${row.active ? 'Attivo' : 'Non attivo'}</td>
                 <td>${escapeHtml(pmoFormatDateTime(row.updatedAt) || '—')}</td>
                 <td>${row.modo === 'altro_id'
-                      ? `<strong>Doppia scheda</strong><div class="routine-mini">qui c'è come «${escapeHtml(row.gemelloNome || '?')}», ma con un altro identificativo</div>`
-                      : '<strong>Non c\'è proprio</strong><div class="routine-mini">nessuna scheda con questo telefono o codice</div>'}</td>
+                      ? `<strong>Scheda non collegata</strong><div class="routine-mini">la trovi come «${escapeHtml(row.gemelloNome || '?')}»: la scheda è UNA sola, ma qui e nel cloud ha identificativi diversi, quindi le due copie non si riconoscono</div>`
+                      : '<strong>Non c\'è proprio</strong><div class="routine-mini">nessuna scheda con questo telefono o codice: allo sportello non si trova</div>'}</td>
               </tr>`).join('')}</tbody>
           </table>
         </div>
@@ -13461,6 +13468,63 @@ Grazie.`
       if (!box) return;
       box.className = `matchpoint-action-state ${type}`;
       box.textContent = message;
+    }
+
+    // ── 🩹 SCARICA i soci che mancano a QUESTO browser ───────────────────────────────
+    // Chiesto da lui il 2/08/2026: «sarebbe utile che potesse risolvere con un bottone».
+    // Prende i record del cloud che qui non ci sono e li rimette nella copia locale.
+    //
+    // 🚨 Tocca SOLO i «non c'è proprio». Sui «doppia scheda» la persona in questo browser
+    //    c'è già, con un altro identificativo: aggiungerla creerebbe un DOPPIONE vero —
+    //    due schede con lo stesso nome allo sportello — cioè un guaio peggiore di quello
+    //    che si voleva riparare. Quelli si sistemano riconciliando gli identificativi, che
+    //    è un'altra operazione e va decisa a parte.
+    // ⭐ Il cloud NON viene toccato: è la copia locale a essere incompleta, e la fonte ha
+    //    già ragione. Nessuna scrittura verso Supabase, nessuna verso Matchpoint.
+    // ⚠️ È una riparazione, non una cura: finché non si sa PERCHÉ quei record non scendono,
+    //    possono tornare a mancare. Il messaggio finale lo dice invece di far credere il
+    //    contrario.
+    async function pmoScaricaSociMancantiInQuestoBrowser() {
+      const mancanti = (pmoMemberCountAuditState.missingRows || []).filter(row => row.modo === 'assente');
+      if (!mancanti.length) {
+        showAlert('Nessun socio da scaricare: quelli elencati sono già presenti con un altro identificativo.', 'info');
+        return;
+      }
+      const elenco = mancanti.map(row => `· ${row.fullName}${row.active ? '' : ' (non attivo)'}`).join('\n');
+      if (!confirm(`Scaricare ${mancanti.length} soci dal cloud in questo browser?\n\n${elenco}\n\n` +
+        `Vengono AGGIUNTI alla copia locale, così li ritrovi nella ricerca soci.\n` +
+        `Nessun dato viene cancellato e il cloud non viene toccato.`)) return;
+
+      let aggiunti = 0, saltati = 0;
+      mancanti.forEach(row => {
+        const payload = row.payload && typeof row.payload === 'object' ? row.payload : null;
+        if (!payload) { saltati++; return; }
+        const id = cleanCell(payload.id || row.cloudId || '');
+        // Guardia: se nel frattempo è comparso, non lo si aggiunge due volte.
+        if (!id || giocatori.some(g => g && cleanCell(g.id) === id)) { saltati++; return; }
+        giocatori.push({ ...payload, id });
+        aggiunti++;
+      });
+
+      if (!aggiunti) {
+        showAlert('Nessun socio aggiunto: erano già tutti presenti.', 'info');
+        return;
+      }
+      // 🚨 Il salvataggio può fallire se la memoria del browser è piena — difetto già visto,
+      //    e per giunta è una delle cause sospettate di questo stesso problema. Se salta, va
+      //    detto forte: senza, l'operatore crederebbe di aver risolto.
+      try {
+        save('giocatori', giocatori);
+      } catch (err) {
+        showAlert('❌ I soci non sono stati salvati: la memoria di questo browser è piena. ' +
+                  'Liberala e riprova — è probabilmente anche la causa di questo problema.', 'danger');
+        return;
+      }
+      try { if (typeof updateMemberCounts === 'function') updateMemberCounts(); } catch (e) {}
+      try { if (typeof renderMembers === 'function') renderMembers(); } catch (e) {}
+      showAlert(`✅ ${aggiunti} soci riportati in questo browser${saltati ? ` (${saltati} già presenti)` : ''}. ` +
+                `Ora li trovi nella ricerca soci. ⚠️ Se ricompaiono in questo elenco, la causa è a monte e va cercata.`, 'success');
+      pmoRunMemberCountAuditDryRun();   // ricontrolla e ridisegna: il numero deve scendere
     }
 
     async function pmoApplyApprovedMemberCountAuditSoftDelete() {

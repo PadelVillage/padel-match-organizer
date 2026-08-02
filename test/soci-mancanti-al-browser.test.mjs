@@ -30,10 +30,18 @@ function estrai(nome) {
     if (html[t] === '(') tonde++;
     else if (html[t] === ')') { tonde--; if (tonde === 0) { t++; break; } }
   }
+  // 🚨 I COMMENTI vanno saltati, non letti come codice: in italiano sono pieni di
+  // apostrofi («c'è», «l'operatore», «un'altra») e ognuno, preso per un apice di stringa,
+  // manda in tilt il conteggio delle graffe — l'estrazione tira dentro anche le funzioni
+  // successive e il banco finisce per giudicare codice che non è quello in esame.
+  // Successo il 2/08/2026: una guardia «non scrive nel cloud» dava ROSSO perché leggeva
+  // le chiamate di un'altra funzione. Lo strumento sbagliato accusa il codice giusto.
   let i = html.indexOf('{', t), livello = 0, stringa = null, prec = '';
   for (; i < html.length; i++) {
-    const c = html[i];
+    const c = html[i], succ = html[i + 1];
     if (stringa) { if (c === stringa && prec !== '\\') stringa = null; }
+    else if (c === '/' && succ === '/') { const fine = html.indexOf('\n', i); i = fine < 0 ? html.length : fine; prec = '\n'; continue; }
+    else if (c === '/' && succ === '*') { const fine = html.indexOf('*/', i + 2); i = fine < 0 ? html.length : fine + 1; prec = '/'; continue; }
     else if (c === '"' || c === "'" || c === '`') stringa = c;
     else if (c === '{') livello++;
     else if (c === '}') { livello--; if (livello === 0) { i++; break; } }
@@ -156,8 +164,36 @@ caso('8. browser VUOTO: mancano tutti (la guardia contro il banco che misura zer
   return [r.missingRows.length === 2, r.summary.missingLocal === 2];
 });
 
+// ── 🚨 Guardia sul BOTTONE che ripara ────────────────────────────────────────────
+// Il rischio peggiore non è che il bottone non funzioni: è che agisca su TUTTI i
+// mancanti. Sui «scheda non collegata» la persona in quel browser c'è già, e
+// aggiungerla creerebbe un doppione vero allo sportello — un guaio peggiore di quello
+// che si voleva riparare. Questi controlli guardano il codice, non l'esecuzione: non
+// provano che il bottone funzioni, ma impediscono che quella riga sparisca inosservata.
+const corpoBottone = (() => { try { return estrai('pmoScaricaSociMancantiInQuestoBrowser'); } catch { return ''; } })();
+// ⚠️ I controlli «non fa X» vanno fatti sul CODICE, non sui commenti: la prima versione
+// cercava «supabase» nel testo intero e trovava la riga di commento che dice «nessuna
+// scrittura verso Supabase» — cioè accusava la funzione proprio per la frase che promette
+// il contrario. Un controllo che legge le intenzioni invece dei fatti dà un rosso falso
+// oggi e potrebbe darne un verde falso domani.
+const soloCodice = corpoBottone.split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
+const controlliBottone = [
+  ['la funzione del bottone esiste', !!corpoBottone],
+  ['agisce SOLO sui «non c\'è proprio»', /modo === 'assente'/.test(soloCodice)],
+  ['NON scrive nel cloud', !/pmoSyncCloudRecordsNow\(|pmoCloudRpc\(|pmoStaffRpcPaged\(/.test(soloCodice)],
+  ['non cancella soci', !/splice\(|giocatori\s*=\s*\[\]/.test(soloCodice)],
+  ['gestisce la memoria piena invece di fingere', /catch/.test(soloCodice) && /piena/.test(soloCodice)],
+  ['il pannello lo chiama davvero', (html.match(/pmoScaricaSociMancantiInQuestoBrowser\(\)/g) || []).length >= 2],
+];
+
 let passati = 0, falliti = 0;
 console.log('BANCO — i soci che stanno nel cloud e non in questo browser\n');
+console.log('Guardie sul bottone che ripara:');
+controlliBottone.forEach(([nome, ok]) => {
+  console.log(`  ${ok ? '✅' : '❌'} ${nome}`);
+  if (!ok) falliti++;
+});
+console.log('');
 for (const c of casi) {
   let esiti;
   try { esiti = c.fn(); } catch (err) { esiti = [false]; c.errore = err; }
