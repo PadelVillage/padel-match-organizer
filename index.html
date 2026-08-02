@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.163';
+    const APP_VERSION = '6.164';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43498,7 +43498,15 @@ Per confermare scrivi ELIMINA.`);
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
 
       if (response.ok && data?.ok !== false) {
-        const lines = ['✅ Cliente creato!'];
+        // 🚨 L'intestazione segue l'ESITO, non l'assenza di errori. Il worker ora può
+        //    rispondere «ok» senza aver creato niente (telefono già noto: adottato o
+        //    conflitto): scrivere «Cliente creato!» lì sopra farebbe leggere il contrario
+        //    di quello che è successo — proprio il falso successo che questa difesa
+        //    serve a togliere di mezzo.
+        const _esito = data?.esito || '';
+        const lines = [_esito === 'conflitto_telefono' ? '⛔ NON creato: quel telefono è già di un altro'
+                     : _esito === 'adottato' ? '♻️ NON creato: era già in Matchpoint, adottata la sua scheda'
+                     : '✅ Cliente creato!'];
         if (data?.message) lines.push(data.message);
         if (data?.worker) lines.push(`Worker: ${typeof data.worker === 'object' ? JSON.stringify(data.worker, null, 2) : data.worker}`);
         if (stateEl) { stateEl.textContent = 'Completato'; stateEl.className = 'matchpoint-action-state done'; }
