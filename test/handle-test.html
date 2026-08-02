@@ -99,7 +99,7 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT, CLOUD_READ_FAIL, JOB_NEXT;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT, CLOUD_READ_FAIL, JOB_NEXT, LOOK_NEXT;
 // Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
 let CLOUD_LESSICO = [];
@@ -111,7 +111,11 @@ const LEAKS = [];
 const WS_BLOCKED = [];
 const RT_BROADCASTS = [];
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [], jobPolls: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [], jobPolls: [], looks: [] };
+  // ⭐ La LETTURA di verifica su Matchpoint («vado a guardare» dopo un esito ignoto, v6.150).
+  // null = non programmata → la lettura passa dal ramo generico come prima. Si accende SOLO nei
+  // casi che provano quella strada, così nessun caso vecchio cambia comportamento.
+  LOOK_NEXT = null;
   // Esito del LAVORO asincrono della create (interrogazione `?jobId=`). Oggetto fisso, oppure
   // funzione (n) => esito, per rispondere 'pending' le prime volte e poi 'done'/'error'.
   // ⭐ Default 'done': la create asincrona si chiude SUBITO e i casi che guardano solo il payload
@@ -142,6 +146,16 @@ function installFetchMock(win) {
       CAPTURED.jobPolls.push({ url: String(u).slice(-32), t: Date.now() });
       const esito = (typeof JOB_NEXT === 'function') ? JOB_NEXT(CAPTURED.jobPolls.length) : JOB_NEXT;
       return jsonResponse(win, esito || { status: 'pending' }, 200);
+    }
+    // 🚨 La LETTURA DI VERIFICA (edit con `read:true`) va intercettata PRIMA del ramo generico,
+    // per la stessa ragione del polling qui sopra: usa la STESSA url della modifica, quindi senza
+    // questo ramo un «vado a guardare su Matchpoint» verrebbe contato come una modifica e
+    // risponderebbe con WORKER_NEXT invece che col suo LOOK_NEXT — cioè il caso proverebbe
+    // un'altra cosa restando verde. Attivo solo quando LOOK_NEXT è programmato.
+    if (LOOK_NEXT && /\/functions\/v1\/matchpoint-bookings-edit/.test(u) && body && body.read === true) {
+      CAPTURED.looks.push({ url: u, body });
+      if (LOOK_NEXT.throw) { throw new Error('network down (simulato)'); }
+      return jsonResponse(win, LOOK_NEXT.body || { ok: true, worker: { partecipantiFinali: [] } }, LOOK_NEXT.status || 200);
     }
     if (/\/functions\/v1\/matchpoint-bookings-(cancel|edit|create)/.test(u)) {
       const kind = u.match(/matchpoint-bookings-(\w+)/)[1];
@@ -2266,45 +2280,56 @@ const CASES = [
   // modifica successiva. E qui c'è un appiglio che la modifica non aveva: il NUMERO del lavoro.
   // ══════════════════════════════════════════════════════════════════════════════════════
   {
-    id: 74, flow: 'Creazione', name: '🚨 create: rete caduta DOPO l\'invio ⇒ la card RESTA (toglierla è il fantasma del 20/07)',
+    id: 74, flow: 'Creazione', name: '🚨⭐⭐ create: rete caduta DOPO l\'invio ⇒ NON indovina, VA A GUARDARE su Matchpoint — e se lì c\'è, la card compare',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
       const checks = [];
       await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
       WORKER_NEXT = { throw: true };   // la richiesta ESCE e muore: esito IGNOTO
+      // …ma su Matchpoint la prenotazione c'è davvero, e la lettura di verifica lo dice —
+      // coi NOSTRI nomi dentro, se no non conterebbe (potrebbe essere di un collega).
+      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Ospite' }] } } };
       const c0 = chatCount(win);       // leggo SOLO quello che dice da qui in poi (vedi chatSince)
       await handleSeq(win, ['ospite', 'conferma']);
       // 🚨 Guardia sulla BASE: senza la prova che la richiesta sia uscita, il caso proverebbe
-      // quello SBAGLIATO (la richiesta mai partita, dove togliere la card è giusto).
+      // quello SBAGLIATO (la richiesta mai partita, dove non c'è niente da verificare).
       const uscita = await waitFor(() => workerPushes('create').length > 0, 4000);
       checks.push({ label: '🚨 base: la create è USCITA davvero (il mock l\'ha vista)', ok: uscita });
-      await waitFor(() => /non ho la conferma/i.test(chatSince(win, c0)), 5000);
-      checks.push({ label: '⭐⭐ la prenotazione RESTA sul calendario (nessuna rimozione al buio)',
-        ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 1 });
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '⭐⭐ è andato a GUARDARE su Matchpoint invece di indovinare', ok: guardato });
+      const comparsa = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 1, 8000);
+      checks.push({ label: '⭐⭐ e siccome lì c\'è, la card compare (dopo la verifica, non prima)', ok: comparsa });
       const t = chatSince(win, c0);
-      checks.push({ label: 'dice che la conferma MANCA, non che è fallita', ok: /non ho la conferma/i.test(t) });
+      checks.push({ label: 'e lo dice: «verificata»', ok: /verificat/i.test(t) });
       checks.push({ label: '⭐ e NON dice la frase bugiarda «L\'ho rimossa dal calendario»', ok: !/l'ho rimossa|ho rimossa/i.test(t) });
       return checks;
     }
   },
   {
-    id: 75, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: il gestionale RISPONDE un rifiuto ⇒ la card DEVE sparire',
+    id: 75, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: il gestionale RISPONDE un rifiuto ⇒ la card NON deve comparire',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
       const checks = [];
       await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
-      // ⭐ Stesso percorso del 74, cambia UN DATO: qui il server ha RISPOSTO. Esito NOTO ⇒
-      // togliere è giusto. Senza questo caso, il 74 passerebbe anche se avessi semplicemente
-      // smesso di rimuovere, lasciando sul calendario prenotazioni mai nate.
+      // ⭐ Stesso percorso del 74, cambia UN DATO: qui il server ha RISPOSTO. Esito NOTO ⇒ niente
+      // da verificare e niente da disegnare. Senza questo caso, il 74 passerebbe anche se la card
+      // comparisse SEMPRE, cioè se avessi semplicemente rimesso il disegno in anticipo.
       WORKER_NEXT = { reject: true, body: { ok: false, message: 'SLOT_OCCUPATO' } };
+      // ⭐ La verifica è ARMATA apposta e direbbe «c'è»: se l'app andasse a guardare quando non
+      // deve, la card comparirebbe e il primo controllo diventerebbe rosso. Senza armarla, il
+      // controllo «non è andato a guardare» sarebbe verde comunque — cioè non proverebbe niente.
+      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Ospite' }] } } };
       const c0 = chatCount(win);
       await handleSeq(win, ['ospite', 'conferma']);
-      const sparita = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0, 5000);
-      checks.push({ label: '⭐⭐ la prenotazione SPARISCE: il rifiuto è una risposta, non un dubbio', ok: sparita });
-      checks.push({ label: 'e lo dice: «non è andata a buon fine» / «rimossa»',
-        ok: /non è andata a buon fine|rimossa/i.test(chatSince(win, c0)) });
+      await waitFor(() => /non prenotata|non è andata a buon fine/i.test(chatSince(win, c0)), 5000);
+      checks.push({ label: '⭐⭐ la card NON c\'è: il rifiuto è una risposta, e senza sì non si disegna',
+        ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0 });
+      const t = chatSince(win, c0);
+      checks.push({ label: 'e lo dice: «non prenotata» / «lo slot è rimasto libero»',
+        ok: /non prenotata/i.test(t) && /rimasto libero/i.test(t) });
+      checks.push({ label: '🚨 base: NON è andato a guardare (l\'esito era già noto)', ok: CAPTURED.looks.length === 0 });
       return checks;
     }
   },
@@ -2364,7 +2389,7 @@ const CASES = [
     }
   },
   {
-    id: 78, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO del 77: se il lavoro risponde TARDI «errore», allora sì che la card sparisce',
+    id: 78, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO del 77: se il lavoro risponde TARDI «errore», allora la card non compare per niente',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -2375,10 +2400,111 @@ const CASES = [
       JOB_NEXT = (n) => (n <= 2 ? { status: 'pending' } : { status: 'error', error: 'SLOT_OCCUPATO' });
       try {
         await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        const c0 = chatCount(win);
         await handleSeq(win, ['ospite', 'conferma']);
-        const sparita = await waitFor(() => findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0, 15000);
+        // 🚨 TRAPPOLA DELLO STRUMENTO, misurata il 2/08: aspettare che la card «sparisca» era
+        // giusto quando la card compariva subito. Con la regola nuova non compare MAI, quindi
+        // quell'attesa è vera al primo istante e il contatore delle interrogazioni viene letto
+        // troppo presto — il caso diventa rosso senza che l'app abbia nulla che non va.
+        // Si aspetta il FATTO che conclude il caso: la risposta tardiva, detta a schermo.
+        const detto = await waitFor(() => /non prenotata|non è andata a buon fine/i.test(chatSince(win, c0)), 15000);
         checks.push({ label: '🚨 base: ha continuato a chiedere DOPO la prima attesa (≥3 interrogazioni)', ok: CAPTURED.jobPolls.length >= 3 });
-        checks.push({ label: '⭐⭐ risposta tardiva ma CHIARA ⇒ la card sparisce davvero', ok: sparita });
+        checks.push({ label: '⭐⭐ risposta tardiva ma CHIARA ⇒ l\'esito è NOTO ed è un no', ok: detto });
+        checks.push({ label: '⭐⭐ e infatti sul calendario non c\'è niente', ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0 });
+        return checks;
+      } finally {
+        H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
+      }
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  // 79-81 — LA REGOLA NUOVA (v6.150), decisa dal committente il 2/08/2026:
+  //   «qualsiasi operazione fatta sul gestionale, PRIMA che appaia sul calendario, deve essere
+  //    validata dentro Matchpoint».
+  // Il 74 e il 75 provano le due risposte note; qui si provano le tre cose che la regola aggiunge:
+  // il caso in cui la verifica dice di NO (79), l'attesa vista da dentro (80) e il freno che
+  // impedisce a due operatori di prendere lo stesso campo mentre il calendario sembra libero (81).
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  {
+    id: 79, flow: 'Creazione', name: '⭐⭐ CONTROLLO OPPOSTO del 74: se andando a guardare Matchpoint dice che NON c\'è, la card non si disegna',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+      // Stessa identica situazione del 74 — esito ignoto — e cambia UN DATO: cosa risponde la
+      // verifica. Senza questo caso, il 74 sarebbe verde anche se la verifica dicesse SEMPRE «sì».
+      WORKER_NEXT = { throw: true };
+      LOOK_NEXT = { body: { ok: false, message: 'PRENOTAZIONE_NON_TROVATA' } };
+      const c0 = chatCount(win);
+      await handleSeq(win, ['ospite', 'conferma']);
+      const uscita = await waitFor(() => workerPushes('create').length > 0, 4000);
+      checks.push({ label: '🚨 base: la create è USCITA davvero', ok: uscita });
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '🚨 base: è andato a guardare (se no non sto provando la verifica)', ok: guardato });
+      await waitFor(() => /non prenotata|non è andata a buon fine/i.test(chatSince(win, c0)), 8000);
+      checks.push({ label: '⭐⭐ Matchpoint dice di no ⇒ nessuna card, e non si inventa niente',
+        ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0 });
+      return checks;
+    }
+  },
+  {
+    id: 80, flow: 'Creazione', name: '⭐⭐ IL CUORE DELLA REGOLA: DURANTE l\'attesa il calendario resta VUOTO; la card compare solo alla conferma',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      // Orologio corto (per la trappola dei timer bloccati a ~1 s nell'iframe nascosto vedi il 77):
+      // il lavoro resta 'pending' per due giri, e in quei due giri si guarda il calendario.
+      H.setPollTimings({ maxMs: 20000, stepMs: 100, lateMaxMs: 20000, lateStepMs: 100 });
+      JOB_NEXT = (n) => (n <= 2 ? { status: 'pending' } : { status: 'done', worker_result: { idReserva: 'R-ATTESA' } });
+      try {
+        await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        await handleSeq(win, ['ospite', 'conferma']);
+        // 🚨 base: la create dev'essere partita, se no «calendario vuoto» sarebbe vero per il
+        // motivo sbagliato — non è successo niente — e il caso sarebbe verde a vuoto (29ª).
+        const uscita = await waitFor(() => workerPushes('create').length > 0, 5000);
+        checks.push({ label: '🚨 base: la create è partita', ok: uscita });
+        // 🚨 base: e il lavoro dev'essere ANCORA in corso proprio adesso, se no non sto
+        // guardando l'attesa ma il dopo.
+        checks.push({ label: '🚨 base: il lavoro è ancora IN CORSO in questo istante', ok: CAPTURED.jobPolls.length < 3 });
+        checks.push({ label: '⭐⭐ DURANTE l\'attesa il calendario è VUOTO: nessuna card in anticipo',
+          ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0 });
+        const comparsa = await waitFor(() => {
+          const b = findBooking(H.getBookings(), ctx.iso, 4, '19:00')[0];
+          return !!b && String(b.idReserva || '') === 'R-ATTESA';
+        }, 20000);
+        checks.push({ label: '⭐⭐ e alla conferma compare, col numero vero di Matchpoint', ok: comparsa });
+        return checks;
+      } finally {
+        H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
+      }
+    }
+  },
+  {
+    id: 81, flow: 'Creazione', name: '⭐⭐ FRENO ANTI-COLLISIONE: mentre una prenotazione è in volo lo stesso campo non si riprenota, anche se il calendario sembra libero',
+    run: async (win, H, ctx) => {
+      H.setBookings([]);
+      setCalDay(win, ctx.iso);
+      const checks = [];
+      H.setPollTimings({ maxMs: 20000, stepMs: 100, lateMaxMs: 20000, lateStepMs: 100 });
+      JOB_NEXT = (n) => (n <= 6 ? { status: 'pending' } : { status: 'done', worker_result: { idReserva: 'R-FRENO' } });
+      try {
+        await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        await handleSeq(win, ['ospite', 'conferma']);
+        const uscita = await waitFor(() => workerPushes('create').length === 1, 5000);
+        checks.push({ label: '🚨 base: la prima prenotazione è partita, ed è UNA sola', ok: uscita });
+        // 🚨 base: è proprio la condizione che la regola nuova crea — lo slot SEMBRA libero,
+        // perché la card non c'è. Se qui ci fosse una card, a fermare il secondo sarebbe lei,
+        // e il freno non verrebbe provato affatto.
+        checks.push({ label: '🚨 base: il calendario è VUOTO (lo slot sembra libero)',
+          ok: findBooking(H.getBookings(), ctx.iso, 4, '19:00').length === 0 });
+        const c0 = chatCount(win);
+        await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
+        const t = chatSince(win, c0);
+        checks.push({ label: '⭐⭐ il secondo tentativo sullo STESSO campo viene fermato', ok: /occupat|in corso|liber|altro campo/i.test(t) });
+        checks.push({ label: '⭐⭐ e a Matchpoint non parte una seconda prenotazione', ok: workerPushes('create').length === 1 });
         return checks;
       } finally {
         H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
