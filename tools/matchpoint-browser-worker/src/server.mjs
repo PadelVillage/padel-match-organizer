@@ -3873,15 +3873,24 @@ function mpPhoneKey10(value) {
   return digits.slice(-10);
 }
 
-// I termini da provare nel buscador, dal piu' probabile al meno. Matchpoint tiene di
-// solito il numero nudo; ogni tentativo costa una navigazione, quindi si deduplica.
+// I termini da provare nel buscador, dal piu' probabile al meno. Ogni tentativo costa una
+// navigazione, quindi si deduplica.
+// 🚨 Le forme col prefisso si COSTRUISCONO, non si ricavano solo da com'e' scritto il
+//    numero in ingresso. Prova dal vivo del 3/08: cercando «3492222564» — dieci cifre nude,
+//    come le aveva scritte lui — usciva UN SOLO termine e Matchpoint rispondeva «0 righe»,
+//    quindi il cliente veniva creato lo stesso. Se la' dentro il numero e' scritto
+//    «+393492222564», senza generare noi le varianti non lo si aggancia MAI.
 function mpPhoneSearchTerms(value) {
   const raw = String(value == null ? '' : value).trim();
+  const digits = raw.replace(/\D/g, '');
+  const k10 = mpPhoneKey10(raw);
   const out = [];
   const push = (v) => { const s = String(v || '').trim(); if (s && !out.includes(s)) out.push(s); };
-  push(mpPhoneKey10(raw));                 // 3331234567
-  push(raw.replace(/\D/g, ''));            // 393331234567
-  push(raw);                               // +39 333 1234567
+  push(k10);                       // 3492222564   (nudo)
+  push(digits);                    // com'e' scritto, senza segni
+  if (k10) push('39' + k10);       // 393492222564
+  if (k10) push('+39' + k10);      // +393492222564
+  push(raw);                       // esattamente com'e' arrivato
   return out;
 }
 
@@ -4029,7 +4038,7 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
         continue;
       }
 
-      const righe = await page.evaluate(() => {
+      const letto = await page.evaluate(() => {
         const matchId = (str) => {
           const s2 = decodeURIComponent(String(str || ''));
           let m = s2.match(/gotoClient\((\d+)\)/i); if (m) return m[1];
@@ -4037,7 +4046,8 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
           return '';
         };
         const out = [];
-        for (const tr of document.querySelectorAll('table tr')) {
+        const tutte = [...document.querySelectorAll('table tr')];
+        for (const tr of tutte) {
           const text = (tr.innerText || '').replace(/\s+/g, ' ').trim();
           if (!text) continue;
           let id = '';
@@ -4047,10 +4057,23 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
           }
           if (id) out.push({ id, cifre: text.replace(/\D/g, '') });
         }
-        return out;
+        return {
+          righe: out,
+          righeTotali: tutte.length,
+          // Se il buscador non c'e' piu', non siamo sulla lista clienti: qualunque cosa si
+          // legga NON e' la risposta a una ricerca.
+          haBuscador: !!document.querySelector('input[id$="TextBoxValorBusqueda"]'),
+        };
       }).catch(() => null);
-      if (righe == null) { t.how = 'lettura_righe_fallita'; continue; }
+      if (letto == null) { t.how = 'lettura_righe_fallita'; continue; }
+      const righe = letto.righe;
       t.righe = righe.length;
+      t.righeTotali = letto.righeTotali;
+      // 🚨 «Zero righe» ha DUE significati e vanno separati: «quel numero non c'e'» oppure
+      //    «la pagina non era pronta / non e' quella giusta». Trattarli uguali e' prendere
+      //    un GUASTO per una RISPOSTA — l'errore che questa difesa esiste per non fare.
+      //    Una lista clienti vera ha sempre la sua intestazione e il campo di ricerca.
+      if (!letto.haBuscador || letto.righeTotali === 0) { t.how = 'pagina_non_pronta'; continue; }
 
       // Le righe che mostrano il nostro numero valgono piu' delle altre; se la lista non
       // mostra il telefono si ripiega su TUTTI i candidati e si verifica scheda per scheda.
@@ -4188,6 +4211,28 @@ async function createClientWithBrowser(options = {}) {
     const forzaCreazione = !!(options.forzaCreazione || options.forceCreate
       || client.forzaCreazione || client.forceCreate);
     diagnostic.forzaCreazione = forzaCreazione;
+    // 🔎 PROVA A VUOTO: cerca e basta, non crea MAI. Serve a collaudare la difesa senza
+    //    pagare una scheda finta in Matchpoint a ogni tentativo — cosa che il 3/08 e'
+    //    successa davvero, e che rende cara ogni prova successiva. Sola lettura.
+    const soloRicerca = !!(options.soloRicerca || client.soloRicerca);
+    diagnostic.soloRicerca = soloRicerca;
+    if (soloRicerca) {
+      if (!telefono) throw fail('CLIENT_PHONE_REQUIRED', 'La prova a vuoto ha bisogno di un telefono da cercare.', diagnostic);
+      diagnostic.steps.push('cerca_telefono');
+      const trovato = await mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic);
+      const decisione = mpDecideCreazioneCliente({
+        trovato: trovato.trovato, motivo: trovato.motivo, intestatario: trovato.intestatario, nome, cognome,
+      });
+      return {
+        ok: true, esito: 'solo_ricerca', creato: false,
+        // Che cosa AVREBBE fatto, senza averlo fatto.
+        avrebbe: decisione.azione, motivo: decisione.motivo,
+        codice: trovato.codice, idInterno: trovato.idInterno,
+        intestatario: trovato.intestatario, telefonoScheda: trovato.telefonoScheda,
+        tentativi: trovato.tentativi,
+        nome, cognome, telefono, email, diagnostic,
+      };
+    }
     if (telefono && !forzaCreazione) {
       diagnostic.steps.push('cerca_telefono');
       const gia = await mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic);

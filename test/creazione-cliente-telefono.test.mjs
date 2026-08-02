@@ -99,8 +99,16 @@ caso('4. i termini di ricerca: prima il numero nudo, senza doppioni né vuoti', 
           new Set(t).size === t.length, t.every(x => x !== '')];
 });
 
-caso('5. numero già nudo: un solo termine, non tre uguali', () => {
-  return [mpPhoneSearchTerms('3331234567').length === 1];
+caso('5. 🚨 da un numero NUDO si provano anche le forme col prefisso', () => {
+  // Il caso che il 3/08 ha lasciato passare una creazione dal vivo: cercando «3492222564»
+  // usciva UN SOLO termine, Matchpoint rispondeva «0 righe» e il cliente veniva creato.
+  // Se là dentro il numero è scritto «+393492222564», senza generare noi le varianti non
+  // lo si aggancia mai. ⚠️ Prima questo caso pretendeva UN SOLO termine: fotografava il
+  // difetto e lo difendeva.
+  const t = mpPhoneSearchTerms('3492222564');
+  return [t.includes('3492222564'), t.includes('393492222564'), t.includes('+393492222564'),
+          t[0] === '3492222564',                    // il più probabile per primo
+          new Set(t).size === t.length];            // nessun doppione: ogni termine costa una navigazione
 });
 
 // ── La DECISIONE ────────────────────────────────────────────────────────────────
@@ -183,6 +191,14 @@ caso('18. 🚨 la lista tornata NON filtrata è un guasto, non un «non c\'è»'
           mpMotivoFinaleRicerca([{ how: 'lettura_righe_fallita' }]) === 'ricerca_non_riuscita'];
 });
 
+caso('18b. 🚨 «pagina non pronta» NON è «non c\'è»: zero righe ha due significati', () => {
+  // Dalla prova dal vivo del 3/08: la risposta diceva `righe: 0`, che può voler dire «quel
+  // numero non esiste» oppure «la lista non aveva ancora finito di caricare». Trattarle
+  // uguali fa creare il doppione quando in realtà non si è misurato niente.
+  return [mpMotivoFinaleRicerca([{ how: 'pagina_non_pronta' }]) === 'ricerca_non_riuscita',
+          mpMotivoFinaleRicerca([{ how: 'pagina_non_pronta' }, { how: 'nessun_risultato' }]) === 'telefono_non_trovato'];
+});
+
 caso('19. 🚨 il criterio di ricerca si riconosce, altrimenti la difesa è INERTE', () => {
   return [mpCriterioTelefonoOk('Telefono cellulare') === true,
           mpCriterioTelefonoOk('TELEFONO') === true,
@@ -237,6 +253,16 @@ const guardie = [
   ['la ricerca RILEGGE il criterio invece di darlo per buono',
     /mpCriterioTelefonoOk\(/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   ['si può scavalcare SOLO con forzaCreazione', /forzaCreazione/.test(corpoCreate)],
+  // 🔎 La prova a vuoto deve DAVVERO non creare: se il ramo cadesse, ogni collaudo
+  //    lascerebbe una scheda finta in Matchpoint — che è il motivo per cui esiste.
+  ['la prova a vuoto esce PRIMA di creare', /soloRicerca/.test(corpoCreate)
+    && /esito: 'solo_ricerca'/.test(corpoCreate)],
+  ['la prova a vuoto non compila il modulo', (() => {
+    const i = corpoCreate.indexOf("esito: 'solo_ricerca'");
+    const j = corpoCreate.indexOf('goto_alta_cliente');
+    return i > 0 && j > 0 && i < j;   // il ritorno viene prima del modulo di inserimento
+  })()],
+  ['l\'EDGE passa la prova a vuoto al worker', /soloRicerca/.test(edge)],
   ['la ricerca NON scrive niente su Matchpoint',
     !/ButtonActualizar|__doPostBack\('ctl01/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   // ── L'ANELLO DI MEZZO: i tre file devono dire gli stessi nomi ──
