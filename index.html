@@ -8020,7 +8020,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.160';
+    const APP_VERSION = '6.161';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13434,6 +13434,13 @@ Grazie.`
           <span>Li rimette nella copia locale prendendoli dal cloud, così tornano nella ricerca soci.
           Non cancella niente e <strong>non tocca il cloud</strong>. Agisce solo sui «Non c'è proprio»:
           per gli altri la scheda qui c'è già, e aggiungerla creerebbe un doppione vero.</span></div>` : ''}
+        ${missing.filter(r => r.modo === 'altro_id').length ? `<div class="member-count-audit-note">
+          <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); pmoRicollegaSchedeNonCollegate()">Ricollega le ${escapeHtml(String(missing.filter(r => r.modo === 'altro_id').length))} schede che non si riconoscono</button>
+          <span>La scheda di questo browser prende <strong>numero, telefono e codice</strong> dalla riga viva del cloud,
+          così le due copie tornano a essere la stessa. Agisce solo sui «Scheda non collegata».
+          <strong>Non tocca il cloud</strong> e nessuna prenotazione si perde.
+          ⚠️ Il telefono si allinea apposta: se qui è storpiato, al primo salvataggio il browser
+          scriverebbe in una riga sbagliata e il problema tornerebbe.</span></div>` : ''}
         <div class="member-count-audit-table-wrap">
           <table class="member-count-audit-table">
             <thead><tr><th>Socio</th><th>Contatti</th><th>Stato</th><th>Aggiornato</th><th>In che modo manca</th></tr></thead>
@@ -13524,6 +13531,124 @@ Grazie.`
       try { if (typeof renderMembers === 'function') renderMembers(); } catch (e) {}
       showAlert(`✅ ${aggiunti} soci riportati in questo browser${saltati ? ` (${saltati} già presenti)` : ''}. ` +
                 `Ora li trovi nella ricerca soci. ⚠️ Se ricompaiono in questo elenco, la causa è a monte e va cercata.`, 'success');
+      pmoRunMemberCountAuditDryRun();   // ricontrolla e ridisegna: il numero deve scendere
+    }
+
+    // ── 🔗 RICOLLEGA le schede che il browser e il cloud non riconoscono come la stessa ──
+    // Chiesto da lui il 2/08/2026 sera, dopo aver trovato Roberto Ruzzini sia in Matchpoint
+    // sia in anagrafica e essersi chiesto perché il pannello lo segnalasse lo stesso.
+    //
+    // 🗝️ COS'È il guasto, misurato sul cloud di PROD: la stessa persona ha nel browser una
+    //    scheda con un numero (`id`) e nel cloud una riga viva con un numero DIVERSO, perché
+    //    la riga del cloud è stata RICREATA invece che aggiornata. Le due copie non si
+    //    riconoscono più. La persona però si trova allo sportello: non è un invisibile.
+    //
+    // 🚨 PERCHÉ NON BASTA allineare il numero di scheda. Il browser scrive nel cloud usando
+    //    `memberKey(member)` = **il telefono**, non l'id. Se la scheda locale porta un numero
+    //    storpiato (Ruzzini: `+39349222564`, una cifra in meno di `+393492222564`), al primo
+    //    salvataggio scrive in una riga SBAGLIATA e ne fa nascere un'altra — che è proprio
+    //    come sono nate le righe morte trovate nel cloud. Perciò qui si allinea anche il
+    //    TELEFONO: senza, la riparazione dura fino al prossimo salvataggio.
+    //
+    // ⭐ Direzione: **il browser segue il cloud**, mai il contrario. La riga viva del cloud è
+    //    quella che vedono gli altri computer e il bot Telegram (il cassetto del socio è
+    //    intestato a quel numero di scheda): far vincere la copia locale li scollegherebbe.
+    // ⚠️ Effetto collaterale onesto: i contatori locali di contatto (`contactHistory`, inviti
+    //    a pranzo) sono elencati per numero di scheda e per queste persone ripartono da zero.
+    //    Nessuna prenotazione si perde: le prenotazioni citano i giocatori per nome e codice.
+    // ⭐ Il cloud NON viene toccato: nessuna scrittura verso Supabase né verso Matchpoint.
+
+    // Il PIANO, calcolato senza toccare niente: per ogni riga «scheda non collegata» dice
+    // quale scheda locale va riagganciata e che cosa cambierebbe. Pura di proposito — è la
+    // parte che il banco può martellare senza browser.
+    function pmoPianoRicollegamentoSchede(missingRows, giocatoriLocali) {
+      const righe = Array.isArray(missingRows) ? missingRows : [];
+      const locali = Array.isArray(giocatoriLocali) ? giocatoriLocali : [];
+      const azioni = [];
+      const saltate = [];
+      const idLocali = new Set(locali.map(g => cleanCell(g && g.id)).filter(Boolean));
+      const giaPreso = new Set();
+      righe.filter(row => row && row.modo === 'altro_id').forEach(row => {
+        const payload = (row.payload && typeof row.payload === 'object') ? row.payload : null;
+        const cloudId = cleanCell((payload && payload.id) || row.cloudId || '');
+        const nome = row.fullName || row.gemelloNome || '(senza nome)';
+        if (!payload || !cloudId) { saltate.push({ nome, perche: 'la riga del cloud non ha un numero di scheda' }); return; }
+        // 🚨 Se il numero del cloud è GIÀ di un'altra scheda locale, riagganciare creerebbe
+        //    due schede con lo stesso numero: peggio del problema. Si salta e lo si dice.
+        if (idLocali.has(cloudId) || giaPreso.has(cloudId)) {
+          saltate.push({ nome, perche: 'quel numero di scheda qui è già di un\'altra scheda' });
+          return;
+        }
+        // Il gemello locale l'ha già individuato la diagnostica (per telefono, poi per codice):
+        // si riusa quello invece di rifare la ricerca con criteri diversi — due criteri che
+        // divergono aggancerebbero la scheda sbagliata.
+        const localeId = cleanCell(row.gemelloId || '');
+        const locale = localeId ? locali.find(g => g && cleanCell(g.id) === localeId) : null;
+        if (!locale) { saltate.push({ nome, perche: 'la scheda locale da riagganciare non si trova più' }); return; }
+        giaPreso.add(cloudId);
+        azioni.push({
+          nome,
+          idPrima: localeId,
+          idDopo: cloudId,
+          telefonoPrima: cleanCell(locale.phone || ''),
+          telefonoDopo: cleanCell(payload.phone || ''),
+          codicePrima: cleanCell(locale.memberId || ''),
+          codiceDopo: cleanCell(payload.memberId || ''),
+          emailDopo: cleanCell(payload.email || '')
+        });
+      });
+      return { azioni, saltate };
+    }
+
+    async function pmoRicollegaSchedeNonCollegate() {
+      const piano = pmoPianoRicollegamentoSchede(pmoMemberCountAuditState.missingRows || [], giocatori);
+      if (!piano.azioni.length) {
+        const perche = piano.saltate.length
+          ? `Nessuna riagganciabile: ${piano.saltate.map(s => `${s.nome} — ${s.perche}`).join('; ')}.`
+          : 'Nessuna scheda da ricollegare: in questo browser tutte le schede hanno lo stesso numero del cloud.';
+        showAlert(perche, 'info');
+        return;
+      }
+      const elenco = piano.azioni.map(a => {
+        const tel = (a.telefonoDopo && a.telefonoDopo !== a.telefonoPrima)
+          ? `\n     telefono: ${a.telefonoPrima || '(vuoto)'} → ${a.telefonoDopo}` : '';
+        const cod = (a.codiceDopo && a.codiceDopo !== a.codicePrima)
+          ? `\n     codice Matchpoint: ${a.codicePrima || '(vuoto)'} → ${a.codiceDopo}` : '';
+        return `· ${a.nome}${tel}${cod}`;
+      }).join('\n');
+      const coda = piano.saltate.length
+        ? `\n\nSaltate ${piano.saltate.length}:\n${piano.saltate.map(s => `· ${s.nome} — ${s.perche}`).join('\n')}`
+        : '';
+      if (!confirm(`Ricollegare ${piano.azioni.length} schede alla loro riga del cloud?\n\n${elenco}${coda}\n\n` +
+        `La scheda di questo browser prende il numero, il telefono e il codice della riga viva del cloud.\n` +
+        `Il cloud NON viene toccato e nessuna prenotazione si perde.\n` +
+        `⚠️ I contatori locali di contatto di queste persone ripartono da zero.`)) return;
+
+      let fatte = 0;
+      piano.azioni.forEach(a => {
+        const idx = giocatori.findIndex(g => g && cleanCell(g.id) === a.idPrima);
+        if (idx < 0) return;
+        giocatori[idx].id = a.idDopo;
+        if (a.telefonoDopo) giocatori[idx].phone = a.telefonoDopo;
+        if (a.codiceDopo) giocatori[idx].memberId = a.codiceDopo;
+        if (a.emailDopo) giocatori[idx].email = a.emailDopo;
+        giocatori[idx].updatedAt = new Date().toISOString();
+        fatte++;
+      });
+      if (!fatte) { showAlert('Nessuna scheda ricollegata: nel frattempo sono cambiate.', 'info'); return; }
+      // 🚨 Stesso rischio del bottone gemello: se la memoria del browser è piena il salvataggio
+      //    fallisce in silenzio, e chi guarda crede di aver risolto.
+      try {
+        save('giocatori', giocatori);
+      } catch (err) {
+        showAlert('❌ Le schede NON sono state ricollegate: la memoria di questo browser è piena. ' +
+                  'Liberala e riprova.', 'danger');
+        return;
+      }
+      try { if (typeof updateMemberCounts === 'function') updateMemberCounts(); } catch (e) {}
+      try { if (typeof renderMembers === 'function') renderMembers(); } catch (e) {}
+      showAlert(`✅ ${fatte} schede ricollegate alla riga del cloud${piano.saltate.length ? ` (${piano.saltate.length} saltate)` : ''}. ` +
+                `Da adesso questo browser e il cloud parlano della stessa scheda.`, 'success');
       pmoRunMemberCountAuditDryRun();   // ricontrolla e ridisegna: il numero deve scendere
     }
 
