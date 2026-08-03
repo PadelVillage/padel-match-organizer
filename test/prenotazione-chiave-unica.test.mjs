@@ -52,7 +52,13 @@ function estraiSenzaTipi(nome) {
 const ctx = { console: { log() {}, warn() {}, error() {} } };
 vm.createContext(ctx);
 vm.runInContext(estraiSenzaTipi('fondiPayloadPrenotazione'), ctx);
+vm.runInContext(
+  estraiSenzaTipi('normalizzaSbId')
+    .replace(/:\s*unknown/g, '')
+    .replace(/\)\s*:\s*string \| undefined\s*\{/, ') {'),
+  ctx);
 const fondi = (nostro, gia) => ctx.fondiPayloadPrenotazione(nostro, gia);
+const normalizza = (v) => ctx.normalizzaSbId(v);
 
 const casi = [];
 const caso = (nome, fn) => casi.push({ nome, fn });
@@ -117,11 +123,43 @@ caso('12. esistente mancante o vuoto non fa cadere la fusione', () => {
           fondi({ tipo: 'partita' }, undefined).tipo === 'partita'];
 });
 
+caso('13. l\'id dell\'app passa così com\'è quando è un UUID', () => {
+  return [normalizza('41e635df-f430-4450-b3f3-e3679c693588') === '41e635df-f430-4450-b3f3-e3679c693588'];
+});
+
+caso('14. ⛔ un id che contiene «|» è RIFIUTATO: fingerebbe una chiave composta', () => {
+  return [normalizza('staff_booking|2026-08-03|18:00|Campo 3|altro-utente') === undefined];
+});
+
+caso('15. vuoto o assente ⇒ undefined, cioè «usa la chiave di prima» (è il caso del BOT)', () => {
+  return [normalizza('') === undefined, normalizza(null) === undefined,
+          normalizza(undefined) === undefined, normalizza('   ') === undefined];
+});
+
+caso('16. un id assurdamente lungo è rifiutato: finisce in una colonna indicizzata', () => {
+  return [normalizza('x'.repeat(65)) === undefined, normalizza('x'.repeat(64)) === 'x'.repeat(64)];
+});
+
 // ── GUARDIE SUL SORGENTE DELL'EDGE ──────────────────────────────────────────────
 // 🚨 La funzione pura può essere perfetta e il difetto restare: quello che conta è COME
 //    l'edge la usa e QUALE CHIAVE sceglie. Queste guardano il codice, non il risultato.
+// Il letterale che costruisce l'oggetto passato a chi scrive il record: `booking` si compone
+// campo per campo, e chi non è elencato lì dentro NON ESISTE a valle.
+const letteraleBooking = (() => {
+  const i = ts.indexOf('const booking: BookingRequest = {');
+  return i < 0 ? '' : ts.slice(i, ts.indexOf('};', i));
+})();
+
 const guardie = [
   ['l\'edge accetta `sbId` nella richiesta', /sbId\?\s*:\s*string/.test(ts)],
+
+  // 🚨⭐⭐ LA GUARDIA CHE MANCAVA, e che è costata un deploy a vuoto il 3/08/2026.
+  // La prima versione controllava solo che il codice DICESSE `clean(booking.sbId)` — ed era
+  // verde mentre `sbId` non veniva mai copiato dentro `booking`: le due estremità giuste, il
+  // valore che non attraversa il mezzo. Un controllo va poggiato sul DATO, non sulla parola.
+  ['⭐⭐ `sbId` ARRIVA davvero dentro `booking` (non solo nominato)', /\bsbId\b/.test(letteraleBooking)],
+  ['`sbId` viene ripulito prima di diventare una chiave', /const sbId = normalizzaSbId\(body\.sbId\)/.test(ts)],
+  ['la pulizia dell\'id è una funzione a sé, provabile', /export function normalizzaSbId/.test(ts)],
   ['⭐ la CHIAVE è `sbId` quando c\'è', /const localKey\s*=\s*clean\(booking\.sbId\)\s*\|\|/.test(ts)],
   ['⛔ senza `sbId` resta la chiave di prima (il BOT non si tocca)',
    /staff_booking\|\$\{booking\.data\}\|\$\{booking\.ora\}\|Campo \$\{booking\.campo\}\|\$\{actor\.userId\}/.test(ts)],

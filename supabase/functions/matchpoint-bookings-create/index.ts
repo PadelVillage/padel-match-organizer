@@ -178,6 +178,17 @@ async function callWorkerCreateBooking(opts: {
   );
 }
 
+// Ripulisce l'id che l'app ci manda, prima che diventi la CHIAVE di una riga del cloud.
+// ⛔ Niente `|`: è il separatore della chiave composta, e permetterlo lascerebbe fabbricare una
+// chiave che finge di essere quella di un altro creatore. Lunghezza limitata perché finisce in
+// una colonna indicizzata; la forma vera è un UUID (_staffCalNewSbId in index.html).
+// Vuoto/assente/non valido → `undefined`, cioè «usa la chiave di prima»: è il caso del BOT.
+export function normalizzaSbId(valore: unknown): string | undefined {
+  const s = String(valore ?? '').trim();
+  if (!s || s.length > 64 || s.includes('|')) return undefined;
+  return s;
+}
+
 // Fonde la fotografia della creazione (`nostro`) con quello che nella riga c'è GIÀ.
 // ⭐ Quello che c'è già VINCE campo per campo: l'ha scritto l'app, ed è lei l'autorevole sulla
 // prenotazione. Noi siamo solo la rete di sicurezza per quando l'app non arriva a parlare.
@@ -386,11 +397,20 @@ Deno.serve(async (req: Request) => {
   if (!nome) return err(400, 'INVALID_NOME', 'Nome giocatore/istruttore richiesto.');
   if (!VALID_TIPOS.includes(tipo)) return err(400, 'INVALID_TIPO', `tipo deve essere uno di: ${VALID_TIPOS.join(', ')}.`);
 
+  // 🚨⭐⭐ `sbId` va COPIATO QUI DENTRO, o non arriva a chi lo usa. Il 3/08/2026 la modifica che
+  // rende `sbId` la chiave del record è stata scritta e DEPLOYATA senza questa riga: le due
+  // estremità erano giuste — l'app lo mandava, saveStaffBookingRecord lo leggeva — e il valore
+  // non attraversava il mezzo, perché `booking` si costruisce campo per campo e chi non è
+  // elencato qui semplicemente non esiste. Le guardie del banco erano VERDI: controllavano che
+  // il codice DICESSE `clean(booking.sbId)`, non che il dato ARRIVASSE.
+  const sbId = normalizzaSbId(body.sbId);
+
   const booking: BookingRequest = {
     campo, data, ora, oraFine, durata, nome, tipo,
     istruttore: istruttore || undefined,
     note: clean(body.note),
     giocatori: giocatori.length ? giocatori : undefined,
+    sbId,
   };
 
   // Env vars
