@@ -371,18 +371,89 @@ export function organizzatoreDelloSlot(righe: RigaSlotTipata[]): string | null {
   return primo;
 }
 
+/** Il minimo che serve per dire se due schede sono della stessa persona o di due omonimi. */
+export type SchedaPerOmonimia = {
+  id: string;
+  name?: string;
+  firstName?: string;
+  surname?: string;
+  /** `'false'` = archiviata. Assente o qualunque altra cosa = viva. */
+  active?: unknown;
+};
+
+/**
+ * Le forme normalizzate con cui una scheda può comparire in un roster: il gestionale scrive
+ * ora «Nome Cognome», ora «Cognome Nome».
+ * ⭐ UNA definizione sola, usata sia dall'edge per la proprietà sia da `altriOmonimiVivi`:
+ * se la guardia contasse gli omonimi con una regola più stretta del match, esisterebbe una
+ * scheda che il match accetta come mia e che la guardia non conta — cioè un buco esattamente
+ * dove serve la protezione.
+ */
+export function variantiDelNome(s: SchedaPerOmonimia): Set<string> {
+  return new Set(
+    [clean(s.name), `${clean(s.firstName)} ${clean(s.surname)}`, `${clean(s.surname)} ${clean(s.firstName)}`]
+      .map(normName).filter(Boolean),
+  );
+}
+
+/**
+ * 👥 Fra i candidati c'è un'ALTRA persona viva col mio stesso nome?
+ *
+ * ⭐ Sta qui, pura, per la stessa ragione di `dirittoDiAnnullare`: è la conoscenza che decide
+ * se un annullo passa, quindi si prova sui dati VERI di PROD senza rete e un sabotaggio si
+ * misura. Chi chiama fa solo la lettura (un filtro grossolano sul cognome e sul nome intero);
+ * la parola finale la dice `normName` — **la stessa** funzione con cui si fa il match.
+ * Se il filtro decidesse con una regola sua, le due potrebbero divergere in silenzio.
+ *
+ * 🚨⭐⭐ Il confronto NON usa `variantiDelNome`: usa le stesse parole messe **in ordine
+ * alfabetico**, cioè una chiave che ignora del tutto l'ordine. È di proposito **più larga** del
+ * match, e il motivo sta tutto nel verso in cui costa sbagliare:
+ *  · **troppo larga** → un annullo rifiutato a torto, e il socio passa dalla segreteria;
+ *  · **troppo stretta** → la partita di un altro cancellata, e non si torna indietro.
+ * ⚠️ Trovato da un caso storto, non previsto: confrontando le tre varianti, una scheda che ha
+ * solo `name` (senza `firstName`/`surname`) non genera la forma invertita, e «Casagrande
+ * Francesco» non risultava omonimo di «Francesco Casagrande» — un buco proprio dove serve la
+ * protezione, perché quella scheda il match del diritto la accetterebbe.
+ *
+ * @returns gli `id` degli omonimi trovati (vuoto = nessuno). Un elenco, non un sì/no, così chi
+ *   indaga vede CHI, e i log possono dirlo senza rifare il conto.
+ */
+function chiaveOmonimia(s: SchedaPerOmonimia): string {
+  const grezzo = clean(s.name) || `${clean(s.firstName)} ${clean(s.surname)}`;
+  return normName(grezzo).split(' ').filter(Boolean).sort().join(' ');
+}
+
+export function altriOmonimiVivi(
+  io: SchedaPerOmonimia,
+  candidati: SchedaPerOmonimia[],
+): string[] {
+  const mia = chiaveOmonimia(io);
+  // Senza nome il match per nome non può riuscire: non c'è niente da proteggere.
+  if (!mia) return [];
+  const visti = new Set<string>();
+  for (const c of candidati) {
+    const id = clean(c.id);
+    if (!id || id === clean(io.id)) continue;          // non sono un omonimo di me stesso
+    if (clean(c.active) === 'false') continue;         // archiviata: quella persona non gioca
+    if (chiaveOmonimia(c) !== mia) continue;
+    visti.add(id);
+  }
+  return [...visti];
+}
+
 export type DirittoAnnullare = {
   /** Vero solo se questo socio può annullare una partita in cui c'è qualcun altro. */
   permesso: boolean;
   /** Chi ha organizzato, come lo scrive il gestionale. `null` = non lo sappiamo dire. */
   organizzatore: string | null;
   /**
-   * Perché no, e sono DUE motivi diversi perché il bot deve dire due cose diverse:
+   * Perché no, e sono TRE motivi diversi perché il bot deve dire tre cose diverse:
    *  · `non_sei_organizzatore` → c'è una strada: «puoi uscire dalla partita»;
    *  · `organizzatore_ignoto`  → non c'è: segreteria (mai un vicolo cieco).
+   *  · `omonimi_al_circolo`    → il nome combacia ma non prova NIENTE: segreteria.
    * Distinguerli qui evita che il bot debba indovinare dal silenzio.
    */
-  motivo: 'non_sei_organizzatore' | 'organizzatore_ignoto' | null;
+  motivo: 'non_sei_organizzatore' | 'organizzatore_ignoto' | 'omonimi_al_circolo' | null;
 };
 
 /**
@@ -396,15 +467,37 @@ export type DirittoAnnullare = {
  *
  * @param varianti le forme normalizzate del nome del socio (il gestionale scrive ora «Nome
  *   Cognome», ora «Cognome Nome») — le stesse che l'edge usa per la proprietà.
- * ⚠️ Limite dichiarato e identico a quello della proprietà: due soci **omonimi** non si
- *   distinguono. Qui il verso dell'errore è che un omonimo dell'organizzatore potrebbe
- *   annullare; è lo stesso confronto con cui già oggi si stabilisce che la prenotazione è sua.
+ * @param omonimiAlCircolo vero se in anagrafica esiste **un'altra persona viva** con lo stesso
+ *   nome normalizzato. Lo sa solo chi ha letto l'anagrafica, quindi arriva da fuori.
+ *
+ * 🚨⭐⭐ IL LIMITE CHE QUESTA FUNZIONE DICHIARAVA È DIVENTATO UNA GUARDIA (3/08/2026).
+ * Qui c'era scritto che «due soci omonimi non si distinguono» e che «un omonimo
+ * dell'organizzatore potrebbe annullare». Era vero, ed è stato misurato su PROD: **13 gruppi**
+ * di omonimi vivi (27 persone, telefoni diversi ⇒ persone vere, non doppioni), citati **38
+ * volte** nelle prenotazioni fra gennaio e luglio 2026.
+ * ⭐⭐ E la cura «ovvia» — *il codice nel roster smentisce il nome* — **misurerebbe ZERO**:
+ * gli omonimi compaiono nella `descrizione` (testo libero della scheda del circolo) e come
+ * intestatario, cioè dove un codice non c'è **per costruzione**. Misura del 3/08: su 307
+ * voci-giocatore a oggetto, quelle di un omonimo sono **2**, e con codice accanto **0**.
+ * ⇒ Col dato di oggi **nessun automatismo può sapere quale dei due sia**. L'unica cosa onesta
+ * non è indovinare meglio: è **non decidere**, e dirlo. Vale solo per l'annullo — il gesto
+ * irreversibile, che toglie il campo a qualcun altro.
  */
-export function dirittoDiAnnullare(righe: RigaSlotTipata[], varianti: Set<string>): DirittoAnnullare {
+export function dirittoDiAnnullare(
+  righe: RigaSlotTipata[],
+  varianti: Set<string>,
+  omonimiAlCircolo: boolean,
+): DirittoAnnullare {
   const organizzatore = organizzatoreDelloSlot(righe);
   if (!organizzatore) return { permesso: false, organizzatore: null, motivo: 'organizzatore_ignoto' };
   if (!varianti.has(normName(organizzatore))) {
     return { permesso: false, organizzatore, motivo: 'non_sei_organizzatore' };
+  }
+  // Il nome combacia — ma se quel nome al circolo è di più persone, «combacia» non prova nulla.
+  // 🚨 Il controllo sta DOPO `non_sei_organizzatore` di proposito: quando l'organizzatore è un
+  // altro, il motivo giusto resta quello, che è vero comunque e offre una strada (uscire).
+  if (omonimiAlCircolo) {
+    return { permesso: false, organizzatore, motivo: 'omonimi_al_circolo' };
   }
   return { permesso: true, organizzatore, motivo: null };
 }
