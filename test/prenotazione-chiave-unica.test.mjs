@@ -1,0 +1,156 @@
+// ── BANCO: «una prenotazione, UNA riga nel cloud» ────────────────────────────────
+//
+// Che cosa prova: che l'edge `matchpoint-bookings-create` usi come chiave l'id che l'APP gli
+// manda (`sbId`) — così la sua riga e quella dell'app sono LA STESSA — e che, condividendo la
+// chiave, non possa più cancellare quello che l'app ha già scritto.
+//
+// Il difetto: fino al 3/08/2026 l'edge chiavava sempre `staff_booking|<data>|<ora>|Campo <n>|
+// <userId>` mentre l'app usava l'id della prenotazione ⇒ DUE righe per la stessa partita
+// (misurate su PROD: 36 su 84). L'accordo era già spedito — l'app manda `sbId` dal 43274 di
+// index.html — e nessuno lo leggeva.
+//
+// 🚨⭐⭐ Condividere la chiave è il pezzo pericoloso: la RPC dell'app fa `payload = excluded.
+//    payload`, cioè SOSTITUISCE, e nel flusso asincrono l'app salva PRIMA e l'edge risponde
+//    DOPO. Scrivendo alla cieca, la fotografia della creazione cancellerebbe il roster
+//    aggiornato. Da qui la regola: l'esistente vince, ma i BUCHI li riempie l'edge.
+//
+// ⭐ La funzione di fusione è ESTRATTA dal sorgente vero dell'edge, non ricopiata.
+//
+// Uso:  node test/prenotazione-chiave-unica.test.mjs
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import vm from 'node:vm';
+
+const QUI = dirname(fileURLToPath(import.meta.url));
+const EDGE = join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'index.ts');
+const ts = readFileSync(EDGE, 'utf8');
+
+// Estrae una funzione dal .ts e le toglie le annotazioni di tipo, che a Node non servono e che
+// `vm` non saprebbe leggere. Si tocca SOLO la firma: il corpo resta quello vero.
+function estraiSenzaTipi(nome) {
+  const inizio = ts.indexOf(`export function ${nome}(`);
+  if (inizio < 0) throw new Error(`funzione «${nome}» non trovata nell'edge`);
+  let i = ts.indexOf('{', ts.indexOf(')', inizio)), livello = 0, stringa = null, prec = '';
+  for (; i < ts.length; i++) {
+    const c = ts[i], succ = ts[i + 1];
+    if (stringa) { if (c === stringa && prec !== '\\') stringa = null; }
+    else if (c === '/' && succ === '/') { const f = ts.indexOf('\n', i); i = f < 0 ? ts.length : f; prec = '\n'; continue; }
+    else if (c === '/' && succ === '*') { const f = ts.indexOf('*/', i + 2); i = f < 0 ? ts.length : f + 1; prec = '/'; continue; }
+    else if (c === '"' || c === "'" || c === '`') stringa = c;
+    else if (c === '{') livello++;
+    else if (c === '}') { livello--; if (livello === 0) { i++; break; } }
+    prec = c;
+  }
+  return ts.slice(inizio, i)
+    .replace(/^export\s+/, '')
+    .replace(/:\s*JsonMap(\s*[,)])/g, '$1')       // parametri tipati
+    .replace(/\)\s*:\s*JsonMap\s*\{/, ') {')      // tipo di ritorno
+    .replace(/:\s*JsonMap\s*=/g, ' =');           // variabili tipate nel corpo
+}
+
+const ctx = { console: { log() {}, warn() {}, error() {} } };
+vm.createContext(ctx);
+vm.runInContext(estraiSenzaTipi('fondiPayloadPrenotazione'), ctx);
+const fondi = (nostro, gia) => ctx.fondiPayloadPrenotazione(nostro, gia);
+
+const casi = [];
+const caso = (nome, fn) => casi.push({ nome, fn });
+
+caso('1. riga nuova: passa la fotografia della creazione così com\'è', () => {
+  const r = fondi({ tipo: 'lezione', nome: 'Marco', giocatori: [{ nome: 'A' }], id_reserva: '9245' }, {});
+  return [r.tipo === 'lezione', r.id_reserva === '9245', r.giocatori.length === 1];
+});
+
+caso('2. 🚨 l\'app ha già scritto un roster PIÙ RICCO: l\'edge NON lo cancella', () => {
+  // È il caso che rende pericoloso condividere la chiave. Senza questa regola, la fotografia
+  // della creazione (2 giocatori) sostituirebbe il roster aggiornato (4).
+  const nostro = { giocatori: [{ nome: 'A' }, { nome: 'B' }], tipo: 'partita' };
+  const gia    = { giocatori: [{ nome: 'A' }, { nome: 'B' }, { nome: 'C' }, { nome: 'D' }] };
+  return [fondi(nostro, gia).giocatori.length === 4];
+});
+
+caso('3. l\'app ha cambiato il TIPO: vince l\'app, non la fotografia', () => {
+  return [fondi({ tipo: 'partita' }, { tipo: 'lezione' }).tipo === 'lezione'];
+});
+
+caso('4. ⭐ il BUCO lo riempie l\'edge: id_reserva che l\'app non poteva conoscere', () => {
+  // Flusso asincrono: l'app salva prima di sapere il numero della prenotazione.
+  const gia = { tipo: 'partita', giocatori: [{ nome: 'A' }], id_reserva: '' };
+  return [fondi({ id_reserva: '9245', tipo: 'partita' }, gia).id_reserva === '9245'];
+});
+
+caso('5. campo del tutto ASSENTE nell\'esistente: lo mette l\'edge', () => {
+  return [fondi({ istruttore: 'Marco' }, { tipo: 'lezione' }).istruttore === 'Marco'];
+});
+
+caso('6. elenco VUOTO conta come buco, non come scelta', () => {
+  return [fondi({ giocatori: [{ nome: 'A' }] }, { giocatori: [] }).giocatori.length === 1];
+});
+
+caso('7. null e undefined nell\'esistente non cancellano il dato dell\'edge', () => {
+  const r = fondi({ nome: 'Marco', note: 'x' }, { nome: null, note: undefined });
+  return [r.nome === 'Marco', r.note === 'x'];
+});
+
+caso('8. i campi che SOLO l\'app conosce sopravvivono alla fusione', () => {
+  const r = fondi({ tipo: 'partita' }, { promoted: true, ora_fine: '13:00' });
+  return [r.promoted === true, r.ora_fine === '13:00'];
+});
+
+caso('9. uno ZERO non è un buco: 0 è un valore e resta', () => {
+  return [fondi({ durata: 90 }, { durata: 0 }).durata === 0];
+});
+
+caso('10. «false» non è un buco', () => {
+  return [fondi({ promoted: true }, { promoted: false }).promoted === false];
+});
+
+caso('11. non modifica gli oggetti ricevuti', () => {
+  const nostro = { tipo: 'partita' }, gia = { tipo: 'lezione' };
+  fondi(nostro, gia);
+  return [nostro.tipo === 'partita', gia.tipo === 'lezione'];
+});
+
+caso('12. esistente mancante o vuoto non fa cadere la fusione', () => {
+  return [fondi({ tipo: 'partita' }, null).tipo === 'partita',
+          fondi({ tipo: 'partita' }, undefined).tipo === 'partita'];
+});
+
+// ── GUARDIE SUL SORGENTE DELL'EDGE ──────────────────────────────────────────────
+// 🚨 La funzione pura può essere perfetta e il difetto restare: quello che conta è COME
+//    l'edge la usa e QUALE CHIAVE sceglie. Queste guardano il codice, non il risultato.
+const guardie = [
+  ['l\'edge accetta `sbId` nella richiesta', /sbId\?\s*:\s*string/.test(ts)],
+  ['⭐ la CHIAVE è `sbId` quando c\'è', /const localKey\s*=\s*clean\(booking\.sbId\)\s*\|\|/.test(ts)],
+  ['⛔ senza `sbId` resta la chiave di prima (il BOT non si tocca)',
+   /staff_booking\|\$\{booking\.data\}\|\$\{booking\.ora\}\|Campo \$\{booking\.campo\}\|\$\{actor\.userId\}/.test(ts)],
+  ['prima di scrivere LEGGE la riga esistente', /\.select\('payload, deleted'\)/.test(ts)],
+  ['⛔ non resuscita una prenotazione ANNULLATA', /esistente\?\.deleted === true\)\s*return/.test(ts)],
+  ['usa la fusione invece di scrivere alla cieca', /payload = fondiPayloadPrenotazione\(/.test(ts)],
+  ['la fusione è una funzione a sé, provabile', /export function fondiPayloadPrenotazione/.test(ts)],
+  ['la fusione non scrive da sola sul database', !/\.upsert\(|\.insert\(|createClient\(/.test(estraiSenzaTipi('fondiPayloadPrenotazione'))],
+];
+
+let passati = 0, falliti = 0;
+console.log('BANCO — una prenotazione, UNA riga nel cloud\n');
+console.log('Guardie sul sorgente dell\'edge:');
+guardie.forEach(([nome, ok]) => {
+  console.log(`  ${ok ? '✅' : '❌'} ${nome}`);
+  if (!ok) falliti++;
+});
+console.log('');
+for (const c of casi) {
+  let esiti;
+  try { esiti = c.fn(); } catch (err) { esiti = [false]; c.errore = err; }
+  const ok = Array.isArray(esiti) && esiti.length > 0 && esiti.every(Boolean);
+  if (ok) { passati++; console.log(`✅ ${c.nome}`); }
+  else {
+    falliti++;
+    console.log(`❌ ${c.nome}`);
+    if (c.errore) console.log(`   errore: ${c.errore.message}`);
+    else console.log(`   controlli: [${esiti.map(v => v ? 'ok' : 'NO').join(', ')}]`);
+  }
+}
+console.log(`\n— ${passati} passati, ${falliti} falliti su ${casi.length} casi —`);
+process.exit(falliti ? 1 : 0);
