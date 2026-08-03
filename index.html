@@ -7784,18 +7784,37 @@ body.assessment-public-mode .assessment-public-only-card {
                       <h3>🧪 Test prenotazione Matchpoint</h3>
                       <p class="matchpoint-data-copy">Crea una prenotazione di prova reale in Matchpoint per collaudare la catena end-to-end. Solo ambiente TEST.</p>
                       <div class="matchpoint-data-file">
+                        <!-- Prove che NON creano niente: simulate dall'app (annulla/modifica) o di sola lettura. -->
                         <div class="matchpoint-data-actions">
-                          <input id="matchpointTestBookingSocio" type="text" value="Maurizio Aprea"
-                            placeholder="Nome socio da prenotare"
-                            style="margin-right:8px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; min-width:220px;">
-                          <button id="matchpointTestBookingButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCreate()">🧪 Test prenotazione Matchpoint</button>
-                          <button id="matchpointTestCancelButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingCancel()">🧪 Annulla prenotazione</button>
-                          <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
-                          <button id="matchpointTestClientButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestClientCreate()">🧪 Test crea cliente</button>
+                          <button id="matchpointTestCancelButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestBookingCancel()">↩️ Annulla prenotazione (simulato)</button>
+                          <button id="matchpointTestEditButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestBookingEdit()">✏️ Modifica prenotazione (simulato)</button>
                           <button id="matchpointTestPhoneButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestCercaTelefono()">🔎 Prova a vuoto: cerca telefono (non crea)</button>
                           <button id="matchpointTestChiaveButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestChiavePrenotazione()">🔑 Prova a vuoto: chiave prenotazione (non prenota)</button>
-                          <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
+
+                        <!-- 🔴⭐⭐ ZONA ARMATA — i due bottoni qui dentro scavalcano la simulazione
+                             (X-PMO-Real-MP) e scrivono sul Matchpoint VERO del circolo.
+                             🚨 Nascono SPENTI di proposito: la conferma c'era già e NON è bastata
+                             (3/08/2026, un clic finito qui per sbaglio, salvato solo da un errore di
+                             rete; e due schede finte create il giorno prima). Una finestra di sistema
+                             si attraversa con un Invio — un bottone disabilitato no.
+                             L'armamento si consuma a ogni uso e scade da solo: vedi pmoTestArmo*. -->
+                        <div id="matchpointTestArmBox" style="margin-top:14px; padding:12px; border:2px solid #fecdca; border-radius:8px; background:#fffafa;">
+                          <label for="matchpointTestArmSwitch" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:800; color:#b42318; font-size:13px; line-height:1.35;">
+                            <input type="checkbox" id="matchpointTestArmSwitch" onchange="matchpointTestArmoToggle(this.checked)" style="width:18px; height:18px; margin-top:1px; flex:0 0 auto; cursor:pointer;">
+                            <span>🔴 Arma i due bottoni qui sotto — scrivono sul Matchpoint VERO del circolo</span>
+                          </label>
+                          <div id="matchpointTestArmHint" style="margin:6px 0 10px 28px; font-size:12px; font-weight:700; color:#667085;">Adesso sono spenti: un clic per sbaglio non può creare niente.</div>
+                          <div class="matchpoint-data-actions">
+                            <input id="matchpointTestBookingSocio" type="text" value="Maurizio Aprea"
+                              placeholder="Nome socio da prenotare"
+                              style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; min-width:220px;">
+                            <button id="matchpointTestBookingButton" class="btn-danger" disabled onclick="setActionAnchor(this); matchpointTestBookingCreate()">🔴 CREA prenotazione VERA su Matchpoint</button>
+                            <button id="matchpointTestClientButton" class="btn-danger" disabled onclick="setActionAnchor(this); matchpointTestClientCreate()">🔴 CREA cliente VERO su Matchpoint</button>
+                          </div>
+                        </div>
+
+                        <div id="matchpointTestBookingState" class="matchpoint-action-state" style="margin-top:10px;"></div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
                       </div>
                     </article>
@@ -8022,7 +8041,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.175';
+    const APP_VERSION = '6.176';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43424,6 +43443,80 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── 🔴⭐⭐ ARMAMENTO dei due bottoni che scrivono DAVVERO su Matchpoint ─────
+  // Nato da un fatto del 3/08/2026: un clic finito per sbaglio su «crea prenotazione», fermato
+  // solo da un errore di rete (e il giorno prima due schede finte create dal gemello «crea
+  // cliente»). 🚨 La conferma c'era GIÀ su tutti e due — ed è esattamente il punto: una finestra
+  // di sistema ha «OK» come tasto predefinito, quindi un Invio la attraversa, e quella del cliente
+  // arriva in coda a QUATTRO prompt appena chiusi a colpi di Invio. Un avviso che non ferma è un
+  // vicolo cieco ⇒ qui il bottone è SPENTO finché non lo si arma di proposito.
+  // Tre regole, e servono tutte e tre:
+  //   1. nasce disarmato a ogni caricamento della pagina (nessuno stato che sopravvive);
+  //   2. l'armamento si CONSUMA al primo uso — non resta acceso per il clic successivo;
+  //   3. scade da solo dopo PMO_TEST_ARMO_SECONDI, così non sopravvive a una distrazione.
+  // ⭐ La guardia sta in DUE punti apposta: l'attributo `disabled` (che si vede) e il controllo
+  // dentro le due funzioni (che vale anche se il bottone viene aggirato). Il secondo misura la
+  // variabile, non l'aspetto del bottone.
+  const PMO_TEST_ARMO_SECONDI = 60;
+  let _pmoTestArmato = false;
+  let _pmoTestArmoTimer = null;
+  let _pmoTestArmoScadenza = 0;
+
+  // Unico punto che tocca lo stato visibile: lo chiamano l'interruttore, il timer e i `finally`
+  // delle due azioni — così nessuno può riaccendere un bottone senza passare di qui.
+  function pmoTestArmoApplica() {
+    ['matchpointTestBookingButton', 'matchpointTestClientButton'].forEach((id) => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = !_pmoTestArmato;
+    });
+    const box = document.getElementById('matchpointTestArmSwitch');
+    if (box) box.checked = _pmoTestArmato;
+    const hint = document.getElementById('matchpointTestArmHint');
+    if (!hint) return;
+    if (_pmoTestArmato) {
+      const restano = Math.max(0, Math.ceil((_pmoTestArmoScadenza - Date.now()) / 1000));
+      hint.textContent = `⚠️ ARMATI: il prossimo clic scrive per davvero. Si spengono da soli fra ${restano} s, e comunque dopo il primo uso.`;
+      hint.style.color = '#b42318';
+    } else {
+      hint.textContent = 'Adesso sono spenti: un clic per sbaglio non può creare niente.';
+      hint.style.color = '#667085';
+    }
+  }
+
+  function pmoTestArmoDisarma() {
+    _pmoTestArmato = false;
+    if (_pmoTestArmoTimer) { clearInterval(_pmoTestArmoTimer); _pmoTestArmoTimer = null; }
+    _pmoTestArmoScadenza = 0;
+    pmoTestArmoApplica();
+  }
+
+  function matchpointTestArmoToggle(acceso) {
+    if (!acceso) { pmoTestArmoDisarma(); return; }
+    _pmoTestArmato = true;
+    _pmoTestArmoScadenza = Date.now() + PMO_TEST_ARMO_SECONDI * 1000;
+    if (_pmoTestArmoTimer) clearInterval(_pmoTestArmoTimer);
+    // Un battito al secondo: aggiorna il conto alla rovescia e disarma da sé alla scadenza.
+    _pmoTestArmoTimer = setInterval(() => {
+      if (Date.now() >= _pmoTestArmoScadenza) { pmoTestArmoDisarma(); return; }
+      pmoTestArmoApplica();
+    }, 1000);
+    pmoTestArmoApplica();
+  }
+
+  // Ferma chi non è armato e CONSUMA l'armamento di chi lo è: da qui in poi il bottone è spento
+  // finché lui non lo riarma. Ritorna false se l'azione non deve partire.
+  function pmoTestArmoConsuma(stateEl) {
+    if (!_pmoTestArmato) {
+      if (stateEl) {
+        stateEl.textContent = 'Bottone non armato: spunta prima «🔴 Arma i due bottoni qui sotto».';
+        stateEl.className = 'matchpoint-action-state error';
+      }
+      return false;
+    }
+    pmoTestArmoDisarma();
+    return true;
+  }
+
   // ── Test prenotazione Matchpoint (solo TEST env) ──────────────────────────
   async function matchpointTestBookingCreate() {
     // --- Variante PARTITA (verificata, tenuta per eventuale ri-test rapido) ---
@@ -43451,6 +43544,9 @@ Per confermare scrivi ELIMINA.`);
       if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
       return;
     }
+
+    // 🔴 Serve l'armamento esplicito, e usarlo lo spegne: questo scrive sul Matchpoint VERO.
+    if (!pmoTestArmoConsuma(stateEl)) return;
 
     // Slot di prova (modificabili): scegliere uno slot LIBERO e FUTURO
     const TEST_CAMPO = 3, TEST_DATA = "2026-06-03", TEST_ORA = "08:00", TEST_ORA_FINE = "09:30", TEST_DURATA = 90;
@@ -43542,7 +43638,9 @@ Per confermare scrivi ELIMINA.`);
         resultEl.textContent = msg;
       }
     } finally {
-      if (btn) btn.disabled = false;
+      // 🚨 NON `btn.disabled = false`: rimetterebbe vivo un bottone che l'uso ha appena spento.
+      // Lo stato lo decide l'armamento, non la fine della chiamata.
+      pmoTestArmoApplica();
     }
   }
 
@@ -43727,6 +43825,10 @@ Per confermare scrivi ELIMINA.`);
       return;
     }
 
+    // 🔴 Prima dei prompt, non dopo: un clic sbagliato non deve nemmeno APRIRE la catena di
+    // finestre che poi si chiude a colpi di Invio — era proprio quella a portare fino in fondo.
+    if (!pmoTestArmoConsuma(stateEl)) return;
+
     const nome = (prompt('Nome del cliente di prova:', 'Prova') || '').trim();
     if (!nome) return;
     const cognome = (prompt('Cognome del cliente di prova:', 'WorkerPmo') || '').trim();
@@ -43804,7 +43906,8 @@ Per confermare scrivi ELIMINA.`);
         resultEl.textContent = msg;
       }
     } finally {
-      if (btn) btn.disabled = false;
+      // 🚨 Come sopra: chi ha appena creato un cliente vero resta spento finché non riarma.
+      pmoTestArmoApplica();
     }
   }
 
