@@ -25,6 +25,10 @@ type BookingRequest = {
   // della tendina «000140-Nome». Confonderle è ciò che il 2/08/2026 ha fatto sparire un
   // giocatore da una lezione (PR #624).
   giocatori?: { nome: string; codice?: string; codiceCliente?: string }[];
+  // ⭐ L'id che l'APP dà alla prenotazione, generato PRIMA di chiamarci (_staffCalNewSbId) e usato
+  // da lei come chiave del proprio record cloud. Se c'è, è la chiave anche per noi: così la nostra
+  // riga e la sua sono LA STESSA riga invece di due. Assente quando prenota il BOT → chiave nostra.
+  sbId?: string;
 };
 
 const CORS_HEADERS = {
@@ -174,6 +178,48 @@ async function callWorkerCreateBooking(opts: {
   );
 }
 
+// Ripulisce l'id che l'app ci manda, prima che diventi la CHIAVE di una riga del cloud.
+// ⛔ Niente `|`: è il separatore della chiave composta, e permetterlo lascerebbe fabbricare una
+// chiave che finge di essere quella di un altro creatore. Lunghezza limitata perché finisce in
+// una colonna indicizzata; la forma vera è un UUID (_staffCalNewSbId in index.html).
+// Vuoto/assente/non valido → `undefined`, cioè «usa la chiave di prima»: è il caso del BOT.
+export function normalizzaSbId(valore: unknown): string | undefined {
+  const s = String(valore ?? '').trim();
+  if (!s || s.length > 64 || s.includes('|')) return undefined;
+  return s;
+}
+
+// ⭐⭐ LA CHIAVE DEL RECORD, decisa in UN SOLO POSTO. La usano sia la scrittura vera sia la
+// «prova a vuoto»: se fossero due espressioni gemelle, la prova a vuoto potrebbe dire una cosa
+// e il percorso vero farne un'altra — cioè una prova che rassicura senza misurare.
+export function chiavePrenotazione(booking: BookingRequest, actorUserId: string): string {
+  const daApp = normalizzaSbId(booking?.sbId);
+  if (daApp) return daApp;
+  return `staff_booking|${booking?.data}|${booking?.ora}|Campo ${booking?.campo}|${actorUserId}`;
+}
+
+// Elenco di ciò che questa versione dell'edge SA FARE. Serve a chi chiede la prova a vuoto:
+// 🚨 un'edge vecchia che non la conosce ignorerebbe il flag e PRENOTEREBBE DAVVERO, quindi chi
+// la chiede deve poter verificare PRIMA che dall'altra parte ci sia chi la sa fare, e rifiutarsi.
+export const FEATURES = ['prova-a-vuoto-chiave', 'chiave-da-sbId'];
+
+// Fonde la fotografia della creazione (`nostro`) con quello che nella riga c'è GIÀ.
+// ⭐ Quello che c'è già VINCE campo per campo: l'ha scritto l'app, ed è lei l'autorevole sulla
+// prenotazione. Noi siamo solo la rete di sicurezza per quando l'app non arriva a parlare.
+// ⭐⭐ Ma un campo VUOTO non è una scelta, è un BUCO — e i buchi li riempiamo noi: nel flusso
+// asincrono l'app salva PRIMA di conoscere `id_reserva`, e se la scheda venisse chiusa prima
+// della risposta del worker quel numero non arriverebbe mai nel cloud.
+// Pura di proposito: è la regola che decide se un dato sopravvive, e va provata da sola.
+export function fondiPayloadPrenotazione(nostro: JsonMap, giaScritto: JsonMap): JsonMap {
+  const fuso: JsonMap = { ...(nostro ?? {}) };
+  for (const [chiave, valore] of Object.entries(giaScritto ?? {})) {
+    const vuoto = valore === null || valore === undefined || valore === '' ||
+      (Array.isArray(valore) && valore.length === 0);
+    if (!vuoto) fuso[chiave] = valore;
+  }
+  return fuso;
+}
+
 async function saveStaffBookingRecord(opts: {
   supabaseUrl: string;
   supabaseKey: string;
@@ -183,32 +229,62 @@ async function saveStaffBookingRecord(opts: {
 }) {
   const { supabaseUrl, supabaseKey, actor, booking, workerResult } = opts;
   const client = createClient(supabaseUrl, supabaseKey);
-  const localKey = `staff_booking|${booking.data}|${booking.ora}|Campo ${booking.campo}|${actor.userId}`;
+  // 🚨⭐⭐ LA CHIAVE È QUELLA DELL'APP, QUANDO L'APP CE LA DÀ (v6.172, 3/08/2026).
+  // Prima si usava sempre `staff_booking|<data>|<ora>|Campo <n>|<userId>`, e l'app scriveva la SUA
+  // riga con l'id della prenotazione: due righe per la stessa partita. Misurato su PROD il 3/08:
+  // 36 doppie su 84. L'accordo però era già stato spedito — l'app manda `sbId` dal 43274 di
+  // index.html — e nessuno lo leggeva.
+  // ⛔ Senza `sbId` (cioè quando prenota il BOT) resta la chiave di prima: là la nostra riga è
+  // l'UNICA che esiste, e cambiarla renderebbe invisibili le prenotazioni dei soci.
+  const localKey = chiavePrenotazione(booking, actor.userId);
   // idReserva è dentro al risultato del worker (stesso campo che l'app legge da worker_result.idReserva).
   const idReserva = clean((workerResult as JsonMap)?.idReserva ?? (workerResult as JsonMap)?.id_reserva);
+
+  // 🚨⭐⭐ CONDIVIDERE LA CHIAVE VUOL DIRE POTER CANCELLARE QUELLO CHE HA SCRITTO L'ALTRO.
+  // La RPC dell'app fa `payload = excluded.payload`: SOSTITUISCE. E nel flusso asincrono l'app
+  // salva PRIMA e noi rispondiamo DOPO ⇒ scrivendo alla cieca, questa fotografia della creazione
+  // cancellerebbe il roster aggiornato. La nostra riga è una RETE DI SICUREZZA (serve se l'app non
+  // arriva mai a scrivere: scheda chiusa, crash), non la verità: quindi RIEMPIE I BUCHI e non tocca
+  // ciò che c'è già — `{...nostro, ...esistente}`, dove l'esistente vince campo per campo.
+  const { data: esistente } = await client
+    .from('pmo_cloud_records')
+    .select('payload, deleted')
+    .eq('record_type', 'staff_booking')
+    .eq('local_key', localKey)
+    .maybeSingle();
+
+  // ⛔ Se quella riga è già una lapide, NON la si resuscita: rimetterla viva farebbe ricomparire
+  // una prenotazione annullata — è per definizione il fantasma che inseguiamo da luglio.
+  if (esistente?.deleted === true) return;
+
+  const giaScritto = (esistente?.payload ?? {}) as JsonMap;
+
+  const nostro: JsonMap = {
+    campo: booking.campo,
+    data: booking.data,
+    ora: booking.ora,
+    ora_fine: booking.oraFine,
+    durata: booking.durata,
+    // tipo/istruttore/id_reserva: SENZA questi, in app il record diventava "Partita" (tipo mancante)
+    // e, se vinceva il dedup per-slot, perdeva istruttore/idReserva. Ora è un peer fedele del record
+    // che l'app pusha per conto suo (staffCalSaveLocal). v5.902.
+    tipo: booking.tipo ?? 'partita',
+    nome: booking.nome,
+    istruttore: booking.istruttore ?? '',
+    note: booking.note ?? '',
+    giocatori: booking.giocatori ?? [],
+    id_reserva: idReserva,
+    created_by_email: actor.email,
+    created_by_role: actor.role,
+    worker_result: workerResult,
+  };
+
+  const payload = fondiPayloadPrenotazione(nostro, giaScritto);
 
   await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_booking',
     local_key: localKey,
-    payload: {
-      campo: booking.campo,
-      data: booking.data,
-      ora: booking.ora,
-      ora_fine: booking.oraFine,
-      durata: booking.durata,
-      // tipo/istruttore/id_reserva: SENZA questi, in app il record diventava "Partita" (tipo mancante)
-      // e, se vinceva il dedup per-slot, perdeva istruttore/idReserva. Ora è un peer fedele del record
-      // che l'app pusha per conto suo (staffCalSaveLocal). v5.902.
-      tipo: booking.tipo ?? 'partita',
-      nome: booking.nome,
-      istruttore: booking.istruttore ?? '',
-      note: booking.note ?? '',
-      giocatori: booking.giocatori ?? [],
-      id_reserva: idReserva,
-      created_by_email: actor.email,
-      created_by_role: actor.role,
-      worker_result: workerResult,
-    },
+    payload,
     deleted: false,
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
@@ -264,6 +340,13 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET') {
     const actorGet = await getActor(req).catch(() => null);
     if (!actorGet) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
+    // 🚨⭐⭐ «Che cosa sai fare?», e serve a NON farsi male: chi vuole la prova a vuoto deve poter
+    // verificare PRIMA che dall'altra parte ci sia una versione che la conosce. Un'edge vecchia
+    // ignorerebbe il flag `provaAVuoto` e prenoterebbe DAVVERO — una prova a vuoto non difesa è
+    // più pericolosa di non averla, perché fa credere che non stia succedendo niente.
+    if (clean(new URL(req.url).searchParams.get('features')) === '1') {
+      return ok({ features: FEATURES });
+    }
     const jobId = clean(new URL(req.url).searchParams.get('jobId'));
     if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
     const sUrl = clean(Deno.env.get('SUPABASE_URL'));
@@ -334,11 +417,20 @@ Deno.serve(async (req: Request) => {
   if (!nome) return err(400, 'INVALID_NOME', 'Nome giocatore/istruttore richiesto.');
   if (!VALID_TIPOS.includes(tipo)) return err(400, 'INVALID_TIPO', `tipo deve essere uno di: ${VALID_TIPOS.join(', ')}.`);
 
+  // 🚨⭐⭐ `sbId` va COPIATO QUI DENTRO, o non arriva a chi lo usa. Il 3/08/2026 la modifica che
+  // rende `sbId` la chiave del record è stata scritta e DEPLOYATA senza questa riga: le due
+  // estremità erano giuste — l'app lo mandava, saveStaffBookingRecord lo leggeva — e il valore
+  // non attraversava il mezzo, perché `booking` si costruisce campo per campo e chi non è
+  // elencato qui semplicemente non esiste. Le guardie del banco erano VERDI: controllavano che
+  // il codice DICESSE `clean(booking.sbId)`, non che il dato ARRIVASSE.
+  const sbId = normalizzaSbId(body.sbId);
+
   const booking: BookingRequest = {
     campo, data, ora, oraFine, durata, nome, tipo,
     istruttore: istruttore || undefined,
     note: clean(body.note),
     giocatori: giocatori.length ? giocatori : undefined,
+    sbId,
   };
 
   // Env vars
@@ -349,6 +441,38 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = clean(Deno.env.get('SUPABASE_URL'));
   const supabaseKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
   const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
+
+  // ── PROVA A VUOTO: fa tutto TRANNE prenotare e scrivere ─────────────────────────────────
+  // ⭐⭐ Collaudare questa modifica costerebbe una prenotazione VERA sul gestionale del circolo:
+  // su TEST l'app simula da sé e l'edge non viene nemmeno chiamata, quindi là «ha funzionato» non
+  // proverebbe niente. Qui si risponde CHE COSA SI FAREBBE — quale chiave, se una riga a quella
+  // chiave esiste già — senza toccare il worker né il database. Ripetibile e gratis.
+  // ⛔ Esce PRIMA di qualunque effetto: niente worker, niente upsert, niente job.
+  if (body.provaAVuoto === true) {
+    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    const chiave = chiavePrenotazione(booking, actor.userId);
+    let esistente: JsonMap | null = null;
+    if (sUrl && sKey) {
+      const c = createClient(sUrl, sKey);
+      const { data } = await c.from('pmo_cloud_records')
+        .select('payload, deleted, updated_at')
+        .eq('record_type', 'staff_booking').eq('local_key', chiave).maybeSingle();
+      esistente = (data as JsonMap) ?? null;
+    }
+    return ok({
+      provaAVuoto: true,
+      features: FEATURES,
+      avrebbeUsatoLaChiave: chiave,
+      chiaveDellApp: !!normalizzaSbId(booking.sbId),
+      sbIdRicevuto: clean(body.sbId) || '(nessuno)',
+      rigaGiaPresente: !!esistente,
+      rigaAnnullata: esistente?.deleted === true,
+      spiegazione: normalizzaSbId(booking.sbId)
+        ? 'Userei la chiave dell\'app: la mia riga e la sua sarebbero LA STESSA riga.'
+        : 'Nessun sbId valido ricevuto: userei la chiave composta (è il caso del bot).',
+    });
+  }
 
   if (!workerUrl || !workerApiKey) {
     return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
