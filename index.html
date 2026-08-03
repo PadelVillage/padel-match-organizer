@@ -8021,7 +8021,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.170';
+    const APP_VERSION = '6.171';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38978,6 +38978,58 @@ Per confermare scrivi ELIMINA.`);
     } catch (e) { console.warn('staffCalReconcileMembersFromCloud:', e); }
   }
 
+  // ── QUALE COPIA MOSTRARE QUANDO LO STESSO SLOT NE HA DUE ────────────────────────────────
+  // 🚨⭐⭐ Una prenotazione finisce nel cloud DUE VOLTE, e non è un difetto da togliere alla
+  // leggera: la scrivono due autori diversi con due chiavi diverse.
+  //   • l'edge `matchpoint-bookings-create` → `staff_booking|<data>|<ora>|Campo <n>|<userId>`
+  //   • l'app, ~0,7 s dopo, con l'id della prenotazione
+  // Misurato il 3/08/2026 su PROD: 36 prenotazioni doppie su 84, l'ultima quel mattino stesso.
+  // ⛔ La riga dell'edge NON è di troppo: quando prenota il BOT è l'UNICA che esiste (chiave che
+  // finisce per `consumer-assistente-soci`). Toglierla renderebbe invisibili le prenotazioni dei soci.
+  //
+  // Le due copie NON sono equivalenti: quella dell'edge è più povera (media 2,03 giocatori contro
+  // 3,03, e una senza `tipo` → in render diventerebbe «Partita» anche se è una LEZIONE).
+  // Finora vinceva sempre quella giusta solo perché l'app scrive DOPO: un ordine che regge su
+  // 0,7 secondi. Il giorno in cui qualcosa tocca la riga dell'edge più tardi, vince la povera.
+  //
+  // 🚨⭐⭐ PERCHÉ NON BASTA «tieni la più ricca», che sarebbe la regola ovvia: se si annulla e si
+  // RIPRENOTA lo stesso slot con meno giocatori, la più ricca è quella VECCHIA ⇒ mostreremmo una
+  // prenotazione che non esiste più. È il fantasma del 20/07 rifatto da capo.
+  // ⇒ Il discriminante è `idReserva`: le due copie della stessa prenotazione lo CONDIVIDONO
+  // (misurato: 9245 e 9213), una riprenotazione ne ha uno DIVERSO. Quindi:
+  //   • stesso `idReserva` (e non vuoto) → sono due copie ⇒ vince chi DICE DI PIÙ;
+  //   • altrimenti → resta la regola di prima, vince la più recente.
+  // Sui record vecchi senza `idReserva` non si può dimostrare che siano gemelli: si tira dritto
+  // con la più recente, cioè non si cambia niente.
+  function pmoStaffBookingQuantoDice(b) {
+    const gioc = Array.isArray(b && b.giocatori) ? b.giocatori : [];
+    const pieno = (v) => String(v == null ? '' : v).trim() !== '';
+    return [
+      pieno(b && b.tipo) ? 1 : 0,                    // senza tipo la card mentisce sul GENERE
+      gioc.length,                                   // quanti giocatori dice
+      gioc.filter(g => g && (pieno(g.codiceCliente) || pieno(g.codice))).length,  // quanti sa NOMINARE
+      pieno(b && b.istruttore) ? 1 : 0,              // il maestro, sulle lezioni
+      pieno(b && b.nome) ? 1 : 0
+    ];
+  }
+  // Sceglie fra due voci che occupano lo STESSO slot. Pura: nessun effetto, così si può provare.
+  // ⭐ Simmetrica per costruzione — scegliere(a,b) e scegliere(b,a) danno la stessa voce — perché
+  // l'ordine in cui arrivano dal cloud non è garantito e una regola asimmetrica darebbe una card
+  // che cambia da sola a ogni giro.
+  function pmoStaffBookingScegliCopia(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const piuRecente = () => String(b.updatedAt || '') > String(a.updatedAt || '') ? b : a;
+    const ra = String((a && a.idReserva) || '').trim();
+    const rb = String((b && b.idReserva) || '').trim();
+    if (!ra || !rb || ra !== rb) return piuRecente();   // non dimostrabilmente gemelle → come prima
+    const qa = pmoStaffBookingQuantoDice(a), qb = pmoStaffBookingQuantoDice(b);
+    for (let i = 0; i < qa.length; i++) {
+      if (qa[i] !== qb[i]) return qa[i] > qb[i] ? a : b;
+    }
+    return piuRecente();                                // dicono le stesse cose → la più recente
+  }
+
   // v6.064 — Avviso "sessione scaduta". Se lo scarico dal cloud fallisce per sessione
   // non rinnovabile, il calendario resta su dati locali VECCHI senza dirlo: mostriamo un
   // banner cliccabile (→ logout) invece del silenzio. Si toglie da solo appena un refresh
@@ -39061,12 +39113,16 @@ Per confermare scrivi ELIMINA.`);
         });
         const cloudKeep = cloudSB.filter(b => !_pend.has(slotOf(b)));
         let merged = keptLocal.concat(cloudKeep);
-        // Sicurezza: se per qualunque motivo restano DUE voci sullo STESSO slot, tieni la più recente.
+        // Sicurezza: se restano DUE voci sullo STESSO slot ne tieni una sola.
+        // ⭐ v6.171: non più «la più recente» a occhi chiusi. Se le due voci sono le due COPIE
+        // della stessa prenotazione (stesso `idReserva`) vince quella che dice di più, perché una
+        // delle due è sistematicamente più povera; in tutti gli altri casi — riprenotazione dello
+        // slot, record vecchi senza `idReserva` — vale la regola di prima. Vedi
+        // pmoStaffBookingScegliCopia per il perché «la più ricca» da sola sarebbe un difetto.
         const _bySlot = new Map();
         for (const b of merged) {
           const slot = slotOf(b);
-          const prev = _bySlot.get(slot);
-          if (!prev || String(b.updatedAt||'') > String(prev.updatedAt||'')) _bySlot.set(slot, b);
+          _bySlot.set(slot, pmoStaffBookingScegliCopia(_bySlot.get(slot), b));
         }
         localSB = Array.from(_bySlot.values());
         const after = sig(localSB);
