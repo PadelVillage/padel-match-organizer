@@ -57,8 +57,16 @@ vm.runInContext(
     .replace(/:\s*unknown/g, '')
     .replace(/\)\s*:\s*string \| undefined\s*\{/, ') {'),
   ctx);
+vm.runInContext(
+  estraiSenzaTipi('chiavePrenotazione')
+    .replace(/booking\s*:\s*BookingRequest/, 'booking')
+    .replace(/actorUserId\s*:\s*string/, 'actorUserId')
+    .replace(/\)\s*:\s*string\s*\{/, ') {'),
+  ctx);
 const fondi = (nostro, gia) => ctx.fondiPayloadPrenotazione(nostro, gia);
 const normalizza = (v) => ctx.normalizzaSbId(v);
+const chiave = (booking, utente) => ctx.chiavePrenotazione(booking, utente);
+const PRENOTAZIONE = { data: '2026-08-04', ora: '18:00', campo: 3 };
 
 const casi = [];
 const caso = (nome, fn) => casi.push({ nome, fn });
@@ -140,6 +148,26 @@ caso('16. un id assurdamente lungo è rifiutato: finisce in una colonna indicizz
   return [normalizza('x'.repeat(65)) === undefined, normalizza('x'.repeat(64)) === 'x'.repeat(64)];
 });
 
+caso('17. ⭐ con l\'id dell\'app la CHIAVE è quella dell\'app: una riga sola', () => {
+  const k = chiave({ ...PRENOTAZIONE, sbId: '41e635df-f430-4450-b3f3-e3679c693588' }, 'utente-staff');
+  return [k === '41e635df-f430-4450-b3f3-e3679c693588'];
+});
+
+caso('18. ⛔ SENZA id dell\'app resta la chiave composta: è il caso del BOT, e non si tocca', () => {
+  const k = chiave({ ...PRENOTAZIONE }, 'consumer-assistente-soci');
+  return [k === 'staff_booking|2026-08-04|18:00|Campo 3|consumer-assistente-soci'];
+});
+
+caso('19. un id malevolo con «|» NON diventa chiave: si ricade su quella composta', () => {
+  const k = chiave({ ...PRENOTAZIONE, sbId: 'staff_booking|2026-08-04|18:00|Campo 3|altro' }, 'io');
+  return [k === 'staff_booking|2026-08-04|18:00|Campo 3|io'];
+});
+
+caso('20. id vuoto o di soli spazi ⇒ chiave composta', () => {
+  return [chiave({ ...PRENOTAZIONE, sbId: '' }, 'io').startsWith('staff_booking|'),
+          chiave({ ...PRENOTAZIONE, sbId: '   ' }, 'io').startsWith('staff_booking|')];
+});
+
 // ── GUARDIE SUL SORGENTE DELL'EDGE ──────────────────────────────────────────────
 // 🚨 La funzione pura può essere perfetta e il difetto restare: quello che conta è COME
 //    l'edge la usa e QUALE CHIAVE sceglie. Queste guardano il codice, non il risultato.
@@ -160,9 +188,25 @@ const guardie = [
   ['⭐⭐ `sbId` ARRIVA davvero dentro `booking` (non solo nominato)', /\bsbId\b/.test(letteraleBooking)],
   ['`sbId` viene ripulito prima di diventare una chiave', /const sbId = normalizzaSbId\(body\.sbId\)/.test(ts)],
   ['la pulizia dell\'id è una funzione a sé, provabile', /export function normalizzaSbId/.test(ts)],
-  ['⭐ la CHIAVE è `sbId` quando c\'è', /const localKey\s*=\s*clean\(booking\.sbId\)\s*\|\|/.test(ts)],
-  ['⛔ senza `sbId` resta la chiave di prima (il BOT non si tocca)',
-   /staff_booking\|\$\{booking\.data\}\|\$\{booking\.ora\}\|Campo \$\{booking\.campo\}\|\$\{actor\.userId\}/.test(ts)],
+  ['la chiave si decide in una funzione a sé', /export function chiavePrenotazione/.test(ts)],
+  ['chi scrive il record usa QUELLA funzione', /const localKey = chiavePrenotazione\(booking, actor\.userId\)/.test(ts)],
+
+  // ⭐⭐ Il punto per cui la prova a vuoto vale qualcosa: deve calcolare la chiave con LA STESSA
+  // funzione del percorso vero. Con due espressioni gemelle, la prova potrebbe dire una cosa e
+  // la scrittura farne un'altra — una prova che rassicura senza misurare.
+  ['⭐⭐ la PROVA A VUOTO usa la stessa funzione del percorso vero',
+   (ts.match(/chiavePrenotazione\(booking, actor\.userId\)/g) || []).length >= 2],
+  // 🚨 Il confronto va fatto DENTRO il gestore della richiesta: `callWorkerCreateBooking(`
+  // compare anche prima nel file, in un'altra funzione, e misurando su tutto il sorgente questa
+  // guardia dava rosso su codice giusto. Si misura il percorso, non il file.
+  ['la prova a vuoto esce PRIMA del worker e del ramo asincrono', (() => {
+    const gestore = ts.slice(ts.indexOf('Deno.serve('));
+    const iProva = gestore.indexOf('body.provaAVuoto === true');
+    const iAsync = gestore.indexOf('body.async === true');
+    const iWorker = gestore.indexOf('workerResult = await callWorkerCreateBooking');
+    return iProva > 0 && iProva < iAsync && iProva < iWorker;
+  })()],
+  ['l\'edge DICHIARA che cosa sa fare', /export const FEATURES = \[/.test(ts) && /prova-a-vuoto-chiave/.test(ts)],
   ['prima di scrivere LEGGE la riga esistente', /\.select\('payload, deleted'\)/.test(ts)],
   ['⛔ non resuscita una prenotazione ANNULLATA', /esistente\?\.deleted === true\)\s*return/.test(ts)],
   ['usa la fusione invece di scrivere alla cieca', /payload = fondiPayloadPrenotazione\(/.test(ts)],

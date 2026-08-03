@@ -7793,6 +7793,7 @@ body.assessment-public-mode .assessment-public-only-card {
                           <button id="matchpointTestEditButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestBookingEdit()">🧪 Modifica prenotazione</button>
                           <button id="matchpointTestClientButton" class="btn-warning" onclick="setActionAnchor(this); matchpointTestClientCreate()">🧪 Test crea cliente</button>
                           <button id="matchpointTestPhoneButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestCercaTelefono()">🔎 Prova a vuoto: cerca telefono (non crea)</button>
+                          <button id="matchpointTestChiaveButton" class="btn-secondary" onclick="setActionAnchor(this); matchpointTestChiavePrenotazione()">🔑 Prova a vuoto: chiave prenotazione (non prenota)</button>
                           <div id="matchpointTestBookingState" class="matchpoint-action-state"></div>
                         </div>
                         <div id="matchpointTestBookingResult" style="display:none; margin-top:12px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5; white-space:pre-wrap;"></div>
@@ -8021,7 +8022,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.173';
+    const APP_VERSION = '6.174';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8149,6 +8150,18 @@ body.assessment-public-mode .assessment-public-only-card {
                   const _rb = (opts && typeof opts.body === 'string') ? JSON.parse(opts.body) : null;
                   _isReadOnly = !!(_rb && _rb.read === true);
                 }
+                // ⭐ v6.174 — La PROVA A VUOTO della creazione non è una scrittura: l'edge esce
+                // prima del worker e prima di qualunque upsert, e risponde solo QUALE CHIAVE
+                // userebbe. Se la si intercettasse qui, su TEST risponderebbe la simulazione e la
+                // prova direbbe «tutto bene» senza aver guardato niente — cioè il difetto che la
+                // prova a vuoto esiste per evitare. Stessa identica ragione del `read:true` sopra.
+                // 🚨 Restringe al minimo: quell'UNICO indirizzo e quell'UNICO flag.
+                if (/matchpoint-bookings-create\b/.test(u)) {
+                  const _cb = (opts && typeof opts.body === 'string') ? JSON.parse(opts.body) : null;
+                  if (_cb && _cb.provaAVuoto === true) _isReadOnly = true;
+                }
+                // Il «che cosa sai fare?» è una GET senza corpo: non tocca niente.
+                if (/matchpoint-bookings-create\b/.test(u) && /[?&]features=1/.test(u)) _isReadOnly = true;
               } catch (e) { _isReadOnly = false; } // corpo illeggibile ⇒ si tratta come scrittura
               if (!_real && !_isReadOnly) {
                 const isClients = /matchpoint-clients-/.test(u);
@@ -43540,6 +43553,95 @@ Per confermare scrivi ELIMINA.`);
   // collauda. Questa non crea MAI niente: cerca, e riferisce.
   // 🚨 Porta X-PMO-Real-MP come gli altri pulsanti diagnostici: senza, la chiamata verrebbe
   //    intercettata e SIMULATA dall'app, e la risposta «ok» non proverebbe nulla.
+  // ── PROVA A VUOTO: quale CHIAVE userebbe l'edge per la riga della prenotazione ─────────────
+  // Collaudare la modifica «una prenotazione, una riga» costerebbe altrimenti una prenotazione
+  // VERA sul gestionale del circolo: su TEST l'app simula da sé e l'edge non viene nemmeno
+  // chiamata, quindi là «ha funzionato» non proverebbe niente (la simulazione si dà ragione).
+  // Qui si chiede all'edge CHE COSA FAREBBE, senza worker e senza scritture.
+  // 🚨⭐⭐ Prima si chiede all'edge CHE COSA SA FARE, e se non conosce la prova a vuoto ci si
+  // FERMA: una versione vecchia ignorerebbe il flag e prenoterebbe davvero. Successo il 3/08 col
+  // worker della VM, che ignorò una richiesta di prova a vuoto e creò due schede vere.
+  async function matchpointTestChiavePrenotazione() {
+    const btn = document.getElementById('matchpointTestChiaveButton');
+    const stateEl = document.getElementById('matchpointTestBookingState');
+    const resultEl = document.getElementById('matchpointTestBookingResult');
+    const mostra = (testo, colore) => {
+      if (!resultEl) return;
+      resultEl.style.display = 'block';
+      resultEl.style.background = colore === 'ok' ? '#eefaf2' : colore === 'ko' ? '#fef3f2' : '#f8fafc';
+      resultEl.style.border = '1px solid ' + (colore === 'ok' ? '#b7e4c7' : colore === 'ko' ? '#fecdca' : '#e2e8f0');
+      resultEl.style.color = colore === 'ok' ? '#168a53' : colore === 'ko' ? '#b42318' : '#334155';
+      resultEl.textContent = testo;
+    };
+    if (!isStaffSessionValid()) {
+      if (stateEl) { stateEl.textContent = 'Devi essere loggato come staff per usare il test.'; stateEl.className = 'matchpoint-action-state error'; }
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (stateEl) { stateEl.textContent = 'Chiedo all\'edge che cosa farebbe…'; stateEl.className = 'matchpoint-action-state pending'; }
+    if (resultEl) { resultEl.style.display = 'none'; resultEl.textContent = ''; }
+    try {
+      const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+      const staff = await pmoRequireStaffPermission('cloud_sync', 'provare a vuoto la chiave della prenotazione');
+      const intestazioni = { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` };
+
+      // PASSO 1 — «che cosa sai fare?». Senza questa risposta NON si manda niente.
+      const rf = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create?features=1`, { headers: intestazioni });
+      const df = await rf.json().catch(() => null);
+      const features = Array.isArray(df?.features) ? df.features : [];
+      if (!features.includes('prova-a-vuoto-chiave')) {
+        mostra('⛔ MI FERMO: l\'edge deployata NON dichiara di saper fare la prova a vuoto.\n\n' +
+               'Funzioni dichiarate: ' + (features.length ? features.join(', ') : '(nessuna)') + '\n\n' +
+               'Mandarle la richiesta significherebbe farle creare una prenotazione VERA: una\n' +
+               'versione vecchia ignorerebbe il flag e prenoterebbe. Aggiorna l\'edge e riprova.', 'ko');
+        if (stateEl) { stateEl.textContent = 'Fermato: edge non aggiornata'; stateEl.className = 'matchpoint-action-state error'; }
+        return;
+      }
+
+      // PASSO 2 — la prova a vuoto vera, con un sbId finto ma della forma giusta.
+      const sbIdFinto = (typeof _staffCalNewSbId === 'function') ? _staffCalNewSbId() : 'prova-' + Date.now();
+      const domani = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const r = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+        method: 'POST', headers: intestazioni,
+        body: JSON.stringify({
+          campo: 1, data: domani, ora: '07:00', oraFine: '08:30', durata: 90,
+          nome: 'Prova A Vuoto', tipo: 'partita', sbId: sbIdFinto, provaAVuoto: true
+        }),
+      });
+      const testo = await r.text();
+      let d = null; try { d = testo ? JSON.parse(testo) : null; } catch { d = testo; }
+
+      // 🚨 L'intestazione dice quello che è SUCCESSO, non quello che si sperava.
+      if (!r.ok || d?.ok === false || d?.provaAVuoto !== true) {
+        mostra('❌ La prova a vuoto NON è stata riconosciuta come tale.\n\n' +
+               'HTTP ' + r.status + '\n' + (typeof d === 'string' ? d : JSON.stringify(d, null, 2)), 'ko');
+        if (stateEl) { stateEl.textContent = 'Esito non valido'; stateEl.className = 'matchpoint-action-state error'; }
+        return;
+      }
+      const usaChiaveApp = d.chiaveDellApp === true;
+      const atteso = d.avrebbeUsatoLaChiave === sbIdFinto;
+      mostra(
+        (usaChiaveApp && atteso ? '✅ ' : '⚠️ ') +
+        'Nessuna prenotazione creata, niente scritto: questa è solo la risposta a «che cosa faresti».\n\n' +
+        'sbId mandato dall\'app : ' + sbIdFinto + '\n' +
+        'sbId ricevuto dall\'edge: ' + d.sbIdRicevuto + '\n' +
+        'chiave che userebbe   : ' + d.avrebbeUsatoLaChiave + '\n' +
+        'è la chiave dell\'app? : ' + (usaChiaveApp ? 'SÌ — una riga sola' : 'NO — resterebbero due righe') + '\n' +
+        'riga già presente?    : ' + (d.rigaGiaPresente ? 'sì' : 'no') + '\n\n' +
+        d.spiegazione,
+        (usaChiaveApp && atteso) ? 'ok' : 'ko');
+      if (stateEl) {
+        stateEl.textContent = (usaChiaveApp && atteso) ? 'Prova a vuoto completata' : 'Prova a vuoto: esito NEGATIVO';
+        stateEl.className = 'matchpoint-action-state ' + ((usaChiaveApp && atteso) ? 'done' : 'error');
+      }
+    } catch (e) {
+      mostra('❌ Errore durante la prova a vuoto:\n' + (e && e.message ? e.message : String(e)), 'ko');
+      if (stateEl) { stateEl.textContent = 'Errore'; stateEl.className = 'matchpoint-action-state error'; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function matchpointTestCercaTelefono() {
     const btn = document.getElementById('matchpointTestPhoneButton');
     const stateEl = document.getElementById('matchpointTestBookingState');
