@@ -6632,7 +6632,7 @@ body.assessment-public-mode .assessment-public-only-card {
                sembra un bug: finché l'idratazione è in corso lo diciamo. -->
           <div id="membersHydrationNotice" class="members-hydration-notice" hidden aria-live="polite">
             <span class="members-hydration-dot" aria-hidden="true"></span>
-            <span>Sto caricando i contatti della rubrica: i conteggi qui sotto si stanno completando…</span>
+            <span>Sto caricando i soci dal cloud: i conteggi qui sotto si stanno completando…</span>
           </div>
           <!-- Fila dei DOPPIONI. Lo stato si DICHIARA sempre: un elenco vuoto può voler dire
                «nessun doppione» oppure «non ho ancora guardato / non ci sono riuscito», e da fuori
@@ -8018,7 +8018,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.167';
+    const APP_VERSION = '6.169';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8591,7 +8591,7 @@ Grazie.`
       }
       // I contatti rubrica Google (importedFrom='rubrica-google') NON si persistono in
       // localStorage: sono cloud-backed e ri-idratati ad ogni sessione da
-      // pmoEnsureRubricaGoogleHydrated. Persisterli (~1700 record ≈ 1MB) satura la quota
+      // pmoEnsureCloudMembersHydrated. Persisterli (~1700 record ≈ 1MB) satura la quota
       // su browser già pieni (PROD+TEST condividono l'origine) e farebbe fallire QUALSIASI
       // save('giocatori'). Choke-point unico: qui li togliamo prima di serializzare, così
       // il localStorage resta leggero (solo Matchpoint) e nessun save lancia mai per colpa loro.
@@ -8833,7 +8833,7 @@ Grazie.`
       // al primo disegno del calendario; throttle interno di 10 min contro il lavoro doppio.
       if (unlocked) {
         setTimeout(function () {
-          try { if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); } catch (e) {}
+          try { if (typeof pmoEnsureCloudMembersHydrated === 'function') pmoEnsureCloudMembersHydrated(); } catch (e) {}
         }, 2000);
       }
       if (!unlocked) {
@@ -10407,7 +10407,7 @@ Grazie.`
           setTimeout(() => {
             if (renderId !== tabSwitchRenderId || !tab || !tab.classList.contains('active')) return;
             if (tabName === 'dashboard') { renderInitialDashboard(); if (typeof staffCalInit === 'function') staffCalInit(); if (typeof staffCalRefreshFromCloud === 'function') staffCalRefreshFromCloud(); }
-            if (tabName === 'members') { displayMembers(); if (typeof pmoEnsureRubricaGoogleHydrated === 'function') pmoEnsureRubricaGoogleHydrated(); }
+            if (tabName === 'members') { displayMembers(); if (typeof pmoEnsureCloudMembersHydrated === 'function') pmoEnsureCloudMembersHydrated(); }
             // Ogni rientro nella scheda Incassi ri-legge dal cloud (refresh leggero, non
             // la sync MP pesante): sostituisce il vecchio pulsante ↻ Aggiorna rimosso, così
             // i dati non restano fermi alla cache caricata al primo ingresso.
@@ -12754,29 +12754,46 @@ Grazie.`
       return { members, summary };
     }
 
-    // ── Idratazione dei contatti RUBRICA GOOGLE dal cloud ───────────────────────
-    // I contatti importati dalla rubrica (importedFrom='rubrica-google') vivono su
-    // pmo_cloud_records ma NON hanno source='matchpoint_auto'/matchpointImportedAt,
-    // quindi pmoLoadMatchpointMembersFromCloud (MP-only) NON li carica: senza questa
-    // funzione comparivano SOLO nel browser che aveva eseguito l'import (giocatori
-    // locale). Qui li scarichiamo dal cloud e li fondiamo in locale "add-if-missing"
-    // (match per telefono/email/nome via findMatchingMemberIndex), così l'anagrafica
-    // mostra la rubrica curata su OGNI dispositivo. Sola lettura dal cloud + scrittura
-    // in localStorage: nessuna scrittura sul cloud né su Matchpoint.
-    async function pmoLoadRubricaGoogleMembersFromCloud() {
+    // ── Idratazione dei soci dal cloud: TUTTI, senza filtro di provenienza ──────
+    // I soci vivono su pmo_cloud_records e vanno riportati in locale su OGNI dispositivo,
+    // altrimenti compaiono solo nel browser che li ha creati o importati.
+    //
+    // 🚨⭐⭐ LA RIGA TOLTA IL 3/08/2026 È IL CUORE DI UN DIFETTO, non una pulizia. Qui si
+    // filtrava `importedFrom === 'rubrica-google'`, e l'altra idratazione
+    // (pmoLoadMatchpointMembersFromCloud) prende solo chi ha il marchio Matchpoint. Chi non
+    // aveva NÉ l'uno NÉ l'altro non era previsto da NESSUNA delle due: nessuna funzione
+    // andava a prenderlo. Non veniva scartato — non veniva proprio cercato.
+    // Sono i soci NATI NELL'APP: creati a mano dal modulo «Nuovo socio» (createMember) o
+    // dall'assistente, che non mettono alcun marchio. Ne escono solo se poi diventano
+    // clienti Matchpoint e l'import notturno li ritimbra — quindi MAI per gli ospiti e le
+    // utenze di servizio, che a Matchpoint non si mandano apposta.
+    // Misurati il 3/08: 8 su PROD (6 attivi) e 3 su TEST. I 7 «invisibili allo sportello»
+    // del pannello diagnostica erano esattamente loro.
+    //
+    // ⭐⭐ PERCHÉ «TUTTI» E NON «TUTTO TRANNE MATCHPOINT», che sembrerebbe più mirato:
+    // 17 record hanno ENTRAMBI i marchi (nati dalla rubrica, poi diventati clienti MP) e
+    // NON si persistono in localStorage (pmoEncodeForStorage toglie i 'rubrica-google'):
+    // vivono solo di questa idratazione. Un filtro «tutto tranne Matchpoint» li avrebbe
+    // buttati fuori — cioè avrebbe curato 8 soci rompendone 17, e in silenzio.
+    // Senza filtro il buco non si può riaprire per costruzione: qualunque provenienza
+    // inventata domani è già coperta, senza che nessuno debba ricordarsi di aggiungerla.
+    //
+    // ⚙️ Non costa una riga di rete in più: la RPC scaricava GIÀ tutti i record 'member' e
+    // li buttava via qui. Sola lettura dal cloud; chi è già in locale non viene toccato.
+    async function pmoLoadAllMembersFromCloud() {
       const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
         p_record_types: ['member'],
         p_since: null
-      }, 'cloud_sync', 'scaricare i contatti rubrica dal cloud');
+      }, 'cloud_sync', 'scaricare i soci dal cloud');
       const list = Array.isArray(rows) ? rows : [];
       return list
-        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload && row.payload.importedFrom === 'rubrica-google')
+        .filter(row => row?.record_type === 'member' && !row.deleted && row.payload)
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
     }
 
     // ── LA FILA DEI DOPPIONI ────────────────────────────────────────────────────────────────
     // 🚨⭐⭐ Perché si INTERROGA IL CLOUD e non l'elenco locale, che sarebbe gratis: in locale una
-    // persona con DUE righe compare UNA volta sola. `pmoEnsureRubricaGoogleHydrated` scarta chi ha
+    // persona con DUE righe compare UNA volta sola. `pmoEnsureCloudMembersHydrated` scarta chi ha
     // un `id` già visto (`seenIds`) — ed è esattamente la forma più frequente di doppione: la
     // STESSA scheda salvata sotto due chiavi (`phone:…` che diventa `email:…` quando la persona
     // entra da Matchpoint). Un filtro costruito sull'elenco locale sarebbe CIECO proprio sul caso
@@ -12928,17 +12945,21 @@ Grazie.`
       displayMembers();
     }
 
-    let _pmoRubricaGoogleHydratedAt = 0;
-    let _pmoRubricaGoogleHydrating = false;
-    // Avviso «sto caricando i contatti»: i conteggi soci partono parziali e si completano a
+    let _pmoMembersHydratedAt = 0;
+    let _pmoMembersHydrating = false;
+    // Avviso «sto caricando i soci»: i conteggi partono parziali e si completano a
     // idratazione finita (vedi il commento sull'elemento). Senza preavviso il salto sembra un bug.
     // Lo stato lo rilegge anche updateMemberCounts, così sopravvive a un re-render in corsa.
-    function pmoSetRubricaHydrationNotice(on) {
+    function pmoSetMembersHydrationNotice(on) {
       const el = document.getElementById('membersHydrationNotice');
       if (el) el.hidden = !on;
     }
-    async function pmoEnsureRubricaGoogleHydrated(opts = {}) {
-      if (_pmoRubricaGoogleHydrating) return;
+    // ⭐ Il nome NON dice più «rubrica»: dal 3/08/2026 questa idratazione porta giù TUTTI i soci
+    // del cloud, non i soli contatti Google (vedi pmoLoadAllMembersFromCloud). Un nome che
+    // nomina una provenienza sola farebbe credere che le altre siano coperte altrove — ed è
+    // esattamente il modo in cui il difetto era rimasto invisibile per mesi.
+    async function pmoEnsureCloudMembersHydrated(opts = {}) {
+      if (_pmoMembersHydrating) return;
       try {
         if (!Array.isArray(giocatori)) return;
         // Richiede staff Supabase autenticato (la RPC vuole cloud_sync); in modalità pubblica salta.
@@ -12946,17 +12967,17 @@ Grazie.`
         const supabaseSession = (typeof pmoReadSupabaseStaffSession === 'function') ? pmoReadSupabaseStaffSession() : null;
         if (!supabaseSession) return;
         const now = Date.now();
-        // Throttle 10 min (dopo un caricamento riuscito): evita di riscaricare ~1700 record
+        // Throttle 10 min (dopo un caricamento riuscito): evita di riscaricare ~2800 record
         // ad ogni rientro nella scheda. force:true bypassa il throttle.
-        if (!opts.force && _pmoRubricaGoogleHydratedAt && (now - _pmoRubricaGoogleHydratedAt) < 600000) return;
-        _pmoRubricaGoogleHydrating = true;
-        pmoSetRubricaHydrationNotice(true);
-        const members = await pmoLoadRubricaGoogleMembersFromCloud();
-        _pmoRubricaGoogleHydratedAt = Date.now();
+        if (!opts.force && _pmoMembersHydratedAt && (now - _pmoMembersHydratedAt) < 600000) return;
+        _pmoMembersHydrating = true;
+        pmoSetMembersHydrationNotice(true);
+        const members = await pmoLoadAllMembersFromCloud();
+        _pmoMembersHydratedAt = Date.now();
         // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
         // NON usiamo findMatchingMemberIndex perché matcha anche per SOLO nome → nasconderebbe
         // una persona diversa che condivide il nome con un socio (falso merge). Con nome+telefono
-        // evitiamo insieme i duplicati e i falsi merge. Set per lookup O(1) su ~1700 record.
+        // evitiamo insieme i duplicati e i falsi merge. Set per lookup O(1) su ~2800 record.
         const seenKeys = new Set();
         const seenIds = new Set();
         giocatori.forEach(g => {
@@ -12976,19 +12997,20 @@ Grazie.`
           added++;
         });
         if (added > 0) {
-          // I google NON vengono persistiti (pmoEncodeForStorage li filtra): questo save
-          // scrive solo l'eventuale delta MP ed è di fatto un no-op per il delta google.
+          // I 'rubrica-google' NON vengono persistiti (pmoEncodeForStorage li filtra): per loro
+          // questo save è un no-op. Per i soci nati nell'app e per i Matchpoint, invece, scrive
+          // davvero — ed è quello che li fa restare dopo un ricaricamento della pagina.
           // Comunque difensivo: un fallimento del save non deve impedire il re-render.
-          try { save('giocatori', giocatori); } catch (e) { console.warn('rubrica hydrate persist skip:', e); }
+          try { save('giocatori', giocatori); } catch (e) { console.warn('hydrate soci persist skip:', e); }
           try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
           try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
-          console.log('PMO_RUBRICA_GOOGLE_HYDRATED', { added, total: giocatori.length });
+          console.log('PMO_CLOUD_MEMBERS_HYDRATED', { added, total: giocatori.length });
         }
       } catch (e) {
-        console.warn('pmoEnsureRubricaGoogleHydrated:', e);
+        console.warn('pmoEnsureCloudMembersHydrated:', e);
       } finally {
-        _pmoRubricaGoogleHydrating = false;
-        pmoSetRubricaHydrationNotice(false);
+        _pmoMembersHydrating = false;
+        pmoSetMembersHydrationNotice(false);
       }
     }
 
@@ -15469,7 +15491,7 @@ Grazie.`
       setText('membersResultBadge', `${Array.isArray(filtered) ? filtered.length : all.length} risultati`);
       // Se l'idratazione è ancora in corso questi numeri sono parziali: dillo (il re-render può
       // arrivare da displayMembers mentre la fetch è in volo, quindi lo stato si rilegge qui).
-      pmoSetRubricaHydrationNotice(_pmoRubricaGoogleHydrating);
+      pmoSetMembersHydrationNotice(_pmoMembersHydrating);
     }
     function changeMembersPage(delta) {
       const filtered = applyFilters();
