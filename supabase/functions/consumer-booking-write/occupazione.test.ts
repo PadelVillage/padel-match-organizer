@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   DURATA_DEFAULT_MIN,
   TIPI_CHE_OCCUPANO,
@@ -180,8 +181,14 @@ test('18 · la copia di `parseBookingDurationMinutes` è IDENTICA a quella del s
     assert.notEqual(a, -1, `fine della funzione non trovata in ${percorso}`);
     return src.slice(da, a + 2);
   };
-  const qui = blocco(join(import.meta.dirname, 'occupazione.ts'));
-  const nelSync = blocco(join(import.meta.dirname, '..', 'matchpoint-bookings-sync', 'index.ts'));
+  // 🚨 NON `import.meta.dirname`: è `string | undefined` (vale `undefined` per i moduli non
+  // serviti da `file:`), e dentro `join(...)` faceva cadere `deno test` sul TYPECHECK **prima di
+  // eseguire un solo caso** — un rosso che sembra un difetto del codice provato ed è invece un
+  // difetto del banco. `import.meta.url`, che è sempre una stringa, dà lo stesso percorso senza
+  // il ramo impossibile da soddisfare.
+  const cartella = fileURLToPath(new URL('.', import.meta.url));
+  const qui = blocco(join(cartella, 'occupazione.ts'));
+  const nelSync = blocco(join(cartella, '..', 'matchpoint-bookings-sync', 'index.ts'));
   assert.equal(qui, nelSync, 'le due copie della lettura della durata sono DIVERSE');
 });
 
