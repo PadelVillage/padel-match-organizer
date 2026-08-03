@@ -4,9 +4,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // volte, e sepolta qui dentro non era provabile: ora i payload VERI di PROD si danno in pasto
 // alla funzione senza scrivere niente da nessuna parte (`roster-slot.test.ts`).
 import {
+  altriOmonimiVivi,
   clean,
   dirittoDiAnnullare,
   normName,
+  type SchedaPerOmonimia,
   listeDaPayload,
   nomiDellaRiga,
   restanoSoloOspiti,
@@ -14,6 +16,7 @@ import {
   senzaDiMe,
   sostituito,
   type RigaSlot,
+  variantiDelNome,
 } from './roster-slot.ts';
 // E la COPIA IN APP dopo un'uscita sta in un terzo modulo, per la stessa ragione degli altri
 // due: TEST non contiene la forma del dato (zero righe `staff_booking` future, misurato il
@@ -169,6 +172,14 @@ const minToTime = minutiInOra;
 // confermare in-code il match quando il socio arriva per quella via; le risposte
 // operative continuano a portare id+nome, e l'identità completa la dà il readmodel.
 type MemberHit = { id: string; memberId: string; pmoPlayerId: string; name: string; firstName: string; surname: string };
+
+/**
+ * 👥 Quanto largo è il filtro grossolano con cui si cercano gli omonimi in anagrafica.
+ * 200 contro un cognome più frequente di **16** (misurato su PROD il 3/08/2026): 12 volte il
+ * caso peggiore. 🚨 Se un giorno tornasse pieno fino al limite, l'annullo si FERMA invece di
+ * proseguire — vedi dove viene usato: un elenco troncato potrebbe aver perso proprio l'omonimo.
+ */
+const OMONIMI_LIMITE = 200;
 
 type SlotInput = { data: string; ora: string; durata: number; oraFine: string };
 
@@ -456,10 +467,10 @@ Deno.serve(async (req: Request) => {
 
   // Varianti del nome socio accettate nel roster (serve a `leave` e a `cancel`):
   // il gestionale scrive ora «Nome Cognome», ora «Cognome Nome».
-  const nameVariants = new Set(
-    [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
-      .map(normName).filter(Boolean),
-  );
+  // ⭐ Le varianti arrivano dal modulo, non ricostruite qui: sono le STESSE che la guardia
+  // degli omonimi usa per contare. Due elenchi scritti a mano in due posti divergono, e la
+  // divergenza si vedrebbe solo il giorno in cui qualcuno annulla la partita di un altro.
+  const nameVariants = variantiDelNome(member);
 
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
@@ -817,10 +828,49 @@ Deno.serve(async (req: Request) => {
     // campo a tre persone, quindi vive dove si prova sui payload veri e dove un sabotaggio si
     // misura. Riscriverla a mano qui sarebbe la strada per cui i test restano verdi mentre il
     // comportamento cambia (un test sorveglia proprio che l'edge chiami questa funzione).
-    const diritto = dirittoDiAnnullare(righeSlot, nameVariants);
+    // 👥 Il nome del socio è di più persone al circolo? Si chiede PRIMA di decidere.
+    // 🚨⭐⭐ E se la risposta non si riesce a dare, l'annullo si FERMA: qui l'errore è
+    // irreversibile — toglie il campo a qualcun altro — quindi «non lo so» deve valere «no».
+    // Una guardia che nel dubbio dà via libera non è una guardia.
+    const candidatiOmonimia: SchedaPerOmonimia[] = [];
+    // Due filtri grossolani perché il nome può stare in `name` oppure spezzato in
+    // `firstName`/`surname`: si uniscono, e a decidere è `altriOmonimiVivi`.
+    for (const f of [
+      clean(member.surname) ? { campo: 'payload->>surname', valore: clean(member.surname) } : null,
+      clean(member.name) ? { campo: 'payload->>name', valore: clean(member.name) } : null,
+    ]) {
+      if (!f) continue;
+      const { data, error } = await service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'member')
+        .not('deleted', 'is', true)
+        .ilike(f.campo, f.valore)
+        .limit(OMONIMI_LIMITE);
+      if (error || (data ?? []).length >= OMONIMI_LIMITE) {
+        console.error(`[booking-write] cancel: omonimi non verificabili su ${f.campo} →`,
+          error ? error.message : `elenco pieno al limite ${OMONIMI_LIMITE} (potrebbe essere troncato)`);
+        return err(503, 'OMONIMI_NON_VERIFICABILI',
+          'Non riesco a verificare in anagrafica che la partita sia tua: per sicurezza non annullo. Riprova, o chiedi in segreteria.');
+      }
+      for (const row of data ?? []) {
+        const p = (row.payload ?? {}) as JsonMap;
+        candidatiOmonimia.push({
+          id: clean(p.id), name: clean(p.name),
+          firstName: clean(p.firstName), surname: clean(p.surname), active: p.active,
+        });
+      }
+    }
+    const omonimi = altriOmonimiVivi(member, candidatiOmonimia);
+    if (omonimi.length) {
+      console.log(`[booking-write] cancel: "${member.name}" ha ${omonimi.length} omonimo/i vivo/i in anagrafica`);
+    }
+    const diritto = dirittoDiAnnullare(righeSlot, nameVariants, omonimi.length > 0);
     if (!diritto.permesso) {
-      // ⭐ Due motivi distinti, perché al socio si devono due risposte diverse:
-      // `non_sei_organizzatore` ha una strada (uscire), `organizzatore_ignoto` no (segreteria).
+      // ⭐ Tre motivi distinti, perché al socio si devono tre risposte diverse:
+      // `non_sei_organizzatore` ha una strada (uscire), `organizzatore_ignoto` no (segreteria),
+      // `omonimi_al_circolo` nemmeno — ma per una ragione diversa, che va detta: il nome
+      // combacia, e proprio per questo non prova niente.
       // 🚨 Il nome dell'organizzatore NON esce da qui: chi non ha il diritto non ha bisogno di
       // sapere chi l'ha, e sarebbe il recapito di un terzo dato senza che l'abbia chiesto.
       console.log(`[booking-write] cancel rifiutato ${slot.data} ${slot.ora} C${campo}: in ${rosterSlot.length}, ${diritto.motivo}`);
