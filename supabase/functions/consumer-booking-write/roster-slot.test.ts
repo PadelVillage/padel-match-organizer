@@ -9,8 +9,10 @@ import assert from 'node:assert/strict';
 // sia lui a chiedere il diritto, e non una copia della regola riscritta lì dentro.
 import { readFileSync } from 'node:fs';
 import {
+  altriOmonimiVivi,
   playersFromDescrizione,
   dirittoDiAnnullare,
+  variantiDelNome,
   ePartitaLoSlot,
   giocatoriDelleListe,
   listeDaPayload,
@@ -442,7 +444,7 @@ test('25) due schede discordi NON danno il potere a chi è USCITO', () => {
   assert.deepEqual(rosterOrdinatoDelloSlot([playersFromDescrizione(VECCHIA), playersFromDescrizione(FRESCA)]), []);
   // E nessuno dei quattro che giocano davvero ottiene il diritto.
   for (const chi of ['Stefano Borsoi', 'Silvia Balzarini']) {
-    const d = dirittoDiAnnullare(slot, varianti(chi));
+    const d = dirittoDiAnnullare(slot, varianti(chi), false);
     assert.equal(d.permesso, false);
     assert.equal(d.motivo, 'organizzatore_ignoto');
   }
@@ -460,7 +462,7 @@ test('26) dopo un\'uscita, la scheda vecchia accanto alla nuova tace', () => {
     rigaTipata({ giocatore: 'Lidia Comes', descrizione: '-Lidia Comes.', giocatori: ['Lidia Comes'] }, 'Partita'),
   ];
   assert.equal(organizzatoreDelloSlot(slot), null);
-  assert.equal(dirittoDiAnnullare(slot, varianti('Maurizio Aprea')).permesso, false);
+  assert.equal(dirittoDiAnnullare(slot, varianti('Maurizio Aprea'), false).permesso, false);
 });
 
 test('27) «Ospite» non organizza: è un posto occupato, non una persona', () => {
@@ -468,7 +470,7 @@ test('27) «Ospite» non organizza: è un posto occupato, non una persona', () =
   assert.equal(organizzatoreDelloSlot(slot), null);
   // 🚨 E NON si scala al secondo: il posto 0 è occupato da qualcuno che non sappiamo nominare.
   assert.notEqual(organizzatoreDelloSlot(slot), 'Uno Rossi');
-  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi')).motivo, 'organizzatore_ignoto');
+  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi'), false).motivo, 'organizzatore_ignoto');
 });
 
 test('28) le LEZIONI restano fuori — e i due valori veri sono diversi', () => {
@@ -507,7 +509,7 @@ test('30) senza scheda del circolo non si sa: è il caso della partita appena cr
     rigaTipata({ nome: 'Uno Rossi, Due Rossi', giocatori: [{ nome: 'Uno Rossi' }, { nome: 'Due Rossi' }] }, 'partita'),
   ];
   assert.equal(organizzatoreDelloSlot(soloCopiaInApp), null);
-  assert.equal(dirittoDiAnnullare(soloCopiaInApp, varianti('Uno Rossi')).motivo, 'organizzatore_ignoto');
+  assert.equal(dirittoDiAnnullare(soloCopiaInApp, varianti('Uno Rossi'), false).motivo, 'organizzatore_ignoto');
 });
 
 test('31) una descrizione che è un TITOLO non è un roster', () => {
@@ -519,11 +521,11 @@ test('31) una descrizione che è un TITOLO non è un roster', () => {
 test('32) IL DIRITTO: l\'organizzatore sì, gli altri no — e i due motivi sono diversi', () => {
   const D = '-Uno Rossi.-Due Rossi.-Tre Rossi.-Ospite.';
   const slot = [rigaTipata({ descrizione: D }, 'Partita')];
-  const org = dirittoDiAnnullare(slot, varianti('Uno Rossi'));
+  const org = dirittoDiAnnullare(slot, varianti('Uno Rossi'), false);
   assert.equal(org.permesso, true);
   assert.equal(org.organizzatore, 'Uno Rossi');
   assert.equal(org.motivo, null);
-  const altro = dirittoDiAnnullare(slot, varianti('Due Rossi'));
+  const altro = dirittoDiAnnullare(slot, varianti('Due Rossi'), false);
   assert.equal(altro.permesso, false);
   // ⭐ Il motivo NON è lo stesso di quando non si sa chi ha organizzato: qui il socio una strada
   // ce l'ha (uscire dalla partita), là no (segreteria). Un motivo solo costringerebbe il bot a
@@ -531,7 +533,7 @@ test('32) IL DIRITTO: l\'organizzatore sì, gli altri no — e i due motivi sono
   assert.equal(altro.motivo, 'non_sei_organizzatore');
   assert.equal(altro.organizzatore, 'Uno Rossi', 'chi ha il ruolo si sa lo stesso: serve al registro, non al socio');
   // Chi non è nemmeno in campo: stessa risposta di chi c'è ma non ha il ruolo.
-  assert.equal(dirittoDiAnnullare(slot, varianti('Estraneo Qualsiasi')).motivo, 'non_sei_organizzatore');
+  assert.equal(dirittoDiAnnullare(slot, varianti('Estraneo Qualsiasi'), false).motivo, 'non_sei_organizzatore');
 });
 
 test('33) IL DIRITTO riconosce «Cognome Nome», come fa la proprietà', () => {
@@ -539,10 +541,10 @@ test('33) IL DIRITTO riconosce «Cognome Nome», come fa la proprietà', () => {
   // l'edge usa per stabilire che la prenotazione è del socio. Se qui si confrontasse in un modo
   // diverso, l'organizzatore vero si vedrebbe rifiutare l'annullamento della propria partita.
   const slot = [rigaTipata({ descrizione: '-Rossi Uno.-Due Rossi.' }, 'Partita')];
-  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi', 'Rossi Uno')).permesso, true);
+  assert.equal(dirittoDiAnnullare(slot, varianti('Uno Rossi', 'Rossi Uno'), false).permesso, true);
   // E gli accenti non contano (normName toglie i diacritici), come per la proprietà.
   const conAccento = [rigaTipata({ descrizione: '-Niccolò Perù.-Due Rossi.' }, 'Partita')];
-  assert.equal(dirittoDiAnnullare(conAccento, varianti('Niccolo Peru')).permesso, true);
+  assert.equal(dirittoDiAnnullare(conAccento, varianti('Niccolo Peru'), false).permesso, true);
 });
 
 test('34) IL COLLEGAMENTO: l\'edge chiama la funzione, non una copia scritta a mano', () => {
@@ -552,8 +554,8 @@ test('34) IL COLLEGAMENTO: l\'edge chiama la funzione, non una copia scritta a m
   // il 30/07 sul promemoria del bot: i casi provavano la regola, nessuno provava che il codice
   // vero la usasse.
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-  assert.ok(/dirittoDiAnnullare\(righeSlot, nameVariants\)/.test(src),
-    'index.ts deve chiedere il diritto a roster-slot.ts, passandogli le righe dello slot e le varianti del nome');
+  assert.ok(/dirittoDiAnnullare\(righeSlot, nameVariants, omonimi\.length > 0\)/.test(src),
+    'index.ts deve chiedere il diritto a roster-slot.ts, passandogli righe, varianti E la risposta sugli omonimi');
   assert.ok(/reason: diritto\.motivo/.test(src),
     'il motivo del rifiuto deve essere quello della funzione, non uno riscritto a mano');
   // ⭐ Guardia anti-cieco: se un domani il file cambia nome o si svuota, questo test deve
@@ -583,6 +585,86 @@ test('35) le DUE copie di rosterOrdinatoDelloSlot sono identiche, carattere per 
     corpo(new URL('../consumer-player-readmodel/compagni-slot.ts', import.meta.url)),
     'le due copie sono divergute: chi tocca una deve toccare l\'altra',
   );
+});
+
+// ── 👥 OMONIMI ────────────────────────────────────────────────────────────────
+// ⭐ I nomi dei casi 36-39 sono VERI: sono tre delle 13 coppie di omonimi misurate su PROD il
+// 3/08/2026 in sola lettura (27 persone, tutte con telefoni diversi ⇒ persone vere, non
+// doppioni). Gli `id` sono finti perché alla funzione non servono: guarda i nomi.
+
+const scheda = (id: string, name: string, extra: Record<string, unknown> = {}) => ({ id, name, ...extra });
+
+test('36) OMONIMI: due persone diverse con lo stesso nome si contano', () => {
+  const io = scheda('id-A', 'Marco Micheletto');
+  const altro = scheda('id-B', 'Marco Micheletto');
+  assert.deepEqual(altriOmonimiVivi(io, [io, altro]), ['id-B']);
+  // 🚨 CONTROLLO NEGATIVO, e senza questo il caso sopra non direbbe niente: chi NON ha omonimi
+  // deve dare elenco vuoto. Una funzione che risponde sempre «sì» supererebbe il primo assert.
+  const solo = scheda('id-C', 'Nessun Omonimo');
+  assert.deepEqual(altriOmonimiVivi(solo, [solo, io, altro]), [], 'chi non ha omonimi non ne ha');
+  // Non sono omonimo di me stesso, nemmeno se la stessa scheda arriva due volte dalle due query.
+  assert.deepEqual(altriOmonimiVivi(io, [io, io]), []);
+});
+
+test('37) OMONIMI: l\'archiviato non conta, e «Cognome Nome» invece sì', () => {
+  const io = scheda('id-A', 'Francesco Casagrande');
+  // Una scheda archiviata è di una persona che non gioca più: bloccare l'annullo per lei
+  // sarebbe un prezzo pagato a vuoto.
+  const archiviato = scheda('id-B', 'Francesco Casagrande', { active: 'false' });
+  assert.deepEqual(altriOmonimiVivi(io, [io, archiviato]), [], 'archiviata ⇒ non è un omonimo vivo');
+  // 🚨⭐⭐ La forma invertita DEVE contare: il gestionale scrive ora «Nome Cognome», ora
+  // «Cognome Nome», e il diritto accetta entrambe come mie. Se la guardia contasse solo la
+  // forma diretta, esisterebbe una scheda che il match riconosce come mia e che la guardia
+  // non vede — cioè un buco esattamente dove serve la protezione.
+  const invertito = scheda('id-C', 'Casagrande Francesco');
+  assert.deepEqual(altriOmonimiVivi(io, [io, invertito]), ['id-C']);
+  // E la stessa cosa vale se il nome è spezzato nei due campi invece che in `name`.
+  const spezzato = { id: 'id-D', firstName: 'Francesco', surname: 'Casagrande' };
+  assert.deepEqual(altriOmonimiVivi(io, [io, spezzato]), ['id-D']);
+  // Senza nome non c'è niente da proteggere: il match per nome non potrebbe mai riuscire.
+  assert.deepEqual(altriOmonimiVivi({ id: 'id-X' }, [io, invertito]), []);
+});
+
+test('38) IL DIRITTO: con un omonimo al circolo il nome non prova più niente', () => {
+  const slot = [rigaTipata({ descrizione: '-Davide Zanardo.-Due Rossi.-Tre Rossi.' }, 'Partita')];
+  // Senza omonimi: l'organizzatore annulla, come sempre. È il controllo che tiene onesto il resto.
+  const senza = dirittoDiAnnullare(slot, varianti('Davide Zanardo'), false);
+  assert.equal(senza.permesso, true);
+  assert.equal(senza.motivo, null);
+  // Con un omonimo: il nome combacia ancora, ma combaciare non vuol più dire «sei tu».
+  const con = dirittoDiAnnullare(slot, varianti('Davide Zanardo'), true);
+  assert.equal(con.permesso, false, 'due Davide Zanardo al circolo ⇒ non si annulla al buio');
+  assert.equal(con.motivo, 'omonimi_al_circolo');
+  assert.equal(con.organizzatore, 'Davide Zanardo', 'chi ha il ruolo si sa lo stesso: serve al registro');
+  // 🚨 L'ORDINE dei motivi conta: se l'organizzatore è un altro, il motivo giusto resta
+  // `non_sei_organizzatore` — è vero comunque e offre una strada (uscire dalla partita).
+  // Rispondere `omonimi_al_circolo` a chi semplicemente non ha il ruolo lo manderebbe in
+  // segreteria per un problema che non ha.
+  assert.equal(dirittoDiAnnullare(slot, varianti('Due Rossi'), true).motivo, 'non_sei_organizzatore');
+  // E se non si sa chi ha organizzato, quello viene prima di tutto.
+  const ignoto = [rigaTipata({ descrizione: '-Ospite.-Davide Zanardo.' }, 'Partita')];
+  assert.equal(dirittoDiAnnullare(ignoto, varianti('Davide Zanardo'), true).motivo, 'organizzatore_ignoto');
+});
+
+test('39) IL COLLEGAMENTO degli omonimi: l\'edge li legge, e nel dubbio NON annulla', () => {
+  // 🚨⭐⭐ Senza questo caso, l'edge potrebbe passare `false` fisso al posto della risposta
+  // vera e i casi 36-38 resterebbero TUTTI VERDI mentre in produzione un omonimo continua ad
+  // annullare la partita di un altro. È lo stesso buco del caso 34, sulla riga nuova.
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+  assert.ok(/const omonimi = altriOmonimiVivi\(member, candidatiOmonimia\)/.test(src),
+    'l\'edge deve chiedere gli omonimi alla funzione provata, non deciderlo per conto suo');
+  // Il fail closed: se la lettura non riesce (errore o elenco troncato al limite) l'annullo
+  // si ferma con un 503 e NON prosegue come se non ci fossero omonimi.
+  assert.ok(/OMONIMI_NON_VERIFICABILI/.test(src),
+    'quando non si riesce a verificare, l\'edge deve fermarsi: «non lo so» qui vale «no»');
+  assert.ok(/length >= OMONIMI_LIMITE/.test(src),
+    'un elenco pieno fino al limite può aver perso proprio l\'omonimo: va trattato come dubbio');
+  // ⭐ E le varianti devono venire dal modulo, non essere riscritte nell'edge: due elenchi
+  // scritti a mano in due posti divergono, e la divergenza si vedrebbe solo il giorno in cui
+  // qualcuno annulla la partita di un altro.
+  assert.ok(/const nameVariants = variantiDelNome\(member\)/.test(src),
+    'l\'edge deve usare le stesse varianti del nome che usa la guardia degli omonimi');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
