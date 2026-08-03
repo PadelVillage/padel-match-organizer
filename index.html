@@ -8041,7 +8041,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.176';
+    const APP_VERSION = '6.177';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -16635,9 +16635,13 @@ Grazie.`
           info:getLatestMatchpointImportSummaryByTypes(['clienti']),
           lastValid:'',
           nextTimes:['04:30'],
-          // In TEST il cron notturno (jobid 13 su cudi…) chiede lo slot 04:30: è l'unica
-          // routine che parte da sola, le altre restano manuali.
-          testNextTimes:['04:30'],
+          // 🚨 In TEST questa routine NON parte più da sola (3/08/2026, sua decisione): il cron
+          // notturno `jobid 13` su cudi… è stato messo a `active=false`, perché l'anagrafica di
+          // TEST deve arrivare da PROD e non da Matchpoint — una seconda sorgente è ciò che fa
+          // divergere i due ambienti. Senza `testNextTimes` la riga torna a dire «Manuale in
+          // TEST», che è di nuovo la verità: l'import da Matchpoint su TEST si lancia a mano, e
+          // SOLO quando l'oggetto della prova è l'import stesso.
+          // ⚠️ Su PROD non cambia niente: `testNextTimes` viene letto solo in ambiente TEST.
           manualLabel:'Aggiorna ora'
         },
         {
