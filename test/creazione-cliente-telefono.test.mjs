@@ -58,10 +58,10 @@ vm.createContext(ctx);
 vm.runInContext([
   'const MP_TENTATIVI_CERCATO_DAVVERO = ' + (/const MP_TENTATIVI_CERCATO_DAVVERO = (\[[^\]]*\])/.exec(worker) || [, '[]'])[1] + ';',
   ...['mpPhoneKey10', 'mpPhoneSearchTerms', 'mpNomeToken', 'mpDecideCreazioneCliente',
-      'mpCriterioTelefonoOk', 'mpMotivoFinaleRicerca'].map(n => estrai(worker, n)),
+      'mpCriterioTelefonoOk', 'mpMotivoFinaleRicerca', 'mpCodiceDaTestoScheda'].map(n => estrai(worker, n)),
 ].join('\n'), ctx);
 const { mpPhoneKey10, mpPhoneSearchTerms, mpDecideCreazioneCliente,
-        mpCriterioTelefonoOk, mpMotivoFinaleRicerca } = ctx;
+        mpCriterioTelefonoOk, mpMotivoFinaleRicerca, mpCodiceDaTestoScheda } = ctx;
 
 // La funzione dell'app che legge il conflitto dalla risposta: stessa estrazione, altro file.
 const ctxApp = { console: ctx.console };
@@ -208,6 +208,20 @@ caso('19. 🚨 il criterio di ricerca si riconosce, altrimenti la difesa è INER
           mpCriterioTelefonoOk(null) === false];
 });
 
+// ── Il CODICE letto dalla scheda ────────────────────────────────────────────────
+
+caso('19b. 🚨 il codice si legge con gli ZERI davanti (000004, non 4)', () => {
+  // Trovato dal vivo il 3/08: la prova col numero del committente rispondeva
+  // `codice: "4"` invece di `000004`. Adottando per davvero, a quella persona sarebbe
+  // finito in scheda un codice che l'app non riconosce nemmeno come valido (vuole 4-6
+  // cifre). ⭐ Gli altri ritagli nel worker tolgono gli zeri APPOSTA, perché confrontano:
+  // memorizzare e confrontare sono mestieri diversi.
+  return [mpCodiceDaTestoScheda('Scheda cliente : 000004 - Aprea Maurizio') === '000004',
+          mpCodiceDaTestoScheda('Scheda cliente : 001098 - Prova AntiDoppione') === '001098',
+          mpCodiceDaTestoScheda('roba a caso senza scheda') === '',
+          mpCodiceDaTestoScheda('') === ''];
+});
+
 // ── L'APP legge il conflitto dalla risposta ─────────────────────────────────────
 
 caso('20. l\'app riconosce il conflitto e ne tira fuori chi ha quel numero', () => {
@@ -263,6 +277,8 @@ const guardie = [
     return i > 0 && j > 0 && i < j;   // il ritorno viene prima del modulo di inserimento
   })()],
   ['l\'EDGE passa la prova a vuoto al worker', /soloRicerca/.test(edge)],
+  ['la ricerca legge il codice con la funzione che tiene gli zeri',
+    /mpCodiceDaTestoScheda\(/.test(estrai(worker, 'mpCercaClientePerTelefono'))],
   // 🚨 Guardia nata da una REGRESSIONE vera del 3/08: la correzione CORS stava solo su un
   //    ramo e riallineando l'edge è stata sovrascritta, riportando il «Failed to fetch».
   //    Senza questa intestazione dichiarata, i pulsanti diagnostici di TEST non partono —

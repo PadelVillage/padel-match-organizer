@@ -3944,6 +3944,19 @@ function mpMotivoFinaleRicerca(tentativi) {
   return cercatoDavvero ? 'telefono_non_trovato' : 'ricerca_non_riuscita';
 }
 
+// Il codice cliente COM'E' SCRITTO sulla scheda, zeri davanti compresi.
+// 🚨 Trovato dal vivo il 3/08, e sarebbe stato un guaio silenzioso: cercando il numero del
+//    committente la risposta diceva `codice: "4"` invece di `000004`, perche' il ritaglio
+//    mangiava gli zeri iniziali. Adottando per davvero, a quella persona sarebbe finito in
+//    scheda «4» — che l'app non riconosce nemmeno come codice valido (vuole 4-6 cifre).
+// ⭐ Gli ALTRI ritagli nel file tolgono gli zeri APPOSTA, perche' servono a CONFRONTARE due
+//    codici; questo serve a MEMORIZZARLO, ed e' un mestiere diverso. Confondere le due cose
+//    e' lo stesso errore del codice cliente scambiato per l'id interno.
+function mpCodiceDaTestoScheda(testo) {
+  const m = String(testo == null ? '' : testo).match(/Scheda cliente\s*:\s*(\d{1,6})\s*-/i);
+  return m ? m[1] : '';
+}
+
 // Cerca in Matchpoint una scheda col telefono dato. SOLA LETTURA: naviga e legge.
 // 🚨 Distingue «cercato e non trovato» da «non ho POTUTO cercare»: sono la stessa cosa
 //    solo per chi guarda l'esito. Se la pagina non si apre o il campo di ricerca non
@@ -3966,11 +3979,8 @@ async function mpCercaClientePerTelefono(page, baseUrl, telefono, diagnostic) {
       const v = await loc.evaluate((el) => (el.value != null ? el.value : (el.textContent || ''))).catch(() => '');
       return String(v || '').trim();
     };
-    const codice = await page.evaluate(() => {
-      const t = (document.body ? document.body.innerText : '');
-      const m = t.match(/Scheda cliente\s*:\s*0*(\d{1,6})\s*-/i);
-      return m ? m[1] : '';
-    }).catch(() => '');
+    const testoScheda = await page.evaluate(() => (document.body ? document.body.innerText : '')).catch(() => '');
+    const codice = mpCodiceDaTestoScheda(testoScheda);
     const idm = decodeURIComponent(page.url()).match(/[?&]id=(\d+)/i);
     return {
       codice,
