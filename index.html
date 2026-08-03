@@ -8018,7 +8018,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.161';
+    const APP_VERSION = '6.167';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -14857,6 +14857,23 @@ Grazie.`
       }
       return newMember;
     }
+    // Legge dalla risposta il «conflitto telefono» — quel numero in Matchpoint è già di
+    // un'altra persona — e ritorna chi ce l'ha, oppure null. 🚨 È una funzione a parte, non
+    // un `if` in mezzo alla chiamata di rete, perché è la parte che il banco può provare:
+    // una guardia che cerca solo la PAROLA «conflitto_telefono» nel file resta verde anche
+    // se qualcuno spegne il ramo, mentre qui sabotarla fa sparire la chiamata.
+    function pmoConflittoTelefonoDaRisposta(data, workerData) {
+      const esito = (data && data.esito) || (workerData && workerData.esito) || '';
+      if (esito !== 'conflitto_telefono') return null;
+      const c = (data && data.conflitto) || (workerData && workerData.conflitto) || {};
+      return {
+        intestatario: String((c && c.intestatario) || '').trim(),
+        codice: String((c && c.codice) || '').trim(),
+        idInterno: String((c && c.idInterno) || '').trim(),
+        motivo: String((c && c.motivo) || '').trim()
+      };
+    }
+
     async function pmoCreateMemberInMatchpoint(member, options = {}) {
       // notify=false → niente toast showAlert (lo usa l'assistente AI, che riporta l'esito in chat).
       const notify = options.notify !== false;
@@ -14882,7 +14899,11 @@ Grazie.`
             'apikey': supabaseKey,
             'Authorization': `Bearer ${staff.accessToken}`
           },
-          body: JSON.stringify({ client: { nome: member.firstName, cognome: member.surname, telefono: member.phone, email: member.email, sesso } })
+          body: JSON.stringify({ client: { nome: member.firstName, cognome: member.surname, telefono: member.phone, email: member.email, sesso,
+            // 🛡️ Il worker cerca il telefono in Matchpoint prima di creare. Questa bandiera
+            // scavalca la difesa e si accende SOLO quando lo staff ha risposto «è un'altra
+            // persona, crea lo stesso» al bottone del conflitto.
+            forzaCreazione: options.forzaCreazione === true } })
         });
         const respText = await response.text();
         let data = null;
@@ -14890,6 +14911,16 @@ Grazie.`
         const workerData = (data && typeof data === 'object' && data.worker && typeof data.worker === 'object') ? data.worker : data;
         const codiceFromWorker = (workerData && (workerData.codice || workerData.codigo)) || (data && data.codice) || '';
         const idInternoFromWorker = (workerData && workerData.idInterno) || (data && data.idInterno) || '';
+        // ⭐ TRE esiti, non due. «conflitto_telefono» = quel numero in Matchpoint è già di
+        //    un'altra persona: non è stato creato NIENTE e non si adotta niente. Va
+        //    riportato come tale — non come errore (non è rotto) e non come successo.
+        const esito = (data && data.esito) || (workerData && workerData.esito) || '';
+        const conflitto = pmoConflittoTelefonoDaRisposta(data, workerData);
+        if (response.ok && data?.ok !== false && conflitto) {
+          if (notify) showAlert('⛔ Socio salvato in locale, ma NON creato in Matchpoint: quel telefono è già di '
+            + (conflitto.intestatario || 'un altro cliente') + (conflitto.codice ? ' (codice ' + conflitto.codice + ')' : '') + '.', 'warning');
+          return { status: 'conflitto', conflitto };
+        }
         if (response.ok && data?.ok !== false && codiceFromWorker) {
           const idx = giocatori.findIndex(g => g.id === member.id);
           const codiceClean = String(codiceFromWorker).trim();
@@ -14906,8 +14937,15 @@ Grazie.`
           }
           save('giocatori', giocatori);
           pmoQueueImmediateMemberCloudSync(member, 'adozione Codice Matchpoint dopo creazione socio');
-          if (notify) showAlert('✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
-          return { status: 'ok', codice: codiceClean };
+          // «adottato» = non è stata creata nessuna scheda: quella persona era già in
+          // Matchpoint col suo telefono e le si prende il codice. Dirlo com'è, perché
+          // «creato» qui sarebbe falso — e il falso successo è il difetto che ci ha già
+          // fatto sparire una giocatrice dicendo «✅ confermato».
+          const adottato = esito === 'adottato';
+          if (notify) showAlert(adottato
+            ? '✅ Era già in Matchpoint: uso la sua scheda · codice ' + codiceClean
+            : '✅ Socio creato anche in Matchpoint · codice ' + codiceClean, 'success');
+          return { status: 'ok', codice: codiceClean, adottato };
         } else {
           const msg = data?.message || (typeof data === 'string' ? data : `HTTP ${response.status}`);
           if (notify) showAlert('⚠️ Socio salvato in locale, ma creazione in Matchpoint fallita: ' + msg + ' — riprova più tardi.', 'warning');
@@ -14950,8 +14988,58 @@ Grazie.`
       }
       const st = res && res.status;
       if (st === 'ok') {
-        _setSync('✅ Creato su Matchpoint · codice ' + esc(res.codice || ''), '#067647');
+        _setSync(res.adottato
+          ? '✅ Era già in Matchpoint: uso la sua scheda · codice ' + esc(res.codice || '')
+          : '✅ Creato su Matchpoint · codice ' + esc(res.codice || ''), '#067647');
         _linger();
+      } else if (st === 'conflitto') {
+        // ── ⛔ Quel telefono in Matchpoint è già di un'altra persona ──────────────
+        // 🚨 Non è un errore (niente è rotto) e non è un successo (niente è stato
+        //    creato): è una DOMANDA. Un avviso senza azione sarebbe un vicolo cieco,
+        //    quindi si offrono le due sole risposte possibili — e le decide lo staff,
+        //    che è l'unico a poter sapere se sono la stessa persona.
+        const c = (res && res.conflitto) || {};
+        const chi = c.intestatario || 'un altro cliente';
+        const suoCodice = String(c.codice || '').trim();
+        _setSync('⛔ Fermato: quel telefono è già in Matchpoint', '#b54708');
+        const _dom = svcAddMessage('system',
+          '⛔ <strong>Non ho creato niente in Matchpoint.</strong><br>'
+          + 'Il telefono <strong>' + esc(member.phone || '') + '</strong> è già della scheda di <strong>' + esc(chi) + '</strong>'
+          + (suoCodice ? ' (codice <strong>' + esc(suoCodice) + '</strong>)' : '') + '.<br>'
+          + '<span style="color:var(--text-muted);font-size:.78rem;">Il socio resta salvato nell\'app. Se è la stessa persona gli do quel codice; se è un\'altra creo lo stesso, ma nascerà una seconda scheda.</span>');
+        const _stessa = '✅ È la stessa persona' + (suoCodice ? ' → usa ' + suoCodice : '');
+        const _altra = '🆕 È un\'altra persona → crea lo stesso';
+        const _btns = svcMakeStepButtons([_stessa, _altra], async function (scelta) {
+          if (scelta === _stessa) {
+            if (!suoCodice) { svcAddMessage('system', '⚠️ Non ho il codice di quella scheda: apri Matchpoint e mettilo a mano.', 'error'); return; }
+            const idx = giocatori.findIndex(g => g && g.id === member.id);
+            const bersaglio = idx >= 0 ? giocatori[idx] : member;
+            bersaglio.memberId = suoCodice;
+            if (c.idInterno) bersaglio.matchpointIdInterno = String(c.idInterno);
+            bersaglio.updatedAt = new Date().toISOString();
+            if (idx >= 0) Object.assign(member, giocatori[idx]);
+            try { save('giocatori', giocatori); }
+            catch (e) { svcAddMessage('system', '❌ Non salvato: la memoria di questo browser è piena.', 'error'); return; }
+            try { pmoQueueImmediateMemberCloudSync(member, 'adozione codice Matchpoint da conflitto telefono'); } catch (e) {}
+            try { if (typeof renderMembers === 'function') renderMembers(); } catch (e) {}
+            svcAddMessage('system', '✅ Fatto: gli ho dato il codice <strong>' + esc(suoCodice) + '</strong>. Nessuna seconda scheda creata su Matchpoint.', 'ok');
+            _linger();
+            return;
+          }
+          svcAddMessage('system', '↻ Creo lo stesso una scheda nuova su Matchpoint…');
+          let r2;
+          try { r2 = await pmoCreateMemberInMatchpoint(member, { notify: false, forzaCreazione: true }); }
+          catch (e) { r2 = { status: 'error', reason: (e && e.message) || String(e) }; }
+          if (r2 && r2.status === 'ok') {
+            svcAddMessage('system', '✅ Creata la seconda scheda · codice <strong>' + esc(r2.codice || '') + '</strong>.', 'ok');
+            _linger();
+          } else {
+            svcAddMessage('system', '❌ Non riuscita: ' + esc(String((r2 && r2.reason) || 'errore sconosciuto').slice(0, 140)), 'error');
+          }
+        }, function () {
+          svcAddMessage('system', '⏸️ Lasciato com\'è: il socio è nell\'app, in Matchpoint non c\'è. Puoi rifarlo dalla sua scheda.');
+        });
+        try { _dom.appendChild(_btns); } catch (e) {}
       } else if (st === 'test_env') {
         _setSync('💾 Creato (Matchpoint scollegato in test)', '#067647');
         _linger();

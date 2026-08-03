@@ -12,7 +12,12 @@ type StaffActor = {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // 🚨 `x-pmo-real-mp` DEVE stare qui o il browser blocca la richiesta prima di spedirla
+  // («Failed to fetch»): è l'intestazione con cui i pulsanti diagnostici di TEST
+  // scavalcano la simulazione. Difetto nascosto per mesi: senza quell'intestazione la
+  // chiamata viene simulata dall'app e non esce mai in rete, quindi il preflight non
+  // avviene. Tolta una volta per sbaglio riallineando i rami: c'è una guardia nel banco.
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-pmo-real-mp',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -145,6 +150,15 @@ Deno.serve(async (req: Request) => {
     sesso: clean(c.sesso ?? c.gender ?? ''),
     dataNascita: clean(c.dataNascita ?? c.birthDate ?? ''),
     livello: c.livello,
+    // 🛡️ Il worker cerca il telefono in Matchpoint prima di creare, per non fare la
+    // seconda scheda a chi si e' iscritto allo sportello nelle ultime ore. Questa bandiera
+    // scavalca la difesa e arriva SOLO da un gesto esplicito dello staff («e' un'altra
+    // persona, crea lo stesso»): va passata, o quel bottone non potrebbe funzionare.
+    forzaCreazione: c.forzaCreazione === true || c.forceCreate === true,
+    // 🔎 Prova a vuoto: il worker cerca il telefono e RIFERISCE che cosa avrebbe fatto,
+    // senza creare niente. Serve a collaudare la difesa senza lasciare schede finte in
+    // Matchpoint — ogni prova fallita ne lasciava una.
+    soloRicerca: c.soloRicerca === true,
   };
 
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
@@ -160,6 +174,26 @@ Deno.serve(async (req: Request) => {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
   }
 
+  // 🚨 PROVA A VUOTO: prima si CONTROLLA che il worker in servizio la sappia fare.
+  // Un worker vecchio non riconosce `soloRicerca`, lo ignora e CREA un cliente vero —
+  // successo il 3/08, con l'interfaccia che annunciava «niente è stato creato» mentre in
+  // Matchpoint nasceva la scheda 001099. Meglio rifiutarsi che creare per sbaglio.
+  if (client.soloRicerca === true) {
+    let sa: string[] = [];
+    try {
+      const h = await fetch(`${workerUrl}/health`, { headers: { 'Authorization': `Bearer ${workerApiKey}` } });
+      const hb = await h.json().catch(() => ({}));
+      sa = Array.isArray((hb as JsonMap).features) ? (hb as JsonMap).features as string[] : [];
+    } catch (_) {
+      return err(502, 'WORKER_UNREACHABLE', 'Non riesco a chiedere al worker che cosa sa fare: prova a vuoto annullata, non ho creato niente.');
+    }
+    if (!sa.includes('solo-ricerca')) {
+      return err(409, 'WORKER_TROPPO_VECCHIO',
+        'Il worker in servizio non conosce la prova a vuoto: se procedessi CREEREBBE un cliente vero. Non ho fatto niente. Aggiorna il worker e riprova.',
+        { featuresDelWorker: sa });
+    }
+  }
+
   let workerResult: JsonMap;
   try {
     workerResult = await callWorkerCreateClient({ workerUrl, workerApiKey, username, password, baseUrl, client, operatore: actor.email });
@@ -168,10 +202,49 @@ Deno.serve(async (req: Request) => {
     return err(502, 'WORKER_ERROR', errorText(workerErr), { client, ...(diagnostic ? { diagnostic } : {}) });
   }
 
+  // ⭐ Il worker ha TRE esiti, non due: creato / adottato (il telefono era gia' di quella
+  // stessa persona: si prende il suo codice invece di fare la seconda scheda) / conflitto
+  // (quel numero c'e' ma la scheda sembra di un altro: non si crea e non si adotta).
+  // 🚨 Il messaggio va costruito sull'esito: dire «Cliente creato» quando NON e' stato
+  // creato niente e' esattamente il falso «✅ confermato» gia' pagato altrove.
   const codice = clean((workerResult as JsonMap).codice);
-  return ok({
-    message: `Cliente creato: ${nome} ${cognome}${codice ? ' · codice ' + codice : ''}`,
-    client,
-    worker: workerResult,
-  });
+  const esito = clean((workerResult as JsonMap).esito) || 'creato';
+  const conflitto = (workerResult as JsonMap).conflitto as JsonMap | undefined;
+
+  // 🔎 Prova a vuoto: non è stato creato niente e non lo sarà. Si riferisce che cosa
+  // AVREBBE fatto, che è l'unica cosa interessante di questa modalità.
+  if (esito === 'solo_ricerca') {
+    const w = workerResult as JsonMap;
+    const avrebbe = clean(w.avrebbe);
+    const chi = clean(w.intestatario);
+    const suo = clean(w.codice);
+    const spiega = avrebbe === 'adotta'
+      ? `avrebbe USATO la scheda già esistente di ${chi}${suo ? ' · codice ' + suo : ''}, senza crearne una seconda`
+      : avrebbe === 'conflitto'
+        ? `si sarebbe FERMATO e te lo avrebbe chiesto: quel numero è di ${chi || 'un altro cliente'}${suo ? ' · codice ' + suo : ''}`
+        : 'avrebbe CREATO una scheda nuova: quel telefono in Matchpoint non risulta';
+    return ok({
+      esito,
+      message: `🔎 Prova a vuoto (non ho creato niente): ${spiega}.`,
+      avrebbe, motivo: clean(w.motivo), tentativi: w.tentativi,
+      client, worker: workerResult,
+    });
+  }
+
+  if (esito === 'conflitto_telefono') {
+    const chi = clean(conflitto?.intestatario) || 'un altro cliente';
+    const suoCodice = clean(conflitto?.codice);
+    return ok({
+      esito,
+      conflitto,
+      message: `Non ho creato niente: il telefono ${clean(client.telefono)} in Matchpoint è già di ${chi}${suoCodice ? ' · codice ' + suoCodice : ''}.`,
+      client,
+      worker: workerResult,
+    });
+  }
+
+  const message = esito === 'adottato'
+    ? `Quella persona era già in Matchpoint: uso la sua scheda${codice ? ' · codice ' + codice : ''} invece di crearne una seconda.`
+    : `Cliente creato: ${nome} ${cognome}${codice ? ' · codice ' + codice : ''}`;
+  return ok({ esito, message, client, worker: workerResult });
 });
