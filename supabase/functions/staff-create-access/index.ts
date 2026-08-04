@@ -54,7 +54,14 @@ Deno.serve(async (req) => {
     const { data: canData, error: canErr } = await admin.rpc('pmo_can_register_staff', { p_email: email });
     if (canErr) return json({ ok: false, error: 'AUTHZ_CHECK_FAILED', message: canErr.message }, 500);
     const can = Array.isArray(canData) ? canData[0] : canData;
-    if (!can || can.ok !== true) return json({ ok: false, error: 'EMAIL_NOT_AUTHORIZED' }, 403);
+    // Il motivo NON si schiaccia piu' su EMAIL_NOT_AUTHORIZED. Da quando l'invito SCADE
+    // (7 giorni, vedi pmo_can_register_staff) i casi sono due e vanno distinti: dire "email
+    // non autorizzata" a chi ha solo aspettato troppo e' un vicolo cieco, perche' quella
+    // persona non saprebbe che le basta farsi reinvitare.
+    if (!can || can.ok !== true) {
+      const reason = clean((can as Record<string, unknown> | null)?.reason) || 'EMAIL_NOT_AUTHORIZED';
+      return json({ ok: false, error: reason }, 403);
+    }
     // NB: NON ci si fida di can.registered (= il profilo ha un auth_user_id collegato): se quel
     // collegamento e' "fantasma" (account Auth cancellato ma profilo rimasto), credere a registered
     // bloccherebbe la persona sia dal login sia dalla registrazione. La fonte di verita' e' l'effettiva

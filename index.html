@@ -8061,7 +8061,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.178';
+    const APP_VERSION = '6.179';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -9288,10 +9288,15 @@ Grazie.`
         pmoSetLoginMessage(err.message || 'Accesso non riuscito.');
       }
     }
+    // Un invito scaduto NON è "email non autorizzata": la persona è autorizzata, ha solo
+    // aspettato troppo. Il messaggio deve dire cosa fare, se no è un vicolo cieco — e le vie
+    // d'uscita sono due, perché chi ha già creato l'accesso e non è mai entrato finisce qui.
+    const PMO_INVITE_EXPIRED_MESSAGE = 'L’invito è scaduto (vale 7 giorni). Chiedi a un amministratore di rinnovartelo. Se l’accesso l’hai già creato, usa «Entra» oppure «Recupera password».';
     async function pmoCanRegisterStaff(email) {
       const result = await pmoCloudRpc('pmo_can_register_staff', { p_email: email });
       if (result?.ok) return result;
       if (result?.reason === 'INVALID_EMAIL') throw new Error('Inserisci una email valida.');
+      if (result?.reason === 'INVITE_EXPIRED') throw new Error(PMO_INVITE_EXPIRED_MESSAGE);
       throw new Error('Email non autorizzata. Chiedi a un amministratore di abilitarla prima della registrazione.');
     }
     function pmoIsAlreadyRegisteredSignupResponse(data) {
@@ -9329,6 +9334,7 @@ Grazie.`
         }
         if (!response.ok || data?.ok !== true) {
           const code = cleanCell(data?.error || '');
+          if (code === 'INVITE_EXPIRED') throw new Error(PMO_INVITE_EXPIRED_MESSAGE);
           if (code === 'EMAIL_NOT_AUTHORIZED') throw new Error('Email non autorizzata. Chiedi a un amministratore di abilitarla prima della registrazione.');
           if (code === 'WEAK_PASSWORD') throw new Error('Scegli una password di almeno 8 caratteri.');
           if (code === 'INVALID_EMAIL') throw new Error('Inserisci una email valida.');
