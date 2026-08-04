@@ -8061,7 +8061,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.180';
+    const APP_VERSION = '6.181';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10623,13 +10623,17 @@ Grazie.`
     const PMO_WHATSAPP_PARKED = true;
     const PMO_SECTION_TREE = [
       { key:'view_dashboard', tab:'dashboard', label:'Calendario' },
-      { key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
+      // 🅿️ «Autovalutazione» e le sue 5 sottosezioni: stessa regola del WhatsApp qui sotto —
+      // finché la sezione è congelata (PMO_ASSESSMENT_PARKED = true) il tab è nascosto a TUTTI,
+      // owner compreso, e queste 6 caselle non governavano più niente. Legate al flag e non
+      // cancellate: rimettendo il flag a false tornano DA SOLE, insieme alla sezione.
+      ...(PMO_ASSESSMENT_PARKED ? [] : [{ key:'view_assessment', tab:'assessment', label:'Autovalutazione', children:[
         { key:'view_assessment_flusso', label:'Flusso' },
         { key:'view_assessment_testi', label:'Testi' },
         { key:'view_assessment_scheda', label:'Scheda pubblica' },
         { key:'view_assessment_strumenti', label:'Strumenti tecnici' },
         { key:'view_assessment_excel', label:'Import livelli Excel' },
-      ]},
+      ]}]),
       { key:'view_members', tab:'members', label:'Anagrafica soci', children:[
         { key:'view_members_anagrafica', label:'Anagrafica (dati + preferenze)' },
         { key:'view_members_borsellino', label:'Borsellino' },
@@ -10637,7 +10641,13 @@ Grazie.`
         { key:'view_members_attivita', label:'Attività (stato + feedback + azioni)' },
       ]},
       { key:'view_incassi', tab:'incassi', label:'Incassi' },
-      { key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' },
+      // 📴 «Messaggi WhatsApp»: la casella compare SOLO se il canale è riacceso. Col canale
+      // dismesso (PMO_WHATSAPP_PARKED = true) il tab è nascosto a TUTTI, owner compreso, quindi
+      // la casella non governava più niente e stava nell'elenco a far credere il contrario.
+      // ⚠️ Legata al flag e non cancellata di proposito: se un domani si rimette PMO_WHATSAPP_PARKED
+      // a false, la riga torna DA SOLA. Cancellandola, il tab tornerebbe visibile e nessuno
+      // potrebbe più limitarlo — una chiave assente dai permessi vale «visibile» (fail-open).
+      ...(PMO_WHATSAPP_PARKED ? [] : [{ key:'view_contact', tab:'contact', label:'Messaggi WhatsApp' }]),
       { key:'view_administration', tab:'administration', label:'Amministrazione', children:[
         { key:'view_admin_utenti', label:'Utenti Staff', adminSection:'users' },
         { key:'view_admin_notifiche', label:'Notifiche staff', adminSection:'notifications' },
