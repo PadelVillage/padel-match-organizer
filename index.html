@@ -7692,6 +7692,26 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div id="memberCountAuditContent" class="member-count-audit-content"></div>
               </article>
 
+              <!-- 🪞 SOLO TEST. `data-test-only-section` è nascosto per CSS e si mostra solo se
+                   `body.pmo-env-test`: in PRODUZIONE questo riquadro non compare, e non perché
+                   una riga di codice si ricordi di nasconderlo — la classe lì non c'è proprio.
+                   Un bottone che riscrive l'anagrafica non deve stare a portata di clic in PROD. -->
+              <article class="matchpoint-data-box member-audit wide" id="anchor-anagrafica-specchio" data-test-only-section>
+                <h3><span class="matchpoint-data-step">T</span> 🪞 Anagrafica: allinea da PRODUZIONE</h3>
+                <p class="matchpoint-data-copy">
+                  Rende l'anagrafica di TEST una copia fedele di quella di produzione: aggiorna chi c'è,
+                  aggiunge chi manca, toglie chi in produzione non esiste. Succede <strong>da solo ogni notte</strong>;
+                  questo pulsante serve solo per farlo <strong>adesso</strong>.
+                  <br>Prima di scrivere ti mostra <strong>quante schede toccherebbe</strong> e ti chiede conferma.
+                  ⛔ La produzione non viene mai modificata: da lassù si legge soltanto.
+                </p>
+                <div class="matchpoint-data-actions">
+                  <button id="anagraficaSpecchioButton" class="btn-secondary" onclick="setActionAnchor(this); pmoAnagraficaSpecchioOra()">🪞 Allinea l'anagrafica da PROD</button>
+                  <div id="anagraficaSpecchioState" class="matchpoint-action-state">Non ancora lanciato</div>
+                </div>
+                <div id="anagraficaSpecchioContent" class="member-count-audit-content"></div>
+              </article>
+
               <div class="matchpoint-data-accordion" id="matchpointUpdatesAccordion">
                 <button type="button" class="matchpoint-data-accordion-toggle" aria-expanded="false" aria-controls="matchpointUpdatesAccordionPanel" onclick="toggleMatchpointDataAccordion('matchpointUpdatesAccordion')">
                   <span>
@@ -8041,7 +8061,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.177';
+    const APP_VERSION = '6.178';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13770,6 +13790,101 @@ Grazie.`
         const message = pmoFriendlyCloudError(err?.message || err || 'Correzioni TEST non riuscite.');
         pmoSetMemberCountAuditStatus(message, 'error');
         showAlert('❌ ' + message, 'danger');
+      }
+    }
+
+    // 🪞 Allinea l'anagrafica di TEST a quella di PRODUZIONE, adesso.
+    //
+    // Il meccanismo vero è la routine notturna: questo è solo il modo di farla
+    // partire a mano quando serve — per esempio dopo aver provato l'import da
+    // Matchpoint, che lascia TEST disallineata apposta.
+    //
+    // ⭐ La conferma NON è un «sei sicuro?» generico: prima si chiede allo
+    // specchio una PROVA A VUOTO, e si mette nella domanda quello che
+    // succederebbe davvero. Una conferma che non dice i numeri è un tasto OK
+    // premuto per abitudine.
+    async function pmoAnagraficaSpecchioOra() {
+      const btn = document.getElementById('anagraficaSpecchioButton');
+      const stateEl = document.getElementById('anagraficaSpecchioState');
+      const out = document.getElementById('anagraficaSpecchioContent');
+      const scrivi = (testo, classe) => { if (stateEl) { stateEl.textContent = testo; stateEl.className = 'matchpoint-action-state' + (classe ? ' ' + classe : ''); } };
+
+      // Cintura in più: in PROD il riquadro non c'è, ma se qualcuno chiamasse la
+      // funzione dalla console la fermiamo qui. Il CSS nasconde, non impedisce.
+      if (typeof PMO_IS_TEST_ENV === 'undefined' || !PMO_IS_TEST_ENV) {
+        showAlert('❌ Questa funzione esiste solo in TEST.', 'danger');
+        return;
+      }
+
+      let staff;
+      try { staff = await pmoRequireStaffPermission('cloud_sync', 'allineare l\'anagrafica da produzione'); }
+      catch (e) { showAlert('❌ ' + ((e && e.message) || e), 'danger'); return; }
+
+      const chiama = async (corpo) => {
+        const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        const r = await fetch(`${supabaseUrl}/functions/v1/anagrafica-mirror`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${staff.accessToken}`,
+          },
+          body: JSON.stringify(corpo),
+        });
+        const testo = await r.text();
+        let dati = null;
+        try { dati = testo ? JSON.parse(testo) : null; } catch (e) { dati = null; }
+        if (!r.ok || !dati || dati.ok !== true) {
+          throw new Error((dati && (dati.message || dati.error)) || `Risposta ${r.status}`);
+        }
+        return dati;
+      };
+
+      if (btn) btn.disabled = true;
+      if (out) out.innerHTML = '';
+      try {
+        scrivi('Guardo che cosa cambierebbe… (può durare un minuto)', 'pending');
+        const prova = await chiama({});
+
+        const righe = [
+          `• da aggiornare: <strong>${prova.aggiornati}</strong>`,
+          `• da aggiungere: <strong>${prova.aggiunti}</strong>`,
+          `• da togliere: <strong>${prova.cancellati}</strong>`,
+        ];
+        if (out) {
+          out.innerHTML = `<p>Produzione ha <strong>${prova.da_prod}</strong> soci, questo ambiente ne ha <strong>${prova.vivi_su_test_prima}</strong>.<br>${righe.join('<br>')}</p>`;
+        }
+
+        if (!prova.aggiornati && !prova.aggiunti && !prova.cancellati) {
+          scrivi('Già allineata: non c\'era niente da fare', 'done');
+          return;
+        }
+
+        const conferma = window.confirm(
+          'Allineo l\'anagrafica di TEST a quella di PRODUZIONE?\n\n' +
+          `• aggiorno ${prova.aggiornati} schede\n` +
+          `• aggiungo ${prova.aggiunti} soci\n` +
+          `• tolgo ${prova.cancellati} schede che in produzione non esistono\n\n` +
+          'La produzione NON viene toccata.'
+        );
+        if (!conferma) { scrivi('Annullato: non è stato scritto niente', ''); return; }
+
+        scrivi('Allineamento in corso… (non chiudere)', 'pending');
+        const fatto = await chiama({ scrivi: true });
+        scrivi(`Fatto: ${fatto.aggiornati} aggiornate, ${fatto.aggiunti} aggiunte, ${fatto.cancellati} tolte`, 'done');
+        if (out) {
+          out.innerHTML = `<p>✅ Anagrafica allineata alla produzione.<br>` +
+            `Aggiornate <strong>${fatto.aggiornati}</strong> · aggiunte <strong>${fatto.aggiunti}</strong> · tolte <strong>${fatto.cancellati}</strong>.<br>` +
+            `<span style="color:var(--text-muted);font-size:.85rem;">Ricarica la pagina per vedere l'anagrafica aggiornata.</span></p>`;
+        }
+        showAlert('✅ Anagrafica allineata alla produzione.', 'success');
+      } catch (e) {
+        const msg = (e && e.message) || String(e);
+        scrivi('Non riuscito', 'error');
+        if (out) out.innerHTML = `<p style="color:#b91c1c;">❌ ${esc(msg)}</p>`;
+        showAlert('❌ Allineamento non riuscito: ' + msg, 'danger');
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 
