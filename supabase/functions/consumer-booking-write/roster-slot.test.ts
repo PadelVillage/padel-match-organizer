@@ -783,6 +783,28 @@ test('44) IL COLLEGAMENTO di «remove»: l\'edge chiede il bersaglio, e allinea 
     'la copia in app si allinea sul bersaglio, MAI sulle varianti di chi ha chiesto');
   // La lezione e il roster incoerente devono fermare anche questo ramo, non solo `leave`.
   assert.ok(/remove roster INCOERENTE/.test(src), '`remove` deve fermarsi su un roster incoerente');
+
+  // 🚨⭐⭐ NATI DA DUE SABOTAGGI RIMASTI VERDI (misurati il 4/08, e questo è il loro valore).
+  // Togliendo `remove` dalle azioni ammesse, o togliendogli la prova a vuoto, la rete restava
+  // **tutta verde**: nel primo caso la funzione intera è morta e ogni tocco del socio torna
+  // «azione non ammessa»; nel secondo sparisce in silenzio l'unico modo di provare questo
+  // percorso senza scrivere sul sistema vero del circolo — e sparirebbe proprio dove serve di
+  // più, perché dal bot la rimozione è a SENSO UNICO.
+  assert.ok(/'cancel', 'leave', 'remove'/.test(src),
+    '`remove` deve stare fra le azioni ammesse, o la funzione è morta e nessuno se ne accorge');
+  assert.ok(/AZIONI_CON_PROVA_A_VUOTO = \[[^\]]*'remove'/.test(src),
+    '`remove` deve avere la prova a vuoto: è l\'unico modo di provarlo senza toccare il circolo');
+
+  // ⭐ E la guardia sulla LEZIONE si pretende DENTRO il ramo, non nel file: la stessa riga
+  // esiste identica in `leave`, quindi cercarla nel sorgente intero la troverebbe anche se da
+  // qui fosse sparita — un controllo che trova sé stesso altrove.
+  const ramo = src.match(/if \(action === 'remove'\) \{[\s\S]*?\n  \/\/ ── cancel ──/);
+  assert.ok(ramo && ramo[0].length > 2000,
+    'ramo «remove» non isolato: la prova sarebbe cieca');
+  assert.ok(/\/lezione\/i\.test\(b\.tipo\)/.test(ramo![0]),
+    'da una LEZIONE non si toglie nessuno dal bot: la guardia va DENTRO il ramo remove');
+  assert.ok(/rosterDelloSlot\(righe, GIOCATORI_PARTITA\)/.test(ramo![0]),
+    'il roster va ricomposto su TUTTE le righe dello slot, con la rete del «mai più di quattro»');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
