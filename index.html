@@ -8025,7 +8025,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.183';
+    const APP_VERSION = '6.184';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43787,7 +43787,7 @@ Per confermare scrivi ELIMINA.`);
     try { staffCalRtBroadcastPending(parsed); } catch (e) {}
     const _sbId = _staffCalNewSbId();
     // La riga di stato è UNA sola e si sovrascrive: parte in attesa e finisce verde o rossa.
-    staffCalSetStatus(`⏳ In attesa di Matchpoint — ${tipoLabel.toLowerCase()}: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'pending');
+    staffCalSetStatus(`⏳ Sto elaborando la richiesta su Matchpoint — ${tipoLabel.toLowerCase()}: ${parsed.campo} · ${parsed.ora}–${parsed.oraFine} · ${parsed.nome}`, 'pending');
     if (input) { input.value = ''; staffCalAutoResize(input); }
     if (sendBtn) sendBtn.disabled = false;
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca lo staff) ──
