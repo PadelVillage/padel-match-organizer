@@ -2793,6 +2793,13 @@
     .svc-msg.staff { background:var(--accent-light); border:1px solid var(--accent); color:var(--text); align-self:flex-end; border-bottom-right-radius:2px; }
     .svc-msg.system { background:var(--surface2); border:1px solid var(--border); color:var(--text); align-self:flex-start; border-bottom-left-radius:2px; }
     .svc-msg.system.ok { border-color:var(--green); }
+    /* La riga di sincronizzazione NASCE VUOTA e resta invisibile finché non ha qualcosa da
+       dire (avanzamento o esito). Prima ripeteva l'attesa già scritta in testa: la stessa
+       cosa detta due volte con parole diverse. ⚠️ NON si può togliere l'elemento: è quello
+       che più avanti viene riscritto con «✅ confermata» / «❌ Matchpoint ha rifiutato…» —
+       senza, gli esiti sparirebbero in silenzio. `!important` perché deve battere il
+       display:block scritto sull'elemento stesso. */
+    .mp-sync-note:empty { display:none !important; }
     .svc-msg.system.confirm { border-color:#b45309; }
     .svc-msg.system.flow { max-width:95%; }
     .svc-msg-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
@@ -8061,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.182';
+    const APP_VERSION = '6.183';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -42666,8 +42673,8 @@ Per confermare scrivi ELIMINA.`);
     const _noteTxt = op.noteChanged ? ('<br>📝 ' + (op.note ? ((op.isManut ? 'Osservazioni: ' : 'Nota: ') + op.note) : (op.isManut ? 'Osservazioni rimosse' : 'Nota rimossa'))) : '';
     const _descrTxt = op.descrChanged ? ('<br>🔧 Descrizione: ' + (op.descrizione || '(vuota)')) : '';
     const _istrTxt = op.istruttoreChanged ? ('<br>🎓 Maestro: ' + (op.istruttore || '')) : '';
-    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
-    const _editMsgEl = svcAddMessage('system', '<span class="mp-sync-head">⏳ <strong>In attesa di Matchpoint</strong></span> \xb7 modifica: ' + destTxt + _playersTxt + _istrTxt + _descrTxt + _noteTxt + _syncNote);
+    const _syncNote = '<span class="mp-sync-note" style="display:block;color:#1570ef;font-size:13px;font-weight:700"></span>';
+    const _editMsgEl = svcAddMessage('system', '<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta su Matchpoint</strong></span> \xb7 modifica: ' + destTxt + _playersTxt + _istrTxt + _descrTxt + _noteTxt + _syncNote);
     const _setEditSyncNote = function (html, color, head) {
       try {
         const n = _editMsgEl && _editMsgEl.querySelector('.mp-sync-note');
@@ -42764,7 +42771,9 @@ Per confermare scrivi ELIMINA.`);
             return;
           }
         }
-        _setEditSyncNote('⏳ Sto chiedendo a Matchpoint…');
+        // Torna VUOTA (quindi invisibile): l'attesa è già dichiarata dalla riga in testa, e
+        // qui si sta solo uscendo da un avanzamento più specifico scritto poco sopra.
+        _setEditSyncNote('');
         const _cfgE = await loadAssessmentSupabaseConfig();
         _urlE = _cfgE && _cfgE.supabaseUrl; _keyE = _cfgE && _cfgE.supabaseKey;
         _staffE = await pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint');
@@ -44821,9 +44830,9 @@ Per confermare scrivi ELIMINA.`);
     // una prenotazione che su Matchpoint c'è ancora), serve a non lavorare in due sullo stesso slot.
     try { staffCalRtBroadcastCancelPending(isoDate, campo, ora); } catch (e) {}
     svcResetToNeutral();
-    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
+    const _syncNote = '<span class="mp-sync-note" style="display:block;color:#1570ef;font-size:13px;font-weight:700"></span>';
     const _msgEl = svcAddMessage('system',
-      '<span class="mp-sync-head">⏳ <strong>In attesa di Matchpoint</strong></span> \xb7 annullamento: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
+      '<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta su Matchpoint</strong></span> \xb7 annullamento: Campo ' + campo + ' \xb7 ' + dataIt + ' \xb7 ' + ora +
       (nome ? '<br>👥 ' + nome : '') + _syncNote);
     const _setSync = function (html, color, head) {
       try {
@@ -45858,8 +45867,8 @@ Per confermare scrivi ELIMINA.`);
     try { _staffCalCreateBegin(_optimKey); } catch (e) {}
     try { staffCalRtBroadcastPending(parsed); } catch (e) {}
     const _sbId = _staffCalNewSbId();
-    const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
-    const _headWait = '<span class="mp-sync-head">⏳ <strong>In attesa di Matchpoint</strong></span>';
+    const _syncNote = '<span class="mp-sync-note" style="display:block;color:#1570ef;font-size:13px;font-weight:700"></span>';
+    const _headWait = '<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta su Matchpoint</strong></span>';
     let _msgEl;
     if (tipoEngine === 'lezione') {
       const allievi = (players && players.length) ? nomeStr : '—';
@@ -50392,9 +50401,13 @@ Per confermare scrivi ELIMINA.`);
       } catch (e) {}
       const _sbId = _staffCalNewSbId();
       const dl = _dayLabel(parsed.data);
-      const _syncNote = '<br><span class="mp-sync-note" style="color:#1570ef;font-size:13px;font-weight:700">⏳ Sto chiedendo a Matchpoint…</span>';
+      const _syncNote = '<span class="mp-sync-note" style="display:block;color:#1570ef;font-size:13px;font-weight:700"></span>';
       let _msgEl = null;
-      const _headWait = '<span class="mp-sync-head">' + _pick(['⏳ <strong>Ci sto lavorando</strong> — ', '⏳ <strong>Un attimo</strong> — ', '⏳ <strong>Lo chiedo a Matchpoint</strong> — ']) + '</span>';
+      // 🗣️ Frase FERMA, e senza nominare Matchpoint (decisione del committente, 4/08/2026):
+      // qui parla l'assistente, che è la voce del gestionale — il fornitore dietro non lo
+      // nomina. Prima pescava a caso fra tre frasi, e una diceva «Lo chiedo a Matchpoint»:
+      // così la stessa operazione si annunciava in modo diverso a ogni tentativo.
+      const _headWait = '<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta</strong> — </span>';
       if (parsed.tipo === 'lezione') {
         _msgEl = _say(_headWait + 'Lezione · Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '–' + parsed.oraFine + '<br>👨‍🏫 ' + _escapeHtml(parsed.istruttore || '—') + (draft.giocatori.length ? ' 👥 ' + _escapeHtml(draft.giocatori.map(function (g) { return g.nome; }).join(', ')) : '') + _syncNote);
       } else {
