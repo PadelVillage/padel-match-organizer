@@ -51,7 +51,7 @@ const BLOCCO = 500;
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+    'authorization, x-client-info, apikey, content-type, x-cron-key',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -65,6 +65,55 @@ function err(status: number, code: string, message: string, extra: JsonMap = {})
   return json({ ok: false, error: code, message, ...extra }, status);
 }
 function clean(value: unknown) { return String(value ?? '').trim(); }
+
+// Confronto in tempo costante: su un segreto, un confronto che esce al primo
+// carattere diverso racconta quanto si è andati vicini.
+function safeEqualText(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const x = enc.encode(a);
+  const y = enc.encode(b);
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
+type StaffActor = { email: string; role: string; permissions: JsonMap };
+
+function hasPermission(actor: StaffActor, perm: string) {
+  if (['owner', 'admin'].includes(actor.role)) return true;
+  return actor.permissions?.[perm] === true;
+}
+
+// Chi chiede lo specchio dal browser: si decodifica il SUO token e si chiede al
+// database che ruolo ha. Stesso modo di `matchpoint-clients-create`.
+// 🚨 La chiave pubblicabile da sola non basta a passare di qui: sta scritta in
+// chiaro in `config-test.js`, quindi un controllo che si accontentasse di quella
+// non sarebbe un controllo.
+async function getActor(req: Request): Promise<StaffActor | null> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const token = clean(req.headers.get('authorization')).replace(/^Bearer\s+/i, '');
+  if (!token || !supabaseUrl || !anonKey) return null;
+
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  const { data: userData, error } = await authClient.auth.getUser(token);
+  if (error || !userData?.user) return null;
+
+  const { data: profileData, error: profileError } = await authClient.rpc('pmo_get_my_staff_profile');
+  if (profileError || !profileData) return null;
+  const profile = (Array.isArray(profileData) ? profileData[0] : profileData) as JsonMap | null;
+  if (!profile || profile.status !== 'active') return null;
+
+  return {
+    email: clean(profile.email || userData.user.email || ''),
+    role: String(profile.role ?? 'staff'),
+    permissions: (profile.permissions as JsonMap) ?? {},
+  };
+}
 
 async function scaricaDaProd(
   urlBase: string,
@@ -154,6 +203,29 @@ Deno.serve(async (req: Request) => {
   const service = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
+
+  // ── Guardia 0: chi può chiedere lo specchio ────────────────────────────────
+  // Due sole vie, e nessuna delle due è «conoscere l'indirizzo»:
+  //   • il CRON, con la chiave che sta nel vault (generata dal database: non la
+  //     conosce nessuno, nemmeno chi l'ha messa in piedi);
+  //   • lo STAFF dal browser, col permesso `cloud_sync`.
+  // 🚨 Senza questo cancello la funzione era raggiungibile da chiunque ne
+  // sapesse l'indirizzo — e la risposta contiene numeri di telefono dei soci.
+  const chiaveRicevuta = clean(req.headers.get('x-cron-key'));
+  let comeEntra = '';
+  if (chiaveRicevuta) {
+    const { data: chiaveVera } = await service.rpc('pmo_anagrafica_cron_key');
+    if (chiaveVera && safeEqualText(chiaveRicevuta, String(chiaveVera))) comeEntra = 'cron';
+  }
+  if (!comeEntra) {
+    const attore = await getActor(req);
+    if (attore && hasPermission(attore, 'cloud_sync')) comeEntra = `staff ${attore.email}`;
+  }
+  if (!comeEntra) {
+    console.warn('[anagrafica-mirror] chiamata respinta: né chiave del cron né staff.');
+    return err(401, 'NON_AUTORIZZATO', 'Serve la chiave del cron o una sessione staff con cloud_sync.');
+  }
+  console.log(`[anagrafica-mirror] richiesta da: ${comeEntra}`);
 
   // ── 1. L'anagrafica di PROD, tutta, contata ────────────────────────────────
   let daProd: SocioDaProd[];
