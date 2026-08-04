@@ -256,6 +256,74 @@ function installWsMock(win) {
   FakeWS.__pmoWsMock = true;
   win.WebSocket = FakeWS;
 }
+// 🚨⭐⭐ L'OROLOGIO DELL'APP, non solo quello del banco (riparazione 4/08/2026).
+// Il banco dorme con un Worker e quindi è immune allo strozzamento dei tab nascosti (sotto).
+// L'APP dentro l'iframe però continuava a usare i timer del browser, strozzati a 1 Hz — e a
+// 1/minuto dopo qualche minuto. Misurato: `setTimeout(30)` dentro l'iframe durava **1000 ms**.
+// Finché resta a 1 Hz la rete passa lo stesso; quando peggiora, ogni caso che aspetta un lavoro
+// dell'app sfora il budget e diventa rosso SENZA che il codice abbia colpe — ed è la firma vista
+// il 4/08: un blocco di rossi CONTIGUI in coda, che si allunga all'indietro col degradare del
+// browser, fino a bocciare il file di PRODUZIONE intatto (23/49).
+// ⭐ La prova che la causa è questa: strozzando a mano i timer dell'app di 40× su un banco che
+// dava 49/49, sono tornati rossi gli stessi casi (38-47, famiglia «creazione/attese»).
+// ⇒ Qui si dà all'app lo STESSO orologio del banco. Non è un trucco per far passare i test: un
+// timer chiesto a 30 ms deve durare 30 ms, e il browser che lo dilata è rumore dello strumento.
+// ⚠️ Solo `setTimeout`. `setInterval` resta quello vero: i casi non aspettano mai un polling, e
+// sciogliere gli intervalli farebbe girare a vuoto la sincronizzazione per tutto il giro.
+function installTimerShim(w) {
+  if (!_timerWorker) return;                       // senza Worker non c'è niente di meglio
+  try {
+    if (w.setTimeout && w.setTimeout.__pmoTimerShim) return;
+    const nativoSet = w.setTimeout.bind(w);
+    const nativoClear = w.clearTimeout.bind(w);
+    const vivi = new Set();
+    let seq = 1e9;                                 // fuori dalla numerazione dei timer veri
+    const shim = function (fn, ms) {
+      const extra = Array.prototype.slice.call(arguments, 2);
+      const id = ++seq;
+      vivi.add(id);
+      sleep(Math.max(0, Number(ms) || 0)).then(function () {
+        if (!vivi.delete(id)) return;              // già annullato
+        if (typeof fn === 'function') {
+          // Un'eccezione va RILANCIATA come farebbe un timer vero: dentro una `.then` diventerebbe
+          // una promessa rifiutata e nessuno la vedrebbe — un guasto dell'app sparirebbe.
+          try { fn.apply(w, extra); } catch (e) { nativoSet(function () { throw e; }, 0); }
+        } else if (typeof fn === 'string') { try { w.eval(fn); } catch (e) {} }
+      });
+      return id;
+    };
+    shim.__pmoTimerShim = true;
+    const clear = function (id) {
+      if (vivi.delete(id)) return;                 // nostro
+      try { nativoClear(id); } catch (e) {}        // di qualcun altro (o già scattato)
+    };
+    clear.__pmoTimerShim = true;
+    w.setTimeout = shim;
+    w.clearTimeout = clear;
+  } catch (e) {}
+}
+// I mock e l'orologio vanno armati PRIMA che l'app faccia le sue chiamate di boot: `installStubs`
+// gira DOPO l'attesa di PMOAi, quindi profilo e prenotazioni dell'avvio uscivano sul Supabase
+// TEST VERO — il banco dipendeva dalla rete (lento, non riproducibile) e `leakCount = 0` non
+// voleva dire la stessa cosa che su `test-preview`. La finestra dell'iframe viene sostituita alla
+// navigazione: si ripatcha a raffica finché non è la nostra. Il tick usa `sleep` (Worker) e non
+// `setTimeout`, che nel tab nascosto girerebbe a 1 Hz lasciando all'app una finestra di boot con
+// la rete VERA. Allineato al banco di `test-preview`, che questo pezzo ce l'ha da tempo.
+function armMocksEarly(frame) {
+  let stop = false;
+  (async function tick() {
+    while (!stop) {
+      try {
+        const w = frame.contentWindow;
+        if (w && typeof w.fetch === 'function' && !w.fetch.__pmoFetchMock) installFetchMock(w);
+        if (w && !(w.WebSocket && w.WebSocket.__pmoWsMock)) installWsMock(w);
+        if (w) installTimerShim(w);
+      } catch (e) {}
+      await sleep(4);
+    }
+  })();
+  return function () { stop = true; };
+}
 function installStubs(win) {
   try { win.confirm = function () { return true; }; } catch (e) {}
   try { win.alert = function () {}; } catch (e) {}
@@ -263,6 +331,7 @@ function installStubs(win) {
   try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
   if (!(win.fetch && win.fetch.__pmoFetchMock)) installFetchMock(win);
   if (!(win.WebSocket && win.WebSocket.__pmoWsMock)) installWsMock(win);
+  installTimerShim(win);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1538,6 +1607,9 @@ async function run() {
   frame.id = 'app';
   frame.src = '../index.html?env=test';
   document.body.appendChild(frame);
+  // 🚨 PRIMA di ogni attesa: mock di rete e orologio dell'app armati mentre l'app sta ancora
+  // caricando. Dopo sarebbe tardi — le chiamate di boot sono già partite.
+  const disarmaMock = armMocksEarly(frame);
 
   const win = frame.contentWindow;
   const summary = document.getElementById('summary');
@@ -1547,12 +1619,28 @@ async function run() {
   const ready = await waitFor(() => frame.contentWindow && frame.contentWindow.PMOAi && frame.contentWindow.__PMOStaffCalTest, 15000, 100);
   const W = frame.contentWindow;
   if (!ready) {
+    disarmaMock();
     summary.className = 'pill ko';
     summary.textContent = 'App o hook __PMOStaffCalTest non caricati (PMOAi=' + !!(W && W.PMOAi) + ', hook=' + !!(W && W.__PMOStaffCalTest) + ')';
     window.__RESULTS__ = { ready: false };
     return;
   }
   installStubs(W);
+  // ⭐⭐ GUARDIA SULLA BASE: prima di misurare il codice, misura lo STRUMENTO. Si chiede all'app
+  // un timer da 30 ms e si guarda quanto dura DAVVERO. Con l'orologio nostro sta sotto i 100 ms;
+  // se il browser tornasse a strozzarlo, i casi che aspettano l'app diventerebbero rossi senza
+  // colpa del codice — ed è già successo. Qui non si nasconde: si DICHIARA, in `__RESULTS__` e
+  // sulla pastiglia, così un rosso non viene mai attribuito al lavoro di qualcuno per sbaglio.
+  const orologio = await (async function () {
+    const campioni = [];
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      await new Promise(r => { try { W.setTimeout(r, 30); } catch (e) { r(); } });
+      campioni.push(Date.now() - t0);
+    }
+    campioni.sort((a, b) => a - b);
+    return { chiesto_ms: 30, campioni, mediana_ms: campioni[1], attendibile: campioni[1] <= 100 };
+  })();
   const H = W.__PMOStaffCalTest;
   const todayIso = (typeof W.staffCalTodayIso === 'function') ? W.staffCalTodayIso() : isoOf(new Date());
   const tomorrow = new Date(todayIso + 'T00:00:00'); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1592,11 +1680,16 @@ async function run() {
       '<td class="fail-reasons">' + failed.map(f => f.label).join('\n').replace(/</g, '&lt;') + '</td>';
     tbody.appendChild(tr);
   }
+  disarmaMock();
   const total = CASES_RUN.length;
   summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
-  summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
+  // Se l'orologio del bersaglio non era attendibile, lo si legge PRIMA del punteggio: un rosso
+  // misurato con lo strumento starato non è un verdetto sul codice.
+  summary.textContent = (orologio.attendibile ? '' : '⚠️ OROLOGIO STROZZATO (' + orologio.mediana_ms + ' ms per 30 chiesti) — il punteggio NON è attendibile · ')
+    + pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
   window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows,
-    leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length, rtBroadcastCount: RT_BROADCASTS.length };
+    leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length, rtBroadcastCount: RT_BROADCASTS.length,
+    orologio, attendibile: orologio.attendibile };
 }
 
 document.getElementById('run').addEventListener('click', run);
