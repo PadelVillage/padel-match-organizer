@@ -418,9 +418,22 @@ export function variantiDelNome(s: SchedaPerOmonimia): Set<string> {
  * @returns gli `id` degli omonimi trovati (vuoto = nessuno). Un elenco, non un sì/no, così chi
  *   indaga vede CHI, e i log possono dirlo senza rifare il conto.
  */
+/**
+ * La chiave con cui due scritture dello stesso nome si riconoscono uguali: le stesse parole
+ * messe in ORDINE ALFABETICO, cioè una chiave che ignora del tutto l'ordine.
+ *
+ * ⭐ Una definizione sola, usata dalla guardia degli omonimi in anagrafica
+ * (`altriOmonimiVivi`) e da quella sul bersaglio (`bersaglioDaTogliere`). Se le due contassero
+ * con regole diverse, esisterebbe un nome che una accetta e l'altra non conta — cioè un buco
+ * esattamente dove serve la protezione. È la stessa ragione per cui `variantiDelNome` è una
+ * sola: già scritta qui sotto, e già costata un caso storto.
+ */
+export function chiaveNome(value: unknown): string {
+  return normName(value).split(' ').filter(Boolean).sort().join(' ');
+}
+
 function chiaveOmonimia(s: SchedaPerOmonimia): string {
-  const grezzo = clean(s.name) || `${clean(s.firstName)} ${clean(s.surname)}`;
-  return normName(grezzo).split(' ').filter(Boolean).sort().join(' ');
+  return chiaveNome(clean(s.name) || `${clean(s.firstName)} ${clean(s.surname)}`);
 }
 
 export function altriOmonimiVivi(
@@ -500,6 +513,125 @@ export function dirittoDiAnnullare(
     return { permesso: false, organizzatore, motivo: 'omonimi_al_circolo' };
   }
   return { permesso: true, organizzatore, motivo: null };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ✏️ TOGLIERE UN GIOCATORE — il terzo potere dell'organizzatore (decisione del committente
+// del 30/07/2026: «può togliere chiunque», confermata il 4/08 quando ha annullato i «poteri
+// all'Ospite» e ridotto la voce a questa sola cosa).
+//
+// 🚨⭐⭐ IL DIRITTO È LO STESSO DELL'ANNULLO, e non se ne scrive un secondo. Chi può far
+// sparire il campo a tutti e tre può a maggior ragione togliere una persona sola: l'edge
+// chiama `dirittoDiAnnullare` anche qui. Due regole gemelle che decidono la stessa cosa
+// divergono — è già successo fra bot e gestionale il 30/07, dove nel bot restava scritto il
+// contrario di quello che il gestionale mostrava.
+// ⇒ Quello che questo modulo aggiunge non è un permesso: è la guardia sul BERSAGLIO, cioè
+// sulla persona che sparisce dal campo. Il diritto dice «puoi»; questa dice «puoi TOGLIERE
+// PROPRIO QUESTO», e sono due domande diverse.
+//
+// 📊 MISURA su PROD (4/08/2026, sola lettura; criterio: `booking`+`staff_booking`, colonna
+// `deleted` non vera, `payload->>'data' >= oggi`, `tipo ~* 'partita'`, slot = data|ora|cifre
+// del campo): **48 partite future**, tutte con una scheda leggibile, **0** copie discordi,
+// **0** con l'Ospite primo ⇒ organizzatore determinabile **48 su 48**. Di quelle, **19**
+// hanno qualcuno da togliere, per un totale di **52 giocatori togliibili**.
+// ⇒ ⭐⭐ E il numero che conta per il disegno: di quei 52, gli **Ospite sono 6** e le
+// **persone vere 46** (35 distinte). Togliere un giocatore non è quasi mai togliere un
+// segnaposto: è togliere qualcuno che si è segnato quel giorno.
+//
+// 🚨⭐⭐ LA TRAPPOLA DEL WORKER, verificata nel codice (`server.mjs`, ramo rimozioni) e non
+// dedotta: le due strade NON hanno la stessa forma.
+//   · l'**Ospite** si toglie a CONTEGGIO (`guestWantedInitial`): chiederne uno ne toglie
+//     esattamente **uno**, anche se in campo ce ne sono tre. Va bene così — un Ospite non è
+//     una persona, è un posto occupato, e quale dei tre sparisca non vuol dire niente.
+//   · una **persona** si toglie per NOME (`removeNames.includes(nomeVal)`), e il ciclo
+//     ri-scandisce la ficha finché un nome combacia ⇒ **due omonimi nella stessa partita
+//     sparirebbero TUTT'E DUE**, con un solo tocco e senza che nessuno l'abbia chiesto.
+// ⇒ Da qui la guardia `omonimi_in_partita`, che è la stessa forma già scelta il 3/08 per
+// l'annullo: **quando il dato non può decidere, non si decide e lo si dice**. Rimettere una
+// persona nella scheda il bot non lo sa fare (`prenota` accetta solo data, ora e campo):
+// l'errore qui non si annulla con un tocco, si ripara chiamando la segreteria.
+
+export type BersaglioDaTogliere =
+  | {
+    ok: true;
+    /** Il nome **come lo scrive il gestionale**, che è l'unico che il worker riconosce. */
+    nome: string;
+    /** Vero se è un posto da Ospite: si toglie a conteggio, e non c'è nessuno da avvisare. */
+    ospite: boolean;
+  }
+  | {
+    ok: false;
+    /**
+     * Perché no, e sono tre motivi distinti perché mandano il socio a fare tre cose diverse:
+     *  · `non_in_partita`     → la partita è cambiata fra il disegno del bottone e il tocco;
+     *                           «riapri l'elenco», che non è un guasto e non è un no;
+     *  · `e_l_organizzatore`  → per uscire lui c'è `leave`, cioè il bottone «Esci»;
+     *  · `omonimi_in_partita` → il nome non basta a dire QUALE dei due: segreteria.
+     */
+    motivo: 'non_in_partita' | 'e_l_organizzatore' | 'omonimi_in_partita';
+  };
+
+/**
+ * CHI si toglie da questa partita — la guardia sul bersaglio.
+ *
+ * ⭐ Funzione pura e a sé, per la stessa ragione di `dirittoDiAnnullare`: è la riga che decide
+ * quale persona sparisce dal campo, quindi si prova sui roster VERI senza rete e un sabotaggio
+ * si misura. L'edge chiama QUESTA (un test lo sorveglia): una regola provata in un posto e
+ * riscritta a mano in un altro è la strada per cui i test restano verdi mentre il
+ * comportamento cambia.
+ *
+ * @param roster i giocatori dello slot **con le ripetizioni**, come li dà `rosterDelloSlot`.
+ * @param organizzatore chi ha organizzato, già deciso da `organizzatoreDelloSlot`.
+ * @param chiesto il nome che arriva da fuori, cioè dal bottone toccato dal socio.
+ *
+ * 🚨 Il nome che torna è quello del ROSTER, non quello arrivato nella richiesta. Il gestionale
+ * scrive ora «Nome Cognome» ora «Cognome Nome», e il worker toglie confrontando la stringa
+ * esatta della ficha: rimandare indietro ciò che è arrivato farebbe fallire la rimozione — o,
+ * peggio, la farebbe riuscire su una riga che non è quella mostrata al socio.
+ *
+ * 🚨 L'ORDINE dei controlli è parte della regola. Gli omonimi si guardano **prima** di
+ * «sei tu l'organizzatore»: se in campo ci fossero due persone che si chiamano come lui, il
+ * rifiuto giusto è «non so quale dei due» — e non «per uscire usa il bottone Esci», che
+ * manderebbe a fare una cosa diversa da quella chiesta.
+ */
+export function bersaglioDaTogliere(
+  roster: string[],
+  organizzatore: string,
+  chiesto: string,
+): BersaglioDaTogliere {
+  // 🚨⭐⭐ Il confronto NON è la stringa normalizzata, è `chiaveNome` — le stesse parole in
+  // ordine alfabetico — e questa è una decisione, non una comodità. I due elenchi in gioco
+  // possono scrivere la stessa persona in versi diversi: il bot legge i nomi dal readmodel,
+  // che li prende SOLO dalla scheda del circolo, mentre qui `rosterDelloSlot` può aver scelto
+  // la NOSTRA copia (è la fonte preferita quando non sfora). «Manuel Casagrande» di là e
+  // «Casagrande Manuel» di qua sono la stessa persona, e un confronto esatto direbbe «non è in
+  // partita» a chi è in campo — mandando in segreteria per un problema che non esiste.
+  // ⚖️ Il verso in cui costa sbagliare, misurato sul gesto e non sul codice:
+  //  · **troppo largo** → si toglierebbe la persona sbagliata solo se in campo ci fossero due
+  //    nomi che collassano sulla stessa chiave — ed è esattamente `omonimi_in_partita`, che
+  //    conta con QUESTA chiave e quindi si accorge di loro prima di decidere;
+  //  · **troppo stretto** → un rifiuto a chi aveva diritto, ogni volta che le due copie
+  //    scrivono il nome al contrario.
+  // 🚨 Match e conteggio usano la STESSA chiave apposta: se il conteggio fosse più stretto
+  // esisterebbe un nome che il match accetta e che la guardia non conta — un buco proprio
+  // dove serve la protezione. È il caso storto già pagato su `altriOmonimiVivi`.
+  const cercato = chiaveNome(chiesto);
+  // Fail closed: da fuori può arrivare qualunque cosa, e «vuoto» non è una persona.
+  if (!cercato) return { ok: false, motivo: 'non_in_partita' };
+
+  const quante = roster.filter((n) => chiaveNome(n) === cercato).length;
+  if (quante === 0) return { ok: false, motivo: 'non_in_partita' };
+
+  // Due volte lo stesso nome: l'Ospite può (è un ruolo, non una persona, e il worker lo toglie
+  // a CONTEGGIO), una persona no — il worker toglierebbe per nome, cioè tutt'e due.
+  if (quante > 1 && cercato !== OSPITE) return { ok: false, motivo: 'omonimi_in_partita' };
+
+  // 🚨 Dopo gli omonimi, mai prima: se in campo ci fossero due persone che si chiamano come
+  // l'organizzatore, il rifiuto giusto è «non so quale dei due», non «per uscire usa Esci».
+  if (chiaveNome(organizzatore) === cercato) return { ok: false, motivo: 'e_l_organizzatore' };
+
+  const nome = roster.find((n) => chiaveNome(n) === cercato) as string;
+  return { ok: true, nome: clean(nome), ospite: cercato === OSPITE };
 }
 
 /**
