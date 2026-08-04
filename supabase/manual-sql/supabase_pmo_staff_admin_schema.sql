@@ -162,6 +162,25 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'EMAIL_NOT_AUTHORIZED');
   end if;
 
+  -- L'INVITO SCADE (7 giorni). Prima non scadeva mai: staff-create-access e' senza
+  -- autenticazione per costruzione (chi si registra un accesso non ce l'ha ancora), quindi
+  -- fra l'invito e la registrazione CHIUNQUE conoscesse l'email poteva prendersi l'accesso
+  -- al gestionale. Provato dal vivo su TEST il 4/08/2026: created:true, confirmed:true.
+  --
+  -- Vale SOLO per chi non e' mai entrato ('invited'): chi e' gia' 'active' con l'account
+  -- confermato passa dal ramo alreadyRegistered dell'edge, che la password NON la tocca.
+  -- Applicarlo anche agli 'active' peggiorerebbe un messaggio che si vede tutti i giorni.
+  --
+  -- La finestra RIPARTE a ogni tocco dell'amministratore (creazione, reinvito, modifica):
+  -- updated_at e' mantenuto dal trigger trg_pmo_staff_profiles_updated_at. E' il motivo per
+  -- cui basta cambiare QUESTA funzione: le funzioni di amministrazione che invitano
+  -- DIVERGONO fra TEST e PROD, e toccarle sarebbe il modo di farne regredire una.
+  -- greatest() e non il solo updated_at: cosi' anche una riga mai aggiornata ha una data.
+  if v_profile.status = 'invited'
+     and greatest(v_profile.invited_at, v_profile.updated_at) < now() - interval '7 days' then
+    return jsonb_build_object('ok', false, 'reason', 'INVITE_EXPIRED');
+  end if;
+
   return jsonb_build_object(
     'ok', true,
     'registered', v_profile.auth_user_id is not null
