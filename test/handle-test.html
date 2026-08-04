@@ -289,6 +289,52 @@ function installWsMock(win) {
   FakeWS.__pmoWsMock = true;
   win.WebSocket = FakeWS;
 }
+// 🚨⭐⭐ L'OROLOGIO DELL'APP, non solo quello del banco (riparazione 4/08/2026).
+// Il banco dorme con un Worker e quindi è immune allo strozzamento dei tab nascosti (sotto).
+// L'APP dentro l'iframe però continuava a usare i timer del browser, strozzati a 1 Hz — e a
+// 1/minuto dopo qualche minuto. Misurato: `setTimeout(30)` dentro l'iframe durava **1000 ms**.
+// Finché resta a 1 Hz la rete passa lo stesso; quando peggiora, ogni caso che aspetta un lavoro
+// dell'app sfora il budget e diventa rosso SENZA che il codice abbia colpe — ed è la firma vista
+// il 4/08: un blocco di rossi CONTIGUI in coda che si allunga all'indietro col degradare del
+// browser (qui erano i casi 73-81; sulla rete di `main` si arrivava a bocciare la PRODUZIONE).
+// ⭐ La prova che la causa è questa: strozzando a mano i timer dell'app di 40× su un banco verde
+// tornano rossi gli stessi casi, tutti della famiglia «creazione/attese».
+// ⇒ Qui si dà all'app lo STESSO orologio del banco. Non è un trucco per far passare i test: un
+// timer chiesto a 30 ms deve durare 30 ms, e il browser che lo dilata è rumore dello strumento.
+// ⚠️ Solo `setTimeout`. `setInterval` resta quello vero: i casi non aspettano mai un polling, e
+// sciogliere gli intervalli farebbe girare a vuoto la sincronizzazione per tutto il giro.
+function installTimerShim(w) {
+  if (!_timerWorker) return;                       // senza Worker non c'è niente di meglio
+  try {
+    if (w.setTimeout && w.setTimeout.__pmoTimerShim) return;
+    const nativoSet = w.setTimeout.bind(w);
+    const nativoClear = w.clearTimeout.bind(w);
+    const vivi = new Set();
+    let seq = 1e9;                                 // fuori dalla numerazione dei timer veri
+    const shim = function (fn, ms) {
+      const extra = Array.prototype.slice.call(arguments, 2);
+      const id = ++seq;
+      vivi.add(id);
+      sleep(Math.max(0, Number(ms) || 0)).then(function () {
+        if (!vivi.delete(id)) return;              // già annullato
+        if (typeof fn === 'function') {
+          // Un'eccezione va RILANCIATA come farebbe un timer vero: dentro una `.then` diventerebbe
+          // una promessa rifiutata e nessuno la vedrebbe — un guasto dell'app sparirebbe.
+          try { fn.apply(w, extra); } catch (e) { nativoSet(function () { throw e; }, 0); }
+        } else if (typeof fn === 'string') { try { w.eval(fn); } catch (e) {} }
+      });
+      return id;
+    };
+    shim.__pmoTimerShim = true;
+    const clear = function (id) {
+      if (vivi.delete(id)) return;                 // nostro
+      try { nativoClear(id); } catch (e) {}        // di qualcun altro (o già scattato)
+    };
+    clear.__pmoTimerShim = true;
+    w.setTimeout = shim;
+    w.clearTimeout = clear;
+  } catch (e) {}
+}
 // I mock vanno armati PRIMA che l'app faccia le sue chiamate di boot: `installStubs` girava dopo
 // l'attesa di PMOAi, quindi profilo/prenotazioni del boot arrivavano dal Supabase TEST VERO →
 // il calendario partiva con dati reali (render pesanti, timer che slittano, esiti non riproducibili).
@@ -303,6 +349,7 @@ function armMocksEarly(frame) {
         const w = frame.contentWindow;
         if (w && typeof w.fetch === 'function' && !w.fetch.__pmoFetchMock) installFetchMock(w);
         if (w && !(w.WebSocket && w.WebSocket.__pmoWsMock)) installWsMock(w);
+        if (w) installTimerShim(w);
       } catch (e) {}
       await sleep(4);
     }
@@ -316,6 +363,7 @@ function installStubs(win) {
   try { win.logParserError = function () { return Promise.resolve(false); }; } catch (e) {}
   if (!(win.fetch && win.fetch.__pmoFetchMock)) installFetchMock(win);
   if (!(win.WebSocket && win.WebSocket.__pmoWsMock)) installWsMock(win);
+  installTimerShim(win);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -668,6 +716,12 @@ const CASES = [
       const checks = [];
       const pushed = await waitFor(() => cloudRecords().length > 0, 3000);
       checks.push({ label: 'push cloud avvenuto', ok: pushed });
+      // ⏳ Il push arriva a PEZZI: «almeno un record» e poi leggere subito vuol dire leggere a
+      // metà. Non si vedeva finché i timer dell'app erano strozzati (il primo pezzo arrivava con
+      // un secondo di anticipo sul resto); con l'orologio giusto la corsa è saltata fuori.
+      // ⚠️ Aspettare NON indebolisce i controlli: se il pezzo non arriva, scadono e restano rossi.
+      await waitFor(() => cloudRecords().some(r => r.record_type === 'staff_suppress')
+                       && cloudRecords().some(r => r.record_type === 'staff_booking' && r.deleted !== true), 3000);
       const recs = cloudRecords();
       checks.push({ label: 'cloud: staff_suppress per lo slot origine', ok: recs.some(r => r.record_type === 'staff_suppress') });
       const activeBookings = recs.filter(r => r.record_type === 'staff_booking' && r.deleted !== true);
@@ -2293,8 +2347,14 @@ const CASES = [
       checks.push({ label: '⭐⭐ Anna entra nel roster DOPO la verifica', ok: added });
       // …e la copia CLOUD la porta (il danno vero dell'1/08 era il record staff_booking riscritto
       // senza i giocatori, che poi si trascinava sugli altri dispositivi).
-      const sb = cloudRecords().filter(r => r.record_type === 'staff_booking');
-      checks.push({ label: '⭐ e anche il CLOUD ha Anna', ok: sb.length > 0 && /Anna Verdi/.test(JSON.stringify(sb[sb.length - 1].payload || {})) });
+      // ⏳ Si ASPETTA, come per il roster: la copia cloud parte da un lavoro di sfondo che finisce
+      // DOPO. Leggendo subito, questo controllo passava solo perché i timer dell'app erano
+      // strozzati e il roster ci metteva un secondo: cioè era verde per il motivo sbagliato.
+      const cloudHaAnna = await waitFor(() => {
+        const sb = cloudRecords().filter(r => r.record_type === 'staff_booking');
+        return sb.length > 0 && /Anna Verdi/.test(JSON.stringify(sb[sb.length - 1].payload || {}));
+      }, 8000);
+      checks.push({ label: '⭐ e anche il CLOUD ha Anna', ok: cloudHaAnna });
       checks.push({ label: '⭐ e NON pronuncia la frase bugiarda «riportato com\'era prima»',
         ok: !/riportato la prenotazione com/i.test(chatSince(win, c0)) });
       return checks;
@@ -2628,6 +2688,21 @@ async function run() {
   }
   disarmEarly();
   installStubs(W);
+  // ⭐⭐ GUARDIA SULLA BASE: prima di misurare il codice, misura lo STRUMENTO. Si chiede all'app
+  // un timer da 30 ms e si guarda quanto dura DAVVERO. Con l'orologio nostro sta sotto i 100 ms;
+  // se il browser tornasse a strozzarlo, i casi che aspettano l'app diventerebbero rossi senza
+  // colpa del codice — ed è già successo. Qui non si nasconde: si DICHIARA, in `__RESULTS__` e
+  // sulla pastiglia, così un rosso non viene mai attribuito al lavoro di qualcuno per sbaglio.
+  const orologio = await (async function () {
+    const campioni = [];
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      await new Promise(r => { try { W.setTimeout(r, 30); } catch (e) { r(); } });
+      campioni.push(Date.now() - t0);
+    }
+    campioni.sort((a, b) => a - b);
+    return { chiesto_ms: 30, campioni, mediana_ms: campioni[1], attendibile: campioni[1] <= 100 };
+  })();
   const H = W.__PMOStaffCalTest;
   const todayIso = (typeof W.staffCalTodayIso === 'function') ? W.staffCalTodayIso() : isoOf(new Date());
   const tomorrow = new Date(todayIso + 'T00:00:00'); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -2670,9 +2745,13 @@ async function run() {
   }
   const total = CASES_RUN.length;
   summary.className = 'pill ' + (pass === total ? 'ok' : 'ko');
-  summary.textContent = pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
+  // Se l'orologio del bersaglio non era attendibile, lo si legge PRIMA del punteggio: un rosso
+  // misurato con lo strumento starato non è un verdetto sul codice.
+  summary.textContent = (orologio.attendibile ? '' : '⚠️ OROLOGIO STROZZATO (' + orologio.mediana_ms + ' ms per 30 chiesti) — il punteggio NON è attendibile · ')
+    + pass + ' / ' + total + ' PASSA  (' + (total - pass) + ' da sistemare) — domani=' + ctx.iso;
   window.__RESULTS__ = { ready: true, total, pass, fail: total - pass, iso: ctx.iso, diag: ctx.diag, rows, leaks: LEAKS.slice(0, 40), leakCount: LEAKS.length,
-    wsBlocked: WS_BLOCKED.slice(0, 10), wsBlockedCount: WS_BLOCKED.length, rtBroadcastCount: RT_BROADCASTS.length };
+    wsBlocked: WS_BLOCKED.slice(0, 10), wsBlockedCount: WS_BLOCKED.length, rtBroadcastCount: RT_BROADCASTS.length,
+    orologio, attendibile: orologio.attendibile };
 }
 
 document.getElementById('run').addEventListener('click', run);
