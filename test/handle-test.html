@@ -684,6 +684,12 @@ const CASES = [
       const checks = [];
       const pushed = await waitFor(() => cloudRecords().length > 0, 3000);
       checks.push({ label: 'push cloud avvenuto', ok: pushed });
+      // ⏳ Il push arriva a PEZZI: «almeno un record» e poi leggere subito vuol dire leggere a
+      // metà. Non si vedeva finché i timer dell'app erano strozzati (il primo pezzo arrivava con
+      // un secondo di anticipo sul resto); con l'orologio giusto la corsa è saltata fuori.
+      // ⚠️ Aspettare NON indebolisce i controlli: se il pezzo non arriva, scadono e restano rossi.
+      await waitFor(() => cloudRecords().some(r => r.record_type === 'staff_suppress')
+                       && cloudRecords().some(r => r.record_type === 'staff_booking' && r.deleted !== true), 3000);
       const recs = cloudRecords();
       checks.push({ label: 'cloud: staff_suppress per lo slot origine', ok: recs.some(r => r.record_type === 'staff_suppress') });
       const activeBookings = recs.filter(r => r.record_type === 'staff_booking' && r.deleted !== true);
@@ -1223,8 +1229,14 @@ const CASES = [
       checks.push({ label: '⭐⭐ Anna entra nel roster DOPO la verifica', ok: added });
       // …e la copia CLOUD la porta (il danno vero dell'1/08 era il record staff_booking riscritto
       // senza i giocatori, che poi si trascinava sugli altri dispositivi).
-      const sb = cloudRecords().filter(r => r.record_type === 'staff_booking');
-      checks.push({ label: '⭐ e anche il CLOUD ha Anna', ok: sb.length > 0 && /Anna Verdi/.test(JSON.stringify(sb[sb.length - 1].payload || {})) });
+      // ⏳ Si ASPETTA, come per il roster: la copia cloud parte da un lavoro di sfondo che finisce
+      // DOPO. Leggendo subito, questo controllo passava solo perché i timer dell'app erano
+      // strozzati e il roster ci metteva un secondo: cioè era verde per il motivo sbagliato.
+      const cloudHaAnna = await waitFor(() => {
+        const sb = cloudRecords().filter(r => r.record_type === 'staff_booking');
+        return sb.length > 0 && /Anna Verdi/.test(JSON.stringify(sb[sb.length - 1].payload || {}));
+      }, 8000);
+      checks.push({ label: '⭐ e anche il CLOUD ha Anna', ok: cloudHaAnna });
       checks.push({ label: '⭐ e NON pronuncia la frase bugiarda «riportato com\'era prima»',
         ok: !/riportato la prenotazione com/i.test(chatSince(win, c0)) });
       return checks;
