@@ -298,8 +298,20 @@ async function saveStaffBookingRecord(opts: {
   }, { onConflict: 'record_type,local_key' });
 }
 
+// ⚠️ Il client si dichiara per QUELLO CHE SERVE (una tabella su cui fare upsert), non col tipo
+// completo di `createClient`: quel tipo porta con sé generici che cambiano fra le versioni della
+// libreria, e da lì venivano 4 dei 5 errori di tipo preesistenti di questo file — un `client`
+// costruito qui non risultava assegnabile a un `client` dichiarato qui.
+// ⭐ Il gate dei tipi è differenziale: non si può peggiorare, e una funzione si ripulisce quando
+// la si tocca. Questa la si stava toccando.
+type ScrittoreDiJob = {
+  from: (tabella: string) => {
+    upsert: (riga: JsonMap, opzioni?: { onConflict?: string }) => PromiseLike<unknown>;
+  };
+};
+
 async function writeBookingJob(
-  client: ReturnType<typeof createClient>,
+  client: ScrittoreDiJob,
   jobId: string,
   status: string,
   extra: JsonMap = {},
