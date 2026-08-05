@@ -1,5 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
+// funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import {
+  CODICE_AMBIENTE_DI_PROVA,
+  MESSAGGIO_AMBIENTE_DI_PROVA,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -192,6 +199,18 @@ Deno.serve(async (req: Request) => {
         'Il worker in servizio non conosce la prova a vuoto: se procedessi CREEREBBE un cliente vero. Non ho fatto niente. Aggiorna il worker e riprova.',
         { featuresDelWorker: sa });
     }
+  }
+
+  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
+  // ⚖️ La RICERCA resta viva anche fuori dalla produzione (`soloRicerca`), ed è voluto: cercare
+  // per telefono non scrive niente, ed è la guardia che impedisce i doppioni dentro Matchpoint.
+  // Spegnerla qui vorrebbe dire che una prova non può nemmeno più fare la domanda giusta.
+  // 🚨 Creare invece sì: una scheda nata per gioco NON la ripulisce nessuno. Lo specchio
+  // notturno riscrive l'anagrafica di TEST, non quella del circolo — e da lì quella scheda
+  // tornerebbe dentro PROD con l'import del mattino, che è il contrario di una prova.
+  if (client.soloRicerca !== true && !scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create-client', client }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client });
   }
 
   let workerResult: JsonMap;
