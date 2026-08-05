@@ -1,5 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
+// funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import {
+  CODICE_AMBIENTE_DI_PROVA,
+  MESSAGGIO_AMBIENTE_DI_PROVA,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -317,6 +324,16 @@ async function runBookingJobInBackground(opts: {
   const client = createClient(supabaseUrl, supabaseKey);
   const base = { booking, created_by_email: actor.email };
   const tipoLabel = booking.tipo === 'lezione' ? 'Lezione' : booking.tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
+  // 🔒 IL RECINTO, di nuovo — e non è una ripetizione inutile: qui si arriva DOPO aver già
+  // risposto al chiamante, quindi un giro sbagliato di qua non lo vedrebbe più nessuno. La
+  // difesa deve stare anche dentro la strada che non torna indietro, non solo davanti al bivio.
+  // ⭐ Il lavoro si chiude con `error` e la ragione scritta: un job lasciato «in corso» per
+  // sempre sarebbe peggio del rifiuto, perché chi guarda non saprebbe mai com'è finita.
+  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create_async', jobId, booking }));
+    await writeBookingJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
+    return;
+  }
   try {
     const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
     try {
@@ -479,6 +496,16 @@ Deno.serve(async (req: Request) => {
   }
   if (!username || !password) {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
+  }
+
+  // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
+  // 🚨 STA PRIMA DEL RAMO ASINCRONO, e non è un dettaglio: di là la risposta torna subito e la
+  // prenotazione parte in sottofondo. Un recinto messo dopo avrebbe lasciato aperta proprio la
+  // strada che non si vede tornare indietro.
+  // ⭐ Chi vuole vedere COSA succederebbe ha già `provaAVuoto: true`, che esce ancora prima.
+  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create', booking }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
   }
 
   // ── Modalità asincrona (opzionale): rispondi subito, prenota in background ──
