@@ -162,8 +162,8 @@ Deno.serve(async (req: Request) => {
 
   // action assente = 'player': i chiamanti storici non mandano il campo.
   const action = clean(body.action).toLowerCase() || 'player';
-  if (action !== 'player' && action !== 'kb') {
-    return err(400, 'BAD_ACTION', "action ammesse: 'player' (default) o 'kb'.");
+  if (action !== 'player' && action !== 'kb' && action !== 'people') {
+    return err(400, 'BAD_ACTION', "action ammesse: 'player' (default), 'kb' o 'people'.");
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -223,6 +223,69 @@ Deno.serve(async (req: Request) => {
       kb_updated_at: kbRow?.updated_at ?? null,
       today,
     });
+  }
+
+  // ── Azione 'people': le schede di un ELENCO, e SOLO quattro campi ────────
+  //
+  // 🚨⭐⭐ ESISTE PER DIVULGARE POCO, non per comodità — 5/08/2026, con la rubrica del bot.
+  // La rubrica mostra quattro dati (nome, cognome, livello, sesso) e l'unica strada che
+  // c'era, l'azione 'player', ne torna molti di più: partite, borsellino, permesso di
+  // prenotare. Usarla per disegnare una riga vorrebbe dire far passare le PRENOTAZIONI DI
+  // TERZI ogni volta che qualcuno apre la rubrica.
+  // ⇒ Un'azione che sa dire poco è una difesa. Chi un domani ci aggiungesse un campo deve
+  //   chiedersi non «serve?» ma «serve a disegnare una riga di rubrica?».
+  //
+  // ⚖️ Perché non c'è nessun controllo su CHI chiede: questo ponte non sa cos'è una rubrica
+  // — le rubriche vivono nel database del bot, non nel gestionale. Il permesso lo tiene il
+  // bot, che chiede solo gli id che stanno nella rubrica di chi sta guardando. Qui la
+  // difesa è il gate `X-Consumer-Secret` più il fatto che gli id non si indovinano.
+  // 🚨 E il tetto: un elenco lunghissimo diventerebbe un modo per scaricare l'anagrafica a
+  // fette. Sopra il tetto si RIFIUTA — non si tronca in silenzio.
+  if (action === 'people') {
+    const MAX_PERSONE = 100;
+    const grezzi = Array.isArray(body.ids) ? body.ids : [];
+    const ids = [...new Set(grezzi.map((v) => clean(v)).filter(Boolean))];
+    if (!ids.length) return ok({ people: [] });
+    if (ids.length > MAX_PERSONE) {
+      return err(400, 'TOO_MANY_IDS', `Al massimo ${MAX_PERSONE} id per volta.`);
+    }
+
+    const { data: righe, error: peopleErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .not('deleted', 'is', true)
+      .in('payload->>id', ids)
+      .limit(MAX_PERSONE);
+    if (peopleErr) {
+      console.error('[readmodel] errore query people:', peopleErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
+    }
+
+    const people = (righe ?? []).map((row) => {
+      const p = (row.payload ?? {}) as JsonMap;
+      const level = clean(p.level);
+      // Il sesso si passa solo se è uno dei due che sappiamo leggere. 📊 Sul bersaglio
+      // (TEST, 5/08/2026) `gender` c'è su 2.793 schede su 2.793: M 2.122 · F 670 · «NA» 1.
+      // Quel «NA» è il caso per cui questa riga non è pedanteria — passato così com'è,
+      // diventerebbe un segno inventato accanto al nome di una persona vera.
+      const g = clean(p.gender).toUpperCase();
+      return {
+        id: clean(p.id),
+        nome: clean(p.firstName),
+        cognome: clean(p.surname),
+        level: level || null,
+        // Stessa regola dell'azione 'player', e deliberatamente la stessa riga: 0.5 è il
+        // valore di partenza delle schede nuove, cioè «da definire», e l'81,2% dei soci
+        // sta lì. Divergere qui vorrebbe dire un livello annunciato in rubrica e negato
+        // nella scheda del socio.
+        level_assessed: !!level && level !== '0.5',
+        gender: g === 'M' || g === 'F' ? g : null,
+      };
+    }).filter((p) => p.id);
+
+    console.log(`[readmodel] people: ${ids.length} chiesti, ${people.length} trovati`);
+    return ok({ people });
   }
 
   // ── 1. Identità ──────────────────────────────────────────────────────────
