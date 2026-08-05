@@ -1,5 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
+// funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import {
+  CODICE_AMBIENTE_DI_PROVA,
+  MESSAGGIO_AMBIENTE_DI_PROVA,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -176,6 +183,15 @@ Deno.serve(async (req: Request) => {
   }
   if (!username || !password) {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.', { retryable: false });
+  }
+
+  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
+  // 🚨 Disattivare una scheda per gioco è peggio che crearne una: il socio vero sparisce
+  // dall'elenco clienti del circolo, e lo specchio notturno — che riscrive TEST, non il
+  // circolo — non lo rimette a posto.
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'disable-client', client }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client, retryable: false });
   }
 
   let workerResult: JsonMap;

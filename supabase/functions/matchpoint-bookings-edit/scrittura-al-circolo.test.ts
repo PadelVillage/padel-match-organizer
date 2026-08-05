@@ -78,14 +78,23 @@ const GEMELLI = [
   'matchpoint-bookings-create/scrittura-al-circolo.ts',
   'matchpoint-bookings-edit/scrittura-al-circolo.ts',
   'matchpoint-bookings-cancel/scrittura-al-circolo.ts',
+  // 🆕 6/08/2026 — l'anagrafica: creare, cambiare, disattivare e riattivare un CLIENTE del
+  // circolo. Sono entrate dopo le prenotazioni, per una ragione sua: lo specchio notturno
+  // riscrive l'anagrafica di TEST, non quella del circolo ⇒ una scheda toccata per gioco
+  // sarebbe l'unica cosa che la notte NON ripulisce.
+  'matchpoint-clients-create/scrittura-al-circolo.ts',
+  'matchpoint-clients-update/scrittura-al-circolo.ts',
+  'matchpoint-clients-disable/scrittura-al-circolo.ts',
+  'matchpoint-clients-reactivate/scrittura-al-circolo.ts',
 ];
 
-test('8) ⚠️ le TRE copie del modulo sono identiche byte per byte', () => {
+test(`8) ⚠️ le ${GEMELLI.length} copie del modulo sono identiche byte per byte`, () => {
   // 🚨 `readFileSync` senza rete: un percorso sbagliato fa FALLIRE il caso, non passare.
   const testi = GEMELLI.map((rel) => readFileSync(join(FUNZIONI, rel), 'utf8'));
-  assert.equal(testi.length, 3);
-  assert.equal(testi[1], testi[0], 'edit diverge da create');
-  assert.equal(testi[2], testi[0], 'cancel diverge da create');
+  assert.equal(testi.length, GEMELLI.length);
+  for (let i = 1; i < testi.length; i++) {
+    assert.equal(testi[i], testi[0], `${GEMELLI[i]} diverge da ${GEMELLI[0]}`);
+  }
 });
 
 // ── ③ il collegamento (la posizione, non la parola) ────────────────────────────────────────
@@ -100,6 +109,13 @@ const PUNTI_DI_NON_RITORNO: Record<string, RegExp[]> = {
   ],
   'matchpoint-bookings-edit/index.ts': [/await callWorkerEditBooking\(/],
   'matchpoint-bookings-cancel/index.ts': [/await callWorkerCancelBooking\(/],
+  // L'anagrafica. ⚖️ In `create` la RICERCA per telefono (`soloRicerca`) passa dal worker e
+  // resta viva anche fuori dalla produzione: non scrive niente ed è la guardia contro i
+  // doppioni. Il punto di non ritorno è solo la chiamata che CREA.
+  'matchpoint-clients-create/index.ts': [/await callWorkerCreateClient\(/],
+  'matchpoint-clients-update/index.ts': [/await callWorkerUpdateClient\(/],
+  'matchpoint-clients-disable/index.ts': [/await callWorkerDisableClient\(/],
+  'matchpoint-clients-reactivate/index.ts': [/await callWorkerReactivateClient\(/],
 };
 
 for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
