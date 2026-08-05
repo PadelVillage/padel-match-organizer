@@ -241,3 +241,92 @@ export function allineaCopiaInApp(righe: RigaCopiaInApp[], varianti: Set<string>
     },
   };
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// L'ALTRO VERSO: qualcuno ENTRA — 5/08/2026, con l'invito alla partita.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+//
+// 🚨⭐⭐ NON È SIMMETRIA PER ELEGANZA: senza questo, si entra in CINQUE. La copia in app è ciò
+// che questo ponte CONTA per sapere quanti sono in campo, e la copia che viene dal circolo si
+// aggiorna ogni ~2 minuti. In quella finestra un secondo invitato che tocca «Ci sto» vedrebbe
+// ancora tre giocatori e un posto libero, e il campo finirebbe a cinque — con tutte le
+// misure verdi, perché ognuna delle due letture, presa da sola, era giusta.
+// ⇒ Scrivere subito il nome nella copia CHIUDE la finestra.
+//
+// ⚖️ Si tocca SOLO `giocatori`, mai `nome`, e la differenza col verso dell'uscita è voluta:
+//  · `giocatori` è un elenco, e a un elenco si aggiunge in coda senza ambiguità;
+//  · `nome` **è troncato a metà parola** dal gestionale e a volte non è nemmeno un roster (su
+//    una manutenzione è un titolo libero). Appenderci un nome vorrebbe dire allungare una
+//    stringa già tagliata, e su una riga che non elenca nessuno inventare un elenco.
+// 🚨 Conseguenza dichiarata, non nascosta: una riga che porta i nomi SOLO in `nome` resta
+// `invariata`, e per quella la finestra dei due minuti resta aperta. Chi chiama lo registra.
+//
+// ⭐ In coda e non in testa: l'ordine delle righe della scheda è la CRONOLOGIA DEGLI INGRESSI,
+// ed è da lì che si legge chi ha organizzato (il primo). Infilare il nuovo in cima lo farebbe
+// diventare l'organizzatore della partita di qualcun altro.
+
+export type EsitoRigaAggiunta = {
+  id: string;
+  /** `aggiunta` → il payload nuovo è pronto · `invariata` → nessun elenco da toccare ·
+   *  `c_era_gia` → il nome era già lì: non si scrive, e non è un errore. */
+  stato: 'aggiunta' | 'invariata' | 'c_era_gia';
+  payload?: Record<string, unknown>;
+  prima: NomiDellaRiga;
+  dopo: NomiDellaRiga;
+};
+
+export type Aggiunta = {
+  righe: EsitoRigaAggiunta[];
+  daScrivere: { id: string; payload: Record<string, unknown> }[];
+  conteggi: { righe: number; aggiunte: number; invariate: number; c_era_gia: number };
+};
+
+/**
+ * Scrive il nome di chi entra nelle copie in app dello slot.
+ *
+ * ⚠️ `nome` è il nome COME LO SCRIVE IL GESTIONALE — quello tornato dal worker dopo
+ * l'aggiunta, non quello che abbiamo mandato: le due scritture possono differire, e una copia
+ * che scrive il nome in un modo diverso dalla scheda fa contare due persone dove ce n'è una.
+ * ⭐ Si appende una STRINGA, non un oggetto: l'elenco ne mescola già di tutt'e due i tipi
+ * (misurato su PROD il 28/07) e `nomeDellElemento` legge entrambi — la stringa è la forma che
+ * non pretende di sapere quali altri campi un oggetto dovrebbe avere.
+ */
+export function aggiungiACopiaInApp(righe: RigaCopiaInApp[], nome: string): Aggiunta {
+  const esiti: EsitoRigaAggiunta[] = [];
+  const daScrivere: { id: string; payload: Record<string, unknown> }[] = [];
+  const pulito = clean(nome);
+
+  for (const riga of righe) {
+    const payload = riga.payload ?? {};
+    const prima = nomiDellaCopia(payload);
+
+    if (!pulito || !Array.isArray(payload.giocatori)) {
+      esiti.push({ id: riga.id, stato: 'invariata', prima, dopo: prima });
+      continue;
+    }
+    // 🚨 C'è già? Non si aggiunge una seconda volta. Succede sul serio: un secondo tocco
+    // dello stesso invitato, o un giro ripetuto dopo un guasto di rete a metà strada — e
+    // due volte lo stesso nome nell'elenco vuol dire un posto libero in meno per nessuno.
+    const gia = (payload.giocatori as unknown[]).some((g) => normName(nomeDellElemento(g)) === normName(pulito));
+    if (gia) {
+      esiti.push({ id: riga.id, stato: 'c_era_gia', prima, dopo: prima });
+      continue;
+    }
+
+    const nuovo: Record<string, unknown> = { ...payload, giocatori: [...(payload.giocatori as unknown[]), pulito] };
+    const dopo = nomiDellaCopia(nuovo);
+    esiti.push({ id: riga.id, stato: 'aggiunta', payload: nuovo, prima, dopo });
+    daScrivere.push({ id: riga.id, payload: nuovo });
+  }
+
+  return {
+    righe: esiti,
+    daScrivere,
+    conteggi: {
+      righe: esiti.length,
+      aggiunte: esiti.filter((e) => e.stato === 'aggiunta').length,
+      invariate: esiti.filter((e) => e.stato === 'invariata').length,
+      c_era_gia: esiti.filter((e) => e.stato === 'c_era_gia').length,
+    },
+  };
+}

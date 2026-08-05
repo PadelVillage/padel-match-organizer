@@ -254,26 +254,40 @@ Deno.serve(async (req: Request) => {
     return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note, descrizione e istruttore.');
   }
 
-  // 🚨 Guardia CONSUMER_SCOPE — l'assistente dei soci può fare UNA cosa sola: togliere
-  // UN giocatore dal roster (il socio che ritira la propria presenza). Spostare, cambiare
-  // nota/descrizione/maestro, svuotare il roster o aggiungere giocatori restano allo staff
-  // autenticato. Fail closed: un campo di troppo fa FALLIRE la richiesta, non viene
-  // ignorato in silenzio — così un errore del chiamante si vede subito invece di
-  // trasformarsi in una modifica non voluta su una prenotazione vera.
+  // 🚨 Guardia CONSUMER_SCOPE — cosa può fare l'assistente dei soci su una prenotazione vera.
+  //
+  // 🆕 5/08/2026: le cose ammesse diventano DUE, e restano ALTERNATIVE — mai insieme:
+  //   · togliere UN giocatore (il socio che si ritira, o l'organizzatore che toglie qualcuno);
+  //   · far entrare UN giocatore, che è l'invito alla partita del progetto «l'organizzatore
+  //     forma la sua partita». Senza questo, un invito accettato non atterra da nessuna parte.
+  // Spostare, cambiare nota/descrizione/maestro, svuotare il roster e la lettura sola restano
+  // allo staff autenticato.
+  //
+  // ⭐⭐ Perché resta UNO e ALTERNATIVO, e non «fino a quattro»: il ponte dei soci scrive senza
+  // che nessuno dello staff guardi, e un elenco lungo è la differenza fra una richiesta
+  // sbagliata che tocca una persona e una che riscrive un roster intero. Chi domani volesse
+  // allargarlo si chieda cosa succede se quella richiesta parte due volte.
+  // 🚨 Fail closed: un campo di troppo fa FALLIRE la richiesta, non viene ignorato in
+  // silenzio — così un errore del chiamante si vede subito invece di trasformarsi in una
+  // modifica non voluta su una prenotazione vera.
   if (consumer) {
     const rimuovi = (Array.isArray(players?.remove) ? players?.remove : []) as string[];
-    const aggiungi = (Array.isArray(players?.add) ? players?.add : []) as unknown[];
+    const aggiungi = (Array.isArray(players?.add) ? players?.add : []) as Array<{ nome?: unknown }>;
     const soloUnaRimozione = rimuovi.length === 1 && clean(rimuovi[0]).length > 0;
-    const altroSuiGiocatori = players?.removeAll === true || aggiungi.length > 0;
-    const altriBlocchi = hasMove || noteProvided || descrizioneProvided || istruttoreProvided || readOnly;
-    if (!soloUnaRimozione || altroSuiGiocatori || altriBlocchi) {
+    const solaUnaAggiunta = aggiungi.length === 1 && clean(aggiungi[0]?.nome).length > 0;
+    // Esclusivo: una delle due, mai tutt'e due nella stessa richiesta.
+    const unaSolaCosa = (soloUnaRimozione && aggiungi.length === 0)
+      || (solaUnaAggiunta && rimuovi.length === 0);
+    const altriBlocchi = players?.removeAll === true
+      || hasMove || noteProvided || descrizioneProvided || istruttoreProvided || readOnly;
+    if (!unaSolaCosa || altriBlocchi) {
       console.warn('[bookings-edit] CONSUMER_SCOPE rifiutato:', JSON.stringify({
         remove: rimuovi.length, removeAll: players?.removeAll === true, add: aggiungi.length,
         move: hasMove, note: noteProvided, descrizione: descrizioneProvided,
         istruttore: istruttoreProvided, read: readOnly,
       }));
       return err(403, 'CONSUMER_SCOPE',
-        'Dal ponte dei soci si può solo togliere un singolo giocatore dal roster.');
+        'Dal ponte dei soci si può togliere UN giocatore dal roster, oppure farne entrare UNO: una cosa sola per volta.');
     }
   }
 

@@ -22,7 +22,7 @@ import {
 // E la COPIA IN APP dopo un'uscita sta in un terzo modulo, per la stessa ragione degli altri
 // due: TEST non contiene la forma del dato (zero righe `staff_booking` future, misurato il
 // 28/07), quindi l'unico modo di provarlo è dare i payload VERI di PROD a una funzione pura.
-import { allineaCopiaInApp } from './allinea-copia-app.ts';
+import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -135,6 +135,13 @@ const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: gri
 // soglie stanno nella kb): è la forma del gioco, come i 4 campi qui sopra.
 const GIOCATORI_PARTITA = 4;
 
+// 🪑 Il nome con cui il gestionale scrive un posto occupato da chi NON è cliente del circolo.
+// Misurato sui dati veri di PROD il 27/07/2026: scritto in **un solo modo**, «Ospite», 47
+// occorrenze su 47. ⚠️ Qui serve la forma ESATTA, con la maiuscola, perché è quella che si
+// manda al worker: `roster-slot.ts` ne tiene la versione normalizzata, che serve a
+// confrontare e non a scrivere.
+const OSPITE_MATCHPOINT = 'Ospite';
+
 // La nota che resta scritta SULLA PRENOTAZIONE, e che lo staff legge nel gestionale.
 // ⚠️ Fino al 28/07/2026 diceva «Prenotata via chat WhatsApp»: falso da quando WhatsApp è
 // stato smantellato, e fragile in partenza perché legava la nota al CANALE — la parte che
@@ -146,7 +153,7 @@ const NOTA_PRENOTAZIONE = "Prenotata dal socio con l'assistente";
 // 🧪 Dove esiste la prova a vuoto. È un elenco e non un `if` sparso perché il rifiuto qui
 // sotto è ciò che rende la prova AFFIDABILE: un'edge che non conosce un'azione risponde
 // «non ce l'ho» invece di ignorare il campo e scrivere per davvero.
-const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create', 'cancel', 'remove'];
+const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create', 'cancel', 'remove', 'add'];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -217,7 +224,7 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
@@ -1034,6 +1041,286 @@ Deno.serve(async (req: Request) => {
       giocatori_prima: esito.roster.length,
       restano: esito.roster.length - 1,
       copia_in_app: copiaEsito,
+    });
+  }
+
+  // ── add ───────────────────────────────────────────────────────────────────
+  // 🆕 5/08/2026 — IL PEZZO SENZA CUI L'INVITO NON ATTERRA. Fino a oggi questo ponte sapeva
+  // creare, uscire, togliere e annullare: sapeva **svuotare** un campo e non riempirlo. Il
+  // progetto del committente — «l'organizzatore forma la sua partita» — poggia tutto qui.
+  //
+  // 🚨⭐⭐ CHI CHIEDE È L'ORGANIZZATORE, non chi entra. Il diritto è lo STESSO di `remove` e di
+  // `cancel`, e si chiama la stessa funzione: chi può far sparire il campo a tutti e tre può a
+  // maggior ragione farci entrare un quarto. L'invito vive nel database del BOT — questo ponte
+  // non lo vede e non deve vederlo: qui si controlla solo che chi chiede abbia il diritto di
+  // toccare quel roster.
+  //
+  // ⚖️ E la differenza con `remove`, che è il motivo per cui non si è potuto riusare il suo
+  // corpo: là il bersaglio è una persona GIÀ nel roster e si ritrova per nome; qui è una
+  // persona che nel roster non c'è, e l'unica domanda è se **ci sta**.
+  if (action === 'add') {
+    const prova = dryRun ? { dry_run: true } : {};
+
+    // 🚨⭐⭐ CHI ENTRA ARRIVA COME NUMERO DI SCHEDA DELLA NOSTRA APP, e qui lo si risolve
+    // sull'anagrafica NOSTRA. Direttiva ferma del committente (26/07/2026): il bot parla con
+    // il gestionale, non con Matchpoint — quindi non gli si fa mandare né il nome come lo
+    // scrive la scheda del circolo né il codice cliente. Quelle due cose vivono di qua.
+    // ⭐ È anche più solido: un nome mandato dal bot dovrebbe combaciare con la grafia della
+    // scheda, e le due divergono («Nome Cognome» / «Cognome Nome»).
+    const idDaAggiungere = clean(body.giocatore_id);
+    if (!idDaAggiungere) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_mancante', ...prova });
+    }
+    const { data: schede, error: schedaErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .not('deleted', 'is', true)
+      .eq('payload->>id', idDaAggiungere)
+      .limit(2);
+    if (schedaErr) {
+      console.error('[booking-write] add: errore lettura anagrafica:', schedaErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
+    }
+    // 🚨 Zero o più di una ⇒ non si scrive. Una scheda sola è la condizione perché «questa
+    // persona» voglia dire qualcosa: con due, mettere in campo la sbagliata non si torna
+    // indietro — il bot sa aggiungere e togliere, non sa rimediare a un'identità scambiata.
+    if (!schede || schede.length !== 1) {
+      console.warn(`[booking-write] add: ${schede?.length ?? 0} schede per id ${idDaAggiungere}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        reason: (schede?.length ?? 0) > 1 ? 'giocatore_ambiguo' : 'giocatore_sconosciuto',
+        ...prova,
+      });
+    }
+    const schedaOspite = (schede[0].payload ?? {}) as JsonMap;
+    const nomeDaAggiungere = clean(schedaOspite.name)
+      || [clean(schedaOspite.firstName), clean(schedaOspite.surname)].filter(Boolean).join(' ');
+    // 🚨⭐⭐ IL CODICE DEL CIRCOLO DECIDE **CON CHE NOME** SI ENTRA IN CAMPO.
+    // Il gestionale aggancia i giocatori dall'elenco clienti del circolo: chi lì non c'è non
+    // si può agganciare, e l'aggiunta fallirebbe. 📊 Non ha quel codice il 62% dei soci
+    // (1.722 su 2.789) ⇒ è il caso NORMALE, non quello raro.
+    // ⇒ Chi non ce l'ha entra come **«Ospite»**, che è la decisione del committente del 30/07
+    // per l'invitato non ancora cliente: il posto è preso davvero, il nome sulla scheda no.
+    // 🚨 Solo le CIFRE valgono come codice del circolo: in `memberId` l'app scrive anche i
+    // suoi «PMO-000000», che sono NOSTRI e al circolo non esistono. Passarne uno vorrebbe dire
+    // cercare nell'elenco clienti una persona che là non c'è — e credere di aver mandato un
+    // socio mentre non si aggancia nessuno. È la stessa distinzione che il readmodel fa già.
+    const codiceGrezzo = clean(schedaOspite.memberId);
+    const codiceDaAggiungere = /^[0-9]{4,6}$/.test(codiceGrezzo) ? codiceGrezzo : '';
+    const nomeSullaScheda = codiceDaAggiungere ? nomeDaAggiungere : OSPITE_MATCHPOINT;
+    if (!nomeDaAggiungere && codiceDaAggiungere) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_senza_nome', ...prova });
+    }
+
+    const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    if (!righe.length) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
+    }
+    // Gemello del cancello di `leave`, `cancel` e `remove`: a una LEZIONE non si aggiunge
+    // nessuno dal bot — i posti li decide il maestro. Il bot già non mostra il bottone; qui ci
+    // si difende dal bot sbagliato, che è il motivo per cui la guardia sta nell'edge.
+    if (righe.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_e_una_partita', ...prova });
+    }
+
+    const esito = rosterDelloSlot(righe, GIOCATORI_PARTITA);
+    if (esito.incoerente) {
+      console.error(`[booking-write] add roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi su ${righe.length} righe, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'roster_incoerente', giocatori: esito.unione.size, ...prova,
+      });
+    }
+
+    // Proprietà prima di ogni altra cosa, come in `remove`: di una partita che non è sua al
+    // socio non si dice niente, nemmeno che tipo di prenotazione sia.
+    const mioNomeAdd = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    if (!mioNomeAdd) {
+      if (sostituito(esito, nameVariants)) {
+        return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_piu_in_partita', ...prova });
+      }
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
+    }
+
+    const esitoOmonimiAdd = await omonimiDelSocio('add', 'non aggiungo nessuno');
+    if (!esitoOmonimiAdd.ok) return esitoOmonimiAdd.risposta;
+    const dirittoAdd = dirittoDiAnnullare(righe, nameVariants, esitoOmonimiAdd.omonimi.length > 0);
+    if (!dirittoAdd.permesso) {
+      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: in ${esito.roster.length}, ${dirittoAdd.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: dirittoAdd.motivo, giocatori: esito.roster.length, ...prova,
+      });
+    }
+
+    // 🚨⭐⭐ IL POSTO C'È? È la domanda che le altre azioni non si pongono, ed è l'unica
+    // barriera fra un invito accettato e un campo da CINQUE. Si conta sul roster riletto
+    // adesso, non su quello che il bot aveva in mano quando ha mandato l'invito: fra le due
+    // cose possono essere passati giorni.
+    if (esito.roster.length >= GIOCATORI_PARTITA) {
+      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: già in ${esito.roster.length}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'al_completo', giocatori: esito.roster.length, ...prova,
+      });
+    }
+    // C'è già? Non è un errore da raccontare come guasto: è la corsa vinta due volte, o un
+    // secondo tocco sullo stesso bottone. Chi legge deve dire «ci sei già», non «non entri».
+    if (esito.roster.some((n) => normName(n) === normName(nomeDaAggiungere))) {
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'gia_in_partita', giocatori: esito.roster.length, ...prova,
+      });
+    }
+
+    // ⭐ Come in `leave` e `remove`, la copia in app si calcola PRIMA del bivio, così la prova
+    // a vuoto mostra esattamente ciò che poi verrà scritto.
+    const copieAdd = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
+    // ⚠️ Nella copia va il nome che finisce SULLA SCHEDA, non quello della persona: se entra
+    // come «Ospite», scrivere il suo nome vero farebbe contare due persone diverse alla
+    // prossima sincronizzazione — una nella nostra copia e una nella scheda del circolo.
+    const aggiuntaCopia = aggiungiACopiaInApp(copieAdd, nomeSullaScheda);
+
+    if (dryRun) {
+      console.log(`[booking-write] add PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: ${member.name} farebbe entrare ${nomeDaAggiungere} (in ${esito.roster.length}, su ${righe.length} righe)`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        dry_run: true,
+        would: {
+          add: nomeDaAggiungere,
+          // ⭐ Il nome che finirebbe SULLA SCHEDA, che può non essere quello della persona.
+          // È la riga più importante della prova a vuoto: dice se il circolo saprà chi è.
+          sulla_scheda: nomeSullaScheda,
+          codice: codiceDaAggiungere || null,
+          come: codiceDaAggiungere ? 'socio' : 'ospite',
+          slot: { data: slot.data, ora: slot.ora, campo },
+          giocatori_prima: esito.roster.length,
+          giocatori_dopo: esito.roster.length + 1,
+          righe: righe.length,
+          roster: [...esito.roster],
+          fonte: esito.fonte,
+          sommando_le_righe: esito.unione.size,
+          id_reserva: righe[0]?.idReserva || null,
+          organizzatore: dirittoAdd.organizzatore,
+          copia_in_app: {
+            ...aggiuntaCopia.conteggi,
+            righe_dettaglio: aggiuntaCopia.righe.map((r) => ({
+              id: r.id, stato: r.stato, prima: r.prima, dopo: r.dopo,
+            })),
+          },
+        },
+      });
+    }
+
+    const resAdd = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+      method: 'POST',
+      headers: internalHeaders,
+      body: JSON.stringify({
+        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+        campo,
+        data: slot.data,
+        ora: slot.ora,
+        players: {
+          add: [{
+            nome: nomeSullaScheda,
+            ...(codiceDaAggiungere ? { codice: codiceDaAggiungere } : {}),
+          }],
+        },
+      }),
+    });
+    const dataAdd = await resAdd.json().catch(() => null) as JsonMap | null;
+    if (!resAdd.ok || !dataAdd?.ok) {
+      console.error(`[booking-write] add KO HTTP ${resAdd.status}:`, JSON.stringify(dataAdd).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        reason: 'worker_error',
+        detail: clean(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`).slice(0, 200),
+      });
+    }
+
+    // 🚨⭐⭐ «OK» DEL WORKER NON VUOL DIRE «È ENTRATO», ed è il difetto #624 in persona: là un
+    // codice cliente scambiato per un id interno faceva rispondere «✅ confermato» a fronte di
+    // un giocatore che in campo non c'era. La lezione che ne era rimasta è **misura che il
+    // DATO sia arrivato**, non che la chiamata sia andata bene.
+    //
+    // ⇒ La prova è `partecipantiFinali`: il roster **riletto dalla scheda del circolo** DOPO
+    // la modifica. Non è una nostra deduzione, è ciò che c'è scritto là.
+    // ⚠️ Si conta e non si cerca il nome: chi entra come «Ospite» non porta il proprio nome, e
+    // un controllo sul nome direbbe «non entrato» proprio nel caso più frequente.
+    const workerAdd = (dataAdd?.worker ?? null) as JsonMap | null;
+    const finali = Array.isArray(workerAdd?.partecipantiFinali)
+      ? (workerAdd.partecipantiFinali as JsonMap[])
+      : null;
+    if (finali) {
+      if (finali.length <= esito.roster.length) {
+        console.error(`[booking-write] add NON AGGANCIATO ${slot.data} ${slot.ora} C${campo}: ${nomeSullaScheda} — la scheda ne conta ${finali.length}, erano ${esito.roster.length}`);
+        return ok({
+          member: { id: member.id, name: member.name },
+          added: false,
+          reason: 'non_agganciato',
+          detail: `la scheda del circolo conta ${finali.length} giocatori, erano ${esito.roster.length}`,
+          giocatori: finali.length,
+        });
+      }
+    } else {
+      // ⚠️ Niente roster riletto ⇒ non si può dire né sì né no da qui. Si prosegue (l'HTTP è
+      // andato bene) ma resta scritto: «non ho misurato» e «ho misurato che va bene» sono due
+      // cose diverse, e confonderle è ciò che è costato il #624.
+      console.warn(`[booking-write] add: il worker non ha rimandato il roster ${slot.data} ${slot.ora} C${campo} — esito non verificabile da qui`);
+    }
+
+    // Seconda scrittura, gemella di quella di `leave` e `remove` e per la ragione opposta:
+    // là senza questo passo i ponti rimettevano in campo chi era uscito, qui senza questo
+    // passo continuerebbero a vedere un posto libero che non c'è più — e un secondo invitato
+    // entrerebbe quinto. ⭐ Best effort col verso giusto: l'aggiunta È GIÀ RIUSCITA, quindi si
+    // torna `added: true` anche se questo passo fallisce.
+    const copiaEsitoAdd: JsonMap = { ...aggiuntaCopia.conteggi };
+    if (aggiuntaCopia.daScrivere.length) {
+      try {
+        const adesso = new Date().toISOString();
+        const esiti = await Promise.all(aggiuntaCopia.daScrivere.map((r) =>
+          service.from('pmo_cloud_records')
+            .update({ payload: r.payload, updated_at: adesso })
+            .eq('id', r.id)));
+        const rotte = esiti.filter((e) => e.error);
+        if (rotte.length) {
+          copiaEsitoAdd.errore = clean(rotte[0].error?.message ?? 'UPDATE fallito').slice(0, 200);
+          copiaEsitoAdd.scritte = aggiuntaCopia.daScrivere.length - rotte.length;
+          console.error(`[booking-write] add copia in app KO ${slot.data} ${slot.ora} C${campo}: ${rotte.length} righe su ${aggiuntaCopia.daScrivere.length} non riscritte → ${copiaEsitoAdd.errore}`);
+        } else {
+          console.log(`[booking-write] add copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${aggiuntaCopia.daScrivere.length} righe, entrato ${nomeDaAggiungere}`);
+        }
+      } catch (e) {
+        copiaEsitoAdd.errore = clean((e as Error)?.message ?? 'errore').slice(0, 200);
+        console.error(`[booking-write] add copia in app KO ${slot.data} ${slot.ora} C${campo}:`, copiaEsitoAdd.errore);
+      }
+    } else {
+      // 🚨 Dichiarato e non nascosto: nessuna riga della copia porta un elenco `giocatori` su
+      // cui scrivere ⇒ per ~2 minuti questo ponte continuerà a vedere un posto libero in più.
+      // Chi legge i registri deve poter riconoscere questa finestra quando succede.
+      console.warn(`[booking-write] add: nessuna copia in app da allineare ${slot.data} ${slot.ora} C${campo} — il conteggio resta indietro fino al prossimo giro di sincronizzazione`);
+    }
+
+    console.log(`[booking-write] add OK ${slot.data} ${slot.ora} C${campo}: ${member.name} fa entrare ${nomeSullaScheda}${codiceDaAggiungere ? '' : ` (per ${nomeDaAggiungere}, senza codice)`} — erano in ${esito.roster.length}`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      added: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      // ⭐ Chi è entrato è la PERSONA, e il bot deve poterle parlare col suo nome. `ospite`
+      // dice l'altra metà della verità: sulla scheda del circolo il suo nome NON compare.
+      entrato: nomeDaAggiungere,
+      sulla_scheda: nomeSullaScheda,
+      ospite: !codiceDaAggiungere,
+      giocatori_prima: esito.roster.length,
+      // ⭐ Il conto che si racconta è quello RILETTO dalla scheda quando c'è: un «+1» calcolato
+      // da noi sarebbe di nuovo una deduzione, che è esattamente ciò che il #624 ha insegnato
+      // a non fare.
+      giocatori_dopo: finali ? finali.length : esito.roster.length + 1,
+      copia_in_app: copiaEsitoAdd,
     });
   }
 
