@@ -1,5 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
+// funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import {
+  CODICE_AMBIENTE_DI_PROVA,
+  MESSAGGIO_AMBIENTE_DI_PROVA,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -301,6 +308,16 @@ Deno.serve(async (req: Request) => {
 
   if (!workerUrl || !workerApiKey) {
     return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
+  }
+
+  // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
+  // ⚖️ Solo per le MODIFICHE: `read` legge la scheda e non cambia niente, e resta viva anche di
+  // prova (è così che si guarda un roster senza toccarlo).
+  // 🚨 Sta DOPO i controlli e PRIMA del worker apposta: la richiesta viene capita per intero e
+  // raccontata («ecco cosa avrei fatto»), ma non arriva a destinazione.
+  if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit', edit }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
   }
 
   // Call browser worker
