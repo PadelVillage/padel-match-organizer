@@ -33,7 +33,12 @@ function test(name: string, fn: () => void) {
 // ── ① la regola ────────────────────────────────────────────────────────────────────────────
 
 test('1) l\'indirizzo VERO della produzione: si scrive', () => {
-  assert.equal(scritturaAlCircoloConsentita(`https://${REF_PROD}.supabase.co`), true);
+  // 🚨⭐⭐ L'indirizzo è scritto A MANO, non composto con `REF_PROD`, e la ragione è un difetto
+  // trovato sabotando: cambiando il codice del progetto dentro il modulo, tutti i casi che lo
+  // compongono si spostano INSIEME a lui e restano verdi — misurerebbero la coerenza del modulo
+  // con sé stesso, non la verità. Un caso che segue ciò che deve giudicare non giudica niente.
+  assert.equal(scritturaAlCircoloConsentita('https://qqbfphyslczzkxoncgex.supabase.co'), true);
+  assert.equal(REF_PROD, 'qqbfphyslczzkxoncgex', 'il codice del progetto di produzione è cambiato');
 });
 
 test('2) 🚨 l\'indirizzo di TEST: NON si scrive', () => {
