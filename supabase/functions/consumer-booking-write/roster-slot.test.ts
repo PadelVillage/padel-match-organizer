@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   altriOmonimiVivi,
+  bersaglioDaTogliere,
   playersFromDescrizione,
   dirittoDiAnnullare,
   variantiDelNome,
@@ -554,10 +555,17 @@ test('34) IL COLLEGAMENTO: l\'edge chiama la funzione, non una copia scritta a m
   // il 30/07 sul promemoria del bot: i casi provavano la regola, nessuno provava che il codice
   // vero la usasse.
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-  assert.ok(/dirittoDiAnnullare\(righeSlot, nameVariants, omonimi\.length > 0\)/.test(src),
-    'index.ts deve chiedere il diritto a roster-slot.ts, passandogli righe, varianti E la risposta sugli omonimi');
-  assert.ok(/reason: diritto\.motivo/.test(src),
-    'il motivo del rifiuto deve essere quello della funzione, non uno riscritto a mano');
+  // 🆕 4/08 — le azioni che chiedono il diritto sono DUE: `cancel` (annulla) e `remove`
+  // (togli un giocatore). Si pretendono ENTRAMBE, con la stessa forma: se un domani una delle
+  // due smettesse di chiamare la funzione, l'altra terrebbe verde il caso e il buco resterebbe
+  // invisibile — che è esattamente il difetto che questo test esiste per impedire.
+  const chiamate = src.match(/dirittoDiAnnullare\((righeSlot|righe), nameVariants, esitoOmonimi\.omonimi\.length > 0\)/g) ?? [];
+  assert.equal(chiamate.length, 2,
+    'sia `cancel` sia `remove` devono chiedere il diritto a roster-slot.ts, passandogli righe, varianti E la risposta sugli omonimi');
+  assert.ok(/dirittoDiAnnullare\(righeSlot, nameVariants/.test(src), '`cancel` deve chiamare il diritto');
+  assert.ok(/dirittoDiAnnullare\(righe, nameVariants/.test(src), '`remove` deve chiamare il diritto');
+  assert.equal((src.match(/reason: diritto\.motivo/g) ?? []).length, 2,
+    'il motivo del rifiuto deve essere quello della funzione in tutt\'e due i rami, non uno riscritto a mano');
   // ⭐ Guardia anti-cieco: se un domani il file cambia nome o si svuota, questo test deve
   // FALLIRE dicendo perché, invece di passare confrontando due stringhe vuote.
   assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
@@ -652,8 +660,17 @@ test('39) IL COLLEGAMENTO degli omonimi: l\'edge li legge, e nel dubbio NON annu
   // annullare la partita di un altro. È lo stesso buco del caso 34, sulla riga nuova.
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
   assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
-  assert.ok(/const omonimi = altriOmonimiVivi\(member, candidatiOmonimia\)/.test(src),
+  assert.ok(/const omonimi = altriOmonimiVivi\(member, candidati\)/.test(src),
     'l\'edge deve chiedere gli omonimi alla funzione provata, non deciderlo per conto suo');
+  // 🆕 4/08 — la lettura è stata tirata fuori in `omonimiDelSocio`, un posto solo, il giorno in
+  // cui è servita anche a `remove`. Si pretende che sia UNA (una seconda copia divergerebbe) e
+  // che la chiamino ENTRAMBE le azioni che decidono su un gesto irreversibile.
+  assert.equal((src.match(/const omonimi = altriOmonimiVivi\(/g) ?? []).length, 1,
+    'la lettura degli omonimi deve stare in UN posto solo: due copie di una guardia divergono');
+  assert.ok(/await omonimiDelSocio\('cancel', 'non annullo'\)/.test(src),
+    '`cancel` deve passare dalla guardia condivisa');
+  assert.ok(/await omonimiDelSocio\('remove', 'non tolgo nessuno'\)/.test(src),
+    '`remove` deve passare dalla stessa guardia, e dire al socio la cosa giusta');
   // Il fail closed: se la lettura non riesce (errore o elenco troncato al limite) l'annullo
   // si ferma con un 503 e NON prosegue come se non ci fossero omonimi.
   assert.ok(/OMONIMI_NON_VERIFICABILI/.test(src),
@@ -665,6 +682,129 @@ test('39) IL COLLEGAMENTO degli omonimi: l\'edge li legge, e nel dubbio NON annu
   // qualcuno annulla la partita di un altro.
   assert.ok(/const nameVariants = variantiDelNome\(member\)/.test(src),
     'l\'edge deve usare le stesse varianti del nome che usa la guardia degli omonimi');
+});
+
+// ── ✏️ IL BERSAGLIO: chi si toglie dalla partita ──────────────────────────────
+// ⭐ Il diritto (36-39) dice «puoi». Questi dicono «puoi togliere PROPRIO QUESTO», che è
+// un'altra domanda: fra il momento in cui il bot disegna i nomi e il tocco del socio la
+// partita può essere cambiata, e il nome toccato può non esserci più — o esserci due volte.
+
+test('40) IL BERSAGLIO: si toglie chi è in campo, e torna il nome COME LO SCRIVE IL GESTIONALE', () => {
+  const roster = ['Andrea Foltran', 'Manuel Casagrande', 'Ospite'];
+  // Il socio tocca un bottone: quello che arriva è una stringa da fuori, e può essere scritta
+  // in un verso diverso da quello della ficha.
+  const e = bersaglioDaTogliere(roster, 'Andrea Foltran', 'casagrande manuel');
+  assert.equal(e.ok, true);
+  // 🚨 Il punto del caso: torna «Manuel Casagrande», la forma della FICHA, non quella arrivata.
+  // Il worker toglie confrontando la stringa esatta della scheda — rimandare indietro ciò che
+  // è arrivato farebbe fallire la rimozione, o riuscirla sulla riga sbagliata.
+  assert.equal(e.ok && e.nome, 'Manuel Casagrande');
+  assert.equal(e.ok && e.ospite, false);
+  // E gli accenti non contano, come dappertutto: decide `normName`.
+  const conAccento = bersaglioDaTogliere(['Niccolò Perù', 'Due Rossi'], 'Niccolò Perù', 'due rossi');
+  assert.equal(conAccento.ok && conAccento.nome, 'Due Rossi');
+});
+
+test('41) IL BERSAGLIO: chi non è (più) in campo → «non_in_partita», non un guasto', () => {
+  // 🚨 Il caso vero che questo difende: i bottoni di un messaggio già in chat sono FOTOGRAFIE.
+  // Il socio apre l'elenco, un compagno esce da solo, e quattro minuti dopo lui tocca il nome
+  // di chi non c'è più. Senza questo controllo si chiederebbe al worker di togliere un nome
+  // che nella ficha non esiste — e la risposta sarebbe un errore tecnico, non «riapri l'elenco».
+  const roster = ['Andrea Foltran', 'Manuel Casagrande'];
+  assert.equal(bersaglioDaTogliere(roster, 'Andrea Foltran', 'Lidia Comes').ok, false);
+  assert.equal(
+    (bersaglioDaTogliere(roster, 'Andrea Foltran', 'Lidia Comes') as { motivo: string }).motivo,
+    'non_in_partita');
+  // Fail closed: da fuori può arrivare qualunque cosa, e «vuoto» non è una persona.
+  assert.equal((bersaglioDaTogliere(roster, 'Andrea Foltran', '') as { motivo: string }).motivo, 'non_in_partita');
+  assert.equal((bersaglioDaTogliere(roster, 'Andrea Foltran', '   ') as { motivo: string }).motivo, 'non_in_partita');
+  // ⭐ Controllo negativo dello stesso giro: su un nome che c'è DAVVERO deve dire di sì —
+  // altrimenti questo caso passerebbe anche con una funzione che rifiuta sempre tutto.
+  assert.equal(bersaglioDaTogliere(roster, 'Andrea Foltran', 'Manuel Casagrande').ok, true);
+});
+
+test('42) IL BERSAGLIO: tre Ospite si tolgono uno alla volta, due OMONIMI veri no', () => {
+  // 🚨⭐⭐ La differenza è nel WORKER, verificata nel suo codice e non dedotta:
+  //  · l'Ospite si toglie a CONTEGGIO ⇒ chiederne uno ne toglie esattamente uno, e quale dei
+  //    tre sparisca non vuol dire niente: è un posto occupato, non una persona;
+  //  · una persona si toglie per NOME, e il ciclo ri-scandisce la ficha finché un nome
+  //    combacia ⇒ due omonimi in campo sparirebbero TUTT'E DUE, con un tocco solo.
+  const conOspiti = ['Sergio Dal Bianco', 'Ospite', 'Ospite', 'Ospite'];
+  const o = bersaglioDaTogliere(conOspiti, 'Sergio Dal Bianco', 'Ospite');
+  assert.equal(o.ok, true);
+  assert.equal(o.ok && o.ospite, true, 'l\'Ospite va riconosciuto come tale: dietro non c\'è nessuno da avvisare');
+
+  const conOmonimi = ['Andrea Foltran', 'Marco Rossi', 'Marco Rossi'];
+  const m = bersaglioDaTogliere(conOmonimi, 'Andrea Foltran', 'Marco Rossi');
+  assert.equal(m.ok, false);
+  assert.equal((m as { motivo: string }).motivo, 'omonimi_in_partita');
+  // ⭐ Controllo opposto, senza cui il caso sarebbe soddisfatto anche da «rifiuta i doppioni
+  // sempre»: nella STESSA partita l'altro giocatore, che è unico, si toglie eccome.
+  assert.equal(bersaglioDaTogliere(conOmonimi, 'Andrea Foltran', 'Andrea Foltran').ok, false);
+  assert.equal(bersaglioDaTogliere(['Andrea Foltran', 'Marco Rossi', 'Ospite'], 'Andrea Foltran', 'Marco Rossi').ok, true);
+});
+
+test('43) IL BERSAGLIO: l\'organizzatore non si toglie da sé, e l\'ORDINE dei controlli conta', () => {
+  const roster = ['Andrea Foltran', 'Manuel Casagrande'];
+  const sé = bersaglioDaTogliere(roster, 'Andrea Foltran', 'Andrea Foltran');
+  assert.equal(sé.ok, false);
+  // ⭐ Motivo suo e non un «non_in_partita» generico: per uscire lui c'è già `leave`, cioè il
+  // bottone «Esci», e il bot deve poterglielo dire invece di lasciarlo davanti a un no.
+  assert.equal((sé as { motivo: string }).motivo, 'e_l_organizzatore');
+  // Vale anche scritto al contrario: decide `normName`, non la stringa.
+  assert.equal((bersaglioDaTogliere(roster, 'Andrea Foltran', 'foltran andrea') as { motivo: string }).motivo,
+    'e_l_organizzatore');
+
+  // 🚨⭐⭐ L'ordine: in campo ci sono DUE persone che si chiamano come l'organizzatore. Il
+  // rifiuto giusto è «non so quale dei due», NON «per uscire usa Esci» — che manderebbe a fare
+  // una cosa diversa da quella chiesta. Gli omonimi si guardano prima.
+  const dueUguali = ['Marco Rossi', 'Marco Rossi', 'Ospite'];
+  assert.equal((bersaglioDaTogliere(dueUguali, 'Marco Rossi', 'Marco Rossi') as { motivo: string }).motivo,
+    'omonimi_in_partita');
+});
+
+test('44) IL COLLEGAMENTO di «remove»: l\'edge chiede il bersaglio, e allinea la copia SU DI LUI', () => {
+  // 🚨⭐⭐ Senza questo caso i quattro qui sopra resterebbero verdi mentre l'edge toglie il
+  // nome arrivato dalla richiesta senza guardarlo: è lo stesso buco dei casi 34 e 39, sulla
+  // riga nuova.
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+  assert.ok(/bersaglioDaTogliere\(esito\.roster, diritto\.organizzatore \?\? '', clean\(body\.giocatore\)\)/.test(src),
+    'l\'edge deve chiedere il bersaglio alla funzione provata, passandole il roster VERO e l\'organizzatore già deciso');
+  assert.ok(/reason: bersaglio\.motivo/.test(src),
+    'il motivo del rifiuto deve essere quello della funzione, non uno riscritto a mano');
+  assert.ok(/players: \{ remove: \[bersaglio\.nome\] \}/.test(src),
+    'al worker deve andare il nome scelto dalla guardia, non quello arrivato nella richiesta');
+  // 🚨⭐⭐ La riga che, sbagliata, farebbe il danno peggiore: la copia in app va allineata sulle
+  // varianti del BERSAGLIO. Con `nameVariants` toglierebbe dalla copia l'ORGANIZZATORE —
+  // lasciandoci dentro la persona che il gestionale ha davvero tolto, cioè due copie che
+  // raccontano l'opposto della verità, e nessun rosso da nessuna parte.
+  assert.ok(/allineaCopiaInApp\(copie, new Set\(\[normName\(bersaglio\.nome\)\]\)\)/.test(src),
+    'la copia in app si allinea sul bersaglio, MAI sulle varianti di chi ha chiesto');
+  // La lezione e il roster incoerente devono fermare anche questo ramo, non solo `leave`.
+  assert.ok(/remove roster INCOERENTE/.test(src), '`remove` deve fermarsi su un roster incoerente');
+
+  // 🚨⭐⭐ NATI DA DUE SABOTAGGI RIMASTI VERDI (misurati il 4/08, e questo è il loro valore).
+  // Togliendo `remove` dalle azioni ammesse, o togliendogli la prova a vuoto, la rete restava
+  // **tutta verde**: nel primo caso la funzione intera è morta e ogni tocco del socio torna
+  // «azione non ammessa»; nel secondo sparisce in silenzio l'unico modo di provare questo
+  // percorso senza scrivere sul sistema vero del circolo — e sparirebbe proprio dove serve di
+  // più, perché dal bot la rimozione è a SENSO UNICO.
+  assert.ok(/'cancel', 'leave', 'remove'/.test(src),
+    '`remove` deve stare fra le azioni ammesse, o la funzione è morta e nessuno se ne accorge');
+  assert.ok(/AZIONI_CON_PROVA_A_VUOTO = \[[^\]]*'remove'/.test(src),
+    '`remove` deve avere la prova a vuoto: è l\'unico modo di provarlo senza toccare il circolo');
+
+  // ⭐ E la guardia sulla LEZIONE si pretende DENTRO il ramo, non nel file: la stessa riga
+  // esiste identica in `leave`, quindi cercarla nel sorgente intero la troverebbe anche se da
+  // qui fosse sparita — un controllo che trova sé stesso altrove.
+  const ramo = src.match(/if \(action === 'remove'\) \{[\s\S]*?\n  \/\/ ── cancel ──/);
+  assert.ok(ramo && ramo[0].length > 2000,
+    'ramo «remove» non isolato: la prova sarebbe cieca');
+  assert.ok(/\/lezione\/i\.test\(b\.tipo\)/.test(ramo![0]),
+    'da una LEZIONE non si toglie nessuno dal bot: la guardia va DENTRO il ramo remove');
+  assert.ok(/rosterDelloSlot\(righe, GIOCATORI_PARTITA\)/.test(ramo![0]),
+    'il roster va ricomposto su TUTTE le righe dello slot, con la rete del «mai più di quattro»');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);

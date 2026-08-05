@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // alla funzione senza scrivere niente da nessuna parte (`roster-slot.test.ts`).
 import {
   altriOmonimiVivi,
+  bersaglioDaTogliere,
   clean,
   dirittoDiAnnullare,
   normName,
@@ -21,7 +22,7 @@ import {
 // E la COPIA IN APP dopo un'uscita sta in un terzo modulo, per la stessa ragione degli altri
 // due: TEST non contiene la forma del dato (zero righe `staff_booking` future, misurato il
 // 28/07), quindi l'unico modo di provarlo è dare i payload VERI di PROD a una funzione pura.
-import { allineaCopiaInApp } from './allinea-copia-app.ts';
+import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -82,6 +83,24 @@ import {
 //                 dentro lo rimetteva in campo alla lettura successiva. Esito in
 //                 `copia_in_app`, presente su OGNI risposta di `leave`, prova a vuoto
 //                 compresa.
+// - remove:       { member_id, data, ora, campo, giocatore } → TOGLIE UN ALTRO GIOCATORE
+//                 dalla partita, via lo stesso matchpoint-bookings-edit di `leave`. Terzo
+//                 potere dell'organizzatore (decisione del committente 30/07/2026).
+//                 🚨 Stessa scrittura di `leave`, PERMESSO diverso: passa solo chi ha
+//                 organizzato — `dirittoDiAnnullare`, la stessa funzione dell'annullo, perché
+//                 chi può far sparire il campo a tutti può togliere una persona sola. In più
+//                 c'è la guardia sul BERSAGLIO (`bersaglioDaTogliere`): il nome dev'essere in
+//                 campo, non può essere l'organizzatore stesso (per uscire lui c'è `leave`) e
+//                 se in partita ci sono due persone con lo stesso nome ci si ferma, perché il
+//                 worker le toglierebbe TUTT'E DUE.
+//                 🧪 `dry_run: true` → PROVA A VUOTO come le altre, e qui vale doppio: dal
+//                 bot l'operazione è a SENSO UNICO — rimettere una persona nella scheda il bot
+//                 non lo sa fare (`prenota` accetta solo data, ora e campo), quindi si ripara
+//                 solo passando dalla segreteria.
+//                 🚨 `removed` resta `false` sulla prova a vuoto. L'equivoco cade dalla parte
+//                 sicura, come per le altre.
+//                 🚨⭐ Anche qui le scritture sono DUE: dopo il gestionale si allinea la COPIA
+//                 IN APP, con le varianti del BERSAGLIO e non del socio che chiede.
 //
 // Identità: telefono → member con la STESSA ricetta di consumer-player-readmodel
 // (ultime 10 cifre su pmo_cloud_records/member). Nessun JWT consumer: gate =
@@ -116,6 +135,13 @@ const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: gri
 // soglie stanno nella kb): è la forma del gioco, come i 4 campi qui sopra.
 const GIOCATORI_PARTITA = 4;
 
+// 🪑 Il nome con cui il gestionale scrive un posto occupato da chi NON è cliente del circolo.
+// Misurato sui dati veri di PROD il 27/07/2026: scritto in **un solo modo**, «Ospite», 47
+// occorrenze su 47. ⚠️ Qui serve la forma ESATTA, con la maiuscola, perché è quella che si
+// manda al worker: `roster-slot.ts` ne tiene la versione normalizzata, che serve a
+// confrontare e non a scrivere.
+const OSPITE_MATCHPOINT = 'Ospite';
+
 // La nota che resta scritta SULLA PRENOTAZIONE, e che lo staff legge nel gestionale.
 // ⚠️ Fino al 28/07/2026 diceva «Prenotata via chat WhatsApp»: falso da quando WhatsApp è
 // stato smantellato, e fragile in partenza perché legava la nota al CANALE — la parte che
@@ -127,7 +153,7 @@ const NOTA_PRENOTAZIONE = "Prenotata dal socio con l'assistente";
 // 🧪 Dove esiste la prova a vuoto. È un elenco e non un `if` sparso perché il rifiuto qui
 // sotto è ciò che rende la prova AFFIDABILE: un'edge che non conosce un'azione risponde
 // «non ce l'ho» invece di ignorare il campo e scrivere per davvero.
-const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create', 'cancel'];
+const AZIONI_CON_PROVA_A_VUOTO = ['leave', 'create', 'cancel', 'remove', 'add'];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -198,7 +224,7 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel', 'leave'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
@@ -471,6 +497,68 @@ Deno.serve(async (req: Request) => {
   // degli omonimi usa per contare. Due elenchi scritti a mano in due posti divergono, e la
   // divergenza si vedrebbe solo il giorno in cui qualcuno annulla la partita di un altro.
   const nameVariants = variantiDelNome(member);
+
+  /**
+   * 👥 Il nome di questo socio è di UN'ALTRA persona viva in anagrafica?
+   *
+   * ⭐⭐ Sta in un posto solo, e da qui la chiamano `cancel` e `remove`. Nata dentro `cancel`
+   * il 3/08, è stata tirata fuori il 4/08 quando è servita anche a `remove`: ricopiarla
+   * sarebbe stato scriverne una seconda copia, e questa non è una comodità — è la lettura che
+   * decide se un gesto irreversibile passa. Due copie di una guardia divergono, e la
+   * divergenza si vedrebbe solo il giorno in cui una delle due lascia passare l'errore.
+   *
+   * 🚨 Fallisce CHIUSA: se l'anagrafica non si riesce a interrogare — o se l'elenco torna
+   * pieno fino al limite, cioè potenzialmente troncato — non si prosegue. Una guardia che nel
+   * dubbio dà via libera non è una guardia.
+   *
+   * @param nonFaccio come si chiama, al socio, la cosa che NON si farà. È l'unica differenza
+   *   fra i due usi: «non annullo» e «non tolgo nessuno» mandano a fare la stessa cosa
+   *   (chiedere in segreteria) ma raccontano l'azione giusta, e una frase che parla di
+   *   annullamento a chi stava togliendo un giocatore lo manderebbe a cercare un guasto che
+   *   non c'è.
+   */
+  const omonimiDelSocio = async (
+    azione: string,
+    nonFaccio: string,
+  ): Promise<{ ok: true; omonimi: string[] } | { ok: false; risposta: Response }> => {
+    const candidati: SchedaPerOmonimia[] = [];
+    // Due filtri grossolani perché il nome può stare in `name` oppure spezzato in
+    // `firstName`/`surname`: si uniscono, e a decidere è `altriOmonimiVivi`.
+    for (const f of [
+      clean(member.surname) ? { campo: 'payload->>surname', valore: clean(member.surname) } : null,
+      clean(member.name) ? { campo: 'payload->>name', valore: clean(member.name) } : null,
+    ]) {
+      if (!f) continue;
+      const { data, error } = await service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'member')
+        .not('deleted', 'is', true)
+        .ilike(f.campo, f.valore)
+        .limit(OMONIMI_LIMITE);
+      if (error || (data ?? []).length >= OMONIMI_LIMITE) {
+        console.error(`[booking-write] ${azione}: omonimi non verificabili su ${f.campo} →`,
+          error ? error.message : `elenco pieno al limite ${OMONIMI_LIMITE} (potrebbe essere troncato)`);
+        return {
+          ok: false,
+          risposta: err(503, 'OMONIMI_NON_VERIFICABILI',
+            `Non riesco a verificare in anagrafica che la partita sia tua: per sicurezza ${nonFaccio}. Riprova, o chiedi in segreteria.`),
+        };
+      }
+      for (const row of data ?? []) {
+        const p = (row.payload ?? {}) as JsonMap;
+        candidati.push({
+          id: clean(p.id), name: clean(p.name),
+          firstName: clean(p.firstName), surname: clean(p.surname), active: p.active,
+        });
+      }
+    }
+    const omonimi = altriOmonimiVivi(member, candidati);
+    if (omonimi.length) {
+      console.log(`[booking-write] ${azione}: "${member.name}" ha ${omonimi.length} omonimo/i vivo/i in anagrafica`);
+    }
+    return { ok: true, omonimi };
+  };
 
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
@@ -760,6 +848,482 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ── remove ────────────────────────────────────────────────────────────────
+  // ✏️ TOGLIERE UN ALTRO GIOCATORE — terzo potere dell'organizzatore (decisione del
+  // committente 30/07/2026, ripresa il 4/08: «può togliere chiunque»).
+  //
+  // 🚨⭐⭐ È la stessa SCRITTURA di `leave` — `matchpoint-bookings-edit` con
+  // `players.remove` — e un diverso PERMESSO. Perciò il ramo è modellato riga per riga su
+  // quello dell'uscita e ne riusa le stesse funzioni: il roster ricomposto su tutte le righe
+  // dello slot, la rete del «mai più di quattro», l'allineamento della copia in app. Scriverne
+  // una versione «simile» avrebbe voluto dire due percorsi che divergono in silenzio, e uno
+  // dei due provato la metà.
+  // 🚨 La differenza che conta, ed è dichiarata: qui il nome tolto **non è il nome di chi
+  // chiede**. Ogni posto in cui `leave` usa `nameVariants` per sapere cosa togliere, qui usa
+  // il BERSAGLIO — e i due non vanno mai confusi, perché confonderli farebbe uscire
+  // l'organizzatore al posto della persona che voleva togliere.
+  if (action === 'remove') {
+    const prova = dryRun ? { dry_run: true } : {};
+    const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    if (!righe.length) {
+      return ok({ member: { id: member.id, name: member.name }, removed: false, reason: 'booking_not_found', ...prova });
+    }
+    // Gemello del cancello di `leave` e di `cancel`: da una LEZIONE non si toglie nessuno dal
+    // bot (il maestro e la segreteria vanno avvisati). Il bot già non mostra il bottone; qui
+    // ci si difende dal bot sbagliato — che è il motivo per cui la guardia sta nell'edge.
+    if (righe.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, removed: false, reason: 'non_e_una_partita', ...prova });
+    }
+    const esito = rosterDelloSlot(righe, GIOCATORI_PARTITA);
+    if (esito.incoerente) {
+      console.error(`[booking-write] remove roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi su ${righe.length} righe, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        reason: 'roster_incoerente',
+        giocatori: esito.unione.size,
+        ...prova,
+      });
+    }
+    // Proprietà, prima di ogni altra cosa: di una partita che non è sua al socio non si dice
+    // niente — nemmeno che tipo di prenotazione sia. Stessa scelta di `cancel`.
+    const mioNome = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    if (!mioNome) {
+      if (sostituito(esito, nameVariants)) {
+        return ok({ member: { id: member.id, name: member.name }, removed: false, reason: 'non_piu_in_partita', ...prova });
+      }
+      return ok({ member: { id: member.id, name: member.name }, removed: false, reason: 'booking_not_found', ...prova });
+    }
+
+    // 👥 Il nome di chi chiede è di più persone al circolo? Si guarda PRIMA di decidere, e se
+    // non si riesce a rispondere ci si ferma: qui l'errore non si annulla con un tocco — il
+    // bot non sa rimettere una persona nella scheda (`prenota` accetta solo data, ora e campo).
+    const esitoOmonimi = await omonimiDelSocio('remove', 'non tolgo nessuno');
+    if (!esitoOmonimi.ok) return esitoOmonimi.risposta;
+    // 🚨⭐⭐ IL DIRITTO È LO STESSO DELL'ANNULLO, e si chiama la stessa funzione: chi può far
+    // sparire il campo a tutti e tre può a maggior ragione togliere una persona sola. Una
+    // seconda regola gemella qui sarebbe la strada per cui i test restano verdi mentre il
+    // comportamento cambia — un test sorveglia proprio che questo ramo la chiami.
+    const diritto = dirittoDiAnnullare(righe, nameVariants, esitoOmonimi.omonimi.length > 0);
+    if (!diritto.permesso) {
+      // ⭐ Gli stessi tre motivi distinti di `cancel`, e per la stessa ragione: mandano il
+      // socio a fare tre cose diverse. 🚨 Il nome dell'organizzatore NON esce da qui: chi non
+      // ha il diritto non ha bisogno di sapere chi ce l'ha.
+      console.log(`[booking-write] remove rifiutato ${slot.data} ${slot.ora} C${campo}: in ${esito.roster.length}, ${diritto.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        reason: diritto.motivo,
+        giocatori: esito.roster.length,
+        ...prova,
+      });
+    }
+
+    // 🚨⭐⭐ E ADESSO IL BERSAGLIO, che è la domanda che l'annullo non si pone: il diritto dice
+    // «puoi», questa dice «puoi togliere PROPRIO QUESTO». Il perché di ognuno dei tre rifiuti,
+    // e la trappola del worker sugli omonimi in campo, stanno in `roster-slot.ts`.
+    const bersaglio = bersaglioDaTogliere(esito.roster, diritto.organizzatore ?? '', clean(body.giocatore));
+    if (!bersaglio.ok) {
+      console.log(`[booking-write] remove rifiutato ${slot.data} ${slot.ora} C${campo}: bersaglio «${clean(body.giocatore)}» → ${bersaglio.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        reason: bersaglio.motivo,
+        giocatori: esito.roster.length,
+        // ⭐ Chi c'è in campo ADESSO, secondo la lettura che ha deciso l'esito. Su
+        // `non_in_partita` è la sola cosa utile che si possa dire: il bot ci ridisegna
+        // l'elenco fresco invece di lasciare il socio davanti a un «no» senza strada.
+        roster: [...esito.roster],
+        ...prova,
+      });
+    }
+
+    // ⭐ Come in `leave`, l'allineamento della copia in app si calcola PRIMA del bivio, così la
+    // prova a vuoto mostra esattamente ciò che poi verrà scritto.
+    // 🚨 Le varianti sono quelle del BERSAGLIO, non del socio che chiede: passare
+    // `nameVariants` qui toglierebbe dalla copia in app la persona sbagliata — l'organizzatore
+    // — lasciando dentro quella che il gestionale ha davvero tolto.
+    const copie = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
+    const allineamento = allineaCopiaInApp(copie, new Set([normName(bersaglio.nome)]));
+
+    if (dryRun) {
+      console.log(`[booking-write] remove PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: ${member.name} toglierebbe ${bersaglio.nome} (in ${esito.roster.length}, su ${righe.length} righe)`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        dry_run: true,
+        would: {
+          remove: bersaglio.nome,
+          ospite: bersaglio.ospite,
+          slot: { data: slot.data, ora: slot.ora, campo },
+          giocatori_prima: esito.roster.length,
+          restano: esito.roster.length - 1,
+          righe: righe.length,
+          roster: [...esito.roster],
+          fonte: esito.fonte,
+          sommando_le_righe: esito.unione.size,
+          id_reserva: righe[0]?.idReserva || null,
+          // ⭐ Per quale diritto: qui è sempre «organizzatore» — non esiste un'altra strada per
+          // togliere qualcuno — ma scriverlo rende la prova leggibile accanto a quelle di
+          // `cancel`, dove invece le strade sono due.
+          come: 'organizzatore',
+          organizzatore: diritto.organizzatore,
+          copia_in_app: {
+            ...allineamento.conteggi,
+            righe_dettaglio: allineamento.righe.map((r) => ({
+              id: r.id, stato: r.stato, prima: r.prima, dopo: r.dopo,
+              da_giocatori: r.da_giocatori, da_nome: r.da_nome,
+            })),
+          },
+        },
+      });
+    }
+
+    const resRemove = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+      method: 'POST',
+      headers: internalHeaders,
+      body: JSON.stringify({
+        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+        campo,
+        data: slot.data,
+        ora: slot.ora,
+        players: { remove: [bersaglio.nome] },
+      }),
+    });
+    const dataRemove = await resRemove.json().catch(() => null) as JsonMap | null;
+    if (!resRemove.ok || !dataRemove?.ok) {
+      console.error(`[booking-write] remove KO HTTP ${resRemove.status}:`, JSON.stringify(dataRemove).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        reason: 'worker_error',
+        detail: clean(dataRemove?.message ?? dataRemove?.error ?? `HTTP ${resRemove.status}`).slice(0, 200),
+      });
+    }
+    // Seconda scrittura, identica a quella di `leave` e per lo stesso motivo: senza, i ponti
+    // sommano le due copie e rimettono in campo chi è stato tolto. ⭐ Best effort col verso
+    // giusto: qui la rimozione È GIÀ RIUSCITA, quindi si torna `removed: true` anche se questo
+    // passo fallisce — dire «non l'ho tolto» a chi l'ha tolto lo manderebbe a rifarlo.
+    const copiaEsito: JsonMap = { ...allineamento.conteggi };
+    if (allineamento.daScrivere.length) {
+      try {
+        const adesso = new Date().toISOString();
+        const esiti = await Promise.all(allineamento.daScrivere.map((r) =>
+          service.from('pmo_cloud_records')
+            .update({ payload: r.payload, updated_at: adesso })
+            .eq('id', r.id)));
+        const rotte = esiti.filter((e) => e.error);
+        if (rotte.length) {
+          copiaEsito.errore = clean(rotte[0].error?.message ?? 'UPDATE fallito').slice(0, 200);
+          copiaEsito.scritte = allineamento.daScrivere.length - rotte.length;
+          console.error(`[booking-write] remove copia in app KO ${slot.data} ${slot.ora} C${campo}: ${rotte.length} righe su ${allineamento.daScrivere.length} non riscritte → ${copiaEsito.errore}`);
+        } else {
+          console.log(`[booking-write] remove copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${allineamento.daScrivere.length} righe, tolto ${bersaglio.nome}`);
+        }
+      } catch (e) {
+        copiaEsito.errore = clean((e as Error)?.message ?? 'errore').slice(0, 200);
+        console.error(`[booking-write] remove copia in app KO ${slot.data} ${slot.ora} C${campo}:`, copiaEsito.errore);
+      }
+    } else if (allineamento.conteggi.non_svuotate) {
+      console.warn(`[booking-write] remove copia in app NON svuotata ${slot.data} ${slot.ora} C${campo}: ${allineamento.conteggi.non_svuotate} righe resterebbero senza nessuno`);
+    }
+
+    console.log(`[booking-write] remove OK ${slot.data} ${slot.ora} C${campo}: ${member.name} toglie ${bersaglio.nome} (erano in ${esito.roster.length})`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      removed: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      // ⭐ CHI è stato tolto, come lo scrive il gestionale: al bot serve per dire la frase
+      // giusta e per sapere a chi mandare l'avviso. `ospite` distingue il posto occupato dalla
+      // persona: dietro un Ospite non c'è nessuno da avvisare.
+      rimosso: bersaglio.nome,
+      ospite: bersaglio.ospite,
+      giocatori_prima: esito.roster.length,
+      restano: esito.roster.length - 1,
+      copia_in_app: copiaEsito,
+    });
+  }
+
+  // ── add ───────────────────────────────────────────────────────────────────
+  // 🆕 5/08/2026 — IL PEZZO SENZA CUI L'INVITO NON ATTERRA. Fino a oggi questo ponte sapeva
+  // creare, uscire, togliere e annullare: sapeva **svuotare** un campo e non riempirlo. Il
+  // progetto del committente — «l'organizzatore forma la sua partita» — poggia tutto qui.
+  //
+  // 🚨⭐⭐ CHI CHIEDE È L'ORGANIZZATORE, non chi entra. Il diritto è lo STESSO di `remove` e di
+  // `cancel`, e si chiama la stessa funzione: chi può far sparire il campo a tutti e tre può a
+  // maggior ragione farci entrare un quarto. L'invito vive nel database del BOT — questo ponte
+  // non lo vede e non deve vederlo: qui si controlla solo che chi chiede abbia il diritto di
+  // toccare quel roster.
+  //
+  // ⚖️ E la differenza con `remove`, che è il motivo per cui non si è potuto riusare il suo
+  // corpo: là il bersaglio è una persona GIÀ nel roster e si ritrova per nome; qui è una
+  // persona che nel roster non c'è, e l'unica domanda è se **ci sta**.
+  if (action === 'add') {
+    const prova = dryRun ? { dry_run: true } : {};
+
+    // 🚨⭐⭐ CHI ENTRA ARRIVA COME NUMERO DI SCHEDA DELLA NOSTRA APP, e qui lo si risolve
+    // sull'anagrafica NOSTRA. Direttiva ferma del committente (26/07/2026): il bot parla con
+    // il gestionale, non con Matchpoint — quindi non gli si fa mandare né il nome come lo
+    // scrive la scheda del circolo né il codice cliente. Quelle due cose vivono di qua.
+    // ⭐ È anche più solido: un nome mandato dal bot dovrebbe combaciare con la grafia della
+    // scheda, e le due divergono («Nome Cognome» / «Cognome Nome»).
+    const idDaAggiungere = clean(body.giocatore_id);
+    if (!idDaAggiungere) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_mancante', ...prova });
+    }
+    const { data: schede, error: schedaErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .not('deleted', 'is', true)
+      .eq('payload->>id', idDaAggiungere)
+      .limit(2);
+    if (schedaErr) {
+      console.error('[booking-write] add: errore lettura anagrafica:', schedaErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
+    }
+    // 🚨 Zero o più di una ⇒ non si scrive. Una scheda sola è la condizione perché «questa
+    // persona» voglia dire qualcosa: con due, mettere in campo la sbagliata non si torna
+    // indietro — il bot sa aggiungere e togliere, non sa rimediare a un'identità scambiata.
+    if (!schede || schede.length !== 1) {
+      console.warn(`[booking-write] add: ${schede?.length ?? 0} schede per id ${idDaAggiungere}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        reason: (schede?.length ?? 0) > 1 ? 'giocatore_ambiguo' : 'giocatore_sconosciuto',
+        ...prova,
+      });
+    }
+    const schedaOspite = (schede[0].payload ?? {}) as JsonMap;
+    const nomeDaAggiungere = clean(schedaOspite.name)
+      || [clean(schedaOspite.firstName), clean(schedaOspite.surname)].filter(Boolean).join(' ');
+    // 🚨⭐⭐ IL CODICE DEL CIRCOLO DECIDE **CON CHE NOME** SI ENTRA IN CAMPO.
+    // Il gestionale aggancia i giocatori dall'elenco clienti del circolo: chi lì non c'è non
+    // si può agganciare, e l'aggiunta fallirebbe. 📊 Non ha quel codice il 62% dei soci
+    // (1.722 su 2.789) ⇒ è il caso NORMALE, non quello raro.
+    // ⇒ Chi non ce l'ha entra come **«Ospite»**, che è la decisione del committente del 30/07
+    // per l'invitato non ancora cliente: il posto è preso davvero, il nome sulla scheda no.
+    // 🚨 Solo le CIFRE valgono come codice del circolo: in `memberId` l'app scrive anche i
+    // suoi «PMO-000000», che sono NOSTRI e al circolo non esistono. Passarne uno vorrebbe dire
+    // cercare nell'elenco clienti una persona che là non c'è — e credere di aver mandato un
+    // socio mentre non si aggancia nessuno. È la stessa distinzione che il readmodel fa già.
+    const codiceGrezzo = clean(schedaOspite.memberId);
+    const codiceDaAggiungere = /^[0-9]{4,6}$/.test(codiceGrezzo) ? codiceGrezzo : '';
+    const nomeSullaScheda = codiceDaAggiungere ? nomeDaAggiungere : OSPITE_MATCHPOINT;
+    if (!nomeDaAggiungere && codiceDaAggiungere) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_senza_nome', ...prova });
+    }
+
+    const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    if (!righe.length) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
+    }
+    // Gemello del cancello di `leave`, `cancel` e `remove`: a una LEZIONE non si aggiunge
+    // nessuno dal bot — i posti li decide il maestro. Il bot già non mostra il bottone; qui ci
+    // si difende dal bot sbagliato, che è il motivo per cui la guardia sta nell'edge.
+    if (righe.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_e_una_partita', ...prova });
+    }
+
+    const esito = rosterDelloSlot(righe, GIOCATORI_PARTITA);
+    if (esito.incoerente) {
+      console.error(`[booking-write] add roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esito.unione.size} nomi su ${righe.length} righe, e la scheda del circolo non ne dà ${GIOCATORI_PARTITA}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'roster_incoerente', giocatori: esito.unione.size, ...prova,
+      });
+    }
+
+    // Proprietà prima di ogni altra cosa, come in `remove`: di una partita che non è sua al
+    // socio non si dice niente, nemmeno che tipo di prenotazione sia.
+    const mioNomeAdd = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    if (!mioNomeAdd) {
+      if (sostituito(esito, nameVariants)) {
+        return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_piu_in_partita', ...prova });
+      }
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
+    }
+
+    const esitoOmonimiAdd = await omonimiDelSocio('add', 'non aggiungo nessuno');
+    if (!esitoOmonimiAdd.ok) return esitoOmonimiAdd.risposta;
+    const dirittoAdd = dirittoDiAnnullare(righe, nameVariants, esitoOmonimiAdd.omonimi.length > 0);
+    if (!dirittoAdd.permesso) {
+      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: in ${esito.roster.length}, ${dirittoAdd.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: dirittoAdd.motivo, giocatori: esito.roster.length, ...prova,
+      });
+    }
+
+    // 🚨⭐⭐ IL POSTO C'È? È la domanda che le altre azioni non si pongono, ed è l'unica
+    // barriera fra un invito accettato e un campo da CINQUE. Si conta sul roster riletto
+    // adesso, non su quello che il bot aveva in mano quando ha mandato l'invito: fra le due
+    // cose possono essere passati giorni.
+    if (esito.roster.length >= GIOCATORI_PARTITA) {
+      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: già in ${esito.roster.length}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'al_completo', giocatori: esito.roster.length, ...prova,
+      });
+    }
+    // C'è già? Non è un errore da raccontare come guasto: è la corsa vinta due volte, o un
+    // secondo tocco sullo stesso bottone. Chi legge deve dire «ci sei già», non «non entri».
+    if (esito.roster.some((n) => normName(n) === normName(nomeDaAggiungere))) {
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false, reason: 'gia_in_partita', giocatori: esito.roster.length, ...prova,
+      });
+    }
+
+    // ⭐ Come in `leave` e `remove`, la copia in app si calcola PRIMA del bivio, così la prova
+    // a vuoto mostra esattamente ciò che poi verrà scritto.
+    const copieAdd = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
+    // ⚠️ Nella copia va il nome che finisce SULLA SCHEDA, non quello della persona: se entra
+    // come «Ospite», scrivere il suo nome vero farebbe contare due persone diverse alla
+    // prossima sincronizzazione — una nella nostra copia e una nella scheda del circolo.
+    const aggiuntaCopia = aggiungiACopiaInApp(copieAdd, nomeSullaScheda);
+
+    if (dryRun) {
+      console.log(`[booking-write] add PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: ${member.name} farebbe entrare ${nomeDaAggiungere} (in ${esito.roster.length}, su ${righe.length} righe)`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        dry_run: true,
+        would: {
+          add: nomeDaAggiungere,
+          // ⭐ Il nome che finirebbe SULLA SCHEDA, che può non essere quello della persona.
+          // È la riga più importante della prova a vuoto: dice se il circolo saprà chi è.
+          sulla_scheda: nomeSullaScheda,
+          codice: codiceDaAggiungere || null,
+          come: codiceDaAggiungere ? 'socio' : 'ospite',
+          slot: { data: slot.data, ora: slot.ora, campo },
+          giocatori_prima: esito.roster.length,
+          giocatori_dopo: esito.roster.length + 1,
+          righe: righe.length,
+          roster: [...esito.roster],
+          fonte: esito.fonte,
+          sommando_le_righe: esito.unione.size,
+          id_reserva: righe[0]?.idReserva || null,
+          organizzatore: dirittoAdd.organizzatore,
+          copia_in_app: {
+            ...aggiuntaCopia.conteggi,
+            righe_dettaglio: aggiuntaCopia.righe.map((r) => ({
+              id: r.id, stato: r.stato, prima: r.prima, dopo: r.dopo,
+            })),
+          },
+        },
+      });
+    }
+
+    const resAdd = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+      method: 'POST',
+      headers: internalHeaders,
+      body: JSON.stringify({
+        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+        campo,
+        data: slot.data,
+        ora: slot.ora,
+        players: {
+          add: [{
+            nome: nomeSullaScheda,
+            ...(codiceDaAggiungere ? { codice: codiceDaAggiungere } : {}),
+          }],
+        },
+      }),
+    });
+    const dataAdd = await resAdd.json().catch(() => null) as JsonMap | null;
+    if (!resAdd.ok || !dataAdd?.ok) {
+      console.error(`[booking-write] add KO HTTP ${resAdd.status}:`, JSON.stringify(dataAdd).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        reason: 'worker_error',
+        detail: clean(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`).slice(0, 200),
+      });
+    }
+
+    // 🚨⭐⭐ «OK» DEL WORKER NON VUOL DIRE «È ENTRATO», ed è il difetto #624 in persona: là un
+    // codice cliente scambiato per un id interno faceva rispondere «✅ confermato» a fronte di
+    // un giocatore che in campo non c'era. La lezione che ne era rimasta è **misura che il
+    // DATO sia arrivato**, non che la chiamata sia andata bene.
+    //
+    // ⇒ La prova è `partecipantiFinali`: il roster **riletto dalla scheda del circolo** DOPO
+    // la modifica. Non è una nostra deduzione, è ciò che c'è scritto là.
+    // ⚠️ Si conta e non si cerca il nome: chi entra come «Ospite» non porta il proprio nome, e
+    // un controllo sul nome direbbe «non entrato» proprio nel caso più frequente.
+    const workerAdd = (dataAdd?.worker ?? null) as JsonMap | null;
+    const finali = Array.isArray(workerAdd?.partecipantiFinali)
+      ? (workerAdd.partecipantiFinali as JsonMap[])
+      : null;
+    if (finali) {
+      if (finali.length <= esito.roster.length) {
+        console.error(`[booking-write] add NON AGGANCIATO ${slot.data} ${slot.ora} C${campo}: ${nomeSullaScheda} — la scheda ne conta ${finali.length}, erano ${esito.roster.length}`);
+        return ok({
+          member: { id: member.id, name: member.name },
+          added: false,
+          reason: 'non_agganciato',
+          detail: `la scheda del circolo conta ${finali.length} giocatori, erano ${esito.roster.length}`,
+          giocatori: finali.length,
+        });
+      }
+    } else {
+      // ⚠️ Niente roster riletto ⇒ non si può dire né sì né no da qui. Si prosegue (l'HTTP è
+      // andato bene) ma resta scritto: «non ho misurato» e «ho misurato che va bene» sono due
+      // cose diverse, e confonderle è ciò che è costato il #624.
+      console.warn(`[booking-write] add: il worker non ha rimandato il roster ${slot.data} ${slot.ora} C${campo} — esito non verificabile da qui`);
+    }
+
+    // Seconda scrittura, gemella di quella di `leave` e `remove` e per la ragione opposta:
+    // là senza questo passo i ponti rimettevano in campo chi era uscito, qui senza questo
+    // passo continuerebbero a vedere un posto libero che non c'è più — e un secondo invitato
+    // entrerebbe quinto. ⭐ Best effort col verso giusto: l'aggiunta È GIÀ RIUSCITA, quindi si
+    // torna `added: true` anche se questo passo fallisce.
+    const copiaEsitoAdd: JsonMap = { ...aggiuntaCopia.conteggi };
+    if (aggiuntaCopia.daScrivere.length) {
+      try {
+        const adesso = new Date().toISOString();
+        const esiti = await Promise.all(aggiuntaCopia.daScrivere.map((r) =>
+          service.from('pmo_cloud_records')
+            .update({ payload: r.payload, updated_at: adesso })
+            .eq('id', r.id)));
+        const rotte = esiti.filter((e) => e.error);
+        if (rotte.length) {
+          copiaEsitoAdd.errore = clean(rotte[0].error?.message ?? 'UPDATE fallito').slice(0, 200);
+          copiaEsitoAdd.scritte = aggiuntaCopia.daScrivere.length - rotte.length;
+          console.error(`[booking-write] add copia in app KO ${slot.data} ${slot.ora} C${campo}: ${rotte.length} righe su ${aggiuntaCopia.daScrivere.length} non riscritte → ${copiaEsitoAdd.errore}`);
+        } else {
+          console.log(`[booking-write] add copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${aggiuntaCopia.daScrivere.length} righe, entrato ${nomeDaAggiungere}`);
+        }
+      } catch (e) {
+        copiaEsitoAdd.errore = clean((e as Error)?.message ?? 'errore').slice(0, 200);
+        console.error(`[booking-write] add copia in app KO ${slot.data} ${slot.ora} C${campo}:`, copiaEsitoAdd.errore);
+      }
+    } else {
+      // 🚨 Dichiarato e non nascosto: nessuna riga della copia porta un elenco `giocatori` su
+      // cui scrivere ⇒ per ~2 minuti questo ponte continuerà a vedere un posto libero in più.
+      // Chi legge i registri deve poter riconoscere questa finestra quando succede.
+      console.warn(`[booking-write] add: nessuna copia in app da allineare ${slot.data} ${slot.ora} C${campo} — il conteggio resta indietro fino al prossimo giro di sincronizzazione`);
+    }
+
+    console.log(`[booking-write] add OK ${slot.data} ${slot.ora} C${campo}: ${member.name} fa entrare ${nomeSullaScheda}${codiceDaAggiungere ? '' : ` (per ${nomeDaAggiungere}, senza codice)`} — erano in ${esito.roster.length}`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      added: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      // ⭐ Chi è entrato è la PERSONA, e il bot deve poterle parlare col suo nome. `ospite`
+      // dice l'altra metà della verità: sulla scheda del circolo il suo nome NON compare.
+      entrato: nomeDaAggiungere,
+      sulla_scheda: nomeSullaScheda,
+      ospite: !codiceDaAggiungere,
+      giocatori_prima: esito.roster.length,
+      // ⭐ Il conto che si racconta è quello RILETTO dalla scheda quando c'è: un «+1» calcolato
+      // da noi sarebbe di nuovo una deduzione, che è esattamente ciò che il #624 ha insegnato
+      // a non fare.
+      giocatori_dopo: finali ? finali.length : esito.roster.length + 1,
+      copia_in_app: copiaEsitoAdd,
+    });
+  }
+
   // ── cancel ────────────────────────────────────────────────────────────────
   // 🧪 Come per `leave` e `create`: acceso l'interruttore, la prova a vuoto si rimanda
   // indietro su OGNI risposta di `cancel`. Se non torna, la richiesta è arrivata a una
@@ -832,40 +1396,11 @@ Deno.serve(async (req: Request) => {
     // 🚨⭐⭐ E se la risposta non si riesce a dare, l'annullo si FERMA: qui l'errore è
     // irreversibile — toglie il campo a qualcun altro — quindi «non lo so» deve valere «no».
     // Una guardia che nel dubbio dà via libera non è una guardia.
-    const candidatiOmonimia: SchedaPerOmonimia[] = [];
-    // Due filtri grossolani perché il nome può stare in `name` oppure spezzato in
-    // `firstName`/`surname`: si uniscono, e a decidere è `altriOmonimiVivi`.
-    for (const f of [
-      clean(member.surname) ? { campo: 'payload->>surname', valore: clean(member.surname) } : null,
-      clean(member.name) ? { campo: 'payload->>name', valore: clean(member.name) } : null,
-    ]) {
-      if (!f) continue;
-      const { data, error } = await service
-        .from('pmo_cloud_records')
-        .select('payload')
-        .eq('record_type', 'member')
-        .not('deleted', 'is', true)
-        .ilike(f.campo, f.valore)
-        .limit(OMONIMI_LIMITE);
-      if (error || (data ?? []).length >= OMONIMI_LIMITE) {
-        console.error(`[booking-write] cancel: omonimi non verificabili su ${f.campo} →`,
-          error ? error.message : `elenco pieno al limite ${OMONIMI_LIMITE} (potrebbe essere troncato)`);
-        return err(503, 'OMONIMI_NON_VERIFICABILI',
-          'Non riesco a verificare in anagrafica che la partita sia tua: per sicurezza non annullo. Riprova, o chiedi in segreteria.');
-      }
-      for (const row of data ?? []) {
-        const p = (row.payload ?? {}) as JsonMap;
-        candidatiOmonimia.push({
-          id: clean(p.id), name: clean(p.name),
-          firstName: clean(p.firstName), surname: clean(p.surname), active: p.active,
-        });
-      }
-    }
-    const omonimi = altriOmonimiVivi(member, candidatiOmonimia);
-    if (omonimi.length) {
-      console.log(`[booking-write] cancel: "${member.name}" ha ${omonimi.length} omonimo/i vivo/i in anagrafica`);
-    }
-    const diritto = dirittoDiAnnullare(righeSlot, nameVariants, omonimi.length > 0);
+    // ⭐ La lettura sta in `omonimiDelSocio`, un posto solo, condiviso con `remove`: era qui
+    // dentro fino al 4/08, ed è stata tirata fuori il giorno in cui è servita a due azioni.
+    const esitoOmonimi = await omonimiDelSocio('cancel', 'non annullo');
+    if (!esitoOmonimi.ok) return esitoOmonimi.risposta;
+    const diritto = dirittoDiAnnullare(righeSlot, nameVariants, esitoOmonimi.omonimi.length > 0);
     if (!diritto.permesso) {
       // ⭐ Tre motivi distinti, perché al socio si devono tre risposte diverse:
       // `non_sei_organizzatore` ha una strada (uscire), `organizzatore_ignoto` no (segreteria),

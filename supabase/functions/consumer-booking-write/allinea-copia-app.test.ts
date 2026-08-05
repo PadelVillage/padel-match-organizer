@@ -7,7 +7,7 @@
 // (l'ultima è del 25/07), quindi una prova fatta di là non toccherebbe mai questo percorso e
 // passerebbe. Stessa ragione per cui esiste `roster-slot.test.ts`.
 import assert from 'node:assert/strict';
-import { allineaCopiaInApp, type RigaCopiaInApp } from './allinea-copia-app.ts';
+import { aggiungiACopiaInApp, allineaCopiaInApp, type RigaCopiaInApp } from './allinea-copia-app.ts';
 import { normName } from './roster-slot.ts';
 
 let passed = 0;
@@ -244,6 +244,88 @@ test('14) una riga senza `giocatori` e senza `nome` non si scrive', () => {
   const a = allineaCopiaInApp([riga('vuota', { campo: '1', data: '2026-08-01', ora: '10:00' })], APREA);
   assert.equal(a.conteggi.invariate, 1);
   assert.equal(a.daScrivere.length, 0);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// L'ALTRO VERSO: qualcuno ENTRA (`aggiungiACopiaInApp`) — 5/08/2026, con l'invito alla partita
+// ══════════════════════════════════════════════════════════════════════════════════════════
+//
+// 🚨 Perché questi casi contano più di quanto sembri: se questa funzione non scrive, il ponte
+// per ~2 minuti continua a vedere un posto libero che non c'è più, e un SECONDO invitato che
+// tocca «Ci sto» entra quinto. È un difetto che non dà nessun errore — tutte le letture, prese
+// una per una, sono giuste.
+
+test('15) chi entra finisce IN CODA a `giocatori`, e le altre chiavi restano', () => {
+  const a = aggiungiACopiaInApp([riga('r1', {
+    campo: '3', data: '2026-08-08', ora: '18:30', nota: 'non toccarmi',
+    giocatori: [{ nome: 'Maurizio Aprea' }, 'Lidia Comes'],
+  })], 'Nicola Stella');
+  assert.equal(a.conteggi.aggiunte, 1);
+  const p = a.daScrivere[0].payload;
+  assert.deepEqual(p.giocatori, [{ nome: 'Maurizio Aprea' }, 'Lidia Comes', 'Nicola Stella']);
+  // ⭐ IN CODA e non in testa: l'ordine della scheda è la cronologia degli ingressi, ed è da
+  // lì che si legge chi ha organizzato. In testa, chi entra diventerebbe l'organizzatore
+  // della partita di qualcun altro — e nessuno se ne accorgerebbe, perché il conteggio dei
+  // posti sarebbe giusto lo stesso.
+  const dopo = p.giocatori as unknown[];
+  assert.equal(dopo[dopo.length - 1], 'Nicola Stella', 'chi entra deve stare IN FONDO');
+  assert.deepEqual(dopo[0], { nome: 'Maurizio Aprea' }, 'il primo — l\'organizzatore — non si sposta');
+  assert.equal(p.nota, 'non toccarmi');
+  assert.equal(p.campo, '3');
+});
+
+test('16) 🚨 `nome` NON si tocca mai: è troncato, e a volte non è un roster', () => {
+  const a = aggiungiACopiaInApp([riga('r2', {
+    nome: 'Aldo Bianchi, Bruna Conti, Nicola St',
+    giocatori: [{ nome: 'Aldo Bianchi' }],
+  })], 'Lidia Comes');
+  assert.equal(a.conteggi.aggiunte, 1);
+  assert.equal(a.daScrivere[0].payload.nome, 'Aldo Bianchi, Bruna Conti, Nicola St');
+});
+
+test('17) il nome che c\'è già NON si ripete — anche scritto con altre maiuscole/accenti', () => {
+  const a = aggiungiACopiaInApp([riga('r3', {
+    giocatori: [{ nome: 'Niccolò Àbbate' }, 'Lidia Comes'],
+  })], 'niccolo abbate');
+  assert.equal(a.conteggi.c_era_gia, 1);
+  assert.equal(a.conteggi.aggiunte, 0);
+  assert.deepEqual(a.daScrivere, []);
+});
+
+test('18) una riga SENZA elenco `giocatori` resta invariata (e non se ne inventa uno)', () => {
+  // 🚨 È il caso in cui la finestra dei due minuti resta APERTA, ed è dichiarato: creare qui
+  // un `giocatori` da un solo nome farebbe contare UNA persona su una partita di quattro,
+  // perché `nome` smetterebbe di essere l'unica fonte della riga.
+  const a = aggiungiACopiaInApp([riga('r4', { nome: 'Aldo Bianchi, Bruna Conti' })], 'Lidia Comes');
+  assert.equal(a.conteggi.invariate, 1);
+  assert.deepEqual(a.daScrivere, []);
+});
+
+test('19) un nome vuoto non scrive niente: non si aggiunge un posto senza nessuno', () => {
+  const a = aggiungiACopiaInApp([riga('r5', { giocatori: ['Aldo Bianchi'] })], '   ');
+  assert.equal(a.conteggi.invariate, 1);
+  assert.deepEqual(a.daScrivere, []);
+});
+
+test('20) TUTTE le copie dello slot, non una: due righe, due scritture', () => {
+  // ⭐ Stessa ragione del verso dell'uscita: uno slot può avere DUE righe `staff_booking` —
+  // quella creata dall'app e quella scritta da `matchpoint-bookings-create`. Allinearne una
+  // sola lascia l'altra a raccontare un posto libero che non c'è.
+  const a = aggiungiACopiaInApp([
+    riga('a', { giocatori: ['Aldo Bianchi'] }),
+    riga('b', { giocatori: [{ nome: 'Aldo Bianchi' }] }),
+  ], 'Ospite');
+  assert.equal(a.conteggi.aggiunte, 2);
+  assert.equal(a.daScrivere.length, 2);
+});
+
+test('21) l\'OSPITE si può aggiungere PIÙ VOLTE: sono posti, non persone', () => {
+  // 🚨 Il contrario del caso 17, e la differenza è tutta qui: due «Lidia Comes» sono un
+  // errore, due «Ospite» sono due posti occupati. Ma `c_era_gia` non sa distinguerli, quindi
+  // il secondo Ospite NON entra nella copia — limite dichiarato, non dimenticato: l'invito
+  // alla partita fa entrare persone dalla rubrica, e un Ospite di rubrica non esiste.
+  const a = aggiungiACopiaInApp([riga('r6', { giocatori: ['Ospite'] })], 'Ospite');
+  assert.equal(a.conteggi.c_era_gia, 1);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
