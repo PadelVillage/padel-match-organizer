@@ -151,6 +151,70 @@ export function vedeLaSezione(ruolo: string, permessi: Permessi | null | undefin
   return p[CHIAVE_SEZIONE] !== false;
 }
 
+/** La chiave del permesso con cui si modifica una prenotazione del circolo — la stessa
+ *  che l'app chiede prima di salvare un giocatore aggiunto
+ *  (`pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint')`). */
+export const CHIAVE_CALENDARIO = 'cloud_sync';
+
+/**
+ * Chi può creare il link d'ingresso al bot.
+ *
+ * ⭐⭐ SCELTO DA LUI il 6/08 fra tre, e la ragione è quella già usata per «togliere un
+ * giocatore»: **il permesso segue il gesto**, e non se ne inventa uno nuovo. Chi può
+ * mettere una persona in partita può mandarle il link per entrare nel bot.
+ *
+ * 🚨 Il fatto che ha reso necessaria questa regola, misurato prima di scriverla: sui DUE
+ * ambienti le persone che inseriscono davvero i giocatori (`cloud_sync`) sono proprio
+ * quelle che **non** vedono la sezione «Bot Telegram» — con la sola `vedeLaSezione` questa
+ * funzione sarebbe stata negata esattamente a chi le serve, e aperta solo all'owner.
+ *
+ * ⚖️ E non allarga nient'altro: chi entra da questa porta crea un invito e basta. L'elenco
+ * di chi è nel bot, la revoca e il ritiro degli inviti restano dietro `vedeLaSezione`.
+ *
+ * 🔒 `readonly` è fuori, e va per primo: creare un invito **scrive** una riga: l'app lo
+ * ferma già di suo (`pmoBlockWriteIfReadonly`), ma quello è un riparo del browser — la
+ * barriera vera è questa. Il ruolo batte il permesso: un `readonly` con `cloud_sync`
+ * spuntato non deve passare.
+ */
+export function puoMandareIlLink(ruolo: string, permessi: Permessi | null | undefined): boolean {
+  const r = testo(ruolo).toLowerCase();
+  if (r === 'readonly') return false;
+  if (vedeLaSezione(ruolo, permessi)) return true;
+  const p = (permessi && typeof permessi === 'object') ? permessi : {};
+  return p[CHIAVE_CALENDARIO] === true;
+}
+
+/**
+ * QUALE porta per quale azione — e sta qui, non dentro `index.ts`, di proposito.
+ *
+ * 🚨⭐⭐ La lezione della 38ª: una guardia che vive solo dentro il corpo della funzione
+ * servita **non la misura nessuno**, e un sabotaggio che la toglie lascia tutto verde.
+ * Le due regole sopra sono provate una per una, ma «quale delle due si applica a
+ * `crea_invito`» è la decisione che conta davvero — chi rimettesse `vedeLaSezione` su
+ * tutto richiuderebbe la porta alla segreteria **senza far arrossire niente**.
+ *
+ * ⚖️ Passano dalla porta larga **due** azioni, e sono i due tempi dello stesso gesto:
+ * `stato_bot` chiede «serve il link?» e `crea_invito` lo fa. Tutto il resto — l'elenco di
+ * chi è nel bot, la revoca, il ritiro di un invito — resta dietro quella stretta, e
+ * un'azione ignota ci finisce **per default**: chi domani ne aggiungerà una la troverà
+ * chiusa, che è il verso giusto in cui sbagliare.
+ *
+ * 🚨 L'elenco è scritto **per esteso e in un posto solo**: una regola come «tutto ciò che
+ * comincia per…» avrebbe fatto entrare dalla porta larga la prossima azione che càpita di
+ * chiamare in un modo somigliante.
+ */
+export const AZIONI_DELLA_SEGRETERIA = ['stato_bot', 'crea_invito'];
+
+export function ammessoAAzione(
+  azione: string,
+  ruolo: string,
+  permessi: Permessi | null | undefined,
+): boolean {
+  return AZIONI_DELLA_SEGRETERIA.includes(testo(azione))
+    ? puoMandareIlLink(ruolo, permessi)
+    : vedeLaSezione(ruolo, permessi);
+}
+
 /** Il livello, scritto come si può leggere senza sbagliarsi. */
 export function livelloLeggibile(livello: unknown, autovalutato = false): string {
   const v = testo(livello).replace(',', '.');
@@ -338,4 +402,113 @@ export function componiInvito(riga: RigaInvito, rubrica: Rubrica, adesso: Date):
     // toglierebbe niente a nessuno, ma farebbe credere di aver chiuso una porta.
     ritirabile: stato === 'in giro',
   };
+}
+
+// ── L'INVITO MANDATO DALLA SEGRETERIA (6/08/2026) ────────────────────────────
+//
+// 🧭 Nasce da una riflessione del committente: se lo staff mette in partita un socio che
+// nel bot non è mai entrato, quella persona è **irraggiungibile** — non riceve i promemoria,
+// non vede le sue partite, e se l'organizzatore la toglie non lo sa da nessuno.
+//
+// ⭐⭐ E nasce da una sua correzione: avevo proposto che fosse il BOT a chiedere
+// all'organizzatore di invitarla. Sbagliato — per inserire qualcuno l'organizzatore lo deve
+// avere in RUBRICA, e in rubrica ci si entra **solo passando dalla porta del bot** ⇒ chi
+// inserisce l'organizzatore è già dentro, sempre. Le uniche persone «fuori» sono quelle
+// messe dalla segreteria: la cura va dove nasce il problema.
+//
+// ⚖️ Regola sua, nella lettura MORBIDA che ha scelto fra le due: la segreteria inserisce
+// dall'anagrafica come ha sempre fatto, **e le tocca mandare il link**. Non un divieto —
+// che sarebbe stato aggirabile lavorando dritti su Matchpoint, cioè proprio da chi doveva
+// rispettarlo — ma un gesto in più nel punto giusto.
+//
+// 🚨 QUELLO CHE QUESTO INVITO NON FA, e va detto perché è facile crederlo: **non è legato
+// al numero del destinatario**. Il link si lega al PRIMO che lo apre. Le tre serrature
+// garantiscono che chi entra sia un socio vero col numero certificato da Telegram — non che
+// sia *quel* socio. È il disegno dell'ingresso e non si cambia da qui.
+
+/**
+ * Il nome che legge chi riceve il link.
+ *
+ * ⭐⭐ SCELTO DA LUI fra due (6/08): «la segreteria», non il nome dell'operatore. Chi riceve
+ * il messaggio riconosce il circolo, e non deve chiedersi chi sia una persona che magari
+ * non conosce. ⚠️ Non è un dettaglio di forma: questa stringa finisce dentro la frase «ti
+ * ha invitato …» che l'invitato legge nel bot, ed è il primo contatto col circolo.
+ */
+export const ETICHETTA_SEGRETERIA = 'la segreteria del Padel Village';
+
+/**
+ * Il nome utente del bot che apre l'invito, per ambiente.
+ *
+ * 🚨⭐⭐ È DEDOTTO dall'ambiente e non letto da una variabile, per la stessa ragione per
+ * cui lo è `ambienteDa`: è un **fatto della macchina**, non una configurazione che
+ * qualcuno può dimenticare — o peggio, sbagliare. Un segreto assente si vede subito
+ * (503); un segreto scritto storto no: il link partirebbe **verso un'altra chat**, e
+ * chi lo manda leggerebbe «link pronto».
+ *
+ * ⭐ Il legame non è una convenzione, è una CATENA: l'edge di TEST scrive l'invito con
+ * `ambiente='test'`, e quella riga la sa leggere **solo** il bot che si dichiara di
+ * prova. Mandare un invito di TEST al bot dei soci darebbe un link che non apre niente.
+ * ⇒ Il nome utente non è una preferenza: discende da dove la funzione sta girando.
+ *
+ * ⚖️ La variabile resta e VINCE se c'è: serve il giorno in cui un bot cambia nome, per
+ * non dover deployare. È una via di fuga, non la strada normale.
+ */
+export const NOMI_UTENTE_BOT: Record<'test' | 'prod', string> = {
+  prod: 'loziocoach_bot',
+  test: 'padelvillage_prova_bot',
+};
+
+export function nomeUtenteBotPer(ambiente: 'test' | 'prod', dallaConfigurazione?: unknown): string {
+  const scavalco = testo(dallaConfigurazione).replace(/^@/, '');
+  return scavalco || NOMI_UTENTE_BOT[ambiente] || '';
+}
+
+/** Il link da incollare: `https://t.me/<bot>?start=<token>`. */
+export function linkDiIngresso(nomeUtenteBot: unknown, token: unknown): string {
+  const bot = testo(nomeUtenteBot).replace(/^@/, '');
+  const t = testo(token);
+  // 🚨 Fail closed: senza nome utente il link sarebbe `https://t.me/?start=…`, che non
+  // fallisce — porta altrove. Meglio niente link che un link che apre un'altra chat.
+  if (!bot || !t) return '';
+  return `https://t.me/${bot}?start=${encodeURIComponent(t)}`;
+}
+
+/**
+ * Il messaggio già scritto che la segreteria manda su WhatsApp.
+ *
+ * ⭐ Gemello di `messaggioAttivazione` nel bot: il testo parte insieme al link perché chi lo
+ * riceve capisca **da chi arriva e a cosa serve** prima di toccarlo — un link nudo dentro
+ * WhatsApp, da un numero non salvato, si scambia per spam.
+ * ⚠️ È una PROPOSTA: la persona in segreteria può cambiarlo prima di inviare.
+ */
+export function messaggioInvitoSegreteria(nome: unknown, link: unknown): string {
+  const chi = testo(nome);
+  const l = testo(link);
+  if (!l) return '';
+  const saluto = chi ? `Ciao ${chi}, ` : 'Ciao, ';
+  return `${saluto}sono la segreteria del Padel Village. Ti ho messo in una partita: con questo link puoi entrare nel nostro assistente su Telegram e vedere quando giochi, con chi, e ricevere i promemoria. ${l}`;
+}
+
+export type EsitoNuovoInvito =
+  | { ok: true; token: string }
+  | { ok: false; motivo: 'socio_ignoto' | 'gia_nel_bot' | 'senza_token' };
+
+/**
+ * Si può creare un invito per questa persona?
+ *
+ * 🚨 Due rifiuti distinti, e non si accorpano: «non la trovo in anagrafica» è un guasto da
+ * segnalare, «è già nel bot» è una buona notizia — mandarle un secondo link la manderebbe a
+ * rifare una porta che ha già passato, e ci farebbe sembrare che non lo sappiamo.
+ * ⭐ Puro: chi chiama gli passa quello che ha letto. Così la decisione si misura senza
+ * database, che è il punto in cui su questo progetto i guasti si nascondono.
+ */
+export function puoCreareInvito(input: {
+  socio: Socio | undefined;
+  chatGiaNelBot: boolean;
+  token: string;
+}): EsitoNuovoInvito {
+  if (!input.socio) return { ok: false, motivo: 'socio_ignoto' };
+  if (input.chatGiaNelBot) return { ok: false, motivo: 'gia_nel_bot' };
+  if (!testo(input.token)) return { ok: false, motivo: 'senza_token' };
+  return { ok: true, token: testo(input.token) };
 }
