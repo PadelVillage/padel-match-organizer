@@ -4,7 +4,12 @@ import {
   ambienteDa,
   componiInvito,
   componiPersona,
+  ETICHETTA_SEGRETERIA,
   indicizzaSoci,
+  linkDiIngresso,
+  messaggioInvitoSegreteria,
+  puoCreareInvito,
+  trovaSocio,
   vedeLaSezione,
   type InvitiPerToken,
   type RigaInvito,
@@ -159,6 +164,100 @@ Deno.serve(async (req: Request) => {
       if (!riga) return err(404, 'NON_TROVATO', 'Quell’invito non risulta in questo ambiente.');
       if (riga.annullato !== true) return err(500, 'NON_APPLICATO', 'Il ritiro non risulta scritto: riprova.');
       return ok({ ambiente, token, ritirato: true, attore: actor.email });
+    }
+
+    // ── crea_invito — il link che la SEGRETERIA manda a chi non è nel bot ────
+    //
+    // 🧭 Regola sua del 6/08, lettura «morbida» scelta fra due: la segreteria inserisce
+    // dall'anagrafica come ha sempre fatto, **e le tocca mandare il link**. Il divieto
+    // («può inserire solo chi è già nel bot») è stato scartato da lui dopo che gliene ho
+    // mostrato il costo: oggi nel bot c'è una persona su 2.797, e la regola sarebbe
+    // comunque aggirabile lavorando dritti su Matchpoint.
+    //
+    // 🚨 NON tocca le tre serrature dell'ingresso: crea solo l'invito. Chi lo apre deve
+    // comunque farsi certificare il numero da Telegram e risultare al circolo con quel
+    // numero, una scheda sola. Questa azione toglie l'unico pezzo che mancava — che quel
+    // link, oggi, la segreteria non lo sa fare.
+    if (azione === 'crea_invito') {
+      // 🚨 Fail closed sul nome utente del bot: senza, il link sarebbe `https://t.me/?start=…`
+      // — che non fallisce, porta altrove. Un link rotto in mano alla segreteria è peggio di
+      // un bottone che dice «non si può».
+      const nomeUtenteBot = Deno.env.get('TELEGRAM_BOT_USERNAME') ?? '';
+      if (!nomeUtenteBot) {
+        return err(503, 'BOT_USERNAME_ASSENTE', 'Il nome utente del bot non è configurato in questo ambiente.');
+      }
+      const schedaId = clean(body.persona_id);
+      const codice = clean(body.member_id);
+      if (!schedaId && !codice) return err(400, 'BAD_SOCIO', 'Socio non indicato.');
+
+      // La scheda del socio: si cerca con le DUE chiavi, come ovunque qui dentro.
+      const schedeSocio: Array<{ payload?: unknown }> = [];
+      if (schedaId) {
+        const { data, error: e1 } = await gestionale.from('pmo_cloud_records')
+          .select('payload').eq('record_type', 'member').eq('deleted', false)
+          .eq('payload->>id', schedaId).limit(1);
+        if (e1) return err(500, 'ANAGRAFICA_ERROR', e1.message);
+        schedeSocio.push(...((data ?? []) as Array<{ payload?: unknown }>));
+      }
+      if (!schedeSocio.length && codice) {
+        const { data, error: e2 } = await gestionale.from('pmo_cloud_records')
+          .select('payload').eq('record_type', 'member').eq('deleted', false)
+          .eq('payload->>memberId', codice).limit(1);
+        if (e2) return err(500, 'ANAGRAFICA_ERROR', e2.message);
+        schedeSocio.push(...((data ?? []) as Array<{ payload?: unknown }>));
+      }
+      const rubricaUno = indicizzaSoci(schedeSocio);
+      const socio = trovaSocio(rubricaUno, schedaId, codice);
+
+      // È già dentro? Si guarda PRIMA di scrivere: un secondo link lo manderebbe a rifare
+      // una porta che ha già passato, e ci farebbe sembrare che non lo sappiamo.
+      let giaNelBot = false;
+      if (socio) {
+        const { data: op, error: opE } = await bot.from('telegram_operatori')
+          .select('chat_id,attivo')
+          .eq('ambiente', ambiente)
+          .or(`persona_id.eq.${socio.schedaId}${socio.memberId ? `,member_id.eq.${socio.memberId}` : ''}`)
+          .limit(5);
+        if (opE) return err(502, 'BOT_READ_ERROR', opE.message);
+        giaNelBot = (op ?? []).some((r) => (r as { attivo?: unknown }).attivo !== false);
+      }
+
+      const token = crypto.randomUUID().replace(/-/g, '');
+      const via = puoCreareInvito({ socio, chatGiaNelBot: giaNelBot, token });
+      if (!via.ok) {
+        if (via.motivo === 'socio_ignoto') return err(404, 'SOCIO_IGNOTO', 'Non trovo la scheda di questa persona.');
+        if (via.motivo === 'gia_nel_bot') return err(409, 'GIA_NEL_BOT', 'Questa persona è già entrata nel bot.');
+        return err(500, 'SENZA_TOKEN', 'Non sono riuscito a generare l’invito.');
+      }
+
+      const { error: insErr } = await bot.from('telegram_inviti').insert({
+        token: via.token,
+        ambiente,
+        // ⭐ Il «padrone» dell'invito è la SEGRETERIA, e l'etichetta è quella che leggerà
+        // l'invitato («ti ha invitato …») — scelta sua fra due, contro il nome dell'operatore.
+        invitante_member_id: null,
+        invitante_persona_id: null,
+        invitante_etichetta: ETICHETTA_SEGRETERIA,
+      });
+      if (insErr) return err(500, 'INSERT_ERROR', insErr.message);
+
+      // 🚨 Si RILEGGE: un insert senza errore non è un invito che esiste (è la lezione del
+      // deploy a vuoto). Se non lo ritrovo, non consegno un link che non aprirebbe niente.
+      const { data: dopo, error: reErr } = await bot.from('telegram_inviti')
+        .select('token,annullato').eq('token', via.token).eq('ambiente', ambiente).limit(1);
+      if (reErr) return err(500, 'VERIFY_ERROR', reErr.message);
+      if (!(Array.isArray(dopo) && dopo[0])) return err(500, 'NON_APPLICATO', 'L’invito non risulta scritto: riprova.');
+
+      const link = linkDiIngresso(nomeUtenteBot, via.token);
+      if (!link) return err(500, 'LINK_VUOTO', 'Non sono riuscito a comporre il link.');
+      return ok({
+        ambiente,
+        token: via.token,
+        link,
+        messaggio: messaggioInvitoSegreteria(socio!.nome, link),
+        telefono: socio!.telefono,
+        attore: actor.email,
+      });
     }
 
     if (azione !== 'list') return err(400, 'AZIONE_IGNOTA', `Azione non prevista: ${azione}`);

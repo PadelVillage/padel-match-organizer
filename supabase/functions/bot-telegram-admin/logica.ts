@@ -339,3 +339,85 @@ export function componiInvito(riga: RigaInvito, rubrica: Rubrica, adesso: Date):
     ritirabile: stato === 'in giro',
   };
 }
+
+// ── L'INVITO MANDATO DALLA SEGRETERIA (6/08/2026) ────────────────────────────
+//
+// 🧭 Nasce da una riflessione del committente: se lo staff mette in partita un socio che
+// nel bot non è mai entrato, quella persona è **irraggiungibile** — non riceve i promemoria,
+// non vede le sue partite, e se l'organizzatore la toglie non lo sa da nessuno.
+//
+// ⭐⭐ E nasce da una sua correzione: avevo proposto che fosse il BOT a chiedere
+// all'organizzatore di invitarla. Sbagliato — per inserire qualcuno l'organizzatore lo deve
+// avere in RUBRICA, e in rubrica ci si entra **solo passando dalla porta del bot** ⇒ chi
+// inserisce l'organizzatore è già dentro, sempre. Le uniche persone «fuori» sono quelle
+// messe dalla segreteria: la cura va dove nasce il problema.
+//
+// ⚖️ Regola sua, nella lettura MORBIDA che ha scelto fra le due: la segreteria inserisce
+// dall'anagrafica come ha sempre fatto, **e le tocca mandare il link**. Non un divieto —
+// che sarebbe stato aggirabile lavorando dritti su Matchpoint, cioè proprio da chi doveva
+// rispettarlo — ma un gesto in più nel punto giusto.
+//
+// 🚨 QUELLO CHE QUESTO INVITO NON FA, e va detto perché è facile crederlo: **non è legato
+// al numero del destinatario**. Il link si lega al PRIMO che lo apre. Le tre serrature
+// garantiscono che chi entra sia un socio vero col numero certificato da Telegram — non che
+// sia *quel* socio. È il disegno dell'ingresso e non si cambia da qui.
+
+/**
+ * Il nome che legge chi riceve il link.
+ *
+ * ⭐⭐ SCELTO DA LUI fra due (6/08): «la segreteria», non il nome dell'operatore. Chi riceve
+ * il messaggio riconosce il circolo, e non deve chiedersi chi sia una persona che magari
+ * non conosce. ⚠️ Non è un dettaglio di forma: questa stringa finisce dentro la frase «ti
+ * ha invitato …» che l'invitato legge nel bot, ed è il primo contatto col circolo.
+ */
+export const ETICHETTA_SEGRETERIA = 'la segreteria del Padel Village';
+
+/** Il link da incollare: `https://t.me/<bot>?start=<token>`. */
+export function linkDiIngresso(nomeUtenteBot: unknown, token: unknown): string {
+  const bot = testo(nomeUtenteBot).replace(/^@/, '');
+  const t = testo(token);
+  // 🚨 Fail closed: senza nome utente il link sarebbe `https://t.me/?start=…`, che non
+  // fallisce — porta altrove. Meglio niente link che un link che apre un'altra chat.
+  if (!bot || !t) return '';
+  return `https://t.me/${bot}?start=${encodeURIComponent(t)}`;
+}
+
+/**
+ * Il messaggio già scritto che la segreteria manda su WhatsApp.
+ *
+ * ⭐ Gemello di `messaggioAttivazione` nel bot: il testo parte insieme al link perché chi lo
+ * riceve capisca **da chi arriva e a cosa serve** prima di toccarlo — un link nudo dentro
+ * WhatsApp, da un numero non salvato, si scambia per spam.
+ * ⚠️ È una PROPOSTA: la persona in segreteria può cambiarlo prima di inviare.
+ */
+export function messaggioInvitoSegreteria(nome: unknown, link: unknown): string {
+  const chi = testo(nome);
+  const l = testo(link);
+  if (!l) return '';
+  const saluto = chi ? `Ciao ${chi}, ` : 'Ciao, ';
+  return `${saluto}sono la segreteria del Padel Village. Ti ho messo in una partita: con questo link puoi entrare nel nostro assistente su Telegram e vedere quando giochi, con chi, e ricevere i promemoria. ${l}`;
+}
+
+export type EsitoNuovoInvito =
+  | { ok: true; token: string }
+  | { ok: false; motivo: 'socio_ignoto' | 'gia_nel_bot' | 'senza_token' };
+
+/**
+ * Si può creare un invito per questa persona?
+ *
+ * 🚨 Due rifiuti distinti, e non si accorpano: «non la trovo in anagrafica» è un guasto da
+ * segnalare, «è già nel bot» è una buona notizia — mandarle un secondo link la manderebbe a
+ * rifare una porta che ha già passato, e ci farebbe sembrare che non lo sappiamo.
+ * ⭐ Puro: chi chiama gli passa quello che ha letto. Così la decisione si misura senza
+ * database, che è il punto in cui su questo progetto i guasti si nascondono.
+ */
+export function puoCreareInvito(input: {
+  socio: Socio | undefined;
+  chatGiaNelBot: boolean;
+  token: string;
+}): EsitoNuovoInvito {
+  if (!input.socio) return { ok: false, motivo: 'socio_ignoto' };
+  if (input.chatGiaNelBot) return { ok: false, motivo: 'gia_nel_bot' };
+  if (!testo(input.token)) return { ok: false, motivo: 'senza_token' };
+  return { ok: true, token: testo(input.token) };
+}

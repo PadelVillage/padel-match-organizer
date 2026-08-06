@@ -7,8 +7,12 @@ import {
   ambienteDa,
   componiInvito,
   componiPersona,
+  ETICHETTA_SEGRETERIA,
   indicizzaSoci,
+  linkDiIngresso,
   livelloLeggibile,
+  messaggioInvitoSegreteria,
+  puoCreareInvito,
   REF_PROD,
   statoInvito,
   trovaSocio,
@@ -337,4 +341,62 @@ Deno.test('anagrafica: si cerca prima per scheda, e il codice resta come ripiego
   assertEquals(trovaSocio(SOCI, '', '000029')?.nome, 'Luca Allera');
   assertEquals(trovaSocio(SOCI, 'sch-ignota', '000029')?.nome, 'Luca Allera');
   assertEquals(trovaSocio(SOCI, '', 'PMO-000060'), undefined);
+});
+
+
+// ── L'INVITO DELLA SEGRETERIA (6/08/2026) ────────────────────────────────────
+
+const SOCIO = {
+  schedaId: 'PMO-000123', memberId: '000123', nome: 'Fabio De Luca',
+  telefono: '+393401234567', livello: '3', autovalutato: false,
+};
+
+Deno.test('🔗 il link si compone come lo apre Telegram', () => {
+  assertEquals(linkDiIngresso('loziocoach_bot', 'abc123'), 'https://t.me/loziocoach_bot?start=abc123');
+  // ⭐ La chiocciola si perdona: chi copia il nome utente dal profilo se la porta dietro.
+  assertEquals(linkDiIngresso('@loziocoach_bot', 'abc123'), 'https://t.me/loziocoach_bot?start=abc123');
+});
+
+Deno.test('🚨 senza nome utente o senza token NON esce un link a metà', () => {
+  // Un `https://t.me/?start=…` non fallisce: porta ALTROVE. Meglio niente.
+  assertEquals(linkDiIngresso('', 'abc123'), '');
+  assertEquals(linkDiIngresso('loziocoach_bot', ''), '');
+  assertEquals(linkDiIngresso(null, undefined), '');
+});
+
+Deno.test('🚨 il messaggio porta il LINK, o non è un messaggio', () => {
+  const m = messaggioInvitoSegreteria('Fabio', 'https://t.me/x?start=y');
+  assertEquals(m.includes('https://t.me/x?start=y'), true);
+  assertEquals(m.includes('Fabio'), true);
+  // ⭐ Dice da CHI arriva: un link nudo da un numero non salvato si scambia per spam.
+  assertEquals(m.includes('segreteria'), true);
+  // 🚨 Senza link non si consegna una frase che promette un link.
+  assertEquals(messaggioInvitoSegreteria('Fabio', ''), '');
+});
+
+Deno.test('🚨 senza nome il messaggio esce lo stesso, e non dice «Ciao undefined»', () => {
+  const m = messaggioInvitoSegreteria('', 'https://t.me/x?start=y');
+  assertEquals(m.startsWith('Ciao, '), true, m);
+  assertEquals(/undefined|null/.test(m), false, m);
+});
+
+Deno.test('⭐ l\'etichetta è LA SEGRETERIA, non il nome dell\'operatore (scelta sua)', () => {
+  // È quello che legge l'invitato dentro «ti ha invitato …»: il primo contatto col circolo.
+  assertEquals(ETICHETTA_SEGRETERIA.includes('segreteria'), true);
+});
+
+Deno.test('🚨 i tre rifiuti dell\'invito sono DISTINTI', () => {
+  // Accorparli sotto un «non si può» farebbe leggere alla segreteria una cosa vera per un
+  // caso e falsa per l'altro: «non la trovo» è un guasto, «è già dentro» è una buona notizia.
+  assertEquals(puoCreareInvito({ socio: undefined, chatGiaNelBot: false, token: 't' }),
+    { ok: false, motivo: 'socio_ignoto' });
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: true, token: 't' }),
+    { ok: false, motivo: 'gia_nel_bot' });
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: false, token: '  ' }),
+    { ok: false, motivo: 'senza_token' });
+});
+
+Deno.test('✅ col socio in anagrafica e fuori dal bot, l\'invito si può fare', () => {
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: false, token: ' abc ' }),
+    { ok: true, token: 'abc' });
 });
