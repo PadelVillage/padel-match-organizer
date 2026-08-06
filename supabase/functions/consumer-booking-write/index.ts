@@ -135,12 +135,14 @@ const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: gri
 // soglie stanno nella kb): è la forma del gioco, come i 4 campi qui sopra.
 const GIOCATORI_PARTITA = 4;
 
-// 🪑 Il nome con cui il gestionale scrive un posto occupato da chi NON è cliente del circolo.
-// Misurato sui dati veri di PROD il 27/07/2026: scritto in **un solo modo**, «Ospite», 47
-// occorrenze su 47. ⚠️ Qui serve la forma ESATTA, con la maiuscola, perché è quella che si
-// manda al worker: `roster-slot.ts` ne tiene la versione normalizzata, che serve a
-// confrontare e non a scrivere.
-const OSPITE_MATCHPOINT = 'Ospite';
+// 🗑️ 6/08/2026 — `OSPITE_MATCHPOINT` («Ospite», la forma esatta da mandare al worker) È STATA
+// CANCELLATA: serviva solo a far entrare in campo chi non è cliente del circolo, e da oggi
+// quel ramo non esiste più — l'Ospite lo mette la segreteria (sua decisione).
+// ⭐⭐ Cancellata e non lasciata lì: una costante viva che nessuno usa è la trappola peggiore
+// di questo progetto — si legge come «il caso è previsto» quando invece non è più possibile.
+// ⚠️ Il CONCETTO resta vivo altrove e non va confuso con questo: `roster-slot.ts` sa ancora
+// riconoscere gli Ospiti — quelli messi dalla segreteria — perché `remove` e il conteggio del
+// roster devono continuare a contarli.
 
 // La nota che resta scritta SULLA PRENOTAZIONE, e che lo staff legge nel gestionale.
 // ⚠️ Fino al 28/07/2026 diceva «Prenotata via chat WhatsApp»: falso da quando WhatsApp è
@@ -1094,25 +1096,39 @@ Deno.serve(async (req: Request) => {
         ...prova,
       });
     }
-    const schedaOspite = (schede[0].payload ?? {}) as JsonMap;
-    const nomeDaAggiungere = clean(schedaOspite.name)
-      || [clean(schedaOspite.firstName), clean(schedaOspite.surname)].filter(Boolean).join(' ');
-    // 🚨⭐⭐ IL CODICE DEL CIRCOLO DECIDE **CON CHE NOME** SI ENTRA IN CAMPO.
-    // Il gestionale aggancia i giocatori dall'elenco clienti del circolo: chi lì non c'è non
-    // si può agganciare, e l'aggiunta fallirebbe. 📊 Non ha quel codice il 62% dei soci
-    // (1.722 su 2.789) ⇒ è il caso NORMALE, non quello raro.
-    // ⇒ Chi non ce l'ha entra come **«Ospite»**, che è la decisione del committente del 30/07
-    // per l'invitato non ancora cliente: il posto è preso davvero, il nome sulla scheda no.
-    // 🚨 Solo le CIFRE valgono come codice del circolo: in `memberId` l'app scrive anche i
-    // suoi «PMO-000000», che sono NOSTRI e al circolo non esistono. Passarne uno vorrebbe dire
-    // cercare nell'elenco clienti una persona che là non c'è — e credere di aver mandato un
-    // socio mentre non si aggancia nessuno. È la stessa distinzione che il readmodel fa già.
-    const codiceGrezzo = clean(schedaOspite.memberId);
-    const codiceDaAggiungere = /^[0-9]{4,6}$/.test(codiceGrezzo) ? codiceGrezzo : '';
-    const nomeSullaScheda = codiceDaAggiungere ? nomeDaAggiungere : OSPITE_MATCHPOINT;
-    if (!nomeDaAggiungere && codiceDaAggiungere) {
+    const schedaDaAggiungere = (schede[0].payload ?? {}) as JsonMap;
+    const nomeDaAggiungere = clean(schedaDaAggiungere.name)
+      || [clean(schedaDaAggiungere.firstName), clean(schedaDaAggiungere.surname)].filter(Boolean).join(' ');
+    // 🚨⭐⭐ SOLO UN CLIENTE DEL CIRCOLO PUÒ ENTRARE DA QUI — decisione del committente del
+    // 6/08/2026, che **ribalta** quella del 30/07: *«ho cambiato idea e l'ospite lo può mettere
+    // solamente la segreteria»*.
+    // ⇒ Prima chi non aveva il codice entrava come **«Ospite»**: il posto era preso davvero, il
+    // nome sulla scheda no. Adesso quel ramo NON ESISTE PIÙ: si rifiuta, e chi non è cliente
+    // passa dalla segreteria.
+    // 📊 Misurato su PROD il 6/08, in sola lettura: **1.081 soci su 2.797 (38,6%)** hanno il
+    // codice, **1.716 (61,4%) no**. ⇒ Il rifiuto è il caso FREQUENTE, non quello raro — motivo
+    // per cui il bot toglie il bottone PRIMA, e questa riga è la seconda serratura, non la sola.
+    // 🚨 Solo le CIFRE valgono come codice del circolo: in `memberId` l'app scrive anche i suoi
+    // «PMO-000000», che sono NOSTRI e al circolo non esistono.
+    // ⚠️⭐ GEMELLA di `clienteDelCircolo` in `consumer-player-readmodel/cliente-del-circolo.ts`,
+    // che è la funzione che toglie il bottone: le due rispondono alla STESSA domanda da due
+    // funzioni diverse, e le funzioni non si possono importare fra loro (`_shared/` non si
+    // deploya). Fino al 6/08 divergevano — qui `{4,6}`, là `{6}` — e la differenza era latente:
+    // misurato che le cifre sono SEI per tutti e 1.081, e zero record con 4 o 5. Allineate a
+    // `{6}`: due regole diverse per la stessa domanda si accorgono di esserlo il giorno peggiore.
+    const codiceGrezzo = clean(schedaDaAggiungere.memberId);
+    const codiceDaAggiungere = /^[0-9]{6}$/.test(codiceGrezzo) ? codiceGrezzo : '';
+    if (!codiceDaAggiungere) {
+      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: ${idDaAggiungere} non è cliente del circolo`);
+      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_cliente', ...prova });
+    }
+    if (!nomeDaAggiungere) {
       return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_senza_nome', ...prova });
     }
+    // ⚖️ Da qui in giù il nome sulla scheda del circolo È il nome della persona, sempre: non
+    // c'è più il bivio dell'Ospite. La costante resta viva perché `remove` e il conteggio del
+    // roster devono ancora saper riconoscere gli Ospiti **messi dalla segreteria**.
+    const nomeSullaScheda = nomeDaAggiungere;
 
     const righe = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
     if (!righe.length) {
@@ -1178,9 +1194,10 @@ Deno.serve(async (req: Request) => {
     // ⭐ Come in `leave` e `remove`, la copia in app si calcola PRIMA del bivio, così la prova
     // a vuoto mostra esattamente ciò che poi verrà scritto.
     const copieAdd = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
-    // ⚠️ Nella copia va il nome che finisce SULLA SCHEDA, non quello della persona: se entra
-    // come «Ospite», scrivere il suo nome vero farebbe contare due persone diverse alla
-    // prossima sincronizzazione — una nella nostra copia e una nella scheda del circolo.
+    // ⚠️ Nella copia va il nome che finisce SULLA SCHEDA. Dal 6/08 i due coincidono sempre
+    // (entra solo chi è cliente), ma la riga resta scritta così: era il bivio dell'Ospite, e
+    // il giorno che qualcuno lo riaprisse la copia deve tornare a seguire la SCHEDA, non la
+    // persona — o la sincronizzazione conterebbe due giocatori dove ce n'è uno.
     const aggiuntaCopia = aggiungiACopiaInApp(copieAdd, nomeSullaScheda);
 
     if (dryRun) {
@@ -1194,8 +1211,11 @@ Deno.serve(async (req: Request) => {
           // ⭐ Il nome che finirebbe SULLA SCHEDA, che può non essere quello della persona.
           // È la riga più importante della prova a vuoto: dice se il circolo saprà chi è.
           sulla_scheda: nomeSullaScheda,
-          codice: codiceDaAggiungere || null,
-          come: codiceDaAggiungere ? 'socio' : 'ospite',
+          codice: codiceDaAggiungere,
+          // ⚖️ Resta scritto anche se ormai può valere solo 'socio': una prova a vuoto che
+          // NON dice come si entrerebbe smetterebbe di essere una prova il giorno che i modi
+          // tornassero due.
+          come: 'socio',
           slot: { data: slot.data, ora: slot.ora, campo },
           giocatori_prima: esito.roster.length,
           giocatori_dopo: esito.roster.length + 1,
@@ -1249,8 +1269,10 @@ Deno.serve(async (req: Request) => {
     //
     // ⇒ La prova è `partecipantiFinali`: il roster **riletto dalla scheda del circolo** DOPO
     // la modifica. Non è una nostra deduzione, è ciò che c'è scritto là.
-    // ⚠️ Si conta e non si cerca il nome: chi entra come «Ospite» non porta il proprio nome, e
-    // un controllo sul nome direbbe «non entrato» proprio nel caso più frequente.
+    // ⚠️ Si CONTA e non si cerca il nome. Dal 6/08 chi entra porta il proprio nome, quindi
+    // cercarlo sarebbe possibile — ma resta un conteggio di proposito: il nome sulla scheda
+    // del circolo ha una grafia sua («Cognome Nome»), e un confronto che sbaglia direbbe «non
+    // entrato» su un giocatore entrato davvero. Contare non ha grafie.
     const workerAdd = (dataAdd?.worker ?? null) as JsonMap | null;
     const finali = Array.isArray(workerAdd?.partecipantiFinali)
       ? (workerAdd.partecipantiFinali as JsonMap[])
@@ -1305,16 +1327,19 @@ Deno.serve(async (req: Request) => {
       console.warn(`[booking-write] add: nessuna copia in app da allineare ${slot.data} ${slot.ora} C${campo} — il conteggio resta indietro fino al prossimo giro di sincronizzazione`);
     }
 
-    console.log(`[booking-write] add OK ${slot.data} ${slot.ora} C${campo}: ${member.name} fa entrare ${nomeSullaScheda}${codiceDaAggiungere ? '' : ` (per ${nomeDaAggiungere}, senza codice)`} — erano in ${esito.roster.length}`);
+    console.log(`[booking-write] add OK ${slot.data} ${slot.ora} C${campo}: ${member.name} fa entrare ${nomeSullaScheda} (codice ${codiceDaAggiungere}) — erano in ${esito.roster.length}`);
     return ok({
       member: { id: member.id, name: member.name },
       added: true,
       slot: { data: slot.data, ora: slot.ora, campo },
-      // ⭐ Chi è entrato è la PERSONA, e il bot deve poterle parlare col suo nome. `ospite`
-      // dice l'altra metà della verità: sulla scheda del circolo il suo nome NON compare.
+      // ⭐ Chi è entrato è la PERSONA, e il bot deve poterle parlare col suo nome.
       entrato: nomeDaAggiungere,
       sulla_scheda: nomeSullaScheda,
-      ospite: !codiceDaAggiungere,
+      // ⚖️ `ospite` NON sparisce dalla risposta pur valendo ormai sempre `false`: il bot che
+      // la legge può essere più vecchio o più nuovo di questa funzione, e un campo che sparisce
+      // si legge come «non lo so». Da qui in poi è una promessa: **da questo ponte non entra
+      // più nessun Ospite**.
+      ospite: false,
       giocatori_prima: esito.roster.length,
       // ⭐ Il conto che si racconta è quello RILETTO dalla scheda quando c'è: un «+1» calcolato
       // da noi sarebbe di nuovo una deduzione, che è esattamente ciò che il #624 ha insegnato
