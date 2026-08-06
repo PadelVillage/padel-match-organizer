@@ -807,5 +807,63 @@ test('44) IL COLLEGAMENTO di «remove»: l\'edge chiede il bersaglio, e allinea 
     'il roster va ricomposto su TUTTE le righe dello slot, con la rete del «mai più di quattro»');
 });
 
+test('45) IL COLLEGAMENTO di «add»: l\'Ospite lo mette la SEGRETERIA, non il bot', () => {
+  // 🚨⭐⭐ Sua decisione del 6/08/2026, che ribalta quella del 30/07: *«ho cambiato idea e
+  // l'ospite lo può mettere solamente la segreteria»*. Prima chi non aveva il codice cliente
+  // entrava in campo come «Ospite» — posto preso davvero, nome sulla scheda no.
+  // 📊 Misurato su PROD lo stesso giorno, in sola lettura: clienti **1.081 su 2.797 (38,6%)**
+  // ⇒ il ramo cancellato era quello che serviva il **61,4%** delle persone. Non è una riga di
+  // contorno: è il caso frequente, ed è per questo che sparisce con una prova sopra.
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+  const ramo = src.match(/if \(action === 'add'\) \{[\s\S]*?\n  \/\/ ── cancel ──/);
+  assert.ok(ramo && ramo[0].length > 2000, 'ramo «add» non isolato: la prova sarebbe cieca');
+
+  // ① Il rifiuto ESISTE e ha un motivo suo, distinto dagli altri: chi legge deve poter dire
+  // al socio «passa dalla segreteria» e non «riprova», che manderebbe a ritentare per sempre.
+  assert.ok(/reason: 'non_cliente'/.test(ramo![0]),
+    'chi non è cliente del circolo dev\'essere RIFIUTATO, con un motivo suo');
+  // ② E il ramo dell'Ospite non c'è più. 🚨 Questa è la riga che conta davvero: un rifiuto
+  // aggiunto SOPRA un ramo ancora vivo lascerebbe due strade, e la seconda si prenderebbe
+  // tutti i casi che la prima non intercetta — senza un rosso da nessuna parte.
+  // ⚠️ Si guarda la DICHIARAZIONE, non il nome: sopra, al posto della costante, è rimasta la
+  // lapide che racconta perché è stata cancellata — e una prova che vietasse il nome
+  // vieterebbe di spiegare. (Prima stesura: vietava il nome, e il rosso l'ha preso il commento.)
+  assert.ok(!/const OSPITE_MATCHPOINT/.test(src),
+    'la costante «Ospite» da mandare al worker non deve più esistere in questa funzione');
+  assert.ok(!/OSPITE_MATCHPOINT/.test(ramo![0]),
+    'e il ramo «add» non deve più nominarla in nessun modo');
+  assert.ok(!/nomeSullaScheda = codiceDaAggiungere \?/.test(ramo![0]),
+    'non deve restare nessun bivio «col codice entra col nome, senza entra come Ospite»');
+  // ③ La promessa verso il bot: da questo ponte non entra più nessun Ospite.
+  assert.ok(/ospite: false/.test(ramo![0]),
+    'la risposta deve dichiarare `ospite: false`, non calcolarlo dal codice');
+
+  // ④ 🚨⭐⭐ LA REGOLA GEMELLA, che vive in un'ALTRA funzione e non si può importare
+  // (`_shared/` non si deploya): `clienteDelCircolo` nel readmodel è ciò che toglie il
+  // BOTTONE, questa è ciò che rifiuta la SCRITTURA. Fino al 6/08 divergevano — qui `{4,6}`,
+  // là `{6}` — e la differenza era latente: misurato che le cifre sono SEI per tutti e 1.081.
+  // Due regole diverse per la stessa domanda si accorgono di esserlo il giorno peggiore.
+  assert.ok(/\/\^\[0-9\]\{6\}\$\//.test(ramo![0]),
+    'il codice cliente si riconosce con la STESSA forma del readmodel: sei cifre esatte');
+  const gemella = readFileSync(
+    new URL('../consumer-player-readmodel/cliente-del-circolo.ts', import.meta.url), 'utf8');
+  assert.ok(/\/\^\[0-9\]\{6\}\$\//.test(gemella),
+    'la gemella nel readmodel deve usare la stessa forma, o le due si contraddicono');
+});
+
+test('46) IL COLLEGAMENTO del readmodel: «people» dice se è cliente del circolo', () => {
+  // 🚨 Senza questo campo il bot non può togliere il bottone PRIMA, e resterebbe solo il
+  // rifiuto del caso 45: cioè un bottone che si tocca e dice di no — esattamente ciò che la
+  // regola ferma del progetto vieta.
+  const src = readFileSync(
+    new URL('../consumer-player-readmodel/index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 5000, 'sorgente del readmodel non letto: questa prova non direbbe niente');
+  const ramo = src.match(/if \(action === 'people'\) \{[\s\S]*?\n  \/\/ ── 1\. Identità/);
+  assert.ok(ramo && ramo[0].length > 800, 'ramo «people» non isolato: la prova sarebbe cieca');
+  assert.ok(/cliente_del_circolo: clienteDelCircolo\(p\.memberId\)/.test(ramo![0]),
+    'il campo va CALCOLATO dalla funzione provata, non riscritto a mano dentro il ramo');
+});
+
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed > 0) process.exit(1);
