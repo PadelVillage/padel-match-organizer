@@ -8025,7 +8025,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.184';
+    const APP_VERSION = '6.188';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -28559,7 +28559,13 @@ Per confermare scrivi ELIMINA.`);
 	      // 🚨 Un HTTP 200 non basta: l'edge risponde `ok:false` con il motivo dentro.
 	      // Fidarsi del solo stato farebbe passare per riuscita un'azione rifiutata.
 	      if (!resp.ok || !data || data.ok !== true) {
-	        throw new Error((data && (data.message || data.error)) || ('HTTP ' + resp.status));
+	        const e = new Error((data && (data.message || data.error)) || ('HTTP ' + resp.status));
+        // ⭐ Il CODICE viaggia accanto al messaggio: chi chiama deve poter distinguere un
+        // rifiuto previsto (`GIA_NEL_BOT`, che è una buona notizia) da un guasto, senza
+        // dover riconoscere una FRASE — le frasi si riscrivono per farle suonare meglio.
+        e.codice = String((data && data.error) || '');
+        e.stato = resp.status;
+        throw e;
 	      }
 	      return data;
 	    }
@@ -42047,6 +42053,168 @@ Per confermare scrivi ELIMINA.`);
     msg.appendChild(btns);
   }
 
+  // ── IL LINK D'INGRESSO AL BOT, proposto dalla SEGRETERIA (6/08/2026) ────────────────────────
+  //
+  // 🧭 Nasce da una sua riflessione: se lo staff mette in partita un socio che nel bot non è mai
+  // entrato, quella persona è IRRAGGIUNGIBILE — niente promemoria, non vede la partita, e se
+  // l'organizzatore la toglie non lo sa da nessuno.
+  //
+  // ⭐⭐ E la cura sta QUI e non dall'altra parte, per una sua correzione: dal bot l'organizzatore
+  // può inserire solo chi ha in RUBRICA, e in rubrica ci si entra solo passando dalla porta del
+  // bot ⇒ chi inserisce l'organizzatore è già dentro, sempre. Le uniche persone «fuori dal bot»
+  // dentro una partita sono quelle messe dalla segreteria: la cura va dove nasce il problema.
+  //
+  // ⚖️ Regola sua, lettura MORBIDA scelta fra due: la segreteria inserisce dall'anagrafica come ha
+  // sempre fatto, E le tocca mandare il link. Non un divieto — che sarebbe stato aggirabile
+  // lavorando dritti su Matchpoint, cioè proprio da chi doveva rispettarlo.
+  //
+  // 🚨 La proposta esce DA SÉ ogni volta (sua decisione, contro «a richiesta»), ma il link si crea
+  // solo se lo si tocca: la riga in `telegram_inviti` la scrive il gesto, non l'apertura di una
+  // scheda. Chi aggiunge dieci giocatori non lascia dietro dieci inviti mai mandati.
+  //
+  // 🅿️ L'Ospite non passa di qui, ed è giusto: non è una persona ma un posto occupato (sua
+  // decisione del 4/08) — infatti si aggiunge per un'altra strada, che non chiama questa.
+  /**
+   * Dai giocatori appena entrati in partita alle loro schede, e da lì alla proposta.
+   *
+   * 🚨 I chip di `st.add` portano `{nome, codice, codiceCliente}` — NON il numero di scheda,
+   * che è la chiave con cui il bot intesta i suoi cassetti. Va ritrovato in anagrafica, e si
+   * cerca con le chiavi che DISCRIMINANO (id interno Matchpoint, poi codice cliente) prima
+   * del nome: sui nomi non si decide, questo progetto ha 15 nomi ripetuti.
+   * ⭐ Il nome resta come ultimo gradino ed è accettato solo se combacia UNA volta sola: un
+   * omonimo manderebbe il link alla persona sbagliata, ed è meglio non proporlo affatto.
+   * 🅿️ L'Ospite non ha scheda e cade da sé: non è una persona, è un posto occupato.
+   */
+  function _staffCalProponiLinkPerAggiunti(addArr) {
+    if (!Array.isArray(addArr) || !addArr.length) return;
+    const rosa = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori : [];
+    if (!rosa.length) return;
+    const nrm = (typeof _staffCalNrmNome === 'function') ? _staffCalNrmNome : function (x) { return String(x || '').trim().toLowerCase(); };
+    addArr.forEach(function (chip) {
+      if (!chip || !chip.nome) return;
+      if (typeof isGuestJollyName === 'function' && isGuestJollyName(chip.nome)) return;
+      const idInterno = String(chip.codice || '').trim();
+      const codCliente = String(chip.codiceCliente || '').trim();
+      let socio = null;
+      if (idInterno) socio = rosa.find(function (m) { return String(m && m.matchpointIdInterno || '').trim() === idInterno; }) || null;
+      if (!socio && codCliente) socio = rosa.find(function (m) { return String(m && m.memberId || '').trim() === codCliente; }) || null;
+      if (!socio) {
+        const n = nrm(chip.nome);
+        const uguali = n ? rosa.filter(function (m) { return nrm(_staffCalPlayerName(m, '')) === n; }) : [];
+        if (uguali.length === 1) socio = uguali[0];
+      }
+      if (socio) _staffCalProponiLinkBot(socio);
+    });
+  }
+
+  async function _staffCalProponiLinkBot(member) {
+    if (!member || typeof pmoTelegramChiama !== 'function') return;
+    const schedaId = String((member && member.id) || '').trim();
+    const codice = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(member) : '';
+    if (!schedaId && !codice) return;
+    const _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+    const nome = _staffCalPlayerName(member, '') || 'questa persona';
+
+    let stato = null;
+    try {
+      stato = await pmoTelegramChiama({ action: 'stato_bot', persona_id: schedaId, member_id: codice });
+    } catch (err) {
+      // 🚨 Un guasto NON si traveste da «è tutto a posto»: se la lettura non riesce, il silenzio
+      // direbbe «è nel bot» di una persona di cui non sappiamo niente. Ma non è nemmeno un
+      // errore da sbattere in faccia — il lavoro vero (mettere il giocatore in partita) è
+      // riuscito. ⇒ Una riga sommessa, che dichiara di NON sapere.
+      svcAddMessage('system', '<span style="color:var(--text-muted);font-size:.78rem;">Non sono riuscito a controllare se <strong>' + _e(nome) + '</strong> è nel bot Telegram: ' + _e((err && err.message) || String(err)) + '</span>');
+      return;
+    }
+    // È già dentro: silenzio. Dirlo a ogni giocatore aggiunto sarebbe rumore su una cosa che va
+    // bene, e la segreteria imparerebbe a non leggere più questa riga.
+    if (!stato || stato.nel_bot === true) return;
+
+    const msg = svcAddMessage('system',
+      '📩 <strong>' + _e(nome) + '</strong> non è nel bot Telegram: non riceverà i promemoria e dal telefono non vedrà questa partita.'
+      // 🚨 Senza genere, ed è una regola ferma di questo progetto: qui si nomina una persona
+      // vera, e «mandargli» davanti a una socia è sbagliato. Trovato GUARDANDO la schermata
+      // composta, non leggendo il codice — i casi guardavano che il nome ci fosse.
+      + '<br><span style="color:var(--text-muted);font-size:.78rem;">Puoi mandare il link per entrare. Il messaggio è già scritto: si può cambiare prima di inviarlo.</span>', 'flow');
+
+    const btns = svcMakeStepButtons(['📩 Prepara il link d’ingresso'], async function () {
+      svcFreezeMsg(msg);
+      let esito = null;
+      try {
+        esito = await pmoTelegramChiama({ action: 'crea_invito', persona_id: schedaId, member_id: codice });
+      } catch (err) {
+        // ⭐ «È già nel bot» NON è un errore da rosso: è una buona notizia, e vuol dire che
+        // qualcuno l'ha fatto entrare fra la spia e il bottone. Si dice così.
+        const m = (err && err.message) || String(err);
+        // 🚨 Si decide sul CODICE, non sulla frase: una frase è testo che un giorno si
+        // riscrive per farla suonare meglio, e questo ramo morirebbe in silenzio lasciando
+        // passare «è già nel bot» come se fosse un guasto.
+        if (String((err && err.codice) || '') === 'GIA_NEL_BOT') {
+          // Senza genere: «entrata» davanti a un socio sarebbe sbagliato quanto
+          // «mandargli» davanti a una socia.
+          svcAddMessage('system', '✅ <strong>' + _e(nome) + '</strong> nel frattempo è già nel bot: non serve più il link.');
+        } else {
+          svcAddMessage('system', '⛔ Non sono riuscito a preparare il link: ' + _e(m), 'error');
+        }
+        return;
+      }
+      const link = String((esito && esito.link) || '').trim();
+      const testo = String((esito && esito.messaggio) || '').trim();
+      if (!link || !testo) {
+        svcAddMessage('system', '⛔ Il ponte non ha restituito un link utilizzabile: riprova.', 'error');
+        return;
+      }
+      // 🚨 Il numero passa dalla stessa funzione del modulo WhatsApp, non da una normalizzazione
+      // scritta qui: i telefoni di questa anagrafica hanno due difetti storici noti (il «+» che si
+      // perde e il «39» incollato due volte), e una seconda regola divergerebbe da quella provata.
+      const cifre = (typeof phoneDigitsForWhatsApp === 'function')
+        ? phoneDigitsForWhatsApp(String((esito && esito.telefono) || ''))
+        : '';
+      const box = svcAddMessage('system',
+        '✅ Link pronto per <strong>' + _e(nome) + '</strong>.'
+        + '<div style="margin-top:8px;padding:9px 11px;border:1px solid #dfe7f1;border-radius:8px;background:#fff;font-size:.82rem;white-space:pre-wrap;word-break:break-word;">' + _e(testo) + '</div>'
+        + (cifre ? '' : '<div style="margin-top:6px;color:var(--text-muted);font-size:.78rem;">⚠️ In anagrafica non c’è un numero di telefono valido: copia il messaggio e mandaglielo come preferisci.</div>'), 'flow');
+
+      const azioni = document.createElement('div');
+      azioni.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;';
+
+      if (cifre) {
+        // 🚨 Un <button>, non un <a>, e la ragione è stata TROVATA GUARDANDO: in questo
+        // foglio di stile la forma dei bottoni (riempimento, angoli, grassetto) sta
+        // sull'elemento `button`, non sulla classe `.btn` — un <a class="btn btn-primary">
+        // prendeva il solo colore e restava schiacciato e sottolineato, cioè le due azioni
+        // affiancate sembravano di natura diversa, e la PRINCIPALE era la più smorta.
+        // ⇒ Stesso elemento per tutt'e due: identici per costruzione, invece di rincorrere
+        // lo stile con eccezioni scritte a mano.
+        const wa = document.createElement('button');
+        wa.className = 'btn-primary';
+        wa.type = 'button';
+        wa.textContent = '💬 Manda su WhatsApp';
+        const indirizzoWa = 'https://wa.me/' + cifre + '?text=' + encodeURIComponent(testo);
+        wa.addEventListener('click', function () { window.open(indirizzoWa, '_blank', 'noopener'); });
+        azioni.appendChild(wa);
+      }
+      const copia = document.createElement('button');
+      copia.className = 'btn-secondary';
+      copia.type = 'button';
+      copia.textContent = '📋 Copia il messaggio';
+      copia.addEventListener('click', function () {
+        try {
+          navigator.clipboard.writeText(testo);
+          copia.textContent = '✅ Copiato';
+          setTimeout(function () { copia.textContent = '📋 Copia il messaggio'; }, 2000);
+        } catch (e) {
+          copia.textContent = '⚠️ Copia a mano';
+        }
+      });
+      azioni.appendChild(copia);
+      box.appendChild(azioni);
+    }, function () { svcFreezeMsg(msg); });
+    const annulla = btns.querySelector('.svc-btn-step-cancel');
+    if (annulla) annulla.textContent = '✕ Non ora';
+    msg.appendChild(btns);
+  }
+
   const _staffCalPendingEdits = new Set();
   function _staffCalEditKey(iso, campo, ora) {
     return String(iso).trim() + '|' + (Number(String(campo).replace(/\D/g, '')) || 0) + '|' + String(ora).trim();
@@ -42231,6 +42399,23 @@ Per confermare scrivi ELIMINA.`);
       if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud sync:', e); } }
       else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud sync:', e); } }
       try { renderStaffCalendar(); } catch (e) {}
+      // 🆕📩 IL LINK D'INGRESSO AL BOT — e sta QUI per una ragione trovata sbagliando.
+      //
+      // 🚨⭐⭐ Prima era agganciato al punto in cui si SCEGLIE il giocatore (`addResolved`), e
+      // il committente l'ha provato su TEST: «non è apparso nessun avviso». Misurato: le
+      // strade che mettono una persona in partita sono PIÙ DI UNA — il bottone dentro la
+      // scheda, e l'assistente in chat («aggiungi Mario Rossi» → «sì»), che aggiunge i
+      // giocatori per conto suo e non passava di là.
+      // ⇒ La cura non è ripetere la chiamata in ogni strada — tre copie divergono, ed è lo
+      // stesso errore in una forma nuova. Si aggancia al punto dove le strade CONVERGONO:
+      // qui, dove la modifica è confermata e applicata una volta sola (`_modificheApplicate`).
+      //
+      // ⭐ E ci guadagna il disegno, non solo la copertura: adesso la proposta esce sul FATTO
+      // COMPIUTO — solo per chi è entrato DAVVERO in partita, non per chi stavo per aggiungere
+      // e ho tolto prima di salvare, e non se Matchpoint ha rifiutato la modifica.
+      try {
+        if (op.hasPlayers && playersChanged && addArr && addArr.length) _staffCalProponiLinkPerAggiunti(addArr);
+      } catch (e) {}
     };
     // Il puntino «sto lavorando» va sulla card che ESISTE — quella di partenza. Non è una modifica
     // mostrata in anticipo: è il segno che su quella prenotazione c'è un'operazione in volo.
@@ -43044,6 +43229,25 @@ Per confermare scrivi ELIMINA.`);
       throw _err;
     }
     if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+    // 🆕📩 IL LINK D'INGRESSO AL BOT, anche quando la prenotazione NASCE con i giocatori dentro.
+    //
+    // 🚨⭐⭐ Questa è la strada che il committente ha usato provando su TEST, e dove la proposta
+    // NON usciva: l'aggancio stava sulla modifica di una prenotazione esistente, e una creazione
+    // non ci passa. È la stessa lezione per la seconda volta — le strade sono più di una, e si
+    // aggancia dove CONVERGONO: qui ci arrivano tutte e tre (partita a mano, lezione, assistente).
+    //
+    // 🚨⭐⭐ E si prendono i giocatori RICHIESTI, non quelli che il worker conferma
+    // (`resolvedPlayers`): su TEST le prenotazioni sono SIMULATE, il worker non risponde e quel
+    // campo non esiste mai — agganciarlo lì avrebbe fatto una spia che su TEST non compare MAI,
+    // cioè un banco che misura zero proprio nell'ambiente in cui si prova.
+    //
+    // ⚖️ Il prezzo, dichiarato: con `async` il server qui ha ACCETTATO la richiesta, non l'ha
+    // ancora conclusa. Se la prenotazione poi fallisse, la segreteria avrebbe mandato il link a
+    // qualcuno che non è in campo — un link che resta comunque valido per entrare nel bot. Il
+    // verso opposto (tacere finché non è certo) su TEST non direbbe mai niente.
+    try {
+      if (giocatoriPayload && giocatoriPayload.length) _staffCalProponiLinkPerAggiunti(giocatoriPayload);
+    } catch (e) {}
     return data;
   }
 

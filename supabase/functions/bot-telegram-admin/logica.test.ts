@@ -5,10 +5,17 @@
 import { assertEquals } from 'jsr:@std/assert';
 import {
   ambienteDa,
+  ammessoAAzione,
   componiInvito,
   componiPersona,
+  ETICHETTA_SEGRETERIA,
   indicizzaSoci,
+  linkDiIngresso,
   livelloLeggibile,
+  messaggioInvitoSegreteria,
+  nomeUtenteBotPer,
+  puoCreareInvito,
+  puoMandareIlLink,
   REF_PROD,
   statoInvito,
   trovaSocio,
@@ -69,6 +76,135 @@ Deno.test('permesso: con una configurazione presente, la voce spuntata via CHIUD
 Deno.test('permesso: chiuso il capitolo Amministrazione, è chiusa anche la sezione', () => {
   // Senza questo controllo si entrerebbe in una sotto-sezione di un capitolo negato.
   assertEquals(vedeLaSezione('collaboratore', { view_administration: false, view_admin_telegram: true }), false);
+});
+
+// ── chi può mandare il link d'ingresso (6/08/2026) ───────────────────────────
+//
+// 🚨⭐⭐ Il caso che conta è il PRIMO, ed è la ragione per cui questa funzione esiste:
+// è il profilo VERO delle due persone della segreteria, letto sui due ambienti prima di
+// costruire. Con la sola `vedeLaSezione` questo caso dava `false` — cioè la funzione
+// pensata per la segreteria sarebbe stata negata proprio alla segreteria.
+
+Deno.test('link: chi mette i giocatori in partita può mandarlo, anche senza la sezione del bot', () => {
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  // La porta LARGA si apre…
+  assertEquals(puoMandareIlLink('staff', segreteria), true);
+  // …e quella STRETTA resta chiusa: è la prova che la seconda porta non ha aperto la prima.
+  assertEquals(vedeLaSezione('staff', segreteria), false);
+});
+
+Deno.test('link: senza il calendario e senza la sezione, no', () => {
+  // Configurazione presente, `cloud_sync` mai spuntato: questa persona non mette nessuno
+  // in partita, quindi non ha nessun gesto a cui il permesso possa seguire.
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_administration: false }), false);
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_administration: false, cloud_sync: false }), false);
+});
+
+Deno.test('link: chi ha la sezione del bot lo manda comunque, anche senza calendario', () => {
+  assertEquals(puoMandareIlLink('owner', { cloud_sync: false }), true);
+  assertEquals(puoMandareIlLink('admin', { cloud_sync: false }), true);
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_admin_telegram: true }), true);
+});
+
+Deno.test('link: 🔒 in SOLA LETTURA no, e il ruolo batte il permesso', () => {
+  // Creare un invito SCRIVE una riga. L'app ferma già il readonly, ma quello è un riparo
+  // del browser: se questa riga cade, un readonly con `cloud_sync` scriverebbe davvero.
+  assertEquals(puoMandareIlLink('readonly', { cloud_sync: true }), false);
+  assertEquals(puoMandareIlLink('readonly', { view_admin_telegram: true }), false);
+  assertEquals(puoMandareIlLink('READONLY', { cloud_sync: true }), false);
+  // ⚖️ E resta vero che un readonly la sezione la VEDE: guardare non è scrivere. Se questo
+  // caso diventasse `false`, vorrebbe dire che ho chiuso la porta sbagliata.
+  assertEquals(vedeLaSezione('readonly', { view_dashboard: true, view_admin_telegram: true }), true);
+});
+
+Deno.test('link: profilo senza nessuna configurazione = retrocompatibilità, lo manda', () => {
+  assertEquals(puoMandareIlLink('collaboratore', {}), true);
+  assertEquals(puoMandareIlLink('collaboratore', null), true);
+});
+
+// ── il nome utente del bot, DEDOTTO dall'ambiente ────────────────────────────
+
+Deno.test('🚨 ogni ambiente manda al SUO bot, e i due non si scambiano', () => {
+  // ⭐ Non è una convenzione, è una catena: l'edge di TEST scrive l'invito con
+  // `ambiente='test'`, e quella riga la sa leggere solo il bot che si dichiara di prova.
+  // Un link di TEST verso il bot dei soci non aprirebbe niente.
+  assertEquals(nomeUtenteBotPer('prod'), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('test'), 'padelvillage_prova_bot');
+  // 🚨 E i due devono essere DIVERSI: se un giorno le due voci diventassero uguali, gli
+  // inviti di prova finirebbero sul bot dei soci veri senza che nessun altro caso lo veda.
+  assertEquals(nomeUtenteBotPer('prod') === nomeUtenteBotPer('test'), false);
+});
+
+Deno.test('nome bot: la configurazione VINCE se c’è, ed è la via di fuga', () => {
+  assertEquals(nomeUtenteBotPer('prod', 'altro_bot'), 'altro_bot');
+  // La chiocciola si toglie: chi lo scrive a mano la mette per abitudine, e
+  // `https://t.me/@nome` non è un indirizzo valido.
+  assertEquals(nomeUtenteBotPer('test', '@altro_bot'), 'altro_bot');
+});
+
+Deno.test('nome bot: una configurazione VUOTA non cancella il valore dedotto', () => {
+  // 🚨 Il caso che conta: una variabile impostata a stringa vuota (o a spazi) non deve
+  // spegnere la funzione — se no il link sparirebbe per una casella lasciata in bianco.
+  assertEquals(nomeUtenteBotPer('prod', ''), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('prod', '   '), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('test', undefined), 'padelvillage_prova_bot');
+  assertEquals(nomeUtenteBotPer('test', null), 'padelvillage_prova_bot');
+});
+
+Deno.test('nome bot: e il link che ne esce è quello che Telegram apre davvero', () => {
+  // ⭐ Il giro intero, come lo fa la funzione servita: dedotto → link. Prova che i due
+  // pezzi combaciano, che è la cosa che i due casi separati non dicono.
+  assertEquals(
+    linkDiIngresso(nomeUtenteBotPer('test'), 'abc123'),
+    'https://t.me/padelvillage_prova_bot?start=abc123',
+  );
+  assertEquals(
+    linkDiIngresso(nomeUtenteBotPer('prod'), 'abc123'),
+    'https://t.me/loziocoach_bot?start=abc123',
+  );
+});
+
+// ── QUALE porta per quale azione ─────────────────────────────────────────────
+//
+// ⭐⭐ Questi casi esistono perché i quattro qui sopra NON bastavano: provavano le due
+// regole una per una, ma non «quale delle due si applica». Chi rimettesse `vedeLaSezione`
+// su tutto richiuderebbe la porta alla segreteria lasciando tutto verde.
+
+Deno.test('porta: SOLO i due tempi del gesto passano da quella larga', () => {
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  // Chiedere «serve il link?» e mandarlo: senza il primo, la spia non potrebbe comparire
+  // e resterebbe solo un bottone da tirare a indovinare.
+  assertEquals(ammessoAAzione('stato_bot', 'staff', segreteria), true);
+  assertEquals(ammessoAAzione('crea_invito', 'staff', segreteria), true);
+  // Le altre tre restano chiuse per la stessa identica persona: è la prova che la porta
+  // larga non ha scardinato niente. Un `true` qui sotto vorrebbe dire che la segreteria
+  // può anche revocare chi le pare.
+  assertEquals(ammessoAAzione('list', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('revoca', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('riattiva', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('ritira_invito', 'staff', segreteria), false);
+});
+
+Deno.test('porta: un\'azione ignota finisce su quella STRETTA, non su quella larga', () => {
+  // Il verso giusto in cui sbagliare: chi domani aggiunge un\'azione la trova chiusa.
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  assertEquals(ammessoAAzione('', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('azione_che_non_esiste', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('CREA_INVITO', 'staff', segreteria), false);
+  // 🚨 E un nome che SOMIGLIA non basta: l'elenco è per esteso, non «tutto ciò che
+  // comincia per». Se questi passassero, la porta larga si aprirebbe da sé la prossima
+  // volta che qualcuno battezza un'azione in modo somigliante.
+  assertEquals(ammessoAAzione('stato_bot_tutti', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('crea_invito_massivo', 'staff', segreteria), false);
+});
+
+Deno.test('porta: chi ha la sezione passa da tutte, e il readonly da nessuna che scriva', () => {
+  const capo = { view_dashboard: true, view_admin_telegram: true };
+  assertEquals(ammessoAAzione('crea_invito', 'staff', capo), true);
+  assertEquals(ammessoAAzione('list', 'staff', capo), true);
+  // Sola lettura: guarda l\'elenco, ma non crea inviti.
+  assertEquals(ammessoAAzione('list', 'readonly', capo), true);
+  assertEquals(ammessoAAzione('crea_invito', 'readonly', capo), false);
 });
 
 // ── il livello, scritto senza mentire ────────────────────────────────────────
@@ -337,4 +473,62 @@ Deno.test('anagrafica: si cerca prima per scheda, e il codice resta come ripiego
   assertEquals(trovaSocio(SOCI, '', '000029')?.nome, 'Luca Allera');
   assertEquals(trovaSocio(SOCI, 'sch-ignota', '000029')?.nome, 'Luca Allera');
   assertEquals(trovaSocio(SOCI, '', 'PMO-000060'), undefined);
+});
+
+
+// ── L'INVITO DELLA SEGRETERIA (6/08/2026) ────────────────────────────────────
+
+const SOCIO = {
+  schedaId: 'PMO-000123', memberId: '000123', nome: 'Fabio De Luca',
+  telefono: '+393401234567', livello: '3', autovalutato: false,
+};
+
+Deno.test('🔗 il link si compone come lo apre Telegram', () => {
+  assertEquals(linkDiIngresso('loziocoach_bot', 'abc123'), 'https://t.me/loziocoach_bot?start=abc123');
+  // ⭐ La chiocciola si perdona: chi copia il nome utente dal profilo se la porta dietro.
+  assertEquals(linkDiIngresso('@loziocoach_bot', 'abc123'), 'https://t.me/loziocoach_bot?start=abc123');
+});
+
+Deno.test('🚨 senza nome utente o senza token NON esce un link a metà', () => {
+  // Un `https://t.me/?start=…` non fallisce: porta ALTROVE. Meglio niente.
+  assertEquals(linkDiIngresso('', 'abc123'), '');
+  assertEquals(linkDiIngresso('loziocoach_bot', ''), '');
+  assertEquals(linkDiIngresso(null, undefined), '');
+});
+
+Deno.test('🚨 il messaggio porta il LINK, o non è un messaggio', () => {
+  const m = messaggioInvitoSegreteria('Fabio', 'https://t.me/x?start=y');
+  assertEquals(m.includes('https://t.me/x?start=y'), true);
+  assertEquals(m.includes('Fabio'), true);
+  // ⭐ Dice da CHI arriva: un link nudo da un numero non salvato si scambia per spam.
+  assertEquals(m.includes('segreteria'), true);
+  // 🚨 Senza link non si consegna una frase che promette un link.
+  assertEquals(messaggioInvitoSegreteria('Fabio', ''), '');
+});
+
+Deno.test('🚨 senza nome il messaggio esce lo stesso, e non dice «Ciao undefined»', () => {
+  const m = messaggioInvitoSegreteria('', 'https://t.me/x?start=y');
+  assertEquals(m.startsWith('Ciao, '), true, m);
+  assertEquals(/undefined|null/.test(m), false, m);
+});
+
+Deno.test('⭐ l\'etichetta è LA SEGRETERIA, non il nome dell\'operatore (scelta sua)', () => {
+  // È quello che legge l'invitato dentro «ti ha invitato …»: il primo contatto col circolo.
+  assertEquals(ETICHETTA_SEGRETERIA.includes('segreteria'), true);
+});
+
+Deno.test('🚨 i tre rifiuti dell\'invito sono DISTINTI', () => {
+  // Accorparli sotto un «non si può» farebbe leggere alla segreteria una cosa vera per un
+  // caso e falsa per l'altro: «non la trovo» è un guasto, «è già dentro» è una buona notizia.
+  assertEquals(puoCreareInvito({ socio: undefined, chatGiaNelBot: false, token: 't' }),
+    { ok: false, motivo: 'socio_ignoto' });
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: true, token: 't' }),
+    { ok: false, motivo: 'gia_nel_bot' });
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: false, token: '  ' }),
+    { ok: false, motivo: 'senza_token' });
+});
+
+Deno.test('✅ col socio in anagrafica e fuori dal bot, l\'invito si può fare', () => {
+  assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: false, token: ' abc ' }),
+    { ok: true, token: 'abc' });
 });
