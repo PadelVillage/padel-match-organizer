@@ -9,6 +9,7 @@ import {
   indicizzaSoci,
   linkDiIngresso,
   messaggioInvitoSegreteria,
+  nomeUtenteBotPer,
   puoCreareInvito,
   trovaSocio,
   vedeLaSezione,
@@ -262,10 +263,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (azione === 'crea_invito') {
-      // 🚨 Fail closed sul nome utente del bot: senza, il link sarebbe `https://t.me/?start=…`
-      // — che non fallisce, porta altrove. Un link rotto in mano alla segreteria è peggio di
-      // un bottone che dice «non si può».
-      const nomeUtenteBot = Deno.env.get('TELEGRAM_BOT_USERNAME') ?? '';
+      // 🚨 Il nome utente del bot si DEDUCE dall'ambiente (`nomeUtenteBotPer`), e non si
+      // legge da un segreto da mettere a mano: un segreto assente si vede subito, uno
+      // scritto storto no — il link partirebbe verso un'altra chat e chi lo manda
+      // leggerebbe «link pronto». La variabile resta come via di fuga e vince se c'è.
+      const nomeUtenteBot = nomeUtenteBotPer(ambiente, Deno.env.get('TELEGRAM_BOT_USERNAME'));
       if (!nomeUtenteBot) {
         return err(503, 'BOT_USERNAME_ASSENTE', 'Il nome utente del bot non è configurato in questo ambiente.');
       }

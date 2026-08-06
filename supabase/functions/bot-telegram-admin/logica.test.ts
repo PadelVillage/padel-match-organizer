@@ -13,6 +13,7 @@ import {
   linkDiIngresso,
   livelloLeggibile,
   messaggioInvitoSegreteria,
+  nomeUtenteBotPer,
   puoCreareInvito,
   puoMandareIlLink,
   REF_PROD,
@@ -119,6 +120,48 @@ Deno.test('link: 🔒 in SOLA LETTURA no, e il ruolo batte il permesso', () => {
 Deno.test('link: profilo senza nessuna configurazione = retrocompatibilità, lo manda', () => {
   assertEquals(puoMandareIlLink('collaboratore', {}), true);
   assertEquals(puoMandareIlLink('collaboratore', null), true);
+});
+
+// ── il nome utente del bot, DEDOTTO dall'ambiente ────────────────────────────
+
+Deno.test('🚨 ogni ambiente manda al SUO bot, e i due non si scambiano', () => {
+  // ⭐ Non è una convenzione, è una catena: l'edge di TEST scrive l'invito con
+  // `ambiente='test'`, e quella riga la sa leggere solo il bot che si dichiara di prova.
+  // Un link di TEST verso il bot dei soci non aprirebbe niente.
+  assertEquals(nomeUtenteBotPer('prod'), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('test'), 'padelvillage_prova_bot');
+  // 🚨 E i due devono essere DIVERSI: se un giorno le due voci diventassero uguali, gli
+  // inviti di prova finirebbero sul bot dei soci veri senza che nessun altro caso lo veda.
+  assertEquals(nomeUtenteBotPer('prod') === nomeUtenteBotPer('test'), false);
+});
+
+Deno.test('nome bot: la configurazione VINCE se c’è, ed è la via di fuga', () => {
+  assertEquals(nomeUtenteBotPer('prod', 'altro_bot'), 'altro_bot');
+  // La chiocciola si toglie: chi lo scrive a mano la mette per abitudine, e
+  // `https://t.me/@nome` non è un indirizzo valido.
+  assertEquals(nomeUtenteBotPer('test', '@altro_bot'), 'altro_bot');
+});
+
+Deno.test('nome bot: una configurazione VUOTA non cancella il valore dedotto', () => {
+  // 🚨 Il caso che conta: una variabile impostata a stringa vuota (o a spazi) non deve
+  // spegnere la funzione — se no il link sparirebbe per una casella lasciata in bianco.
+  assertEquals(nomeUtenteBotPer('prod', ''), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('prod', '   '), 'loziocoach_bot');
+  assertEquals(nomeUtenteBotPer('test', undefined), 'padelvillage_prova_bot');
+  assertEquals(nomeUtenteBotPer('test', null), 'padelvillage_prova_bot');
+});
+
+Deno.test('nome bot: e il link che ne esce è quello che Telegram apre davvero', () => {
+  // ⭐ Il giro intero, come lo fa la funzione servita: dedotto → link. Prova che i due
+  // pezzi combaciano, che è la cosa che i due casi separati non dicono.
+  assertEquals(
+    linkDiIngresso(nomeUtenteBotPer('test'), 'abc123'),
+    'https://t.me/padelvillage_prova_bot?start=abc123',
+  );
+  assertEquals(
+    linkDiIngresso(nomeUtenteBotPer('prod'), 'abc123'),
+    'https://t.me/loziocoach_bot?start=abc123',
+  );
 });
 
 // ── QUALE porta per quale azione ─────────────────────────────────────────────

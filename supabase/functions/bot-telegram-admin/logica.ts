@@ -436,6 +436,33 @@ export function componiInvito(riga: RigaInvito, rubrica: Rubrica, adesso: Date):
  */
 export const ETICHETTA_SEGRETERIA = 'la segreteria del Padel Village';
 
+/**
+ * Il nome utente del bot che apre l'invito, per ambiente.
+ *
+ * 🚨⭐⭐ È DEDOTTO dall'ambiente e non letto da una variabile, per la stessa ragione per
+ * cui lo è `ambienteDa`: è un **fatto della macchina**, non una configurazione che
+ * qualcuno può dimenticare — o peggio, sbagliare. Un segreto assente si vede subito
+ * (503); un segreto scritto storto no: il link partirebbe **verso un'altra chat**, e
+ * chi lo manda leggerebbe «link pronto».
+ *
+ * ⭐ Il legame non è una convenzione, è una CATENA: l'edge di TEST scrive l'invito con
+ * `ambiente='test'`, e quella riga la sa leggere **solo** il bot che si dichiara di
+ * prova. Mandare un invito di TEST al bot dei soci darebbe un link che non apre niente.
+ * ⇒ Il nome utente non è una preferenza: discende da dove la funzione sta girando.
+ *
+ * ⚖️ La variabile resta e VINCE se c'è: serve il giorno in cui un bot cambia nome, per
+ * non dover deployare. È una via di fuga, non la strada normale.
+ */
+export const NOMI_UTENTE_BOT: Record<'test' | 'prod', string> = {
+  prod: 'loziocoach_bot',
+  test: 'padelvillage_prova_bot',
+};
+
+export function nomeUtenteBotPer(ambiente: 'test' | 'prod', dallaConfigurazione?: unknown): string {
+  const scavalco = testo(dallaConfigurazione).replace(/^@/, '');
+  return scavalco || NOMI_UTENTE_BOT[ambiente] || '';
+}
+
 /** Il link da incollare: `https://t.me/<bot>?start=<token>`. */
 export function linkDiIngresso(nomeUtenteBot: unknown, token: unknown): string {
   const bot = testo(nomeUtenteBot).replace(/^@/, '');
