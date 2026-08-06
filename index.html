@@ -8068,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.187';
+    const APP_VERSION = '6.188';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43650,6 +43650,25 @@ Per confermare scrivi ELIMINA.`);
       throw _err;
     }
     if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
+    // 🆕📩 IL LINK D'INGRESSO AL BOT, anche quando la prenotazione NASCE con i giocatori dentro.
+    //
+    // 🚨⭐⭐ Questa è la strada che il committente ha usato provando su TEST, e dove la proposta
+    // NON usciva: l'aggancio stava sulla modifica di una prenotazione esistente, e una creazione
+    // non ci passa. È la stessa lezione per la seconda volta — le strade sono più di una, e si
+    // aggancia dove CONVERGONO: qui ci arrivano tutte e tre (partita a mano, lezione, assistente).
+    //
+    // 🚨⭐⭐ E si prendono i giocatori RICHIESTI, non quelli che il worker conferma
+    // (`resolvedPlayers`): su TEST le prenotazioni sono SIMULATE, il worker non risponde e quel
+    // campo non esiste mai — agganciarlo lì avrebbe fatto una spia che su TEST non compare MAI,
+    // cioè un banco che misura zero proprio nell'ambiente in cui si prova.
+    //
+    // ⚖️ Il prezzo, dichiarato: con `async` il server qui ha ACCETTATO la richiesta, non l'ha
+    // ancora conclusa. Se la prenotazione poi fallisse, la segreteria avrebbe mandato il link a
+    // qualcuno che non è in campo — un link che resta comunque valido per entrare nel bot. Il
+    // verso opposto (tacere finché non è certo) su TEST non direbbe mai niente.
+    try {
+      if (giocatoriPayload && giocatoriPayload.length) _staffCalProponiLinkPerAggiunti(giocatoriPayload);
+    } catch (e) {}
     return data;
   }
 
