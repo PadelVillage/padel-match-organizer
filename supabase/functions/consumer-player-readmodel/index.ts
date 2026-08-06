@@ -281,6 +281,15 @@ Deno.serve(async (req: Request) => {
         // nella scheda del socio.
         level_assessed: !!level && level !== '0.5',
         gender: g === 'M' || g === 'F' ? g : null,
+        // 🆕🚨⭐⭐ 6/08/2026 — «l'Ospite lo può mettere solamente la segreteria», sua decisione,
+        // che ribalta quella del 30/07. ⇒ Chi non è cliente del circolo non può più entrare in
+        // una partita accettando un invito, e il bot deve saperlo PRIMA di disegnare il bottone:
+        // la regola ferma del progetto è che un bottone che non può funzionare non si mostra.
+        // ⭐ La stessa funzione che già risponde a `puo_prenotare` nell'azione 'player': una
+        // domanda sola («il circolo ce l'ha fra i suoi clienti?»), una riga sola che la decide.
+        // 📊 Misurato su PROD il 6/08: **1.081 su 2.797 (38,6%)** sono clienti. Il `false` è il
+        // caso FREQUENTE, e chi lo legge non deve trattarlo come un guasto.
+        cliente_del_circolo: clienteDelCircolo(p.memberId),
       };
     }).filter((p) => p.id);
 
