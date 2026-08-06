@@ -8068,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.186';
+    const APP_VERSION = '6.187';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -42432,12 +42432,6 @@ Per confermare scrivi ELIMINA.`);
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
       staffCalRenderPlayersEditor();
       staffCalBringEditorToTop();
-      // 🆕 La proposta del link al bot arriva DOPO e non blocca niente: se il ponte tace o
-      // rifiuta, il giocatore resta aggiunto lo stesso. Il gesto della segreteria è mettere
-      // la persona in partita — questo è un di più, e un di più non può far fallire il di meno.
-      // ⭐ Sta qui e non nei tre punti che chiamano `addResolved`: una copia per strada
-      // divergerebbe, e la persona aggiunta dal menu degli omonimi non riceverebbe mai la spia.
-      try { _staffCalProponiLinkBot(member); } catch (e) {}
     };
     if (sugg.length === 0 && _suggTutti.length) {
       // ⭐ I candidati C'ERANO, e sono tutti GIÀ in questa prenotazione. Va detto così: il
@@ -42501,6 +42495,39 @@ Per confermare scrivi ELIMINA.`);
   //
   // 🅿️ L'Ospite non passa di qui, ed è giusto: non è una persona ma un posto occupato (sua
   // decisione del 4/08) — infatti si aggiunge per un'altra strada, che non chiama questa.
+  /**
+   * Dai giocatori appena entrati in partita alle loro schede, e da lì alla proposta.
+   *
+   * 🚨 I chip di `st.add` portano `{nome, codice, codiceCliente}` — NON il numero di scheda,
+   * che è la chiave con cui il bot intesta i suoi cassetti. Va ritrovato in anagrafica, e si
+   * cerca con le chiavi che DISCRIMINANO (id interno Matchpoint, poi codice cliente) prima
+   * del nome: sui nomi non si decide, questo progetto ha 15 nomi ripetuti.
+   * ⭐ Il nome resta come ultimo gradino ed è accettato solo se combacia UNA volta sola: un
+   * omonimo manderebbe il link alla persona sbagliata, ed è meglio non proporlo affatto.
+   * 🅿️ L'Ospite non ha scheda e cade da sé: non è una persona, è un posto occupato.
+   */
+  function _staffCalProponiLinkPerAggiunti(addArr) {
+    if (!Array.isArray(addArr) || !addArr.length) return;
+    const rosa = (typeof giocatori !== 'undefined' && Array.isArray(giocatori)) ? giocatori : [];
+    if (!rosa.length) return;
+    const nrm = (typeof _staffCalNrmNome === 'function') ? _staffCalNrmNome : function (x) { return String(x || '').trim().toLowerCase(); };
+    addArr.forEach(function (chip) {
+      if (!chip || !chip.nome) return;
+      if (typeof isGuestJollyName === 'function' && isGuestJollyName(chip.nome)) return;
+      const idInterno = String(chip.codice || '').trim();
+      const codCliente = String(chip.codiceCliente || '').trim();
+      let socio = null;
+      if (idInterno) socio = rosa.find(function (m) { return String(m && m.matchpointIdInterno || '').trim() === idInterno; }) || null;
+      if (!socio && codCliente) socio = rosa.find(function (m) { return String(m && m.memberId || '').trim() === codCliente; }) || null;
+      if (!socio) {
+        const n = nrm(chip.nome);
+        const uguali = n ? rosa.filter(function (m) { return nrm(_staffCalPlayerName(m, '')) === n; }) : [];
+        if (uguali.length === 1) socio = uguali[0];
+      }
+      if (socio) _staffCalProponiLinkBot(socio);
+    });
+  }
+
   async function _staffCalProponiLinkBot(member) {
     if (!member || typeof pmoTelegramChiama !== 'function') return;
     const schedaId = String((member && member.id) || '').trim();
@@ -42793,6 +42820,23 @@ Per confermare scrivi ELIMINA.`);
       if (_slotMoved) { try { staffCalCloudReassignAndSyncMove(op.origIso, op.origCampo, op.origOra, op.mIso, op.mCampo, op.mOraIni, op.mOraFin); } catch (e) { console.warn('staff move cloud sync:', e); } }
       else { try { staffCalCloudSyncEdit(_curIso, _curCampo, _curOra); } catch (e) { console.warn('staff edit cloud sync:', e); } }
       try { renderStaffCalendar(); } catch (e) {}
+      // 🆕📩 IL LINK D'INGRESSO AL BOT — e sta QUI per una ragione trovata sbagliando.
+      //
+      // 🚨⭐⭐ Prima era agganciato al punto in cui si SCEGLIE il giocatore (`addResolved`), e
+      // il committente l'ha provato su TEST: «non è apparso nessun avviso». Misurato: le
+      // strade che mettono una persona in partita sono PIÙ DI UNA — il bottone dentro la
+      // scheda, e l'assistente in chat («aggiungi Mario Rossi» → «sì»), che aggiunge i
+      // giocatori per conto suo e non passava di là.
+      // ⇒ La cura non è ripetere la chiamata in ogni strada — tre copie divergono, ed è lo
+      // stesso errore in una forma nuova. Si aggancia al punto dove le strade CONVERGONO:
+      // qui, dove la modifica è confermata e applicata una volta sola (`_modificheApplicate`).
+      //
+      // ⭐ E ci guadagna il disegno, non solo la copertura: adesso la proposta esce sul FATTO
+      // COMPIUTO — solo per chi è entrato DAVVERO in partita, non per chi stavo per aggiungere
+      // e ho tolto prima di salvare, e non se Matchpoint ha rifiutato la modifica.
+      try {
+        if (op.hasPlayers && playersChanged && addArr && addArr.length) _staffCalProponiLinkPerAggiunti(addArr);
+      } catch (e) {}
     };
     // Il puntino «sto lavorando» va sulla card che ESISTE — quella di partenza. Non è una modifica
     // mostrata in anticipo: è il segno che su quella prenotazione c'è un'operazione in volo.
