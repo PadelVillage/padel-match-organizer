@@ -28834,7 +28834,13 @@ Per confermare scrivi ELIMINA.`);
 	      // 🚨 Un HTTP 200 non basta: l'edge risponde `ok:false` con il motivo dentro.
 	      // Fidarsi del solo stato farebbe passare per riuscita un'azione rifiutata.
 	      if (!resp.ok || !data || data.ok !== true) {
-	        throw new Error((data && (data.message || data.error)) || ('HTTP ' + resp.status));
+	        const e = new Error((data && (data.message || data.error)) || ('HTTP ' + resp.status));
+        // ⭐ Il CODICE viaggia accanto al messaggio: chi chiama deve poter distinguere un
+        // rifiuto previsto (`GIA_NEL_BOT`, che è una buona notizia) da un guasto, senza
+        // dover riconoscere una FRASE — le frasi si riscrivono per farle suonare meglio.
+        e.codice = String((data && data.error) || '');
+        e.stato = resp.status;
+        throw e;
 	      }
 	      return data;
 	    }
@@ -42520,7 +42526,10 @@ Per confermare scrivi ELIMINA.`);
 
     const msg = svcAddMessage('system',
       '📩 <strong>' + _e(nome) + '</strong> non è nel bot Telegram: non riceverà i promemoria e dal telefono non vedrà questa partita.'
-      + '<br><span style="color:var(--text-muted);font-size:.78rem;">Puoi mandargli il link per entrare. Il messaggio è già scritto: lo puoi cambiare prima di inviarlo.</span>', 'flow');
+      // 🚨 Senza genere, ed è una regola ferma di questo progetto: qui si nomina una persona
+      // vera, e «mandargli» davanti a una socia è sbagliato. Trovato GUARDANDO la schermata
+      // composta, non leggendo il codice — i casi guardavano che il nome ci fosse.
+      + '<br><span style="color:var(--text-muted);font-size:.78rem;">Puoi mandare il link per entrare. Il messaggio è già scritto: si può cambiare prima di inviarlo.</span>', 'flow');
 
     const btns = svcMakeStepButtons(['📩 Prepara il link d’ingresso'], async function () {
       svcFreezeMsg(msg);
@@ -42531,8 +42540,13 @@ Per confermare scrivi ELIMINA.`);
         // ⭐ «È già nel bot» NON è un errore da rosso: è una buona notizia, e vuol dire che
         // qualcuno l'ha fatto entrare fra la spia e il bottone. Si dice così.
         const m = (err && err.message) || String(err);
-        if (/già entrata nel bot/i.test(m)) {
-          svcAddMessage('system', '✅ <strong>' + _e(nome) + '</strong> nel frattempo è entrata nel bot: non serve più il link.');
+        // 🚨 Si decide sul CODICE, non sulla frase: una frase è testo che un giorno si
+        // riscrive per farla suonare meglio, e questo ramo morirebbe in silenzio lasciando
+        // passare «è già nel bot» come se fosse un guasto.
+        if (String((err && err.codice) || '') === 'GIA_NEL_BOT') {
+          // Senza genere: «entrata» davanti a un socio sarebbe sbagliato quanto
+          // «mandargli» davanti a una socia.
+          svcAddMessage('system', '✅ <strong>' + _e(nome) + '</strong> nel frattempo è già nel bot: non serve più il link.');
         } else {
           svcAddMessage('system', '⛔ Non sono riuscito a preparare il link: ' + _e(m), 'error');
         }
@@ -42559,16 +42573,24 @@ Per confermare scrivi ELIMINA.`);
       azioni.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;';
 
       if (cifre) {
-        const wa = document.createElement('a');
-        wa.className = 'btn btn-primary';
-        wa.href = 'https://wa.me/' + cifre + '?text=' + encodeURIComponent(testo);
-        wa.target = '_blank';
-        wa.rel = 'noopener';
+        // 🚨 Un <button>, non un <a>, e la ragione è stata TROVATA GUARDANDO: in questo
+        // foglio di stile la forma dei bottoni (riempimento, angoli, grassetto) sta
+        // sull'elemento `button`, non sulla classe `.btn` — un <a class="btn btn-primary">
+        // prendeva il solo colore e restava schiacciato e sottolineato, cioè le due azioni
+        // affiancate sembravano di natura diversa, e la PRINCIPALE era la più smorta.
+        // ⇒ Stesso elemento per tutt'e due: identici per costruzione, invece di rincorrere
+        // lo stile con eccezioni scritte a mano.
+        const wa = document.createElement('button');
+        wa.className = 'btn-primary';
+        wa.type = 'button';
         wa.textContent = '💬 Manda su WhatsApp';
+        const indirizzoWa = 'https://wa.me/' + cifre + '?text=' + encodeURIComponent(testo);
+        wa.addEventListener('click', function () { window.open(indirizzoWa, '_blank', 'noopener'); });
         azioni.appendChild(wa);
       }
       const copia = document.createElement('button');
-      copia.className = 'btn';
+      copia.className = 'btn-secondary';
+      copia.type = 'button';
       copia.textContent = '📋 Copia il messaggio';
       copia.addEventListener('click', function () {
         try {
