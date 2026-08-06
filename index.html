@@ -8068,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.185';
+    const APP_VERSION = '6.186';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -42426,6 +42426,12 @@ Per confermare scrivi ELIMINA.`);
       st.add.push({ nome: _staffCalPlayerName(member, raw), codice: _staffCalPlayerCode(member), codiceCliente: _staffCalClientCode(member) });
       staffCalRenderPlayersEditor();
       staffCalBringEditorToTop();
+      // 🆕 La proposta del link al bot arriva DOPO e non blocca niente: se il ponte tace o
+      // rifiuta, il giocatore resta aggiunto lo stesso. Il gesto della segreteria è mettere
+      // la persona in partita — questo è un di più, e un di più non può far fallire il di meno.
+      // ⭐ Sta qui e non nei tre punti che chiamano `addResolved`: una copia per strada
+      // divergerebbe, e la persona aggiunta dal menu degli omonimi non riceverebbe mai la spia.
+      try { _staffCalProponiLinkBot(member); } catch (e) {}
     };
     if (sugg.length === 0 && _suggTutti.length) {
       // ⭐ I candidati C'ERANO, e sono tutti GIÀ in questa prenotazione. Va detto così: il
@@ -42465,6 +42471,119 @@ Per confermare scrivi ELIMINA.`);
     }, function() { svcFreezeMsg(msg); });
     const cancelEl = btns.querySelector('.svc-btn-step-cancel');
     if (cancelEl) cancelEl.textContent = '✕ Annulla';
+    msg.appendChild(btns);
+  }
+
+  // ── IL LINK D'INGRESSO AL BOT, proposto dalla SEGRETERIA (6/08/2026) ────────────────────────
+  //
+  // 🧭 Nasce da una sua riflessione: se lo staff mette in partita un socio che nel bot non è mai
+  // entrato, quella persona è IRRAGGIUNGIBILE — niente promemoria, non vede la partita, e se
+  // l'organizzatore la toglie non lo sa da nessuno.
+  //
+  // ⭐⭐ E la cura sta QUI e non dall'altra parte, per una sua correzione: dal bot l'organizzatore
+  // può inserire solo chi ha in RUBRICA, e in rubrica ci si entra solo passando dalla porta del
+  // bot ⇒ chi inserisce l'organizzatore è già dentro, sempre. Le uniche persone «fuori dal bot»
+  // dentro una partita sono quelle messe dalla segreteria: la cura va dove nasce il problema.
+  //
+  // ⚖️ Regola sua, lettura MORBIDA scelta fra due: la segreteria inserisce dall'anagrafica come ha
+  // sempre fatto, E le tocca mandare il link. Non un divieto — che sarebbe stato aggirabile
+  // lavorando dritti su Matchpoint, cioè proprio da chi doveva rispettarlo.
+  //
+  // 🚨 La proposta esce DA SÉ ogni volta (sua decisione, contro «a richiesta»), ma il link si crea
+  // solo se lo si tocca: la riga in `telegram_inviti` la scrive il gesto, non l'apertura di una
+  // scheda. Chi aggiunge dieci giocatori non lascia dietro dieci inviti mai mandati.
+  //
+  // 🅿️ L'Ospite non passa di qui, ed è giusto: non è una persona ma un posto occupato (sua
+  // decisione del 4/08) — infatti si aggiunge per un'altra strada, che non chiama questa.
+  async function _staffCalProponiLinkBot(member) {
+    if (!member || typeof pmoTelegramChiama !== 'function') return;
+    const schedaId = String((member && member.id) || '').trim();
+    const codice = (typeof _staffCalClientCode === 'function') ? _staffCalClientCode(member) : '';
+    if (!schedaId && !codice) return;
+    const _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+    const nome = _staffCalPlayerName(member, '') || 'questa persona';
+
+    let stato = null;
+    try {
+      stato = await pmoTelegramChiama({ action: 'stato_bot', persona_id: schedaId, member_id: codice });
+    } catch (err) {
+      // 🚨 Un guasto NON si traveste da «è tutto a posto»: se la lettura non riesce, il silenzio
+      // direbbe «è nel bot» di una persona di cui non sappiamo niente. Ma non è nemmeno un
+      // errore da sbattere in faccia — il lavoro vero (mettere il giocatore in partita) è
+      // riuscito. ⇒ Una riga sommessa, che dichiara di NON sapere.
+      svcAddMessage('system', '<span style="color:var(--text-muted);font-size:.78rem;">Non sono riuscito a controllare se <strong>' + _e(nome) + '</strong> è nel bot Telegram: ' + _e((err && err.message) || String(err)) + '</span>');
+      return;
+    }
+    // È già dentro: silenzio. Dirlo a ogni giocatore aggiunto sarebbe rumore su una cosa che va
+    // bene, e la segreteria imparerebbe a non leggere più questa riga.
+    if (!stato || stato.nel_bot === true) return;
+
+    const msg = svcAddMessage('system',
+      '📩 <strong>' + _e(nome) + '</strong> non è nel bot Telegram: non riceverà i promemoria e dal telefono non vedrà questa partita.'
+      + '<br><span style="color:var(--text-muted);font-size:.78rem;">Puoi mandargli il link per entrare. Il messaggio è già scritto: lo puoi cambiare prima di inviarlo.</span>', 'flow');
+
+    const btns = svcMakeStepButtons(['📩 Prepara il link d’ingresso'], async function () {
+      svcFreezeMsg(msg);
+      let esito = null;
+      try {
+        esito = await pmoTelegramChiama({ action: 'crea_invito', persona_id: schedaId, member_id: codice });
+      } catch (err) {
+        // ⭐ «È già nel bot» NON è un errore da rosso: è una buona notizia, e vuol dire che
+        // qualcuno l'ha fatto entrare fra la spia e il bottone. Si dice così.
+        const m = (err && err.message) || String(err);
+        if (/già entrata nel bot/i.test(m)) {
+          svcAddMessage('system', '✅ <strong>' + _e(nome) + '</strong> nel frattempo è entrata nel bot: non serve più il link.');
+        } else {
+          svcAddMessage('system', '⛔ Non sono riuscito a preparare il link: ' + _e(m), 'error');
+        }
+        return;
+      }
+      const link = String((esito && esito.link) || '').trim();
+      const testo = String((esito && esito.messaggio) || '').trim();
+      if (!link || !testo) {
+        svcAddMessage('system', '⛔ Il ponte non ha restituito un link utilizzabile: riprova.', 'error');
+        return;
+      }
+      // 🚨 Il numero passa dalla stessa funzione del modulo WhatsApp, non da una normalizzazione
+      // scritta qui: i telefoni di questa anagrafica hanno due difetti storici noti (il «+» che si
+      // perde e il «39» incollato due volte), e una seconda regola divergerebbe da quella provata.
+      const cifre = (typeof phoneDigitsForWhatsApp === 'function')
+        ? phoneDigitsForWhatsApp(String((esito && esito.telefono) || ''))
+        : '';
+      const box = svcAddMessage('system',
+        '✅ Link pronto per <strong>' + _e(nome) + '</strong>.'
+        + '<div style="margin-top:8px;padding:9px 11px;border:1px solid #dfe7f1;border-radius:8px;background:#fff;font-size:.82rem;white-space:pre-wrap;word-break:break-word;">' + _e(testo) + '</div>'
+        + (cifre ? '' : '<div style="margin-top:6px;color:var(--text-muted);font-size:.78rem;">⚠️ In anagrafica non c’è un numero di telefono valido: copia il messaggio e mandaglielo come preferisci.</div>'), 'flow');
+
+      const azioni = document.createElement('div');
+      azioni.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;';
+
+      if (cifre) {
+        const wa = document.createElement('a');
+        wa.className = 'btn btn-primary';
+        wa.href = 'https://wa.me/' + cifre + '?text=' + encodeURIComponent(testo);
+        wa.target = '_blank';
+        wa.rel = 'noopener';
+        wa.textContent = '💬 Manda su WhatsApp';
+        azioni.appendChild(wa);
+      }
+      const copia = document.createElement('button');
+      copia.className = 'btn';
+      copia.textContent = '📋 Copia il messaggio';
+      copia.addEventListener('click', function () {
+        try {
+          navigator.clipboard.writeText(testo);
+          copia.textContent = '✅ Copiato';
+          setTimeout(function () { copia.textContent = '📋 Copia il messaggio'; }, 2000);
+        } catch (e) {
+          copia.textContent = '⚠️ Copia a mano';
+        }
+      });
+      azioni.appendChild(copia);
+      box.appendChild(azioni);
+    }, function () { svcFreezeMsg(msg); });
+    const annulla = btns.querySelector('.svc-btn-step-cancel');
+    if (annulla) annulla.textContent = '✕ Non ora';
     msg.appendChild(btns);
   }
 

@@ -151,6 +151,70 @@ export function vedeLaSezione(ruolo: string, permessi: Permessi | null | undefin
   return p[CHIAVE_SEZIONE] !== false;
 }
 
+/** La chiave del permesso con cui si modifica una prenotazione del circolo — la stessa
+ *  che l'app chiede prima di salvare un giocatore aggiunto
+ *  (`pmoRequireStaffPermission('cloud_sync', 'modificare la prenotazione Matchpoint')`). */
+export const CHIAVE_CALENDARIO = 'cloud_sync';
+
+/**
+ * Chi può creare il link d'ingresso al bot.
+ *
+ * ⭐⭐ SCELTO DA LUI il 6/08 fra tre, e la ragione è quella già usata per «togliere un
+ * giocatore»: **il permesso segue il gesto**, e non se ne inventa uno nuovo. Chi può
+ * mettere una persona in partita può mandarle il link per entrare nel bot.
+ *
+ * 🚨 Il fatto che ha reso necessaria questa regola, misurato prima di scriverla: sui DUE
+ * ambienti le persone che inseriscono davvero i giocatori (`cloud_sync`) sono proprio
+ * quelle che **non** vedono la sezione «Bot Telegram» — con la sola `vedeLaSezione` questa
+ * funzione sarebbe stata negata esattamente a chi le serve, e aperta solo all'owner.
+ *
+ * ⚖️ E non allarga nient'altro: chi entra da questa porta crea un invito e basta. L'elenco
+ * di chi è nel bot, la revoca e il ritiro degli inviti restano dietro `vedeLaSezione`.
+ *
+ * 🔒 `readonly` è fuori, e va per primo: creare un invito **scrive** una riga: l'app lo
+ * ferma già di suo (`pmoBlockWriteIfReadonly`), ma quello è un riparo del browser — la
+ * barriera vera è questa. Il ruolo batte il permesso: un `readonly` con `cloud_sync`
+ * spuntato non deve passare.
+ */
+export function puoMandareIlLink(ruolo: string, permessi: Permessi | null | undefined): boolean {
+  const r = testo(ruolo).toLowerCase();
+  if (r === 'readonly') return false;
+  if (vedeLaSezione(ruolo, permessi)) return true;
+  const p = (permessi && typeof permessi === 'object') ? permessi : {};
+  return p[CHIAVE_CALENDARIO] === true;
+}
+
+/**
+ * QUALE porta per quale azione — e sta qui, non dentro `index.ts`, di proposito.
+ *
+ * 🚨⭐⭐ La lezione della 38ª: una guardia che vive solo dentro il corpo della funzione
+ * servita **non la misura nessuno**, e un sabotaggio che la toglie lascia tutto verde.
+ * Le due regole sopra sono provate una per una, ma «quale delle due si applica a
+ * `crea_invito`» è la decisione che conta davvero — chi rimettesse `vedeLaSezione` su
+ * tutto richiuderebbe la porta alla segreteria **senza far arrossire niente**.
+ *
+ * ⚖️ Passano dalla porta larga **due** azioni, e sono i due tempi dello stesso gesto:
+ * `stato_bot` chiede «serve il link?» e `crea_invito` lo fa. Tutto il resto — l'elenco di
+ * chi è nel bot, la revoca, il ritiro di un invito — resta dietro quella stretta, e
+ * un'azione ignota ci finisce **per default**: chi domani ne aggiungerà una la troverà
+ * chiusa, che è il verso giusto in cui sbagliare.
+ *
+ * 🚨 L'elenco è scritto **per esteso e in un posto solo**: una regola come «tutto ciò che
+ * comincia per…» avrebbe fatto entrare dalla porta larga la prossima azione che càpita di
+ * chiamare in un modo somigliante.
+ */
+export const AZIONI_DELLA_SEGRETERIA = ['stato_bot', 'crea_invito'];
+
+export function ammessoAAzione(
+  azione: string,
+  ruolo: string,
+  permessi: Permessi | null | undefined,
+): boolean {
+  return AZIONI_DELLA_SEGRETERIA.includes(testo(azione))
+    ? puoMandareIlLink(ruolo, permessi)
+    : vedeLaSezione(ruolo, permessi);
+}
+
 /** Il livello, scritto come si può leggere senza sbagliarsi. */
 export function livelloLeggibile(livello: unknown, autovalutato = false): string {
   const v = testo(livello).replace(',', '.');

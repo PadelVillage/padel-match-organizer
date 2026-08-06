@@ -5,6 +5,7 @@
 import { assertEquals } from 'jsr:@std/assert';
 import {
   ambienteDa,
+  ammessoAAzione,
   componiInvito,
   componiPersona,
   ETICHETTA_SEGRETERIA,
@@ -13,6 +14,7 @@ import {
   livelloLeggibile,
   messaggioInvitoSegreteria,
   puoCreareInvito,
+  puoMandareIlLink,
   REF_PROD,
   statoInvito,
   trovaSocio,
@@ -73,6 +75,93 @@ Deno.test('permesso: con una configurazione presente, la voce spuntata via CHIUD
 Deno.test('permesso: chiuso il capitolo Amministrazione, è chiusa anche la sezione', () => {
   // Senza questo controllo si entrerebbe in una sotto-sezione di un capitolo negato.
   assertEquals(vedeLaSezione('collaboratore', { view_administration: false, view_admin_telegram: true }), false);
+});
+
+// ── chi può mandare il link d'ingresso (6/08/2026) ───────────────────────────
+//
+// 🚨⭐⭐ Il caso che conta è il PRIMO, ed è la ragione per cui questa funzione esiste:
+// è il profilo VERO delle due persone della segreteria, letto sui due ambienti prima di
+// costruire. Con la sola `vedeLaSezione` questo caso dava `false` — cioè la funzione
+// pensata per la segreteria sarebbe stata negata proprio alla segreteria.
+
+Deno.test('link: chi mette i giocatori in partita può mandarlo, anche senza la sezione del bot', () => {
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  // La porta LARGA si apre…
+  assertEquals(puoMandareIlLink('staff', segreteria), true);
+  // …e quella STRETTA resta chiusa: è la prova che la seconda porta non ha aperto la prima.
+  assertEquals(vedeLaSezione('staff', segreteria), false);
+});
+
+Deno.test('link: senza il calendario e senza la sezione, no', () => {
+  // Configurazione presente, `cloud_sync` mai spuntato: questa persona non mette nessuno
+  // in partita, quindi non ha nessun gesto a cui il permesso possa seguire.
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_administration: false }), false);
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_administration: false, cloud_sync: false }), false);
+});
+
+Deno.test('link: chi ha la sezione del bot lo manda comunque, anche senza calendario', () => {
+  assertEquals(puoMandareIlLink('owner', { cloud_sync: false }), true);
+  assertEquals(puoMandareIlLink('admin', { cloud_sync: false }), true);
+  assertEquals(puoMandareIlLink('staff', { view_dashboard: true, view_admin_telegram: true }), true);
+});
+
+Deno.test('link: 🔒 in SOLA LETTURA no, e il ruolo batte il permesso', () => {
+  // Creare un invito SCRIVE una riga. L'app ferma già il readonly, ma quello è un riparo
+  // del browser: se questa riga cade, un readonly con `cloud_sync` scriverebbe davvero.
+  assertEquals(puoMandareIlLink('readonly', { cloud_sync: true }), false);
+  assertEquals(puoMandareIlLink('readonly', { view_admin_telegram: true }), false);
+  assertEquals(puoMandareIlLink('READONLY', { cloud_sync: true }), false);
+  // ⚖️ E resta vero che un readonly la sezione la VEDE: guardare non è scrivere. Se questo
+  // caso diventasse `false`, vorrebbe dire che ho chiuso la porta sbagliata.
+  assertEquals(vedeLaSezione('readonly', { view_dashboard: true, view_admin_telegram: true }), true);
+});
+
+Deno.test('link: profilo senza nessuna configurazione = retrocompatibilità, lo manda', () => {
+  assertEquals(puoMandareIlLink('collaboratore', {}), true);
+  assertEquals(puoMandareIlLink('collaboratore', null), true);
+});
+
+// ── QUALE porta per quale azione ─────────────────────────────────────────────
+//
+// ⭐⭐ Questi casi esistono perché i quattro qui sopra NON bastavano: provavano le due
+// regole una per una, ma non «quale delle due si applica». Chi rimettesse `vedeLaSezione`
+// su tutto richiuderebbe la porta alla segreteria lasciando tutto verde.
+
+Deno.test('porta: SOLO i due tempi del gesto passano da quella larga', () => {
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  // Chiedere «serve il link?» e mandarlo: senza il primo, la spia non potrebbe comparire
+  // e resterebbe solo un bottone da tirare a indovinare.
+  assertEquals(ammessoAAzione('stato_bot', 'staff', segreteria), true);
+  assertEquals(ammessoAAzione('crea_invito', 'staff', segreteria), true);
+  // Le altre tre restano chiuse per la stessa identica persona: è la prova che la porta
+  // larga non ha scardinato niente. Un `true` qui sotto vorrebbe dire che la segreteria
+  // può anche revocare chi le pare.
+  assertEquals(ammessoAAzione('list', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('revoca', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('riattiva', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('ritira_invito', 'staff', segreteria), false);
+});
+
+Deno.test('porta: un\'azione ignota finisce su quella STRETTA, non su quella larga', () => {
+  // Il verso giusto in cui sbagliare: chi domani aggiunge un\'azione la trova chiusa.
+  const segreteria = { view_dashboard: true, view_administration: false, cloud_sync: true };
+  assertEquals(ammessoAAzione('', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('azione_che_non_esiste', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('CREA_INVITO', 'staff', segreteria), false);
+  // 🚨 E un nome che SOMIGLIA non basta: l'elenco è per esteso, non «tutto ciò che
+  // comincia per». Se questi passassero, la porta larga si aprirebbe da sé la prossima
+  // volta che qualcuno battezza un'azione in modo somigliante.
+  assertEquals(ammessoAAzione('stato_bot_tutti', 'staff', segreteria), false);
+  assertEquals(ammessoAAzione('crea_invito_massivo', 'staff', segreteria), false);
+});
+
+Deno.test('porta: chi ha la sezione passa da tutte, e il readonly da nessuna che scriva', () => {
+  const capo = { view_dashboard: true, view_admin_telegram: true };
+  assertEquals(ammessoAAzione('crea_invito', 'staff', capo), true);
+  assertEquals(ammessoAAzione('list', 'staff', capo), true);
+  // Sola lettura: guarda l\'elenco, ma non crea inviti.
+  assertEquals(ammessoAAzione('list', 'readonly', capo), true);
+  assertEquals(ammessoAAzione('crea_invito', 'readonly', capo), false);
 });
 
 // ── il livello, scritto senza mentire ────────────────────────────────────────
