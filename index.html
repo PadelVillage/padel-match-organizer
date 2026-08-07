@@ -8068,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.190';
+    const APP_VERSION = '6.191';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43453,6 +43453,29 @@ Per confermare scrivi ELIMINA.`);
   //   "lezione LoZio campo 3 ogni martedì 18-19:30" → lezione ricorrente
   //   "campo 2 ogni venerdì 20-21:30 Spinazze"      → partita ricorrente
   // Usa PARSER_RULES (caricato da GitHub) con fallback alle regole hardcoded.
+  // v6.191 — CHE COSA PUÒ ESSERE IL NOME DI UN MAESTRO.
+  // Serve in DUE punti che devono dare la stessa risposta: il parser della casella «Prenota», che
+  // il nome lo INDOVINA dal testo libero, e la guardia in testa a staffCalSubmitSingle, dove le tre
+  // strade di creazione convergono.
+  //
+  // 🚨 Misurato il 7/08/2026 sul parser vero: scrivendo «lezione campo 1 19:30-20:30 Sara Trentin»
+  // — una lezione senza il nome del maestro — la regex prendeva la prima parola che trovava e
+  // consegnava `istruttore: "campo"`, che finiva sulla card E su Matchpoint. Non è che il maestro
+  // mancasse: ne veniva INVENTATO uno. Un campo vuoto si vede, un campo pieno di sbagliato no.
+  function pmoNomeMaestroPlausibile(raw) {
+    const t = String(raw == null ? '' : raw).trim();
+    if (!t) return false;
+    if (/\d/.test(t)) return false;                 // nessun maestro ha cifre nel nome
+    if (!/[A-Za-zÀ-ÿ]/.test(t)) return false;       // né è fatto di sola punteggiatura
+    // Parole della GRAMMATICA della frase: se ce n'è anche una sola, quello che ho in mano è un
+    // pezzo di sintassi, non una persona.
+    const STRUTTURA = /^(campo|campi|ogni|ore|alle|dalle|del|della|di|il|lo|la|lezione|lezioni|partita|partite|manutenzione)$/i;
+    const GIORNO = /^(luned|marted|mercoled|gioved|venerd|sabato|domenic)/i;
+    return t.split(/\s+/).filter(Boolean).every(function (p) {
+      return !STRUTTURA.test(p) && !GIORNO.test(p);
+    });
+  }
+
   function staffCalParseBookingText(text, currentDate) {
     const rules = PARSER_RULES || STAFF_CAL_FALLBACK_RULES;
     const t = String(text || '').trim();
@@ -43473,9 +43496,11 @@ Per confermare scrivi ELIMINA.`);
         const rawIstr = istrMatch[1].trim();
         const fuzzy = rules.campi_opzionali?.istruttore?.fuzzy_match || {};
         const validi = rules.campi_opzionali?.istruttore?.valori_validi || [];
-        istruttore = fuzzy[rawIstr]
-          || validi.find(v => v.toLowerCase() === rawIstr.toLowerCase())
-          || rawIstr;
+        // v6.191 — un nome MAPPATO o RICONOSCIUTO vale sempre; uno soltanto indovinato dal testo
+        // libero vale solo se non è una parola della struttura della frase. Prima il ripiego era
+        // `|| rawIstr` a occhi chiusi, ed è da lì che usciva il maestro «campo».
+        const _mappato = fuzzy[rawIstr] || validi.find(v => v.toLowerCase() === rawIstr.toLowerCase());
+        istruttore = _mappato || (pmoNomeMaestroPlausibile(rawIstr) ? rawIstr : '');
       }
       restText = afterTipo;
     }
@@ -43636,6 +43661,20 @@ Per confermare scrivi ELIMINA.`);
 
   // ── Submit singola prenotazione via edge function ──────────────────────────
   async function staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, options = {}) {
+    // v6.191 — GUARDIA DEL MAESTRO, nel punto dove le TRE strade di creazione CONVERGONO: casella
+    // «Prenota» del calendario (anche ricorrente), scheda «Nuova prenotazione», assistente. Le
+    // ultime due il maestro lo chiedevano già e si rifiutavano senza; la casella di testo no, e da
+    // lì passa pure il ricorrente, che ne crea QUATTRO in fila. Agganciarsi a ciascuna schermata
+    // avrebbe lasciato scoperta la prossima: questo è l'unico punto che nessuna strada può saltare.
+    //
+    // 🚨 Sta in TESTA di proposito, prima che parta qualunque richiesta: così `onSent` non è ancora
+    // scattato, chi chiama vede `_reqSent === false` e conclude «NON inviata» invece di «esito
+    // ignoto». Una validazione non deve far partire il giro a guardare su Matchpoint per una
+    // prenotazione che non è mai uscita di qui.
+    if (String((parsed && parsed.tipo) || '').toLowerCase().includes('lez')
+        && !pmoNomeMaestroPlausibile(parsed && parsed.istruttore)) {
+      throw new Error('Lezione senza maestro: scrivi il nome del maestro subito dopo «lezione» (es. «lezione Santiago campo 1 18-19:30»), oppure creala cliccando sullo slot libero, che il maestro lo chiede.');
+    }
     let giocatoriPayload;
     if (Array.isArray(parsed.giocatori) && parsed.giocatori.length) {
       giocatoriPayload = parsed.giocatori;
@@ -44602,6 +44641,14 @@ Per confermare scrivi ELIMINA.`);
     const parsed = staffCalParseBookingText(text, isoDate);
     if (!parsed) {
       staffCalSetStatus('Formato non riconosciuto. Usa: "lezione Santiago campo 1 18-19:30" oppure "campo 2 ogni martedì 20-21"', 'error');
+      return;
+    }
+    // v6.191 — stessa regola della guardia in staffCalSubmitSingle, chiesta PRIMA di mettere in
+    // moto qualsiasi cosa. Il backstop là in fondo basta a non far uscire niente di sbagliato, ma
+    // sul RICORRENTE arriverebbe a cose fatte, quattro volte di fila, e all'operatore direbbe solo
+    // «0 create, 4 fallite — vedi console». Qui invece è una riga sola, e dice cosa scrivere.
+    if (String(parsed.tipo || '').toLowerCase().includes('lez') && !pmoNomeMaestroPlausibile(parsed.istruttore)) {
+      staffCalSetStatus('👨‍🏫 Lezione senza maestro: scrivi il suo nome subito dopo «lezione» — es. "lezione Santiago campo 1 18-19:30". Oppure clicca sullo slot libero: la scheda il maestro lo chiede.', 'error');
       return;
     }
 
