@@ -124,20 +124,39 @@ caso('2. 🚨 PARTITA: nessun travaso — su una partita quel posto è prezzo e 
 });
 
 caso('3. 🚨 il maestro SCELTO dallo staff vince sulla lettura del tabellone', () => {
+  // 🚨 MISURATO: la sola prova dal calendario NON discrimina. La precedenza è scritta in DUE
+  // posti — il passaggio di travaso salta gli staff_booking che un maestro ce l'hanno già, e la
+  // funzione pura la ripete — quindi togliendola dalla funzione il calendario resta comunque
+  // giusto e il banco verde. Si interroga la funzione PURA di suo, oltre al calendario.
   const card = cardStaff(slots([occupazione({ istruttore: 'Santiago Carabajal' })],
                                [staffBooking({ istruttore: 'Spinazze' })]));
-  return [card.istruttore === 'Spinazze'];
+  const diretto = ctx.pmoStaffCalMaestroDaTravasare(
+    { tipoReale: 'lezione', istruttore: 'Spinazze' }, { istruttore: 'Santiago Carabajal' });
+  return [card.istruttore === 'Spinazze', diretto === 'Spinazze'];
 });
 
-caso('4. 🚨 NON si pesca il maestro di un\'ALTRA lezione: agganci separati per campo e per ora', () => {
-  const occC1 = occupazione({ campo: 'Campo 1', ora: '19:30', idReserva: '9197', istruttore: 'Lucas Vidal' });
-  const occC3 = occupazione({ campo: 'Campo 3', ora: '21:00', idReserva: '9300', istruttore: 'Santiago Carabajal' });
-  const sbC1 = staffBooking({ id: 'sb-1', campo: 1, ora: '19:30', idReserva: '9197' });
-  const sbC3 = staffBooking({ id: 'sb-3', campo: 3, ora: '21:00', idReserva: '9300' });
-  const lista = slots([occC1, occC3], [sbC1, sbC3]);
+caso('4. 🚨 NON si pesca il maestro di un\'ALTRA lezione: servono ENTRAMBI, campo e ora', () => {
+  // 🚨 MISURATO: due lezioni che differiscono per campo E per ora insieme non discriminano —
+  // allargando l'aggancio a uno solo dei due, restano comunque appaiate giuste. Servono le due
+  // coppie che variano UN dato per volta.
+  const stesso = (extra) => occupazione({ giocatori: ['Tizio'], ...extra });
+  // (a) stesso CAMPO, ore diverse → smaschera chi non guarda l'ora
+  const listaA = slots(
+    [stesso({ campo: 'Campo 1', ora: '19:30', idReserva: '1', istruttore: 'Lucas Vidal' }),
+     stesso({ campo: 'Campo 1', ora: '21:00', idReserva: '2', istruttore: 'Santiago Carabajal' })],
+    [staffBooking({ id: 'a1', campo: 1, ora: '19:30', idReserva: '1' }),
+     staffBooking({ id: 'a2', campo: 1, ora: '21:00', idReserva: '2' })]);
+  // (b) stessa ORA, campi diversi → smaschera chi non guarda il campo
+  const listaB = slots(
+    [stesso({ campo: 'Campo 1', ora: '19:30', idReserva: '3', istruttore: 'Lucas Vidal' }),
+     stesso({ campo: 'Campo 2', ora: '19:30', idReserva: '4', istruttore: 'Santiago Carabajal' })],
+    [staffBooking({ id: 'b1', campo: 1, ora: '19:30', idReserva: '3' }),
+     staffBooking({ id: 'b2', campo: 2, ora: '19:30', idReserva: '4' })]);
   return [
-    cardStaff(lista, 1, '19:30').istruttore === 'Lucas Vidal',
-    cardStaff(lista, 3, '21:00').istruttore === 'Santiago Carabajal',
+    cardStaff(listaA, 1, '19:30').istruttore === 'Lucas Vidal',
+    cardStaff(listaA, 1, '21:00').istruttore === 'Santiago Carabajal',
+    cardStaff(listaB, 1, '19:30').istruttore === 'Lucas Vidal',
+    cardStaff(listaB, 2, '19:30').istruttore === 'Santiago Carabajal',
   ];
 });
 
