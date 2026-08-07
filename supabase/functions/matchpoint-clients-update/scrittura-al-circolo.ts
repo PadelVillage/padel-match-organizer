@@ -51,10 +51,12 @@
 //      quel ritorno, non limitarsi a copiare il ramo.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 //
-// ⚠️ QUESTO FILE HA DUE GEMELLI IDENTICI (`create` · `edit` · `cancel`), e non è una svista: i
+// ⚠️ QUESTO FILE VIVE IN SETTE COPIE IDENTICHE — le tre delle prenotazioni (`bookings-create` ·
+// `edit` · `cancel`) e le quattro dell'anagrafica (`clients-create` · `update` · `disable` ·
+// `reactivate`) — e non è una svista: i
 // workflow di deploy scelgono le funzioni dalle **cartelle toccate** e saltano tutto ciò che
 // inizia per `_`, quindi un modulo in `_shared/` **non si deployerebbe** — resterebbe la copia
-// vecchia, in silenzio e col semaforo verde. Le tre copie sono tenute uguali **byte per byte** da
+// vecchia, in silenzio e col semaforo verde. Le SETTE copie sono tenute uguali **byte per byte** da
 // `scrittura-al-circolo.test.ts`, che le rilegge dal disco.
 
 /** Il progetto Supabase di PRODUZIONE: l'unico da cui si scrive sul gestionale del circolo. */
