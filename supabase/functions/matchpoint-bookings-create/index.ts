@@ -4,7 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
+  esitoDiProva,
+  esitoVieneDaUnaProva,
+  MARCHIO_NATA_IN_PROVA,
   MESSAGGIO_AMBIENTE_DI_PROVA,
+  MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 
@@ -286,6 +290,14 @@ async function saveStaffBookingRecord(opts: {
     worker_result: workerResult,
   };
 
+  // 🔒⭐⭐ IL MARCHIO DELLA PROVA — si mette QUI, dove la riga nasce, e non nel ramo che decide
+  // di simulare: così vale per ogni strada che passa di qua, oggi e domani. Senza, il giro di
+  // sincronizzazione cancellerebbe questa riga al primo passaggio (su Matchpoint non c'è) e la
+  // partita di prova sparirebbe da sola, senza un errore da nessuna parte.
+  // ⚠️ Sta dentro `nostro`, quindi lo fonde la stessa regola degli altri campi: se la riga esiste
+  // già ed è vera, l'esistente vince e il marchio non la sporca.
+  if (esitoVieneDaUnaProva(workerResult)) nostro[MARCHIO_NATA_IN_PROVA] = true;
+
   const payload = fondiPayloadPrenotazione(nostro, giaScritto);
 
   await client.from('pmo_cloud_records').upsert({
@@ -339,11 +351,27 @@ async function runBookingJobInBackground(opts: {
   // 🔒 IL RECINTO, di nuovo — e non è una ripetizione inutile: qui si arriva DOPO aver già
   // risposto al chiamante, quindi un giro sbagliato di qua non lo vedrebbe più nessuno. La
   // difesa deve stare anche dentro la strada che non torna indietro, non solo davanti al bivio.
-  // ⭐ Il lavoro si chiude con `error` e la ragione scritta: un job lasciato «in corso» per
-  // sempre sarebbe peggio del rifiuto, perché chi guarda non saprebbe mai com'è finita.
+  // ⭐ Il lavoro si chiude sempre con un esito scritto: un job lasciato «in corso» per sempre
+  // sarebbe peggio di tutto, perché chi guarda non saprebbe mai com'è finita.
+  //
+  // 🆕 7/08 — anche di qua si REGISTRA invece di rifiutare, e il lavoro si chiude `done`: al
+  // chiamante è già stato detto «in corso», quindi lasciargli un `error` significherebbe far
+  // fallire una prova che invece è andata a buon fine. Il circolo, anche qui, non si chiama.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create_async', jobId, booking }));
-    await writeBookingJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
+    const workerResult = esitoDiProva('create');
+    try {
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+    } catch (dbErr) {
+      await writeBookingJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
+      return;
+    }
+    await writeBookingJob(client, jobId, 'done', {
+      ...base,
+      prova: true,
+      message: `${tipoLabel} di PROVA registrata: Campo ${booking.campo} · ${booking.data} · ${booking.ora}–${booking.oraFine} · ${booking.nome}`,
+      worker_result: workerResult,
+    });
     return;
   }
   try {
@@ -515,9 +543,29 @@ Deno.serve(async (req: Request) => {
   // prenotazione parte in sottofondo. Un recinto messo dopo avrebbe lasciato aperta proprio la
   // strada che non si vede tornare indietro.
   // ⭐ Chi vuole vedere COSA succederebbe ha già `provaAVuoto: true`, che esce ancora prima.
+  //
+  // 🆕 7/08 — di qua NON si rifiuta più: si registra la partita nel gestionale di prova e il
+  // circolo non lo si chiama (`callWorkerCreateBooking` non compare in questo ramo, ed è la cosa
+  // che un caso costruito apposta va a verificare). Il perché sta in `scrittura-al-circolo.ts`.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create', booking }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
+    const workerResult = esitoDiProva('create');
+    try {
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+    } catch (dbErr) {
+      // ⚖️ Qui il rifiuto di prima torna a servire, ed è il verso giusto: se la registrazione non
+      // è riuscita, la partita NON esiste da nessuna parte — dirle «fatto» sarebbe la bugia che
+      // questo progetto insegue da luglio. Si racconta quello che è successo, non l'intenzione.
+      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
+    }
+    return ok({
+      message: `${tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita'} di PROVA registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
+      prova: true,
+      nota: MESSAGGIO_PROVA_REGISTRATA,
+      booking,
+      worker: workerResult,
+    });
   }
 
   // ── Modalità asincrona (opzionale): rispondi subito, prenota in background ──

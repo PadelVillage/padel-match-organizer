@@ -4,7 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
+  esitoDiProva,
   MESSAGGIO_AMBIENTE_DI_PROVA,
+  MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 
@@ -315,9 +317,29 @@ Deno.serve(async (req: Request) => {
   // prova (è così che si guarda un roster senza toccarlo).
   // 🚨 Sta DOPO i controlli e PRIMA del worker apposta: la richiesta viene capita per intero e
   // raccontata («ecco cosa avrei fatto»), ma non arriva a destinazione.
+  //
+  // 🆕 7/08 — di qua non si rifiuta più: si registra la modifica e si risponde di sì, senza
+  // chiamare il circolo. ⭐ Chi porta l'EFFETTO vero è il ponte dei soci, che dopo un `ok`
+  // allinea la copia in app da sé (`allineaCopiaInApp` per uscita e togli, `aggiungiACopiaInApp`
+  // per l'invito): quindi in prova un giocatore esce e rientra davvero, e si vede.
   if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit', edit }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
+    const workerResult = esitoDiProva('edit');
+    try {
+      await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
+    } catch (dbErr) {
+      // ⚖️ Come in `create`: se non si è riusciti nemmeno a registrare la prova, si torna al
+      // rifiuto. Un «fatto» non provato è peggio di un no.
+      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
+    }
+    return ok({
+      message: 'Modifica di PROVA registrata.',
+      prova: true,
+      nota: MESSAGGIO_PROVA_REGISTRATA,
+      edit,
+      worker: workerResult,
+    });
   }
 
   // Call browser worker

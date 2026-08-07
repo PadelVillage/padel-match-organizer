@@ -4,7 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
+  esitoDiProva,
+  MARCHIO_NATA_IN_PROVA,
   MESSAGGIO_AMBIENTE_DI_PROVA,
+  MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 
@@ -165,6 +168,59 @@ async function callWorkerCancelBooking(opts: {
   throw new Error('Worker call failed after retries');
 }
 
+/**
+ * In prova: fa sparire la partita, cioè il lavoro che in produzione fa il giro di
+ * sincronizzazione.
+ *
+ * 🚨⭐⭐ PERCHÉ ESISTE, e non è simmetria con `create` — è un buco trovato ragionando prima di
+ * scrivere. Chi fa sparire una partita annullata NON è questa funzione: qui si registra soltanto
+ * il `staff_cancel`, cioè il REGISTRO del gesto. La riga della partita muore dopo, quando
+ * `matchpoint-bookings-sync` rilegge l'occupazione da Matchpoint e non la trova più.
+ * ⇒ Su una partita di PROVA quel giro non porta niente (su Matchpoint non c'è mai stata), e per
+ *   giunta il reconcile ora **salta apposta** le righe marcate: senza questa funzione, annullare
+ *   una partita di prova l'avrebbe lasciata al suo posto — «annullata» e ancora in elenco.
+ *
+ * ⚖️ Tocca SOLO le righe che portano il marchio della prova. Una riga vera non la sfiora nemmeno
+ * per sbaglio: se il marchio non c'è, non è roba nostra e la decide il sync, come sempre.
+ * ⭐ Cerca per SLOT (data · ora · campo) e non per `idReserva`, perché è la coordinata che il
+ * socio e il bot conoscono sempre; l'`idReserva` di una prova è un `PROVA-…` che chi annulla
+ * potrebbe non avere sotto mano.
+ */
+async function spegniPartiteDiProvaSulloSlot(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  cancel: CancelRequest;
+}): Promise<number> {
+  const { supabaseUrl, supabaseKey, cancel } = opts;
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client
+    .from('pmo_cloud_records')
+    .select('local_key, payload')
+    .eq('record_type', 'staff_booking')
+    .eq('deleted', false);
+  if (error) throw error;
+  const righe = (data ?? []) as Array<{ local_key: string; payload: JsonMap }>;
+  const stessoSlot = righe.filter((r) => {
+    const p = (r.payload ?? {}) as JsonMap;
+    if (p[MARCHIO_NATA_IN_PROVA] !== true) return false; // ⛔ mai una riga vera
+    return String(p.data ?? '') === String(cancel.data ?? '')
+      && String(p.ora ?? '') === String(cancel.ora ?? '')
+      && String(p.campo ?? '') === String(cancel.campo ?? '');
+  });
+  const adesso = new Date().toISOString();
+  for (const r of stessoSlot) {
+    await client.from('pmo_cloud_records').upsert({
+      record_type: 'staff_booking',
+      local_key: r.local_key,
+      payload: r.payload,
+      deleted: true,
+      updated_at: adesso,
+      synced_at: adesso,
+    }, { onConflict: 'record_type,local_key' });
+  }
+  return stessoSlot.length;
+}
+
 async function saveStaffCancelRecord(opts: {
   supabaseUrl: string;
   supabaseKey: string;
@@ -240,9 +296,36 @@ Deno.serve(async (req: Request) => {
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // 🚨 Annullare è il gesto che non si torna indietro: qui il recinto vale doppio, perché una
   // prova finita davvero sul circolo toglierebbe il campo a quattro persone che ci contavano.
+  //
+  // 🆕 7/08 — di qua non si rifiuta più: si spegne la partita di prova e si registra il gesto,
+  // senza chiamare il circolo. 🚨 L'ordine conta: prima si SPEGNE, poi si registra — se si
+  // registrasse per prima, un guasto nel mezzo lascerebbe scritto «annullata» accanto a una
+  // partita ancora in piedi, che è la contraddizione peggiore da leggere in un registro.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel', cancel }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
+    const workerResult = esitoDiProva('cancel');
+    let spente = 0;
+    try {
+      spente = await spegniPartiteDiProvaSulloSlot({ supabaseUrl, supabaseKey, cancel });
+      await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
+    } catch (dbErr) {
+      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
+    }
+    // ⚠️ `spente: 0` non è un guasto e non si nasconde: vuol dire che su quello slot non c'era
+    // nessuna partita di PROVA — per esempio perché è una partita vera, arrivata da Matchpoint,
+    // che di prova non si può annullare. Chi legge deve poterlo distinguere da un annullamento
+    // riuscito, e per questo il numero esce nella risposta invece di restare nei registri.
+    return ok({
+      message: spente > 0
+        ? `Annullamento di PROVA: ${spente === 1 ? 'la partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale di prova.`
+        : 'Annullamento di PROVA registrato, ma su quello slot non c\'era nessuna partita di prova da togliere.',
+      prova: true,
+      partite_di_prova_spente: spente,
+      nota: MESSAGGIO_PROVA_REGISTRATA,
+      cancel,
+      worker: workerResult,
+    });
   }
 
   // Call browser worker

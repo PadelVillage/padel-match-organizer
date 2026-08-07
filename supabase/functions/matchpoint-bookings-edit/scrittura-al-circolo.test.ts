@@ -12,7 +12,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REF_PROD, scritturaAlCircoloConsentita } from './scrittura-al-circolo.ts';
+import {
+  esitoDiProva,
+  esitoVieneDaUnaProva,
+  MARCHIO_NATA_IN_PROVA,
+  REF_PROD,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const FUNZIONI = join(QUI, '..');
@@ -159,6 +165,124 @@ for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
     }
   });
 }
+
+// ── ④ 🆕 7/08/2026 · IL RECINTO REGISTRA INVECE DI RIFIUTARE ───────────────────────────────
+//
+// 🚨⭐⭐ Il rischio nuovo, e va detto in faccia: fino a ieri il ramo «non sono la produzione»
+// era un vicolo cieco — usciva e basta, e non poteva far danno. Adesso quel ramo LAVORA. Se
+// qualcuno ci rimettesse dentro la chiamata al circolo, la difesa sarebbe sparita **restando
+// verde** su tutti i casi di sopra, che guardano solo la strada normale.
+// ⇒ I casi qui sotto misurano cosa c'è DENTRO quel ramo: che il worker non ci sia, e che la
+//   registrazione ci sia. Non le parole della risposta: i gesti.
+
+/** Il blocco `{…}` che comincia sulla riga della guardia, ritagliato contando le graffe. */
+function ramoDiProva(rel: string): string {
+  const testo = readFileSync(join(FUNZIONI, rel), 'utf8');
+  const righe = testo.split('\n');
+  const inizio = righe.findIndex((r) => /if \(.*!scritturaAlCircoloConsentita\(/.test(r));
+  assert.notEqual(inizio, -1, `${rel}: non trovo il ramo di prova`);
+  let graffe = 0;
+  let dentro = '';
+  for (let i = inizio; i < righe.length; i++) {
+    dentro += righe[i] + '\n';
+    for (const c of righe[i]) {
+      if (c === '{') graffe += 1;
+      else if (c === '}') graffe -= 1;
+    }
+    if (graffe === 0 && i > inizio) break;
+  }
+  return dentro;
+}
+
+const DENTRO_IL_RAMO: Record<string, { maiChiamare: RegExp; deveFare: RegExp[] }> = {
+  'matchpoint-bookings-create/index.ts': {
+    maiChiamare: /callWorkerCreateBooking\(/,
+    deveFare: [/saveStaffBookingRecord\(/],
+  },
+  'matchpoint-bookings-edit/index.ts': {
+    maiChiamare: /callWorkerEditBooking\(/,
+    deveFare: [/saveStaffEditRecord\(/],
+  },
+  'matchpoint-bookings-cancel/index.ts': {
+    maiChiamare: /callWorkerCancelBooking\(/,
+    // 🚨 Due cose, e la prima è quella trovata ragionando: chi fa sparire una partita annullata
+    // NON è questa funzione ma il giro di sincronizzazione, che su una partita di prova non ha
+    // niente da leggere. Senza `spegni…`, l'annullamento di prova lascerebbe la partita in piedi.
+    deveFare: [/spegniPartiteDiProvaSulloSlot\(/, /saveStaffCancelRecord\(/],
+  },
+};
+
+for (const [rel, atteso] of Object.entries(DENTRO_IL_RAMO)) {
+  const nome = rel.split('/')[0];
+  test(`10) 🚨 in ${nome} il ramo di prova NON chiama il circolo`, () => {
+    const ramo = ramoDiProva(rel);
+    assert.ok(ramo.length > 0, 'ramo vuoto: il ritaglio non ha misurato niente');
+    assert.equal(
+      atteso.maiChiamare.test(ramo), false,
+      `dentro il ramo di prova c'è ${atteso.maiChiamare}: da lì si arriva al Matchpoint VERO`,
+    );
+  });
+
+  test(`11) in ${nome} il ramo di prova REGISTRA (se no non è una prova, è un no)`, () => {
+    const ramo = ramoDiProva(rel);
+    for (const gesto of atteso.deveFare) {
+      assert.ok(gesto.test(ramo), `dentro il ramo di prova manca ${gesto}`);
+    }
+  });
+}
+
+test('12) ⚠️ il ramo di prova esiste in tutte e tre, e il ritaglio le trova davvero', () => {
+  // ⭐ Il caso che difende gli altri due: se il ritaglio non trovasse più il ramo, i casi 10 e 11
+  // girerebbero su una stringa vuota — «nessun worker qui dentro» sarebbe vero e non vorrebbe
+  // dire niente. È la 29ª: un banco che misura ZERO.
+  for (const rel of Object.keys(DENTRO_IL_RAMO)) {
+    const ramo = ramoDiProva(rel);
+    assert.ok(ramo.split('\n').length > 3, `${rel}: ramo troppo corto, il ritaglio non ha funzionato`);
+    assert.ok(/esitoDiProva\(/.test(ramo), `${rel}: nel ramo non si compone nemmeno l'esito di prova`);
+  }
+});
+
+test('13) 🚨⭐⭐ il MARCHIO è la stessa parola nel sync — due verità non si tengono a mano', () => {
+  // Il sync sta in un'altra funzione e NON può importare questo modulo (ogni edge è isolata):
+  // là dentro il marchio è scritto a mano. Se qualcuno cambiasse la costante qui, il reconcile
+  // ricomincerebbe a cancellare le partite di prova **senza un errore da nessuna parte**.
+  // ⇒ L'unico modo di legarle è un caso che rilegge i due file dal disco.
+  const sync = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8');
+  assert.ok(
+    sync.includes(MARCHIO_NATA_IN_PROVA),
+    `il sync non conosce il marchio «${MARCHIO_NATA_IN_PROVA}»: le partite di prova verrebbero cancellate`,
+  );
+});
+
+test('14) 🚨 nel sync il salto delle prove sta PRIMA del tombstone (posizione, non parola)', () => {
+  // Stessa idea del caso 9: una riga che salta le prove messa DOPO il `push` che le cancella
+  // sarebbe una riga inutile, e la parola ci sarebbe lo stesso.
+  const righe = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8').split('\n');
+  const salto = righe.findIndex((r) => r.includes(MARCHIO_NATA_IN_PROVA) && /continue/.test(r));
+  assert.notEqual(salto, -1, 'nel sync non c\'è nessuna riga che SALTA le righe di prova');
+  // Il tombstone dello staff_booking dentro il ciclo del reconcile: `deleted: true` + push.
+  const tombstone = righe.findIndex((r, i) => i > salto && /deleted:\s*true/.test(r));
+  assert.notEqual(tombstone, -1, 'non trovo il tombstone dopo il salto: il caso non misura niente');
+  assert.ok(salto < tombstone, 'il salto delle prove viene DOPO la cancellazione: non serve a nulla');
+});
+
+test('15) l\'esito di prova si riconosce, e quello vero NON si scambia per una prova', () => {
+  const prova = esitoDiProva('create');
+  assert.equal(esitoVieneDaUnaProva(prova), true);
+  assert.ok(String(prova.idReserva).startsWith('PROVA-'), 'l\'idReserva di prova deve dirsi');
+  // 🚨 Il verso che conta: un esito VERO del worker non deve mai passare per prova, se no la sua
+  // riga verrebbe marcata e il reconcile smetterebbe di sorvegliarla — una partita vera che
+  // nessuno controlla più.
+  assert.equal(esitoVieneDaUnaProva({ idReserva: '123456', ok: true }), false);
+  assert.equal(esitoVieneDaUnaProva({ simulato: 'sì' }), false, 'solo il booleano vero conta');
+  assert.equal(esitoVieneDaUnaProva(null), false);
+  assert.equal(esitoVieneDaUnaProva(undefined), false);
+});
+
+test('16) due prove di fila non sono la stessa prenotazione', () => {
+  // Se l'idReserva fosse fisso, la seconda partita di prova sovrascriverebbe la prima.
+  assert.notEqual(esitoDiProva('create').idReserva, esitoDiProva('create').idReserva);
+});
 
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed) process.exit(1);

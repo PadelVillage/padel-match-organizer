@@ -1260,6 +1260,9 @@ Deno.serve(async (req) => {
     let deletedStaffBookings = 0;
     let skippedStaffFresh = 0;
     let skippedStaffOutOfRange = 0;
+    // ⭐ Si CONTA, e finisce nel registro insieme agli altri: un numero che nessuno guarda non
+    // distingue «non ce n'erano» da «non le sto più saltando». Su PROD dev'essere sempre 0.
+    let skippedStaffDiProva = 0;
     try {
       const reconcileFrom = clean(range.fromDate || validation.fromDate || '');
       const reconcileTo = clean(range.toDate || validation.toDate || '');
@@ -1284,6 +1287,20 @@ Deno.serve(async (req) => {
         const p = row?.payload || {};
         const sData = clean(p?.data || '');
         if (!sData) continue;
+        // 🔒⭐⭐ LE PARTITE NATE DA UNA PROVA NON SI TOMBSTONANO — 7/08/2026.
+        // Su Matchpoint non ci sono **per costruzione** (le registra il recinto di TEST, che il
+        // circolo non lo chiama mai): questo ciclo, che cancella tutto ciò che l'occupazione non
+        // conferma, le farebbe sparire al primo giro utile. E la beffa sarebbe che a far partire
+        // il giro è proprio **aprire l'app di TEST per guardarle**.
+        // ⚖️ Su PROD la riga è inerte: là il marchio non lo mette nessuno, perché il recinto è
+        // inerte a sua volta (l'indirizzo È quello di produzione). Nessun `if` sull'ambiente:
+        // ⭐ si guarda il DATO, non dove si sta girando — una condizione sull'ambiente sarebbe
+        // una seconda verità da tenere allineata a mano.
+        // 🚨 Chi le fa sparire, allora? Solo l'annullamento di prova, che le spegne per nome
+        // (`spegniPartiteDiProvaSulloSlot` in `matchpoint-bookings-cancel`). Togliendo questa
+        // riga, il ciclo di prova si rompe in silenzio: le partite spariscono da sole e chi
+        // guarda pensa di aver sbagliato qualcosa.
+        if ((p as any)?.nata_in_prova === true) { skippedStaffDiProva += 1; continue; }
         if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
         if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
         // DEMOTE per idReserva: solo per le entry nate dal promote (promoted===true).
@@ -1317,7 +1334,7 @@ Deno.serve(async (req) => {
         });
         deletedStaffBookings += 1;
       }
-      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, skippedStaffDiProva, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
     } catch (staffErr) {
       console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
     }
