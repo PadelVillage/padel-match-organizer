@@ -8068,7 +8068,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.189';
+    const APP_VERSION = '6.190';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39631,6 +39631,32 @@ Per confermare scrivi ELIMINA.`);
     if (next.length !== list.length && typeof save === 'function') save('staffCalCancelled', next);
   }
 
+  // v6.190 — IL MAESTRO NON SI BUTTA COL RESTO. Le due guardie dentro staffCalGetSlots
+  // (v5.701 per campo|ora, v5.742 per idReserva) scartano l'occupazione Matchpoint quando per
+  // lo stesso slot c'è uno staff_booking, che è AUTOREVOLE sui giocatori. Ma il maestro delle
+  // lezioni sta SOLO nell'occupazione — il sync lo legge dalla casella del tabellone, l'export
+  // non ha la colonna istruttore (v6.127) — mentre lo staff_booking nasce con `istruttore: ''`:
+  // né la creazione né la promozione di una card Matchpoint lo riempiono. Scartando l'occupazione
+  // si buttava via l'unica copia del nome, e la card taceva anche col monitor scritto su Matchpoint
+  // (caso reale: 7/08/2026, Campo 1 19:30, «Lucas Vidal» presente nel cloud e invisibile in app).
+  //
+  // ⭐ È il GEMELLO del ripiego che staffCalEditPlayers ha già (v6.128) per pre-popolare il
+  // selettore Maestro: senza questo, le due schermate della STESSA lezione si contraddicono —
+  // la scheda dice «Lucas Vidal», la card sotto non dice niente.
+  //
+  // Ritorna il maestro da tenere sulla card. '' = nessuno da mostrare.
+  function pmoStaffCalMaestroDaTravasare(destinazione, scartata) {
+    const pieno = function (v) { return (typeof v === 'string' ? v : '').trim(); };
+    const d = destinazione || {}, s = scartata || {};
+    // Solo le LEZIONI. È l'unico tipo su cui la card disegna la riga del maestro, e l'unico su cui
+    // il sync scrive `istruttore`: su una partita quel posto nella casella del tabellone è occupato
+    // da prezzo e categoria, non da una persona. Il tipo che conta è quello della card che RESTA.
+    if (!String(d.tipoReale || d.tipo || '').toLowerCase().includes('lez')) return '';
+    // Il maestro dello staff_booking vince sempre: è una SCELTA dello staff, non una lettura.
+    if (pieno(d.istruttore)) return pieno(d.istruttore);
+    return pieno(s.istruttore);
+  }
+
   function staffCalGetSlots(isoDate) {
     const result = [];
     // Read occupancy from local data
@@ -39695,6 +39721,20 @@ Per confermare scrivi ELIMINA.`);
         ? _nota
         : ((Array.isArray(p.giocatori) && p.giocatori.length) ? p.giocatori.filter(function(g){ return g && (typeof g === 'string' ? g : g.nome); }).map(function(g){ return typeof g === 'string' ? g : (g.nome || ''); }).filter(Boolean).join('\n') : (p.giocatore || ''));
       result.push({ ora: p.ora, campo: campoNum, nome: _nomeSt, tipo, note: _nota, durata: _staffCalDurMin(p.durata), idReserva: (p.idReserva != null ? String(p.idReserva) : ''), storico: true });
+    }
+    // v6.190 — TRAVASO DEL MAESTRO, da fare PRIMA che le due guardie qui sotto scartino
+    // l'occupazione Matchpoint: dopo, il nome non c'è più da nessuna parte. I due agganci sono
+    // gli STESSI che usano le guardie (campo|ora per la v5.701, idReserva per la v5.742), così
+    // non esiste un'occupazione che venga scartata senza essere prima interrogata sul maestro.
+    for (const _dest of result) {
+      if (_dest.tipo !== 'staff-booking') continue;
+      if (String(_dest.istruttore || '').trim()) continue;
+      const _fonte = result.find(function (r) {
+        return r !== _dest && r.tipo !== 'staff-booking' && String(r.istruttore || '').trim()
+          && ((r.campo === _dest.campo && r.ora === _dest.ora)
+              || (r.idReserva && _dest.idReserva && String(r.idReserva) === String(_dest.idReserva)));
+      });
+      if (_fonte) _dest.istruttore = pmoStaffCalMaestroDaTravasare(_dest, _fonte);
     }
     // v5.701 — Lo staff_booking e AUTOREVOLE per il suo slot: porta la lista completa dei
     // giocatori. Se per la stessa terna (campo|ora) esiste ANCHE un'occupazione/booking Matchpoint
