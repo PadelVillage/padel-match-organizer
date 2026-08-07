@@ -2,10 +2,10 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import { righeDiProvaDaSpegnere } from './bersaglio-prova.ts';
 import {
   CODICE_AMBIENTE_DI_PROVA,
   esitoDiProva,
-  MARCHIO_NATA_IN_PROVA,
   MESSAGGIO_AMBIENTE_DI_PROVA,
   MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
@@ -182,9 +182,17 @@ async function callWorkerCancelBooking(opts: {
  *
  * ⚖️ Tocca SOLO le righe che portano il marchio della prova. Una riga vera non la sfiora nemmeno
  * per sbaglio: se il marchio non c'è, non è roba nostra e la decide il sync, come sempre.
- * ⭐ Cerca per SLOT (data · ora · campo) e non per `idReserva`, perché è la coordinata che il
- * socio e il bot conoscono sempre; l'`idReserva` di una prova è un `PROVA-…` che chi annulla
- * potrebbe non avere sotto mano.
+ *
+ * 🚨⭐⭐ CERCA IN DUE MODI, e il secondo è stato aggiunto DOPO AVER VISTO LA PARTITA RESTARE IN
+ * PIEDI (7/08, prima prova dal vivo). La prima versione cercava solo per SLOT — e il ponte dei
+ * soci, quando la prenotazione ha un `idReserva`, manda **solo quello**: niente data, niente
+ * ora, niente campo. Le partite di prova un `idReserva` ce l'hanno (`PROVA-…`) ⇒ non si trovava
+ * mai nulla, l'annullo rispondeva «fatto» e la partita restava nell'elenco.
+ * ⭐ Il codice del ponte lo aveva perfino previsto: *«su tutti i record veri id_reserva è vuoto,
+ * quindi parte la terna — e un giorno in cui non fosse più così, questa è l'unica riga che lo
+ * direbbe prima e non dopo»*. Quel giorno era oggi, e a dirlo è stata la prova, non la lettura.
+ * ⚠️ E il caso automatico non poteva accorgersene: misurava che questa funzione fosse CHIAMATA,
+ * non che trovasse qualcosa. Struttura ≠ resa.
  */
 async function spegniPartiteDiProvaSulloSlot(opts: {
   supabaseUrl: string;
@@ -200,13 +208,9 @@ async function spegniPartiteDiProvaSulloSlot(opts: {
     .eq('deleted', false);
   if (error) throw error;
   const righe = (data ?? []) as Array<{ local_key: string; payload: JsonMap }>;
-  const stessoSlot = righe.filter((r) => {
-    const p = (r.payload ?? {}) as JsonMap;
-    if (p[MARCHIO_NATA_IN_PROVA] !== true) return false; // ⛔ mai una riga vera
-    return String(p.data ?? '') === String(cancel.data ?? '')
-      && String(p.ora ?? '') === String(cancel.ora ?? '')
-      && String(p.campo ?? '') === String(cancel.campo ?? '');
-  });
+  // ⭐ La scelta del bersaglio sta in un modulo PURO (`bersaglio-prova.ts`), perché è la parte
+  // che si può sbagliare — e che infatti è stata sbagliata. Qui resta solo il girare del database.
+  const stessoSlot = righeDiProvaDaSpegnere(righe, cancel);
   const adesso = new Date().toISOString();
   for (const r of stessoSlot) {
     await client.from('pmo_cloud_records').upsert({
@@ -312,14 +316,21 @@ Deno.serve(async (req: Request) => {
       console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
     }
-    // ⚠️ `spente: 0` non è un guasto e non si nasconde: vuol dire che su quello slot non c'era
-    // nessuna partita di PROVA — per esempio perché è una partita vera, arrivata da Matchpoint,
-    // che di prova non si può annullare. Chi legge deve poterlo distinguere da un annullamento
-    // riuscito, e per questo il numero esce nella risposta invece di restare nei registri.
+    // 🚨⭐⭐ ZERO SPENTE ⇒ NON si dice «fatto». Trovato dal vivo il 7/08: la prima versione
+    // rispondeva ok comunque, e il bot diceva al socio «ho annullato» accanto a una partita
+    // ancora in elenco. È esattamente la bugia che questo progetto insegue da luglio, e qui
+    // sarebbe nata NUOVA — dentro il pezzo costruito per provare meglio.
+    // ⚖️ Zero non vuol dire guasto: vuol dire che su quello slot non c'era nessuna partita di
+    // PROVA (per esempio è una partita vera, che di prova non si può annullare). Ma per chi
+    // chiede «annulla» le due cose finiscono uguali — non è successo niente — e va detto.
+    if (spente === 0) {
+      return err(409, 'PROVA_NIENTE_DA_ANNULLARE',
+        'Ambiente di prova: su quello slot non c\'è nessuna partita di prova da annullare. '
+        + 'Il gestionale del circolo non è stato toccato, e qui non è cambiato niente.',
+        { prova: true, cancel });
+    }
     return ok({
-      message: spente > 0
-        ? `Annullamento di PROVA: ${spente === 1 ? 'la partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale di prova.`
-        : 'Annullamento di PROVA registrato, ma su quello slot non c\'era nessuna partita di prova da togliere.',
+      message: `Annullamento di PROVA: ${spente === 1 ? 'la partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale di prova.`,
       prova: true,
       partite_di_prova_spente: spente,
       nota: MESSAGGIO_PROVA_REGISTRATA,
