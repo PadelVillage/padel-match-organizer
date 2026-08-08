@@ -16,6 +16,8 @@ import {
   nomeUtenteBotPer,
   puoCreareInvito,
   puoMandareIlLink,
+  rigaDaMostrare,
+  rigaPerLaScheda,
   REF_PROD,
   statoInvito,
   trovaSocio,
@@ -531,4 +533,117 @@ Deno.test('🚨 i tre rifiuti dell\'invito sono DISTINTI', () => {
 Deno.test('✅ col socio in anagrafica e fuori dal bot, l\'invito si può fare', () => {
   assertEquals(puoCreareInvito({ socio: SOCIO, chatGiaNelBot: false, token: ' abc ' }),
     { ok: true, token: 'abc' });
+});
+
+// ── La riga «Bot Telegram» nella SCHEDA DEL SOCIO (voce B6, 8/08/2026) ───────
+//
+// Idea sua del 31/07, costruita oggi: nella scheda si legge «Bot Telegram: sì, dal … —
+// su invito di …». Due cose vanno difese qui e non nell'edge, dove nessuno le guarda:
+// QUALE riga si mostra quando ce n'è più d'una, e COSA può uscire di quella riga.
+
+const RIENTRATO: RigaOperatore = {
+  ...OPERATORE, chat_id: 777000111, created_at: '2026-08-05T10:00:00Z',
+};
+const SPENTA_VECCHIA: RigaOperatore = {
+  ...OPERATORE, chat_id: 777000222, attivo: false, created_at: '2026-06-01T10:00:00Z',
+};
+const SPENTA_RECENTE: RigaOperatore = {
+  ...OPERATORE, chat_id: 777000333, attivo: false, created_at: '2026-08-07T10:00:00Z',
+};
+
+Deno.test('scheda: senza righe non si mostra niente — «mai entrato» non si inventa', () => {
+  assertEquals(rigaDaMostrare([]), null);
+  assertEquals(rigaDaMostrare(null), null);
+  assertEquals(rigaDaMostrare(undefined), null);
+  assertEquals(rigaPerLaScheda(null), null);
+});
+
+Deno.test('scheda: fra due righe ATTIVE vince la più VECCHIA — «da quando ha il bot»', () => {
+  // Chi cambia telefono lascia due righe, tutt'e due sue: la data che interessa allo
+  // staff è quella dell'ingresso, non quella del cambio di telefono.
+  assertEquals(rigaDaMostrare([RIENTRATO, OPERATORE])?.chat_id, OPERATORE.chat_id);
+  assertEquals(rigaDaMostrare([OPERATORE, RIENTRATO])?.chat_id, OPERATORE.chat_id);
+});
+
+Deno.test('scheda: un accesso ATTIVO batte una riga spenta più recente', () => {
+  // Il contrario direbbe «accesso tolto» di una persona che il bot serve oggi.
+  assertEquals(rigaDaMostrare([SPENTA_RECENTE, OPERATORE])?.chat_id, OPERATORE.chat_id);
+});
+
+Deno.test('scheda: se NESSUNA è attiva vince la più RECENTE — conta l\'ultimo fatto', () => {
+  assertEquals(rigaDaMostrare([SPENTA_VECCHIA, SPENTA_RECENTE])?.chat_id, SPENTA_RECENTE.chat_id);
+  assertEquals(rigaDaMostrare([SPENTA_RECENTE, SPENTA_VECCHIA])?.chat_id, SPENTA_RECENTE.chat_id);
+});
+
+Deno.test('🚨 scheda: una data illeggibile non scalza nessuno e non fa esplodere niente', () => {
+  // Ordinare su NaN scambierebbe le righe a caso: la scheda direbbe una data sbagliata
+  // con la stessa faccia sicura con cui dice quella giusta.
+  const rotta: RigaOperatore = { ...OPERATORE, chat_id: 777000444, created_at: 'non-una-data' };
+  assertEquals(rigaDaMostrare([OPERATORE, rotta])?.chat_id, OPERATORE.chat_id);
+  assertEquals(rigaDaMostrare([rotta, OPERATORE])?.chat_id, OPERATORE.chat_id);
+  // e se sono TUTTE illeggibili si torna comunque una riga, non `null`
+  assertEquals(rigaDaMostrare([rotta])?.chat_id, rotta.chat_id);
+});
+
+Deno.test('🚨🚨 scheda: il chat_id NON esce, e le chiavi che escono sono ESATTAMENTE quattro', () => {
+  // La difesa vera: `PersonaVista` il chat_id ce l'ha (al pannello serve per revocare).
+  // Se un domani si restituisse la vista intera, il numero di Telegram di ogni socio
+  // finirebbe nella sua scheda — e tutti i test sulle date resterebbero verdi.
+  const vista = componiPersona(OPERATORE, SOCI);
+  const uscita = rigaPerLaScheda(vista);
+  assertEquals(Object.keys(uscita ?? {}).sort(),
+    ['accesso_attivo', 'entrato_il', 'su_invito_di', 'via_invito']);
+  const serializzata = JSON.stringify(uscita);
+  assertEquals(serializzata.includes(String(OPERATORE.chat_id)), false);
+  assertEquals(/chat|telegram_id|telefono/i.test(serializzata), false);
+});
+
+Deno.test('scheda: dice «da quando» e «su invito di» con le parole del PANNELLO', () => {
+  // Stessa funzione, quindi non possono divergere: è il motivo per cui `componiPersona`
+  // non è stata riscritta per la scheda.
+  const conInvito: RigaOperatore = {
+    ...SENZA_CODICE, invitato_da_member_id: '000004', invito_token: 'tok-uno',
+  };
+  const v = rigaPerLaScheda(componiPersona(conInvito, SOCI));
+  assertEquals(v?.entrato_il, SENZA_CODICE.created_at);
+  assertEquals(v?.su_invito_di, 'Maurizio Aprea');
+  assertEquals(v?.via_invito, true);
+  assertEquals(v?.accesso_attivo, true);
+});
+
+Deno.test('scheda: chi è entrato SENZA invito non si inventa un invitante', () => {
+  const v = rigaPerLaScheda(componiPersona(OPERATORE, SOCI));
+  assertEquals(v?.via_invito, false);
+  assertEquals(v?.su_invito_di, '');
+});
+
+Deno.test('scheda: con l\'accesso tolto la data resta quella dell\'INGRESSO', () => {
+  // La tabella del bot non registra QUANDO l'accesso è stato tolto (solo created_at e
+  // attivo, misurato l'8/08). Il campo si chiama `entrato_il` apposta: chi lo stampa non
+  // lo può scambiare per la data della revoca.
+  const v = rigaPerLaScheda(componiPersona({ ...OPERATORE, attivo: false }, SOCI));
+  assertEquals(v?.accesso_attivo, false);
+  assertEquals(v?.entrato_il, OPERATORE.created_at);
+});
+
+Deno.test('🚨 scheda: REVOCATO e poi RIENTRATO ⇒ vale il rientro, non la vecchia revoca', () => {
+  // Il caso che i primi test NON discriminavano, trovato sabotando: là la riga spenta era
+  // più RECENTE di quella attiva, e allora «la più vecchia fra tutte» dava per caso la
+  // risposta giusta. Qui la spenta è più VECCHIA — la forma vera di chi è stato revocato
+  // e poi è rientrato — e chi non distingue attive da spente direbbe «accesso tolto» di
+  // una persona che il bot serve oggi.
+  assertEquals(rigaDaMostrare([SPENTA_VECCHIA, RIENTRATO])?.chat_id, RIENTRATO.chat_id);
+  assertEquals(rigaDaMostrare([RIENTRATO, SPENTA_VECCHIA])?.chat_id, RIENTRATO.chat_id);
+  assertEquals(rigaPerLaScheda(componiPersona(rigaDaMostrare([SPENTA_VECCHIA, RIENTRATO])!, SOCI))?.accesso_attivo, true);
+});
+
+Deno.test('🚨 scheda: con DUE date illeggibili l\'esito è stabile, non a caso', () => {
+  // L'altro caso cieco: con una sola data rotta il confronto è già `false` e non scalza
+  // niente da sé. La guardia serve quando le date rotte sono due — e senza, quale delle
+  // due righe vince dipende dall'ordine in cui il database le ha restituite, cioè cambia
+  // da una lettura all'altra a parità di dati.
+  const rottaA: RigaOperatore = { ...OPERATORE, chat_id: 777000555, created_at: 'boh' };
+  const rottaB: RigaOperatore = { ...OPERATORE, chat_id: 777000666, created_at: '' };
+  assertEquals(rigaDaMostrare([rottaA, rottaB])?.chat_id, rottaA.chat_id);
+  assertEquals(rigaDaMostrare([rottaB, rottaA])?.chat_id, rottaB.chat_id);
 });
