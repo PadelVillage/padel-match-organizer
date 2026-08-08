@@ -11,9 +11,12 @@ import {
   messaggioInvitoSegreteria,
   nomeUtenteBotPer,
   puoCreareInvito,
+  rigaDaMostrare,
+  rigaPerLaScheda,
   trovaSocio,
   vedeLaSezione,
   type InvitiPerToken,
+  type PersonaVista,
   type RigaInvito,
   type RigaOperatore,
 } from './logica.ts';
@@ -200,7 +203,12 @@ Deno.serve(async (req: Request) => {
     // due copie della stessa domanda divergono — e qui divergere vorrebbe dire che la
     // spia dice «non è nel bot» e il bottone risponde «è già dentro».
     const guardaPersona = async (): Promise<
-      { errore: Response } | { socio: ReturnType<typeof trovaSocio>; giaNelBot: boolean }
+      { errore: Response } | {
+        socio: ReturnType<typeof trovaSocio>;
+        giaNelBot: boolean;
+        schedeSocio: Array<{ payload?: unknown }>;
+        righeBot: RigaOperatore[];
+      }
     > => {
       const schedaId = clean(body.persona_id);
       const codice = clean(body.member_id);
@@ -227,17 +235,24 @@ Deno.serve(async (req: Request) => {
 
       // È già dentro? Si guarda PRIMA di scrivere: un secondo link lo manderebbe a rifare
       // una porta che ha già passato, e ci farebbe sembrare che non lo sappiamo.
+      //
+      // ⭐ Le colonne lette sono quelle di `componiPersona`, non due o tre scelte qui: la
+      // scheda del socio deve dire le STESSE parole del pannello — «dentro dal», «su
+      // invito di» — e due modi diversi di comporre la stessa frase divergono. Costa una
+      // riga più larga, non una lettura in più.
       let giaNelBot = false;
+      let righeBot: RigaOperatore[] = [];
       if (socio) {
         const { data: op, error: opE } = await bot.from('telegram_operatori')
-          .select('chat_id,attivo')
+          .select('chat_id,attivo,created_at,ambiente,persona_id,member_id,telefono_chiave,etichetta,invito_token,invitato_da_member_id')
           .eq('ambiente', ambiente)
           .or(`persona_id.eq.${socio.schedaId}${socio.memberId ? `,member_id.eq.${socio.memberId}` : ''}`)
           .limit(5);
         if (opE) return { errore: err(502, 'BOT_READ_ERROR', opE.message) };
-        giaNelBot = (op ?? []).some((r) => (r as { attivo?: unknown }).attivo !== false);
+        righeBot = (op ?? []) as RigaOperatore[];
+        giaNelBot = righeBot.some((r) => (r as { attivo?: unknown }).attivo !== false);
       }
-      return { socio, giaNelBot };
+      return { socio, giaNelBot, schedeSocio, righeBot };
     };
 
     // ── stato_bot — la SPIA: questa persona è nel bot? ───────────────────────
@@ -254,11 +269,86 @@ Deno.serve(async (req: Request) => {
       // spia che li confondesse manderebbe la segreteria a inviare un link a una persona
       // che in anagrafica non esiste — cioè a un guasto travestito da suggerimento.
       if (!esito.socio) return err(404, 'SOCIO_IGNOTO', 'Non trovo la scheda di questa persona.');
+
+      // ── Da quando, e su invito di chi (per la riga nella SCHEDA DEL SOCIO) ──
+      //
+      // ⭐ Idea sua del 31/07, costruita l'8/08: nella scheda si legge «Bot Telegram: sì,
+      // dal … — su invito di …». La compone `componiPersona`, la stessa del pannello:
+      // scriverne una seconda qui vorrebbe dire che un giorno le due frasi si
+      // contraddicono, e nessuna delle due saprebbe di essere quella sbagliata.
+      //
+      // 🚨 Il `chat_id` NON esce, come non usciva prima: la scheda dice se e da quando,
+      // non con chi il bot sta parlando. A garantirlo è `rigaPerLaScheda`, che ELENCA i
+      // campi che passano — e sta in `logica.ts`, dove un test può contarli.
+      //
+      // ⚠️ «Da quando l'accesso è stato TOLTO» non esiste: `telegram_operatori` ha solo
+      // `created_at` e `attivo` (misurato sulla tabella l'8/08). Quindi la data che esce
+      // è sempre quella dell'INGRESSO, e si chiama così — spacciarla per la data della
+      // revoca sarebbe una data sbagliata detta con la faccia di quella giusta.
+      const riga = rigaDaMostrare(esito.righeBot);
+      let vista: PersonaVista | null = null;
+      if (riga) {
+        // L'invito serve solo a dare un NOME a chi ha invitato quando la guardia non ha
+        // potuto scriverlo (invitante senza codice cliente). Si chiede solo se c'è il
+        // token: nessun token, nessuna lettura.
+        const token = String(riga.invito_token ?? '').trim();
+        const invitiPerToken = new Map<string, RigaInvito>();
+        let invito: RigaInvito | undefined;
+        if (token) {
+          const { data: inv, error: invE } = await bot.from('telegram_inviti')
+            .select('token,invitante_member_id,invitante_persona_id,invitante_etichetta,annullato,usato_il,scade_il')
+            .eq('ambiente', ambiente).eq('token', token).limit(1);
+          if (invE) return err(502, 'BOT_READ_ERROR', invE.message);
+          for (const r of (inv ?? []) as RigaInvito[]) {
+            invitiPerToken.set(String(r.token ?? '').trim(), r);
+            invito = r;
+          }
+        }
+
+        // 🚨⭐⭐ La scheda di CHI HA INVITATO va letta a parte, e senza questo pezzo la riga
+        // funzionava lo stesso — male. `nomeInvitante` cerca l'invitante nell'anagrafica
+        // che gli si passa; qui dentro c'era solo la scheda del socio guardato, quindi
+        // l'invitante non si trovava MAI e si scendeva al ripiego: l'etichetta scritta
+        // nell'invito, o «socio 000123».
+        // 📏 Trovato guardando il DATO VERO di TEST prima di dire che funzionava: l'unica
+        // riga là dentro è entrata su invito, e la scheda avrebbe detto «su invito di
+        // Maurizio Aprea (collaudo passo 1b)» — cioè un'etichetta di collaudo al posto di
+        // un nome. Il pannello non ha questo difetto perché legge le due chiavi di TUTTI
+        // gli invitanti insieme; questa porta ne guarda uno solo e se l'era persa.
+        const chiaviInvitante = {
+          codici: new Set<string>(),
+          schede: new Set<string>(),
+        };
+        const segna = (v: unknown, dove: Set<string>) => { const s = String(v ?? '').trim(); if (s) dove.add(s); };
+        segna(riga.invitato_da_member_id, chiaviInvitante.codici);
+        segna(invito?.invitante_member_id, chiaviInvitante.codici);
+        segna(invito?.invitante_persona_id, chiaviInvitante.schede);
+
+        const schedeTutte = [...esito.schedeSocio];
+        const leggiPer = async (colonna: string, valori: Set<string>): Promise<string | null> => {
+          if (!valori.size) return null;
+          const { data, error: e } = await gestionale.from('pmo_cloud_records')
+            .select('payload').eq('record_type', 'member').eq('deleted', false)
+            .in(colonna, Array.from(valori));
+          if (e) return e.message;
+          schedeTutte.push(...((data ?? []) as Array<{ payload?: unknown }>));
+          return null;
+        };
+        const guastoInv = (await leggiPer('payload->>id', chiaviInvitante.schede))
+          ?? (await leggiPer('payload->>memberId', chiaviInvitante.codici));
+        if (guastoInv) return err(500, 'ANAGRAFICA_ERROR', guastoInv);
+
+        vista = componiPersona(riga, indicizzaSoci(schedeTutte), invitiPerToken);
+      }
+
       return ok({
         ambiente,
         nel_bot: esito.giaNelBot,
         nome: esito.socio.nome,
         telefono: esito.socio.telefono,
+        // Presente solo se una riga c'è: «non ha mai avuto il bot» e «ce l'ha avuto» sono
+        // due fatti diversi, e chi legge deve poterli distinguere senza indovinare.
+        riga_bot: rigaPerLaScheda(vista),
       });
     }
 

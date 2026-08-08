@@ -8063,7 +8063,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.192';
+    const APP_VERSION = '6.194';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15807,6 +15807,20 @@ Grazie.`
                 <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>Da completare</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
                 <div><label>Telefono</label><input id="cardPhone" value="${escapeHtml(g.phone || '')}"></div>
                 <div class="full"><label>Email</label><input id="cardEmail" value="${escapeHtml(g.email || '')}"></div>
+                <!-- Bot Telegram (voce B6, idea sua del 31/07): «sì, dal … — su invito di …».
+                     🚨 Nasce NASCOSTA e resta nascosta finché non c'è qualcosa di vero da dire.
+                     Il dato vive sul database del BOT, non qui, e ci si arriva dal ponte
+                     bot-telegram-admin — che risponde 403 a chi non ha il permesso: in quel
+                     caso la riga non compare affatto, invece di mostrare un errore a chi non
+                     doveva vederla comunque.
+                     ⛔ Non è un campo della scheda: saveMemberCard non lo legge e non lo
+                     scrive. Si guarda soltanto.
+                     🚨🚨 E qui dentro NIENTE apici inversi: questo commento vive dentro una
+                     stringa template, e un apice inverso la CHIUDE. Scritto con quelli attorno
+                     ai nomi — come si fa in tutti gli altri commenti di questo file — l'app
+                     intera smetteva di partire con «Unexpected identifier». Visto aprendo la
+                     pagina, non leggendo il codice. -->
+                <div class="full" id="cardBotTelegramRow" hidden><label>Bot Telegram</label><input id="cardBotTelegramValue" value="" readonly title="Se questa persona usa il bot Telegram del circolo, da quando, e chi l'ha invitata. Il dato arriva dal bot; qui non si modifica."></div>
               </div>
               <div class="member-tab-subhead has-divider">Preferenze operative</div>
               <div class="member-form-grid">
@@ -15934,8 +15948,75 @@ Grazie.`
           setTimeout(() => { target.style.boxShadow = previousShadow || ''; }, 2200);
         }, 0);
       }
+      // La riga «Bot Telegram» si riempie DOPO, senza far aspettare la scheda: il dato sta
+      // su un altro database e ci si arriva da un ponte, cioè da una chiamata di rete.
+      // Bloccare l'apertura di ogni scheda per una riga in fondo sarebbe un pessimo affare.
+      pmoRiempiRigaBotTelegram(g);
       if (typeof flashAnchor === 'function') flashAnchor(overlay);
     }
+
+    /**
+     * «Bot Telegram: sì, dal … — su invito di …» nella scheda del socio.
+     *
+     * ⭐ Idea sua del 31/07/2026, alla fine del pannello: la stessa informazione dove lo
+     * staff guarda davvero, cioè nella scheda della persona, e SENZA il numero di Telegram
+     * — che a un umano non dice niente. Il ponte infatti non lo manda nemmeno.
+     *
+     * 🚨 Non dice mai «No» per ignoranza. Sono cose diverse, e vanno lette diverse:
+     *   • «No»                  → il ponte ha risposto, e di questa persona non c'è riga;
+     *   • riga assente          → chi guarda non ha il permesso (403): niente rumore;
+     *   • «non riesco a dirlo»  → il ponte è disarmato o la rete è caduta.
+     * Un «No» al posto dell'ultimo caso è la bugia rassicurante che il ponte stesso si
+     * vieta (`BOT_DB_DISARMED`): qui varrebbe uguale.
+     */
+    async function pmoRiempiRigaBotTelegram(g) {
+      const riga = document.getElementById('cardBotTelegramRow');
+      const campo = document.getElementById('cardBotTelegramValue');
+      if (!riga || !campo || !g) return;
+      const schedaId = String(g.id || '').trim();
+      const codice = String(g.memberId || g.codice || '').trim();
+      if (!schedaId && !codice) return;
+      const mostra = (testo) => {
+        // ⚠️ La scheda può essere stata chiusa o riaperta su un ALTRO socio mentre la
+        // risposta viaggiava: si scrive solo se il campo in pagina è ancora questo.
+        if (!document.body.contains(campo)) return;
+        campo.value = testo;
+        riga.hidden = false;
+      };
+      try {
+        const r = await pmoTelegramChiama({ action:'stato_bot', persona_id: schedaId, member_id: codice });
+        const b = r && r.riga_bot;
+        if (!b) { mostra('No'); return; }
+        const quando = pmoDataLeggibile(b.entrato_il);
+        const chi = String(b.su_invito_di || '').trim();
+        if (b.accesso_attivo === false) {
+          // ⚠️ QUANDO l'accesso è stato tolto non lo sa nessuno: la tabella del bot tiene
+          // solo la data d'ingresso e un sì/no (misurato l'8/08/2026). Quindi si dichiara
+          // quale data è, invece di lasciar credere che sia quella della revoca.
+          mostra(quando ? `Accesso tolto — era entrato il ${quando}` : 'Accesso tolto');
+          return;
+        }
+        let testo = quando ? `Sì, dal ${quando}` : 'Sì';
+        if (chi) testo += ` — su invito di ${chi}`;
+        mostra(testo);
+      } catch (e) {
+        // 403: non ha il permesso ⇒ la riga non esiste per lui, e non si spiega perché.
+        if (e && (e.stato === 403 || e.codice === 'FORBIDDEN')) return;
+        // 404: la scheda non è (ancora) nel cloud. Non è «non è nel bot»: è «non lo so».
+        if (e && (e.stato === 404 || e.codice === 'SOCIO_IGNOTO')) { mostra('Non lo so dire per questa scheda'); return; }
+        if (e && e.codice === 'BOT_DB_DISARMED') { mostra('Non lo so dire: collegamento col bot non configurato'); return; }
+        mostra('Non lo so dire adesso: riprova più tardi');
+      }
+    }
+
+    /** Una data come la scrive una persona: «3 agosto 2026». Vuota se non è una data. */
+    function pmoDataLeggibile(v) {
+      const t = Date.parse(String(v || ''));
+      if (!Number.isFinite(t)) return '';
+      try { return new Date(t).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' }); }
+      catch { return ''; }
+    }
+
     function saveMemberCard(memberId) {
       if (pmoBlockWriteIfReadonly('modificare un socio')) return;
       const idx = giocatori.findIndex(p => String(p.id) === String(memberId));

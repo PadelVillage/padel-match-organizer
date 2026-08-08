@@ -215,6 +215,81 @@ export function ammessoAAzione(
     : vedeLaSezione(ruolo, permessi);
 }
 
+/**
+ * Fra le righe che una persona ha nella whitelist, QUELLA da mostrare nella sua scheda.
+ *
+ * 🚨 Le righe possono essere più d'una davvero: chi entra, gli si toglie l'accesso e poi
+ * rientra da un altro telefono lascia due righe, tutt'e due sue. La scheda del socio ha
+ * spazio per **un fatto solo**, quindi va scelto — e la scelta non può stare dentro
+ * l'edge, dove nessun test la guarderebbe (è la 38ª: una guardia che vive solo nella
+ * funzione servita non la misura nessuno).
+ *
+ * ⚖️ La regola, in due righe:
+ * - se **almeno una** riga è attiva, vince la **più VECCHIA fra le attive** — la domanda
+ *   dello staff è «da quando ha il bot», e la risposta è da quando è entrato, non da
+ *   quando ha cambiato telefono;
+ * - se **nessuna** è attiva, vince la **più RECENTE** — lì la domanda è cambiata: non
+ *   «da quando è dentro» ma «cos'è successo per ultimo», e il fatto più fresco è quello.
+ *
+ * ⚠️ Una data illeggibile non fa vincere né perdere: si tiene l'ordine in cui sono
+ * arrivate. Ordinare su `NaN` scambierebbe le righe a caso, e la scheda direbbe una data
+ * sbagliata con la stessa faccia sicura con cui dice quella giusta.
+ */
+export function rigaDaMostrare(righe: RigaOperatore[] | null | undefined): RigaOperatore | null {
+  const tutte = (righe ?? []).filter(Boolean);
+  if (!tutte.length) return null;
+  const attive = tutte.filter((r) => r.attivo !== false);
+  const gruppo = attive.length ? attive : tutte;
+  const quando = (r: RigaOperatore): number => {
+    const t = Date.parse(testo(r.created_at));
+    return Number.isFinite(t) ? t : NaN;
+  };
+  return gruppo.reduce((scelta, r) => {
+    const a = quando(scelta);
+    const b = quando(r);
+    if (!Number.isFinite(b)) return scelta;      // data illeggibile: non scalza nessuno
+    if (!Number.isFinite(a)) return r;
+    // fra le attive la più vecchia, fra le spente la più recente
+    return attive.length ? (b < a ? r : scelta) : (b > a ? r : scelta);
+  });
+}
+
+/**
+ * Quello che della riga del bot può uscire verso la SCHEDA DEL SOCIO — e nient'altro.
+ *
+ * 🚨⭐⭐ Esiste per una ragione sola: **il `chat_id` non deve uscire**, qui come in tutta
+ * questa porta. `PersonaVista` ce l'ha dentro (il pannello lo usa per revocare), quindi
+ * restituirla intera sarebbe bastato a farlo arrivare nella scheda di ogni socio.
+ * ⇒ I campi si **elencano**, non si tolgono: una lista di ciò che passa lascia fuori da
+ * sé anche i campi che qualcuno aggiungerà domani, mentre un `delete vista.chatId`
+ * protegge solo dal campo che conoscevamo il giorno che l'abbiamo scritto.
+ *
+ * ⭐ E sta qui, non dentro l'edge, perché una regola che vive solo nella funzione servita
+ * non la misura nessuno: così un test può chiedere «quali chiavi escono?» e accorgersi
+ * il giorno in cui ne esce una di troppo.
+ *
+ * ⚠️ `entrato_il` è la data dell'INGRESSO anche quando l'accesso è stato tolto: la
+ * tabella del bot non registra quando è stato revocato (solo `created_at` e `attivo`,
+ * misurato l'8/08/2026). Il nome del campo dice quale data è, così chi la stampa non può
+ * scambiarla per un'altra.
+ */
+export type RigaBotPerScheda = {
+  accesso_attivo: boolean;
+  entrato_il: string;
+  su_invito_di: string;
+  via_invito: boolean;
+};
+
+export function rigaPerLaScheda(vista: PersonaVista | null | undefined): RigaBotPerScheda | null {
+  if (!vista) return null;
+  return {
+    accesso_attivo: vista.attivo,
+    entrato_il: testo(vista.entratoIl),
+    su_invito_di: testo(vista.invitatoDa),
+    via_invito: !!vista.viaInvito,
+  };
+}
+
 /** Il livello, scritto come si può leggere senza sbagliarsi. */
 export function livelloLeggibile(livello: unknown, autovalutato = false): string {
   const v = testo(livello).replace(',', '.');
