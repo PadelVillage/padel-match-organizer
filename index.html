@@ -5399,6 +5399,27 @@ body.assessment-public-mode .assessment-public-only-card {
       letter-spacing:.08em;
       text-transform:uppercase;
     }
+    /* v6.192 - Piè di pagina del menu: l'informativa privacy.
+       `margin-top:auto` la tiene in FONDO su desktop, dove .side-nav-content è una colonna
+       flex e la chat si prende lo spazio libero; su mobile, dove non è flex, la proprietà
+       non fa nulla e la voce resta semplicemente dopo i capitoli. Un posto solo per tutt'e
+       due le larghezze: se stesse anche nella barra capitoli sarebbero due menu diversi. */
+    .side-nav-legal {
+      margin-top:auto;
+      padding:14px 9px 2px;
+      border-top:1px solid rgba(255,255,255,.14);
+    }
+    /* ⚠️ `inline-block` e non `inline-flex`: in un contenitore flex l'etichetta diventa un
+       unico item anonimo e lo spazio fra l'emoji e la parola si perde — si leggeva
+       «🔐Informativa privacy», attaccato. Visto sulla pagina impaginata, non nel DOM: lì
+       il testo aveva (e ha) il suo spazio. */
+    .side-nav-legal a {
+      display:inline-block;
+      color:rgba(255,255,255,.72);
+      font-size:12px;
+      text-decoration:none;
+    }
+    .side-nav-legal a:hover { color:#fff; text-decoration:underline; }
     /* v5.271 - Menu laterale: stile unico per tutte le voci principali */
     .side-nav .side-nav-main-item {
       width:100%;
@@ -6356,6 +6377,23 @@ body.assessment-public-mode .assessment-public-only-card {
           <button class="side-sub-link" data-subsection-key="view_admin_telegram" data-parent-tab="administration" onclick="goToTabSection('administration','Bot Telegram')">Bot Telegram</button>
         </div>
         </div><!-- /.side-nav-chapters -->
+
+        <!-- L'informativa privacy, raggiungibile DOPO (voce B7, 8/08/2026). Il consenso del
+             bot ci rimanda da sempre, ma chi ha già accettato non aveva più un posto dove
+             rileggerla, e nel gestionale la pagina non stava in nessun menu: ci si arrivava
+             solo scrivendo l'indirizzo a mano.
+             Sta qui e non fra i capitoli perché non è una sezione dell'app ma un documento,
+             e per la stessa ragione NON passa dal gating dei ruoli: la deve poter aprire
+             chiunque, come chiunque la può leggere dal bot.
+             ⚠️ Indirizzo ASSOLUTO di proposito. Su TEST l'app è servita da
+             test.padelvillage.club, dove privacy.html non esiste: un href relativo darebbe
+             404 proprio in collaudo. Il documento è UNO, sta in produzione, ed è lo stesso
+             che il bot dà ai soci — là però l'indirizzo arriva dalla configurazione
+             (privacy.informativa_url), quindi il giorno che la pagina si sposta vanno
+             cambiati TUTTI E DUE: una riga di configurazione e questa riga qui. -->
+        <div class="side-nav-legal">
+          <a href="https://app.padelvillage.club/privacy.html" target="_blank" rel="noopener">🔐 Informativa privacy</a>
+        </div>
 
       </div>
     </aside>
@@ -8025,7 +8063,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.190';
+    const APP_VERSION = '6.192';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
