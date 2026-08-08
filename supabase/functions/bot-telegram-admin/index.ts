@@ -19,7 +19,6 @@ import {
   type PersonaVista,
   type RigaInvito,
   type RigaOperatore,
-  type Rubrica,
 } from './logica.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,7 +206,7 @@ Deno.serve(async (req: Request) => {
       { errore: Response } | {
         socio: ReturnType<typeof trovaSocio>;
         giaNelBot: boolean;
-        rubricaUno: Rubrica;
+        schedeSocio: Array<{ payload?: unknown }>;
         righeBot: RigaOperatore[];
       }
     > => {
@@ -253,7 +252,7 @@ Deno.serve(async (req: Request) => {
         righeBot = (op ?? []) as RigaOperatore[];
         giaNelBot = righeBot.some((r) => (r as { attivo?: unknown }).attivo !== false);
       }
-      return { socio, giaNelBot, rubricaUno, righeBot };
+      return { socio, giaNelBot, schedeSocio, righeBot };
     };
 
     // ── stato_bot — la SPIA: questa persona è nel bot? ───────────────────────
@@ -294,14 +293,52 @@ Deno.serve(async (req: Request) => {
         // token: nessun token, nessuna lettura.
         const token = String(riga.invito_token ?? '').trim();
         const invitiPerToken = new Map<string, RigaInvito>();
+        let invito: RigaInvito | undefined;
         if (token) {
           const { data: inv, error: invE } = await bot.from('telegram_inviti')
             .select('token,invitante_member_id,invitante_persona_id,invitante_etichetta,annullato,usato_il,scade_il')
             .eq('ambiente', ambiente).eq('token', token).limit(1);
           if (invE) return err(502, 'BOT_READ_ERROR', invE.message);
-          for (const r of (inv ?? []) as RigaInvito[]) invitiPerToken.set(String(r.token ?? '').trim(), r);
+          for (const r of (inv ?? []) as RigaInvito[]) {
+            invitiPerToken.set(String(r.token ?? '').trim(), r);
+            invito = r;
+          }
         }
-        vista = componiPersona(riga, esito.rubricaUno, invitiPerToken);
+
+        // 🚨⭐⭐ La scheda di CHI HA INVITATO va letta a parte, e senza questo pezzo la riga
+        // funzionava lo stesso — male. `nomeInvitante` cerca l'invitante nell'anagrafica
+        // che gli si passa; qui dentro c'era solo la scheda del socio guardato, quindi
+        // l'invitante non si trovava MAI e si scendeva al ripiego: l'etichetta scritta
+        // nell'invito, o «socio 000123».
+        // 📏 Trovato guardando il DATO VERO di TEST prima di dire che funzionava: l'unica
+        // riga là dentro è entrata su invito, e la scheda avrebbe detto «su invito di
+        // Maurizio Aprea (collaudo passo 1b)» — cioè un'etichetta di collaudo al posto di
+        // un nome. Il pannello non ha questo difetto perché legge le due chiavi di TUTTI
+        // gli invitanti insieme; questa porta ne guarda uno solo e se l'era persa.
+        const chiaviInvitante = {
+          codici: new Set<string>(),
+          schede: new Set<string>(),
+        };
+        const segna = (v: unknown, dove: Set<string>) => { const s = String(v ?? '').trim(); if (s) dove.add(s); };
+        segna(riga.invitato_da_member_id, chiaviInvitante.codici);
+        segna(invito?.invitante_member_id, chiaviInvitante.codici);
+        segna(invito?.invitante_persona_id, chiaviInvitante.schede);
+
+        const schedeTutte = [...esito.schedeSocio];
+        const leggiPer = async (colonna: string, valori: Set<string>): Promise<string | null> => {
+          if (!valori.size) return null;
+          const { data, error: e } = await gestionale.from('pmo_cloud_records')
+            .select('payload').eq('record_type', 'member').eq('deleted', false)
+            .in(colonna, Array.from(valori));
+          if (e) return e.message;
+          schedeTutte.push(...((data ?? []) as Array<{ payload?: unknown }>));
+          return null;
+        };
+        const guastoInv = (await leggiPer('payload->>id', chiaviInvitante.schede))
+          ?? (await leggiPer('payload->>memberId', chiaviInvitante.codici));
+        if (guastoInv) return err(500, 'ANAGRAFICA_ERROR', guastoInv);
+
+        vista = componiPersona(riga, indicizzaSoci(schedeTutte), invitiPerToken);
       }
 
       return ok({
