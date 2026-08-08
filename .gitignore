@@ -59,3 +59,13 @@ supabase/functions/*/deno.lock
 /_*.html
 /_*.js
 /_*.txt
+
+# Le sonde e gli attrezzi di prova: stanno sul Mac, non in git — stessa convenzione del
+# repo del bot. Ci vive `parser-script.mjs`, che risponde alla domanda «questo index.html,
+# in un browser, parte?»: si lancia prima di ogni promozione a PROD.
+# 🚨 Ignorata perché altrimenti comparirebbe fra le modifiche a ogni `git status`, e su
+# questo repo un `git add -A` distratto è già costato.
+# ⚠️ Questa riga sta su `test-preview` e NON su `main`: il `.gitignore` diverge fra i rami
+# di proposito (non è fra i file che l'anti-drift tiene identici). Lavorando da un branch
+# basato su main, `_prove/` ricompare fra i file non tracciati: è atteso, non è un guasto.
+_prove/
