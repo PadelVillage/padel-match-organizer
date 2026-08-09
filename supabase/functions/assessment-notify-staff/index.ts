@@ -175,7 +175,7 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
     (knowledge!.questions as JsonMap[]).forEach((q) => {
       righe.push(`  ${q.giusta ? '✅' : '❌'} ${clean(q.domanda)}${q.trap ? '  [trappola]' : ''}`);
       righe.push(`      ha risposto: ${clean(q.risposta) || '(nessuna risposta)'}`);
-      if (!q.giusta) righe.push(`      giusta era: ${clean(q.attesa)}`);
+      if (!q.giusta) righe.push(`      la risposta giusta è: ${clean(q.attesa)}`);
     });
   }
 
@@ -236,7 +236,7 @@ ${clean(riga.email) ? `<tr><td style="padding:3px 12px 3px 0;color:#777">Email</
 <tr><td style="padding:3px 12px 3px 0;color:#777">Conoscenza</td><td><strong>${escapeHtml(conoscenzaFatta ? `${clean(knowledge!.correct)}/${clean(knowledge!.total)}` : 'non prevista')}</strong>${conoscenzaFatta && knowledge!.trap_failed ? ' <span style="color:#b00">— trappola sbagliata</span>' : ''}</td></tr>
 </table>
 ${conoscenzaFatta && Array.isArray(knowledge!.questions) ? `<p style="margin:0 0 4px"><strong>Domande di conoscenza</strong></p>
-<ol style="margin:4px 0 16px;font-size:14px;color:#333">${(knowledge!.questions as JsonMap[]).map((q) => `<li style="margin:6px 0">${q.giusta ? '✅' : '❌'} ${escapeHtml(clean(q.domanda))}${q.trap ? ' <span style="color:#888">[trappola]</span>' : ''}<br><span style="color:#555">ha risposto: ${escapeHtml(clean(q.risposta) || '(nessuna risposta)')}</span>${q.giusta ? '' : `<br><span style="color:#0a7d32">giusta era: ${escapeHtml(clean(q.attesa))}</span>`}</li>`).join('')}</ol>` : ''}
+<ol style="margin:4px 0 16px;font-size:14px;color:#333">${(knowledge!.questions as JsonMap[]).map((q) => `<li style="margin:6px 0">${q.giusta ? '✅' : '❌'} ${escapeHtml(clean(q.domanda))}${q.trap ? ' <span style="color:#888">[trappola]</span>' : ''}<br><span style="color:#555">ha risposto: ${escapeHtml(clean(q.risposta) || '(nessuna risposta)')}</span>${q.giusta ? '' : `<br><span style="color:#0a7d32">la risposta giusta è: ${escapeHtml(clean(q.attesa))}</span>`}</li>`).join('')}</ol>` : ''}
 <p style="margin:0 0 4px"><strong>Risposte sul proprio gioco</strong></p>
 <table style="border-collapse:collapse;font-size:14px;margin:4px 0 16px">
 ${Object.entries(etichette).map(([chiave, etichetta]) => {
