@@ -7987,7 +7987,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.204';
+    const APP_VERSION = '6.206';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10891,18 +10891,38 @@ Grazie.`
     // nel singolo browser, e il 2/08/2026 si è misurato il danno — i codici di TEST e PROD
     // erano completamente scorrelati (0 uguali su 15 confrontati), perché nati da postazioni
     // diverse che contavano ognuna per conto suo.
-    // ⚠️ Limite noto e accettato: due postazioni che creano un socio nello STESSO momento
-    // leggono lo stesso massimo e propongono lo stesso numero. Resta molto meglio di prima
-    // (il contatore locale divergeva sempre, non solo in contemporanea), ma il giorno che
-    // servisse la garanzia piena il numero va chiesto al database, non al browser.
+    // 🚨🚨⭐⭐ 9/08/2026 — IL «LIMITE NOTO E ACCETTATO» SI È AVVERATO: 24 codici finiti a 48 persone.
+    //
+    // Qui c'era scritto: *«due postazioni che creano un socio nello STESSO momento leggono lo
+    // stesso massimo e propongono lo stesso numero… il giorno che servisse la garanzia piena il
+    // numero va chiesto al database, non al browser»*. Quel giorno è arrivato, e il guasto era
+    // perfino più largo di come stava scritto: **non serve la contemporaneità**.
+    //
+    // Basta che la postazione abbia una copia INCOMPLETA dell'anagrafica — cosa già misurata e
+    // documentata — perché il massimo letto qui sia basso e il codice «nuovo» sia **già di
+    // qualcun altro**. Prova nei dati di PROD: tre schede salvate il 9/08 avevano preso
+    // `PMO-001050 · 001051 · 001052`, tre numeri consecutivi in MEZZO alla numerazione, mentre
+    // il massimo vero era 2837. Nessun errore, nessun avviso: il codice sbagliato si scopre solo
+    // quando qualcuno prova a riconoscere quella persona — e infatti l'ha scoperto il bot, che
+    // trovava due schede e si rifiutava di servire nessuna delle due.
+    //
+    // ⛔ NON si può riparare calcolando meglio: l'informazione che serve NON È NEL BROWSER. Il
+    //    codice che collide appartiene per definizione a un socio che questa postazione non ha
+    //    in memoria — qualunque massimo calcolato di qua è cieco proprio sul caso da evitare.
+    // ⇒ Perciò l'app SMETTE DI CONIARE. Il campo resta vuoto e il numero lo dà il DATABASE, che
+    //   è l'unico che li vede tutti insieme (routine `pmo_assegna_codici_mancanti`, notturna).
+    //
+    // ⭐ Un socio senza codice per qualche ora non rompe niente: il campo vuoto è già previsto
+    //   ovunque (i ponti filtrano con `coalesce(...,'') <> ''`) ed erano già 9 i soci arrivati
+    //   così fra il 10/07 e il 9/08 senza che nessuno se ne accorgesse. Un codice SBAGLIATO
+    //   invece rompe, in silenzio, e si scopre mesi dopo.
+    // ⇒ ⭐⭐ Fra «un dato mancante» e «un dato inventato», qui il secondo costa di più: il primo
+    //   si vede e si riempie, il secondo si scopre solo quando ha già fatto danno.
+    //
+    // 🚨 Il PMO- rimasto nel campo vecchio continua a TRASLOCARE (lo fanno i chiamanti): quello
+    //    non è inventato, è suo. Qui si smette solo di INVENTARNE di nuovi.
     function nextPmoPlayerId() {
-      const list = Array.isArray(giocatori) ? giocatori : [];
-      let max = 0;
-      for (const m of list) {
-        const n = parseInt(String((m && m.pmoPlayerId) || '').replace(/\D/g, ''), 10);
-        if (Number.isFinite(n) && n > max) max = n;
-      }
-      return `PMO-${String(max + 1).padStart(6, '0')}`;
+      return '';
     }
 
     // Etichetta a VIDEO: codice Matchpoint numerico -> "ID-MP-001017". PMO-.../vuoto restano com'erano.
@@ -11579,8 +11599,9 @@ Grazie.`
 
     function migrateMemberIds() {
       let changed = false;
-      // ⚠️ RESIDUO INERTE (2/08/2026): `memberIdCounter` non genera più niente — i codici
-      // Padel Village li dà nextPmoPlayerId(), che legge il massimo dai dati. Questo blocco
+      // ⚠️ RESIDUO INERTE (2/08/2026): `memberIdCounter` non genera più niente — e dal
+      // 9/08/2026 non genera più niente nemmeno `nextPmoPlayerId()`: i codici li dà il
+      // DATABASE, l'unico che li vede tutti (v. il commento su quella funzione). Questo blocco
       // resta solo perché la variabile è intrecciata con backup/ripristino/azzeramento, e
       // toglierla di qui vorrebbe dire toccare quelle righe. Non fidarsi del suo valore.
       let maxCounter = parseInt(memberIdCounter, 10) || 0;
@@ -11600,8 +11621,12 @@ Grazie.`
         //   Un PMO- rimasto nel campo vecchio trasloca qui.
         if (!g.pmoPlayerId) {
           const _vecchio = cleanCell(g.memberId || '');
-          g.pmoPlayerId = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
-          changed = true;
+          // 🚨 Dal 9/08/2026 `nextPmoPlayerId()` non conia più: se non c'è un PMO- da far
+          //    traslocare, qui non si scrive NIENTE e `changed` non si tocca. Senza questa
+          //    guardia il campo resterebbe vuoto e ogni avvio si dichiarerebbe «cambiato»,
+          //    risalvando l'anagrafica intera per un valore che non è mai stato scritto.
+          const _nuovo = /^PMO-/i.test(_vecchio) ? _vecchio : nextPmoPlayerId();
+          if (_nuovo) { g.pmoPlayerId = _nuovo; changed = true; }
         }
         if (/^PMO-/i.test(cleanCell(g.memberId || ''))) { g.memberId = ''; changed = true; }
         const normalized = normalizeImportedPlayerNameParts(g.firstName || '', g.surname || '');
