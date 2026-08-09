@@ -7074,141 +7074,33 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <div id="anchor-assessment-scheda" class="assessment-email-panel assessment-flow-card archive assessment-public-only-card" data-assessment-email-panel="public">
-          <div class="assessment-public-subtabs" aria-label="Sottosezioni scheda pubblica">
-            <button type="button" class="assessment-public-subtab active" data-assessment-public-subtab="link" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('link')">Link esterno</button>
-            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="registration" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Registrazione utente</button>
-            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="questions" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('questions')">Form autovalutazione</button>
-          </div>
-
-          <div id="assessmentExternalLinkPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="link">
-            <div class="assessment-external-link-head">
+          <!-- 🆕🗣️⭐⭐ 9/08/2026 — UNA SCHEDA SOLA, sua richiesta: «facciamo si' che la trappola
+               delle due schede non esista piu' e ci sia una scheda sola».
+               Qui stavano TRE sottosezioni che rifacevano a mano la scheda del socio: il link
+               generico da copiare, un finto modulo di registrazione e — la peggiore — una copia
+               delle 8 domande RISCRITTE NELL'HTML.
+               🚨 Non erano un'anteprima: erano una seconda verita' che invecchiava da sola. La
+               copia diceva ancora «lo staff verifichera' il livello», cosa che il disegno
+               automatico ha abolito, e mostrava il riquadro in cima gia' tolto dalla scheda vera
+               il 9/08 (v6.200/6.201). Chi guardava di qui vedeva la scheda di mesi fa e la
+               credeva quella di adesso.
+               ⇒ Adesso la scheda e' UNA: quella che riceve il socio. Da qui la si APRE, non la si
+               ridisegna. Un'anteprima che si puo' scostare dal prodotto non e' un'anteprima.
+               🚨 E il link GENERICO non si distribuisce piu' da qui: sua decisione del 9/08
+               (riga 11 della Tabella 1), e la porta e' chiusa anche lato pagina
+               (assessmentPublicShowGenericLinkClosed). Su PROD non l'aveva mai usato nessuno:
+               assessment_external_requests = 0 righe, da sempre. -->
+          <div class="assessment-public-form-card assessment-public-staff-panel" data-assessment-public-staff-panel="scheda">
+            <div class="assessment-public-form-head">
               <div>
-                <h4>Link esterno</h4>
-                <p>Da copiare e condividere quando serve.</p>
-              </div>
-              <span id="assessmentExternalLinkStatus" class="assessment-external-status">Pronto</span>
-            </div>
-
-            <div class="assessment-external-link-row">
-              <input id="assessmentExternalLinkInput" class="assessment-external-link-input" readonly aria-label="Link esterno Autovalutazione">
-              <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalCopyLink('external')">Copia link</button>
-            </div>
-
-            <div class="assessment-external-chat-preview" aria-label="Anteprima link in chat">
-              <div class="assessment-external-chat-bubble" role="button" tabindex="0" onclick="setActionAnchor(this); assessmentExternalOpenRegistrationPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); assessmentExternalOpenRegistrationPreview();}">
-                <div class="assessment-external-chat-card">
-                  <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                  <div>
-                    <strong>Autovalutazione Livello di Gioco</strong>
-                    <span>app.padelvillage.club</span>
-                  </div>
-                </div>
-                <span class="assessment-external-chat-url">https://app.padelvillage.club/autovalutazione.html?assessment=link-esterno</span>
+                <h4>La scheda e' una sola</h4>
+                <p>Quella che il socio riceve dal suo link personale. Qui non c'e' una copia: si apre quella vera.</p>
               </div>
             </div>
-          </div>
-
-          <div id="assessmentExternalRegistrationPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="registration" hidden>
-            <div class="assessment-external-phone">
-              <div class="assessment-external-phone-top"></div>
-              <div class="assessment-external-phone-body">
-              <div class="assessment-external-brand">
-                <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                <strong>Autovalutazione Livello di Gioco</strong>
-                <span>Completa i dati e accetta la Privacy Policy.</span>
-              </div>
-              <div class="assessment-external-preview">
-              <div class="assessment-external-field">
-                <label>Nome</label>
-                <input id="assessmentExternalFirstNameInput" value="">
-              </div>
-              <div class="assessment-external-field">
-                <label>Cognome</label>
-                <input id="assessmentExternalLastNameInput" value="">
-              </div>
-              <div class="assessment-external-field">
-                <label>Telefono</label>
-                <input id="assessmentExternalPhoneInput" value="333 1234567" inputmode="tel">
-              </div>
-              <div class="assessment-external-field">
-                <label>Email</label>
-                <input id="assessmentExternalEmailInput" value="" type="email">
-              </div>
-              <div class="assessment-external-field">
-                <label>Sesso</label>
-                <select id="assessmentExternalSexSelect" onchange="assessmentExternalRefreshStaffPreview()">
-                  <option value="M" selected>Maschio</option>
-                  <option value="F">Femmina</option>
-                  <option value="NA">Preferisco non indicarlo</option>
-                </select>
-              </div>
-              <div id="assessmentExternalStaffPreview" class="assessment-external-policy assessment-external-full assessment-external-staff-preview">
-                <strong>Origine: Da link esterno</strong>
-                <div class="assessment-external-staff-preview-row">
-                  <span id="assessmentExternalStaffSex" class="badge badge-success">Maschio</span>
-                  <span id="assessmentExternalStaffState" class="badge badge-success">Da validare</span>
-                </div>
-              </div>
-              <label class="assessment-external-check assessment-external-full">
-                <input type="checkbox" id="assessmentExternalPrivacyCheck">
-                <span>Ho letto l’informativa privacy e autorizzo il trattamento dei dati per registrazione, autovalutazione e gestione delle attività sportive.</span>
-              </label>
-              <div class="assessment-public-actions assessment-external-full">
-                <button id="assessmentExternalPrivacyToggle" type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalTogglePrivacyPolicy()">Leggi Privacy Policy</button>
-                <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalProceedToQuestions()">Procedi con l'autovalutazione</button>
-              </div>
-              <div id="assessmentExternalPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
-                <strong>Privacy Policy Padel Village</strong>
-                <p>Useremo i dati che inserisci in questo modulo per creare o aggiornare la tua scheda giocatore Padel Village e per gestire la tua autovalutazione del livello di gioco.</p>
-                <p>Ti chiediamo nome, cognome, numero di telefono, email, sesso e risposte sull'autovalutazione perche ci servono per riconoscerti correttamente, evitare doppioni, gestire la tua scheda e organizzare meglio le attivita' del circolo.</p>
-                <p>Potremo inoltre registrare che la richiesta arriva da link esterno e conservare lo storico delle autovalutazioni inviate, cosi lo staff puo seguire correttamente il processo.</p>
-                <p>I tuoi dati saranno usati per finalita' legate ai servizi Padel Village, alla gestione della tua scheda, all'autovalutazione del livello e all'organizzazione delle attivita' sportive e sociali del circolo.</p>
-                <p>Per aiutare Padel Village a organizzare attivita' ed eventi, il tuo nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione delle iniziative del circolo.</p>
-                <p>A titolo di esempio, questo puo avvenire per partite, tornei, stage, lezioni, campionati a squadre e altre attivita' sportive o sociali organizzate da Padel Village. L'elenco e' solo esemplificativo e non limita le possibili iniziative del circolo.</p>
-                <p>Il tuo numero di telefono e la tua email non saranno mostrati agli altri utenti della piattaforma.</p>
-                <p>I tuoi dati non saranno venduti a terzi. Potranno essere consultati dallo staff autorizzato di Padel Village e dai fornitori tecnici che ci aiutano a gestire la piattaforma e i sistemi collegati.</p>
-                <p>I dati saranno conservati per il tempo necessario alla gestione della tua scheda giocatore, delle attivita' del circolo e degli eventuali obblighi amministrativi o organizzativi.</p>
-                <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile scrivendo a: info@padelvillage.club.</p>
-                <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
-              </div>
-              <div id="assessmentExternalRegistrationMessage" class="assessment-external-message assessment-external-full" role="status"></div>
-              </div>
-              </div>
+            <div class="assessment-public-actions">
+              <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentPublicOpenRealCard()">Apri la scheda come la vede il socio</button>
             </div>
-          </div>
-
-          <div id="assessmentExternalQuestionsPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="questions" hidden>
-            <div class="assessment-external-phone">
-              <div class="assessment-external-phone-top"></div>
-              <div class="assessment-external-phone-body">
-                <div class="assessment-external-brand">
-                  <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                  <strong>Autovalutazione Livello di Gioco</strong>
-                  <span>Rispondi alle domande sul tuo gioco.</span>
-                </div>
-                <div id="assessmentExternalQuestionForm">
-                  <div class="assessment-public-question"><div class="q-title">1. Da quanto giochi a padel? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQExperience" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Più di 1 anno</option><option>Più di 3 anni</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">2. Quante volte giochi mediamente al mese? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQFrequency" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Più di 10</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQDeclaredLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">4. Con quali giocatori fai partite equilibrate? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQBalancedLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">5. Riesci a mantenere lo scambio? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQRally" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Faccio fatica a tenere 3-4 colpi</option><option>Tengo lo scambio solo a ritmo lento</option><option>Tengo scambi regolari con continuità</option><option>Tengo scambi anche con ritmo alto</option><option>Costruisco il punto con controllo</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">6. Come gestisci il vetro in difesa? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQGlass" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Evito quasi sempre il vetro</option><option>Lo uso solo se la palla è facile</option><option>Difendo con il vetro in modo base</option><option>Lo uso con continuità anche sotto pressione</option><option>Lo uso per difendere e ripartire in attacco</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">7. A rete come ti comporti? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQNet" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Sto poco a rete</option><option>Vado a rete ma faccio fatica a chiudere</option><option>Gioco volée semplici</option><option>Tengo posizione e controllo le volée</option><option>Costruisco e chiudo il punto a rete</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select id="assessmentExternalQOverhead" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
-                  <div id="assessmentExternalKnowledgeBlock" class="assessment-public-knowledge" hidden></div>
-                  <div id="assessmentExternalQuestionMessage" class="assessment-external-message" role="status"></div>
-                  <div class="assessment-public-actions">
-                    <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Indietro</button>
-                    <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalSubmitStaffAssessment()">Invia autovalutazione</button>
-                  </div>
-                </div>
-                <div id="assessmentExternalCompletion" class="assessment-external-final" hidden>
-                  <strong>Autovalutazione inviata</strong>
-                  <span>Lo staff verifichera' il livello indicato e ti inviera' una mail di conferma con il livello impostato.</span>
-                  <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalOpenHistory()">Vedi storico</button>
-                </div>
-              </div>
-            </div>
+            <p class="assessment-public-small">Si apre in una finestra nuova, in prova: le risposte non vengono salvate.</p>
           </div>
 
           <div id="assessmentPublicLivePreview" class="assessment-public-real-form-panel">
@@ -8133,7 +8025,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.201';
+    const APP_VERSION = '6.202';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -24802,6 +24694,26 @@ Grazie!`
     function getAssessmentExternalTestBaseUrl() {
       return `${PMO_PROD_PUBLIC_BASE_URL}test/autovalutazione.html`;
     }
+    /**
+     * 🆕🗣️ 9/08/2026 — apre LA scheda vera, invece di ridisegnarla nel gestionale.
+     *
+     * Sostituisce le tre sottosezioni che ne facevano una copia a mano (vedi il commento
+     * dove stavano). ⭐⭐ La differenza non è di comodità: una copia risponde a «com'era
+     * quando l'ho scritta», la scheda vera risponde a «com'è adesso» — ed è l'unica
+     * domanda che serve a chi la guarda prima di mandarla a un socio.
+     *
+     * Usa lo STESSO indirizzo che l'app mette nei link personali (`getAssessmentPublicBaseUrl`),
+     * quindi in TEST apre la scheda di TEST e in PROD quella di PROD senza saperlo qui:
+     * un secondo posto che decide l'indirizzo sarebbe la trappola di prima in miniatura.
+     * Il gettone `anteprima` non esiste in archivio ⇒ la pagina parte in DEMO e non salva niente.
+     */
+    function assessmentPublicOpenRealCard() {
+      let base = '';
+      try { base = getAssessmentPublicBaseUrl(); } catch (err) { base = ''; }
+      if (!base) { alert('Non riesco a comporre l\'indirizzo della scheda.'); return; }
+      const separatore = base.includes('?') ? '&' : '?';
+      window.open(`${base}${separatore}t=anteprima`, '_blank', 'noopener');
+    }
     function getAssessmentLink(token, memberOrId=null) {
       const rawBase = getAssessmentPublicBaseUrl();
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
@@ -36952,6 +36864,37 @@ Per confermare scrivi ELIMINA.`);
     }
 
 
+    /**
+     * 🆕 9/08/2026 — cosa vede chi arriva col vecchio link generico.
+     *
+     * ⚖️ Non una pagina d'errore: chi ci arriva non ha sbagliato niente, ha in mano un
+     * indirizzo che gli abbiamo dato noi. Quindi si dice **cos'è cambiato** e **come si va
+     * avanti**, senza vicolo cieco — la stessa regola dei messaggi del bot.
+     * ⭐ Si scrive dentro `#assessmentPublicLivePreview` invece di aggiungere una card altrove:
+     * quel contenitore è già l'unico che si vede in modalità pubblica, quindi il socio vede
+     * questo e nient'altro. Nessun pezzo del modulo può restare acceso sotto.
+     */
+    function assessmentPublicShowGenericLinkClosed() {
+      const panel = document.getElementById('assessmentPublicLivePreview');
+      if (!panel) return;
+      panel.innerHTML = [
+        '<div class="assessment-public-form-card assessment-public-form-head">',
+        '  <div class="assessment-public-head-brand">',
+        '    <img class="assessment-public-logo" src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">',
+        '    <div>',
+        '      <h4>Autovalutazione Livello di Gioco</h4>',
+        '      <p>Questo indirizzo non è più attivo.</p>',
+        '    </div>',
+        '  </div>',
+        '</div>',
+        '<div class="assessment-public-form-card">',
+        '  <p>Il test del livello si fa dal <strong>link personale</strong>: quello che ti arriva',
+        '  per e-mail o dal bot Telegram del circolo. È personale perché ti riconosce, così non',
+        '  devi reinserire i tuoi dati.</p>',
+        '  <p class="assessment-public-small">Se non ce l\'hai, chiedilo alla segreteria del Padel Village.</p>',
+        '</div>',
+      ].join('\n');
+    }
     function handleAssessmentPublicDeepLink() {
       let params;
       try {
@@ -36964,6 +36907,24 @@ Per confermare scrivi ELIMINA.`);
       if (!token && !isExternal) return false;
 
       document.body.classList.add('assessment-public-mode');
+
+      // 🆕🚨⭐⭐ 9/08/2026 — LA PORTA DEL LINK GENERICO È CHIUSA, ed è QUI che si chiude.
+      //
+      // Sua decisione del 9/08 (riga 11 della Tabella 1): il link generico
+      // `?assessment=link-esterno` **non deve più esistere**. Chiuderlo qui — prima che si
+      // componga il modulo — è ciò che fa esistere **una scheda sola**: finché quel modulo si
+      // apriva, ogni cura andava fatta due volte e la seconda si dimenticava.
+      // 📏 Non si perde niente di vivo: su PROD `assessment_external_requests` ha **0 righe**,
+      // da sempre. Il link generico non ha mai portato una scheda in due anni.
+      // ⚖️ Non è un `return false`: quello riconsegnerebbe la pagina all'app dello staff e il
+      // socio finirebbe sulla schermata di accesso del gestionale. Si resta in modalità
+      // pubblica e si dice una cosa sola, con la strada per andare avanti.
+      // 🚨 Con un gettone in mano si passa di qui SENZA fermarsi (`!token`): un indirizzo che
+      // porta tutt'e due i parametri è un link personale, e vale il personale.
+      if (isExternal && !token) {
+        assessmentPublicShowGenericLinkClosed();
+        return true;
+      }
 	let rec = token ? (Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null) : null;
       let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
       if (!member && isExternal) member = assessmentPublicExternalMemberFromParams(params);
