@@ -217,6 +217,15 @@ Deno.serve(async (req: Request) => {
   const suoi = (gettoniSuoi ?? []).map(r => clean((r as JsonMap).token)).filter(Boolean);
   let falliti = 0;
   let ultimoFallitoIl = '';
+  /**
+   * 🆕🔔 L'ULTIMA scheda arrivata, qualunque sia andata: serve all'avviso che il bot manda
+   * DOPO il test — sua richiesta del 9/08: *«dopo aver fatto il test, il bot ti deve
+   * rispondere qualcosa»*, e in tutti e due i casi, non solo quando si viene bocciati.
+   * ⭐ Si porta la FASCIA e non il numero: al socio il livello si dice a PAROLE (regola sua),
+   * e la fascia è già dentro la scheda — così non serve una terza copia della scala qui
+   * dentro, che sarebbe l'ennesima cosa da tenere allineata a mano.
+   */
+  let ultimaScheda: JsonMap | null = null;
 
   if (suoi.length) {
     const { data: schede, error: erroreSchede } = await db
@@ -233,7 +242,22 @@ Deno.serve(async (req: Request) => {
     // Si scorre dalla PIÙ RECENTE all'indietro e ci si ferma alla prima passata: quello è
     // l'inizio del giro corrente. ⭐ Contare tutte le fallite di sempre punirebbe per errori
     // già rimediati.
-    for (const s of (schede ?? []) as JsonMap[]) {
+    const elenco = (schede ?? []) as JsonMap[];
+    if (elenco.length) {
+      const s = elenco[0];
+      const k = ((s.raw_response as JsonMap)?.knowledge ?? {}) as JsonMap;
+      const esito = clean(k.status);
+      ultimaScheda = {
+        token: clean(s.token),
+        // ⚖️ `skip` resta `skip`: non è né passato né bocciato, è «questa la guarda una
+        // persona». Appiattirlo su uno dei due farebbe dire al bot una cosa falsa.
+        esito: esito || 'ignoto',
+        quando: clean(s.submitted_at),
+        fascia: clean(k.fascia),
+        senza_cancello: k.senza_cancello === true,
+      };
+    }
+    for (const s of elenco) {
       const conoscenza = ((s.raw_response as JsonMap)?.knowledge ?? {}) as JsonMap;
       const stato = clean(conoscenza.status);
       // 🚨 `skip` non è un fallimento: sono Semi-Pro e Professionista, che il quiz non ce
@@ -258,6 +282,7 @@ Deno.serve(async (req: Request) => {
       // più tardi» generico — proprio dove serve la frase precisa con la data e la segreteria.
       return ok({
         stato: 'attesa',
+        ultima_scheda: ultimaScheda,
         tentativi_falliti: falliti,
         riprova_dal: new Date(sbloccoMs).toISOString(),
         giorni_mancanti: Math.max(1, Math.ceil((sbloccoMs - adesso) / (24 * 60 * 60 * 1000))),
@@ -307,6 +332,7 @@ Deno.serve(async (req: Request) => {
   // te ne resta uno» senza tenere niente in memoria fra un messaggio e l'altro.
   const conteggio = {
     stato: 'link',
+    ultima_scheda: ultimaScheda,
     tentativi_falliti: falliti,
     tentativo: falliti + 1,
     tentativi_totali: TENTATIVI_PER_GIRO,
