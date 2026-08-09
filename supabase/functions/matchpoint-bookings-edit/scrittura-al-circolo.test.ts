@@ -181,23 +181,36 @@ for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
 // ⇒ I casi qui sotto misurano cosa c'è DENTRO quel ramo: che il worker non ci sia, e che la
 //   registrazione ci sia. Non le parole della risposta: i gesti.
 
-/** Il blocco `{…}` che comincia sulla riga della guardia, ritagliato contando le graffe. */
-function ramoDiProva(rel: string): string {
-  const testo = readFileSync(join(FUNZIONI, rel), 'utf8');
-  const righe = testo.split('\n');
-  const inizio = righe.findIndex((r) => /if \(.*!scritturaAlCircoloConsentita\(/.test(r));
-  assert.notEqual(inizio, -1, `${rel}: non trovo il ramo di prova`);
-  let graffe = 0;
-  let dentro = '';
-  for (let i = inizio; i < righe.length; i++) {
-    dentro += righe[i] + '\n';
-    for (const c of righe[i]) {
-      if (c === '{') graffe += 1;
-      else if (c === '}') graffe -= 1;
+/**
+ * TUTTI i blocchi `{…}` che cominciano su una riga di guardia, ritagliati contando le graffe.
+ *
+ * 🚨⭐⭐ AL PLURALE dal 9/08/2026, e non è un dettaglio: `bookings-create` ha **due** recinti —
+ * davanti al bivio e dentro il giro asincrono, la strada che risponde prima di lavorare. Fino a
+ * ieri questa funzione ne ritagliava **uno solo** (il primo del file), quindi il secondo restava
+ * completamente fuori dalla misura: chi ci avesse messo dentro una chiamata al circolo non
+ * avrebbe fatto rosso niente. Trovato promuovendo la voce del borsellino, con un sabotaggio
+ * costruito apposta su quel ramo.
+ */
+function ramiDiProva(rel: string): string[] {
+  const righe = readFileSync(join(FUNZIONI, rel), 'utf8').split('\n');
+  const inizi = righe
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => /if \(.*!scritturaAlCircoloConsentita\(/.test(r))
+    .map(({ i }) => i);
+  assert.notEqual(inizi.length, 0, `${rel}: non trovo nessun ramo di prova`);
+  return inizi.map((inizio) => {
+    let graffe = 0;
+    let dentro = '';
+    for (let i = inizio; i < righe.length; i++) {
+      dentro += righe[i] + '\n';
+      for (const c of righe[i]) {
+        if (c === '{') graffe += 1;
+        else if (c === '}') graffe -= 1;
+      }
+      if (graffe === 0 && i > inizio) break;
     }
-    if (graffe === 0 && i > inizio) break;
-  }
-  return dentro;
+    return dentro;
+  });
 }
 
 const DENTRO_IL_RAMO: Record<string, { maiChiamare: RegExp; deveFare: RegExp[] }> = {
@@ -220,19 +233,22 @@ const DENTRO_IL_RAMO: Record<string, { maiChiamare: RegExp; deveFare: RegExp[] }
 
 for (const [rel, atteso] of Object.entries(DENTRO_IL_RAMO)) {
   const nome = rel.split('/')[0];
-  test(`10) 🚨 in ${nome} il ramo di prova NON chiama il circolo`, () => {
-    const ramo = ramoDiProva(rel);
-    assert.ok(ramo.length > 0, 'ramo vuoto: il ritaglio non ha misurato niente');
-    assert.equal(
-      atteso.maiChiamare.test(ramo), false,
-      `dentro il ramo di prova c'è ${atteso.maiChiamare}: da lì si arriva al Matchpoint VERO`,
-    );
+  test(`10) 🚨 in ${nome} NESSUN ramo di prova chiama il circolo`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
+      assert.ok(ramo.length > 0, `ramo ${n + 1} vuoto: il ritaglio non ha misurato niente`);
+      assert.equal(
+        atteso.maiChiamare.test(ramo), false,
+        `nel ramo ${n + 1} di prova c'è ${atteso.maiChiamare}: da lì si arriva al Matchpoint VERO`,
+      );
+    }
   });
 
   test(`11) in ${nome} il ramo di prova REGISTRA (se no non è una prova, è un no)`, () => {
-    const ramo = ramoDiProva(rel);
+    // ⚖️ Basta che UNO dei rami registri: in `create` il secondo recinto sta nel giro asincrono,
+    // che la partita l'ha già registrata prima di arrivare lì.
+    const rami = ramiDiProva(rel);
     for (const gesto of atteso.deveFare) {
-      assert.ok(gesto.test(ramo), `dentro il ramo di prova manca ${gesto}`);
+      assert.ok(rami.some((r) => gesto.test(r)), `in nessun ramo di prova c'è ${gesto}`);
     }
   });
 }
@@ -242,9 +258,11 @@ test('12) ⚠️ il ramo di prova esiste in tutte e tre, e il ritaglio le trova 
   // girerebbero su una stringa vuota — «nessun worker qui dentro» sarebbe vero e non vorrebbe
   // dire niente. È la 29ª: un banco che misura ZERO.
   for (const rel of Object.keys(DENTRO_IL_RAMO)) {
-    const ramo = ramoDiProva(rel);
-    assert.ok(ramo.split('\n').length > 3, `${rel}: ramo troppo corto, il ritaglio non ha funzionato`);
-    assert.ok(/esitoDiProva\(/.test(ramo), `${rel}: nel ramo non si compone nemmeno l'esito di prova`);
+    const rami = ramiDiProva(rel);
+    for (const [n, ramo] of rami.entries()) {
+      assert.ok(ramo.split('\n').length > 3, `${rel} ramo ${n + 1}: troppo corto, il ritaglio non ha funzionato`);
+    }
+    assert.ok(rami.some((r) => /esitoDiProva\(/.test(r)), `${rel}: in nessun ramo si compone l'esito di prova`);
   }
 });
 
@@ -317,32 +335,39 @@ const CHI_RIFIUTA: Record<string, RegExp> = {
 for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
   const nome = rel.split('/')[0];
 
-  test(`17) 🚨 in ${nome} il ramo del rifiuto NON chiama il circolo`, () => {
-    const ramo = ramoDiProva(rel);
-    // 🚨 La 29ª: un ritaglio a vuoto renderebbe «non c'è il worker qui dentro» vero e inutile.
-    assert.ok(ramo.split('\n').length > 2, `${rel}: ritaglio troppo corto, non ha misurato niente`);
-    assert.equal(
-      maiChiamare.test(ramo), false,
-      `dentro il ramo del rifiuto c'è ${maiChiamare}: da lì si arriva al Matchpoint VERO`,
-    );
+  test(`17) 🚨 in ${nome} NESSUN ramo del rifiuto chiama il circolo`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
+      // 🚨 La 29ª: un ritaglio a vuoto renderebbe «non c'è il worker qui dentro» vero e inutile.
+      assert.ok(ramo.split('\n').length > 2, `${rel} ramo ${n + 1}: ritaglio troppo corto, non misura niente`);
+      assert.equal(
+        maiChiamare.test(ramo), false,
+        `nel ramo ${n + 1} del rifiuto c'è ${maiChiamare}: da lì si arriva al Matchpoint VERO`,
+      );
+    }
   });
 
-  test(`18) in ${nome} il rifiuto DICHIARA di essere un rifiuto (503 + codice)`, () => {
-    const ramo = ramoDiProva(rel);
-    // 🚨⭐⭐ Si guarda dentro la RISPOSTA, non dentro il ramo: la prima versione di questo caso
-    // cercava le parole in tutto il ramo e restava VERDE anche togliendo `avrebbe_scritto` dalla
-    // risposta, perché la parola sopravviveva in una variabile locale e in un log. L'ha trovato
-    // un sabotaggio che «non mordeva» — cioè il difetto stava nel caso, non nel sabotaggio.
-    const risposta = ramo.match(/return err\([\s\S]*?\);/);
-    assert.ok(risposta, `${rel}: nel ramo non c'è nessuna risposta di rifiuto`);
-    const testo = risposta[0];
-    assert.ok(/\b503\b/.test(testo), `${rel}: il rifiuto non risponde 503`);
-    assert.ok(
-      /CODICE_AMBIENTE_DI_PROVA/.test(testo),
-      `${rel}: il rifiuto non usa il codice condiviso — chi legge la risposta dovrebbe indovinarlo`,
-    );
-    // ⭐ Un rifiuto che non dice cosa avrebbe fatto costringe a rifare la prova per capirlo.
-    assert.ok(/avrebbe_scritto/.test(testo), `${rel}: il rifiuto non dice cosa avrebbe scritto`);
+  test(`18) in ${nome} ogni rifiuto DICHIARA di esserlo (503 + codice)`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
+      const dove = `${rel} ramo ${n + 1}`;
+      // 🚨⭐⭐ Si guarda dentro la RISPOSTA, non dentro tutto il ramo: la prima versione di questo
+      // caso cercava le parole ovunque e restava VERDE anche togliendo `avrebbe_…` dalla risposta,
+      // perché la parola sopravviveva in una variabile locale e in un log. L'ha trovato un
+      // sabotaggio che «non mordeva» — cioè il difetto stava nel caso, non nel sabotaggio.
+      // ⚖️ Non tutti i rami rispondono: quello asincrono di `create` registra l'esito nel job,
+      // perché al chiamante si è già risposto. Là non si pretende una risposta.
+      const risposta = ramo.match(/return err\([\s\S]*?\);/);
+      if (!risposta) {
+        assert.ok(/MESSAGGIO_AMBIENTE_DI_PROVA/.test(ramo), `${dove}: non risponde e non registra nulla`);
+        continue;
+      }
+      const testo = risposta[0];
+      assert.ok(/\b503\b/.test(testo), `${dove}: il rifiuto non risponde 503`);
+      assert.ok(/CODICE_AMBIENTE_DI_PROVA/.test(testo), `${dove}: il rifiuto non usa il codice condiviso`);
+      // ⭐ Un rifiuto che non dice cosa avrebbe fatto costringe a rifare la prova per capirlo.
+      // ⚖️ `avrebbe_…` e non `avrebbe_scritto`: `cancel` dice `avrebbe_annullato`, ed è la parola
+      // giusta per un annullamento. Si pretende il gesto, non il vocabolario.
+      assert.ok(/avrebbe_\w+/.test(testo), `${dove}: il rifiuto non dice cosa avrebbe fatto`);
+    }
   });
 }
 
@@ -350,10 +375,11 @@ test('19) 💰⭐⭐ il borsellino RIFIUTA: non registra da nessuna parte', () =
   // 🚨 Il verso che conta, e vale i soldi: se un domani il ramo del borsellino cominciasse a
   // «registrare la prova» come fanno le prenotazioni, l'app di TEST vedrebbe un saldo che non
   // esiste su Matchpoint — cioè un SECONDO libro mastro, che in questo progetto è vietato.
-  const ramo = ramoDiProva('matchpoint-wallet-correct/index.ts');
-  assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
-  assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
-  assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
+  for (const ramo of ramiDiProva('matchpoint-wallet-correct/index.ts')) {
+    assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
+    assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
+    assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
+  }
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
