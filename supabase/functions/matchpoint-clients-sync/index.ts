@@ -22,6 +22,7 @@ import {
   isMatchpointGoverned,
   MATCHPOINT_INACTIVE_REASON,
 } from './stale-guard.ts';
+import { eChiaveVecchiaDellaStessaScheda } from './chiave-vecchia-guard.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -2087,11 +2088,42 @@ Deno.serve(async (req) => {
       for (const candidate of candidates) {
         const candidateKey = clean(candidate?.local_key || '');
         if (!candidateKey || candidateKey === localKey) continue;
+        // 🆕⭐⭐ 9/08/2026 — IL RUBINETTO DEI DOPPIONI, chiuso qui.
+        //
+        // La guardia qui sotto (v6.090) è giusta e resta, ma la sua premessa scritta è FALSA in
+        // un caso: dice *«la chiave differisce solo se il numero è diverso»*. Non è vero. La
+        // chiave differisce anche quando il numero è IDENTICO e cambia solo il TIPO di chiave —
+        // `phone:…` → `email:…` — cioè quando un socio della rubrica «entra da Matchpoint».
+        // Lì non c'è nessun numero curato da proteggere: è **la stessa identica scheda** (stesso
+        // `payload.id`) sotto una chiave vecchia, e mandarla in revisione manuale significa
+        // lasciarla viva. Da lì nasceva un doppione **ogni settimana circa**, e ogni doppione è
+        // una persona che il bot NON riconosce (il ponte ne trova due e risponde `ambiguous`).
+        // 📏 Misurati su PROD il 9/08: Ivana Tadiotto, Mauro Fresch, Sara Trentin — tre schede
+        // vive in doppio, nate il 3, il 5 e il 6/08, tutte dopo l'ultima pulizia a mano.
+        //
+        // ⭐ L'eccezione è STRETTA di proposito, e chiede DUE prove insieme:
+        //   · stesso `payload.id` ⇒ è la stessa scheda, non due persone. Il solo telefono non
+        //     basterebbe: due familiari possono condividere un numero, e allora sono due schede
+        //     diverse — cancellarne una vorrebbe dire cancellare una persona;
+        //   · stesso telefono ⇒ non si sta buttando via il numero curato che la guardia protegge.
+        // Se una delle due manca, si passa alla guardia di sotto e si va in revisione manuale,
+        // esattamente come prima. ⇒ Questo ramo può solo TOGLIERE una chiave ridondante della
+        // stessa persona; non può mai far sparire nessuno.
+        // ⭐ La decisione sta in `chiave-vecchia-guard.ts` col suo banco, come `phone-guard` e
+        //   `stale-guard`: qui dentro non si potrebbe provare, e questa è una riga che CANCELLA.
+        if (eChiaveVecchiaDellaStessaScheda(candidate?.payload, payload)) {
+          duplicateDeletesByKey.set(
+            candidateKey,
+            buildDeletedMemberRecord(candidate, importedAt, 'legacy_duplicate_superseded'),
+          );
+          continue;
+        }
         // v6.090: i record della rubrica Google (numero WhatsApp curato) non vanno MAI tombstonati
-        // come duplicato quando la chiave differisce dal sopravvissuto. La chiave differisce solo se
-        // il numero è diverso: è il numero corretto di un socio il cui telefono in Matchpoint è
-        // rotto/troncato. Cancellarlo perde il dato e innesca il churn con google-contacts-import
-        // (ricrea → clients-sync ricancella → «new:N» ogni notte). Va a revisione manuale, non delete.
+        // come duplicato quando la chiave differisce dal sopravvissuto — SALVO il caso qui sopra.
+        // La chiave differisce quando il numero è diverso: è il numero corretto di un socio il cui
+        // telefono in Matchpoint è rotto/troncato. Cancellarlo perde il dato e innesca il churn con
+        // google-contacts-import (ricrea → clients-sync ricancella → «new:N» ogni notte). Va a
+        // revisione manuale, non delete.
         if (clean(candidate?.payload?.importedFrom) === 'rubrica-google') {
           legacyDuplicateReview += 1;
           if (legacyDuplicateReviewSample.length < 50) {
