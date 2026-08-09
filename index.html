@@ -7165,12 +7165,13 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div id="assessmentExternalQuestionForm">
                   <div class="assessment-public-question"><div class="q-title">1. Da quanto giochi a padel? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQExperience" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Più di 1 anno</option><option>Più di 3 anni</option></select></div>
                   <div class="assessment-public-question"><div class="q-title">2. Quante volte giochi mediamente al mese? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQFrequency" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Più di 10</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQDeclaredLevel" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>1.0 - Principiante</option><option>1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">4. Con quali livelli fai partite equilibrate? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQBalancedLevel" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>1.0 / 1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQDeclaredLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
+                  <div class="assessment-public-question"><div class="q-title">4. Con quali giocatori fai partite equilibrate? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQBalancedLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
                   <div class="assessment-public-question"><div class="q-title">5. Riesci a mantenere lo scambio? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQRally" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Faccio fatica a tenere 3-4 colpi</option><option>Tengo lo scambio solo a ritmo lento</option><option>Tengo scambi regolari con continuità</option><option>Tengo scambi anche con ritmo alto</option><option>Costruisco il punto con controllo</option></select></div>
                   <div class="assessment-public-question"><div class="q-title">6. Come gestisci il vetro in difesa? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQGlass" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Evito quasi sempre il vetro</option><option>Lo uso solo se la palla è facile</option><option>Difendo con il vetro in modo base</option><option>Lo uso con continuità anche sotto pressione</option><option>Lo uso per difendere e ripartire in attacco</option></select></div>
                   <div class="assessment-public-question"><div class="q-title">7. A rete come ti comporti? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQNet" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Sto poco a rete</option><option>Vado a rete ma faccio fatica a chiudere</option><option>Gioco volée semplici</option><option>Tengo posizione e controllo le volée</option><option>Costruisco e chiudo il punto a rete</option></select></div>
                   <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select id="assessmentExternalQOverhead" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
+                  <div id="assessmentExternalKnowledgeBlock" class="assessment-public-knowledge" hidden></div>
                   <div id="assessmentExternalQuestionMessage" class="assessment-external-message" role="status"></div>
                   <div class="assessment-public-actions">
                     <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Indietro</button>
@@ -7254,12 +7255,14 @@ body.assessment-public-mode .assessment-public-only-card {
 
               <div class="assessment-public-question"><div class="q-title">1. Da quanto giochi a padel? <span class="assessment-public-required">*</span></div><select required name="experience"><option value="" selected disabled>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Più di 1 anno</option><option>Più di 3 anni</option></select></div>
               <div class="assessment-public-question"><div class="q-title">2. Quante volte giochi mediamente al mese? <span class="assessment-public-required">*</span></div><select required name="frequency"><option value="" selected disabled>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Più di 10</option></select></div>
-              <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select required name="declaredLevel"><option value="" selected disabled>Seleziona</option><option>1.0 - Principiante</option><option>1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
-              <div class="assessment-public-question"><div class="q-title">4. Con quali livelli fai partite equilibrate? <span class="assessment-public-required">*</span></div><select required name="balancedLevel"><option value="" selected disabled>Seleziona</option><option>1.0 / 1.5</option><option>2.0</option><option>2.5</option><option>3.0</option><option>3.5</option><option>4.0</option><option>4.5</option><option>5+</option></select></div>
+              <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select required name="declaredLevel" data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
+              <div class="assessment-public-question"><div class="q-title">4. Con quali giocatori fai partite equilibrate? <span class="assessment-public-required">*</span></div><select required name="balancedLevel" data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
               <div class="assessment-public-question"><div class="q-title">5. Riesci a mantenere lo scambio? <span class="assessment-public-required">*</span></div><select required name="rally"><option value="" selected disabled>Seleziona</option><option>Faccio fatica a tenere 3-4 colpi</option><option>Tengo lo scambio solo a ritmo lento</option><option>Tengo scambi regolari con continuità</option><option>Tengo scambi anche con ritmo alto</option><option>Costruisco il punto con controllo</option></select></div>
               <div class="assessment-public-question"><div class="q-title">6. Come gestisci il vetro in difesa? <span class="assessment-public-required">*</span></div><select required name="glass"><option value="" selected disabled>Seleziona</option><option>Evito quasi sempre il vetro</option><option>Lo uso solo se la palla è facile</option><option>Difendo con il vetro in modo base</option><option>Lo uso con continuità anche sotto pressione</option><option>Lo uso per difendere e ripartire in attacco</option></select></div>
               <div class="assessment-public-question"><div class="q-title">7. A rete come ti comporti? <span class="assessment-public-required">*</span></div><select required name="net"><option value="" selected disabled>Seleziona</option><option>Sto poco a rete</option><option>Vado a rete ma faccio fatica a chiudere</option><option>Gioco volée semplici</option><option>Tengo posizione e controllo le volée</option><option>Costruisco e chiudo il punto a rete</option></select></div>
               <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select required name="overhead"><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
+
+              <div id="assessmentPublicKnowledgeBlock" class="assessment-public-knowledge" hidden></div>
             </div>
 
             <div class="assessment-public-message error" id="assessmentPublicError">Compila i campi obbligatori prima di inviare.</div>
@@ -8106,7 +8109,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.195';
+    const APP_VERSION = '6.196';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15980,9 +15983,10 @@ Grazie.`
             </div>
             <div class="member-source-lines">
               <div class="member-source-line"><span>Ricevuta</span><strong>${escapeHtml(assessmentEmailFormatDateTime(assessmentResponse.submitted_at || assessmentRec?.completedAt || assessmentRec?.sentAt || ''))}</strong></div>
-              <div class="member-source-line"><span>Dichiarato</span><strong>${escapeHtml(assessmentResponse.declared_level || '-')}</strong></div>
-              <div class="member-source-line"><span>Calcolato</span><strong>${escapeHtml(assessmentResponse.calculated_level || assessmentResponse.declared_level || '-')}</strong></div>
+              <div class="member-source-line"><span>Dichiarato</span><strong>${escapeHtml(pmoLivelloEtichettaStaff(assessmentResponse.declared_level) || '-')}</strong></div>
+              <div class="member-source-line"><span>Calcolato</span><strong>${escapeHtml(pmoLivelloEtichettaStaff(assessmentResponse.calculated_level || assessmentResponse.declared_level) || '-')}</strong></div>
               <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(assessmentResponse.consistency_status || '-')}</strong></div>
+              ${assessKnowledgeRiepilogo(assessmentKnowledgeOf(assessmentResponse)) ? `<div class="member-source-line"><span>Conoscenza</span><strong>${escapeHtml(assessKnowledgeRiepilogo(assessmentKnowledgeOf(assessmentResponse)))}</strong></div>` : ''}
             </div>
             ${renderAssessmentExternalSourceSummary(assessmentResponse, { empty:'' })}
             ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(assessmentResponse), { empty:'<div class="assessment-availability-box"><strong>Disponibilita dichiarata</strong><br><span class="muted">Disponibilita non ricevuta in questa risposta.</span></div>' })}
@@ -16009,10 +16013,11 @@ Grazie.`
               <span class="badge ${needsLevelRestore ? 'badge-danger' : 'badge-success'}">${needsLevelRestore ? 'Da correggere' : 'Applicata'}</span>
             </div>
             <div class="member-source-lines">
-              <div class="member-source-line"><span>Livello</span><strong>${escapeHtml(g.level ?? '-')} ${escapeHtml(g.levelSource ? '(' + g.levelSource + ')' : '')}</strong></div>
+              <div class="member-source-line"><span>Livello</span><strong>${escapeHtml(pmoLivelloEtichettaStaff(g.level) || (g.level ?? '-'))} ${escapeHtml(g.levelSource ? '(' + g.levelSource + ')' : '')}</strong></div>
               ${restoreLevelLine}
               <div class="member-source-line"><span>Data</span><strong>${escapeHtml(g.selfAssessmentDate ? new Date(g.selfAssessmentDate).toLocaleDateString('it-IT') : '-')}</strong></div>
               <div class="member-source-line"><span>Coerenza</span><strong>${escapeHtml(g.selfAssessmentConsistency || '-')}</strong></div>
+              ${g.selfAssessmentKnowledge ? `<div class="member-source-line"><span>Conoscenza</span><strong>${escapeHtml(g.selfAssessmentKnowledge)}</strong></div>` : ''}
               <div class="member-source-line"><span>Conferma livello</span><strong>${escapeHtml(levelEmailText)}</strong></div>
               ${availabilitySource}
             </div>
@@ -21487,7 +21492,7 @@ Grazie!`
           giocatori_confermati: '🎾 Andrea Bianchi\n🎾 Marco Rossi\n🎾 Luca Verdi\n🎾 Paolo Neri',
           risposta: 'Confermato',
           link_autovalutazione: 'https://app.padelvillage.club/autovalutazione.html?token=demo',
-          livello_validato: '2.5',
+          livello_validato: 'Base',
           telefono: '+39 333 123 4567',
           note: config.scope === 'Soci' ? 'Testo libero da completare prima dell’invio.' : ''
         }
@@ -24996,7 +25001,11 @@ Grazie!`
         assessmentExternalRefreshStaffPreview();
         assessmentExternalSetMessage('registration', '');
       }
-      if (target === 'questions') assessmentExternalSetMessage('questions', '');
+      if (target === 'questions') {
+        assessmentExternalSetMessage('questions', '');
+        assessmentFillLevelSelects(document);
+        assessmentKnowledgeWire(document.getElementById('assessmentExternalQDeclaredLevel'), 'assessmentExternalKnowledgeBlock');
+      }
     }
     function renderAssessmentExternalLinkPanel() {
       const input = document.getElementById('assessmentExternalLinkInput');
@@ -25097,22 +25106,30 @@ Grazie!`
         assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
         return;
       }
-      const answers = assessmentExternalQuestionData();
-      const levelCalc = calculateAssessmentPublicLevel(answers);
-      if (levelCalc.coherence === 'low') {
-        assessmentExternalSetMessage('questions', 'Le risposte non sono coerenti con il livello indicato. Rivedi il livello o le risposte prima di inviare.', 'error');
+      const conoscenza = assessmentKnowledgeCollect('assessmentExternalKnowledgeBlock');
+      if (conoscenza.mancanti) {
+        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
         return;
       }
+      const answers = assessmentExternalQuestionData();
+      const levelCalc = calculateAssessmentPublicLevel(answers);
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // 🚨 Qui c'era il blocco che diceva «le risposte non sono coerenti con il livello indicato,
+      // rivedi il livello o le risposte»: spiegava al furbo ESATTAMENTE come aggiustare il tiro,
+      // e lo lasciava ritentare finché non tornava. L'invio ora passa sempre e il messaggio è
+      // uguale per tutti; chi non torna lo vede solo la segreteria.
       const registration = assessmentExternalRegistrationData();
       const submittedAt = new Date().toISOString();
+      const daControllare = levelCalc.coherence === 'medium' || levelCalc.coherence === 'low' || knowledge.status !== 'pass';
       window.assessmentExternalStaffPreviewSubmission = {
         ...registration,
         answers,
+        knowledge,
         submittedAt,
         declaredLevel: levelCalc.declared_level,
         calculatedLevel: levelCalc.calculated_level,
         consistencyStatus: levelCalc.coherence,
-        staffStatus: levelCalc.coherence === 'medium' ? 'da_controllare' : (registration.gender === 'NA' ? 'da_completare' : 'da_validare')
+        staffStatus: daControllare ? 'da_controllare' : (registration.gender === 'NA' ? 'da_completare' : 'da_validare')
       };
       const completion = document.getElementById('assessmentExternalCompletion');
       if (completion) completion.hidden = false;
@@ -25150,7 +25167,8 @@ Grazie!`
           gender_label: assessmentPublicGenderLabel(submission.gender || 'M'),
           gender_status: assessmentPublicGenderStatus(submission.gender || 'M'),
           privacy_consent: true,
-          answers: submission.answers || {}
+          answers: submission.answers || {},
+          knowledge: submission.knowledge || null
         }
       }]);
       if (options.render !== false) renderAssessmentEmailHistoryPanel();
@@ -26183,7 +26201,7 @@ Padel Village 🎾`;
         nome: firstName,
         nome_completo: playerFullName(member),
         link_autovalutazione: link,
-        livello_validato: cleanCell(member?.level || ''),
+        livello_validato: pmoLivelloTestoSocio(member?.level || ''),
         telefono: cleanCell(member?.phone || '')
       }, fallback);
     }
@@ -26214,7 +26232,7 @@ Padel Village 🎾`;
     }
     function buildAssessmentLevelNotificationMessage(member, response=null) {
       const firstName = displayFirstName(member);
-      const level = cleanCell(response?.applied_level || member?.level || '');
+      const level = pmoLivelloTestoSocio(response?.applied_level || member?.level || '');
       const fallback = `Ciao ${firstName} 👋
 abbiamo controllato la tua scheda di autovalutazione Padel Village.
 Il tuo livello validato è: ${level}
@@ -31218,7 +31236,7 @@ Per confermare scrivi ELIMINA.`);
         nome: firstName,
         nome_completo: playerFullName(member),
         link_autovalutazione: link || '',
-        livello_validato: cleanCell(extra.livello_validato || member?.level || ''),
+        livello_validato: pmoLivelloTestoSocio(extra.livello_validato || member?.level || ''),
         telefono: cleanCell(member?.phone || ''),
         email: cleanCell(member?.email || ''),
         telefono_segreteria: ASSESSMENT_SUPPORT_PHONE_DISPLAY,
@@ -31405,8 +31423,19 @@ Per confermare scrivi ELIMINA.`);
       if (diff === null || diff === undefined) return '-';
       return String(Math.round(diff * 10) / 10);
     }
+    // Sulle schede vecchie il campo `knowledge` non c'è: restano applicabili come prima. Il
+    // cancello vale solo dove il test di conoscenza è stato davvero fatto.
+    function assessmentKnowledgeOf(response) {
+      const knowledge = response?.raw_response?.knowledge;
+      // Basta che ci sia un esito, anche «skip»: Semi-Pro e Professionista il quiz non ce l'hanno
+      // e devono passare dalla segreteria per scelta, non perché il conto torna per caso.
+      return knowledge && knowledge.status ? knowledge : null;
+    }
     function assessmentEmailIsAutoApplicable(response) {
       if (assessmentPublicPayloadIsExternal(response || {})) return false;
+      const knowledge = assessmentKnowledgeOf(response);
+      if (knowledge && knowledge.status !== 'pass') return false;
+      if (response?.raw_response?.experience_flag) return false;
       const diff = assessmentEmailLevelDiff(response);
       return diff !== null && diff <= 0.5 && normalizeText(response?.consistency_status || '') !== 'low';
     }
@@ -35218,7 +35247,7 @@ Per confermare scrivi ELIMINA.`);
       return String(template.body || '')
         .replaceAll('{nome}', displayFirstName(member) || playerFullName(member))
         .replaceAll('{nome_completo}', playerFullName(member))
-        .replaceAll('{livello_validato}', cleanCell(member?.level || ''));
+        .replaceAll('{livello_validato}', pmoLivelloTestoSocio(member?.level || ''));
     }
     function assessmentEmailReplyData(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
@@ -35600,7 +35629,7 @@ Per confermare scrivi ELIMINA.`);
         .replaceAll('{nome}', 'Mario')
         .replaceAll('{nome_completo}', 'Mario Rossi')
         .replaceAll('{link_autovalutazione}', 'https://app.padelvillage.club/test/autovalutazione.html?t=ABC123')
-        .replaceAll('{livello_validato}', '3.0');
+        .replaceAll('{livello_validato}', 'Intermedio');
     }
     function saveAssessmentCommunicationTemplate() {
       const key = assessmentCommunicationTemplateState.selected || 'primary-email';
@@ -36628,6 +36657,16 @@ Per confermare scrivi ELIMINA.`);
         const ok = confirm('⚠️ Questa autovalutazione ha coerenza bassa. Vuoi comunque applicare il livello calcolato?');
         if (!ok) return { ok:false, applied:false, reason:'cancelled', message:'Applicazione annullata dallo staff.' };
       }
+      // Il cancello non è un divieto per lo staff: è un avviso. Chi conosce il socio decide.
+      const knowledgeRec = assessmentKnowledgeOf(response);
+      if (knowledgeRec && knowledgeRec.status !== 'pass' && !options.skipLowConfirm) {
+        const dettaglio = assessKnowledgeRiepilogo(knowledgeRec);
+        const avviso = dettaglio
+          ? `⚠️ Test di conoscenza non superato (${dettaglio}).`
+          : '⚠️ Livello alto dichiarato: per questa fascia il test di conoscenza non è previsto.';
+        const ok = confirm(`${avviso} Vuoi comunque applicare il livello calcolato?`);
+        if (!ok) return { ok:false, applied:false, reason:'cancelled', message:'Applicazione annullata dallo staff.' };
+      }
       const rawLevel = response.calculated_level || response.declared_level || '';
       const level = parseLevel(String(rawLevel).replace(',', '.'), NaN);
       if (isNaN(level)) return failApply('❌ Livello calcolato non valido', 'danger', 'invalid_level');
@@ -36636,6 +36675,7 @@ Per confermare scrivi ELIMINA.`);
       member.level = level;
       member.levelSource = 'autovalutazione';
       member.selfAssessmentConsistency = cleanCell(response.consistency_status || '');
+      member.selfAssessmentKnowledge = knowledgeRec ? `${knowledgeRec.correct}/${knowledgeRec.total}${knowledgeRec.trap_failed ? ' · trappola sbagliata' : ''}` : '';
       member.selfAssessmentStaffStatus = 'applied';
       member.selfAssessmentDate = response.submitted_at || appliedAt;
       member.selfAssessmentToken = rec.token;
@@ -36751,7 +36791,96 @@ Per confermare scrivi ELIMINA.`);
       }, 50);
       showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Completa il link personale, poi procedi con il flusso email.`, 'success');
     }
+    // Le domande «che livello pensi di avere» e «con quali giocatori giochi alla pari» non hanno
+    // più le opzioni scritte nell'HTML: le prende dalla tabella dei livelli, così i due moduli
+    // (scheda pubblica e link esterno) non possono raccontare scale diverse. Il socio legge le
+    // parole, il modulo tiene il numero nel `value`.
+    function assessmentFillLevelSelects(root = document) {
+      root.querySelectorAll('select[data-pmo-livelli]').forEach(select => {
+        if (select.dataset.livelliReady === '1') return;
+        select.dataset.livelliReady = '1';
+        pmoLivelliOpzioni().forEach(opzione => {
+          const el = document.createElement('option');
+          el.value = opzione.value;
+          el.textContent = opzione.label;
+          select.appendChild(el);
+        });
+      });
+    }
+
+    // Disegna le quattro domande di conoscenza della fascia dichiarata. Si ridisegna a ogni
+    // cambio della domanda 3: cambiando fascia le risposte si perdono, e non si può provare
+    // una fascia per vedere che domande escono e poi tornare indietro.
+    function assessmentKnowledgeRender(containerId, declaredValue) {
+      const box = document.getElementById(containerId);
+      if (!box) return;
+      const fascia = assessKnowledgeFasciaFor(assessmentPublicParseLevel(declaredValue));
+      const pescate = fascia ? assessKnowledgePick(fascia) : [];
+      box.innerHTML = '';
+      box.dataset.knowledgeIds = pescate.map(p => p.id).join(',');
+      box.dataset.knowledgeFascia = fascia || '';
+      // Semi-Pro e Professionista non hanno quiz: la scheda passa comunque, ma va in segreteria.
+      if (!pescate.length) { box.hidden = true; return; }
+      box.hidden = false;
+
+      const intro = document.createElement('p');
+      intro.className = 'assessment-public-note';
+      intro.textContent = 'Ultime quattro domande sul gioco, per completare la scheda.';
+      box.appendChild(intro);
+
+      pescate.forEach((domanda, indice) => {
+        const riga = document.createElement('div');
+        riga.className = 'assessment-public-question';
+        const titolo = document.createElement('div');
+        titolo.className = 'q-title';
+        titolo.textContent = `${9 + indice}. ${domanda.q} `;
+        const stella = document.createElement('span');
+        stella.className = 'assessment-public-required';
+        stella.textContent = '*';
+        titolo.appendChild(stella);
+        const select = document.createElement('select');
+        select.dataset.knowledgeQuestion = domanda.id;
+        const vuota = document.createElement('option');
+        vuota.value = ''; vuota.textContent = 'Seleziona'; vuota.selected = true; vuota.disabled = true;
+        select.appendChild(vuota);
+        domanda.opts.forEach(testo => {
+          const el = document.createElement('option');
+          el.value = testo; el.textContent = testo;
+          select.appendChild(el);
+        });
+        riga.appendChild(titolo);
+        riga.appendChild(select);
+        box.appendChild(riga);
+      });
+    }
+
+    // Raccoglie quello che ha risposto. Non corregge: la correzione sta nel blocco condiviso.
+    function assessmentKnowledgeCollect(containerId) {
+      const box = document.getElementById(containerId);
+      const ids = cleanCell(box?.dataset?.knowledgeIds || '').split(',').filter(Boolean);
+      const answers = {};
+      let mancanti = 0;
+      ids.forEach(id => {
+        const select = box.querySelector(`[data-knowledge-question="${id}"]`);
+        const valore = cleanCell(select?.value || '');
+        if (!valore) mancanti++;
+        answers[id] = valore;
+      });
+      return { ids, answers, mancanti, fascia: cleanCell(box?.dataset?.knowledgeFascia || '') };
+    }
+
+    // Aggancia il ridisegno al cambio della domanda 3. Una volta sola per modulo.
+    function assessmentKnowledgeWire(selectEl, containerId) {
+      if (!selectEl || selectEl.dataset.knowledgeWired === '1') return;
+      selectEl.dataset.knowledgeWired = '1';
+      selectEl.addEventListener('change', () => assessmentKnowledgeRender(containerId, selectEl.value));
+      if (selectEl.value) assessmentKnowledgeRender(containerId, selectEl.value);
+    }
+
     function setupAssessmentPublicForm() {
+      assessmentFillLevelSelects(document);
+      const form = document.getElementById('assessmentPublicForm');
+      assessmentKnowledgeWire(form?.querySelector('[name="declaredLevel"]'), 'assessmentPublicKnowledgeBlock');
       const help = document.getElementById('assessmentPublicWhatsappHelp');
       if (help && !help.dataset.ready) {
         help.dataset.ready = '1';
@@ -36782,7 +36911,13 @@ Per confermare scrivi ELIMINA.`);
           const invalid = required.filter(el => el.type === 'checkbox' ? !el.checked : !el.value);
           invalid.forEach(el => el.style.borderColor = 'var(--danger)');
           required.filter(el => el.type === 'checkbox' ? el.checked : el.value).forEach(el => el.style.borderColor = '#cfd8e6');
-          if (invalid.length) {
+          // Le domande di conoscenza nascono da JavaScript e non hanno `required`: si contano a parte.
+          const conoscenza = assessmentKnowledgeCollect('assessmentPublicKnowledgeBlock');
+          conoscenza.ids.forEach(id => {
+            const select = form.querySelector(`[data-knowledge-question="${id}"]`);
+            if (select) select.style.borderColor = cleanCell(select.value) ? '#cfd8e6' : 'var(--danger)';
+          });
+          if (invalid.length || conoscenza.mancanti) {
             if (errorBox) { errorBox.style.display = 'block'; if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(errorBox, { block:'center' }); else errorBox.scrollIntoView({behavior:'smooth', block:'center'}); }
             return;
           }
@@ -36864,6 +36999,322 @@ Per confermare scrivi ELIMINA.`);
       if (modal) modal.style.display = 'none';
     }
 
+
+    /* ===== ASSESS-KNOWLEDGE SHARED v1 =====================================================
+       Blocco autonomo: nessun DOM, nessuna dipendenza dall'app. Vive IDENTICO in tre posti —
+       qui (fonte di verità), nell'emulatore e, dalla Fase 2, nel bot Telegram. Chi lo cambia
+       lo cambia in tutti e tre, altrimenti dalle stesse risposte escono livelli diversi.
+       Il confronto fra le copie si fa a vista fra queste due sentinelle.
+
+       La scala è la tabella FITP/TPRA del committente: il conto resta numerico, ma al socio
+       si dice sempre e solo la DEFINIZIONE (Principiante… Professionista). ===================== */
+    // Due aiutini locali: il blocco non usa NIENTE dell'app, così la copia nell'emulatore e
+    // quella nel bot sono identiche a questa riga per riga (l'emulatore non ha cleanCell).
+    function assessTxt(value) {
+      return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    }
+    function assessKey(value) {
+      return assessTxt(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+    const PMO_LIVELLI = [
+      { min: 0.5, max: 1.5, definizione: 'Principiante',   colpi: 'colpi piatti, servizio base',            descrizione: 'Sta imparando a non colpire i vetri. Lo scambio è breve o inesistente.' },
+      { min: 2.0, max: 2.5, definizione: 'Base',           colpi: 'inizio uso pareti, volée di posizione',  descrizione: 'Tiene la palla in campo a ritmi bassi. Capisce il rimbalzo sul vetro ma fatica a coordinarsi.' },
+      { min: 3.0, max: 3.5, definizione: 'Intermedio',     colpi: 'bandeja base, pallonetto',               descrizione: 'Inizia a giocare con strategia. La bandeja serve a non perdere la rete, il pallonetto è spesso corto.' },
+      { min: 4.0, max: 4.5, definizione: 'Avanzato',       colpi: 'vibora, chiquita, smash',                descrizione: 'Livello tipico dei tornei amatoriali. Sa variare gli effetti e usa bene pareti e griglia.' },
+      { min: 5.0, max: 5.5, definizione: 'Agonista',       colpi: 'x3 / x4, controparete',                  descrizione: 'Giocatore di 3ª/4ª categoria. Grande intensità, chiude il punto fuori campo e gestisce difese difficili.' },
+      { min: 6.0, max: 6.5, definizione: 'Semi-Pro',       colpi: 'dormilona, colpi in sospensione',        descrizione: 'Giocatore di 2ª categoria. Tecnica impeccabile e lettura del gioco in anticipo.' },
+      { min: 7.0, max: 7.0, definizione: 'Professionista', colpi: 'massima padronanza di ogni colpo',       descrizione: 'Prima categoria e circuito internazionale. Errore gratuito quasi assente.' }
+    ];
+
+    // Numero → riga della tabella. Fuori scala si aggancia agli estremi: nessun livello resta senza nome.
+    function pmoLivelloFascia(value) {
+      // 🚨 Il vuoto NON è zero: `Number('')` fa 0, e chi non ha ancora un livello si sarebbe
+      // visto chiamare «Principiante» da nessun dato. Senza numero non c'è fascia.
+      const raw = assessTxt(value).replace(',', '.');
+      if (!raw) return null;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return null;
+      return PMO_LIVELLI.find(f => n <= f.max) || PMO_LIVELLI[PMO_LIVELLI.length - 1];
+    }
+    function pmoLivelloDefinizione(value) {
+      return pmoLivelloFascia(value)?.definizione || '';
+    }
+    // Etichetta per il socio: solo parole. Il numero non compare mai da questa parte.
+    function pmoLivelloEtichettaSocio(value) {
+      const fascia = pmoLivelloFascia(value);
+      return fascia ? fascia.definizione : '';
+    }
+    // Etichetta per lo staff: parole E numero, perché in coda il numero serve a decidere.
+    function pmoLivelloEtichettaStaff(value) {
+      const fascia = pmoLivelloFascia(value);
+      const n = assessTxt(value);
+      if (!fascia) return n;
+      return n ? `${fascia.definizione} (${n})` : fascia.definizione;
+    }
+    // Le opzioni delle domande «che livello pensi di avere» / «con chi giochi alla pari».
+    // Il valore vale il ESTREMO ALTO della fascia: chi sceglie «Intermedio» dichiara tutta la fascia,
+    // e i freni del calcolo (+0.5 / -1.0) gli lasciano al massimo UNA fascia di salita.
+    function pmoLivelliOpzioni() {
+      return PMO_LIVELLI.map(f => ({ value: String(f.max), label: `${f.definizione} — ${f.colpi}` }));
+    }
+
+    /* La banca delle domande di conoscenza: hanno una risposta GIUSTA, non una risposta «tua».
+       Servono a chiudere il buco delle sole autodescrizioni — chi sceglie le frasi della fascia
+       alta senza saperne nulla, qui si ferma. Le trappole descrivono regole e colpi INVENTATI
+       ma dal suono credibile: chi gonfia tende a riconoscerli per non sembrare ignorante.
+       ⚠️ Limite noto e accettato: la pagina è statica, quindi le risposte stanno nel sorgente.
+       Ferma chi si gonfia, non chi apre gli strumenti da sviluppatore; in Fase 2 il bot correggerà
+       da server e nemmeno quello resterà visibile. */
+    const ASSESS_KNOWLEDGE_BANK = {
+      version: 1,
+      pick_normal: 3,
+      pick_trap: 1,
+      pass_min_correct: 3,     // su 4 pescate
+      trap_wrong_fails: true,  // la trappola sbagliata boccia da sola, anche con le altre 3 giuste
+      questions: [
+        // ── Principiante ────────────────────────────────────────────────────────────────
+        { id:'P-01', fascia:'Principiante', trap:false, q:'Quanti giocatori ci sono in campo in una partita di padel?', opts:[
+          'Due, uno per parte',
+          'Quattro, due per parte',
+          'Sei, tre per parte',
+          'Dipende dal circolo'], correct:1 },
+        { id:'P-02', fascia:'Principiante', trap:false, q:'Come si esegue il servizio?', opts:[
+          'Si lancia la palla in aria e si colpisce sopra la testa, come nel tennis',
+          'Si colpisce al volo, senza farla rimbalzare',
+          'Si fa rimbalzare la palla a terra e la si colpisce sotto la vita',
+          'Si può scegliere: al volo oppure dopo il rimbalzo'], correct:2 },
+        { id:'P-03', fascia:'Principiante', trap:false, q:'La palla arriva dagli avversari e colpisce il vetro del mio campo SENZA aver prima rimbalzato a terra. Cosa succede?', opts:[
+          'Punto mio: la palla doveva prima rimbalzare a terra',
+          'Punto degli avversari',
+          'Si rigioca il punto',
+          'Il gioco continua, posso ancora giocarla'], correct:0 },
+        { id:'P-04', fascia:'Principiante', trap:false, q:'Come si conta il punteggio nel padel?', opts:[
+          'Ogni scambio vale un punto, fino a 11',
+          'A tempo: vince chi è avanti allo scadere',
+          'A punti fino a 21',
+          'Come nel tennis: 15, 30, 40, gioco'], correct:3 },
+        { id:'P-T1', fascia:'Principiante', trap:true,  q:'Quando si applica la regola del «doppio rimbalzo difensivo», che concede due rimbalzi a terra a chi difende?', opts:[
+          'Solo sul punteggio di 40-40',
+          'Non esiste: la palla può rimbalzare a terra una volta sola',
+          'Quando si è sotto di due giochi nel set',
+          'Solo sulla risposta al servizio'], correct:1 },
+        { id:'P-T2', fascia:'Principiante', trap:true,  q:'In quale situazione l\'arbitro fischia il «fallo di vetro incrociato»?', opts:[
+          'Quando la palla tocca due vetri diversi di seguito',
+          'Quando la palla torna nel campo di chi l\'ha colpita',
+          'Non esiste un fallo con questo nome',
+          'Quando si colpisce la palla dopo il vetro laterale'], correct:2 },
+
+        // ── Base ────────────────────────────────────────────────────────────────────────
+        { id:'B-01', fascia:'Base', trap:false, q:'Dove deve rimbalzare la palla del servizio?', opts:[
+          'In qualunque punto del campo avversario',
+          'Nel riquadro in diagonale rispetto a chi serve',
+          'Oltre la linea di metà campo',
+          'Vicino al vetro di fondo'], correct:1 },
+        { id:'B-02', fascia:'Base', trap:false, q:'Chi riceve il servizio può rispondere al volo?', opts:[
+          'Sì, se resta dietro la linea di servizio',
+          'Sì, sempre: è una scelta di chi riceve',
+          'No, deve prima lasciar rimbalzare la palla',
+          'Solo sul secondo servizio'], correct:2 },
+        { id:'B-03', fascia:'Base', trap:false, q:'La palla rimbalza a terra nel mio campo e poi va sul mio vetro. Posso giocarla dopo il vetro?', opts:[
+          'Sì: dopo il rimbalzo a terra posso lasciarla andare sul vetro e rigiocarla',
+          'No: dopo il rimbalzo devo colpirla prima che tocchi il vetro',
+          'No: se tocca il mio vetro il punto è degli avversari',
+          'Sì, ma solo se tocca il vetro di fondo'], correct:0 },
+        { id:'B-04', fascia:'Base', trap:false, q:'Quanti tentativi di servizio hai a disposizione?', opts:[
+          'Uno solo',
+          'Due, come nel tennis',
+          'Tre',
+          'Due, ma solo nel primo gioco'], correct:1 },
+        { id:'B-T1', fascia:'Base', trap:true,  q:'Quando è consentito il «servizio a cucchiaio doppio», che permette di far rimbalzare la palla due volte prima di batterla?', opts:[
+          'Solo in doppio misto',
+          'Dopo un primo servizio fallito',
+          'Mai: non esiste un servizio di questo tipo',
+          'Nei tornei amatoriali, se le coppie sono d\'accordo'], correct:2 },
+        { id:'B-T2', fascia:'Base', trap:true,  q:'Dopo aver vinto un punto con lo smash, la coppia deve cambiare lato di ricezione. Quando vale questa regola?', opts:[
+          'Sempre, in ogni categoria',
+          'Solo nei tornei federali',
+          'Solo nel set decisivo',
+          'Mai: questa regola non esiste'], correct:3 },
+
+        // ── Intermedio ──────────────────────────────────────────────────────────────────
+        { id:'I-01', fascia:'Intermedio', trap:false, q:'A cosa serve soprattutto la bandeja?', opts:[
+          'A chiudere il punto con la massima potenza',
+          'A restare a rete controllando il pallonetto avversario',
+          'A difendere sul vetro di fondo',
+          'A rispondere al servizio'], correct:1 },
+        { id:'I-02', fascia:'Intermedio', trap:false, q:'Perché un pallonetto troppo corto è pericoloso?', opts:[
+          'Perché è quasi sempre fuori',
+          'Perché il compagno non fa in tempo a salire',
+          'Perché regala agli avversari uno smash comodo',
+          'Perché non si può giocare di rovescio'], correct:2 },
+        { id:'I-03', fascia:'Intermedio', trap:false, q:'La palla entra nell\'angolo e tocca prima il vetro di fondo e poi quello laterale. Dove tende ad andare?', opts:[
+          'Verso il centro del campo',
+          'Resta attaccata al vetro laterale',
+          'Accelera verso il fondo',
+          'Si ferma nell\'angolo'], correct:0 },
+        { id:'I-04', fascia:'Intermedio', trap:false, q:'Quando conviene salire a rete in coppia?', opts:[
+          'Appena possibile, sempre e comunque',
+          'Uno alla volta, così uno resta a coprire il fondo',
+          'Solo dopo aver vinto lo scambio precedente',
+          'Insieme al compagno, dopo un colpo che dà il tempo di salire'], correct:3 },
+        { id:'I-T1', fascia:'Intermedio', trap:true,  q:'A cosa serve la «vibora a doppio taglio inverso»?', opts:[
+          'A far rimbalzare la palla verso il proprio campo',
+          'A servire con effetto contrario',
+          'Non esiste un colpo con questo nome',
+          'A difendere sul vetro laterale'], correct:2 },
+        { id:'I-T2', fascia:'Intermedio', trap:true,  q:'Cosa stabilisce la «regola dei tre vetri», sul numero di pareti che la palla può toccare nel proprio campo?', opts:[
+          'Che se ne possono toccare al massimo tre',
+          'Che dopo tre vetri il punto si rigioca',
+          'Che valgono solo nei campi coperti',
+          'Non esiste: la regola è che la palla non rimbalzi due volte a terra'], correct:3 },
+
+        // ── Avanzato ────────────────────────────────────────────────────────────────────
+        { id:'A-01', fascia:'Avanzato', trap:false, q:'Che colpo è la vibora?', opts:[
+          'Un colpo alto tagliato di lato, che dopo il rimbalzo resta basso e scivola',
+          'Un pallonetto difensivo molto profondo',
+          'Una volée bassa giocata incrociata',
+          'Uno smash giocato con la massima potenza'], correct:0 },
+        { id:'A-02', fascia:'Avanzato', trap:false, q:'Che colpo è la chiquita?', opts:[
+          'Un pallonetto corto sul rovescio',
+          'Una palla bassa e lenta giocata ai piedi di chi sta a rete',
+          'Un servizio tagliato verso il vetro',
+          'Uno smash controllato che non fa uscire la palla'], correct:1 },
+        { id:'A-03', fascia:'Avanzato', trap:false, q:'Quando si gioca la bajada?', opts:[
+          'A rete, su una volée alta',
+          'Come variante del servizio',
+          'Su una palla che esce dal vetro, colpendola in discesa per attaccare',
+          'Solo in difesa, dopo un pallonetto avversario'], correct:2 },
+        { id:'A-04', fascia:'Avanzato', trap:false, q:'Gli avversari giocano pallonetti molto buoni. Qual è la gestione più solida dei colpi alti?', opts:[
+          'Smash a tutta forza a ogni occasione',
+          'Lasciar rimbalzare e ripartire sempre da fondo campo',
+          'Cambiare posizione con il compagno a ogni pallonetto',
+          'Alternare bandeja e vibora di controllo per non perdere la rete'], correct:3 },
+        { id:'A-T1', fascia:'Avanzato', trap:true,  q:'In quale situazione si usa il «cambio de pared australiano»?', opts:[
+          'Quando si difende sul vetro laterale',
+          'Non esiste un colpo con questo nome',
+          'Quando si risponde a una vibora',
+          'Quando si attacca dopo il doppio vetro'], correct:1 },
+        { id:'A-T2', fascia:'Avanzato', trap:true,  q:'Come si esegue la «sotana in sospensione»?', opts:[
+          'Saltando e colpendo la palla sotto la vita',
+          'Colpendo la palla dopo due rimbalzi sul vetro',
+          'Con la racchetta rovesciata, per dare effetto',
+          'Non esiste un colpo con questo nome'], correct:3 },
+
+        // ── Agonista ────────────────────────────────────────────────────────────────────
+        { id:'AG-01', fascia:'Agonista', trap:false, q:'Che cos\'è lo smash «x4»?', opts:[
+          'Uno smash che fa uscire la palla oltre il vetro di fondo, alto 4 metri',
+          'Uno smash che fa uscire la palla dalla porta laterale',
+          'Uno smash giocato dopo quattro colpi di scambio',
+          'Uno smash che rimbalza quattro volte'], correct:0 },
+        { id:'AG-02', fascia:'Agonista', trap:false, q:'Che cos\'è la controparete?', opts:[
+          'Una volée giocata appoggiandosi al vetro laterale',
+          'Un colpo mandato prima contro il proprio vetro e poi oltre la rete',
+          'Un pallonetto che muore sul vetro di fondo',
+          'Un servizio che tocca la parete prima del rimbalzo'], correct:1 },
+        { id:'AG-03', fascia:'Agonista', trap:false, q:'Lo smash manda la palla fuori dal campo e l\'avversario esce dalla porta e la rimette dentro. Cosa succede?', opts:[
+          'Punto nostro: fuori dal campo non si può giocare',
+          'Punto nostro, se la palla ha superato il vetro di fondo',
+          'Si rigioca il punto',
+          'Il punto continua: uscire e rimettere la palla in campo è valido'], correct:3 },
+        { id:'AG-04', fascia:'Agonista', trap:false, q:'Sul servizio, la palla rimbalza nel riquadro giusto e poi tocca la rete metallica prima che il ricevente la colpisca. Cosa succede?', opts:[
+          'Il gioco continua normalmente',
+          'È fallo di servizio',
+          'Punto diretto di chi serve',
+          'Si ripete il servizio, come il nastro nel tennis'], correct:1 },
+        { id:'AG-T1', fascia:'Agonista', trap:true,  q:'Quando si parla di smash «x5»?', opts:[
+          'Quando la palla esce oltre la tribuna',
+          'Quando la palla rimbalza cinque metri oltre il campo',
+          'Non esiste: si parla di x3 e x4',
+          'Quando lo smash chiude il punto al quinto colpo'], correct:2 },
+        { id:'AG-T2', fascia:'Agonista', trap:true,  q:'Cosa prevede la regola del «punto d\'oro obbligatorio dopo tre vantaggi»?', opts:[
+          'Che dopo tre vantaggi il gioco si assegna a chi serve',
+          'Che dopo tre vantaggi si gioca un punto secco',
+          'Che vale solo nei tornei federali',
+          'Non esiste: il punto d\'oro, dove previsto, si gioca sul 40-40'], correct:3 }
+      ]
+    };
+
+    // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
+    // un quiz non può validare un giocatore di 2ª categoria, quella scheda va sempre in segreteria.
+    function assessKnowledgeFasciaFor(level) {
+      const definizione = pmoLivelloDefinizione(level);
+      if (!definizione) return '';
+      return ASSESS_KNOWLEDGE_BANK.questions.some(q => q.fascia === definizione) ? definizione : '';
+    }
+    function assessKnowledgeShuffle(list) {
+      const out = list.slice();
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    }
+    // Pesca 3 normali + 1 trappola e mescola sia l'ordine delle domande sia quello delle risposte:
+    // rifare il test, o copiarlo da un amico, non serve a nulla.
+    function assessKnowledgePick(fascia) {
+      const cleanFascia = assessTxt(fascia);
+      if (!cleanFascia) return [];
+      const pool = ASSESS_KNOWLEDGE_BANK.questions.filter(q => q.fascia === cleanFascia);
+      if (!pool.length) return [];
+      const normali = assessKnowledgeShuffle(pool.filter(q => !q.trap)).slice(0, ASSESS_KNOWLEDGE_BANK.pick_normal);
+      const trappole = assessKnowledgeShuffle(pool.filter(q => q.trap)).slice(0, ASSESS_KNOWLEDGE_BANK.pick_trap);
+      return assessKnowledgeShuffle(normali.concat(trappole)).map(q => ({
+        id: q.id,
+        fascia: q.fascia,
+        trap: !!q.trap,
+        q: q.q,
+        opts: assessKnowledgeShuffle(q.opts)
+      }));
+    }
+    // Corregge sulla banca, non su quello che arriva dalla pagina: la risposta giusta non passa
+    // mai dal modulo. `answers` è { idDomanda: testoScelto }.
+    function assessKnowledgeEvaluate(pickedIds, answers) {
+      const ids = Array.isArray(pickedIds) ? pickedIds.filter(Boolean) : [];
+      if (!ids.length) return { status: 'skip', correct: 0, total: 0, trap_failed: false, fascia: '', bank_version: ASSESS_KNOWLEDGE_BANK.version, questions: [] };
+      const dettaglio = ids.map(id => {
+        const q = ASSESS_KNOWLEDGE_BANK.questions.find(item => item.id === id) || null;
+        const risposta = assessTxt((answers || {})[id] || '');
+        const attesa = q ? assessTxt(q.opts[q.correct] || '') : '';
+        return {
+          id,
+          fascia: q?.fascia || '',
+          trap: !!q?.trap,
+          domanda: q?.q || '',
+          risposta,
+          attesa,
+          giusta: !!q && !!risposta && assessKey(risposta) === assessKey(attesa)
+        };
+      });
+      const correct = dettaglio.filter(d => d.giusta).length;
+      const trapFailed = dettaglio.some(d => d.trap && !d.giusta);
+      const promosso = correct >= ASSESS_KNOWLEDGE_BANK.pass_min_correct && !(ASSESS_KNOWLEDGE_BANK.trap_wrong_fails && trapFailed);
+      return {
+        status: promosso ? 'pass' : 'fail',
+        correct,
+        total: dettaglio.length,
+        trap_failed: trapFailed,
+        fascia: dettaglio[0]?.fascia || '',
+        bank_version: ASSESS_KNOWLEDGE_BANK.version,
+        questions: dettaglio
+      };
+    }
+    // Riga per lo staff: «Conoscenza 2/4 · trappola sbagliata · fascia Avanzato». Sulle schede
+    // vecchie, che il campo non ce l'hanno, torna stringa vuota e non si stampa nulla.
+    function assessKnowledgeRiepilogo(knowledge) {
+      if (!knowledge || !knowledge.total) return '';
+      const parti = [`Conoscenza ${knowledge.correct}/${knowledge.total}`];
+      if (knowledge.trap_failed) parti.push('trappola sbagliata');
+      if (knowledge.fascia) parti.push(`fascia ${knowledge.fascia}`);
+      return parti.join(' · ');
+    }
+    /* ===== /ASSESS-KNOWLEDGE SHARED v1 ===================================================== */
+
+    // Quello che legge il socio: mai il numero, sempre la parola della tabella. Tollerante di
+    // proposito — se gli arriva già una definizione la lascia passare, così un doppio passaggio
+    // non svuota il messaggio.
+    function pmoLivelloTestoSocio(value) {
+      return pmoLivelloEtichettaSocio(value) || cleanCell(value || '');
+    }
 
     function assessmentPublicScoreFromText(value, map) {
       const raw = cleanCell(value || '');
@@ -37121,6 +37572,16 @@ Per confermare scrivi ELIMINA.`);
       const gender = assessmentPublicNormalizeGender(data.gender || form?.dataset?.memberGender || member?.gender || '');
       const privacyConsent = !!data.privacyConsent;
       const levelCalc = calculateAssessmentPublicLevel(data);
+      const conoscenza = assessmentKnowledgeCollect('assessmentPublicKnowledgeBlock');
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // Chi dice di giocare da poco e intanto si dichiara Intermedio o più: non blocca nulla,
+      // ma la scheda la guarda una persona.
+      const declaredNum = parseFloat(assessmentPublicParseLevel(data.declaredLevel));
+      const experienceFlag = Number.isFinite(declaredNum) && declaredNum >= 3.0
+        && ['Meno di 1 mese', '1-3 mesi', '3-6 mesi', '6-12 mesi'].some(v => normalizeText(data.experience || '') === normalizeText(v));
+      // Il cancello: senza conoscenza dimostrata la scheda non si applica da sola. Vale anche
+      // per «skip» (Semi-Pro e Professionista, che il quiz non lo hanno).
+      const staffStatus = (gender === 'NA' || knowledge.status !== 'pass' || experienceFlag) ? 'review' : levelCalc.staff_status;
       const split = assessmentPublicSplitName(name);
       return {
         token,
@@ -37136,7 +37597,7 @@ Per confermare scrivi ELIMINA.`);
         declared_level: levelCalc.declared_level,
         calculated_level: levelCalc.calculated_level,
         consistency_status: levelCalc.coherence,
-        staff_status: gender === 'NA' ? 'review' : levelCalc.staff_status,
+        staff_status: staffStatus,
         submitted_at: new Date().toISOString(),
         raw_response: {
           source: isExternal ? 'link-esterno' : 'scheda-pubblica',
@@ -37152,7 +37613,11 @@ Per confermare scrivi ELIMINA.`);
           technical_scores: levelCalc.technical_scores,
           raw_score: levelCalc.raw_score,
           calculation_note: levelCalc.note,
-          answers: data
+          answers: data,
+          // 🚨 Dentro `raw_response`, non a livello alto: quando l'RPC non c'è, il ripiego fa un
+          // insert diretto su `self_assessments` e una colonna nuova lo farebbe fallire.
+          knowledge,
+          experience_flag: experienceFlag
         }
       };
     }
