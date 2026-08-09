@@ -40,23 +40,35 @@
 // ⚖️ Il rifiuto RESTA, come ripiego: se la registrazione di prova non riesce, si risponde ancora
 //    `503` invece di raccontare un successo che non c'è stato. Nel dubbio non si dice «fatto».
 //
-// 🚨⭐⭐ E VALE SOLO PER LE PRENOTAZIONI. Questo modulo vive in **sette** copie: le tre delle
-//    prenotazioni (`bookings-create · edit · cancel`) e le quattro dell'ANAGRAFICA
-//    (`clients-create · update · disable · reactivate`). Le quattro dell'anagrafica continuano a
+// 🚨⭐⭐ E VALE SOLO PER LE PRENOTAZIONI. Questo modulo vive in **otto** copie: le tre delle
+//    prenotazioni (`bookings-create · edit · cancel`), le quattro dell'ANAGRAFICA
+//    (`clients-create · update · disable · reactivate`) e quella del BORSELLINO
+//    (`matchpoint-wallet-correct`). Le altre cinque continuano a
 //    **rifiutare** e basta, ed è voluto: una scheda cliente toccata per gioco resterebbe su
 //    Matchpoint e **tornerebbe dentro PROD** con l'import del mattino — è l'unica cosa che lo
 //    specchio notturno non ripulisce (era la ragione per cui il 6/08 sono entrate nel recinto).
 //    ⇒ Le funzioni qui sotto (`esitoDiProva`, il marchio) esistono per tutti, ma **le usa solo
 //      chi prenota**. Chi un domani volesse la stessa cosa per l'anagrafica deve prima risolvere
 //      quel ritorno, non limitarsi a copiare il ramo.
+//
+// 🆕💰⭐⭐ 9/08/2026 — L'OTTAVA COPIA: IL BORSELLINO (`matchpoint-wallet-correct`). Deciso da lui,
+//    ed era l'ultima funzione di scrittura rimasta fuori dal recinto: le correzioni del
+//    borsellino (storno e ricarica, `/correct-wallet`) toccavano il gestionale del circolo **da
+//    qualunque ambiente**. Il 6/08 era stata lasciata fuori di proposito — quella notte l'ambito
+//    erano prenotazioni e anagrafica, e **sui soldi decide lui**.
+// ⚖️ **RIFIUTA, non registra**, e la ragione non è la pigrizia della copia: il borsellino è
+//    denaro, e in questo progetto **Matchpoint è il libro mastro UNICO** — l'app è cassa e
+//    vetrina, mai un secondo libro. «Registrare qui una correzione di prova» vorrebbe dire
+//    inventare quel secondo libro proprio dove è vietato averlo. Fuori dalla produzione il
+//    borsellino non si tocca e lo si dice: `503 AMBIENTE_DI_PROVA`.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 //
-// ⚠️ QUESTO FILE VIVE IN SETTE COPIE IDENTICHE — le tre delle prenotazioni (`bookings-create` ·
-// `edit` · `cancel`) e le quattro dell'anagrafica (`clients-create` · `update` · `disable` ·
-// `reactivate`) — e non è una svista: i
+// ⚠️ QUESTO FILE VIVE IN OTTO COPIE IDENTICHE — le tre delle prenotazioni (`bookings-create` ·
+// `edit` · `cancel`), le quattro dell'anagrafica (`clients-create` · `update` · `disable` ·
+// `reactivate`) e quella del borsellino (`matchpoint-wallet-correct`) — e non è una svista: i
 // workflow di deploy scelgono le funzioni dalle **cartelle toccate** e saltano tutto ciò che
 // inizia per `_`, quindi un modulo in `_shared/` **non si deployerebbe** — resterebbe la copia
-// vecchia, in silenzio e col semaforo verde. Le SETTE copie sono tenute uguali **byte per byte** da
+// vecchia, in silenzio e col semaforo verde. Le OTTO copie sono tenute uguali **byte per byte** da
 // `scrittura-al-circolo.test.ts`, che le rilegge dal disco.
 
 /** Il progetto Supabase di PRODUZIONE: l'unico da cui si scrive sul gestionale del circolo. */

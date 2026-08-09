@@ -3,9 +3,9 @@
 //
 // 🚨⭐⭐ Questo banco misura TRE cose diverse, e la terza è quella che di solito manca:
 //   ① la REGOLA è giusta (chi passa e chi no);
-//   ② le TRE COPIE del modulo sono identiche — il deploy salta `_shared/`, quindi il modulo è
+//   ② le OTTO COPIE del modulo sono identiche — il deploy salta `_shared/`, quindi il modulo è
 //      duplicato per forza e la deriva fra copie è il modo in cui questi fix si riaprono;
-//   ③ 🚨 la regola è COLLEGATA: in tutte e tre le funzioni la chiamata sta PRIMA del punto di
+//   ③ 🚨 la regola è COLLEGATA: in tutte e otto le funzioni la chiamata sta PRIMA del punto di
 //      non ritorno. Una guardia perfetta che nessuno chiama resta verde e non difende niente —
 //      è la trappola più cara di questo progetto, e qui si misura la POSIZIONE, non la parola.
 import assert from 'node:assert/strict';
@@ -78,7 +78,7 @@ test('7) maiuscole e spazi non cambiano la risposta', () => {
   assert.equal(scritturaAlCircoloConsentita(`  HTTPS://${REF_PROD.toUpperCase()}.SUPABASE.CO  `), true);
 });
 
-// ── ② le tre copie ─────────────────────────────────────────────────────────────────────────
+// ── ② le otto copie ────────────────────────────────────────────────────────────────────────
 
 const GEMELLI = [
   'matchpoint-bookings-create/scrittura-al-circolo.ts',
@@ -92,6 +92,9 @@ const GEMELLI = [
   'matchpoint-clients-update/scrittura-al-circolo.ts',
   'matchpoint-clients-disable/scrittura-al-circolo.ts',
   'matchpoint-clients-reactivate/scrittura-al-circolo.ts',
+  // 🆕💰 9/08/2026 — il BORSELLINO: era l'ultima funzione di scrittura rimasta fuori dal recinto,
+  // e le sue correzioni (storno e ricarica) toccavano il circolo da qualunque ambiente.
+  'matchpoint-wallet-correct/scrittura-al-circolo.ts',
 ];
 
 test(`8) ⚠️ le ${GEMELLI.length} copie del modulo sono identiche byte per byte`, () => {
@@ -122,6 +125,9 @@ const PUNTI_DI_NON_RITORNO: Record<string, RegExp[]> = {
   'matchpoint-clients-update/index.ts': [/await callWorkerUpdateClient\(/],
   'matchpoint-clients-disable/index.ts': [/await callWorkerDisableClient\(/],
   'matchpoint-clients-reactivate/index.ts': [/await callWorkerReactivateClient\(/],
+  // 💰 Il borsellino: `/correct-wallet` muove denaro vero in tutte e due le direzioni (storno e
+  // ricarica). Una strada sola, e il recinto le sta davanti.
+  'matchpoint-wallet-correct/index.ts': [/await callWorkerCorrect\(/],
 };
 
 for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
@@ -282,6 +288,72 @@ test('15) l\'esito di prova si riconosce, e quello vero NON si scambia per una p
 test('16) due prove di fila non sono la stessa prenotazione', () => {
   // Se l'idReserva fosse fisso, la seconda partita di prova sovrascriverebbe la prima.
   assert.notEqual(esitoDiProva('create').idReserva, esitoDiProva('create').idReserva);
+});
+
+// ── ⑤ 🆕 9/08/2026 · LE CINQUE CHE RIFIUTANO — anche il «no» va misurato ───────────────────
+//
+// 🚨⭐⭐ IL BUCO CHE QUESTA SEZIONE CHIUDE, e c'era da 3 giorni: il caso 9 pretende che il recinto
+// stia PRIMA della chiamata al circolo. Ma se qualcuno mettesse quella chiamata **dentro** il ramo
+// del rifiuto, risalendo si troverebbe il recinto lì sopra e il caso 9 resterebbe **verde** —
+// mentre la funzione, fuori dalla produzione, scriverebbe eccome. Per le tre prenotazioni questo
+// è già coperto (casi 10-12); per le quattro dell'anagrafica non lo era, e col borsellino
+// diventano cinque. ⇒ Qui si guarda cosa c'è DENTRO il ramo: il circolo non si chiama, e si dice
+// di no con il codice giusto.
+// ⚖️ Le prenotazioni NON stanno in questo elenco perché il loro ramo **lavora** (registra la
+// prova) invece di rifiutare: la loro misura è quella dei casi 10-12, non questa.
+
+const CHI_RIFIUTA: Record<string, RegExp> = {
+  'matchpoint-clients-create/index.ts': /callWorkerCreateClient\(/,
+  'matchpoint-clients-update/index.ts': /callWorkerUpdateClient\(/,
+  'matchpoint-clients-disable/index.ts': /callWorkerDisableClient\(/,
+  'matchpoint-clients-reactivate/index.ts': /callWorkerReactivateClient\(/,
+  // 💰 Il borsellino rifiuta e basta, e la ragione non è la pigrizia: Matchpoint è il libro
+  // mastro UNICO, quindi «registrare qui una correzione di prova» aprirebbe il secondo libro
+  // che la regola del progetto vieta. Chi un domani gli facesse registrare qualcosa deve prima
+  // rispondere a QUELLA domanda, non copiare il ramo delle prenotazioni.
+  'matchpoint-wallet-correct/index.ts': /callWorkerCorrect\(/,
+};
+
+for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
+  const nome = rel.split('/')[0];
+
+  test(`17) 🚨 in ${nome} il ramo del rifiuto NON chiama il circolo`, () => {
+    const ramo = ramoDiProva(rel);
+    // 🚨 La 29ª: un ritaglio a vuoto renderebbe «non c'è il worker qui dentro» vero e inutile.
+    assert.ok(ramo.split('\n').length > 2, `${rel}: ritaglio troppo corto, non ha misurato niente`);
+    assert.equal(
+      maiChiamare.test(ramo), false,
+      `dentro il ramo del rifiuto c'è ${maiChiamare}: da lì si arriva al Matchpoint VERO`,
+    );
+  });
+
+  test(`18) in ${nome} il rifiuto DICHIARA di essere un rifiuto (503 + codice)`, () => {
+    const ramo = ramoDiProva(rel);
+    // 🚨⭐⭐ Si guarda dentro la RISPOSTA, non dentro il ramo: la prima versione di questo caso
+    // cercava le parole in tutto il ramo e restava VERDE anche togliendo `avrebbe_scritto` dalla
+    // risposta, perché la parola sopravviveva in una variabile locale e in un log. L'ha trovato
+    // un sabotaggio che «non mordeva» — cioè il difetto stava nel caso, non nel sabotaggio.
+    const risposta = ramo.match(/return err\([\s\S]*?\);/);
+    assert.ok(risposta, `${rel}: nel ramo non c'è nessuna risposta di rifiuto`);
+    const testo = risposta[0];
+    assert.ok(/\b503\b/.test(testo), `${rel}: il rifiuto non risponde 503`);
+    assert.ok(
+      /CODICE_AMBIENTE_DI_PROVA/.test(testo),
+      `${rel}: il rifiuto non usa il codice condiviso — chi legge la risposta dovrebbe indovinarlo`,
+    );
+    // ⭐ Un rifiuto che non dice cosa avrebbe fatto costringe a rifare la prova per capirlo.
+    assert.ok(/avrebbe_scritto/.test(testo), `${rel}: il rifiuto non dice cosa avrebbe scritto`);
+  });
+}
+
+test('19) 💰⭐⭐ il borsellino RIFIUTA: non registra da nessuna parte', () => {
+  // 🚨 Il verso che conta, e vale i soldi: se un domani il ramo del borsellino cominciasse a
+  // «registrare la prova» come fanno le prenotazioni, l'app di TEST vedrebbe un saldo che non
+  // esiste su Matchpoint — cioè un SECONDO libro mastro, che in questo progetto è vietato.
+  const ramo = ramoDiProva('matchpoint-wallet-correct/index.ts');
+  assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
+  assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
+  assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
