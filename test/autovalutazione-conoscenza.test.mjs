@@ -236,6 +236,23 @@ prova('🚨 in alto NON è cambiato niente: la trappola boccia ancora da sola', 
     pescate.map(p => p.id), rispondi(pescate, { giuste: 2 }), 'Avanzato').status, 'fail', 'Avanzato con 2/4');
 });
 
+prova('🆕 la banca regge TRE tentativi: 8 normali + 3 trappole per fascia interrogabile', () => {
+  // 🗣️ Plafond deciso da lui il 9/08: «hai pensato a un plafond di trenta, magari puoi
+  // allargare a cinquanta» — perché con la regola dei tre tentativi uno potrebbe segnarsi le
+  // domande, ed è difficile segnarsele tutte.
+  // ⛔ Principiante è fuori di proposito: da quella fascia il quiz non si pesca più.
+  const B = A.ASSESS_KNOWLEDGE_BANK;
+  const interrogabili = ['Base', 'Intermedio', 'Avanzato', 'Agonista'];
+  for (const fascia of interrogabili) {
+    const pool = B.questions.filter(q => q.fascia === fascia);
+    const normali = pool.filter(q => !q.trap).length;
+    const trappole = pool.filter(q => q.trap).length;
+    if (normali < 8) throw new Error(`${fascia}: solo ${normali} domande normali, ne servono 8`);
+    if (trappole < 3) throw new Error(`${fascia}: solo ${trappole} trappole, ne servono 3`);
+  }
+  if (B.questions.length < 50) throw new Error(`banca scesa a ${B.questions.length}: il plafond è 50`);
+});
+
 prova('lo staff legge che il cancello non era richiesto', () => {
   const riga = A.assessKnowledgeRiepilogo(A.assessKnowledgeEvaluate([], {}, 'Principiante'));
   if (!riga.includes('non richiesta')) throw new Error(`riepilogo inatteso: ${riga}`);

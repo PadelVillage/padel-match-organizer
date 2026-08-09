@@ -8030,7 +8030,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.203';
+    const APP_VERSION = '6.204';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -37252,7 +37252,128 @@ Per confermare scrivi ELIMINA.`);
           'Che dopo tre vantaggi il gioco si assegna a chi serve',
           'Che dopo tre vantaggi si gioca un punto secco',
           'Che vale solo nei tornei federali',
-          'Non esiste: il punto d\'oro, dove previsto, si gioca sul 40-40'], correct:3 }
+          'Non esiste: il punto d\'oro, dove previsto, si gioca sul 40-40'], correct:3 },
+
+        /* 🆕📚⭐⭐ 9/08/2026 — LA BANCA SI ALLARGA A 8 NORMALI + 3 TRAPPOLE PER FASCIA.
+           Sua decisione, e il motivo sta tutto nella regola dei TRE TENTATIVI decisa la stessa
+           sera: con 4 normali e 2 trappole se ne pescavano 3+1, quindi in tre giri uno vedeva
+           QUASI TUTTA la banca. Senza sapere quali aveva sbagliato non era un indovinello, ma i
+           tre tentativi non erano indipendenti: il terzo valeva meno del primo.
+           🚨 Sigle NUOVE, mai riciclate (la I-03 ritirata resta un buco): le schede già inviate
+           portano gli id dentro \'raw_response\', e riusare una sigla farebbe puntare uno storico
+           a una domanda diversa.
+           ⛔ Principiante NON si allarga: da stasera quella fascia il quiz non lo pesca più.
+           ⭐⭐ Il metro di ogni domanda è uno solo, e viene dal difetto della vecchia I-03 (tolta
+           perché «dipende da quanto è veloce»): **una risposta discutibile boccia chi ha
+           ragione**. Qui dentro ci sono solo regole e definizioni su cui non si discute. */
+
+        // ── Base ────────────────────────────────────────────────────────────────────────
+        { id:'B-05', fascia:'Base', trap:false, q:'Come si colpisce la palla nel servizio?', opts:[
+          'Dopo un rimbalzo a terra, all\'altezza della vita o più in basso',
+          'Al volo, sopra la testa, come nel tennis',
+          'Dopo due rimbalzi a terra',
+          'Come si preferisce: non ci sono vincoli'], correct:0 },
+        { id:'B-06', fascia:'Base', trap:false, q:'Nel servizio la palla tocca il nastro della rete e poi rimbalza nel riquadro giusto. Cosa succede?', opts:[
+          'Punto diretto di chi serve',
+          'È fallo e si perde il servizio',
+          'Il servizio si ripete',
+          'Il gioco continua normalmente'], correct:2 },
+        { id:'B-07', fascia:'Base', trap:false, q:'Posso toccare la rete con la racchetta o col corpo mentre la palla è in gioco?', opts:[
+          'Sì, purché non la sposti',
+          'No: si perde il punto',
+          'Sì, se la palla ha già rimbalzato',
+          'Solo chi è al servizio non può'], correct:1 },
+        { id:'B-08', fascia:'Base', trap:false, q:'Quante volte può rimbalzare a terra la palla nel mio campo prima che io la colpisca?', opts:[
+          'Una sola',
+          'Due',
+          'Nessuna: va giocata al volo',
+          'Due, se la seconda è dopo il vetro'], correct:0 },
+        { id:'B-T3', fascia:'Base', trap:true,  q:'Quando è obbligatorio il «doppio servizio incrociato»?', opts:[
+          'Nel primo game di ogni set',
+          'Quando si gioca il punto d\'oro',
+          'Non esiste un servizio con questo nome',
+          'Quando la coppia ha perso due game di fila'], correct:2 },
+
+        // ── Intermedio ──────────────────────────────────────────────────────────────────
+        { id:'I-06', fascia:'Intermedio', trap:false, q:'Che cos\'è il pallonetto (globo)?', opts:[
+          'Una palla alta e profonda per far arretrare chi è a rete',
+          'Un colpo piatto e veloce lungolinea',
+          'Una palla corta che muore appena oltre la rete',
+          'Un servizio giocato molto lento'], correct:0 },
+        { id:'I-07', fascia:'Intermedio', trap:false, q:'Finito un game al servizio, chi serve nel game successivo?', opts:[
+          'Il compagno di chi ha appena servito',
+          'Uno dei due avversari',
+          'Sempre lo stesso giocatore, finché non perde il game',
+          'Chi ha vinto il game precedente'], correct:1 },
+        { id:'I-08', fascia:'Intermedio', trap:false, q:'Che cos\'è la «salida de pared» (uscita di parete)?', opts:[
+          'Un servizio che sfrutta il vetro laterale',
+          'La palla che, dopo il rimbalzo a terra, esce dal vetro e va giocata lì',
+          'L\'uscita del giocatore dalla porta del campo',
+          'Un colpo mandato di proposito contro la parete avversaria'], correct:1 },
+        { id:'I-09', fascia:'Intermedio', trap:false, q:'Dopo il rimbalzo a terra nel mio campo la palla tocca la griglia metallica. Posso ancora giocarla?', opts:[
+          'No: la griglia interrompe sempre il punto',
+          'Sì, purché non rimbalzi una seconda volta a terra',
+          'Solo se la tocca sopra la metà',
+          'Sì, ma vale mezzo punto'], correct:1 },
+        { id:'I-T3', fascia:'Intermedio', trap:true,  q:'Quando si usa il «rimbalzo assistito di parete»?', opts:[
+          'Per difendere gli smash molto profondi',
+          'Quando la palla resta incastrata fra vetro e griglia',
+          'Non esiste una regola con questo nome',
+          'Solo nei campi con pareti in muratura'], correct:2 },
+
+        // ── Avanzato ────────────────────────────────────────────────────────────────────
+        { id:'A-05', fascia:'Avanzato', trap:false, q:'Un pallonetto profondo finisce sul vetro di fondo del mio campo. Come si gioca correttamente?', opts:[
+          'Colpendola prima che tocchi il vetro, sempre',
+          'Dopo il rimbalzo a terra, aspettando che esca dalla parete',
+          'Lasciandola rimbalzare due volte a terra',
+          'Solo al volo, prima del rimbalzo'], correct:1 },
+        { id:'A-06', fascia:'Avanzato', trap:false, q:'Che differenza c\'è fra bandeja e vibora?', opts:[
+          'Nessuna: sono due nomi dello stesso colpo',
+          'La bandeja si gioca di rovescio, la vibora di dritto',
+          'La vibora è più veloce e con più effetto laterale; la bandeja è di controllo',
+          'La bandeja si gioca solo in difesa, la vibora solo al servizio'], correct:2 },
+        { id:'A-07', fascia:'Avanzato', trap:false, q:'Durante lo scambio la palla colpisce un giocatore prima di rimbalzare a terra. Cosa succede?', opts:[
+          'Si rigioca il punto',
+          'Punto per la coppia che ha colpito la palla',
+          'Punto per la coppia del giocatore colpito',
+          'Il gioco continua se la palla resta in campo'], correct:1 },
+        { id:'A-08', fascia:'Avanzato', trap:false, q:'La palla che ho colpito tocca la parete del campo avversario PRIMA di rimbalzare a terra. Cosa succede?', opts:[
+          'Il punto continua normalmente',
+          'Punto per gli avversari: doveva rimbalzare prima a terra',
+          'Punto mio, se la parete è quella di fondo',
+          'Si rigioca il punto'], correct:1 },
+        { id:'A-T3', fascia:'Avanzato', trap:true,  q:'In quale situazione si concede il «recupero di parete doppia»?', opts:[
+          'Quando la palla tocca due pareti prima del rimbalzo',
+          'Quando il campo ha le pareti in cristallo su tre lati',
+          'Solo in difesa, dopo uno smash x4',
+          'Non esiste una regola con questo nome'], correct:3 },
+
+        // ── Agonista ────────────────────────────────────────────────────────────────────
+        { id:'AG-05', fascia:'Agonista', trap:false, q:'Che cos\'è la «dormilona»?', opts:[
+          'Uno smash smorzato che fa morire la palla appena oltre la rete',
+          'Un pallonetto giocato con effetto all\'indietro',
+          'Una difesa lenta per prendere tempo',
+          'Un servizio giocato senza effetto'], correct:0 },
+        { id:'AG-06', fascia:'Agonista', trap:false, q:'Nel punto d\'oro, chi sceglie da che lato ricevere?', opts:[
+          'La coppia che serve',
+          'La coppia che riceve',
+          'L\'arbitro, o il sorteggio',
+          'Si gioca sempre dal lato destro'], correct:1 },
+        { id:'AG-07', fascia:'Agonista', trap:false, q:'Un giocatore colpisce la palla due volte nello stesso colpo. Cosa succede?', opts:[
+          'Il punto continua se il doppio tocco è involontario',
+          'Punto per gli avversari',
+          'Si rigioca il punto',
+          'Vale, purché la palla passi la rete'], correct:1 },
+        { id:'AG-08', fascia:'Agonista', trap:false, q:'Nel tie-break, ogni quanti punti si cambia campo?', opts:[
+          'Ogni 4 punti',
+          'Ogni 6 punti',
+          'Solo a metà, sul 6-6',
+          'Non si cambia campo nel tie-break'], correct:1 },
+        { id:'AG-T3', fascia:'Agonista', trap:true,  q:'Quando si applica la «regola del doppio rimbalzo consentito in difesa»?', opts:[
+          'Quando la palla arriva da uno smash x4',
+          'Quando il campo è bagnato',
+          'Solo nel padel indoor',
+          'Non esiste: il secondo rimbalzo a terra chiude sempre il punto'], correct:3 }
       ]
     };
 
