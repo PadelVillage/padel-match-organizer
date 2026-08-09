@@ -255,6 +255,28 @@ Deno.serve(async (req: Request) => {
         quando: clean(s.submitted_at),
         fascia: clean(k.fascia),
         senza_cancello: k.senza_cancello === true,
+        /**
+         * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
+         *
+         * 🗣️ Lui vuole che il bot, a test superato, dica *«il livello che ti è stato messo»*,
+         * con la PAROLA e non col numero. Giusto — ma quel livello, oggi, lo scrive il
+         * GESTIONALE quando qualcuno lo apre, non questo server. Mandare l'avviso appena la
+         * scheda passa vorrebbe dire dichiarare fatta una cosa che deve ancora succedere: è
+         * esattamente il difetto trovato il 9/08 nell'email alla segreteria — *«il livello è
+         * stato aggiornato da solo»* quando non lo era.
+         * ⇒ Qui si dice se la scheda del socio porta già il segno di QUESTO test, e il bot
+         * aspetta di poterlo dire vero. Un avviso in ritardo è meglio di un avviso bugiardo.
+         * ⏭️ Quando l'applicazione passerà su un'edge con cron (voce A4ter), il ritardo si
+         * accorcia da solo e qui non cambia niente.
+         */
+        livello_applicato: (() => {
+          const quandoScheda = Date.parse(clean(s.submitted_at));
+          const quandoLivello = Date.parse(clean(payload.selfAssessmentDate));
+          if (!Number.isFinite(quandoScheda) || !Number.isFinite(quandoLivello)) return false;
+          // Tolleranza di un minuto: le due date le scrivono due macchine diverse.
+          return quandoLivello >= quandoScheda - 60_000;
+        })(),
+        livello: clean(payload.level),
       };
     }
     for (const s of elenco) {
