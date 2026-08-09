@@ -9,14 +9,20 @@ import { createClient } from '@supabase/supabase-js';
 // vale la regola del controllo maestri («silenzio quando è tutto a posto»): si
 // manda sempre, e il corpo dice da sé com'è andata.
 //
-// ⭐ Il guardiano sta sul DATABASE, non nell'app: legge le righe nuove di
-// `self_assessments`. Così copre la scheda pubblica, il link esterno e — quando
-// arriverà — il bot Telegram, senza che nessuno debba ricordarsi di agganciare
-// un canale in più.
+// ⭐ Il guardiano sta sul DATABASE, non nell'app: legge le righe nuove delle
+// tabelle delle schede. Così copre tutti i canali — e quando arriverà il bot
+// Telegram, che scriverà lì dentro, non ci sarà niente da agganciare.
 //
-// Doppioni: `pmo_assessment_notifications` tiene i token già mandati. La
-// migration la riempie con lo storico, così l'accensione non spara all'indietro
-// un'email per ogni scheda mai ricevuta.
+// 🚨 LE TABELLE SONO DUE, e c'è voluta una prova vera per accorgersene:
+//   • `self_assessments`             ← link PERSONALE (?t=token): il socio è già riconosciuto
+//   • `assessment_external_requests` ← link GENERICO (?assessment=link-esterno): chi non è socio
+// Leggerne una sola voleva dire che metà delle schede non avrebbe mai prodotto
+// un'email — e nessuno se ne sarebbe accorto, perché l'email che arriva sembra
+// la prova che il meccanismo funziona.
+//
+// Doppioni: `pmo_assessment_notifications` tiene le chiavi già mandate
+// (`sa:<token>` o `ext:<request_code>`). La migration la riempie con lo storico,
+// così l'accensione non spara all'indietro un'email per ogni scheda mai ricevuta.
 //
 // Invocata da pg_cron (pmo_dispatch_assessment_notify → net.http_post con
 // header x-pmo-routine-secret), stesso schema delle altre routine.
@@ -114,13 +120,18 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
   const coerenza = clean(riga.consistency_status);
   const conoscenzaFatta = !!knowledge && Number(knowledge.total || 0) > 0;
   const conoscenzaPassata = !!knowledge && clean(knowledge.status) === 'pass';
-  const inCoda = clean(riga.staff_status) === 'review' || clean(riga.staff_status) === 'da_controllare';
+  // 🚨 Chi arriva dal link generico non è ancora un socio: la sua scheda passa SEMPRE
+  // dalla segreteria, che deve prima capire chi è. Uno stato staff vuoto vale «si applica
+  // da solo» soltanto sul link personale, dove il socio è già riconosciuto.
+  const daLinkGenerico = clean(riga.__canale) === 'link generico';
+  const inCoda = daLinkGenerico || clean(riga.staff_status) !== '';
 
   const esito = inCoda
     ? 'DA CONTROLLARE — il livello non è stato cambiato'
     : 'Tutto torna — il livello si applica da solo';
 
   const motivi: string[] = [];
+  if (daLinkGenerico) motivi.push('arriva dal link generico: va prima capito se è già in anagrafica');
   if (conoscenzaFatta && !conoscenzaPassata) {
     motivi.push(`test di conoscenza non superato: ${clean(knowledge!.correct)}/${clean(knowledge!.total)} risposte giuste${knowledge!.trap_failed ? ', domanda trappola sbagliata' : ''}`);
   }
@@ -142,7 +153,9 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
   righe.push('DATI');
   righe.push(`  Socio: ${nome}`);
   righe.push(`  Telefono: ${clean(riga.phone) || '-'}`);
+  if (clean(riga.email)) righe.push(`  Email: ${clean(riga.email)}`);
   righe.push(`  Ricevuta: ${clean(riga.submitted_at)}`);
+  righe.push(`  Arrivata da: ${clean(riga.__canale) || '-'}`);
   righe.push(`  Livello dichiarato: ${livelloEsteso(riga.declared_level)}`);
   righe.push(`  Livello calcolato: ${livelloEsteso(riga.calculated_level)}`);
   righe.push(`  Coerenza: ${COERENZA_IN_PAROLE[coerenza] || coerenza || '-'}`);
@@ -200,6 +213,8 @@ ${prova ? `<div style="background:#fff4d6;border:1px solid #e0b400;border-radius
 ${motivi.length ? `<ul style="margin:0 0 16px;color:#555;font-size:14px">${motivi.map((m) => `<li style="margin:4px 0">${escapeHtml(m)}</li>`).join('')}</ul>` : ''}
 <table style="border-collapse:collapse;font-size:14px;margin:0 0 16px">
 <tr><td style="padding:3px 12px 3px 0;color:#777">Telefono</td><td><strong>${escapeHtml(clean(riga.phone) || '-')}</strong></td></tr>
+${clean(riga.email) ? `<tr><td style="padding:3px 12px 3px 0;color:#777">Email</td><td>${escapeHtml(clean(riga.email))}</td></tr>` : ''}
+<tr><td style="padding:3px 12px 3px 0;color:#777">Arrivata da</td><td>${escapeHtml(clean(riga.__canale) || '-')}</td></tr>
 <tr><td style="padding:3px 12px 3px 0;color:#777">Dichiarato</td><td><strong>${escapeHtml(livelloEsteso(riga.declared_level))}</strong></td></tr>
 <tr><td style="padding:3px 12px 3px 0;color:#777">Calcolato</td><td><strong>${escapeHtml(livelloEsteso(riga.calculated_level))}</strong></td></tr>
 <tr><td style="padding:3px 12px 3px 0;color:#777">Coerenza</td><td>${escapeHtml(COERENZA_IN_PAROLE[coerenza] || coerenza || '-')}</td></tr>
@@ -328,24 +343,37 @@ Deno.serve(async (req: Request) => {
 
   try {
     const dal = new Date(Date.now() - FINESTRA_GIORNI * 86400000).toISOString();
-    const { data: righe, error: leggiErr } = await admin
-      .from('self_assessments')
-      .select('token, submitted_at, first_name, last_name, phone, declared_level, calculated_level, consistency_status, staff_status, raw_response')
-      .gte('submitted_at', dal)
-      .order('submitted_at', { ascending: true })
-      .limit(200);
-    if (leggiErr) throw new Error(`SELF_ASSESSMENTS_READ_FAILED: ${leggiErr.message}`);
-    if (!righe?.length) return json({ ok: true, nuove: 0, inviate: 0 });
 
-    const tokens = righe.map((r) => clean(r.token)).filter(Boolean);
+    // Le due porte d'ingresso delle schede. Vengono lette insieme e mescolate per data:
+    // allo staff arrivano nell'ordine in cui i soci le hanno mandate, non a blocchi.
+    const [risultatoSA, risultatoEXT] = await Promise.all([
+      admin.from('self_assessments')
+        .select('token, submitted_at, first_name, last_name, phone, declared_level, calculated_level, consistency_status, staff_status, raw_response')
+        .gte('submitted_at', dal).order('submitted_at', { ascending: true }).limit(200),
+      admin.from('assessment_external_requests')
+        .select('request_code, submitted_at, first_name, last_name, phone, email, declared_level, calculated_level, consistency_status, staff_status, raw_response')
+        .gte('submitted_at', dal).order('submitted_at', { ascending: true }).limit(200),
+    ]);
+    if (risultatoSA.error) throw new Error(`SELF_ASSESSMENTS_READ_FAILED: ${risultatoSA.error.message}`);
+    if (risultatoEXT.error) throw new Error(`EXTERNAL_REQUESTS_READ_FAILED: ${risultatoEXT.error.message}`);
+
+    const righe: JsonMap[] = [
+      ...(risultatoSA.data || []).map((r) => ({ ...r, __chiave: `sa:${clean(r.token)}`, __canale: 'link personale' })),
+      ...(risultatoEXT.data || []).map((r) => ({ ...r, __chiave: `ext:${clean(r.request_code)}`, __canale: 'link generico' })),
+    ]
+      .filter((r) => clean(r.__chiave).length > 3)
+      .sort((a, b) => clean(a.submitted_at).localeCompare(clean(b.submitted_at)));
+    if (!righe.length) return json({ ok: true, nuove: 0, inviate: 0 });
+
+    const chiavi = righe.map((r) => clean(r.__chiave));
     const { data: gia, error: giaErr } = await admin
       .from('pmo_assessment_notifications')
-      .select('token')
-      .in('token', tokens);
+      .select('chiave')
+      .in('chiave', chiavi);
     if (giaErr) throw new Error(`NOTIFICATIONS_READ_FAILED: ${giaErr.message}`);
-    const mandati = new Set((gia || []).map((r) => clean(r.token)));
+    const mandati = new Set((gia || []).map((r) => clean(r.chiave)));
 
-    const daMandare = righe.filter((r) => !mandati.has(clean(r.token)));
+    const daMandare = righe.filter((r) => !mandati.has(clean(r.__chiave)));
     if (!daMandare.length) return json({ ok: true, nuove: 0, inviate: 0 });
 
     // 🚨 Il tetto vale per giro, non per sempre: quelle oltre restano non segnate
@@ -354,20 +382,20 @@ Deno.serve(async (req: Request) => {
     const esiti: JsonMap[] = [];
 
     for (const riga of lotto) {
-      const token = clean(riga.token);
+      const chiave = clean(riga.__chiave);
       try {
-        const { subject, text, html } = corpoEmail(riga as JsonMap, ambiente);
+        const { subject, text, html } = corpoEmail(riga, ambiente);
         const prefisso = ambiente === 'PROD' ? '[Padel Village]' : '[Padel Village TEST]';
         const emailId = await mandaEmail(destinatario, `${prefisso} Autovalutazione — ${subject}`, text, html);
         // Si segna DOPO l'invio riuscito: se Gmail rifiuta, la scheda resta in
         // coda e riparte al giro dopo invece di sparire in silenzio.
         const { error: segnaErr } = await admin
           .from('pmo_assessment_notifications')
-          .insert({ token, email_id: emailId, destinatario });
+          .insert({ chiave, email_id: emailId, destinatario });
         if (segnaErr) throw new Error(`NOTIFICATION_MARK_FAILED: ${segnaErr.message}`);
-        esiti.push({ token, ok: true, emailId });
+        esiti.push({ chiave, ok: true, emailId });
       } catch (err) {
-        esiti.push({ token, ok: false, errore: (err as Error).message });
+        esiti.push({ chiave, ok: false, errore: (err as Error).message });
       }
     }
 
