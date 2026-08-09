@@ -4296,6 +4296,18 @@
     .assessment-public-form-head p { margin:6px 0 0; color:#667085; font-size:13px; }
     .assessment-public-pill { display:inline-flex; align-items:center; white-space:nowrap; border-radius:999px; background:#ebf2ff; color:var(--primary); font-weight:bold; font-size:12px; padding:7px 10px; }
     .assessment-public-identity { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; }
+    /* 🆕🗣️ 9/08/2026, sua decisione guardando la pagina vera: «la scheda deve iniziare con
+       le domande e basta», e il contatto va tolto perché «se vogliono parlarci scrivono sul
+       bot». Nome, cognome, telefono, e-mail e sesso erano già stati tolti da qui: restava
+       questo riquadro, secondo di quattro, fra l'introduzione e le prime domande.
+       🚨 E non conteneva solo il contatto: diceva «la scheda è intestata a» e poi il nome
+       non c'era — dal link personale la pagina gira SENZA anagrafica, quindi mostrava il
+       segnaposto «Socio Padel Village». ⇒ Un riquadro che promette un nome e non lo dice è
+       peggio di un riquadro assente: era la stessa radice della cura dell'email del 9/08,
+       che non sapeva dire CHI fosse il socio.
+       ⚖️ Sparisce in TUTT'E DUE i modi pubblici. Il link generico NON ci perde i suoi campi:
+       quelli vivono in #assessmentPublicExternalDataCard, che è un'altra card e resta. */
+    body.assessment-public-mode .assessment-public-identity { display:none !important; }
     .assessment-public-eyebrow { color:#667085; font-weight:bold; font-size:12px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
     .assessment-public-name { font-size:24px; font-weight:800; color:#17386f; }
     .assessment-public-small { font-size:12px; color:#667085; margin-top:5px; }
@@ -8078,7 +8090,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.199';
+    const APP_VERSION = '6.200';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
