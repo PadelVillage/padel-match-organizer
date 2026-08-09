@@ -19,11 +19,25 @@
 // 🚨 Conseguenza dichiarata, non nascosta: se un domani cambiasse il dominio delle funzioni,
 // PROD smetterebbe di scrivere e lo direbbe ad alta voce. È il verso giusto in cui rompersi.
 //
-// ⚠️ QUESTO FILE HA DUE GEMELLI IDENTICI (`create` · `edit` · `cancel`), e non è una svista: i
+// 🆕💰⭐⭐ 9/08/2026 — L'OTTAVA COPIA: IL BORSELLINO (`matchpoint-wallet-correct`). Deciso da lui,
+// ed era l'ultima funzione di scrittura rimasta fuori dal recinto: le correzioni del borsellino
+// (storno e ricarica, worker `/correct-wallet`) toccavano il gestionale del circolo **da qualunque
+// ambiente**. Il 6/08 era stata lasciata fuori di proposito — quella notte l'ambito erano
+// prenotazioni e anagrafica, e **sui soldi decide lui**.
+// 🚨 E non era teorica: il borsellino era l'unico gesto dell'app di TEST che arrivava fino al
+// denaro **vero**. I pagamenti, in TEST, hanno un ramo di simulazione che il circolo non lo
+// chiama mai; il borsellino non ce l'ha **mai avuto**, e il suo interruttore
+// (`PMO_WALLET_WRITE_ENABLED`) è acceso su tutti e due i rami dell'app.
+//
+// ⚠️ QUESTO FILE VIVE IN OTTO COPIE IDENTICHE — le tre delle prenotazioni (`bookings-create` ·
+// `edit` · `cancel`), le quattro dell'anagrafica (`clients-create` · `update` · `disable` ·
+// `reactivate`) e quella del borsellino (`matchpoint-wallet-correct`) — e non è una svista: i
 // workflow di deploy scelgono le funzioni dalle **cartelle toccate** e saltano tutto ciò che
 // inizia per `_`, quindi un modulo in `_shared/` **non si deployerebbe** — resterebbe la copia
-// vecchia, in silenzio e col semaforo verde. Le tre copie sono tenute uguali **byte per byte** da
+// vecchia, in silenzio e col semaforo verde. Le OTTO copie sono tenute uguali **byte per byte** da
 // `scrittura-al-circolo.test.ts`, che le rilegge dal disco.
+// 📏 Il numero qui sopra è già stato sbagliato: fino a oggi diceva «tre» mentre erano **sette**
+// dal 6/08. Chi ne aggiunge una aggiorni la frase — il banco conta le copie da sé, il commento no.
 
 /** Il progetto Supabase di PRODUZIONE: l'unico da cui si scrive sul gestionale del circolo. */
 export const REF_PROD = 'qqbfphyslczzkxoncgex';

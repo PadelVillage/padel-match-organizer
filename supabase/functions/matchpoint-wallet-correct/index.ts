@@ -1,5 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  CODICE_AMBIENTE_DI_PROVA,
+  MESSAGGIO_AMBIENTE_DI_PROVA,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 // matchpoint-wallet-correct — Fase 2b: corregge il saldo del BORSELLINO (Portafoglio/Monedero)
 // di un cliente su Matchpoint, via worker /correct-wallet ("Correzione del saldo"), in ENTRAMBE
@@ -144,6 +149,21 @@ Deno.serve(async (req: Request) => {
 
   // Inoltra solo l'importo della direzione richiesta (il worker rifiuta se ne arrivano due).
   const amountPayload: JsonMap = wantsRecharge ? { addCents } : { subtractCents };
+
+  // 🔒💰 IL RECINTO — da fuori dalla produzione il borsellino del circolo NON si tocca.
+  // ⚖️ Qui si RIFIUTA e basta, non si registra una prova come fanno le prenotazioni: il
+  // borsellino è denaro, e Matchpoint è il libro mastro **unico** di questo progetto. Registrare
+  // altrove una correzione di prova vorrebbe dire aprire il secondo libro che la regola vieta.
+  // 🚨 Sta QUI, l'ultimo gradino prima di `callWorkerCorrect`: il worker è **uno solo e condiviso**
+  // fra TEST e PROD, quindi «lo provo da test» non è mai stata una prova — è denaro vero.
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    const avrebbe_scritto = {
+      op: wantsRecharge ? 'recharge' : 'storno',
+      idInterno, codice, ...amountPayload,
+    };
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'correct-wallet', avrebbe_scritto }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
+  }
 
   let workerResult: JsonMap;
   try {
