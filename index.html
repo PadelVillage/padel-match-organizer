@@ -7090,7 +7090,12 @@ body.assessment-public-mode .assessment-public-only-card {
                (riga 11 della Tabella 1), e la porta e' chiusa anche lato pagina
                (assessmentPublicShowGenericLinkClosed). Su PROD non l'aveva mai usato nessuno:
                assessment_external_requests = 0 righe, da sempre. -->
-          <div class="assessment-public-form-card assessment-public-staff-panel" data-assessment-public-staff-panel="scheda">
+          <!-- 🚨 NIENTE `data-assessment-public-staff-panel` qui, ed e' voluto: chi ce l'ha
+               finisce sotto `setAssessmentPublicStaffPanel()`, che all'avvio nasconde ogni
+               pannello che non sia quello scelto ('link'). Con l'attributo, questa card
+               nascerebbe `hidden` e non la vedrebbe mai nessuno. La CLASSE invece resta,
+               perche' e' quella che la nasconde nella pagina del socio. -->
+          <div class="assessment-public-form-card assessment-public-staff-panel">
             <div class="assessment-public-form-head">
               <div>
                 <h4>La scheda e' una sola</h4>
