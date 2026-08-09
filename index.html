@@ -8030,7 +8030,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.202';
+    const APP_VERSION = '6.203';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -25059,7 +25059,10 @@ Grazie!`
       }
       const answers = assessmentExternalQuestionData();
       const levelCalc = calculateAssessmentPublicLevel(answers);
-      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // 🆕 9/08: la fascia va passata perché «zero domande» ha DUE significati opposti — la
+      // fascia più bassa che il cancello non ce l'ha (passa), e Semi-Pro/Professionista che il
+      // quiz non ce l'hanno (segreteria). Senza domande pescate non si può dedurre da quelle.
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers, conoscenza.fascia);
       // 🚨 Qui c'era il blocco che diceva «le risposte non sono coerenti con il livello indicato,
       // rivedi il livello o le risposte»: spiegava al furbo ESATTAMENTE come aggiustare il tiro,
       // e lo lasciava ritentare finché non tornava. L'invio ora passa sempre e il messaggio è
@@ -37066,6 +37069,30 @@ Per confermare scrivi ELIMINA.`);
       pick_trap: 1,
       pass_min_correct: 3,     // su 4 pescate
       trap_wrong_fails: true,  // la trappola sbagliata boccia da sola, anche con le altre 3 giuste
+      /* 🆕🗣️⭐⭐ 9/08/2026 — IL CANCELLO NON È UGUALE PER TUTTE LE FASCE (variante «B», sua scelta).
+         Nato da una sua domanda, fatta dopo essere stato bocciato 2/4 dalla fascia più bassa:
+         *«se sono un principiante è facile che io sbagli le trappole… come risolviamo in maniera
+         che se sono principiante o base posso avere un tasso di errore più importante?»*
+
+         ⭐⭐ La ragione che decide la forma, e vale più della tabella: **il cancello esiste per
+         fermare chi si SOPRAVVALUTA.** Chi dichiara Principiante prende 1.5, cioè il minimo
+         della scala: non sta togliendo niente a nessuno. Là il cancello **costa e non rende** —
+         e manda alla porta proprio l'81% dei soci che il test deve far entrare.
+         ⇒ Sotto non si sbarra: si sbarra dove c'è qualcosa da guadagnare mentendo.
+
+         🚨 E la TRAPPOLA ha la stessa asimmetria: smaschera chi dichiara alto e non lo è. Un
+         principiante che crede esista un colpo inventato non sta barando — sta dicendo la
+         verità su di sé, cioè che è principiante. Farlo bocciare da quella è punire l'ignoranza
+         che il livello «Principiante» già dichiara.
+
+         📏 E c'era un difetto di margine, misurato sul caso vero: con 4 domande e soglia 3,
+         **una distrazione sola boccia**, e la pena è 30 giorni d'attesa. */
+      regole_fascia: {
+        // Nessun quiz: si passa dichiarando Principiante. Il livello che se ne ricava è il minimo.
+        Principiante: { cancello: false },
+        // Un minimo di verifica resta, ma con margine e senza che la trappola sbarri da sola.
+        Base: { pass_min_correct: 2, trap_wrong_fails: false }
+      },
       questions: [
         // ── Principiante ────────────────────────────────────────────────────────────────
         { id:'P-01', fascia:'Principiante', trap:false, q:'Quanti giocatori ci sono in campo in una partita di padel?', opts:[
@@ -37246,9 +37273,24 @@ Per confermare scrivi ELIMINA.`);
     }
     // Pesca 3 normali + 1 trappola e mescola sia l'ordine delle domande sia quello delle risposte:
     // rifare il test, o copiarlo da un amico, non serve a nulla.
+    // Le regole di QUESTA fascia: i valori generali, più ciò che la fascia sovrascrive.
+    // ⭐ Una funzione sola invece di leggere la tabella in tre punti: erano tre modi di
+    // dimenticarsi un'eccezione.
+    function assessKnowledgeRegole(fascia) {
+      const B = ASSESS_KNOWLEDGE_BANK;
+      const propria = (B.regole_fascia || {})[assessTxt(fascia)] || {};
+      return {
+        cancello: propria.cancello !== false,
+        pass_min_correct: propria.pass_min_correct != null ? propria.pass_min_correct : B.pass_min_correct,
+        trap_wrong_fails: propria.trap_wrong_fails != null ? propria.trap_wrong_fails : B.trap_wrong_fails
+      };
+    }
     function assessKnowledgePick(fascia) {
       const cleanFascia = assessTxt(fascia);
       if (!cleanFascia) return [];
+      // 🆕 9/08: la fascia più bassa non ha cancello ⇒ non si pesca niente e non si disegna
+      // niente. Vedi il perché sopra la tabella `regole_fascia`.
+      if (!assessKnowledgeRegole(cleanFascia).cancello) return [];
       const pool = ASSESS_KNOWLEDGE_BANK.questions.filter(q => q.fascia === cleanFascia);
       if (!pool.length) return [];
       const normali = assessKnowledgeShuffle(pool.filter(q => !q.trap)).slice(0, ASSESS_KNOWLEDGE_BANK.pick_normal);
@@ -37263,9 +37305,25 @@ Per confermare scrivi ELIMINA.`);
     }
     // Corregge sulla banca, non su quello che arriva dalla pagina: la risposta giusta non passa
     // mai dal modulo. `answers` è { idDomanda: testoScelto }.
-    function assessKnowledgeEvaluate(pickedIds, answers) {
+    function assessKnowledgeEvaluate(pickedIds, answers, fasciaDichiarata) {
       const ids = Array.isArray(pickedIds) ? pickedIds.filter(Boolean) : [];
-      if (!ids.length) return { status: 'skip', correct: 0, total: 0, trap_failed: false, fascia: '', bank_version: ASSESS_KNOWLEDGE_BANK.version, questions: [] };
+      if (!ids.length) {
+        // 🆕🚨⭐⭐ 9/08 — SENZA DOMANDE CI SI ARRIVA IN DUE MODI OPPOSTI, e confonderli
+        // ribalterebbe la regola:
+        //   · la fascia più bassa NON HA cancello ⇒ è passata, e il livello si applica;
+        //   · Semi-Pro e Professionista non hanno quiz perché un quiz non valida una
+        //     seconda categoria ⇒ vanno in segreteria, e `skip` è ciò che li ferma.
+        // ⇒ Serve sapere quale fascia ha dichiarato: senza domande pescate, la fascia non si
+        //   può dedurre da quelle. È il motivo per cui questa funzione ha un terzo argomento.
+        const senzaCancello = !!assessTxt(fasciaDichiarata) && !assessKnowledgeRegole(fasciaDichiarata).cancello;
+        return {
+          status: senzaCancello ? 'pass' : 'skip',
+          senza_cancello: senzaCancello,
+          correct: 0, total: 0, trap_failed: false,
+          fascia: assessTxt(fasciaDichiarata),
+          bank_version: ASSESS_KNOWLEDGE_BANK.version, questions: []
+        };
+      }
       const dettaglio = ids.map(id => {
         const q = ASSESS_KNOWLEDGE_BANK.questions.find(item => item.id === id) || null;
         const risposta = assessTxt((answers || {})[id] || '');
@@ -37282,13 +37340,19 @@ Per confermare scrivi ELIMINA.`);
       });
       const correct = dettaglio.filter(d => d.giusta).length;
       const trapFailed = dettaglio.some(d => d.trap && !d.giusta);
-      const promosso = correct >= ASSESS_KNOWLEDGE_BANK.pass_min_correct && !(ASSESS_KNOWLEDGE_BANK.trap_wrong_fails && trapFailed);
+      // 🆕 9/08: la soglia e il peso della trappola sono di QUESTA fascia, non più uguali per
+      // tutti. La fascia si prende dalle domande pescate (che la portano dentro), e solo in
+      // mancanza da quella dichiarata: le domande sono il fatto, la dichiarazione è un'intenzione.
+      const fascia = dettaglio[0]?.fascia || assessTxt(fasciaDichiarata);
+      const regole = assessKnowledgeRegole(fascia);
+      const promosso = correct >= regole.pass_min_correct && !(regole.trap_wrong_fails && trapFailed);
       return {
         status: promosso ? 'pass' : 'fail',
         correct,
         total: dettaglio.length,
         trap_failed: trapFailed,
-        fascia: dettaglio[0]?.fascia || '',
+        soglia: regole.pass_min_correct,
+        fascia,
         bank_version: ASSESS_KNOWLEDGE_BANK.version,
         questions: dettaglio
       };
@@ -37296,8 +37360,13 @@ Per confermare scrivi ELIMINA.`);
     // Riga per lo staff: «Conoscenza 2/4 · trappola sbagliata · fascia Avanzato». Sulle schede
     // vecchie, che il campo non ce l'hanno, torna stringa vuota e non si stampa nulla.
     function assessKnowledgeRiepilogo(knowledge) {
-      if (!knowledge || !knowledge.total) return '';
+      if (!knowledge) return '';
+      // 🆕 9/08: la fascia senza cancello va DETTA, non lasciata in bianco. Una riga vuota si
+      // legge come «il quiz non c'è stato per un guasto»; qui invece non c'è per regola.
+      if (knowledge.senza_cancello) return `Conoscenza non richiesta · fascia ${knowledge.fascia || 'più bassa'}`;
+      if (!knowledge.total) return '';
       const parti = [`Conoscenza ${knowledge.correct}/${knowledge.total}`];
+      if (knowledge.soglia) parti[0] += ` (ne servivano ${knowledge.soglia})`;
       if (knowledge.trap_failed) parti.push('trappola sbagliata');
       if (knowledge.fascia) parti.push(`fascia ${knowledge.fascia}`);
       return parti.join(' · ');
@@ -37568,7 +37637,10 @@ Per confermare scrivi ELIMINA.`);
       const privacyConsent = !!data.privacyConsent;
       const levelCalc = calculateAssessmentPublicLevel(data);
       const conoscenza = assessmentKnowledgeCollect('assessmentPublicKnowledgeBlock');
-      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // 🆕 9/08: la fascia va passata perché «zero domande» ha DUE significati opposti — la
+      // fascia più bassa che il cancello non ce l'ha (passa), e Semi-Pro/Professionista che il
+      // quiz non ce l'hanno (segreteria). Senza domande pescate non si può dedurre da quelle.
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers, conoscenza.fascia);
       // Chi dice di giocare da poco e intanto si dichiara Intermedio o più: non blocca nulla,
       // ma la scheda la guarda una persona.
       const declaredNum = parseFloat(assessmentPublicParseLevel(data.declaredLevel));

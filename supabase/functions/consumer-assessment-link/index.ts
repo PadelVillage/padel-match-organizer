@@ -196,9 +196,24 @@ Deno.serve(async (req: Request) => {
 
   const separatore = base.includes('?') ? '&' : '?';
 
+  /**
+   * 🆕 9/08 sera — nell'indirizzo va anche il NOME, e non è un ornamento.
+   *
+   * 📏 Misurato sulla prima scheda arrivata davvero dal bot: si è salvata come **«Socio Padel
+   * Village»**, il segnaposto, invece che col nome del socio. La pagina, dal link personale,
+   * gira **senza anagrafica** — non ha modo di sapere chi sei se non glielo dice l'indirizzo:
+   * legge `?nome=` e, in mancanza, ripiega sul segnaposto.
+   * ⇒ Senza questo, ogni scheda che arriva dal bot entra in gestionale **senza nome**. Si
+   * attacca lo stesso alla persona giusta (il gettone sa di chi è), ma chi guarda l'elenco
+   * non lo capisce — ed è il tipo di difetto che nessuno segnala perché non rompe niente.
+   * ⚖️ Resta un'ETICHETTA, non un'identità: chi decide di chi è la scheda è sempre il gettone.
+   */
+  const conNome = (token: string) =>
+    `${base}${separatore}t=${encodeURIComponent(token)}&nome=${encodeURIComponent(nome)}`;
+
   if (esistenti && esistenti.length > 0 && clean(esistenti[0].token)) {
     const token = clean(esistenti[0].token);
-    return ok({ token, url: `${base}${separatore}t=${encodeURIComponent(token)}`, riusato: true });
+    return ok({ token, url: conNome(token), riusato: true });
   }
 
   // 2) Altrimenti se ne fabbrica uno. `token` ha un vincolo di unicità (il gestionale ci fa
@@ -217,7 +232,7 @@ Deno.serve(async (req: Request) => {
       });
 
     if (!erroreInserimento) {
-      return ok({ token, url: `${base}${separatore}t=${encodeURIComponent(token)}`, riusato: false });
+      return ok({ token, url: conNome(token), riusato: false });
     }
     // 23505 = unique_violation: solo in quel caso ha senso ritentare.
     if (clean((erroreInserimento as { code?: string }).code) !== '23505') {
