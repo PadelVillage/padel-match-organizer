@@ -116,7 +116,13 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
   const knowledge = (raw.knowledge || null) as JsonMap | null;
   const answers = (raw.answers || {}) as JsonMap;
 
-  const nome = clean(`${clean(riga.first_name)} ${clean(riga.last_name)}`).trim() || 'Socio senza nome';
+  const nome = clean(`${clean(riga.first_name)} ${clean(riga.last_name)}`).trim()
+    || clean(riga.__nomeDalToken)
+    || 'Socio senza nome';
+  // Il numero: quello della scheda se c'è, altrimenti quello ripescato dall'anagrafica.
+  // Se resta incerto lo si DICE, non lo si indovina.
+  const telefono = clean(riga.phone) || clean(riga.__telefono);
+  const telefonoTesto = telefono || (clean(riga.__telefonoIncerto) ? `da controllare — ${clean(riga.__telefonoIncerto)}` : '-');
   const coerenza = clean(riga.consistency_status);
   const conoscenzaFatta = !!knowledge && Number(knowledge.total || 0) > 0;
   const conoscenzaPassata = !!knowledge && clean(knowledge.status) === 'pass';
@@ -152,8 +158,9 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
   righe.push('');
   righe.push('DATI');
   righe.push(`  Socio: ${nome}`);
-  righe.push(`  Telefono: ${clean(riga.phone) || '-'}`);
+  righe.push(`  Telefono: ${telefonoTesto}`);
   if (clean(riga.email)) righe.push(`  Email: ${clean(riga.email)}`);
+  if (clean(riga.__socioId)) righe.push(`  Scheda in anagrafica: ${clean(riga.__socioNome) || nome} (id ${clean(riga.__socioId)})`);
   righe.push(`  Ricevuta: ${clean(riga.submitted_at)}`);
   righe.push(`  Arrivata da: ${clean(riga.__canale) || '-'}`);
   righe.push(`  Livello dichiarato: ${livelloEsteso(riga.declared_level)}`);
@@ -191,10 +198,17 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
     righe.push(`  ${etichetta}: ${conParola}`);
   });
 
+  // 🚨 Qui c'era scritto «niente: il livello è stato aggiornato da solo e al socio è partita
+  // la conferma». Era FALSO in tutti e due i pezzi, e l'ha scoperto il committente facendo la
+  // prova vera: il livello NON era cambiato (era ancora quello di prima) e al socio non era
+  // partito niente. Il motivo è che oggi il livello lo scrive **il gestionale**, non il server:
+  // l'applicazione «automatica» gira quando qualcuno apre l'app. ⇒ *Un avviso che dichiara
+  // fatto ciò che deve ancora succedere è peggio di un avviso che tace: chi lo legge chiude
+  // la pratica.* Finché l'automatismo non sta su un'edge con cron, qui si dice la verità.
   righe.push('');
   righe.push(inCoda
     ? 'COSA FARE: apri il gestionale, sezione Autovalutazioni, e decidi tu. Il livello del socio è rimasto quello di prima.'
-    : 'COSA FARE: niente. Il livello è stato aggiornato da solo e al socio è partita la conferma.');
+    : 'COSA FARE: la scheda passa tutti i controlli, non c\'è niente da decidere. ⚠️ Il livello NON è ancora cambiato: si applica da solo alla prima apertura del gestionale.');
   righe.push('');
   righe.push(`(avviso automatico del gestionale${ambiente === 'PROD' ? '' : ' — ambiente di prova'}: al socio non è stato detto nulla di questo riepilogo)`);
 
@@ -212,7 +226,8 @@ ${prova ? `<div style="background:#fff4d6;border:1px solid #e0b400;border-radius
 <p style="margin:0 0 16px"><strong style="color:${colore}">${escapeHtml(esito)}</strong></p>
 ${motivi.length ? `<ul style="margin:0 0 16px;color:#555;font-size:14px">${motivi.map((m) => `<li style="margin:4px 0">${escapeHtml(m)}</li>`).join('')}</ul>` : ''}
 <table style="border-collapse:collapse;font-size:14px;margin:0 0 16px">
-<tr><td style="padding:3px 12px 3px 0;color:#777">Telefono</td><td><strong>${escapeHtml(clean(riga.phone) || '-')}</strong></td></tr>
+<tr><td style="padding:3px 12px 3px 0;color:#777">Telefono</td><td><strong>${escapeHtml(telefonoTesto)}</strong></td></tr>
+${clean(riga.__socioId) ? `<tr><td style="padding:3px 12px 3px 0;color:#777">Scheda in anagrafica</td><td>${escapeHtml(clean(riga.__socioNome) || nome)} <span style="color:#888">(id ${escapeHtml(clean(riga.__socioId))})</span></td></tr>` : ''}
 ${clean(riga.email) ? `<tr><td style="padding:3px 12px 3px 0;color:#777">Email</td><td>${escapeHtml(clean(riga.email))}</td></tr>` : ''}
 <tr><td style="padding:3px 12px 3px 0;color:#777">Arrivata da</td><td>${escapeHtml(clean(riga.__canale) || '-')}</td></tr>
 <tr><td style="padding:3px 12px 3px 0;color:#777">Dichiarato</td><td><strong>${escapeHtml(livelloEsteso(riga.declared_level))}</strong></td></tr>
@@ -235,11 +250,87 @@ ${Object.entries(etichette).map(([chiave, etichetta]) => {
 <p style="margin:0 0 6px"><strong>Cosa fare</strong></p>
 <p style="color:#555;font-size:14px;margin:0 0 12px">${inCoda
     ? 'Apri il gestionale, sezione Autovalutazioni, e decidi tu. Il livello del socio è rimasto quello di prima.'
-    : 'Niente. Il livello è stato aggiornato da solo e al socio è partita la conferma.'}</p>
+    : 'La scheda passa tutti i controlli, non c\'è niente da decidere. <strong>⚠️ Il livello non è ancora cambiato</strong>: si applica da solo alla prima apertura del gestionale.'}</p>
 <p style="color:#888;font-size:12px">Avviso automatico del gestionale${ambiente === 'PROD' ? '' : ' — ambiente di prova'}: al socio non è stato detto nulla di questo riepilogo.</p>
 </div>`;
 
   return { subject: titolo, text, html };
+}
+
+// ── Chi è il socio, e come si fa a saperlo ───────────────────────────────────
+// 🚨 LA SCHEDA NON LO SA, e ci è voluta una prova vera per vederlo: dal link PERSONALE
+// la pagina pubblica gira **senza anagrafica** (non c'è nessuno loggato), quindi
+// `self_assessments.phone` resta vuoto e non c'è nessun aggancio al socio. Alla
+// segreteria arrivava un'email con un nome e nient'altro: né numero, né quale scheda
+// dell'anagrafica sia. È la stessa forma della trappola delle DUE tabelle — il dato che
+// manca vive altrove, e l'email che arriva sembra la prova che tutto funziona.
+//
+// Chi lo sa: `assessment_tokens` (stessa chiave, il token) per nome e id del socio, e
+// l'anagrafica (`pmo_cloud_records`) per il numero intero.
+// deno-lint-ignore no-explicit-any
+async function agganciaSocio(admin: any, righe: JsonMap[]): Promise<void> {
+  const daAgganciare = righe.filter((r) => clean(r.__canale) === 'link personale' && clean(r.token));
+  if (!daAgganciare.length) return;
+
+  // ⚠️ Gli errori qui NON si ingoiano. Un'email senza numero che non dice perché è
+  // indistinguibile da un socio che il numero non ce l'ha: la segreteria smette di
+  // cercarlo. Se una lettura fallisce, lo scrive l'email stessa.
+  const { data: tokensRaw, error: erroreTokens } = await admin
+    .from('assessment_tokens')
+    .select('token, member_local_id, member_name, phone_last4')
+    .in('token', daAgganciare.map((r) => clean(r.token)));
+  if (erroreTokens) {
+    daAgganciare.forEach((r) => { r.__telefonoIncerto = `lettura dei token fallita (${clean(erroreTokens.message)})`; });
+    return;
+  }
+  const tokens = (tokensRaw || []) as JsonMap[];
+  if (!tokens.length) return;
+
+  const perToken = new Map<string, JsonMap>(tokens.map((t: JsonMap) => [clean(t.token), t]));
+  const idSoci = [...new Set(tokens.map((t: JsonMap) => clean(t.member_local_id)).filter(Boolean))];
+
+  // L'anagrafica, solo per i soci che servono davvero.
+  const schedePerId = new Map<string, JsonMap[]>();
+  let erroreAnagrafica = '';
+  if (idSoci.length) {
+    const { data: schedeRaw, error: erroreSchede } = await admin
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .in('payload->>id', idSoci);
+    if (erroreSchede) erroreAnagrafica = clean(erroreSchede.message) || 'errore sconosciuto';
+    ((schedeRaw || []) as JsonMap[]).forEach((s: JsonMap) => {
+      const p = (s.payload || {}) as JsonMap;
+      const id = clean(p.id);
+      if (!id) return;
+      schedePerId.set(id, [...(schedePerId.get(id) || []), p]);
+    });
+  }
+
+  for (const riga of daAgganciare) {
+    const t = perToken.get(clean(riga.token));
+    if (!t) continue;
+    riga.__socioId = clean(t.member_local_id);
+    riga.__socioNome = clean(t.member_name);
+    if (!clean(riga.first_name) && !clean(riga.last_name)) riga.__nomeDalToken = clean(t.member_name);
+
+    if (clean(riga.phone)) continue;   // se la scheda il numero ce l'ha, vince lei
+    if (erroreAnagrafica) { riga.__telefonoIncerto = `lettura anagrafica fallita (${erroreAnagrafica})`; continue; }
+
+    // ⚠️ Un id può avere PIÙ righe in anagrafica: i doppioni sono un problema noto di
+    // questo circolo. Si sceglie **solo** se le ultime 4 cifre registrate col token
+    // indicano UNA riga sola. Un numero sbagliato è peggio di nessun numero: nel dubbio
+    // si dichiara l'incertezza e la segreteria guarda.
+    const candidate = schedePerId.get(clean(t.member_local_id)) || [];
+    const ultime4 = clean(t.phone_last4);
+    const numeri = [...new Set(candidate.map((p) => clean(p.phone)).filter(Boolean))];
+    const combacia = ultime4 ? numeri.filter((n) => n.replace(/\D/g, '').endsWith(ultime4)) : numeri;
+
+    if (combacia.length === 1) riga.__telefono = combacia[0];
+    else if (numeri.length === 1) riga.__telefono = numeri[0];
+    else if (numeri.length > 1) riga.__telefonoIncerto = `${numeri.length} numeri diversi in anagrafica per questo socio${ultime4 ? ` (finisce per ${ultime4})` : ''}`;
+    else if (ultime4) riga.__telefonoIncerto = `non trovato in anagrafica (finisce per ${ultime4})`;
+  }
 }
 
 async function getGmailAccessToken(): Promise<string> {
@@ -379,6 +470,10 @@ Deno.serve(async (req: Request) => {
     // 🚨 Il tetto vale per giro, non per sempre: quelle oltre restano non segnate
     // e partono al giro dopo. Meglio in ritardo che 200 email in un colpo.
     const lotto = daMandare.slice(0, MASSIMO_PER_GIRO);
+    // Si aggancia il socio solo a quelle che partono davvero, non a tutte quelle lette.
+    // Se l'aggancio fallisce l'email parte lo stesso, con quello che c'è: meglio un avviso
+    // incompleto che nessun avviso.
+    try { await agganciaSocio(admin, lotto); } catch (_) { /* non blocca l'invio */ }
     const esiti: JsonMap[] = [];
 
     for (const riga of lotto) {

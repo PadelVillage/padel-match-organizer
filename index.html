@@ -835,8 +835,16 @@
     body.sidebar-collapsed .main-content { margin-left:0; }
     .tabs { display:none; }
 
+    /* 🚨 La barra dei CAPITOLI va tenuta in questo elenco. È nata dopo (v5.762+) e nessuno
+       ce l'ha aggiunta: un socio che apriva l'autovalutazione DA COMPUTER si vedeva il menu
+       del gestionale — Calendario, Anagrafica soci, Incassi, Amministrazione — e ci poteva
+       cliccare dentro. Non si vedeva dal telefono perché la barra compare solo da 900px in
+       su, ed è per questo che è passata inosservata: le prove si fanno sul telefono.
+       ⇒ Chi aggiunge un elemento di navigazione lo aggiunge ANCHE qui. */
     body.assessment-public-mode .side-nav,
     body.assessment-public-mode .top-nav-bar,
+    body.assessment-public-mode .pmo-chapter-bar,
+    body.assessment-public-mode .pmo-chapter-dropdown,
     body.assessment-public-mode .tabs { display:none !important; }
     body.assessment-public-mode .app-shell { display:block; min-height:100vh; }
     body.assessment-public-mode .main-content { margin-left:0 !important; width:100%; }
@@ -4379,8 +4387,12 @@ body.assessment-public-mode .assessment-public-only-card {
 
 
     /* PUBLIC_ASSESSMENT_STRUCTURAL_FIX_START */
+    /* ⚠️ Questo elenco è il GEMELLO di quello più in alto: vanno tenuti uguali, altrimenti
+       basta che vinca l'altro e il menu ricompare. Vedi lì il perché della barra capitoli. */
     body.assessment-public-mode .side-nav,
     body.assessment-public-mode .top-nav-bar,
+    body.assessment-public-mode .pmo-chapter-bar,
+    body.assessment-public-mode .pmo-chapter-dropdown,
     body.assessment-public-mode .tabs {
       display: none !important;
     }
@@ -8109,7 +8121,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.198';
+    const APP_VERSION = '6.199';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
