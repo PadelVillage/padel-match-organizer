@@ -49,17 +49,25 @@ function uguale(visto, atteso, che) {
   if (a !== b) throw new Error(`${che}: visto ${a}, atteso ${b}`);
 }
 // Risponde a un elenco di domande pescate. `giuste` = quante indovinarne; `sbagliaTrappola`
-// forza l'errore sulla trappola anche quando tutto il resto è giusto.
+// decide a parte la sorte della trappola.
+//
+// 🚨 Gli errori si mettono SOLO sulle domande normali, mai sulla trappola per caso: la pesca
+// mescola l'ordine, quindi «sbaglia l'ultima» a volte colpiva la trappola e la stessa prova
+// usciva verde o rossa a seconda del sorteggio. Un banco che non torna sempre uguale non dice
+// niente su quello che sta provando.
 function rispondi(pescate, { giuste = 99, sbagliaTrappola = false } = {}) {
   const risposte = {};
-  let date = 0;
+  const normaliDaSbagliare = Math.max(0, pescate.length - giuste - (sbagliaTrappola ? 1 : 0));
+  let sbagliate = 0;
   for (const p of pescate) {
     const q = A.ASSESS_KNOWLEDGE_BANK.questions.find(x => x.id === p.id);
     const esatta = q.opts[q.correct];
     const errata = p.opts.find(o => o !== esatta);
-    const deveSbagliare = (p.trap && sbagliaTrappola) || date >= giuste;
+    let deveSbagliare;
+    if (p.trap) deveSbagliare = sbagliaTrappola;
+    else if (sbagliate < normaliDaSbagliare) { deveSbagliare = true; sbagliate++; }
+    else deveSbagliare = false;
     risposte[p.id] = deveSbagliare ? errata : esatta;
-    if (!deveSbagliare) date++;
   }
   return risposte;
 }
