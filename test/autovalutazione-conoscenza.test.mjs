@@ -183,11 +183,80 @@ prova('si corregge sulla banca, non su quello che arriva dalla pagina', () => {
 });
 
 prova('spazi e maiuscole non cambiano l\'esito', () => {
-  const pescate = A.assessKnowledgePick('Principiante');
+  // ⚠️ Fascia con IL CANCELLO, e dal 9/08 non è più un dettaglio: pescava da «Principiante»,
+  // che il quiz non ce l'ha più ⇒ zero domande, esito «skip», e questo caso è diventato rosso
+  // misurando una cosa che non era la sua. Qui si prova la normalizzazione, non la soglia.
+  const pescate = A.assessKnowledgePick('Intermedio');
   const risposte = rispondi(pescate);
   const storte = {};
   Object.entries(risposte).forEach(([id, testo]) => { storte[id] = `  ${testo.toUpperCase()}  `; });
-  uguale(A.assessKnowledgeEvaluate(pescate.map(p => p.id), storte).status, 'pass', 'esito');
+  uguale(A.assessKnowledgeEvaluate(pescate.map(p => p.id), storte, 'Intermedio').status, 'pass', 'esito');
+});
+
+// ── 🆕 9/08: il cancello NON è uguale per tutte le fasce (variante «B», sua scelta) ────────
+prova('Principiante: nessun cancello, e si passa', () => {
+  uguale(A.assessKnowledgePick('Principiante').length, 0, 'domande pescate');
+  const esito = A.assessKnowledgeEvaluate([], {}, 'Principiante');
+  uguale(esito.status, 'pass', 'esito');
+  uguale(esito.senza_cancello, true, 'marchio «senza cancello»');
+});
+
+prova('🚨 zero domande NON vuol dire la stessa cosa per Semi-Pro', () => {
+  // È la prova che tiene separati i due modi di arrivare senza domande. Se un domani
+  // qualcuno facesse tornare «pass» anche qui, una seconda categoria si darebbe il livello
+  // da sola senza che nessuno la guardi.
+  uguale(A.assessKnowledgeEvaluate([], {}, 'Semi-Pro').status, 'skip', 'esito Semi-Pro');
+  uguale(A.assessKnowledgeEvaluate([], {}, '').status, 'skip', 'esito senza fascia');
+});
+
+prova('Base: due giuste su quattro bastano', () => {
+  const pescate = A.assessKnowledgePick('Base');
+  uguale(pescate.length, 4, 'domande pescate');
+  const ids = pescate.map(p => p.id);
+  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 2 }), 'Base').status, 'pass', 'due giuste');
+  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 1 }), 'Base').status, 'fail', 'una giusta');
+});
+
+prova('🚨 Base: la trappola sbagliata NON boccia da sola', () => {
+  // La trappola smaschera chi si sopravvaluta. Chi dichiara Base e crede a un colpo
+  // inventato sta dicendo la verità su di sé, non barando: non è quello il muro.
+  const pescate = A.assessKnowledgePick('Base');
+  const esito = A.assessKnowledgeEvaluate(
+    pescate.map(p => p.id), rispondi(pescate, { giuste: 2, sbagliaTrappola: true }), 'Base');
+  uguale(esito.trap_failed, true, 'la trappola risulta sbagliata');
+  uguale(esito.status, 'pass', 'ma non boccia');
+});
+
+prova('🚨 in alto NON è cambiato niente: la trappola boccia ancora da sola', () => {
+  const pescate = A.assessKnowledgePick('Avanzato');
+  const esito = A.assessKnowledgeEvaluate(
+    pescate.map(p => p.id), rispondi(pescate, { sbagliaTrappola: true }), 'Avanzato');
+  uguale(esito.status, 'fail', 'Avanzato con trappola sbagliata');
+  uguale(A.assessKnowledgeEvaluate(
+    pescate.map(p => p.id), rispondi(pescate, { giuste: 2 }), 'Avanzato').status, 'fail', 'Avanzato con 2/4');
+});
+
+prova('🆕 la banca regge TRE tentativi: 8 normali + 3 trappole per fascia interrogabile', () => {
+  // 🗣️ Plafond deciso da lui il 9/08: «hai pensato a un plafond di trenta, magari puoi
+  // allargare a cinquanta» — perché con la regola dei tre tentativi uno potrebbe segnarsi le
+  // domande, ed è difficile segnarsele tutte.
+  // ⛔ Principiante è fuori di proposito: da quella fascia il quiz non si pesca più.
+  const B = A.ASSESS_KNOWLEDGE_BANK;
+  const interrogabili = ['Base', 'Intermedio', 'Avanzato', 'Agonista'];
+  for (const fascia of interrogabili) {
+    const pool = B.questions.filter(q => q.fascia === fascia);
+    const normali = pool.filter(q => !q.trap).length;
+    const trappole = pool.filter(q => q.trap).length;
+    if (normali < 8) throw new Error(`${fascia}: solo ${normali} domande normali, ne servono 8`);
+    if (trappole < 3) throw new Error(`${fascia}: solo ${trappole} trappole, ne servono 3`);
+  }
+  if (B.questions.length < 50) throw new Error(`banca scesa a ${B.questions.length}: il plafond è 50`);
+});
+
+prova('lo staff legge che il cancello non era richiesto', () => {
+  const riga = A.assessKnowledgeRiepilogo(A.assessKnowledgeEvaluate([], {}, 'Principiante'));
+  if (!riga.includes('non richiesta')) throw new Error(`riepilogo inatteso: ${riga}`);
+  if (!riga.includes('Principiante')) throw new Error(`manca la fascia: ${riga}`);
 });
 
 // ── Quello che vede lo staff ──────────────────────────────────────────────────────
