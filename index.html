@@ -24707,15 +24707,20 @@ Grazie!`
      * quando l'ho scritta», la scheda vera risponde a «com'è adesso» — ed è l'unica
      * domanda che serve a chi la guarda prima di mandarla a un socio.
      *
-     * Usa lo STESSO indirizzo che l'app mette nei link personali (`getAssessmentPublicBaseUrl`),
-     * quindi in TEST apre la scheda di TEST e in PROD quella di PROD senza saperlo qui:
-     * un secondo posto che decide l'indirizzo sarebbe la trappola di prima in miniatura.
+     * Apre la scheda sull'ORIGINE da cui gira l'app (`PMO_PUBLIC_BASE_URL`), non
+     * sull'indirizzo dei link personali (`getAssessmentPublicBaseUrl`). 📏 Misurato il 9/08,
+     * ed e' il motivo: su TEST quel predefinito e' `test.padelvillage.club/autovalutazione.html`,
+     * che **non esiste** (404) — il dominio di TEST serve solo `index.html`. Un bottone che
+     * porta a una pagina morta e' peggio di nessun bottone.
+     * ⚖️ E qui non serve l'indirizzo "da mandare": serve la scheda **com'e' adesso**. La
+     * radice dell'origine la serve in tutt'e due gli ambienti e non puo' mancare, perche' e'
+     * la stessa da cui questa pagina e' stata scaricata.
      * Il gettone `anteprima` non esiste in archivio ⇒ la pagina parte in DEMO e non salva niente.
      */
     function assessmentPublicOpenRealCard() {
       let base = '';
-      try { base = getAssessmentPublicBaseUrl(); } catch (err) { base = ''; }
-      if (!base) { alert('Non riesco a comporre l\'indirizzo della scheda.'); return; }
+      try { base = String(PMO_PUBLIC_BASE_URL || '').trim(); } catch (err) { base = ''; }
+      if (!base) base = `${window.location.origin}/`;
       const separatore = base.includes('?') ? '&' : '?';
       window.open(`${base}${separatore}t=anteprima`, '_blank', 'noopener');
     }
