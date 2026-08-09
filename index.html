@@ -7072,141 +7072,38 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
         <div id="anchor-assessment-scheda" class="assessment-email-panel assessment-flow-card archive assessment-public-only-card" data-assessment-email-panel="public">
-          <div class="assessment-public-subtabs" aria-label="Sottosezioni scheda pubblica">
-            <button type="button" class="assessment-public-subtab active" data-assessment-public-subtab="link" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('link')">Link esterno</button>
-            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="registration" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Registrazione utente</button>
-            <button type="button" class="assessment-public-subtab" data-assessment-public-subtab="questions" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('questions')">Form autovalutazione</button>
-          </div>
-
-          <div id="assessmentExternalLinkPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="link">
-            <div class="assessment-external-link-head">
+          <!-- 🆕🗣️⭐⭐ 9/08/2026 — UNA SCHEDA SOLA, sua richiesta: «facciamo si' che la trappola
+               delle due schede non esista piu' e ci sia una scheda sola».
+               Qui stavano TRE sottosezioni che rifacevano a mano la scheda del socio: il link
+               generico da copiare, un finto modulo di registrazione e — la peggiore — una copia
+               delle 8 domande RISCRITTE NELL'HTML.
+               🚨 Non erano un'anteprima: erano una seconda verita' che invecchiava da sola. La
+               copia diceva ancora «lo staff verifichera' il livello», cosa che il disegno
+               automatico ha abolito, e mostrava il riquadro in cima gia' tolto dalla scheda vera
+               il 9/08 (v6.200/6.201). Chi guardava di qui vedeva la scheda di mesi fa e la
+               credeva quella di adesso.
+               ⇒ Adesso la scheda e' UNA: quella che riceve il socio. Da qui la si APRE, non la si
+               ridisegna. Un'anteprima che si puo' scostare dal prodotto non e' un'anteprima.
+               🚨 E il link GENERICO non si distribuisce piu' da qui: sua decisione del 9/08
+               (riga 11 della Tabella 1), e la porta e' chiusa anche lato pagina
+               (assessmentPublicShowGenericLinkClosed). Su PROD non l'aveva mai usato nessuno:
+               assessment_external_requests = 0 righe, da sempre. -->
+          <!-- 🚨 NIENTE `data-assessment-public-staff-panel` qui, ed e' voluto: chi ce l'ha
+               finisce sotto `setAssessmentPublicStaffPanel()`, che all'avvio nasconde ogni
+               pannello che non sia quello scelto ('link'). Con l'attributo, questa card
+               nascerebbe `hidden` e non la vedrebbe mai nessuno. La CLASSE invece resta,
+               perche' e' quella che la nasconde nella pagina del socio. -->
+          <div class="assessment-public-form-card assessment-public-staff-panel">
+            <div class="assessment-public-form-head">
               <div>
-                <h4>Link esterno</h4>
-                <p>Da copiare e condividere quando serve.</p>
-              </div>
-              <span id="assessmentExternalLinkStatus" class="assessment-external-status">Pronto</span>
-            </div>
-
-            <div class="assessment-external-link-row">
-              <input id="assessmentExternalLinkInput" class="assessment-external-link-input" readonly aria-label="Link esterno Autovalutazione">
-              <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalCopyLink('external')">Copia link</button>
-            </div>
-
-            <div class="assessment-external-chat-preview" aria-label="Anteprima link in chat">
-              <div class="assessment-external-chat-bubble" role="button" tabindex="0" onclick="setActionAnchor(this); assessmentExternalOpenRegistrationPreview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); assessmentExternalOpenRegistrationPreview();}">
-                <div class="assessment-external-chat-card">
-                  <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                  <div>
-                    <strong>Autovalutazione Livello di Gioco</strong>
-                    <span>app.padelvillage.club</span>
-                  </div>
-                </div>
-                <span class="assessment-external-chat-url">https://app.padelvillage.club/autovalutazione.html?assessment=link-esterno</span>
+                <h4>La scheda è una sola</h4>
+                <p>Quella che il socio riceve dal suo link personale. Qui non c'è una copia: si apre quella vera.</p>
               </div>
             </div>
-          </div>
-
-          <div id="assessmentExternalRegistrationPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="registration" hidden>
-            <div class="assessment-external-phone">
-              <div class="assessment-external-phone-top"></div>
-              <div class="assessment-external-phone-body">
-              <div class="assessment-external-brand">
-                <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                <strong>Autovalutazione Livello di Gioco</strong>
-                <span>Completa i dati e accetta la Privacy Policy.</span>
-              </div>
-              <div class="assessment-external-preview">
-              <div class="assessment-external-field">
-                <label>Nome</label>
-                <input id="assessmentExternalFirstNameInput" value="">
-              </div>
-              <div class="assessment-external-field">
-                <label>Cognome</label>
-                <input id="assessmentExternalLastNameInput" value="">
-              </div>
-              <div class="assessment-external-field">
-                <label>Telefono</label>
-                <input id="assessmentExternalPhoneInput" value="333 1234567" inputmode="tel">
-              </div>
-              <div class="assessment-external-field">
-                <label>Email</label>
-                <input id="assessmentExternalEmailInput" value="" type="email">
-              </div>
-              <div class="assessment-external-field">
-                <label>Sesso</label>
-                <select id="assessmentExternalSexSelect" onchange="assessmentExternalRefreshStaffPreview()">
-                  <option value="M" selected>Maschio</option>
-                  <option value="F">Femmina</option>
-                  <option value="NA">Preferisco non indicarlo</option>
-                </select>
-              </div>
-              <div id="assessmentExternalStaffPreview" class="assessment-external-policy assessment-external-full assessment-external-staff-preview">
-                <strong>Origine: Da link esterno</strong>
-                <div class="assessment-external-staff-preview-row">
-                  <span id="assessmentExternalStaffSex" class="badge badge-success">Maschio</span>
-                  <span id="assessmentExternalStaffState" class="badge badge-success">Da validare</span>
-                </div>
-              </div>
-              <label class="assessment-external-check assessment-external-full">
-                <input type="checkbox" id="assessmentExternalPrivacyCheck">
-                <span>Ho letto l’informativa privacy e autorizzo il trattamento dei dati per registrazione, autovalutazione e gestione delle attività sportive.</span>
-              </label>
-              <div class="assessment-public-actions assessment-external-full">
-                <button id="assessmentExternalPrivacyToggle" type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentExternalTogglePrivacyPolicy()">Leggi Privacy Policy</button>
-                <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalProceedToQuestions()">Procedi con l'autovalutazione</button>
-              </div>
-              <div id="assessmentExternalPrivacyPanel" class="assessment-external-policy assessment-external-full" hidden>
-                <strong>Privacy Policy Padel Village</strong>
-                <p>Useremo i dati che inserisci in questo modulo per creare o aggiornare la tua scheda giocatore Padel Village e per gestire la tua autovalutazione del livello di gioco.</p>
-                <p>Ti chiediamo nome, cognome, numero di telefono, email, sesso e risposte sull'autovalutazione perche ci servono per riconoscerti correttamente, evitare doppioni, gestire la tua scheda e organizzare meglio le attivita' del circolo.</p>
-                <p>Potremo inoltre registrare che la richiesta arriva da link esterno e conservare lo storico delle autovalutazioni inviate, cosi lo staff puo seguire correttamente il processo.</p>
-                <p>I tuoi dati saranno usati per finalita' legate ai servizi Padel Village, alla gestione della tua scheda, all'autovalutazione del livello e all'organizzazione delle attivita' sportive e sociali del circolo.</p>
-                <p>Per aiutare Padel Village a organizzare attivita' ed eventi, il tuo nome e cognome potranno essere mostrati ad altri utenti della piattaforma quando utile alla gestione delle iniziative del circolo.</p>
-                <p>A titolo di esempio, questo puo avvenire per partite, tornei, stage, lezioni, campionati a squadre e altre attivita' sportive o sociali organizzate da Padel Village. L'elenco e' solo esemplificativo e non limita le possibili iniziative del circolo.</p>
-                <p>Il tuo numero di telefono e la tua email non saranno mostrati agli altri utenti della piattaforma.</p>
-                <p>I tuoi dati non saranno venduti a terzi. Potranno essere consultati dallo staff autorizzato di Padel Village e dai fornitori tecnici che ci aiutano a gestire la piattaforma e i sistemi collegati.</p>
-                <p>I dati saranno conservati per il tempo necessario alla gestione della tua scheda giocatore, delle attivita' del circolo e degli eventuali obblighi amministrativi o organizzativi.</p>
-                <p>Puoi chiederci informazioni sui tuoi dati, la correzione o la cancellazione quando possibile scrivendo a: info@padelvillage.club.</p>
-                <p>Per continuare devi confermare di aver letto questa informativa e autorizzare Padel Village a usare i tuoi dati per registrazione, scheda giocatore, autovalutazione e organizzazione delle attivita' del circolo.</p>
-              </div>
-              <div id="assessmentExternalRegistrationMessage" class="assessment-external-message assessment-external-full" role="status"></div>
-              </div>
-              </div>
+            <div class="assessment-public-actions">
+              <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentPublicOpenRealCard()">Apri la scheda come la vede il socio</button>
             </div>
-          </div>
-
-          <div id="assessmentExternalQuestionsPanel" class="assessment-public-form-card assessment-external-link-panel assessment-public-staff-panel" data-assessment-public-staff-panel="questions" hidden>
-            <div class="assessment-external-phone">
-              <div class="assessment-external-phone-top"></div>
-              <div class="assessment-external-phone-body">
-                <div class="assessment-external-brand">
-                  <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">
-                  <strong>Autovalutazione Livello di Gioco</strong>
-                  <span>Rispondi alle domande sul tuo gioco.</span>
-                </div>
-                <div id="assessmentExternalQuestionForm">
-                  <div class="assessment-public-question"><div class="q-title">1. Da quanto giochi a padel? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQExperience" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Meno di 1 mese</option><option>1-3 mesi</option><option>3-6 mesi</option><option>6-12 mesi</option><option>Più di 1 anno</option><option>Più di 3 anni</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">2. Quante volte giochi mediamente al mese? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQFrequency" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>0-1</option><option>2-3</option><option>4-6</option><option>7-10</option><option>Più di 10</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">3. Che livello pensi di avere? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQDeclaredLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">4. Con quali giocatori fai partite equilibrate? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQBalancedLevel" data-assessment-external-question data-pmo-livelli><option value="" selected disabled>Seleziona</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">5. Riesci a mantenere lo scambio? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQRally" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Faccio fatica a tenere 3-4 colpi</option><option>Tengo lo scambio solo a ritmo lento</option><option>Tengo scambi regolari con continuità</option><option>Tengo scambi anche con ritmo alto</option><option>Costruisco il punto con controllo</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">6. Come gestisci il vetro in difesa? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQGlass" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Evito quasi sempre il vetro</option><option>Lo uso solo se la palla è facile</option><option>Difendo con il vetro in modo base</option><option>Lo uso con continuità anche sotto pressione</option><option>Lo uso per difendere e ripartire in attacco</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">7. A rete come ti comporti? <span class="assessment-public-required">*</span></div><select id="assessmentExternalQNet" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Sto poco a rete</option><option>Vado a rete ma faccio fatica a chiudere</option><option>Gioco volée semplici</option><option>Tengo posizione e controllo le volée</option><option>Costruisco e chiudo il punto a rete</option></select></div>
-                  <div class="assessment-public-question"><div class="q-title">8. Bandeja / vibora / smash <span class="assessment-public-required">*</span></div><select id="assessmentExternalQOverhead" data-assessment-external-question><option value="" selected disabled>Seleziona</option><option>Non li uso</option><option>Li provo ma con poca sicurezza</option><option>Uso almeno la bandeja in modo semplice</option><option>Uso bandeja e smash con controllo</option><option>Uso colpi alti in modo tattico e affidabile</option></select></div>
-                  <div id="assessmentExternalKnowledgeBlock" class="assessment-public-knowledge" hidden></div>
-                  <div id="assessmentExternalQuestionMessage" class="assessment-external-message" role="status"></div>
-                  <div class="assessment-public-actions">
-                    <button type="button" class="btn-secondary small-btn" onclick="setActionAnchor(this); setAssessmentPublicStaffPanel('registration')">Indietro</button>
-                    <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalSubmitStaffAssessment()">Invia autovalutazione</button>
-                  </div>
-                </div>
-                <div id="assessmentExternalCompletion" class="assessment-external-final" hidden>
-                  <strong>Autovalutazione inviata</strong>
-                  <span>Lo staff verifichera' il livello indicato e ti inviera' una mail di conferma con il livello impostato.</span>
-                  <button type="button" class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentExternalOpenHistory()">Vedi storico</button>
-                </div>
-              </div>
-            </div>
+            <p class="assessment-public-small">Si apre in una finestra nuova, in prova: le risposte non vengono salvate.</p>
           </div>
 
           <div id="assessmentPublicLivePreview" class="assessment-public-real-form-panel">
@@ -8090,7 +7987,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.200';
+    const APP_VERSION = '6.204';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -24527,6 +24424,31 @@ Grazie!`
     function getAssessmentExternalTestBaseUrl() {
       return `${PMO_PROD_PUBLIC_BASE_URL}test/autovalutazione.html`;
     }
+    /**
+     * 🆕🗣️ 9/08/2026 — apre LA scheda vera, invece di ridisegnarla nel gestionale.
+     *
+     * Sostituisce le tre sottosezioni che ne facevano una copia a mano (vedi il commento
+     * dove stavano). ⭐⭐ La differenza non è di comodità: una copia risponde a «com'era
+     * quando l'ho scritta», la scheda vera risponde a «com'è adesso» — ed è l'unica
+     * domanda che serve a chi la guarda prima di mandarla a un socio.
+     *
+     * Apre la scheda sull'ORIGINE da cui gira l'app (`PMO_PUBLIC_BASE_URL`), non
+     * sull'indirizzo dei link personali (`getAssessmentPublicBaseUrl`). 📏 Misurato il 9/08,
+     * ed e' il motivo: su TEST quel predefinito e' `test.padelvillage.club/autovalutazione.html`,
+     * che **non esiste** (404) — il dominio di TEST serve solo `index.html`. Un bottone che
+     * porta a una pagina morta e' peggio di nessun bottone.
+     * ⚖️ E qui non serve l'indirizzo "da mandare": serve la scheda **com'e' adesso**. La
+     * radice dell'origine la serve in tutt'e due gli ambienti e non puo' mancare, perche' e'
+     * la stessa da cui questa pagina e' stata scaricata.
+     * Il gettone `anteprima` non esiste in archivio ⇒ la pagina parte in DEMO e non salva niente.
+     */
+    function assessmentPublicOpenRealCard() {
+      let base = '';
+      try { base = String(PMO_PUBLIC_BASE_URL || '').trim(); } catch (err) { base = ''; }
+      if (!base) base = `${window.location.origin}/`;
+      const separatore = base.includes('?') ? '&' : '?';
+      window.open(`${base}${separatore}t=anteprima`, '_blank', 'noopener');
+    }
     function getAssessmentLink(token, memberOrId=null) {
       const rawBase = getAssessmentPublicBaseUrl();
       let rec = Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token || '')) || null;
@@ -24862,7 +24784,10 @@ Grazie!`
       }
       const answers = assessmentExternalQuestionData();
       const levelCalc = calculateAssessmentPublicLevel(answers);
-      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // 🆕 9/08: la fascia va passata perché «zero domande» ha DUE significati opposti — la
+      // fascia più bassa che il cancello non ce l'ha (passa), e Semi-Pro/Professionista che il
+      // quiz non ce l'hanno (segreteria). Senza domande pescate non si può dedurre da quelle.
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers, conoscenza.fascia);
       // 🚨 Qui c'era il blocco che diceva «le risposte non sono coerenti con il livello indicato,
       // rivedi il livello o le risposte»: spiegava al furbo ESATTAMENTE come aggiustare il tiro,
       // e lo lasciava ritentare finché non tornava. L'invio ora passa sempre e il messaggio è
@@ -36677,6 +36602,37 @@ Per confermare scrivi ELIMINA.`);
     }
 
 
+    /**
+     * 🆕 9/08/2026 — cosa vede chi arriva col vecchio link generico.
+     *
+     * ⚖️ Non una pagina d'errore: chi ci arriva non ha sbagliato niente, ha in mano un
+     * indirizzo che gli abbiamo dato noi. Quindi si dice **cos'è cambiato** e **come si va
+     * avanti**, senza vicolo cieco — la stessa regola dei messaggi del bot.
+     * ⭐ Si scrive dentro `#assessmentPublicLivePreview` invece di aggiungere una card altrove:
+     * quel contenitore è già l'unico che si vede in modalità pubblica, quindi il socio vede
+     * questo e nient'altro. Nessun pezzo del modulo può restare acceso sotto.
+     */
+    function assessmentPublicShowGenericLinkClosed() {
+      const panel = document.getElementById('assessmentPublicLivePreview');
+      if (!panel) return;
+      panel.innerHTML = [
+        '<div class="assessment-public-form-card assessment-public-form-head">',
+        '  <div class="assessment-public-head-brand">',
+        '    <img class="assessment-public-logo" src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village">',
+        '    <div>',
+        '      <h4>Autovalutazione Livello di Gioco</h4>',
+        '      <p>Questo indirizzo non è più attivo.</p>',
+        '    </div>',
+        '  </div>',
+        '</div>',
+        '<div class="assessment-public-form-card">',
+        '  <p>Il test del livello si fa dal <strong>link personale</strong>: quello che ti arriva',
+        '  per e-mail o dal bot Telegram del circolo. È personale perché ti riconosce, così non',
+        '  devi reinserire i tuoi dati.</p>',
+        '  <p class="assessment-public-small">Se non ce l\'hai, chiedilo alla segreteria del Padel Village.</p>',
+        '</div>',
+      ].join('\n');
+    }
     function handleAssessmentPublicDeepLink() {
       let params;
       try {
@@ -36689,6 +36645,24 @@ Per confermare scrivi ELIMINA.`);
       if (!token && !isExternal) return false;
 
       document.body.classList.add('assessment-public-mode');
+
+      // 🆕🚨⭐⭐ 9/08/2026 — LA PORTA DEL LINK GENERICO È CHIUSA, ed è QUI che si chiude.
+      //
+      // Sua decisione del 9/08 (riga 11 della Tabella 1): il link generico
+      // `?assessment=link-esterno` **non deve più esistere**. Chiuderlo qui — prima che si
+      // componga il modulo — è ciò che fa esistere **una scheda sola**: finché quel modulo si
+      // apriva, ogni cura andava fatta due volte e la seconda si dimenticava.
+      // 📏 Non si perde niente di vivo: su PROD `assessment_external_requests` ha **0 righe**,
+      // da sempre. Il link generico non ha mai portato una scheda in due anni.
+      // ⚖️ Non è un `return false`: quello riconsegnerebbe la pagina all'app dello staff e il
+      // socio finirebbe sulla schermata di accesso del gestionale. Si resta in modalità
+      // pubblica e si dice una cosa sola, con la strada per andare avanti.
+      // 🚨 Con un gettone in mano si passa di qui SENZA fermarsi (`!token`): un indirizzo che
+      // porta tutt'e due i parametri è un link personale, e vale il personale.
+      if (isExternal && !token) {
+        assessmentPublicShowGenericLinkClosed();
+        return true;
+      }
 	let rec = token ? (Object.values(assessmentTokens || {}).find(r => normalizeText(r?.token || '') === normalizeText(token)) || null) : null;
       let member = rec ? giocatori.find(g => String(g.id) === String(rec.memberId) || String(g.memberId) === String(rec.memberId)) : null;
       if (!member && isExternal) member = assessmentPublicExternalMemberFromParams(params);
@@ -36820,6 +36794,30 @@ Per confermare scrivi ELIMINA.`);
       pick_trap: 1,
       pass_min_correct: 3,     // su 4 pescate
       trap_wrong_fails: true,  // la trappola sbagliata boccia da sola, anche con le altre 3 giuste
+      /* 🆕🗣️⭐⭐ 9/08/2026 — IL CANCELLO NON È UGUALE PER TUTTE LE FASCE (variante «B», sua scelta).
+         Nato da una sua domanda, fatta dopo essere stato bocciato 2/4 dalla fascia più bassa:
+         *«se sono un principiante è facile che io sbagli le trappole… come risolviamo in maniera
+         che se sono principiante o base posso avere un tasso di errore più importante?»*
+
+         ⭐⭐ La ragione che decide la forma, e vale più della tabella: **il cancello esiste per
+         fermare chi si SOPRAVVALUTA.** Chi dichiara Principiante prende 1.5, cioè il minimo
+         della scala: non sta togliendo niente a nessuno. Là il cancello **costa e non rende** —
+         e manda alla porta proprio l'81% dei soci che il test deve far entrare.
+         ⇒ Sotto non si sbarra: si sbarra dove c'è qualcosa da guadagnare mentendo.
+
+         🚨 E la TRAPPOLA ha la stessa asimmetria: smaschera chi dichiara alto e non lo è. Un
+         principiante che crede esista un colpo inventato non sta barando — sta dicendo la
+         verità su di sé, cioè che è principiante. Farlo bocciare da quella è punire l'ignoranza
+         che il livello «Principiante» già dichiara.
+
+         📏 E c'era un difetto di margine, misurato sul caso vero: con 4 domande e soglia 3,
+         **una distrazione sola boccia**, e la pena è 30 giorni d'attesa. */
+      regole_fascia: {
+        // Nessun quiz: si passa dichiarando Principiante. Il livello che se ne ricava è il minimo.
+        Principiante: { cancello: false },
+        // Un minimo di verifica resta, ma con margine e senza che la trappola sbarri da sola.
+        Base: { pass_min_correct: 2, trap_wrong_fails: false }
+      },
       questions: [
         // ── Principiante ────────────────────────────────────────────────────────────────
         { id:'P-01', fascia:'Principiante', trap:false, q:'Quanti giocatori ci sono in campo in una partita di padel?', opts:[
@@ -36979,7 +36977,128 @@ Per confermare scrivi ELIMINA.`);
           'Che dopo tre vantaggi il gioco si assegna a chi serve',
           'Che dopo tre vantaggi si gioca un punto secco',
           'Che vale solo nei tornei federali',
-          'Non esiste: il punto d\'oro, dove previsto, si gioca sul 40-40'], correct:3 }
+          'Non esiste: il punto d\'oro, dove previsto, si gioca sul 40-40'], correct:3 },
+
+        /* 🆕📚⭐⭐ 9/08/2026 — LA BANCA SI ALLARGA A 8 NORMALI + 3 TRAPPOLE PER FASCIA.
+           Sua decisione, e il motivo sta tutto nella regola dei TRE TENTATIVI decisa la stessa
+           sera: con 4 normali e 2 trappole se ne pescavano 3+1, quindi in tre giri uno vedeva
+           QUASI TUTTA la banca. Senza sapere quali aveva sbagliato non era un indovinello, ma i
+           tre tentativi non erano indipendenti: il terzo valeva meno del primo.
+           🚨 Sigle NUOVE, mai riciclate (la I-03 ritirata resta un buco): le schede già inviate
+           portano gli id dentro \'raw_response\', e riusare una sigla farebbe puntare uno storico
+           a una domanda diversa.
+           ⛔ Principiante NON si allarga: da stasera quella fascia il quiz non lo pesca più.
+           ⭐⭐ Il metro di ogni domanda è uno solo, e viene dal difetto della vecchia I-03 (tolta
+           perché «dipende da quanto è veloce»): **una risposta discutibile boccia chi ha
+           ragione**. Qui dentro ci sono solo regole e definizioni su cui non si discute. */
+
+        // ── Base ────────────────────────────────────────────────────────────────────────
+        { id:'B-05', fascia:'Base', trap:false, q:'Come si colpisce la palla nel servizio?', opts:[
+          'Dopo un rimbalzo a terra, all\'altezza della vita o più in basso',
+          'Al volo, sopra la testa, come nel tennis',
+          'Dopo due rimbalzi a terra',
+          'Come si preferisce: non ci sono vincoli'], correct:0 },
+        { id:'B-06', fascia:'Base', trap:false, q:'Nel servizio la palla tocca il nastro della rete e poi rimbalza nel riquadro giusto. Cosa succede?', opts:[
+          'Punto diretto di chi serve',
+          'È fallo e si perde il servizio',
+          'Il servizio si ripete',
+          'Il gioco continua normalmente'], correct:2 },
+        { id:'B-07', fascia:'Base', trap:false, q:'Posso toccare la rete con la racchetta o col corpo mentre la palla è in gioco?', opts:[
+          'Sì, purché non la sposti',
+          'No: si perde il punto',
+          'Sì, se la palla ha già rimbalzato',
+          'Solo chi è al servizio non può'], correct:1 },
+        { id:'B-08', fascia:'Base', trap:false, q:'Quante volte può rimbalzare a terra la palla nel mio campo prima che io la colpisca?', opts:[
+          'Una sola',
+          'Due',
+          'Nessuna: va giocata al volo',
+          'Due, se la seconda è dopo il vetro'], correct:0 },
+        { id:'B-T3', fascia:'Base', trap:true,  q:'Quando è obbligatorio il «doppio servizio incrociato»?', opts:[
+          'Nel primo game di ogni set',
+          'Quando si gioca il punto d\'oro',
+          'Non esiste un servizio con questo nome',
+          'Quando la coppia ha perso due game di fila'], correct:2 },
+
+        // ── Intermedio ──────────────────────────────────────────────────────────────────
+        { id:'I-06', fascia:'Intermedio', trap:false, q:'Che cos\'è il pallonetto (globo)?', opts:[
+          'Una palla alta e profonda per far arretrare chi è a rete',
+          'Un colpo piatto e veloce lungolinea',
+          'Una palla corta che muore appena oltre la rete',
+          'Un servizio giocato molto lento'], correct:0 },
+        { id:'I-07', fascia:'Intermedio', trap:false, q:'Finito un game al servizio, chi serve nel game successivo?', opts:[
+          'Il compagno di chi ha appena servito',
+          'Uno dei due avversari',
+          'Sempre lo stesso giocatore, finché non perde il game',
+          'Chi ha vinto il game precedente'], correct:1 },
+        { id:'I-08', fascia:'Intermedio', trap:false, q:'Che cos\'è la «salida de pared» (uscita di parete)?', opts:[
+          'Un servizio che sfrutta il vetro laterale',
+          'La palla che, dopo il rimbalzo a terra, esce dal vetro e va giocata lì',
+          'L\'uscita del giocatore dalla porta del campo',
+          'Un colpo mandato di proposito contro la parete avversaria'], correct:1 },
+        { id:'I-09', fascia:'Intermedio', trap:false, q:'Dopo il rimbalzo a terra nel mio campo la palla tocca la griglia metallica. Posso ancora giocarla?', opts:[
+          'No: la griglia interrompe sempre il punto',
+          'Sì, purché non rimbalzi una seconda volta a terra',
+          'Solo se la tocca sopra la metà',
+          'Sì, ma vale mezzo punto'], correct:1 },
+        { id:'I-T3', fascia:'Intermedio', trap:true,  q:'Quando si usa il «rimbalzo assistito di parete»?', opts:[
+          'Per difendere gli smash molto profondi',
+          'Quando la palla resta incastrata fra vetro e griglia',
+          'Non esiste una regola con questo nome',
+          'Solo nei campi con pareti in muratura'], correct:2 },
+
+        // ── Avanzato ────────────────────────────────────────────────────────────────────
+        { id:'A-05', fascia:'Avanzato', trap:false, q:'Un pallonetto profondo finisce sul vetro di fondo del mio campo. Come si gioca correttamente?', opts:[
+          'Colpendola prima che tocchi il vetro, sempre',
+          'Dopo il rimbalzo a terra, aspettando che esca dalla parete',
+          'Lasciandola rimbalzare due volte a terra',
+          'Solo al volo, prima del rimbalzo'], correct:1 },
+        { id:'A-06', fascia:'Avanzato', trap:false, q:'Che differenza c\'è fra bandeja e vibora?', opts:[
+          'Nessuna: sono due nomi dello stesso colpo',
+          'La bandeja si gioca di rovescio, la vibora di dritto',
+          'La vibora è più veloce e con più effetto laterale; la bandeja è di controllo',
+          'La bandeja si gioca solo in difesa, la vibora solo al servizio'], correct:2 },
+        { id:'A-07', fascia:'Avanzato', trap:false, q:'Durante lo scambio la palla colpisce un giocatore prima di rimbalzare a terra. Cosa succede?', opts:[
+          'Si rigioca il punto',
+          'Punto per la coppia che ha colpito la palla',
+          'Punto per la coppia del giocatore colpito',
+          'Il gioco continua se la palla resta in campo'], correct:1 },
+        { id:'A-08', fascia:'Avanzato', trap:false, q:'La palla che ho colpito tocca la parete del campo avversario PRIMA di rimbalzare a terra. Cosa succede?', opts:[
+          'Il punto continua normalmente',
+          'Punto per gli avversari: doveva rimbalzare prima a terra',
+          'Punto mio, se la parete è quella di fondo',
+          'Si rigioca il punto'], correct:1 },
+        { id:'A-T3', fascia:'Avanzato', trap:true,  q:'In quale situazione si concede il «recupero di parete doppia»?', opts:[
+          'Quando la palla tocca due pareti prima del rimbalzo',
+          'Quando il campo ha le pareti in cristallo su tre lati',
+          'Solo in difesa, dopo uno smash x4',
+          'Non esiste una regola con questo nome'], correct:3 },
+
+        // ── Agonista ────────────────────────────────────────────────────────────────────
+        { id:'AG-05', fascia:'Agonista', trap:false, q:'Che cos\'è la «dormilona»?', opts:[
+          'Uno smash smorzato che fa morire la palla appena oltre la rete',
+          'Un pallonetto giocato con effetto all\'indietro',
+          'Una difesa lenta per prendere tempo',
+          'Un servizio giocato senza effetto'], correct:0 },
+        { id:'AG-06', fascia:'Agonista', trap:false, q:'Nel punto d\'oro, chi sceglie da che lato ricevere?', opts:[
+          'La coppia che serve',
+          'La coppia che riceve',
+          'L\'arbitro, o il sorteggio',
+          'Si gioca sempre dal lato destro'], correct:1 },
+        { id:'AG-07', fascia:'Agonista', trap:false, q:'Un giocatore colpisce la palla due volte nello stesso colpo. Cosa succede?', opts:[
+          'Il punto continua se il doppio tocco è involontario',
+          'Punto per gli avversari',
+          'Si rigioca il punto',
+          'Vale, purché la palla passi la rete'], correct:1 },
+        { id:'AG-08', fascia:'Agonista', trap:false, q:'Nel tie-break, ogni quanti punti si cambia campo?', opts:[
+          'Ogni 4 punti',
+          'Ogni 6 punti',
+          'Solo a metà, sul 6-6',
+          'Non si cambia campo nel tie-break'], correct:1 },
+        { id:'AG-T3', fascia:'Agonista', trap:true,  q:'Quando si applica la «regola del doppio rimbalzo consentito in difesa»?', opts:[
+          'Quando la palla arriva da uno smash x4',
+          'Quando il campo è bagnato',
+          'Solo nel padel indoor',
+          'Non esiste: il secondo rimbalzo a terra chiude sempre il punto'], correct:3 }
       ]
     };
 
@@ -37000,9 +37119,24 @@ Per confermare scrivi ELIMINA.`);
     }
     // Pesca 3 normali + 1 trappola e mescola sia l'ordine delle domande sia quello delle risposte:
     // rifare il test, o copiarlo da un amico, non serve a nulla.
+    // Le regole di QUESTA fascia: i valori generali, più ciò che la fascia sovrascrive.
+    // ⭐ Una funzione sola invece di leggere la tabella in tre punti: erano tre modi di
+    // dimenticarsi un'eccezione.
+    function assessKnowledgeRegole(fascia) {
+      const B = ASSESS_KNOWLEDGE_BANK;
+      const propria = (B.regole_fascia || {})[assessTxt(fascia)] || {};
+      return {
+        cancello: propria.cancello !== false,
+        pass_min_correct: propria.pass_min_correct != null ? propria.pass_min_correct : B.pass_min_correct,
+        trap_wrong_fails: propria.trap_wrong_fails != null ? propria.trap_wrong_fails : B.trap_wrong_fails
+      };
+    }
     function assessKnowledgePick(fascia) {
       const cleanFascia = assessTxt(fascia);
       if (!cleanFascia) return [];
+      // 🆕 9/08: la fascia più bassa non ha cancello ⇒ non si pesca niente e non si disegna
+      // niente. Vedi il perché sopra la tabella `regole_fascia`.
+      if (!assessKnowledgeRegole(cleanFascia).cancello) return [];
       const pool = ASSESS_KNOWLEDGE_BANK.questions.filter(q => q.fascia === cleanFascia);
       if (!pool.length) return [];
       const normali = assessKnowledgeShuffle(pool.filter(q => !q.trap)).slice(0, ASSESS_KNOWLEDGE_BANK.pick_normal);
@@ -37017,9 +37151,25 @@ Per confermare scrivi ELIMINA.`);
     }
     // Corregge sulla banca, non su quello che arriva dalla pagina: la risposta giusta non passa
     // mai dal modulo. `answers` è { idDomanda: testoScelto }.
-    function assessKnowledgeEvaluate(pickedIds, answers) {
+    function assessKnowledgeEvaluate(pickedIds, answers, fasciaDichiarata) {
       const ids = Array.isArray(pickedIds) ? pickedIds.filter(Boolean) : [];
-      if (!ids.length) return { status: 'skip', correct: 0, total: 0, trap_failed: false, fascia: '', bank_version: ASSESS_KNOWLEDGE_BANK.version, questions: [] };
+      if (!ids.length) {
+        // 🆕🚨⭐⭐ 9/08 — SENZA DOMANDE CI SI ARRIVA IN DUE MODI OPPOSTI, e confonderli
+        // ribalterebbe la regola:
+        //   · la fascia più bassa NON HA cancello ⇒ è passata, e il livello si applica;
+        //   · Semi-Pro e Professionista non hanno quiz perché un quiz non valida una
+        //     seconda categoria ⇒ vanno in segreteria, e `skip` è ciò che li ferma.
+        // ⇒ Serve sapere quale fascia ha dichiarato: senza domande pescate, la fascia non si
+        //   può dedurre da quelle. È il motivo per cui questa funzione ha un terzo argomento.
+        const senzaCancello = !!assessTxt(fasciaDichiarata) && !assessKnowledgeRegole(fasciaDichiarata).cancello;
+        return {
+          status: senzaCancello ? 'pass' : 'skip',
+          senza_cancello: senzaCancello,
+          correct: 0, total: 0, trap_failed: false,
+          fascia: assessTxt(fasciaDichiarata),
+          bank_version: ASSESS_KNOWLEDGE_BANK.version, questions: []
+        };
+      }
       const dettaglio = ids.map(id => {
         const q = ASSESS_KNOWLEDGE_BANK.questions.find(item => item.id === id) || null;
         const risposta = assessTxt((answers || {})[id] || '');
@@ -37036,13 +37186,19 @@ Per confermare scrivi ELIMINA.`);
       });
       const correct = dettaglio.filter(d => d.giusta).length;
       const trapFailed = dettaglio.some(d => d.trap && !d.giusta);
-      const promosso = correct >= ASSESS_KNOWLEDGE_BANK.pass_min_correct && !(ASSESS_KNOWLEDGE_BANK.trap_wrong_fails && trapFailed);
+      // 🆕 9/08: la soglia e il peso della trappola sono di QUESTA fascia, non più uguali per
+      // tutti. La fascia si prende dalle domande pescate (che la portano dentro), e solo in
+      // mancanza da quella dichiarata: le domande sono il fatto, la dichiarazione è un'intenzione.
+      const fascia = dettaglio[0]?.fascia || assessTxt(fasciaDichiarata);
+      const regole = assessKnowledgeRegole(fascia);
+      const promosso = correct >= regole.pass_min_correct && !(regole.trap_wrong_fails && trapFailed);
       return {
         status: promosso ? 'pass' : 'fail',
         correct,
         total: dettaglio.length,
         trap_failed: trapFailed,
-        fascia: dettaglio[0]?.fascia || '',
+        soglia: regole.pass_min_correct,
+        fascia,
         bank_version: ASSESS_KNOWLEDGE_BANK.version,
         questions: dettaglio
       };
@@ -37050,8 +37206,13 @@ Per confermare scrivi ELIMINA.`);
     // Riga per lo staff: «Conoscenza 2/4 · trappola sbagliata · fascia Avanzato». Sulle schede
     // vecchie, che il campo non ce l'hanno, torna stringa vuota e non si stampa nulla.
     function assessKnowledgeRiepilogo(knowledge) {
-      if (!knowledge || !knowledge.total) return '';
+      if (!knowledge) return '';
+      // 🆕 9/08: la fascia senza cancello va DETTA, non lasciata in bianco. Una riga vuota si
+      // legge come «il quiz non c'è stato per un guasto»; qui invece non c'è per regola.
+      if (knowledge.senza_cancello) return `Conoscenza non richiesta · fascia ${knowledge.fascia || 'più bassa'}`;
+      if (!knowledge.total) return '';
       const parti = [`Conoscenza ${knowledge.correct}/${knowledge.total}`];
+      if (knowledge.soglia) parti[0] += ` (ne servivano ${knowledge.soglia})`;
       if (knowledge.trap_failed) parti.push('trappola sbagliata');
       if (knowledge.fascia) parti.push(`fascia ${knowledge.fascia}`);
       return parti.join(' · ');
@@ -37322,7 +37483,10 @@ Per confermare scrivi ELIMINA.`);
       const privacyConsent = !!data.privacyConsent;
       const levelCalc = calculateAssessmentPublicLevel(data);
       const conoscenza = assessmentKnowledgeCollect('assessmentPublicKnowledgeBlock');
-      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers);
+      // 🆕 9/08: la fascia va passata perché «zero domande» ha DUE significati opposti — la
+      // fascia più bassa che il cancello non ce l'ha (passa), e Semi-Pro/Professionista che il
+      // quiz non ce l'hanno (segreteria). Senza domande pescate non si può dedurre da quelle.
+      const knowledge = assessKnowledgeEvaluate(conoscenza.ids, conoscenza.answers, conoscenza.fascia);
       // Chi dice di giocare da poco e intanto si dichiara Intermedio o più: non blocca nulla,
       // ma la scheda la guarda una persona.
       const declaredNum = parseFloat(assessmentPublicParseLevel(data.declaredLevel));
