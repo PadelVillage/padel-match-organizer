@@ -253,23 +253,27 @@ Deno.serve(async (req: Request) => {
   const memberIdInput = clean(body.member_id);
   const digits = phoneDigits(body.phone);
   const last10 = digits.slice(-10);
-  const vieIndicate = [pmoPlayerIdInput, memberIdInput, digits].filter(Boolean).length;
-  if (vieIndicate > 1) {
-    return err(400, 'AMBIGUOUS_INPUT', 'Indicare pmo_player_id OPPURE phone OPPURE member_id, non più di uno.');
+  // 🆕⭐⭐ 9/08/2026 — IL member_id PUÒ VIAGGIARE INSIEME AL pmo_player_id, e solo con lui:
+  // stessa ricetta del readmodel, e per la stessa ragione (24 codici PMO condivisi da 48
+  // persone su PROD: il ponte ne trovava due e rifiutava di scegliere). Il pmoPlayerId
+  // resta la via primaria; il codice del circolo entra SOLO a restringere un `ambiguous`.
+  // 🚨 Il telefono resta ESCLUSIVO: è la via del consumer WhatsApp.
+  // ⚠️ Le due copie — qui e in `consumer-player-readmodel` — vanno cambiate INSIEME:
+  // `_shared/` non si deploya, per questo la ricetta è ripetuta.
+  if (digits && (pmoPlayerIdInput || memberIdInput)) {
+    return err(400, 'AMBIGUOUS_INPUT', 'Il campo phone non si combina con pmo_player_id o member_id.');
   }
-  if (pmoPlayerIdInput) {
-    if (!/^PMO-[0-9]{6}$/.test(pmoPlayerIdInput)) {
-      return err(400, 'BAD_PMO_PLAYER_ID', 'pmo_player_id deve avere la forma PMO-000000.');
-    }
-  } else if (memberIdInput) {
-    if (!/^[0-9]{6}$/.test(memberIdInput)) {
-      return err(400, 'BAD_MEMBER_ID', 'member_id deve essere il codice socio a 6 cifre.');
-    }
-  } else if (digits.length < 9) {
+  if (pmoPlayerIdInput && !/^PMO-[0-9]{6}$/.test(pmoPlayerIdInput)) {
+    return err(400, 'BAD_PMO_PLAYER_ID', 'pmo_player_id deve avere la forma PMO-000000.');
+  }
+  if (memberIdInput && !/^[0-9]{6}$/.test(memberIdInput)) {
+    return err(400, 'BAD_MEMBER_ID', 'member_id deve essere il codice socio a 6 cifre.');
+  }
+  if (!pmoPlayerIdInput && !memberIdInput && digits.length < 9) {
     return err(400, 'BAD_PHONE', 'Campo phone mancante o troppo corto (oppure usare pmo_player_id o member_id).');
   }
   const etichetta = pmoPlayerIdInput
-    ? `giocatore ${pmoPlayerIdInput}`
+    ? `giocatore ${pmoPlayerIdInput}${memberIdInput ? ` (socio ${memberIdInput})` : ''}`
     : memberIdInput
     ? `socio ${memberIdInput}`
     : `…${last10.slice(-4)}`;
@@ -314,6 +318,19 @@ Deno.serve(async (req: Request) => {
     });
   }
   if (hits.length === 0) return ok({ member: null, reason: 'not_found' });
+  // ⭐ Il ripiego (v. sopra): due schede vive con lo stesso ID giocatore si distinguono
+  // col codice del circolo. Restringe un `ambiguous` che c'era già — non può cambiare
+  // una risposta oggi giusta, perché entra solo quando le schede sono più d'una.
+  if (hits.length > 1 && pmoPlayerIdInput && memberIdInput) {
+    const ristretti = hits.filter((m) => m.memberId === memberIdInput);
+    if (ristretti.length === 1) {
+      console.log(
+        `[booking-write] ${etichetta}: ${hits.length} schede con lo stesso ID giocatore, ristretto a una col codice socio ${memberIdInput}`,
+      );
+      hits.length = 0;
+      hits.push(ristretti[0]);
+    }
+  }
   if (hits.length > 1) return ok({ member: null, reason: 'ambiguous' });
   const member = hits[0];
 
