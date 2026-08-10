@@ -7987,7 +7987,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.210';
+    const APP_VERSION = '6.211';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39535,6 +39535,15 @@ Per confermare scrivi ELIMINA.`);
           email:     m.email     !== undefined ? m.email : giocatori[idx].email,
           level:     m.level     !== undefined ? m.level : giocatori[idx].level,
           gender:    m.gender    || giocatori[idx].gender,
+          // 🚨⭐⭐ IL CODICE PADEL VILLAGE VIENE DAL CLOUD — e prima NON ARRIVAVA MAI, in nessuna
+          // delle due strade. Conseguenza misurata l'11/08/2026: la riassegnazione del 9/08 era
+          // stata fatta solo nel cloud, i browser sono rimasti coi codici di MAGGIO, e al primo
+          // salvataggio di una scheda li RISPINGEVANO su — tre cure disfatte in un'ora, con i
+          // codici condivisi che ricomparivano su altre coppie appena curata la precedente.
+          // ⚠️ `!== undefined` e non `||`, di proposito: un codice SVUOTATO nel cloud (le utenze di
+          // servizio, che per la decisione del 2/08 stanno senza codice) deve arrivare qui come
+          // vuoto, mentre un payload che non nomina affatto il campo non deve cancellare niente.
+          pmoPlayerId: m.pmoPlayerId !== undefined ? m.pmoPlayerId : giocatori[idx].pmoPlayerId,
           updatedAt: m.updatedAt || giocatori[idx].updatedAt
         });
       } else {
@@ -39577,6 +39586,11 @@ Per confermare scrivi ELIMINA.`);
           gender: (m.gender && m.gender !== 'NA') ? m.gender : g.gender,
           // memberId: adotta il codice Matchpoint se in locale manca o è un segnaposto PMO-
           memberId: (/^\d{3,6}$/.test(code) && (!g.memberId || /^PMO-/i.test(String(g.memberId)))) ? code : g.memberId,
+          // ⭐ Anche qui il codice Padel Village viene dal cloud (l'avviso lo manda l'edge dell'import
+          // DOPO aver rifuso col record esistente, quindi porta il codice giusto). Terza strada delle
+          // tre che riscrivono un socio in locale: se ne coprissero due su tre, il browser
+          // continuerebbe a rispingere il codice vecchio passando per quella scoperta.
+          pmoPlayerId: m.pmoPlayerId !== undefined ? m.pmoPlayerId : g.pmoPlayerId,
           // Livello e campi operativi: invariati (curati nell'app)
           updatedAt: m.updatedAt || new Date().toISOString()
         });
@@ -39805,6 +39819,15 @@ Per confermare scrivi ELIMINA.`);
           email:     m.email     !== undefined ? m.email : giocatori[idx].email,
           level:     m.level     !== undefined ? m.level : giocatori[idx].level,
           gender:    m.gender    || giocatori[idx].gender,
+          // 🚨⭐⭐ IL CODICE PADEL VILLAGE VIENE DAL CLOUD — e prima NON ARRIVAVA MAI, in nessuna
+          // delle due strade. Conseguenza misurata l'11/08/2026: la riassegnazione del 9/08 era
+          // stata fatta solo nel cloud, i browser sono rimasti coi codici di MAGGIO, e al primo
+          // salvataggio di una scheda li RISPINGEVANO su — tre cure disfatte in un'ora, con i
+          // codici condivisi che ricomparivano su altre coppie appena curata la precedente.
+          // ⚠️ `!== undefined` e non `||`, di proposito: un codice SVUOTATO nel cloud (le utenze di
+          // servizio, che per la decisione del 2/08 stanno senza codice) deve arrivare qui come
+          // vuoto, mentre un payload che non nomina affatto il campo non deve cancellare niente.
+          pmoPlayerId: m.pmoPlayerId !== undefined ? m.pmoPlayerId : giocatori[idx].pmoPlayerId,
           updatedAt: m.updatedAt || giocatori[idx].updatedAt
         });
         changed = true;
