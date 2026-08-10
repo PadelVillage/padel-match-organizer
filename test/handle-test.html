@@ -2650,6 +2650,184 @@ const CASES = [
         H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
       }
     }
+  },
+  {
+    // Il verso opposto dell'idratazione: non «chi aggiungere» ma «chi togliere da questo browser».
+    // 🚨 La trappola e la stessa forma del 63, in un altro costume: locale e cloud NON usano la
+    // stessa chiave. In locale un socio e il suo `payload.id`; nel cloud la riga e la sua
+    // `local_key` (`phone:…` / `email:…` / uuid), e la stessa persona puo averne avute piu d'una
+    // nel tempo. «Ritirata nel cloud» quindi NON vuol dire «da togliere di qui».
+    id: 84, flow: 'Cloud/Soci', name: 'soci fantasma: si toglie solo chi il cloud ha ARCHIVIATO e che non ha una gemella viva',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      checks.push({ label: 'pmoMemberGhostRowsToDrop raggiungibile dall\'harness', ok: typeof win.pmoMemberGhostRowsToDrop === 'function' });
+      if (typeof win.pmoMemberGhostRowsToDrop !== 'function') return checks;
+      // La PREMESSA della trappola, verificata e non affermata: la chiave del cloud cambia col
+      // telefono mentre l'id della scheda resta lo stesso. Se un giorno smettesse di essere vero,
+      // il guardiano «gemella viva» misurerebbe un'altra cosa e questo check lo direbbe.
+      if (typeof win.pmoMemberCloudLocalKey === 'function') {
+        checks.push({ label: 'premessa: cambiare telefono CAMBIA la chiave cloud, non l\'id della scheda', ok:
+          win.pmoMemberCloudLocalKey({ id: 'soc-a', phone: '333 111 2222' })
+          !== win.pmoMemberCloudLocalKey({ id: 'soc-a', phone: '333 999 8888' }) });
+      }
+      // Le quattro forme, tutte misurate sul cloud di PROD il 10/08/2026: 1.916 record socio
+      // archiviati senza gemella viva sotto la stessa identita, e 1.864 di essi sono persone VIVE
+      // sotto un altro id. Non e un caso di laboratorio.
+      const A = { id: 'soc-a', firstName: 'Anna',  surname: 'Fantasma' };  // archiviata sotto la chiave VECCHIA, viva sotto la nuova
+      const B = { id: 'soc-b', firstName: 'Bruno', surname: 'Fantasma' };  // archiviata e nient'altro: fantasma vero
+      const C = { id: 'soc-c', firstName: 'Carla', surname: 'Viva' };      // viva nel cloud
+      const D = { id: 'soc-d', firstName: 'Dario', surname: 'Nuovo' };     // il cloud non lo conosce: creato qui e non ancora sincronizzato
+      const retired = new Set(['soc-a', 'soc-b']);
+      const live = new Set(['soc-a', 'soc-c']);
+      const out = win.pmoMemberGhostRowsToDrop([A, B, C, D], retired, live);
+      checks.push({ label: 'il socio archiviato SENZA gemella viva viene tolto', ok: out.drop.includes(B) });
+      checks.push({ label: '🚨 la STESSA scheda archiviata sotto la chiave vecchia e viva sotto la nuova RESTA', ok: !out.drop.includes(A) });
+      checks.push({ label: 'un socio che il cloud non ha archiviato resta', ok: !out.drop.includes(C) });
+      checks.push({ label: '🚨 il socio appena creato qui, che il cloud non conosce affatto, resta', ok: !out.drop.includes(D) });
+      checks.push({ label: 'in tutto cade una riga sola', ok: out.drop.length === 1 && out.blocked === false });
+      // I Set arrivano da un'altra finestra: con `instanceof` il filtro salterebbe in silenzio.
+      const conListe = win.pmoMemberGhostRowsToDrop([A, B, C, D], [...retired], [...live]);
+      checks.push({ label: 'accetta anche liste al posto dei Set (realm diversi)', ok: conListe.drop.length === 1 && conListe.drop[0] === B });
+      // Un socio senza id non e agganciabile a nessuna riga del cloud: non si tocca.
+      const senzaId = win.pmoMemberGhostRowsToDrop([{ firstName: 'Senza', surname: 'Id' }, B], retired, live);
+      checks.push({ label: 'un socio senza id non viene mai potato', ok: senzaId.drop.length === 1 && senzaId.drop[0] === B });
+      return checks;
+    }
+  },
+  {
+    // ⭐ Taratura: sorveglia l'errore OPPOSTO al 84 — potare quando non si deve. Gemello del 64.
+    id: 85, flow: 'Cloud/Soci', name: 'soci fantasma: senza elenco non si tocca niente, e il freno ferma le potature di massa',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoMemberGhostRowsToDrop !== 'function') return [{ label: 'pmoMemberGhostRowsToDrop assente', ok: false }];
+      const A = { id: 'soc-a', firstName: 'Anna', surname: 'Fantasma' };
+      const B = { id: 'soc-b', firstName: 'Bruno', surname: 'Fantasma' };
+      const C = { id: 'soc-c', firstName: 'Carla', surname: 'Viva' };
+      // Il ramo «elenco assente» protegge la LETTURA FALLITA: un cloud irraggiungibile diventerebbe
+      // «nessuno e archiviato»… che e diverso da «non lo so».
+      checks.push({ label: 'lettura fallita (elenco assente): non cade nessuno', ok: win.pmoMemberGhostRowsToDrop([A, B, C], null, new Set()).drop.length === 0 });
+      checks.push({ label: 'elenco non passato: non cade nessuno', ok: win.pmoMemberGhostRowsToDrop([A, B, C], undefined, new Set()).drop.length === 0 });
+      checks.push({ label: 'cloud senza archiviati (Set vuoto): non cade nessuno', ok: win.pmoMemberGhostRowsToDrop([A, B, C], new Set(), new Set()).drop.length === 0 });
+      checks.push({ label: 'un id archiviato che non c\'entra non tocca nessuno', ok: win.pmoMemberGhostRowsToDrop([A, B, C], new Set(['soc-zzz']), new Set()).drop.length === 0 });
+      // Controllo positivo accanto ai negativi: senza, «zero soci tolti» passerebbe anche a
+      // funzione morta del tutto.
+      checks.push({ label: 'controllo opposto: con un id che c\'entra il socio cade davvero', ok: win.pmoMemberGhostRowsToDrop([A, B, C], new Set(['soc-a']), new Set()).drop.length === 1 });
+      // Il freno. Elenco finto di 100 soci: quota 0,10 ⇒ 10, pavimento 25 ⇒ limite 25.
+      const molti = Array.from({ length: 500 }, (_, i) => ({ id: 'gh-' + i, firstName: 'Socio', surname: String(i) }));
+      const primiN = n => new Set(molti.slice(0, n).map(m => m.id));
+      const massa = win.pmoMemberGhostRowsToDrop(molti.slice(0, 100), primiN(60), new Set());
+      checks.push({ label: 'freno: 60 soci su 100 = potatura di massa sospesa e segnalata', ok: massa.drop.length === 0 && massa.blocked === true });
+      // Taratura opposta: appena sotto la soglia deve passare, altrimenti «blocked» sarebbe solo
+      // una funzione che dice sempre di no.
+      const sotto = win.pmoMemberGhostRowsToDrop(molti.slice(0, 100), primiN(25), new Set());
+      checks.push({ label: 'controllo opposto: 25 su 100 passano, il freno non scatta', ok: sotto.drop.length === 25 && sotto.blocked === false });
+      // ⚠️ Il pavimento assoluto, che serve agli elenchi piccoli. Numeri scelti per DISCRIMINARE:
+      // con 10 soci la quota vale floor(10*0.10)=1, quindi 5 verrebbero frenati; col pavimento
+      // (25) passano. Con «1 su 3» il check sarebbe passato in entrambi i casi.
+      const piccolo = win.pmoMemberGhostRowsToDrop(molti.slice(0, 10), primiN(5), new Set());
+      checks.push({ label: 'pavimento: 5 soci su 10 si potano lo stesso (la sola quota li fermerebbe)', ok: piccolo.drop.length === 5 && piccolo.blocked === false });
+      // ⚠️ E la QUOTA, che serve agli elenchi grandi: sopra il pavimento deve comandare lei.
+      // Con 500 soci la quota vale 50: 51 vanno frenati, 50 no. Anche qui i numeri DISCRIMINANO —
+      // col solo pavimento (25) entrambi sarebbero stati frenati.
+      const quotaSopra = win.pmoMemberGhostRowsToDrop(molti, primiN(51), new Set());
+      const quotaSotto = win.pmoMemberGhostRowsToDrop(molti, primiN(50), new Set());
+      checks.push({ label: 'quota: su 500 soci 51 sono frenati e 50 passano (sopra il pavimento comanda la quota)', ok: quotaSopra.blocked === true && quotaSopra.drop.length === 0 && quotaSotto.blocked === false && quotaSotto.drop.length === 50 });
+      return checks;
+    }
+  },
+  {
+    // Il COLLEGAMENTO, non piu la sola regola: pmoEnsureCloudMembersHydrated deve davvero togliere
+    // il socio fantasma da `giocatori` di questo browser. E prova ANCHE l'ordine delle due mosse,
+    // che e la cosa che si sbaglia — vedi il check marcato 🚨🚨.
+    //
+    // 🚨🚨 PERCHE L'ORDINE E UN CASO DI PROVA E NON UN GUSTO. Su PROD, il 10/08, dei 1.916 record
+    // socio archiviati senza gemella viva 1.864 sono persone VIVE sotto un ALTRO id. Per una di
+    // loro, in questo browser, c'e la riga vecchia e non la nuova. Se la potatura stesse DOPO
+    // l'aggiunta: l'aggiunta scarta la riga viva perche nome+telefono risultano gia presenti (sta
+    // guardando il FANTASMA), poi la potatura toglie il fantasma ⇒ la persona spariva dall'elenco
+    // fino all'idratazione successiva. Il check su `soc-gb2` e ROSSO se qualcuno riordina le mosse.
+    id: 86, flow: 'Cloud/Soci', name: '🚨 potatura collegata: l\'idratazione toglie il fantasma E fa entrare nello stesso giro la persona viva sotto un altro id',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoEnsureCloudMembersHydrated !== 'function' || typeof win.safeLoad !== 'function') {
+        return [{ label: 'pmoEnsureCloudMembersHydrated o safeLoad assenti', ok: false }];
+      }
+      const R = (local_key, deleted, payload) => ({ record_type: 'member', local_key, deleted, payload });
+      // Nomi e telefoni fuori dai dati veri: il caso non dipende da cosa c'e in anagrafica.
+      const GA  = { id: 'soc-ga',  firstName: 'Anna',  surname: 'Fantasmi', phone: '351 900 0001', level: 3, active: true, updatedAt: '2027-03-01T10:00:00.000Z' };
+      const GB  = { id: 'soc-gb',  firstName: 'Bruno', surname: 'Fantasmi', phone: '351 900 0002', level: 3, active: true, updatedAt: '2027-03-01T10:00:00.000Z' };
+      const GB2 = { id: 'soc-gb2', firstName: 'Bruno', surname: 'Fantasmi', phone: '351 900 0002', level: 3, active: true, updatedAt: '2027-03-02T10:00:00.000Z' };
+      const GC  = { id: 'soc-gc',  firstName: 'Carla', surname: 'Fantasmi', phone: '351 900 0003', level: 3, active: true, updatedAt: '2027-03-01T10:00:00.000Z' };
+      // La PREMESSA del check sull'ordine, verificata e non affermata: le due schede di Bruno
+      // sono la STESSA persona per la chiave dell'aggiunta (nome+telefono). Se non lo fossero,
+      // l'aggiunta non avrebbe nessun motivo di scartare la viva e il check misurerebbe il nulla.
+      if (typeof win.pmoImportContactKey === 'function') {
+        checks.push({ label: 'premessa: le due schede di Bruno sono la stessa persona per nome+telefono', ok:
+          win.pmoImportContactKey(GB) === win.pmoImportContactKey(GB2) && !!win.pmoImportContactKey(GB) });
+      }
+      const elenco = () => win.safeLoad('giocatori', []) || [];
+      const c_e = id => elenco().some(g => g && String(g.id) === id);
+      // Due modi di chiamare l'idratazione, e la differenza è il cuore di questo caso.
+      // `semina` ritenta, perché al boot l'app lancia un'idratazione sua e se fosse ancora in volo
+      // la nostra tornerebbe subito senza fare niente (guardia _pmoMembersHydrating): là ritentare
+      // serve a non prendere un rosso dallo strumento.
+      // 🚨🚨 `unGiroSolo` NON ritenta, e non è una svista: la prima versione di questo caso
+      // ritentava anche il passo 2 ed è stata SMASCHERATA da un sabotaggio — spostando la potatura
+      // dopo l'aggiunta il caso restava VERDE, perché il primo giro toglieva il fantasma e il
+      // SECONDO faceva entrare la persona viva. Il ciclo di ritentativi rimetteva in piedi
+      // esattamente il difetto che il caso deve vedere. La proprietà da misurare è «nello stesso
+      // giro»: si misura con UNA chiamata sola. Chi rimette un ritentativo qui spegne il caso.
+      const semina = async cond => {
+        for (let i = 0; i < 5; i++) {
+          try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+          if (cond()) return true;
+          await new Promise(r => setTimeout(r, 150));
+        }
+        return cond();
+      };
+      const unGiroSolo = async () => { try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {} };
+      // 1) Semina dalla PORTA VERA dell'app: tre soci vivi nel cloud entrano in questo browser.
+      CLOUD_FAKEROWS = [
+        R('phone:3519000001', false, GA),
+        R('soc-gb',           false, GB),
+        R('phone:3519000003', false, GC)
+      ];
+      const seminati = await semina(() => c_e('soc-ga') && c_e('soc-gb') && c_e('soc-gc'));
+      checks.push({ label: 'semina: i tre soci vivi del cloud sono in questo browser', ok: seminati });
+      // 2) Il cloud cambia stato. Anna: archiviata sotto la chiave VECCHIA, viva sotto la nuova
+      //    (stesso `payload.id`) ⇒ deve restare. Bruno: la sua scheda e archiviata e la persona
+      //    vive sotto un ALTRO id ⇒ il fantasma via, la viva dentro. Carla: viva, non si tocca.
+      //    ⚠️ La chiave uuid della riga archiviata di Bruno non e un'invenzione: su PROD 1.891
+      //    dei 1.916 archiviati hanno esattamente quella forma, non `phone:`.
+      CLOUD_FAKEROWS = [
+        R('email:anna.fantasmi@prova.local', true,  GA),
+        R('phone:3519000001',                false, GA),
+        R('soc-gb',                          true,  GB),
+        R('phone:3519000002',                false, GB2),
+        R('phone:3519000003',                false, GC)
+      ];
+      // UNA chiamata sola: e' qui che si misura «nello stesso giro» (vedi unGiroSolo).
+      await unGiroSolo();
+      checks.push({ label: '🚨 la STESSA scheda archiviata sotto la chiave vecchia e viva sotto la nuova RESTA (Anna)', ok: c_e('soc-ga') });
+      checks.push({ label: 'il fantasma vero e stato tolto da questo browser (Bruno vecchio)', ok: !c_e('soc-gb') });
+      checks.push({ label: '🚨🚨 ORDINE: la persona viva sotto un altro id e entrata NELLO STESSO GIRO (Bruno nuovo)', ok: c_e('soc-gb2') });
+      checks.push({ label: 'il socio vivo nel cloud non e stato toccato (Carla)', ok: c_e('soc-gc') });
+      // 3) Rimessi vivi tutti, l'idratazione NON deve togliere piu niente: il verso opposto del 2.
+      CLOUD_FAKEROWS = [
+        R('phone:3519000001', false, GA),
+        R('phone:3519000002', false, GB2),
+        R('phone:3519000003', false, GC)
+      ];
+      await unGiroSolo();
+      checks.push({ label: 'controllo opposto: senza archiviati non sparisce nessuno', ok: c_e('soc-ga') && c_e('soc-gb2') && c_e('soc-gc') });
+      // Pulizia: il caso scrive nell'anagrafica vera di questo browser, quindi si riporta com'era.
+      try {
+        const puliti = elenco().filter(g => !(g && /^soc-g/.test(String(g.id))));
+        win.save('giocatori', puliti);
+      } catch (e) {}
+      CLOUD_FAKEROWS = [];
+      return checks;
+    }
   }
 ];
 
