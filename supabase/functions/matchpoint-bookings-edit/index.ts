@@ -188,7 +188,15 @@ async function saveStaffEditRecord(opts: {
   const client = createClient(supabaseUrl, supabaseKey);
   const localKey = `staff_edit|${edit.idReserva ?? ''}|${actor.userId}|${new Date().toISOString()}`;
 
-  await client.from('pmo_cloud_records').upsert({
+  // 🚨⭐⭐ 11/08/2026 — SI GUARDA L'ESITO, e prima non si guardava. supabase-js **restituisce**
+  // l'errore in `{ error }` invece di lanciarlo: senza questa riga il `try/catch` di chi chiama
+  // non poteva scattare, e un rifiuto del database usciva come un «fatto».
+  // 📏 Non è un'ipotesi: il CHECK sui tipi non ammetteva `staff_edit`, quindi questo registro
+  // **non è mai stato scritto** — zero righe in assoluto, su TEST e su PROD. Curato dalla
+  // migrazione `…_staff_edit_cancel`, che va applicata PRIMA di questo codice.
+  // ⇒ Qui il registro resta best-effort (la modifica al circolo è già riuscita, negarla
+  // manderebbe lo staff a rifarla): il fallimento si LOGGA. Ma finora non si loggava nemmeno.
+  const { error: erroreRegistro } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_edit',
     local_key: localKey,
     payload: {
@@ -205,6 +213,7 @@ async function saveStaffEditRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  if (erroreRegistro) throw new Error(`registro staff_edit non scritto: ${erroreRegistro.message}`);
 }
 
 Deno.serve(async (req: Request) => {

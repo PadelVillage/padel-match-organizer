@@ -12,7 +12,7 @@
 //      chiamata al circolo messa lì dentro lascerebbe il ③ verde, perché risalendo troverebbe
 //      il recinto proprio lì sopra.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REF_PROD, scritturaAlCircoloConsentita } from './scrittura-al-circolo.ts';
@@ -267,6 +267,60 @@ for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
     }
   });
 }
+
+/* ══ 🚨⭐⭐ 11/08/2026 — «REGISTRATA» DEV'ESSERE UN FATTO, NON UNA FRASE ══════════
+ *
+ * Trovato provando su TEST: il ponte rispondeva «fatto» e in `pmo_cloud_records` non c'era
+ * NIENTE — zero righe `staff_edit` in assoluto, **su TEST e su PROD**. Due cose insieme:
+ *  · il CHECK sui tipi non ammetteva `staff_edit` né `staff_cancel` ⇒ il database rifiutava;
+ *  · il codice **non guardava `{ error }`** — supabase-js lo RESTITUISCE invece di lanciarlo ⇒
+ *    il `try/catch` di chi chiama non poteva scattare, e il rifiuto usciva come un «fatto».
+ * ⇒ In produzione la modifica al circolo riusciva comunque, ma **la traccia di chi ha
+ *   modificato o annullato una prenotazione non è mai esistita**.
+ */
+
+test('20) 🚨⭐⭐ chi scrive il registro GUARDA l\'esito: un rifiuto del database non è un «fatto»', () => {
+  const attesi: Array<[string, number]> = [
+    ['matchpoint-bookings-edit/index.ts', 1],     // staff_edit
+    ['matchpoint-bookings-cancel/index.ts', 1],   // staff_cancel
+    ['matchpoint-bookings-create/index.ts', 1],   // la riga della prenotazione
+  ];
+  for (const [rel, quanti] of attesi) {
+    const src = readFileSync(join(FUNZIONI, rel), 'utf8');
+    const conControllo = (src.match(/const \{ error: \w+ \} = await client\.from\('pmo_cloud_records'\)/g) ?? []).length;
+    assert.equal(conControllo, quanti,
+      `${rel}: mi aspetto ${quanti} scritture che guardano l'errore, ne trovo ${conControllo}`);
+    // 🚨 E il controllo deve LANCIARE: solo un'eccezione arriva a chi chiama.
+    assert.ok(/if \(errore\w*\) throw new Error\(/.test(src),
+      `${rel}: l'errore si legge e non si lancia — il chiamante non lo saprà mai`);
+  }
+});
+
+test('21) 🚨 la MIGRAZIONE che ammette i due tipi esiste, e li nomina tutt\'e due', () => {
+  // 🚨 Il file NON prova che sia stata applicata (le migrazioni qui non partono da sole): prova
+  // che esista e che non si perda in un merge. L'applicazione si verifica sul bersaglio.
+  const MIGRAZIONI = join(FUNZIONI, '..', 'migrations');
+  const file = readdirSync(MIGRAZIONI).filter((f) => /staff_edit_cancel\.sql$/.test(f));
+  assert.equal(file.length, 1, 'la migrazione dei due tipi non c\'è (o ce n\'è più d\'una)');
+  const sql = readFileSync(join(MIGRAZIONI, file[0]!), 'utf8');
+  assert.ok(/ADD CONSTRAINT pmo_cloud_records_type_check/.test(sql),
+    'la migrazione non ricostruisce il vincolo: non cambierebbe niente');
+  // 🚨⭐⭐ SI GUARDA SOLO L'ELENCO DEL VINCOLO, senza commenti: la prima stesura cercava i nomi
+  // nel FILE INTERO ed è rimasta VERDE a un sabotaggio che toglieva `staff_cancel`, perché quel
+  // nome resta scritto nel commento che racconta il difetto. Un caso che legge la spiegazione
+  // invece della regola giudica il racconto, non il codice.
+  const vincolo = (sql.split(/ADD CONSTRAINT pmo_cloud_records_type_check/)[1] ?? '')
+    .split('\n').filter((r) => !/^\s*--/.test(r)).join('\n');
+  assert.ok(vincolo.length > 200, 'non riesco a ritagliare l\'elenco del vincolo: caso cieco');
+  for (const tipo of ['staff_edit', 'staff_cancel']) {
+    assert.ok(new RegExp(`'${tipo}'`).test(vincolo), `il vincolo non ammette «${tipo}»`);
+  }
+  // 🚨 E i venti tipi di prima devono restarci TUTTI: un elenco riscritto a memoria che ne
+  // perdesse uno spegnerebbe in silenzio una parte del gestionale.
+  for (const vecchio of ['member', 'booking', 'staff_booking', 'payment', 'wallet_balance', 'booking_job']) {
+    assert.ok(new RegExp(`'${vecchio}'`).test(vincolo), `il vincolo ha PERSO il tipo «${vecchio}»`);
+  }
+});
 
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed) process.exit(1);

@@ -176,7 +176,12 @@ async function saveStaffCancelRecord(opts: {
   const client = createClient(supabaseUrl, supabaseKey);
   const localKey = `staff_cancel|${cancel.data ?? ''}|${cancel.ora ?? ''}|Campo ${cancel.campo ?? ''}|${cancel.idReserva ?? ''}|${actor.userId}`;
 
-  await client.from('pmo_cloud_records').upsert({
+  // 🚨⭐⭐ 11/08/2026 — LO STESSO DIFETTO DI `staff_edit`, e nessuno l'aveva visto per la stessa
+  // ragione: `staff_cancel` non era nell'elenco dei tipi ammessi dal CHECK, il database
+  // rifiutava, e senza guardare `{ error }` — che supabase-js RESTITUISCE invece di lanciare —
+  // il rifiuto usciva come un «fatto». Zero righe in assoluto, su TEST e su PROD.
+  // Curato dalla migrazione `…_staff_edit_cancel`, da applicare PRIMA di questo codice.
+  const { error: erroreRegistro } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_cancel',
     local_key: localKey,
     payload: {
@@ -192,6 +197,7 @@ async function saveStaffCancelRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  if (erroreRegistro) throw new Error(`registro staff_cancel non scritto: ${erroreRegistro.message}`);
 }
 
 Deno.serve(async (req: Request) => {
