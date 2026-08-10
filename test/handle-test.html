@@ -2712,8 +2712,8 @@ const CASES = [
       // Controllo positivo accanto ai negativi: senza, «zero soci tolti» passerebbe anche a
       // funzione morta del tutto.
       checks.push({ label: 'controllo opposto: con un id che c\'entra il socio cade davvero', ok: win.pmoMemberGhostRowsToDrop([A, B, C], new Set(['soc-a']), new Set()).drop.length === 1 });
-      // Il freno. Elenco finto di 100 soci: quota 0,10 ⇒ 10, pavimento 25 ⇒ limite 25.
-      const molti = Array.from({ length: 500 }, (_, i) => ({ id: 'gh-' + i, firstName: 'Socio', surname: String(i) }));
+      // Il freno. Elenco finto di 100 soci: quota 0,01 ⇒ 1, pavimento 25 ⇒ limite 25.
+      const molti = Array.from({ length: 5000 }, (_, i) => ({ id: 'gh-' + i, firstName: 'Socio', surname: String(i) }));
       const primiN = n => new Set(molti.slice(0, n).map(m => m.id));
       const massa = win.pmoMemberGhostRowsToDrop(molti.slice(0, 100), primiN(60), new Set());
       checks.push({ label: 'freno: 60 soci su 100 = potatura di massa sospesa e segnalata', ok: massa.drop.length === 0 && massa.blocked === true });
@@ -2722,16 +2722,19 @@ const CASES = [
       const sotto = win.pmoMemberGhostRowsToDrop(molti.slice(0, 100), primiN(25), new Set());
       checks.push({ label: 'controllo opposto: 25 su 100 passano, il freno non scatta', ok: sotto.drop.length === 25 && sotto.blocked === false });
       // ⚠️ Il pavimento assoluto, che serve agli elenchi piccoli. Numeri scelti per DISCRIMINARE:
-      // con 10 soci la quota vale floor(10*0.10)=1, quindi 5 verrebbero frenati; col pavimento
+      // con 10 soci la quota vale floor(10*0.01)=0, quindi anche UNO verrebbe frenato; col pavimento
       // (25) passano. Con «1 su 3» il check sarebbe passato in entrambi i casi.
       const piccolo = win.pmoMemberGhostRowsToDrop(molti.slice(0, 10), primiN(5), new Set());
       checks.push({ label: 'pavimento: 5 soci su 10 si potano lo stesso (la sola quota li fermerebbe)', ok: piccolo.drop.length === 5 && piccolo.blocked === false });
       // ⚠️ E la QUOTA, che serve agli elenchi grandi: sopra il pavimento deve comandare lei.
-      // Con 500 soci la quota vale 50: 51 vanno frenati, 50 no. Anche qui i numeri DISCRIMINANO —
-      // col solo pavimento (25) entrambi sarebbero stati frenati.
+      // Con la quota a 0,01 il pavimento (25) comanda fino a 2.500 soci, quindi per vedere la quota
+      // viva serve un elenco piu grande: con 5.000 soci vale 50, e 51 vanno frenati mentre 50 no.
+      // Anche qui i numeri DISCRIMINANO — col solo pavimento entrambi sarebbero stati frenati.
+      // 📏 E l'anagrafica vera sta appena SOPRA quella soglia (~2.790 ⇒ limite 27): la quota non e
+      // teoria, e il meccanismo che governa oggi.
       const quotaSopra = win.pmoMemberGhostRowsToDrop(molti, primiN(51), new Set());
       const quotaSotto = win.pmoMemberGhostRowsToDrop(molti, primiN(50), new Set());
-      checks.push({ label: 'quota: su 500 soci 51 sono frenati e 50 passano (sopra il pavimento comanda la quota)', ok: quotaSopra.blocked === true && quotaSopra.drop.length === 0 && quotaSotto.blocked === false && quotaSotto.drop.length === 50 });
+      checks.push({ label: 'quota: su 5.000 soci 51 sono frenati e 50 passano (sopra il pavimento comanda la quota)', ok: quotaSopra.blocked === true && quotaSopra.drop.length === 0 && quotaSotto.blocked === false && quotaSotto.drop.length === 50 });
       return checks;
     }
   },

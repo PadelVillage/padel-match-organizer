@@ -8277,11 +8277,19 @@ body.assessment-public-mode .assessment-public-only-card {
     // alla quota qui sopra di bloccare potature minuscole su archivi piccoli.
     const HISTORY_GHOST_MIN_ABSOLUTE = 25;
     // I gemelli della coppia qui sopra per i SOCI (vedi pmoMemberGhostRowsToDrop).
-    // ⚠️ La quota e molto piu STRETTA di quella dello storico (0.10 contro 0.40) e non per gusto:
-    // il 40% dell'anagrafica sono ~1100 persone, e una potatura di quella taglia non e mai una
-    // notte normale — e il sintomo di una lettura del cloud andata storta. Lo storico puo
-    // permettersi il 40% perche la sua riconciliazione ritira per periodi interi.
-    const MEMBER_GHOST_MAX_DROP_RATIO = 0.10;
+    // ⚠️⭐ La quota e QUARANTA VOLTE piu stretta di quella dello storico (0.01 contro 0.40), e il
+    // perche va letto prima di allargarla. Lo storico puo permettersi il 40% perche la sua
+    // riconciliazione ritira per PERIODI INTERI: centinaia di righe in un colpo sono il normale.
+    // Nell'anagrafica non esiste nessun caso legittimo in cui il 10% dei soci svanisce da un
+    // browser in una sola idratazione — sarebbe il sintomo di una lettura del cloud andata storta,
+    // non di una pulizia.
+    // 📏 Tarata su quanti fantasmi ci si aspetta DAVVERO, misurato e non stimato: la diagnostica
+    // del 4/08 dava il suo browser e il cloud che «divergono di 1 socio attivo», e la pulizia del
+    // 9/08 ne ha prodotti 2. Con ~2790 soci il limite vale 27: nove volte l'attesa, e comunque
+    // decine — non centinaia. Sopra quella cifra non si pota: si AVVISA, e si va a guardare.
+    // ⚠️ Il giorno del distacco da Matchpoint, quando si archivieranno molte schede in poco tempo,
+    // questo freno scattera: e voluto. Quella e una pulizia da guardare, non da subire.
+    const MEMBER_GHOST_MAX_DROP_RATIO = 0.01;
     const MEMBER_GHOST_MIN_ABSOLUTE = 25;
     const DAILY_DIFF_HISTORY_LIMIT = 10;
     const DAILY_DIFF_DETAIL_LIMIT = 30;
@@ -28442,7 +28450,8 @@ Per confermare scrivi ELIMINA.`);
 	        if (!id || !retired.has(id)) return false;
 	        return !(live && live.has(id));                    // ① la gemella viva
 	      });
-	      // ② il freno. Numeri del 10/08: 2 fantasmi su ~2790 soci, cioe lo 0,07% — lontanissimo.
+	      // ② il freno. Numeri del 10/08: 2 fantasmi su ~2790 soci, cioe lo 0,07% — lontanissimo dal
+	      // limite, che con quella taglia vale 27. La taratura e spiegata sulle costanti.
 	      const ratio = typeof options.maxRatio === 'number' ? options.maxRatio : MEMBER_GHOST_MAX_DROP_RATIO;
 	      const limite = Math.max(MEMBER_GHOST_MIN_ABSOLUTE, Math.floor(list.length * ratio));
 	      if (drop.length > limite) return { drop: [], blocked: true };
