@@ -2831,6 +2831,73 @@ const CASES = [
       CLOUD_FAKEROWS = [];
       return checks;
     }
+  },
+  {
+    // 🚨🚨 IL CASO DELL'11/08: le riassegnazioni dei codici si DISFACEVANO da sole.
+    // Radice misurata su PROD: la riassegnazione del 9/08 fu fatta solo nel cloud, e le due strade
+    // che riscrivono un socio in locale con ciò che arriva dal cloud copiavano OTTO campi —
+    // firstName, surname, name, phone, email, level, gender, updatedAt — e `pmoPlayerId` NON era
+    // fra questi. Quindi il browser teneva il codice di MAGGIO per sempre e lo RISPINGEVA su al
+    // primo salvataggio di scheda: tre cure disfatte in un'ora, col codice condiviso che
+    // ricompariva su altre coppie appena curata la precedente (registro: `cloud_records_upsert
+    // count:1` dell'owner, agli stessi secondi delle righe tornate in collisione).
+    id: 87, flow: 'Cloud/Soci', name: '🚨🚨 il browser IMPARA il codice Padel Village dal cloud (e non rispinge più quello vecchio)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (!H.onRemoteMemberChanged || !H.getMember || typeof win.pmoEnsureCloudMembersHydrated !== 'function') {
+        return [{ label: 'ganci onRemoteMemberChanged/getMember/idratazione assenti', ok: false }];
+      }
+      const R = (local_key, deleted, payload) => ({ record_type: 'member', local_key, deleted, payload });
+      // Un socio finto, seminato dalla porta vera dell'app col codice VECCHIO.
+      const VECCHIO = 'PMO-000149';
+      const NUOVO   = 'PMO-002870';
+      const socio = { id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                      level: 3, active: true, pmoPlayerId: VECCHIO, updatedAt: '2027-04-01T10:00:00.000Z' };
+      CLOUD_FAKEROWS = [R('phone:3519000009', false, socio)];
+      let presente = false;
+      for (let i = 0; i < 5 && !presente; i++) {
+        try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+        presente = !!H.getMember('soc-cod');
+        if (!presente) await new Promise(r => setTimeout(r, 150));
+      }
+      checks.push({ label: 'semina: il socio è in questo browser col codice vecchio', ok: presente && H.getMember('soc-cod').pmoPlayerId === VECCHIO });
+      if (!presente) return checks;
+
+      // 1) IL CUORE: dal cloud arriva il codice NUOVO ⇒ il browser deve impararlo.
+      H.onRemoteMemberChanged({ member: Object.assign({}, socio, { pmoPlayerId: NUOVO, updatedAt: '2027-04-02T10:00:00.000Z' }) });
+      checks.push({ label: '🚨🚨 il codice NUOVO arrivato dal cloud è stato adottato', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+
+      // 2) CONTROLLO OPPOSTO del guardiano: un avviso che NON nomina il campo non deve cancellarlo.
+      //    ⚠️ Discrimina fra `!== undefined` (giusto) e una copia secca `m.pmoPlayerId` (che qui
+      //    azzererebbe il codice). Con `||` invece questo check passerebbe uguale: per quello serve
+      //    anche il ③.
+      const senzaCampo = { id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                           level: 3, updatedAt: '2027-04-03T10:00:00.000Z' };
+      H.onRemoteMemberChanged({ member: senzaCampo });
+      checks.push({ label: 'un avviso che non nomina il codice NON lo cancella', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+
+      // 3) ⚠️ Il codice SVUOTATO nel cloud deve arrivare VUOTO: è il caso delle utenze di servizio
+      //    (Ospite, Demo App…), che per la decisione del 2/08 stanno senza codice. Questo check
+      //    DISCRIMINA `!== undefined` da `||`: con `||` il vuoto verrebbe scartato e il browser
+      //    continuerebbe a rispingere il codice vecchio — cioè il difetto, in piccolo.
+      H.onRemoteMemberChanged({ member: Object.assign({}, socio, { pmoPlayerId: '', updatedAt: '2027-04-04T10:00:00.000Z' }) });
+      checks.push({ label: '⚠️ un codice SVUOTATO nel cloud arriva vuoto (utenze di servizio)', ok: H.getMember('soc-cod').pmoPlayerId === '' });
+
+      // 4) La TERZA strada, quella dell'import Matchpoint → app: anche là il codice viene dal cloud.
+      if (H.applyMatchpointMember) {
+        H.applyMatchpointMember({ id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                                  memberId: '000999', pmoPlayerId: NUOVO, updatedAt: '2027-04-05T10:00:00.000Z' });
+        checks.push({ label: 'anche la strada Matchpoint→app adotta il codice dal cloud', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+      }
+
+      // Pulizia: il caso scrive nell'anagrafica vera di questo browser.
+      try {
+        const puliti = (win.safeLoad('giocatori', []) || []).filter(g => !(g && String(g.id) === 'soc-cod'));
+        win.save('giocatori', puliti);
+      } catch (e) {}
+      CLOUD_FAKEROWS = [];
+      return checks;
+    }
   }
 ];
 
