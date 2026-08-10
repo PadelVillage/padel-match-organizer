@@ -424,16 +424,24 @@ test('21) 🚨 la MIGRAZIONE che ammette i due tipi esiste, e li nomina tutt\'e 
   const file = readdirSync(MIGRAZIONI).filter((f) => /staff_edit_cancel\.sql$/.test(f));
   assert.equal(file.length, 1, 'la migrazione dei due tipi non c\'è (o ce n\'è più d\'una)');
   const sql = readFileSync(join(MIGRAZIONI, file[0]!), 'utf8');
-  for (const tipo of ['staff_edit', 'staff_cancel']) {
-    assert.ok(new RegExp(`'${tipo}'`).test(sql), `la migrazione non ammette «${tipo}»`);
-  }
   // Controllo opposto: se il CHECK non si ricostruisse, il file sarebbe innocuo e verde.
   assert.ok(/ADD CONSTRAINT pmo_cloud_records_type_check/.test(sql),
     'la migrazione non ricostruisce il vincolo: non cambierebbe niente');
+  // 🚨⭐⭐ SI GUARDA SOLO L'ELENCO DEL VINCOLO, senza commenti — e non è pedanteria: la prima
+  // stesura di questo caso cercava i nomi nel FILE INTERO ed è rimasta **verde** a un sabotaggio
+  // che toglieva `staff_cancel` dal vincolo, perché il nome resta scritto qui sopra, nel
+  // commento che racconta il difetto. Un caso che legge la spiegazione invece della regola
+  // giudica il racconto, non il codice. → [[metodo-costruire-i-casi-storti]]
+  const vincolo = (sql.split(/ADD CONSTRAINT pmo_cloud_records_type_check/)[1] ?? '')
+    .split('\n').filter((r) => !/^\s*--/.test(r)).join('\n');
+  assert.ok(vincolo.length > 200, 'non riesco a ritagliare l\'elenco del vincolo: caso cieco');
+  for (const tipo of ['staff_edit', 'staff_cancel']) {
+    assert.ok(new RegExp(`'${tipo}'`).test(vincolo), `il vincolo non ammette «${tipo}»`);
+  }
   // 🚨 E i venti tipi di prima devono restarci TUTTI: un elenco riscritto a memoria che ne
   // perdesse uno spegnerebbe in silenzio una parte del gestionale.
   for (const vecchio of ['member', 'booking', 'staff_booking', 'payment', 'wallet_balance', 'booking_job']) {
-    assert.ok(new RegExp(`'${vecchio}'`).test(sql), `la migrazione ha PERSO il tipo «${vecchio}»`);
+    assert.ok(new RegExp(`'${vecchio}'`).test(vincolo), `il vincolo ha PERSO il tipo «${vecchio}»`);
   }
 });
 
