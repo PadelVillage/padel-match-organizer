@@ -9,7 +9,7 @@
 //      non ritorno. Una guardia perfetta che nessuno chiama resta verde e non difende niente —
 //      è la trappola più cara di questo progetto, e qui si misura la POSIZIONE, non la parola.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -379,6 +379,61 @@ test('19) 💰⭐⭐ il borsellino RIFIUTA: non registra da nessuna parte', () =
     assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
     assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
     assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
+  }
+});
+
+/* ══ 🚨⭐⭐ 11/08/2026 — «REGISTRATA» DEV'ESSERE UN FATTO, NON UNA FRASE ══════════
+ *
+ * Trovato provando: il ponte rispondeva «Modifica di PROVA registrata» e in
+ * `pmo_cloud_records` non c'era NIENTE — zero righe `staff_edit` in assoluto, su TEST e su
+ * PROD. Due cose, e servono tutt'e due:
+ *  · il CHECK sui tipi non ammetteva `staff_edit` né `staff_cancel` ⇒ il database rifiutava;
+ *  · il codice **non guardava `{ error }`** — supabase-js lo RESTITUISCE invece di lanciarlo ⇒
+ *    il `try/catch` di chi chiama non poteva scattare, e il rifiuto usciva come un «fatto».
+ * ⭐⭐ Il caso 11 qui sopra era verde e restava verde: misurava che la funzione **venisse
+ * chiamata**, non che **scrivesse**. È la differenza fra provare la struttura e provare la resa.
+ */
+
+test('20) 🚨⭐⭐ chi scrive il registro GUARDA l\'esito: un rifiuto del database non è un «fatto»', () => {
+  // Ogni upsert su `pmo_cloud_records` dentro le tre funzioni delle prenotazioni dev'essere
+  // seguito da un controllo dell'errore. Senza, il fallimento è muto — ed è già successo.
+  const attesi: Array<[string, number]> = [
+    ['matchpoint-bookings-edit/index.ts', 1],     // staff_edit
+    ['matchpoint-bookings-cancel/index.ts', 2],   // spegnimento della prova + staff_cancel
+    ['matchpoint-bookings-create/index.ts', 1],   // la riga della prenotazione
+  ];
+  for (const [rel, quanti] of attesi) {
+    const src = readFileSync(join(FUNZIONI, rel), 'utf8');
+    const conControllo = (src.match(/const \{ error: \w+ \} = await client\s*\n?\s*\.?from\('pmo_cloud_records'\)/g)
+      ?? src.match(/const \{ error: \w+ \} = await client\.from\('pmo_cloud_records'\)/g) ?? []).length;
+    assert.equal(conControllo, quanti,
+      `${rel}: mi aspetto ${quanti} scritture che guardano l'errore, ne trovo ${conControllo}`);
+    // 🚨 E il controllo deve LANCIARE: chi chiama tratta il fallimento in due modi opposti e
+    // giusti (503 in prova, log in produzione), ma solo se gli arriva un'eccezione.
+    assert.ok(/if \(errore\w*\) throw new Error\(/.test(src),
+      `${rel}: l'errore si legge e non si lancia — il chiamante non lo saprà mai`);
+  }
+});
+
+test('21) 🚨 la MIGRAZIONE che ammette i due tipi esiste, e li nomina tutt\'e due', () => {
+  // ⚖️ Il codice del caso 16 senza questa migrazione trasformerebbe un difetto muto in un 503 a
+  // ogni modifica di prova: la cura è la coppia, e questo caso lega le due metà.
+  // 🚨 Il file NON prova che sia stata applicata (le migrazioni qui non partono da sole): prova
+  // che esista e che non si perda in un merge. L'applicazione si verifica sul bersaglio.
+  const MIGRAZIONI = join(FUNZIONI, '..', 'migrations');
+  const file = readdirSync(MIGRAZIONI).filter((f) => /staff_edit_cancel\.sql$/.test(f));
+  assert.equal(file.length, 1, 'la migrazione dei due tipi non c\'è (o ce n\'è più d\'una)');
+  const sql = readFileSync(join(MIGRAZIONI, file[0]!), 'utf8');
+  for (const tipo of ['staff_edit', 'staff_cancel']) {
+    assert.ok(new RegExp(`'${tipo}'`).test(sql), `la migrazione non ammette «${tipo}»`);
+  }
+  // Controllo opposto: se il CHECK non si ricostruisse, il file sarebbe innocuo e verde.
+  assert.ok(/ADD CONSTRAINT pmo_cloud_records_type_check/.test(sql),
+    'la migrazione non ricostruisce il vincolo: non cambierebbe niente');
+  // 🚨 E i venti tipi di prima devono restarci TUTTI: un elenco riscritto a memoria che ne
+  // perdesse uno spegnerebbe in silenzio una parte del gestionale.
+  for (const vecchio of ['member', 'booking', 'staff_booking', 'payment', 'wallet_balance', 'booking_job']) {
+    assert.ok(new RegExp(`'${vecchio}'`).test(sql), `la migrazione ha PERSO il tipo «${vecchio}»`);
   }
 });
 

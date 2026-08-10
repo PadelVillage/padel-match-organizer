@@ -300,7 +300,13 @@ async function saveStaffBookingRecord(opts: {
 
   const payload = fondiPayloadPrenotazione(nostro, giaScritto);
 
-  await client.from('pmo_cloud_records').upsert({
+  // 🚨⭐⭐ 11/08/2026 — SI GUARDA L'ESITO. Qui il difetto della migrazione non c'era
+  // (`staff_booking` è sempre stato fra i tipi ammessi, ed è il motivo per cui «dal bot si
+  // prenota davvero in TEST» funzionava mentre modifiche e annullamenti no) — ma il modo di
+  // sbagliare in silenzio era identico: supabase-js **restituisce** l'errore invece di lanciarlo.
+  // ⚖️ E qui pesa più che altrove: questa è la riga che FA ESISTERE la partita di prova. Se non
+  // si scrive e nessuno lo dice, al socio si risponde «prenotato» e la partita non c'è.
+  const { error: erroreRiga } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_booking',
     local_key: localKey,
     payload,
@@ -308,6 +314,7 @@ async function saveStaffBookingRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  if (erroreRiga) throw new Error(`riga della prenotazione non scritta: ${erroreRiga.message}`);
 }
 
 // ⚠️ Il client si dichiara per QUELLO CHE SERVE (una tabella su cui fare upsert), non col tipo

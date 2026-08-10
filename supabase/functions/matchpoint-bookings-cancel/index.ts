@@ -213,7 +213,11 @@ async function spegniPartiteDiProvaSulloSlot(opts: {
   const stessoSlot = righeDiProvaDaSpegnere(righe, cancel);
   const adesso = new Date().toISOString();
   for (const r of stessoSlot) {
-    await client.from('pmo_cloud_records').upsert({
+    // 🚨 Anche qui si guarda l'esito (11/08/2026): questo spegne la riga di una partita di
+    // prova, e un fallimento ignorato la lascerebbe **viva** mentre al socio si è detto
+    // «annullata». Il tipo `staff_booking` è sempre stato ammesso, quindi qui non c'era il
+    // difetto della migrazione — ma il modo di sbagliare in silenzio sì, ed è lo stesso.
+    const { error: erroreSpegnimento } = await client.from('pmo_cloud_records').upsert({
       record_type: 'staff_booking',
       local_key: r.local_key,
       payload: r.payload,
@@ -221,6 +225,7 @@ async function spegniPartiteDiProvaSulloSlot(opts: {
       updated_at: adesso,
       synced_at: adesso,
     }, { onConflict: 'record_type,local_key' });
+    if (erroreSpegnimento) throw new Error(`riga di prova non spenta (${r.local_key}): ${erroreSpegnimento.message}`);
   }
   return stessoSlot.length;
 }
@@ -236,7 +241,11 @@ async function saveStaffCancelRecord(opts: {
   const client = createClient(supabaseUrl, supabaseKey);
   const localKey = `staff_cancel|${cancel.data ?? ''}|${cancel.ora ?? ''}|Campo ${cancel.campo ?? ''}|${cancel.idReserva ?? ''}|${actor.userId}`;
 
-  await client.from('pmo_cloud_records').upsert({
+  // 🚨⭐⭐ 11/08/2026 — LO STESSO DIFETTO DI `staff_edit`, e nessuno l'aveva visto per la stessa
+  // ragione: `staff_cancel` non era nell'elenco dei tipi ammessi dal CHECK, il database
+  // rifiutava, e senza guardare `{ error }` il rifiuto usciva come un «fatto». Zero righe in
+  // assoluto, su TEST e su PROD. Curato dalla migrazione `…_staff_edit_cancel`.
+  const { error: erroreRegistro } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_cancel',
     local_key: localKey,
     payload: {
@@ -252,6 +261,7 @@ async function saveStaffCancelRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  if (erroreRegistro) throw new Error(`registro staff_cancel non scritto: ${erroreRegistro.message}`);
 }
 
 Deno.serve(async (req: Request) => {
