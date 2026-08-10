@@ -7987,7 +7987,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.206';
+    const APP_VERSION = '6.209';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -8131,6 +8131,21 @@ body.assessment-public-mode .assessment-public-only-card {
     // Sotto questa cifra la potatura dei fantasmi non si frena mai: e il pavimento che impedisce
     // alla quota qui sopra di bloccare potature minuscole su archivi piccoli.
     const HISTORY_GHOST_MIN_ABSOLUTE = 25;
+    // I gemelli della coppia qui sopra per i SOCI (vedi pmoMemberGhostRowsToDrop).
+    // ⚠️⭐ La quota e QUARANTA VOLTE piu stretta di quella dello storico (0.01 contro 0.40), e il
+    // perche va letto prima di allargarla. Lo storico puo permettersi il 40% perche la sua
+    // riconciliazione ritira per PERIODI INTERI: centinaia di righe in un colpo sono il normale.
+    // Nell'anagrafica non esiste nessun caso legittimo in cui il 10% dei soci svanisce da un
+    // browser in una sola idratazione — sarebbe il sintomo di una lettura del cloud andata storta,
+    // non di una pulizia.
+    // 📏 Tarata su quanti fantasmi ci si aspetta DAVVERO, misurato e non stimato: la diagnostica
+    // del 4/08 dava il suo browser e il cloud che «divergono di 1 socio attivo», e la pulizia del
+    // 9/08 ne ha prodotti 2. Con ~2790 soci il limite vale 27: nove volte l'attesa, e comunque
+    // decine — non centinaia. Sopra quella cifra non si pota: si AVVISA, e si va a guardare.
+    // ⚠️ Il giorno del distacco da Matchpoint, quando si archivieranno molte schede in poco tempo,
+    // questo freno scattera: e voluto. Quella e una pulizia da guardare, non da subire.
+    const MEMBER_GHOST_MAX_DROP_RATIO = 0.01;
+    const MEMBER_GHOST_MIN_ABSOLUTE = 25;
     const DAILY_DIFF_HISTORY_LIMIT = 10;
     const DAILY_DIFF_DETAIL_LIMIT = 30;
     const PMO_COMPACT_BOOKING_STORAGE_KEYS = new Set(['prenotazioni', 'prenotazioniOccupazione', 'storicoPrenotazioni']);
@@ -12790,15 +12805,33 @@ Grazie.`
     //
     // ⚙️ Non costa una riga di rete in più: la RPC scaricava GIÀ tutti i record 'member' e
     // li buttava via qui. Sola lettura dal cloud; chi è già in locale non viene toccato.
+    //
+    // ⭐ Torna TRE cose, e le due nuove sono lo stesso scarto di prima usato invece di buttarlo:
+    // le righe `deleted` che questa funzione filtrava via sono l'unico posto in cui si sa CHI il
+    // cloud ha archiviato — e servono a pmoMemberGhostRowsToDrop per togliere i fantasmi da
+    // questo browser. Anche qui: zero righe di rete in più.
+    // 🚨 L'identità è `payload.id || local_key`, la STESSA con cui la riga entrerebbe in locale
+    // (vedi il .map qui sotto): un'identità calcolata in modo diverso fra chi elenca i ritiri e
+    // chi li confronta non troverebbe niente, e la potatura sembrerebbe solo «non serviva».
     async function pmoLoadAllMembersFromCloud() {
       const rows = await pmoStaffRpcPaged('pmo_get_records_admin', {
         p_record_types: ['member'],
         p_since: null
       }, 'cloud_sync', 'scaricare i soci dal cloud');
       const list = Array.isArray(rows) ? rows : [];
-      return list
+      const identita = row => cleanCell(row?.payload?.id || row?.local_key || '');
+      const members = list
         .filter(row => row?.record_type === 'member' && !row.deleted && row.payload)
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
+      const retired = new Set();
+      const live = new Set();
+      list.forEach(row => {
+        if (row?.record_type !== 'member') return;
+        const id = identita(row);
+        if (!id) return;
+        (row.deleted ? retired : live).add(id);
+      });
+      return { members, retired, live };
     }
 
     // ── LA FILA DEI DOPPIONI ────────────────────────────────────────────────────────────────
@@ -12982,8 +13015,52 @@ Grazie.`
         if (!opts.force && _pmoMembersHydratedAt && (now - _pmoMembersHydratedAt) < 600000) return;
         _pmoMembersHydrating = true;
         pmoSetMembersHydrationNotice(true);
-        const members = await pmoLoadAllMembersFromCloud();
+        const scaricati = await pmoLoadAllMembersFromCloud();
+        const members = scaricati?.members || [];
         _pmoMembersHydratedAt = Date.now();
+        // ── IL VERSO OPPOSTO: togliere da QUESTO browser i soci che il cloud ha ARCHIVIATO ──────
+        // Fin qui l'idratazione sapeva solo AGGIUNGERE, e un socio archiviato nel cloud restava
+        // visibile qui per sempre — ricaricare non bastava, perché veniva riletto da localStorage.
+        // La regola e le sue due protezioni stanno in pmoMemberGhostRowsToDrop.
+        //
+        // 🚨⭐⭐ PERCHÉ LA POTATURA STA PRIMA DELL'AGGIUNTA, e non è un dettaglio di stile.
+        // Misurato su PROD il 10/08: dei 1.916 record socio archiviati senza gemella viva sotto la
+        // stessa identità, 1.864 sono persone VIVE sotto un ALTRO `id` (il doppione archiviato, la
+        // persona rimasta). Per una di loro, in questo browser, la riga vecchia c'è e la nuova no.
+        // Mettendo la potatura DOPO l'aggiunta, il giro sarebbe questo: l'aggiunta scarta la riga
+        // viva perché `pmoImportContactKey` (nome+telefono) la vede già presente — cioè vede il
+        // FANTASMA — e subito dopo la potatura toglie il fantasma. Risultato: la persona spariva
+        // dall'elenco fino all'idratazione successiva (fino a 10 minuti dopo, o al prossimo
+        // ingresso nella scheda). Potando PRIMA, il fantasma è già via quando si costruiscono le
+        // chiavi viste, la riga viva entra nello stesso giro e il socio non lampeggia mai.
+        let removed = 0;
+        const ghosts = pmoMemberGhostRowsToDrop(giocatori, scaricati?.retired, scaricati?.live);
+        if (ghosts.drop.length) {
+          // Confronto per IDENTITÀ della riga, non per id: due righe locali possono condividere
+          // lo stesso id e qui non devono trascinarsi a vicenda (stessa cura della gemella).
+          const ghostSet = new Set(ghosts.drop);
+          const nomi = ghosts.drop.map(g => (typeof playerFullName === 'function' ? playerFullName(g) : cleanCell(g?.name))).filter(Boolean);
+          giocatori = giocatori.filter(g => !ghostSet.has(g));
+          removed = ghosts.drop.length;
+          console.log('PMO_CLOUD_MEMBERS_GHOSTS_DROPPED', { removed, nomi, total: giocatori.length });
+          // 🗣️ Lo si DICE, e col nome: il socio sparisce dall'elenco sotto i suoi occhi, e un
+          // elenco che cambia da solo senza spiegazione è esattamente il guasto da cui si parte.
+          try {
+            if (typeof showAlert === 'function') {
+              showAlert(`🧹 ${removed === 1 ? 'Rimosso 1 socio archiviato' : `Rimossi ${removed} soci archiviati`} che era rimasto solo in questo browser${nomi.length ? `: ${nomi.slice(0, 3).join(', ')}${nomi.length > 3 ? '…' : ''}` : ''}.`, 'info');
+            }
+          } catch (e) {}
+        }
+        // 🚨 Il freno che scatta NON è un silenzio: se non si dicesse, un elenco pieno di fantasmi
+        // sembrerebbe «già pulito». Va in console e a schermo, così si va a guardare il cloud.
+        if (ghosts.blocked) {
+          console.warn('PMO_CLOUD_MEMBERS_GHOST_PRUNE_BLOCKED', { locali: giocatori.length });
+          try {
+            if (typeof showAlert === 'function') {
+              showAlert('⚠️ Troppi soci risultano archiviati nel cloud: la pulizia dell\'elenco di questo browser è stata SOSPESA per sicurezza. Nessun socio è stato toccato.', 'warning');
+            }
+          } catch (e) {}
+        }
         // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
         // NON usiamo findMatchingMemberIndex perché matcha anche per SOLO nome → nasconderebbe
         // una persona diversa che condivide il nome con un socio (falso merge). Con nome+telefono
@@ -13006,7 +13083,7 @@ Grazie.`
           if (id) seenIds.add(id);
           added++;
         });
-        if (added > 0) {
+        if (added > 0 || removed > 0) {
           // I 'rubrica-google' NON vengono persistiti (pmoEncodeForStorage li filtra): per loro
           // questo save è un no-op. Per i soci nati nell'app e per i Matchpoint, invece, scrive
           // davvero — ed è quello che li fa restare dopo un ricaricamento della pagina.
@@ -13014,7 +13091,7 @@ Grazie.`
           try { save('giocatori', giocatori); } catch (e) { console.warn('hydrate soci persist skip:', e); }
           try { if (typeof displayMembers === 'function') displayMembers(); } catch (e) {}
           try { if (typeof updateStats === 'function') updateStats(); } catch (e) {}
-          console.log('PMO_CLOUD_MEMBERS_HYDRATED', { added, total: giocatori.length });
+          if (added > 0) console.log('PMO_CLOUD_MEMBERS_HYDRATED', { added, total: giocatori.length });
         }
       } catch (e) {
         console.warn('pmoEnsureCloudMembersHydrated:', e);
@@ -28048,6 +28125,60 @@ Per confermare scrivi ELIMINA.`);
 	      // sotto quella cifra non si frena mai, sopra comanda la quota.
 	      const ratio = typeof maxRatio === 'number' ? maxRatio : HISTORY_RECONCILE_MAX_WITHDRAW_RATIO;
 	      const limite = Math.max(HISTORY_GHOST_MIN_ABSOLUTE, Math.floor(list.length * ratio));
+	      if (drop.length > limite) return { drop: [], blocked: true };
+	      return { drop, blocked: false };
+	    }
+	    // ── I SOCI FANTASMA: la gemella di pmoHistoryGhostRowsToDrop per l'anagrafica ─────────
+	    // 🚨⭐⭐ Il fatto da cui nasce (9/08/2026, visto da lui): archiviato nel cloud il doppione di
+	    // un socio, quel socio continuava a comparire nell'elenco della SUA app — e ricaricare non
+	    // bastava. Nel cloud c'era una riga sola. Il meccanismo per accorgersene esisteva solo per lo
+	    // storico prenotazioni; per i soci non c'era niente che ripulisse `giocatori` dalle righe che
+	    // il cloud ha marcato `deleted`.
+	    //
+	    // 🚨 LE DUE CHIAVI NON VIVONO NELLO STESSO SPAZIO, ed e la trappola che fa sbagliare:
+	    //   locale  un socio e il suo `payload.id`
+	    //   cloud   la riga e la sua `local_key` (`phone:…` / `email:…` / uuid)
+	    // e una persona puo averne avute PIU D'UNA nel tempo (la `phone:` diventa `email:` quando
+	    // entra da Matchpoint). Quindi «ritirata nel cloud» NON implica «da togliere di qui»: la
+	    // forma piu frequente di doppione e la STESSA scheda sotto due chiavi, e in locale compare
+	    // una volta sola (pmoEnsureCloudMembersHydrated scarta chi ha un `id` gia visto).
+	    // ⇒ Il confronto si fa sull'IDENTITA della scheda (`payload.id`), non sulla chiave: cosi la
+	    // scheda ritirata sotto la chiave vecchia e rimandata viva sotto quella nuova ha una gemella
+	    // viva e NON viene toccata. E la stessa forma delle 48 righe di storico che un fix scritto
+	    // alla leggera avrebbe cancellato su PROD il 21/07.
+	    //
+	    // Le protezioni sono le stesse DUE della gemella, e per le stesse ragioni:
+	    //   ① si toglie solo cio che il cloud ha ritirato E che non ha una gemella viva;
+	    //   ② freno anti-potatura di massa con quota E pavimento assoluto (la sola quota, su un
+	    //     elenco piccolo, scatterebbe per una riga sola).
+	    // Conservativo per costruzione: un socio che il cloud non conosce affatto — appena creato qui
+	    // e non ancora sincronizzato — non e ne ritirato ne vivo, quindi non viene sfiorato. Ed e
+	    // proprio lui che la cura «ovvia» («togli chi non e nel cloud») cancellerebbe.
+	    // Elenco assente = nessuna potatura: e il caso della lettura fallita, e un browser
+	    // disallineato e meglio di uno potato al buio.
+	    //
+	    // ⚠️ COSA RESTA SCOPERTO, detto perche non sia una sorpresa: una modifica fatta qui su una
+	    // scheda che il cloud ha archiviato, il cui push e FALLITO (il toast «Scheda salvata nel
+	    // browser, ma aggiornamento cloud non riuscito»), viene potata come le altre. Non si perdono
+	    // i dati — il payload vive nella riga tombstone del cloud — ma quella modifica non pubblicata
+	    // si perde. Se invece il push riesce, la riga torna VIVA nel cloud e la ① la protegge da se.
+	    // Per questo la potatura dice sempre CHI ha tolto, e non lo fa in silenzio (vedi il chiamante).
+	    function pmoMemberGhostRowsToDrop(members, retiredCloudIds, liveCloudIds, options={}) {
+	      const list = Array.isArray(members) ? members : [];
+	      // Riconoscimento per forma e non `instanceof`, per la stessa ragione della gemella: la rete
+	      // di regressione vive fuori dall'iframe e un Set creato la non e `instanceof Set` qui dentro.
+	      const retired = pmoHistoryKeySet(retiredCloudIds);
+	      if (!retired || !list.length) return { drop: [], blocked: false };
+	      const live = pmoHistoryKeySet(liveCloudIds);
+	      const drop = list.filter(member => {
+	        const id = cleanCell(member && member.id != null ? member.id : '');
+	        if (!id || !retired.has(id)) return false;
+	        return !(live && live.has(id));                    // ① la gemella viva
+	      });
+	      // ② il freno. Numeri del 10/08: 2 fantasmi su ~2790 soci, cioe lo 0,07% — lontanissimo dal
+	      // limite, che con quella taglia vale 27. La taratura e spiegata sulle costanti.
+	      const ratio = typeof options.maxRatio === 'number' ? options.maxRatio : MEMBER_GHOST_MAX_DROP_RATIO;
+	      const limite = Math.max(MEMBER_GHOST_MIN_ABSOLUTE, Math.floor(list.length * ratio));
 	      if (drop.length > limite) return { drop: [], blocked: true };
 	      return { drop, blocked: false };
 	    }
