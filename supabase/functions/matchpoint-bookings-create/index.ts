@@ -288,7 +288,14 @@ async function saveStaffBookingRecord(opts: {
 
   const payload = fondiPayloadPrenotazione(nostro, giaScritto);
 
-  await client.from('pmo_cloud_records').upsert({
+  // 🚨⭐⭐ 11/08/2026 — SI GUARDA L'ESITO. Qui il difetto della migrazione non c'era
+  // (`staff_booking` è sempre stato fra i tipi ammessi) — ma il modo di sbagliare in silenzio era
+  // identico: supabase-js **restituisce** l'errore invece di lanciarlo, quindi il `try/catch` di
+  // chi chiama non poteva scattare.
+  // ⚖️ E qui pesa più che altrove: questa è la riga che fa esistere la prenotazione nella nostra
+  // copia. Se non si scrive e nessuno lo dice, la partita c'è sul gestionale del circolo e da
+  // noi no — e il disallineamento si scopre giorni dopo.
+  const { error: erroreRiga } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_booking',
     local_key: localKey,
     payload,
@@ -296,6 +303,7 @@ async function saveStaffBookingRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  if (erroreRiga) throw new Error(`riga della prenotazione non scritta: ${erroreRiga.message}`);
 }
 
 // ⚠️ Il client si dichiara per QUELLO CHE SERVE (una tabella su cui fare upsert), non col tipo
