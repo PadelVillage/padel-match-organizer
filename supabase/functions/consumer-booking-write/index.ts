@@ -14,6 +14,7 @@ import {
   nomiDellaRiga,
   restanoSoloOspiti,
   rosterDelloSlot,
+  schedaUnicaConQuelNome,
   senzaDiMe,
   sostituito,
   type RigaSlot,
@@ -579,6 +580,69 @@ Deno.serve(async (req: Request) => {
     return { ok: true, omonimi };
   };
 
+  /**
+   * 👤 CHI È il giocatore che si sta togliendo, quando quel nome è di UNA SOLA persona viva.
+   *
+   * ⭐⭐ 11/08/2026, da una sua domanda: *«con il nuovo sistema di registrazione possiamo
+   * avvisare anche noi il giocatore che è stato eliminato»*. Il bot lo sa già fare con chi è
+   * entrato accettando un invito — quella riga è attaccata a QUELLA partita — e resta muto con
+   * tutti gli altri. Questo è il pezzo che gli dice **a chi** scrivere anche per loro.
+   *
+   * 🚨 Il verso del fail closed è OPPOSTO a quello di `omonimiDelSocio`, ed è voluto: là un
+   * dubbio ferma un gesto irreversibile (503, non si annulla); qui un dubbio toglie **solo un
+   * avviso** — il giocatore è tolto comunque e l'organizzatore legge «avvisa tu». Fermare il
+   * togli perché non si sa a chi scrivere sarebbe far pagare al socio un problema nostro.
+   * ⇒ Perciò questa NON torna mai un errore: torna `null`, e chi legge non promette niente.
+   *
+   * ⚖️ La lettura è la stessa di `omonimiDelSocio`, ma i filtri partono da una stringa sola (il
+   * nome come lo scrive il gestionale) invece che da `name` + `surname`: si cerca il nome
+   * intero, e **ogni sua parola come cognome**, perché la scheda può essere scritta «Nome
+   * Cognome» oppure «Cognome Nome». A decidere resta `schedaUnicaConQuelNome`, che confronta
+   * con la chiave che ignora l'ordine.
+   */
+  const schedaDiChiSiToglie = async (nome: string): Promise<string | null> => {
+    const cercato = clean(nome);
+    if (!cercato) return null;
+    // ⚠️ `%` e `_` sono i jolly di `ilike`: lasciati passare allargherebbero il filtro. Il verso
+    // sarebbe comunque sicuro (più candidati ⇒ più facile che siano due ⇒ non si avvisa), ma un
+    // nome con un jolly dentro non è un nome: si tratta come «non lo so».
+    if (/[%_]/.test(cercato)) return null;
+    const parole = cercato.split(/\s+/).filter(Boolean);
+    const filtri = [
+      { campo: 'payload->>name', valore: cercato },
+      ...parole.map((p) => ({ campo: 'payload->>surname', valore: p })),
+    ];
+    const candidati: SchedaPerOmonimia[] = [];
+    for (const f of filtri) {
+      const { data, error } = await service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'member')
+        .not('deleted', 'is', true)
+        .ilike(f.campo, f.valore)
+        .limit(OMONIMI_LIMITE);
+      // 🚨 Elenco pieno fino al limite = potenzialmente troncato, e il troncamento potrebbe aver
+      // portato via **proprio** il secondo omonimo: si tornerebbe un id spacciandolo per unico.
+      // Qui «non lo so» vale «non avviso», come sopra.
+      if (error || (data ?? []).length >= OMONIMI_LIMITE) {
+        console.log(`[booking-write] remove: chi è "${cercato}" non verificabile su ${f.campo} → nessun avviso`);
+        return null;
+      }
+      for (const row of data ?? []) {
+        const p = (row.payload ?? {}) as JsonMap;
+        candidati.push({
+          id: clean(p.id), name: clean(p.name),
+          firstName: clean(p.firstName), surname: clean(p.surname), active: p.active,
+        });
+      }
+    }
+    const scheda = schedaUnicaConQuelNome(cercato, candidati);
+    if (!scheda) {
+      console.log(`[booking-write] remove: "${cercato}" non è di UNA sola persona viva (${candidati.length} schede lette) → nessun avviso`);
+    }
+    return scheda;
+  };
+
   // ── create ────────────────────────────────────────────────────────────────
   if (action === 'create') {
     // 🧪 Come per `leave`: quando la prova a vuoto è accesa, se la porta indietro OGNI
@@ -965,6 +1029,12 @@ Deno.serve(async (req: Request) => {
     const copie = righe.filter((b) => b.copiaInApp).map((b) => ({ id: b.id, payload: b.payload }));
     const allineamento = allineaCopiaInApp(copie, new Set([normName(bersaglio.nome)]));
 
+    // 👤 CHI si sta togliendo, per l'avviso del bot. Si chiede **prima** della scrittura di
+    // proposito: così finisce anche nella prova a vuoto e si può misurare senza togliere
+    // nessuno — la stessa ragione per cui l'allineamento della copia si calcola qui sopra.
+    // ⚖️ Dietro un Ospite non c'è una persona: è un posto occupato, e non si cerca nessuno.
+    const schedaDelTolto = bersaglio.ospite ? null : await schedaDiChiSiToglie(bersaglio.nome);
+
     if (dryRun) {
       console.log(`[booking-write] remove PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: ${member.name} toglierebbe ${bersaglio.nome} (in ${esito.roster.length}, su ${righe.length} righe)`);
       return ok({
@@ -974,6 +1044,9 @@ Deno.serve(async (req: Request) => {
         would: {
           remove: bersaglio.nome,
           ospite: bersaglio.ospite,
+          // `null` non è un guasto: vuol dire «quel nome non è di una persona sola» ⇒ il bot
+          // non avviserà nessuno e dirà all'organizzatore di farlo lui.
+          scheda_del_tolto: schedaDelTolto,
           slot: { data: slot.data, ora: slot.ora, campo },
           giocatori_prima: esito.roster.length,
           restano: esito.roster.length - 1,
@@ -1057,6 +1130,10 @@ Deno.serve(async (req: Request) => {
       // persona: dietro un Ospite non c'è nessuno da avvisare.
       rimosso: bersaglio.nome,
       ospite: bersaglio.ospite,
+      // 👤 CHI era, quando quel nome è di una persona sola in anagrafica: è la chiave con cui il
+      // bot ritrova la sua chat Telegram senza passare dal nome. `null` = non si sa ⇒ non si
+      // avvisa (e non è un errore: la persona è stata tolta lo stesso).
+      scheda_del_tolto: schedaDelTolto,
       giocatori_prima: esito.roster.length,
       restano: esito.roster.length - 1,
       copia_in_app: copiaEsito,
