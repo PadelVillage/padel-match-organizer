@@ -11,6 +11,9 @@ import {
   MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
+// 📐 La scheda del circolo che una partita nata in prova si scrive da sé. Regola pura, provata
+// da sola: senza, su TEST la partita non ha un organizzatore e non si può gestire.
+import { schedaDiProva } from './scheda-di-prova.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -296,7 +299,22 @@ async function saveStaffBookingRecord(opts: {
   // partita di prova sparirebbe da sola, senza un errore da nessuna parte.
   // ⚠️ Sta dentro `nostro`, quindi lo fonde la stessa regola degli altri campi: se la riga esiste
   // già ed è vera, l'esistente vince e il marchio non la sporca.
-  if (esitoVieneDaUnaProva(workerResult)) nostro[MARCHIO_NATA_IN_PROVA] = true;
+  if (esitoVieneDaUnaProva(workerResult)) {
+    nostro[MARCHIO_NATA_IN_PROVA] = true;
+    // 🆕⭐⭐ 11/08/2026 — LA PARTITA NATA IN PROVA SI PORTA LA PROPRIA SCHEDA.
+    // Su TEST il circolo non viene chiamato ⇒ la `descrizione` (che la scrive Matchpoint) non
+    // torna mai, e `organizzatoreDelloSlot` legge SOLO quella: senza, la partita non ha un
+    // organizzatore e **non si può gestire** — né aggiungere né togliere. Finché non c'era, la
+    // prova dell'avviso al tolto è stata montata scrivendo la `descrizione` a mano nella riga.
+    // ⛔ Sta DENTRO il ramo della prova di proposito, e non accanto agli altri campi: in
+    // produzione uno `staff_booking` con una `descrizione` fabbricata da noi sarebbe una seconda
+    // scheda che può contraddire quella vera del circolo ⇒ copie discordi, e l'organizzatore
+    // sparirebbe sul circolo VERO. Il perché per esteso sta in `scheda-di-prova.ts`.
+    // ⚖️ `null` = non si è potuta scrivere fedelmente: si lascia il campo com'era, e si torna
+    // all'`organizzatore_ignoto` di prima. Mai una scheda che nomina la persona sbagliata.
+    const scheda = schedaDiProva(booking.giocatori);
+    if (scheda) nostro.descrizione = scheda;
+  }
 
   const payload = fondiPayloadPrenotazione(nostro, giaScritto);
 
