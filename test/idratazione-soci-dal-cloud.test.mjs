@@ -55,6 +55,16 @@ function estrai(nome) {
 }
 
 // Esegue la funzione VERA con una RPC finta che restituisce le righe date.
+// 🚨🧰 QUESTO BANCO ERA MUTO, e non da oggi: era rosso su 10 prove su 13 mentre la funzione che
+// sorveglia funzionava benissimo. Due marciture, tutt'e due dello STRUMENTO:
+//   · il contesto isolato non aveva `cleanCell`, che la funzione ha cominciato a usare quando le è
+//     entrata dentro `identita` (la potatura dei fantasmi, 10/08) ⇒ ogni prova moriva sul nascere.
+//     Si porta dentro quella VERA, estratta dall'HTML: una finta scritta qui potrebbe divergere da
+//     quella dell'app senza che nessuno se ne accorga;
+//   · la funzione da allora non torna più un array ma `{ members, retired, live, rowAt }`, e il
+//     banco leggeva ancora `.length` sul risultato intero.
+// ⇒ ⭐⭐ Un banco che nessuno fa girare non protegge niente: era verde l'ultima volta che qualcuno
+// l'ha guardato, e da allora il codice sotto è cambiato tre volte. Va nel giro, o non esiste.
 async function scarica(righe) {
   let chiamata = null;
   const ctx = {
@@ -65,9 +75,9 @@ async function scarica(righe) {
     console: { info() {}, warn() {}, log() {}, error() {} },
   };
   vm.createContext(ctx);
-  vm.runInContext(estrai('pmoLoadAllMembersFromCloud'), ctx);
-  const soci = await ctx.pmoLoadAllMembersFromCloud();
-  return { soci, chiamata };
+  vm.runInContext(estrai('cleanCell') + '\n' + estrai('pmoLoadAllMembersFromCloud'), ctx);
+  const esito = await ctx.pmoLoadAllMembersFromCloud();
+  return { soci: esito.members, esito, chiamata };
 }
 
 // Una riga del cloud come arriva davvero da `pmo_get_records_admin`.
@@ -180,6 +190,88 @@ caso('12. scarica TUTTO lo storico, non solo le ultime modifiche', async () => {
   // ed è esattamente il caso dei 7 invisibili — non tornerebbe mai giù.
   const { chiamata } = await scarica([]);
   return [chiamata.params.p_since === null];
+});
+
+// ── L'OROLOGIO DELLE RIGHE, e la regola che ci decide sopra (11/08/2026, «la lapide») ────────
+// Il gestionale mostrava un livello e un codice vecchi mentre il cloud aveva quelli giusti: la
+// copia del browser era FERMA e nessuno la ricuciva. La radice sta nel campo su cui si decide chi
+// è più recente — `payload.updatedAt` non lo aggiorna chi corregge nel cloud (2.785 righe vive su
+// 2.795 lo avevano fermo da oltre un giorno) — quindi si guarda `updated_at` DELLA RIGA.
+// ⚠️ `estrai` sa prendere solo le funzioni: l'elenco dei campi è una `const`, e senza di lei la
+// regola muore con «PMO_MEMBER_CLOUD_FIELDS is not defined». Si prende quella VERA dall'HTML —
+// scriverne una copia qui vorrebbe dire che il giorno in cui si aggiunge un campo il banco resta
+// verde misurando l'elenco di ieri.
+function estraiCost(nome) {
+  const inizio = html.indexOf(`const ${nome} = `);
+  if (inizio < 0) throw new Error(`costante ${nome} non trovata`);
+  const fine = html.indexOf(';', inizio);
+  return html.slice(inizio, fine + 1);
+}
+
+const regola = () => {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(estraiCost('PMO_MEMBER_CLOUD_FIELDS') + '\n' + estrai('pmoCloudTsMs') + '\n' + estrai('pmoMemberFieldsFromCloud'), ctx);
+  return ctx;
+};
+
+caso('13. l\'orologio arriva dalle righe VIVE, per identità — e le lapidi non lo sporcano', async () => {
+  const { esito } = await scarica([
+    { record_type: 'member', local_key: 'email:a@prova.local', deleted: false,
+      updated_at: '2026-08-11 10:30:37.700616+00', payload: { id: 'x1', name: 'Ada', updatedAt: '2026-07-17T20:17:49.450Z' } },
+    { record_type: 'member', local_key: 'phone:391', deleted: true,
+      updated_at: '2026-08-09 10:30:36.98085+00', payload: { id: 'x1', name: 'Ada', updatedAt: '2026-08-09T10:30:03.689Z' } },
+  ]);
+  return [
+    // ⚠️ non `instanceof Map`: la funzione gira in un contesto isolato, dove `Map` è un'ALTRA
+    // classe con lo stesso nome — l'`instanceof` direbbe di no su una mappa perfettamente buona.
+    typeof esito.rowAt?.get === 'function',
+    esito.rowAt.get('x1') === '2026-08-11 10:30:37.700616+00',   // la viva, non la lapide
+    esito.retired.has('x1') && esito.live.has('x1'),             // la stessa identità sta in tutt'e due
+  ];
+});
+
+caso('14. 🚨 il cloud detta solo se la sua RIGA è più recente — non se lo dice il payload', async () => {
+  const ctx = regola();
+  const locale = { id: 'x1', level: 0.5, pmoPlayerId: 'PMO-000222', updatedAt: '2026-08-09T10:30:03.689Z' };
+  const cloud  = { id: 'x1', level: 4,   pmoPlayerId: 'PMO-000523', updatedAt: '2026-07-17T20:17:49.450Z' };
+  // ① la forma reale: il payload del cloud è PIÙ VECCHIO, ma la riga è stata scritta dopo
+  const a = ctx.pmoMemberFieldsFromCloud(locale, cloud, '2026-08-11 10:30:37.700616+00');
+  // ② la modifica fatta qui e non ancora spinta: la riga del cloud è indietro ⇒ non si tocca
+  const b = ctx.pmoMemberFieldsFromCloud(locale, cloud, '2026-08-01 10:00:00.000000+00');
+  // ③ niente da cambiare ⇒ non si dichiara un cambiamento (o l'elenco si riscriverebbe a vuoto)
+  const c = ctx.pmoMemberFieldsFromCloud(locale, { id: 'x1', level: 0.5, pmoPlayerId: 'PMO-000222' }, '2026-08-11 10:30:37.700616+00');
+  return [
+    a.changed === true, Number(a.next.level) === 4, a.next.pmoPlayerId === 'PMO-000523',
+    b.changed === false, Number(b.next.level) === 0.5,
+    c.changed === false,
+  ];
+});
+
+caso('15. ciò che il cloud NON NOMINA non si cancella; ciò che ha svuotato arriva vuoto', async () => {
+  const ctx = regola();
+  const locale = { id: 'x1', level: 4, phone: '351 900 0011', pmoPlayerId: 'PMO-000523', updatedAt: '2026-08-09T10:30:03.689Z' };
+  const RECENTE = '2026-08-11 10:30:37.700616+00';
+  const senzaTel = ctx.pmoMemberFieldsFromCloud(locale, { id: 'x1', level: 5 }, RECENTE);
+  const codiceVuoto = ctx.pmoMemberFieldsFromCloud(locale, { id: 'x1', pmoPlayerId: '' }, RECENTE);
+  return [
+    senzaTel.next.phone === '351 900 0011',        // il telefono non nominato resta
+    Number(senzaTel.next.level) === 5,
+    codiceVuoto.changed === true,
+    codiceVuoto.next.pmoPlayerId === '',           // le utenze di servizio stanno senza codice
+    codiceVuoto.next.level === 4,                  // e il resto non si muove
+  ];
+});
+
+caso('16. l\'orologio digerisce il formato di Postgres, o il confronto tornerebbe sempre zero', async () => {
+  const ctx = regola();
+  return [
+    ctx.pmoCloudTsMs('2026-08-11 10:30:37.700616+00') > 0,
+    ctx.pmoCloudTsMs('2026-08-11T10:30:37.700Z') > 0,
+    ctx.pmoCloudTsMs('2026-08-11 10:30:37.700616+00') > ctx.pmoCloudTsMs('2026-08-09T10:30:03.689Z'),
+    ctx.pmoCloudTsMs('') === 0,
+    ctx.pmoCloudTsMs('non una data') === 0,
+  ];
 });
 
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
