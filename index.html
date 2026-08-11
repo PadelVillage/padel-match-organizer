@@ -7987,7 +7987,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.211';
+    const APP_VERSION = '6.212';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -12825,13 +12825,72 @@ Grazie.`
         .map(row => ({ ...row.payload, id: row.payload.id || row.local_key }));
       const retired = new Set();
       const live = new Set();
+      // ⭐ Quando la RIGA è stata scritta, per identità. Non è un di più: è l'unico orologio
+      // affidabile che il cloud abbia (vedi pmoMemberFieldsFromCloud qui sotto), e finora veniva
+      // buttato via insieme al resto della riga. Solo dalle righe VIVE: la data di una lapide non
+      // dice niente su quanto è fresco il dato buono.
+      const rowAt = new Map();
       list.forEach(row => {
         if (row?.record_type !== 'member') return;
         const id = identita(row);
         if (!id) return;
         (row.deleted ? retired : live).add(id);
+        if (!row.deleted && row.updated_at) {
+          const prima = rowAt.get(id);
+          if (!prima || String(row.updated_at) > String(prima)) rowAt.set(id, row.updated_at);
+        }
       });
-      return { members, retired, live };
+      return { members, retired, live, rowAt };
+    }
+
+    // ── LA COPIA DI QUESTO BROWSER IMPARA DALLA RIGA VIVA DEL CLOUD ──────────────────────────
+    // 🚨⭐⭐ Il caso dell'11/08/2026: sul bot il livello di un socio è «Avanzato», nella sua scheda
+    // qui è 0,5 — e il codice Padel Village mostrato è uno che nel cloud esiste solo su una riga
+    // ARCHIVIATA. Il browser però non stava leggendo la lapide (tutte le strade filtrano
+    // `!deleted`): teneva la propria copia FERMA, che coincide con la lapide perché la lapide è la
+    // fotografia di quello stesso stato. Nessuno la ricuciva — l'idratazione sapeva solo AGGIUNGERE,
+    // e il backstop pull guarda solo i record cambiati negli ultimi 120 secondi.
+    //
+    // 🚨⭐⭐ PERCHÉ NON SI GUARDA `payload.updatedAt`, che sarebbe la scelta ovvia e sbagliata.
+    // Misurato su PROD: **2.785 righe vive su 2.795** hanno `payload.updatedAt` più vecchio di un
+    // giorno rispetto a quando la riga è stata scritta davvero, e delle 988 persone con una lapide
+    // accanto alla riga viva **946 hanno la LAPIDE più recente della viva** secondo quel campo. Il
+    // motivo: chi corregge nel cloud — il cron dei codici, le edge, una cura in SQL — riscrive la
+    // riga ma non il campo dentro il payload. ⇒ Quel confronto dice «il cloud è vecchio» proprio
+    // quando il cloud è l'unico ad avere ragione.
+    // ✅ Si confronta invece `updated_at` DELLA RIGA, che lo scrive il database e nessuno può
+    // dimenticare — e le due situazioni si separano da sole:
+    //   · qui si salva e la spinta riesce → la riga cloud è più recente ⇒ detta il cloud, ed è
+    //     giusto: quella modifica ce l'ha già dentro;
+    //   · qui si salva e la spinta FALLISCE → la riga cloud resta indietro ⇒ vince il locale, e la
+    //     modifica non ancora sincronizzata non viene schiacciata.
+    // ⚠️ `!== undefined` e non `||`, come nelle altre due strade: un campo SVUOTATO nel cloud (il
+    // codice delle utenze di servizio) deve arrivare vuoto, mentre un payload che non nomina affatto
+    // un campo non deve cancellare niente.
+    // ⛔ `updatedAt` locale NON si tocca: dice quando è stata modificata QUESTA copia, e riscriverlo
+    // col valore fermo del cloud sarebbe rimettere in giro la bugia da cui nasce tutto il caso.
+    function pmoCloudTsMs(v) {
+      if (!v) return 0;
+      const s = String(v).trim();
+      let t = Date.parse(s);
+      // Postgres scrive «2026-08-11 10:30:37.700616+00»: se il browser non lo digerisce, si
+      // normalizza nella forma ISO invece di far finta che il confronto sia riuscito.
+      if (Number.isNaN(t)) t = Date.parse(s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
+      return Number.isNaN(t) ? 0 : t;
+    }
+    const PMO_MEMBER_CLOUD_FIELDS = ['firstName', 'surname', 'name', 'phone', 'email', 'level', 'gender', 'pmoPlayerId'];
+    function pmoMemberFieldsFromCloud(locale, cloud, cloudRowAt) {
+      if (!locale || !cloud) return { changed: false, next: locale };
+      if (!(pmoCloudTsMs(cloudRowAt) > pmoCloudTsMs(locale.updatedAt))) return { changed: false, next: locale };
+      const next = { ...locale };
+      let changed = false;
+      PMO_MEMBER_CLOUD_FIELDS.forEach(k => {
+        if (cloud[k] === undefined) return;
+        if (String(cloud[k] ?? '') === String(locale[k] ?? '')) return;
+        next[k] = cloud[k];
+        changed = true;
+      });
+      return changed ? { changed: true, next } : { changed: false, next: locale };
     }
 
     // ── LA FILA DEI DOPPIONI ────────────────────────────────────────────────────────────────
@@ -13067,6 +13126,30 @@ Grazie.`
             }
           } catch (e) {}
         }
+        // ── IL TERZO VERSO: la copia di questo browser IMPARA dalla riga viva ───────────────────
+        // Fin qui l'idratazione sapeva AGGIUNGERE e (dal 10/08) TOGLIERE, ma non aggiornare: chi era
+        // già in locale veniva scartato per `id` e restava fermo per sempre. È il guasto dell'11/08
+        // — il livello e il codice corretti nel cloud che non arrivavano mai nella scheda, e che al
+        // primo Salva venivano RISPINTI indietro. La regola, e il perché non si guarda
+        // `payload.updatedAt`, stanno in pmoMemberFieldsFromCloud.
+        // ⭐ Sta DOPO la potatura e PRIMA dell'aggiunta: sulle righe che restano, e non su quelle
+        // appena entrate, che dal cloud arrivano già giuste.
+        let updated = 0;
+        const rowAt = (scaricati?.rowAt instanceof Map) ? scaricati.rowAt : new Map();
+        const cloudPerId = new Map();
+        (Array.isArray(members) ? members : []).forEach(m => {
+          const id = (m && m.id != null) ? String(m.id) : '';
+          if (id && !cloudPerId.has(id)) cloudPerId.set(id, m);
+        });
+        giocatori.forEach((g, i) => {
+          const id = (g && g.id != null) ? String(g.id) : '';
+          if (!id) return;
+          const m = cloudPerId.get(id);
+          if (!m) return;
+          const esito = pmoMemberFieldsFromCloud(g, m, rowAt.get(id));
+          if (esito.changed) { giocatori[i] = esito.next; updated++; }
+        });
+        if (updated > 0) console.log('PMO_CLOUD_MEMBERS_REFRESHED', { updated, total: giocatori.length });
         // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
         // NON usiamo findMatchingMemberIndex perché matcha anche per SOLO nome → nasconderebbe
         // una persona diversa che condivide il nome con un socio (falso merge). Con nome+telefono
@@ -13089,7 +13172,7 @@ Grazie.`
           if (id) seenIds.add(id);
           added++;
         });
-        if (added > 0 || removed > 0) {
+        if (added > 0 || removed > 0 || updated > 0) {
           // I 'rubrica-google' NON vengono persistiti (pmoEncodeForStorage li filtra): per loro
           // questo save è un no-op. Per i soci nati nell'app e per i Matchpoint, invece, scrive
           // davvero — ed è quello che li fa restare dopo un ricaricamento della pagina.

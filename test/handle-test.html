@@ -1782,6 +1782,144 @@ const CASES = [
       CLOUD_FAKEROWS = [];
       return checks;
     }
+  },
+  {
+    // 🚨🚨 IL CASO DELL'11/08 SERA, «LA LAPIDE»: sul bot il suo livello è Avanzato, nella scheda del
+    // gestionale è 0,5. Il browser NON sta leggendo la riga archiviata — tutte e tre le strade
+    // filtrano `!deleted`. Sta tenendo la propria copia FERMA, che coincide con la lapide perché la
+    // lapide è la fotografia di quello stesso stato.
+    // Perché nessuno la ricuce, misurato su PROD l'11/08:
+    //   ① `pmoEnsureCloudMembersHydrated` scarta chi è già in locale (`seenIds`) ⇒ AGGIUNGE, non
+    //      aggiorna mai — è il verso che a questa rete mancava;
+    //   ② `staffCalReconcileMembersFromCloud` chiede solo i record cambiati negli ULTIMI 120 s: una
+    //      correzione fatta nel cloud giorni fa non entra più in quella finestra;
+    //   ③ e se anche ci entrasse, updatedAt-wins la scarterebbe. Il campo con cui si decide chi
+    //      vince è FERMO: 2.785 righe vive su 2.795 hanno `payload.updatedAt` più vecchio di un
+    //      giorno rispetto a quando la riga è stata scritta davvero, perché chi corregge nel cloud
+    //      (cron dei codici, edge, SQL) tocca la colonna `updated_at` e NON il campo nel payload.
+    //      Delle 988 persone con lapide, 946 hanno la LAPIDE più recente della riga viva.
+    // ⚠️ Il danno non è solo vedere il numero sbagliato: al primo Salva il browser RISPINGE su il
+    // livello vecchio e il codice vecchio — la stessa forma del guasto del caso 87, ma per chi
+    // l'avviso non l'ha mai ricevuto.
+    id: 88, flow: 'Cloud/Soci', name: '🚨🚨 socio corretto nel cloud GIORNI FA: il browser lo impara lo stesso (updatedAt del cloud FERMO)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoEnsureCloudMembersHydrated !== 'function' || typeof win.safeLoad !== 'function') {
+        return [{ label: 'idratazione o safeLoad assenti', ok: false }];
+      }
+      // ⚠️ Qui `R` porta anche `updated_at`, che è il dato su cui la cura decide. Le righe finte
+      // degli altri casi non ce l'hanno, e va bene: senza, non si riconcilia niente e il
+      // comportamento è quello di prima. Un caso che dimentica quel campo non misura la cura —
+      // misura lo strumento, ed è la 44ª trappola (il campo che non esiste letto come risposta).
+      // ⭐ Si legge l'elenco dal deposito del browser e non dal gancio `H.getMember`: quel gancio
+      // vive solo su test-preview, e un caso scritto in due forme diverse sui due rami è un caso
+      // che prima o poi misura due cose diverse.
+      const leggi = id => (win.safeLoad('giocatori', []) || []).find(g => g && String(g.id) === String(id)) || null;
+      const R = (local_key, deleted, payload, updated_at) => ({ record_type: 'member', local_key, deleted, payload, updated_at });
+      const ID = 'soc-lapide';
+      const num = v => parseFloat(String(v == null ? '' : v).replace(',', '.'));
+      // Le date della RIGA, nel formato in cui le scrive Postgres — spazio invece della T e offset
+      // a due cifre: se la cura non lo digerisse, il confronto tornerebbe 0 e non si vedrebbe.
+      const RIGA_ALLORA = '2027-05-09 10:30:36.98085+00';
+      const RIGA_CURATA = '2027-05-11 10:30:37.700616+00';
+      // Lo stato VECCHIO: è quello che finisce in questo browser, ed è anche quello che il cloud
+      // ha messo a lapide. Livello e codice di allora.
+      const VECCHIA = { id: ID, firstName: 'Dario', surname: 'Lapide', phone: '351 900 0011',
+                        level: 0.5, pmoPlayerId: 'PMO-000222', active: true,
+                        updatedAt: '2027-05-09T10:30:03.689Z' };
+      // Lo stato VERO, quello che il cloud tiene per buono e che il bot legge. Il suo `updatedAt` è
+      // PIÙ VECCHIO di quello locale: non è un caso di comodo, è la forma reale misurata su PROD
+      // (riga viva 17/07, lapide 09/08 — e per Lidia i due istanti sono identici).
+      const VIVA    = { id: ID, firstName: 'Dario', surname: 'Lapide', phone: '351 900 0011',
+                        level: 4, pmoPlayerId: 'PMO-000523', active: true,
+                        updatedAt: '2027-04-17T20:17:49.450Z' };
+      const semina = async cond => {
+        for (let i = 0; i < 5; i++) {
+          try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+          if (cond()) return true;
+          await new Promise(r => setTimeout(r, 150));
+        }
+        return cond();
+      };
+      // 1) Semina dalla porta vera: il socio entra in questo browser con lo stato di allora.
+      CLOUD_FAKEROWS = [R('phone:3519000011', false, VECCHIA, RIGA_ALLORA)];
+      const seminato = await semina(() => !!leggi(ID));
+      const dopoSemina = leggi(ID);
+      checks.push({ label: 'semina: il socio è in questo browser col livello e il codice VECCHI', ok:
+        seminato && !!dopoSemina && num(dopoSemina.level) === 0.5 && dopoSemina.pmoPlayerId === 'PMO-000222' });
+      if (!seminato) { CLOUD_FAKEROWS = []; return checks; }
+      // ⚠️ Le due PREMESSE si verificano, non si affermano: se un domani i dati del caso cambiassero
+      // e la riga viva diventasse la più recente, i check qui sotto passerebbero senza misurare
+      // niente — sarebbe la 50ª trappola in altra forma (un caso che si assolve da solo).
+      checks.push({ label: 'premessa: la riga VIVA del cloud è più VECCHIA della copia locale (updatedAt)', ok:
+        VIVA.updatedAt < VECCHIA.updatedAt });
+      checks.push({ label: 'premessa: la copia locale e la riga viva sono la STESSA scheda (stesso id)', ok:
+        VIVA.id === VECCHIA.id });
+      // 2) Il cloud è stato corretto GIORNI FA: la chiave vecchia è a lapide, la riga viva porta il
+      //    livello e il codice veri. Nessun avviso realtime arriva — è il caso reale, non la corsa.
+      CLOUD_FAKEROWS = [
+        R('phone:3519000011',               true,  VECCHIA, RIGA_ALLORA),
+        R('email:dario.lapide@prova.local', false, VIVA,    RIGA_CURATA)
+      ];
+      try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+      const dopo = leggi(ID);
+      checks.push({ label: 'la scheda non è sparita: ha una gemella viva, la potatura non la tocca', ok: !!dopo });
+      checks.push({ label: '🚨🚨 il LIVELLO vero del cloud è arrivato in questo browser', ok: !!dopo && num(dopo.level) === 4 });
+      checks.push({ label: '🚨🚨 il CODICE vero del cloud è arrivato in questo browser', ok: !!dopo && dopo.pmoPlayerId === 'PMO-000523' });
+      // 3) CONTROLLO OPPOSTO ①: il socio che il cloud non conosce AFFATTO — creato qui e non ancora
+      //    sincronizzato — non viene toccato da nessuno. È la riga che una cura scritta alla
+      //    leggera («allinea tutto al cloud») cancellerebbe.
+      //    🧰 Si semina dalla PORTA VERA e poi si toglie la riga dal cloud: seminarlo con un `save`
+      //    diretto non funziona e mi ha dato un rosso finto — `save` scrive in localStorage ma non
+      //    nell'array in memoria, che l'idratazione poi riscrive sopra. Lo strumento, non il codice.
+      const LOCALE = { id: 'soc-solo-qui', firstName: 'Elsa', surname: 'Solaqui', phone: '351 900 0012',
+                       level: 3, active: true, updatedAt: '2027-05-01T10:00:00.000Z' };
+      CLOUD_FAKEROWS = [
+        R('phone:3519000011',               true,  VECCHIA, RIGA_ALLORA),
+        R('email:dario.lapide@prova.local', false, VIVA,    RIGA_CURATA),
+        R('phone:3519000012',               false, LOCALE,  RIGA_ALLORA)
+      ];
+      const seminataElsa = await semina(() => !!leggi('soc-solo-qui'));
+      CLOUD_FAKEROWS = [
+        R('phone:3519000011',               true,  VECCHIA, RIGA_ALLORA),
+        R('email:dario.lapide@prova.local', false, VIVA,    RIGA_CURATA)
+      ];
+      try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+      const solaQui = leggi('soc-solo-qui');
+      checks.push({ label: 'controllo opposto: il socio che il cloud non conosce resta intatto', ok:
+        seminataElsa && !!solaQui && num(solaQui.level) === 3 });
+      // CONTROLLO OPPOSTO ②: un payload del cloud che NON NOMINA un campo non lo cancella qui.
+      // Discrimina fra `!== undefined` (giusto) e una copia secca, che svuoterebbe il telefono.
+      const SENZA_TEL = { id: ID, firstName: 'Dario', surname: 'Lapide', level: 4,
+                          pmoPlayerId: 'PMO-000523', active: true, updatedAt: '2027-04-17T20:17:49.450Z' };
+      CLOUD_FAKEROWS = [R('email:dario.lapide@prova.local', false, SENZA_TEL, RIGA_CURATA)];
+      try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+      const senzaTel = leggi(ID);
+      checks.push({ label: 'controllo opposto: un payload che non nomina il telefono NON lo cancella', ok:
+        !!senzaTel && String(senzaTel.phone || '') === '351 900 0011' });
+      // 🚨 CONTROLLO OPPOSTO ③ — QUELLO CHE DISCRIMINA, e senza il quale una cura scritta come
+      // «il cloud vince sempre» passerebbe uguale: una modifica fatta QUI e non ancora arrivata al
+      // cloud non si perde. La riga del cloud è più VECCHIA della copia locale ⇒ non la tocca.
+      const NONSPINTO = { id: 'soc-non-spinto', firstName: 'Furio', surname: 'Nonspinto',
+                          phone: '351 900 0013', level: 5, active: true,
+                          updatedAt: '2027-06-01T10:00:00.000Z' };
+      CLOUD_FAKEROWS = [R('phone:3519000013', false, NONSPINTO, '2027-05-01 10:00:00.000000+00')];
+      const seminatoFurio = await semina(() => !!leggi('soc-non-spinto'));
+      CLOUD_FAKEROWS = [R('phone:3519000013', false,
+        Object.assign({}, NONSPINTO, { level: 2, pmoPlayerId: 'PMO-000999' }),
+        '2027-05-02 10:00:00.000000+00')];
+      try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+      const nonSpinto = leggi('soc-non-spinto');
+      checks.push({ label: '🚨 la modifica locale NON ancora spinta non viene schiacciata dal cloud più vecchio', ok:
+        seminatoFurio && !!nonSpinto && num(nonSpinto.level) === 5 && !nonSpinto.pmoPlayerId });
+      // Pulizia: il caso scrive nell'anagrafica vera di questo browser.
+      try {
+        const puliti = (win.safeLoad('giocatori', []) || []).filter(g => !(g && /^soc-(lapide|solo-qui|non-spinto)$/.test(String(g.id))));
+        win.save('giocatori', puliti);
+      } catch (e) {}
+      CLOUD_FAKEROWS = [];
+      return checks;
+    }
   }
 ];
 
