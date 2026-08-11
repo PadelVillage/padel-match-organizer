@@ -2948,6 +2948,7 @@ const CASES = [
       // (riga viva 17/07, lapide 09/08 — e per Lidia i due istanti sono identici).
       const VIVA    = { id: ID, firstName: 'Dario', surname: 'Lapide', phone: '351 900 0011',
                         level: 4, pmoPlayerId: 'PMO-000523', active: true,
+                        levelSource: 'autovalutazione', lastLevelUpdateAt: '2027-04-17T20:17:49.450Z',
                         updatedAt: '2027-04-17T20:17:49.450Z' };
       const semina = async cond => {
         for (let i = 0; i < 5; i++) {
@@ -2982,6 +2983,11 @@ const CASES = [
       checks.push({ label: 'la scheda non è sparita: ha una gemella viva, la potatura non la tocca', ok: !!dopo });
       checks.push({ label: '🚨🚨 il LIVELLO vero del cloud è arrivato in questo browser', ok: !!dopo && num(dopo.level) === 4 });
       checks.push({ label: '🚨🚨 il CODICE vero del cloud è arrivato in questo browser', ok: !!dopo && dopo.pmoPlayerId === 'PMO-000523' });
+      // 🚨 I satelliti del livello viaggiano col livello: senza `lastLevelUpdateAt` qui, al primo
+      // salvataggio di scheda il browser lo rispingerebbe vuoto e l'edge `assessment-apply-level`
+      // riapplicherebbe la stessa scheda al giro dopo, per sempre.
+      checks.push({ label: '🚨 col livello arrivano anche `levelSource` e `lastLevelUpdateAt`', ok:
+        !!dopo && dopo.levelSource === 'autovalutazione' && dopo.lastLevelUpdateAt === '2027-04-17T20:17:49.450Z' });
       // 3) CONTROLLO OPPOSTO ①: il socio che il cloud non conosce AFFATTO — creato qui e non ancora
       //    sincronizzato — non viene toccato da nessuno. È la riga che una cura scritta alla
       //    leggera («allinea tutto al cloud») cancellerebbe.

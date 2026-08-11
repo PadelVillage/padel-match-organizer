@@ -8038,7 +8038,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.214';
+    const APP_VERSION = '6.215';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -13036,7 +13036,13 @@ Grazie.`
       if (Number.isNaN(t)) t = Date.parse(s.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
       return Number.isNaN(t) ? 0 : t;
     }
-    const PMO_MEMBER_CLOUD_FIELDS = ['firstName', 'surname', 'name', 'phone', 'email', 'level', 'gender', 'pmoPlayerId'];
+    // 🚨 Gli ultimi tre sono i SATELLITI del livello, e stanno qui per la stessa ragione per cui
+    // stanno nelle altre due strade: dall'11/08/2026 il livello dell'autovalutazione lo scrive
+    // l'edge `assessment-apply-level`, che decide guardando `lastLevelUpdateAt`. Se questo browser
+    // imparasse il livello e non la data, al primo salvataggio di scheda la rispingerebbe vuota —
+    // e al giro dopo l'edge riapplicherebbe la stessa scheda. Per sempre.
+    const PMO_MEMBER_CLOUD_FIELDS = ['firstName', 'surname', 'name', 'phone', 'email', 'level', 'gender', 'pmoPlayerId',
+                                     'levelSource', 'selfAssessmentDate', 'lastLevelUpdateAt'];
     function pmoMemberFieldsFromCloud(locale, cloud, cloudRowAt) {
       if (!locale || !cloud) return { changed: false, next: locale };
       if (!(pmoCloudTsMs(cloudRowAt) > pmoCloudTsMs(locale.updatedAt))) return { changed: false, next: locale };
@@ -39924,6 +39930,15 @@ Per confermare scrivi ELIMINA.`);
           // servizio, che per la decisione del 2/08 stanno senza codice) deve arrivare qui come
           // vuoto, mentre un payload che non nomina affatto il campo non deve cancellare niente.
           pmoPlayerId: m.pmoPlayerId !== undefined ? m.pmoPlayerId : giocatori[idx].pmoPlayerId,
+          // 🚨 I TRE SATELLITI DEL LIVELLO, e senza di loro l'automatismo gira in cerchio:
+          // dall'11/08/2026 il livello dell'autovalutazione lo scrive l'edge
+          // `assessment-apply-level`, che si ferma quando vede `lastLevelUpdateAt` più recente
+          // della scheda. Se il browser copiasse il livello e non questi tre, al primo
+          // salvataggio di scheda li rispingerebbe indietro vuoti — e al giro dopo l'edge
+          // riapplicherebbe la stessa scheda, per sempre.
+          levelSource:        m.levelSource        !== undefined ? m.levelSource        : giocatori[idx].levelSource,
+          selfAssessmentDate: m.selfAssessmentDate !== undefined ? m.selfAssessmentDate : giocatori[idx].selfAssessmentDate,
+          lastLevelUpdateAt:  m.lastLevelUpdateAt  !== undefined ? m.lastLevelUpdateAt  : giocatori[idx].lastLevelUpdateAt,
           updatedAt: m.updatedAt || giocatori[idx].updatedAt
         });
       } else {
@@ -40208,6 +40223,11 @@ Per confermare scrivi ELIMINA.`);
           // servizio, che per la decisione del 2/08 stanno senza codice) deve arrivare qui come
           // vuoto, mentre un payload che non nomina affatto il campo non deve cancellare niente.
           pmoPlayerId: m.pmoPlayerId !== undefined ? m.pmoPlayerId : giocatori[idx].pmoPlayerId,
+          // 🚨 I tre satelliti del livello — stessa ragione della strada qui sopra: senza,
+          // l'edge `assessment-apply-level` riapplicherebbe all'infinito la stessa scheda.
+          levelSource:        m.levelSource        !== undefined ? m.levelSource        : giocatori[idx].levelSource,
+          selfAssessmentDate: m.selfAssessmentDate !== undefined ? m.selfAssessmentDate : giocatori[idx].selfAssessmentDate,
+          lastLevelUpdateAt:  m.lastLevelUpdateAt  !== undefined ? m.lastLevelUpdateAt  : giocatori[idx].lastLevelUpdateAt,
           updatedAt: m.updatedAt || giocatori[idx].updatedAt
         });
         changed = true;
