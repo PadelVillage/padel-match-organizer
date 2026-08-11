@@ -4694,6 +4694,14 @@ body.assessment-public-mode .assessment-public-only-card {
       display:grid;
       gap:0;
     }
+    /* La parola del livello sotto il campo numerico: dice cosa vuol dire il numero mentre lo si
+       scrive. Non lo sostituisce — in coda il numero serve a decidere. */
+    .member-level-word {
+      display:block;
+      margin-top:4px;
+      font-size:12px;
+      color:#667085;
+    }
     .member-source-line {
       display:grid;
       grid-template-columns:126px minmax(0,1fr);
@@ -8030,7 +8038,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.213';
+    const APP_VERSION = '6.214';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15984,7 +15992,7 @@ Grazie.`
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
           <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div>${_dupWhy}</td>
           <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
-          <td><strong>${escapeHtml(g.level ?? 3)}</strong></td>
+          <td><strong>${escapeHtml(pmoLivelloEtichettaStaff(g.level) || (g.level ?? 3))}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
           <td><span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span></td>
           <td><div class="players-actions"><button class="btn-secondary small-btn" onclick="event.stopPropagation(); openMemberCard('${escapeHtml(String(g.id))}')">Scheda</button></div></td>
@@ -16163,7 +16171,7 @@ Grazie.`
                 <div><label>ID giocatore Padel Village</label><input value="${escapeHtml(pmoIdPadelVillage(g) || '-')}" readonly title="Il nostro identificatore. È il riferimento del gestionale e del bot, e resta valido anche senza Matchpoint."></div>
                 <div><label>ID giocatore Matchpoint</label><input value="${escapeHtml(pmoIdMatchpoint(g) || '-')}" readonly title="Il codice cliente di Matchpoint (quello della tendina «000140-Nome»). Vuoto per chi non è cliente del circolo."></div>
                 ${pmoIdInternoMatchpoint(g) ? `<div><label>ID interno Matchpoint</label><input value="${escapeHtml(pmoIdInternoMatchpoint(g))}" readonly title="Il numero con cui Matchpoint identifica il socio nelle sue pagine. È DIVERSO dal codice cliente qui sopra e non si può calcolare: se lo prende da solo quando il socio entra in una prenotazione. Serve a riconoscerlo senza passare dal nome (gli omonimi)."></div>` : ''}
-                <div><label>Livello di gioco</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}"></div>
+                <div><label>Livello di gioco</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}" oninput="pmoCardLevelWord()"><small class="member-level-word" id="cardLevelWord">${escapeHtml(pmoLivelloDefinizione(g.level || 3) || '')}</small></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
                 <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>Da completare</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
@@ -16265,7 +16273,7 @@ Grazie.`
               <div class="member-card-badges">
                 <span class="badge badge-muted">ID ${escapeHtml(formatMemberIdLabel(g.memberId) || '-')}</span>
                 <span class="badge ${g.active !== false ? 'badge-success' : 'badge-danger'}">${g.active !== false ? 'Attivo' : 'Inattivo'}</span>
-                <span class="badge badge-info">Livello ${escapeHtml(g.level ?? 3)}</span>
+                <span class="badge badge-info">Livello ${escapeHtml(pmoLivelloEtichettaStaff(g.level) || (g.level ?? 3))}</span>
                 ${cardMatchpointBadge}
                 <span class="badge ${notificationClass}">${escapeHtml(notificationText)}</span>
               </div>
@@ -37738,6 +37746,20 @@ Per confermare scrivi ELIMINA.`);
       return parti.join(' · ');
     }
     /* ===== /ASSESS-KNOWLEDGE SHARED v1 ===================================================== */
+
+    // La parola sotto il campo «Livello di gioco» della scheda socio, aggiornata mentre si scrive.
+    // ⚠️ Qui va la PAROLA sola: il numero ce l'ha già davanti agli occhi nel campo accanto, e
+    // ripeterlo direbbe «Avanzato (4)» a fianco di un 4. Nell'elenco e nella pastiglia in testa,
+    // dove il campo non c'è, si usa invece l'etichetta completa.
+    // 🚨 Sta FUORI dalle sentinelle ASSESS-KNOWLEDGE, e non è una questione di ordine: quel blocco
+    // dev'essere identico a quello dell'emulatore, che di schede socio non ne ha. Ce l'avevo messa
+    // dentro, e il banco della scala l'ha vista subito — fa esattamente il lavoro per cui esiste.
+    function pmoCardLevelWord() {
+      const input = document.getElementById('cardLevel');
+      const out = document.getElementById('cardLevelWord');
+      if (!input || !out) return;
+      out.textContent = pmoLivelloDefinizione(input.value) || '';
+    }
 
     // Quello che legge il socio: mai il numero, sempre la parola della tabella. Tollerante di
     // proposito — se gli arriva già una definizione la lascia passare, così un doppio passaggio
