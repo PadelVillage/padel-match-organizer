@@ -274,6 +274,23 @@ caso('16. l\'orologio digerisce il formato di Postgres, o il confronto tornerebb
   ];
 });
 
+caso('17. 🚨 i SATELLITI del livello arrivano col livello, o l\'automatismo gira in cerchio', async () => {
+  const ctx = regola();
+  const locale = { id: 'x1', level: 0.5, updatedAt: '2026-08-09T10:30:03.689Z' };
+  const cloud = { id: 'x1', level: 2, levelSource: 'autovalutazione',
+                  selfAssessmentDate: '2026-06-23T10:00:00.000Z', lastLevelUpdateAt: '2026-08-11T23:00:00.000Z' };
+  const esito = ctx.pmoMemberFieldsFromCloud(locale, cloud, '2026-08-11 23:00:01.000000+00');
+  // Senza `lastLevelUpdateAt` in locale, al primo salvataggio di scheda il browser lo
+  // rispingerebbe vuoto e l'edge riapplicherebbe la stessa scheda al giro dopo.
+  return [
+    esito.changed === true,
+    Number(esito.next.level) === 2,
+    esito.next.levelSource === 'autovalutazione',
+    esito.next.lastLevelUpdateAt === '2026-08-11T23:00:00.000Z',
+    esito.next.selfAssessmentDate === '2026-06-23T10:00:00.000Z',
+  ];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste controllano che ci sia davvero
 //    qualcosa da misurare, e che la CHIAMATA sia agganciata dove serve.

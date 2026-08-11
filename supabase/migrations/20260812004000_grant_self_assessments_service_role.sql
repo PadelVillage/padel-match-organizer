@@ -1,0 +1,23 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- I permessi del service role su `self_assessments`, allineati fra i due progetti.
+--
+-- 🚨 TROVATO DALLA PROVA VERA su TEST, e la simulazione non poteva trovarlo: il primo giro
+-- reale dell'edge `assessment-apply-level` ha scritto il livello del socio e poi ha
+-- risposto «livello scritto ma scheda non marcata: permission denied for table
+-- self_assessments». Cioè un lavoro fatto a metà, con l'edge che diceva bene di sé.
+--
+-- 📏 Misurato sui due database, e sono DIVERSI:
+--   • PROD (`qqbf…`): service_role ha DELETE, INSERT, SELECT, UPDATE… — tutto
+--   • TEST (`cudi…`): service_role aveva solo REFERENCES, SELECT, TRIGGER, TRUNCATE
+-- Nessuna revoca esplicita esiste in questo repo: è drift, non una protezione voluta.
+--
+-- ⚠️ Perché conta più del singolo errore: TEST serve a provare quello che poi va in PROD.
+-- Un permesso che là c'è e qui no rende le prove **non rappresentative** in tutt'e due i
+-- versi — un guasto che PROD non ha, o peggio un via libera che PROD non darebbe.
+--
+-- Idempotente: su PROD non cambia niente, perché quei permessi ci sono già.
+-- ⚠️ Le migrazioni di questo repo NON si applicano da sole: va lanciata a mano sui due
+-- progetti, TEST prima e PROD poi.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+grant select, insert, update on table public.self_assessments to service_role;
