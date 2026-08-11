@@ -48,10 +48,16 @@ function estrai(nome) {
   return src.slice(inizio, i);
 }
 
+// ⚠️ L'unica annotazione di tipo ammessa nella regola è `: any` sui parametri, e serve al
+// `deno check` della CI, che gira in modalità `strict`. Qui si toglie — è l'unica differenza
+// fra il testo del sorgente e quello che si prova. Chi nell'edge usasse un tipo diverso non
+// romperebbe niente in silenzio: questa `vm` non riuscirebbe più a valutare la funzione.
+const spoglia = (codice) => codice.replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1');
+
 const ctx = { FONTE: 'autovalutazione' };
 vm.createContext(ctx);
 vm.runInContext(
-  ['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'payloadAggiornato'].map(estrai).join('\n'),
+  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'payloadAggiornato'].map(estrai).join('\n')),
   ctx
 );
 const { decidi, payloadAggiornato } = ctx;

@@ -54,22 +54,24 @@ function json(body: unknown, status = 200) {
 }
 
 // ── LA REGOLA, ed è scritta in JavaScript nudo di proposito ───────────────────
-// Niente annotazioni di tipo da qui in giù: così
-// `test/assessment-apply-level.test.mjs` può ESTRARRE queste funzioni dal
-// sorgente vero e provarle una per una. Una copia riscritta nel banco
-// misurerebbe il banco, non questa funzione.
-function clean(value) {
+// Da qui in giù la regola è JavaScript, e i parametri sono annotati SOLO con `: any`:
+// così `test/assessment-apply-level.test.mjs` può ESTRARRE queste funzioni dal sorgente
+// vero, spogliarle di quelle sei parole e provarle una per una. Una copia riscritta nel
+// banco misurerebbe il banco, non questa funzione.
+// ⚠️ Chi aggiunge qui un tipo diverso da `any` non rompe niente in silenzio: il banco non
+// riesce più a valutare la funzione e diventa rosso subito.
+function clean(value: any) {
   return typeof value === 'string' ? value.trim() : (value === null || value === undefined ? '' : String(value));
 }
 
-function numero(value) {
+function numero(value: any) {
   const raw = clean(value).replace(',', '.');
   if (!raw) return NaN;
   const n = Number(raw);
   return Number.isFinite(n) ? n : NaN;
 }
 
-function quando(value) {
+function quando(value: any) {
   const raw = clean(value);
   if (!raw) return 0;
   const t = Date.parse(raw);
@@ -77,7 +79,7 @@ function quando(value) {
 }
 
 // Il livello che la scheda propone: il calcolato se c'è, altrimenti il dichiarato.
-function livelloDellaScheda(scheda) {
+function livelloDellaScheda(scheda: any) {
   const calcolato = numero(scheda?.calculated_level);
   return Number.isNaN(calcolato) ? numero(scheda?.declared_level) : calcolato;
 }
@@ -85,7 +87,7 @@ function livelloDellaScheda(scheda) {
 // Torna { applica, motivo, livello }. `motivo` è sempre valorizzato — anche quando
 // si applica — perché il riepilogo del giro dev'essere leggibile senza il codice
 // accanto: è quello che finisce nella risposta e nei log.
-function decidi(scheda, socio) {
+function decidi(scheda: any, socio: any) {
   const livello = livelloDellaScheda(scheda);
   if (Number.isNaN(livello)) return { applica: false, motivo: 'la scheda non ha un livello valido', livello: null };
 
@@ -133,7 +135,7 @@ function decidi(scheda, socio) {
 // livello e i suoi satelliti. ⚠️ `updatedAt` in ISO con la Z: il gestionale
 // confronta quel campo come stringa, e un altro formato lo lascerebbe indietro
 // per sempre.
-function payloadAggiornato(payload, scheda, livello, adesso) {
+function payloadAggiornato(payload: any, scheda: any, livello: any, adesso: any) {
   return {
     ...payload,
     level: livello,
