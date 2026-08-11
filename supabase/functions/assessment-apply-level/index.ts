@@ -131,6 +131,30 @@ function decidi(scheda: any, socio: any) {
   return { applica: true, motivo: `da ${clean(socio.level) || 'senza livello'} a ${livello}`, livello };
 }
 
+// ── UNA SOLA SCHEDA PER SOCIO, LA PIÙ RECENTE ────────────────────────────────
+// 🚨🚨 TROVATO DAL GIRO A VUOTO, non dal banco. La prima versione elaborava le schede una
+// per una, e su TEST il primo giro simulato diceva questo:
+//     «da 4 a 1» · «da 4 a 4.5» · «da 4 a 1.5» — tre volte la STESSA persona.
+// Cioè: chi ha compilato più schede se le vedeva applicare tutte in fila, e il livello
+// restava quello dell'ultima ESAMINATA, non della più recente. Il controllo sulle date non
+// poteva accorgersene: guarda il socio com'era all'inizio del giro, e dentro lo stesso giro
+// quel socio non era ancora cambiato.
+// ⇒ Si tiene una scheda sola per socio — la più recente — e le altre restano lì: al giro
+// dopo il socio ha una data più fresca e le salta da sé.
+// ⭐ Il banco provava `decidi` su UNA scheda per volta, quindi era cieco per costruzione: un
+// difetto che vive nel GIRO non lo vede un caso che prova la regola.
+function soloLaPiuRecentePerSocio(schede: any, socioPerToken: any) {
+  const migliore = new Map();
+  const senzaSocio = [];
+  for (const scheda of schede) {
+    const socioId = socioPerToken.get(clean(scheda.token)) || '';
+    if (!socioId) { senzaSocio.push(scheda); continue; }   // senza socio la regola dirà da sé perché
+    const prima = migliore.get(socioId);
+    if (!prima || quando(scheda.submitted_at) > quando(prima.submitted_at)) migliore.set(socioId, scheda);
+  }
+  return [...senzaSocio, ...migliore.values()];
+}
+
 // Il payload nuovo del socio: si parte da quello che c'è e si toccano SOLO il
 // livello e i suoi satelliti. ⚠️ `updatedAt` in ISO con la Z: il gestionale
 // confronta quel campo come stringa, e un altro formato lo lascerebbe indietro
@@ -219,7 +243,10 @@ Deno.serve(async (req: Request) => {
   const saltate: JsonMap[] = [];
   let applicate = 0;
 
-  for (const scheda of schede) {
+  // ⭐ Una scheda sola per socio, la più recente: vedi soloLaPiuRecentePerSocio.
+  const daEsaminare = soloLaPiuRecentePerSocio(schede, socioPerToken);
+
+  for (const scheda of daEsaminare) {
     if (applicate >= MASSIMO_PER_GIRO) break;
     const nome = `${clean(scheda.first_name)} ${clean(scheda.last_name)}`.trim() || 'senza nome';
     const socioId = socioPerToken.get(clean(scheda.token)) || '';
@@ -264,6 +291,11 @@ Deno.serve(async (req: Request) => {
       saltate.push({ persona: nome, motivo: `livello scritto ma scheda non marcata: ${clean(erroreScheda.message)}`, scheda: clean(scheda.submitted_at).slice(0, 10) });
       continue;
     }
+
+    // ⚠️ La copia in memoria si aggiorna col payload appena scritto: difesa in profondità
+    // accanto a `soloLaPiuRecentePerSocio`. Senza, dentro lo stesso giro il socio resterebbe
+    // «com'era all'inizio» per chiunque lo guardi dopo.
+    righePerId.set(socioId, { ...(riga as JsonMap), payload: nuovo, updated_at: adesso });
 
     applicate++;
     dettaglio.push({ persona: nome, cambio: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });

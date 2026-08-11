@@ -57,10 +57,10 @@ const spoglia = (codice) => codice.replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1');
 const ctx = { FONTE: 'autovalutazione' };
 vm.createContext(ctx);
 vm.runInContext(
-  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'payloadAggiornato'].map(estrai).join('\n')),
+  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato'].map(estrai).join('\n')),
   ctx
 );
-const { decidi, payloadAggiornato } = ctx;
+const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio } = ctx;
 
 // ── Il materiale, modellato sui dati veri di PROD ────────────────────────────────
 const scheda = (extra = {}) => ({
@@ -186,6 +186,32 @@ caso('16. `updatedAt` in ISO con la Z, o il gestionale non lo vedrebbe mai più 
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(dopo.updatedAt),
     dopo.updatedAt > '2026-08-09T10:30:03.689Z',
   ];
+});
+
+caso('17. 🚨🚨 tre schede della STESSA persona: ne passa UNA, la più recente (trovato dal giro a vuoto)', () => {
+  // Il primo giro simulato su TEST diceva «da 4 a 1», «da 4 a 4.5», «da 4 a 1.5» — tre volte
+  // la stessa persona, e il livello sarebbe rimasto quello dell'ultima ESAMINATA.
+  const perToken = new Map([['T1', 'soc-1'], ['T2', 'soc-1'], ['T3', 'soc-1'], ['T4', 'soc-2']]);
+  const tre = [
+    scheda({ id: 'a', token: 'T1', submitted_at: '2026-05-12T10:00:00.000Z' }),
+    scheda({ id: 'b', token: 'T3', submitted_at: '2026-08-09T18:00:00.000Z' }),
+    scheda({ id: 'c', token: 'T2', submitted_at: '2026-08-09T09:00:00.000Z' }),
+    scheda({ id: 'd', token: 'T4', submitted_at: '2026-07-01T10:00:00.000Z' }),
+  ];
+  const tenute = soloLaPiuRecentePerSocio(tre, perToken);
+  const perSoc1 = tenute.filter((s) => ['a', 'b', 'c'].includes(s.id));
+  return [
+    tenute.length === 2,              // una per socio
+    perSoc1.length === 1,
+    perSoc1[0].id === 'b',            // la più recente, non l'ultima dell'elenco
+    tenute.some((s) => s.id === 'd'), // l'altro socio non si perde
+  ];
+});
+
+caso('18. la scheda senza socio non sparisce: passa alla regola, che dirà perché', () => {
+  const orfana = scheda({ id: 'x', token: 'IGNOTO' });
+  const tenute = soloLaPiuRecentePerSocio([orfana], new Map());
+  return [tenute.length === 1, decidi(tenute[0], null).applica === false];
 });
 
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
