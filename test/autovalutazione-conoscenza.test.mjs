@@ -10,19 +10,27 @@
 //    sentinelle ASSESS-KNOWLEDGE SHARED. Se qualcuno cambia le domande o le soglie nell'app,
 //    è quella modifica che finisce sul banco — non una copia stantia.
 //
-// 🚨 Il blocco vive in TRE posti (gestionale, emulatore, e in Fase 2 il bot): l'ultima prova
-//    confronta la copia dell'emulatore con questa, perché dalle stesse risposte i tre ambienti
-//    devono tirare fuori lo stesso livello.
+// ⛔🚨⭐⭐ 12/08/2026 — TOLTA LA PROVA CHE CONFRONTAVA L'EMULATORE, per decisione sua.
+//    Diceva: «il blocco vive in TRE posti — gestionale, emulatore, e in Fase 2 il bot», e teneva
+//    le due copie identiche riga per riga. Ma la **Fase 2 è ABBANDONATA dal 22/07** (sua parola:
+//    «è abbandonata, non riaprirla»), e l'emulatore PUBBLICATO non ha mai avuto queste domande:
+//    misurato il 12/08 sulla pagina online (v0.99, zero occorrenze). Le aveva solo una copia di
+//    lavoro mai pubblicata, e questa prova ha prodotto due commit di «riallineamento» che non
+//    servivano a nessuno — difendeva una premessa scaduta.
+//    ⇒ ⭐⭐ Una prova di parità vale finché ESISTONO due cose che devono restare pari. Quando una
+//    delle due muore, la prova non diventa inutile: diventa una FABBRICA DI LAVORO FINTO, e per
+//    giunta silenziosa, perché è verde ogni volta che qualcuno le obbedisce.
+//    ⚠️ Se un domani il blocco venisse copiato DAVVERO in un secondo posto vivo (il bot), la
+//    prova va rimessa — puntando a quello, non all'emulatore.
 //
 // Uso:  node test/autovalutazione-conoscenza.test.mjs
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const APP = join(QUI, '..', 'index.html');
-const EMULATORE = join(QUI, '..', 'chat-frontend-giocatori', 'chat-giocatori-emulatore', 'index.html');
 const APRI = '/* ===== ASSESS-KNOWLEDGE SHARED v1 =====';
 const CHIUDI = '/* ===== /ASSESS-KNOWLEDGE SHARED v1 =====';
 
@@ -323,20 +331,6 @@ prova('la scala dentro l\'edge dell\'email dice le stesse parole', () => {
   const coppie = [...blocco.matchAll(/max:\s*([\d.]+),\s*definizione:\s*'([^']+)'/g)]
     .map(m => ({ max: Number(m[1]), definizione: m[2] }));
   uguale(coppie, A.PMO_LIVELLI.map(f => ({ max: f.max, definizione: f.definizione })), 'scala dell\'edge');
-});
-
-prova('la copia dell\'emulatore è identica a questa', () => {
-  if (!existsSync(EMULATORE)) {
-    console.log('   (emulatore non presente in questa copia di lavoro: prova saltata)');
-    return;
-  }
-  const qui = estraiBlocco(APP);
-  const la = estraiBlocco(EMULATORE);
-  if (qui !== la) {
-    const righeQui = qui.split('\n'), righeLa = la.split('\n');
-    const prima = righeQui.findIndex((r, i) => r !== righeLa[i]);
-    throw new Error(`le due copie divergono dalla riga ${prima + 1} del blocco:\n   gestionale: ${righeQui[prima]}\n   emulatore : ${righeLa[prima]}`);
-  }
 });
 
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);
