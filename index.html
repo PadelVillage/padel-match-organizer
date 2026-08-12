@@ -7995,7 +7995,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.214';
+    const APP_VERSION = '6.216';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -11024,6 +11024,50 @@ Grazie.`
         if (r && typeof r === 'object' && Array.isArray(r.resolvedPlayers)) return r.resolvedPlayers;
       }
       return [];
+    }
+
+    // 🔕⭐⭐ IL CAMPANELLO CHE NOTAVA E TACEVA (v6.216) — dopo aver aggiunto un giocatore il worker
+    // RILEGGE la scheda di Matchpoint, e se là dentro quel nome non lo trova se lo annota
+    // (`diagnostic.addVerifyInconclusive`) senza far fallire niente. È un soft-pass VOLUTO: il
+    // confronto sui nomi è tollerante ma non infallibile, e un allarme sbagliato farebbe revertire
+    // aggiunte in realtà riuscite.
+    // 🚨 Quell'annotazione però non arrivava a NESSUNO, e le uscite erano tre: nel log del worker su
+    // Hetzner c'è (ruota, e non lo legge nessuno); nel cloud solo dall'11/08 (fino a lì il database
+    // rifiutava la riga `staff_edit`, ed è per QUESTO che risultava «0 su 189» — quelle 189 righe
+    // erano le CREAZIONI, dove l'annotazione non può nascere); sullo schermo mai. Intanto l'app
+    // scriveva «✅ Operazione confermata» e il giocatore spariva dalla card: è esattamente com'è
+    // sparita Laura Aprea il 2/08 in PRODUZIONE.
+    // ⚖️ Qui si LEGGE e basta, non si ricalcola. Il confronto tollerante (accenti, ordine, nome
+    // corto contro nome intero) l'ha già fatto il worker; rifarlo in casa rimetterebbe in gioco
+    // proprio i falsi allarmi che quel silenzio evitava.
+    // ⚖️ E suona SOLO nell'esito 1 dei tre — la risposta è arrivata e Matchpoint ha parlato.
+    // L'esito ignoto e il rifiuto hanno già le loro strade, e confonderli era il pericolo vero.
+    // ⚠️ LIMITE NOTO: si confrontano i NOMI, non il conteggio. Tre «Ospite» chiesti e due entrati
+    // non fanno suonare niente, perché un «Ospite» nell'elenco c'è → bug-multi-ospite. Per la
+    // stessa ragione i doppioni si accorpano: il numero non lo sappiamo, e fingere di saperlo
+    // sarebbe peggio che tacerlo.
+    function pmoAggiunteNonConfermate(risposta) {
+      if (!risposta || typeof risposta !== 'object') return [];
+      const rami = [risposta, risposta.worker_result, risposta.worker, risposta.result];
+      for (const r of rami) {
+        const d = (r && typeof r === 'object') ? r.diagnostic : null;
+        if (d && Array.isArray(d.addVerifyInconclusive)) {
+          const visti = [];
+          for (const voce of d.addVerifyInconclusive) {
+            const nome = cleanCell(voce);
+            if (nome && !visti.some(v => v.toLowerCase() === nome.toLowerCase())) visti.push(nome);
+          }
+          return visti;
+        }
+      }
+      return [];
+    }
+
+    // «Anna» · «Anna e Luca» · «Anna, Luca e Marco» — l'elenco come lo direbbe una persona.
+    function pmoElencoNomi(nomi) {
+      const l = (nomi || []).filter(Boolean);
+      if (l.length <= 1) return l[0] || '';
+      return l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1];
     }
 
     // 🆔 RACCOGLIE gli id interni che il worker ci ha già mandato e li attacca ai soci.
@@ -43690,8 +43734,25 @@ Per confermare scrivi ELIMINA.`);
           try { pmoAssorbiIdInterniMatchpoint(data, 'modifica prenotazione'); } catch (e) { console.warn('[id-interno] ' + (e && e.message ? e.message : e)); }
           _spegniPuntino();
           _applicaModifiche(finalRoster);
-          _setEditSyncNote('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
-          _aiExecSettle(true, null);
+          // 🔕⭐⭐ IL CAMPANELLO PARLA (v6.216). Fin qui l'annotazione del worker non usciva da
+          // nessuna parte e lo staff leggeva «✅ confermato» mentre il giocatore spariva dalla
+          // card. Non si annulla e non si ripristina niente — la modifica È stata applicata e
+          // l'elenco qui sopra è quello VERO letto da Matchpoint: si dice soltanto dov'è il
+          // dubbio, perché è l'unico posto dove un umano sta guardando. → pmoAggiunteNonConfermate
+          const _nonConfermati = (function () { try { return pmoAggiunteNonConfermate(data); } catch (e) { return []; } })();
+          if (_nonConfermati.length) {
+            const _uno = _nonConfermati.length === 1;
+            const _chi = pmoElencoNomi(_nonConfermati);
+            _setEditSyncNote('⚠️ ' + _chi + (_uno ? ' non risulta' : ' non risultano') + ' nell\'elenco riletto da Matchpoint',
+              '#b54708', '⚠️ <strong>Prenotazione aggiornata — ma controlla</strong>');
+            svcAddMessage('system', '⚠️ <strong>Modifica salvata, ma c\'è una cosa da controllare</strong> (' + destTxt + '): dopo l\'aggiunta <strong>' + _chi + '</strong> ' + (_uno ? 'non risulta' : 'non risultano') + ' nell\'elenco che ho riletto da Matchpoint.<br><span style="color:var(--text-muted);font-size:.78rem;">Il calendario mostra l\'elenco <strong>vero</strong> letto da Matchpoint. Apri la scheda della partita e guarda: se davvero manca, l\'aggiunta va rifatta.</span>', 'error');
+            // L'operazione è riuscita — nel diario resta l'esito buono, con scritto il perché del
+            // dubbio: registrarla come fallita direbbe una cosa falsa a chi rilegge.
+            _aiExecSettle(true, 'aggiunta-non-confermata');
+          } else {
+            _setEditSyncNote('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
+            _aiExecSettle(true, null);
+          }
         } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
           // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.
           await _verifica((data && (data.message || data.error)) || 'Matchpoint non ha risposto in tempo');
