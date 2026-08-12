@@ -451,6 +451,29 @@ function chatSince(W, n) {
     return Array.from(log.children).slice(n).map(function (el) { return el.innerText || el.textContent || ''; }).join('\n').trim();
   } catch (e) { return '(err ' + e.message + ')'; }
 }
+// 🚨🧰 …e nemmeno chatSince basta, per una ragione MISURATA: sul verde di conferma l'app
+// programma `svcScheduleAutoClear` (4 s) e SVUOTA il log — quindi un caso che aspetta di leggere
+// «✅ Operazione confermata» può trovare il contenitore già vuoto, e dà rosso col prodotto sano.
+// (Sui colori arancio/rosso non succede: l'esito resta visibile apposta.) Un banco che legge un
+// contenitore a scadenza è una sonda che rassicura o allarma a seconda di quanto ci mette.
+// ⇒ Qui i messaggi si prendono ALLA FONTE: si avvolge `svcAddMessage` e si tengono gli elementi.
+// Restano leggibili anche dopo che il log li ha buttati, perché il riferimento è nostro.
+function spiaMessaggi(W) {
+  const elementi = [];
+  const orig = W.svcAddMessage;
+  if (typeof orig !== 'function') return { testo: () => '(svcAddMessage non trovata)', stop: () => {} };
+  W.svcAddMessage = function () { const el = orig.apply(this, arguments); elementi.push(el); return el; };
+  const leggi = el => (el && (el.innerText || el.textContent)) || '';
+  return {
+    testo: () => elementi.map(leggi).join('\n').trim(),
+    // 🚨 Il messaggio SINGOLO che parla di una certa cosa. Serve a non farsi soddisfare l'atteso
+    // da un'ALTRA frase (28ª trappola): la riga «⏳ sto elaborando» porta già «👥 +Anna Verdi»,
+    // quindi un check «da qualche parte c'è il nome» resta verde anche a campanello SPENTO —
+    // misurato sabotando la cura. Il nome va cercato NELLO STESSO messaggio dell'avviso.
+    quello: (re) => leggi(elementi.filter(el => re.test(leggi(el))).pop()),
+    stop: () => { W.svcAddMessage = orig; },
+  };
+}
 // Imposta il giorno mostrato nel calendario (alcune azioni senza data usano #staffCalDate).
 function setCalDay(W, iso) { try { const el = W.document.getElementById('staffCalDate'); if (el) el.value = iso; } catch (e) {} }
 // Pilota handle() per una sequenza di frasi (comando + conferma), con piccola attesa.
@@ -3040,6 +3063,90 @@ const CASES = [
         win.save('giocatori', puliti);
       } catch (e) {}
       CLOUD_FAKEROWS = [];
+      return checks;
+    }
+  },
+  {
+    id: 89, flow: 'Giocatori', name: '🔕🚨⭐⭐ IL CAMPANELLO CHE TACEVA: il worker non ritrova chi ha aggiunto ⇒ ora lo DICE (v6.216)',
+    run: async (win, H, ctx) => {
+      // Il caso del 2/08 in PRODUZIONE, in forma pura. Il worker aggiunge un giocatore, rilegge la
+      // scheda di Matchpoint e là dentro non lo trova: se lo annota (`addVerifyInconclusive`) e
+      // NON fa fallire niente — soft-pass voluto. Fin qui l'app scriveva «✅ Operazione confermata»
+      // e, applicando l'elenco autorevole, faceva SPARIRE il giocatore dalla card senza una parola.
+      // 🚨 Le due metà vanno provate INSIEME: senza il check sulla sparizione, un domani si
+      // potrebbe rompere l'applicazione dell'elenco vero e il caso resterebbe verde perché il
+      // messaggio c'è comunque — l'atteso soddisfatto da una causa che non c'entra.
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      // Matchpoint ha detto sì alla modifica, ma nel suo elenco Anna NON c'è.
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345',
+        partecipantiFinali: [
+          { idx: '0', nome: 'Mario Rossi', idCliente: '11' },
+          { idx: '1', nome: 'Luca Bianchi', idCliente: '12' }
+        ],
+        diagnostic: { steps: ['salva', 'verifica_reload', 'add_verify_inconclusive:Anna Verdi', 'done'],
+                      addVerifyInconclusive: ['Anna Verdi'] } } } };
+      const parla = spiaMessaggi(win);
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const uscita = await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: 'base: la modifica è USCITA davvero', ok: uscita });
+      // 🚨 Premessa del danno, e si legge il campo GIUSTO: l'elenco autorevole di Matchpoint
+      // finisce in `nome` (l'intestazione della card, quella che lo staff vede), non in
+      // `giocatori` — staffCalUpdateLocalPlayers scrive solo `b.nome`. Un primo tentativo di
+      // questo caso guardava `giocatori` e dava rosso col prodotto SANO: misurava il campo che
+      // quella strada non tocca (44ª trappola, alla rovescia).
+      const sparita = await waitFor(() => {
+        const b = findBooking(H.getBookings(), iso, 2, '18:00')[0];
+        const n = b ? String(b.nome || '') : '';
+        return !!n && !/Anna Verdi/.test(n) && /Mario Rossi/.test(n);
+      }, 8000);
+      checks.push({ label: '🚨 premessa: Anna SPARISCE dall\'intestazione (vince l\'elenco vero di Matchpoint)', ok: sparita });
+      const detto = await waitFor(() => /non risulta/i.test(parla.testo()), 8000);
+      const testo = parla.testo();
+      parla.stop();
+      checks.push({ label: '⭐⭐ il campanello PARLA: dice che non risulta', ok: detto });
+      checks.push({ label: '⭐⭐ …e fa il NOME della persona NELLO STESSO messaggio', ok: /Anna Verdi/.test(parla.quello(/non risulta/i)) });
+      checks.push({ label: '🚨 NON dice più «Operazione confermata»', ok: !/Operazione confermata/i.test(testo) });
+      // Non è un fallimento e non va raccontato come tale: la modifica è stata applicata.
+      checks.push({ label: '⭐ e NON dice «Modifica non riuscita» (la modifica è passata)', ok: !/non riuscita|non eseguita/i.test(testo) });
+      if (!detto) ctx.diag['89'] = testo;
+      return checks;
+    }
+  },
+  {
+    id: 90, flow: 'Giocatori', name: '⭐⭐ CONTROLLO OPPOSTO dell\'89: se il worker NON annota niente, il verde resta verde',
+    run: async (win, H, ctx) => {
+      // Senza questo, un campanello rotto che suona SEMPRE terrebbe verde l'89 — ed è proprio il
+      // falso allarme che il soft-pass del worker era stato messo lì a evitare.
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345',
+        partecipantiFinali: [
+          { idx: '0', nome: 'Mario Rossi', idCliente: '11' },
+          { idx: '1', nome: 'Luca Bianchi', idCliente: '12' },
+          { idx: '2', nome: 'Anna Verdi', idCliente: '13' }
+        ],
+        diagnostic: { steps: ['salva', 'verifica_reload', 'done'] } } } };
+      const parla = spiaMessaggi(win);
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      const entrata = await waitFor(() => {
+        const b = findBooking(H.getBookings(), iso, 2, '18:00')[0];
+        return !!b && /Anna Verdi/.test(String(b.nome || ''));
+      }, 8000);
+      checks.push({ label: 'Anna è nell\'elenco vero di Matchpoint ⇒ resta nell\'intestazione', ok: entrata });
+      const verde = await waitFor(() => /Operazione confermata/i.test(parla.testo()), 8000);
+      const testo = parla.testo();
+      parla.stop();
+      checks.push({ label: '⭐⭐ dice «Operazione confermata», come prima', ok: verde });
+      checks.push({ label: '🚨 e NON suona nessun campanello', ok: !/non risulta|ma controlla/i.test(testo) });
+      if (!verde) ctx.diag['90'] = testo;
       return checks;
     }
   }
