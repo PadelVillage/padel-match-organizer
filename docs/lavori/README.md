@@ -205,6 +205,17 @@ Da decidere: estendere la guardia, o un controllo periodico che confronti `APP_V
 sessione carica da sola: chi apre una chat — dal cloud o dal Mac — lo trova già letto. È la cura
 del buco del 13/08, quando la sessione è partita cieca e ha scelto da sé su cosa lavorare.
 
+📌 **Le memorie `lavori-*` sono in pensione dal 13/08/2026.** `lavori-urgenti`, `lavori-in-coda`,
+`lavori-chiusi` e `lavori-chiusi-storico` — più le tematiche su Gmail e autovalutazione — vanno
+svuotate e sostituite da un rimando a questo file. Il loro contenuto è **qui**, liste e memorie
+tematiche comprese.
+🚨 **Non riscriverci dentro le liste.** Due copie divergono, ed è esattamente la malattia curata
+il 13/08: tre registri che dicevano il falso mentre uno si dichiarava «fonte rapida ufficiale».
+⚖️ **Le altre memorie restano dove sono** — VM, `.env` del bot, chiavi SSH, decisioni personali:
+il repo non le sostituisce, e chi svuota deve saper distinguere.
+🖥️ Lo svuotamento **si fa dal Mac**: dal cloud la memoria dell'app non si tocca (tabella qui sopra),
+e la sessione del 13/08 che ha scritto questa riga non ha potuto farlo da sé.
+
 ⚠️ **Chi lo aggiorna:** si aggiorna **durante il lavoro**, come gli altri documenti del repo, e
 il commit resta nella storia (`git log docs/lavori/README.md` dice quando una voce è nata e quando
 è stata chiusa). Le **promozioni dalla coda alle urgenti le decide il committente**, mai la sessione.
