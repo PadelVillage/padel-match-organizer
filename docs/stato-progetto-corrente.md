@@ -8,7 +8,12 @@ Se le informazioni scritte in un prompt non coincidono con questo file, consider
 
 ⚠️ **Eccezione: su come sono fatte le app e su dove si deploya ciascuna, comanda `CLAUDE.md` nella radice del repo**, non questo file. Lì stanno le 4 app, i tre rami di deploy delle edge function, il worker condiviso TEST+PROD e la dismissione della web app dei soci (25/07/2026). Questo file resta la fonte per **versioni e stato del lavoro**.
 
-⚠️ **Questo file ha un buco documentale fra v5.527 (22/05/2026) e v6.216 (12/08/2026).** Le note qui sotto si fermano a maggio: nessuno le ha più scritte quando il progetto è passato a lavorare per PR. Per quelle 689 versioni **la storia vera è la cronologia git** (`git log --oneline`, titoli descrittivi) e le PR #659–#673. Anche gli altri due registri sono fermi allo stesso momento: `VERSIONI.md` si ferma a **v5.761** (zero voci 6.x) e `docs/registro-versioni-sezioni.md` al **22/05/2026**. Non fidarti di una nota qui sotto per dire "com'è fatto oggi": verificala nel codice.
+⚠️ **Questo file ha un buco documentale fra v5.527 (22/05/2026) e v6.216 (12/08/2026).** Le note qui sotto si fermano a maggio: nessuno le ha più scritte quando il progetto è passato a lavorare per PR. Per quelle 689 versioni **la storia vera è la cronologia git** (`git log --oneline`, titoli descrittivi) e le PR. Non fidarti di una nota qui sotto per dire "com'è fatto oggi": verificala nel codice.
+
+Stato degli altri due registri, al 13/08/2026:
+
+- **`VERSIONI.md` — allineato.** Si era fermato al **14/06/2026** (v5.761) senza mai avere voci 6.x. Il 13/08 le versioni da **v5.766 a v6.216** sono state ricostruite dalla cronologia git di `main` (188 voci, ognuna con PR, sha e data). Coprono le sole versioni **arrivate in PROD**: le versioni vissute solo su `test-preview` non ci sono, quindi la numerazione ha buchi voluti.
+- **`docs/registro-versioni-sezioni.md` — ancora fermo** al 22/05/2026. Non è stato toccato.
 
 ## Lettura obbligatoria prima di iniziare
 
