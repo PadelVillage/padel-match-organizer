@@ -118,7 +118,14 @@ Per evitarlo, SEMPRE:
    (successo il 19/07: la lista `VERIFY_JWT_FUNCTIONS` della #538 stava solo su `main`).
 
 → I punti 2 e 5 sono garantiti da **`guard-worker-sync.yml`**, che fallisce se i rami divergono
-su worker, workflow o istruzioni. Ha anche un backstop giornaliero alle 06:00 UTC.
+su worker, workflow, istruzioni **o `docs/`**. Ha anche un backstop giornaliero alle 06:00 UTC.
+
+`docs/` è entrato nella guardia il **13/08/2026**: la #674 aveva curato i tre registri di versione
+solo su `main`, e su `test-preview` `stato-progetto-corrente.md` continuava a dichiarare
+«PROD | v5.527» (22/05) — intitolandosi «fonte rapida ufficiale» — mentre TEST girava a **6.222**.
+⚠️ **La guardia vede se le due copie sono UGUALI, non se dicono il VERO**: due documenti identici e
+sbagliati passano verdi. Serve anche l'altra metà (un controllo contro la misura), che **non esiste
+ancora** — è la voce 30, urgente.
 
 I rami di lavoro non vanno potati a mano: `cleanup-claude-branches.yml` cancella ogni notte
 tutto tranne `main` e `test-preview`. Se ne vedi molti in locale è solo la tua copia stantia
