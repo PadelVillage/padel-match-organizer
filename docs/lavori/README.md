@@ -60,18 +60,33 @@ ma la regola dell'adiacenza non regge più come indicatore.
 ## 🔴 URGENTI — 1
 
 ### 🧹 22. Ripulire le righe di prova su TEST
-Promossa da lui l'11/08. **Non toccata il 13/08.** Nessuna fa danno: sono **rumore che sporca le prove future**.
+Promossa da lui l'11/08. **Misurata il 14/08 sul bersaglio** — e la misura ha ribaltato il primo punto.
+Nessuna fa danno: sono **rumore che sporca le prove future**.
 
-| cosa | dove | nota |
+| cosa | dove | misurato il 14/08 |
 |---|---|---|
-| partita **9305** del 13/08 con **Manuel Casagrande** | TEST | tolto nella copia in app, **ancora nella scheda**: le due copie divergono e su TEST non le riconcilia nessuno |
-| partita di prova **14/08 12:30 C4** + le righe **`staff_edit`** | TEST | nate provando il recinto e la `A6` |
-| **Lidia Comes nella whitelist di `test`** | `ayly…` | abilitata il 7/08 per una prova (in `prod` resta, ed è giusto) |
-| socio di prova `matchpoint_n29tlt` a **1,5** + scheda `applied` | TEST | il mirror rimette il livello, **la scheda no** |
+| ~~partita **9305** del 13/08 con **Manuel Casagrande**~~ | TEST | ⛔ **non è una riga di prova** — vedi il riquadro qui sotto. **In attesa di sua decisione** |
+| partita di prova **14/08 12:30 C4** + le **4** righe `staff_edit` | TEST | ✅ nate in prova e **marchiate**: `nata_in_prova: true`, `ambiente: "prova"`, `simulato: true`, autore `consumer-assistente-soci`. Si tolgono |
+| **Lidia Comes nella whitelist di `test`** | `ayly…` | ✅ `telegram_operatori`, riga `ambiente='test'` del **10/08** (non 7/08), `persona_id matchpoint_49efs2`. La gemella `ambiente='prod'` del 9/08 **resta** |
+| socio di prova `matchpoint_n29tlt` a **1,5** + scheda `applied` | TEST | ⚠️ **non è un socio di prova**: è **Maurizio Aprea, `000004`**, socio vero usato come cavia. Il livello **è già tornato a 4**; resta solo la scheda `self_assessments` token `ITBAOQWO8CB5KU`, `applied` l'11/08 |
+
+> 🚨 **Il primo punto esce dalla voce: è un dato del circolo, non rumore.** La scheda cita «9305 del
+> 13/08», ma sono **due** partite diverse e **nessuna** delle due è nata da una prova:
+>
+> | | su TEST | su PROD |
+> |---|---|---|
+> | **9305** — 11/08 09:30 C2 | viva (`deleted=false`) | **c'è**, disdetta l'11/08 alle 07:17 |
+> | **9306** — 13/08 09:30 C2 | Aprea + Casagrande, ferma al 07/08 | **viva, 4 giocatori** (De Luca, Spinazzè, Aprea, Ruzzini); Casagrande tolto l'11/08 alle 18:02 |
+>
+> Su TEST entrambe portano `created_at = updated_at = 2026-08-07 09:31:31` — lo **stesso istante**
+> di 9272, 9273, 9274, 9278, 9293, 9317: è un **lotto di sync da Matchpoint**, non una prova.
+> ⇒ Applicata la regola scritta nella voce stessa (*«se una di queste risultasse anche su PROD, ci
+> si ferma e si chiede»*): **fermato**.
 
 - ⚠️ Il mirror delle 05:00 rifà l'anagrafica, **non queste**: quello che è fuori dall'anagrafica resta finché non lo si toglie a mano.
 - 🚨 **Il rito**: prima di togliere si **misura cosa punta a quella riga** e lo si dice — lezione dell'Ospite, dove «elimina tutto» avrebbe buttato **€ 7.937** di incassi.
-- ⚖️ **Si tocca solo TEST.** Se una di queste risultasse anche su PROD, ci si **ferma** e si chiede: là non è rumore di prova, è un dato del circolo.
+- ⚖️ **Si tocca solo TEST.** Se una di queste risultasse anche su PROD, ci si **ferma** e si chiede: là non è rumore di prova, è un dato del circolo. **Il 14/08 è successo**, ed è la prima volta che la clausola scatta.
+- 📌 Una delle 4 `staff_edit` punta a `idReserva 9306`, **prenotazione vera**: la riga è un'annotazione nata in prova (`simulato: true`, su Matchpoint non è successo nulla) e togliendola **la partita non si tocca**.
 
 ---
 
@@ -137,10 +152,24 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 
 ---
 
-## 🆕 Nate misurando il 12/08, **non** ancora in coda
+## 🆕 Nate misurando, **non** ancora in coda
+
+Misurando il **12/08**:
 
 - 🔓 Su **TEST** ci sono policy `ALL` (lettura **e scrittura**) per anonimo su `pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`. Su PROD no.
 - 🔓 Su PROD altre **tre tabelle** accettano inserimenti anonimi (`pmo_ai_turns`, `pmo_parser_errors`, `post_match_feedback_responses`): non guardate.
+
+Misurando il **14/08**, aprendo la voce 22:
+
+- 🧊 **Su TEST lo specchio delle prenotazioni è fermo dal 7 agosto.** Tutte e **2721** le `booking` e
+  tutte e **2151** le `booking_occupancy` portano lo **stesso** `updated_at`: `2026-08-07 09:31:31`.
+  `booking_history` è ferma al **02/08**. Intanto sullo stesso database `member` è viva (13/08 05:00,
+  il mirror) e `payment` pure (13/08 21:23) — e su PROD **tutto** è vivo (13/08 21:47).
+  ⇒ La divergenza che la voce 22 attribuiva a una prova è invece **lo specchio che non gira**:
+  togliere quelle righe non pulirebbe nulla, ne resterebbero **2719** altrettanto vecchie.
+  🔗 Spiega da sé anche la **voce 26** («il Fatto del togli non si vede»: su TEST non c'è nessun sync
+  che riconcili) e avvelena **ogni prova futura sul calendario**, che è poi lo scopo della voce 22.
+- 🔢 `payment` su TEST ha **2503** righe contro le **2502** di PROD: una in più, non guardata.
 
 ---
 
@@ -233,6 +262,12 @@ Le prime 6 nella 12ª sessione, la **30** e l'ultima in serata.
 📌 **Questo file non va più allegato a mano.** Vive nel repo ed è citato in `CLAUDE.md`, che ogni
 sessione carica da sola: chi apre una chat — dal cloud o dal Mac — lo trova già letto. È la cura
 del buco del 13/08, quando la sessione è partita cieca e ha scelto da sé su cosa lavorare.
+
+📌 **I due prompt — apertura e chiusura — stanno in [`prompt-apertura-chiusura.md`](prompt-apertura-chiusura.md)**,
+qui accanto, dal 14/08. Erano tenuti a memoria, e quello di apertura mandava ancora ad aprire la
+memoria `lavori-urgenti` **svuotata il giorno prima**: la sessione del 14/08 è partita cercando una
+fonte che non esiste più. Stessa malattia dei tre registri, stessa cura — **scritto, nel repo,
+accanto a ciò che descrive**.
 
 📌 **Le memorie `lavori-*` sono in pensione dal 13/08/2026.** `lavori-urgenti`, `lavori-in-coda`,
 `lavori-chiusi` e `lavori-chiusi-storico` — più le tematiche su Gmail e autovalutazione — vanno
