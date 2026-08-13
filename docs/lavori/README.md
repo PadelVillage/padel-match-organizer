@@ -2,15 +2,23 @@
 
 **Fotografia del 13/08/2026, a fine 12ª sessione.** Misurata, non ricordata.
 
+🔄 **Ritoccata più tardi lo stesso giorno**, dopo la PR #680: rimisurati **sha, versioni e PR
+aperte**. Tutto il resto — i cron e il blocco «verificato sul bersaglio» — è la misura della 12ª
+sessione e **non è stato ricontrollato**.
+
 | | |
 |---|---|
 | 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **16** |
 | 📦 **Chiuse** | ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `9305323`,
-`test-preview` `b20a51e`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
-TEST 5 accesi / 4 spenti · `server.mjs`, `.github/workflows/**` e `CLAUDE.md` **identici** fra i rami.
+**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `49e298f`,
+`test-preview` `5293d2b`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
+TEST 5 accesi / 4 spenti · `server.mjs`, `.github/workflows/**`, `CLAUDE.md` **e questo file**
+**identici** fra i rami.
+
+Le versioni **non si sono mosse** con la #680: era documentazione, nessun file dell'app toccato.
+Gli sha sì — ed è il motivo per cui erano già vecchi di due commit poche ore dopo essere stati scritti.
 
 ⚠️ **PROD e TEST non sono più adiacenti**: 3 di distanza, non 1. Il *contenuto* è equivalente —
 TEST bumpa a ogni passo (6.219→6.222), PROD una volta per promozione (6.218, 6.219). Non è drift,
@@ -222,4 +230,4 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Generato il 13/08/2026 a fine 12ª sessione. Stato misurato, non ricordato. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Generato il 13/08/2026 a fine 12ª sessione; sha, versioni e PR aperte ritoccati più tardi lo stesso giorno (PR #680). Stato misurato, non ricordato. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
