@@ -28473,7 +28473,8 @@ Per confermare scrivi ELIMINA.`);
 	    }
 	    // Card "Gmail Padel Village" spostata qui da Autovalutazione → Strumenti tecnici
 	    // (la sezione Autovalutazione è congelata, vedi PMO_ASSESSMENT_PARKED): l'account
-	    // mittente serve per gli inviti staff e le email automatiche.
+	    // mittente serve per l’INVITO STAFF, unica email rimasta: il canale dell’Autovalutazione
+	    // è dismesso dal 13/08/2026 e le sue azioni sono state potate dalla edge.
 	    function pmoRenderUsersGmailCheck() {
 	      const box = document.getElementById('pmoUsersGmailBox');
 	      if (!box) return;
@@ -28481,7 +28482,7 @@ Per confermare scrivi ELIMINA.`);
 	        <div class="admin-table-toolbar admin-users-toolbar">
 	          <div>
 	            <strong>Gmail Padel Village</strong>
-	            <div class="routine-mini">Account mittente per inviti staff ed email automatiche.</div>
+	            <div class="routine-mini">Account mittente dell’invito staff — l’unica email che il gestionale manda.</div>
 	          </div>
 	          <div class="staff-access-toolbar">${assessmentGmailCheckButtonHtml()}</div>
 	        </div>
@@ -33193,7 +33194,7 @@ Per confermare scrivi ELIMINA.`);
       return {
         status,
         checkedAt: cleanCell(data.checkedAt || ''),
-        message: cleanCell(data.message || (status === 'ok' ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.' : 'Gmail non verificato.')),
+        message: cleanCell(data.message || (status === 'ok' ? 'Gmail collegato. L’invito staff può partire.' : 'Gmail non verificato.')),
         errorCode: cleanCell(data.errorCode || ''),
         gmailConnected: data.gmailConnected === true,
         runtimeEnv: cleanCell(data.runtimeEnv || PMO_RUNTIME_ENV),
@@ -33265,7 +33266,7 @@ Per confermare scrivi ELIMINA.`);
         const state = assessmentGmailCheckSave({
           status: ok ? 'ok' : 'error',
           checkedAt: result?.checkedAt || new Date().toISOString(),
-          message: cleanCell(result?.message || (ok ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.' : 'Gmail non collegato: token scaduto o revocato. Ricollega Gmail prima degli invii.')),
+          message: cleanCell(result?.message || (ok ? 'Gmail collegato. L’invito staff può partire.' : 'Gmail non collegato: token scaduto o revocato. Ricollega Gmail prima degli invii.')),
           errorCode: cleanCell(result?.errorCode || ''),
           gmailConnected: ok,
           runtimeEnv: cleanCell(result?.runtimeEnv || PMO_RUNTIME_ENV),
@@ -34484,10 +34485,10 @@ Per confermare scrivi ELIMINA.`);
         : (gmailState.status === 'error' ? 'Token da verificare' : 'Da verificare');
       const gmailLast = gmailState.checkedAt ? assessmentEmailFormatDateTime(gmailState.checkedAt) : lastLabel;
       const gmailNext = gmailState.status === 'ok'
-        ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.'
+        ? 'Gmail collegato. L’invito staff può partire.'
         : (gmailState.status === 'error'
           ? 'Token Gmail scaduto o revocato: ricollega Gmail prima degli invii.'
-          : 'Usa Verifica Gmail prima del lotto o degli invii automatici.');
+          : 'Usa Verifica Gmail prima di invitare un nuovo utente staff.');
       const rows = [
         ['Gmail Padel Village', gmailSituation, assessmentGmailCheckBadgeHtml(gmailState), gmailLast, gmailNext],
         ['Modalita invio', 'TEST o produzione', envStatus, envDetail, PMO_IS_TEST_ENV ? 'Resta cosi finche non si passa al test reale.' : 'Controllare destinatari e scheduler prima di inviare ai soci.'],
