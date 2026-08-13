@@ -8038,7 +8038,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.217';
+    const APP_VERSION = '6.218';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15008,6 +15008,7 @@ Grazie.`
       if (raw.includes('MEMBERS_SYNC_REQUIRED')) return 'I dati dei soci non sono ancora sincronizzati sul cloud. Usa "Sincronizza dati locali ora" nel pannello Autovalutazione prima di preparare il lotto.';
       if (raw.includes('AUTO_FIRST_SEND_ONLY_PROD')) return 'Invio automatico lotto consentito solo in PROD.';
       if (raw.includes('PROD_TEST_EMAIL_MODE_BLOCKED')) return 'Invio bloccato: PROD risulta in modalità test email. Controllare configurazione Supabase.';
+      if (raw.includes('ASSESSMENT_EMAIL_CHANNEL_RETIRED')) return 'Canale email dell\'Autovalutazione dismesso: il socio riceve il link personale dal bot Telegram. Non si mandano più email da qui.';
       return raw || 'Invio email autovalutazione non riuscito.';
     }
 
@@ -15020,6 +15021,11 @@ Grazie.`
       }
       return { blocked:true, message:'Impossibile verificare la protezione email. Non inviare finché il controllo non è pulito.' };
     }
+
+    // Interruttore del canale email dell'Autovalutazione. Vive qui, accanto a chi lo usa, e non è
+    // gated su PMO_IS_TEST_ENV: il canale è dismesso in TEST come in PROD. Per riaccenderlo basta
+    // rimetterlo a false — la macchina sotto (lotto, follow-up, scan Gmail) è rimasta intatta.
+    const PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED = true;
 
     function pmoAssessmentEmailShouldBlockAction(action) {
       return ['send', 'routine-send', 'routine-approve'].includes(cleanCell(action || 'send')) && pmoAssessmentEmailSendBlock().blocked;
@@ -15038,6 +15044,16 @@ Grazie.`
             : (action === 'routine-selection'
               ? 'aggiornare la selezione del lotto email'
               : (action === 'routine-approve' ? 'approvare il lotto email mattutino' : 'inviare email autovalutazione')))));
+      // ⛔ Canale email dell'Autovalutazione DISARMATO (13/08/2026, deciso dal committente).
+      // Il socio riceve il link personale dal bot Telegram (edge `consumer-assessment-link`), non
+      // più per email. Il cron `pmo-assessment-followup-dispatcher-prod` era già spento da tempo:
+      // restava aperta SOLO la via manuale dalla UI dello staff, ed è quella che si chiude qui.
+      // Punto unico: tutti gli 11 chiamanti del canale email passano da questa funzione.
+      // ⚠️ NON tocca l'amministrazione utenti staff. `staff_invite` e `staff_delete_full` vivono
+      // nella STESSA edge `assessment-email-send` ma hanno una loro fetch e non passano di qui.
+      // `staff_invite` usa ancora Gmail: per questo i secret Gmail NON vanno rimossi e la edge
+      // NON va cancellata — si porterebbero via l'invito e l'eliminazione di un utente staff.
+      if (PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED) throw new Error('ASSESSMENT_EMAIL_CHANNEL_RETIRED');
       if (pmoAssessmentEmailShouldBlockAction(action)) throw new Error('PROD_TEST_EMAIL_MODE_BLOCKED');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
