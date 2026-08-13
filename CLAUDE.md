@@ -1,5 +1,18 @@
 # Padel Match Organizer — istruzioni di progetto
 
+## 📋 Prima di iniziare: cosa c'è da fare → `docs/lavori/README.md`
+
+**Apri quel file all'inizio di ogni sessione.** Contiene le tre liste — 🔴 urgenti, 📋 in coda,
+📦 chiuse — più le memorie tematiche e lo stato del sistema misurato all'ultima sessione.
+
+🚨 **Non scegliere da solo su cosa lavorare.** Le priorità stanno lì, e le **promozioni dalla coda
+alle urgenti le decide il committente**: si propongono, non si eseguono. La regola nasce dal
+13/08/2026, quando una sessione partì senza quella lista e lavorò mezza giornata su cose scelte
+da sé — utili, ma non le sue.
+
+Il file si aggiorna **durante il lavoro**, come gli altri documenti: chiudendo una voce la si
+sposta, e il commit resta nella storia.
+
 ## ⚠️ Le 4 app e dove si deploya ciascuna (leggere PRIMA di toccare qualcosa)
 
 | app | repo | ramo → dove | backend |
