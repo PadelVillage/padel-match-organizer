@@ -123,9 +123,23 @@ su worker, workflow, istruzioni **o `docs/`**. Ha anche un backstop giornaliero 
 `docs/` è entrato nella guardia il **13/08/2026**: la #674 aveva curato i tre registri di versione
 solo su `main`, e su `test-preview` `stato-progetto-corrente.md` continuava a dichiarare
 «PROD | v5.527» (22/05) — intitolandosi «fonte rapida ufficiale» — mentre TEST girava a **6.222**.
-⚠️ **La guardia vede se le due copie sono UGUALI, non se dicono il VERO**: due documenti identici e
-sbagliati passano verdi. Serve anche l'altra metà (un controllo contro la misura), che **non esiste
-ancora** — è la voce 30, urgente.
+⚠️ **Quella guardia vede se le due copie sono UGUALI, non se dicono il VERO**: due documenti identici
+e sbagliati passano verdi. L'altra metà è **`guard-docs-truth.yml`** (13/08), che confronta il
+**dichiarato** col **misurato**:
+
+- la tabella «Versione corrente» di `docs/stato-progetto-corrente.md` deve riportare l'`APP_VERSION`
+  vera dei due rami — **altrimenti fallisce**. Quel file promette in testa a sé stesso di essere
+  corrente: se non lo è, non è vecchio, **mente**;
+- i conteggi di `docs/lavori/README.md` devono corrispondere alle voci contate, **numero per numero**
+  e non solo nella somma: il 13/08 la sezione C ne dichiarava 11 con 12 voci e la D 5 con 4, i due
+  errori si **annullavano** e il totale tornava.
+
+⚖️ Di proposito **non** controlla gli sha né le PR aperte: un file che cita il proprio sha è vecchio
+nell'istante in cui lo si salva, e una guardia sempre rossa si ignora. Le versioni dichiarate nella
+**fotografia** `docs/lavori/README.md` danno solo un avviso, non un errore: è datata per natura.
+
+📌 Le due guardie sono **complementari e legate**: `guard-docs-truth` controlla una sola copia perché
+`guard-worker-sync` garantisce che i rami siano identici. Si tolgono insieme o mai.
 
 I rami di lavoro non vanno potati a mano: `cleanup-claude-branches.yml` cancella ogni notte
 tutto tranne `main` e `test-preview`. Se ne vedi molti in locale è solo la tua copia stantia
