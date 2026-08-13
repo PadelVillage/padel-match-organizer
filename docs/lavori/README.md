@@ -77,34 +77,56 @@ ma la regola dell'adiacenza non regge più come indicatore.
 
 ## 🔴 URGENTI — 1
 
-### 🧊 32. Su TEST lo specchio delle PRENOTAZIONI è fermo dal 7 agosto
-*Nata misurando la voce 22 il 14/08, **promossa da lui** lo stesso giorno.* È la **causa** di cui la
-22 vedeva un sintomo, ed è il motivo per cui il primo punto di quella voce sembrava una riga di prova.
+### 🧊 32. Su TEST le PRENOTAZIONI non le aggiorna nessuno — e non è mai successo
+*Nata misurando la voce 22 il 14/08, **promossa da lui** lo stesso giorno. Diagnosi chiusa in
+giornata; **la decisione è sua** e non è stata presa.* È la **causa** di cui la 22 vedeva un sintomo.
+
+⚠️ **Il titolo di stamattina diceva «fermo dal 7 agosto»: era sbagliato.** Su TEST le prenotazioni
+non sono **mai** state aggiornate da un cron. Il 7/08 è solo l'ultima volta che qualcuno ha lanciato
+l'import **a mano** — non c'è nessun `data_routine_dispatch_*` che gli corrisponda.
 
 | tabella su TEST | righe | ultimo tocco |
 |---|---|---|
 | `booking` | 2721 | **`2026-08-07 09:31:31`** — tutte, allo stesso istante |
 | `booking_occupancy` | 2151 | **`2026-08-07 09:31:31`** — tutte |
 | `booking_history` | 2964 | `2026-08-02 08:41` |
-| `member` | 2919 | 13/08 05:00 ✅ (il mirror gira) |
-| `payment` | 2503 | 13/08 21:23 ✅ |
+| `member` | 2919 | 13/08 05:00 ✅ (`anagrafica-mirror`, jobid 14, acceso) |
+| `payment` | 2503 | 13/08 21:23 ✅ (jobid 11, acceso) |
 
-Sullo stesso database l'anagrafica e i pagamenti sono **vivi**; su PROD è vivo **tutto** (13/08 21:47).
-⇒ Non è il database spento: è **quel sync** che non gira più.
+**La prova che chiude il caso:** righe `data_routine_dispatch_bookings_live_*` — su TEST **0 in tutta
+la storia del database**, su PROD **1575**, l'ultima il 13/08 alle 22:02 con l'import 39 secondi dopo.
 
-🚨 **Perché è urgente e non cosmetica**: ogni prova fatta su TEST che tocchi il calendario parte da
-una fotografia di **una settimana fa**. Le partite ci sono ma non sono quelle vere, le disdette non
-arrivano, i roster restano come erano. Una prova su dati fermi **non dimostra niente**, e peggio:
-sembra dimostrare.
+#### Tre disallineamenti sovrapposti, ognuno da solo sufficiente
+
+| | su TEST | su PROD |
+|---|---|---|
+| ① **il cron** | `pmo-data-routines-clients-nightly-test` (jobid 13) — **spento**, e non gira dal 3/08 | `pmo-data-routines-dispatcher-prod` (jobid 6), `*/2 * * * *`, **acceso** |
+| ② **come lo chiama** | `pmo_dispatch_data_routines(<oggi 04:30>)` — l'ora **inchiodata** manda sempre al ramo `clients_0430`: le prenotazioni non le raggiunge **mai**, nemmeno da acceso | `pmo_dispatch_data_routines()` senza argomento ⇒ `now()` |
+| ③ **la funzione** | versione **vecchia**: slot fissi, prenotazioni 5 volte al giorno (05:30, 10:30, 14:30, 17:30, 21:30). Impronta `1609186e…` | versione **nuova**: gli slot fissi solo per i clienti, più un ramo `else` che fa `bookings_live` **a ogni giro** con anti-sovrapposizione a 150 s. Impronta `e38984df…` |
+
+✅ L'edge `matchpoint-bookings-sync` **c'è ed è ACTIVE su TEST** (v70): il pezzo che manca è solo
+la **pianificazione**, non il motore.
+
+🚨 **Perché è urgente e non cosmetica**: ogni prova su TEST che tocchi il calendario parte da una
+fotografia vecchia. Le partite non sono quelle vere, le disdette non arrivano, i roster restano come
+erano. Una prova su dati fermi **non dimostra niente, e sembra dimostrare**.
 
 🔗 **Spiega da sé la voce 26** («il "Fatto" del togli non si vede»): su TEST non c'è nessun sync che
-riconcili, quindi la riga non sparisce mai. In PROD si auto-corregge in ~2 minuti — con lo stesso
-codice. Non era un guasto del bot.
+riconcili, quindi la riga non sparisce mai. In PROD si auto-corregge in ~2 minuti — **con lo stesso
+codice**. Non era un guasto del bot, e la 26 si chiude con questa.
 
-**Da fare, nell'ordine:** ① capire **cosa** dovrebbe aggiornare `booking` su TEST (cron? worker? il
-mirror delle 05:00 fa solo l'anagrafica) → ② perché si è fermato **il 7 agosto** → ③ decidere se
-riaccenderlo o dichiarare TEST «calendario congelato» **scrivendolo in `CLAUDE.md`**, così nessuno ci
-costruisce sopra una prova. ⚖️ Le due strade sono opposte ma entrambe oneste: quella di oggi no.
+#### ⚖️ La decisione, che è sua
+
+🚨 **Accendere non è gratis: il worker è UNO SOLO, condiviso TEST+PROD.** Portare TEST al ritmo di
+PROD (`*/2`) **raddoppia** il carico sul worker vero e i login su Matchpoint. È **lettura**, quindi
+non sporca il Matchpoint del circolo — ma il costo ricade su PROD, non su TEST.
+
+| strada | cosa comporta |
+|---|---|
+| **A — allineare** | portare ③ alla versione di PROD, correggere ② togliendo l'argomento, accendere ①. ⚠️ Da valutare a ritmo **ridotto** (non `*/2`): serve freschezza, non parità |
+| **B — congelare** | lasciare com'è e **dichiararlo in `CLAUDE.md`**: «su TEST il calendario è una fotografia, non provarci sopra nulla che dipenda dalle prenotazioni» |
+
+⚖️ Sono opposte ma **entrambe oneste**. Quella di oggi — un TEST che sembra vivo e non lo è — non lo è.
 
 ---
 
