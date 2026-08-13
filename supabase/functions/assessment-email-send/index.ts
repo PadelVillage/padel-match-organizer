@@ -17,7 +17,29 @@ const CORS_HEADERS = {
 };
 
 const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', 'received-email', 'level-email']);
-const ALLOWED_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'config-check', 'gmail-check', 'routine-cancel', 'staff_invite', 'staff_delete_full']);
+// ⛔ Canale email dell'Autovalutazione POTATO (13/08/2026, deciso dal committente).
+// Il socio riceve il link personale dal bot Telegram (edge `consumer-assessment-link`), non più
+// per email. Il cron `pmo-assessment-followup-dispatcher-prod` era già spento e l'app ha chiuso la
+// via manuale in TEST 6.218 / PROD 6.217; restava raggiungibile QUESTO endpoint, da chiunque avesse
+// un JWT staff valido. Questa è l'ultima porta, e si chiude qui.
+//
+// 🚨 La funzione NON si cancella e i secret Gmail NON si tolgono: il nome inganna, ma qui dentro
+// vive anche l'amministrazione utenti staff, che non c'entra nulla con l'Autovalutazione.
+//   · `staff_invite`      → invita un nuovo utente staff, e manda una mail VERA con Gmail.
+//   · `staff_delete_full` → elimina l'utente in `auth`; non spedisce nulla.
+// Togliere i secret spegnerebbe l'invito; cancellare la funzione porterebbe via l'eliminazione.
+//
+// `config-check` resta viva di proposito: è in sola lettura, non prende token Gmail e non spedisce,
+// e la chiama il pannello `Verifica TEST/PROD` dell'Amministrazione con una fetch propria (quindi
+// non passa dall'interruttore dell'app). Toglierla romperebbe quel pannello senza guadagno.
+//
+// Il codice delle azioni ritirate resta nel file, non è stato asportato: riaccenderle è rimetterle
+// in questo elenco. La macchina sotto — lotto, follow-up, scan Gmail — è intatta.
+const ALLOWED_ACTIONS = new Set(['config-check', 'staff_invite', 'staff_delete_full']);
+
+// Azioni del canale email dismesso. Elencate per poterle distinguere da un refuso e rispondere
+// qualcosa di comprensibile invece di un generico «azione non valida».
+const RETIRED_EMAIL_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'gmail-check', 'routine-cancel']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const LOGO_URL = 'https://app.padelvillage.club/logo-padel-village.jpeg';
 const emailLogoHeaderHtml = () => `<div style="text-align:center;margin:0 0 18px;">
@@ -2575,6 +2597,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = clean(body.action || 'send');
+    if (RETIRED_EMAIL_ACTIONS.has(action)) {
+      return errorResponse(410, 'ASSESSMENT_EMAIL_CHANNEL_RETIRED', 'Canale email dell\'Autovalutazione dismesso: il socio riceve il link personale dal bot Telegram. Da qui non parte piu\' nessuna email.');
+    }
     if (!ALLOWED_ACTIONS.has(action)) return errorResponse(400, 'INVALID_ACTION', 'Azione email autovalutazione non valida.');
 
     // Invito ed eliminazione utente staff richiedono manage_users; le altre azioni cloud_sync.
