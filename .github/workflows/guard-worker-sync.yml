@@ -1,4 +1,4 @@
-name: Guard sync main↔test-preview (worker, CI, istruzioni)
+name: Guard sync main↔test-preview (worker, CI, istruzioni, docs)
 
 # Alcuni file NON possono differire tra i due rami, perché il ramo su cui vivono non è
 # il ramo che ne subisce gli effetti:
@@ -12,8 +12,22 @@ name: Guard sync main↔test-preview (worker, CI, istruzioni)
 #    si continuava a deployare con --no-verify-jwt incondizionato.
 #  • CLAUDE.md — le istruzioni di progetto valgono per entrambi gli ambienti. Due copie
 #    divergenti significano due sessioni che lavorano con regole diverse.
+#  • docs/ — la documentazione appartiene al progetto, non al ramo. Aggiunta il 13/08/2026
+#    (voce 30, promossa dal committente). Il caso che l'ha motivata: la #674 aveva curato i
+#    tre registri di versione SOLO su main, e su test-preview stato-progetto-corrente.md
+#    continuava a dichiarare «PROD | v5.527» (22/05) — intitolandosi «fonte rapida ufficiale»
+#    — mentre TEST girava a 6.222. Stessa forma della sicura Matchpoint rimasta su un ramo
+#    solo: un fix che non attraversa i rami non protegge. Ci vive anche docs/lavori/README.md,
+#    che dal 13/08 è la fonte UNICA delle priorità e non era protetta da nulla.
 #
 # Questo guard fallisce se uno qualunque diverge, così il drift non passa mai inosservato.
+#
+# ⚠️ LIMITE, da conoscere: questo guard verifica che le due copie siano UGUALI, non che
+# dicano il VERO. Due registri identici e sbagliati passano verdi. Il 13/08 i conteggi di
+# docs/lavori/README.md erano sbagliati su ENTRAMBI i rami e sommavano al numero giusto:
+# nessuna guardia di parità li avrebbe presi. Per quello serve l'altra metà della voce 30
+# — un controllo che confronti ciò che i documenti dichiarano con la misura vera — che a
+# oggi NON esiste.
 #
 # Il job `version-order` sorveglia invece la cosa OPPOSTA: APP_VERSION è un contatore
 # UNICO condiviso dai due rami, e index.html deve legittimamente differire. Lì la regola
@@ -29,6 +43,7 @@ on:
       - 'tools/matchpoint-browser-worker/src/server.mjs'
       - '.github/workflows/**'
       - 'CLAUDE.md'
+      - 'docs/**'
       - 'index.html'          # per far scattare version-order sui bump di APP_VERSION
   schedule:
     - cron: '0 6 * * *'   # backstop giornaliero (06:00 UTC)
@@ -44,10 +59,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: main e test-preview devono essere IDENTICI su worker, CI e istruzioni
+      - name: main e test-preview devono essere IDENTICI su worker, CI, istruzioni e docs
         run: |
           set -euo pipefail
-          GUARDED="tools/matchpoint-browser-worker/src/server.mjs .github/workflows CLAUDE.md"
+          GUARDED="tools/matchpoint-browser-worker/src/server.mjs .github/workflows CLAUDE.md docs"
           git fetch -q origin main test-preview
 
           DRIFT=''
@@ -71,7 +86,11 @@ jobs:
           echo "Il ramo su cui questi file vivono NON è il ramo che ne subisce gli effetti:"
           echo "  · il worker si deploya solo da main ma è condiviso TEST+PROD;"
           echo "  · deploy-edge-functions-test.yml scatta da test-preview, quello PROD da main;"
-          echo "  · CLAUDE.md detta le regole a chi lavora su entrambi."
+          echo "  · CLAUDE.md detta le regole a chi lavora su entrambi;"
+          echo "  · docs/ è la documentazione del progetto, non di un ramo — e docs/lavori/"
+          echo "    è la fonte UNICA delle priorità, letta all'inizio di ogni sessione."
+          echo ""
+          echo "⚠️ Questo guard vede solo se le copie sono UGUALI, non se dicono il VERO."
           echo ""
           echo "RIMEDIO (riallinea test-preview a main; NON deploya nulla):"
           echo "  git checkout test-preview"
