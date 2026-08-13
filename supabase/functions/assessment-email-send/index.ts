@@ -29,17 +29,24 @@ const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', '
 //   · `staff_delete_full` → elimina l'utente in `auth`; non spedisce nulla.
 // Togliere i secret spegnerebbe l'invito; cancellare la funzione porterebbe via l'eliminazione.
 //
+// 🚨 `gmail-check` è TENUTA, ed è una correzione del 13/08: la potatura se l'era portata via insieme
+// al canale, ma non appartiene al canale — appartiene all'INVITO STAFF. Non spedisce nulla: chiede
+// un token per verificare che l'account mittente sia ancora collegato. È quello che alimenta il
+// bottone «Verifica Gmail» in Amministrazione › Utenti, l'unico posto da cui si può ricollegare
+// Gmail quando il token scade. Senza, l'invito staff si rompe e non si ripara dall'app.
+// L'esenzione gemella sta nel gestionale (`PMO_ASSESSMENT_EMAIL_ACTIONS_ESENTI`): cambiarle insieme.
+//
 // `config-check` resta viva di proposito: è in sola lettura, non prende token Gmail e non spedisce,
 // e la chiama il pannello `Verifica TEST/PROD` dell'Amministrazione con una fetch propria (quindi
 // non passa dall'interruttore dell'app). Toglierla romperebbe quel pannello senza guadagno.
 //
 // Il codice delle azioni ritirate resta nel file, non è stato asportato: riaccenderle è rimetterle
 // in questo elenco. La macchina sotto — lotto, follow-up, scan Gmail — è intatta.
-const ALLOWED_ACTIONS = new Set(['config-check', 'staff_invite', 'staff_delete_full']);
+const ALLOWED_ACTIONS = new Set(['config-check', 'gmail-check', 'staff_invite', 'staff_delete_full']);
 
 // Azioni del canale email dismesso. Elencate per poterle distinguere da un refuso e rispondere
 // qualcosa di comprensibile invece di un generico «azione non valida».
-const RETIRED_EMAIL_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'gmail-check', 'routine-cancel']);
+const RETIRED_EMAIL_ACTIONS = new Set(['send', 'scan-bounces', 'scan-replies', 'routine-plan', 'routine-selection', 'routine-approve', 'routine-send', 'routine-autosend-selected', 'routine-check', 'routine-followup', 'routine-cancel']);
 const EMAIL_RECORD_TYPE = 'assessment_email';
 const LOGO_URL = 'https://app.padelvillage.club/logo-padel-village.jpeg';
 const emailLogoHeaderHtml = () => `<div style="text-align:center;margin:0 0 18px;">
