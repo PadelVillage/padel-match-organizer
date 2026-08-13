@@ -7980,7 +7980,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.219';
+    const APP_VERSION = '6.220';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -14969,6 +14969,15 @@ Grazie.`
     // rimetterlo a false — la macchina sotto (lotto, follow-up, scan Gmail) è rimasta intatta.
     const PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED = true;
 
+    // 🚨 ESENTE DAL DISARMO, e non è un'eccezione di comodo: `gmail-check` NON spedisce niente,
+    // verifica solo che l'account mittente sia ancora collegato. Serve all'INVITO STAFF, che è vivo
+    // ed è l'unica email che il gestionale manda: il bottone «Verifica Gmail» in Amministrazione ›
+    // Utenti passa di qui. Il primo disarmo (6.217/6.218) se l'era portato via insieme al canale —
+    // sbagliato, perché appartiene a una funzione che abbiamo deciso di TENERE. Senza, il giorno che
+    // il token Gmail scade non c'è modo di ricollegarlo dall'app e l'invito si rompe SENZA RIMEDIO.
+    // La stessa esenzione esiste sul lato edge, in `ALLOWED_ACTIONS`: vanno cambiate insieme.
+    const PMO_ASSESSMENT_EMAIL_ACTIONS_ESENTI = new Set(['gmail-check']);
+
     function pmoAssessmentEmailShouldBlockAction(action) {
       return ['send', 'routine-send', 'routine-approve'].includes(cleanCell(action || 'send')) && pmoAssessmentEmailSendBlock().blocked;
     }
@@ -14995,7 +15004,7 @@ Grazie.`
       // nella STESSA edge `assessment-email-send` ma hanno una loro fetch e non passano di qui.
       // `staff_invite` usa ancora Gmail: per questo i secret Gmail NON vanno rimossi e la edge
       // NON va cancellata — si porterebbero via l'invito e l'eliminazione di un utente staff.
-      if (PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED) throw new Error('ASSESSMENT_EMAIL_CHANNEL_RETIRED');
+      if (PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED && !PMO_ASSESSMENT_EMAIL_ACTIONS_ESENTI.has(action)) throw new Error('ASSESSMENT_EMAIL_CHANNEL_RETIRED');
       if (pmoAssessmentEmailShouldBlockAction(action)) throw new Error('PROD_TEST_EMAIL_MODE_BLOCKED');
       const staff = await pmoRequireStaffPermission('cloud_sync', actionLabel);
       const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
@@ -33459,7 +33468,7 @@ Per confermare scrivi ELIMINA.`);
       return {
         status,
         checkedAt: cleanCell(data.checkedAt || ''),
-        message: cleanCell(data.message || (status === 'ok' ? 'Gmail collegato. Invii Autovalutazione disponibili.' : 'Gmail non verificato.')),
+        message: cleanCell(data.message || (status === 'ok' ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.' : 'Gmail non verificato.')),
         errorCode: cleanCell(data.errorCode || ''),
         gmailConnected: data.gmailConnected === true,
         runtimeEnv: cleanCell(data.runtimeEnv || PMO_RUNTIME_ENV),
@@ -33531,7 +33540,7 @@ Per confermare scrivi ELIMINA.`);
         const state = assessmentGmailCheckSave({
           status: ok ? 'ok' : 'error',
           checkedAt: result?.checkedAt || new Date().toISOString(),
-          message: cleanCell(result?.message || (ok ? 'Gmail collegato. Invii Autovalutazione disponibili.' : 'Gmail non collegato: token scaduto o revocato. Ricollega Gmail prima degli invii.')),
+          message: cleanCell(result?.message || (ok ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.' : 'Gmail non collegato: token scaduto o revocato. Ricollega Gmail prima degli invii.')),
           errorCode: cleanCell(result?.errorCode || ''),
           gmailConnected: ok,
           runtimeEnv: cleanCell(result?.runtimeEnv || PMO_RUNTIME_ENV),
@@ -34750,7 +34759,7 @@ Per confermare scrivi ELIMINA.`);
         : (gmailState.status === 'error' ? 'Token da verificare' : 'Da verificare');
       const gmailLast = gmailState.checkedAt ? assessmentEmailFormatDateTime(gmailState.checkedAt) : lastLabel;
       const gmailNext = gmailState.status === 'ok'
-        ? 'Gmail collegato. Invii Autovalutazione disponibili.'
+        ? 'Gmail collegato. L\u2019invito staff pu\u00f2 partire.'
         : (gmailState.status === 'error'
           ? 'Token Gmail scaduto o revocato: ricollega Gmail prima degli invii.'
           : 'Usa Verifica Gmail prima del lotto o degli invii automatici.');
