@@ -17,12 +17,34 @@ Stato verificato su Supabase PROD (`qqbfphyslczzkxoncgex`) il 13/08/2026:
 |---|---|
 | Cron `pmo-assessment-followup-dispatcher-prod` | **`active = false`** — spento, non parte più da solo |
 | Edge `assessment-email-send` | **ancora ACTIVE (v65)**, e ancora in `supabase/functions/` — i workflow continuano a deployarla |
-| `index.html` | **~1241 riferimenti** a `assessment-email`/`assessmentEmail` e ~134 a Gmail: la UI di invio manuale c'è ancora |
+| `index.html` | **disarmato** da TEST 6.218 / PROD 6.217: `PMO_ASSESSMENT_EMAIL_CHANNEL_RETIRED = true` ferma tutti gli 11 chiamanti prima di qualunque chiamata di rete |
 
-🚨 **Quindi non è rimosso: è spento ma ancora armato.** L'automatismo non parte, ma la funzione
-risponde e dalla UI dello staff un invio manuale è ancora possibile. Chi trova questi bottoni non ha
-modo di sapere, dall'app, che il canale è stato abbandonato. Se l'intenzione è che non parta più
-nessuna email, la rimozione va decisa e fatta a parte — non è avvenuta.
+⚠️ **Rettifica di un numero dato il 13/08 e sbagliato**: le «~1241 occorrenze» che erano scritte qui
+non erano la superficie da rimuovere. Erano occorrenze dell'identificatore `assessmentEmail` — chiavi
+di storage, etichette, nomi di log. I punti da cui l'app chiama davvero la edge sono **4**, e quelli
+del canale email passano tutti da **una funzione sola**, `pmoInvokeAssessmentEmail`.
+
+**Stato del disarmo, per strati:**
+
+- ✅ **App**: chiusa la via manuale dalla UI. Era l'unica rimasta aperta, visto che il cron era già spento.
+- ⏳ **Edge**: le azioni email (`send`, `routine-*`, `scan-*`) **esistono ancora** dentro
+  `assessment-email-send`. Nessuno le chiama più — il cron è spento e l'app non le invoca — ma chi
+  raggiungesse l'endpoint direttamente, con un JWT staff valido, potrebbe ancora usarle. La potatura
+  lato edge è il passo successivo e non è stata fatta.
+- 🚫 **Secret Gmail e edge: NON si toccano.** Vedi il riquadro qui sotto.
+
+🚨 **`assessment-email-send` non è solo il canale email — il nome inganna.** Dentro ci vivono anche
+**`staff_invite`** (invita un nuovo utente staff, e **manda una mail vera con Gmail**:
+`getGmailAccessToken` + `sendGmailMessage`) e **`staff_delete_full`** (elimina l'utente in `auth`;
+non spedisce nulla). Le due azioni staff hanno una loro `fetch` e **non passano** da
+`pmoInvokeAssessmentEmail`, quindi il disarmo dell'app non le tocca. Conseguenze da tenere a mente:
+
+- **togliere i secret Gmail spegnerebbe l'invito di un nuovo utente staff**;
+- **cancellare la edge porterebbe via anche l'eliminazione di un utente staff**.
+
+Gli unici due punti che spediscono davvero via Gmail in tutta la funzione sono
+`sendAssessmentEmailCore` (autovalutazione, da potare) e `sendStaffInviteEmail` (invito staff, da
+preservare). A potatura fatta, **l'invito staff sarà l'unica email che il gestionale manda.**
 
 Dove è andata l'autovalutazione, stando alle edge vive su PROD:
 
