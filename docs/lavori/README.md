@@ -2,16 +2,26 @@
 
 **Fotografia del 14/08/2026, 13ª sessione.** Misurata, non ricordata.
 
-🔎 **La 13ª sessione ha misurato prima di eseguire, e la misura ha smentito la scheda.** La voce 22
-elencava quattro «righe di prova» da togliere su TEST: tre lo erano e sono state tolte, **la quarta
-no** — era una prenotazione vera del circolo, presente anche su PROD. Da lì è uscita la **voce 32**,
-promossa da lui a urgente: su TEST lo **specchio delle prenotazioni è fermo dal 7 agosto**.
+🔴 **Le urgenti sono a ZERO** per la prima volta da quando esiste questa lista. Non perché non ci sia
+lavoro — in coda ce ne sono **17** — ma perché le due che c'erano sono state chiuse in giornata.
+🚨 La prossima sessione **non promuove da sé**: propone, e decide lui.
+
+🔎 **La 13ª sessione ha misurato prima di eseguire, e la misura ha smentito la scheda — due volte.**
+La voce 22 elencava quattro «righe di prova» da togliere su TEST: tre lo erano, **la quarta era una
+prenotazione vera del circolo**, presente anche su PROD. Da lì è nata la **32**, promossa da lui;
+e misurando *quella* è caduto anche il titolo con cui era nata — «fermo dal 7 agosto» — perché su
+TEST le prenotazioni **non sono mai state aggiornate da un cron**. Due schede su due, smentite dai
+dati: la prima scritta tre giorni prima da chi c'era, la seconda **da me, la mattina stessa**.
 
 ⚠️ **È la prima volta che scatta la clausola** *«se risulta anche su PROD, fermati e chiedi»*, scritta
 nella voce 22 mesi prima da chi non sapeva che sarebbe servita. Ha funzionato perché qualcuno ha
 **misurato invece di fidarsi**: la scheda diceva «partita 9305 del 13/08», e di quella riga erano
 sbagliati **il numero, la data e la natura**. Da qui la riga nuova nel prompt di apertura — *la scheda
 di un lavoro è un'ipotesi, non una misura* — e i due prompt finalmente **scritti nel repo**.
+
+🧊 **Decisione del committente sulla 32: congelare, e dichiararlo.** Il calendario di TEST resta una
+fotografia, ma ora `CLAUDE.md` lo dice a chiunque apra una sessione. Riaccenderlo è la **voce 34** in
+coda: costa poco (+1,7% sul worker condiviso) ma va fatto **dal Mac**, coi log del worker sotto gli occhi.
 
 🔄 Il resto — cron, versioni, il blocco «verificato sul bersaglio» — è la misura del **13/08**
 e **non è stato ricontrollato**.
@@ -36,9 +46,9 @@ entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
-| 📋 **In coda** | **15** |
-| 📦 **Chiuse** | **9** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 🔴 **Urgenti** | **0** |
+| 📋 **In coda** | **17** |
+| 📦 **Chiuse** | **10** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `908c5d2`,
 `test-preview` `ec8bc72`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
@@ -75,66 +85,17 @@ ma la regola dell'adiacenza non regge più come indicatore.
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 0
 
-### 🧊 32. Su TEST le PRENOTAZIONI non le aggiorna nessuno — e non è mai successo
-*Nata misurando la voce 22 il 14/08, **promossa da lui** lo stesso giorno. Diagnosi chiusa in
-giornata; **la decisione è sua** e non è stata presa.* È la **causa** di cui la 22 vedeva un sintomo.
-
-⚠️ **Il titolo di stamattina diceva «fermo dal 7 agosto»: era sbagliato.** Su TEST le prenotazioni
-non sono **mai** state aggiornate da un cron. Il 7/08 è solo l'ultima volta che qualcuno ha lanciato
-l'import **a mano** — non c'è nessun `data_routine_dispatch_*` che gli corrisponda.
-
-| tabella su TEST | righe | ultimo tocco |
-|---|---|---|
-| `booking` | 2721 | **`2026-08-07 09:31:31`** — tutte, allo stesso istante |
-| `booking_occupancy` | 2151 | **`2026-08-07 09:31:31`** — tutte |
-| `booking_history` | 2964 | `2026-08-02 08:41` |
-| `member` | 2919 | 13/08 05:00 ✅ (`anagrafica-mirror`, jobid 14, acceso) |
-| `payment` | 2503 | 13/08 21:23 ✅ (jobid 11, acceso) |
-
-**La prova che chiude il caso:** righe `data_routine_dispatch_bookings_live_*` — su TEST **0 in tutta
-la storia del database**, su PROD **1575**, l'ultima il 13/08 alle 22:02 con l'import 39 secondi dopo.
-
-#### Tre disallineamenti sovrapposti, ognuno da solo sufficiente
-
-| | su TEST | su PROD |
-|---|---|---|
-| ① **il cron** | `pmo-data-routines-clients-nightly-test` (jobid 13) — **spento**, e non gira dal 3/08 | `pmo-data-routines-dispatcher-prod` (jobid 6), `*/2 * * * *`, **acceso** |
-| ② **come lo chiama** | `pmo_dispatch_data_routines(<oggi 04:30>)` — l'ora **inchiodata** manda sempre al ramo `clients_0430`: le prenotazioni non le raggiunge **mai**, nemmeno da acceso | `pmo_dispatch_data_routines()` senza argomento ⇒ `now()` |
-| ③ **la funzione** | versione **vecchia**: slot fissi, prenotazioni 5 volte al giorno (05:30, 10:30, 14:30, 17:30, 21:30). Impronta `1609186e…` | versione **nuova**: gli slot fissi solo per i clienti, più un ramo `else` che fa `bookings_live` **a ogni giro** con anti-sovrapposizione a 150 s. Impronta `e38984df…` |
-
-✅ L'edge `matchpoint-bookings-sync` **c'è ed è ACTIVE su TEST** (v70): il pezzo che manca è solo
-la **pianificazione**, non il motore.
-
-🚨 **Perché è urgente e non cosmetica**: ogni prova su TEST che tocchi il calendario parte da una
-fotografia vecchia. Le partite non sono quelle vere, le disdette non arrivano, i roster restano come
-erano. Una prova su dati fermi **non dimostra niente, e sembra dimostrare**.
-
-🔗 **Spiega da sé la voce 26** («il "Fatto" del togli non si vede»): su TEST non c'è nessun sync che
-riconcili, quindi la riga non sparisce mai. In PROD si auto-corregge in ~2 minuti — **con lo stesso
-codice**. Non era un guasto del bot, e la 26 si chiude con questa.
-
-#### ⚖️ La decisione, che è sua
-
-🚨 **Accendere non è gratis: il worker è UNO SOLO, condiviso TEST+PROD.** Portare TEST al ritmo di
-PROD (`*/2`) **raddoppia** il carico sul worker vero e i login su Matchpoint. È **lettura**, quindi
-non sporca il Matchpoint del circolo — ma il costo ricade su PROD, non su TEST.
-
-| strada | cosa comporta |
-|---|---|
-| **A — allineare** | portare ③ alla versione di PROD, correggere ② togliendo l'argomento, accendere ①. ⚠️ Da valutare a ritmo **ridotto** (non `*/2`): serve freschezza, non parità |
-| **B — congelare** | lasciare com'è e **dichiararlo in `CLAUDE.md`**: «su TEST il calendario è una fotografia, non provarci sopra nulla che dipenda dalle prenotazioni» |
-
-⚖️ Sono opposte ma **entrambe oneste**. Quella di oggi — un TEST che sembra vivo e non lo è — non lo è.
+**Vuota.** La 22 e la 32 sono state chiuse il 14/08. 🚨 Non promuovere da sé: si **propone**, decide lui.
 
 ---
 
-## 📋 IN CODA — 15
+## 📋 IN CODA — 17
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 11
+### C — Cose sapute e non risolte — 12
 
 #### 🔒 27. Il test del livello si corregge NEL BROWSER — punti 2 e 3
 **Approvati da lui il 12/08 e non fatti.** Non è una voce nuova: è **il resto di una cosa già decisa**.
@@ -168,8 +129,12 @@ La creazione manda il lavoro al worker e **non controlla l'esito**. Stessa forma
 #### 24. 🔴 Il raddoppio dell'ultimo avviso di disdetta è SPENTO
 Il codice c'è e la colonna `finale_bis` è stata aggiunta su `ayly…` il 6/08, ma la chiave `disdetta.avvisi_ore_prima_scadenza_bis` **non è in kb**, né PROD né TEST. ⚖️ **Accenderlo è una sua decisione**: significa **due** solleciti invece di uno.
 
-#### 26. 🔴 Il «Fatto» del togli non si vede
-Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai. ⇒ Non è un guasto del bot: è la **terza forma del roster** che diverge fra le due copie.
+#### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
+Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
+
+🎯 **Il perché, misurato chiudendo la 32:** su TEST **non gira nessun sync delle prenotazioni**, quindi non c'è niente che riconcili — in PROD lo fa `bookings_live` ogni 2 minuti, **con lo stesso identico codice**. Il bot era sano: aveva ragione a dire «Fatto».
+
+⚖️ **Resta in coda, ma cambia natura**: non è più «indagare un guasto» — è **il sintomo atteso** di un TEST col calendario congelato per scelta (vedi `CLAUDE.md`). Sparisce da sé il giorno in cui si fa la **voce 34**, e non prima. Da chiudere allora, non oggi.
 
 #### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file
 *Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste: scrivono in `getElementById` che ora dà `null`, e cominciano tutte con `if (!box) return;` ⇒ **no-op, irraggiungibili**. Lasciate di proposito: asportarle è una potatura da provare per bene. Il perché è scritto nel commento HTML nel punto dove stavano i pannelli.
@@ -181,7 +146,14 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 #### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
 *Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
 
-### D — Corpose: solo se si vogliono ATTIVARE — 4
+#### 🔀 33. Quali altre funzioni SQL divergono fra `qqbf…` e `cudi…`?
+*Nata il 14/08, chiudendo la 32.* Lì si è scoperto che `pmo_dispatch_data_routines` ha **due corpi diversi** sui due progetti — impronte `1609186e…` (TEST, slot fissi) contro `e38984df…` (PROD, ramo continuo). Non una configurazione diversa: **codice diverso**.
+
+🚨 **Nessuna guardia lo vede.** `guard-worker-sync` sorveglia il **repo**; queste funzioni vivono nel **database** e non hanno sorgente in git. È la stessa forma della voce 31 — un fix rimasto da una parte sola — ma **un piano sotto**, dove nessuno guarda.
+
+📌 Misura, non riparazione: `select proname, md5(pg_get_functiondef(oid)) from pg_proc` sui due progetti, diffare, e **dichiarare** quali divergenze sono volute (come questa) e quali no. ⚖️ Divergere non è di per sé un male — TEST può legittimamente avere ritmi suoi. Il male è **non sapere dove**.
+
+### D — Corpose: solo se si vogliono ATTIVARE — 5
 
 | # | cosa |
 |---|---|
@@ -189,6 +161,7 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
 | **18** | 📣 **Pannello avvisi nel gestionale** (lo staff vede cosa il bot ha mandato ai soci). 🚨 Stesso nodo del pannello autorizzazioni ⇒ **si disegnano insieme** |
+| **34** | 🧊 **«A-lite»: riaccendere il sync prenotazioni su TEST**, scongelando il calendario congelato per scelta il 14/08 (voce 32). Costo piccolo — la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le ~720 di PROD sul worker condiviso: **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, e verificare la prima giornata. ⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i **6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata va guardata nei log del worker su **Hetzner**. 🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è **la parità a costare**. 🔗 Chiude la **voce 26** il giorno in cui si fa |
 
 ---
 
@@ -206,17 +179,18 @@ Misurando il **14/08**, aprendo la voce 22:
 
 ---
 
-## 📦 CHIUSE — 13 e 14/08/2026 — 9 voci
+## 📦 CHIUSE — 13 e 14/08/2026 — 10 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 14/08; le otto successive del 13/08.**
+**Le prime due voci sono del 14/08; le otto successive del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **32** | 🧊 *(14/08)* **Il calendario di TEST è congelato — ora è una scelta dichiarata, non un inganno.** Nata misurando la 22, promossa da lui, diagnosticata e decisa in giornata. La misura ha smentito perfino il titolo con cui era nata: non «fermo dal 7 agosto», ma **mai partito** — righe `data_routine_dispatch_bookings_live_*` **0 in tutta la storia** di `cudi…` contro **1575** su `qqbf…`; il 7/08 era solo l'ultimo import lanciato **a mano**. Tre disallineamenti sovrapposti, ognuno da solo sufficiente: il cron **spento** (jobid 13, fermo dal 3/08), l'argomento `<oggi 04:30>` che lo **inchioda** al ramo clienti anche da acceso, e la **funzione stessa diversa** fra i due progetti (`1609186e…` contro `e38984df…`). ⚖️ **Scelta la strada B: congelare e dichiararlo.** Il danno non era la vecchiaia del dato — era che **sembrasse fresco**: aveva già fatto aprire la voce 26 come guasto del bot e per poco cancellare una partita vera. Scritto in `CLAUDE.md`, dove ogni sessione lo legge prima di toccare TEST. Il riaccendimento è la **voce 34** in coda: costa poco (**+1,7%** sul worker, non il raddoppio che sembrava) ma va fatto **dal Mac**, coi log del worker sotto gli occhi |
 | **22** | 🧹 *(14/08)* **Righe di prova su TEST: tolte 3 punti su 4, e il quarto non era rumore.** Tolte in modo **reversibile**, dopo aver misurato cosa ci puntava: le **4** `staff_edit` e la partita di prova 14/08 12:30 C4 messe a `deleted=true` (soft delete nativo, l'app non le vede più); **Lidia Comes** nella whitelist `test` messa a `attivo=false` — la gemella `prod` intatta. Il quarto punto non era una riga sola ma una **terna** — token `completed` + scheda `applied` + marcatore «già segnalato» `sa:ITBAOQWO8CB5KU` — e toglierne una su tre avrebbe **sporcato** la prossima prova invece di pulirla: rimosse insieme, salvate per intero nel messaggio di commit. ⚠️ Il livello di Aprea era **già tornato a 4** da solo: il mirror aveva fatto la sua parte. 🚨 **Il primo punto è uscito dalla voce**: «9305 del 13/08» erano **due** partite (9305 dell'11/08, 9306 del 13/08), **entrambe vere e presenti su PROD**, entrambe nate su TEST nello stesso istante di un lotto di sync — è scattata per la **prima volta** la clausola *«se risulta anche su PROD, fermati e chiedi»*, e la causa è diventata la **voce 32** |
 
 Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in serata.
