@@ -37,10 +37,12 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | **v6.216** | `main` | `095a192` (12/08/2026 22:47) — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex` |
-| TEST | **v6.217** | `test-preview` | `0ace6e4` (12/08/2026) — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd` |
+| PROD | **v6.219** | `main` | `9305323` (13/08/2026) — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex` |
+| TEST | **v6.222** | `test-preview` | `b20a51e` (13/08/2026) — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd` |
 
-I due rami **non sono allineati per scelta**: `test-preview` corre una versione avanti (6.217 contro 6.216). È il funzionamento normale, non un disallineamento da correggere. Il commit di testa dei due rami porta lo stesso titolo (la chiusura della lettura anonima dei token autovalutazione) perché il fix è stato promosso; la differenza è la sola `APP_VERSION`.
+I due rami **non sono allineati per scelta**: `test-preview` corre avanti. È il funzionamento normale, non un disallineamento da correggere: TEST bumpa a ogni passo, PROD una volta per promozione — quindi la distanza **non è fissa a 1** e vederla crescere non è di per sé un sintomo.
+
+🚨 **Questa tabella è ora verificata dalla CI.** `guard-docs-truth.yml` confronta questi due numeri con l'`APP_VERSION` vera dei due rami a ogni push su `docs/**` o `index.html`, più un backstop giornaliero: se divergono, **fallisce**. Non è pedanteria — questo file si impegna in testa a sé stesso a dichiarare la versione corrente, e per tre mesi ha dichiarato v5.527 mentre PROD stava a 6.216. La sera del 13/08, poche ore dopo essere stato curato, dichiarava già 6.216/6.217 contro 6.219/6.222 reali: da solo non resta vero.
 
 Non esistono più altri rami: `cleanup-claude-branches.yml` cancella ogni notte tutto tranne `main` e `test-preview`. Se ne vedi altri in locale è la tua copia stantia dei ref remoti → `git fetch --prune`.
 

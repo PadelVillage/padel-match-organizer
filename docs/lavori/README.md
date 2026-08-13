@@ -6,8 +6,9 @@
 aperte**. Tutto il resto — i cron e il blocco «verificato sul bersaglio» — è la misura della 12ª
 sessione e **non è stato ricontrollato**.
 
-⬆️ **Promozione del committente, 13/08:** la **voce 30** (`docs/` non ha un guardiano) sale dalla
-coda alle **urgenti**. ⇒ urgenti 1→**2**, coda 16→**15**.
+⬆️➡️✅ **Voce 30, tutto il 13/08:** nata in coda, **promossa alle urgenti dal committente**, e
+**chiusa** in giornata con le due guardie (#683 parità, #684 verità). ⇒ coda 16→**15**, urgenti
+tornate a **1**.
 
 🔢 **Conteggi rifatti a mano nella stessa occasione, e non tornavano:** la sezione **C** ne
 dichiarava 11 con 12 voci dentro, la **D** ne dichiarava 5 con 4 righe. I due errori si
@@ -17,7 +18,7 @@ al numero giusto* non li prende nessuna guardia di parità fra rami, solo un con
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **15** |
 | 📦 **Chiuse** | ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -45,7 +46,7 @@ ma la regola dell'adiacenza non regge più come indicatore.
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 ### 🧹 22. Ripulire le righe di prova su TEST
 Promossa da lui l'11/08. **Non toccata il 13/08.** Nessuna fa danno: sono **rumore che sporca le prove future**.
@@ -60,20 +61,6 @@ Promossa da lui l'11/08. **Non toccata il 13/08.** Nessuna fa danno: sono **rumo
 - ⚠️ Il mirror delle 05:00 rifà l'anagrafica, **non queste**: quello che è fuori dall'anagrafica resta finché non lo si toglie a mano.
 - 🚨 **Il rito**: prima di togliere si **misura cosa punta a quella riga** e lo si dice — lezione dell'Ospite, dove «elimina tutto» avrebbe buttato **€ 7.937** di incassi.
 - ⚖️ **Si tocca solo TEST.** Se una di queste risultasse anche su PROD, ci si **ferma** e si chiede: là non è rumore di prova, è un dato del circolo.
-
-### 🚨 30. `docs/` non ha un guardiano
-*Nata il 13/08 in coda, **promossa dal committente il 13/08 stesso**.* `guard-worker-sync` protegge `server.mjs`, `.github/workflows/**` e `CLAUDE.md`. La documentazione no — ed è per questo che tre registri hanno mentito per tre mesi mentre uno si dichiarava «fonte rapida ufficiale» e chiedeva di credergli **contro** i prompt.
-
-Le due strade, da scegliere — **non sono alternative equivalenti**:
-
-| | cosa fa | costo | limite |
-|---|---|---|---|
-| **estendere `guard-worker-sync` a `docs/`** | i due rami non possono divergere sulla documentazione | quasi nullo: una riga nella lista già esistente | 🚨 garantisce che le **due copie siano uguali**, non che dicano il **vero**: due registri identici e sbagliati passerebbero |
-| **controllo periodico contro la misura** | confronta ciò che i documenti **dichiarano** con `APP_VERSION`, sha e PR reali | va scritto | coglie proprio ciò che sfugge all'altro: la **menzogna concorde** |
-
-- ⚖️ Servono **entrambe** per coprire le due forme del guasto, ma la prima è quasi gratis e va per prima.
-- 📌 Il caso vero visto il 13/08: gli sha in cima al file erano vecchi di due commit **poche ore** dopo essere stati scritti — e nessuna guardia lo avrebbe detto. Un file che cita il proprio sha è vecchio nel momento in cui viene salvato: inseguirlo a mano **non converge**, motivo per cui la seconda strada è un controllo, non un aggiornamento.
-- ⚠️ Vale anche per **questo** file: è ora la fonte delle priorità e non è protetto da nulla.
 
 ---
 
@@ -156,6 +143,7 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 | — | 🧪 **Il banco Matchpoint rimosso** — i due bottoni rossi che creavano prenotazioni e clienti **veri** (PR #678, PROD 6.219). ⚠️ Non promozione a righe: i rami avevano **7 funzioni contro 4** |
 | **25** | 📧 **Il canale email ai soci non è più «spento»: è SMONTATO.** La decisione che la voce aspettava è stata presa ed eseguita. Riaprirlo non è riaccendere un cron, è **rimontare un canale** |
 | **19** | 🏠 **Destino di `soci.padelvillage.club`: chiuso.** Misurato il 13/08 — DNS **non risolve**, `ayly…` ha **ZERO edge function**. ⚠️ La voce diceva «login e identità vivi»: **era sbagliata**, il login è morto. Vivo solo `consumer-identity-lookup` su `qqbf…`/`cudi…` |
+| **30** | 🛡️ **`docs/` ha due guardiani, non uno.** Nata in coda, promossa da lui e chiusa in giornata. **Parità** (`guard-worker-sync` esteso a `docs/`, #683): scoperto che 4 file divergevano — la #674 aveva curato i registri **solo su `main`** e su `test-preview` `stato-progetto-corrente.md` diceva ancora «PROD v5.527» del 22/05 con TEST a 6.222. **Verità** (`guard-docs-truth.yml`, #684): confronta il dichiarato col misurato — e alla prima esecuzione ha colto il registro che, curato la mattina, **la sera dichiarava già 6.216/6.217 contro 6.219/6.222**. ⚖️ Sono complementari: la parità non vede la **menzogna concorde**, la verità non protegge l'**altro ramo** ⇒ si tolgono insieme o mai |
 
 *(Le chiuse dal 7/08 al 12/08 e quelle fino al 6/08 restano come nella fotografia del 12/08.)*
 

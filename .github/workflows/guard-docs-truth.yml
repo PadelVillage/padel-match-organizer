@@ -1,0 +1,199 @@
+name: Guard verità docs (dichiarato vs misurato)
+
+# L'ALTRA METÀ della voce 30. `guard-worker-sync.yml` verifica che i documenti siano UGUALI
+# sui due rami; questo verifica che dicano il VERO. Sono complementari e nessuno dei due
+# sostituisce l'altro:
+#
+#   · due registri identici e sbagliati passano il guard di parità — verdi, e mentono;
+#   · un registro giusto su un ramo solo passa questo — vero, e non protegge l'altro ramo.
+#
+# I due guasti veri che l'hanno motivato, misurati il 13/08/2026:
+#
+#  1. VERSIONI DICHIARATE. `docs/stato-progetto-corrente.md` si intitola «fonte rapida
+#     ufficiale» e si impegna, in testa a sé stesso, a «dichiarare quale versione TEST/PROD
+#     risulta corrente». Per tre mesi ha dichiarato v5.527 mentre PROD stava a 6.216: 689
+#     versioni indietro, e chiedeva di credergli CONTRO i prompt. Curato la mattina del 13/08
+#     (#674) — e la sera stessa dichiarava già 6.216/6.217 contro 6.219/6.222 reali. Un
+#     documento che si dichiara autorevole e non è verificato è peggio di nessun documento.
+#
+#  2. CONTEGGI. In `docs/lavori/README.md` la sezione C dichiarava 11 voci contenendone 12,
+#     la D ne dichiarava 5 contenendone 4. I due errori si ANNULLAVANO: il totale 16 tornava
+#     e nessuno se n'era accorto. Per questo ogni numero è verificato per conto suo e non
+#     solo la somma — è precisamente il caso che una verifica sul totale lascia passare.
+#
+# ⚖️ COSA NON CONTROLLA, DI PROPOSITO:
+#
+#   · gli SHA citati nei documenti. Un file che cita il proprio sha è vecchio nell'istante in
+#     cui viene salvato, e riallinearlo ne aggiunge un altro: inseguirlo non converge. Un
+#     controllo del genere sarebbe rosso per sempre, e una guardia sempre rossa si ignora.
+#   · il numero di PR aperte, per lo stesso motivo: cambia di minuto in minuto.
+#   · le versioni dichiarate in `docs/lavori/README.md`. Quello è una FOTOGRAFIA datata, che
+#     dichiara da sé cosa ha misurato e quando: essere «di ieri» non è mentire. Il suo scarto
+#     viene però SEMPRE stampato come avviso, così è visibile senza bloccare nulla.
+#
+# La differenza è netta: si controlla ciò che un documento promette di sé. `stato-progetto-corrente`
+# promette di essere corrente ⇒ deve esserlo. `lavori/README` promette di essere una fotografia
+# datata ⇒ deve solo essere internamente coerente.
+
+on:
+  push:
+    branches: [main, test-preview]
+    paths:
+      - 'docs/**'
+      - 'index.html'
+      - '.github/workflows/guard-docs-truth.yml'
+  schedule:
+    - cron: '30 6 * * *'   # backstop giornaliero, mezz'ora dopo guard-worker-sync
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versioni-dichiarate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Le versioni dichiarate nei registri devono essere quelle VERE
+        run: |
+          set -euo pipefail
+          git fetch -q origin main test-preview
+
+          # La misura: APP_VERSION nel codice che gira davvero su ciascun ramo.
+          ver_of() {
+            git show "$1:index.html" \
+              | grep -m1 -oE "APP_VERSION *= *'[0-9]+\.[0-9]+'" \
+              | grep -oE "[0-9]+\.[0-9]+" | head -1
+          }
+          PROD_REAL="$(ver_of origin/main || true)"
+          TEST_REAL="$(ver_of origin/test-preview || true)"
+
+          # La dichiarazione: la tabella «Versione corrente» del registro.
+          # Righe della forma:  | PROD | **v6.219** | `main` | ...
+          DOC='docs/stato-progetto-corrente.md'
+          decl_of() {
+            git show "origin/main:$DOC" \
+              | grep -m1 -E "^\| *$1 *\|" \
+              | grep -oE "v[0-9]+\.[0-9]+" | head -1 | tr -d 'v'
+          }
+          PROD_DECL="$(decl_of PROD || true)"
+          TEST_DECL="$(decl_of TEST || true)"
+
+          # Meglio fallire che dare un verde che non ha controllato nulla.
+          if [ -z "$PROD_REAL" ] || [ -z "$TEST_REAL" ]; then
+            echo "::error::APP_VERSION non trovata in index.html (main='$PROD_REAL' test='$TEST_REAL')."
+            echo "È cambiata la forma della riga? Il guard non sa più dove guardare."
+            exit 1
+          fi
+          if [ -z "$PROD_DECL" ] || [ -z "$TEST_DECL" ]; then
+            echo "::error::Versioni dichiarate non trovate in $DOC (PROD='$PROD_DECL' TEST='$TEST_DECL')."
+            echo "È cambiata la forma della tabella «Versione corrente»? Il guard non sa più dove guardare;"
+            echo "un verde qui significherebbe 'non ho controllato', non 'va tutto bene'."
+            exit 1
+          fi
+
+          echo "                 dichiarato   reale"
+          printf '  PROD           %-12s %s\n' "$PROD_DECL" "$PROD_REAL"
+          printf '  TEST           %-12s %s\n' "$TEST_DECL" "$TEST_REAL"
+          echo ""
+
+          FAIL=0
+          [ "$PROD_DECL" = "$PROD_REAL" ] || { echo "::error::$DOC dichiara PROD v$PROD_DECL, ma main gira a $PROD_REAL."; FAIL=1; }
+          [ "$TEST_DECL" = "$TEST_REAL" ] || { echo "::error::$DOC dichiara TEST v$TEST_DECL, ma test-preview gira a $TEST_REAL."; FAIL=1; }
+
+          # La fotografia dei lavori: scarto segnalato, mai bloccante (è datata per natura).
+          LAV='docs/lavori/README.md'
+          LAV_PROD="$(git show "origin/main:$LAV" | grep -m1 -oE 'app PROD \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
+          LAV_TEST="$(git show "origin/main:$LAV" | grep -m1 -oE 'TEST \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
+          if [ -n "$LAV_PROD" ] && { [ "$LAV_PROD" != "$PROD_REAL" ] || [ "$LAV_TEST" != "$TEST_REAL" ]; }; then
+            echo "::warning::La fotografia in $LAV dichiara PROD $LAV_PROD / TEST $LAV_TEST, oggi sono $PROD_REAL / $TEST_REAL."
+            echo "Non è un errore: quella è una fotografia datata. Ma se lo scarto cresce, la prossima sessione parte con un'idea vecchia del sistema."
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "RIMEDIO: aggiorna la tabella «Versione corrente» in $DOC ai valori reali."
+            echo "Quel file si impegna in testa a sé stesso a dichiarare la versione corrente:"
+            echo "se non lo fa, non è un documento vecchio, è un documento che mente — ed è"
+            echo "la malattia curata il 13/08 (689 versioni di scarto, per tre mesi)."
+            exit 1
+          fi
+          echo "✅ I registri dichiarano le versioni vere."
+
+  conteggi-lavori:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: I conteggi di docs/lavori/README.md devono corrispondere alle voci contate
+        run: |
+          set -euo pipefail
+          git fetch -q origin main
+
+          # Basta controllare una copia: guard-worker-sync garantisce che docs/ sia
+          # identico sui due rami. Se quella guardia sparisse, questo controllo
+          # coprirebbe solo main — sono legate, e vanno tolte insieme o mai.
+          F='docs/lavori/README.md'
+          git show "origin/main:$F" > /tmp/lavori.md
+
+          # --- ciò che il file DICHIARA ---
+          URG_H=$(grep -m1 -oE '^## .*URGENTI — [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
+          CODA_H=$(grep -m1 -oE '^## .*IN CODA — [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
+          C_H=$(grep -m1 -oE '^### C —.*— [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
+          D_H=$(grep -m1 -oE '^### D —.*— [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
+          URG_T=$(grep -m1 -E '^\|.*Urgenti\*\* *\| *\*\*[0-9]+\*\*' /tmp/lavori.md | grep -oE '[0-9]+' | head -1 || true)
+          CODA_T=$(grep -m1 -E '^\|.*In coda\*\* *\| *\*\*[0-9]+\*\*' /tmp/lavori.md | grep -oE '[0-9]+' | head -1 || true)
+
+          for v in URG_H CODA_H C_H D_H URG_T CODA_T; do
+            if [ -z "$(eval echo \$$v)" ]; then
+              echo "::error::Non ho trovato il numero dichiarato per '$v' in $F."
+              echo "È cambiata la forma delle intestazioni o della tabella riassuntiva?"
+              echo "Meglio fallire che dare un verde che non ha controllato nulla."
+              exit 1
+            fi
+          done
+
+          # --- ciò che il file CONTIENE ---
+          URG_N=$(awk '/^## .*URGENTI —/{f=1;next} /^## .*IN CODA —/{f=0} f && /^### /{c++} END{print c+0}' /tmp/lavori.md)
+          C_N=$(awk '/^### C —/{f=1;next} /^### D —/{f=0} f && /^#### /{c++} END{print c+0}' /tmp/lavori.md)
+          D_N=$(awk '/^### D —/{f=1;next} /^## /{f=0} f && /^\| \*\*[0-9]/{c++} END{print c+0}' /tmp/lavori.md)
+
+          echo "                        dichiarato   contato"
+          printf '  🔴 urgenti (titolo)   %-12s %s\n' "$URG_H" "$URG_N"
+          printf '  🔴 urgenti (tabella)  %-12s %s\n' "$URG_T" "$URG_N"
+          printf '  📋 in coda (titolo)   %-12s %s\n' "$CODA_H" "$((C_N + D_N))"
+          printf '  📋 in coda (tabella)  %-12s %s\n' "$CODA_T" "$((C_N + D_N))"
+          printf '  C — sapute            %-12s %s\n' "$C_H" "$C_N"
+          printf '  D — corpose           %-12s %s\n' "$D_H" "$D_N"
+          echo ""
+
+          FAIL=0
+          chk() { # $1=etichetta $2=dichiarato $3=contato
+            if [ "$2" != "$3" ]; then
+              echo "::error::$1: il file dichiara $2, ne contiene $3."
+              FAIL=1
+            fi
+          }
+          chk "🔴 urgenti (titolo di sezione)"  "$URG_H"  "$URG_N"
+          chk "🔴 urgenti (tabella in cima)"    "$URG_T"  "$URG_N"
+          chk "C — cose sapute"                 "$C_H"    "$C_N"
+          chk "D — corpose"                     "$D_H"    "$D_N"
+          chk "📋 in coda (titolo di sezione)"  "$CODA_H" "$((C_N + D_N))"
+          chk "📋 in coda (tabella in cima)"    "$CODA_T" "$((C_N + D_N))"
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "Ogni numero è verificato PER CONTO SUO, non solo la somma: il 13/08 la"
+            echo "sezione C ne dichiarava 11 con 12 voci e la D 5 con 4 righe, i due errori"
+            echo "si annullavano e il totale tornava. Una verifica sul solo totale li avrebbe"
+            echo "lasciati passare — come infatti è successo, per mesi."
+            echo ""
+            echo "RIMEDIO: correggi i numeri dichiarati in $F, oppure la voce che manca/avanza."
+            exit 1
+          fi
+          echo "✅ Dichiarato e contato coincidono, numero per numero."
