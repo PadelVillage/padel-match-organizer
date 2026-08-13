@@ -48,7 +48,7 @@ entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 |---|---|
 | 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **17** |
-| 📦 **Chiuse** | **10** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **11** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `908c5d2`,
 `test-preview` `ec8bc72`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
@@ -146,12 +146,21 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 #### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
 *Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
 
-#### 🔀 33. Quali altre funzioni SQL divergono fra `qqbf…` e `cudi…`?
-*Nata il 14/08, chiudendo la 32.* Lì si è scoperto che `pmo_dispatch_data_routines` ha **due corpi diversi** sui due progetti — impronte `1609186e…` (TEST, slot fissi) contro `e38984df…` (PROD, ramo continuo). Non una configurazione diversa: **codice diverso**.
+#### 🔓 35. Due tabelle di PROD sono **senza RLS**, e `anon` ci può scrivere
+*Nata il 14/08 misurando la voce 33.* Non è un sospetto: sono i **due soli `ERROR`** del linter di Supabase su PROD (`rls_disabled_in_public`).
 
-🚨 **Nessuna guardia lo vede.** `guard-worker-sync` sorveglia il **repo**; queste funzioni vivono nel **database** e non hanno sorgente in git. È la stessa forma della voce 31 — un fix rimasto da una parte sola — ma **un piano sotto**, dove nessuno guarda.
+| tabella | righe | RLS | permessi ad `anon` |
+|---|---|---|---|
+| `pmo_bkp_ospite_20260809` | **699** | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
+| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
 
-📌 Misura, non riparazione: `select proname, md5(pg_get_functiondef(oid)) from pg_proc` sui due progetti, diffare, e **dichiarare** quali divergenze sono volute (come questa) e quali no. ⚖️ Divergere non è di per sé un male — TEST può legittimamente avere ritmi suoi. Il male è **non sapere dove**.
+🚨 Stanno in `public`, che la Data API espone: con la chiave pubblicabile — che sta nel `config.js` ed **è pubblica per definizione** — quelle 699 righe si leggono e si cancellano.
+
+⚖️ **Sono le copie di sicurezza del lavoro «Ospite» del 9/08**, lo stesso in cui «elimina tutto» avrebbe buttato **€ 7.937** di incassi. La rete messa sotto a quel lavoro è oggi l'unica cosa scoperta del progetto. Le sorelle dello stesso giorno (`_pmo_riassegnazione_*`) l'RLS ce l'hanno.
+
+🎯 **La causa è nota**: l'event trigger **`ensure_rls`**, che accende l'RLS da sola su ogni tabella nuova, esiste **solo su TEST**. La rete di sicurezza sta dalla parte sbagliata.
+
+📌 Rimedio piccolo (`alter table … enable row level security`, reversibile) ma è **una modifica a PROD** ⇒ **la decide lui**. Da valutare insieme se mettere `ensure_rls` anche su PROD, che è la cura vera. 🔗 Dettagli in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md).
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 5
 
@@ -179,17 +188,18 @@ Misurando il **14/08**, aprendo la voce 22:
 
 ---
 
-## 📦 CHIUSE — 13 e 14/08/2026 — 10 voci
+## 📦 CHIUSE — 13 e 14/08/2026 — 11 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime due voci sono del 14/08; le otto successive del 13/08.**
+**Le prime tre voci sono del 14/08; le otto successive del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **33** | 🔀 *(14/08)* **Le funzioni SQL dei due progetti, misurate e dichiarate** in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md). PROD **64**, TEST **62**, in comune 58: **53 identiche**, **5 divergenti davvero**. 🚨 Il primo giro ne dava **28**, ma 23 erano **aria**: su TEST molte funzioni sono imbottite di migliaia di spazi dopo `AS $function$` — `pmo_get_staff_users_admin` è **30 volte** più lunga con lo stesso codice dentro. Si confronta normalizzando gli spazi, o l'impronta mente. Delle 5 vere: una **voluta** (la 32), due **innocue** (solo `public.` esplicito o meno), una da sanare **al contrario** — `pmo_assegna_codici_mancanti` ha i commenti del 9/08 su **TEST** e non su PROD, quindi è la copia buona a stare di là — e una **da guardare**, `upsert_assessment_tokens_admin`, che legge il PIN da `admin_settings` mentre `pmo_admin_pin_ok` lo legge da `assessment_admin_config`: due depositi per lo stesso PIN, e non è TEST-vs-PROD ma un'incoerenza **dentro** PROD. Delle 10 presenti da una parte sola, tre sono **residui del canale email smontato** (parenti della voce 29) e una spiega perché su TEST i soci sono vivi col calendario fermo: `pmo_anagrafica_cron_key`, che serve il mirror dell'anagrafica **da PROD**. ⇒ Da qui è nata la **voce 35** |
 | **32** | 🧊 *(14/08)* **Il calendario di TEST è congelato — ora è una scelta dichiarata, non un inganno.** Nata misurando la 22, promossa da lui, diagnosticata e decisa in giornata. La misura ha smentito perfino il titolo con cui era nata: non «fermo dal 7 agosto», ma **mai partito** — righe `data_routine_dispatch_bookings_live_*` **0 in tutta la storia** di `cudi…` contro **1575** su `qqbf…`; il 7/08 era solo l'ultimo import lanciato **a mano**. Tre disallineamenti sovrapposti, ognuno da solo sufficiente: il cron **spento** (jobid 13, fermo dal 3/08), l'argomento `<oggi 04:30>` che lo **inchioda** al ramo clienti anche da acceso, e la **funzione stessa diversa** fra i due progetti (`1609186e…` contro `e38984df…`). ⚖️ **Scelta la strada B: congelare e dichiararlo.** Il danno non era la vecchiaia del dato — era che **sembrasse fresco**: aveva già fatto aprire la voce 26 come guasto del bot e per poco cancellare una partita vera. Scritto in `CLAUDE.md`, dove ogni sessione lo legge prima di toccare TEST. Il riaccendimento è la **voce 34** in coda: costa poco (**+1,7%** sul worker, non il raddoppio che sembrava) ma va fatto **dal Mac**, coi log del worker sotto gli occhi |
 | **22** | 🧹 *(14/08)* **Righe di prova su TEST: tolte 3 punti su 4, e il quarto non era rumore.** Tolte in modo **reversibile**, dopo aver misurato cosa ci puntava: le **4** `staff_edit` e la partita di prova 14/08 12:30 C4 messe a `deleted=true` (soft delete nativo, l'app non le vede più); **Lidia Comes** nella whitelist `test` messa a `attivo=false` — la gemella `prod` intatta. Il quarto punto non era una riga sola ma una **terna** — token `completed` + scheda `applied` + marcatore «già segnalato» `sa:ITBAOQWO8CB5KU` — e toglierne una su tre avrebbe **sporcato** la prossima prova invece di pulirla: rimosse insieme, salvate per intero nel messaggio di commit. ⚠️ Il livello di Aprea era **già tornato a 4** da solo: il mirror aveva fatto la sua parte. 🚨 **Il primo punto è uscito dalla voce**: «9305 del 13/08» erano **due** partite (9305 dell'11/08, 9306 del 13/08), **entrambe vere e presenti su PROD**, entrambe nate su TEST nello stesso istante di un lotto di sync — è scattata per la **prima volta** la clausola *«se risulta anche su PROD, fermati e chiedi»*, e la causa è diventata la **voce 32** |
 
