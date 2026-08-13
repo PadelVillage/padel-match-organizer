@@ -13,7 +13,7 @@ Se le informazioni scritte in un prompt non coincidono con questo file, consider
 Stato degli altri due registri, al 13/08/2026:
 
 - **`VERSIONI.md` — allineato.** Si era fermato al **14/06/2026** (v5.761) senza mai avere voci 6.x. Il 13/08 le versioni da **v5.766 a v6.216** sono state ricostruite dalla cronologia git di `main` (188 voci, ognuna con PR, sha e data). Coprono le sole versioni **arrivate in PROD**: le versioni vissute solo su `test-preview` non ci sono, quindi la numerazione ha buchi voluti.
-- **`docs/registro-versioni-sezioni.md` — ancora fermo** al 22/05/2026. Non è stato toccato.
+- **`docs/registro-versioni-sezioni.md` — aggiornato**, ma in modo diverso: il metodo che descriveva (un file HTML per versione, tenuto sul Mac) non esiste più, e 172 delle sue righe puntavano a file spariti. Ora dichiara la cosa in testa, marca come archivio le parti legate a quel metodo, e porta una **tabella per area** (giugno→agosto) ricavata dai titoli dei commit, che è la risposta moderna alla domanda per cui era nato: *questa sezione, chi l'ha toccata di recente?*
 
 ## Lettura obbligatoria prima di iniziare
 

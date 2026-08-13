@@ -1,19 +1,70 @@
 # Registro versioni per sezione
 
-Ultimo aggiornamento: 2026-05-22 21:40
+Ultimo aggiornamento: 2026-08-13
 
-Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata: file HTML dell'app, mockup approvato, documentazione o nota "da confermare".
+Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione deve avere una fonte dichiarata.
+
+## ⚠️ Il metodo che questo file descriveva non esiste più
+
+Fino a maggio 2026 si lavorava a **un file HTML per versione** (`padel_match_organizer_v5_311.html`,
+`versioni/padel_match_organizer_v5_163.html`…), tenuti sul Mac. La colonna «Fonte locale attuale»
+serviva a dire, sezione per sezione, **da quale di quei file ripartire**. Era un registro necessario
+perché le copie erano tante e divergevano.
+
+Oggi quel metodo è sparito: **l'app è un solo file, `index.html`, e la sua storia è git.**
+Le 172 righe di questo documento che nominano un `padel_match_organizer_v*.html` puntano a file che
+**non esistono più** — non nel repo, e la cartella `versioni/` non c'è. Non vanno cercati né ricreati.
+
+Quindi, al 13/08/2026:
+
+| Cosa | Dov'è davvero, oggi |
+|---|---|
+| Sorgente di **ogni** sezione dell'app | `index.html` — su `main` (PROD, v6.216) e `test-preview` (TEST, v6.217) |
+| Storia di una sezione | `git log --oneline -- index.html`, e `VERSIONI.md` (allineato a v6.216) |
+| Come sono fatte le 4 app e dove si deploya ciascuna | `CLAUDE.md` nella radice del repo |
+| Regola per non far divergere TEST e PROD | `CLAUDE.md`, sezione «Regola anti-disallineamento» |
 
 ## Regola operativa
 
 - Non integrare una sezione "a memoria".
-- Prima di modificare una sezione, controllare questa tabella.
-- Se una sezione e' stata validata in un'altra chat ma non e' salvata qui, va marcata **da confermare** finche' non viene indicato il file corretto.
-- Le versioni finali devono essere salvate sotto:
+- Prima di modificare una sezione, guardare **cosa dice git su quella zona di `index.html`**, non una fonte dichiarata qui.
+- Le promozioni a PROD si fanno **a righe**, non copiando `index.html` da `test-preview` (vedi `CLAUDE.md`).
+- Non esiste più una cartella dove "salvare la versione finale": la versione finale è il commit.
 
-  `/Users/maurizioaprea/Downloads/Padel Match Organizer`
+## Cosa si è mosso per area, dal 15/06 al 12/08/2026
+
+Indice ricavato il 13/08/2026 dai **titoli dei commit** delle 188 versioni promosse a PROD in quel
+periodo (le stesse ricostruite in `VERSIONI.md`). Serve a rispondere alla domanda per cui il documento
+è nato — *questa sezione, chi l'ha toccata di recente?* — senza doversi rileggere due mesi di log.
+Non è una mappa scritta a mano: è un indice verso git, e ogni numero di versione si verifica lì.
+
+| Area | Versioni toccate | Quante | Intervallo |
+|---|---|---|---|
+| Assistente AI (chat dello staff) | 5.814, 5.815, 5.816, 5.819 … (+36 in mezzo) … 6.078, 6.079, 6.081, 6.093 | 44 | v5.814 → v6.093 |
+| Calendario e prenotazioni staff | 5.766, 5.820, 5.861, 5.871 … (+32 in mezzo) … 6.151, 6.174, 6.189, 6.190 | 40 | v5.766 → v6.190 |
+| Anagrafica soci | 5.915, 5.917, 5.920, 5.921 … (+20 in mezzo) … 6.209, 6.210, 6.211, 6.212 | 28 | v5.915 → v6.212 |
+| Incassi e pagamenti | 5.997, 6.024, 6.025, 6.026 … (+6 in mezzo) … 6.099, 6.100, 6.101, 6.102 | 14 | v5.997 → v6.102 |
+| Interfaccia, mobile e PWA | 5.768, 5.818, 5.891, 5.892 … (+5 in mezzo) … 6.050, 6.082, 6.135, 6.184 | 13 | v5.768 → v6.184 |
+| Autovalutazione / livello | 5.916, 5.926, 6.052, 6.157 … (+2 in mezzo) … 6.200, 6.204, 6.213, 6.214 | 10 | v5.916 → v6.214 |
+| Worker / Matchpoint | 5.906, 5.909, 6.053, 6.076, 6.120, 6.167, 6.216 | 7 | v5.906 → v6.216 |
+| Amministrazione, diagnostica e sicurezza | 5.771, 5.958, 6.088, 6.089, 6.139, 6.161, 6.181 | 7 | v5.771 → v6.181 |
+| WhatsApp / messaggi | 5.817, 5.905, 6.105, 6.107, 6.119, 6.125 | 6 | v5.817 → v6.125 |
+| Storico | 5.859, 6.121, 6.122, 6.123 | 4 | v5.859 → v6.123 |
+| *Non classificate dal titolo* | 5.862, 5.889, 5.952, 5.956, 5.993, 6.075, 6.112, 6.114, 6.128, 6.137, 6.142, 6.155, 6.179, 6.188, 6.192 | 15 | v5.862 → v6.192 |
+
+**Due aree qui sopra non compaiono affatto nella «Mappa sezioni» più in basso**, e sono fra le più
+attive del periodo:
+
+- **Assistente AI dello staff** — 44 versioni, l'area più mossa in assoluto. Da non confondere con
+  l'«Assistente Giocatori» in fondo a questo file, che è la web app dei **soci**, dismessa.
+- **Incassi e pagamenti** — 14 versioni, nata da zero dopo maggio.
+
+Per entrambe, la fonte è `index.html` e la storia è git: qui sotto non c'è nulla che le descriva.
 
 ## Aggiornamenti rapidi
+
+> **Archivio, fermo al 22/05/2026.** Le note qui sotto raccontano il percorso fino a v5.527 e non
+> sono state più scritte dopo. Per il dopo vale la tabella per area qui sopra, e `VERSIONI.md`.
 
 - Promozione PROD v5.527 - 2026-05-22: Completata con successo la promozione in produzione (PROD) della versione v5.527. Aggiornata la costante `APP_VERSION` a `5.527` in `index.html` ed eseguito il deploy della Edge Function `assessment-email-send` in PROD con `verify_jwt=true` (versione 35). Questa release integra l'autovalutazione 0.5 con: rimozione della sezione "Problemi" e integrazione in Gestione Manuale, iniezione di token virtuali temporanei ('GM-id') nel frontend e nel backend, rimozione di 'tennis app' dalle esclusioni, sostituzione del pulsante "✓ Risolvi" con "👤 Scheda Socio" ed apertura in-place della scheda socio. Branch `main`, `test-preview` e `test/accessi-staff-guidati` allineati al commit `b98fbcf`. Schedulers PROD verificati e mantenuti attivi.
 - Promozione PROD v5.522 - 2026-05-22: Completata la promozione in produzione (PROD) della versione v5.522. Aggiornata la costante `APP_VERSION` a `5.522` in `index.html` ed effettuato il deploy con successo della Edge Function `assessment-email-send` in PROD con JWT abilitato (`verify_jwt=true`). Integrati i controlli per l'annullamento del lotto dell'autovalutazione (annullamento sicuro e protetto in PROD, totale in TEST). Allineati e pubblicati i branch Git `main` e `test-preview` al commit `fcba91e`. Gli scheduler automatici PROD rimangono attivi ed invariati.
@@ -132,7 +183,16 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Mappa sezioni
 
-| Sezione | Fonte locale attuale | Stato | Note operative |
+> **Archivio, fermo alla linea 5.x.** La colonna «Fonte locale attuale» nomina i file HTML per versione
+> che **non esistono più** (vedi in testa al documento): oggi la fonte di ogni riga di questa tabella è
+> `index.html`. La colonna «Stato» dichiara versioni ferme fra la v5.2xx e la v5.4xx e **non è più vera
+> per nessuna riga**: PROD è a v6.216.
+>
+> Quello che resta utile qui è la colonna **«Note operative»**: è il racconto di come ogni sezione è
+> diventata quello che è, scritto mentre lo si faceva. Vale come storia, non come istruzione. Prima di
+> agire su una sezione, verifica nel codice.
+
+| Sezione | Fonte locale attuale (⚠️ file non più esistenti) | Stato (⚠️ fermo alla 5.x) | Note operative (storia, fino a maggio 2026) |
 |---|---|---|---|
 | Menu laterale / navigazione | `padel_match_organizer_v5_311.html` | **Pubblicata in v5.311** | Rimpaginazione grafica semplice del menu sinistro: capitoli numerati 0 Dashboard, 1 Apri Partite, 2 Chiudi Partite, 3 Autovalutazioni, 4 Giocatori, 5 DATI (in/out). Sottomenu a fisarmonica e WhatsApp ricollocato come voce di supporto sotto Chiudi Partite. v5.226 corregge l'apertura incompleta in alto di Dashboard e Apri Partite; v5.250 ripristina scroll indipendente; v5.251 mantiene bianco il capitolo principale scelto. v5.271 uniforma lo stile delle voci principali con una classe comune e rimuove l'ibrido grafico da DATI (in/out). v5.303 inverte l'ordine del sottomenu sotto Chiudi Partite: prima `Storico partite`, poi `Testi per WhatsApp`. v5.304 crea il capitolo autonomo `6 Messaggi WhatsApp` e rimuove `Testi per WhatsApp` dal sottomenu di Chiudi Partite, dove resta solo `Storico partite`. v5.305 mantiene la stessa navigazione e riorganizza solo l'editor interno della sezione Messaggi WhatsApp. v5.306 mantiene invariata la navigazione e semplifica solo l'editor Messaggi WhatsApp. v5.311 corregge solo la versione visibile nel brand del menu laterale, sostituendo il numero fisso `v5.306` con un'etichetta sincronizzata a `APP_VERSION`. Nessuna logica dati modificata. |
 | Scroll layout app | `padel_match_organizer_v5_250.html` | **In lavorazione su v5.250, da validare manualmente** | Correzione strutturale dello scroll desktop: menu sinistro e contenuto destro tornano a essere due aree indipendenti. Su desktop `body/app-shell` restano fermi a viewport, `.side-nav` e `.main-content` hanno scroll autonomo; su mobile resta la pagina unica. Nessuna logica dati modificata. |
@@ -150,7 +210,19 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 
 ## Mappa sezioni - Assistente Giocatori (Socio Player Chat AI)
 
-| Sezione / Modulo | Fonte locale attuale | Stato | Note operative |
+> ⛔ **Sezione chiusa: questa app è DISMESSA dal 25/07/2026.** Era la web app dei soci
+> (`soci.padelvillage.club`), spenta per decisione del committente quando il bot Telegram
+> `@loziocoach_bot` è andato in servizio: Pages spento, DNS eliminato, repo `padel-match-assistant`
+> tornato privato, edge di login cancellate. I file citati qui sotto (`src/app.js`, `src/index.html`,
+> `src/supabase-client.js`) **non stanno in questo repo** e la cartella `src/` non esiste.
+>
+> Il canale verso i soci è ora il bot. Copia di sicurezza fuori dai repo, in
+> `~/Desktop/APP desktop/_dismissione-soci-20260725/`. Dettagli in `CLAUDE.md`.
+>
+> ⚠️ Da non confondere con l'**Assistente AI dello staff**, che è vivo, sta dentro `index.html` ed è
+> l'area più attiva del periodo giugno-agosto (44 versioni).
+
+| Sezione / Modulo | Fonte (⚠️ repo dismesso) | Stato (al 21/05/2026) | Note operative |
 |---|---|---|---|
 | Conversational UI Core / Schermata Benvenuto | `padel-assistant-soci-mockup.html` (mockup); `src/index.html` e `src/app.js` | **Fase 1 completata (TEST)** | Interfaccia mobile glassmorphism a schermo intero focalizzata sulla chat. Layout bezel mobile-only su desktop, rimosso il brand logo della chat di benvenuto e la scritta "Padel Village" dalla splash screen. I messaggi sono gestiti con micro-animazioni di typing ed elementi interattivi. |
 | Simulated Wallet (Borsellino) | `src/index.html` / `src/app.js` / `src/styles.css` | **Fase 1 completata (TEST)** | Menu a scorrimento laterale (Drawer) richiamato dall'icona profilo. Visualizza il saldo disponibile simulato per il socio, lo storico dei movimenti fittizi e le transazioni recenti con transizioni fluide. |
@@ -158,11 +230,18 @@ Questo documento serve a evitare fusioni sbagliate tra sezioni. Ogni sezione dev
 | Auth Token & Session Management | `src/supabase-client.js` / `src/config.js` | **Fase 1 completata (TEST)** | Gestione dell'autenticazione tramite token univoco memorizzato nell'URL. Connessione a Supabase TEST Assistente (`aylykijfirtegyxzdwgu`), caricamento dati anagrafici e sessione persistente con bypass di sicurezza simulato. |
 
 ## Versioni da non usare come base globale
-e come base globale
+
+> **Archivio.** Riguardava i file HTML per versione, spariti. Nessuna "base globale" da scegliere:
+> la base è `main`.
 
 - `padel_match_organizer_v5_164.html`: non valida come base globale. Ha rotto/alterato sezioni e non deve essere usata per proseguire.
 
 ## Versioni candidate
+
+> **Archivio del vecchio metodo.** L'elenco che segue cataloga i file HTML per versione tenuti sul Mac,
+> con le loro note "superata da / non pubblicata". **Nessuno di questi file esiste più**, e nessuno va
+> cercato: quel modo di lavorare è finito quando l'app è diventata un solo `index.html` sotto git.
+> Si conserva come memoria di come si decideva allora da dove ripartire.
 
 - `padel_match_organizer_v5_163.html`: base stabile per Riempi Slot prima della 164.
 - `padel_match_organizer_v5_165.html`: correzione di emergenza non definitiva: riparte dalla 163 e aggiunge un primo tentativo grafico su Giocatori/gruppi.
@@ -393,23 +472,35 @@ e come base globale
 - `padel_match_organizer_v5_267.html`: candidata locale non pubblicata per Giocatori/Gruppi; alza gli overlay della sezione sopra il menu laterale desktop, evitando click intercettati dalla sidebar.
 - `padel_match_organizer_v5_266.html`: micro-correzione Post-invio su base v5.265: il filtro `Livello applicato` usa la stessa logica storica della riga e include anche i giocatori con livello gia' applicato da autovalutazioni precedenti; se esiste una nuova risposta corrente non ancora applicata, prevale lo stato operativo `Pronta da applicare`/`Da verificare staff`. Validata manualmente dall'utente e pubblicata su GitHub Pages.
 
-## Checklist prima di creare una nuova versione globale
+## Checklist prima di creare una nuova versione
 
-1. Confermare il file definitivo per ogni sezione.
-2. Annotare qui la fonte definitiva.
-3. Integrare una sezione alla volta.
-4. Testare navigazione laterale e console error.
-5. Salvare in root, `versioni/`, `docs/` e repository locale.
-6. Solo dopo validazione, fare commit/push GitHub.
+Sostituisce il 13/08/2026 la vecchia checklist «versione globale», che diceva di confermare il file
+definitivo per ogni sezione e di salvare in `root`, `versioni/`, `docs/` e repo locale. Non c'è più
+un file per sezione né una cartella `versioni/`: quei passaggi non hanno più un oggetto.
+
+1. Lavorare su `test-preview` e provare lì (`test.padelvillage.club`, live a ogni push).
+2. Far girare la rete di regressione: `test/handle-test.html` (mocka il worker) e i `test/*.test.mjs`.
+3. Bumpare `APP_VERSION` in `index.html`, così il deploy è verificabile dal vivo.
+4. Promuovere a PROD **le sole righe del fix**, da un ramo basato su `main` — mai copiando l'intero
+   `index.html` di `test-preview`, e senza portare in PROD codice gated `PMO_IS_TEST_ENV`.
+5. Aprire PR verso `main`: passa da `guard-main-prs.yml` (≤15 file, niente cancellazioni, mai dal
+   ramo `test-preview`).
+6. Se il commit tocca il worker, i workflow o `CLAUDE.md`, riallineare `test-preview` — lo pretende
+   `guard-worker-sync.yml`.
+
+La procedura per esteso sta in `CLAUDE.md` e in `docs/procedura-deploy-test-prod.md`.
 
 ## Prompt da usare quando si apre una nuova chat/sezione
 
-Stiamo lavorando su Padel Match Organizer. Salva sempre i dati locali sotto:
+Sostituisce il 13/08/2026 il prompt precedente, che mandava a salvare i dati sotto
+`/Users/maurizioaprea/Downloads/Padel Match Organizer` e a leggere questo registro come fonte. Quel
+percorso è il Mac, non esiste per una sessione che gira altrove, e questo registro non è più la fonte.
 
-`/Users/maurizioaprea/Downloads/Padel Match Organizer`
-
-Prima di modificare file, leggi:
-
-`/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/registro-versioni-sezioni.md`
-
-La sezione su cui stiamo lavorando e' autonoma. Non modificare altre sezioni se non richiesto. Alla fine aggiorna questo registro con file, stato e note di validazione.
+> Stiamo lavorando su Padel Match Organizer. Prima di toccare qualsiasi cosa leggi **`CLAUDE.md`**
+> nella radice del repo: dice quali sono le 4 app, quale ramo deploya dove, e cosa NON va toccato.
+>
+> Lo stato corrente (versioni PROD/TEST) sta in `docs/stato-progetto-corrente.md`; il changelog in
+> `VERSIONI.md`; quale area è stata toccata di recente, nella tabella per area in cima a questo file.
+>
+> La sezione su cui lavoriamo è autonoma: non modificare altre sezioni se non richiesto. Verifica nel
+> codice, non nella documentazione — dove le due non concordano, comanda il codice.
