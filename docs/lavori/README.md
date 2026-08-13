@@ -2,33 +2,43 @@
 
 **Fotografia del 13/08/2026, a fine 12ª sessione.** Misurata, non ricordata.
 
-🔄 **Ritoccata più tardi lo stesso giorno**, dopo la PR #680: rimisurati **sha, versioni e PR
-aperte**. Tutto il resto — i cron e il blocco «verificato sul bersaglio» — è la misura della 12ª
-sessione e **non è stato ricontrollato**.
+🔄 **Ripresa in serata, stesso giorno** (PR #680→#684): rimisurati **sha, versioni, PR aperte e
+conteggi**, e **chiusa la voce 30**. Tutto il resto — i cron e il blocco «verificato sul bersaglio»
+— è la misura della 12ª sessione e **non è stato ricontrollato**.
 
-⬆️➡️✅ **Voce 30, tutto il 13/08:** nata in coda, **promossa alle urgenti dal committente**, e
-**chiusa** in giornata con le due guardie (#683 parità, #684 verità). ⇒ coda 16→**15**, urgenti
-tornate a **1**.
+⬆️➡️✅ **Voce 30: nata, promossa e chiusa nello stesso giorno.** Unica finora. Nata in coda la
+mattina, **promossa alle urgenti dal committente**, chiusa in serata con **due** guardie — non una:
 
-🔢 **Conteggi rifatti a mano nella stessa occasione, e non tornavano:** la sezione **C** ne
-dichiarava 11 con 12 voci dentro, la **D** ne dichiarava 5 con 4 righe. I due errori si
-**annullavano**, quindi il totale 16 era giusto e nessuno se n'era accorto. Ora C=11, D=4, totale 15
-— contati riga per riga. 📌 È il caso di scuola della voce 30: *due numeri sbagliati che sommano
-al numero giusto* non li prende nessuna guardia di parità fra rami, solo un controllo contro la misura.
+| | | |
+|---|---|---|
+| **parità** | `guard-worker-sync` esteso a `docs/` | #683 |
+| **verità** | `guard-docs-truth.yml`, dichiarato vs misurato | #684 |
+
+⇒ coda 16→**15**, urgenti 2→**1**. 🚨 **Sono legate: si tolgono insieme o mai.** La parità non vede
+la *menzogna concorde*, la verità controlla una copia sola e non protegge l'altro ramo.
+
+🔢 **Perché ne servivano due, misurato non ipotizzato.** Rifacendo i conteggi a mano: la sezione **C**
+ne dichiarava 11 con 12 voci, la **D** 5 con 4 righe. I due errori si **annullavano** e il totale 16
+tornava — **nessuna guardia di parità li avrebbe presi**, erano sbagliati uguali su entrambi i rami.
+E `stato-progetto-corrente.md`, curato la mattina dalla #674 dopo tre mesi a v5.527, **la sera
+dichiarava già 6.216/6.217 contro 6.219/6.222 reali**: da solo non resta vero. Ora la CI verifica
+entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 
 | | |
 |---|---|
 | 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **15** |
-| 📦 **Chiuse** | ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **7** il 13/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `49e298f`,
-`test-preview` `5293d2b`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
-TEST 5 accesi / 4 spenti · `server.mjs`, `.github/workflows/**`, `CLAUDE.md` **e questo file**
-**identici** fra i rami.
+**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `f7806bf`,
+`test-preview` `1171437`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
+TEST 5 accesi / 4 spenti · `server.mjs`, `.github/workflows/**`, `CLAUDE.md` e **tutto `docs/`**
+**identici** fra i rami — e da oggi **non per diligenza, ma perché la CI lo impone**.
 
-Le versioni **non si sono mosse** con la #680: era documentazione, nessun file dell'app toccato.
-Gli sha sì — ed è il motivo per cui erano già vecchi di due commit poche ore dopo essere stati scritti.
+⚠️ Le versioni **non si sono mosse** in tutta la serata: dalla #680 alla #684 era CI e
+documentazione, nessun file dell'app toccato. Gli sha sì, cinque volte — ed è il motivo per cui
+**non** sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva,
+e riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
 
 ⚠️ **PROD e TEST non sono più adiacenti**: 3 di distanza, non 1. Il *contenuto* è equivalente —
 TEST bumpa a ogni passo (6.219→6.222), PROD una volta per promozione (6.218, 6.219). Non è drift,
@@ -133,7 +143,9 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 
 ---
 
-## 📦 CHIUSE — 13/08/2026, 12ª sessione
+## 📦 CHIUSE — 13/08/2026 — 7 voci
+
+Le prime 6 nella 12ª sessione, la **30** in serata.
 
 | voce | cosa |
 |---|---|
@@ -237,4 +249,4 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Generato il 13/08/2026 a fine 12ª sessione; sha, versioni e PR aperte ritoccati più tardi lo stesso giorno (PR #680). Stato misurato, non ricordato. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Generato il 13/08/2026 a fine 12ª sessione; ripreso in serata (PR #680→#684) per rimisurare sha, versioni, PR aperte e conteggi e per chiudere la voce 30. Stato misurato, non ricordato. I conteggi di questo file e le versioni dichiarate nei registri sono ora verificati dalla CI (`guard-docs-truth.yml`). Le promozioni dalla coda alle urgenti le decide il committente.</sub>
