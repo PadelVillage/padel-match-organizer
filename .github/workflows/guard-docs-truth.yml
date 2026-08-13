@@ -21,6 +21,12 @@ name: Guard verità docs (dichiarato vs misurato)
 #     e nessuno se n'era accorto. Per questo ogni numero è verificato per conto suo e non
 #     solo la somma — è precisamente il caso che una verifica sul totale lascia passare.
 #
+#  3. LE CHIUSE ERANO SCOPERTE (aggiunte il 13/08, dopo i primi run). Il controllo nacque
+#     sulle liste vive — urgenti e in coda — e lasciava fuori l'unica lista che CRESCE a
+#     ogni sessione. Quel giorno tornava, 7 dichiarate e 7 righe, ma per diligenza: nessuno
+#     la contava. Ed è esattamente la condizione da cui è partita la sezione C, che di
+#     diligenza ne ha avuta altrettanta e ha mentito lo stesso per mesi.
+#
 # ⚖️ COSA NON CONTROLLA, DI PROPOSITO:
 #
 #   · gli SHA citati nei documenti. Un file che cita il proprio sha è vecchio nell'istante in
@@ -30,6 +36,10 @@ name: Guard verità docs (dichiarato vs misurato)
 #   · le versioni dichiarate in `docs/lavori/README.md`. Quello è una FOTOGRAFIA datata, che
 #     dichiara da sé cosa ha misurato e quando: essere «di ieri» non è mentire. Il suo scarto
 #     viene però SEMPRE stampato come avviso, così è visibile senza bloccare nulla.
+#   · i conteggi STORICI delle chiuse — `~56 dal 7/08`, `~41 fino al 6/08`. Portano la tilde
+#     davanti e le voci non stanno più nel file: sono incontabili per costruzione, e un numero
+#     che si dichiara approssimato non promette niente da verificare. Della riga «Chiuse» si
+#     controlla quindi SOLO il primo numero, quello del blocco datato che le righe ce le ha.
 #
 # La differenza è netta: si controlla ciò che un documento promette di sé. `stato-progetto-corrente`
 # promette di essere corrente ⇒ deve esserlo. `lavori/README` promette di essere una fotografia
@@ -148,8 +158,13 @@ jobs:
           D_H=$(grep -m1 -oE '^### D —.*— [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
           URG_T=$(grep -m1 -E '^\|.*Urgenti\*\* *\| *\*\*[0-9]+\*\*' /tmp/lavori.md | grep -oE '[0-9]+' | head -1 || true)
           CODA_T=$(grep -m1 -E '^\|.*In coda\*\* *\| *\*\*[0-9]+\*\*' /tmp/lavori.md | grep -oE '[0-9]+' | head -1 || true)
+          # Titolo:  ## 📦 CHIUSE — 13/08/2026 — 7 voci   → la data ha cifre, quindi si àncora a «voci».
+          # Tabella: | 📦 **Chiuse** | **7** il 13/08 + ~56 dal 7/08 + ... → si prende il primo **N**,
+          # non la prima cifra: quella riga di numeri ne ha sei, e cinque non sono il conteggio.
+          CHIU_H=$(grep -m1 -oE '^## .*CHIUSE —.*— [0-9]+ voci' /tmp/lavori.md | grep -oE '[0-9]+ voci' | grep -oE '[0-9]+' || true)
+          CHIU_T=$(grep -m1 -E '^\|.*Chiuse\*\* *\| *\*\*[0-9]+\*\*' /tmp/lavori.md | grep -oE '\*\*[0-9]+\*\*' | head -1 | tr -d '*' || true)
 
-          for v in URG_H CODA_H C_H D_H URG_T CODA_T; do
+          for v in URG_H CODA_H C_H D_H URG_T CODA_T CHIU_H CHIU_T; do
             if [ -z "$(eval echo \$$v)" ]; then
               echo "::error::Non ho trovato il numero dichiarato per '$v' in $F."
               echo "È cambiata la forma delle intestazioni o della tabella riassuntiva?"
@@ -162,6 +177,11 @@ jobs:
           URG_N=$(awk '/^## .*URGENTI —/{f=1;next} /^## .*IN CODA —/{f=0} f && /^### /{c++} END{print c+0}' /tmp/lavori.md)
           C_N=$(awk '/^### C —/{f=1;next} /^### D —/{f=0} f && /^#### /{c++} END{print c+0}' /tmp/lavori.md)
           D_N=$(awk '/^### D —/{f=1;next} /^## /{f=0} f && /^\| \*\*[0-9]/{c++} END{print c+0}' /tmp/lavori.md)
+          # Una riga-voce delle chiuse ha nella prima cella `—` (voce mai numerata) oppure
+          # `**N**` (voce che aveva un numero in coda). Intestazione e separatore non hanno
+          # quella forma ed escono da soli. Si chiude alla PRIMA riga che comincia per `#`,
+          # non solo su `## `: dopo le chiuse viene `# 🧠 Memorie tematiche`, di primo livello.
+          CHIU_N=$(awk '/^## .*CHIUSE —/{f=1;next} /^#/{f=0} f && /^\| (—|\*\*[0-9])/{c++} END{print c+0}' /tmp/lavori.md)
 
           echo "                        dichiarato   contato"
           printf '  🔴 urgenti (titolo)   %-12s %s\n' "$URG_H" "$URG_N"
@@ -170,6 +190,8 @@ jobs:
           printf '  📋 in coda (tabella)  %-12s %s\n' "$CODA_T" "$((C_N + D_N))"
           printf '  C — sapute            %-12s %s\n' "$C_H" "$C_N"
           printf '  D — corpose           %-12s %s\n' "$D_H" "$D_N"
+          printf '  📦 chiuse (titolo)    %-12s %s\n' "$CHIU_H" "$CHIU_N"
+          printf '  📦 chiuse (tabella)   %-12s %s\n' "$CHIU_T" "$CHIU_N"
           echo ""
 
           FAIL=0
@@ -185,6 +207,8 @@ jobs:
           chk "D — corpose"                     "$D_H"    "$D_N"
           chk "📋 in coda (titolo di sezione)"  "$CODA_H" "$((C_N + D_N))"
           chk "📋 in coda (tabella in cima)"    "$CODA_T" "$((C_N + D_N))"
+          chk "📦 chiuse (titolo di sezione)"   "$CHIU_H" "$CHIU_N"
+          chk "📦 chiuse (tabella in cima)"     "$CHIU_T" "$CHIU_N"
 
           if [ "$FAIL" -ne 0 ]; then
             echo ""
