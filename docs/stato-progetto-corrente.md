@@ -1,10 +1,14 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-05-22 21:40
+Ultimo aggiornamento: 2026-08-13
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
 Se le informazioni scritte in un prompt non coincidono con questo file, considera piu affidabile questo file e chiedi conferma prima di procedere.
+
+⚠️ **Eccezione: su come sono fatte le app e su dove si deploya ciascuna, comanda `CLAUDE.md` nella radice del repo**, non questo file. Lì stanno le 4 app, i tre rami di deploy delle edge function, il worker condiviso TEST+PROD e la dismissione della web app dei soci (25/07/2026). Questo file resta la fonte per **versioni e stato del lavoro**.
+
+⚠️ **Questo file ha un buco documentale fra v5.527 (22/05/2026) e v6.216 (12/08/2026).** Le note qui sotto si fermano a maggio: nessuno le ha più scritte quando il progetto è passato a lavorare per PR. Per quelle 689 versioni **la storia vera è la cronologia git** (`git log --oneline`, titoli descrittivi) e le PR #659–#673. Anche gli altri due registri sono fermi allo stesso momento: `VERSIONI.md` si ferma a **v5.761** (zero voci 6.x) e `docs/registro-versioni-sezioni.md` al **22/05/2026**. Non fidarti di una nota qui sotto per dire "com'è fatto oggi": verificala nel codice.
 
 ## Lettura obbligatoria prima di iniziare
 
@@ -28,11 +32,33 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | v5.527 | `main` | `b98fbcf` |
-| TEST | v5.527 | `test-preview` | `b98fbcf` |
-| TEST sviluppo | v5.527 | `test/accessi-staff-guidati` | `b98fbcf` |
-| Assistente TEST | Fase 1 | `test/accessi-assistente` | Mockup unificato / DB TEST Popolato (`aylykijfirtegyxzdwgu`) |
-| Assistente LAVORO | Fase 1 | `test/accessi-assistente` | Locale (`padel-assistant-soci-mockup.html`) |
+| PROD | **v6.216** | `main` | `095a192` (12/08/2026 22:47) — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex` |
+| TEST | **v6.217** | `test-preview` | `0ace6e4` (12/08/2026) — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd` |
+
+I due rami **non sono allineati per scelta**: `test-preview` corre una versione avanti (6.217 contro 6.216). È il funzionamento normale, non un disallineamento da correggere. Il commit di testa dei due rami porta lo stesso titolo (la chiusura della lettura anonima dei token autovalutazione) perché il fix è stato promosso; la differenza è la sola `APP_VERSION`.
+
+Non esistono più altri rami: `cleanup-claude-branches.yml` cancella ogni notte tutto tranne `main` e `test-preview`. Se ne vedi altri in locale è la tua copia stantia dei ref remoti → `git fetch --prune`.
+
+Righe rimosse da questa tabella il 13/08/2026, perché descrivevano cose che non esistono più:
+
+- `TEST sviluppo` / `test/accessi-staff-guidati` — ramo cancellato dalla potatura notturna.
+- `Assistente TEST` e `Assistente LAVORO` / `test/accessi-assistente` — **la web app dei soci è DISMESSA dal 25/07/2026** (vedi `CLAUDE.md`). Il canale verso i soci è ora il bot Telegram `@loziocoach_bot`, che vive nel repo privato `assistente-padel-agent` e **non ha né anteprima né sandbox**. Il mockup locale `padel-assistant-soci-mockup.html` non è più un ambiente di lavoro.
+
+### Ultimi lavori chiusi (PR su `main`)
+
+| PR | Cosa |
+|---|---|
+| #673 | Sicurezza: chiusa la lettura **anonima** dei token autovalutazione (−1364 righe) |
+| #672 | Rimossa la prova di parità con l'emulatore (difendeva una premessa scaduta) |
+| #671 | Campanello: l'aggiunta che Matchpoint non conferma ora si dice (PROD 6.216) |
+| #670 | Livello: l'automatismo (A4ter) — l'edge, il ponte e i satelliti |
+| #669 | Livello: nel gestionale si dice a parole, col numero accanto |
+| #668 | Scheda socio: ricucita col cloud (era ferma) |
+| #667 | Registro delle modifiche: il database lo rifiutava, non è mai stato scritto |
+
+---
+
+Le note che seguono sono **storiche e ferme al 22/05/2026**. Restano come archivio del percorso fino a v5.527; non descrivono l'app di oggi.
 
 Nota promozione PROD v5.527 - 2026-05-22 21:40: Completata con successo la promozione in produzione (PROD) della versione v5.527. Aggiornata la costante `APP_VERSION` a `5.527` in `index.html` ed eseguito il deploy della Edge Function `assessment-email-send` in PROD con `verify_jwt=true` (versione 35). Questa release integra l'autovalutazione 0.5 con: rimozione della sezione "Problemi" e integrazione in Gestione Manuale, iniezione di token virtuali temporanei ('GM-id') nel frontend e nel backend, rimozione di 'tennis app' dalle esclusioni, sostituzione del pulsante "✓ Risolvi" con "👤 Scheda Socio" ed apertura in-place della scheda socio. Branch `main`, `test-preview` e `test/accessi-staff-guidati` allineati al commit `b98fbcf`. Schedulers PROD verificati e mantenuti attivi.
 
@@ -250,14 +276,20 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Link
 
-- TEST: `https://padelvillage.github.io/padel-match-organizer/test/?env=test`
-- PROD: `https://padelvillage.github.io/padel-match-organizer/`
+- **PROD**: `https://app.padelvillage.club` (Pages dal ramo `main`, vedi `CNAME`)
+- **TEST**: `https://test.padelvillage.club` (caricatore nel repo a parte `padel-match-organizer-test`, che serve l'ultimo commit di `test-preview`: **ogni push è subito live**)
+
+⚠️ Il vecchio `https://padelvillage.github.io/padel-match-organizer/test/?env=test` **non è più l'app di TEST**: dalla v6.114 è un semplice rimando. Stava sulla stessa origine di PROD e le due si dividevano la quota di `localStorage` — causa di fondo del guasto del 20/07. Il resto di `/test/` è invece vivo e si usa dal percorso: `test/handle-test.html` (rete di regressione), `test/parser-test.html`, `test/autovalutazione.html`, `test/config-test.js`.
 
 ## Ultimo lavoro pubblicato
 
-La versione v5.479 e' pubblicata in PROD. TEST e' avanzato a v5.481 per rifiniture UI dello Storico Autovalutazione; PROD resta v5.479 finche' non viene richiesta una nuova promozione. Edge Function PROD `assessment-email-send` v15 `verify_jwt=true` e scheduler follow-up email Autovalutazione PROD restano attivi. Lo scheduler follow-up PROD esegue solo controllo stop alle 09:00 e secondo/terzo richiamo alle 09:30 Europe/Rome dopo primo invio manuale gia registrato. TEST resta manuale e senza cron.
+**PROD è a v6.216** (`main`, `095a192`). TEST è a v6.217 (`test-preview`, `0ace6e4`). L'ultimo lavoro chiuso è la **PR #673**: chiusa la lettura anonima dei token autovalutazione, −1364 righe. Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
 
-Contiene:
+---
+
+⚠️ Tutto quello che segue in questa sezione è **fermo a maggio 2026** (dichiarava PROD v5.479, quando il file stesso in testa diceva v5.527: era già incoerente allora). Vale come archivio, **non come descrizione dell'app di oggi**. In particolare, gli stati di Edge Function, scheduler, cron e secret citati qui sotto sono da riverificare dal vivo prima di farci affidamento — su Supabase, non su questo file.
+
+Conteneva:
 
 - Autovalutazione fino a v5.407, inclusi storico compatto, lettura risposte email, gestione mancate consegne e stato invio compatto.
 - Database soci con riepilogo KPI in tabella compatta.
@@ -391,12 +423,6 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/registro-versioni-sezioni.md`
 - Regola mockup grafici:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-mockup-grafici.md`
-- Regola prompt definitivi per MOCK-UP:
-  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/regola-prompt-mockup-definitivi.md`
-- Procedura catena MOCK-UP -> SVILUPPO TEST -> PROMOZIONE PROD:
-  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/procedura-catena-mockup-sviluppo-prod.md`
-- Prompt definitivi per SVILUPPO TEST:
-  `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/prompt-definitivi-sviluppo-test.md`
 - Regole Supabase Data API / grant futuri:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/supabase-data-api-regole.md`
 - Algoritmo Riempi Slot:
@@ -407,6 +433,10 @@ Nota tecnica PROD 2026-05-13 20:08: durante il test controllato in PROD e' stato
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/routine-dati-automatiche.md`
 - Autovalutazione email:
   `/Users/maurizioaprea/Downloads/Padel Match Organizer/docs/autovalutazioni-email-routine.md`
+
+Verifica del 13/08/2026: tre voci che stavano in questo elenco **non esistono in `docs/`** e sono state tolte — `regola-prompt-mockup-definitivi.md`, `procedura-catena-mockup-sviluppo-prod.md`, `prompt-definitivi-sviluppo-test.md`. Se servono davvero, vanno scritti: qui non c'è nulla da aprire. Le altre voci dell'elenco esistono tutte.
+
+Manca invece in questo elenco, ed è il documento che oggi comanda davvero: **`CLAUDE.md` nella radice del repo** (le 4 app, i rami di deploy, il worker condiviso, la regola anti-disallineamento test↔prod). Insieme a `docs/flusso-pubblicazione-pr.md` e `docs/ARCHITETTURA.md`.
 
 ## Documentazione da leggere in base all'area
 
