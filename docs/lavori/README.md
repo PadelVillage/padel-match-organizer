@@ -2,9 +2,10 @@
 
 **Fotografia del 13/08/2026, a fine 12ª sessione.** Misurata, non ricordata.
 
-🔄 **Ripresa in serata, stesso giorno** (PR #680→#684): rimisurati **sha, versioni, PR aperte e
-conteggi**, e **chiusa la voce 30**. Tutto il resto — i cron e il blocco «verificato sul bersaglio»
-— è la misura della 12ª sessione e **non è stato ricontrollato**.
+🔄 **Ripresa in serata, stesso giorno** (PR #680→#686): rimisurati **sha, versioni, PR aperte e
+conteggi**, **chiusa la voce 30** e poi **estesa la guardia dei conteggi alle chiuse** (#686).
+Tutto il resto — i cron e il blocco «verificato sul bersaglio» — è la misura della 12ª sessione
+e **non è stato ricontrollato**.
 
 ⬆️➡️✅ **Voce 30: nata, promossa e chiusa nello stesso giorno.** Unica finora. Nata in coda la
 mattina, **promossa alle urgenti dal committente**, chiusa in serata con **due** guardie — non una:
@@ -28,15 +29,15 @@ entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 |---|---|
 | 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **15** |
-| 📦 **Chiuse** | **7** il 13/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **8** il 13/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `f7806bf`,
-`test-preview` `1171437`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
+**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `d0ba40e`,
+`test-preview` `f33c678`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
 TEST 5 accesi / 4 spenti · `server.mjs`, `.github/workflows/**`, `CLAUDE.md` e **tutto `docs/`**
 **identici** fra i rami — e da oggi **non per diligenza, ma perché la CI lo impone**.
 
-⚠️ Le versioni **non si sono mosse** in tutta la serata: dalla #680 alla #684 era CI e
-documentazione, nessun file dell'app toccato. Gli sha sì, cinque volte — ed è il motivo per cui
+⚠️ Le versioni **non si sono mosse** in tutta la serata: dalla #680 alla #686 era CI e
+documentazione, nessun file dell'app toccato. Gli sha sì, **sette volte prima di questa riga** — ed è il motivo per cui
 **non** sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva,
 e riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
 
@@ -143,9 +144,9 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 
 ---
 
-## 📦 CHIUSE — 13/08/2026 — 7 voci
+## 📦 CHIUSE — 13/08/2026 — 8 voci
 
-Le prime 6 nella 12ª sessione, la **30** in serata.
+Le prime 6 nella 12ª sessione, la **30** e l'ultima in serata.
 
 | voce | cosa |
 |---|---|
@@ -155,6 +156,7 @@ Le prime 6 nella 12ª sessione, la **30** in serata.
 | — | 🧪 **Il banco Matchpoint rimosso** — i due bottoni rossi che creavano prenotazioni e clienti **veri** (PR #678, PROD 6.219). ⚠️ Non promozione a righe: i rami avevano **7 funzioni contro 4** |
 | **25** | 📧 **Il canale email ai soci non è più «spento»: è SMONTATO.** La decisione che la voce aspettava è stata presa ed eseguita. Riaprirlo non è riaccendere un cron, è **rimontare un canale** |
 | **19** | 🏠 **Destino di `soci.padelvillage.club`: chiuso.** Misurato il 13/08 — DNS **non risolve**, `ayly…` ha **ZERO edge function**. ⚠️ La voce diceva «login e identità vivi»: **era sbagliata**, il login è morto. Vivo solo `consumer-identity-lookup` su `qqbf…`/`cudi…` |
+| — | 🔢 **Anche le chiuse si contano** (#686). `guard-docs-truth` sorvegliava le liste **vive** — urgenti e in coda — e lasciava fuori l'unica che **cresce** a ogni sessione. Il conto tornava, 7 dichiarate e 7 righe, ma **per diligenza**: nessuno lo imponeva. È la condizione esatta da cui è partita la sezione **C**, diligente anche lei e falsa lo stesso per mesi. Aggiunti **due** numeri (titolo di sezione e riga «Chiuse»), verificati per conto loro. ⚖️ Restano fuori i conteggi storici `~56` e `~41`: portano la **tilde** e le voci non sono più nel file ⇒ incontabili per costruzione, e un numero che si dichiara approssimato non promette nulla da verificare |
 | **30** | 🛡️ **`docs/` ha due guardiani, non uno.** Nata in coda, promossa da lui e chiusa in giornata. **Parità** (`guard-worker-sync` esteso a `docs/`, #683): scoperto che 4 file divergevano — la #674 aveva curato i registri **solo su `main`** e su `test-preview` `stato-progetto-corrente.md` diceva ancora «PROD v5.527» del 22/05 con TEST a 6.222. **Verità** (`guard-docs-truth.yml`, #684): confronta il dichiarato col misurato — e alla prima esecuzione ha colto il registro che, curato la mattina, **la sera dichiarava già 6.216/6.217 contro 6.219/6.222**. ⚖️ Sono complementari: la parità non vede la **menzogna concorde**, la verità non protegge l'**altro ramo** ⇒ si tolgono insieme o mai |
 
 *(Le chiuse dal 7/08 al 12/08 e quelle fino al 6/08 restano come nella fotografia del 12/08.)*
