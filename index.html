@@ -6383,7 +6383,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <span class="nav-caret">▾</span>
         </button>
         <div id="subAssessment" class="side-submenu" data-section-key="assessment">
-          <button class="side-sub-link" data-subsection-key="view_assessment_flusso" data-parent-tab="assessment" onclick="goToTabSection('assessment','Cruscotto mattutino')">Flusso</button>
           <button class="side-sub-link" data-subsection-key="view_assessment_testi" data-parent-tab="assessment" onclick="goToTabSection('assessment','Testi')">Testi</button>
           <button class="side-sub-link" data-subsection-key="view_assessment_scheda" data-parent-tab="assessment" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
           <button class="side-sub-link" data-subsection-key="view_assessment_strumenti" data-parent-tab="assessment" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
@@ -6459,7 +6458,6 @@ body.assessment-public-mode .assessment-public-only-card {
       <div class="pmo-chapter-group" data-section-key="assessment">
         <button type="button" class="pmo-chapter-item has-dropdown" data-section-key="assessment" aria-haspopup="true" aria-expanded="false" onclick="pmoToggleChapterDropdown(this, event)">Autovalutazione <span class="pmo-chapter-caret">▾</span></button>
         <div class="pmo-chapter-dropdown">
-          <button type="button" data-subsection-key="view_assessment_flusso" data-parent-tab="assessment" onclick="goToTabSection('assessment','Cruscotto mattutino')">Flusso</button>
           <button type="button" data-subsection-key="view_assessment_testi" data-parent-tab="assessment" onclick="goToTabSection('assessment','Testi')">Testi</button>
           <button type="button" data-subsection-key="view_assessment_scheda" data-parent-tab="assessment" onclick="goToTabSection('assessment','Scheda pubblica')">Scheda pubblica</button>
           <button type="button" data-subsection-key="view_assessment_strumenti" data-parent-tab="assessment" onclick="goToTabSection('assessment','Strumenti tecnici')">Strumenti tecnici</button>
@@ -6823,81 +6821,27 @@ body.assessment-public-mode .assessment-public-only-card {
         <div id="assessmentEmailRoot" class="assessment-email-page">
           <div id="assessmentProcessStickyFilters" class="assessment-process-sticky-filters" aria-label="Filtri Autovalutazione"></div>
 
-          <section id="assessmentEmailMorningPanel" class="assessment-email-panel active" data-assessment-email-panel="morning">
-            <div class="assessment-email-panel-head">
-              <div>
-                <h3 class="assessment-email-panel-title">Email da inviare</h3>
-                <p class="assessment-email-panel-copy">Processo giornaliero Autovalutazione e inserimento manuale dei livelli su Matchpoint.</p>
-              </div>
-              <div id="assessmentEmailMorningHeaderActions" class="assessment-email-actions assessment-morning-header-actions"></div>
-            </div>
-            <div id="assessmentEmailMorningContent" class="assessment-email-content"></div>
-          </section>
+          <!--
+            ⛔ Qui stavano i CINQUE pannelli del canale email, tolti il 13/08/2026 su decisione del
+            committente: «Email da inviare» (morning, era anche il pannello predefinito), «Stato invio
+            email» (routine), «Da inviare 0.5» (queue), «Contattati / in attesa» (pending) e
+            «Post-invio e risposte» (post). Il canale email era già disarmato — app 6.217, edge potata
+            — e quei pannelli mostravano comandi che non facevano più nulla.
 
-          <section id="assessmentEmailRoutinePanel" class="assessment-email-panel" data-assessment-email-panel="routine">
-            <div class="assessment-email-panel-head">
-              <div>
-                <div class="assessment-email-routine-title-row">
-                  <h3 class="assessment-email-panel-title">Stato invio email</h3>
-                  <div class="assessment-email-routine-pills" aria-label="Riepilogo stato invio">
-                    <span class="assessment-email-routine-pill"><strong>05:45</strong> routine mattina</span>
-                    <span id="assessmentEmailRoutineSentPill" class="assessment-email-routine-pill"><strong>-</strong> invii oggi</span>
-                    <span id="assessmentEmailRoutineAttentionPill" class="assessment-email-routine-pill warn"><strong>-</strong> da controllare</span>
-                    <span id="assessmentEmailRoutineLastPill" class="assessment-email-routine-pill"><strong>-</strong> ultimo controllo</span>
-                  </div>
-                </div>
-                <p class="assessment-email-panel-copy">Cruscotto rapido per capire se il giro email sta lavorando, cosa ha fatto oggi e cosa richiede attenzione.</p>
-              </div>
-              <div class="assessment-email-actions">
-                <button class="btn-warning small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La pausa invii email sara collegata al backend Gmail nel prossimo step tecnico.')">Pausa invii email</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
-              </div>
-            </div>
-            <div id="assessmentEmailRoutineContent" class="assessment-email-content"></div>
-          </section>
+            Il socio riceve il link personale dal bot Telegram (edge `consumer-assessment-link`) e il
+            livello viene applicato da `assessment-apply-level`: l'Autovalutazione è viva, è la strada
+            per raggiungere il socio che è cambiata.
 
-          <section id="assessmentEmailQueuePanel" class="assessment-email-panel" data-assessment-email-panel="queue">
-            <div class="assessment-email-panel-head">
-              <div>
-                <h3 class="assessment-email-panel-title">Da inviare 0.5</h3>
-                <p class="assessment-email-panel-copy">Soci attivi con livello 0.5, ordinati per priorita operativa. L'invio del lotto resta manuale dallo staff.</p>
-              </div>
-              <div class="assessment-email-actions">
-                <button class="btn-secondary small-btn" onclick="setActionAnchor(this); assessmentEmailFeaturePending('La selezione dei primi 20 sara attiva con il motore email.')">Seleziona primi 20</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendFirstReady()">Prova invio sulla mia email</button>
-              </div>
-            </div>
-            <div id="assessmentEmailQueueContent" class="assessment-email-content"></div>
-          </section>
+            Il pannello predefinito è ora «history» (Storico), che resta e mostra i livelli applicati
+            e auto-applicati — cioè la finestra su cosa sta facendo l'automatismo.
 
-          <section id="assessmentEmailPendingPanel" class="assessment-email-panel" data-assessment-email-panel="pending">
-            <div class="assessment-email-panel-head">
-              <div>
-                <h3 class="assessment-email-panel-title">Contattati / in attesa</h3>
-                <p class="assessment-email-panel-copy">Soci con richiesta gia inviata e scheda non ancora compilata.</p>
-              </div>
-              <div class="assessment-email-actions">
-                <button class="assessment-email-btn secondary" onclick="setActionAnchor(this); assessmentEmailImportCloudLogs().then(r => { renderAssessmentEmailPanels(); showAlert(r.ok ? ('Sync: ' + ((r.tokenSyncUpdated||0) + (r.imported||0)) + ' aggiornati') : ('Sync fallito: ' + (r.error||'errore')), r.ok ? 'success' : 'danger'); })">🔄 Sincronizza da server</button>
-              </div>
-            </div>
-            <div id="assessmentEmailPendingContent" class="assessment-email-content"></div>
-          </section>
-
-
-          <section id="assessmentEmailPostPanel" class="assessment-email-panel" data-assessment-email-panel="post">
-            <div class="assessment-email-panel-head">
-              <div>
-                <h3 class="assessment-email-panel-title">Post-invio e risposte</h3>
-                <p class="assessment-email-panel-copy">Schede ricevute correttamente. Quelle coerenti con differenza 0 o 0.5 vengono chiuse in automatico dopo Aggiorna risposte; le altre restano qui da controllare.</p>
-              </div>
-              <div class="assessment-email-actions">
-                <button id="assessmentSyncTopButton" class="assessment-sync-status-btn visible" onclick="handleTopAssessmentResponsesUpdate()">Aggiorna risposte</button>
-                <button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentApplyAutoApplicableResponses()">Applica automatiche ora</button>
-              </div>
-            </div>
-            <div id="assessmentSyncLastCheck" class="assessment-sync-meta" style="padding:0 18px 12px;">Ultimo controllo: mai eseguito</div>
-            <div id="assessmentEmailPostContent" class="assessment-email-content"></div>
-          </section>
+            Le funzioni che disegnavano questi pannelli NON sono state asportate: scrivono tutte in un
+            `document.getElementById(...)` che ora non esiste, e ognuna comincia con `if (!box) return;`
+            quindi sono no-op. Restano lì perché toglierle davvero significa rimuovere ~60 funzioni da
+            questo file, che è un lavoro a parte e va provato per bene. Se le rimetti, ricorda che i
+            comandi dentro (Prepara lotto, Invia selezionati/tutti, Annulla lotto, Prova email)
+            chiamano un canale che l'edge rifiuta con 410.
+          -->
 
           <section id="assessmentEmailHistoryPanel" class="assessment-email-panel" data-assessment-email-panel="history">
             <div class="assessment-email-panel-head">
@@ -7208,8 +7152,6 @@ body.assessment-public-mode .assessment-public-only-card {
           <div class="info-box" style="margin-top:12px; background:#f8fbff; border-left-color:var(--primary);">
             Controlli manuali Gmail da usare solo se vuoi anticipare la routine automatica o verificare un problema.
             <div class="assessment-toolbar" style="margin-top:10px;">
-              <button class="btn-secondary" onclick="setActionAnchor(this); assessmentEmailScanReplies()">Aggiorna risposte email</button>
-              <button class="btn-secondary" onclick="setActionAnchor(this); assessmentEmailScanBounces()">Controlla mancate consegne</button>
             </div>
           </div>
           <div class="row">
@@ -7995,7 +7937,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.217';
+    const APP_VERSION = '6.218';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15962,7 +15904,7 @@ Grazie.`
               <div class="member-source-line"><span>Conferma livello</span><strong>${escapeHtml(levelEmailText)}</strong></div>
               ${availabilitySource}
             </div>
-            <div class="actions" style="margin-top:10px;">${restoreLevelButton}<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(g.id))}')">${escapeHtml(levelEmailButton)}</button></div>
+            <div class="actions" style="margin-top:10px;">${restoreLevelButton}</div>
           </section>`
         : `<section class="member-panel">
             <div class="member-panel-head">
@@ -25438,7 +25380,6 @@ Grazie!`
         const confirmationSentAt = assessmentEmailLevelConfirmationSentAt(member, info?.response, info?.rec);
         if (assessmentEmailMemberApplied(member, info) && assessmentEmailHasValidEmail(member)) {
           const confirmationLabel = confirmationSentAt ? 'Reinvia conferma email' : 'Invia conferma email';
-          actions.push(`<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(member.id))}')">${confirmationLabel}</button>`);
         }
       }
       return actions.join('') || '<span class="muted">Nessuna azione</span>';
@@ -31210,7 +31151,7 @@ Per confermare scrivi ELIMINA.`);
         return false;
       }
     }
-    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'morning');
+    window.assessmentEmailActivePanel = window.assessmentEmailActivePanel || (assessmentMatchpointDemoEnabled() ? 'matchpoint' : 'history');
     window.assessmentEmailQueueSearch = window.assessmentEmailQueueSearch || '';
     window.assessmentEmailQueueSearchDraft = window.assessmentEmailQueueSearchDraft || '';
     window.assessmentEmailWhatsappModalState = window.assessmentEmailWhatsappModalState || { memberId:'', templateKey:'whatsapp-check', problemLabel:'' };
@@ -31624,7 +31565,7 @@ Per confermare scrivi ELIMINA.`);
       save('assessmentResponses', assessmentResponses);
       window.assessmentProcessFilter = 'matchpoint';
       displayAssessment();
-      setAssessmentEmailPanel('morning');
+      setAssessmentEmailPanel('history');
       showAlert(`Inserito su Matchpoint da ${operator}: ${playerFullName(member)}.`, 'success');
     }
     function assessmentEmailLevelConfirmationSentAt(member=null, response=null, rec=null) {
@@ -32836,9 +32777,9 @@ Per confermare scrivi ELIMINA.`);
       window.assessmentProcessTestMemberNotice = null;
     }
     function assessmentProcessStickyActiveFilter() {
-      const panel = window.assessmentEmailActivePanel || 'morning';
+      const panel = window.assessmentEmailActivePanel || 'history';
       if (panel === 'history') return 'storico';
-      if (panel === 'morning') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
+      if (panel === 'history') return assessmentProcessNormalizeFilter(window.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       return '';
     }
     function renderAssessmentProcessStickyFilters() {
@@ -33009,8 +32950,8 @@ Per confermare scrivi ELIMINA.`);
         return;
       }
       window.assessmentProcessFilter = normalized;
-      if ((window.assessmentEmailActivePanel || 'morning') !== 'morning') {
-        setAssessmentEmailPanel('morning');
+      if ((window.assessmentEmailActivePanel || 'history') !== 'history') {
+        setAssessmentEmailPanel('history');
         return;
       }
       renderAssessmentEmailPanels();
@@ -34391,18 +34332,18 @@ Per confermare scrivi ELIMINA.`);
         ${assessmentExcelImportTableHtml(rows)}
       </div>`;
     }
-    function setAssessmentEmailPanel(panel='morning') {
-      if (panel === 'excel-import' && !PMO_IS_TEST_ENV) panel = 'morning';
-      window.assessmentEmailActivePanel = panel || 'morning';
+    function setAssessmentEmailPanel(panel='history') {
+      if (panel === 'excel-import' && !PMO_IS_TEST_ENV) panel = 'history';
+      window.assessmentEmailActivePanel = panel || 'history';
       document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === window.assessmentEmailActivePanel));
       renderAssessmentEmailPanels();
       if (window.assessmentEmailActivePanel === 'history') assessmentExternalScheduleHistoryRefresh();
     }
     function assessmentEmailPanelFromAnchorKey(key) {
-      if (key.includes('cruscotto') || key.includes('mattutino')) return 'morning';
+      if (key.includes('cruscotto') || key.includes('mattutino')) return 'history';
       if (key.includes('da inviare')) return 'queue';
       if (key.includes('attesa') || key.includes('contattati')) return 'pending';
-      if (key.includes('problemi')) return 'morning';
+      if (key.includes('problemi')) return 'history';
       if (key.includes('post')) return 'post';
       if (key.includes('storico')) return 'history';
       if (key.includes('matchpoint')) return 'matchpoint';
@@ -34797,7 +34738,7 @@ Per confermare scrivi ELIMINA.`);
         const confirmation = assessmentEmailLevelConfirmationState(row);
         const canSendConfirmation = applied && !paused && assessmentEmailHasValidEmail(row.member);
         const confirmationAction = canSendConfirmation && !confirmation.sentAt
-          ? `<button class="assessment-email-mini success" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeJs(String(row.member.id))}')">Invia conferma email</button>`
+          ? ''
           : '';
         const restoreInfo = assessmentLatestAppliedLevelInfo(row.member);
         const restoreAction = assessmentMemberNeedsLevelRestore(row.member)
@@ -34917,7 +34858,7 @@ Per confermare scrivi ELIMINA.`);
       hydrateAssessmentCommunicationTemplateForm();
     }
     function renderAssessmentEmailPanels() {
-      if ((window.assessmentEmailActivePanel || '') === 'excel-import' && !PMO_IS_TEST_ENV) window.assessmentEmailActivePanel = 'morning';
+      if ((window.assessmentEmailActivePanel || '') === 'excel-import' && !PMO_IS_TEST_ENV) window.assessmentEmailActivePanel = 'history';
       renderAssessmentEmailKpis();
       renderAssessmentProcessStickyFilters();
       renderAssessmentEmailMorningPanel();
@@ -34929,7 +34870,7 @@ Per confermare scrivi ELIMINA.`);
       renderAssessmentEmailMatchpointPanel();
       renderAssessmentExcelImportPanel();
       renderAssessmentEmailTextsPanel();
-      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'morning')));
+      document.querySelectorAll('[data-assessment-email-panel]').forEach(el => el.classList.toggle('active', el.dataset.assessmentEmailPanel === (window.assessmentEmailActivePanel || 'history')));
     }
     function assessmentManualBatchRowsForSend(mode='selected', memberId='') {
       const batch = assessmentEmailTodayRoutineBatch();
@@ -34990,7 +34931,7 @@ Per confermare scrivi ELIMINA.`);
         assessmentManualBatchClearSelectionForRows(batch, rows.filter(row => sent.some(item => assessmentManualBatchMatchesAliases(row.item, row.member, item))));
         await assessmentEmailImportCloudLogs({ silent:true });
         displayAssessment();
-        setAssessmentEmailPanel('morning');
+        setAssessmentEmailPanel('history');
         showAlert(`Invio manuale completato: ${sent.length} email inviate${failed.length ? `, ${failed.length} errori` : ''}.`, failed.length ? 'warning' : 'success');
       } catch (err) {
         showAlert('Invio manuale non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare email dal lotto manuale'), 'danger');
@@ -35017,7 +34958,7 @@ Per confermare scrivi ELIMINA.`);
         assessmentEmailStoreRoutineBatch(result.batch);
         await assessmentEmailImportCloudLogs({ silent:true });
         displayAssessment();
-        setAssessmentEmailPanel('morning');
+        setAssessmentEmailPanel('history');
         const selected = Array.isArray(result.selected) ? result.selected.length : assessmentEmailRoutineBatchSelectedCount(result.batch);
         showAlert(selected ? `Lotto preparato: ${selected} email pronte. Scegli se inviare tutti, selezionati o una singola riga.` : 'Nessun socio pronto da inserire nel lotto di oggi.', selected ? 'success' : 'info');
       } catch (err) {
@@ -35047,7 +34988,7 @@ Per confermare scrivi ELIMINA.`);
         }
         await assessmentEmailImportCloudLogs({ silent:true });
         displayAssessment();
-        setAssessmentEmailPanel('morning');
+        setAssessmentEmailPanel('history');
         showAlert('Lotto annullato con successo.', 'success');
       } catch (err) {
         showAlert('Annullamento lotto non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'annullare il lotto email mattutino'), 'danger');
@@ -35070,7 +35011,7 @@ Per confermare scrivi ELIMINA.`);
         assessmentEmailStoreRoutineBatch(result.batch);
         await assessmentEmailImportCloudLogs({ silent:true });
         displayAssessment();
-        setAssessmentEmailPanel('morning');
+        setAssessmentEmailPanel('history');
         const sent = Array.isArray(result.sent) ? result.sent.length : 0;
         const failed = Array.isArray(result.failed) ? result.failed.length : 0;
         showAlert(`Invio completato: ${sent} email inviate${failed ? `, ${failed} errori` : ''}.`, failed ? 'warning' : 'success');
@@ -35976,7 +35917,7 @@ Per confermare scrivi ELIMINA.`);
         const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(member, info.response, info.rec);
         const responseActions = info.response
           ? (info.applied
-            ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(member.id))}')">${levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>`
+            ? ''
             : (hasAvailabilityProfile(availabilityProfile)
               ? `<button class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentOpenMemberValidation('${escapeHtml(String(member.id))}')">Valida livello</button>`
               : `<span class="badge badge-warning">Disponibilità mancanti</span><button class="btn-primary small-btn" onclick="setActionAnchor(this); assessmentOpenMemberValidation('${escapeHtml(String(member.id))}')">Valida livello</button>`))
@@ -36533,7 +36474,7 @@ Per confermare scrivi ELIMINA.`);
         const responseText = info.response ? `Risposta: dichiarato ${escapeHtml(info.response.declared_level || '-')} · calcolato ${escapeHtml(info.response.calculated_level || '-')} · coerenza ${escapeHtml(info.response.consistency_status || '-')}` : 'Risposta assente';
         const levelEmailSentAt = assessmentEmailLevelConfirmationSentAt(member, info.response, info.rec);
         const notificationText = levelEmailSentAt ? `Conferma email inviata: ${escapeHtml(assessmentEmailFormatDateTime(levelEmailSentAt))}` : 'Conferma livello via email: da inviare';
-        const notifyButton = hasAppliedHistory && assessmentEmailHasValidEmail(member) ? `<button class="btn-success small-btn" onclick="setActionAnchor(this); assessmentEmailSendLevelConfirmation('${escapeHtml(String(member.id))}')">${levelEmailSentAt ? 'Reinvia conferma email' : 'Invia conferma email'}</button>` : '';
+        const notifyButton = '';
         const memberKey = escapeHtml(String(member.id));
         const meta = `ID: ${escapeHtml(member.memberId || member.id || '')} · liv. ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}`;
         const responseSummary = [sentText, responseText, hasAppliedHistory ? notificationText : ''].filter(Boolean).join('<br>');
