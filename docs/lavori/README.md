@@ -2,8 +2,9 @@
 
 **Fotografia del 14/08/2026, 13ª sessione.** Misurata, non ricordata.
 
-🔴 **Le urgenti sono a ZERO** per la prima volta da quando esiste questa lista. Non perché non ci sia
-lavoro — in coda ce ne sono **17** — ma perché le due che c'erano sono state chiuse in giornata.
+🔴 **Le urgenti sono state a ZERO per un'ora**, per la prima volta da quando esiste questa lista —
+la 22 e la 32 chiuse in giornata. Poi la voce **33** ha trovato la **35**, e lui l'ha promossa: è
+l'unica cosa emersa oggi che sia esposta **adesso** e su **produzione**.
 🚨 La prossima sessione **non promuove da sé**: propone, e decide lui.
 
 🔎 **La 13ª sessione ha misurato prima di eseguire, e la misura ha smentito la scheda — due volte.**
@@ -46,8 +47,8 @@ entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **17** |
+| 🔴 **Urgenti** | **1** |
+| 📋 **In coda** | **16** |
 | 📦 **Chiuse** | **11** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `908c5d2`,
@@ -85,17 +86,33 @@ ma la regola dell'adiacenza non regge più come indicatore.
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
 
-**Vuota.** La 22 e la 32 sono state chiuse il 14/08. 🚨 Non promuovere da sé: si **propone**, decide lui.
+### 🔓 35. Due tabelle di PROD sono **senza RLS**, e `anon` ci può scrivere
+*Nata il 14/08 misurando la voce 33, **promossa da lui** lo stesso giorno.* Non è un sospetto: sono i **due soli `ERROR`** del linter di Supabase su PROD (`rls_disabled_in_public`).
+
+| tabella | righe | RLS | permessi ad `anon` |
+|---|---|---|---|
+| `pmo_bkp_ospite_20260809` | **699** | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
+| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
+
+🚨 Stanno in `public`, che la Data API espone: con la chiave pubblicabile — che sta nel `config.js` ed **è pubblica per definizione** — quelle 699 righe si leggono e si cancellano.
+
+⚖️ **Sono le copie di sicurezza del lavoro «Ospite» del 9/08**, lo stesso in cui «elimina tutto» avrebbe buttato **€ 7.937** di incassi. La rete messa sotto a quel lavoro è oggi l'unica cosa scoperta del progetto. Le sorelle dello stesso giorno (`_pmo_riassegnazione_*`) l'RLS ce l'hanno.
+
+🎯 **La causa è nota**: l'event trigger **`ensure_rls`**, che accende l'RLS da sola su ogni tabella nuova, esiste **solo su TEST**. La rete di sicurezza sta dalla parte sbagliata.
+
+**Da fare, nell'ordine:** ① accendere l'RLS sulle due tabelle (`alter table … enable row level security`) — una riga, reversibile, e senza policy nessuno le vede più dall'API mentre `service_role` continua a leggerle → ② verificare che i due `ERROR` del linter siano spariti → ③ decidere se mettere **`ensure_rls` anche su PROD**, che è la cura vera: senza, la prossima tabella nasce di nuovo scoperta.
+
+⚠️ **È una modifica alla PRODUZIONE**: prima di accendere si controlla che nessuno legga quelle due tabelle dall'API — sono copie datate, non dovrebbe leggerle nessuno, ma è il rito. 🔗 Dettagli in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md).
 
 ---
 
-## 📋 IN CODA — 17
+## 📋 IN CODA — 16
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 12
+### C — Cose sapute e non risolte — 11
 
 #### 🔒 27. Il test del livello si corregge NEL BROWSER — punti 2 e 3
 **Approvati da lui il 12/08 e non fatti.** Non è una voce nuova: è **il resto di una cosa già decisa**.
@@ -145,22 +162,6 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 
 #### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
 *Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
-
-#### 🔓 35. Due tabelle di PROD sono **senza RLS**, e `anon` ci può scrivere
-*Nata il 14/08 misurando la voce 33.* Non è un sospetto: sono i **due soli `ERROR`** del linter di Supabase su PROD (`rls_disabled_in_public`).
-
-| tabella | righe | RLS | permessi ad `anon` |
-|---|---|---|---|
-| `pmo_bkp_ospite_20260809` | **699** | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
-| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
-
-🚨 Stanno in `public`, che la Data API espone: con la chiave pubblicabile — che sta nel `config.js` ed **è pubblica per definizione** — quelle 699 righe si leggono e si cancellano.
-
-⚖️ **Sono le copie di sicurezza del lavoro «Ospite» del 9/08**, lo stesso in cui «elimina tutto» avrebbe buttato **€ 7.937** di incassi. La rete messa sotto a quel lavoro è oggi l'unica cosa scoperta del progetto. Le sorelle dello stesso giorno (`_pmo_riassegnazione_*`) l'RLS ce l'hanno.
-
-🎯 **La causa è nota**: l'event trigger **`ensure_rls`**, che accende l'RLS da sola su ogni tabella nuova, esiste **solo su TEST**. La rete di sicurezza sta dalla parte sbagliata.
-
-📌 Rimedio piccolo (`alter table … enable row level security`, reversibile) ma è **una modifica a PROD** ⇒ **la decide lui**. Da valutare insieme se mettere `ensure_rls` anche su PROD, che è la cura vera. 🔗 Dettagli in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md).
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 5
 
