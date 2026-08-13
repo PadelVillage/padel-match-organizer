@@ -6,10 +6,19 @@
 aperte**. Tutto il resto — i cron e il blocco «verificato sul bersaglio» — è la misura della 12ª
 sessione e **non è stato ricontrollato**.
 
+⬆️ **Promozione del committente, 13/08:** la **voce 30** (`docs/` non ha un guardiano) sale dalla
+coda alle **urgenti**. ⇒ urgenti 1→**2**, coda 16→**15**.
+
+🔢 **Conteggi rifatti a mano nella stessa occasione, e non tornavano:** la sezione **C** ne
+dichiarava 11 con 12 voci dentro, la **D** ne dichiarava 5 con 4 righe. I due errori si
+**annullavano**, quindi il totale 16 era giusto e nessuno se n'era accorto. Ora C=11, D=4, totale 15
+— contati riga per riga. 📌 È il caso di scuola della voce 30: *due numeri sbagliati che sommano
+al numero giusto* non li prende nessuna guardia di parità fra rami, solo un controllo contro la misura.
+
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
-| 📋 **In coda** | **16** |
+| 🔴 **Urgenti** | **2** |
+| 📋 **In coda** | **15** |
 | 📦 **Chiuse** | ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `49e298f`,
@@ -36,7 +45,7 @@ ma la regola dell'adiacenza non regge più come indicatore.
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 2
 
 ### 🧹 22. Ripulire le righe di prova su TEST
 Promossa da lui l'11/08. **Non toccata il 13/08.** Nessuna fa danno: sono **rumore che sporca le prove future**.
@@ -52,9 +61,23 @@ Promossa da lui l'11/08. **Non toccata il 13/08.** Nessuna fa danno: sono **rumo
 - 🚨 **Il rito**: prima di togliere si **misura cosa punta a quella riga** e lo si dice — lezione dell'Ospite, dove «elimina tutto» avrebbe buttato **€ 7.937** di incassi.
 - ⚖️ **Si tocca solo TEST.** Se una di queste risultasse anche su PROD, ci si **ferma** e si chiede: là non è rumore di prova, è un dato del circolo.
 
+### 🚨 30. `docs/` non ha un guardiano
+*Nata il 13/08 in coda, **promossa dal committente il 13/08 stesso**.* `guard-worker-sync` protegge `server.mjs`, `.github/workflows/**` e `CLAUDE.md`. La documentazione no — ed è per questo che tre registri hanno mentito per tre mesi mentre uno si dichiarava «fonte rapida ufficiale» e chiedeva di credergli **contro** i prompt.
+
+Le due strade, da scegliere — **non sono alternative equivalenti**:
+
+| | cosa fa | costo | limite |
+|---|---|---|---|
+| **estendere `guard-worker-sync` a `docs/`** | i due rami non possono divergere sulla documentazione | quasi nullo: una riga nella lista già esistente | 🚨 garantisce che le **due copie siano uguali**, non che dicano il **vero**: due registri identici e sbagliati passerebbero |
+| **controllo periodico contro la misura** | confronta ciò che i documenti **dichiarano** con `APP_VERSION`, sha e PR reali | va scritto | coglie proprio ciò che sfugge all'altro: la **menzogna concorde** |
+
+- ⚖️ Servono **entrambe** per coprire le due forme del guasto, ma la prima è quasi gratis e va per prima.
+- 📌 Il caso vero visto il 13/08: gli sha in cima al file erano vecchi di due commit **poche ore** dopo essere stati scritti — e nessuna guardia lo avrebbe detto. Un file che cita il proprio sha è vecchio nel momento in cui viene salvato: inseguirlo a mano **non converge**, motivo per cui la seconda strada è un controllo, non un aggiornamento.
+- ⚠️ Vale anche per **questo** file: è ora la fonte delle priorità e non è protetto da nulla.
+
 ---
 
-## 📋 IN CODA — 16
+## 📋 IN CODA — 15
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
@@ -102,14 +125,10 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 *Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
 🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
 
-#### 🚨 30. `docs/` non ha un guardiano
-*Nata il 13/08.* `guard-worker-sync` protegge `server.mjs`, `.github/workflows/**` e `CLAUDE.md`. La documentazione no — ed è per questo che tre registri hanno mentito per tre mesi mentre uno si dichiarava «fonte rapida ufficiale» e chiedeva di credergli **contro** i prompt.
-Da decidere: estendere la guardia, o un controllo periodico che confronti `APP_VERSION` con quello che i documenti dichiarano.
-
 #### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
 *Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
 
-### D — Corpose: solo se si vogliono ATTIVARE — 5
+### D — Corpose: solo se si vogliono ATTIVARE — 4
 
 | # | cosa |
 |---|---|
