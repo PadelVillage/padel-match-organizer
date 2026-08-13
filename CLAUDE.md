@@ -87,6 +87,28 @@ prova senza toccare la produzione; la copia su TEST nasce disarmata.
 contro 2774 al 19/07), perché entrambi sincronizzano dallo stesso Matchpoint. Spostarsi su
 TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
 
+🧊 **E il CALENDARIO di TEST è una FOTOGRAFIA, non un dato vivo — per scelta, dal 14/08/2026.**
+Le prenotazioni (`booking`, `booking_occupancy`, `booking_history`) su `cudi…` **non le aggiorna
+nessun cron**, e non è mai successo: le righe `data_routine_dispatch_bookings_live_*` sono **0** in
+tutta la storia di quel database, contro **1575** su `qqbf…`. Quello che c'è è l'ultimo import
+lanciato **a mano** — al 14/08 fermo al **7 agosto**. L'anagrafica invece è viva
+(`anagrafica-mirror`, 05:00) e i pagamenti pure: **è solo il calendario a essere fermo**, ed è
+esattamente ciò che rende l'inganno credibile.
+
+🚨 **Non provare su TEST nulla che dipenda da prenotazioni aggiornate**: una disdetta non arriva, un
+giocatore tolto non sparisce, una partita nuova del circolo non compare. La prova non fallisce —
+**riesce mostrando il passato**, che è peggio. Ha già prodotto due danni: la voce 26 aperta come
+guasto del bot quando il bot era sano, e il 14/08 una scheda che chiamava «riga di prova» una
+partita vera del circolo, a un passo dal farla cancellare.
+
+⚖️ **Perché congelato e non riacceso.** Il motore c'è (`matchpoint-bookings-sync` è ACTIVE anche su
+TEST) e riaccenderlo costerebbe poco — la funzione lì è quella a slot fissi, ~12 dispatch al giorno
+contro i ~720 di PROD sul **worker condiviso**. Non si è fatto perché accendere quel dispatcher
+resuscita anche i **6 sync clienti** ritirati il 3/08, e la prima giornata va guardata nei log del
+worker su Hetzner. ⇒ È un lavoro **dal Mac**, in coda come voce **A-lite**, non una riga di SQL.
+📌 Se un domani si riaccende: **non** copiare la funzione di PROD, che è quella *continua*. Su TEST
+cinque rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è la parità a costare.
+
 Anche il **bot Telegram non ha anteprima né sandbox**: è **un solo processo** sulla VM, e per
 provarlo si sposta il suo `.env` fra TEST e PROD. 🚨⭐⭐ **Le righe sono TRE, non due**:
 `PMO_FUNCTIONS_URL`, `CONSUMER_BRIDGE_SECRET_FILE` e **`PMO_PRENOTAZIONI_SIMULA=1`** — e la terza
