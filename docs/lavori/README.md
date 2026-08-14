@@ -157,8 +157,11 @@ Tre innesti su un ponte solo, con **due porte**: il socio apre col GETTONE, lo s
 SESSIONE (l'anteprima del gestionale). 🚨 Non è simmetria — un `valuta` aperto sarebbe stato
 peggio del punto di partenza: 4 domande da 4 opzioni fanno **256 tentativi**, e un oracolo le
 svela in pochi secondi.
-✅ **PROVATA DAL VIVO su TEST**, alla terza pubblicazione (6.223 → 6.225): le prime due erano
-rotte, e le ha smascherate la prova di lui, non le mie 14 suite verdi.
+✅ **PROVATA DAL VIVO su TEST**, alla SESTA pubblicazione (6.223 → 6.228). Cinque guasti, tutti
+miei, tutti emersi perché ha provato lui: dichiarazione doppia, colonne solo-PROD, funzione
+spostata senza il suo albero, stringa vuota in colonna numerica, fascia senza parsing.
+🎯 Catena completa verde: `consegna` → **`pass`**, quiz **4/4**, riga scritta con
+`corretta_dal_server: true`, `balanced_level` vuoto salvato come **`null`**, gettone `completed`.
 🔧 Il modo, visto che la rete della sessione cloud nega le chiamate dirette a `*.supabase.co`
 (403 sul CONNECT): si chiama l'edge **dal database** con `pg_net`, che dall'interno ci arriva.
 Le risposte vere, lette in `net._http_response`:
@@ -236,6 +239,10 @@ Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
   `self_assessments.email`, `consistency_score`, `inconsistency_reasons`, `review_note` **ci
   sono su PROD e non su TEST**. Nessuno le aveva mai confrontate. ⚠️ Le altre tabelle **non
   sono state guardate**: questa è una campionatura di due, non una misura.
+- 📡 **Il gestionale di TEST chiama `wa-shadow-proxy` una volta al minuto e prende 404**: la
+  funzione sta nel repo ma **non è mai stata deployata su `cudi…`**. **612 chiamate a vuoto in
+  24 ore**, dal 13/08. Non rompe niente di visibile, ed è per questo che nessuno se n'era
+  accorto. ⚠️ Non guardato se su PROD c'è.
 - 🧟 **Il riquadro «prova il test» del gestionale non esiste più**: `0` occorrenze di
   `id="assessmentExternalKnowledgeBlock"` anche su `main`, da prima di questo lavoro — tolto il
   13/08 con la #677. Le tre funzioni che lo servivano sono rimaste: sono **voce 28** in piena
@@ -396,6 +403,35 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > diagnosi è arrivata in un minuto **dai log di Supabase**, non dallo schermo. ⇒ Da lì in poi
 > gli errori del database finiscono in `console.error`: al socio una frase comprensibile, a chi
 > indaga il motivo vero.
+>
+> **CINQUE guasti, e li ha trovati tutti LUI provando.** *(14/08, voce 27 passo 3)* L'edge è
+> stata pubblicata su TEST **sei volte** (6.223→6.228) prima di funzionare. I guasti, in ordine:
+> ① dichiarazione doppia ⇒ non faceva il boot; ② colonne che esistono solo su PROD ⇒ 500;
+> ③ funzione spostata senza il suo albero (`cleanCell`) ⇒ moriva la consegna; ④ stringa vuota
+> in colonna `numeric` ⇒ la scheda non si salvava per un campo secondario; ⑤ la fascia ricavata
+> senza il parsing dell'app ⇒ **`skip` silenzioso**, il socio rispondeva a tutto e finiva in
+> segreteria senza che nessuno vedesse un errore.
+> ⭐⭐ Il filo che li lega tutti e cinque: **il mio banco constatava, non eseguiva**. Girava come
+> script invece che come modulo, esercitava solo il quiz e mai il calcolo del livello, e usava
+> la forma del dato che immaginavo io invece di quella che manda il modulo. Ogni volta era
+> verde, e ogni volta era il committente ad aprire l'app e vedere il rosso. ⇒ Non è «poca
+> attenzione»: è che **una funzione mai chiamata non rivela le sue dipendenze mancanti**, e un
+> ramo mai percorso non rivela niente di sé.
+> 📌 Il rimedio è nel repo, non in questa riga: `test/assessment-quiz.test.mjs` ora ESEGUE il
+> calcolo, analizza il blocco come modulo, prova il vuoto e prova le due forme del livello —
+> ognuna con il suo controllo negativo.
+>
+> **Un errore che non si sa leggere costa più del guasto.** *(14/08)* Un'eccezione non catturata
+> la risponde il runtime, non la funzione: 500 **senza CORS** ⇒ il browser dice «Failed to
+> fetch», che è il nulla. Tre giri di prove per arrivare a un `ReferenceError` che il server
+> conosceva dal primo istante. ⇒ Rete sotto tutto, e il motivo vero nel log: il quarto e il
+> quinto guasto sono stati diagnosticati **in un minuto** invece che in un'ora.
+>
+> **Chi non può aprire l'app può ancora bussare dal database.** *(14/08)* La rete della sessione
+> cloud nega le chiamate a `*.supabase.co`, ma `pg_net` parte da dentro Postgres e ci arriva.
+> ⇒ Da qui in poi un'edge si prova **senza aspettare una persona**: `net.http_post` e la
+> risposta in `net._http_response`. È ciò che ha chiuso gli ultimi tre guasti senza fargli
+> ricaricare la pagina sei volte.
 >
 > **Togliere una riga di una terna sporca più che pulire.** *(14/08)* Il «socio di prova» erano
 > **tre** righe legate — token `completed`, scheda `applied`, marcatore «già segnalato». Togliere
