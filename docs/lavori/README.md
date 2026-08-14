@@ -148,16 +148,24 @@ coltello dalla parte del manico — bastava dichiarare «zero domande» per otte
 più**» e «nessun `correct` verso il telefono») e la rete di regressione storica, **ripuntata
 sull'edge**, 15 prove verdi sul sorgente vero.
 
-**⏳ RESTANO il passo 3 e il passo 4**, e in quest'ordine:
-- **3.** l'app deve smettere di pescare e correggere: togliere da `index.html` la banca e le
-  quattro funzioni (~460 righe), sostituire `assessKnowledgeFasciaFor` con una costante senza
-  risposte, e rifare le **tre** chiamate — il pesca (riga ~36745), la consegna del socio (~37751)
-  e l'anteprima staff (~24985). 🚨 Finché non si fa, **il buco è aperto**: l'edge c'è ma nessuno
-  la chiama, e la banca è ancora nel sorgente pubblico.
-- **4.** le 3 policy, **solo dopo** che il 3 è vivo e verificato sul vero.
-⚠️ Il passo 3 va visto girare prima di promuoverlo: tocca la scheda che compilano i soci, e da
-sessione cloud non si apre l'app. Va provato su **TEST** (push su `test-preview`, che è subito
-live) prima di andare su `main`.
+**✅ Fatto anche il passo 3, e messo su TEST — `test-preview` 6.223, con la sua conferma.**
+Via da `index.html` ~515 righe: la banca, le quattro funzioni che la usavano, il calcolo del
+livello rimasto senza chiamanti (tolto, non lasciato morto come le ~60 della voce 28) e — la
+riga che rendeva vero il buco — il **POST diretto su `/rest/v1/self_assessments`** con la sola
+chiave pubblicabile. ✅ Misurato dopo: `grep -c 'correct:[0-9]' index.html` → **0**.
+Tre innesti su un ponte solo, con **due porte**: il socio apre col GETTONE, lo staff con la
+SESSIONE (l'anteprima del gestionale). 🚨 Non è simmetria — un `valuta` aperto sarebbe stato
+peggio del punto di partenza: 4 domande da 4 opzioni fanno **256 tentativi**, e un oracolo le
+svela in pochi secondi.
+✅ 14 suite su 14 verdi, `controlla-sintassi` compreso; l'edge risulta **ACTIVE su `cudi…`**.
+⚠️ **Non provata via HTTP**: la politica di rete della sessione cloud nega le chiamate dirette
+a `*.supabase.co` (403 sul CONNECT). La logica è provata sul sorgente vero, la **strada** no.
+
+**⏳ RESTA il passo 4**, e solo dopo la prova sul vero: le 3 policy di INSERT anonimo su
+`self_assessments`. 🚨 Toglierle prima che il 3 sia stato **visto funzionare** lascerebbe 2.276
+soci senza la possibilità di fare il test — e col muro acceso, senza organizzare.
+📌 Da provare aprendo `https://test.padelvillage.club/?t=<gettone>` con un gettone `created` di
+`cudi…`: la scheda scrive **su TEST** e brucia il gettone, che è esattamente ciò che deve fare.
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
