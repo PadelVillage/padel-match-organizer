@@ -63,22 +63,65 @@ jobs:
         run: |
           set -euo pipefail
           GUARDED="tools/matchpoint-browser-worker/src/server.mjs .github/workflows CLAUDE.md docs"
-          git fetch -q origin main test-preview
 
-          DRIFT=''
-          for path in $GUARDED; do
-            if git diff --quiet origin/main origin/test-preview -- "$path"; then
-              echo "✅ $path — identico"
-            else
-              echo "::error::DRIFT: $path differisce tra main e test-preview."
-              DRIFT="$DRIFT $path"
+          # ⏳ LA GUARDIA È PAZIENTE — 14/08/2026, e il motivo va letto prima di toglierlo.
+          #
+          # Un lavoro che tocca file sorvegliati arriva sui due rami con DUE spinte distinte: il
+          # merge su main e il riallineo di test-preview. Fra le due i rami sono legittimamente
+          # diversi, e questo guard li confronta NEL MOMENTO IN CUI GIRA — quindi la corsa
+          # innescata dalla prima spinta trova l'altro ramo indietro e fallisce, pur non essendoci
+          # nessun drift da fermare.
+          #
+          # 📏 Misurato il 14/08: stessa identica procedura, tre volte, esiti diversi — #694 verde
+          # perché il riallineo era atterrato prima che il checkout leggesse i ref, #695 e #696
+          # rosse perché no. Cioè il verde e il rosso li decideva la latenza di GitHub.
+          #
+          # ⇒ Alla prima divergenza NON si fallisce: si aspetta, si rileggono i ref e si
+          # ricontrolla. Si fallisce solo se il drift PERSISTE.
+          #
+          # 🚨 Non è un indebolimento, ed è il punto: un drift vero resta rosso identico, con 90
+          # secondi di ritardo. Quello che sparisce è il falso allarme — e una guardia che ha
+          # torto ogni tanto è una guardia che si smette di leggere, che è il modo silenzioso di
+          # perdere una protezione senza averla tolta.
+          ATTESA=90
+
+          controlla() {
+            DRIFT=''
+            for path in $GUARDED; do
+              if git diff --quiet origin/main origin/test-preview -- "$path"; then
+                [ "${1:-}" = "zitto" ] || echo "✅ $path — identico"
+              else
+                DRIFT="$DRIFT $path"
+              fi
+            done
+          }
+
+          git fetch -q origin main test-preview
+          controlla zitto
+
+          if [ -n "$DRIFT" ]; then
+            echo "::notice::Divergenza al primo colpo su:$DRIFT"
+            echo "Potrebbe essere la finestra fra il merge su main e il riallineo di test-preview,"
+            echo "che dura secondi ed è normale. Aspetto ${ATTESA}s e ricontrollo prima di decidere."
+            sleep "$ATTESA"
+            git fetch -q origin main test-preview
+            controlla zitto
+            if [ -z "$DRIFT" ]; then
+              echo "::warning::Era la finestra di transizione: dopo ${ATTESA}s i rami sono allineati."
+              echo "Nessun drift da fermare. 📌 Spingere PRIMA test-preview e POI il merge riduce"
+              echo "questi casi (punto 4bis di CLAUDE.md)."
             fi
-          done
+          fi
 
           if [ -z "$DRIFT" ]; then
+            for path in $GUARDED; do echo "✅ $path — identico"; done
             echo "Nessun drift tra i due rami."
             exit 0
           fi
+
+          for path in $DRIFT; do
+            echo "::error::DRIFT: $path differisce tra main e test-preview, e dopo ${ATTESA}s ancora."
+          done
 
           echo "----- diffstat (main vs test-preview) -----"
           git --no-pager diff --stat origin/main origin/test-preview -- $DRIFT || true

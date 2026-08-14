@@ -135,9 +135,29 @@ Per evitarlo, SEMPRE:
    (porterebbe in PROD scaffolding di test e modifiche non destinate alla prod). Niente codice gated
    `PMO_IS_TEST_ENV` in PROD. Bumpa `APP_VERSION` così il deploy è verificabile dal vivo.
 4. Le PR verso `main` passano da `guard-main-prs.yml` (≤15 file, niente cancellazioni, mai dal branch `test-preview`).
+4bis. 🔀 **ORDINE: prima `test-preview`, POI il merge su `main`.** *(14/08/2026)* Quando un lavoro
+   tocca file sorvegliati — `docs/`, workflow, `CLAUDE.md`, `server.mjs` — i due rami restano
+   diversi per il tempo che passa fra le due spinte, e `guard-worker-sync` confronta i rami **nel
+   momento in cui gira**: chi arriva secondo trova l'altro indietro. Non è l'ordine a creare il
+   problema, è una **corsa** — ma spingendo prima `test-preview` la rossa transitoria, quando
+   capita, cade **là e non su `main`**, che è il ramo predefinito e quello che deve sembrare
+   affidabile a colpo d'occhio.
+   📌 Misurato il 14/08: stessa procedura, tre volte, esiti diversi — la #694 verde perché il
+   riallineo era atterrato in tempo, la #695 e la #696 rosse perché no.
+   ⚖️ La corsa è tolta **davvero** dal punto ⑥ qui sotto; questo punto è la metà cosmetica, e
+   serve lo stesso: le due si sommano, non si sostituiscono.
 5. **Anche `.github/workflows/**` e questo `CLAUDE.md` devono essere IDENTICI sui due rami.** Un fix
    alla CI fatto solo su `main` non protegge `test-preview`, da cui scatta `deploy-edge-functions-test.yml`
    (successo il 19/07: la lista `VERIFY_JWT_FUNCTIONS` della #538 stava solo su `main`).
+
+6. ⏳ **La guardia è PAZIENTE, di proposito.** *(14/08/2026)* Alla prima divergenza
+   `guard-worker-sync` **non fallisce**: aspetta 90 secondi, rilegge i ref e ricontrolla. Fallisce
+   solo se il drift **persiste**. Serve a distinguere le due cose che prima si confondevano — la
+   **finestra di transizione** fra il merge e il riallineo, che dura secondi ed è normale, e il
+   **drift vero**, che è quello da fermare. 🚨 Non è un indebolimento: un drift reale resta rosso
+   identico, con 90 secondi di ritardo. È una guardia che prima **sapeva solo urlare**, e urlava
+   anche quando aveva torto — e una guardia che ha torto ogni tanto è una guardia che si smette
+   di leggere, che è esattamente come si perde una protezione senza toglierla.
 
 → I punti 2 e 5 sono garantiti da **`guard-worker-sync.yml`**, che fallisce se i rami divergono
 su worker, workflow, istruzioni **o `docs/`**. Ha anche un backstop giornaliero alle 06:00 UTC.
