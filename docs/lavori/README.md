@@ -37,8 +37,8 @@ causa invece del rischio.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **14** |
+| 🔴 **Urgenti** | **4** |
+| 📋 **In coda** | **13** |
 | 📦 **Chiuse** | **15** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.220** · TEST **6.230** · `main` `fb1fddf`, `test-preview`
@@ -108,22 +108,82 @@ storia dello sviluppo, **non toccate**.
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 4
 
-**Vuota**, per la prima volta da quando questa lista esiste. La 35 — l'ultima rimasta — è stata
-misurata, confermata punto per punto e **chiusa il 14/08 nella 14ª sessione**, con la sua conferma
-esplicita perché toccava la produzione.
+**Promosse dal committente il 14/08/2026, 16ª sessione**, dopo che la lista era rimasta vuota per
+la prima volta da quando esiste. Tre nascono dalle note «🆕 nate misurando» e una — la **23** —
+sale dalla coda. Proposte a misura fatta, scelte da lui: quattro su quattro.
 
-🚨 **Vuota non vuol dire che non c'è lavoro**: la coda ha 16 voci e nessuna si promuove da sé.
-Le promozioni le decide il committente — si propongono, non si eseguono.
+### 37. 🔓 Le policy di scrittura anonima rimaste — 4 su PROD, 7 su TEST
+*Nata come nota il 12/08, misurata e promossa il 14/08.* È la domanda che la 15ª sessione ha
+lasciato aperta: non «quella porta è chiusa bene», ma **quante ne esistono di quel tipo**.
+
+**Misurato il 14/08 su `pg_policies`, non ricordato:**
+
+| tabella | PROD `qqbf…` | TEST `cudi…` |
+|---|---|---|
+| `pmo_ai_turns` | INSERT (`anon`,`authenticated`) | idem |
+| `pmo_parser_errors` | INSERT (`anon`,`authenticated`) | idem |
+| `post_match_feedback_responses` | INSERT **e UPDATE** | idem |
+| `pmo_bookings` | — | **`ALL`** (`anon`) — legge **e scrive** |
+| `pmo_parse_history` | — | **`ALL`** (`anon`) |
+| `pmo_parser_rules_versions` | — | **`ALL`** (`anon`) |
+
+⚠️ **La nota del 12/08 diceva «tre tabelle accettano inserimenti anonimi»**: le tabelle sono tre,
+ma le policy sono **quattro**, e la quarta è un **UPDATE** che nessuno aveva nominato. È la stessa
+forma della voce 27, dove le «tre policy» erano quattro — la terza volta di fila.
+✅ Su `self_assessments` e `assessment_tokens` non resta nulla: il passo 4 della 27 ha tenuto.
+
+🚨 **Queste tabelle servono a qualcuno**, e non è come le due della voce 35 (scoperte, morte, zero
+riferimenti). Il parser ci scrive i suoi errori, il feedback post-partita arriva dal socio **senza
+login**: togliere la policy sbagliata spegne una funzione viva e non se ne accorge nessuno finché
+non serve. ⇒ Prima il rito «chi punta a questa riga», tabella per tabella; poi la revoca; e la
+prova d'attacco **prima e dopo**, col suo controllo negativo.
+
+### 38. 📡 `wa-shadow-proxy` — 623 chiamate a vuoto al giorno, **anche in PRODUZIONE**
+*Nata come nota il 14/08 (14ª sessione), misurata e promossa il 14/08 (16ª).* La nota diceva «il
+gestionale di **TEST** chiama `wa-shadow-proxy` una volta al minuto e prende 404» e chiudeva con
+«⚠️ non guardato se su PROD c'è». **Guardato:**
+
+| | TEST `cudi…` | PROD `qqbf…` |
+|---|---|---|
+| funzione deployata | ❌ no | ❌ **no** |
+| 404 in 24 ore | **619** | **623** |
+
+Uno al minuto, su **entrambi**, ininterrottamente (TEST: 13/08 17:42 → 14/08 17:31). Il sorgente è
+in repo (`supabase/functions/wa-shadow-proxy/index.ts`), il chiamante è il pannello WhatsApp dello
+staff (`index.html:37979`, polling 60s) — cioè un canale **dismesso il 25/07**. ⇒ Non è una svista
+di TEST: è la **stessa famiglia delle voci 28 e 29**, il pannello è andato via e chi lo serviva no.
+
+⚠️ **La prima sonda ha detto `0`, e si sbagliava.** Cercava in `edge_logs`; le invocazioni delle
+edge stanno in **`function_edge_logs`**. Stava per uscirne un «il traffico è cessato» che avrebbe
+chiuso la voce con una misura falsa. L'ha salvata il controllo negativo — chiedere alla sonda se
+sa trovare *qualcosa* (7398 righe) prima di credere a uno zero.
+
+### 39. 🔀 Le TABELLE dei due progetti divergono — censimento, non campionatura
+*Nata come nota il 14/08 (14ª sessione), promossa il 14/08 (16ª).* Finora confrontate **due**
+tabelle su decine, ed **entrambe divergevano**: `assessment_tokens.member_email` e
+`self_assessments.email`/`consistency_score`/`inconsistency_reasons`/`review_note` ci sono su PROD
+e non su TEST. È la causa che il 14/08 è costata un pomeriggio — *«guardare un solo database è
+scrivere metà query»* — ed è **un piano sotto la voce 33**, che censì le funzioni SQL e non le
+tabelle. ⚖️ Lavoro di **sola lettura**: produce un documento come `divergenze-sql-test-prod.md`,
+non tocca niente. Il valore non è la lista: è smettere di scoprire le divergenze **una alla volta,
+in produzione, quando una edge risponde 500**.
+
+### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
+*Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
+Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e
+gli esiti sono **tre**.
+⚠️ **Metà del lavoro non si fa dal cloud**: la correzione è nell'app, ma provarla davvero vuole i
+log del worker su **Hetzner**. Dal cloud si arriva alla diagnosi e alla patch, non alla prova.
 
 ---
 
-## 📋 IN CODA — 14
+## 📋 IN CODA — 13
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 9
+### C — Cose sapute e non risolte — 8
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
@@ -136,9 +196,6 @@ Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore
 
 #### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
 Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
-
-#### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
-La creazione manda il lavoro al worker e **non controlla l'esito**. Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e gli esiti sono **tre**.
 
 #### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
 Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
@@ -175,6 +232,7 @@ Misurando il **12/08**:
 
 - 🔓 Su **TEST** ci sono policy `ALL` (lettura **e scrittura**) per anonimo su `pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`. Su PROD no.
 - 🔓 Su PROD altre **tre tabelle** accettano inserimenti anonimi (`pmo_ai_turns`, `pmo_parser_errors`, `post_match_feedback_responses`): non guardate.
+  ⬆️ **Entrambe promosse da lui il 14/08: sono la voce 37**, dove sono anche rimisurate — le policy su PROD sono **quattro**, non tre, e una è un `UPDATE`.
 
 Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
 
@@ -183,10 +241,13 @@ Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
   `self_assessments.email`, `consistency_score`, `inconsistency_reasons`, `review_note` **ci
   sono su PROD e non su TEST**. Nessuno le aveva mai confrontate. ⚠️ Le altre tabelle **non
   sono state guardate**: questa è una campionatura di due, non una misura.
+  ⬆️ **Promossa da lui il 14/08: è la voce 39.**
 - 📡 **Il gestionale di TEST chiama `wa-shadow-proxy` una volta al minuto e prende 404**: la
   funzione sta nel repo ma **non è mai stata deployata su `cudi…`**. **612 chiamate a vuoto in
   24 ore**, dal 13/08. Non rompe niente di visibile, ed è per questo che nessuno se n'era
   accorto. ⚠️ Non guardato se su PROD c'è.
+  ⬆️ **Promossa da lui il 14/08: è la voce 38** — e guardato: **su PROD è uguale**, 623 chiamate
+  a vuoto in 24 ore verso una funzione che non è deployata **né di qua né di là**.
 - 🧟 **Il riquadro «prova il test» del gestionale non esiste più**: `0` occorrenze di
   `id="assessmentExternalKnowledgeBlock"` anche su `main`, da prima di questo lavoro — tolto il
   13/08 con la #677. Le tre funzioni che lo servivano sono rimaste: sono **voce 28** in piena
