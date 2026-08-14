@@ -130,6 +130,35 @@ Il piano, in 4 mosse, **con l'ordine vincolante**:
 > ⚠️ Il passo 4 fatto prima lascia **2.276 soci** senza la possibilità di fare il test — e col muro acceso, senza la possibilità di organizzare.
 > 🔗 Il **punto 3** non è staccabile: `expires_at` non lo legge nessuno, quindi vive dentro quell'edge o non esiste.
 
+**✅ Fatti il 14/08 (14ª sessione): i passi 1 e 2, cioè il SERVER.** L'edge
+`supabase/functions/assessment-quiz/` esiste, pesca senza `correct`, corregge, calcola il
+livello, scrive lei la riga col permesso di servizio, brucia il gettone e **legge `expires_at`**
+(⇒ il punto 3 della scheda è dentro, come previsto).
+
+🚨 **La misura ha smentito il passo 1 della scheda**: diceva «un'edge **pesca** le 4 domande»,
+ma non c'era niente da pescare — **zero** tabelle di domande sui due progetti, e la banca stava
+**dentro `index.html`**, righe 37044–37356, ~50 domande col loro `correct`, nel file che si
+scarica per fare il test. ⇒ La banca è stata **spostata, non copiata**: copiarla avrebbe lasciato
+le risposte pubbliche e aggiunto solo un giro.
+
+🎲 **Le domande non si salvano, si ripescano**: stesso gettone + stessa fascia ⇒ stesse quattro
+domande, con un seme deterministico. Farsi rimandare gli id dal telefono avrebbe rimesso il
+coltello dalla parte del manico — bastava dichiarare «zero domande» per ottenere `skip`.
+✅ Provato: `test/assessment-quiz.test.mjs` (9 prove, fra cui «rispondere a vuoto **non passa
+più**» e «nessun `correct` verso il telefono») e la rete di regressione storica, **ripuntata
+sull'edge**, 15 prove verdi sul sorgente vero.
+
+**⏳ RESTANO il passo 3 e il passo 4**, e in quest'ordine:
+- **3.** l'app deve smettere di pescare e correggere: togliere da `index.html` la banca e le
+  quattro funzioni (~460 righe), sostituire `assessKnowledgeFasciaFor` con una costante senza
+  risposte, e rifare le **tre** chiamate — il pesca (riga ~36745), la consegna del socio (~37751)
+  e l'anteprima staff (~24985). 🚨 Finché non si fa, **il buco è aperto**: l'edge c'è ma nessuno
+  la chiama, e la banca è ancora nel sorgente pubblico.
+- **4.** le 3 policy, **solo dopo** che il 3 è vivo e verificato sul vero.
+⚠️ Il passo 3 va visto girare prima di promuoverlo: tocca la scheda che compilano i soci, e da
+sessione cloud non si apre l'app. Va provato su **TEST** (push su `test-preview`, che è subito
+live) prima di andare su `main`.
+
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
 
