@@ -89,6 +89,12 @@ function err(status: number, code: string, message: string) {
   return json({ ok: false, error: code, message }, status);
 }
 
+/* Il tipo del client si prende da CHI lo fabbrica, non riscrivendo `ReturnType<typeof
+   createClient>`: quella forma risolve con parametri generici diversi da quelli del client
+   vero, e `deno check` la respinge — «SupabaseClient<any,…> non assegnabile a
+   SupabaseClient<unknown,…>». Legandolo a `servizio()` combaciano per costruzione. */
+type Db = NonNullable<ReturnType<typeof servizio>>;
+
 function servizio() {
   const url = Deno.env.get('SUPABASE_URL') ?? '';
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -97,7 +103,7 @@ function servizio() {
 }
 
 /** Il gettone, e i tre modi in cui può non valere. Il verso del dubbio è sempre «no». */
-async function gettoneValido(db: ReturnType<typeof createClient>, token: string) {
+async function gettoneValido(db: Db, token: string) {
   const { data, error } = await db
     .from('assessment_tokens')
     // 🚨 SOLO colonne che esistono su ENTRAMBI i progetti. Misurato il 14/08 dopo che questa
@@ -108,6 +114,13 @@ async function gettoneValido(db: ReturnType<typeof createClient>, token: string)
     .select('token, member_local_id, member_name, phone_last4, status, expires_at')
     .eq('token', token)
     .maybeSingle();
+  /* 🔢 Il client non conosce lo schema, quindi PostgREST risolve la `select` a `never` e
+     leggere `data.status` è un errore di tipo. La forma la dichiariamo noi, qui, una volta:
+     è la stessa lista di colonne della `select` qui sopra — se una cambia, cambiano entrambe. */
+  const riga = data as
+    | { token: string; member_local_id: string | null; member_name: string | null;
+        phone_last4: string | null; status: string; expires_at: string | null }
+    | null;
   if (error) {
     // Il motivo VERO nel log della funzione: al socio si dice una cosa comprensibile, ma chi
     // deve capire perché non deve ripartire da «Failed to fetch». È il buco di diagnosi che
@@ -115,15 +128,15 @@ async function gettoneValido(db: ReturnType<typeof createClient>, token: string)
     console.error('assessment-quiz: lettura gettone fallita —', error.message, error.details ?? '');
     return { errore: err(500, 'LETTURA_FALLITA', 'Non riesco a leggere il gettone.') };
   }
-  if (!data) return { errore: err(404, 'GETTONE_SCONOSCIUTO', 'Questo link non risulta valido.') };
-  if (data.status === 'completed') {
+  if (!riga) return { errore: err(404, 'GETTONE_SCONOSCIUTO', 'Questo link non risulta valido.') };
+  if (riga.status === 'completed') {
     return { errore: err(409, 'GIA_COMPILATA', 'Questa scheda risulta già compilata.') };
   }
   // ⏳ PUNTO 3 della voce 27: la scadenza, che prima non leggeva nessuno.
-  if (data.expires_at && new Date(String(data.expires_at)).getTime() < Date.now()) {
+  if (riga.expires_at && new Date(String(riga.expires_at)).getTime() < Date.now()) {
     return { errore: err(410, 'GETTONE_SCADUTO', 'Questo link è scaduto: chiedi in segreteria.') };
   }
-  return { riga: data };
+  return { riga };
 }
 
 /* 🔐 LA SECONDA PORTA: la sessione dello STAFF.
@@ -133,7 +146,7 @@ async function gettoneValido(db: ReturnType<typeof createClient>, token: string)
    che risponde «giusto/sbagliato» le svela in pochi secondi — a chiunque, non solo allo staff.
    ⇒ Le azioni `staff-*` vogliono un JWT vero, verificato qui contro Supabase.
    📌 La chiave pubblicabile NON passa questo controllo: è un JWT senza utente dietro. */
-async function staffValido(db: ReturnType<typeof createClient>, req: Request): Promise<boolean> {
+async function staffValido(db: Db, req: Request): Promise<boolean> {
   const intestazione = req.headers.get('Authorization') || '';
   const jwt = intestazione.startsWith('Bearer ') ? intestazione.slice(7).trim() : '';
   if (!jwt) return false;
