@@ -95,16 +95,6 @@ function pmoLivelloFascia(value) {
   if (!Number.isFinite(n)) return null;
   return PMO_LIVELLI.find(f => n <= f.max) || PMO_LIVELLI[PMO_LIVELLI.length - 1];
 }
-// Numero → riga della tabella. Fuori scala si aggancia agli estremi: nessun livello resta senza nome.
-function pmoLivelloFascia(value) {
-  // 🚨 Il vuoto NON è zero: `Number('')` fa 0, e chi non ha ancora un livello si sarebbe
-  // visto chiamare «Principiante» da nessun dato. Senza numero non c'è fascia.
-  const raw = assessTxt(value).replace(',', '.');
-  if (!raw) return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return null;
-  return PMO_LIVELLI.find(f => n <= f.max) || PMO_LIVELLI[PMO_LIVELLI.length - 1];
-}
 function pmoLivelloDefinizione(value) {
   return pmoLivelloFascia(value)?.definizione || '';
 }
@@ -682,6 +672,25 @@ async function gettoneValido(db: ReturnType<typeof createClient>, token: string)
   return { riga: data };
 }
 
+/* 🔐 LA SECONDA PORTA: la sessione dello STAFF.
+   L'anteprima del gestionale — «prova il test» — non ha un gettone di socio, ma le domande
+   e la correzione le servono lo stesso. Aprirle senza gate sarebbe peggio che lasciarle in
+   `index.html`: quattro domande da quattro opzioni fanno **256 combinazioni**, e un oracolo
+   che risponde «giusto/sbagliato» le svela in pochi secondi — a chiunque, non solo allo staff.
+   ⇒ Le azioni `staff-*` vogliono un JWT vero, verificato qui contro Supabase.
+   📌 La chiave pubblicabile NON passa questo controllo: è un JWT senza utente dietro. */
+async function staffValido(db: ReturnType<typeof createClient>, req: Request): Promise<boolean> {
+  const intestazione = req.headers.get('Authorization') || '';
+  const jwt = intestazione.startsWith('Bearer ') ? intestazione.slice(7).trim() : '';
+  if (!jwt) return false;
+  try {
+    const { data, error } = await db.auth.getUser(jwt);
+    return !error && !!data?.user?.id;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METODO', 'Solo POST.');
@@ -693,6 +702,37 @@ Deno.serve(async (req: Request) => {
   try { corpo = await req.json(); } catch { return err(400, 'CORPO', 'Corpo non leggibile.'); }
 
   const azione = assessTxt(corpo.azione);
+
+  // ── Le azioni dello STAFF: nessun gettone, ma una sessione vera. Non scrivono niente. ──
+  if (azione === 'staff-pesca' || azione === 'staff-valuta') {
+    if (!await staffValido(db, req)) {
+      return err(401, 'NON_AUTORIZZATO', 'Serve una sessione staff.');
+    }
+    // Il seme lo sceglie il SERVER e torna opaco: il telefono non decide le domande, e alla
+    // valutazione le ripesca identiche senza che nessuno abbia salvato niente.
+    const fascia = assessKnowledgeFasciaFor(
+      azione === 'staff-pesca' ? corpo.livello_dichiarato : (corpo.scheda as JsonMap)?.declaredLevel,
+    );
+    const semeStaff = assessTxt(corpo.seme) || crypto.randomUUID();
+    const pescate = fascia ? assessKnowledgePick(fascia, sorteDa(seme(semeStaff, assessTxt(fascia)))) : [];
+
+    if (azione === 'staff-pesca') {
+      return ok({
+        seme: semeStaff,
+        fascia,
+        cancello: !!fascia && assessKnowledgeRegole(fascia).cancello,
+        domande: pescate.map((d) => ({ id: d.id, fascia: d.fascia, q: d.q, opts: d.opts })),
+      });
+    }
+    const scheda = (corpo.scheda ?? {}) as JsonMap;
+    return ok({
+      conoscenza: assessKnowledgeEvaluate(
+        pescate.map((d) => d.id), (corpo.risposte ?? {}) as Record<string, string>, fascia,
+      ),
+      livello: calculateAssessmentPublicLevel(scheda),
+    });
+  }
+
   const token = assessTxt(corpo.token);
   if (!token) return err(400, 'GETTONE_MANCANTE', 'Manca il gettone.');
 
