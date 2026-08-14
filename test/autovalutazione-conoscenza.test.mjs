@@ -39,7 +39,10 @@ const APP = join(QUI, '..', 'index.html');
 //   · la SCALA dei livelli e il RIEPILOGO per lo staff → dall'app, che li usa e li tiene.
 // Due contesti separati e non uno solo perché i due blocchi condividono di proposito gli
 // aiutini (`assessTxt`, `assessKey`) e la scala: uniti darebbero una ridichiarazione.
-const EDGE = join(QUI, '..', 'supabase', 'functions', 'assessment-quiz', 'index.ts');
+// 🆕 14/08, secondo spostamento: il cancello è passato da `index.ts` a `conoscenza.js`, che è
+// un MODULO vero. Prima lo si estraeva a fette cercando marcatori di testo; adesso si importa,
+// e le fette fragili restano solo dove servono davvero — su `index.html`, che modulo non è.
+const MODULO = join(QUI, '..', 'supabase', 'functions', 'assessment-quiz', 'conoscenza.js');
 const APRI = '/* ===== ASSESS-KNOWLEDGE SHARED v1 =====';
 const CHIUDI = '/* ===== /ASSESS-KNOWLEDGE SHARED v1 =====';
 
@@ -56,7 +59,7 @@ function esegui(percorso, esporta) {
   return ctx.API;
 }
 
-const CONOSCENZA = esegui(EDGE, 'ASSESS_KNOWLEDGE_BANK, assessKnowledgeFasciaFor, assessKnowledgePick, assessKnowledgeEvaluate, assessKnowledgeShuffle, assessKnowledgeRegole, PMO_LIVELLI, pmoLivelloDefinizione');
+const CONOSCENZA = await import(`file://${MODULO}`);
 const SCALA = esegui(APP, 'PMO_LIVELLI, pmoLivelloDefinizione, pmoLivelloEtichettaSocio, pmoLivelloEtichettaStaff, pmoLivelliOpzioni, assessKnowledgeRiepilogo');
 // La conoscenza vince sulla scala dove i due blocchi si sovrappongono: è lei la fonte del quiz.
 const A = { ...SCALA, ...CONOSCENZA };
