@@ -1,39 +1,55 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 14/08/2026, a fine 15ª sessione.** Misurata, non ricordata.
+**Fotografia del 14/08/2026, a fine 17ª sessione.** Misurata, non ricordata.
 
-## 🔎 Il filo della giornata: **una porta chiusa non è LA porta chiusa**
+## 🔎 Il filo della giornata: **la prova che ti dà ragione**
 
-Vale più delle due voci chiuse, ed è successo tre volte di fila con la stessa forma.
+La 15ª sessione aveva imparato che *una porta chiusa non è LA porta chiusa*. La 16ª ha imparato la
+cosa accanto, e le è successo **tre volte**, sempre con la stessa forma: una misura che sembrava
+confermare, e non confermava niente. 🚨 **La 17ª ha scoperto che una di quelle tre era falsa a sua
+volta** — e l'ha aggiunta in fondo alla stessa tabella, che è il posto dove doveva stare.
 
-| si credeva | la misura ha trovato |
+| la prova diceva | cosa era davvero |
 |---|---|
-| voce 27: «si tolgono le **3 policy** di INSERT anonimo» | erano **quattro**: c'era anche `public_update_token_completed` sui gettoni, che nessuna scheda nominava |
-| «tolte le policy, il buco è chiuso» — e la verifica era corretta (`anon` → `42501`) | **no**: `submit_self_assessment_public` è `SECURITY DEFINER` e **scavalca l'RLS per costruzione**. Provato come `anon`: livello **7** scritto, segreteria vuota. Le policy non la riguardavano nemmeno |
-| «chiusa quella, la famiglia è a posto» | erano **13**. E la mia rassegna ne aveva classificate 7 come «sola lettura» perché non contengono `insert/update/delete` — **mentre fanno `net.http_post`** |
+| «`wa-shadow-proxy` non riceve più chiamate» — sonda su `edge_logs`, **0 risultati** | sorgente sbagliata: le edge stanno in **`function_edge_logs`**, dove i 404 erano **619 in 24 ore**. Salvata dal controllo negativo — chiedere alla sonda se sa trovare *qualcosa* (7398 righe) prima di credere a uno zero |
+| «le tre policy `ALL` su TEST aprono lettura e scrittura ad `anon`» | **decorative**: ad `anon` mancano i grant di tabella, e l'attacco risponde `42501` **prima** di qualunque modifica. Il no non veniva dall'RLS |
+| «i 404 sono andati a zero dopo il disarmo: funziona» | **no**: si erano fermati **12 e 13 minuti PRIMA** che la cura fosse live. Non era una riparazione, era **una scheda del gestionale chiusa** |
+| *(17ª)* «i 404 si erano comunque fermati, alle 18:26 e alle 18:29» | **nemmeno per idea**: non si sono **mai** fermati. Ne arrivava uno al minuto ancora alle **19:31**, da una scheda rimasta aperta col codice vecchio. La 16ª aveva letto una finestra che finiva lì e l'aveva presa per la fine del traffico |
 
-⚠️ **Ogni verifica era giusta. Erano tutte sullo stesso strato.** Chi chiude una porta deve
-chiedersi *quante ne esistono di quel tipo*, non *se quella è chiusa bene*. Il caso peggiore non
-lascia un buco: lascia un buco **più la convinzione di averlo tappato**.
+⚠️ **Le prime tre avevano un tratto comune**: erano tutte prove che *davano ragione*. Una verifica
+che conferma non va guardata meno di una che smentisce — va guardata **di più**, perché è quella che
+nessuno ricontrolla. ⇒ Il rimedio non è diffidare: è chiedere alla prova **di cosa sarebbe capace
+se il fatto fosse falso**.
 
-🎯 **E il pezzo più pericoloso non scriveva niente.** `pmo_verify_data_routine_secret` confronta
-un candidato col segreto nel vault e risponde sì/no: da `anon` è un **oracolo a tentativi
-illimitati** sulla chiave che autorizza tutte le routine. Non compare in nessun elenco di
-«funzioni che scrivono», per costruzione.
+🎯 **La quarta insegna il pezzo mancante, ed è più scomodo: anche la prova che ti dà TORTO va
+ricontrollata.** La 16ª sessione ha fatto la cosa difficile — ha rifiutato un risultato che la
+assolveva — e si è fermata **un passo prima**, senza chiedersi se il dato su cui poggiava lo
+smascheramento fosse a sua volta vero. ⇒ Lo scetticismo applicato una volta sola non è scetticismo:
+è **un cambio di conclusione**. La domanda non è «questa prova mi conviene?», è sempre e solo
+«questa sonda, in questa finestra, con questo campo, cosa sa vedere?».
 
-⭐ **Il rito ha trovato il lavoro, non solo evitato il danno.** La seconda porta non l'ha scoperta
-un controllo di sicurezza: è saltata fuori misurando **cosa puntasse alla scheda di prova da
-cancellare**. È la seconda volta in due giorni che «misura cosa punta a quella riga» trova la
-causa invece del rischio.
+🎯 **E il censimento ha trovato il lavoro, non solo la mappa.** La voce 39 doveva produrre un
+elenco di divergenze. Ha prodotto un **guasto vivo in produzione**: `pmo_parser_errors` con 9
+colonne su PROD e 14 su TEST, e l'app che dal 7/08 ne scriveva e leggeva cinque che di là non
+esistono — **in silenzio**. È la terza volta in tre giorni che a trovare la causa è **misurare il
+contesto**, non eseguire il compito scritto.
 
 ## 📌 Le decisioni prese dal committente oggi
 
 | | |
 |---|---|
-| ✅ **la prova sull'app di PROD l'ha fatta lui** | il punto 1 della voce 27, fermo da ieri. Ha compilato una scheda vera col gettone `TEST456` |
-| 🔓 **quattro autorizzazioni distinte a scrivere su PROD** | policy, poi le due RPC, poi le tre scoperte, poi gli otto dispatcher: una per ogni ripresa, mai una delega in bianco |
-| ⬆️ **voce 36 promossa** | la rassegna delle 45 `SECURITY DEFINER`, nata dalla 27 e proposta a fine indagine |
-| 🔀 **merge e sync fatti da me, su sua richiesta** | #694 in squash + il riallineo di `docs/` su `test-preview`, di seguito |
+| ⬆️ **quattro voci promosse** | 37, 38, 39 dalle note «nate misurando», e la **23** dalla coda. La lista urgenti era **vuota** e nessuna si promuove da sé |
+| 🔓 **quattro autorizzazioni distinte** | famiglia feedback su PROD, le 5 colonne di `pmo_parser_errors`, le tre policy decorative su TEST, e il disarmo WhatsApp — una per ripresa, mai una delega in bianco |
+| ✋ **due «no» impliciti, rispettati** | le due policy **portanti** su PROD non sono state toccate, e il **TRUNCATE** ad `anon` neppure: erano fuori da ciò che aveva autorizzato |
+| 🔀 **due merge in squash, su sua richiesta** | #698 e #699 |
+
+**E nella 17ª, la sera dello stesso giorno:**
+
+| | |
+|---|---|
+| 🔓 **famiglia feedback tolta anche su TEST** | la divergenza che la 16ª si era auto-denunciata e aveva lasciato scritta come «la prima cosa da chiedere alla prossima ripresa». Chiesta, autorizzata, fatta |
+| 📚 **sanare `docs/` e correggere la voce 38** | non solo riallineare i rami: riscrivere la misura dei 404 con quella vera, invece di portare su `main` un fatto falso |
+| ✋ **voce 23: diagnosi sì, patch no** | la correzione tocca la strada che prenota **davvero** e dal cloud non è verificabile ⇒ si scrive cosa non va, non si tocca |
 
 | | |
 |---|---|
@@ -41,70 +57,56 @@ causa invece del rischio.
 | 📋 **In coda** | **13** |
 | 📦 **Chiuse** | **16** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.220** · TEST **6.230** · `main` `fb1fddf`, `test-preview`
-`8cc37c0` · **0 PR aperte** (la #694 mergiata in squash) · `server.mjs`,
-`.github/workflows/**`, `CLAUDE.md` e **tutto `docs/`** **identici** fra i rami, verificato
-percorso per percorso dopo il merge · `guard-main`, `guard-docs-truth` e `guard-worker-sync`
-**verdi su entrambi i rami** · cron PROD **11 accesi / 2 spenti**, TEST 5 accesi / 4 spenti
-(misura del **13/08**, non ricontrollata).
+**Stato del sistema, rimisurato alla chiusura della 17ª:** app PROD **6.221** · TEST **6.231**
+(nessuna delle due toccata oggi) · alla ripresa `main` era `481e2a0` e `test-preview` `70b48ac`,
+più un commit per ramo da questa sessione · linter **PROD 101** (`WARN` 83, `ERROR` **0**) e **TEST
+97** (`WARN` 80, `ERROR` **1**, `security_definer_view`, preesistente) · cron PROD 11 accesi / 2
+spenti, TEST 5 accesi / 4 spenti (misura del **13/08, non ricontrollata**).
 
-📏 **Le versioni non si sono mosse**, ed è giusto così: questa sessione non ha toccato
-`index.html`. PROD e TEST restano a 10 di distanza — TEST bumpa a ogni tentativo, PROD una volta
-per promozione. Il confronto che conta è **il contenuto**.
+🚨 **E `docs/` NON era allineato: la 17ª è partita con la guardia rossa.** La 16ª sessione ha spinto
+la propria chiusura su `test-preview` (`70b48ac`, 19:18) e **non l'ha portata su `main`**:
+`guard-worker-sync` è fallita lì alle 19:18 e nessuno l'ha ri-lanciata, mentre `main` — il ramo
+predefinito, quello che deve sembrare affidabile a colpo d'occhio — continuava a dichiarare la
+fotografia della **15ª**. Non era la finestra transitoria dei 90 secondi del punto ⑥: erano venti
+minuti, cioè drift vero.
+⚖️ È la regola 4bis presa a metà — *prima `test-preview`, POI il merge su `main`* — dove si fa la
+prima metà e si considera finito. La cura non è una guardia in più: è che **una sessione non è
+chiusa finché i due rami non dicono la stessa cosa**, e la chiusura scritta su un ramo solo è
+esattamente il documento che mente di cui parla la voce 30.
 
-🖐️ **La 15ª sessione ha scritto sui PERMESSI, e su nient'altro.**
-① **PROD**: 4 policy di scrittura anonima rimosse (`self_assessments` ×3 + `assessment_tokens`),
-`EXECUTE` revocato ad `anon`/`authenticated` su **13 funzioni** `SECURITY DEFINER`.
-② **TEST**: le stesse revoche dove servivano, più **tre migrazioni di parità** per rimettere a
-`service_role` ciò che il `revoke ... from public` gli aveva tolto.
-③ **Dati**: una sola riga cancellata in tutta la sessione — la **scheda di prova** `TEST456`,
-salvata per intero nel commit e tolta con la sua autorizzazione, col gettone riarmato a `created`.
-🚨 Tutte le prove d'attacco stavano in **transazioni annullate**: il livello 7, la falsificazione
-del registro di controllo, i 1364 gettoni bruciati. Nessuna è rimasta.
-↩️ Ogni migrazione reversibile, con l'SQL di ripristino scritto in testa.
+⭐ **PROD è stato verificato dal SERVER, non dall'etichetta**: `pg_net` ha scaricato
+`app.padelvillage.club/index.html` → **200**, `APP_VERSION = '6.221'`, e il blocco del disarmo
+**presente nel file servito**. È la stessa strada che ha provato l'edge il 14/08: da una sessione
+cloud il browser non arriva a `*.supabase.co` né al dominio, ma **il database sì**.
 
-🧹 **Le schede di prova su TEST sono state tolte — tre su quattro, e la quarta di proposito.**
-Misurando prima di cancellare sono risultate **quattro**, non tre: Aprea aveva anche una scheda
-del **12/05**. Nessuno dei quattro gettoni esiste su PROD ⇒ non era la trappola della voce 22.
-Tolte in **una transazione sola** — marcatore `pmo_assessment_notifications` + scheda + gettone
-riportato a `created`/`GESTIONE_MANUALE` — perché togliere il **marcatore da solo** avrebbe fatto
-mandare al cron `pmo-assessment-notify-test` (jobid 16, ogni 5') una **email nuova** alla casella
-del circolo: la pulizia che produce il rumore che voleva togliere.
-✋ **Lasciata la quarta**, `DA0NJE1ODY4ODC` del 12/05: il suo marcatore dice *«preesistente
-all'accensione: email non inviata»*, cioè era **già storia** quando il 9/08 si è acceso il
-sistema di notifica. Non è un residuo di questo lavoro e la sua origine non l'ho stabilita —
-chiamarla «di prova» sarebbe l'assunzione che il rito serve a non fare.
-⚠️ Su `PROVAMAURIZIO0908` lo `status_autovalutazione` è una **ricostruzione**, non un ripristino:
-era `COMPILATO` e l'ho messo a `GESTIONE_MANUALE`, che è la coppia coerente con `created` (381
-righe su TEST). Il valore che aveva alla nascita non lo sa nessuno.
-📌 Su PROD restano **17 schede Aprea** di fine aprile/inizio maggio, tutte `applied_at: null`:
-storia dello sviluppo, **non toccate**.
+🖐️ **La 16ª sessione ha scritto su PERMESSI, SCHEMA e APP.**
+① **PROD**: 3 policy anonime tolte (famiglia feedback), **5 colonne aggiunte** a
+`pmo_parser_errors`, app **6.220 → 6.221**.
+② **TEST**: 3 policy decorative tolte, app **6.230 → 6.231** con lo **stesso identico blocco** di
+PROD — estratto dal file vero, non riscritto.
+③ **Dati**: **nessuna riga cancellata, nessuna riga scritta**. Tutte le prove d'attacco e gli
+INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 residui.
+↩️ Tutte e tre le migrazioni reversibili, con l'SQL di ripristino **verbatim** in testa.
 
-**Verificato sul bersaglio il 14/08, 15ª sessione:**
-- ✅ **l'app di PROD, aperta da lui**: scheda compilata col gettone `TEST456`, quiz 3/4 con la
-  trappola indovinata, esito `pass`. ⭐ Che PROD serva la **6.220** è dimostrato dal
-  **meccanismo**, non dall'etichetta: la riga ha `corretta_dal_server: true` e il gettone è stato
-  bruciato dall'edge 0,15 s dopo — cose che la 6.219 non avrebbe potuto fare
-- ✅ le **4 policy** e le **13 funzioni**, chiamate come `anon` **prima e dopo**: `42501` /
-  `permission denied` / `AUTH_REQUIRED`, e `service_role` che scrive regolarmente
-- ✅ il **controllo negativo** su ognuna: la policy rimessa in transazione annullata per vedere
-  che l'attacco funzionasse davvero *prima* di dichiararlo chiuso
-- ✅ il **linter di PROD, quattro fotografie diffate voce per voce**: 123 → 125 → 121 → **99**,
-  `WARN` 109 → **83**, `ERROR` **0** sempre. Spariti 26 avvisi, esattamente 13 funzioni × 2 ruoli,
-  **nessuno nuovo** in nessuno dei quattro passaggi
-- ✅ chi chiama ognuna delle 13: `pg_cron`, le edge con `service_role`, l'app — e i log di 24 ore
-- ✅ i quattro percorsi di `guard-worker-sync` fra i rami, dopo merge e sync
+**Verificato sul bersaglio il 14/08, 16ª sessione:**
+- ✅ **prova d'attacco come `anon`, prima e dopo**, su ogni policy toccata — col **seme** che
+  soddisfa la chiave esterna, altrimenti a fermare l'attacco sarebbe il vincolo e non l'RLS
+- ✅ **la strada legittima regge**: la RPC pubblica del feedback risponde `{"ok": true}` e scrive
+- ✅ **end-to-end via PostgREST** su `pmo_parser_errors`: **400 `42703` → 200 `[]`**, stessa URL e
+  stessa chiave dell'app
+- ✅ **l'impronta delle colonne** di PROD ora **identica** a quella censita per TEST *prima*
+- ✅ **linter diffato voce per voce** a ogni passo, su entrambi i progetti, con la **previsione
+  dichiarata prima**: giusta due volte su tre (la terza sbagliata **di due**, in meglio)
+- ✅ **rete di regressione**: 13/13 Node, **55/55** su `main` e **90/90** su `test-preview`, prima
+  e dopo
+- ✅ i **quattro percorsi** di `guard-worker-sync` fra i rami, dopo ogni merge
 
 > ⚠️ **Ancora non misurati**, e da non dare per buoni: la VM (worker e i due bot, riavvii), il
 > `.env` del bot e i suoi interruttori, i ponti, i secret Supabase, i cron di entrambi i progetti
-> (guardati solo quelli che servivano alle voci 27 e 36) e la **memoria dell'app**. Dalla sessione
-> cloud manca l'accesso a Hetzner.
-> ⚠️ **L'app col login STAFF resta non vista.** Lui ha aperto la scheda pubblica del socio, che è
-> ciò che serviva alla voce 27 — ma il gestionale con la sessione staff non l'ha guardato nessuno,
-> e questa sessione ha cambiato **13 permessi** che vivono da quella parte. Le RPC dello staff
-> rispondono `AUTH_REQUIRED` ad `anon` e non le ho toccate: il rischio è basso e **non è zero**.
-> 📌 `pg_net` resta la porta di servizio: chiama le edge **dall'interno del database** e aggira il
-> blocco di rete della sessione cloud verso `*.supabase.co`. ⚠️ Prova il **server**, non lo schermo.
+> e la **memoria dell'app**. Dalla sessione cloud manca l'accesso a Hetzner.
+> ⚠️ **L'app col login STAFF resta non vista, per la seconda sessione di fila.** Ed è la mancanza
+> che pesa di più oggi, perché il disarmo WhatsApp **cambia ciò che lo staff vede** e nessuno l'ha
+> guardato. 📌 `pg_net` resta la porta di servizio per provare il **server**; lo **schermo** no.
 
 ---
 
@@ -181,8 +183,107 @@ anon = Dxtm/postgres      ⇒ niente r (SELECT), w (UPDATE), a (INSERT), d (DELE
 
 ⇒ Ad `anon` **mancano i grant di tabella**, quindi le tre policy sono **decorative**: descrivono un
 accesso che nessuno ha. Toglierle non chiude niente — toglie un **segnale ingannevole**, che non è
-la stessa cosa. ⚖️ **Non le ho tolte**: l'autorizzazione l'avevo, ma l'avevo chiesta sulla base di
-«lettura e scrittura per anonimo», e quella premessa è falsa. Decide lui, con la ragione giusta.
+la stessa cosa. ⚖️ Sul momento **non le ho tolte**: l'autorizzazione l'avevo, ma l'avevo chiesta
+sulla base di «lettura e scrittura per anonimo», e quella premessa era falsa.
+
+##### ✅ Tolte poi, il 14/08, con la ragione giusta — migrazione `20260814191255`
+
+Ripresentata la decisione con quello che la misura diceva davvero, e ripresa. **Prima di toccare**,
+la fotografia completa — perché su TEST i permessi passano spesso da `PUBLIC` e ci si rimisura
+**contro il prima, non contro PROD**:
+
+| | prima | dopo |
+|---|---|---|
+| policy sulle 3 tabelle | 3 | **0** |
+| `anon` con grant `r/w/a/d` | 0/3 | **0/3** |
+| `service_role` legge | 0/3 | **0/3** |
+| `authenticated` col grant `SELECT` | 3/3 | **3/3** |
+| `anon` SELECT / INSERT | `42501` / `42501` | **identico** |
+| `authenticated` SELECT | 0 righe (lo ferma l'RLS) | **identico** |
+
+⇒ **Il permesso di nessuno è cambiato**, ed è esattamente ciò che deve succedere togliendo una
+policy che non stava sulla strada di nessuno. ✅ Linter TEST **92 → 95**, `WARN` **80** e `ERROR`
+**1** invariati: i 3 nuovi sono `rls_enabled_no_policy` INFO — **previsti e dichiarati prima di
+applicare**, ed è l'esito voluto, lo stesso stato della voce 35 su PROD.
+📌 L'`ERROR` di TEST è `security_definer_view`, **preesistente**: non l'ho toccato e non è mio.
+
+#### 🔀 STATO A FINE 16ª SESSIONE — e una divergenza che **ho creato io oggi**
+
+Misurato alla chiusura, `pg_policies` sui due progetti:
+
+| | PROD `qqbf…` | TEST `cudi…` |
+|---|---|---|
+| `pmo_ai_turns` INSERT | **c'è** *(portante)* | **c'è** |
+| `pmo_parser_errors` INSERT | **c'è** *(portante)* | **c'è** |
+| `post_match_feedback_responses` INSERT | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
+| `post_match_feedback_responses` UPDATE | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
+| `post_match_feedback_tokens` SELECT | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
+| le 3 `ALL` decorative | *(non esistono)* | ✅ tolte |
+
+🚨 **Le tre righe rosse sono la voce 31 in diretta, e la mano è la mia.** La sua autorizzazione
+diceva «**PROD** — famiglia feedback», e l'ho eseguita alla lettera: giusto rispetto al mandato,
+**sbagliato rispetto al sistema**. Da stasera la famiglia del feedback è chiusa di qua e aperta di
+là — che è esattamente la forma del difetto che questa lista documenta da giorni.
+⚖️ Non l'ho sanata da sola iniziativa: sarebbe una scrittura su TEST non autorizzata, e la regola
+vale anche quando la correzione sembra ovvia. **È la prima cosa da chiedere alla prossima ripresa.**
+📌 Portata reale, per non far sembrare urgente ciò che non lo è: su TEST quelle tabelle hanno
+**0 righe e 0 gettoni**, come su PROD. È una divergenza di **configurazione**, non un dato esposto.
+
+##### ✅ Chiesta e sanata la sera stessa — 17ª sessione, migrazione `20260814194040`
+
+🚨 **E qui la misura ha smentito l'aspettativa, in meglio: su TEST quelle policy NON erano
+decorative.** Sembrava una formalità — copiare su TEST ciò che era già stato fatto su PROD, su
+tabelle vuote — e invece la fotografia dei grant dice che ad `anon` qui i permessi **ci sono**
+(INSERT+UPDATE su `responses`, SELECT su `tokens`), al contrario delle tre `ALL` tolte poche ore
+prima dalla `20260814191255`, dove mancavano. ⇒ **Due gruppi di policy sulla stessa lista, con lo
+stesso aspetto e portata opposta.** Un rattoppo «per parità», fatto senza rimisurare, avrebbe
+chiuso un buco vero credendo di togliere un ornamento — e sarebbe stato **giusto per caso**.
+
+Prova d'attacco come `anon`, sonda **identica** prima e dopo, in transazione annullata da
+un'eccezione finale, col seme di 2 gettoni validi (senza, a fermare l'attacco sarebbe la **chiave
+esterna** e non l'RLS):
+
+| | prima | dopo |
+|---|---|---|
+| A) `anon` legge i gettoni | **2 righe** | **0** |
+| B) `anon` scrive una risposta | **RIUSCITO** | **42501** (RLS) |
+| C) `anon` aggiorna | 0 righe | 0 righe — *inerte prima e dopo, stesso trigger di PROD* |
+| E) la **RPC pubblica** da `anon` | RIUSCITA | **RIUSCITA**, e scrive la sua riga |
+
+🧯 **Un errore da non ripetere, e l'ho fatto in mezzo.** La prima sonda «dopo» dava `42501` anche
+sulla **RPC**: sembrava che avessi rotto la strada legittima. Non l'avevo rotta — avevo aggiunto al
+blocco un `count(*)` che girava ancora **come `anon`**, e `anon` non ha SELECT su quella tabella.
+Era la **sonda** a essere cambiata fra il prima e il dopo. ⇒ Una prova prima/dopo con due sonde
+diverse non misura niente, e stavolta il risultato comodo era quello che mi dava **torto**: è la
+stessa disciplina della riga qui sopra, applicata nel verso scomodo.
+
+✅ Linter TEST **95 → 97**, `WARN` **80** e `ERROR` **1** invariati; i 2 nuovi sono
+`rls_enabled_no_policy` INFO sulle due tabelle — l'esito **voluto**, previsto e **dichiarato prima**
+di applicare, lo stesso stato della voce 35 su PROD. Diffato voce per voce: nessun avviso sparito.
+⛔ Residui **zero**: gettoni `SONDA-*` inesistenti, tabelle a 0 righe, 0 policy rimaste.
+📌 `service_role` **non toccato**, e va detto perché qui è già monco: su queste tabelle ha solo
+`REFERENCES/TRIGGER/TRUNCATE`, senza SELECT/INSERT/UPDATE — condizione **preesistente**, misurata
+prima e identica dopo. È la trappola nota (*su TEST i permessi passano da PUBLIC*): «ripristinarlo»
+sarebbe stato un cambiamento travestito da ripristino.
+
+⚪ **Le due «portanti» restano, per decisione.** `pmo_ai_turns` e `pmo_parser_errors` scrivono con
+la chiave pubblicabile quando la sessione staff manca o è scaduta — un ripiego messo **apposta**,
+perché prima dava 401 e l'insert si perdeva in silenzio. Chiuderle per bene vuol dire **spostare la
+scrittura dietro una RPC o un'edge**: è lavoro, non una riga di SQL.
+🧯 E una cosa che avevo detto male: su `pmo_parser_errors` avevo aggiunto che la policy era
+«irrilevante in pratica, tanto il 42703 blocca tutto». **Da stasera non è più vero** — le 5 colonne
+ci sono, quell'insert riesce, e quindi la policy è tornata **portante davvero**.
+
+⇒ **La voce 37 resta aperta, e ora per UNA sola ragione.** Le tre righe rosse non ci sono più; le
+**due portanti** sì, su entrambi i progetti. Il criterio se lo era dato la 16ª sessione — «non
+chiusa finché restano le tre righe rosse **e** le due portanti» — e va rispettato anche adesso che
+ne resta metà.
+⚖️ **Ma non è più lo stesso lavoro**, e la differenza conta per chi decide: prima mancava
+un'esecuzione, ora manca una **scelta di disegno** — spostare la scrittura del parser e dei turni AI
+dietro una RPC o un'edge. Non è una riga di SQL, e non si fa di sfuggita a fine sessione.
+🚫 **Togliere quelle due policy così com'è, oggi, ROMPEREBBE una funzione viva** — e su
+`pmo_parser_errors` da poche ore più di prima, perché le 5 colonne aggiunte dalla voce 39 hanno
+tolto il `42703` che la teneva inerte.
 
 🚨 **E sotto c'era altro, che nessuno cercava.** Quella `D` nell'ACL è **TRUNCATE**, e l'**RLS non
 filtra il TRUNCATE**. Provato come `anon` su TEST: `truncate public.pmo_parse_history` **RIUSCITO**.
@@ -249,33 +350,95 @@ vero, ancora una volta.
 🎯 **La prova che conta si fa DOPO il deploy, ed è un numero:** i 404 su `wa-shadow-proxy` (623/g su
 `qqbf…` e 619/g su `cudi…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a
 zero**. Finché non li si vede a zero, questa voce **resta aperta**.
-🚨🚨 **E ATTENZIONE A UNA TRAPPOLA, perché ci sono cascato quasi subito.** Guardando i log **dopo**
-il deploy, i 404 risultano **già finiti**: l'ultimo su TEST è delle **18:26**, l'ultimo su PROD delle
-**18:29**. Sembrava la conferma. **Non lo è**, e bastano gli orari a dirlo:
+🚨🚨 **E ATTENZIONE A UNA TRAPPOLA, perché ci sono cascato quasi subito.** *(scritto dalla 16ª)*
+Guardando i log **dopo** il deploy, i 404 risultavano **già finiti** — l'ultimo su TEST alle
+**18:26**, su PROD alle **18:29**, cioè *prima* che la cura fosse live. Ne avevo concluso che a
+fermarli fosse stata **una scheda del gestionale chiusa**, non il disarmo.
 
-| | ultimo 404 | quando è atterrato il disarmo |
+#### 🛑 Anche QUELLA misura era sbagliata — rimisurato il 14/08 sera, 17ª sessione
+
+**I 404 non si sono mai fermati.** Rimisurati su `function_edge_logs` ora per ora, e stavolta col
+campo giusto:
+
+| | ultimo 404 secondo la 16ª | ultimo 404 **misurato davvero** |
 |---|---|---|
-| TEST `cudi…` | **18:26** | **18:39** (commit `c13b7b9`) |
-| PROD `qqbf…` | **18:29** | **~18:41** (merge #698 + Pages) |
+| TEST `cudi…` | 18:26 | **19:26:25** |
+| PROD `qqbf…` | 18:29 | **19:31:24** |
 
-⇒ Su **entrambi** il traffico si è fermato **prima** della cura, di 13 e 12 minuti. Quel silenzio non
-lo ha prodotto il disarmo: lo ha prodotto **la scheda del gestionale che è stata chiusa** verso le
-18:26–18:29. Chi legge domani un grafico a zero e conclude «funziona» sta leggendo il **passo di una
-tenda che si chiude**, non l'effetto di una riparazione.
+Ne arriva **uno al minuto**, ininterrottamente, e la sonda dice anche **da chi**: `Chrome/151` su
+**Macintosh**, IP `151.36.148.173`, sempre lo stesso. Idem `wa_usage_stats` su `ayly…` — **290**
+fallimenti in 24 ore, l'ultimo alle **19:31:24**, cioè lo **stesso minuto**: i due temporizzatori
+battono ancora insieme.
 
-✅ **La prova vera è un'altra, e richiede una persona**: alla **prossima apertura** del gestionale —
-con la scheda «Messaggi WhatsApp» aperta apposta — i 404 devono restare **zero** e il riquadro non
-deve comparire. Prima di allora la voce **resta aperta**, e non per pignoleria: il numero che
-serviva l'ho avuto sotto gli occhi ed era **il numero sbagliato**.
-📌 È la lezione del 14/08 applicata a me stesso: *quando la prova ti dà ragione troppo comodamente,
-la prima cosa da controllare è la prova*.
+⇒ **La causa vera è più semplice, e non è una tenda che si chiude: è una scheda rimasta APERTA col
+codice vecchio.** Una pagina già caricata non prende il codice nuovo finché non la si **ricarica** —
+il disarmo sta nel file servito, non nella memoria di un browser che quel file l'ha scaricato
+stamattina. E il buco nei log fra le **23:00 e le 10:00** è la stessa firma letta al contrario: non
+un traffico che cessa, ma **il computer chiuso per la notte**.
+
+✅ **Il disarmo è vivo e giusto, e stavolta è verificato sul SERVITO, non sull'etichetta.** `pg_net`
+ha scaricato `app.padelvillage.club/index.html` → **200**, `APP_VERSION = '6.221'`, e dentro
+`waInit()` c'è il `return;` **nudo** subito dopo il commento, prima di `const dashboard`. ⚠️ Il
+controllo è stato fatto **sul `return`, non sul commento**: un blocco che *dice* di essere disarmato
+e non lo è sarebbe la peggiore delle prove comode.
+
+🎯 **Quindi la prova che chiude la voce non è «la prossima apertura»: è un RICARICAMENTO.** Chi ha
+quella scheda aperta la ricarichi (`Cmd-R`); i due contatori vanno a zero entro un minuto e il
+riquadro non deve comparire. 🚨 Finché resta aperta com'è, **i 404 continuano anche a disarmo
+perfetto** — e chi guardasse il grafico ne concluderebbe che la cura non ha funzionato, che è
+l'errore opposto e speculare a quello di stasera.
+
+📌 **La lezione della 16ª regge, il fatto su cui poggiava no.** «Quel silenzio non prova il disarmo»
+era giusto — ma **il silenzio non c'era**: era una finestra di log che finiva alle 18:29, scambiata
+per la fine del traffico. ⇒ È la **quarta** volta in due giorni che una sonda restituisce uno zero
+falso, e la quarta volta che a smascherarla è il **controllo negativo**: anche stasera la prima
+query ha risposto `0` — cercava `request.path` invece di `request.pathname` — ed è bastato chiederle
+«sai trovare *qualcosa*?» (2461 righe) per non crederle.
 
 ### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
 *Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
 Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e
 gli esiti sono **tre**.
-⚠️ **Metà del lavoro non si fa dal cloud**: la correzione è nell'app, ma provarla davvero vuole i
-log del worker su **Hetzner**. Dal cloud si arriva alla diagnosi e alla patch, non alla prova.
+
+#### 🔎 Diagnosi, 17ª sessione — *(scritta e basta: patch NON fatta, per sua decisione)*
+
+🛑 **Primo: la scheda sbaglia il bersaglio, e non di poco.** Diceva «la correzione è nell'**app**».
+Misurato: **0 occorrenze** di `writeBookingJob` in `index.html`. Vive nella edge function
+`supabase/functions/matchpoint-bookings-create/index.ts`. Chi avesse eseguito la scheda alla lettera
+avrebbe cercato per un pezzo nel file sbagliato.
+🔀 **E i due rami divergono**: `main` ha **4** chiamate a `writeBookingJob`, `test-preview` **5** —
+la quinta è il ramo «prova a vuoto» del 7/08, che su TEST chiude il lavoro con `done` invece che con
+`error`. Non è la voce 23, ma chi la ripara deve saperlo prima di toccare, o promuoverà una riga che
+di là significa un'altra cosa.
+
+**Il titolo ammette due letture, e la misura dice che sono vere tutt'e due.**
+
+① **`writeBookingJob` scarta l'esito della propria scrittura.** Il corpo è un `await ... .upsert(...)`
+e nient'altro: nessun controllo dell'errore. La sorella `saveStaffBookingRecord`, **dieci righe più
+su nello stesso file**, quel controllo ce l'ha (`if (erroreRiga) throw ...`) — quindi non è una
+convenzione del file, è una dimenticanza. ⇒ Se la riga di stato non si scrive, il lavoro resta
+`pending` **per sempre** e chi guarda non saprà mai com'è finita: esattamente ciò che il commento
+lì accanto dichiara di voler evitare.
+
+② **Il terzo esito viene raccontato come il secondo.** `callWorkerCreateBooking` su errore di rete
+lancia, e `runBookingJobInBackground` scrive `error`. Ma il commento nel codice **dice già il
+problema**, e chi l'ha scritto lo sapeva:
+
+> `// NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.`
+
+⇒ Gli esiti sono **tre** — *fatto*, *non fatto*, *non lo so* — e oggi il terzo viene scritto come
+«errore». Il costo non è cosmetico: lo staff legge «errore», rifà la prenotazione, e se il worker
+l'aveva creata davvero il campo finisce **prenotato due volte** sul Matchpoint del circolo.
+📌 Il confronto che lo conferma: la sorella `matchpoint-bookings-cancel` **i retry li fa** (`Worker
+call failed after retries`), perché disdire due volte è innocuo mentre prenotare due volte no. La
+differenza è deliberata — ciò che manca non è il retry, è **dirlo**.
+
+⚠️ **Perché non ho scritto la patch**, e non è prudenza generica: la correzione tocca la strada che
+prenota **davvero** al circolo, e da questa sessione cloud non è verificabile — i log del worker
+stanno su **Hetzner**, e il worker è **uno solo, condiviso TEST+PROD**, quindi non esiste nemmeno un
+posto dove provarla senza rischiare il Matchpoint vero. Una patch verde su un banco che non esercita
+quella strada è la condizione descritta nella memoria «un banco più permissivo della produzione dà
+fiducia sbagliata» — cioè peggio di non averla. ⇒ **Si fa dal Mac**, con i log sotto gli occhi.
 
 ---
 
@@ -423,6 +586,27 @@ Misurando il **14/08** nella 16ª sessione, censendo le tabelle (voce 39):
 - 🔎 **`assessment_tokens` diverge in DUE direzioni**, non una: `member_email` solo su PROD,
   `updated_at` solo su TEST, con **13 colonne da entrambe le parti**. Il conteggio non l'avrebbe
   mai mostrato.
+
+Misurando il **14/08** nella 17ª sessione, sanando la 37 e rimisurando la 38:
+
+- 🔎 **`wa_usage_stats` su `ayly…` non muore come dice la scheda, e non muore sempre.** La voce 38
+  dichiara «esiste ancora ma muore — `42P01: relation "whatsapp_inbound_messages" does not exist`».
+  Misurato: la funzione **esiste** (`wa_usage_stats(days integer)`, `SECURITY DEFINER`), ma su
+  `/rest/v1/rpc/wa_usage_stats` PostgREST risponde **404** — che non è un `42P01`, è «firma non
+  trovata». E accanto ai **290** fallimenti ci sono **29 chiamate andate a 200**, l'ultima alle
+  **18:56**. ⇒ Delle due cose una: o chiama in due modi diversi, o c'è un secondo chiamante. **Non
+  l'ho stabilito**, e non l'ho toccata: il conto dei 404 che serviva alla 38 è giusto lo stesso,
+  ma la *ragione* scritta nella scheda non è quella misurata.
+- 🕳️ **Su TEST `service_role` non può leggere né scrivere le due tabelle del feedback.** Ha solo
+  `REFERENCES/TRIGGER/TRUNCATE` su `post_match_feedback_responses` e `_tokens`, senza
+  SELECT/INSERT/UPDATE — condizione **preesistente**, non prodotta dalla migrazione di stasera
+  (misurata prima e identica dopo). È la firma del vecchio `revoke ... from public`. Oggi non fa
+  danno perché la strada legittima è una RPC `SECURITY DEFINER`; il giorno in cui un'edge provasse
+  a leggerle **col ruolo di servizio** fallirebbe, e su PROD la stessa prova riuscirebbe. ⚠️ È la
+  forma della voce 39 spostata sui **permessi**: non le colonne a divergere, ma chi può toccarle.
+- 🔀 **`matchpoint-bookings-create` diverge fra i rami**: 4 chiamate a `writeBookingJob` su `main`,
+  **5** su `test-preview`. La quinta è il ramo «prova a vuoto» del 7/08, che su TEST chiude il
+  lavoro con `done` mentre su PROD chiude con `error`. Trovata aprendo la voce 23.
 
 Misurando il **14/08**, aprendo la voce 22:
 
@@ -728,4 +912,20 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Aggiornato il 14/08/2026 a fine **15ª sessione**, dopo la 14ª e la 13ª dello stesso giorno. Chiuse la **27** — il cancello dell'autovalutazione, passo 4 compreso, su PROD **e** su TEST — e la **36**, la rassegna delle 45 funzioni `SECURITY DEFINER` aperte ad `anon`, undici delle quali sono state tolte. Le urgenti restano **0** e nessuna voce è stata promossa da me: la 36 l'ha promossa lui, e ogni scrittura su PROD ha avuto una conferma sua a misura fatta — quattro, una per ripresa. Versioni, sha, PR aperte e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; `stato-progetto-corrente.md` dichiarava già 6.220/6.230, cioè il vero, ed è stato solo aggiornato nelle descrizioni. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che resta la mancanza che pesa, perché è da quella parte che vivono i 13 permessi cambiati oggi. In compenso la prova che serviva alla 27 l'ha fatta lui sull'app vera, ed è la prima volta in tre sessioni. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Aggiornato il 14/08/2026 a fine **17ª sessione**, la quinta dello stesso giorno. **Nessuna voce
+chiusa**, e nessuna promossa: le tre urgenti restano tre. La sessione è partita trovando `docs/`
+disallineato e `guard-worker-sync` **rossa** su `test-preview` — la 16ª aveva spinto la propria
+chiusura là e non l'aveva portata su `main` — e la prima cosa fatta è stata sanare quello. Della
+**37** è stato tolto il residuo che la 16ª si era auto-denunciata: le 3 policy della famiglia
+feedback su TEST, dove però la misura ha smentito l'aspettativa mostrandole **portanti** e non
+decorative, con prova d'attacco a sonda identica prima e dopo, previsione del linter dichiarata
+prima (95 → 97) e zero residui; restano le **due portanti**, che sono una scelta di disegno e non
+una riga di SQL. Della **38** è stata smentita la misura della 16ª: i 404 **non si sono mai
+fermati**, ne arrivava uno al minuto ancora alle 19:31 da una scheda aperta col codice vecchio, e
+il disarmo — verificato sul file **servito**, sul `return` e non sul commento — è giusto: la prova
+che manca è un **ricaricamento**, non un'attesa. Della **23** è stata scritta la diagnosi e **non**
+la patch, per sua decisione: la scheda sbagliava bersaglio (è nella edge, non nell'app), i due rami
+divergono, e la correzione tocca la strada che prenota davvero, non verificabile dal cloud.
+📌 Quanto segue è la chiusura della **16ª**, lasciata come l'ha scritta:</sub>
+
+<sub>Aggiornato il 14/08/2026 a fine **16ª sessione**, la quarta dello stesso giorno. La lista urgenti era **vuota**: le quattro promozioni le ha decise il committente, su proposta fatta a misura già presa. Chiusa **una sola** voce, la **39** — il censimento delle tabelle dei due progetti — perché è l'unica verificata sul bersaglio fino in fondo. La **38** resta aperta di proposito: il disarmo è in produzione e su TEST, ma i 404 si erano fermati **prima** della cura e quel silenzio non prova niente ⇒ la conferma è alla prossima apertura del gestionale, e la fa una persona. La **37** resta aperta con un residuo che è colpa mia: la famiglia del feedback è chiusa su PROD e **ancora aperta su TEST**, perché l'autorizzazione diceva «PROD» e l'ho eseguita alla lettera — giusto rispetto al mandato, sbagliato rispetto al sistema, ed è la voce 31 in diretta. La **23** non è stata toccata: metà del suo lavoro vuole i log del worker su Hetzner. Versioni, sha, PR aperte, linter dei due progetti e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; PROD verificato **dal server** con `pg_net`, non dall'etichetta. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che stavolta pesa il doppio, perché il disarmo cambia proprio ciò che lo staff vede. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
