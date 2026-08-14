@@ -1,0 +1,66 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Voce 37 — 14/08/2026, 16ª sessione. PROD (qqbf…).
+-- Chiude la scrittura e la lettura ANONIME della famiglia «feedback post-partita».
+--
+-- MISURATO PRIMA (non ricordato):
+--   · post_match_feedback_responses: 0 righe. post_match_feedback_tokens: 0 gettoni.
+--     La funzione non è mai stata usata su PROD.
+--   · l'app NON tocca mai quelle tabelle in REST diretto: passa solo da RPC
+--     SECURITY DEFINER (submit_post_match_feedback_public, get_post_match_feedback_by_tokens),
+--     che scavalcano l'RLS ⇒ togliere le policy non toglie niente a nessuno.
+--   · prova d'attacco come `anon`, in transazione annullata, col seme che soddisfa la
+--     chiave esterna (altrimenti a fermare l'attacco sarebbe il vincolo, non l'RLS):
+--       - LETTURA gettoni ........ RIUSCITA (1 riga vista)          ⇒ buco vero
+--       - INSERT risposta ........ RIUSCITO (1 riga, vista poi dal
+--                                  ruolo privilegiato)              ⇒ buco vero
+--       - UPDATE risposta ........ 0 righe, con e senza `where`      ⇒ INERTE
+--     Lo zero dell'UPDATE ha una causa misurata, non è fortuna: il trigger
+--     trg_post_match_feedback_mark_token_completed porta il gettone a 'completed'
+--     appena la risposta entra, e la policy di lettura mostra ad `anon` solo
+--     'created'/'sent' ⇒ la USING dell'UPDATE diventa falsa. Si toglie lo stesso:
+--     è inerte per effetto di un trigger, e un trigger si può cambiare.
+--
+-- ⚖️ Oggi il buco è POTENZIALE — con 0 gettoni non c'è niente da leggere né a cosa
+--    agganciare una risposta. Si arma il giorno in cui la funzione si accende, e i
+--    gettoni portano member_name, phone_last4, member_local_id e match_key: è
+--    esattamente il caso del 12/08, quando 1364 gettoni dell'autovalutazione erano
+--    leggibili da chiunque avesse la chiave pubblicabile. Si chiude PRIMA, non dopo.
+--
+-- VERIFICATO DOPO, stessa prova:
+--   A) anon legge i gettoni ......... 1 → 0 righe
+--   B) scrittura diretta ............ RIUSCITA → 42501 permission denied
+--   C) RPC pubblica da anon ......... {"ok": true} — la strada legittima REGGE
+--   D) righe scritte ................ 1, ed è quella della RPC
+--   linter PROD: 99 → 101 avvisi, WARN 83 invariati, ERROR 0. I due nuovi sono
+--   `rls_enabled_no_policy` INFO sulle due tabelle: è l'esito VOLUTO — RLS accesa e
+--   nessuna policy, lo stesso stato in cui la voce 35 ha messo le sue due tabelle.
+--
+-- ↩️ RIPRISTINO (verbatim dallo stato misurato prima):
+--
+--   create policy "public_insert_post_match_feedback"
+--     on public.post_match_feedback_responses for insert to anon, authenticated
+--     with check (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text])
+--         and (t.expires_at is null or t.expires_at > now())));
+--
+--   create policy "public_update_post_match_feedback"
+--     on public.post_match_feedback_responses for update to anon, authenticated
+--     using (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text,'completed'::text])
+--         and (t.expires_at is null or t.expires_at > now())))
+--     with check (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text,'completed'::text])
+--         and (t.expires_at is null or t.expires_at > now())));
+--
+--   create policy "public_read_active_post_match_feedback_tokens"
+--     on public.post_match_feedback_tokens for select to anon, authenticated
+--     using (status = any (array['created'::text,'sent'::text])
+--            and (expires_at is null or expires_at > now()));
+-- ════════════════════════════════════════════════════════════════════════════
+
+drop policy if exists "public_insert_post_match_feedback" on public.post_match_feedback_responses;
+drop policy if exists "public_update_post_match_feedback" on public.post_match_feedback_responses;
+drop policy if exists "public_read_active_post_match_feedback_tokens" on public.post_match_feedback_tokens;

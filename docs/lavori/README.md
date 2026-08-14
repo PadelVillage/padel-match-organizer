@@ -37,9 +37,9 @@ causa invece del rischio.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **14** |
-| 📦 **Chiuse** | **15** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 🔴 **Urgenti** | **3** |
+| 📋 **In coda** | **13** |
+| 📦 **Chiuse** | **16** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema:** app PROD **6.220** · TEST **6.230** · `main` `fb1fddf`, `test-preview`
 `8cc37c0` · **0 PR aperte** (la #694 mergiata in squash) · `server.mjs`,
@@ -108,22 +108,165 @@ storia dello sviluppo, **non toccate**.
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 3
 
-**Vuota**, per la prima volta da quando questa lista esiste. La 35 — l'ultima rimasta — è stata
-misurata, confermata punto per punto e **chiusa il 14/08 nella 14ª sessione**, con la sua conferma
-esplicita perché toccava la produzione.
+**Promosse dal committente il 14/08/2026, 16ª sessione**, dopo che la lista era rimasta vuota per
+la prima volta da quando esiste. Tre nascono dalle note «🆕 nate misurando» e una — la **23** —
+sale dalla coda. Proposte a misura fatta, scelte da lui: quattro su quattro.
 
-🚨 **Vuota non vuol dire che non c'è lavoro**: la coda ha 16 voci e nessuna si promuove da sé.
-Le promozioni le decide il committente — si propongono, non si eseguono.
+### 37. 🔓 Le policy di scrittura anonima rimaste — 4 su PROD, 7 su TEST
+*Nata come nota il 12/08, misurata e promossa il 14/08.* È la domanda che la 15ª sessione ha
+lasciato aperta: non «quella porta è chiusa bene», ma **quante ne esistono di quel tipo**.
+
+**Misurato il 14/08 su `pg_policies`, non ricordato:**
+
+| tabella | PROD `qqbf…` | TEST `cudi…` |
+|---|---|---|
+| `pmo_ai_turns` | INSERT (`anon`,`authenticated`) | idem |
+| `pmo_parser_errors` | INSERT (`anon`,`authenticated`) | idem |
+| `post_match_feedback_responses` | INSERT **e UPDATE** | idem |
+| `pmo_bookings` | — | **`ALL`** (`anon`) — legge **e scrive** |
+| `pmo_parse_history` | — | **`ALL`** (`anon`) |
+| `pmo_parser_rules_versions` | — | **`ALL`** (`anon`) |
+
+⚠️ **La nota del 12/08 diceva «tre tabelle accettano inserimenti anonimi»**: le tabelle sono tre,
+ma le policy sono **quattro**, e la quarta è un **UPDATE** che nessuno aveva nominato. È la stessa
+forma della voce 27, dove le «tre policy» erano quattro — la terza volta di fila.
+✅ Su `self_assessments` e `assessment_tokens` non resta nulla: il passo 4 della 27 ha tenuto.
+
+🚨 **Queste tabelle servono a qualcuno**, e non è come le due della voce 35 (scoperte, morte, zero
+riferimenti). Il parser ci scrive i suoi errori, il feedback post-partita arriva dal socio **senza
+login**: togliere la policy sbagliata spegne una funzione viva e non se ne accorge nessuno finché
+non serve. ⇒ Prima il rito «chi punta a questa riga», tabella per tabella; poi la revoca; e la
+prova d'attacco **prima e dopo**, col suo controllo negativo.
+
+#### ✅ Fatto il 14/08 (16ª sessione) — PROD, famiglia «feedback post-partita»
+
+Con la sua autorizzazione, **tolte 3 policy**: INSERT e UPDATE su `post_match_feedback_responses`,
+SELECT su `post_match_feedback_tokens`. 🆕 **La terza non la nominava nessuna nota**: è saltata
+fuori guardando la famiglia intera invece della singola tabella.
+
+**Prova d'attacco come `anon`, in transazione annullata, prima e dopo** — col seme che soddisfa la
+chiave esterna, altrimenti a fermare l'attacco sarebbe stato il **vincolo** e non l'RLS:
+
+| | prima | dopo |
+|---|---|---|
+| `anon` legge i gettoni | **1 riga** | **0** |
+| `anon` scrive una risposta | **riuscito** (1 riga, vista dal ruolo privilegiato) | **42501** |
+| la **RPC pubblica** da `anon` | — | **`{"ok": true}`**, e scrive la sua riga |
+
+🔎 **L'UPDATE dava 0 righe, e non era la policy.** Sembrava dire che l'allarme fosse esagerato; era
+un **trigger**: `trg_post_match_feedback_mark_token_completed` porta il gettone a `completed` appena
+la risposta entra, e la policy di lettura mostra ad `anon` solo `created`/`sent` ⇒ la `USING`
+dell'UPDATE diventa falsa. Quella policy era **inerte**, non un buco — tolta lo stesso, perché è
+inerte per effetto di un trigger, e un trigger si cambia.
+⚖️ **Onestà sulla portata**: con **0 gettoni** il buco oggi è **potenziale**. Si arma il giorno in
+cui la funzione si accende, e i gettoni portano `member_name`, `phone_last4`, `member_local_id`,
+`match_key` — cioè il caso del 12/08 con i 1364 gettoni dell'autovalutazione. Chiuso **prima**.
+✅ Linter PROD **99 → 101**, `WARN` **83 invariati**, `ERROR` **0**. I due nuovi sono
+`rls_enabled_no_policy` INFO sulle due tabelle: l'esito **voluto**, lo stesso stato della voce 35.
+📌 Avevo previsto «non cambia nulla»: **la previsione era sbagliata di due**, ed è meglio così —
+sono la firma della porta chiusa, non un effetto collaterale.
+🔗 Migrazione `20260814181002`, reversibile, con l'SQL di ripristino verbatim in testa.
+
+#### 🛑 FERMATO su TEST — la misura smentisce la nota, e non la correggo per farla tornare
+
+Le tre policy `ALL` su `cudi…` **ci sono davvero**, ma **non fanno quello che la nota dice**.
+Prova d'attacco come `anon`, **prima di qualunque modifica**: `42501` su **tutte e cinque** le
+prove — lettura, tre scritture, cancellazione. Il motivo è un piano più sotto delle policy:
+
+```
+anon = Dxtm/postgres      ⇒ niente r (SELECT), w (UPDATE), a (INSERT), d (DELETE)
+```
+
+⇒ Ad `anon` **mancano i grant di tabella**, quindi le tre policy sono **decorative**: descrivono un
+accesso che nessuno ha. Toglierle non chiude niente — toglie un **segnale ingannevole**, che non è
+la stessa cosa. ⚖️ **Non le ho tolte**: l'autorizzazione l'avevo, ma l'avevo chiesta sulla base di
+«lettura e scrittura per anonimo», e quella premessa è falsa. Decide lui, con la ragione giusta.
+
+🚨 **E sotto c'era altro, che nessuno cercava.** Quella `D` nell'ACL è **TRUNCATE**, e l'**RLS non
+filtra il TRUNCATE**. Provato come `anon` su TEST: `truncate public.pmo_parse_history` **RIUSCITO**.
+(Su `pmo_bookings` risponde `0A000`, ma è la **chiave esterna** di `pmo_parse_history`, non un
+rifiuto di permesso.)
+📊 Su **PROD** sono **14 le tabelle** dove `anon` ha TRUNCATE — con ACL piena `arwdDxtm`, quindi lì
+a trattenerlo è **solo l'RLS**: fra queste `admin_settings`, `assessment_admin_config` (il deposito
+del PIN), `pmo_lessico`, `pmo_ai_settings`, `pmo_parser_config` e i due backup del 9/08.
+⚖️ **Non è un allarme, ed è importante dirlo**: chi ha la chiave pubblicabile parla **PostgREST**,
+che non ha un verbo TRUNCATE. Per usare quel permesso servirebbe eseguire SQL **come `anon`** — cosa
+che oggi nessuna strada nota permette. È una **configurazione sbagliata latente**, non una porta
+aperta. Ma è la stessa forma della voce 36: un permesso che nessun elenco di «chi scrive» mostra.
+
+### 38. 📡 `wa-shadow-proxy` — 623 chiamate a vuoto al giorno, **anche in PRODUZIONE**
+*Nata come nota il 14/08 (14ª sessione), misurata e promossa il 14/08 (16ª).* La nota diceva «il
+gestionale di **TEST** chiama `wa-shadow-proxy` una volta al minuto e prende 404» e chiudeva con
+«⚠️ non guardato se su PROD c'è». **Guardato:**
+
+| | TEST `cudi…` | PROD `qqbf…` |
+|---|---|---|
+| funzione deployata | ❌ no | ❌ **no** |
+| 404 in 24 ore | **619** | **623** |
+
+Uno al minuto, su **entrambi**, ininterrottamente (TEST: 13/08 17:42 → 14/08 17:31). Il sorgente è
+in repo (`supabase/functions/wa-shadow-proxy/index.ts`), il chiamante è il pannello WhatsApp dello
+staff (`index.html:37979`, polling 60s) — cioè un canale **dismesso il 25/07**. ⇒ Non è una svista
+di TEST: è la **stessa famiglia delle voci 28 e 29**, il pannello è andato via e chi lo serviva no.
+
+⚠️ **La prima sonda ha detto `0`, e si sbagliava.** Cercava in `edge_logs`; le invocazioni delle
+edge stanno in **`function_edge_logs`**. Stava per uscirne un «il traffico è cessato» che avrebbe
+chiuso la voce con una misura falsa. L'ha salvata il controllo negativo — chiedere alla sonda se
+sa trovare *qualcosa* (7398 righe) prima di credere a uno zero.
+
+🚨 **E le porte erano DUE, non una.** Misurando il backend è saltato fuori il secondo temporizzatore:
+`waUsageLoad` chiama `wa_usage_stats` su `ayly…` ogni **300 s**, e quella RPC **esiste ancora ma
+muore** — `42P01: relation "whatsapp_inbound_messages" does not exist`. **295 fallimenti in 24 ore**
+(PROD e TEST insieme). Col primo fanno **~1540 chiamate a vuoto al giorno**.
+
+⚖️ **Rideployare non era un'opzione**, e questo l'ha deciso la misura: su `ayly…` ci sono **zero**
+edge function e **zero** tabelle `whatsapp*`. Il proxy parlerebbe al vuoto.
+
+🖐️ **Fatto il 14/08 (16ª sessione): disarmo minimo, scelto da lui.** Un `return` in testa a
+`waInit()` — il riquadro non si mostra e i due temporizzatori non partono. Il codice resta ma
+diventa irraggiungibile, come i pannelli email della voce 28: la potatura vera (~150 righe di HTML
++ ~700 di JS) è **voce a sé**, non si fa di fretta.
+
+🔀 **Su ENTRAMBI i rami, e questo è il punto della voce 31.** `main` **6.220 → 6.221**,
+`test-preview` **6.230 → 6.231**, con lo **stesso identico blocco** — estratto dal file vero e
+reinserito, non riscritto a mano. I due `waInit` differivano **solo nei commenti**, mai nel codice.
+⚖️ Non è pignoleria: la 31 esiste perché una sicura scritta solo su TEST lasciò PROD scoperto per
+dieci giorni. Qui il verso è l'opposto — la riparazione nasceva su `main` — e lasciarla lì avrebbe
+lasciato TEST a bussare 619 volte al giorno verso una funzione che non esiste.
+✅ **La libreria testi e template resta viva** — sta nella stessa scheda, non tocca il backend morto
+ed è l'unica cosa che in quella pagina funzionava.
+
+**Verificato:** `controlla-sintassi` 5 blocchi 0 errori (col suo controllo negativo); **13/13** le
+prove Node; **55/55** la rete di regressione nel browser, orologio attendibile, `leakCount` **2
+prima e 2 dopo** — e sono entrambe `bot-telegram-admin`, che non c'entra.
+⛔ **NON verificato, e non lo spaccio per fatto**: il confronto sull'app **vera**. Da questa sessione
+cloud l'app non boota — `@supabase/supabase-js` dal CDN e `config.js` sono bloccati dal proxy
+(`ERR_TUNNEL_CONNECTION_FAILED`) — e il banco gira in un mondo mockato dove quei due timer erano
+**già** spenti: misurerebbe zero in entrambi i casi, cioè niente. Anche il banco è più largo del
+vero, ancora una volta.
+🎯 **La prova che conta si fa DOPO il deploy, ed è un numero:** i 404 su `wa-shadow-proxy` (623/g su
+`qqbf…` e 619/g su `cudi…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a
+zero**. Finché non li si vede a zero, questa voce **resta aperta**.
+📌 **TEST si vedrà prima**: `test-preview` è **subito live** (nessun workflow, il caricatore prende
+l'ultimo commit), mentre PROD aspetta il merge della PR. ⇒ Se domani i 404 di `cudi…` vanno a zero e
+quelli di `qqbf…` no, non è un guasto: è la #698 non ancora mergiata.
+
+### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
+*Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
+Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e
+gli esiti sono **tre**.
+⚠️ **Metà del lavoro non si fa dal cloud**: la correzione è nell'app, ma provarla davvero vuole i
+log del worker su **Hetzner**. Dal cloud si arriva alla diagnosi e alla patch, non alla prova.
 
 ---
 
-## 📋 IN CODA — 14
+## 📋 IN CODA — 13
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 9
+### C — Cose sapute e non risolte — 8
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
@@ -136,9 +279,6 @@ Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore
 
 #### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
 Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
-
-#### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
-La creazione manda il lavoro al worker e **non controlla l'esito**. Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e gli esiti sono **tre**.
 
 #### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
 Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
@@ -175,6 +315,7 @@ Misurando il **12/08**:
 
 - 🔓 Su **TEST** ci sono policy `ALL` (lettura **e scrittura**) per anonimo su `pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`. Su PROD no.
 - 🔓 Su PROD altre **tre tabelle** accettano inserimenti anonimi (`pmo_ai_turns`, `pmo_parser_errors`, `post_match_feedback_responses`): non guardate.
+  ⬆️ **Entrambe promosse da lui il 14/08: sono la voce 37**, dove sono anche rimisurate — le policy su PROD sono **quattro**, non tre, e una è un `UPDATE`.
 
 Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
 
@@ -183,10 +324,13 @@ Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
   `self_assessments.email`, `consistency_score`, `inconsistency_reasons`, `review_note` **ci
   sono su PROD e non su TEST**. Nessuno le aveva mai confrontate. ⚠️ Le altre tabelle **non
   sono state guardate**: questa è una campionatura di due, non una misura.
+  ⬆️ **Promossa da lui il 14/08: è la voce 39.**
 - 📡 **Il gestionale di TEST chiama `wa-shadow-proxy` una volta al minuto e prende 404**: la
   funzione sta nel repo ma **non è mai stata deployata su `cudi…`**. **612 chiamate a vuoto in
   24 ore**, dal 13/08. Non rompe niente di visibile, ed è per questo che nessuno se n'era
   accorto. ⚠️ Non guardato se su PROD c'è.
+  ⬆️ **Promossa da lui il 14/08: è la voce 38** — e guardato: **su PROD è uguale**, 623 chiamate
+  a vuoto in 24 ore verso una funzione che non è deployata **né di qua né di là**.
 - 🧟 **Il riquadro «prova il test» del gestionale non esiste più**: `0` occorrenze di
   `id="assessmentExternalKnowledgeBlock"` anche su `main`, da prima di questo lavoro — tolto il
   13/08 con la #677. Le tre funzioni che lo servivano sono rimaste: sono **voce 28** in piena
@@ -222,6 +366,47 @@ Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
   ⚠️ nessuno le ha mai lette una per una. Le altre 45 **non sono state guardate** — questa è una
   campionatura di due, esattamente come le tabelle divergenti di ieri.
 
+Misurando il **14/08** nella 16ª sessione, disarmando la voce 38:
+
+- 🧟 **Il riquadro WhatsApp e il suo blocco JS restano nel file, ora irraggiungibili**: ~150 righe di
+  HTML (`index.html:7219–7369`) e ~700 di JS (il blocco `wa*`), tenute in vita solo dal `return` che
+  le precede. **È la stessa forma delle voci 28 e 29** — codice dormiente di una cosa smontata — e
+  come quelle l'asportazione va provata per bene, non fatta di slancio. ⚖️ **Non l'ho messa in coda
+  da me**: le promozioni le decide lui, e questo vale anche per l'ingresso in lista.
+- 🔎 **`wa_usage_stats` è rimasta su `ayly…` a leggere tabelle che non esistono più**, ed è
+  `SECURITY DEFINER` eseguibile da `anon`. Non fa danno — muore in partenza con `42P01` — ma è la
+  **quarta** funzione della famiglia «viva senza il suo mondo» incontrata in due giorni, dopo le tre
+  della voce 36. Non toccata: non era la 38.
+
+Misurando il **14/08** nella 16ª sessione, censendo le tabelle (voce 39):
+
+- 🔴 **`pmo_parser_errors`: l'app di PROD scrive e legge colonne che su PROD NON esistono.** Dalla
+  **PR #648 del 7/08**, `logParserError` manda sempre `origine` e il pannello «Le mie segnalazioni»
+  chiede `stato`, `risolto_il`, `risolto_in_versione`, `nota_risoluzione`: cinque colonne che stanno
+  **solo su TEST**. Provato sul bersaglio: **`42703`** su tutte e tre le strade. ⇒ Su PROD nessuna
+  segnalazione del parser si registra — **in silenzio** — e quel pannello non carica.
+  ⚖️ **Non è la causa** del silenzio della tabella (45 righe, tutte del **16/06**, due mesi prima):
+  la mia ipotesi è stata smentita dalla misura, e i due fatti restano distinti.
+  ✅ **RIPARATA in giornata, strada scelta da lui: aggiungere le 5 colonne a PROD** — quella che
+  allinea, non quella che mutila. Colonne **copiate verbatim da TEST** (`stato` e `origine` `NOT
+  NULL` con default, le altre tre libere); indici e vincoli erano **già identici** e non sono stati
+  toccati. Verificato: le tre strade che davano `42703` ora riescono (l'INSERT nella forma **esatta**
+  dell'app, in transazione annullata, 0 residui); l'**impronta** delle colonne di PROD è ora
+  **identica** a quella censita per TEST *prima* di toccare niente; e la prova **end-to-end via
+  PostgREST**, stessa URL e stessa chiave dell'app, è passata da **400 `42703`** a **200 `[]`**.
+  Linter **101 → 101**, `ERROR` 0. Le 45 righe storiche intatte, ultima ancora del 16/06.
+  🔗 Migrazione `20260814183100`, reversibile.
+  ⚠️ **Resta aperta la domanda vera**: *perché* quella tabella tace dal **16/06**. La migrazione
+  chiude il disallineamento, non il silenzio — e i due non erano lo stesso problema, per quanto
+  comodo sarebbe stato crederlo.
+- 🧯 **Rivedere quel che ho detto sulla voce 37**: avevo chiamato «portante» la policy di INSERT
+  anonimo su `pmo_parser_errors`. Resta vero in linea di principio — il codice ricade su `anon`
+  quando la sessione staff manca — ma è **irrilevante in pratica finché resta il 42703**, perché su
+  PROD quell'insert non riesce comunque. Ho fatto bene a non toglierla, per il motivo sbagliato.
+- 🔎 **`assessment_tokens` diverge in DUE direzioni**, non una: `member_email` solo su PROD,
+  `updated_at` solo su TEST, con **13 colonne da entrambe le parti**. Il conteggio non l'avrebbe
+  mai mostrato.
+
 Misurando il **14/08**, aprendo la voce 22:
 
 - 🧊 Lo specchio delle prenotazioni di TEST fermo dal 7/08 → **promossa da lui a urgente: è la voce 32.**
@@ -229,17 +414,18 @@ Misurando il **14/08**, aprendo la voce 22:
 
 ---
 
-## 📦 CHIUSE — 13 e 14/08/2026 — 15 voci
+## 📦 CHIUSE — 13 e 14/08/2026 — 16 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime sette voci sono del 14/08; le otto successive del 13/08.**
+**Le prime otto voci sono del 14/08; le otto successive del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **39** | 🔀 *(14/08, 16ª sessione — promossa da lui)* **Le TABELLE dei due progetti, censite e dichiarate** in [`docs/divergenze-tabelle-test-prod.md`](../divergenze-tabelle-test-prod.md). È il gemello della voce 33, un piano sotto: là le funzioni SQL, qui le tabelle. PROD **25**, TEST **23**, in comune **20**: **17 identiche**, **3 divergenti**. 🎯 **E il censimento ha trovato un guasto vivo in PRODUZIONE, che era il suo scopo:** `pmo_parser_errors` ha 9 colonne su PROD e **14** su TEST, e dalla **PR #648 del 7/08** l'app di `main` **scrive `origine`** a ogni segnalazione e **legge** `stato`, `risolto_il`, `risolto_in_versione`, `nota_risoluzione` per il pannello «Le mie segnalazioni» — colonne che su PROD **non esistono**. Provato sul bersaglio: **`42703`** in lettura, in scrittura e sulle quattro del pannello ⇒ su PROD nessuna segnalazione del parser poteva essere registrata (e falliva in **silenzio**: `console.warn`, `return false`) e quel pannello non poteva caricare. ✅ **Riparato in giornata, strada scelta da lui**: le 5 colonne aggiunte a PROD verbatim da TEST (migrazione `20260814183100`). Prova **end-to-end via PostgREST**, stessa URL e chiave dell'app: **400 `42703` → 200 `[]`**; impronta delle colonne di PROD ora **identica** a quella censita per TEST prima di toccare niente; linter 101 → 101, `ERROR` 0; 45 righe storiche intatte. ⚖️ **Ma non è la causa del silenzio della tabella**, e la misura ha smentito la mia ipotesi: le 45 righe sono **tutte del 16/06**, cioè due mesi **prima** del disallineamento. Sono due fatti distinti, e vanno tenuti distinti. 🔎 **La divergenza che la campionatura non poteva vedere**: `assessment_tokens` ha **13 colonne da entrambe le parti**, ma non le stesse — `member_email` solo su PROD, `updated_at` solo su TEST. Col solo conteggio sarebbe rimasta invisibile: per questo si confronta l'**impronta**. ✅ Confermate le 4 colonne di `self_assessments` già viste il 14/08: la campionatura diceva il vero. 🔗 **Chiude un cerchio della voce 33**: `admin_settings` esiste **solo su PROD**, e su PROD **esattamente una** funzione la nomina (`upsert_assessment_tokens_admin`) mentre su TEST **nessuna** ⇒ non sono «due depositi del PIN in PROD e uno in TEST», è un deposito in più che vive solo di là, con la sua unica lettrice. ⛔ **Non misurati, e il documento lo dichiara**: indici, vincoli, default, trigger, policy e contenuti — due tabelle qui dette «identiche» possono avere trigger diversi, ed è successo davvero con quello che ha avuto un ruolo nella voce 37 |
 | **36** | 🔎 *(14/08, 15ª sessione — promossa da lui)* **Le 45 funzioni `SECURITY DEFINER` chiamabili da `anon` su PROD, passate in rassegna. Undici erano aperte.** Nata dalla 27, che ne aveva scoperte due. 🚨 **La prima classificazione era sbagliata, ed è il pezzo che vale più delle funzioni chiuse**: avevo diviso in «24 che scrivono / 21 che leggono» cercando `insert|update|delete` nel sorgente — ma **far partire una chiamata HTTP non è una scrittura SQL**, e sette `pmo_dispatch_*` stavano fra le «letture» mentre fanno `net.http_post`. Ne avevo chiusa **una su otto** credendo di aver chiuso la famiglia. ⇒ Una funzione si classifica per **cosa provoca**, non per quali parole contiene. 🎯 E il pezzo peggiore non scriveva né chiamava nessuno: **`pmo_verify_data_routine_secret(text)`**, che confronta un candidato col segreto nel vault e risponde sì/no ⇒ da `anon` è un **oracolo a tentativi illimitati** sul segreto che autorizza tutte le routine; con quello in mano le edge si chiamano dritte. Non sarebbe comparso in nessun elenco di «funzioni che scrivono», per costruzione. 🔴 **Chiuse 11**: i **7 dispatcher** (pagamenti ×2, portafoglio, contatti Google, maestri, avvisi autovalutazione, lessico AI), **`pmo_dispatch_data_routines`** (faceva partire la catena dei cron, `p_now` a scelta del chiamante), **`pmo_cleanup_dispatch_logs`** (`DELETE` senza guardia: con `0` cancellava **1457** righe di storia dei dispatch), **`pmo_audit_admin`** (falsificava il registro di controllo — provato come `anon`: scritta «`presidente@padelvillage.club` · `owner` · `staff_delete_full`») e l'**oracolo**. ✅ **Guardate e a posto**: tutta la famiglia `*_admin` risponde **`AUTH_REQUIRED`** — provata come `anon`, non dedotta — più `INVALID_ORIGIN` e i cancelli a gettone. ⚪ **Aperta per disegno**: `pmo_can_register_staff`, oracolo di enumerazione ma chiamata dalla schermata di **registrazione**, dove nessuno è ancora autenticato. 🔀 **Su TEST due erano già chiuse e su PROD no**: è la **voce 31 al contrario**, e sul resto della famiglia TEST era un rattoppo a campione senza criterio. 🚨 **Trappola `service_role`, incontrata TRE volte oggi**: su PROD i grant sono espliciti e il `revoke ... from public` non li tocca, su TEST spesso passano da PUBLIC ⇒ la stessa revoca glieli toglie. Su TEST si rimisura **dopo**, contro la fotografia presa **prima** — non contro PROD. ✅ Linter di PROD, quattro fotografie diffate: **123 → 125 → 121 → 99**, `WARN` 109 → **83**, `ERROR` **0** sempre; spariti 26 avvisi, esattamente 13 funzioni × 2 ruoli, **nessuno nuovo**. ⛔ **Non esaminate**: 3 letture per gettone e la robustezza del PIN. 🔗 4 migrazioni `2026081416*` |
 | **27** | 🔒 *(14/08, 15ª sessione)* **Il cancello dell'autovalutazione è chiuso davvero — e la prima chiusura non bastava.** Punto 1 fatto **da lui**: scheda vera compilata su `app.padelvillage.club` col gettone `TEST456`, quiz 3/4 con la trappola indovinata (soglia **3** ⇒ `pass`), riga con `corretta_dal_server: true`, gettone bruciato dall'edge **0,15 secondi dopo**. ⭐ È quella riga a dimostrare che PROD serve la **6.220**, non l'etichetta della scheda: la 6.219 scriveva da sé con la chiave pubblicabile e non avrebbe potuto scrivere quel campo. ⇒ Poi il **passo 4**: tolte le **4** policy di scrittura anonima (3 di INSERT su `self_assessments` + `public_update_token_completed` su `assessment_tokens`, che la scheda non nominava). ✅ Verificato: `anon` → **42501**, `service_role` → scrive. 🚨 **E lì sembrava finita, e non lo era.** Facendo il rito «cosa punta a questa riga» prima di togliere la scheda di prova, è saltata fuori **`submit_self_assessment_public`**: `SECURITY DEFINER`, eseguibile da `anon`, **scavalca l'RLS per costruzione** e prende `staff_status` dal payload — se manca resta **vuoto**, cioè lo stato in cui `apply-level` applica da sé. Provato come `anon` in transazione annullata: livello **7** scritto, segreteria vuota, nessun `knowledge` ⇒ in `decidi()` il controllo sul quiz **non viene proprio fatto**. Le policy non la riguardavano nemmeno. ⇒ `EXECUTE` revocato a `public`/`anon`/`authenticated` su **PROD e TEST** (là il passo 4 era stato dichiarato completo il 14/08 con una verifica **giusta e insufficiente**: guardava l'RLS). `service_role` conserva l'esecuzione — su TEST è stato rimesso con una migrazione di parità, perché là il grant non era esplicito. ✅ `anon` → **42501 permission denied**; linter **125 → 121** avvisi, `WARN` 109 → **105**, `ERROR` **0**, spariti esattamente i 4 attesi e **nessuno nuovo**. ⚪ `get_self_assessments_by_tokens` non toccata: è lettura e l'app la usa (`index.html:30062`). 🧹 Residuo della prova ripulito: scheda tolta (salvata per intero nel commit) e `TEST456` riarmato a `created`. 🔗 3 migrazioni `2026081416*` |
 | **24** | 🔔 *(14/08, 14ª sessione)* **Il raddoppio dell'ultimo avviso di disdetta è ACCESO, su PROD e su TEST.** La decisione che la voce aspettava l'ha presa lui: `disdetta.avvisi_ore_prima_scadenza_bis = 1`. 🔎 Scheda **confermata di nuovo**: il codice c'era davvero (`avvisi.ts`, `TIPI` con `finale_bis` dall'11/08), la colonna `finale_bis` su `ayly…` pure, e la chiave **mancava su entrambi** — i due oggetti `disdetta` erano identici e nessuno dei due la conteneva. 🚨 **La scheda però non diceva la cosa che contava**: la kb finisce **in pasto al modello** (`conoscenza` → `readmodelKb`), e la sua prosa dichiarava «**Tre** promemoria… l'ultimo 6 ore prima» con `quanti_avvisi: 3`. Accendere la sola chiave avrebbe fatto **mandare quattro avvisi al bot mentre ne dichiarava tre ai soci** ⇒ chiave, `quanti_avvisi` e testo corretti **nello stesso istante**. ✅ Verificato dando la kb VERA in pasto al codice VERO: momenti `primo` (5g), `secondo` (3g), `finale` (−6h), `finale_bis` (−1h). E 61/61 verdi nella rete di regressione del bot. ✅ **Nessuna raffica**: misurato prima di accendere che 0 prenotazioni stavano nella finestra del bis; la prima scadenza utile è del 15/08, quindi il primo raddoppio parte ~21 ore dopo. ⏱️ In servizio senza rideploy: la kb ha una cache di **30 secondi**. ⚖️ I due `disdetta` restano **identici byte per byte** (`330f2d22…`), com'erano prima. 📌 Il registro su `ayly…` ha `ambiente='prod'` per tutte e 11 le righe e `finale_bis` a **0**: il primo lo si vedrà lì |
