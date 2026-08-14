@@ -290,7 +290,9 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-**PROD è a v6.221** (`main`). TEST è a **v6.230** (`test-preview`). L'ultimo lavoro chiuso è quello della **16ª sessione del 14/08**: disarmato il chiamante del canale WhatsApp smontato (voce 38, ~1540 chiamate a vuoto al giorno fra i due ambienti) e chiusa ad `anon` la famiglia «feedback post-partita» su PROD (voce 37). Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
+**PROD è a v6.221** (`main`). TEST è a **v6.231** (`test-preview`). L'ultimo lavoro è quello della **17ª sessione del 14/08**, che non ha toccato `index.html`: chiusa ad `anon` la famiglia «feedback post-partita» anche su **TEST** (voce 37, migrazione `20260814194040`) — su PROD lo era dalla 16ª — e rimisurata la voce 38, dove i 404 di `wa-shadow-proxy` **non si erano affatto fermati**: ne arrivava uno al minuto da una scheda del gestionale rimasta aperta col codice vecchio, mentre il disarmo nel file **servito** da PROD è giusto e verificato.
+
+⚠️ La riga qui sopra ha dichiarato **v6.230** per TEST mentre la tabella «Versione corrente» diceva già 6.231: la tabella è sorvegliata dalla CI, **questa riga no**, e le due si sono separate nel giro di un'ora. È la stessa malattia, allo stadio più piccolo che si possa vedere. Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
 
 ⚠️ Questo paragrafo aveva dichiarato **v6.216 / v6.217** fino al 14/08, cioè **5 e 13 versioni indietro**, citando la PR #673 come ultimo lavoro: la tabella «Versione corrente» qui sopra è sorvegliata dalla CI, **questa riga no**. È la stessa malattia, un piano più in basso — e la cura è la stessa: aggiornarla **mentre si lavora**, non a memoria dopo.
 
