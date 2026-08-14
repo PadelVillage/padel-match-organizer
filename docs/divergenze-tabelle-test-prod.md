@@ -35,14 +35,14 @@ avuto un ruolo nella voce 37, non comparirebbe in nessuna riga di questo documen
 | tabelle su **PROD** (`qqbf…`) | **25** |
 | tabelle su **TEST** (`cudi…`) | **23** |
 | in comune | **20** |
-| ⇒ di cui **identiche** | **17** |
-| ⇒ di cui **divergenti** | **3** |
+| ⇒ di cui **identiche** | **18** *(erano 17: la 18ª è stata sanata in giornata, sotto)* |
+| ⇒ di cui **divergenti** | **2** *(erano 3)* |
 | solo su PROD | **5** |
 | solo su TEST | **3** |
 
-## Le 3 divergenti
+## ✅ La divergenza sanata in giornata
 
-### 1. `pmo_parser_errors` — PROD 9 colonne, TEST 14 · 🔴 **rompe qualcosa, oggi, in PRODUZIONE**
+### `pmo_parser_errors` — era PROD 9 colonne / TEST 14 · 🔴 **rompeva qualcosa in PRODUZIONE**
 
 Su **TEST** ci sono cinque colonne in più, che insieme formano il flusso «segnalazione risolta»:
 `origine`, `stato`, `risolto_il`, `risolto_in_versione`, `nota_risoluzione`.
@@ -61,27 +61,49 @@ LETTURA delle 4 colonne del pannello ........... 42703 — column "stato" does n
 INSERT con origine ............................. 42703 — column "origine" ... does not exist
 ```
 
-⇒ Su PROD **nessuna segnalazione del parser può essere registrata**, e il pannello «Le mie
-segnalazioni» **non può caricare**: PostgREST rifiuta la colonna sconosciuta e la `fetch` alza
-`HTTP 400`. Il fallimento della scrittura è **silenzioso** (`console.warn`, `return false`).
+⇒ Su PROD **nessuna segnalazione del parser poteva essere registrata**, e il pannello «Le mie
+segnalazioni» **non poteva caricare**: PostgREST rifiuta la colonna sconosciuta e la `fetch` alza
+`HTTP 400`. Il fallimento della scrittura era **silenzioso** (`console.warn`, `return false`) — che
+è il motivo per cui è rimasto lì dal 7/08 senza che nessuno se ne accorgesse.
 
 ⚖️ **Attenzione a non attribuirgli più di quel che è.** La tabella su PROD è ferma a **45 righe,
 tutte del 16/06/2026** — cioè il silenzio **precede di quasi due mesi** questo disallineamento.
 Avevo ipotizzato che fosse la causa: **la misura ha smentito l'ipotesi**. Sono due fatti distinti:
-la tabella tace dal 16/06 per un motivo non ancora indagato, **e** dal 7/08 non potrebbe comunque
-più ricevere niente.
+la tabella tace dal 16/06 per un motivo non ancora indagato, **e** dal 7/08 non avrebbe comunque
+più potuto ricevere niente.
 
 📌 È la forma della **voce 31** — codice promosso in PROD portandosi dietro l'idea dello schema di
 TEST — e la forma della lezione del 14/08: *chi scrive per i due ambienti scrive
 sull'**intersezione***. Qui si è scritto sull'unione.
 
-### 2. `self_assessments` — PROD 39 colonne, TEST 35
+#### ✅ Sanata il 14/08, con la sua autorizzazione — migrazione `20260814183100`
+
+Scelta la strada che **allinea** invece di quella che mutila: le 5 colonne aggiunte a PROD,
+**copiate verbatim da TEST** e non inventate — `stato` e `origine` `NOT NULL` con default
+(`'aperta'`, `'auto'`), le altre tre libere. Indici e vincoli erano **già identici** fra i due
+progetti, quindi non è stato toccato nulla lì.
+
+| verifica | esito |
+|---|---|
+| lettura di `origine`, lettura delle 4 del pannello, INSERT nella forma **esatta** dell'app | tutte **riuscite** (l'insert in transazione annullata: 0 residui) |
+| impronta delle colonne di PROD | ora **`6db832dc…`**, cioè **identica** a quella censita per TEST *prima* di toccare niente |
+| end-to-end via **PostgREST** (`pg_net`, stessa URL e stessa chiave dell'app) | **400 `42703`** → **200 `[]`** |
+| linter di PROD | **101 → 101**, `WARN` 83, `ERROR` 0 — nessuna variazione in nessun verso |
+| le 45 righe storiche | intatte, ultima ancora del **16/06**; prendono i default `aperta`/`auto` e **non** compaiono nel pannello, che filtra `origine=eq.manuale` |
+
+⚠️ **Resta aperta la domanda vera**: *perché* quella tabella tace dal 16/06. Questa migrazione
+chiude il disallineamento, non il silenzio — e i due non erano lo stesso problema, per quanto
+comodo sarebbe stato crederlo.
+
+## Le 2 ancora divergenti
+
+### 1. `self_assessments` — PROD 39 colonne, TEST 35
 
 Su **PROD** in più: `email`, `consistency_score`, `inconsistency_reasons`, `review_note`.
 Sono le quattro già viste il 14/08 nella 14ª sessione, quando fecero morire l'edge su TEST con un
 500. Qui sono solo **confermate**: la campionatura diceva il vero.
 
-### 3. `assessment_tokens` — 13 colonne da entrambe le parti, ma **non le stesse**
+### 2. `assessment_tokens` — 13 colonne da entrambe le parti, ma **non le stesse**
 
 | | |
 |---|---|
@@ -128,12 +150,13 @@ domani sanerà il doppio PIN deve sapere che su TEST **non c'è niente da sposta
 
 ⇒ Profilo identico alle due tabelle chiuse con la **voce 35**: scoperte, morte, senza puntatori.
 
-## Le 17 identiche
+## Le 18 identiche
 
 `assessment_admin_config`, `assessment_external_requests`, `booking_parses`, `pmo_ai_settings`,
 `pmo_ai_turns`, `pmo_ai_usage`, `pmo_assessment_notifications`, `pmo_audit_log`,
-`pmo_cloud_records`, `pmo_lessico`, `pmo_parser_config`, `pmo_routine_runs`, `pmo_routine_skips`,
-`pmo_routines`, `pmo_staff_profiles`, `post_match_feedback_responses`, `post_match_feedback_tokens`.
+`pmo_cloud_records`, `pmo_lessico`, `pmo_parser_config`, **`pmo_parser_errors`** *(dal 14/08)*,
+`pmo_routine_runs`, `pmo_routine_skips`, `pmo_routines`, `pmo_staff_profiles`,
+`post_match_feedback_responses`, `post_match_feedback_tokens`.
 
 📌 Che siano identiche **nelle colonne** non vuol dire che siano uguali: `post_match_feedback_*`
 hanno le stesse colonne di qua e di là, ma il 14/08 le policy anonime sono state tolte **solo su
