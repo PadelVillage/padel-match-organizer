@@ -1,0 +1,137 @@
+-- 🔒 CHIUDE LA SCRITTURA ANONIMA SU **PROD** (`qqbf…`) — voce 27 passo 4 (14/08/2026)
+--
+-- ✅ APPLICATA il 14/08/2026 alle 16:35 UTC, e SOLO dopo il punto 1 della voce 27:
+--    il committente ha aperto `app.padelvillage.club`, compilato una scheda vera col gettone
+--    `TEST456` e l'esito è stato letto dal database — riga con `corretta_dal_server: true`,
+--    quiz 3/4 con la trappola indovinata (soglia 3 ⇒ `pass`), gettone bruciato dall'edge
+--    0,15 secondi dopo. ⭐ È QUESTA la prova che PROD serve la 6.220, non l'etichetta della
+--    scheda del browser: la 6.219 scriveva la riga da sé con la chiave pubblicabile e non
+--    avrebbe mai potuto mettere quel campo né far bruciare il gettone all'edge.
+--
+-- 🚨🚨 MA NON BASTAVA, E VA LETTO PRIMA DI CREDERE A QUESTO FILE.
+--    Venti minuti dopo si è scoperto che `public.submit_self_assessment_public(jsonb)` è
+--    **SECURITY DEFINER** e quindi **scavalca l'RLS per costruzione**: le policy tolte qui
+--    non la riguardavano nemmeno, e la strada del socio restava percorribile identica.
+--    ⇒ La chiusura vera è nella gemella `20260814164132_chiudi_rpc_scrittura_autovalutazione_anon.sql`.
+--    ⚖️ Questa migrazione resta giusta e necessaria — erano due porte in parallelo — ma da
+--    sola dava una **sicurezza falsa**, ed è il difetto peggiore di tutti.
+--
+-- ⚠️ Un rientro alla 6.219 richiede di RIMETTERE queste policy: la 6.219 scriveva la riga
+--    dal browser. L'SQL di ripristino sta qui sotto, ed è il motivo per cui è scritto.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- 🚨 LE PORTE SONO **QUATTRO**, NON TRE. La quarta non stava in nessuna scheda.
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+-- La voce 27 dice «si tolgono le 3 policy di INSERT anonimo su `self_assessments`».
+-- Misurate il 14/08: quelle 3 ci sono tutte. Ma su `assessment_tokens` c'è anche
+-- `public_update_token_completed` — `UPDATE` al ruolo `public`, `USING (status in
+-- ('created','sent'))` — e `anon` ha il grant `UPDATE`. Su **TEST entrambe le tabelle
+-- hanno ZERO policy**: di là la chiusura le ha prese tutte, di qua no.
+--
+-- ⚖️ Fu risparmiata di proposito il 12/08, e allora il ragionamento era GIUSTO:
+-- «chiusa la lettura, non è più utilizzabile da chi un token non ce l'ha già».
+-- Oggi non lo è più, perché nel frattempo il gettone lo brucia l'edge con la chiave di
+-- servizio (`assessment-quiz/index.ts:312`) e in `main` non resta NESSUNA chiamata REST
+-- a quella tabella — solo gli RPC `*_admin`. È un residuo del browser che scriveva.
+--
+-- 🎯 E per aggiornare una riga non serve poterla leggere: un `UPDATE` senza `WHERE` è
+-- filtrato dalla sola `USING`. In tiro, misurati oggi: **1211 `created` + 133 `sent`
+-- = 1344 gettoni**. Portati a `completed` diventano `409 GIA_COMPILATA`
+-- (`assessment-quiz/index.ts:132`) ⇒ 1344 soci chiusi fuori dal test, in silenzio.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- 🔎 LA MISURA HA CORRETTO ANCHE LA PORTATA DICHIARATA DALLA SCHEDA
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+-- La scheda dice che con le 3 policy si scrive una scheda «senza nemmeno un gettone».
+-- L'`INSERT` è davvero incondizionato (`WITH CHECK (true)`), ma il livello arriva a una
+-- PERSONA solo passando dal gettone: `assessment-apply-level` risolve il socio con
+-- `socioPerToken.get(scheda.token)` (righe 205-217). Senza un token vero la riga resta
+-- orfana e non applica niente.
+--
+-- ⇒ La portata non è «chiunque»: è **«ogni socio col proprio link può darsi il livello
+--   che vuole»** — che è esattamente la frase con cui la voce 27 è nata, e che l'edge
+--   nuova NON ha chiuso, perché la porta vecchia è rimasta aperta accanto a quella nuova.
+--   La lettura dei gettoni è chiusa dal 12/08 ⇒ non si rastrellano i link altrui: il buco
+--   è self-service, non di massa.
+--
+-- 🔓 Il meccanismo, letto in `decidi()`: il controllo sul quiz è `if (knowledge && …)`
+--    (righe 105-106) ⇒ **se la chiave `knowledge` manca, il controllo non viene fatto
+--    affatto**. È una tolleranza voluta e commentata, per le schede vecchie che non ce
+--    l'hanno; basta ometterla. E `corretta_dal_server` non lo guarda nessuno.
+--
+-- 🔑 E C'È UNA CHIAVE ESTERNA, trovata provando il verso del servizio (23503):
+--       self_assessments_token_fkey  FOREIGN KEY (token) REFERENCES assessment_tokens(token)
+--    ⇒ Una scheda **non può esistere senza un gettone vero**, per struttura e non per policy.
+--    È la conferma indipendente che «senza nemmeno un gettone» non era mai stato possibile:
+--    il `WITH CHECK (true)` era senza condizioni, ma la chiave esterna una la imponeva.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- ⚖️ PERCHÉ SI PUÒ TOGLIERE SENZA ROMPERE NIENTE — misurato, non supposto
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+--   · `main` (PROD 6.220) non ha **nessuna** scrittura REST diretta a queste due tabelle:
+--     il quiz passa da `assessment-quiz` (`index.html:36772`), lo staff dagli RPC
+--     `upsert_assessment_tokens_admin` / `get_assessment_tokens_admin`;
+--   · edge e cron girano con `SUPABASE_SERVICE_ROLE_KEY`, che **scavalca RLS**: queste
+--     policy non li riguardano (`assessment-quiz`, `assessment-apply-level`,
+--     `assessment-notify-staff`, `consumer-assessment-link`);
+--   · log delle ultime 24 ore su `qqbf…`, contati per metodo e agente:
+--       GET  `assessment_tokens`  → 671, **tutte** da `Deno/SupabaseEdgeRuntime`
+--       GET  `self_assessments`   → 670, **tutte** da `Deno/SupabaseEdgeRuntime`
+--       RPC  `get_assessment_tokens_admin` → 2, dal browser dello staff
+--       POST `self_assessments`   → **0**
+--       PATCH `assessment_tokens` → **0**
+--     ⇒ Nessuno usa le quattro porte.
+--   ⚠️ La finestra dei log è di **24 ore**: se un giorno qualcosa di raro si rompesse qui,
+--     questo è il primo posto da guardare. Stessa avvertenza della migrazione del 12/08.
+--
+-- 📌 I GRANT di `anon` (`INSERT,SELECT,UPDATE` su entrambe) NON si toccano, di proposito:
+--    con RLS accesa e zero policy non aprono nulla, ed è **esattamente lo stato in cui si
+--    trova TEST** dopo la 20260814141506. Revocarli darebbe due sponde diverse per un
+--    guadagno nullo, e la parità fra i due progetti è ciò che rende confrontabili le prove.
+--
+-- ↩️ PER RIMETTERE TUTTO — scritto qui perché domani non si ricostruisce a memoria.
+--    ⚠️ Le tre di `self_assessments` erano `WITH CHECK (true)`: si rimettono COSÌ COM'ERANO,
+--    non "meglio". Una policy di ripristino diversa dall'originale non è un ripristino.
+--
+--   create policy "Permetti inserimento autovalutazioni pubbliche"
+--     on public.self_assessments for insert to anon with check (true);
+--   create policy "public_insert_self_assessments"
+--     on public.self_assessments for insert to public with check (true);
+--   create policy "self_assessments_insert_public"
+--     on public.self_assessments for insert to anon with check (true);
+--   create policy "public_update_token_completed"
+--     on public.assessment_tokens for update to public
+--     using (status = any (array['created'::text, 'sent'::text]))
+--     with check (status = 'completed'::text);
+--
+-- 🧪 IL CONTROLLO NEGATIVO, e perché la prima volta ha detto di no.
+--    Rimessa la policy dentro una transazione annullata, l'attacco è stato riprovato:
+--      · `update assessment_tokens set status='completed' WHERE status in ('created','sent')`
+--        → **0 righe**. Il `where` legge una colonna, e la lettura anonima è chiusa dal 12/08:
+--        senza policy di SELECT non si vede nulla da filtrare.
+--      · `update assessment_tokens set status='completed'` **senza `where`**
+--        → **1364 righe su 1364**. Le sceglie la sola `using`, che valuta il sistema.
+--    ⇒ Il meccanismo era reale, ma il primo controllo era **fatto male**, non il ragionamento.
+--    ⭐ E la nota del 12/08 («chiusa la lettura non è più utilizzabile») era **mezza giusta**:
+--    neutralizzava la forma filtrata, non quella nuda. Una difesa che copre una forma su due
+--    è precisamente quella che fa dormire tranquilli.
+--    ⚠️ NON misurato: se PostgREST, per un PATCH senza filtri, emetta davvero la forma nuda.
+--    La prova è a livello SQL e si ferma lì — dirlo è meglio che estenderla per comodità.
+--
+-- ✅ DA VERIFICARE DOPO, nei due versi e in transazione annullata (come la 141506):
+--      anon         → 42501, «new row violates row-level security policy»
+--      service_role → scrive regolarmente
+--    e il linter di sicurezza diffato **voce per voce** prima/dopo, non solo sui due
+--    avvisi che si vogliono chiudere: è così che il 14/08 è saltata fuori la coda di
+--    `rls_auto_enable()`, che nessuno cercava.
+
+-- ── `self_assessments`: le tre di INSERT senza condizioni ──────────────────────
+drop policy if exists "Permetti inserimento autovalutazioni pubbliche" on public.self_assessments;
+drop policy if exists "public_insert_self_assessments"                 on public.self_assessments;
+drop policy if exists "self_assessments_insert_public"                 on public.self_assessments;
+
+-- ── `assessment_tokens`: la quarta porta, quella che non era in nessuna scheda ──
+drop policy if exists "public_update_token_completed" on public.assessment_tokens;

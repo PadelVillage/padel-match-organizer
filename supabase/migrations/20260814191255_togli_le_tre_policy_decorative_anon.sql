@@ -1,0 +1,62 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Voce 37 (residuo TEST) — 14/08/2026, 16ª sessione. ⚠️ Applicata su TEST (cudi…),
+-- NON su PROD: quelle tre tabelle su PROD non esistono affatto.
+-- Toglie le tre policy `ALL` per `anon` su pmo_bookings, pmo_parse_history,
+-- pmo_parser_rules_versions.
+--
+-- 🚨 PERCHÉ SI TOGLIE, E PERCHÉ NON È QUELLO CHE LA NOTA DICEVA.
+--    La nota del 12/08 le descriveva come «lettura e scrittura per anonimo». La misura
+--    dice altro: sono DECORATIVE. Prova d'attacco come `anon`, PRIMA di questa migrazione:
+--      SELECT ............ 42501    INSERT ............ 42501
+--      (e lo stesso su tutte e cinque le prove: lettura, tre scritture, cancellazione)
+--    Il no non veniva dall'RLS ma dai GRANT di tabella, che ad `anon` mancano del tutto:
+--      anon = Dxtm/postgres  ⇒  niente r (SELECT), w (UPDATE), a (INSERT), d (DELETE)
+--    ⇒ Queste policy descrivevano un accesso che NESSUNO aveva. Toglierle non chiude un
+--      buco: toglie un SEGNALE INGANNEVOLE, che non è la stessa cosa e va detto chiaramente.
+--      La decisione è stata ripresentata al committente con la ragione giusta, e ripresa.
+--
+-- 📋 MISURATO PRIMA, sulle tre tabelle:
+--      · 0 righe tutte e tre, ZERO riferimenti in tutto il repo, e su PROD NON ESISTONO;
+--      · RLS accesa (relrowsecurity=true), non forzata; policy `TO anon`, USING/WITH CHECK true;
+--      · anon:           0/3 con grant r/w/a/d          ⇒ bloccato dai GRANT
+--      · authenticated:  3/3 col grant SELECT, ma legge 0 righe ⇒ bloccato dall'RLS
+--                        (le policy erano `TO anon` soltanto, non lo riguardavano)
+--      · service_role:   0/3 con grant SELECT           ⇒ non le leggeva nemmeno lui
+--    ⇒ Nessuno passava da queste policy.
+--
+-- VERIFICATO DOPO, contro la fotografia presa PRIMA (non contro PROD — è la trappola
+-- documentata: su TEST i permessi passano spesso da PUBLIC e una modifica può togliere
+-- a service_role ciò che su PROD sopravvive):
+--      · policy rimaste sulle 3 tabelle ....... 0
+--      · GRANT anon r/w/a/d ................... 0/3  (era 0/3)  — invariati
+--      · service_role legge ................... 0/3  (era 0/3)  — invariati
+--      · authenticated grant SELECT ........... 3/3  (era 3/3)  — invariati
+--      · anon SELECT / INSERT ................. 42501 / 42501   — identico a prima
+--      · authenticated SELECT ................. 0 righe         — identico a prima
+--    ⇒ Il permesso di nessuno è cambiato: è esattamente ciò che ci si aspetta togliendo
+--      una policy che non era sulla strada di nessuno.
+--      · linter TEST: 92 → 95 avvisi, WARN 80 e ERROR 1 INVARIATI. I 3 nuovi sono
+--        `rls_enabled_no_policy` INFO sulle tre tabelle — l'esito VOLUTO, previsto e
+--        dichiarato PRIMA di applicare, lo stesso stato della voce 35 su PROD.
+--        (L'ERROR è `security_definer_view`, preesistente e non toccato qui.)
+--
+-- 📌 QUELLO CHE QUESTE POLICY NON C'ENTRAVANO, e che resta aperto: su quelle stesse
+--    tabelle `anon` ha il permesso di TRUNCATE (la `D` nell'ACL), e l'RLS NON filtra il
+--    TRUNCATE. Provato come `anon` su TEST: `truncate public.pmo_parse_history` RIUSCITO.
+--    Non è raggiungibile da PostgREST, che non ha un verbo TRUNCATE ⇒ configurazione
+--    sbagliata latente, non porta aperta. Questa migrazione NON la tocca: è una decisione
+--    a parte, e su PROD riguarda 14 tabelle.
+--
+-- ↩️ RIPRISTINO (verbatim dallo stato misurato prima — USING true, WITH CHECK true):
+--
+--   create policy "pmo_bookings_all"              on public.pmo_bookings
+--     for all to anon using (true) with check (true);
+--   create policy "pmo_parse_history_all"         on public.pmo_parse_history
+--     for all to anon using (true) with check (true);
+--   create policy "pmo_parser_rules_versions_all" on public.pmo_parser_rules_versions
+--     for all to anon using (true) with check (true);
+-- ════════════════════════════════════════════════════════════════════════════
+
+drop policy if exists "pmo_bookings_all"              on public.pmo_bookings;
+drop policy if exists "pmo_parse_history_all"         on public.pmo_parse_history;
+drop policy if exists "pmo_parser_rules_versions_all" on public.pmo_parser_rules_versions;

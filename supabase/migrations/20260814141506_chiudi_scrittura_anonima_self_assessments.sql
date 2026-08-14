@@ -1,0 +1,53 @@
+-- 🔒 CHIUDE LA SCRITTURA ANONIMA DI `self_assessments` — voce 27 passo 4 (14/08/2026)
+--
+-- ⚠️ APPLICATA SOLO SU **TEST** (`cudi…`) in questa sessione. Su PROD si fa dopo, e il perché
+-- è tutto l'ordine della voce 27: là l'app in servizio scrive ancora la riga da sé, quindi
+-- togliere queste policy prima di promuovere la nuova app lascerebbe i soci senza il test.
+--
+-- 🚨 LA MISURA HA SMENTITO LA SCHEDA, e le due sponde non si somigliano:
+--
+--   dove  | policy di scrittura anonima su self_assessments
+--   ------|--------------------------------------------------------------------------
+--   PROD  | **3 di INSERT**, tutte `WITH CHECK (true)` — nessuna condizione: chi ha la
+--         | chiave pubblicabile scrive qualunque riga, senza nemmeno un gettone
+--   TEST  | **1 di INSERT + 1 di UPDATE**, condizionate a un gettone vero, in stato
+--         | created/sent, non scaduto. La UPDATE su PROD non esiste: qui permetteva di
+--         | RISCRIVERE una scheda già inviata, e non era in nessuna scheda di lavoro
+--
+-- ⚖️ Perché anche la versione «stretta» di TEST non bastava: il gettone il socio CE L'HA, è
+-- il suo link. Quelle policy gli lasciavano scrivere la riga che voleva — livello ed esito
+-- compresi — scavalcando l'edge che adesso corregge. Il muro reggeva per buona volontà del
+-- client, cioè non reggeva.
+--
+-- ✅ VERIFICATO PRIMA: il passo 3 è vivo su TEST e l'ha provato il committente sul suo
+--    browser — scheda compilata, esito `pass` 4/4, riga con `corretta_dal_server: true`,
+--    gettone `completed`.
+-- ✅ VERIFICATO DOPO, nei due versi, dentro transazioni annullate:
+--      anon         → 42501, «new row violates row-level security policy»
+--      service_role → scrive regolarmente
+--    ⇒ La strada del socio resta aperta, ed è ora l'UNICA: passa da `assessment-quiz`, che
+--    usa la chiave di servizio. Lo staff passa dagli RPC `*_admin`; il cron
+--    `assessment-apply-level` gira anch'esso col servizio. Nessuno dei tre tocca queste policy.
+--
+-- ↩️ PER RIMETTERLE — scritte qui perché domani non si ricostruiscono a memoria:
+--
+--   create policy "public_insert_self_assessments" on public.self_assessments
+--     for insert to anon, authenticated
+--     with check (exists (select 1 from assessment_tokens t
+--       where t.token = self_assessments.token
+--         and t.status = any (array['created','sent'])
+--         and (t.expires_at is null or t.expires_at > now())));
+--
+--   create policy "public_update_self_assessments" on public.self_assessments
+--     for update to anon, authenticated
+--     using (exists (select 1 from assessment_tokens t
+--       where t.token = self_assessments.token
+--         and t.status = any (array['created','sent','completed'])
+--         and (t.expires_at is null or t.expires_at > now())))
+--     with check (exists (select 1 from assessment_tokens t
+--       where t.token = self_assessments.token
+--         and t.status = any (array['created','sent','completed'])
+--         and (t.expires_at is null or t.expires_at > now())));
+
+drop policy if exists "public_insert_self_assessments" on public.self_assessments;
+drop policy if exists "public_update_self_assessments" on public.self_assessments;
