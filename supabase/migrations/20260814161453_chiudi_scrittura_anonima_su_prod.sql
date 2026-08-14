@@ -1,12 +1,20 @@
 -- 🔒 CHIUDE LA SCRITTURA ANONIMA SU **PROD** (`qqbf…`) — voce 27 passo 4 (14/08/2026)
 --
--- ⛔ NON APPLICARE PRIMA DEL PUNTO 1 DELLA VOCE 27.
---    L'ordine è vincolante e il motivo è tutto qui: finché nessuno ha aperto
---    `app.padelvillage.club` e verificato che la 6.220 serve davvero il test dal server,
---    togliere queste policy significa poter restare senza NESSUNA strada — quella nuova
---    non provata e quella vecchia chiusa. Il gemello di TEST
---    (`20260814141506_chiudi_scrittura_anonima_self_assessments.sql`) fu applicato solo
---    dopo che il committente aveva compilato una scheda vera sul suo browser. Qui uguale.
+-- ✅ APPLICATA il 14/08/2026 alle 16:35 UTC, e SOLO dopo il punto 1 della voce 27:
+--    il committente ha aperto `app.padelvillage.club`, compilato una scheda vera col gettone
+--    `TEST456` e l'esito è stato letto dal database — riga con `corretta_dal_server: true`,
+--    quiz 3/4 con la trappola indovinata (soglia 3 ⇒ `pass`), gettone bruciato dall'edge
+--    0,15 secondi dopo. ⭐ È QUESTA la prova che PROD serve la 6.220, non l'etichetta della
+--    scheda del browser: la 6.219 scriveva la riga da sé con la chiave pubblicabile e non
+--    avrebbe mai potuto mettere quel campo né far bruciare il gettone all'edge.
+--
+-- 🚨🚨 MA NON BASTAVA, E VA LETTO PRIMA DI CREDERE A QUESTO FILE.
+--    Venti minuti dopo si è scoperto che `public.submit_self_assessment_public(jsonb)` è
+--    **SECURITY DEFINER** e quindi **scavalca l'RLS per costruzione**: le policy tolte qui
+--    non la riguardavano nemmeno, e la strada del socio restava percorribile identica.
+--    ⇒ La chiusura vera è nella gemella `20260814164132_chiudi_rpc_scrittura_autovalutazione_anon.sql`.
+--    ⚖️ Questa migrazione resta giusta e necessaria — erano due porte in parallelo — ma da
+--    sola dava una **sicurezza falsa**, ed è il difetto peggiore di tutti.
 --
 -- ⚠️ Un rientro alla 6.219 richiede di RIMETTERE queste policy: la 6.219 scriveva la riga
 --    dal browser. L'SQL di ripristino sta qui sotto, ed è il motivo per cui è scritto.
@@ -53,6 +61,12 @@
 --    affatto**. È una tolleranza voluta e commentata, per le schede vecchie che non ce
 --    l'hanno; basta ometterla. E `corretta_dal_server` non lo guarda nessuno.
 --
+-- 🔑 E C'È UNA CHIAVE ESTERNA, trovata provando il verso del servizio (23503):
+--       self_assessments_token_fkey  FOREIGN KEY (token) REFERENCES assessment_tokens(token)
+--    ⇒ Una scheda **non può esistere senza un gettone vero**, per struttura e non per policy.
+--    È la conferma indipendente che «senza nemmeno un gettone» non era mai stato possibile:
+--    il `WITH CHECK (true)` era senza condizioni, ma la chiave esterna una la imponeva.
+--
 -- ══════════════════════════════════════════════════════════════════════════════════
 -- ⚖️ PERCHÉ SI PUÒ TOGLIERE SENZA ROMPERE NIENTE — misurato, non supposto
 -- ══════════════════════════════════════════════════════════════════════════════════
@@ -92,6 +106,20 @@
 --     on public.assessment_tokens for update to public
 --     using (status = any (array['created'::text, 'sent'::text]))
 --     with check (status = 'completed'::text);
+--
+-- 🧪 IL CONTROLLO NEGATIVO, e perché la prima volta ha detto di no.
+--    Rimessa la policy dentro una transazione annullata, l'attacco è stato riprovato:
+--      · `update assessment_tokens set status='completed' WHERE status in ('created','sent')`
+--        → **0 righe**. Il `where` legge una colonna, e la lettura anonima è chiusa dal 12/08:
+--        senza policy di SELECT non si vede nulla da filtrare.
+--      · `update assessment_tokens set status='completed'` **senza `where`**
+--        → **1364 righe su 1364**. Le sceglie la sola `using`, che valuta il sistema.
+--    ⇒ Il meccanismo era reale, ma il primo controllo era **fatto male**, non il ragionamento.
+--    ⭐ E la nota del 12/08 («chiusa la lettura non è più utilizzabile») era **mezza giusta**:
+--    neutralizzava la forma filtrata, non quella nuda. Una difesa che copre una forma su due
+--    è precisamente quella che fa dormire tranquilli.
+--    ⚠️ NON misurato: se PostgREST, per un PATCH senza filtri, emetta davvero la forma nuda.
+--    La prova è a livello SQL e si ferma lì — dirlo è meglio che estenderla per comodità.
 --
 -- ✅ DA VERIFICARE DOPO, nei due versi e in transazione annullata (come la 141506):
 --      anon         → 42501, «new row violates row-level security policy»
