@@ -38,7 +38,7 @@ Per la chat SVILUPPO, prima di modificare file reali:
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
 | PROD | **v6.220** | `main` | 14/08/2026 — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex`. Il cancello di conoscenza dell'autovalutazione si corregge sul SERVER (voce 27, passi 1-2-3) |
-| TEST | **v6.228** | `test-preview` | 14/08/2026 — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd`. Sei pubblicazioni per arrivarci (6.223→6.228): cinque guasti, tutti trovati provando dal vivo. Qui la voce 27 è COMPLETA, passo 4 compreso |
+| TEST | **v6.230** | `test-preview` | 14/08/2026 — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd`. Otto pubblicazioni per arrivarci (6.223→6.230): cinque guasti trovati provando dal vivo, più due bocciature di `deno check` sulla PR verso `main`. Qui la voce 27 è COMPLETA, passo 4 compreso |
 
 I due rami **non sono allineati per scelta**: `test-preview` corre avanti. È il funzionamento normale, non un disallineamento da correggere: TEST bumpa a ogni passo, PROD una volta per promozione — quindi la distanza **non è fissa a 1** e vederla crescere non è di per sé un sintomo.
 
