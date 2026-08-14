@@ -157,9 +157,20 @@ Tre innesti su un ponte solo, con **due porte**: il socio apre col GETTONE, lo s
 SESSIONE (l'anteprima del gestionale). 🚨 Non è simmetria — un `valuta` aperto sarebbe stato
 peggio del punto di partenza: 4 domande da 4 opzioni fanno **256 tentativi**, e un oracolo le
 svela in pochi secondi.
-✅ 14 suite su 14 verdi, `controlla-sintassi` compreso; l'edge risulta **ACTIVE su `cudi…`**.
-⚠️ **Non provata via HTTP**: la politica di rete della sessione cloud nega le chiamate dirette
-a `*.supabase.co` (403 sul CONNECT). La logica è provata sul sorgente vero, la **strada** no.
+✅ **PROVATA DAL VIVO su TEST**, alla terza pubblicazione (6.223 → 6.225): le prime due erano
+rotte, e le ha smascherate la prova di lui, non le mie 14 suite verdi.
+🔧 Il modo, visto che la rete della sessione cloud nega le chiamate dirette a `*.supabase.co`
+(403 sul CONNECT): si chiama l'edge **dal database** con `pg_net`, che dall'interno ci arriva.
+Le risposte vere, lette in `net._http_response`:
+
+| prova | esito |
+|---|---|
+| gettone inventato | **404** `GETTONE_SCONOSCIUTO` |
+| gettone vero | **200**, fascia Avanzato, 4 domande — 3 normali + la trappola |
+| `staff-pesca` senza sessione | **401** `NON_AUTORIZZATO` |
+| stesso gettone due volte | **stessa quaterna** `A-08, A-01, A-02, A-T1` |
+| gettone diverso | pescata diversa: `A-08, A-T1, A-04, A-02` |
+| la parola `correct` nelle risposte | **mai** (`position` = 0 su tutte e tre) |
 
 **⏳ RESTA il passo 4**, e solo dopo la prova sul vero: le 3 policy di INSERT anonimo su
 `self_assessments`. 🚨 Toglierle prima che il 3 sia stato **visto funzionare** lascerebbe 2.276
@@ -217,6 +228,18 @@ Misurando il **12/08**:
 
 - 🔓 Su **TEST** ci sono policy `ALL` (lettura **e scrittura**) per anonimo su `pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`. Su PROD no.
 - 🔓 Su PROD altre **tre tabelle** accettano inserimenti anonimi (`pmo_ai_turns`, `pmo_parser_errors`, `post_match_feedback_responses`): non guardate.
+
+Misurando il **14/08** nella 14ª sessione, provando la voce 27 dal vivo:
+
+- 🔀 **Le TABELLE dei due progetti divergono**, non solo le funzioni SQL della voce 33.
+  Misurate finora solo le due dell'autovalutazione: `assessment_tokens.member_email` e
+  `self_assessments.email`, `consistency_score`, `inconsistency_reasons`, `review_note` **ci
+  sono su PROD e non su TEST**. Nessuno le aveva mai confrontate. ⚠️ Le altre tabelle **non
+  sono state guardate**: questa è una campionatura di due, non una misura.
+- 🧟 **Il riquadro «prova il test» del gestionale non esiste più**: `0` occorrenze di
+  `id="assessmentExternalKnowledgeBlock"` anche su `main`, da prima di questo lavoro — tolto il
+  13/08 con la #677. Le tre funzioni che lo servivano sono rimaste: sono **voce 28** in piena
+  regola. ⇒ Dal gestionale, oggi, il test non si fa: si fa aprendo il link del socio.
 
 Misurando il **14/08** nella 14ª sessione, chiudendo la voce 24:
 
@@ -349,6 +372,30 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > solo dei due che si volevano chiudere, è ciò che l'ha fatta vedere. ⇒ E aprendola si è scoperto
 > che su **TEST** quella porta era aperta **da sempre**: un difetto nuovo in un posto è spesso un
 > difetto vecchio nell'altro.
+>
+> **Un banco più permissivo della produzione dà FIDUCIA SBAGLIATA.** *(14/08, 14ª sessione)*
+> L'edge dell'autovalutazione è stata deployata su TEST con **14 suite verdi** e non è mai
+> partita: `Identifier 'pmoLivelloFascia' has already been declared`. Dal browser si vedeva solo
+> «Failed to fetch» — una funzione che non fa il boot non risponde nemmeno con un errore.
+> ⭐⭐ Il motivo per cui il banco non poteva vederlo: `vm.runInContext` esegue il codice come
+> **script**, e in uno script ridichiarare una funzione è **lecito**; Deno lo carica come
+> **modulo**, dove è fatale. Il banco girava in un mondo più largo del vero, quindi poteva solo
+> dire di sì. ⇒ Un banco che gira in condizioni più larghe della produzione non è debole: è
+> **peggio di non averlo**, perché verde e inutile è la condizione in cui nessuno va a guardare.
+> La cura: il blocco ora si analizza **come modulo**, e la prova ha il suo controllo negativo.
+>
+> **Guardare un solo database è scrivere metà query.** *(14/08)* Subito dopo, la stessa edge ha
+> risposto 500: la `select` citava `member_email`, che c'è su **PROD** e **non su TEST**. Come
+> `self_assessments.email`, `consistency_score`, `inconsistency_reasons`, `review_note`. ⇒ **Le
+> due tabelle divergono**, ed è la voce 33 un piano più sotto — là erano le funzioni SQL, qui
+> sono le TABELLE, e di queste non se n'era accorto nessuno. Chi scrive per i due ambienti
+> scrive sull'**intersezione**, e la verifica su entrambi prima di spingere.
+>
+> **«Failed to fetch» è il nulla travestito da errore.** *(14/08)* Ha fatto perdere un giro
+> intero di prove: il browser non poteva dire altro, e la funzione non scriveva niente. La
+> diagnosi è arrivata in un minuto **dai log di Supabase**, non dallo schermo. ⇒ Da lì in poi
+> gli errori del database finiscono in `console.error`: al socio una frase comprensibile, a chi
+> indaga il motivo vero.
 >
 > **Togliere una riga di una terna sporca più che pulire.** *(14/08)* Il «socio di prova» erano
 > **tre** righe legate — token `completed`, scheda `applied`, marcatore «già segnalato». Togliere
