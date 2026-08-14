@@ -430,6 +430,17 @@ const ASSESS_KNOWLEDGE_BANK = {
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
 // un quiz non può validare un giocatore di 2ª categoria, quella scheda va sempre in segreteria.
+/* 🎯 LA FASCIA SI RICAVA COME NELL'APP, passando per `assessmentPublicParseLevel` — 14/08.
+   Il modulo manda il livello dichiarato così com'è, e a seconda del punto può essere `4` o
+   `4.0 - Avanzato`. `pmoLivelloFascia` fa `Number(...)`, che sulla seconda forma dà NaN ⇒
+   fascia vuota ⇒ nessuna domanda ⇒ esito `skip`, cioè «vai in segreteria».
+   🚨 È un guasto SILENZIOSO e crudele: il socio risponde a tutto, l'invio riesce, e viene
+   comunque mandato in segreteria senza che nessuno veda un errore. Trovato con una sonda che
+   mandava l'etichetta invece del numero — cioè per fortuna.
+   ⇒ Qui si normalizza una volta sola, e chi chiama non deve ricordarselo. */
+function fasciaDaLivello(level) {
+  return assessKnowledgeFasciaFor(assessmentPublicParseLevel(level));
+}
 function assessKnowledgeFasciaFor(level) {
   const definizione = pmoLivelloDefinizione(level);
   if (!definizione) return '';
@@ -778,7 +789,7 @@ async function gestisci(req: Request): Promise<Response> {
     }
     // Il seme lo sceglie il SERVER e torna opaco: il telefono non decide le domande, e alla
     // valutazione le ripesca identiche senza che nessuno abbia salvato niente.
-    const fascia = assessKnowledgeFasciaFor(
+    const fascia = fasciaDaLivello(
       azione === 'staff-pesca' ? corpo.livello_dichiarato : (corpo.scheda as JsonMap)?.declaredLevel,
     );
     const semeStaff = assessTxt(corpo.seme) || crypto.randomUUID();
@@ -809,7 +820,7 @@ async function gestisci(req: Request): Promise<Response> {
 
   // ── PESCA: le domande, SENZA la risposta giusta ──────────────────────────────────────
   if (azione === 'pesca') {
-    const fascia = assessKnowledgeFasciaFor(corpo.livello_dichiarato);
+    const fascia = fasciaDaLivello(corpo.livello_dichiarato);
     const regole = assessKnowledgeRegole(fascia);
     // 🚨 `opts` esce così com'è; `correct` non compare da nessuna parte in questa risposta.
     // È l'intero motivo per cui questa funzione esiste: la risposta giusta non attraversa
@@ -826,7 +837,7 @@ async function gestisci(req: Request): Promise<Response> {
     const risposte = (corpo.risposte ?? {}) as Record<string, string>;
 
     const livCalc = calculateAssessmentPublicLevel(scheda);
-    const fascia = assessKnowledgeFasciaFor(scheda.declaredLevel);
+    const fascia = fasciaDaLivello(scheda.declaredLevel);
     // 🚨 Gli id NON arrivano dal telefono: si ripescano. Vedi il perché in testa al file.
     const pescate = fascia ? pescaPerGettone(token, fascia) : [];
     const conoscenza = assessKnowledgeEvaluate(pescate.map((d) => d.id), risposte, fascia);
