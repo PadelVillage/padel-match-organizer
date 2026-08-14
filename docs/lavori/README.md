@@ -231,9 +231,34 @@ fascia Avanzato, 4 domande, **nessun `correct`**; azione staff senza sessione �
    dice che le prove del committente valgono più delle mie — oggi lo ha dimostrato **cinque
    volte**. Va aperta `app.padelvillage.club`, controllato che serva **6.220** e compilata una
    scheda vera.
-2. ⛔ **Il passo 4 su PROD non è fatto**: le **3 policy** `WITH CHECK (true)` sono ancora là.
-   Finché ci sono, chi ha la chiave pubblicabile può scrivere una scheda **senza nemmeno un
-   gettone** e scavalcare il cancello nuovo. Si tolgono **solo dopo** il punto 1.
+2. ⛔ **Il passo 4 su PROD non è fatto** — e le porte sono **QUATTRO, non tre**. *(misurato il
+   14/08, 15ª sessione)* Le 3 `INSERT ... WITH CHECK (true)` su `self_assessments` ci sono tutte,
+   confermate. Ma su `assessment_tokens` c'è anche **`public_update_token_completed`** (`UPDATE`
+   al ruolo `public`, `USING (status in ('created','sent'))`, e `anon` ha il grant `UPDATE`):
+   **su TEST entrambe le tabelle hanno ZERO policy**, di qua no. Fu risparmiata di proposito il
+   12/08 — «chiusa la lettura, non è più utilizzabile da chi un token non ce l'ha già» — e allora
+   era **giusto**; oggi non più, perché il gettone lo brucia l'edge col permesso di servizio e in
+   `main` non resta nessuna chiamata REST a quella tabella. 🎯 Per aggiornare una riga non serve
+   poterla leggere: un `UPDATE` senza `WHERE` lo filtra la sola `USING` ⇒ **1211 `created` + 133
+   `sent` = 1344 gettoni** portabili a `completed`, cioè `409 GIA_COMPILATA` e 1344 soci chiusi
+   fuori dal test, in silenzio.
+   🔎 **La misura ha corretto anche la portata**: la scheda dice «senza nemmeno un gettone», ma il
+   livello arriva a una **persona** solo passando dal gettone — `assessment-apply-level` risolve il
+   socio con `socioPerToken.get(scheda.token)`. Senza un token vero la riga resta **orfana**. ⇒ Non
+   è «chiunque»: è **«ogni socio col proprio link può darsi il livello che vuole»**, cioè la frase
+   con cui la voce 27 è nata, e che l'edge nuova non ha chiuso perché la porta vecchia è rimasta
+   aperta **accanto** a quella nuova. Il rastrellamento dei link altrui resta impossibile (lettura
+   chiusa dal 12/08): il buco è **self-service, non di massa**.
+   🔓 Il perché regge: in `decidi()` il controllo sul quiz è `if (knowledge && …)` ⇒ **se la chiave
+   `knowledge` manca, il controllo non si fa affatto** — tolleranza voluta per le schede vecchie,
+   e basta ometterla. `corretta_dal_server` non lo guarda nessuno.
+   ✅ **Rito fatto**: nessuno usa le 4 porte. Log di PROD, 24 ore — GET `assessment_tokens` **671**
+   e GET `self_assessments` **670**, *tutte* da `Deno/SupabaseEdgeRuntime` (chiave di servizio,
+   scavalca RLS); 2 RPC `get_assessment_tokens_admin` dal browser staff; **POST `self_assessments`
+   = 0**, **PATCH `assessment_tokens` = 0**.
+   📄 Migrazione **scritta e non applicata**: `supabase/migrations/20260814161453_chiudi_scrittura_anonima_su_prod.sql`,
+   con l'SQL di ripristino in testa. Si applica **solo dopo** il punto 1 — un rientro alla 6.219
+   vorrebbe quelle policy indietro, perché la 6.219 scriveva la riga dal browser.
 ⚖️ Su TEST invece la voce è **completa**, passo 4 compreso: `anon` → `42501`,
 `service_role` → scrive.
 
@@ -314,6 +339,15 @@ Misurando il **14/08** nella 14ª sessione, chiudendo la voce 24:
   stamattina ho acceso l'RLS — su TEST **no**. Nessuno la legge (grep: solo il commento), quindi non
   fa danno; ma sta nella kb che va **in pasto al modello**. ⚖️ **È la forma esatta della voce 31**, e
   stavolta al contrario: il pezzo mancante sta su PROD. Non l'ho toccata — non è la 24.
+
+Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
+
+- 🕳️ **`fetchAssessmentRawResponsesByTokens` non può funzionare su PROD.** La sola `fetch` REST a
+  `self_assessments` rimasta in `main` (riga 29939) è una **GET** con la chiave pubblicabile, ma su
+  quella tabella **non esiste nessuna policy di SELECT** — ci sono solo le 3 di INSERT. ⇒ Risponde
+  `200` con lista **vuota**, sempre, e il chiamante ha un `catch` che tace. Non l'ho toccata: non è
+  la voce 27, e va capito **a cosa serviva** prima di decidere se ripararla o toglierla. ⚠️ Non
+  guardato se su TEST si comporta uguale.
 
 Misurando il **14/08**, aprendo la voce 22:
 
