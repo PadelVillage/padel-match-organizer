@@ -2,7 +2,7 @@
 
 **Fotografia del 14/08/2026, a fine 14ª sessione.** Misurata, non ricordata.
 
-## 🔎 La misura ha smentito la scheda **tre volte su tre** — e la quarta l'ha confermata
+## 🔎 La misura contro la scheda: **3 smentite, 1 conferma, e altre 2 smentite in serata**
 
 È il filo di tutta la giornata, e vale più delle singole voci chiuse.
 
@@ -19,11 +19,21 @@ avrebbe cancellato dati del circolo — **e sarebbe sembrato un lavoro fatto ben
 ⇒ Da qui la riga nuova nel prompt di apertura — *la scheda di un lavoro è un'ipotesi, non una
 misura* — e i **tre prompt finalmente scritti nel repo**, in `prompt-apertura-chiusura.md`.
 
-✅ **La quarta misura, in serata, ha invece confermato la scheda su tutti i campi**: la voce 35
-diceva il vero riga per riga (vedi le chiuse). ⚖️ Va scritto qui accanto alle tre smentite, o
-questa tabella diventa a sua volta una scheda che dice il falso — *«le schede sbagliano»* è una
-conclusione tanto affrettata quanto *«le schede sono giuste»*. Il rito serve a **sapere quale
-delle due**, non a dare per scontata una delle due.
+✅ **La quarta misura ha invece CONFERMATO la scheda su tutti i campi**: la voce 35 diceva il
+vero riga per riga. ⚖️ Va scritto qui accanto alle tre smentite, o questa tabella diventa a sua
+volta una scheda che dice il falso — *«le schede sbagliano»* è una conclusione tanto affrettata
+quanto *«le schede sono giuste»*. Il rito serve a **sapere quale delle due**.
+
+🔻 **E poi, aprendo la voce 27, altre due smentite:**
+
+| la scheda diceva | la misura ha trovato |
+|---|---|
+| «un'edge **pesca** le 4 domande» | non c'era **niente da pescare**: zero tabelle di domande sui due progetti, la banca stava **dentro `index.html`** — nel file che si scarica per fare il test |
+| «si tolgono le **3 policy** di INSERT anonimo» | quelle sono di **PROD**. Su TEST erano **2**, condizionate al gettone, e una era di **UPDATE** — lasciava riscrivere una scheda già inviata, e non era in nessuna scheda di lavoro |
+
+⇒ Sei misure, **cinque smentite e una conferma**. Il conto non serve a dare torto a chi scrive
+le schede — le scrive lui, spesso avendo visto la cosa coi propri occhi — ma a ricordare che
+**una scheda è il punto di partenza dell'indagine, non la sua conclusione**.
 
 ## 📌 Le decisioni prese dal committente oggi
 
@@ -39,26 +49,38 @@ delle due**, non a dare per scontata una delle due.
 | 📋 **In coda** | **15** |
 | 📦 **Chiuse** | **13** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** — **non toccate**: la 14ª sessione non
-ha aperto `index.html`, ha lavorato solo su database e documenti · `server.mjs`, `.github/workflows/**`,
-`CLAUDE.md` e **tutto `docs/`** **identici** fra i rami, verificato dopo ogni merge · cron PROD
-**11 accesi / 2 spenti**, TEST 5 accesi / 4 spenti (misura del **13/08**, non ricontrollata).
+**Stato del sistema:** app PROD **6.220** · TEST **6.230** · `main` `f2c7353`, `test-preview`
+`2fcfd2b` · **0 PR aperte** (la #692 è stata mergiata in squash) · `server.mjs`,
+`.github/workflows/**`, `CLAUDE.md` e **tutto `docs/`** **identici** fra i rami, verificato per
+impronta dopo il merge · `guard-main`, `deno-check`, `guard-docs-truth` e `guard-worker-sync`
+tutte **verdi** · cron PROD **11 accesi / 2 spenti**, TEST 5 accesi / 4 spenti (misura del
+**13/08**, non ricontrollata).
 
-⚠️ **Le versioni non si sono mosse in tre sessioni**: dalla #680 in poi è stata CI,
-documentazione e **dati**, nessun file dell'app toccato. Gli sha sì, ed è il motivo per cui **non**
-sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva, e
-riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
+⚠️ **Le versioni si sono rimesse in moto, e di parecchio.** Erano ferme da tre sessioni; oggi
+PROD è passata da 6.219 a **6.220** e TEST da 6.222 a **6.230** — otto pubblicazioni su TEST in
+un pomeriggio, che è il costo vero della voce 27. Gli sha qui sopra saranno vecchi appena questa
+riga è committata, ed è il motivo per cui **non** sono sorvegliati: un file che cita il proprio
+sha invecchia nell'istante in cui lo si salva.
+
+📏 **PROD e TEST distano 10 versioni.** Non è drift: TEST bumpa a ogni tentativo, PROD una volta
+per promozione. Ma la regola dell'adiacenza, già incrinata stamattina, ora non dice più niente —
+il confronto che conta è **il contenuto**, e il contenuto è lo stesso (edge e banchi identici per
+impronta, righe dell'app promosse una per una).
 
 🖐️ **La 13ª sessione ha scritto sui DATI, non sul codice.** Su TEST: 5 righe a `deleted=true` e 3
 rimosse (la terna del test livello, con l'SQL di ripristino nel commit). Su `ayly…`: 1 riga a
 `attivo=false`. Su PROD nessuna scrittura, solo `SELECT`.
 
-🖐️ **La 14ª ha scritto sui PERMESSI, e su PROD.** Tre migrazioni, nessuna riga di dati toccata:
-RLS accesa su due tabelle, l'event trigger `ensure_rls` installato, `EXECUTE` revocato su
-`rls_auto_enable()` (quest'ultima **anche su TEST**, per parità). 🚨 **Nessun `DELETE`, nessun
-`UPDATE`, nessuna riga cancellata da nessuna parte** — le due prove che avrebbero creato una
-tabella sono state fatte dentro transazioni **annullate**, e il residuo è stato ricontato: zero.
-↩️ Tutte e tre reversibili con una riga, scritta in testa a ciascuna migrazione.
+🖐️ **La 14ª ha scritto sui PERMESSI, sulla KB e — in coda — sul CODICE.**
+① **Permessi**, quattro migrazioni: RLS su due tabelle di PROD, `ensure_rls` installata su PROD,
+`EXECUTE` revocato su `rls_auto_enable()` (su entrambi, per parità) e la scrittura anonima di
+`self_assessments` chiusa **su TEST**. ② **KB**, un `UPDATE` per progetto: il raddoppio degli
+avvisi, con la prosa corretta nello stesso istante. ③ **Codice**, la PR #692: PROD a 6.220.
+🚨 **Nessuna riga di dati cancellata da nessuna parte.** Le prove che creavano tabelle o
+scrivevano righe stavano dentro transazioni **annullate**, e il residuo è stato ricontato: zero.
+🖐️ Restano su TEST **tre schede di prova** (Aprea, Soldan, Favaro) coi rispettivi gettoni
+`completed`: da togliere insieme — riga, gettone e stato — o sporcano la prova successiva.
+↩️ Tutte le migrazioni reversibili, con l'SQL di ripristino scritto in testa a ciascuna.
 
 🖐️ **E poi sulla KB, chiudendo la 24** — un `UPDATE` per progetto su `pmo_ai_settings`, che
 accende il raddoppio degli avvisi **e insieme corregge la prosa** che diceva «tre». 🚨 Questa è
@@ -95,7 +117,12 @@ ma la regola dell'adiacenza non regge più come indicatore.
 > `.env` dei soci e i suoi interruttori, i ponti, i cron di entrambi i progetti (guardati solo
 > quelli che servivano alla 32), e l'app vista col login staff. Dalla sessione cloud manca
 > l'accesso a Hetzner e alla memoria dell'app. ⚠️ **Anche la 14ª girava dal cloud**: la lista
-> qui sopra non si è accorciata di un rigo.
+> qui sopra non si è accorciata di un rigo, e ora ci si aggiunge **l'app di PROD col login
+> staff**, che questa sessione ha cambiato senza poterla guardare.
+> 📌 In compenso una porta si è aperta: `pg_net` **chiama le edge dall'interno del database**, e
+> aggira il blocco di rete della sessione cloud verso `*.supabase.co`. È così che sono stati
+> chiusi gli ultimi tre guasti senza far ricaricare la pagina al committente altre tre volte.
+> ⚠️ Non sostituisce l'app aperta: prova il **server**, non lo schermo.
 
 ---
 
@@ -191,10 +218,24 @@ aperta ed è ora l'**unica**, quella dell'edge.
 
 ⚖️ Anche la versione stretta di TEST non bastava: il gettone il socio **ce l'ha**, è il suo link.
 
-**⏳ RESTA SOLO PROD**, in due mosse e in quest'ordine: ① promuovere la nuova app e l'edge su
-`main` (il ramo di lavoro è pronto, 9 file, sotto il tetto di `guard-main-prs`) e verificarla
-dal vivo; ② **solo allora** togliere le 3 policy. 🚨 Invertirle lascia i soci senza test: l'app
-in servizio su PROD scrive ancora la riga da sé.
+**✅ PROMOSSA SU `main` — PR #692, PROD 6.220.** Mergiata dopo **due bocciature di
+`deno check`**, ed entrambe avevano ragione: ① 36 errori `TS7006`, perché il blocco del cancello
+è JavaScript e stava in un file `.ts` — separato in **`conoscenza.js`**, che con la sua
+estensione dichiara ciò che è sempre stato; ② 5 errori sui tipi di `supabase-js`, che il mio
+controllo locale nascondeva perché avevo stubbato proprio `createClient`.
+✅ **Edge verificata su PROD**, chiamandola dal database: pescata con un gettone vero → **200**,
+fascia Avanzato, 4 domande, **nessun `correct`**; azione staff senza sessione → **401**.
+
+**⏳ RESTA APERTA, e per due ragioni distinte:**
+1. 🚨 **L'app su PROD non è stata vista da nessuno.** Dal cloud non si apre, e la regola di casa
+   dice che le prove del committente valgono più delle mie — oggi lo ha dimostrato **cinque
+   volte**. Va aperta `app.padelvillage.club`, controllato che serva **6.220** e compilata una
+   scheda vera.
+2. ⛔ **Il passo 4 su PROD non è fatto**: le **3 policy** `WITH CHECK (true)` sono ancora là.
+   Finché ci sono, chi ha la chiave pubblicabile può scrivere una scheda **senza nemmeno un
+   gettone** e scavalcare il cancello nuovo. Si tolgono **solo dopo** il punto 1.
+⚖️ Su TEST invece la voce è **completa**, passo 4 compreso: `anon` → `42501`,
+`service_role` → scrive.
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
@@ -436,6 +477,22 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > calcolo, analizza il blocco come modulo, prova il vuoto e prova le due forme del livello —
 > ognuna con il suo controllo negativo.
 >
+> **Un file mente anche con l'estensione.** *(14/08)* La PR verso `main` è stata bocciata da
+> `deno check` con **36 errori**: il blocco del cancello è JavaScript e stava dentro un `.ts`.
+> Non era forma — era una contraddizione insanabile: il banco lo **esegue** in una VM, quindi
+> tipizzarlo rompeva le prove e non tipizzarlo rompeva la CI. Le due cose non potevano stare
+> nello stesso file, e infatti non ci stavano. ⇒ Separato in `conoscenza.js`. E il banco ci ha
+> guadagnato: da un modulo vero non si estrae **a fette cercando marcatori di testo**, si
+> importa — e quelle fette mi avevano già tradito due volte nello stesso pomeriggio.
+>
+> **Quando stubbi qualcosa, chiediti cosa smette di essere controllato.** *(14/08)* Seconda
+> bocciatura della stessa PR: 5 errori sui tipi di `supabase-js`, invisibili in locale perché
+> avevo sostituito `createClient` con uno stub che torna `any` — cioè avevo stubbato **proprio
+> la cosa che porta i tipi**. ⇒ È la TERZA volta in un pomeriggio che il banco è più permissivo
+> del vero (script invece di modulo, ramo mai eseguito, tipi stubbati) e la terza volta che
+> **verde non voleva dire niente**. La cura è stata prendere lo stesso pacchetto da **npm**,
+> che il proxy non nega, e riprodurre i 5 errori prima di correggerli.
+>
 > **Un errore che non si sa leggere costa più del guasto.** *(14/08)* Un'eccezione non catturata
 > la risponde il runtime, non la funzione: 500 **senza CORS** ⇒ il browser dice «Failed to
 > fetch», che è il nulla. Tre giri di prove per arrivare a un `ReferenceError` che il server
@@ -498,4 +555,4 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Aggiornato il 14/08/2026 a fine **14ª sessione**, dopo la 13ª dello stesso giorno (PR #688→#691) e quella del 13/08 (#674→#687). Chiusa la voce **35**, l'ultima urgente: la lista 🔴 resta **vuota**. È stata la prima sessione a scrivere **sulla produzione** — tre migrazioni di soli permessi, nessun dato toccato, tutte reversibili con una riga — e la prima in cui la misura ha **confermato** la scheda invece di smentirla. La sessione girava dal cloud: VM, worker, `.env`, ponti, memoria dell'app e la vista dell'app col login staff **non** sono stati misurati, ed è scritto sopra quali. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Aggiornato il 14/08/2026 a fine **14ª sessione**, dopo la 13ª dello stesso giorno (#688→#691) e quella del 13/08 (#674→#687). Chiuse le voci **35** e **24**; la **27** è arrivata su PROD con la **#692** (PROD 6.220) ma **resta aperta**, perché l'app di produzione non l'ha ancora vista nessuno e le 3 policy di PROD sono ancora là. Su TEST è invece completa, passo 4 compreso. Versioni, sha, PR aperte e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; il registro delle versioni è stato confrontato col misurato e combaciava. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti, memoria dell'app **e l'app di PROD col login staff** non sono stati misurati — ed è quest'ultima la mancanza che pesa, perché è la sola cosa che questa sessione ha cambiato senza poterla guardare. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
