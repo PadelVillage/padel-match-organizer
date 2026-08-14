@@ -46,6 +46,23 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+/* 🔢 DA STRINGA A NUMERO, o NIENTE — 14/08, quarto giro.
+   `calculateAssessmentPublicLevel` restituisce i livelli come STRINGHE, e quando un dato non
+   c'è restituisce STRINGA VUOTA: con una scheda normalissima `balanced_level` valeva `""`.
+   Passata a una colonna `numeric` diventa `invalid input syntax for type numeric: ""`, e
+   l'INTERA scheda non si salva — per un campo secondario.
+   ⚖️ Il vuoto NON è zero e non è un errore: è «non lo sappiamo», e in colonna numerica si
+   scrive `null`. È la stessa regola già scritta in `pmoLivelloFascia` per il livello del
+   socio; qui mancava perché avevo curato solo `raw_score`, l'unico che avevo visto vuoto.
+   ⚙️ Senza annotazioni di tipo di proposito, come le funzioni del seme: così il banco la
+   esegue davvero invece di limitarsi a constatare che c'è. */
+function numero(v) {
+  const t = String(v ?? '').trim();
+  if (!t) return null;
+  const n = Number(t.replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -849,11 +866,12 @@ async function gestisci(req: Request): Promise<Response> {
       notice: assessTxt(scheda.notice) || null,
       preferred_match_type: assessTxt(scheda.preferred_match_type) || null,
       notes: assessTxt(scheda.notes) || null,
-      declared_level: Number.isFinite(dichiarato) ? dichiarato : null,
-      calculated_level: livCalc.calculated_level,
-      balanced_level: livCalc.balanced_level,
-      technical_average: livCalc.technical_average,
-      raw_score: livCalc.raw_score === '' ? null : Number(livCalc.raw_score),
+      // 🚨 TUTTI e cinque passano da `numero`, non solo quello che mi era capitato vuoto.
+      declared_level: numero(dichiarato),
+      calculated_level: numero(livCalc.calculated_level),
+      balanced_level: numero(livCalc.balanced_level),
+      technical_average: numero(livCalc.technical_average),
+      raw_score: numero(livCalc.raw_score),
       consistency_status: livCalc.coherence,
       staff_status: statoStaff,
       raw_response: {
