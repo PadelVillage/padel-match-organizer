@@ -61,11 +61,26 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **13** |
 | 📦 **Chiuse** | **18** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 17ª:** app PROD **6.221** · TEST **6.231**
-(nessuna delle due toccata oggi) · alla ripresa `main` era `481e2a0` e `test-preview` `70b48ac`,
-più un commit per ramo da questa sessione · linter **PROD 101** (`WARN` 83, `ERROR` **0**) e **TEST
-97** (`WARN` 80, `ERROR` **1**, `security_definer_view`, preesistente) · cron PROD 11 accesi / 2
-spenti, TEST 5 accesi / 4 spenti (misura del **13/08, non ricontrollata**).
+**Stato del sistema, rimisurato alla chiusura della 17ª** — versioni lette dall'`index.html` dei
+due rami, non ricordate: app PROD **6.222** · TEST **6.232** · `main` `34474aa`, `test-preview`
+`ef2c89b` · linter **PROD 101** (`WARN` 83, `ERROR` **0**) e **TEST 97** (`WARN` 80, `ERROR` **1**,
+`security_definer_view`, preesistente) · i **4 percorsi** di `guard-worker-sync` **identici** fra i
+rami · cron PROD 11 accesi / 2 spenti, TEST 5 accesi / 4 spenti (misura del **13/08, non
+ricontrollata**).
+
+🚨🚨 **UNA PR APERTA, ED È UNA TRAPPOLA: la #700.** Non erano zero, come le sessioni precedenti
+davano per scontato. È la chiusura della **16ª sessione**, rimasta indietro con base `481e2a0`, e il
+suo contenuto è **interamente superato** — quelle stesse righe sono arrivate su `main` con la #701.
+⛔ **Non va unita**: rimetterebbe **229 righe** che `main` non ha più e riporterebbe la fotografia
+alla 16ª sessione, cancellando tutto ciò che è stato scritto dopo. Va **chiusa**, non mergiata —
+ed è una decisione del committente, non mia.
+📌 Trovata solo perché «PR aperte» è un numero che si **rimisura** alla chiusura invece di
+ricopiarlo: la riga di ieri diceva «0 PR aperte» e oggi sarebbe stata falsa.
+
+⏳ **PROD serve ancora la 6.221 mentre scrivo**, e non è un guasto: il merge della #705 è di due
+minuti fa e Pages ci mette qualche minuto. ⚠️ Chi riprende **verifichi dal server** — `pg_net` su
+`app.padelvillage.club/index.html` — che sia arrivata la **6.222**: è l'unica prova che il disarmo
+dei tre esiti sia davvero in produzione, e l'etichetta non basta (lezione della voce 38).
 
 🚨 **E `docs/` NON era allineato: la 17ª è partita con la guardia rossa.** La 16ª sessione ha spinto
 la propria chiusura su `test-preview` (`70b48ac`, 19:18) e **non l'ha portata su `main`**:
@@ -734,7 +749,9 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 ---
 
 <sub>Aggiornato il 14/08/2026 a fine **17ª sessione**, la quinta dello stesso giorno. Chiuse **due**
-voci, la **37** e la **38**, e nessuna promossa: le urgenti scendono da 3 a **1**. La sessione è partita trovando `docs/`
+voci, la **37** e la **38**, e nessuna promossa: le urgenti scendono da 3 a **1**. La **23** è stata
+scritta, pubblicata su TEST e poi **promossa a PROD** (6.222) su conferma separata — resta aperta
+perché la caduta vera del worker non è provabile da qui. La sessione è partita trovando `docs/`
 disallineato e `guard-worker-sync` **rossa** su `test-preview` — la 16ª aveva spinto la propria
 chiusura là e non l'aveva portata su `main` — e la prima cosa fatta è stata sanare quello. La **37** è stata prima
 sanata e poi chiusa: tolto il residuo che la 16ª si era auto-denunciata — le 3 policy della famiglia
