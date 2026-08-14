@@ -57,11 +57,11 @@ ventotto erano aria. ⇒ Si confronta sempre **normalizzando gli spazi**:
 | `pmo_anagrafica_cron_key()` | serve al cron `pmo-anagrafica-mirror-test` (jobid 14, **acceso**), che specchia l'anagrafica **da PROD**. ✅ È il motivo per cui su TEST i soci sono vivi mentre il calendario è fermo |
 | `pmo_dispatch_assessment_email_routines(p_now)` | dispatcher email — cron **spento** (jobid 6) ⚠️ residuo del canale smontato |
 | `pmo_dispatch_assessment_email_single_test_0900()` | idem, e nasce già come funzione di prova ⚠️ residuo |
-| **`rls_auto_enable()`** | 🔴 **event trigger `ensure_rls`**: accende l'RLS da sola su ogni tabella nuova in `public`. **Su PROD NON c'è** — vedi sotto |
+| **`rls_auto_enable()`** | ✅ **event trigger `ensure_rls`**: accende l'RLS da sola su ogni tabella nuova in `public`. **Su PROD mancava**; installata lì il 14/08 chiudendo la voce 35 ⇒ oggi le due copie sono identiche (impronta `2ab30ec5…`) — vedi sotto |
 
 ---
 
-## 🔴 La scoperta che pesa più della voce: la rete di sicurezza sta dalla parte sbagliata
+## ✅ La scoperta che pesava più della voce: la rete di sicurezza stava dalla parte sbagliata — sanata il 14/08
 
 `rls_auto_enable()` è agganciata su TEST all'event trigger **`ensure_rls`** (`ddl_command_end`,
 abilitato): ogni tabella creata in `public` si ritrova l'RLS acceso **da sola**. Su **PROD quel
@@ -69,10 +69,10 @@ trigger non esiste** — ci sono solo i sei di sistema (pgrst, graphql, cron, ne
 
 **E ha già morso.** Su PROD, oggi, due tabelle in `public` senza RLS:
 
-| tabella | righe | RLS | permessi ad `anon` |
-|---|---|---|---|
-| `pmo_bkp_ospite_20260809` | **699** | ❌ | SELECT, INSERT, UPDATE, DELETE, TRUNCATE |
-| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | SELECT, INSERT, UPDATE, DELETE, TRUNCATE |
+| tabella | righe | RLS il 13/08 | RLS dal 14/08 | permessi ad `anon` |
+|---|---|---|---|---|
+| `pmo_bkp_ospite_20260809` | **699** | ❌ | ✅ | SELECT, INSERT, UPDATE, DELETE, TRUNCATE (muti: la porta è chiusa a monte) |
+| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | ✅ | SELECT, INSERT, UPDATE, DELETE, TRUNCATE (idem) |
 
 Non è una mia deduzione: sono i **due soli `ERROR`** del linter di Supabase su PROD
 (`rls_disabled_in_public`). Le altre tabelle-copia dello stesso giorno — `_pmo_riassegnazione_*` —
@@ -82,8 +82,31 @@ l'RLS ce l'hanno; queste due no.
 avrebbe buttato **€ 7.937** di incassi. La rete messa sotto a quel lavoro è, oggi, l'unica cosa
 scoperta del progetto.
 
-🚨 **Cosa NON è stato fatto**: nulla. Accendere l'RLS su PROD è una **modifica alla produzione** e
-la decide il committente. È la voce **35**.
+✅ **Cosa è stato fatto, il 14/08, dopo la sua conferma esplicita** — la voce 35 è chiusa:
+
+1. **RLS accesa** sulle due tabelle, senza policy. Verificato ruolo per ruolo (`set local role`
+   dentro transazione, poi `rollback`): `anon` **0 e 0**, `authenticated` **0 e 0**,
+   `service_role` **699 e 1**. Il linter di PROD è passato da **2 `ERROR` a ZERO**.
+2. **`ensure_rls` installata anche su PROD**, copia verbatim di TEST — impronta normalizzata
+   `2ab30ec5481ea9c5e18a2fa2e2d75e94` **uguale sui due progetti**, stessi tag, stesso
+   proprietario. Provata sul vivo: una `create table` dentro una transazione poi annullata
+   nasce con `relrowsecurity = true` da sola.
+3. **Coda inattesa**: installato il trigger, il linter ha alzato due WARN nuovi —
+   `rls_auto_enable()` era eseguibile da `anon` via RPC, e **provando si è visto che la
+   chiamata riusciva davvero**. Portata reale nulla (nessun argomento, e fuori dal contesto
+   di event trigger il ciclo gira a vuoto), ma è `SECURITY DEFINER`: `EXECUTE` revocato a
+   `public`, `anon` e `authenticated` **su entrambi i progetti** — su TEST l'ACL era identica
+   e quei due WARN ci stavano da sempre, nessuno li aveva mai guardati. Ora da `anon`:
+   `42501 : permission denied`.
+
+⚠️ **Da ricordare d'ora in poi**: ogni tabella nuova in `public` su PROD nasce con RLS e senza
+policy, cioè **invisibile ad `anon` e `authenticated`**. Se una tabella nuova deve essere letta
+col ruolo pubblico, la policy va scritta a mano. Le edge non ne risentono: usano `service_role`.
+
+📌 **Nota emersa misurando**: la migrazione che creò `pmo_bkp_ospite_20260809`
+(`20260809134440_bkp_ospite_prima_dello_spostamento_20260809`) risulta a registro **su Supabase
+ma non ha un file nel repo**. Non è un guasto — è però il modo esatto in cui una tabella entra in
+produzione senza che nessuno la riveda.
 
 ---
 
