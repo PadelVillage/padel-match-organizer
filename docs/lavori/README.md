@@ -140,6 +140,62 @@ login**: togliere la policy sbagliata spegne una funzione viva e non se ne accor
 non serve. ⇒ Prima il rito «chi punta a questa riga», tabella per tabella; poi la revoca; e la
 prova d'attacco **prima e dopo**, col suo controllo negativo.
 
+#### ✅ Fatto il 14/08 (16ª sessione) — PROD, famiglia «feedback post-partita»
+
+Con la sua autorizzazione, **tolte 3 policy**: INSERT e UPDATE su `post_match_feedback_responses`,
+SELECT su `post_match_feedback_tokens`. 🆕 **La terza non la nominava nessuna nota**: è saltata
+fuori guardando la famiglia intera invece della singola tabella.
+
+**Prova d'attacco come `anon`, in transazione annullata, prima e dopo** — col seme che soddisfa la
+chiave esterna, altrimenti a fermare l'attacco sarebbe stato il **vincolo** e non l'RLS:
+
+| | prima | dopo |
+|---|---|---|
+| `anon` legge i gettoni | **1 riga** | **0** |
+| `anon` scrive una risposta | **riuscito** (1 riga, vista dal ruolo privilegiato) | **42501** |
+| la **RPC pubblica** da `anon` | — | **`{"ok": true}`**, e scrive la sua riga |
+
+🔎 **L'UPDATE dava 0 righe, e non era la policy.** Sembrava dire che l'allarme fosse esagerato; era
+un **trigger**: `trg_post_match_feedback_mark_token_completed` porta il gettone a `completed` appena
+la risposta entra, e la policy di lettura mostra ad `anon` solo `created`/`sent` ⇒ la `USING`
+dell'UPDATE diventa falsa. Quella policy era **inerte**, non un buco — tolta lo stesso, perché è
+inerte per effetto di un trigger, e un trigger si cambia.
+⚖️ **Onestà sulla portata**: con **0 gettoni** il buco oggi è **potenziale**. Si arma il giorno in
+cui la funzione si accende, e i gettoni portano `member_name`, `phone_last4`, `member_local_id`,
+`match_key` — cioè il caso del 12/08 con i 1364 gettoni dell'autovalutazione. Chiuso **prima**.
+✅ Linter PROD **99 → 101**, `WARN` **83 invariati**, `ERROR` **0**. I due nuovi sono
+`rls_enabled_no_policy` INFO sulle due tabelle: l'esito **voluto**, lo stesso stato della voce 35.
+📌 Avevo previsto «non cambia nulla»: **la previsione era sbagliata di due**, ed è meglio così —
+sono la firma della porta chiusa, non un effetto collaterale.
+🔗 Migrazione `20260814181002`, reversibile, con l'SQL di ripristino verbatim in testa.
+
+#### 🛑 FERMATO su TEST — la misura smentisce la nota, e non la correggo per farla tornare
+
+Le tre policy `ALL` su `cudi…` **ci sono davvero**, ma **non fanno quello che la nota dice**.
+Prova d'attacco come `anon`, **prima di qualunque modifica**: `42501` su **tutte e cinque** le
+prove — lettura, tre scritture, cancellazione. Il motivo è un piano più sotto delle policy:
+
+```
+anon = Dxtm/postgres      ⇒ niente r (SELECT), w (UPDATE), a (INSERT), d (DELETE)
+```
+
+⇒ Ad `anon` **mancano i grant di tabella**, quindi le tre policy sono **decorative**: descrivono un
+accesso che nessuno ha. Toglierle non chiude niente — toglie un **segnale ingannevole**, che non è
+la stessa cosa. ⚖️ **Non le ho tolte**: l'autorizzazione l'avevo, ma l'avevo chiesta sulla base di
+«lettura e scrittura per anonimo», e quella premessa è falsa. Decide lui, con la ragione giusta.
+
+🚨 **E sotto c'era altro, che nessuno cercava.** Quella `D` nell'ACL è **TRUNCATE**, e l'**RLS non
+filtra il TRUNCATE**. Provato come `anon` su TEST: `truncate public.pmo_parse_history` **RIUSCITO**.
+(Su `pmo_bookings` risponde `0A000`, ma è la **chiave esterna** di `pmo_parse_history`, non un
+rifiuto di permesso.)
+📊 Su **PROD** sono **14 le tabelle** dove `anon` ha TRUNCATE — con ACL piena `arwdDxtm`, quindi lì
+a trattenerlo è **solo l'RLS**: fra queste `admin_settings`, `assessment_admin_config` (il deposito
+del PIN), `pmo_lessico`, `pmo_ai_settings`, `pmo_parser_config` e i due backup del 9/08.
+⚖️ **Non è un allarme, ed è importante dirlo**: chi ha la chiave pubblicabile parla **PostgREST**,
+che non ha un verbo TRUNCATE. Per usare quel permesso servirebbe eseguire SQL **come `anon`** — cosa
+che oggi nessuna strada nota permette. È una **configurazione sbagliata latente**, non una porta
+aperta. Ma è la stessa forma della voce 36: un permesso che nessun elenco di «chi scrive» mostra.
+
 ### 38. 📡 `wa-shadow-proxy` — 623 chiamate a vuoto al giorno, **anche in PRODUZIONE**
 *Nata come nota il 14/08 (14ª sessione), misurata e promossa il 14/08 (16ª).* La nota diceva «il
 gestionale di **TEST** chiama `wa-shadow-proxy` una volta al minuto e prende 404» e chiudeva con
