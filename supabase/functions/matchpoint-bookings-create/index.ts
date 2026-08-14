@@ -14,8 +14,18 @@ import {
 // 📐 La scheda del circolo che una partita nata in prova si scrive da sé. Regola pura, provata
 // da sola: senza, su TEST la partita non ha un organizzatore e non si può gestire.
 import { schedaDiProva } from './scheda-di-prova.ts';
+// ⭐⭐ I TRE ESITI della voce 23 — regola pura, in un modulo a sé e in `.js` perché il banco di
+// prova gira in Node e da un modulo vero si IMPORTA invece di estrarre a fette. Stessa medicina
+// di `conoscenza.js`, e per lo stesso motivo: una regola che nessuno può eseguire è una regola
+// che nessuno ha provato.
+import {
+  codiceDiRifiuto,
+  decidiEsitoDelLavoro,
+  erroreEsitoIgnoto,
+} from './esito-prenotazione.js';
 
 type JsonMap = Record<string, unknown>;
+
 
 type StaffActor = {
   userId: string;
@@ -177,7 +187,10 @@ async function callWorkerCreateBooking(opts: {
     });
   } catch (netErr) {
     // NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.
-    throw new Error(`Worker network error: ${errorText(netErr)}`);
+    // ⭐ E per lo stesso motivo l'errore si MARCHIA: qui non abbiamo ricevuto risposta, quindi non
+    //   sappiamo se la prenotazione c'è. Chi legge questo errore non deve poterlo confondere con
+    //   un rifiuto — un rifiuto è una risposta, questo è il silenzio.
+    throw erroreEsitoIgnoto(`Worker network error: ${errorText(netErr)}`);
   }
 
   const body = await res.json().catch(() => ({}));
@@ -215,7 +228,7 @@ export function chiavePrenotazione(booking: BookingRequest, actorUserId: string)
 // Elenco di ciò che questa versione dell'edge SA FARE. Serve a chi chiede la prova a vuoto:
 // 🚨 un'edge vecchia che non la conosce ignorerebbe il flag e PRENOTEREBBE DAVVERO, quindi chi
 // la chiede deve poter verificare PRIMA che dall'altra parte ci sia chi la sa fare, e rifiutarsi.
-export const FEATURES = ['prova-a-vuoto-chiave', 'chiave-da-sbId'];
+export const FEATURES = ['prova-a-vuoto-chiave', 'chiave-da-sbId', 'esito-ignoto'];
 
 // Fonde la fotografia della creazione (`nostro`) con quello che nella riga c'è GIÀ.
 // ⭐ Quello che c'è già VINCE campo per campo: l'ha scritto l'app, ed è lei l'autorevole sulla
@@ -347,21 +360,41 @@ type ScrittoreDiJob = {
   };
 };
 
+// 🔎 Voce 23, prima metà: questa funzione SCARTAVA l'esito della propria scrittura — un
+// `await ... .upsert(...)` e nient'altro, mentre la sorella `saveStaffBookingRecord` dieci righe
+// più su l'errore lo controlla e lo rilancia. Non era una convenzione del file: era una
+// dimenticanza, e si vedeva dal confronto.
+// ⚠️ Cosa costava: se la riga di stato non si scrive, il lavoro resta `pending` PER SEMPRE e chi
+// guarda non saprà mai com'è finita — esattamente ciò che il commento qui sotto dichiara di voler
+// evitare. Il silenzio era doppio, perché nemmeno nei log restava traccia.
+// ⚖️ Ritorna `false` invece di lanciare: viene chiamata anche dalla strada dell'errore, e
+// un'eccezione lì diventerebbe un rifiuto non catturato dentro un lavoro di sfondo — cioè
+// romperebbe la cosa che sta cercando di raccontare. Chi ha bisogno di fermarsi (la scrittura
+// iniziale) guarda il valore di ritorno.
 async function writeBookingJob(
   client: ScrittoreDiJob,
   jobId: string,
   status: string,
   extra: JsonMap = {},
-) {
+): Promise<boolean> {
   const now = new Date().toISOString();
-  await client.from('pmo_cloud_records').upsert({
+  const esito = await client.from('pmo_cloud_records').upsert({
     record_type: 'booking_job',
     local_key: jobId,
     payload: { status, updated_at: now, ...extra },
     deleted: false,
     updated_at: now,
     synced_at: now,
-  }, { onConflict: 'record_type,local_key' });
+  }, { onConflict: 'record_type,local_key' }) as { error?: { message?: string } | null } | null;
+  const errore = esito?.error;
+  if (errore) {
+    console.error(JSON.stringify({
+      event: 'booking_job_non_scritto', jobId, status,
+      error: errore.message ?? String(errore),
+    }));
+    return false;
+  }
+  return true;
 }
 
 async function runBookingJobInBackground(opts: {
@@ -412,7 +445,23 @@ async function runBookingJobInBackground(opts: {
       worker_result: workerResult,
     });
   } catch (workerErr) {
-    await writeBookingJob(client, jobId, 'error', { ...base, error: errorText(workerErr) });
+    // ⭐⭐ QUI vivono i TRE esiti, voce 23. Se il worker ha RISPOSTO un rifiuto l'esito è noto e si
+    // scrive `error`. Se invece non è arrivata nessuna risposta, quello che sappiamo è che NON
+    // SAPPIAMO — e va detto, non arrotondato al rifiuto: la prenotazione può essere già sul
+    // Matchpoint del circolo, e chi legge «fallita» la rifà creando un doppione vero.
+    // 📌 L'app sa già cosa farne, e non da oggi: alla regola del committente (v6.150) «quando
+    //    l'esito resta IGNOTO non si indovina — si va a GUARDARE su Matchpoint» corrisponde
+    //    `_uncertainStatus` → `staffCalAskMatchpoint`, coi suoi tre verdetti si/no/boh. Quella
+    //    macchina c'era già: mancava che questa funzione le desse il caso da trattare.
+    // ⚖️ Un'app VECCHIA che non conosce `unknown` non si rompe: non essendo né `done` né `error`
+    //    lo legge come «in corso», continua a chiedere e finisce sulla stessa strada dell'ignoto
+    //    per scadenza. Peggiora l'attesa, non l'esito — degradare così è voluto.
+    const esito = decidiEsitoDelLavoro(workerErr, tipoLabel);
+    await writeBookingJob(client, jobId, esito.status, {
+      ...base,
+      error: errorText(workerErr),
+      ...(esito.message ? { message: esito.message } : {}),
+    });
   }
 }
 
@@ -597,7 +646,15 @@ Deno.serve(async (req: Request) => {
   if (body.async === true) {
     const jobId = crypto.randomUUID();
     const clientJob = createClient(supabaseUrl, supabaseKey);
-    await writeBookingJob(clientJob, jobId, 'pending', { booking, created_by_email: actor.email, created_at: new Date().toISOString() });
+    // 🚨 Se la riga di stato NON si scrive, il numero di lavoro che stiamo per consegnare non
+    // corrisponde a niente: chi lo interroga prenderà `404 JOB_NOT_FOUND` per sempre. Meglio
+    // dirlo SUBITO — qui siamo ancora prima di aver chiamato il circolo, quindi «non è partita»
+    // è la verità, ed è un esito NOTO. È l'unico punto di questa funzione in cui vale la pena
+    // fermarsi: dopo, il lavoro è già in volo e un rifiuto sarebbe una bugia.
+    const jobScritto = await writeBookingJob(clientJob, jobId, 'pending', { booking, created_by_email: actor.email, created_at: new Date().toISOString() });
+    if (!jobScritto) {
+      return err(503, 'JOB_NON_AVVIATO', 'Non sono riuscito ad aprire il lavoro: la prenotazione NON è partita, rifalla.', { booking });
+    }
     EdgeRuntime.waitUntil(runBookingJobInBackground({ jobId, supabaseUrl, supabaseKey, actor, booking, workerUrl, workerApiKey, username, password, baseUrl }));
     return ok({ jobId, status: 'pending', message: 'Prenotazione avviata, in corso…' });
   }
@@ -607,7 +664,17 @@ Deno.serve(async (req: Request) => {
   try {
     workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
   } catch (workerErr) {
-    return err(502, 'WORKER_ERROR', errorText(workerErr), { booking });
+    // ⭐ Stesso terzo esito della strada asincrona, e qui pesa di PIÙ: da questa passa il
+    // RICORRENTE, che crea fino a quattro prenotazioni di fila. Il ciclo dell'app conta `fail++`
+    // e conclude «⚠ N create, M fallite», invitando a rifarle — su un esito che nessuno conosce.
+    // ⚖️ Resta un errore (502), perché contarlo come riuscito sarebbe la bugia opposta: cambia il
+    // CODICE, così chi legge può distinguere «rifiutata» da «non lo so» invece di indovinare dal
+    // testo del messaggio.
+    const codice = codiceDiRifiuto(workerErr);
+    return err(502, codice, errorText(workerErr), {
+      booking,
+      ...(codice === 'WORKER_ESITO_IGNOTO' ? { esitoIgnoto: true } : {}),
+    });
   }
 
   // Save record to DB
