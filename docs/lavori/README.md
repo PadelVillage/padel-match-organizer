@@ -1,49 +1,30 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 14/08/2026, 13ª sessione.** Misurata, non ricordata.
+**Fotografia del 14/08/2026, a fine 13ª sessione.** Misurata, non ricordata.
 
-🔴 **Le urgenti sono state a ZERO per un'ora**, per la prima volta da quando esiste questa lista —
-la 22 e la 32 chiuse in giornata. Poi la voce **33** ha trovato la **35**, e lui l'ha promossa: è
-l'unica cosa emersa oggi che sia esposta **adesso** e su **produzione**.
-🚨 La prossima sessione **non promuove da sé**: propone, e decide lui.
+## 🔎 La misura ha smentito la scheda **tre volte su tre**
 
-🔎 **La 13ª sessione ha misurato prima di eseguire, e la misura ha smentito la scheda — due volte.**
-La voce 22 elencava quattro «righe di prova» da togliere su TEST: tre lo erano, **la quarta era una
-prenotazione vera del circolo**, presente anche su PROD. Da lì è nata la **32**, promossa da lui;
-e misurando *quella* è caduto anche il titolo con cui era nata — «fermo dal 7 agosto» — perché su
-TEST le prenotazioni **non sono mai state aggiornate da un cron**. Due schede su due, smentite dai
-dati: la prima scritta tre giorni prima da chi c'era, la seconda **da me, la mattina stessa**.
+È il filo di tutta la giornata, e vale più delle singole voci chiuse.
 
-⚠️ **È la prima volta che scatta la clausola** *«se risulta anche su PROD, fermati e chiedi»*, scritta
-nella voce 22 mesi prima da chi non sapeva che sarebbe servita. Ha funzionato perché qualcuno ha
-**misurato invece di fidarsi**: la scheda diceva «partita 9305 del 13/08», e di quella riga erano
-sbagliati **il numero, la data e la natura**. Da qui la riga nuova nel prompt di apertura — *la scheda
-di un lavoro è un'ipotesi, non una misura* — e i due prompt finalmente **scritti nel repo**.
-
-🧊 **Decisione del committente sulla 32: congelare, e dichiararlo.** Il calendario di TEST resta una
-fotografia, ma ora `CLAUDE.md` lo dice a chiunque apra una sessione. Riaccenderlo è la **voce 34** in
-coda: costa poco (+1,7% sul worker condiviso) ma va fatto **dal Mac**, coi log del worker sotto gli occhi.
-
-🔄 Il resto — cron, versioni, il blocco «verificato sul bersaglio» — è la misura del **13/08**
-e **non è stato ricontrollato**.
-
-⬆️➡️✅ **Voce 30: nata, promossa e chiusa nello stesso giorno.** Unica finora. Nata in coda la
-mattina, **promossa alle urgenti dal committente**, chiusa in serata con **due** guardie — non una:
-
-| | | |
+| la scheda diceva | la misura ha trovato | chi l'aveva scritta |
 |---|---|---|
-| **parità** | `guard-worker-sync` esteso a `docs/` | #683 |
-| **verità** | `guard-docs-truth.yml`, dichiarato vs misurato | #684 |
+| voce 22: «partita **9305** del 13/08, riga di prova» su TEST | **due** partite diverse — 9305 dell'11/08 e 9306 del 13/08 — **entrambe vere e presenti su PROD** | il committente, 3 giorni prima, avendola vista |
+| voce 32: «lo specchio è **fermo dal 7 agosto**» | **non è mai partito**: `data_routine_dispatch_bookings_live_*` = **0** in tutta la storia di TEST contro 1575 su PROD | **io, la mattina stessa** |
+| voce 33: «**28** funzioni SQL divergono» | **5**. Le altre 23 erano **spazi**: su TEST i corpi sono imbottiti, `pmo_get_staff_users_admin` è 30× più lunga **con lo stesso codice** | io, un'ora prima |
 
-⇒ coda 16→**15**, urgenti 2→**1**. 🚨 **Sono legate: si tolgono insieme o mai.** La parità non vede
-la *menzogna concorde*, la verità controlla una copia sola e non protegge l'altro ramo.
+⚠️ **La prima ha fatto scattare per la prima volta la clausola** *«se risulta anche su PROD, fermati
+e chiedi»*, scritta nella voce 22 da chi non sapeva che sarebbe servita. Eseguirla alla lettera
+avrebbe cancellato dati del circolo — **e sarebbe sembrato un lavoro fatto bene**.
 
-🔢 **Perché ne servivano due, misurato non ipotizzato.** Rifacendo i conteggi a mano: la sezione **C**
-ne dichiarava 11 con 12 voci, la **D** 5 con 4 righe. I due errori si **annullavano** e il totale 16
-tornava — **nessuna guardia di parità li avrebbe presi**, erano sbagliati uguali su entrambi i rami.
-E `stato-progetto-corrente.md`, curato la mattina dalla #674 dopo tre mesi a v5.527, **la sera
-dichiarava già 6.216/6.217 contro 6.219/6.222 reali**: da solo non resta vero. Ora la CI verifica
-entrambe le cose, **ogni numero per conto suo** e non solo la somma.
+⇒ Da qui la riga nuova nel prompt di apertura — *la scheda di un lavoro è un'ipotesi, non una
+misura* — e i **tre prompt finalmente scritti nel repo**, in `prompt-apertura-chiusura.md`.
+
+## 📌 Le decisioni prese dal committente oggi
+
+| | |
+|---|---|
+| 🧊 **voce 32 → congelare, non riaccendere** | il calendario di TEST resta una fotografia, ma ora `CLAUDE.md` lo dice a chiunque apra una sessione. Riaccendere è la **voce 34** in coda: costa poco (+1,7% sul worker condiviso) ma va fatto **dal Mac** |
+| ⬆️ **voce 35 → promossa a urgente** | l'unica cosa emersa oggi esposta **adesso** e su **produzione** |
 
 | | |
 |---|---|
@@ -51,19 +32,20 @@ entrambe le cose, **ogni numero per conto suo** e non solo la somma.
 | 📋 **In coda** | **16** |
 | 📦 **Chiuse** | **11** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `908c5d2`,
-`test-preview` `ec8bc72`, alberi puliti · **0 PR aperte** · cron PROD **11 accesi / 2 spenti**,
-TEST 5 accesi / 4 spenti (misura del 13/08, non ricontrollata) · `server.mjs`,
-`.github/workflows/**`, `CLAUDE.md` e **tutto `docs/`** **identici** fra i rami — e non per
-diligenza, ma perché la CI lo impone.
+**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `2fa2bf8`,
+`test-preview` `877dc0f`, alberi puliti · **0 PR aperte** · `server.mjs`, `.github/workflows/**`,
+`CLAUDE.md` e **tutto `docs/`** **identici** fra i rami, verificato dopo ogni merge · cron PROD
+**11 accesi / 2 spenti**, TEST 5 accesi / 4 spenti (misura del **13/08**, non ricontrollata).
 
-⚠️ Le versioni **non si sono mosse** né il 13/08 in serata né il 14/08: da #680 in poi è CI,
-documentazione e **dati**, nessun file dell'app toccato. Gli sha sì, ed è il motivo per cui
-**non** sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva,
-e riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
+⚠️ **Le versioni non si sono mosse in due sessioni**: dalla #680 alla #690 è stata CI,
+documentazione e **dati**, nessun file dell'app toccato. Gli sha sì, ed è il motivo per cui **non**
+sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva, e
+riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
 
-🖐️ **La 13ª sessione ha scritto sui dati, non sul codice**: 5 righe a `deleted=true` e 1 a
-`attivo=false` (reversibili), 3 righe rimosse su TEST. **Nessuna scrittura su PROD**, solo `SELECT`.
+🖐️ **La 13ª sessione ha scritto sui DATI, non sul codice.** Su TEST: 5 righe a `deleted=true` e 3
+rimosse (la terna del test livello, con l'SQL di ripristino nel commit). Su `ayly…`: 1 riga a
+`attivo=false`. 🚨 **Su PROD nessuna scrittura, solo `SELECT`** — l'RLS della voce 35 **non** è stato
+acceso, perché è produzione e aspetta la sua conferma.
 
 ⚠️ **PROD e TEST non sono più adiacenti**: 3 di distanza, non 1. Il *contenuto* è equivalente —
 TEST bumpa a ogni passo (6.219→6.222), PROD una volta per promozione (6.218, 6.219). Non è drift,
@@ -72,17 +54,19 @@ ma la regola dell'adiacenza non regge più come indicatore.
 **Verificato sul bersaglio il 13/08**, non dedotto dal repo:
 - ✅ `app.padelvillage.club` serve **v6.219** (confermato dal committente sullo schermo)
 - ✅ la edge in servizio su PROD contiene davvero `ALLOWED_ACTIONS = ['config-check','gmail-check','staff_invite','staff_delete_full']` e il 410 sul canale ritirato — letta da Supabase
-- ✅ `main` su `raw.githubusercontent` espone 6.219
 - ✅ `soci.padelvillage.club` **non risolve più**; `ayly…` ha **ZERO edge function**
 
-**Misurato il 14/08**, dal cloud:
+**Misurato il 14/08**, dal cloud, sui database veri:
 - ✅ la **whitelist** su `ayly…` (`telegram_operatori`, 5 righe): non era più da dare per buona, ora lo è
-- ✅ lo stato delle prenotazioni su TEST **e** su PROD ⇒ voce 32
-- ✅ 9305 e 9306 su **entrambi** i database, prima di toccare qualsiasi cosa
+- ✅ 9305 e 9306 su **entrambi** i database, **prima** di toccare qualsiasi cosa
+- ✅ lo stato delle prenotazioni su TEST e PROD, il cron, la funzione di dispatch ⇒ voce 32
+- ✅ **tutte** le funzioni SQL dei due progetti, impronta per impronta ⇒ voce 33 e `divergenze-sql-test-prod.md`
+- ✅ gli advisor di sicurezza di PROD: **2 `ERROR`**, ed è la voce 35
 
 > ⚠️ **Ancora non misurati**, e da non dare per buoni: la VM (worker e i due bot, riavvii), il
-> `.env` dei soci e i suoi interruttori, i ponti, i cron. Dalla sessione cloud manca l'accesso
-> a Hetzner.
+> `.env` dei soci e i suoi interruttori, i ponti, i cron di entrambi i progetti (guardati solo
+> quelli che servivano alla 32), e l'app vista col login staff. Dalla sessione cloud manca
+> l'accesso a Hetzner e alla memoria dell'app.
 
 ---
 
@@ -336,4 +320,4 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Generato il 13/08/2026 a fine 12ª sessione; ripreso in serata (PR #680→#684) per rimisurare sha, versioni, PR aperte e conteggi e per chiudere la voce 30. Stato misurato, non ricordato. I conteggi di questo file e le versioni dichiarate nei registri sono ora verificati dalla CI (`guard-docs-truth.yml`). Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Aggiornato il 14/08/2026 a fine 13ª sessione (PR #688→#690), dopo quella del 13/08 (#674→#687). Chiuse le voci 22, 32 e 33; nata e promossa la 35, che resta aperta perché tocca la produzione. Sha, versioni, PR aperte e tutti e otto i conteggi rimisurati alla chiusura, non ricordati. La sessione girava dal cloud: VM, worker, `.env`, ponti, memoria dell'app e la vista dell'app col login staff **non** sono stati misurati, ed è scritto sopra quali. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
