@@ -1,4 +1,4 @@
-# I due prompt: apertura e chiusura di sessione
+# I prompt di sessione: apertura, chiusura, e la pensione delle memorie
 
 Stanno qui, nel repo, per lo stesso motivo per cui ci sta `README.md`: un prompt scritto a memoria
 invecchia senza che nessuno se ne accorga. Quello di apertura in uso fino al 13/08/2026 mandava ad
@@ -7,6 +7,9 @@ aprire la memoria **`lavori-urgenti`**, che il 13/08 è andata in pensione — e
 
 ⚠️ **Si copiano e si incollano così come sono.** Se cambia il modo di lavorare, si cambiano **qui**,
 non nella testa di chi apre la chat.
+
+📌 **Il terzo prompt si usa UNA VOLTA SOLA**, dal Mac, e poi si può dimenticare: manda in pensione
+le memorie `lavori-*` per davvero. Sta in fondo.
 
 ---
 
@@ -76,3 +79,50 @@ non nella testa di chi apre la chat.
 | «specchia sui due rami» | la sicura dei bottoni Matchpoint stette **solo su TEST** per dieci giorni |
 | «committa e pusha» | in cloud il container muore e si perde tutto |
 | «cosa non hai potuto misurare» | dal cloud metà del sistema è invisibile: dirlo evita che passi per verificato |
+
+---
+
+## 🧹 Prompt UNA TANTUM — mandare in pensione le memorie `lavori-*`
+
+**Da usare dal Mac, una volta sola.** Dal cloud non si può: la memoria dell'app non è raggiungibile
+e non esiste nessuno strumento che la tocchi — verificato il 14/08/2026, non dedotto.
+
+🚩 **Perché serve ancora, anche col prompt di apertura nuovo.** Quel prompt dice «non aprire le
+memorie `lavori-*`», e protegge dal caso *la sessione va a cercarle*. Non protegge dall'altro: le
+memorie dell'app possono essere **servite da sole** nel contesto, senza che nessuno le apra, e lì
+il divieto non arriva. ⚖️ È un rischio di **confusione**, non di danno — chi legge anche
+`docs/lavori/README.md` trova la contraddizione e il prompt gli dice a chi credere — quindi **non è
+urgente**. Ma finché non si fa, il progetto ha due fonti che si contraddicono, ed è la malattia
+curata il 13/08.
+
+> Devi svuotare delle memorie dell'app che sono in pensione dal 13/08/2026, e sostituirle con un
+> rimando. Sono queste, e SOLO queste:
+>
+> `lavori-urgenti`, `lavori-in-coda`, `lavori-chiusi`, `lavori-chiusi-storico`, più le memorie
+> tematiche su **Gmail** e sull'**autovalutazione**.
+>
+> Per ciascuna: cancella tutto il contenuto e mettici **solo** questa riga —
+>
+> «In pensione dal 13/08/2026. I lavori e le memorie tematiche stanno in `docs/lavori/README.md`
+> nel repo `padel-match-organizer`, che ogni sessione carica da sola tramite `CLAUDE.md`.
+> Non riscrivere le liste qui: due copie divergono.»
+>
+> 🚨 **Non toccare NESSUN'ALTRA memoria.** Quelle su VM, `.env` del bot, chiavi SSH, decisioni
+> personali e preferenze **restano dove sono**: il repo non le sostituisce, e chi svuota deve saper
+> distinguere. Se non sei sicuro che una memoria sia una delle sei elencate, **lasciala stare e
+> chiedimelo**.
+>
+> ⚠️ Prima di cancellare, **fammi vedere cosa c'è dentro** ciascuna delle sei: se una contiene
+> qualcosa che NON è nel repo — una decisione, un numero, un perché — quello va prima portato in
+> `docs/lavori/README.md` con una PR, e solo dopo si svuota. Svuotare per primo perde l'unica copia.
+>
+> Alla fine dimmi quali hai svuotato e quali hai lasciato stare, e perché.
+
+### Perché è scritto così
+
+| riga | il guasto che cura |
+|---|---|
+| l'elenco chiuso delle sei | evita che una sessione zelante svuoti anche le memorie che servono |
+| «lasciala stare e chiedimelo» | nel dubbio non si cancella: è il rito dell'Ospite, dove «elimina tutto» avrebbe buttato **€ 7.937** |
+| «fammi vedere cosa c'è dentro» | svuotare per primo perde l'unica copia di quello che non è nel repo |
+| il testo del rimando, già scritto | così il committente non deve inventarselo, e le sei memorie dicono tutte la stessa cosa |
