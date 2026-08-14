@@ -92,6 +92,44 @@ const furbata = assessKnowledgeEvaluate(pesca('tok-ABC123','Intermedio').map(d=>
 ok('🚨 rispondere a vuoto NON passa più', furbata.status === 'fail');
 ok('fascia dedotta dalle domande', furbata.fascia === 'Intermedio');
 
+/* 🚨 IL SECONDO BANCO CHE MANCAVA — aggiunto il 14/08 dopo il TERZO giro storto.
+   La consegna moriva con `ReferenceError: cleanCell is not defined`: il calcolo del livello
+   era stato spostato nell'edge SENZA le tre funzioni che usa (`cleanCell`, `normalizeText`,
+   `assessmentPublicScoreFromText`), che nell'app stanno altrove.
+   ⭐⭐ Perché nessuna prova l'ha visto: le prove di prima ESERCITAVANO solo il quiz. Il calcolo
+   del livello era nel file, dichiarato e mai chiamato — e una funzione mai chiamata non
+   rivela le sue dipendenze mancanti. ⇒ Spostare una funzione vuol dire spostare il suo
+   ALBERO, e il banco deve ESEGUIRE il ramo, non solo constatare che c'è. */
+// ⚠️ I due estremi si CONTROLLANO: `indexOf` che non trova torna -1, e `slice(-1, …)` non
+// dà errore — dà una fetta assurda. Senza questo controllo il banco crollava con uno stack
+// illeggibile invece di dire cosa manca, ed è già successo provandolo.
+const daQui = T.indexOf('function cleanCell('), aQui = T.indexOf('/* ── Il seme:');
+if (daQui < 0 || aQui < 0 || aQui <= daQui) {
+  console.log(`❌ non trovo il blocco del calcolo livello nell'edge (inizio ${daQui}, fine ${aQui}).`);
+  console.log('   Se `cleanCell` non c\'è più, è il guasto del 14/08 che torna: il calcolo del');
+  console.log('   livello è stato spostato senza le funzioni che usa.');
+  process.exit(1);
+}
+const LIV = T.slice(daQui, aQui);
+const ctxLiv = vm.createContext({ Math, String, Number, Array, JSON, parseFloat, isFinite });
+vm.runInContext(LIV + '\nthis.API = { calculateAssessmentPublicLevel, assessmentPublicParseLevel };', ctxLiv);
+const L = ctxLiv.API;
+
+ok('🚨 il calcolo del livello GIRA (era `cleanCell is not defined`)', (() => {
+  const esito = L.calculateAssessmentPublicLevel({
+    declaredLevel: '4.0 - Avanzato', experience: 'Oltre 3 anni', frequency: '2-3 volte a settimana',
+    rally: 'Scambio a ritmo medio con continuità', walls: 'Uso le pareti con sicurezza',
+    net: 'Tengo posizione e controllo le volée', overheads: 'Uso bandeja e smash con controllo',
+    balanced: '4.0 - Avanzato'
+  });
+  return esito && Number.isFinite(Number(esito.calculated_level)) && typeof esito.coherence === 'string';
+})());
+ok('…e regge una scheda VUOTA senza esplodere', (() => {
+  try { L.calculateAssessmentPublicLevel({}); return true; } catch { return false; }
+})());
+ok('…e `assessmentPublicParseLevel` legge la virgola come il punto',
+   L.assessmentPublicParseLevel('4,5') === '4.5');
+
 // 5. 🚨 il blocco deve stare in piedi come MODULO, non solo come script
 ok('🚨 il blocco condiviso è un modulo valido (come lo carica Deno)', (() => {
   try { provaComeModulo(blocco, 'blocco'); return true; }

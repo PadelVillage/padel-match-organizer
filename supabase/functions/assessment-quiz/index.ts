@@ -519,6 +519,30 @@ function assessKnowledgeEvaluate(pickedIds, answers, fasciaDichiarata) {
    Non nasconde un segreto come la banca, ma decide `calculated_level` e `staff_status`:
    lasciarlo di là avrebbe voluto dire correggere il quiz sul server e poi credere al
    telefono sul voto. ⇒ Chi scrive la riga la calcola per intero. ────────────────── */
+/* 🩹 LE TRE DIPENDENZE CHE MI ERO DIMENTICATO — 14/08/2026, terzo giro.
+   `calculateAssessmentPublicLevel` è stata spostata qui senza portarsi dietro `cleanCell`,
+   `normalizeText` e `assessmentPublicScoreFromText`, che nell'app stanno altrove. Risultato:
+   `ReferenceError: cleanCell is not defined` sulla CONSEGNA — la pescata funzionava, quindi
+   sembrava tutto a posto fino al bottone «Invia».
+   ⭐ La lezione è la stessa di tre ore fa e va scritta una volta sola: **spostare una funzione
+   vuol dire spostare il suo albero**, non la sua riga. E il banco deve ESEGUIRE il ramo, non
+   solo dichiararlo: la prova che mancava è quella che chiama davvero il calcolo del livello. */
+function cleanCell(value) {
+  return String(value ?? '').replace(/\u00A0/g, ' ').trim();
+}
+function normalizeText(value) {
+  return cleanCell(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+}
+function assessmentPublicScoreFromText(value, map) {
+  const raw = cleanCell(value || '');
+  if (!raw) return null;
+  const key = normalizeText(raw);
+  for (const [needle, score] of map) {
+    if (key.includes(normalizeText(needle))) return score;
+  }
+  return null;
+}
+
 function assessmentPublicTechnicalScores(data) {
   const rally = assessmentPublicScoreFromText(data?.rally, [
     ['Faccio fatica a tenere 3-4 colpi', 1.0],
@@ -702,7 +726,23 @@ async function staffValido(db: ReturnType<typeof createClient>, req: Request): P
   }
 }
 
+/* 🚨 LA RETE SOTTO TUTTO — nata dal guasto del 14/08, e vale più del guasto.
+   Un'eccezione non catturata la risponde il RUNTIME, non questa funzione: 500 senza le
+   intestazioni CORS ⇒ il browser non vede l'errore, vede il CORS che salta, e dice
+   «Failed to fetch». Cioè: il nulla. Ci sono voluti tre giri di prove per arrivare a un
+   `ReferenceError` che il server conosceva dal primo istante.
+   ⇒ Da qui in poi QUALSIASI cosa vada storta esce come JSON con CORS, e il motivo vero
+   finisce nel log. Un errore che si sa leggere vale più di un errore che non capita. */
 Deno.serve(async (req: Request) => {
+  try {
+    return await gestisci(req);
+  } catch (e) {
+    console.error('assessment-quiz: eccezione non prevista —', (e as Error)?.stack || String(e));
+    return err(500, 'GUASTO_INTERNO', 'Qualcosa è andato storto. Riprova, o scrivi in segreteria.');
+  }
+});
+
+async function gestisci(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METODO', 'Solo POST.');
 
@@ -849,4 +889,4 @@ Deno.serve(async (req: Request) => {
   }
 
   return err(400, 'AZIONE', 'Azione non riconosciuta.');
-});
+}
