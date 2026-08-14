@@ -50,12 +50,13 @@ contesto**, non eseguire il compito scritto.
 | 🔓 **famiglia feedback tolta anche su TEST** | la divergenza che la 16ª si era auto-denunciata e aveva lasciato scritta come «la prima cosa da chiedere alla prossima ripresa». Chiesta, autorizzata, fatta |
 | 📚 **sanare `docs/` e correggere la voce 38** | non solo riallineare i rami: riscrivere la misura dei 404 con quella vera, invece di portare su `main` un fatto falso |
 | ✋ **voce 23: diagnosi sì, patch no** | la correzione tocca la strada che prenota **davvero** e dal cloud non è verificabile ⇒ si scrive cosa non va, non si tocca |
+| 📦 **voce 37 chiusa DICHIARANDO, non eseguendo** | messo davanti alle tre strade — dichiarare, fare l'RPC, o la «riga di SQL» — ha scelto la prima. Le due «portanti» restano **per scelta misurata**, con la ragione scritta nella loro riga: chiuderle con la riga di SQL sarebbe stato un passo indietro travestito da chiusura |
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** |
+| 🔴 **Urgenti** | **2** |
 | 📋 **In coda** | **13** |
-| 📦 **Chiuse** | **16** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **17** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 17ª:** app PROD **6.221** · TEST **6.231**
 (nessuna delle due toccata oggi) · alla ripresa `main` era `481e2a0` e `test-preview` `70b48ac`,
@@ -110,192 +111,14 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 2
 
 **Promosse dal committente il 14/08/2026, 16ª sessione**, dopo che la lista era rimasta vuota per
 la prima volta da quando esiste. Tre nascono dalle note «🆕 nate misurando» e una — la **23** —
 sale dalla coda. Proposte a misura fatta, scelte da lui: quattro su quattro.
-
-### 37. 🔓 Le policy di scrittura anonima rimaste — 4 su PROD, 7 su TEST
-*Nata come nota il 12/08, misurata e promossa il 14/08.* È la domanda che la 15ª sessione ha
-lasciato aperta: non «quella porta è chiusa bene», ma **quante ne esistono di quel tipo**.
-
-**Misurato il 14/08 su `pg_policies`, non ricordato:**
-
-| tabella | PROD `qqbf…` | TEST `cudi…` |
-|---|---|---|
-| `pmo_ai_turns` | INSERT (`anon`,`authenticated`) | idem |
-| `pmo_parser_errors` | INSERT (`anon`,`authenticated`) | idem |
-| `post_match_feedback_responses` | INSERT **e UPDATE** | idem |
-| `pmo_bookings` | — | **`ALL`** (`anon`) — legge **e scrive** |
-| `pmo_parse_history` | — | **`ALL`** (`anon`) |
-| `pmo_parser_rules_versions` | — | **`ALL`** (`anon`) |
-
-⚠️ **La nota del 12/08 diceva «tre tabelle accettano inserimenti anonimi»**: le tabelle sono tre,
-ma le policy sono **quattro**, e la quarta è un **UPDATE** che nessuno aveva nominato. È la stessa
-forma della voce 27, dove le «tre policy» erano quattro — la terza volta di fila.
-✅ Su `self_assessments` e `assessment_tokens` non resta nulla: il passo 4 della 27 ha tenuto.
-
-🚨 **Queste tabelle servono a qualcuno**, e non è come le due della voce 35 (scoperte, morte, zero
-riferimenti). Il parser ci scrive i suoi errori, il feedback post-partita arriva dal socio **senza
-login**: togliere la policy sbagliata spegne una funzione viva e non se ne accorge nessuno finché
-non serve. ⇒ Prima il rito «chi punta a questa riga», tabella per tabella; poi la revoca; e la
-prova d'attacco **prima e dopo**, col suo controllo negativo.
-
-#### ✅ Fatto il 14/08 (16ª sessione) — PROD, famiglia «feedback post-partita»
-
-Con la sua autorizzazione, **tolte 3 policy**: INSERT e UPDATE su `post_match_feedback_responses`,
-SELECT su `post_match_feedback_tokens`. 🆕 **La terza non la nominava nessuna nota**: è saltata
-fuori guardando la famiglia intera invece della singola tabella.
-
-**Prova d'attacco come `anon`, in transazione annullata, prima e dopo** — col seme che soddisfa la
-chiave esterna, altrimenti a fermare l'attacco sarebbe stato il **vincolo** e non l'RLS:
-
-| | prima | dopo |
-|---|---|---|
-| `anon` legge i gettoni | **1 riga** | **0** |
-| `anon` scrive una risposta | **riuscito** (1 riga, vista dal ruolo privilegiato) | **42501** |
-| la **RPC pubblica** da `anon` | — | **`{"ok": true}`**, e scrive la sua riga |
-
-🔎 **L'UPDATE dava 0 righe, e non era la policy.** Sembrava dire che l'allarme fosse esagerato; era
-un **trigger**: `trg_post_match_feedback_mark_token_completed` porta il gettone a `completed` appena
-la risposta entra, e la policy di lettura mostra ad `anon` solo `created`/`sent` ⇒ la `USING`
-dell'UPDATE diventa falsa. Quella policy era **inerte**, non un buco — tolta lo stesso, perché è
-inerte per effetto di un trigger, e un trigger si cambia.
-⚖️ **Onestà sulla portata**: con **0 gettoni** il buco oggi è **potenziale**. Si arma il giorno in
-cui la funzione si accende, e i gettoni portano `member_name`, `phone_last4`, `member_local_id`,
-`match_key` — cioè il caso del 12/08 con i 1364 gettoni dell'autovalutazione. Chiuso **prima**.
-✅ Linter PROD **99 → 101**, `WARN` **83 invariati**, `ERROR` **0**. I due nuovi sono
-`rls_enabled_no_policy` INFO sulle due tabelle: l'esito **voluto**, lo stesso stato della voce 35.
-📌 Avevo previsto «non cambia nulla»: **la previsione era sbagliata di due**, ed è meglio così —
-sono la firma della porta chiusa, non un effetto collaterale.
-🔗 Migrazione `20260814181002`, reversibile, con l'SQL di ripristino verbatim in testa.
-
-#### 🛑 FERMATO su TEST — la misura smentisce la nota, e non la correggo per farla tornare
-
-Le tre policy `ALL` su `cudi…` **ci sono davvero**, ma **non fanno quello che la nota dice**.
-Prova d'attacco come `anon`, **prima di qualunque modifica**: `42501` su **tutte e cinque** le
-prove — lettura, tre scritture, cancellazione. Il motivo è un piano più sotto delle policy:
-
-```
-anon = Dxtm/postgres      ⇒ niente r (SELECT), w (UPDATE), a (INSERT), d (DELETE)
-```
-
-⇒ Ad `anon` **mancano i grant di tabella**, quindi le tre policy sono **decorative**: descrivono un
-accesso che nessuno ha. Toglierle non chiude niente — toglie un **segnale ingannevole**, che non è
-la stessa cosa. ⚖️ Sul momento **non le ho tolte**: l'autorizzazione l'avevo, ma l'avevo chiesta
-sulla base di «lettura e scrittura per anonimo», e quella premessa era falsa.
-
-##### ✅ Tolte poi, il 14/08, con la ragione giusta — migrazione `20260814191255`
-
-Ripresentata la decisione con quello che la misura diceva davvero, e ripresa. **Prima di toccare**,
-la fotografia completa — perché su TEST i permessi passano spesso da `PUBLIC` e ci si rimisura
-**contro il prima, non contro PROD**:
-
-| | prima | dopo |
-|---|---|---|
-| policy sulle 3 tabelle | 3 | **0** |
-| `anon` con grant `r/w/a/d` | 0/3 | **0/3** |
-| `service_role` legge | 0/3 | **0/3** |
-| `authenticated` col grant `SELECT` | 3/3 | **3/3** |
-| `anon` SELECT / INSERT | `42501` / `42501` | **identico** |
-| `authenticated` SELECT | 0 righe (lo ferma l'RLS) | **identico** |
-
-⇒ **Il permesso di nessuno è cambiato**, ed è esattamente ciò che deve succedere togliendo una
-policy che non stava sulla strada di nessuno. ✅ Linter TEST **92 → 95**, `WARN` **80** e `ERROR`
-**1** invariati: i 3 nuovi sono `rls_enabled_no_policy` INFO — **previsti e dichiarati prima di
-applicare**, ed è l'esito voluto, lo stesso stato della voce 35 su PROD.
-📌 L'`ERROR` di TEST è `security_definer_view`, **preesistente**: non l'ho toccato e non è mio.
-
-#### 🔀 STATO A FINE 16ª SESSIONE — e una divergenza che **ho creato io oggi**
-
-Misurato alla chiusura, `pg_policies` sui due progetti:
-
-| | PROD `qqbf…` | TEST `cudi…` |
-|---|---|---|
-| `pmo_ai_turns` INSERT | **c'è** *(portante)* | **c'è** |
-| `pmo_parser_errors` INSERT | **c'è** *(portante)* | **c'è** |
-| `post_match_feedback_responses` INSERT | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
-| `post_match_feedback_responses` UPDATE | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
-| `post_match_feedback_tokens` SELECT | ✅ tolta | ✅ **tolta il 14/08 sera (17ª)** |
-| le 3 `ALL` decorative | *(non esistono)* | ✅ tolte |
-
-🚨 **Le tre righe rosse sono la voce 31 in diretta, e la mano è la mia.** La sua autorizzazione
-diceva «**PROD** — famiglia feedback», e l'ho eseguita alla lettera: giusto rispetto al mandato,
-**sbagliato rispetto al sistema**. Da stasera la famiglia del feedback è chiusa di qua e aperta di
-là — che è esattamente la forma del difetto che questa lista documenta da giorni.
-⚖️ Non l'ho sanata da sola iniziativa: sarebbe una scrittura su TEST non autorizzata, e la regola
-vale anche quando la correzione sembra ovvia. **È la prima cosa da chiedere alla prossima ripresa.**
-📌 Portata reale, per non far sembrare urgente ciò che non lo è: su TEST quelle tabelle hanno
-**0 righe e 0 gettoni**, come su PROD. È una divergenza di **configurazione**, non un dato esposto.
-
-##### ✅ Chiesta e sanata la sera stessa — 17ª sessione, migrazione `20260814194040`
-
-🚨 **E qui la misura ha smentito l'aspettativa, in meglio: su TEST quelle policy NON erano
-decorative.** Sembrava una formalità — copiare su TEST ciò che era già stato fatto su PROD, su
-tabelle vuote — e invece la fotografia dei grant dice che ad `anon` qui i permessi **ci sono**
-(INSERT+UPDATE su `responses`, SELECT su `tokens`), al contrario delle tre `ALL` tolte poche ore
-prima dalla `20260814191255`, dove mancavano. ⇒ **Due gruppi di policy sulla stessa lista, con lo
-stesso aspetto e portata opposta.** Un rattoppo «per parità», fatto senza rimisurare, avrebbe
-chiuso un buco vero credendo di togliere un ornamento — e sarebbe stato **giusto per caso**.
-
-Prova d'attacco come `anon`, sonda **identica** prima e dopo, in transazione annullata da
-un'eccezione finale, col seme di 2 gettoni validi (senza, a fermare l'attacco sarebbe la **chiave
-esterna** e non l'RLS):
-
-| | prima | dopo |
-|---|---|---|
-| A) `anon` legge i gettoni | **2 righe** | **0** |
-| B) `anon` scrive una risposta | **RIUSCITO** | **42501** (RLS) |
-| C) `anon` aggiorna | 0 righe | 0 righe — *inerte prima e dopo, stesso trigger di PROD* |
-| E) la **RPC pubblica** da `anon` | RIUSCITA | **RIUSCITA**, e scrive la sua riga |
-
-🧯 **Un errore da non ripetere, e l'ho fatto in mezzo.** La prima sonda «dopo» dava `42501` anche
-sulla **RPC**: sembrava che avessi rotto la strada legittima. Non l'avevo rotta — avevo aggiunto al
-blocco un `count(*)` che girava ancora **come `anon`**, e `anon` non ha SELECT su quella tabella.
-Era la **sonda** a essere cambiata fra il prima e il dopo. ⇒ Una prova prima/dopo con due sonde
-diverse non misura niente, e stavolta il risultato comodo era quello che mi dava **torto**: è la
-stessa disciplina della riga qui sopra, applicata nel verso scomodo.
-
-✅ Linter TEST **95 → 97**, `WARN` **80** e `ERROR` **1** invariati; i 2 nuovi sono
-`rls_enabled_no_policy` INFO sulle due tabelle — l'esito **voluto**, previsto e **dichiarato prima**
-di applicare, lo stesso stato della voce 35 su PROD. Diffato voce per voce: nessun avviso sparito.
-⛔ Residui **zero**: gettoni `SONDA-*` inesistenti, tabelle a 0 righe, 0 policy rimaste.
-📌 `service_role` **non toccato**, e va detto perché qui è già monco: su queste tabelle ha solo
-`REFERENCES/TRIGGER/TRUNCATE`, senza SELECT/INSERT/UPDATE — condizione **preesistente**, misurata
-prima e identica dopo. È la trappola nota (*su TEST i permessi passano da PUBLIC*): «ripristinarlo»
-sarebbe stato un cambiamento travestito da ripristino.
-
-⚪ **Le due «portanti» restano, per decisione.** `pmo_ai_turns` e `pmo_parser_errors` scrivono con
-la chiave pubblicabile quando la sessione staff manca o è scaduta — un ripiego messo **apposta**,
-perché prima dava 401 e l'insert si perdeva in silenzio. Chiuderle per bene vuol dire **spostare la
-scrittura dietro una RPC o un'edge**: è lavoro, non una riga di SQL.
-🧯 E una cosa che avevo detto male: su `pmo_parser_errors` avevo aggiunto che la policy era
-«irrilevante in pratica, tanto il 42703 blocca tutto». **Da stasera non è più vero** — le 5 colonne
-ci sono, quell'insert riesce, e quindi la policy è tornata **portante davvero**.
-
-⇒ **La voce 37 resta aperta, e ora per UNA sola ragione.** Le tre righe rosse non ci sono più; le
-**due portanti** sì, su entrambi i progetti. Il criterio se lo era dato la 16ª sessione — «non
-chiusa finché restano le tre righe rosse **e** le due portanti» — e va rispettato anche adesso che
-ne resta metà.
-⚖️ **Ma non è più lo stesso lavoro**, e la differenza conta per chi decide: prima mancava
-un'esecuzione, ora manca una **scelta di disegno** — spostare la scrittura del parser e dei turni AI
-dietro una RPC o un'edge. Non è una riga di SQL, e non si fa di sfuggita a fine sessione.
-🚫 **Togliere quelle due policy così com'è, oggi, ROMPEREBBE una funzione viva** — e su
-`pmo_parser_errors` da poche ore più di prima, perché le 5 colonne aggiunte dalla voce 39 hanno
-tolto il `42703` che la teneva inerte.
-
-🚨 **E sotto c'era altro, che nessuno cercava.** Quella `D` nell'ACL è **TRUNCATE**, e l'**RLS non
-filtra il TRUNCATE**. Provato come `anon` su TEST: `truncate public.pmo_parse_history` **RIUSCITO**.
-(Su `pmo_bookings` risponde `0A000`, ma è la **chiave esterna** di `pmo_parse_history`, non un
-rifiuto di permesso.)
-📊 Su **PROD** sono **14 le tabelle** dove `anon` ha TRUNCATE — con ACL piena `arwdDxtm`, quindi lì
-a trattenerlo è **solo l'RLS**: fra queste `admin_settings`, `assessment_admin_config` (il deposito
-del PIN), `pmo_lessico`, `pmo_ai_settings`, `pmo_parser_config` e i due backup del 9/08.
-⚖️ **Non è un allarme, ed è importante dirlo**: chi ha la chiave pubblicabile parla **PostgREST**,
-che non ha un verbo TRUNCATE. Per usare quel permesso servirebbe eseguire SQL **come `anon`** — cosa
-che oggi nessuna strada nota permette. È una **configurazione sbagliata latente**, non una porta
-aperta. Ma è la stessa forma della voce 36: un permesso che nessun elenco di «chi scrive» mostra.
+📦 Delle quattro ne restano **due**: la **39** è stata chiusa dalla 16ª sessione, la **37** dalla
+17ª — l'ultima **dichiarando** ciò che resta invece di eseguirlo, che è una chiusura e non una
+rinuncia (il perché sta nella sua riga fra le chiuse).
 
 ### 38. 📡 `wa-shadow-proxy` — 623 chiamate a vuoto al giorno, **anche in PRODUZIONE**
 *Nata come nota il 14/08 (14ª sessione), misurata e promossa il 14/08 (16ª).* La nota diceva «il
@@ -589,6 +412,22 @@ Misurando il **14/08** nella 16ª sessione, censendo le tabelle (voce 39):
 
 Misurando il **14/08** nella 17ª sessione, sanando la 37 e rimisurando la 38:
 
+- 🔓 **Il `TRUNCATE` ad `anon`, sceso qui dalla voce 37 quando è stata chiusa.** Non è stato tolto e
+  la voce lo dichiara: riguarda i **grant** e non le policy, e non era ciò che era stato autorizzato.
+  Il testo è quello misurato dalla 16ª sessione, intatto:
+
+  🚨 **E sotto c'era altro, che nessuno cercava.** Quella `D` nell'ACL è **TRUNCATE**, e l'**RLS non
+  filtra il TRUNCATE**. Provato come `anon` su TEST: `truncate public.pmo_parse_history` **RIUSCITO**.
+  (Su `pmo_bookings` risponde `0A000`, ma è la **chiave esterna** di `pmo_parse_history`, non un
+  rifiuto di permesso.)
+  📊 Su **PROD** sono **14 le tabelle** dove `anon` ha TRUNCATE — con ACL piena `arwdDxtm`, quindi lì
+  a trattenerlo è **solo l'RLS**: fra queste `admin_settings`, `assessment_admin_config` (il deposito
+  del PIN), `pmo_lessico`, `pmo_ai_settings`, `pmo_parser_config` e i due backup del 9/08.
+  ⚖️ **Non è un allarme, ed è importante dirlo**: chi ha la chiave pubblicabile parla **PostgREST**,
+  che non ha un verbo TRUNCATE. Per usare quel permesso servirebbe eseguire SQL **come `anon`** — cosa
+  che oggi nessuna strada nota permette. È una **configurazione sbagliata latente**, non una porta
+  aperta. Ma è la stessa forma della voce 36: un permesso che nessun elenco di «chi scrive» mostra.
+
 - 🔎 **`wa_usage_stats` su `ayly…` non muore come dice la scheda, e non muore sempre.** La voce 38
   dichiara «esiste ancora ma muore — `42P01: relation "whatsapp_inbound_messages" does not exist`».
   Misurato: la funzione **esiste** (`wa_usage_stats(days integer)`, `SECURITY DEFINER`), ma su
@@ -615,17 +454,18 @@ Misurando il **14/08**, aprendo la voce 22:
 
 ---
 
-## 📦 CHIUSE — 13 e 14/08/2026 — 16 voci
+## 📦 CHIUSE — 13 e 14/08/2026 — 17 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime otto voci sono del 14/08; le otto successive del 13/08.**
+**Le prime nove voci sono del 14/08; le otto successive del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **37** | 🔓 *(14/08, chiusa dalla 17ª sessione — aperta dalla 16ª, nata come nota il 12/08)* **Le policy di scrittura anonima rimaste: sette tolte, due lasciate con la ragione scritta.** 🚨 **La lezione della voce non sono le policy: è che due gruppi con lo STESSO aspetto avevano portata OPPOSTA**, e solo la misura li distingueva. Su TEST le tre `ALL` (`pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`) sembravano «lettura e scrittura per anonimo» e sono risultate **decorative** — ad `anon` mancano i grant di tabella, e l'attacco rispondeva `42501` **prima** di qualunque modifica ⇒ la 16ª si è **fermata** e le ha tolte solo dopo, con la ragione giusta (`20260814191255`). Le tre della **famiglia feedback**, invece, su TEST erano **portanti davvero**: i grant ci sono (INSERT+UPDATE su `responses`, SELECT su `tokens`), e la prova d'attacco prima di toccare le dà **riuscite** — 2 gettoni letti, risposta scritta (`20260814194040`). ⇒ Un rattoppo «per parità» fatto senza rimisurare sarebbe stato **giusto per caso**. ✅ **Tolte in tutto 7**: 3 su PROD (famiglia feedback, e la terza — `SELECT` sui gettoni — **non la nominava nessuna nota**: è saltata fuori guardando la famiglia intera invece della singola tabella), 3 decorative su TEST, 3 famiglia feedback su TEST. 🔀 **E fra le due ultime c'è la voce 31 in diretta, con la mano della 16ª**: l'autorizzazione diceva «PROD» ed è stata eseguita alla lettera, lasciando la famiglia chiusa di qua e aperta di là — difetto che la sessione **si è auto-denunciata** invece di sanare da sé, e che la 17ª ha chiuso il giorno stesso. ⚪ **Le due «portanti» RESTANO, ed è una scelta misurata, non una rinuncia**: `pmo_ai_turns` e `pmo_parser_errors` scrivono con la chiave pubblicabile **solo come ripiego** quando la sessione staff manca — tutte le chiamanti stanno in schermate staff, e l'app **sale** al token staff quando c'è. Una riga di SQL esisterebbe (`to anon, authenticated` → `to authenticated`) ed è **proprio quella da non fare**: il ripiego ripara un guasto vero, dichiarato nel commento del codice — *«il token grezzo dava 401 quando era scaduto, insert silenziosamente perso»* — e toglierlo lo **ricrea**. ⚖️ Portata di ciò che resta aperto: inserire **spazzatura** in due tabelle di diagnostica, niente lettura e nessun dato del circolo; `pmo_parser_errors` è ferma dal **16/06**, `pmo_ai_turns` dal **13/08**. ✅ Prove: attacco come `anon` **prima e dopo su ognuna**, col **seme** che soddisfa la chiave esterna (senza, a fermarlo sarebbe il vincolo e non l'RLS), e il **controllo negativo**. Linter PROD **99 → 101**, TEST **92 → 95** e **95 → 97**, `WARN` ed `ERROR` invariati ovunque, ogni scarto **previsto e dichiarato prima** di applicare; i nuovi sono tutti `rls_enabled_no_policy` INFO, cioè l'esito voluto. Residui zero. 🧯 **Un errore mio, tenuto perché è il pezzo che insegna**: la prima sonda «dopo» dava `42501` anche sulla RPC legittima e sembrava dire che avessi rotto la strada vera — avevo aggiunto al blocco un `count(*)` che girava ancora come `anon`. **Era la sonda a essere cambiata fra il prima e il dopo**, e stavolta il risultato comodo era quello che mi dava *torto*. ⛔ **Resta fuori, e la voce lo dichiara**: il **TRUNCATE** ad `anon` (14 tabelle su PROD) — riguarda i **grant**, non le policy, e non era ciò che era stato autorizzato. È sceso fra le «nate misurando», dove le promozioni le decide il committente. 🔗 3 migrazioni: `20260814181002`, `20260814191255`, `20260814194040`, tutte reversibili |
 | **39** | 🔀 *(14/08, 16ª sessione — promossa da lui)* **Le TABELLE dei due progetti, censite e dichiarate** in [`docs/divergenze-tabelle-test-prod.md`](../divergenze-tabelle-test-prod.md). È il gemello della voce 33, un piano sotto: là le funzioni SQL, qui le tabelle. PROD **25**, TEST **23**, in comune **20**: **17 identiche**, **3 divergenti**. 🎯 **E il censimento ha trovato un guasto vivo in PRODUZIONE, che era il suo scopo:** `pmo_parser_errors` ha 9 colonne su PROD e **14** su TEST, e dalla **PR #648 del 7/08** l'app di `main` **scrive `origine`** a ogni segnalazione e **legge** `stato`, `risolto_il`, `risolto_in_versione`, `nota_risoluzione` per il pannello «Le mie segnalazioni» — colonne che su PROD **non esistono**. Provato sul bersaglio: **`42703`** in lettura, in scrittura e sulle quattro del pannello ⇒ su PROD nessuna segnalazione del parser poteva essere registrata (e falliva in **silenzio**: `console.warn`, `return false`) e quel pannello non poteva caricare. ✅ **Riparato in giornata, strada scelta da lui**: le 5 colonne aggiunte a PROD verbatim da TEST (migrazione `20260814183100`). Prova **end-to-end via PostgREST**, stessa URL e chiave dell'app: **400 `42703` → 200 `[]`**; impronta delle colonne di PROD ora **identica** a quella censita per TEST prima di toccare niente; linter 101 → 101, `ERROR` 0; 45 righe storiche intatte. ⚖️ **Ma non è la causa del silenzio della tabella**, e la misura ha smentito la mia ipotesi: le 45 righe sono **tutte del 16/06**, cioè due mesi **prima** del disallineamento. Sono due fatti distinti, e vanno tenuti distinti. 🔎 **La divergenza che la campionatura non poteva vedere**: `assessment_tokens` ha **13 colonne da entrambe le parti**, ma non le stesse — `member_email` solo su PROD, `updated_at` solo su TEST. Col solo conteggio sarebbe rimasta invisibile: per questo si confronta l'**impronta**. ✅ Confermate le 4 colonne di `self_assessments` già viste il 14/08: la campionatura diceva il vero. 🔗 **Chiude un cerchio della voce 33**: `admin_settings` esiste **solo su PROD**, e su PROD **esattamente una** funzione la nomina (`upsert_assessment_tokens_admin`) mentre su TEST **nessuna** ⇒ non sono «due depositi del PIN in PROD e uno in TEST», è un deposito in più che vive solo di là, con la sua unica lettrice. ⛔ **Non misurati, e il documento lo dichiara**: indici, vincoli, default, trigger, policy e contenuti — due tabelle qui dette «identiche» possono avere trigger diversi, ed è successo davvero con quello che ha avuto un ruolo nella voce 37 |
 | **36** | 🔎 *(14/08, 15ª sessione — promossa da lui)* **Le 45 funzioni `SECURITY DEFINER` chiamabili da `anon` su PROD, passate in rassegna. Undici erano aperte.** Nata dalla 27, che ne aveva scoperte due. 🚨 **La prima classificazione era sbagliata, ed è il pezzo che vale più delle funzioni chiuse**: avevo diviso in «24 che scrivono / 21 che leggono» cercando `insert|update|delete` nel sorgente — ma **far partire una chiamata HTTP non è una scrittura SQL**, e sette `pmo_dispatch_*` stavano fra le «letture» mentre fanno `net.http_post`. Ne avevo chiusa **una su otto** credendo di aver chiuso la famiglia. ⇒ Una funzione si classifica per **cosa provoca**, non per quali parole contiene. 🎯 E il pezzo peggiore non scriveva né chiamava nessuno: **`pmo_verify_data_routine_secret(text)`**, che confronta un candidato col segreto nel vault e risponde sì/no ⇒ da `anon` è un **oracolo a tentativi illimitati** sul segreto che autorizza tutte le routine; con quello in mano le edge si chiamano dritte. Non sarebbe comparso in nessun elenco di «funzioni che scrivono», per costruzione. 🔴 **Chiuse 11**: i **7 dispatcher** (pagamenti ×2, portafoglio, contatti Google, maestri, avvisi autovalutazione, lessico AI), **`pmo_dispatch_data_routines`** (faceva partire la catena dei cron, `p_now` a scelta del chiamante), **`pmo_cleanup_dispatch_logs`** (`DELETE` senza guardia: con `0` cancellava **1457** righe di storia dei dispatch), **`pmo_audit_admin`** (falsificava il registro di controllo — provato come `anon`: scritta «`presidente@padelvillage.club` · `owner` · `staff_delete_full`») e l'**oracolo**. ✅ **Guardate e a posto**: tutta la famiglia `*_admin` risponde **`AUTH_REQUIRED`** — provata come `anon`, non dedotta — più `INVALID_ORIGIN` e i cancelli a gettone. ⚪ **Aperta per disegno**: `pmo_can_register_staff`, oracolo di enumerazione ma chiamata dalla schermata di **registrazione**, dove nessuno è ancora autenticato. 🔀 **Su TEST due erano già chiuse e su PROD no**: è la **voce 31 al contrario**, e sul resto della famiglia TEST era un rattoppo a campione senza criterio. 🚨 **Trappola `service_role`, incontrata TRE volte oggi**: su PROD i grant sono espliciti e il `revoke ... from public` non li tocca, su TEST spesso passano da PUBLIC ⇒ la stessa revoca glieli toglie. Su TEST si rimisura **dopo**, contro la fotografia presa **prima** — non contro PROD. ✅ Linter di PROD, quattro fotografie diffate: **123 → 125 → 121 → 99**, `WARN` 109 → **83**, `ERROR` **0** sempre; spariti 26 avvisi, esattamente 13 funzioni × 2 ruoli, **nessuno nuovo**. ⛔ **Non esaminate**: 3 letture per gettone e la robustezza del PIN. 🔗 4 migrazioni `2026081416*` |
 | **27** | 🔒 *(14/08, 15ª sessione)* **Il cancello dell'autovalutazione è chiuso davvero — e la prima chiusura non bastava.** Punto 1 fatto **da lui**: scheda vera compilata su `app.padelvillage.club` col gettone `TEST456`, quiz 3/4 con la trappola indovinata (soglia **3** ⇒ `pass`), riga con `corretta_dal_server: true`, gettone bruciato dall'edge **0,15 secondi dopo**. ⭐ È quella riga a dimostrare che PROD serve la **6.220**, non l'etichetta della scheda: la 6.219 scriveva da sé con la chiave pubblicabile e non avrebbe potuto scrivere quel campo. ⇒ Poi il **passo 4**: tolte le **4** policy di scrittura anonima (3 di INSERT su `self_assessments` + `public_update_token_completed` su `assessment_tokens`, che la scheda non nominava). ✅ Verificato: `anon` → **42501**, `service_role` → scrive. 🚨 **E lì sembrava finita, e non lo era.** Facendo il rito «cosa punta a questa riga» prima di togliere la scheda di prova, è saltata fuori **`submit_self_assessment_public`**: `SECURITY DEFINER`, eseguibile da `anon`, **scavalca l'RLS per costruzione** e prende `staff_status` dal payload — se manca resta **vuoto**, cioè lo stato in cui `apply-level` applica da sé. Provato come `anon` in transazione annullata: livello **7** scritto, segreteria vuota, nessun `knowledge` ⇒ in `decidi()` il controllo sul quiz **non viene proprio fatto**. Le policy non la riguardavano nemmeno. ⇒ `EXECUTE` revocato a `public`/`anon`/`authenticated` su **PROD e TEST** (là il passo 4 era stato dichiarato completo il 14/08 con una verifica **giusta e insufficiente**: guardava l'RLS). `service_role` conserva l'esecuzione — su TEST è stato rimesso con una migrazione di parità, perché là il grant non era esplicito. ✅ `anon` → **42501 permission denied**; linter **125 → 121** avvisi, `WARN` 109 → **105**, `ERROR` **0**, spariti esattamente i 4 attesi e **nessuno nuovo**. ⚪ `get_self_assessments_by_tokens` non toccata: è lettura e l'app la usa (`index.html:30062`). 🧹 Residuo della prova ripulito: scheda tolta (salvata per intero nel commit) e `TEST456` riarmato a `created`. 🔗 3 migrazioni `2026081416*` |
@@ -912,15 +752,20 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Aggiornato il 14/08/2026 a fine **17ª sessione**, la quinta dello stesso giorno. **Nessuna voce
-chiusa**, e nessuna promossa: le tre urgenti restano tre. La sessione è partita trovando `docs/`
+<sub>Aggiornato il 14/08/2026 a fine **17ª sessione**, la quinta dello stesso giorno. Chiusa **una**
+voce, la **37**, e nessuna promossa: le urgenti scendono da 3 a **2**. La sessione è partita trovando `docs/`
 disallineato e `guard-worker-sync` **rossa** su `test-preview` — la 16ª aveva spinto la propria
-chiusura là e non l'aveva portata su `main` — e la prima cosa fatta è stata sanare quello. Della
-**37** è stato tolto il residuo che la 16ª si era auto-denunciata: le 3 policy della famiglia
+chiusura là e non l'aveva portata su `main` — e la prima cosa fatta è stata sanare quello. La **37** è stata prima
+sanata e poi chiusa: tolto il residuo che la 16ª si era auto-denunciata — le 3 policy della famiglia
 feedback su TEST, dove però la misura ha smentito l'aspettativa mostrandole **portanti** e non
-decorative, con prova d'attacco a sonda identica prima e dopo, previsione del linter dichiarata
-prima (95 → 97) e zero residui; restano le **due portanti**, che sono una scelta di disegno e non
-una riga di SQL. Della **38** è stata smentita la misura della 16ª: i 404 **non si sono mai
+decorative — con prova d'attacco a sonda identica prima e dopo, previsione del linter dichiarata
+prima (95 → 97) e zero residui. Le **due portanti** restano, e la voce si chiude **dichiarandole**:
+misurando il codice è saltato fuori che la «riga di SQL» esiste (`to anon, authenticated` →
+`to authenticated`) e che è **proprio quella da non fare**, perché il ripiego ad `anon` ripara un
+guasto dichiarato nel commento del codice e toglierlo lo ricrea. ⇒ La scheda diceva «è lavoro, non
+una riga di SQL»: la misura ha smentito anche quello, e nel verso che conta — non è che il lavoro
+sia più piccolo, è che la scorciatoia sarebbe **un passo indietro**. Il `TRUNCATE` ad `anon` non è
+sparito con la voce: è sceso fra le «nate misurando», perché le promozioni le decide lui. Della **38** è stata smentita la misura della 16ª: i 404 **non si sono mai
 fermati**, ne arrivava uno al minuto ancora alle 19:31 da una scheda aperta col codice vecchio, e
 il disarmo — verificato sul file **servito**, sul `return` e non sul commento — è giusto: la prova
 che manca è un **ricaricamento**, non un'attesa. Della **23** è stata scritta la diagnosi e **non**
