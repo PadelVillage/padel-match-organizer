@@ -37,8 +37,8 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | **v6.220** | `main` | 14/08/2026 — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex`. Il cancello di conoscenza dell'autovalutazione si corregge sul SERVER (voce 27, passi 1-2-3) |
-| TEST | **v6.230** | `test-preview` | 14/08/2026 — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd`. Otto pubblicazioni per arrivarci (6.223→6.230): cinque guasti trovati provando dal vivo, più due bocciature di `deno check` sulla PR verso `main`. Qui la voce 27 è COMPLETA, passo 4 compreso |
+| PROD | **v6.220** | `main` | 14/08/2026 — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex`. Il cancello di conoscenza dell'autovalutazione si corregge sul SERVER e la voce 27 è COMPLETA, passo 4 compreso: tolte le 4 policy di scrittura anonima e revocato l'EXECUTE ad `anon` su 13 funzioni `SECURITY DEFINER` (voce 36). Provata sull'app vera dal committente |
+| TEST | **v6.230** | `test-preview` | 14/08/2026 — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd`. Otto pubblicazioni per arrivarci (6.223→6.230): cinque guasti trovati provando dal vivo, più due bocciature di `deno check` sulla PR verso `main`. La voce 27 è completa anche qui — ma il passo 4 lo era solo in apparenza fino al 14/08 sera: `submit_self_assessment_public` è `SECURITY DEFINER` e scavalcava l'RLS. Chiusa insieme a PROD |
 
 I due rami **non sono allineati per scelta**: `test-preview` corre avanti. È il funzionamento normale, non un disallineamento da correggere: TEST bumpa a ogni passo, PROD una volta per promozione — quindi la distanza **non è fissa a 1** e vederla crescere non è di per sé un sintomo.
 
