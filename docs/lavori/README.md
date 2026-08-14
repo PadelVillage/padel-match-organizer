@@ -68,19 +68,25 @@ due rami, non ricordate: app PROD **6.222** · TEST **6.232** · `main` `34474aa
 rami · cron PROD 11 accesi / 2 spenti, TEST 5 accesi / 4 spenti (misura del **13/08, non
 ricontrollata**).
 
-🚨🚨 **UNA PR APERTA, ED È UNA TRAPPOLA: la #700.** Non erano zero, come le sessioni precedenti
-davano per scontato. È la chiusura della **16ª sessione**, rimasta indietro con base `481e2a0`, e il
-suo contenuto è **interamente superato** — quelle stesse righe sono arrivate su `main` con la #701.
-⛔ **Non va unita**: rimetterebbe **229 righe** che `main` non ha più e riporterebbe la fotografia
-alla 16ª sessione, cancellando tutto ciò che è stato scritto dopo. Va **chiusa**, non mergiata —
-ed è una decisione del committente, non mia.
-📌 Trovata solo perché «PR aperte» è un numero che si **rimisura** alla chiusura invece di
-ricopiarlo: la riga di ieri diceva «0 PR aperte» e oggi sarebbe stata falsa.
+🚨 **C'ERA UNA PR APERTA, ED ERA UNA TRAPPOLA: la #700 — ora CHIUSA su sua decisione.** Non erano
+zero, come le sessioni precedenti davano per scontato. Era la chiusura della **16ª sessione**,
+rimasta indietro con base `481e2a0`, e il suo contenuto era **interamente superato**: quelle stesse
+righe erano arrivate su `main` con la #701, e dopo di essa `main` era andato avanti di quattro
+merge. ⛔ Unirla avrebbe rimesso **229 righe** che `main` non ha più, cancellando la chiusura della
+**37**, quella della **38** e tutta la voce **23**. Chiusa con la ragione scritta nel suo thread; il
+ramo lo pota `cleanup-claude-branches.yml` stanotte. ⇒ **PR aperte ora: 0**, ricontate dopo.
+📌 Saltata fuori solo perché «PR aperte» è un numero che si **rimisura** invece di ricopiarlo: la
+riga della sessione precedente diceva «0 PR aperte» e oggi sarebbe stata falsa.
 
-⏳ **PROD serve ancora la 6.221 mentre scrivo**, e non è un guasto: il merge della #705 è di due
-minuti fa e Pages ci mette qualche minuto. ⚠️ Chi riprende **verifichi dal server** — `pg_net` su
-`app.padelvillage.club/index.html` — che sia arrivata la **6.222**: è l'unica prova che il disarmo
-dei tre esiti sia davvero in produzione, e l'etichetta non basta (lezione della voce 38).
+✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
+→ **200**, `APP_VERSION = '6.222'`, e dentro i tre marcatori della voce 23 (`data.status ===
+'unknown'`, il conteggio `incerte`, `pmoEsitoIgnoto`). ⚠️ Alla prima lettura serviva ancora la
+**6.221** — Pages non aveva finito — ed è la ragione per cui la si guarda **due volte**: un «non
+ancora» scambiato per un «no» è lo stesso errore della voce 38, dalla parte opposta.
+🧯 E una sonda mal formulata mi ha acceso una spia falsa: cercavo `PMO_IS_TEST_ENV` fra ciò che era
+finito in PROD e l'ho trovato. Misurato: **71 occorrenze prima, 71 dopo, 0 righe aggiunte da me** —
+è il **meccanismo** che riconosce l'ambiente, che in PROD deve esserci e vale `false`. La regola
+vieta il codice **gated** da quel flag, non il flag: la mia sonda chiedeva la cosa sbagliata.
 
 🚨 **E `docs/` NON era allineato: la 17ª è partita con la guardia rossa.** La 16ª sessione ha spinto
 la propria chiusura su `test-preview` (`70b48ac`, 19:18) e **non l'ha portata su `main`**:
