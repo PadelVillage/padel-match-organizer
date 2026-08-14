@@ -63,8 +63,22 @@ salvata per intero nel commit e tolta con la sua autorizzazione, col gettone ria
 del registro di controllo, i 1364 gettoni bruciati. Nessuna è rimasta.
 ↩️ Ogni migrazione reversibile, con l'SQL di ripristino scritto in testa.
 
-🖐️ Restano su TEST **tre schede di prova** (Aprea, Soldan, Favaro) coi rispettivi gettoni
-`completed`: da togliere insieme — riga, gettone e stato — o sporcano la prova successiva.
+🧹 **Le schede di prova su TEST sono state tolte — tre su quattro, e la quarta di proposito.**
+Misurando prima di cancellare sono risultate **quattro**, non tre: Aprea aveva anche una scheda
+del **12/05**. Nessuno dei quattro gettoni esiste su PROD ⇒ non era la trappola della voce 22.
+Tolte in **una transazione sola** — marcatore `pmo_assessment_notifications` + scheda + gettone
+riportato a `created`/`GESTIONE_MANUALE` — perché togliere il **marcatore da solo** avrebbe fatto
+mandare al cron `pmo-assessment-notify-test` (jobid 16, ogni 5') una **email nuova** alla casella
+del circolo: la pulizia che produce il rumore che voleva togliere.
+✋ **Lasciata la quarta**, `DA0NJE1ODY4ODC` del 12/05: il suo marcatore dice *«preesistente
+all'accensione: email non inviata»*, cioè era **già storia** quando il 9/08 si è acceso il
+sistema di notifica. Non è un residuo di questo lavoro e la sua origine non l'ho stabilita —
+chiamarla «di prova» sarebbe l'assunzione che il rito serve a non fare.
+⚠️ Su `PROVAMAURIZIO0908` lo `status_autovalutazione` è una **ricostruzione**, non un ripristino:
+era `COMPILATO` e l'ho messo a `GESTIONE_MANUALE`, che è la coppia coerente con `created` (381
+righe su TEST). Il valore che aveva alla nascita non lo sa nessuno.
+📌 Su PROD restano **17 schede Aprea** di fine aprile/inizio maggio, tutte `applied_at: null`:
+storia dello sviluppo, **non toccate**.
 
 **Verificato sul bersaglio il 14/08, 15ª sessione:**
 - ✅ **l'app di PROD, aperta da lui**: scheda compilata col gettone `TEST456`, quiz 3/4 con la
