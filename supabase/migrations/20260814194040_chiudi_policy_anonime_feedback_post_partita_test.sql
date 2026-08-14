@@ -1,0 +1,104 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Voce 37 — 14/08/2026, 17ª sessione. TEST (cudi…).
+-- Sana la divergenza aperta dalla 16ª sessione: la famiglia «feedback post-partita»
+-- era chiusa su PROD (migrazione 20260814181002) e ancora APERTA qui, perché
+-- l'autorizzazione diceva «PROD» ed era stata eseguita alla lettera.
+-- È la voce 31 al contrario, e la 16ª sessione se l'era scritta da sé come
+-- «la prima cosa da chiedere alla prossima ripresa». Chiesta, e autorizzata.
+--
+-- MISURATO PRIMA (non ricordato, e non dedotto da PROD):
+--   · post_match_feedback_responses: 0 righe. post_match_feedback_tokens: 0 gettoni.
+--   · le 3 policy sono IDENTICHE a quelle che stavano su PROD (USING e WITH CHECK).
+--   · 🚨 QUI NON SONO DECORATIVE, al contrario delle tre `ALL` tolte dalla
+--     20260814191255: là ad `anon` mancavano i grant di tabella, qui li HA —
+--     INSERT+UPDATE su responses, SELECT su tokens. La differenza è misurata,
+--     non supposta, ed è il motivo per cui questa migrazione chiude un buco vero
+--     mentre quella toglieva solo un segnale ingannevole.
+--   · rito «chi punta a queste righe»: 4 funzioni SECURITY DEFINER
+--     (submit_post_match_feedback_public, get_post_match_feedback_by_tokens,
+--     post_match_feedback_mark_token_completed, upsert_post_match_feedback_tokens_admin),
+--     3 trigger e 1 chiave esterna. Le funzioni scavalcano l'RLS per costruzione
+--     ⇒ togliere le policy non toglie niente alla strada legittima.
+--
+--   Prova d'attacco come `anon`, in transazione annullata da un'eccezione finale,
+--   col seme di 2 gettoni validi (altrimenti a fermare l'attacco sarebbe la chiave
+--   esterna, non l'RLS) — PRIMA e DOPO, con la sonda IDENTICA:
+--
+--                                        prima              dopo
+--       A) anon LEGGE i gettoni ....... 2 righe            0 righe
+--       B) anon SCRIVE una risposta ... RIUSCITO           42501 (RLS)
+--       C) anon AGGIORNA .............. 0 righe            0 righe   ⇒ INERTE
+--       D) anon TRUNCATE .............. RIUSCITO           (non toccato, vedi sotto)
+--       E) RPC pubblica (strada vera) . RIUSCITA           RIUSCITA, e scrive la sua riga
+--
+--     Lo zero della C ha la stessa causa misurata su PROD, e non è fortuna: il
+--     trigger trg_post_match_feedback_mark_token_completed porta il gettone a
+--     'completed' appena la risposta entra, e la policy di lettura mostra ad `anon`
+--     solo 'created'/'sent' ⇒ la USING dell'UPDATE diventa falsa. Si toglie lo
+--     stesso: è inerte per effetto di un trigger, e un trigger si può cambiare.
+--
+-- 🧯 UN ERRORE DA NON RIPETERE, scritto qui perché è costato un giro. La prima
+--    sonda «dopo» dava `42501 permission denied` anche sulla RPC, cioè sembrava
+--    che avessi rotto la strada legittima. Non l'avevo rotta: avevo aggiunto al
+--    blocco un `count(*)` che girava ancora come `anon`, e `anon` non ha SELECT su
+--    quella tabella. Era la SONDA a essere cambiata fra il prima e il dopo — e una
+--    prova prima/dopo con due sonde diverse non misura niente.
+--
+-- ⚠️ QUESTA MIGRAZIONE NON TOCCA IL TRUNCATE, ed è bene dirlo qui perché la prova
+--    sopra lo mostra riuscito: `anon` ha il grant TRUNCATE su entrambe le tabelle e
+--    l'RLS non filtra il TRUNCATE. Resta fuori di proposito — è la nota aperta della
+--    voce 37 (14 tabelle su PROD nella stessa condizione), riguarda i GRANT e non le
+--    POLICY, e non era ciò che è stato autorizzato. Chi legge non deve credere che
+--    da qui in poi `anon` sia innocuo su queste tabelle.
+--
+-- ⚖️ Portata reale: con 0 righe e 0 gettoni il buco è POTENZIALE, come su PROD. Si
+--    arma il giorno in cui la funzione si accende, e i gettoni portano member_name,
+--    phone_last4, member_local_id e match_key. Si chiude PRIMA, non dopo.
+--
+-- 📌 `service_role` NON è stato toccato, ed è bene saperlo perché qui è già monco:
+--    su queste due tabelle ha solo REFERENCES/TRIGGER/TRUNCATE, senza
+--    SELECT/INSERT/UPDATE — condizione PREESISTENTE, misurata prima e ricontrollata
+--    dopo, identica. È la firma della trappola nota: su TEST i permessi passano da
+--    PUBLIC, e un vecchio `revoke ... from public` gli ha tolto ciò che su PROD
+--    sopravvive perché là il grant è esplicito. «Ripristinarlo» qui sarebbe stato un
+--    cambiamento travestito da ripristino.
+--
+-- ↩️ RIPRISTINO (verbatim dallo stato misurato prima, su questo progetto):
+--
+--   create policy "public_insert_post_match_feedback"
+--     on public.post_match_feedback_responses for insert to anon, authenticated
+--     with check (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text])
+--         and (t.expires_at is null or t.expires_at > now())));
+--
+--   create policy "public_update_post_match_feedback"
+--     on public.post_match_feedback_responses for update to anon, authenticated
+--     using (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text,'completed'::text])
+--         and (t.expires_at is null or t.expires_at > now())))
+--     with check (exists (select 1 from post_match_feedback_tokens t
+--       where t.token = post_match_feedback_responses.token
+--         and t.status = any (array['created'::text,'sent'::text,'completed'::text])
+--         and (t.expires_at is null or t.expires_at > now())));
+--
+--   create policy "public_read_active_post_match_feedback_tokens"
+--     on public.post_match_feedback_tokens for select to anon, authenticated
+--     using (status = any (array['created'::text,'sent'::text])
+--            and (expires_at is null or expires_at > now()));
+--
+-- ✅ VERIFICATO DOPO: linter TEST 95 → 97, WARN 80 e ERROR 1 invariati, e i 2 nuovi
+--    sono `rls_enabled_no_policy` INFO sulle due tabelle — l'esito VOLUTO, lo stesso
+--    stato in cui la voce 35 ha messo le sue su PROD. Diffato voce per voce: nessun
+--    avviso sparito, nessun altro comparso. La previsione era stata dichiarata PRIMA
+--    di applicare (95 → 97) ed è tornata.
+--    (L'ERROR 1 è `security_definer_view` su v_calendario_pubblico: preesistente,
+--    non è di questa migrazione.)
+-- ⛔ RESIDUI: zero. I gettoni SONDA-* non esistono, le due tabelle sono a 0 righe
+--    come prima, e le policy rimaste sulle due tabelle sono 0.
+-- ════════════════════════════════════════════════════════════════════════════
+
+drop policy if exists "public_insert_post_match_feedback" on public.post_match_feedback_responses;
+drop policy if exists "public_update_post_match_feedback" on public.post_match_feedback_responses;
+drop policy if exists "public_read_active_post_match_feedback_tokens" on public.post_match_feedback_tokens;
