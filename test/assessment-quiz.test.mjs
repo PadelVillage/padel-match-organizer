@@ -130,6 +130,30 @@ ok('…e regge una scheda VUOTA senza esplodere', (() => {
 ok('…e `assessmentPublicParseLevel` legge la virgola come il punto',
    L.assessmentPublicParseLevel('4,5') === '4.5');
 
+/* 🔢 E il banco per il vuoto — 14/08, quarto giro. `balanced_level` usciva `""` da una scheda
+   perfettamente normale, e una stringa vuota in colonna `numeric` fa fallire TUTTA la riga:
+   la scheda del socio non si salvava per un campo secondario. */
+const daNum = T.indexOf('function numero('), aNum = T.indexOf('function json(');
+if (daNum < 0 || aNum < 0 || aNum <= daNum) {
+  console.log(`❌ non trovo \`numero\` fra gli aiutini dell'edge (inizio ${daNum}, fine ${aNum}).`);
+  process.exit(1);
+}
+const ctxNum = vm.createContext({ String, Number });
+vm.runInContext(T.slice(daNum, aNum) + '\nthis.API = { numero };', ctxNum);
+const N = ctxNum.API.numero;
+ok('🚨 stringa vuota ⇒ null, non zero e non errore', N('') === null && N('   ') === null && N(null) === null);
+ok('…un numero resta un numero', N('4') === 4 && N('3.767') === 3.767);
+ok('…la virgola si legge come il punto', N('4,5') === 4.5);
+ok('…e la fuffa non diventa 0', N('boh') === null);
+ok('🚨 nessun campo numerico della scheda esce come stringa vuota', (() => {
+  const r = L.calculateAssessmentPublicLevel({
+    declaredLevel: '4.0 - Avanzato', experience: 'Oltre 3 anni', net: 'Tengo posizione e controllo le volée'
+  });
+  // proprio il caso che è esploso: `balanced_level` vuoto, gli altri no
+  return [r.calculated_level, r.balanced_level, r.technical_average, r.raw_score]
+    .every(v => N(v) === null || typeof N(v) === 'number');
+})());
+
 // 5. 🚨 il blocco deve stare in piedi come MODULO, non solo come script
 ok('🚨 il blocco condiviso è un modulo valido (come lo carica Deno)', (() => {
   try { provaComeModulo(blocco, 'blocco'); return true; }
