@@ -37,7 +37,7 @@ Per la chat SVILUPPO, prima di modificare file reali:
 
 | Ambiente | Versione | Branch | Commit app pubblicata / Dettagli |
 |---|---|---|---|
-| PROD | **v6.220** | `main` | 14/08/2026 — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex`. Il cancello di conoscenza dell'autovalutazione si corregge sul SERVER e la voce 27 è COMPLETA, passo 4 compreso: tolte le 4 policy di scrittura anonima e revocato l'EXECUTE ad `anon` su 13 funzioni `SECURITY DEFINER` (voce 36). Provata sull'app vera dal committente |
+| PROD | **v6.221** | `main` | 14/08/2026 — Pages su `app.padelvillage.club`, Supabase `qqbfphyslczzkxoncgex`. Disarmato il chiamante del canale WhatsApp **smontato** (voce 38): `wa-shadow-proxy` non è deployata da nessuna parte e su `ayly…` non esistono più né edge né tabelle `whatsapp*`, ma l'app bussava lo stesso — **623 404 al giorno** verso il proxy più **295** verso `wa_usage_stats`, e chi apriva «Messaggi WhatsApp» vedeva `HTTP 404` in rosso. Prima, alla 6.220: la voce 27 completa (4 policy di scrittura anonima tolte) e l'EXECUTE revocato ad `anon` su 13 funzioni `SECURITY DEFINER` (voce 36) |
 | TEST | **v6.230** | `test-preview` | 14/08/2026 — `test.padelvillage.club`, Supabase `cudiqnrrlbyqryrtaprd`. Otto pubblicazioni per arrivarci (6.223→6.230): cinque guasti trovati provando dal vivo, più due bocciature di `deno check` sulla PR verso `main`. La voce 27 è completa anche qui — ma il passo 4 lo era solo in apparenza fino al 14/08 sera: `submit_self_assessment_public` è `SECURITY DEFINER` e scavalcava l'RLS. Chiusa insieme a PROD |
 
 I due rami **non sono allineati per scelta**: `test-preview` corre avanti. È il funzionamento normale, non un disallineamento da correggere: TEST bumpa a ogni passo, PROD una volta per promozione — quindi la distanza **non è fissa a 1** e vederla crescere non è di per sé un sintomo.
@@ -290,7 +290,9 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-**PROD è a v6.216** (`main`, `095a192`). TEST è a v6.217 (`test-preview`, `0ace6e4`). L'ultimo lavoro chiuso è la **PR #673**: chiusa la lettura anonima dei token autovalutazione, −1364 righe. Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
+**PROD è a v6.221** (`main`). TEST è a **v6.230** (`test-preview`). L'ultimo lavoro chiuso è quello della **16ª sessione del 14/08**: disarmato il chiamante del canale WhatsApp smontato (voce 38, ~1540 chiamate a vuoto al giorno fra i due ambienti) e chiusa ad `anon` la famiglia «feedback post-partita» su PROD (voce 37). Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
+
+⚠️ Questo paragrafo aveva dichiarato **v6.216 / v6.217** fino al 14/08, cioè **5 e 13 versioni indietro**, citando la PR #673 come ultimo lavoro: la tabella «Versione corrente» qui sopra è sorvegliata dalla CI, **questa riga no**. È la stessa malattia, un piano più in basso — e la cura è la stessa: aggiornarla **mentre si lavora**, non a memoria dopo.
 
 ---
 
