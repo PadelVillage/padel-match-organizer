@@ -1,0 +1,36 @@
+-- 🔓→🔒 ACCENDE L'RLS SULLE DUE COPIE DI SICUREZZA DEL 9/08 (voce 35 ①, 14/08/2026)
+--
+-- IL FATTO, misurato e non dedotto: sono i due SOLI `ERROR` del linter di sicurezza di
+-- PROD (`rls_disabled_in_public`, 2 su 123 avvisi totali). Stanno in `public`, che la Data
+-- API espone, e `anon` ci ha SELECT, INSERT, UPDATE, DELETE, TRUNCATE. Con la sola chiave
+-- pubblicabile — quella di `config.js`, pubblica per definizione — 699 righe si leggevano
+-- e si cancellavano dall'esterno.
+--
+-- ⚖️ Sono le copie del lavoro «Ospite» del 9/08, quello in cui «elimina tutto» avrebbe
+-- buttato € 7.937 di incassi: la rete messa sotto a quel lavoro era l'unica cosa scoperta
+-- del progetto. Le sorelle dello stesso giorno (`_pmo_riassegnazione_*`) l'RLS ce l'hanno.
+--
+-- ⚖️ PERCHÉ SI PUÒ ACCENDERE SENZA ROMPERE NIENTE — verificato, non supposto:
+--   · nessuna vista, nessuna foreign key, nessuna funzione SQL le nomina (query su
+--     pg_depend, pg_constraint e pg_proc: zero righe);
+--   · nessun riferimento nel repo: le uniche occorrenze dei due nomi sono in `docs/`;
+--   · `pg_stat_user_tables` con finestra di 128 giorni (stats_reset 8/04, le tabelle sono
+--     nate il 9/08) conta 8 e 4 seq_scan in tutta la loro vita — e l'ultimo, alle 11:15
+--     del 14/08 su entrambe nello stesso istante, è la `select count(*)` con cui le ho
+--     misurate poco fa. Nessun traffico;
+--   · nelle 24 ore di log `edge_logs` nessuna richiesta cita `pmo_bkp_`.
+--
+-- 📌 SENZA POLICY è esattamente lo stato di arrivo voluto: `anon` e `authenticated` non
+-- vedono più niente, mentre `service_role` (BYPASSRLS) e `postgres` (proprietario, e senza
+-- FORCE) continuano a leggerle. È lo stesso stato in cui stanno già le sorelle e altre 10
+-- tabelle di PROD. I permessi ad `anon` restano scritti ma diventano muti: la porta è
+-- chiusa a monte.
+--
+-- ✅ VERIFICATO DOPO, ruolo per ruolo (`set local role …` dentro transazione, poi rollback):
+--      anon → 0 e 0 · authenticated → 0 e 0 · service_role → 699 e 1.
+--    E il linter è passato da 2 `ERROR` a ZERO.
+--
+-- ↩️ Reversibile: `alter table … disable row level security`.
+
+alter table public.pmo_bkp_ospite_20260809     enable row level security;
+alter table public.pmo_bkp_kb_livello_20260809 enable row level security;

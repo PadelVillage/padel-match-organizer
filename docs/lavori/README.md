@@ -1,8 +1,8 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 14/08/2026, a fine 13ª sessione.** Misurata, non ricordata.
+**Fotografia del 14/08/2026, a fine 14ª sessione.** Misurata, non ricordata.
 
-## 🔎 La misura ha smentito la scheda **tre volte su tre**
+## 🔎 La misura ha smentito la scheda **tre volte su tre** — e la quarta l'ha confermata
 
 È il filo di tutta la giornata, e vale più delle singole voci chiuse.
 
@@ -19,33 +19,46 @@ avrebbe cancellato dati del circolo — **e sarebbe sembrato un lavoro fatto ben
 ⇒ Da qui la riga nuova nel prompt di apertura — *la scheda di un lavoro è un'ipotesi, non una
 misura* — e i **tre prompt finalmente scritti nel repo**, in `prompt-apertura-chiusura.md`.
 
+✅ **La quarta misura, in serata, ha invece confermato la scheda su tutti i campi**: la voce 35
+diceva il vero riga per riga (vedi le chiuse). ⚖️ Va scritto qui accanto alle tre smentite, o
+questa tabella diventa a sua volta una scheda che dice il falso — *«le schede sbagliano»* è una
+conclusione tanto affrettata quanto *«le schede sono giuste»*. Il rito serve a **sapere quale
+delle due**, non a dare per scontata una delle due.
+
 ## 📌 Le decisioni prese dal committente oggi
 
 | | |
 |---|---|
 | 🧊 **voce 32 → congelare, non riaccendere** | il calendario di TEST resta una fotografia, ma ora `CLAUDE.md` lo dice a chiunque apra una sessione. Riaccendere è la **voce 34** in coda: costa poco (+1,7% sul worker condiviso) ma va fatto **dal Mac** |
 | ⬆️ **voce 35 → promossa a urgente** | l'unica cosa emersa oggi esposta **adesso** e su **produzione** |
+| ✅ **voce 35 → eseguita** *(14ª sessione, stesso giorno)* | tutti e tre i punti, `ensure_rls` compresa. È la prima **scrittura su PROD** dopo due sessioni di sole `SELECT`, e l'ha autorizzata lui a misura fatta |
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **16** |
-| 📦 **Chiuse** | **11** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **12** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema:** app PROD **6.219** · TEST **6.222** · gestionale `main` `2fa2bf8`,
-`test-preview` `877dc0f`, alberi puliti · **0 PR aperte** · `server.mjs`, `.github/workflows/**`,
+**Stato del sistema:** app PROD **6.219** · TEST **6.222** — **non toccate**: la 14ª sessione non
+ha aperto `index.html`, ha lavorato solo su database e documenti · `server.mjs`, `.github/workflows/**`,
 `CLAUDE.md` e **tutto `docs/`** **identici** fra i rami, verificato dopo ogni merge · cron PROD
 **11 accesi / 2 spenti**, TEST 5 accesi / 4 spenti (misura del **13/08**, non ricontrollata).
 
-⚠️ **Le versioni non si sono mosse in due sessioni**: dalla #680 alla #690 è stata CI,
+⚠️ **Le versioni non si sono mosse in tre sessioni**: dalla #680 in poi è stata CI,
 documentazione e **dati**, nessun file dell'app toccato. Gli sha sì, ed è il motivo per cui **non**
 sono sorvegliati: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva, e
 riallinearlo ne aggiunge un altro. Quelli qui sopra saranno vecchi appena questa riga è committata.
 
 🖐️ **La 13ª sessione ha scritto sui DATI, non sul codice.** Su TEST: 5 righe a `deleted=true` e 3
 rimosse (la terna del test livello, con l'SQL di ripristino nel commit). Su `ayly…`: 1 riga a
-`attivo=false`. 🚨 **Su PROD nessuna scrittura, solo `SELECT`** — l'RLS della voce 35 **non** è stato
-acceso, perché è produzione e aspetta la sua conferma.
+`attivo=false`. Su PROD nessuna scrittura, solo `SELECT`.
+
+🖐️ **La 14ª ha scritto sui PERMESSI, e su PROD.** Tre migrazioni, nessuna riga di dati toccata:
+RLS accesa su due tabelle, l'event trigger `ensure_rls` installato, `EXECUTE` revocato su
+`rls_auto_enable()` (quest'ultima **anche su TEST**, per parità). 🚨 **Nessun `DELETE`, nessun
+`UPDATE`, nessuna riga cancellata da nessuna parte** — le due prove che avrebbero creato una
+tabella sono state fatte dentro transazioni **annullate**, e il residuo è stato ricontato: zero.
+↩️ Tutte e tre reversibili con una riga, scritta in testa a ciascuna migrazione.
 
 ⚠️ **PROD e TEST non sono più adiacenti**: 3 di distanza, non 1. Il *contenuto* è equivalente —
 TEST bumpa a ogni passo (6.219→6.222), PROD una volta per promozione (6.218, 6.219). Non è drift,
@@ -63,32 +76,32 @@ ma la regola dell'adiacenza non regge più come indicatore.
 - ✅ **tutte** le funzioni SQL dei due progetti, impronta per impronta ⇒ voce 33 e `divergenze-sql-test-prod.md`
 - ✅ gli advisor di sicurezza di PROD: **2 `ERROR`**, ed è la voce 35
 
+**Misurato il 14/08 nella 14ª sessione**, chiudendo la 35:
+- ✅ la scheda della 35, campo per campo, **prima** di toccare: righe, RLS, policy, permessi ad
+  `anon`, sorelle coperte, `ensure_rls` presente solo su TEST — **tutto confermato**, per la
+  prima volta
+- ✅ chi punta alle due tabelle: viste, foreign key, funzioni SQL, repo, log edge di 24 ore e
+  `pg_stat_user_tables` su **128 giorni** ⇒ **nessuno**
+- ✅ l'RLS dopo l'accensione, **ruolo per ruolo** (`anon`, `authenticated`, `service_role`)
+- ✅ il linter di PROD prima e dopo, diffato voce per voce: **0 `ERROR`**, `WARN` fermi a 109
+- ✅ l'impronta di `rls_auto_enable()` sui due progetti dopo l'installazione: **identica**
+
 > ⚠️ **Ancora non misurati**, e da non dare per buoni: la VM (worker e i due bot, riavvii), il
 > `.env` dei soci e i suoi interruttori, i ponti, i cron di entrambi i progetti (guardati solo
 > quelli che servivano alla 32), e l'app vista col login staff. Dalla sessione cloud manca
-> l'accesso a Hetzner e alla memoria dell'app.
+> l'accesso a Hetzner e alla memoria dell'app. ⚠️ **Anche la 14ª girava dal cloud**: la lista
+> qui sopra non si è accorciata di un rigo.
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 0
 
-### 🔓 35. Due tabelle di PROD sono **senza RLS**, e `anon` ci può scrivere
-*Nata il 14/08 misurando la voce 33, **promossa da lui** lo stesso giorno.* Non è un sospetto: sono i **due soli `ERROR`** del linter di Supabase su PROD (`rls_disabled_in_public`).
+**Vuota**, per la prima volta da quando questa lista esiste. La 35 — l'ultima rimasta — è stata
+misurata, confermata punto per punto e **chiusa il 14/08 nella 14ª sessione**, con la sua conferma
+esplicita perché toccava la produzione.
 
-| tabella | righe | RLS | permessi ad `anon` |
-|---|---|---|---|
-| `pmo_bkp_ospite_20260809` | **699** | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
-| `pmo_bkp_kb_livello_20260809` | 1 | ❌ | SELECT, INSERT, UPDATE, **DELETE**, TRUNCATE |
-
-🚨 Stanno in `public`, che la Data API espone: con la chiave pubblicabile — che sta nel `config.js` ed **è pubblica per definizione** — quelle 699 righe si leggono e si cancellano.
-
-⚖️ **Sono le copie di sicurezza del lavoro «Ospite» del 9/08**, lo stesso in cui «elimina tutto» avrebbe buttato **€ 7.937** di incassi. La rete messa sotto a quel lavoro è oggi l'unica cosa scoperta del progetto. Le sorelle dello stesso giorno (`_pmo_riassegnazione_*`) l'RLS ce l'hanno.
-
-🎯 **La causa è nota**: l'event trigger **`ensure_rls`**, che accende l'RLS da sola su ogni tabella nuova, esiste **solo su TEST**. La rete di sicurezza sta dalla parte sbagliata.
-
-**Da fare, nell'ordine:** ① accendere l'RLS sulle due tabelle (`alter table … enable row level security`) — una riga, reversibile, e senza policy nessuno le vede più dall'API mentre `service_role` continua a leggerle → ② verificare che i due `ERROR` del linter siano spariti → ③ decidere se mettere **`ensure_rls` anche su PROD**, che è la cura vera: senza, la prossima tabella nasce di nuovo scoperta.
-
-⚠️ **È una modifica alla PRODUZIONE**: prima di accendere si controlla che nessuno legga quelle due tabelle dall'API — sono copie datate, non dovrebbe leggerle nessuno, ma è il rito. 🔗 Dettagli in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md).
+🚨 **Vuota non vuol dire che non c'è lavoro**: la coda ha 16 voci e nessuna si promuove da sé.
+Le promozioni le decide il committente — si propongono, non si eseguono.
 
 ---
 
@@ -173,17 +186,18 @@ Misurando il **14/08**, aprendo la voce 22:
 
 ---
 
-## 📦 CHIUSE — 13 e 14/08/2026 — 11 voci
+## 📦 CHIUSE — 13 e 14/08/2026 — 12 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime tre voci sono del 14/08; le otto successive del 13/08.**
+**Le prime quattro voci sono del 14/08; le otto successive del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **35** | 🔒 *(14/08, 14ª sessione)* **Le due tabelle scoperte di PROD sono chiuse, e la rete di sicurezza è tornata dalla parte giusta.** 🔎 **Per la prima volta la misura ha confermato la scheda**, e su tutti i campi: 2 `ERROR` e solo quelli, 699 e 1 righe, RLS spenta con 0 policy, `anon` con SELECT/INSERT/UPDATE/**DELETE**/TRUNCATE, le sorelle `_pmo_riassegnazione_*` coperte, `ensure_rls` presente **solo** su TEST. Fatto il rito prima di toccare: **nessuna** vista, foreign key o funzione le nomina, nessun riferimento nel repo fuori da `docs/`, e `pg_stat_user_tables` su una finestra di **128 giorni** conta 8 e 4 seq_scan in tutta la loro vita — l'ultimo dei quali era la mia stessa `count(*)` di dieci minuti prima. ⇒ ① **RLS accesa** senza policy: `anon` **0/0**, `authenticated` **0/0**, `service_role` **699/1** (provato con `set local role` in transazione annullata, non dedotto) e il linter di PROD **da 2 `ERROR` a ZERO**. ⇒ ③ **`ensure_rls` installata anche su PROD**, verbatim da TEST: impronta normalizzata `2ab30ec5…` **identica** sui due progetti, e provata sul vivo — una `create table` poi annullata nasce con l'RLS accesa da sola. 🐛 **Coda inattesa, trovata dal linter dopo l'installazione**: `rls_auto_enable()` era `SECURITY DEFINER` **eseguibile da `anon`**, e provandolo la chiamata **riusciva davvero**. Portata reale nulla — nessun argomento, e fuori contesto il ciclo gira a vuoto — ma `EXECUTE` revocato su **entrambi** i progetti, perché su TEST l'ACL era identica e quei due WARN ci stavano **da sempre** senza che nessuno li guardasse. Ora da `anon`: `42501 permission denied`. ⚠️ **Da ricordare**: ogni tabella nuova in `public` su PROD nasce ora **invisibile** ad `anon`/`authenticated`; se deve essere letta col ruolo pubblico, la policy va scritta a mano. 🔗 [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md) e le 3 migrazioni in `supabase/migrations/2026081411*` |
 | **33** | 🔀 *(14/08)* **Le funzioni SQL dei due progetti, misurate e dichiarate** in [`docs/divergenze-sql-test-prod.md`](../divergenze-sql-test-prod.md). PROD **64**, TEST **62**, in comune 58: **53 identiche**, **5 divergenti davvero**. 🚨 Il primo giro ne dava **28**, ma 23 erano **aria**: su TEST molte funzioni sono imbottite di migliaia di spazi dopo `AS $function$` — `pmo_get_staff_users_admin` è **30 volte** più lunga con lo stesso codice dentro. Si confronta normalizzando gli spazi, o l'impronta mente. Delle 5 vere: una **voluta** (la 32), due **innocue** (solo `public.` esplicito o meno), una da sanare **al contrario** — `pmo_assegna_codici_mancanti` ha i commenti del 9/08 su **TEST** e non su PROD, quindi è la copia buona a stare di là — e una **da guardare**, `upsert_assessment_tokens_admin`, che legge il PIN da `admin_settings` mentre `pmo_admin_pin_ok` lo legge da `assessment_admin_config`: due depositi per lo stesso PIN, e non è TEST-vs-PROD ma un'incoerenza **dentro** PROD. Delle 10 presenti da una parte sola, tre sono **residui del canale email smontato** (parenti della voce 29) e una spiega perché su TEST i soci sono vivi col calendario fermo: `pmo_anagrafica_cron_key`, che serve il mirror dell'anagrafica **da PROD**. ⇒ Da qui è nata la **voce 35** |
 | **32** | 🧊 *(14/08)* **Il calendario di TEST è congelato — ora è una scelta dichiarata, non un inganno.** Nata misurando la 22, promossa da lui, diagnosticata e decisa in giornata. La misura ha smentito perfino il titolo con cui era nata: non «fermo dal 7 agosto», ma **mai partito** — righe `data_routine_dispatch_bookings_live_*` **0 in tutta la storia** di `cudi…` contro **1575** su `qqbf…`; il 7/08 era solo l'ultimo import lanciato **a mano**. Tre disallineamenti sovrapposti, ognuno da solo sufficiente: il cron **spento** (jobid 13, fermo dal 3/08), l'argomento `<oggi 04:30>` che lo **inchioda** al ramo clienti anche da acceso, e la **funzione stessa diversa** fra i due progetti (`1609186e…` contro `e38984df…`). ⚖️ **Scelta la strada B: congelare e dichiararlo.** Il danno non era la vecchiaia del dato — era che **sembrasse fresco**: aveva già fatto aprire la voce 26 come guasto del bot e per poco cancellare una partita vera. Scritto in `CLAUDE.md`, dove ogni sessione lo legge prima di toccare TEST. Il riaccendimento è la **voce 34** in coda: costa poco (**+1,7%** sul worker, non il raddoppio che sembrava) ma va fatto **dal Mac**, coi log del worker sotto gli occhi |
 | **22** | 🧹 *(14/08)* **Righe di prova su TEST: tolte 3 punti su 4, e il quarto non era rumore.** Tolte in modo **reversibile**, dopo aver misurato cosa ci puntava: le **4** `staff_edit` e la partita di prova 14/08 12:30 C4 messe a `deleted=true` (soft delete nativo, l'app non le vede più); **Lidia Comes** nella whitelist `test` messa a `attivo=false` — la gemella `prod` intatta. Il quarto punto non era una riga sola ma una **terna** — token `completed` + scheda `applied` + marcatore «già segnalato» `sa:ITBAOQWO8CB5KU` — e toglierne una su tre avrebbe **sporcato** la prossima prova invece di pulirla: rimosse insieme, salvate per intero nel messaggio di commit. ⚠️ Il livello di Aprea era **già tornato a 4** da solo: il mirror aveva fatto la sua parte. 🚨 **Il primo punto è uscito dalla voce**: «9305 del 13/08» erano **due** partite (9305 dell'11/08, 9306 del 13/08), **entrambe vere e presenti su PROD**, entrambe nate su TEST nello stesso istante di un lotto di sync — è scattata per la **prima volta** la clausola *«se risulta anche su PROD, fermati e chiedi»*, e la causa è diventata la **voce 32** |
@@ -270,6 +284,21 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > sync riconcilia. In PROD lo stesso codice si auto-corregge in due minuti. Prima di aprire una voce
 > per un componente, chiedersi se il vicino ha già lo stesso male.
 >
+> **«Ipotesi, non misura» non vuol dire «probabilmente sbagliata».** *(14/08, 14ª sessione)* La
+> scheda della 35 ha retto su **tutti** i campi: due `ERROR` e solo quelli, 699 e 1 righe, `anon`
+> con DELETE e TRUNCATE, le sorelle coperte, `ensure_rls` solo su TEST. Dopo tre smentite di fila
+> la tentazione era leggere il rito come un modo per cogliere in fallo chi ha scritto la scheda:
+> non lo è. Serve a **sapere**, e sapere che è giusta vale la stessa misura che scoprire che è
+> sbagliata — con la differenza che stavolta si è potuto eseguire senza esitare.
+>
+> **Chi tappa un buco ne apre uno più piccolo, e deve guardare.** *(14/08)* Installato
+> `ensure_rls`, il linter ha alzato due WARN che prima non c'erano: la funzione era `SECURITY
+> DEFINER` chiamabile da `anon`. Sarebbe passata liscia — l'obiettivo dichiarato era «i due
+> `ERROR` spariti», e quelli erano spariti. Il diff **prima/dopo di tutti e 123 gli avvisi**, non
+> solo dei due che si volevano chiudere, è ciò che l'ha fatta vedere. ⇒ E aprendola si è scoperto
+> che su **TEST** quella porta era aperta **da sempre**: un difetto nuovo in un posto è spesso un
+> difetto vecchio nell'altro.
+>
 > **Togliere una riga di una terna sporca più che pulire.** *(14/08)* Il «socio di prova» erano
 > **tre** righe legate — token `completed`, scheda `applied`, marcatore «già segnalato». Togliere
 > solo quella nominata nella scheda avrebbe lasciato un token bruciato senza scheda: la prova
@@ -320,4 +349,4 @@ il commit resta nella storia (`git log docs/lavori/README.md` dice quando una vo
 
 ---
 
-<sub>Aggiornato il 14/08/2026 a fine 13ª sessione (PR #688→#690), dopo quella del 13/08 (#674→#687). Chiuse le voci 22, 32 e 33; nata e promossa la 35, che resta aperta perché tocca la produzione. Sha, versioni, PR aperte e tutti e otto i conteggi rimisurati alla chiusura, non ricordati. La sessione girava dal cloud: VM, worker, `.env`, ponti, memoria dell'app e la vista dell'app col login staff **non** sono stati misurati, ed è scritto sopra quali. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Aggiornato il 14/08/2026 a fine **14ª sessione**, dopo la 13ª dello stesso giorno (PR #688→#691) e quella del 13/08 (#674→#687). Chiusa la voce **35**, l'ultima urgente: la lista 🔴 resta **vuota**. È stata la prima sessione a scrivere **sulla produzione** — tre migrazioni di soli permessi, nessun dato toccato, tutte reversibili con una riga — e la prima in cui la misura ha **confermato** la scheda invece di smentirla. La sessione girava dal cloud: VM, worker, `.env`, ponti, memoria dell'app e la vista dell'app col login staff **non** sono stati misurati, ed è scritto sopra quali. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>

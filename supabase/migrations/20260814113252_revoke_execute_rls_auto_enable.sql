@@ -1,0 +1,24 @@
+-- 🔒 TOGLIE `EXECUTE` su `rls_auto_enable()` ad anon/authenticated (coda della voce 35 ③, 14/08/2026)
+--
+-- IL FATTO: installato l'event trigger, il linter ha alzato due WARN nuovi — la funzione,
+-- `SECURITY DEFINER` di proprietà di `postgres`, era eseguibile da `anon` e `authenticated`
+-- (ACL `{=X/postgres,…,anon=X,authenticated=X}`). **Provato, non supposto**: da `anon` la
+-- chiamata RIUSCIVA, non veniva respinta. L'avviso era reale.
+--
+-- ⚖️ Portata vera, misurata: la funzione non prende argomenti e, chiamata fuori dal suo
+-- contesto di event trigger, `pg_event_trigger_ddl_commands()` non restituisce nulla ⇒ il
+-- ciclo gira a vuoto e la funzione torna senza leggere né scrivere niente. Non era un buco
+-- di dati; era igiene. Ma è `SECURITY DEFINER` esposta al ruolo pubblico, e non serve a
+-- nessuno che non sia il sistema.
+--
+-- 📌 L'event trigger NON ne risente: lo invoca il motore durante il DDL, non passa da
+-- questo permesso, e `postgres` (proprietario) l'`EXECUTE` ce l'ha comunque.
+-- ✅ Verificato PRIMA su TEST e poi su PROD, allo stesso modo: revoke, poi `create table`
+-- dentro una transazione con `rollback` ⇒ la tabella nuova nasce lo stesso con l'RLS accesa.
+-- ✅ E dopo, da `anon`: `42501 : permission denied for function rls_auto_enable`.
+--
+-- 🔁 Applicata a ENTRAMBI i progetti nella stessa sessione — su TEST l'ACL era identica e i
+-- due stessi WARN ci stavano da sempre, semplicemente nessuno li aveva guardati finché non
+-- sono comparsi su PROD. I progetti restano in parità, che è il punto della voce 33.
+
+revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
