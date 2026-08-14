@@ -160,6 +160,33 @@ edge stanno in **`function_edge_logs`**. Stava per uscirne un «il traffico è c
 chiuso la voce con una misura falsa. L'ha salvata il controllo negativo — chiedere alla sonda se
 sa trovare *qualcosa* (7398 righe) prima di credere a uno zero.
 
+🚨 **E le porte erano DUE, non una.** Misurando il backend è saltato fuori il secondo temporizzatore:
+`waUsageLoad` chiama `wa_usage_stats` su `ayly…` ogni **300 s**, e quella RPC **esiste ancora ma
+muore** — `42P01: relation "whatsapp_inbound_messages" does not exist`. **295 fallimenti in 24 ore**
+(PROD e TEST insieme). Col primo fanno **~1540 chiamate a vuoto al giorno**.
+
+⚖️ **Rideployare non era un'opzione**, e questo l'ha deciso la misura: su `ayly…` ci sono **zero**
+edge function e **zero** tabelle `whatsapp*`. Il proxy parlerebbe al vuoto.
+
+🖐️ **Fatto il 14/08 (16ª sessione): disarmo minimo, scelto da lui.** Un `return` in testa a
+`waInit()` — il riquadro non si mostra e i due temporizzatori non partono. `APP_VERSION` **6.220 →
+6.221**. Il codice resta ma diventa irraggiungibile, come i pannelli email della voce 28: la
+potatura vera (~150 righe di HTML + ~700 di JS) è **voce a sé**, non si fa di fretta.
+✅ **La libreria testi e template resta viva** — sta nella stessa scheda, non tocca il backend morto
+ed è l'unica cosa che in quella pagina funzionava.
+
+**Verificato:** `controlla-sintassi` 5 blocchi 0 errori (col suo controllo negativo); **13/13** le
+prove Node; **55/55** la rete di regressione nel browser, orologio attendibile, `leakCount` **2
+prima e 2 dopo** — e sono entrambe `bot-telegram-admin`, che non c'entra.
+⛔ **NON verificato, e non lo spaccio per fatto**: il confronto sull'app **vera**. Da questa sessione
+cloud l'app non boota — `@supabase/supabase-js` dal CDN e `config.js` sono bloccati dal proxy
+(`ERR_TUNNEL_CONNECTION_FAILED`) — e il banco gira in un mondo mockato dove quei due timer erano
+**già** spenti: misurerebbe zero in entrambi i casi, cioè niente. Anche il banco è più largo del
+vero, ancora una volta.
+🎯 **La prova che conta si fa DOPO il deploy, ed è un numero:** i 404 su `wa-shadow-proxy` (623/g su
+`qqbf…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a zero**. Finché non
+li si vede a zero, questa voce **resta aperta**.
+
 ### 39. 🔀 Le TABELLE dei due progetti divergono — censimento, non campionatura
 *Nata come nota il 14/08 (14ª sessione), promossa il 14/08 (16ª).* Finora confrontate **due**
 tabelle su decine, ed **entrambe divergevano**: `assessment_tokens.member_email` e
@@ -282,6 +309,18 @@ Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
   della voce 27. Il linter le segnalava **tutte e 47 da sempre**, con lo stesso identico titolo:
   ⚠️ nessuno le ha mai lette una per una. Le altre 45 **non sono state guardate** — questa è una
   campionatura di due, esattamente come le tabelle divergenti di ieri.
+
+Misurando il **14/08** nella 16ª sessione, disarmando la voce 38:
+
+- 🧟 **Il riquadro WhatsApp e il suo blocco JS restano nel file, ora irraggiungibili**: ~150 righe di
+  HTML (`index.html:7219–7369`) e ~700 di JS (il blocco `wa*`), tenute in vita solo dal `return` che
+  le precede. **È la stessa forma delle voci 28 e 29** — codice dormiente di una cosa smontata — e
+  come quelle l'asportazione va provata per bene, non fatta di slancio. ⚖️ **Non l'ho messa in coda
+  da me**: le promozioni le decide lui, e questo vale anche per l'ingresso in lista.
+- 🔎 **`wa_usage_stats` è rimasta su `ayly…` a leggere tabelle che non esistono più**, ed è
+  `SECURITY DEFINER` eseguibile da `anon`. Non fa danno — muore in partenza con `42P01` — ma è la
+  **quarta** funzione della famiglia «viva senza il suo mondo» incontrata in due giorni, dopo le tre
+  della voce 36. Non toccata: non era la 38.
 
 Misurando il **14/08**, aprendo la voce 22:
 
