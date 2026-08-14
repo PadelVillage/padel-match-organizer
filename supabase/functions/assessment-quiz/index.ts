@@ -657,10 +657,21 @@ function servizio() {
 async function gettoneValido(db: ReturnType<typeof createClient>, token: string) {
   const { data, error } = await db
     .from('assessment_tokens')
-    .select('token, member_local_id, member_name, phone_last4, member_email, status, expires_at')
+    // 🚨 SOLO colonne che esistono su ENTRAMBI i progetti. Misurato il 14/08 dopo che questa
+    // riga ha fatto fallire la prima prova su TEST: `member_email` c'è su `qqbf…` e NON su
+    // `cudi…`. Le due tabelle sono divergenti, come lo erano le funzioni SQL della voce 33 —
+    // solo che di questa divergenza non lo sapeva nessuno. Scrivere una query guardando un
+    // solo database è scrivere metà query.
+    .select('token, member_local_id, member_name, phone_last4, status, expires_at')
     .eq('token', token)
     .maybeSingle();
-  if (error) return { errore: err(500, 'LETTURA_FALLITA', 'Non riesco a leggere il gettone.') };
+  if (error) {
+    // Il motivo VERO nel log della funzione: al socio si dice una cosa comprensibile, ma chi
+    // deve capire perché non deve ripartire da «Failed to fetch». È il buco di diagnosi che
+    // ha fatto perdere il primo giro di prove.
+    console.error('assessment-quiz: lettura gettone fallita —', error.message, error.details ?? '');
+    return { errore: err(500, 'LETTURA_FALLITA', 'Non riesco a leggere il gettone.') };
+  }
   if (!data) return { errore: err(404, 'GETTONE_SCONOSCIUTO', 'Questo link non risulta valido.') };
   if (data.status === 'completed') {
     return { errore: err(409, 'GIA_COMPILATA', 'Questa scheda risulta già compilata.') };
@@ -777,7 +788,11 @@ Deno.serve(async (req: Request) => {
       first_name: assessTxt(scheda.first_name) || null,
       last_name: assessTxt(scheda.last_name) || null,
       phone: assessTxt(scheda.phone) || null,
-      email: assessTxt(scheda.email) || null,
+      // ⛔ NIENTE `email`: la colonna c'è su PROD e NON su TEST (misurato il 14/08). Per la
+      // strada col gettone non si perde nulla — là l'indirizzo era sempre vuoto, lo riempiva
+      // solo il link esterno, che questa strada non la fa. 🔗 Stessa ragione per cui mancano
+      // `consistency_score`, `inconsistency_reasons` e `review_note`: non le scriviamo, e su
+      // TEST non esistono. La riga è l'INTERSEZIONE dei due schemi, per costruzione.
       experience: assessTxt(scheda.experience) || null,
       monthly_frequency: assessTxt(scheda.monthly_frequency) || null,
       basic_strokes: assessTxt(scheda.basic_strokes) || null,
@@ -814,7 +829,10 @@ Deno.serve(async (req: Request) => {
     const { error: eIns } = await db
       .from('self_assessments')
       .upsert(riga, { onConflict: 'token' });
-    if (eIns) return err(500, 'SCRITTURA_FALLITA', 'Non riesco a salvare la scheda.');
+    if (eIns) {
+      console.error('assessment-quiz: scrittura scheda fallita —', eIns.message, eIns.details ?? '');
+      return err(500, 'SCRITTURA_FALLITA', 'Non riesco a salvare la scheda.');
+    }
 
     // Il gettone si brucia DOPO la scrittura: se il salvataggio fallisse, il socio deve poter
     // riprovare. L'ordine inverso lo lascerebbe fuori con la scheda persa.
