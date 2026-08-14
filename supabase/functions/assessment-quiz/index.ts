@@ -95,16 +95,6 @@ function pmoLivelloFascia(value) {
   if (!Number.isFinite(n)) return null;
   return PMO_LIVELLI.find(f => n <= f.max) || PMO_LIVELLI[PMO_LIVELLI.length - 1];
 }
-// Numero → riga della tabella. Fuori scala si aggancia agli estremi: nessun livello resta senza nome.
-function pmoLivelloFascia(value) {
-  // 🚨 Il vuoto NON è zero: `Number('')` fa 0, e chi non ha ancora un livello si sarebbe
-  // visto chiamare «Principiante» da nessun dato. Senza numero non c'è fascia.
-  const raw = assessTxt(value).replace(',', '.');
-  if (!raw) return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return null;
-  return PMO_LIVELLI.find(f => n <= f.max) || PMO_LIVELLI[PMO_LIVELLI.length - 1];
-}
 function pmoLivelloDefinizione(value) {
   return pmoLivelloFascia(value)?.definizione || '';
 }

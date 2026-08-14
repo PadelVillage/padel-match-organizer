@@ -26,6 +26,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import vm from 'node:vm';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const EDGE = join(QUI, '..', 'supabase', 'functions', 'assessment-quiz', 'index.ts');
@@ -39,6 +42,27 @@ vm.runInContext(blocco + '\n' + seme +
   '\nfunction pesca(t,f){ return assessKnowledgePick(f, sorteDa(seme(t, assessTxt(f)))); }' +
   '\nthis.API = { pesca, assessKnowledgeEvaluate, ASSESS_KNOWLEDGE_BANK, assessKnowledgeFasciaFor };', ctx);
 const { pesca, assessKnowledgeEvaluate, ASSESS_KNOWLEDGE_BANK: BANK, assessKnowledgeFasciaFor } = ctx.API;
+
+/* 🚨 IL BANCO CHE MANCAVA — aggiunto il 14/08/2026 DOPO che è morso davvero.
+   La prima versione di questa edge è stata deployata su TEST **e non è mai partita**:
+   `worker boot error: Identifier 'pmoLivelloFascia' has already been declared`. Il browser
+   diceva solo «Failed to fetch», perché una funzione che non parte non risponde nemmeno con
+   un errore. Eppure le 14 suite erano verdi.
+   ⭐⭐ LA RAGIONE, ed è la lezione: `vm.runInContext` esegue il blocco come **script**, e in
+   uno script ridichiarare una funzione è LECITO. Deno lo carica come **modulo**, e lì è un
+   errore di sintassi FATALE. Il banco girava in un mondo più permissivo del vero, quindi
+   poteva solo dire di sì. ⇒ Un banco che gira in condizioni più larghe della produzione non
+   è un banco debole: è un banco che DÀ FIDUCIA SBAGLIATA, che è peggio di non averlo.
+   ⇒ Qui sotto il blocco viene analizzato come MODULO, con lo stesso rigore di Deno. */
+function provaComeModulo(codice, nome) {
+  const file = join(tmpdir(), `pmo-${nome}-${codice.length}.mjs`);
+  writeFileSync(file, codice);
+  try {
+    execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
+  } finally {
+    try { unlinkSync(file); } catch {}
+  }
+}
 
 let ko = 0;
 const ok = (n, c) => { console.log((c ? '✅ ' : '❌ ') + n); if (!c) ko++; };
@@ -67,6 +91,18 @@ ok('tutte giuste ⇒ pass', assessKnowledgeEvaluate(a.map(d=>d.id), risposte, 'I
 const furbata = assessKnowledgeEvaluate(pesca('tok-ABC123','Intermedio').map(d=>d.id), {}, 'Intermedio');
 ok('🚨 rispondere a vuoto NON passa più', furbata.status === 'fail');
 ok('fascia dedotta dalle domande', furbata.fascia === 'Intermedio');
+
+// 5. 🚨 il blocco deve stare in piedi come MODULO, non solo come script
+ok('🚨 il blocco condiviso è un modulo valido (come lo carica Deno)', (() => {
+  try { provaComeModulo(blocco, 'blocco'); return true; }
+  catch (e) { console.log('   ' + String(e.stderr || e.message).split('\n').slice(0, 3).join(' ')); return false; }
+})());
+
+// 6. nessun nome dichiarato due volte in cima al file: è esattamente ciò che uccise la v1
+const nomi = [...T.matchAll(/^(?:function|const|let|class)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+const doppi = [...new Set(nomi.filter(n => nomi.filter(x => x === n).length > 1))];
+ok(`nessuna dichiarazione doppia nell'edge (${nomi.length} nomi)`, doppi.length === 0);
+if (doppi.length) console.log('   doppi: ' + doppi.join(', '));
 
 console.log(ko ? `\n${ko} PROVE FALLITE` : '\n— tutte verdi —');
 process.exit(ko ? 1 : 0);
