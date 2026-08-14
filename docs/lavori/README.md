@@ -175,11 +175,26 @@ Le risposte vere, lette in `net._http_response`:
 | gettone diverso | pescata diversa: `A-08, A-T1, A-04, A-02` |
 | la parola `correct` nelle risposte | **mai** (`position` = 0 su tutte e tre) |
 
-**⏳ RESTA il passo 4**, e solo dopo la prova sul vero: le 3 policy di INSERT anonimo su
-`self_assessments`. 🚨 Toglierle prima che il 3 sia stato **visto funzionare** lascerebbe 2.276
-soci senza la possibilità di fare il test — e col muro acceso, senza organizzare.
-📌 Da provare aprendo `https://test.padelvillage.club/?t=<gettone>` con un gettone `created` di
-`cudi…`: la scheda scrive **su TEST** e brucia il gettone, che è esattamente ciò che deve fare.
+**✅ E il passo 4, su TEST — la voce 27 è COMPLETA di là.** Fatto solo dopo che lui aveva
+compilato la scheda sul suo browser (esito `pass` 4/4, `corretta_dal_server: true`, gettone
+`completed`), che è l'ordine vincolante rispettato alla lettera.
+✅ Verificato nei due versi, in transazioni annullate: `anon` → **42501, «new row violates
+row-level security policy»**; `service_role` → scrive regolarmente. La strada del socio resta
+aperta ed è ora l'**unica**, quella dell'edge.
+
+🚨 **La misura ha smentito la scheda anche qui, e le due sponde non si somigliano:**
+
+| dove | policy di scrittura anonima su `self_assessments` |
+|---|---|
+| **PROD** | **3 di INSERT**, tutte `WITH CHECK (true)` — nessuna condizione: chi ha la chiave pubblicabile scrive qualunque riga, **senza nemmeno un gettone** |
+| **TEST** | **1 di INSERT + 1 di UPDATE**, condizionate a un gettone vero, `created`/`sent`, non scaduto. La UPDATE **su PROD non esiste**: qui lasciava **riscrivere una scheda già inviata**, e non era in nessuna scheda di lavoro |
+
+⚖️ Anche la versione stretta di TEST non bastava: il gettone il socio **ce l'ha**, è il suo link.
+
+**⏳ RESTA SOLO PROD**, in due mosse e in quest'ordine: ① promuovere la nuova app e l'edge su
+`main` (il ramo di lavoro è pronto, 9 file, sotto il tetto di `guard-main-prs`) e verificarla
+dal vivo; ② **solo allora** togliere le 3 policy. 🚨 Invertirle lascia i soci senza test: l'app
+in servizio su PROD scrive ancora la riga da sé.
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
