@@ -37172,15 +37172,11 @@ Per confermare scrivi ELIMINA.`);
       return pmoLivelloEtichettaSocio(value) || cleanCell(value || '');
     }
 
-    function assessmentPublicScoreFromText(value, map) {
-      const raw = cleanCell(value || '');
-      if (!raw) return null;
-      const key = normalizeText(raw);
-      for (const [needle, score] of map) {
-        if (key.includes(normalizeText(needle))) return score;
-      }
-      return null;
-    }
+    /* 🗑️ Via anche `assessmentPublicScoreFromText` — 14/08, coda della voce 27.
+       La usava solo `assessmentPublicTechnicalScores`, andata nell'edge poche righe fa: qui
+       era rimasta senza un chiamante al mondo. ⚖️ Trovata perché mancava DI LÀ, non perché
+       avanzava di qua: il `ReferenceError` sulla consegna ha indicato una funzione che
+       nell'app era già diventata un peso morto. Un guasto che segnala anche una potatura. */
 
     /* 🗑️ VIA DI QUI IL CALCOLO DEL LIVELLO — 14/08/2026, voce 27.
        `assessmentPublicTechnicalScores`, `roundAssessmentToHalf` e
