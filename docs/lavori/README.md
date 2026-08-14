@@ -225,9 +225,16 @@ muore** — `42P01: relation "whatsapp_inbound_messages" does not exist`. **295 
 edge function e **zero** tabelle `whatsapp*`. Il proxy parlerebbe al vuoto.
 
 🖐️ **Fatto il 14/08 (16ª sessione): disarmo minimo, scelto da lui.** Un `return` in testa a
-`waInit()` — il riquadro non si mostra e i due temporizzatori non partono. `APP_VERSION` **6.220 →
-6.221**. Il codice resta ma diventa irraggiungibile, come i pannelli email della voce 28: la
-potatura vera (~150 righe di HTML + ~700 di JS) è **voce a sé**, non si fa di fretta.
+`waInit()` — il riquadro non si mostra e i due temporizzatori non partono. Il codice resta ma
+diventa irraggiungibile, come i pannelli email della voce 28: la potatura vera (~150 righe di HTML
++ ~700 di JS) è **voce a sé**, non si fa di fretta.
+
+🔀 **Su ENTRAMBI i rami, e questo è il punto della voce 31.** `main` **6.220 → 6.221**,
+`test-preview` **6.230 → 6.231**, con lo **stesso identico blocco** — estratto dal file vero e
+reinserito, non riscritto a mano. I due `waInit` differivano **solo nei commenti**, mai nel codice.
+⚖️ Non è pignoleria: la 31 esiste perché una sicura scritta solo su TEST lasciò PROD scoperto per
+dieci giorni. Qui il verso è l'opposto — la riparazione nasceva su `main` — e lasciarla lì avrebbe
+lasciato TEST a bussare 619 volte al giorno verso una funzione che non esiste.
 ✅ **La libreria testi e template resta viva** — sta nella stessa scheda, non tocca il backend morto
 ed è l'unica cosa che in quella pagina funzionava.
 
@@ -240,8 +247,11 @@ cloud l'app non boota — `@supabase/supabase-js` dal CDN e `config.js` sono blo
 **già** spenti: misurerebbe zero in entrambi i casi, cioè niente. Anche il banco è più largo del
 vero, ancora una volta.
 🎯 **La prova che conta si fa DOPO il deploy, ed è un numero:** i 404 su `wa-shadow-proxy` (623/g su
-`qqbf…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a zero**. Finché non
-li si vede a zero, questa voce **resta aperta**.
+`qqbf…` e 619/g su `cudi…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a
+zero**. Finché non li si vede a zero, questa voce **resta aperta**.
+📌 **TEST si vedrà prima**: `test-preview` è **subito live** (nessun workflow, il caricatore prende
+l'ultimo commit), mentre PROD aspetta il merge della PR. ⇒ Se domani i 404 di `cudi…` vanno a zero e
+quelli di `qqbf…` no, non è un guasto: è la #698 non ancora mergiata.
 
 ### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
 *Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
