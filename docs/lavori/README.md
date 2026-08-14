@@ -49,7 +49,8 @@ contesto**, non eseguire il compito scritto.
 |---|---|
 | 🔓 **famiglia feedback tolta anche su TEST** | la divergenza che la 16ª si era auto-denunciata e aveva lasciato scritta come «la prima cosa da chiedere alla prossima ripresa». Chiesta, autorizzata, fatta |
 | 📚 **sanare `docs/` e correggere la voce 38** | non solo riallineare i rami: riscrivere la misura dei 404 con quella vera, invece di portare su `main` un fatto falso |
-| ✋ **voce 23: diagnosi sì, patch no** | la correzione tocca la strada che prenota **davvero** e dal cloud non è verificabile ⇒ si scrive cosa non va, non si tocca |
+| ✋ **voce 23: prima diagnosi sì, patch no** | la correzione tocca la strada che prenota **davvero** e dal cloud non è verificabile ⇒ si scrive cosa non va, non si tocca |
+| 🔁 **poi «fai la 23»** | ripresa la decisione: scritta e pubblicata **su TEST** (6.232). La diagnosi precedente è rimasta com'era, non riscritta per farla combaciare. **PROD resta da decidere**: è una conferma a sé |
 | 📦 **voce 37 chiusa DICHIARANDO, non eseguendo** | messo davanti alle tre strade — dichiarare, fare l'RPC, o la «riga di SQL» — ha scelto la prima. Le due «portanti» restano **per scelta misurata**, con la ragione scritta nella loro riga: chiuderle con la riga di SQL sarebbe stato un passo indietro travestito da chiusura |
 | 🔄 **ha ricaricato le due schede, e ha chiuso la 38** | la prova che mancava da due sessioni non era una misura più fine: era **una persona davanti allo schermo**. Due secondi di `Cmd-R` contro quattro sonde false — ed è la terza volta in tre giorni che la verifica che conta la fa lui |
 
@@ -160,12 +161,53 @@ l'aveva creata davvero il campo finisce **prenotato due volte** sul Matchpoint d
 call failed after retries`), perché disdire due volte è innocuo mentre prenotare due volte no. La
 differenza è deliberata — ciò che manca non è il retry, è **dirlo**.
 
-⚠️ **Perché non ho scritto la patch**, e non è prudenza generica: la correzione tocca la strada che
-prenota **davvero** al circolo, e da questa sessione cloud non è verificabile — i log del worker
-stanno su **Hetzner**, e il worker è **uno solo, condiviso TEST+PROD**, quindi non esiste nemmeno un
-posto dove provarla senza rischiare il Matchpoint vero. Una patch verde su un banco che non esercita
-quella strada è la condizione descritta nella memoria «un banco più permissivo della produzione dà
-fiducia sbagliata» — cioè peggio di non averla. ⇒ **Si fa dal Mac**, con i log sotto gli occhi.
+#### ✅ SCRITTA, e su TEST è viva — 17ª sessione, TEST **6.232**
+
+*Il committente ha ripreso la decisione e ha chiesto di farla. La diagnosi qui sopra resta com'era:
+non l'ho corretta a posteriori per farla combaciare.*
+
+🎯 **E la cosa più importante l'ha detta il codice, non io: la macchina dell'ignoto NELL'APP C'ERA
+GIÀ**, dalla v6.150, ed è una **regola scritta del committente**:
+
+> ⭐⭐ *«quando l'esito resta IGNOTO non si indovina — si va a GUARDARE su Matchpoint»*, con i tre
+> verdetti `si` / `no` / `boh` di `staffCalAskMatchpoint`.
+
+⇒ Non c'era niente da inventare. La edge **appiattiva il terzo esito sul secondo**, e così quella
+macchina non veniva mai chiamata: il difetto non era una mancanza, era **una porta murata davanti a
+una stanza già arredata**.
+
+| dove | prima | ora |
+|---|---|---|
+| `callWorkerCreateBooking` | l'errore di rete è un errore come gli altri | **marchiato** `esitoIgnoto` |
+| lavoro asincrono | `status: 'error'` | **`'unknown'`**, con dentro *«controlla su Matchpoint prima di rifarla»* |
+| strada sincrona (il **ricorrente**) | `WORKER_ERROR` | **`WORKER_ESITO_IGNOTO`** |
+| `writeBookingJob` | scartava l'esito del proprio `upsert` | lo **guarda**, e la scrittura iniziale fallisce onesta invece di consegnare un lavoro fantasma |
+| il ricorrente nell'app | `ok` / `fail` | `ok` / `fail` / **`incerte`**, dette per prime e con l'istruzione dentro |
+
+⚖️ **Degrada in sicurezza in ENTRAMBI i versi**, e serve perché app ed edge si deployano da sole:
+edge nuova + app vecchia → `unknown` non è né `done` né `error`, quindi viene letto come «in corso»
+e finisce sulla **stessa** strada dell'ignoto per scadenza (più lento, non sbagliato); app nuova +
+edge vecchia → i rami nuovi non scattano mai.
+
+🚨 **La decisione si prende dal MARCHIO, non dalle parole.** Riconoscere l'ignoto cercando
+«network» nel testo dell'errore sarebbe stato il setaccio a maglie larghe della voce 36 — e il
+banco ha un caso apposta che fallisce se qualcuno ci ricasca.
+
+**Verificato:** banco nuovo `test/tre-esiti-prenotazione.test.mjs` **10/10**, che **importa** il
+modulo invece di ritagliarlo (lezione di `conoscenza.js`) — col controllo negativo su **tre
+sabotaggi**: appiattire il terzo esito (8/10), riconoscerlo dalle parole (7/10), togliere all'app la
+lettura di `unknown` (9/10). Un banco che non sa diventare rosso non è un banco.
+✅ `controlla-sintassi` 5 blocchi 0 errori · **14/14** i banchi Node · rete di regressione nel
+browser **90/90**, orologio attendibile, `leakCount` **2** (la linea di base).
+✅ **Sul bersaglio**: la edge su `cudi…` **fa il boot** — risponde `401` col suo JSON, e una funzione
+che non parte non risponde nemmeno con un errore suo — e il file che il caricatore consegna a
+`test.padelvillage.club` è **6.232** con tutti e quattro i marcatori dentro (letto con `pg_net`).
+
+⛔ **NON verificato, e non lo spaccio per fatto: la caduta VERA del worker.** Su TEST la creazione è
+**simulata**, quindi quel ramo non viene proprio percorso; e il worker è **uno solo, condiviso
+TEST+PROD**, quindi non esiste un posto dove provarlo senza rischiare il Matchpoint del circolo. Il
+banco prova la **decisione** e il **cablaggio** — tutto ciò che è nostro — non la rete che cade.
+⇒ **La voce resta aperta**: manca la promozione a PROD, che è una conferma a sé, e la prova dal Mac.
 
 ---
 
@@ -350,6 +392,18 @@ Misurando il **14/08** nella 17ª sessione, sanando la 37 e rimisurando la 38:
 - 🔀 **`matchpoint-bookings-create` diverge fra i rami**: 4 chiamate a `writeBookingJob` su `main`,
   **5** su `test-preview`. La quinta è il ramo «prova a vuoto» del 7/08, che su TEST chiude il
   lavoro con `done` mentre su PROD chiude con `error`. Trovata aprendo la voce 23.
+- 🕳️ **`typecheck-edge-functions` gira SOLO sulle PR**, non sui push. ⇒ ogni push a `test-preview`
+  che tocca `supabase/functions/**` **deploya la edge su TEST senza alcun `deno check`** — ed è
+  proprio l'ambiente dove si prova, cioè dove un errore dovrebbe uscire *prima*. Il gate c'è, ma non
+  copre la strada che si usa di più. ⚠️ Non l'ho toccato: è una modifica a un workflow, e i workflow
+  sono sorvegliati.
+- 🧯 **E lanciato a mano quel gate MENTE, in modo istruttivo.** Con `workflow_dispatch` non esiste un
+  `BASE_SHA`, quindi non ha un termine di paragone e stampa *«funzione nuova con N errori di tipo:
+  deve nascere pulita»* — su una funzione che nuova non è. Misurato: **`main` fallisce identico**,
+  e in locale (con l'import `jsr` sostituito, uguale ovunque) `main`, `test-preview` prima e
+  `test-preview` dopo danno **0-0-0**. ⇒ L'errore è **preesistente su entrambi i rami** e vive nella
+  parte che la rete di questa sessione non riesce a scaricare. Il differenziale vero lo dà solo una
+  PR: fuori da lì quel rosso non distingue «ho rotto qualcosa» da «c'era già».
 
 Misurando il **14/08**, aprendo la voce 22:
 
@@ -678,4 +732,8 @@ la patch, per sua decisione: la scheda sbagliava bersaglio (è nella edge, non n
 divergono, e la correzione tocca la strada che prenota davvero, non verificabile dal cloud.
 📌 Quanto segue è la chiusura della **16ª**, lasciata come l'ha scritta:</sub>
 
-<sub>Aggiornato il 14/08/2026 a fine **16ª sessione**, la quarta dello stesso giorno. La lista urgenti era **vuota**: le quattro promozioni le ha decise il committente, su proposta fatta a misura già presa. Chiusa **una sola** voce, la **39** — il censimento delle tabelle dei due progetti — perché è l'unica verificata sul bersaglio fino in fondo. La **38** è chiusa, e la sua storia vale più del suo contenuto: quattro prove false in due giorni prima di poterci credere, e la quarta era la smentita della terza. A chiuderla non è stata una sonda più fine ma **lui che ha ricaricato le due schede alle 19:57** — dopodiché i 404 sono spariti *mentre l'app continuava a chiamare*, che è il controllo positivo che mancava a tutte le prove precedenti. La **37** resta aperta con un residuo che è colpa mia: la famiglia del feedback è chiusa su PROD e **ancora aperta su TEST**, perché l'autorizzazione diceva «PROD» e l'ho eseguita alla lettera — giusto rispetto al mandato, sbagliato rispetto al sistema, ed è la voce 31 in diretta. La **23** non è stata toccata: metà del suo lavoro vuole i log del worker su Hetzner. Versioni, sha, PR aperte, linter dei due progetti e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; PROD verificato **dal server** con `pg_net`, non dall'etichetta. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che stavolta pesa il doppio, perché il disarmo cambia proprio ciò che lo staff vede. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+<sub>Aggiornato il 14/08/2026 a fine **16ª sessione**, la quarta dello stesso giorno. La lista urgenti era **vuota**: le quattro promozioni le ha decise il committente, su proposta fatta a misura già presa. Chiusa **una sola** voce, la **39** — il censimento delle tabelle dei due progetti — perché è l'unica verificata sul bersaglio fino in fondo. La **38** è chiusa, e la sua storia vale più del suo contenuto: quattro prove false in due giorni prima di poterci credere, e la quarta era la smentita della terza. A chiuderla non è stata una sonda più fine ma **lui che ha ricaricato le due schede alle 19:57** — dopodiché i 404 sono spariti *mentre l'app continuava a chiamare*, che è il controllo positivo che mancava a tutte le prove precedenti. La **37** resta aperta con un residuo che è colpa mia: la famiglia del feedback è chiusa su PROD e **ancora aperta su TEST**, perché l'autorizzazione diceva «PROD» e l'ho eseguita alla lettera — giusto rispetto al mandato, sbagliato rispetto al sistema, ed è la voce 31 in diretta. La **23** è stata prima diagnosticata e poi, su sua richiesta, **scritta e pubblicata su TEST**
+(6.232): la scoperta che vale è che la macchina dei tre esiti nell'app **c'era già dalla v6.150**,
+come regola sua, e che la edge le murava la porta davanti chiamando «errore» ciò che non sapeva.
+Resta **aperta**: manca la promozione a PROD — conferma a sé — e la prova vera, che vuole i log del
+worker su Hetzner e non si fa dal cloud. Versioni, sha, PR aperte, linter dei due progetti e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; PROD verificato **dal server** con `pg_net`, non dall'etichetta. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che stavolta pesa il doppio, perché il disarmo cambia proprio ciò che lo staff vede. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
