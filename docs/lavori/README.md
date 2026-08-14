@@ -252,6 +252,16 @@ e il worker è **uno solo, condiviso**. Il codice è in produzione e degrada in 
 manca è un'osservazione dal Mac, coi log del worker sotto gli occhi. ⚖️ Chiuderla ora sarebbe
 onesto quanto lasciarla aperta: **decide il committente**, come per ogni voce.
 
+#### 🧪 La procedura per provarla: `docs/collaudo-voce-23-caduta-worker.md`
+
+*Scritta il 14/08, 18ª sessione, su sua richiesta.* Il collaudo **non è stato eseguito** — da una
+sessione cloud non si può — e il documento non finge il contrario: è l'elenco dei passi da fare
+**dal Mac**, con `pm2` e i log del worker sotto gli occhi.
+⚠️ Dentro c'è la trappola che invaliderebbe tutto: il terzo esito si raggiunge **solo** se la
+`fetch` lancia, quindi un `502` di un eventuale intermediario porterebbe il collaudo a passare
+**sulla strada sbagliata**. Misurato che oggi PROD punta a un IP nudo (`91.99.131.243:8787`), senza
+proxy — ma il valore va riletto nei Secret prima di partire, perché viene da un documento.
+
 ---
 
 ## 📋 IN CODA — 13
