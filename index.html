@@ -7942,7 +7942,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.230';
+    const APP_VERSION = '6.231';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -38480,6 +38480,30 @@ Per confermare scrivi ELIMINA.`);
     function waInit() {
       if (waInited) return;
       waInited = true;
+      /* ⛔ DISARMATO il 14/08/2026 — voce 38. Il canale WhatsApp non è soltanto «dismesso»
+         (decisione del 25/07, PR #590): è SMONTATO, e il gestionale non se n'era accorto.
+         Misurato prima di spegnere, non ricordato:
+           · wa-shadow-proxy NON è deployata — né su qqbf… (PROD) né su cudi… (TEST);
+           · il progetto assistente ayly… ha ZERO edge function, quindi niente whatsapp-send;
+           · le tabelle whatsapp_inbound_messages / whatsapp_outbound_messages non esistono
+             più là dentro: wa_usage_stats c'è ancora ma muore con 42P01.
+         Il riquadro però partiva a OGNI caricamento di pagina — questo waInit è agganciato a
+         DOMContentLoaded senza condizioni — e bussava lo stesso, da dentro una scheda chiusa:
+         623 chiamate 404 al giorno su PROD verso wa-shadow-proxy (timer 60s) e 295 su ayly…
+         verso wa_usage_stats (timer 300s), ~1540 al giorno contando i due ambienti. E chi
+         apriva «Messaggi WhatsApp» non trovava un riquadro vuoto ma «❌ HTTP 404» in rosso:
+         il ramo catch di waLoadMessages scrive l'errore in pagina.
+         ⚖️ Rideployare il proxy non era un'opzione: parlerebbe a un backend che non c'è più.
+         Qui si spegne il CHIAMANTE e nient'altro. L'asportazione del riquadro (~150 righe di
+         HTML) e del blocco JS wa* qui sotto (~700) è una potatura a sé, da provare per bene:
+         sta in coda accanto alle voci 28 e 29, che hanno la stessa forma. Da qui in giù il
+         codice resta ma non è più raggiungibile — è dormiente, come quello dei pannelli email.
+         ✅ Resta viva la libreria testi e template, che vive nella stessa scheda e non tocca
+         niente di tutto questo: è l'unica cosa che in quella pagina funzionava davvero.
+         ↩️ Per riaccendere: togliere questo return — ma prima rimettere in piedi il backend
+         (funzione, edge dell'assistente e tabelle), o si torna esattamente qui. */
+      return;
+
       const dashboard = document.getElementById('waInboundDashboard');
       if (dashboard) dashboard.style.display = 'block';
       /* Consumi (aggregati): attivi in OGNI env, anche dove la lista messaggi resta spenta.
