@@ -1,0 +1,94 @@
+-- 🔒🔒 LA RASSEGNA DELLE 45 `SECURITY DEFINER` CHIAMABILI DA `anon` — voce 36.
+-- Promossa dal committente il 14/08/2026 (15ª sessione) dopo che la voce 27 ne aveva
+-- scoperte due. Applicata su **PROD** e su **TEST**, in tre riprese, con la sua conferma
+-- a ogni ripresa.
+--
+-- ⚠️ QUESTO FILE È IL RIASSUNTO: le revoche sono state applicate come migrazioni separate
+-- (`chiudi_ad_anon_le_tre_funzioni_scoperte`, `chiudi_ad_anon_pmo_audit_admin`,
+-- `chiudi_ad_anon_dispatcher_e_oracolo_segreto` + le tre di parità `service_role`).
+-- Qui sta il ragionamento, che è la parte che serve fra sei mesi.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- 🚨 L'ERRORE DI METODO, che è il pezzo che vale più delle funzioni chiuse
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+-- Ho diviso le 45 in «24 che scrivono» e «21 in sola lettura» cercando
+-- insert/update/delete/truncate nel sorgente. La divisione era SBAGLIATA, e in modo
+-- pericoloso: **far partire una chiamata HTTP non è una scrittura SQL**. Sette
+-- `pmo_dispatch_*` erano finite fra le «letture» mentre fanno `net.http_post` verso le edge
+-- — esattamente come `pmo_dispatch_data_routines`, che avevo appena chiuso credendo di aver
+-- chiuso la famiglia. ⇒ Una funzione va classificata per **cosa provoca**, non per quali
+-- parole contiene. Un classificatore per parole chiave è un punto di partenza, mai una misura.
+--
+-- 🎯 E il pezzo peggiore non scriveva né chiamava nessuno:
+--      pmo_verify_data_routine_secret(p_secret text)
+--        return exists (select 1 from vault.decrypted_secrets
+--                       where name='pmo_data_routine_secret' and decrypted_secret = p_secret);
+--    Da `anon` è un ORACOLO a tentativi illimitati sul segreto che autorizza tutte le
+--    routine. Non fa danno da solo: è la chiave che apre le altre porte. Non sarebbe comparso
+--    in nessun elenco di «funzioni che scrivono», per costruzione.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- IL CONTO FINALE, per forma della funzione e non per nome
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+--   🔴 CHIUSE, 13 in tutto (11 in questa rassegna + 2 nella voce 27):
+--      submit_self_assessment_public, submit_self_assessment       (voce 27)
+--      pmo_dispatch_data_routines      — faceva partire la catena dei cron, `p_now` a scelta
+--      pmo_cleanup_dispatch_logs       — DELETE senza guardia: con `0` cancellava 1457 righe
+--      pmo_audit_admin                 — falsificava il registro di controllo (provato)
+--      pmo_dispatch_payments_sync · _today · wallet_sync · google_contacts_import ·
+--      maestri_allineamento · assessment_notify · ai_lexicon_proposals   — 7 × net.http_post
+--      pmo_verify_data_routine_secret  — l'oracolo
+--
+--   ✅ GUARDATE E A POSTO (provate come `anon`, non dedotte): tutta la famiglia `*_admin`
+--      risponde `AUTH_REQUIRED` — pmo_upsert_records_admin, pmo_upsert_staff_user_admin,
+--      pmo_set_staff_user_status_admin, upsert_assessment_tokens_admin,
+--      pmo_log_routine_run_admin, pmo_set_group_match_routine_admin,
+--      upsert_post_match_feedback_tokens_admin. Più `INVALID_ORIGIN`
+--      (submit_assessment_external_request_public) e i cancelli a gettone.
+--
+--   ⚪ APERTA PER DISEGNO: `pmo_can_register_staff(text)`. È un oracolo di enumerazione — dice
+--      a un anonimo se un'email è staff registrato, provato: {"ok":true,"registered":true} —
+--      ma l'app la chiama dalla schermata di REGISTRAZIONE, dove chi la usa non è ancora
+--      autenticato (`index.html:9063`), e l'edge `staff-create-access` ci si appoggia.
+--      Si segnala, non si chiude.
+--
+--   ⛔ NON esaminate: 3 letture per gettone (get_assessment_token,
+--      get_post_match_feedback_by_tokens, get_self_assessments_by_tokens) e la robustezza
+--      del PIN nelle varianti `p_admin_pin`. Dirlo è meglio che lasciar credere il contrario.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- ⚖️ PERCHÉ SI POTEVA REVOCARE — misurato per ognuna
+-- ══════════════════════════════════════════════════════════════════════════════════
+--   · gli 8 dispatcher e `pmo_cleanup_dispatch_logs` sono guidati da `pg_cron`
+--     (jobid 5, 6, 7, 8, 9, 10, 11, 13, 15), che gira come **proprietario**;
+--   · `pmo_verify_data_routine_secret` la chiamano 5 edge, tutte col client `admin`
+--     (`SUPABASE_SERVICE_ROLE_KEY`);
+--   · `pmo_audit_admin` è un aiutante interno di `manual-sql`, mai chiamato da app o edge;
+--   · nessun chiamante applicativo con la chiave pubblicabile per nessuna delle 11.
+--
+-- 🔀 E SU TEST DUE ERANO GIÀ CHIUSE (`pmo_dispatch_data_routines`,
+--    `pmo_cleanup_dispatch_logs`), su PROD no: è **la voce 31 al contrario** — la protezione
+--    esisteva, stava su TEST, e non è mai arrivata in produzione. Sul resto della famiglia
+--    TEST era un rattoppo a campione: alcune chiuse, altre no, senza un criterio.
+--
+-- 🚨 LA TRAPPOLA DI `service_role`, incontrata TRE VOLTE nella stessa sessione:
+--    su `qqbf…` i grant a `service_role` sono ESPLICITI in ACL e `revoke ... from public` non
+--    li tocca; su `cudi…` spesso NON lo sono — service_role esegue grazie a PUBLIC — quindi
+--    la stessa revoca gliel'ha tolto. ⇒ Su TEST, dopo OGNI revoca da PUBLIC, rimisurare
+--    `service_role` e confrontarlo con la fotografia presa PRIMA, non con PROD:
+--    `pmo_dispatch_assessment_apply_level` aveva già `false` da prima, e "ripristinarlo"
+--    sarebbe stato un cambiamento travestito da ripristino.
+--
+-- ✅ VERIFICATO ALLA FINE — linter di sicurezza di PROD, quattro fotografie diffate:
+--      ① inizio sessione   123 avvisi   ERROR 0  WARN 109  INFO 14
+--      ② dopo le policy    125          ERROR 0  WARN 109  INFO 16   (+2 rls_enabled_no_policy)
+--      ③ dopo il 1° revoke 121          ERROR 0  WARN 105  INFO 16   (−4)
+--      ④ fine rassegna      99          ERROR 0  WARN  83  INFO 16   (−22)
+--    Spariti in tutto 26 avvisi, esattamente le 13 funzioni × i 2 ruoli, e **nessuno nuovo**
+--    in nessuno dei quattro passaggi.
+--    ⭐ Erano TUTTI già lì da sempre, sotto lo stesso titolo ripetuto 47 volte. Un avviso
+--    ripetuto 47 volte non è un avviso: è rumore, e il rumore lo si smette di leggere.
+
+-- Nessuna istruzione qui: vedi le migrazioni citate in testa.

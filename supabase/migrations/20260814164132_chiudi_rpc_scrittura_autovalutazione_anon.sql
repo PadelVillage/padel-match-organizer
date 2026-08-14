@@ -1,0 +1,78 @@
+-- 🚨🚨 LA SECONDA PORTA DELLA VOCE 27 — e quella che contava davvero.
+-- Applicata il 14/08/2026 (15ª sessione) su **PROD** e su **TEST**, con la sua conferma.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- IL FATTO: togliere le policy RLS NON aveva chiuso il buco.
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+-- Venti minuti prima, la gemella `20260814161453` aveva tolto le 4 policy di scrittura
+-- anonima e la verifica era andata bene: `anon` → 42501, `service_role` → scrive. Sembrava
+-- finita. Non lo era: `public.submit_self_assessment_public(jsonb)` è **SECURITY DEFINER**,
+-- cioè gira come proprietario e **scavalca l'RLS per costruzione**. Le policy non la
+-- riguardavano nemmeno.
+--
+-- 🎯 E prende `staff_status` **dal payload**:
+--       coalesce(nullif(trim(p_response->>'staff_status'), ''), '')
+--    ⇒ se il chiamante lo omette resta **VUOTO**, che è esattamente lo stato in cui
+--    `assessment-apply-level` applica il livello da sé, entro 15 minuti.
+--    Idem per `declared_level`, `calculated_level` e `consistency_status`: arrivano tutti
+--    da fuori. L'unico controllo è che il gettone esista, sia `created`/`sent` e non scaduto
+--    — e il gettone il socio CE L'HA, è il suo link.
+--
+-- ✅ PROVATO COME `anon`, non dedotto — in transazione annullata, su PROD:
+--      select public.submit_self_assessment_public(
+--        '{"token":"…","calculated_level":"7","declared_level":"7",
+--          "consistency_status":"high","raw_response":{"source":"scheda-pubblica"}}'::jsonb);
+--    ⇒ riga scritta: livello **7** (Professionista), `staff_status` **vuoto**, nessun
+--    `knowledge` (⇒ in `decidi()` il controllo sul quiz **non viene proprio fatto**, perché
+--    è `if (knowledge && …)`), nessun `corretta_dal_server`. Poi rollback: niente è rimasto.
+--    Quella riga passa `decidi()` su tutta la linea.
+--
+-- ⚠️ VALE ANCHE SU TEST, dove il passo 4 era stato dichiarato COMPLETO il 14/08 dopo aver
+--    verificato `anon` → 42501 sull'INSERT diretto. Quella verifica era **giusta e
+--    insufficiente**: guardava l'RLS, e questa funzione l'RLS lo scavalca.
+--    ⇒ Per questo la revoca si fa **su tutti e due i progetti**, non solo su PROD.
+--
+-- ══════════════════════════════════════════════════════════════════════════════════
+-- ⚖️ PERCHÉ SI PUÒ REVOCARE SENZA ROMPERE NIENTE — misurato, non supposto
+-- ══════════════════════════════════════════════════════════════════════════════════
+--
+--   · `index.html` di `main` NON le chiama: l'unico RPC di quella famiglia che l'app usa è
+--     `get_self_assessments_by_tokens` (righe 29310 e 30062), che è **lettura**;
+--   · nessuna edge le nomina (`grep` su `supabase/functions/` e `consumer-app/`);
+--   · **zero chiamate** a `submit_self_assessment*` nei log delle ultime 24 ore di PROD.
+--   ⇒ Sono residui del disegno vecchio, quello in cui a scrivere la riga era il browser.
+--
+-- ⚪ `get_self_assessments_by_tokens` NON si tocca: l'app la usa davvero. ⚠️ Resta però
+--    `SECURITY DEFINER` eseguibile da `anon`, quindi scavalca anche lei la chiusura della
+--    lettura del 12/08 — ma vuole i gettoni **in ingresso**, e quelli non si rastrellano
+--    più. È un fatto da sapere, non un buco aperto.
+--
+-- 📌 `service_role` CONSERVA l'EXECUTE: si chiude la porta del browser, non quella del
+--    server. ⚠️ Su PROD il grant a `service_role` era **esplicito** in ACL e il revoke da
+--    PUBLIC non l'ha toccato; su TEST non c'era — `service_role` eseguiva grazie a PUBLIC —
+--    quindi là il revoke gliel'ha tolto e va **rimesso** (vedi la migrazione di parità
+--    applicata subito dopo su `cudi…`). Misurare le due sponde dopo il revoke, non prima.
+--
+-- ✅ VERIFICATO DOPO, su PROD:
+--      `anon` → **42501 permission denied for function submit_self_assessment_public**
+--      `has_function_privilege`: anon **false**, authenticated **false**, service_role **true**
+--    e il linter di sicurezza diffato voce per voce: **121 avvisi (0 ERROR, 105 WARN)**
+--    contro i 125 di prima. Spariti esattamente quattro, e nessuno nuovo:
+--      anon_security_definer_function_executable          × submit_self_assessment
+--      anon_security_definer_function_executable          × submit_self_assessment_public
+--      authenticated_security_definer_function_executable × submit_self_assessment
+--      authenticated_security_definer_function_executable × submit_self_assessment_public
+--    ⭐ Cioè: il linter le segnalava **da sempre**, sepolte fra 47 avvisi identici.
+--
+-- ↩️ PER RIMETTERE:
+--   grant execute on function public.submit_self_assessment_public(jsonb) to anon, authenticated;
+--   grant execute on function public.submit_self_assessment(text, jsonb)  to anon, authenticated;   -- solo PROD
+
+-- ── PROD (`qqbf…`): le due funzioni di scrittura ────────────────────────────────
+revoke execute on function public.submit_self_assessment_public(jsonb) from public, anon, authenticated;
+revoke execute on function public.submit_self_assessment(text, jsonb)  from public, anon, authenticated;
+
+-- ── TEST (`cudi…`): là `submit_self_assessment` non esiste, e il servizio va rimesso ──
+--   revoke execute on function public.submit_self_assessment_public(jsonb) from public, anon, authenticated;
+--   grant  execute on function public.submit_self_assessment_public(jsonb) to service_role;
