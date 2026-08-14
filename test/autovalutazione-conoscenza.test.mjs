@@ -31,6 +31,15 @@ import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const APP = join(QUI, '..', 'index.html');
+// 🆕 14/08/2026 — LA BANCA NON STA PIÙ NELL'APP, e questa prova la segue dove è andata.
+// Le domande, il pesca e il corregge vivono ora nell'edge `assessment-quiz`: erano dentro
+// `index.html`, cioè dentro il file che si scarica per fare il test, risposte comprese.
+// ⭐ Restano DUE fonti di verità, non una, e vanno lette da due posti diversi:
+//   · la CONOSCENZA (banca, pesca, corregge) → dall'edge, che è l'unico posto che ce l'ha;
+//   · la SCALA dei livelli e il RIEPILOGO per lo staff → dall'app, che li usa e li tiene.
+// Due contesti separati e non uno solo perché i due blocchi condividono di proposito gli
+// aiutini (`assessTxt`, `assessKey`) e la scala: uniti darebbero una ridichiarazione.
+const EDGE = join(QUI, '..', 'supabase', 'functions', 'assessment-quiz', 'index.ts');
 const APRI = '/* ===== ASSESS-KNOWLEDGE SHARED v1 =====';
 const CHIUDI = '/* ===== /ASSESS-KNOWLEDGE SHARED v1 =====';
 
@@ -41,11 +50,16 @@ function estraiBlocco(percorso) {
   if (inizio < 0 || fine < 0) throw new Error(`sentinelle ASSESS-KNOWLEDGE non trovate in ${percorso}`);
   return testo.slice(inizio, fine);
 }
+function esegui(percorso, esporta) {
+  const ctx = vm.createContext({});
+  vm.runInContext(estraiBlocco(percorso) + `\nthis.API = { ${esporta} };`, ctx);
+  return ctx.API;
+}
 
-const blocco = estraiBlocco(APP);
-const ctx = vm.createContext({});
-vm.runInContext(blocco + '\nthis.API = { PMO_LIVELLI, pmoLivelloDefinizione, pmoLivelloEtichettaSocio, pmoLivelloEtichettaStaff, pmoLivelliOpzioni, ASSESS_KNOWLEDGE_BANK, assessKnowledgeFasciaFor, assessKnowledgePick, assessKnowledgeEvaluate, assessKnowledgeRiepilogo };', ctx);
-const A = ctx.API;
+const CONOSCENZA = esegui(EDGE, 'ASSESS_KNOWLEDGE_BANK, assessKnowledgeFasciaFor, assessKnowledgePick, assessKnowledgeEvaluate, assessKnowledgeShuffle, assessKnowledgeRegole, PMO_LIVELLI, pmoLivelloDefinizione');
+const SCALA = esegui(APP, 'PMO_LIVELLI, pmoLivelloDefinizione, pmoLivelloEtichettaSocio, pmoLivelloEtichettaStaff, pmoLivelliOpzioni, assessKnowledgeRiepilogo');
+// La conoscenza vince sulla scala dove i due blocchi si sovrappongono: è lei la fonte del quiz.
+const A = { ...SCALA, ...CONOSCENZA };
 
 let falliti = 0;
 function prova(nome, fn) {
