@@ -50,7 +50,8 @@ contesto**, non eseguire il compito scritto.
 | 🔓 **famiglia feedback tolta anche su TEST** | la divergenza che la 16ª si era auto-denunciata e aveva lasciato scritta come «la prima cosa da chiedere alla prossima ripresa». Chiesta, autorizzata, fatta |
 | 📚 **sanare `docs/` e correggere la voce 38** | non solo riallineare i rami: riscrivere la misura dei 404 con quella vera, invece di portare su `main` un fatto falso |
 | ✋ **voce 23: prima diagnosi sì, patch no** | la correzione tocca la strada che prenota **davvero** e dal cloud non è verificabile ⇒ si scrive cosa non va, non si tocca |
-| 🔁 **poi «fai la 23»** | ripresa la decisione: scritta e pubblicata **su TEST** (6.232). La diagnosi precedente è rimasta com'era, non riscritta per farla combaciare. **PROD resta da decidere**: è una conferma a sé |
+| 🔁 **poi «fai la 23»** | ripresa la decisione: scritta e pubblicata **su TEST** (6.232). La diagnosi precedente è rimasta com'era, non riscritta per farla combaciare |
+| ⬆️ **«promuovi a prod»** | la conferma separata che la regola richiede. PROD **6.221 → 6.222**, promozione **a righe** — e non era una formalità: `main` non ha `scheda-di-prova.ts`, quindi copiare il file avrebbe portato in produzione il ramo «prova a vuoto» |
 | 📦 **voce 37 chiusa DICHIARANDO, non eseguendo** | messo davanti alle tre strade — dichiarare, fare l'RPC, o la «riga di SQL» — ha scelto la prima. Le due «portanti» restano **per scelta misurata**, con la ragione scritta nella loro riga: chiuderle con la riga di SQL sarebbe stato un passo indietro travestito da chiusura |
 | 🔄 **ha ricaricato le due schede, e ha chiuso la 38** | la prova che mancava da due sessioni non era una misura più fine: era **una persona davanti allo schermo**. Due secondi di `Cmd-R` contro quattro sonde false — ed è la terza volta in tre giorni che la verifica che conta la fa lui |
 
@@ -207,7 +208,28 @@ che non parte non risponde nemmeno con un errore suo — e il file che il carica
 **simulata**, quindi quel ramo non viene proprio percorso; e il worker è **uno solo, condiviso
 TEST+PROD**, quindi non esiste un posto dove provarlo senza rischiare il Matchpoint del circolo. Il
 banco prova la **decisione** e il **cablaggio** — tutto ciò che è nostro — non la rete che cade.
-⇒ **La voce resta aperta**: manca la promozione a PROD, che è una conferma a sé, e la prova dal Mac.
+#### ⬆️ PROMOSSA A PROD il 14/08 — **6.221 → 6.222**, e solo le RIGHE del fix
+
+Conferma esplicita del committente, come vuole la regola. ⚠️ **Promozione a righe, non a file**, e
+qui serviva davvero: `main` **non ha** `scheda-di-prova.ts` — è il lavoro «prova a vuoto» del 7/08,
+mai promosso — quindi copiare l'`index.ts` di `test-preview` avrebbe portato in PROD un ramo che in
+PROD non deve esistere. Anche l'**ancoraggio** dell'import è diverso fra i due rami, ed è il segno
+che i file *non* sono intercambiabili.
+
+✅ **Verificato che la promozione sia FEDELE, non solo che compili**: il diff dell'app su `main`,
+tolta la riga di `APP_VERSION`, è **identico riga per riga** (65) a quello provato su TEST; e le
+righe aggiunte alla edge coincidono, mentre la divergenza «prova a vuoto» resta dov'era.
+✅ **Zero scaffolding**: cercate `PMO_IS_TEST_ENV`, `PMO_FORCE_ENV`, `schedaDiProva`, `esitoDiProva`
+e i marchi di prova fra le righe aggiunte — **0 occorrenze**.
+✅ `controlla-sintassi` 5 blocchi 0 errori · **14/14** i banchi Node · rete di regressione nel
+browser su `main` **55/55** (il numero suo, contro i 90 di TEST), orologio attendibile, `leakCount`
+**2**, la linea di base.
+
+⇒ **La voce resta aperta per UNA sola cosa**, ed è la stessa di prima: la **caduta vera del worker**
+non è mai stata provata, e non si può provare né dal cloud né su TEST — là la creazione è simulata,
+e il worker è **uno solo, condiviso**. Il codice è in produzione e degrada in sicurezza; quello che
+manca è un'osservazione dal Mac, coi log del worker sotto gli occhi. ⚖️ Chiuderla ora sarebbe
+onesto quanto lasciarla aperta: **decide il committente**, come per ogni voce.
 
 ---
 
@@ -735,5 +757,8 @@ divergono, e la correzione tocca la strada che prenota davvero, non verificabile
 <sub>Aggiornato il 14/08/2026 a fine **16ª sessione**, la quarta dello stesso giorno. La lista urgenti era **vuota**: le quattro promozioni le ha decise il committente, su proposta fatta a misura già presa. Chiusa **una sola** voce, la **39** — il censimento delle tabelle dei due progetti — perché è l'unica verificata sul bersaglio fino in fondo. La **38** è chiusa, e la sua storia vale più del suo contenuto: quattro prove false in due giorni prima di poterci credere, e la quarta era la smentita della terza. A chiuderla non è stata una sonda più fine ma **lui che ha ricaricato le due schede alle 19:57** — dopodiché i 404 sono spariti *mentre l'app continuava a chiamare*, che è il controllo positivo che mancava a tutte le prove precedenti. La **37** resta aperta con un residuo che è colpa mia: la famiglia del feedback è chiusa su PROD e **ancora aperta su TEST**, perché l'autorizzazione diceva «PROD» e l'ho eseguita alla lettera — giusto rispetto al mandato, sbagliato rispetto al sistema, ed è la voce 31 in diretta. La **23** è stata prima diagnosticata e poi, su sua richiesta, **scritta e pubblicata su TEST**
 (6.232): la scoperta che vale è che la macchina dei tre esiti nell'app **c'era già dalla v6.150**,
 come regola sua, e che la edge le murava la porta davanti chiamando «errore» ciò che non sapeva.
-Resta **aperta**: manca la promozione a PROD — conferma a sé — e la prova vera, che vuole i log del
-worker su Hetzner e non si fa dal cloud. Versioni, sha, PR aperte, linter dei due progetti e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; PROD verificato **dal server** con `pg_net`, non dall'etichetta. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che stavolta pesa il doppio, perché il disarmo cambia proprio ciò che lo staff vede. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>
+Poi, su sua conferma separata, **promossa a PROD (6.222) a righe e non a file** — distinzione che
+qui pesava, perché `main` non ha `scheda-di-prova.ts` e copiare avrebbe portato in produzione il
+ramo «prova a vuoto» del 7/08. Resta **aperta** per una cosa sola: la **caduta vera del worker** non
+è provabile né dal cloud né su TEST, dove la creazione è simulata e il worker è uno solo condiviso.
+⚖️ Se chiuderla o tenerla aperta lo decide lui: il lavoro è finito, la prova no. Versioni, sha, PR aperte, linter dei due progetti e tutti e otto i conteggi **rimisurati alla chiusura**, non ricordati; PROD verificato **dal server** con `pg_net`, non dall'etichetta. La sessione girava dal cloud: VM, worker, `.env`, secret, ponti e memoria dell'app non sono stati misurati — e con loro **il gestionale col login staff**, che stavolta pesa il doppio, perché il disarmo cambia proprio ciò che lo staff vede. I conteggi di questo file e le versioni dichiarate nei registri sono verificati dalla CI (`guard-docs-truth.yml`); la parità fra i rami da `guard-worker-sync.yml`. Le promozioni dalla coda alle urgenti le decide il committente.</sub>

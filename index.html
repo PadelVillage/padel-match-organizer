@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.221';
+    const APP_VERSION = '6.222';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43976,7 +43976,16 @@ Per confermare scrivi ELIMINA.`);
       // togliere la card ottimistica è giusto. Il marchio serve a non confondere questo caso con
       // una rete caduta, dove invece l'esito è IGNOTO e la card NON va tolta.
       const _err = new Error(data?.message || data?.error || `Errore HTTP ${response.status}`);
-      _err.pmoAnswered = true;
+      // ⭐⭐ VOCE 23 — non ogni risposta è un rifiuto. Se il server dice `esitoIgnoto` significa
+      // che LUI non ha ricevuto risposta dal worker: la prenotazione può esserci lo stesso, e
+      // marchiarla `pmoAnswered` la farebbe passare per «non creata, certo». È il terzo esito, e
+      // va lasciato passare come tale — la card ottimistica NON si toglie e chi chiama va a
+      // guardare su Matchpoint.
+      if (data?.error === 'WORKER_ESITO_IGNOTO' || data?.esitoIgnoto === true) {
+        _err.pmoEsitoIgnoto = true;
+      } else {
+        _err.pmoAnswered = true;
+      }
       throw _err;
     }
     if (data?.warning) console.warn('STAFF_CAL_BOOKING_WARNING', data.warning);
@@ -44039,6 +44048,12 @@ Per confermare scrivi ELIMINA.`);
         return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null };
       }
       if (data.status === 'error') return { status: 'error', error: data.error || data.message };
+      // ⭐⭐ VOCE 23 — il TERZO esito, scritto dalla edge quando il gestionale non le ha risposto.
+      // Senza questa riga finirebbe comunque sulla strada giusta (non essendo né 'done' né
+      // 'error' verrebbe letto come «in corso» fino alla scadenza), ma costerebbe minuti di
+      // attesa inutile e la ragione andrebbe persa: chi guarda leggerebbe «non ha ancora
+      // risposto» invece di «non ho ricevuto risposta, controlla su Matchpoint».
+      if (data.status === 'unknown') return { status: 'unknown', error: data.message || data.error };
       // 'pending' → continua
     }
     return { status: 'timeout' };
@@ -44224,7 +44239,13 @@ Per confermare scrivi ELIMINA.`);
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
         // ⭐ LAZY Matchpoint: crea al volo i soci "solo app" una volta, prima delle N date.
         await pmoEnsureBookingPlayersOnMatchpoint(parsed, msg => staffCalSetStatus(msg, 'pending'));
-        let ok = 0, fail = 0, localKo = 0;
+        // ⭐⭐ VOCE 23 — QUATTRO conteggi, non tre. `incerte` è il terzo esito: la richiesta è
+        // partita e il gestionale non ha risposto, quindi su Matchpoint la prenotazione PUÒ
+        // esserci. Contarla fra le «fallite» è l'errore che costa di più su questa strada, perché
+        // il ricorrente ne crea fino a quattro di fila e il messaggio invita a rifarle: quattro
+        // doppioni veri sul sistema del circolo. È lo stesso inganno che il commento qui sotto
+        // dichiara già chiuso per la copia in pagina — restava aperto per la rete.
+        let ok = 0, fail = 0, incerte = 0, localKo = 0;
         for (let i = 0; i < dates.length; i++) {
           const singleParsed = { ...parsed, data: dates[i] };
           staffCalSetStatus(`Prenotando ${i+1}/${dates.length}: ${dates[i]}...`, 'pending');
@@ -44244,8 +44265,13 @@ Per confermare scrivi ELIMINA.`);
             }
             ok++;
           } catch (e) {
-            fail++;
-            console.warn('STAFF_CAL_RICORRENZA_FAIL', dates[i], e.message);
+            if (e && e.pmoEsitoIgnoto) {
+              incerte++;
+              console.warn('STAFF_CAL_RICORRENZA_ESITO_IGNOTO', dates[i], e.message);
+            } else {
+              fail++;
+              console.warn('STAFF_CAL_RICORRENZA_FAIL', dates[i], e.message);
+            }
           }
           // Pausa tra prenotazioni (il worker richiede ~45s ciascuna)
           if (i < dates.length - 1) await new Promise(r => setTimeout(r, 2000));
@@ -44255,14 +44281,21 @@ Per confermare scrivi ELIMINA.`);
         // Le create che non si vedono nel calendario si dicono a parte: sono su Matchpoint, NON
         // vanno rifatte. Senza questa coda il messaggio resterebbe un "✓ N create" che l'operatore
         // non ritrova a schermo — l'inganno all'opposto di quello appena tolto.
+        // Le incerte si dicono per PRIME e con l'istruzione dentro: non «vedi console», ma cosa
+        // fare. La regola del committente vale anche qui — non si indovina, si va a guardare.
+        const _incerteNota = incerte
+          ? ` · ⌛ ${incerte} ${incerte === 1 ? 'non so com\'è andata' : 'non so come sono andate'} (il gestionale non ha risposto): ${incerte === 1 ? 'controllala' : 'controllale'} su Matchpoint PRIMA di ${incerte === 1 ? 'rifarla' : 'rifarle'} — se ${incerte === 1 ? 'c\'è' : 'ci sono'}, ${incerte === 1 ? 'comparirà' : 'compariranno'} da ${incerte === 1 ? 'sé' : 'sé'} entro un paio di minuti.`
+          : '';
         const _localNota = localKo
           ? ` · ⚠️ ${localKo} ${localKo === 1 ? 'non è mostrata' : 'non sono mostrate'} nel calendario (${_staffCalLocalSaveWhy()}): ${localKo === 1 ? 'c\'è' : 'ci sono'} lo stesso, NON ${localKo === 1 ? 'rifarla' : 'rifarle'} — ricarica la pagina.`
           : '';
         staffCalSetStatus(
-          fail === 0
+          (fail === 0 && incerte === 0)
             ? `✓ ${ok} prenotazioni ricorrenti create (${parsed.ricorrenza.giorno})${_localNota}`
-            : `⚠ ${ok} create, ${fail} fallite — vedi console${_localNota}`,
-          fail === 0 ? (localKo ? 'pending' : 'done') : 'error'
+            : (fail === 0
+                ? `⚠ ${ok} create${_incerteNota}${_localNota}`
+                : `⚠ ${ok} create, ${fail} fallite — vedi console${_incerteNota}${_localNota}`),
+          fail === 0 ? ((localKo || incerte) ? 'pending' : 'done') : 'error'
         );
       } catch (err) {
         staffCalSetStatus('Errore: ' + (err.message || err), 'error');
@@ -44356,17 +44389,19 @@ Per confermare scrivi ELIMINA.`);
           _okStatus(result);
         } else if (result.status === 'error') {
           _failStatus(result.error || 'errore sconosciuto');
+        } else if (result.status === 'unknown') {
+          await _uncertainStatus(result.error || 'il gestionale non ha risposto');
         } else {
           // Il lavoro ha un NUMERO: scaduta la prima attesa si continua a CHIEDERE, non si conclude.
           staffCalSetStatus(`⌛ Matchpoint è lento: aspetto ancora la conferma…`, 'pending');
           const late = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {}, { maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
           if (late.status === 'done') _okStatus(late);
           else if (late.status === 'error') _failStatus(late.error || 'errore sconosciuto');
-          else await _uncertainStatus('il gestionale non ha ancora risposto');
+          else await _uncertainStatus(late.status === 'unknown' ? (late.error || 'il gestionale non ha risposto') : 'il gestionale non ha ancora risposto');
         }
       } catch (err) {
         // Tre esiti, non due: se il server ha RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto.
-        const _answered = !!(err && err.pmoAnswered);
+        const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
         if (!_answered && _reqSent && !_offline) await _uncertainStatus((err && err.message) ? err.message : String(err));
         else _failStatus((err && err.message) ? err.message : String(err));
@@ -45794,6 +45829,8 @@ Per confermare scrivi ELIMINA.`);
         } else if (result.status === 'error') {
           _failMsg(result.error || 'rifiutata da Matchpoint');
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(result.error || 'errore') }); } catch (e) {}
+        } else if (result.status === 'unknown') {
+          await _uncertainMsg(result.error || 'il gestionale non ha risposto');
         } else {
           // ⭐⭐ Scaduti i 3 minuti NON si tira a indovinare: il lavoro ha un numero, e l'esito è
           // una DOMANDA. Si continua a chiedere, più piano e più a lungo, e si decide sul FATTO.
@@ -45804,12 +45841,12 @@ Per confermare scrivi ELIMINA.`);
             _failMsg(late.error || 'rifiutata da Matchpoint');
             try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: String(late.error || 'errore') }); } catch (e) {}
           }
-          else await _uncertainMsg('il gestionale non ha ancora risposto');
+          else await _uncertainMsg(late.status === 'unknown' ? (late.error || 'il gestionale non ha risposto') : 'il gestionale non ha ancora risposto');
         }
       } catch (err) {
         // Tre esiti, non due (vedi il gemello nella MODIFICA). Qui il discriminante è migliore di
         // `navigator.onLine`: se il server ha RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto.
-        const _answered = !!(err && err.pmoAnswered);
+        const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
         if (!_answered && _reqSent && !_offline) {
           await _uncertainMsg((err && err.message) ? err.message : String(err));
@@ -50317,6 +50354,8 @@ Per confermare scrivi ELIMINA.`);
           } else if (result.status === 'error') {
             _failMsg(result.error || 'rifiutata da Matchpoint');
             _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String(result.error || 'errore') });
+          } else if (result.status === 'unknown') {
+            await _uncertainMsg(result.error || 'il gestionale non ha risposto');
           } else {
             // ⭐⭐ Scaduti i 3 minuti NON si tira a indovinare: il lavoro ha un numero, e l'esito è
             // una DOMANDA. Si continua a chiedere, più piano e più a lungo, e si decide sul FATTO.
@@ -50327,12 +50366,12 @@ Per confermare scrivi ELIMINA.`);
               _failMsg(late.error || 'rifiutata da Matchpoint');
               _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: String(late.error || 'errore') });
             }
-            else await _uncertainMsg('il gestionale non ha ancora risposto');
+            else await _uncertainMsg(late.status === 'unknown' ? (late.error || 'il gestionale non ha risposto') : 'il gestionale non ha ancora risposto');
           }
         } catch (err) {
           // Tre esiti, non due. Discriminante migliore di `navigator.onLine`: se il server ha
           // RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto e non c'è niente da verificare.
-          const _answered = !!(err && err.pmoAnswered);
+          const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
           const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
           if (!_answered && _reqSent && !_offline) {
             await _uncertainMsg((err && err.message) ? err.message : String(err));
