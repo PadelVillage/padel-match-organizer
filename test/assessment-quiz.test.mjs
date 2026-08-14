@@ -154,6 +154,17 @@ ok('🚨 nessun campo numerico della scheda esce come stringa vuota', (() => {
     .every(v => N(v) === null || typeof N(v) === 'number');
 })());
 
+/* 🎯 La fascia deve uscire dalle DUE forme in cui il modulo manda il livello — 14/08.
+   `4` e `4.0 - Avanzato` devono dare la stessa fascia: con la seconda, `Number(...)` fa NaN e
+   il socio finiva in segreteria in silenzio, avendo risposto a tutto. */
+ok('🚨 la fascia esce sia da «4» sia da «4.0 - Avanzato»', (() => {
+  const f1 = assessKnowledgeFasciaFor(L.assessmentPublicParseLevel('4'));
+  const f2 = assessKnowledgeFasciaFor(L.assessmentPublicParseLevel('4.0 - Avanzato'));
+  return f1 === 'Avanzato' && f2 === 'Avanzato';
+})());
+ok('…e «2.0 - Base» dà Base, non vuoto',
+   assessKnowledgeFasciaFor(L.assessmentPublicParseLevel('2.0 - Base')) === 'Base');
+
 // 5. 🚨 il blocco deve stare in piedi come MODULO, non solo come script
 ok('🚨 il blocco condiviso è un modulo valido (come lo carica Deno)', (() => {
   try { provaComeModulo(blocco, 'blocco'); return true; }
