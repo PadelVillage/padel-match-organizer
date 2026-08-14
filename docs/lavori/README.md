@@ -249,9 +249,26 @@ vero, ancora una volta.
 🎯 **La prova che conta si fa DOPO il deploy, ed è un numero:** i 404 su `wa-shadow-proxy` (623/g su
 `qqbf…` e 619/g su `cudi…`) e i fallimenti di `wa_usage_stats` (295/g su `ayly…`) devono andare **a
 zero**. Finché non li si vede a zero, questa voce **resta aperta**.
-📌 **TEST si vedrà prima**: `test-preview` è **subito live** (nessun workflow, il caricatore prende
-l'ultimo commit), mentre PROD aspetta il merge della PR. ⇒ Se domani i 404 di `cudi…` vanno a zero e
-quelli di `qqbf…` no, non è un guasto: è la #698 non ancora mergiata.
+🚨🚨 **E ATTENZIONE A UNA TRAPPOLA, perché ci sono cascato quasi subito.** Guardando i log **dopo**
+il deploy, i 404 risultano **già finiti**: l'ultimo su TEST è delle **18:26**, l'ultimo su PROD delle
+**18:29**. Sembrava la conferma. **Non lo è**, e bastano gli orari a dirlo:
+
+| | ultimo 404 | quando è atterrato il disarmo |
+|---|---|---|
+| TEST `cudi…` | **18:26** | **18:39** (commit `c13b7b9`) |
+| PROD `qqbf…` | **18:29** | **~18:41** (merge #698 + Pages) |
+
+⇒ Su **entrambi** il traffico si è fermato **prima** della cura, di 13 e 12 minuti. Quel silenzio non
+lo ha prodotto il disarmo: lo ha prodotto **la scheda del gestionale che è stata chiusa** verso le
+18:26–18:29. Chi legge domani un grafico a zero e conclude «funziona» sta leggendo il **passo di una
+tenda che si chiude**, non l'effetto di una riparazione.
+
+✅ **La prova vera è un'altra, e richiede una persona**: alla **prossima apertura** del gestionale —
+con la scheda «Messaggi WhatsApp» aperta apposta — i 404 devono restare **zero** e il riquadro non
+deve comparire. Prima di allora la voce **resta aperta**, e non per pignoleria: il numero che
+serviva l'ho avuto sotto gli occhi ed era **il numero sbagliato**.
+📌 È la lezione del 14/08 applicata a me stesso: *quando la prova ti dà ragione troppo comodamente,
+la prima cosa da controllare è la prova*.
 
 ### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
 *Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
