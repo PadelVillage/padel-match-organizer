@@ -3,6 +3,9 @@
 **Scritto il 14/08/2026 notte. ✅ ESEGUITO il 15/08/2026, in produzione, due volte — e riscritto con
 quello che l'esecuzione ha insegnato.** La prima versione di questo documento diceva di fermare il
 **worker**: è sbagliato, e sotto c'è il perché.
+⤴️ **Ampliato il 15/08 dalla 19ª sessione**, con due aggiunte: il controllo nel database ora arriva
+fino alla **chiusura del lavoro** (dalla 6.226 la verifica risolta si scrive anche di là), e c'è una
+**parte B** per il caso che questo collaudo dichiarava di non poter provare.
 
 Procedura da eseguire **dal Mac**, con l'accesso alla VM. Tutto ciò che segue è **misurato**, non
 ricordato: dove c'è una previsione invece di una misura, è dichiarato.
@@ -161,6 +164,28 @@ order by created_at desc limit 10;
 `ripresa-avviata` · `verifica-chiusa-si` · `verifica-chiusa-no` · `ripresa-senza-sessione`.
 🚨 **Niente del tutto** significa deposito vuoto — la ripresa esce prima di tracciare.
 
+**⭐ La CHIUSURA del lavoro — controllo nuovo, dalla 6.226.** Fino alla 6.225 il lavoro restava
+`unknown` per sempre anche dopo che l'app aveva risolto: la chiusura viveva nel `localStorage`. Ora
+si vede da qui, ed è la parte del collaudo **misurabile senza essere davanti allo schermo**:
+```sql
+select local_key, payload->>'status' as stato, payload->>'verdetto' as verdetto,
+       payload->>'chiusa_da' as chiusa_da, payload->>'chiusa_il' as chiusa_il,
+       payload->>'tentativi_verifica' as tentativi,
+       left(payload->>'errore_iniziale', 80) as errore_di_allora
+from pmo_cloud_records
+where record_type = 'booking_job' and payload->>'chiusa_da' = 'verifica-app'
+order by updated_at desc limit 5;
+```
+Atteso dopo il passo ⑥: lo stesso `local_key` di prima, ma **`error`** (o `done`, nella parte B) con
+`chiusa_da = verifica-app` e il verdetto scritto. L'errore di rete di allora è ancora lì, sotto il
+nome `errore_iniziale`.
+🚨 **Se il lavoro è ancora `unknown`** mentre l'app dice di aver chiuso, la catena si è rotta fra le
+due: guarda `pmo_ai_turns` per `lavoro-chiuso-nel-database` (riuscito) o `lavoro-non-chiuso` (con il
+motivo dentro).
+📌 **I tre `unknown` del 14–15/08 restano `unknown` per sempre**, ed è giusto così: sono nati prima
+che la chiusura esistesse, e il loro deposito nel browser è già stato svuotato. Sono il verbale di
+com'era.
+
 **Il controllo negativo, ed è la metà che decide:**
 ```sql
 select count(*) from pmo_cloud_records
@@ -171,23 +196,121 @@ Deve essere **0**.
 
 ---
 
-## Cosa questo collaudo NON prova
+---
 
-Il caso davvero pericoloso: **il worker riceve, crea la prenotazione su Matchpoint, e poi la
-risposta si perde.** Lì la partita esiste e il gestionale non lo sa.
+# PARTE B — il caso che la parte A non prova: **il worker crea, e la risposta si perde**
 
-La procedura non ci arriva **di proposito**: arrivarci significa creare una prenotazione vera. Quel
-caso resta coperto **dal disegno** — l'app dice «non so, e sto verificando», non disegna niente, e
-quando la strada torna va a guardare e trova — **non dalla prova**.
+*Scritta il 15/08/2026, 19ª sessione. ⛔ **Mai eseguita**: quello che segue sono previsioni
+dichiarate, non misure. Dove c'è un numero misurato è detto da dove viene.*
+
+È il caso davvero pericoloso — la partita esiste su Matchpoint e il gestionale non lo sa — ed è
+anche l'unico in cui la catena arriva fino in fondo: esito ignoto → si guarda → **si trova** →
+verdetto `si` → il lavoro si chiude **`done`**. La parte A prova il ramo del `no`; questo prova
+l'altro, e nessuno l'ha mai percorso.
+
+## Perché adesso è provabile, e prima no
+
+Non serve che il worker sia irraggiungibile: serve che **la risposta non torni**. Il worker mette il
+lavoro in coda e lo esegue; parla con Matchpoint **in uscita**, non attraverso Caddy. ⇒ Togliendo
+Caddy **mentre il worker sta già lavorando**, la prenotazione si completa e la edge non riceve
+niente.
+
+📊 **La finestra è misurata**, non indovinata — 191 lavori veri su PROD, da giugno:
+
+| | `done` (171 lavori) |
+|---|---|
+| minimo | **4,0 s** |
+| mediana | **8,1 s** |
+| p90 | 31,7 s |
+| massimo | 148,4 s |
+
+⇒ **Fermare Caddy a ~2 secondi** dalla conferma è dentro il minimo misurato con margine doppio: il
+worker ha certamente la richiesta e certamente non ha ancora risposto.
+📌 Utile saperlo: i tre `unknown` della parte A stanno a **0,2–0,3 s** — «connessione rifiutata» è
+istantanea. Il tempo, da solo, distingue i due casi.
+
+## 🚨 LE DUE TRAPPOLE, da leggere prima di toccare
+
+**① Lo slot NON dev'essere una manutenzione.** `staffCalAskMatchpoint` non si accontenta di «lo slot
+è occupato»: cerca **i nostri nomi**, o la prenotazione di un collega passerebbe per conferma della
+nostra. Su una manutenzione — o una lezione senza allievi — non c'è nessun nome da confrontare e il
+verdetto è **`boh`**, non `si`. ⇒ Si collauderebbe la strada del «non lo so» credendo di aver
+provato quella del «sì»: una prova che *sembra* riuscita e non ha toccato il ramo che interessa.
+**Serve una PARTITA, con dentro un nome vero.**
+
+**② Questa volta la prenotazione è VERA, per costruzione.** Non è un incidente come le tre della
+notte del 14/08: è il punto della prova. ⇒ Slot lontano, campo e ora che non usa nessuno, e la
+**cancellazione fa parte della procedura**, non è un ripensamento.
+
+## La procedura
+
+**Pre-volo:** i passi 0 e ① della parte A, identici. Il cancello del passo ③ **qui non si usa**:
+serve il contrario — Caddy dev'essere **su** quando si prenota.
+
+1. **Aprire due finestre.** Una col terminale pronto al comando di stop (già scritto, **non ancora
+   dato**), una col calendario dell'app.
+   ```bash
+   ssh -i ~/.ssh/padel_deploy root@91.99.131.243 'systemctl stop caddy'
+   ```
+2. **Prenotare** dal clic sullo slot, una **partita** con un nome vero.
+3. **Contare due secondi e dare lo stop.** Non di più: sotto i 4 secondi misurati si è certi che il
+   worker non ha ancora risposto.
+4. **Aspettare ~20 secondi**, poi riaccendere Caddy e verificare col `curl` del passo ①.
+   ```bash
+   ssh -i ~/.ssh/padel_deploy root@91.99.131.243 'systemctl start caddy'
+   ```
+5. **Non ricaricare la pagina.** L'app sta già insistendo (3 minuti, un colpo ogni 15 s): trovando
+   la strada tornata deve guardare **da sola** e vedere la prenotazione.
+
+## Cosa deve succedere — previsioni, dichiarate prima
+
+| passo | previsione | perché |
+|---|---|---|
+| il lavoro | **`unknown`**, con un errore di rete **non** «connection refused» | la connessione è caduta *dopo* essere stata accettata |
+| il worker | `mp_op_timing` con `ok: true` nel log pm2 | ha finito per conto suo: nessuno gli ha detto di smettere |
+| Matchpoint | **la prenotazione C'È** | è l'intero punto di questo caso |
+| l'app, tornata la strada | verdetto **`si`** | trova lo slot occupato **e ci riconosce il nome** |
+| il messaggio | «confermata su Matchpoint (verificata guardando)» | non «non prenotata»: sarebbe la bugia costosa |
+| il calendario | la prenotazione **compare** | `_okStatus` la disegna solo ora, a fatto verificato |
+| il lavoro, di nuovo | **`done`**, `chiusa_da = verifica-app`, `verdetto = si` | è la 6.226, ed è la riga che nessuno ha mai visto |
+
+⚠️ **Se invece Matchpoint è vuoto**, il worker ha smesso quando è caduto il client: non è un guasto,
+è un'altra risposta alla domanda — e allora questo caso **non è riproducibile così**, il che va
+scritto qui invece che riprovato a caso.
+⚠️ **Se il lavoro è `done` subito**, si è tagliato troppo tardi: il worker aveva già risposto.
+Prenotazione da annullare, prova da rifare tagliando prima.
+
+## Pulizia della parte B — non è opzionale
+
+Annullare la prenotazione **dall'app** e verificare:
+```sql
+select local_key, deleted, updated_at from pmo_cloud_records
+where record_type = 'staff_booking' and payload->>'data' = '<data>' order by updated_at desc limit 3;
+```
+Deve dire **`deleted = true`**. E poi guardare **su Matchpoint**, non solo qui: è il gestionale del
+circolo a doverla non avere più.
 
 ---
 
-## Pulizia
+## Pulizia (parte A)
 
-Le righe `booking_job` con `unknown` restano in `pmo_cloud_records`: sono il verbale del collaudo.
-⚠️ **Restano `unknown` anche dopo che l'app ha risolto la verifica**, perché la chiusura vive nel
-`localStorage` del browser. Chi legge il database vede un lavoro in sospeso che invece è chiuso — è
-un residuo noto, non un guasto.
+Le righe `booking_job` restano in `pmo_cloud_records`: sono il verbale del collaudo.
+✅ **Dalla 6.226 non restano più `unknown`**: quando l'app risolve la verifica, il lavoro si chiude
+anche nel database (`chiusa_da = verifica-app`). Chi legge il database non vede più una domanda
+aperta che era già stata chiusa — era un residuo noto, ed è stato tolto.
 
 Se il collaudo crea per sbaglio una prenotazione vera: **annullarla dall'app** e verificare
 `deleted = true` sulla riga corrispondente.
+
+---
+
+## 📌 Due fatti misurati che questo documento non aveva
+
+- **Nessun lavoro è mai rimasto appeso a `pending`**: 191 lavori da giugno, **0** senza esito
+  finale. Il «lavoro fantasma» che il commento di `writeBookingJob` teme è un rischio reale del
+  disegno, ma in due mesi non si è mai realizzato. È un dato che vale quanto una prova: dice che il
+  problema da guardare era il terzo esito, non il lavoro perso.
+- ⚠️ **Il lavoro non sa quanto è durato**, e non è un dettaglio se un domani si vorrà misurarlo:
+  ogni scrittura **sostituisce** il payload intero, quindi `created_at` — che c'è solo nella prima
+  riga, quella `pending` — sparisce alla seconda. La durata si ricava solo dalle colonne della
+  tabella (`updated_at - created_at`), ed è così che sono stati misurati i numeri della parte B.
