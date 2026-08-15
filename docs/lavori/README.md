@@ -116,7 +116,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **25** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 20ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.230** · TEST **6.239** · i **4
+dei due rami, non ricordate: app PROD **6.231** · TEST **6.239** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
