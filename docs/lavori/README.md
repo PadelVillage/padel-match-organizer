@@ -459,11 +459,21 @@ la spiegazione alternativa: l'insert è `on conflict do nothing`, quindi una rig
 dato lo stesso zero: le uniche due sono `clients_0430` del **2 e 3 agosto**, mentre quel giro avrebbe
 creato una chiave nuova. ⇒ La funzione non è stata chiamata affatto.
 
-⏭️ **Cosa resta**: il primo slot di calendario è alle **05:30 del 16/08**; poi i tre controlli del
-documento (5 righe attese, zero risvegli di clienti/storico, e la data dell'ultimo aggiornamento che
-si muove dal **7 agosto**), più le letture nei log del worker **dalla VM**. ⛔ **Non chiusa da me**, e
-con lei resta aperta la **26**: la chiusura la decide il committente, e la prova che manca è di
-domani.
+✅ **E la catena è stata provata FINO IN FONDO la sera stessa, su sua idea** (*«perché non metti un
+aggiornamento adesso a mezzanotte così proviamo?»*): forzando l'orario — **senza toccare la sveglia**
+— la routine ha letto **53 righe dal Matchpoint vero** e il calendario di TEST è passato **dal 7
+agosto a quella sera**, 258 righe toccate, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha
+evitato un errore che sarebbe passato per successo**: senza, la mattina dopo si sarebbero viste 5
+righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di
+guardare i dati**.
+🧯 Due letture sbagliate mie, di fila, e sono nel documento: ho dichiarato «non ce l'ha fatta»
+leggendo un campo di un'altra strada, e «il calendario non si è mosso» **misurando un minuto prima
+che la scrittura atterrasse**. Non la sonda cieca: **una misura presa prima che il fatto accadesse**.
+
+⏭️ **Cosa resta**: solo il primo giro **automatico** delle 05:30 del 16/08 — l'unica parte che la
+prova di stanotte non copre, perché lì l'orario è stato forzato a mano. Più le letture nei log del
+worker **dalla VM**. ⛔ **Non chiusa da me**, e con lei resta aperta la **26**: la chiusura la decide
+il committente.
 
 ### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
 Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
