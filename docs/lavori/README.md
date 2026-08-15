@@ -76,7 +76,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **22** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.226** · TEST **6.237** · i **4 percorsi** di
+dei due rami, non ricordate: app PROD **6.227** · TEST **6.237** · i **4 percorsi** di
 `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
@@ -189,8 +189,24 @@ hanno già la causa trovata e aspettano una decisione, non un'indagine. 🚨 Ma 
 📌 Le altre quattro — **31**, **29**, **28**, **26** — sono decisioni o potature, e quelle sì si
 preparano da qui.
 
-### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
-*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
+### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST — **censimento fatto il 15/08**
+*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. Verificata sul bersaglio: il commit `9305323` conferma la scheda parola per parola (`main` 4 funzioni e armamento mai arrivato, `test-preview` 7 più la spunta).
+
+🎯 **Cercati «altri della stessa forma», come chiedeva la scheda. Ce ne sono, e il più pesante è la rete stessa.**
+
+| reperto | misura |
+|---|---|
+| 🚨 **il banco di regressione** `test/handle-test.html` | `main` **55 casi**, `test-preview` **90** — e l'id più alto è 90 su tutti e due ⇒ non «meno casi in fondo», **35 buchi in mezzo** (50–83 di fila, più l'87). Quattro famiglie intere solo su TEST: `Cloud/Storico`, `Organizzatore`, `Pagamenti`, `Scheda`. Di quei 35 **solo 2 sono di TEST per natura** (50, 51: la simulazione incassi); gli altri **33 sorvegliano codice che gira in PRODUZIONE** — verificato marcatore per marcatore su `main` (`pmoChiudiLavoroIgnoto` ×9, `_jobIgnoto` ×15, `applyHistoricalBookingsToLocal`, `_pmoRuoloOrganizzatore`, `svc-pl-org-slot`, `staffCalRtApplyMatchpointMember`) |
+| ✅ **la mezza promozione — CURATA, PROD 6.227** | il banco di `main` azzerava lo stato fra i casi chiamando `PMOAi.resetFlow()` e `__PMOStaffCalTest.resetCard()`, col commento «allineato al banco di test-preview». **In `main/index.html` i due agganci non esistevano** (0 occorrenze) e le `&&` li spegnevano in silenzio. Non «la sicura non è arrivata»: è arrivata **la maniglia senza la serratura**, ed è peggio perché il file dichiarava il contrario |
+| 🔓 `livello-dimostrato.ts` | il livello **in prestito** non deve aprire la porta dell'organizzare. Scritto su TEST il 9/08 in `consumer-player-readmodel` — **il ponte del bot** — e mai promosso. ⚖️ Oggi non cambierebbe il comportamento di nessuno: **nessuno scrive `levelSource: ereditato`** (misurato: gli unici scrittori sono `autovalutazione` e `Import livelli Excel`). È una porta chiusa su TEST e aperta su PROD, **prima** che qualcuno possa passarci |
+| ⬅️ `manifest.json` · `VERSIONI.md` | qui è **TEST a essere indietro**, fermo al 14/06. L'app di prova si installa sul telefono come «**Padel Village**», PROD come «ADMIN». Fuori da `guard-worker-sync`, che copre `docs/` e non la radice |
+| 🗄️ `supabase/functions/_archive/**` | esiste **solo su `test-preview`**, mentre `CLAUDE.md` — identico sui due rami — lo descrive come se ci fosse anche su `main` |
+
+⚖️ **I controlli negativi, che contano quanto i reperti:**
+- **il recinto `scrittura-al-circolo.ts`** sembrava un buco (70 righe su `main`, 150 su TEST): non lo è. `scritturaAlCircoloConsentita` è **identica**, le 80 righe in più sono il ramo «registra invece di rifiutare», inerte in PROD per costruzione, e le 8 copie sono byte-identiche **dentro** ciascun ramo. Contate le funzioni che chiamano il worker su `main`: **8 scrivono, 8 hanno il recinto**; le 9 senza sono tutte letture.
+- **la migrazione `…page_stable_order.sql`**, presente solo su `test-preview` e datata 1/07, sembrava un fix di paginazione mai arrivato in PROD. **Interrogati i due database**: `pmo_get_records_admin_page` ordina `by r.record_type, r.local_key` su **tutti e due**. Manca il file su `main`, non il fix sul server — e nessun workflow applica le migrazioni, quindi la cartella non dice **niente** sullo stato del database.
+
+🚨 **Resta aperta, e la decisione è sua**: portare su `main` i **33 casi** che sorvegliano codice di PROD (lavoro grosso), promuovere **`livello-dimostrato.ts`** al ponte del bot (oggi costa nulla e chiude la porta in anticipo), o chiudere dichiarando e farne voci a sé.
 
 ### 🧟 29. Le azioni email restano dentro `assessment-email-send`
 *Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
@@ -582,6 +598,20 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > partiva dal 2/08 e mostrava `VERSIONI.md` come «creato quel giorno con 387 righe» — era il bordo
 > del troncamento. `git fetch --unshallow` (1950 commit dal 25/04) ha rimesso i conti a posto.
 >
+> **Una sonda può cambiare ciò che misura, e allora il rosso è suo.** *(15/08)* Il banco
+> `handle-test.html` dava **24/55** con 31 eccezioni `localStorage null` — ripetibile, quindi
+> credibile. Non era il codice: era il mio runner, che **interrogava la pagina mentre il giro
+> era in corso** (`waitForFunction`, poi `evaluate` ogni 3 secondi). Lo stesso codice, con un
+> runner che aspetta **alla cieca** e legge **una volta sola alla fine**, fa **55/55**. ⇒ Prima
+> di attribuire un rosso al lavoro di qualcuno, chiedersi **cosa fa lo strumento al bersaglio**:
+> qui il baseline era rotto quanto il fix, e un A/B fra due misure sbagliate sarebbe sembrato
+> pulito — 24 contro 24, «nessuna regressione». Vera la conclusione, per la ragione sbagliata.
+>
+> **E la prova che il fix FA qualcosa va cercata a parte.** Il banco passa 55/55 prima e dopo:
+> da solo non distingue «l'ho riparato» da «non ho toccato niente». Il controllo positivo è
+> stato aprire l'app nel browser e guardare i due agganci: `undefined` prima, `function` dopo.
+> Senza quello, la voce 31 si sarebbe chiusa su una rete verde che non aveva visto nulla.
+
 > **Le prove dell'utente valgono più delle mie verifiche.** I due errori del 13/08 — «Verifica
 > Gmail» disarmata e la parola sbagliata — non li ha trovati nessun test: li ha trovati lui
 > aprendo l'app. Sintassi e rete di regressione erano verdi in entrambi i casi.
