@@ -7942,7 +7942,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.239';
+    const APP_VERSION = '6.240';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -40118,6 +40118,52 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── Partite APERTE sulla card del calendario (voce 15) ─────────────────────
+  // Una partita aperta è un `lunchMatchInvitations` con dei posti ancora da riempire.
+  // Sul calendario staff era INDISTINGUIBILE da una partita normale: la card si
+  // costruisce da `staffCalGetSlots()` (le prenotazioni), che non sa nulla degli inviti,
+  // quindi si vedeva una partita col solo intestatario e nessun modo di capire che
+  // mancavano giocatori.
+  //
+  // 🚨 IL CAMPO SI CONFRONTA COL NUMERO NUDO, non con 'C'+n. Misurato sui 23 record veri
+  // di PROD (`record_type = 'match_invitation'`, 15/08/2026): i valori sono "Campo 1",
+  // "Campo 2", "Campo 3" — più un "" e un "2". `isSameField('Campo 1', 'C1')` è FALSO
+  // (nessuna delle due stringhe contiene l'altra) ⇒ passando 'C1' la card non sarebbe
+  // MAI comparsa, e senza errore. Col numero nudo combaciano tutte e tre le forme.
+  // Il seme di prova in questo file usa `field: 'C2'`, che regge lo stesso: 'c2' contiene '2'.
+  //
+  // 🚨 E il `field` VUOTO va scartato a mano: `isSameField('', 2)` è VERO — ''.includes()
+  // di qualunque cosa è vero — quindi un record senza campo si attaccherebbe a TUTTI E
+  // QUATTRO i campi. Ce n'è uno vero fra i 23.
+  function staffCalOpenMatchInfo(isoDate, campo, ora, durata) {
+    if (!isoDate || !ora) return null;
+    const slotStart = toMinutes(ora);
+    const slotEnd = slotStart + (durata || 90);
+    let best = null;
+    for (const record of Object.values(lunchMatchInvitations || {})) {
+      if (!record || record.date !== isoDate) continue;
+      // `closed` = roster chiuso, `cancelled` = partita annullata: né l'una né l'altra è aperta.
+      if (record.status === 'closed' || record.status === 'cancelled') continue;
+      if (!cleanCell(record.field)) continue;              // vedi nota sul campo vuoto
+      if (!isSameField(record.field, campo)) continue;
+      // Le ore si controllano da STRINGHE, non dai minuti: `toMinutes('')` vale 0, non NaN,
+      // quindi un record senza ora passerebbe per mezzanotte invece di essere scartato.
+      // Stesso idioma di `isFillSlotBlockedByLunchInvitation`.
+      const startStr = parseTimeValue(record.time || '');
+      if (!startStr) continue;
+      const endStr = parseTimeValue(record.endTime || '') || addMinutesToTime(startStr, 90);
+      if (!endStr) continue;
+      const recStart = toMinutes(startStr), recEnd = toMinutes(endStr);
+      if (!(recStart < slotEnd && recEnd > slotStart)) continue;
+      // Più record possono sovrapporsi allo stesso slot (storicamente ne restano di
+      // ricreati): vince quello che parte esattamente all'ora della card.
+      if (!best || (recStart === slotStart && toMinutes(parseTimeValue(best.time || '') || '') !== slotStart)) best = record;
+    }
+    if (!best) return null;
+    const summary = getLunchInvitationSummary(best);
+    return { record: best, confirmed: summary.confirmed, missing: Math.max(0, 4 - summary.confirmed) };
+  }
+
   // ── Slot annullati di recente (anti-"rinascita" della card) ────────────────
   // Dopo un annullamento riuscito, la cache di occupazione Matchpoint
   // (prenotazioniOccupazione) può restare "vecchia" finché non risincronizza, e la
@@ -41791,10 +41837,26 @@ Per confermare scrivi ELIMINA.`);
         const w = Math.max(28, ((e - s) / 30) * COLW - 3);
         const isMP = b.tipo !== 'staff-booking';
         const sty = ts(isMP ? (b.tipo || 'partita') : (b.tipoReale || 'partita'));
-        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo);
+        // Voce 15 — una PARTITA APERTA è comunque una partita prenotata: stesso colore di
+        // fondo, ma bordo TRATTEGGIATO ed etichetta esplicita col contatore. Il tratteggio
+        // è l'unico segno che regge anche sulla card più stretta (28px), dove il testo è
+        // già tagliato da `overflow:hidden`.
+        // Solo le PARTITE: una lezione o una manutenzione non hanno posti da riempire.
+        // Il tipo si chiede a `_staffCalTipoLabel`, la stessa funzione che disegna
+        // l'etichetta, così i due non possono divergere.
+        const _lblBase = _staffCalTipoLabel(b.tipoReale || b.tipo);
+        const _open = _lblBase === 'Partita' ? staffCalOpenMatchInfo(isoDate, c, b.ora, b.durata) : null;
+        const lbl = _open ? 'Partita aperta' : _lblBase;
         const blk = document.createElement('div');
-        blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:1px solid ' + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
+        blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:' + (_open ? '2px dashed ' : '1px solid ') + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
+        if (_open) blk.title = 'Partita aperta · ' + _open.confirmed + '/4 confermati' + (_open.missing ? ' · mancano ' + _open.missing : '');
         const t1 = document.createElement('div'); t1.style.cssText = 'font-size:' + (isDesktop ? '13.5px' : '17px') + ';font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
+        if (_open) {
+          const tc = document.createElement('div');
+          tc.style.cssText = 'font-size:' + (isDesktop ? '11px' : '13px') + ';font-weight:800;';
+          tc.textContent = (_open.missing ? '🟠 ' : '🟢 ') + _open.confirmed + '/4';
+          blk.appendChild(tc);
+        }
         const t2 = document.createElement('div'); t2.style.cssText = 'font-size:' + (isDesktop ? '8px' : '10px') + ';opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
         const _isLez = String(b.tipoReale || b.tipo || '').toLowerCase().includes('lez');
         if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:10px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
@@ -46865,7 +46927,23 @@ Per confermare scrivi ELIMINA.`);
         // v6.146 — accorcia l'orologio delle due attese del lavoro asincrono. Serve a provare il
         // ramo «continua a CHIEDERE» (esito ignoto) sullo stesso codice, senza 3 minuti di attesa.
         setPollTimings: function (t) { try { Object.assign(_STAFF_CAL_POLL, t || {}); } catch (e) {} },
-        getPollTimings: function () { return Object.assign({}, _STAFF_CAL_POLL); }
+        getPollTimings: function () { return Object.assign({}, _STAFF_CAL_POLL); },
+        // v6.240 (voce 15) — agganci per provare la card «Partita aperta». Vanno insieme ai
+        // casi che li chiamano: un aggancio senza casi non serve, dei casi senza aggancio si
+        // spengono in silenzio con `&&` ed è esattamente la mezza promozione della voce 31.
+        setInvitations: function (obj) { lunchMatchInvitations = obj || {}; try { save('lunchMatchInvitations', lunchMatchInvitations); } catch (e) {} },
+        getInvitations: function () { return lunchMatchInvitations || {}; },
+        openMatchInfo: function (iso, campo, ora, durata) { return staffCalOpenMatchInfo(iso, campo, ora, durata); },
+        renderCal: function (iso) {
+          const el = document.getElementById('staffCalDate');
+          if (el && iso) el.value = iso;
+          renderStaffCalendar();
+          // Il testo delle card: solo i nodi che hanno testo PROPRIO, così non si raccoglie
+          // due volte il contenuto dei contenitori annidati.
+          return Array.from(document.querySelectorAll('#staffCalGridTable div, #staffCalAgendaBody div'))
+            .map(function (d) { return (d.firstChild && d.firstChild.nodeType === 3) ? d.textContent : ''; })
+            .filter(Boolean).join(' | ');
+        }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }

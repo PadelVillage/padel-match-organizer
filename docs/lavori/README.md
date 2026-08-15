@@ -163,7 +163,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **26** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 22ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.231** · TEST **6.239** · i **4
+dei due rami, non ricordate: app PROD **6.231** · TEST **6.240** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
@@ -461,7 +461,7 @@ Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore
 
 | # | cosa |
 |---|---|
-| **15** | 🎾 **Card «Partita aperta · 0/4»** sul calendario staff — oggi appare come partita normale col solo intestatario, irriconoscibile. Piccola, prima su TEST |
+| **15** | 🎾 ✅ **FATTA su TEST (6.240), resta qui finché non la guardi.** Promossa da lui il 15/08. La card ora dice «Partita aperta», bordo tratteggiato, contatore **🟠 n/4** / **🟢 4/4**. 🚨 Il campo si confronta col **numero nudo**: sui 23 record veri di PROD i valori sono `"Campo 1"`…, e `isSameField('Campo 1','C1')` è **falso** ⇒ con `'C'+n` non sarebbe comparsa mai, in silenzio. Rete **90 → 93** (flow `Calendario/Aperta`), sabotaggi provati. ⛔ **Non chiusa da me**: la chiusura la decide il committente, e questa si vede solo col login staff — che dal cloud non si raggiunge |
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
 | **18** | 📣 **Pannello avvisi nel gestionale** (lo staff vede cosa il bot ha mandato ai soci). 🚨 Stesso nodo del pannello autorizzazioni ⇒ **si disegnano insieme** |
