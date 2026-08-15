@@ -1,1 +1,8 @@
 node_modules/
+
+# Il .gitignore di radice ignora package.json e package-lock.json ovunque: quella
+# regola nasce per gli helper npm locali che non fanno parte del deploy. Qui il
+# manifest serve davvero — pinna playwright 1.59.1, la stessa versione del worker —
+# quindi lo si riammette qui, dove si vede il perché.
+!package.json
+!package-lock.json
