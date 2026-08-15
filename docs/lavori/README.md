@@ -76,7 +76,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **23** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.227** · TEST **6.237** · i **4 percorsi** di
+dei due rami, non ricordate: app PROD **6.228** · TEST **6.237** · i **4 percorsi** di
 `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
@@ -210,36 +210,51 @@ preparano da qui.
 
 🚨 **Resta aperta, e la decisione è sua**: portare su `main` i **33 casi** che sorvegliano codice di PROD (lavoro grosso), promuovere **`livello-dimostrato.ts`** al ponte del bot (oggi costa nulla e chiude la porta in anticipo), o chiudere dichiarando e farne voci a sé.
 
-### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file — **contate il 15/08: sono 64**
-*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste. Il perché è scritto nel commento HTML nel punto dove stavano (riga ~6825).
+### 🧟 28. I pannelli email rimossi — **la sezione intera è CONGELATA, e un bottone sbalzava fuori**
+*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le ~60 funzioni che li disegnavano sono rimaste.
 
-🚨 **La scheda diceva «no-op, irraggiungibili»: la prima parola è giusta, la seconda NO.** Tutte e cinque le radici sono **chiamate a ogni giro** da `renderAssessmentEmailPanels()`, che è viva e gira a ogni cambio di pannello. Non sono irraggiungibili: sono **raggiunte e tornano subito**, perché `document.getElementById(...)` dà `null` e ognuna comincia con `if (!box) return;`. ⇒ Chi le cancella **deve cancellare anche i richiami**, o l'app va in `ReferenceError` al primo cambio di pannello — che è la voce 31 al contrario: là mancava la serratura sotto la maniglia, qui si toglierebbe la serratura lasciando la maniglia.
+🚨⭐⭐ **IL FATTO CHE RIMETTE TUTTO IN SCALA, e a dirlo è stato il committente, non una mia sonda:**
+*«la sezione autovalutazione l'abbiamo rimossa… abbiamo lasciato solamente dentro anagrafica e dentro
+una scheda di un socio una microsezione»*. Misurato: **`PMO_ASSESSMENT_PARKED = true` dal 13/06/2026**
+⇒ `pmoSectionVisibleFor('assessment')` è **false per tutti**, owner incluso. Verificato nell'app che
+gira, non per grep.
 
-**La misura (chiusura transitiva sul grafo dei richiami, `index.html` di `main`):**
+⇒ **Non erano cinque pannelli tolti da una sezione viva: è la sezione a essere spenta da due mesi**, e
+i cinque pannelli sono stati tolti *dentro* una stanza già chiusa. ⚖️ Le 64 funzioni e le 1195 righe
+contate ieri restano quelle, ma cambiano di natura: non sono «codice che non si vede», sono codice in
+un ramo che l'interfaccia non raggiunge affatto.
+
+📉 **E i «12 punti vivi» scendono a UNO.** Misurata la raggiungibilità invece della sola esistenza:
 
 | | |
 |---|---|
-| le 5 radici | `renderAssessmentEmailMorningPanel` (180 righe) · `…RoutinePanel` (90) · `…QueuePanel` (39) · `…PendingPanel` (42) · `…PostPanel` (31) |
-| **restano senza richiami** | **64 funzioni, 1195 righe**, fra riga 31320 e riga 35356. Fra queste `renderCardSolleciti`, `renderCardGestioneManuale`, `renderCardDaValidare`, tutta la famiglia `assessmentManualBatch*` e i quattro `assessmentEmailSendManualBatch*` |
-| **richiami da togliere insieme** | **6**: i cinque dentro `renderAssessmentEmailPanels()` (righe 34871–34875) e uno dentro `updateAssessmentTokenStatusFrontend()` (riga 30043), che è viva. Gli altri richiami stanno già dentro funzioni del gruppo morto |
-| di contorno | **53 id** della famiglia `assessment*` sono cercati con `getElementById` e non esistono più in nessun punto del file — coerente col quadro |
-| ⚠️ **il limite della misura** | il grafo segue i **nomi**. Un richiamo costruito a stringa (`window['assessment'+x]`) non lo vedrebbe: prima di tagliare va provato per bene, ed è esattamente il motivo per cui il 13/08 furono lasciate lì |
+| i 4 rami del mappatore delle ancore | **irraggiungibili**: la sidebar dell'Autovalutazione ha **4 sole voci** (Testi, Scheda pubblica, Strumenti tecnici, Import livelli Excel) e nessuna produce le chiavi morte — e comunque il tab è nascosto |
+| `assessmentGoToPre` · `assessmentGoToPost` | **zero chiamanti**: un solo riferimento ciascuna, la propria dichiarazione |
+| `assessmentPrepareResend` · `assessmentArchiveRestartMember` | raggiungibili solo da un bottone che disegna il **pannello Archivio**, che non esiste più (`assessmentArchiveList`: 0 nel DOM) |
+| `assessmentEmailSendFirstReady` | **zero chiamanti** ⇒ nessuna strada residua manda davvero un'email |
+| ✅ **`restartAssessmentForMember`** | **l'unico raggiungibile**, e non era innocuo: sta sul bottone **«Nuova autovalutazione»** della **scheda socio** — cioè proprio la microsezione che è rimasta |
 
-🧭 **I residui vivi che puntano al vuoto: NON sono due.** Li avevo stimati «due righe» il 15/08 e la stima era sbagliata — rimisurati prima di toccarli, sono **8 punti VIVI** più **4 rami di un mappatore vivo**:
+**✅ Curato il 15/08 (PROD 6.228).** Il bottone faceva `switchTab('assessment')` per andare a mostrare la richiesta nel pannello «Da
+inviare». Con la sezione congelata, `switchTab` la nega e **dirotta su `pmoFirstAllowedSection()`**,
+che è la **Dashboard**: ⇒ *lo staff cliccava dentro la scheda di un socio e si ritrovava sulla
+Dashboard*, senza un errore che lo spiegasse. E il messaggio verde diceva *«poi procedi con il flusso
+email»* — un canale dismesso il 13/08, che l'app rifiuta **prima ancora di chiamare la rete**.
+⚖️ Il lavoro del bottone — rigenerare il token, azzerare lo stato — **era sempre riuscito**: rotta era
+solo la parte che portava altrove. Ora non porta da nessuna parte e lo dice.
+🔬 Prova: nell'app che gira, `assessment` nascosta e dirottamento su `dashboard` **confermati**;
+rimbalzi nel codice della funzione **1 → 0**; banco **55/55 prima e dopo**.
 
-| dove | cosa chiede |
-|---|---|
-| 10074 `runSidebarSectionAction` · 36395 | `'post'` |
-| 33845 `assessmentEmailGoToMemberPanel` · 36379 · 36441 · 36722 `restartAssessmentForMember` | `'queue'` |
-| 35126 | `'pending'` |
-| 35508 | `'post'` se restano risposte, altrimenti `'history'` |
-| `assessmentEmailPanelFromAnchorKey` (viva) | 4 rami: «da inviare» → `queue`, «attesa/contattati» → `pending`, «post» → `post`, «stato» → `routine` |
+🚨 **Restano due cose, e sono decisioni sue:**
+1. **La scheda socio blocca il bottone se manca l'EMAIL** (`assessmentEmailHasValidEmail`), ma il link
+   oggi lo consegna **il bot Telegram**, che l'email non la usa. ⇒ È un requisito ereditato dal canale
+   dismesso: probabilmente va tolto, ma è una regola d'accesso e **non la cambio da solo**.
+2. **Applicare un livello a mano annuncia un'email che non partirà.** `applyAssessmentLevel` mostra
+   *«Invio conferma email in corso…»* e subito dopo un avviso giallo *«Conferma email non inviata:
+   canale dismesso»*. Il livello **viene applicato** — non è un guasto — ma ogni applicazione manuale
+   accende un allarme per una cosa decisa apposta. Due righe, appena mi dici cosa deve dire.
 
-I pannelli vivi oggi sono **cinque**: `history`, `matchpoint`, `public`, `texts`, `excel-import` (quest'ultimo solo in TEST). ⛔ **Non rompono niente** — `setAssessmentEmailPanel` accende via `querySelectorAll` e semplicemente non trova nulla — ma lo staff clicca e **la pagina resta com'era**, senza un errore che glielo dica.
-
-🚨 **Non è una potatura meccanica e per questo non è stata fatta**: per ognuno dei 12 punti va deciso **dove deve atterrare** chi clicca. `history` è il ripiego naturale (è il pannello predefinito dal 13/08), ma non vale ovunque — la riga 30757 manda già a `matchpoint`, quindi una mappatura c'è ed è una scelta di prodotto. **La decide il committente, non chi esegue.**
-
-🆕 **E una cosa più grande, vista di sfuggita e NON verificata**: fuori dalla famiglia `assessment` ci sono altri **111 id** cercati con `getElementById` e mai definiti nel file (`dashboardKpiGrid`, `memberSearch`, `statClienti`, `assistantGroup*`…). Se il campione regge, la 28 non è un caso isolato ma **la punta di un fenomeno d'app**. ⚠️ Ne ho verificati **due** a mano: non è una misura, è un indizio — e va guardato prima di essere creduto, non dopo.
+⚠️ **E la potatura da 64 funzioni resta ferma**, ora con una ragione in più per non correre: dentro una
+sezione spenta non fa danno a nessuno, quindi è manutenzione, non riparazione.
 
 ### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
 *Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).

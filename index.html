@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.227';
+    const APP_VERSION = '6.228';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -36718,19 +36718,21 @@ Per confermare scrivi ELIMINA.`);
       save('assessmentTokens', assessmentTokens);
       save('assessmentDailySendLog', assessmentDailySendLog);
 
-      switchTab('assessment');
-      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
-      window.assessmentEmailQueueSearch = playerFullName(member);
-      window.assessmentEmailQueueSearchDraft = '';
-      window.assessmentPreQuickFilter = '';
-      renderAssessmentEmailPanels();
-      setTimeout(() => {
-        const anchor = document.getElementById('assessmentEmailQueuePanel') || document.getElementById('assessmentEmailRoutinePanel');
-        if (anchor) {
-          scrollMainContentToElement(anchor);
-        }
-      }, 50);
-      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Completa il link personale, poi procedi con il flusso email.`, 'success');
+      // 🚨⭐⭐ QUI IL BOTTONE SBALZAVA LO STAFF FUORI DALLA SCHEDA SOCIO, e non lo diceva.
+      // Da qui partiva `switchTab('assessment')` per andare a mostrare la richiesta appena
+      // preparata nel pannello «Da inviare». Ma la sezione Autovalutazione è CONGELATA dal
+      // 13/06/2026 (`PMO_ASSESSMENT_PARKED = true`): `pmoSectionVisibleFor` la nega a tutti,
+      // owner incluso, e `switchTab` allora **dirotta** su `pmoFirstAllowedSection()`, che è
+      // la **Dashboard**. ⇒ Lo staff cliccava «Nuova autovalutazione» dentro la scheda di un
+      // socio e si ritrovava sulla Dashboard, senza un errore che glielo spiegasse.
+      // ⚖️ Il lavoro che il bottone deve fare — rigenerare il token e azzerare lo stato — era
+      // già FATTO qui sopra ed è sempre riuscito: rotta era solo la parte che portava altrove.
+      // ⇒ Non si va da nessuna parte: si resta nella scheda socio e lo si dice.
+      // 🚨 E il messaggio DICEVA IL FALSO: «poi procedi con il flusso email» mandava a un
+      // canale dismesso il 13/08, che l'app rifiuta prima ancora di chiamare la rete
+      // (`ASSESSMENT_EMAIL_CHANNEL_RETIRED`). Una riga che indica una strada murata è peggio
+      // di nessuna riga: manda a cercare un guasto che non c'è.
+      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Il socio riceve il link personale dal bot Telegram: da qui non parte nessuna email.`, 'success');
     }
     // Le domande «che livello pensi di avere» e «con quali giocatori giochi alla pari» non hanno
     // più le opzioni scritte nell'HTML: le prende dalla tabella dei livelli, così i due moduli
