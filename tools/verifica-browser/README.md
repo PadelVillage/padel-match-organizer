@@ -33,14 +33,24 @@ d'ambiente, mai nel repo e mai in chat:
 | `PMO_VERIFY_EMAIL` / `PMO_VERIFY_PASSWORD` | PROD |
 | `PMO_VERIFY_EMAIL_TEST` / `PMO_VERIFY_PASSWORD_TEST` | TEST |
 
-**3. Preparare il container.** Il container di una sessione è effimero e nasce senza due
-cose che servono al browser. Incolla `prepara-ambiente.sh` nel campo **Script di
-configurazione** dell'ambiente cloud (gira a ogni avvio, prima di Claude): installa
-`certutil` e importa la CA del proxy nel magazzino NSS di Chromium.
+**3. Preparare il container — se ne occupa la console.** Il container di una sessione è
+effimero e nasce senza due cose che servono al browser: `certutil` e la CA del proxy nel
+magazzino NSS di Chromium. Le mette `prepara-ambiente.sh`, che **`console.mjs` lancia da sé
+a ogni avvio**, prima del browser. Non c'è niente da fare a mano, e l'esito finisce nel
+report sotto `caProxy`.
 
 Chromium su Linux **non** guarda i certificati di sistema, guarda il proprio magazzino, che
 nasce vuoto. Senza quel passaggio ogni pagina muore con `ERR_CERT_AUTHORITY_INVALID` — e
 `curl` intanto funziona, il che rende il sintomo confondente.
+
+📌 **Il campo «Script di configurazione» dell'ambiente cloud resta il posto migliore** dove
+incollare quello script: lì gira **una volta per sessione**, prima di Claude, invece che a
+ogni lancio della console. Ma non è più *obbligatorio*, ed è un cambio nato da un guasto:
+📏 al collaudo del 15/08 quel campo era **vuoto**, il container crudo, e la console non
+raggiungeva nessun sito. Un attrezzo che dipende da una casella di configurazione che
+nessuno vede si rompe nella sessione **nuova** — cioè esattamente quando lo si tira fuori
+per la prima diagnosi, ed è il momento in cui si è meno disposti a sospettare l'attrezzo
+invece del sito. Con `PMO_SALTA_PREPARAZIONE=1` si disattiva l'avvio automatico.
 
 ## Tre trappole del container, già gestite nel codice
 
@@ -95,12 +105,22 @@ Lo snippet è un **corpo di funzione async**: usa `return` e può usare `await`.
    contattato. Se non combaciano, lo snippet **non viene eseguito**.
 
    Il dichiarato si legge da **due posti, in quest'ordine**: `PADEL_CONFIG.SUPABASE_URL` e,
-   se manca, `pmoExpectedSupabaseProjectRef()`. Non è ridondanza per bellezza — misurato il
-   15/08: dopo il login **su PROD `PADEL_CONFIG` resta `undefined`** (su TEST no, ed è
-   popolato su entrambi *prima* del login). Guardando solo lì, su PROD questa metà della
-   guardia leggeva `null`, saltava il confronto **in silenzio** e non controllava niente,
-   proprio nell'ambiente dove sbagliare costa. Il report dice sempre da quale delle due fonti
-   ha letto, in `configFonte`.
+   se manca, `pmoExpectedSupabaseProjectRef()`. Il report dice sempre da quale delle due ha
+   letto, in `configFonte`.
+
+   Il ripiego nasce da un difetto vero: dopo il login **su PROD `PADEL_CONFIG` restava
+   `undefined`** (su TEST no), quindi guardando solo lì questa metà della guardia leggeva
+   `null`, saltava il confronto **in silenzio** e non controllava niente, proprio
+   nell'ambiente dove sbagliare costa. 📏 **Dal 15/08 quel difetto non c'è più**: PROD è a
+   6.231 — la promozione #734, «la configurazione Supabase si ricorda anche in produzione» —
+   e il collaudo legge `PADEL_CONFIG.SUPABASE_URL` su **entrambi** gli ambienti.
+
+   ⚠️ **Il ripiego resta lo stesso, e non per inerzia.** Quel campo lo popola una funzione
+   dell'app: la sua presenza è una proprietà della **versione che sta in pagina**, non un
+   fatto stabile dell'ambiente. Questa console gira anche su versioni vecchie e, con `--url`,
+   su copie locali. Una guardia che si fida di un campo comparso ieri torna cieca il giorno
+   in cui qualcuno lo tocca — e torna cieca **in silenzio**, che è esattamente il difetto da
+   cui è nata.
 
    ⚠️ Se **nessuna** delle due risponde, l'esecuzione **prosegue** — la prova comportamentale
    qui sotto è quella forte, e fermarsi renderebbe l'attrezzo inservibile su una pagina che
