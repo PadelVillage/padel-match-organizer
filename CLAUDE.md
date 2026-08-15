@@ -180,6 +180,32 @@ e sbagliati passano verdi. L'altra metà è **`guard-docs-truth.yml`** (13/08), 
 nell'istante in cui lo si salva, e una guardia sempre rossa si ignora. Le versioni dichiarate nella
 **fotografia** `docs/lavori/README.md` danno solo un avviso, non un errore: è datata per natura.
 
+🚨 **E la regola che ne discende — promossa dal committente il 15/08/2026, dopo che è costata due
+correzioni di fila: nei documenti si scrivono i FATTI STABILI, non le misure che il documento stesso
+muove.** Gli sha sono solo il caso ovvio. Vale per **qualunque conteggio di eventi che la spinta del
+documento fa accadere**: esiti delle corse CI, «quante volte oggi la finestra del 4bis è caduta
+rossa», il numero di PR aperte in un istante.
+
+🔎 **La prova da farsi PRIMA di scrivere un numero**: *il commit che porta questa frase è uno degli
+eventi che la frase conta?* Se sì la frase è **falsa prima di atterrare** — non invecchia, **nasce**
+sbagliata, ed è più insidiosa di un errore qualunque perché ha la forma di una misura.
+
+📏 **Misurato il 15/08, e sbagliato due volte di fila.** La fotografia diceva «la finestra del 4bis è
+caduta rossa **una volta su due**»: il giro che ha portato quella riga sul ramo l'ha resa falsa
+*mentre atterrava*. La correzione ha tolto quel numero e **ne ha scritto un altro** — «tre giri,
+rossa verde rossa» — smentito dal giro dopo entro un minuto, dentro un paragrafo che due righe sotto
+dichiarava «il conteggio NON si scrive qui, di proposito». ⚖️ **Curare l'istanza invece della classe
+non è una cura**: e la seconda volta lo stesso difetto era anche in un **secondo punto** dello stesso
+file, che non avevo cercato perché stavo correggendo quello che avevo appena scritto.
+⇒ La cura è **cancellare il conteggio**, non aggiornarlo. Ciò che va tenuto è il fatto che non
+dipende da quando lo si legge («è una corsa, non una regola»), più — se serve — il racconto
+dell'episodio **chiuso**, che nessun giro futuro può smentire.
+
+⛔ **Non si mette una guardia a controllarlo, ed è una scelta deliberata.** Dovrebbe capire che una
+frase descrive corse CI di cui il commit che la trasporta fa parte: non è meccanizzabile, e una
+guardia che ogni tanto ha torto è una guardia che si smette di leggere — la stessa ragione per cui
+`guard-worker-sync` è stata resa paziente. Qui la protezione è la regola, e si applica **scrivendo**.
+
 📌 Le due guardie sono **complementari e legate**: `guard-docs-truth` controlla una sola copia perché
 `guard-worker-sync` garantisce che i rami siano identici. Si tolgono insieme o mai.
 
