@@ -100,8 +100,21 @@ function seedStorage() {
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
 let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT, CLOUD_READ_FAIL, JOB_NEXT, LOOK_NEXT;
+// ── Il cloud finto RICORDA ciò che gli è stato scritto (15/08/2026).
+// Prima no, ed era un buco del banco, non un dettaglio: le push finivano in
+// CAPTURED.cloud — che serve solo ai controlli — mentre la LETTURA rispondeva
+// sempre e comunque con CLOUD_FAKEROWS, una fotografia fissa. Conseguenza: nessun
+// caso poteva provare un ORDINE fra una scrittura e una rilettura, perché la
+// seconda non vedeva mai la prima. Un banco che non sa modellare quell'ordine non
+// può dire né che è rotto né che è sano — e infatti il caso 12 falliva mostrando
+// una lapide che, con la lettura ferma, non poteva nemmeno essere nata.
+// ⚖️ I seed restano intoccati e tornano come prima: qui si AGGIUNGE soltanto ciò
+// che è stato scritto, in upsert su record_type|local_key (l'ultima scrittura
+// vince) e solo per i tipi che il chiamante ha chiesto. Un caso che non scrive non
+// vede nessuna differenza.
 // Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
+let CLOUD_SCRITTI = new Map();
 let CLOUD_LESSICO = [];
 // Chiamate uscite dal routing del mock: devono restare ZERO. Sono le falle che rendevano il banco
 // di prova dipendente dalla rete vera (vedi il fallthrough in installFetchMock).
@@ -123,6 +136,7 @@ function captureReset() {
   JOB_NEXT = { status: 'done', worker_result: { idReserva: 'R-JOB-1' } };
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
+  CLOUD_SCRITTI = new Map();       // record scritti dall'app in questo caso (chiave record_type|local_key)
   PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
   VOID_NEXT = { ok: true };        // risposta edge matchpoint-payment-void programmabile
   CORRECT_NEXT = { ok: true };     // risposta edge matchpoint-wallet-correct programmabile
@@ -204,11 +218,26 @@ function installFetchMock(win) {
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
       CAPTURED.cloud.push({ records: list });
+      list.forEach(function (r) {
+        if (r && r.record_type && r.local_key != null) CLOUD_SCRITTI.set(r.record_type + '|' + r.local_key, r);
+      });
       return jsonResponse(win, { ok: true, count: list.length }, 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_records_admin/.test(u)) {
       if (CLOUD_READ_FAIL) return jsonResponse(win, { message: 'PERMISSION_DENIED' }, 403);
-      return jsonResponse(win, CLOUD_FAKEROWS || [], 200);
+      const seed = CLOUD_FAKEROWS || [];
+      const tipiChiesti = (body && Array.isArray(body.p_record_types)) ? body.p_record_types : null;
+      const scritti = [];
+      CLOUD_SCRITTI.forEach(function (r) {
+        if (tipiChiesti && tipiChiesti.length && tipiChiesti.indexOf(r.record_type) === -1) return;
+        scritti.push(r);
+      });
+      const chiaviScritte = {};
+      scritti.forEach(function (r) { chiaviScritte[r.record_type + '|' + r.local_key] = true; });
+      const seedTenuti = seed.filter(function (r) {
+        return !(r && r.record_type && r.local_key != null && chiaviScritte[r.record_type + '|' + r.local_key]);
+      });
+      return jsonResponse(win, seedTenuti.concat(scritti), 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
       return jsonResponse(win, [{ status: 'active', role: 'admin', permissions: { cloud_sync: true } }], 200);
@@ -724,6 +753,15 @@ const CASES = [
       const wp = workerPushes('cancel')[0];
       checks.push({ label: 'worker push inviato', ok: !!wp });
       checks.push({ label: 'payload SENZA idReserva (assente in fixture)', ok: !!wp && !('idReserva' in wp.body) });
+      // ⏳ Il caso finisce quando i SUOI effetti sono atterrati, non appena la push parte.
+      // `doCancel` prosegue in asincrono dopo la chiamata al worker: commit locale (che TOGLIE
+      // la prenotazione da staffBookings) e sync cloud. Chiudendo qui, quella coda cadeva dentro
+      // il caso DOPO e gli portava via la prenotazione da sotto — il 12 si ritrovava senza nulla
+      // al nuovo slot e spingeva il solo suppress. Non si vedeva finché ogni RPC pagava un giro
+      // di rete per riscaricare config.js: quel ritardo accidentale spostava la coda abbastanza
+      // in là da non dare fastidio. È la stessa malattia del polling appeso già annotata sopra.
+      // ⚠️ Aspettare non indebolisce niente: se la coda non arriva, il waitFor scade e basta.
+      await waitFor(() => cloudRecords().some(r => r.record_type === 'staff_booking' && r.deleted === true), 4000);
       return checks;
     }
   },
