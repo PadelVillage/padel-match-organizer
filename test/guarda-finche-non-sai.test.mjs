@@ -213,5 +213,52 @@ await caso('17. 🚨 CONTROLLO NEGATIVO: se la pulizia per età sparisse, il cas
   return senzaFiltro.length === 2 && normalizza(senzaFiltro, ORA, 2 * GIORNO).length === 1;
 });
 
+console.log('\n👯 I GEMELLI — nessuna strada di creazione deve restare indietro\n');
+
+// 🚨 IL CASO CHE AVREBBE SCOPERTO L'ERRORE DEL 15/08/2026.
+// I 17 casi qui sopra erano tutti verdi e provavano una funzione che su DUE strade su tre non
+// veniva mai chiamata: la correzione era stata scritta in un posto solo, e i gemelli — il clic
+// sullo slot e l'assistente — erano rimasti com'erano. È la forma esatta della voce 31, e un
+// banco che prova solo la REGOLA non la vede: bisogna provare anche il CABLAGGIO.
+// ⇒ Qui non si prova cosa fa la funzione, ma CHI LA CHIAMA.
+function blocchiIncerti() {
+  const fuori = [];
+  const re = /const _uncertain(?:Status|Msg) = async function/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    // Il corpo del blocco: dalla dichiarazione fino alla chiusura `};` a inizio riga.
+    const dopo = html.slice(m.index, m.index + 6000);
+    const fine = dopo.search(/\n\s{6,8}\};/);
+    fuori.push(dopo.slice(0, fine > 0 ? fine : 3000));
+  }
+  return fuori;
+}
+
+const incerti = blocchiIncerti();
+
+await caso(`18. le strade che gestiscono l'esito ignoto sono ${incerti.length}, e sono più di una`, () =>
+  incerti.length >= 3);
+
+await caso('19. 🚨 OGNUNA passa dal guardare che insiste — nessuna chiama il colpo singolo', () => {
+  const pigre = incerti.filter((b) => !b.includes('staffCalGuardaFinchePuoi'));
+  if (pigre.length) {
+    pigre.forEach((b) => console.log('   ↳ strada rimasta indietro: ' + b.split('\n')[0].trim()));
+  }
+  return pigre.length === 0;
+});
+
+await caso('20. 🚨 OGNUNA deposita la verifica invece di scaricarla sull\'operatore', () => {
+  const senzaDeposito = incerti.filter((b) => !b.includes('pmoVerificheSegna'));
+  if (senzaDeposito.length) {
+    senzaDeposito.forEach((b) => console.log('   ↳ strada che non deposita: ' + b.split('\n')[0].trim()));
+  }
+  return senzaDeposito.length === 0;
+});
+
+await caso('21. 🚨 CONTROLLO NEGATIVO: il caso 19 sa diventare rosso se una strada torna indietro', () => {
+  const finto = ['const _uncertainMsg = async function (why) {\n  const look = await staffCalAskMatchpoint(a, b, c, d);\n'];
+  return finto.filter((b) => !b.includes('staffCalGuardaFinchePuoi')).length === 1;
+});
+
 console.log(`\n${ko === 0 ? '✅' : '❌'} ${ok}/${ok + ko} casi passati\n`);
 process.exit(ko === 0 ? 0 : 1);
