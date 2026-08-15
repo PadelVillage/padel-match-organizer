@@ -454,8 +454,69 @@ procedura.
 prosegua dopo la caduta del client — **non è provata**: se si fermasse, il caso non sarebbe
 riproducibile così, e anche quello è una risposta da scrivere lì.
 
-#### 14. 🔑 Le ⑩ chiavi «Ospite» che oscillano
-Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore** e diffate; ≥1 campione pulito prima di concludere «benigna e rara». ⏳ La sonda `fp_hot` è **scaduta il 4/08**: va rifondata.
+#### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
+*Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
+(`pmo_cloud_records`, `record_type = 'booking_occupancy'`, misurato alle 17:36 UTC).*
+
+🚨 **La scheda vecchia era sbagliata di due ordini di grandezza, e chiedeva una prova che non serve.**
+Diceva «le ⑩ chiavi», «3 sonde rieseguite a distanza di ore e diffate», e che la sonda `fp_hot` era
+scaduta il 4/08 e andava rifondata. Misurato:
+
+| la scheda diceva | il dato vero |
+|---|---|
+| **⑩** chiavi | **571 righe**, **571 chiavi distinte**, su **568 slot** — e **438** oscillano davvero |
+| «prima di concludere **benigna e rara**» | **benigna sì**: le righe `Ospite` ancora vive sono **0**, ogni chiave finisce cancellata e lo slot si risolve. **Rara no**: **25–55 a settimana, ogni settimana da giugno**, ancora in corso (31 nella settimana del 10/08) |
+| servono **3 sonde a distanza di ore**, diffate | **non servono**: `updated_at` **è già** la serie storica. Il campionamento ripetuto sta nel dato e copre **3 mesi**, non 3 ore — una prova più forte di quella chiesta, e che non va aspettata |
+| la sonda `fp_hot` è scaduta, va rifondata | **`fp_hot` non esiste**: né nel repo né in tutta la sua storia (`git log -S`). Stava nelle memorie andate in pensione il 13/08. **Non è recuperabile**, e non serve: la sonda nuova è le quattro righe di SQL qui sotto |
+
+🎯 **La causa, misurata e non dedotta: la chiave dell'occupazione contiene il NOME del giocatore.**
+La forma è `occupancy|<idReserva>|<data>|<ora>|<campo>|<nome>|<durata>`. Un posto occupato da
+«Ospite» che poi prende un nome vero **non aggiorna** la riga: ne genera una **nuova** e lascia una
+lapide sulla vecchia. ⇒ Su 568 slot con una chiave `Ospite`, **438 hanno anche una chiave con un
+nome** per lo stesso `idReserva|data|ora|campo`: sono quelli in cui la sostituzione è avvenuta. I
+restanti **130** sono ospiti rimasti ospiti.
+
+⚖️ **Quindi non è un guasto: è il progetto della chiave.** L'oscillazione non è un sintomo da
+inseguire, è ciò che succede ogni volta che lo staff sostituisce un ospite con un socio — cioè una
+cosa che deve succedere. Il costo è **una lapide per sostituzione**, ~30 a settimana.
+
+🔬 **Controprova, e cade bene**: su `cudi…` le stesse chiavi sono **210**, ferme al **7 agosto** —
+la data esatta a cui è fermo il calendario di TEST (voce 34). Il fenomeno sta nel **meccanismo**,
+non nei dati di PROD: dove il sync gira, si accumula; dove è congelato, si è fermato lì.
+
+⇒ **La domanda vera non è più «è benigna?»** — lo è, ed è misurato. È **se valga la pena togliere il
+nome dalla chiave**, cioè farla `occupancy|<idReserva>|<data>|<ora>|<campo>` e tenere il nome nel
+payload. 🚨 Non è una riga di SQL: quella chiave la scrivono e la leggono il sync, l'app e i ponti,
+e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. **Decisione del committente**,
+non manutenzione.
+
+🧪 **La sonda rifondata** (sostituisce `fp_hot`; gira su entrambi i progetti, sola lettura):
+
+```sql
+with o as (
+  select local_key, deleted, updated_at,
+         split_part(local_key,'|',2) as idreserva, split_part(local_key,'|',3) as data,
+         split_part(local_key,'|',4) as ora,       split_part(local_key,'|',5) as campo,
+         split_part(local_key,'|',6) as nome
+  from pmo_cloud_records where record_type = 'booking_occupancy'
+), slot as (
+  select idreserva, data, ora, campo,
+         count(*) filter (where nome ilike 'ospite')     as come_ospite,
+         count(*) filter (where nome not ilike 'ospite') as con_nome,
+         bool_and(deleted) as tutte_cancellate
+  from o group by 1,2,3,4
+)
+select (select count(*) from o    where nome ilike 'ospite')                     as righe_ospite,
+       (select count(*) from o    where nome ilike 'ospite' and not deleted)     as ancora_vive,
+       (select count(*) from slot where come_ospite > 0)                         as slot_con_ospite,
+       (select count(*) from slot where come_ospite > 0 and con_nome > 0)        as slot_oscillanti,
+       (select count(*) from slot where come_ospite > 0 and con_nome > 0
+                                    and not tutte_cancellate)                    as oscillanti_vivi;
+```
+
+📌 **`ancora_vive` e `oscillanti_vivi` sono i due numeri che contano**: finché restano **0** il
+fenomeno è rumore contabile. Il giorno che uno dei due sale, allora sì c'è una riga che non si
+chiude — e quella è un'altra voce.
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 4
 
