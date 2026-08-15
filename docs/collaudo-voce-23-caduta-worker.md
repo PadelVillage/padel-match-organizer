@@ -220,14 +220,20 @@ lavoro in coda e lo esegue; parla con Matchpoint **in uscita**, non attraverso C
 Caddy **mentre il worker sta già lavorando**, la prenotazione si completa e la edge non riceve
 niente.
 
-📊 **La finestra è misurata**, non indovinata — 191 lavori veri su PROD, da giugno:
+📊 **La finestra è misurata**, non indovinata — lavori veri su PROD, da giugno. La colonna di
+sinistra è la misura con cui questa procedura è stata scritta il 15/08; quella di destra è la
+**riverifica del 15/08 sera**, fatta prima di consegnare la prova — perché una finestra temporale
+su cui poggia un `sleep 2` è esattamente il genere di numero che invecchia in silenzio:
 
-| | `done` (171 lavori) |
-|---|---|
-| minimo | **4,0 s** |
-| mediana | **8,1 s** |
-| p90 | 31,7 s |
-| massimo | 148,4 s |
+| | scritta così (191 lavori, 171 `done`) | riverificata (192 lavori, 172 `done`) |
+|---|---|---|
+| minimo | **4,0 s** | **4,0 s** ✅ |
+| mediana | 8,1 s | 8,0 s |
+| p90 | 31,7 s | 31,6 s |
+| massimo | 148,4 s | 148,4 s ✅ |
+
+✅ **Il minimo non si è mosso**: il taglio a ~2 s resta dentro con margine doppio. Un lavoro in più
+in mezza giornata non sposta la distribuzione, ed era la cosa da sapere prima di fidarsi del numero.
 
 ⇒ **Fermare Caddy a ~2 secondi** dalla conferma è dentro il minimo misurato con margine doppio: il
 worker ha certamente la richiesta e certamente non ha ancora risposto.
@@ -278,6 +284,23 @@ serve il contrario — Caddy dev'essere **su** quando si prenota.
 | il messaggio | «confermata su Matchpoint (verificata guardando)» | non «non prenotata»: sarebbe la bugia costosa |
 | il calendario | la prenotazione **compare** | `_okStatus` la disegna solo ora, a fatto verificato |
 | il lavoro, di nuovo | **`done`**, `chiusa_da = verifica-app`, `verdetto = si` | è la 6.226, ed è la riga che nessuno ha mai visto |
+
+### ✅ Le tre premesse, riverificate il 15/08 sera prima di consegnare la prova
+
+Misurate su `pmo_cloud_records` di PROD, non ricordate:
+
+| premessa | come sta |
+|---|---|
+| la finestra dei 2 s | **regge**: `done` minimo **4,0 s** su 172 lavori; i tre `unknown` a **0,2–0,3 s**. Il tempo, da solo, continua a distinguere i due casi |
+| `chiudi-lavoro-ignoto` non è mai girata | **confermato**: `chiusa_da` e `verdetto` sono **0 su 192 lavori**. Questa prova sarebbe la sua prima esecuzione vera, e la riga `done` + `chiusa_da = verifica-app` non l'ha mai scritta nessuno |
+| i tre `unknown` residui | **come atteso**: tutti e tre sullo slot `2026-12-14 08:00 campo 1`, errore di rete verso il worker, 0,2–0,3 s. Restano `unknown` per sempre ed è giusto così |
+
+📌 **Attenzione a non confondere due terzetti**, perché è già successo rileggendo questo file:
+le **tre prenotazioni vere** della notte del 14/08 (passo ③, tutte create fra le 21:55 e le 22:00 e
+tutte annullate — verificato: 3 `staff_booking` con `deleted = true`) **non sono** i tre lavori
+`unknown`, che stanno a **14/08 22:39** e **15/08 09:51 e 10:12**. Stesso numero, notti diverse,
+significati diversi: le prime sono il danno che il cancello previene, i secondi il verbale di
+com'era.
 
 ⚠️ **Se invece Matchpoint è vuoto**, il worker ha smesso quando è caduto il client: non è un guasto,
 è un'altra risposta alla domanda — e allora questo caso **non è riproducibile così**, il che va
