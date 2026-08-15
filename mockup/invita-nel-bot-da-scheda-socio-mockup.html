@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup — Invita nel bot dalla scheda socio</title>
+  <style>
+    :root {
+      --primary: #214f96;
+      --primary-dark: #183e78;
+      --border: #dbe4f0;
+      --text: #101828;
+      --muted: #667085;
+      --bg: #f4f7fb;
+      --ok: #067647;
+      --warn: #b54708;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 60px;
+      background: var(--bg); color: var(--text);
+      font-family: Arial, Helvetica, sans-serif; font-size: 14px;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 22px; font-size: 13px; }
+    .avviso {
+      border: 1px solid #f0c9a0; background: #fff8f0; color: var(--warn);
+      border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 24px;
+    }
+    .stato { margin: 0 0 26px; }
+    .stato > .titolo {
+      font-weight: bold; font-size: 13px; margin-bottom: 2px;
+    }
+    .stato > .nota { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+    .card {
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.05);
+    }
+    .card-intestazione {
+      font-size: 12px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .04em; margin-bottom: 10px;
+    }
+    .riga { display: block; }
+    .riga + .riga { margin-top: 12px; }
+    label {
+      display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;
+    }
+    input[readonly] {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; background: #fbfcfe; color: var(--text);
+      font-family: inherit; font-size: 13.5px;
+    }
+    .azioni { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+    button {
+      font-family: inherit; font-size: 13px; font-weight: bold;
+      border-radius: 6px; padding: 7px 12px; cursor: default; border: 1px solid transparent;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #fff; color: var(--primary); border-color: var(--border); }
+    .btn-small { font-size: 12px; padding: 5px 10px; }
+    .messaggio {
+      margin-top: 9px; padding: 9px 11px; border: 1px solid var(--border);
+      border-radius: 8px; background: #fff; font-size: 12.5px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .esito-ok { margin-top: 8px; color: var(--ok); font-size: 12.5px; font-weight: bold; }
+    .muto { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .vuoto {
+      border: 1px dashed var(--border); border-radius: 8px; padding: 12px;
+      color: var(--muted); font-size: 12.5px; text-align: center; background: #fafbfd;
+    }
+    .nuovo {
+      display: inline-block; font-size: 10.5px; font-weight: bold; color: #fff;
+      background: var(--primary); border-radius: 999px; padding: 2px 7px;
+      vertical-align: middle; margin-left: 6px; letter-spacing: .03em;
+    }
+    .legenda {
+      margin-top: 34px; border-top: 1px solid var(--border); padding-top: 16px;
+      font-size: 12.5px; color: var(--muted);
+    }
+    .legenda strong { color: var(--text); }
+    .legenda li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Invita nel bot, dalla scheda del socio <span class="nuovo">PROPOSTA</span></h1>
+  <p class="sub">
+    Riguarda una sola riga della scheda socio — quella che oggi dice «Bot Telegram: sì / no».
+    Tutto il resto della scheda non cambia.
+  </p>
+
+  <div class="avviso">
+    ⚠️ Questo è un <strong>disegno</strong>, non l'app: i bottoni non fanno niente e i nomi sono
+    inventati. Serve solo a farti vedere com'è, prima di scrivere una riga di codice vero.
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">① Oggi — la persona non è nel bot</div>
+    <div class="nota">La riga esiste già così. Non c'è modo di invitarla: è qui che manca la porta.</div>
+    <div class="card">
+      <div class="card-intestazione">Scheda socio · Giulia Bianchi</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="No">
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">② La proposta — compare un bottone <span class="nuovo">NUOVO</span></div>
+    <div class="nota">Un solo bottone, e solo quando la risposta è «No». È l'unica aggiunta.</div>
+    <div class="card">
+      <div class="card-intestazione">Scheda socio · Giulia Bianchi</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="No">
+        <div class="azioni">
+          <button class="btn-secondary btn-small">📩 Prepara il link d'ingresso</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">③ Premuto il bottone — il messaggio è già scritto</div>
+    <div class="nota">
+      Lo stesso identico messaggio che l'app propone oggi quando metti qualcuno in partita:
+      non se ne inventa uno nuovo. Si può leggere prima di mandarlo.
+    </div>
+    <div class="card">
+      <div class="card-intestazione">Scheda socio · Giulia Bianchi</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="No">
+        <div class="esito-ok">✅ Link pronto per Giulia Bianchi.</div>
+        <div class="messaggio">Ciao Giulia, ti scrivo dal Padel Village 🎾
+Puoi entrare nel bot del circolo da qui: https://t.me/loziocoach_bot?start=xxxxx
+Da lì vedi le tue prenotazioni e ricevi i promemoria.</div>
+        <div class="azioni">
+          <button class="btn-primary btn-small">Apri WhatsApp</button>
+          <button class="btn-secondary btn-small">Copia il messaggio</button>
+        </div>
+        <div class="muto">Il link vale per questa persona soltanto.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">④ Se in anagrafica non c'è il telefono</div>
+    <div class="nota">Il messaggio resta, WhatsApp no: si copia e si manda come si preferisce.</div>
+    <div class="card">
+      <div class="card-intestazione">Scheda socio · Marco Neri</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="No">
+        <div class="esito-ok">✅ Link pronto per Marco Neri.</div>
+        <div class="messaggio">Ciao Marco, ti scrivo dal Padel Village 🎾
+Puoi entrare nel bot del circolo da qui: https://t.me/loziocoach_bot?start=xxxxx</div>
+        <div class="azioni">
+          <button class="btn-secondary btn-small">Copia il messaggio</button>
+        </div>
+        <div class="muto">⚠️ In anagrafica non c'è un numero di telefono valido.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">⑤ È già nel bot — nessun bottone</div>
+    <div class="nota">Come oggi, identica. Proporre un invito a chi è già dentro sarebbe rumore.</div>
+    <div class="card">
+      <div class="card-intestazione">Scheda socio · Anna Verdi</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="Sì, dal 25/07/2026 — su invito di Segreteria">
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────── -->
+  <div class="stato">
+    <div class="titolo">⑥ I tre casi in cui il bottone NON deve comparire</div>
+    <div class="nota">
+      Sono già distinti oggi, e restano distinti: la scheda non dice mai «No» per ignoranza.
+    </div>
+    <div class="card">
+      <div class="card-intestazione">Accesso tolto — si rimette dal pannello Bot Telegram, non da qui</div>
+      <div class="riga">
+        <label>Bot Telegram</label>
+        <input readonly value="Accesso tolto — era entrato il 03/08/2026">
+      </div>
+      <div class="riga" style="margin-top:18px;">
+        <label>Bot Telegram — il ponte non risponde</label>
+        <input readonly value="Non riesco a dirlo adesso">
+        <div class="muto">Nessun bottone: non si sa se serva. Un invito qui sarebbe una supposizione.</div>
+      </div>
+      <div class="riga" style="margin-top:18px;">
+        <label>Bot Telegram — chi guarda non ha il permesso</label>
+        <div class="vuoto">la riga non compare affatto, come oggi</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legenda">
+    <p><strong>In una riga:</strong> quando la scheda dice «No», compare un bottone che prepara
+    il messaggio d'invito; in tutti gli altri casi la scheda resta identica a oggi.</p>
+    <ul>
+      <li><strong>Perché serve:</strong> oggi l'invito al bot si può proporre <em>solo</em> mettendo
+      qualcuno in partita. Un maestro non entra mai in quell'elenco — sta in un campo suo — quindi
+      per lui quella proposta non compare mai, e non c'è nessun altro modo di invitarlo.</li>
+      <li><strong>Cosa NON cambia:</strong> il messaggio, il link e il controllo di chi può invitare
+      sono quelli che l'app usa già. Non si scrive una seconda versione di niente.</li>
+      <li><strong>Cosa NON fa:</strong> non manda niente da solo. Prepara il messaggio e lo lascia
+      a chi sta guardando la scheda.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
