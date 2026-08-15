@@ -63,16 +63,21 @@ contesto**, non eseguire il compito scritto.
 | 📅 **le 1364 righe con la data VERA** | non `now()`, che sarebbe stato il default e avrebbe scritto 1364 date false — la stessa specie di bugia che queste giornate stanno togliendo |
 | 🔧 **e i due trigger che mancavano** | terza autorizzazione distinta della sola voce 40, chiesta separatamente perché tocca il **comportamento** e non solo la forma |
 | ✋ **un «no» implicito, rispettato** | il terzo trigger — quello che brucia il gettone da dentro il database — non è stato toccato: non era fra le tre cose autorizzate, ed è un cambio di comportamento |
+| ⛔ **due voci ANNULLATE** | la **11bis** e la **13**: *«leva e annulla perché non servono più»*. Non chiuse — **annullate**, ed è scritto nelle loro righe: una perché la causa sotto era già stata curata alla radice (quindi era una comodità), l'altra perché 1 volta su 24 non giustifica il lavoro. Di tutt'e due resta scritto **il perché**, o fra un mese tornano |
+| ⬆️ **sei voci promosse a urgenti** | 31, 29, 28, 34, 26 e 14bis, col criterio dichiarato da lui: *«così le chiudiamo velocemente»*. ⇒ La coda passa da **14 a 6**, le urgenti da 0 a **6** |
+| ⚠️ **due avvertenze date, non taciute per compiacenza** | la **34 chiude la 26** ⇒ vanno fatte in quell'ordine, e **né la 34 né la 14bis si fanno dal cloud** (VM la prima, repo privato del bot la seconda). Sono nella testa della sezione urgenti, dove le legge chi parte |
+| ⬆️ **e subito dopo: «aggiungi in coda la parte B»** | promossa da nota a **voce 41**, in sezione C. ⇒ Chiusa la voce e messo il residuo dove si vede: la coda passa da 13 a **14** |
+| 📦 **«chiudila, ventitré resta solo la parte B»** | la **23** chiusa da lui a residuo dichiarato, non a residuo finito: quello che resta è **una prova da fare dal Mac**, non codice da scrivere. ⇒ La lista urgenti torna **vuota**, e la parte B scende fra le «nate misurando» — dove le promozioni le decide lui |
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
-| 📋 **In coda** | **13** |
-| 📦 **Chiuse** | **19** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 🔴 **Urgenti** | **5** |
+| 📋 **In coda** | **6** |
+| 📦 **Chiuse** | **23** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.226** · TEST **6.237** · i **4 percorsi** di
-`guard-worker-sync` **identici** fra i rami · **PR aperte 0** (la #714 unita) · tutte e tre le
+dei due rami, non ricordate: app PROD **6.227** · TEST **6.237** · i **4 percorsi** di
+`guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
 → **200**, `APP_VERSION = '6.226'`, e dentro tutti e quattro i marcatori della chiusura
@@ -164,271 +169,132 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 5
 
-**Promosse dal committente il 14/08/2026, 16ª sessione**, dopo che la lista era rimasta vuota per
-la prima volta da quando esiste. Tre nascono dalle note «🆕 nate misurando» e una — la **23** —
-sale dalla coda. Proposte a misura fatta, scelte da lui: quattro su quattro.
-📦 Delle quattro ne resta **una**: la **39** chiusa dalla 16ª sessione, la **37** e la **38** dalla
-17ª. La 37 è stata chiusa **dichiarando** ciò che resta invece di eseguirlo — una chiusura, non una
-rinuncia; la 38 con la prova che le mancava, arrivata da lui in due secondi (il perché di entrambe
-sta nelle loro righe fra le chiuse).
+**Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
+e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
+11bis e la 13; promuovi in urgenti, così le chiudiamo velocemente, la 31, la 29, la 28, la 34, la
+26 e la 14bis»*. ⇒ La coda passa da **14 a 6**: sei salite qui, due chiuse come annullate.
 
-### 23. ⛔ `writeBookingJob` in `create` non guarda com'è andata
-*Salita dalla coda il 14/08.* La creazione manda il lavoro al worker e **non controlla l'esito**.
-Stessa forma di un guasto già visto: *«non ho ricevuto risposta» non è «non è stato scritto»*, e
-gli esiti sono **tre**.
+⚖️ **Il criterio è suo ed è dichiarato: «così le chiudiamo velocemente».** Sono voci mature — quattro
+hanno già la causa trovata e aspettano una decisione, non un'indagine. 🚨 Ma tre cose vanno dette
+**prima** di partire, e sono misurate, non impressioni:
 
-#### 🔎 Diagnosi, 17ª sessione — *(scritta e basta: patch NON fatta, per sua decisione)*
+| | |
+|---|---|
+| 🔗 **la 34 CHIUDE la 26** | non sono due lavori: la 26 è il **sintomo atteso** di un TEST col calendario congelato, e sparisce da sé il giorno in cui il sync riparte. ⇒ **Prima la 34.** Chiuderle nell'ordine inverso vorrebbe dire dichiarare risolto un sintomo la cui causa è ancora lì |
+| ⛔ **la 34 non si fa dal cloud** | serve la VM: accendere quel dispatcher resuscita anche i **6 sync clienti** ritirati il 3/08, e la prima giornata va guardata nei log del worker su **Hetzner**. È la più lenta delle sei, non la più veloce |
+| ⛔ **la 14bis nemmeno** | è una domanda sul **bot**, che vive nel repo privato `assistente-padel-agent` — fuori dal perimetro di questa sessione. Da qui si può misurare solo la metà del gestionale |
 
-🛑 **Primo: la scheda sbaglia il bersaglio, e non di poco.** Diceva «la correzione è nell'**app**».
-Misurato: **0 occorrenze** di `writeBookingJob` in `index.html`. Vive nella edge function
-`supabase/functions/matchpoint-bookings-create/index.ts`. Chi avesse eseguito la scheda alla lettera
-avrebbe cercato per un pezzo nel file sbagliato.
-🔀 **E i due rami divergono**: `main` ha **4** chiamate a `writeBookingJob`, `test-preview` **5** —
-la quinta è il ramo «prova a vuoto» del 7/08, che su TEST chiude il lavoro con `done` invece che con
-`error`. Non è la voce 23, ma chi la ripara deve saperlo prima di toccare, o promuoverà una riga che
-di là significa un'altra cosa.
+📌 Le altre quattro — **31**, **29**, **28**, **26** — sono decisioni o potature, e quelle sì si
+preparano da qui.
 
-**Il titolo ammette due letture, e la misura dice che sono vere tutt'e due.**
+🔄 **Aggiornamento del 15/08, 20ª sessione.** La **31** è stata censita e la sua mezza promozione curata (PROD **6.227**); la **29** è **chiusa dichiarando**, su sua delega esplicita; la **28** è misurata fino in fondo — 64 funzioni e 1195 righe, più 12 punti vivi che puntano a pannelli tolti — e **aspetta una decisione di prodotto**, non altro lavoro di misura. ⇒ Le urgenti scendono da **6 a 5**, e delle cinque rimaste **due non si fanno dal cloud** (34 e 14bis) e una (**26**) aspetta la 34.
 
-① **`writeBookingJob` scarta l'esito della propria scrittura.** Il corpo è un `await ... .upsert(...)`
-e nient'altro: nessun controllo dell'errore. La sorella `saveStaffBookingRecord`, **dieci righe più
-su nello stesso file**, quel controllo ce l'ha (`if (erroreRiga) throw ...`) — quindi non è una
-convenzione del file, è una dimenticanza. ⇒ Se la riga di stato non si scrive, il lavoro resta
-`pending` **per sempre** e chi guarda non saprà mai com'è finita: esattamente ciò che il commento
-lì accanto dichiara di voler evitare.
+### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST — **censimento fatto il 15/08**
+*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. Verificata sul bersaglio: il commit `9305323` conferma la scheda parola per parola (`main` 4 funzioni e armamento mai arrivato, `test-preview` 7 più la spunta).
 
-② **Il terzo esito viene raccontato come il secondo.** `callWorkerCreateBooking` su errore di rete
-lancia, e `runBookingJobInBackground` scrive `error`. Ma il commento nel codice **dice già il
-problema**, e chi l'ha scritto lo sapeva:
+🎯 **Cercati «altri della stessa forma», come chiedeva la scheda. Ce ne sono, e il più pesante è la rete stessa.**
 
-> `// NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.`
+| reperto | misura |
+|---|---|
+| 🚨 **il banco di regressione** `test/handle-test.html` | `main` **55 casi**, `test-preview` **90** — e l'id più alto è 90 su tutti e due ⇒ non «meno casi in fondo», **35 buchi in mezzo** (50–83 di fila, più l'87). Quattro famiglie intere solo su TEST: `Cloud/Storico`, `Organizzatore`, `Pagamenti`, `Scheda`. Di quei 35 **solo 2 sono di TEST per natura** (50, 51: la simulazione incassi); gli altri **33 sorvegliano codice che gira in PRODUZIONE** — verificato marcatore per marcatore su `main` (`pmoChiudiLavoroIgnoto` ×9, `_jobIgnoto` ×15, `applyHistoricalBookingsToLocal`, `_pmoRuoloOrganizzatore`, `svc-pl-org-slot`, `staffCalRtApplyMatchpointMember`) |
+| ✅ **la mezza promozione — CURATA, PROD 6.227** | il banco di `main` azzerava lo stato fra i casi chiamando `PMOAi.resetFlow()` e `__PMOStaffCalTest.resetCard()`, col commento «allineato al banco di test-preview». **In `main/index.html` i due agganci non esistevano** (0 occorrenze) e le `&&` li spegnevano in silenzio. Non «la sicura non è arrivata»: è arrivata **la maniglia senza la serratura**, ed è peggio perché il file dichiarava il contrario |
+| 🔓 `livello-dimostrato.ts` | il livello **in prestito** non deve aprire la porta dell'organizzare. Scritto su TEST il 9/08 in `consumer-player-readmodel` — **il ponte del bot** — e mai promosso. ⚖️ Oggi non cambierebbe il comportamento di nessuno: **nessuno scrive `levelSource: ereditato`** (misurato: gli unici scrittori sono `autovalutazione` e `Import livelli Excel`). È una porta chiusa su TEST e aperta su PROD, **prima** che qualcuno possa passarci |
+| ⬅️ `manifest.json` · `VERSIONI.md` | qui è **TEST a essere indietro**, fermo al 14/06. L'app di prova si installa sul telefono come «**Padel Village**», PROD come «ADMIN». Fuori da `guard-worker-sync`, che copre `docs/` e non la radice |
+| 🗄️ `supabase/functions/_archive/**` | esiste **solo su `test-preview`**, mentre `CLAUDE.md` — identico sui due rami — lo descrive come se ci fosse anche su `main` |
 
-⇒ Gli esiti sono **tre** — *fatto*, *non fatto*, *non lo so* — e oggi il terzo viene scritto come
-«errore». Il costo non è cosmetico: lo staff legge «errore», rifà la prenotazione, e se il worker
-l'aveva creata davvero il campo finisce **prenotato due volte** sul Matchpoint del circolo.
-📌 Il confronto che lo conferma: la sorella `matchpoint-bookings-cancel` **i retry li fa** (`Worker
-call failed after retries`), perché disdire due volte è innocuo mentre prenotare due volte no. La
-differenza è deliberata — ciò che manca non è il retry, è **dirlo**.
+⚖️ **I controlli negativi, che contano quanto i reperti:**
+- **il recinto `scrittura-al-circolo.ts`** sembrava un buco (70 righe su `main`, 150 su TEST): non lo è. `scritturaAlCircoloConsentita` è **identica**, le 80 righe in più sono il ramo «registra invece di rifiutare», inerte in PROD per costruzione, e le 8 copie sono byte-identiche **dentro** ciascun ramo. Contate le funzioni che chiamano il worker su `main`: **8 scrivono, 8 hanno il recinto**; le 9 senza sono tutte letture.
+- **la migrazione `…page_stable_order.sql`**, presente solo su `test-preview` e datata 1/07, sembrava un fix di paginazione mai arrivato in PROD. **Interrogati i due database**: `pmo_get_records_admin_page` ordina `by r.record_type, r.local_key` su **tutti e due**. Manca il file su `main`, non il fix sul server — e nessun workflow applica le migrazioni, quindi la cartella non dice **niente** sullo stato del database.
 
-#### ✅ SCRITTA, e su TEST è viva — 17ª sessione, TEST **6.232**
+🚨 **Resta aperta, e la decisione è sua**: portare su `main` i **33 casi** che sorvegliano codice di PROD (lavoro grosso), promuovere **`livello-dimostrato.ts`** al ponte del bot (oggi costa nulla e chiude la porta in anticipo), o chiudere dichiarando e farne voci a sé.
 
-*Il committente ha ripreso la decisione e ha chiesto di farla. La diagnosi qui sopra resta com'era:
-non l'ho corretta a posteriori per farla combaciare.*
+### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file — **contate il 15/08: sono 64**
+*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste. Il perché è scritto nel commento HTML nel punto dove stavano (riga ~6825).
 
-🎯 **E la cosa più importante l'ha detta il codice, non io: la macchina dell'ignoto NELL'APP C'ERA
-GIÀ**, dalla v6.150, ed è una **regola scritta del committente**:
+🚨 **La scheda diceva «no-op, irraggiungibili»: la prima parola è giusta, la seconda NO.** Tutte e cinque le radici sono **chiamate a ogni giro** da `renderAssessmentEmailPanels()`, che è viva e gira a ogni cambio di pannello. Non sono irraggiungibili: sono **raggiunte e tornano subito**, perché `document.getElementById(...)` dà `null` e ognuna comincia con `if (!box) return;`. ⇒ Chi le cancella **deve cancellare anche i richiami**, o l'app va in `ReferenceError` al primo cambio di pannello — che è la voce 31 al contrario: là mancava la serratura sotto la maniglia, qui si toglierebbe la serratura lasciando la maniglia.
 
-> ⭐⭐ *«quando l'esito resta IGNOTO non si indovina — si va a GUARDARE su Matchpoint»*, con i tre
-> verdetti `si` / `no` / `boh` di `staffCalAskMatchpoint`.
+**La misura (chiusura transitiva sul grafo dei richiami, `index.html` di `main`):**
 
-⇒ Non c'era niente da inventare. La edge **appiattiva il terzo esito sul secondo**, e così quella
-macchina non veniva mai chiamata: il difetto non era una mancanza, era **una porta murata davanti a
-una stanza già arredata**.
+| | |
+|---|---|
+| le 5 radici | `renderAssessmentEmailMorningPanel` (180 righe) · `…RoutinePanel` (90) · `…QueuePanel` (39) · `…PendingPanel` (42) · `…PostPanel` (31) |
+| **restano senza richiami** | **64 funzioni, 1195 righe**, fra riga 31320 e riga 35356. Fra queste `renderCardSolleciti`, `renderCardGestioneManuale`, `renderCardDaValidare`, tutta la famiglia `assessmentManualBatch*` e i quattro `assessmentEmailSendManualBatch*` |
+| **richiami da togliere insieme** | **6**: i cinque dentro `renderAssessmentEmailPanels()` (righe 34871–34875) e uno dentro `updateAssessmentTokenStatusFrontend()` (riga 30043), che è viva. Gli altri richiami stanno già dentro funzioni del gruppo morto |
+| di contorno | **53 id** della famiglia `assessment*` sono cercati con `getElementById` e non esistono più in nessun punto del file — coerente col quadro |
+| ⚠️ **il limite della misura** | il grafo segue i **nomi**. Un richiamo costruito a stringa (`window['assessment'+x]`) non lo vedrebbe: prima di tagliare va provato per bene, ed è esattamente il motivo per cui il 13/08 furono lasciate lì |
 
-| dove | prima | ora |
-|---|---|---|
-| `callWorkerCreateBooking` | l'errore di rete è un errore come gli altri | **marchiato** `esitoIgnoto` |
-| lavoro asincrono | `status: 'error'` | **`'unknown'`**, con dentro *«controlla su Matchpoint prima di rifarla»* |
-| strada sincrona (il **ricorrente**) | `WORKER_ERROR` | **`WORKER_ESITO_IGNOTO`** |
-| `writeBookingJob` | scartava l'esito del proprio `upsert` | lo **guarda**, e la scrittura iniziale fallisce onesta invece di consegnare un lavoro fantasma |
-| il ricorrente nell'app | `ok` / `fail` | `ok` / `fail` / **`incerte`**, dette per prime e con l'istruzione dentro |
+🧭 **I residui vivi che puntano al vuoto: NON sono due.** Li avevo stimati «due righe» il 15/08 e la stima era sbagliata — rimisurati prima di toccarli, sono **8 punti VIVI** più **4 rami di un mappatore vivo**:
 
-⚖️ **Degrada in sicurezza in ENTRAMBI i versi**, e serve perché app ed edge si deployano da sole:
-edge nuova + app vecchia → `unknown` non è né `done` né `error`, quindi viene letto come «in corso»
-e finisce sulla **stessa** strada dell'ignoto per scadenza (più lento, non sbagliato); app nuova +
-edge vecchia → i rami nuovi non scattano mai.
+| dove | cosa chiede |
+|---|---|
+| 10074 `runSidebarSectionAction` · 36395 | `'post'` |
+| 33845 `assessmentEmailGoToMemberPanel` · 36379 · 36441 · 36722 `restartAssessmentForMember` | `'queue'` |
+| 35126 | `'pending'` |
+| 35508 | `'post'` se restano risposte, altrimenti `'history'` |
+| `assessmentEmailPanelFromAnchorKey` (viva) | 4 rami: «da inviare» → `queue`, «attesa/contattati» → `pending`, «post» → `post`, «stato» → `routine` |
 
-🚨 **La decisione si prende dal MARCHIO, non dalle parole.** Riconoscere l'ignoto cercando
-«network» nel testo dell'errore sarebbe stato il setaccio a maglie larghe della voce 36 — e il
-banco ha un caso apposta che fallisce se qualcuno ci ricasca.
+I pannelli vivi oggi sono **cinque**: `history`, `matchpoint`, `public`, `texts`, `excel-import` (quest'ultimo solo in TEST). ⛔ **Non rompono niente** — `setAssessmentEmailPanel` accende via `querySelectorAll` e semplicemente non trova nulla — ma lo staff clicca e **la pagina resta com'era**, senza un errore che glielo dica.
 
-**Verificato:** banco nuovo `test/tre-esiti-prenotazione.test.mjs` **10/10**, che **importa** il
-modulo invece di ritagliarlo (lezione di `conoscenza.js`) — col controllo negativo su **tre
-sabotaggi**: appiattire il terzo esito (8/10), riconoscerlo dalle parole (7/10), togliere all'app la
-lettura di `unknown` (9/10). Un banco che non sa diventare rosso non è un banco.
-✅ `controlla-sintassi` 5 blocchi 0 errori · **14/14** i banchi Node · rete di regressione nel
-browser **90/90**, orologio attendibile, `leakCount` **2** (la linea di base).
-✅ **Sul bersaglio**: la edge su `cudi…` **fa il boot** — risponde `401` col suo JSON, e una funzione
-che non parte non risponde nemmeno con un errore suo — e il file che il caricatore consegna a
-`test.padelvillage.club` è **6.232** con tutti e quattro i marcatori dentro (letto con `pg_net`).
+🚨 **Non è una potatura meccanica e per questo non è stata fatta**: per ognuno dei 12 punti va deciso **dove deve atterrare** chi clicca. `history` è il ripiego naturale (è il pannello predefinito dal 13/08), ma non vale ovunque — la riga 30757 manda già a `matchpoint`, quindi una mappatura c'è ed è una scelta di prodotto. **La decide il committente, non chi esegue.**
 
-⛔ **NON verificato, e non lo spaccio per fatto: la caduta VERA del worker.** Su TEST la creazione è
-**simulata**, quindi quel ramo non viene proprio percorso; e il worker è **uno solo, condiviso
-TEST+PROD**, quindi non esiste un posto dove provarlo senza rischiare il Matchpoint del circolo. Il
-banco prova la **decisione** e il **cablaggio** — tutto ciò che è nostro — non la rete che cade.
-#### ⬆️ PROMOSSA A PROD il 14/08 — **6.221 → 6.222**, e solo le RIGHE del fix
+🆕 **E una cosa più grande, vista di sfuggita e NON verificata**: fuori dalla famiglia `assessment` ci sono altri **111 id** cercati con `getElementById` e mai definiti nel file (`dashboardKpiGrid`, `memberSearch`, `statClienti`, `assistantGroup*`…). Se il campione regge, la 28 non è un caso isolato ma **la punta di un fenomeno d'app**. ⚠️ Ne ho verificati **due** a mano: non è una misura, è un indizio — e va guardato prima di essere creduto, non dopo.
 
-Conferma esplicita del committente, come vuole la regola. ⚠️ **Promozione a righe, non a file**, e
-qui serviva davvero: `main` **non ha** `scheda-di-prova.ts` — è il lavoro «prova a vuoto» del 7/08,
-mai promosso — quindi copiare l'`index.ts` di `test-preview` avrebbe portato in PROD un ramo che in
-PROD non deve esistere. Anche l'**ancoraggio** dell'import è diverso fra i due rami, ed è il segno
-che i file *non* sono intercambiabili.
+### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
+*Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
 
-✅ **Verificato che la promozione sia FEDELE, non solo che compili**: il diff dell'app su `main`,
-tolta la riga di `APP_VERSION`, è **identico riga per riga** (65) a quello provato su TEST; e le
-righe aggiunte alla edge coincidono, mentre la divergenza «prova a vuoto» resta dov'era.
-✅ **Zero scaffolding**: cercate `PMO_IS_TEST_ENV`, `PMO_FORCE_ENV`, `schedaDiProva`, `esitoDiProva`
-e i marchi di prova fra le righe aggiunte — **0 occorrenze**.
-✅ `controlla-sintassi` 5 blocchi 0 errori · **14/14** i banchi Node · rete di regressione nel
-browser su `main` **55/55** (il numero suo, contro i 90 di TEST), orologio attendibile, `leakCount`
-**2**, la linea di base.
+Costo piccolo, e misurato: la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le
+~720 di PROD sul worker condiviso ⇒ **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere
+il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, verificare
+la prima giornata.
 
-⇒ **La voce resta aperta per UNA sola cosa**, ed è la stessa di prima: la **caduta vera del worker**
-non è mai stata provata, e non si può provare né dal cloud né su TEST — là la creazione è simulata,
-e il worker è **uno solo, condiviso**. Il codice è in produzione e degrada in sicurezza; quello che
-manca è un'osservazione dal Mac, coi log del worker sotto gli occhi. ⚖️ Chiuderla ora sarebbe
-onesto quanto lasciarla aperta: **decide il committente**, come per ogni voce.
+⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i
+**6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata
+va guardata nei log del worker su **Hetzner**.
+🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le
+disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di
+PROD è **parità**, ed è la parità a costare.
+🔗 **Chiude la voce 26** il giorno in cui si fa.
 
-#### 🧪 La procedura per provarla: `docs/collaudo-voce-23-caduta-worker.md`
-
-*Scritta il 14/08 notte, 18ª sessione.* ✅ **Poi ESEGUITA** — vedi sotto. Il documento va riscritto
-col metodo che ha funzionato davvero: **si ferma Caddy, non il worker**.
-
-#### ✅ COLLAUDATA DAL VIVO — 15/08/2026, in produzione, due volte
-
-*Fatta insieme al committente: lui le mani sulla VM e sul gestionale, io le sonde sul database.*
-
-🎯 **La trappola scritta nel documento è SCATTATA DAVVERO, ed è il ritrovamento della giornata.**
-Fermare il worker **non basta**: davanti c'è **Caddy** (`worker.91.99.131.243.nip.io` →
-`localhost:8787`), che risponde **502** al posto suo. Un 502 è una *risposta*, quindi la edge lo
-chiama «errore» — correttamente — e il terzo esito non nasce.
-⇒ Ecco spiegati i due mesi di storico: **184 lavori, 16 `error` tutti `Worker error 5xx`, zero
-`unknown`**. Non era un caso raro: da un worker fermo il terzo esito **non può** nascere. Serve che
-cada la **strada intera**.
-
-**Il cancello che rende la prova valida** (la prima versione era cieca — dava «irraggiungibile» sia
-a worker acceso sia a worker spento): dal Mac, `curl https://worker…nip.io/` **prima** (deve dare
-un numero) e **dopo** aver fermato Caddy (deve dare `Failed to connect`). Solo allora si prenota.
-
-**Misurato sul bersaglio, con le previsioni dichiarate PRIMA:**
-- ✅ job **`unknown`**, non `error`, con `Connection refused` su `/create-booking`
-- ✅ l'app **insiste 13 volte** (3 minuti, un colpo ogni 15 s) invece di arrendersi al primo
-- ✅ **«La verifica resta APERTA»** invece di «controlla tu»
-- ✅ calendario **vuoto**, slot libero, **nessuna prenotazione creata** — il worker non ha mai
-  ricevuto la richiesta
-- ✅ verdetto `boh` e non `no`: a strada giù non si *può* guardare, e dirlo è la cosa giusta
-
-⚠️ **Tre prenotazioni VERE create la notte del 14/08** (campo 4 e campo 1 del 17/08, campo 1 del
-14/12) perché il `pm2 stop` non era mai stato eseguito — la sessione SSH non era aperta. **Tutte e
-tre annullate**, verificato `deleted = true`. È il motivo per cui il cancello adesso è obbligatorio.
-
-#### 🚨 Due difetti trovati PROVANDO, che il banco verde non vedeva
-
-**① I GEMELLI (6.223 → 6.224).** Le strade di creazione sono **tre** — modulo, **clic sullo slot**,
-assistente — e la 6.223 ne correggeva **una**. Il committente prenota cliccando sullo slot e ha
-ricevuto il messaggio *vecchio*. ⇒ È la forma esatta della **voce 31**, commessa da me. Il banco era
-verde perché provava la **regola** e non il **cablaggio**: i casi 18-21 ora contano i blocchi nel
-sorgente e pretendono che ognuno passi dalla stessa funzione.
-
-**② LA RIPRESA SI ARRENDEVA IN SILENZIO (6.224 → 6.225).** Agganciata a `staffCalInit()`, che parte
-il **prima possibile**, usciva con un `return` muto se la sessione staff non era ancora pronta, e non
-riprovava mai. ⇒ *Provare una volta sola nel momento peggiore, e arrendersi in silenzio*: il difetto
-che questa voce toglie dal guardare, **rimesso nella cosa che doveva ripararlo**. Ora ripianifica
-(10 giri × 3 s), avvisa su **entrambe** le superfici e **lascia traccia in `pmo_ai_turns`**.
-
-#### 🔍 E la ripresa funzionava già — l'abbiamo scoperto dallo stato che ha lasciato
-
-Dopo la ricarica non compariva niente. Misurato nel `localStorage`: la chiave
-`pmoVerificheInSospeso` **esiste** e vale **`[]`**. Solo `pmoVerificheChiudi` può scrivere una lista
-vuota, e viene chiamata **solo dopo un verdetto definitivo**.
-⇒ **La verifica era stata ripresa e chiusa davvero.** Quello che mancava non era la ripresa: era che
-lo **dicesse** — la 6.224 scriveva solo nella riga di stato del calendario, che nessuno guardava, e
-non tracciava niente. È esattamente ciò che la 6.225 corregge.
-📌 *Quando* sia successo non è pinnato: la 6.224 non lasciava tracce. La conclusione non dipende dal
-momento.
-
-#### ✅ IL TERZO RESIDUO È CHIUSO — 15/08, 19ª sessione (PROD **6.226**)
-
-**Il lavoro non resta più `unknown` nel database dopo che l'app l'ha risolto.** Era la più piccola
-delle tre cose rimaste, ed è quella che si poteva fare **da qui**: le altre due chiedono una
-persona davanti allo schermo.
-
-🔎 **Perché esisteva.** La verifica si chiudeva in `pmoVerificheChiudi`, che scrive nel
-`localStorage` — e basta. Il lavoro in `pmo_cloud_records` restava `unknown` per sempre: chi guarda
-il database vedeva una domanda ancora aperta che era già stata risolta, e **chi non era seduto a
-quel computer non poteva saperlo**. È esattamente la condizione che la 18ª sessione ha pagato cara
-— la ripresa funzionava e non lo diceva a nessuno — e la regola nata quel giorno dice il contrario:
-ogni pezzo nuovo lascia traccia in una tabella.
-
-| dove | prima | ora |
-|---|---|---|
-| la edge | sapeva solo **aprire** e chiudere da sé un lavoro | ha l'azione **`chiudi-lavoro-ignoto`** |
-| la decisione | — | in **`esito-prenotazione.js`**, cioè in un modulo che il banco **esegue** |
-| le 3 strade dell'app + la ripresa | chiudevano solo in questo browser | chiudono **anche di là**, su `si` e su `no` |
-| il deposito della verifica | portava il `sbId` | porta **anche il numero del lavoro**, o alla ripresa non si sa quale riga chiudere |
-
-🔒 **Si chiude solo ciò che è `unknown`, e non è un dettaglio**: se il lavoro è già `done` o
-`error`, quella è la parola del **worker**, che la cosa l'ha vista da vicino; l'app ha guardato il
-calendario da fuori e non deve poterla sovrascrivere — o questa cura diventerebbe un modo nuovo di
-dire il falso. Chiamarla su un lavoro già concluso risponde `chiuso: false`, non un errore:
-riprendere una verifica vecchia è precisamente ciò che deve poter fare.
-⚖️ E il terzo verdetto non chiude niente: un **`boh`** che chiude un lavoro sarebbe il terzo esito
-arrotondato al secondo, cioè il difetto di partenza rifatto un piano più in là.
-
-**Verificato:** banchi **17/17** (`tre-esiti-prenotazione`, 7 casi nuovi) e **29/29**
-(`guarda-finche-non-sai`, 5 nuovi) · **15/15** i banchi Node · `controlla-sintassi` 5 blocchi 0
-errori · rete di regressione nel browser su `main` **55/55**, orologio attendibile, `leakCount`
-**2**, la linea di base.
-🚨 **E i banchi sanno diventare rossi — provato, non supposto**, con tre sabotaggi: togliere la
-chiusura a **una strada su tre** → 28/29; far rientrare `status` dal payload vecchio → 16/17 (è la
-trappola vera: chi scrive la riga mette `status` per primo, e un `status` ricopiato lo
-**sovrascriverebbe** — il lavoro resterebbe `unknown` avendo risposto «chiuso»); togliere la
-guardia sull'esito già noto → 15/17.
-⚖️ **Degrada in sicurezza in entrambi i versi**, come il resto della voce: app nuova + edge vecchia
-→ il corpo finisce nella validazione della prenotazione e torna `INVALID_CAMPO` **senza aver
-toccato niente**, perché la validazione sta prima di qualunque effetto; edge nuova + app vecchia →
-questa strada non la chiama nessuno.
-
-#### ⇒ Cosa resta, e sono due cose che da qui non si possono fare
-
-1. **La conferma visibile sulla 6.225/6.226**: rifare il giro (Caddy giù → prenoti → ricarichi) e
-   vedere il messaggio comparire nella chat *e* la traccia arrivare in `pmo_ai_turns` — e ora anche
-   il lavoro passare da `unknown` a `done`/`error` in `pmo_cloud_records`, che è la parte
-   **misurabile da lontano**. È una conferma, non una scoperta. ⛔ Chiede la VM e il gestionale:
-   dal cloud non si esce verso `app.padelvillage.club` né verso `*.supabase.co`.
-2. **Il caso «il worker riceve, crea su Matchpoint, e poi la risposta si perde»**: mai provato, e
-   provarlo costa una prenotazione vera. Il codice degrada in sicurezza; la prova no.
-
----
-
-## 📋 IN CODA — 13
-
-Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
-
-### C — Cose sapute e non risolte — 8
-
-#### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
-Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
-
-#### 13. 🇬🇧 Il ragionamento del modello, in inglese, dentro il messaggio al socio
-Visto da lui il 29/07, **1 volta su 24**. È la 21ª trappola vista dalla strada della **prosa**, non dei bottoni — e i test guardavano i bottoni.
-
-#### 14. 🔑 Le ⑩ chiavi «Ospite» che oscillano
-Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore** e diffate; ≥1 campione pulito prima di concludere «benigna e rara». ⏳ La sonda `fp_hot` è **scaduta il 4/08**: va rifondata.
-
-#### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
-Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
-
-#### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
+### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
 Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
 
 🎯 **Il perché, misurato chiudendo la 32:** su TEST **non gira nessun sync delle prenotazioni**, quindi non c'è niente che riconcili — in PROD lo fa `bookings_live` ogni 2 minuti, **con lo stesso identico codice**. Il bot era sano: aveva ragione a dire «Fatto».
 
 ⚖️ **Resta in coda, ma cambia natura**: non è più «indagare un guasto» — è **il sintomo atteso** di un TEST col calendario congelato per scelta (vedi `CLAUDE.md`). Sparisce da sé il giorno in cui si fa la **voce 34**, e non prima. Da chiudere allora, non oggi.
 
-#### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file
-*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste: scrivono in `getElementById` che ora dà `null`, e cominciano tutte con `if (!box) return;` ⇒ **no-op, irraggiungibili**. Lasciate di proposito: asportarle è una potatura da provare per bene. Il perché è scritto nel commento HTML nel punto dove stavano i pannelli.
+### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
+Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
 
-#### 🧟 29. Le azioni email restano dentro `assessment-email-send`
-*Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
-🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
+---
 
-#### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
-*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
+## 📋 IN CODA — 6
 
-### D — Corpose: solo se si vogliono ATTIVARE — 5
+Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
+
+### C — Cose sapute e non risolte — 2
+
+#### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
+*Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
+voce, e **non è codice**: è una prova da eseguire, scritta per intero nella parte B di
+[`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
+
+⭐ **Perché vale**: è l'**unico** caso che percorre il ramo del **`si`** — esito ignoto → si guarda →
+si TROVA → lavoro chiuso `done`. Il collaudo del 15/08 prova solo il ramo del `no`. E porta con sé
+la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal banco e **mai girata**.
+📊 La finestra è **misurata su 191 lavori**: taglio a ~2 s, dentro il minimo di **4,0 s**.
+🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
+`boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
+procedura.
+⛔ **Non si fa dal cloud**: serve la VM per Caddy. E la previsione su cui poggia — che il worker
+prosegua dopo la caduta del client — **non è provata**: se si fermasse, il caso non sarebbe
+riproducibile così, e anche quello è una risposta da scrivere lì.
+
+#### 14. 🔑 Le ⑩ chiavi «Ospite» che oscillano
+Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore** e diffate; ≥1 campione pulito prima di concludere «benigna e rara». ⏳ La sonda `fp_hot` è **scaduta il 4/08**: va rifondata.
+
+### D — Corpose: solo se si vogliono ATTIVARE — 4
 
 | # | cosa |
 |---|---|
@@ -436,7 +302,6 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
 | **18** | 📣 **Pannello avvisi nel gestionale** (lo staff vede cosa il bot ha mandato ai soci). 🚨 Stesso nodo del pannello autorizzazioni ⇒ **si disegnano insieme** |
-| **34** | 🧊 **«A-lite»: riaccendere il sync prenotazioni su TEST**, scongelando il calendario congelato per scelta il 14/08 (voce 32). Costo piccolo — la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le ~720 di PROD sul worker condiviso: **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, e verificare la prima giornata. ⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i **6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata va guardata nei log del worker su **Hetzner**. 🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è **la parità a costare**. 🔗 Chiude la **voce 26** il giorno in cui si fa |
 
 ---
 
@@ -592,7 +457,42 @@ Misurando il **14/08**, aprendo la voce 22:
 - 🧊 Lo specchio delle prenotazioni di TEST fermo dal 7/08 → **promossa da lui a urgente: è la voce 32.**
 - 🔢 `payment` su TEST ha **2503** righe contro le **2502** di PROD: una in più, non guardata.
 
-Misurando il **15/08** nella 19ª sessione, sanando la voce 40:
+Misurando il **15/08** nella 19ª sessione, sanando la voce 40 e chiudendo la 23:
+
+- 🧪 **LA PARTE B DEL COLLAUDO — «il worker riceve, crea su Matchpoint, e poi la risposta si
+  perde».** ⬆️ **Promossa da lui il 15/08, subito dopo: è la voce 41**, in coda nella sezione C.
+  È ciò che resta della voce 23, che è stata **chiusa** per sua decisione: non è un lavoro
+  di codice, è **una prova da eseguire dal Mac**, e sta scritta per intero nella parte B di
+  [`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
+  🔎 **Perché ora si può, e prima si diceva di no**: non serve che il worker sia irraggiungibile,
+  serve che **la risposta non torni**. Il worker mette il lavoro in **coda** e parla con Matchpoint
+  **in uscita**, non attraverso Caddy ⇒ togliendo Caddy *mentre sta già lavorando*, la prenotazione
+  si completa e la edge non riceve niente.
+  📊 **La finestra è misurata su 191 lavori veri**: il `done` più veloce sta a **4,0 s** (mediana
+  8,1 · p90 31,7 · max 148,4), mentre i tre `unknown` del collaudo stanno a **0,2–0,3 s** — tagliare
+  a ~2 secondi è dentro il minimo con margine doppio, e il tempo da solo distingue i due casi.
+  ⭐ È anche l'**unico** caso che percorre il ramo del **`si`** — ignoto → si guarda → si TROVA →
+  lavoro chiuso `done` — mentre il collaudo di ieri prova solo il ramo del `no`.
+  🚨 **Due trappole, trovate leggendo il codice prima di scrivere la procedura**: ① lo slot **non**
+  dev'essere una manutenzione, perché `staffCalAskMatchpoint` cerca **i nostri nomi** e senza nomi
+  il verdetto è `boh` ⇒ si proverebbe la strada sbagliata credendo di aver provato quella giusta;
+  ② la prenotazione è **vera per costruzione**, non per incidente come le tre del 14/08, e la
+  cancellazione fa parte della procedura.
+  ⛔ **Quel che è scritto sono previsioni dichiarate, non misure**, e la principale va detta: *non è
+  provato* che il worker prosegua dopo la caduta del client. Se si fermasse, Matchpoint resterebbe
+  vuoto e il caso non sarebbe riproducibile così — anche quello è una risposta, da scrivere lì
+  invece che riprovare a caso.
+
+- ✅ **Nessun lavoro di prenotazione è MAI rimasto appeso a `pending`**: **191 lavori** da giugno,
+  **0** senza esito finale. Il «lavoro fantasma» che il commento di `writeBookingJob` teme —
+  *«resta pending PER SEMPRE e chi guarda non saprà mai com'è finita»* — è un rischio reale del
+  disegno che in due mesi non si è mai realizzato. ⭐ Vale quanto una prova al contrario: dice che
+  la cosa da guardare era il **terzo esito**, non il lavoro perso, e la voce 23 ha guardato dove
+  doveva.
+- ⚠️ **Il lavoro non sa quanto è durato.** Ogni scrittura **sostituisce** il payload intero, quindi
+  `created_at` — presente solo nella prima riga, quella `pending` — sparisce alla seconda. La durata
+  si ricava solo dalle colonne della tabella. Non fa danno oggi; sarebbe una riga in più da
+  conservare il giorno in cui si volesse misurare la lentezza del worker dal database.
 
 - 🕳️ **A PROD manca `trg_self_assessments_mark_token_completed`, che TEST ha.** Trovato facendo il
   rito «cosa c'è attaccato a questa tabella» prima di montare i due trigger dell'`updated_at`: su
@@ -637,17 +537,21 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — 13, 14 e 15/08/2026 — 19 voci
+## 📦 CHIUSE — 13, 14 e 15/08/2026 — 23 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 15/08; le dieci successive del 14/08; le otto ultime del 13/08.**
+**Le prime cinque voci sono del 15/08** — tre chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **29** | 📦 *(15/08, 20ª sessione — chiusa **DICHIARANDO**, su sua delega esplicita: «decidi tu»)* **Le azioni email restano dentro `assessment-email-send`.** Le 11 azioni del canale ritirato ci sono ancora, ma sono murate in **tre punti indipendenti**, misurati e non ricordati: il `410` esce alla riga 2607 **prima** del controllo delle ammesse; `ALLOWED_ACTIONS` ne ammette **4** e nessuna è del canale email; e il cron `jobid 4` — **l'unico posto in tutto il database** che nomini quella edge — è `active = false`. Sul vivo: **0 invocazioni in 24 ore** su PROD, con controllo negativo (2344 righe viste nella stessa finestra, e una funzione da 14 chiamate trovata) ⇒ lo zero è vero, non cieco. ⚖️ **Perché dichiarare e non asportare**: non c'è un guasto da riparare, e il taglio **non sarebbe per nome** — `sendAssessmentEmailCore` e i suoi porti (Gmail, MIME, log) sono **gli stessi che serve `staff_invite`**, che è vivo e usa Gmail. Tagliare per somiglianza di nome dentro un file che ha già un problema di codice morto (voce 28) vorrebbe dire fare due potature intrecciate invece di una decisa. 🚨 Resta scritto ciò che **non** si tocca: la funzione non si cancella, i secret Gmail non si tolgono, e il default di `action` è `'send'` — cioè un'azione **ritirata**: chi chiama senza `action` prende un 410, non «azione non valida». Se un domani il canale email deve tornare, si rimettono le azioni in `ALLOWED_ACTIONS` e si riaccende il cron: niente è stato distrutto. |
+| **11bis** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione — non fatta, e la differenza conta)* **Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`.** Sua idea del 2/08. ⚖️ **Aveva già perso urgenza il 3/08 e la scheda lo diceva**: la visibilità di quei soci era stata curata **alla radice** (PROD 6.169), quindi non era più una riparazione ma **una scelta** — e la scelta, oggi, è no. 📌 Resta qui e non sparisce perché una voce tolta senza il perché torna: il giorno in cui a qualcuno riverrà l'idea, questa riga dice che è già stata guardata, che il problema sotto **non c'è più**, e che il bottone sarebbe una comodità, non una cura |
+| **13** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione)* **Il ragionamento del modello, in inglese, dentro il messaggio al socio.** Visto da lui il 29/07, **1 volta su 24**. ⭐ **Il valore della voce non era il difetto, era il punto cieco che aveva rivelato, e quello resta scritto**: era la 21ª trappola vista dalla strada della **prosa**, mentre i test guardavano **i bottoni**. È la stessa lezione che il 15/08 ha fatto scoprire i gemelli della voce 23 — un banco che prova la regola e non ciò che l'utente vede davvero. ⚖️ Annullata perché **la frequenza non giustifica il lavoro** (1/24, cosmetica, nessun dato sbagliato al socio), non perché non fosse vera |
+| **23** | ⛔ *(15/08, chiusa dalla 19ª sessione — salita dalla coda il 14/08, scritta dalla 17ª, collaudata dal vivo dalla 18ª)* **«`writeBookingJob` in `create` non guarda com'è andata» — e il titolo ammetteva due letture, tutt'e due vere.** ① La funzione scartava l'esito del proprio `upsert` mentre la sorella dieci righe più su lo controlla: non una convenzione del file, una dimenticanza. ② **Il terzo esito veniva raccontato come il secondo**: gli esiti sono *fatto*, *non fatto* e **non lo so**, e l'ultimo veniva scritto «errore» — lo staff legge «fallita», rifà, e se la prima era passata il campo resta prenotato **due volte** sul sistema del circolo. 📌 Il commento nel codice lo sapeva già (*«NESSUN retry: la prenotazione potrebbe essere già stata creata»*): quello che mancava non era il retry, era **dirlo**. 🛑 **E la scheda sbagliava bersaglio**: diceva «la correzione è nell'app», mentre `writeBookingJob` ha **0 occorrenze** in `index.html` e vive nella edge. 🎯 **La cosa più importante l'ha detta il codice, non io: la macchina dell'ignoto NELL'APP C'ERA GIÀ** dalla v6.150 — la regola del committente *«quando l'esito resta IGNOTO non si indovina, si va a GUARDARE su Matchpoint»* coi tre verdetti `si`/`no`/`boh`. Il difetto non era una mancanza, era **una porta murata davanti a una stanza già arredata**. ✅ **Fatto:** l'errore di rete **marchiato** su una proprietà (non sulle parole — sarebbe il setaccio a maglie larghe della voce 36, e c'è un caso di prova apposta), il lavoro chiuso **`unknown`**, la strada sincrona che risponde `WORKER_ESITO_IGNOTO`, l'app che **insiste** 3 minuti invece di guardare una volta sola, e la domanda che si **deposita** e viene ripresa a ogni apertura. 🚨 **Ma il valore di questa voce è ciò che ha insegnato il COLLAUDO DAL VIVO, in produzione, insieme a lui** — e sono tre cose che nessun banco verde aveva visto. ① **La trappola scritta nel documento è scattata davvero**: fermare il worker **non basta**, davanti c'è **Caddy** che risponde **502**, e un 502 è *una risposta* ⇒ il terzo esito non nasce. Ecco spiegati due mesi di storico — **184 lavori, 16 `error` tutti 5xx, zero `unknown`**: non era un caso raro, era **impossibile**. Si ferma **Caddy**, e il cancello (`curl` prima e dopo) è obbligatorio perché la prima versione era **cieca**. ⚠️ Costo dell'assenza di quel cancello: **tre prenotazioni vere** create la notte del 14/08 credendo di collaudare, tutte annullate. ② **I GEMELLI (6.223 → 6.224)**: le strade di creazione sono **tre** e la correzione ne toccava **una** — lui prenota col clic sullo slot e ha ricevuto il messaggio vecchio. È la voce 31, commessa da me; il banco era verde perché provava la **regola** e non il **cablaggio**. ③ **LA RIPRESA SI ARRENDEVA IN SILENZIO (6.224 → 6.225)**: agganciata a `staffCalInit()`, usciva con un `return` muto se la sessione staff non era ancora pronta — *provare una volta sola nel momento peggiore e arrendersi in silenzio*, cioè il difetto che questa voce toglie dal guardare, **rimesso nella cosa che doveva ripararlo**. 🔍 E funzionava già: lo dimostrava `pmoVerificheInSospeso = []` nel `localStorage`, che **solo** la chiusura definitiva può scrivere — mancava che lo **dicesse**. ✅ **Chiusa il 15/08 col terzo residuo (PROD 6.226)**: il lavoro non resta più `unknown` nel database dopo che l'app l'ha risolto. La edge ha l'azione **`chiudi-lavoro-ignoto`**, la decisione sta nel modulo puro (il banco la **esegue**), e la chiamano tutte e quattro le strade. 🔒 Si chiude **solo** ciò che è `unknown`: la parola del worker — che ha visto la cosa da vicino — non la sovrascrive l'app, che ha guardato il calendario da fuori. ⚖️ Il `boh` non chiude niente, o sarebbe il terzo esito arrotondato al secondo un piano più in là. ✅ Banchi **17/17** e **29/29** (12 casi nuovi), **15/15** Node, browser **55/55** su `main` e **90/90** su TEST, e **tre sabotaggi** che li fanno diventare rossi (28/29, 16/17, 15/17). PROD letta **dal server**. ⇒ **Resta la sola parte B**, e non è più «da non fare»: ha una procedura scritta e una finestra misurata (vedi qui sotto fra le note). 📊 E una misura che vale come prova al contrario: **0 lavori appesi a `pending` su 191** in due mesi — il «lavoro fantasma» che il codice teme è un rischio del disegno che non si è mai realizzato, e dice che questa voce aveva guardato **dove doveva** |
 | **40** | 🔴 *(15/08, 19ª sessione — vista in produzione dalla console del committente il 14/08 sera, promossa da lui a «prima cosa della prossima ripresa»)* **`assessment_tokens.updated_at` non esisteva su PROD, e la RPC la scriveva lo stesso: `400` a ogni cambio di stato manuale dello staff, dal 22/05.** 🔎 **L'origine ha una data, e non è di stamattina**: la migrazione `20260522120000` aggiunge `status_autovalutazione` e, dentro `update_assessment_token_status_admin`, scrive `updated_at = now()` **dando per scontato** che la colonna esista. Su TEST esisteva davvero — là `supabase/manual-sql/supabase_schema.sql` era stato applicato per intero, e alla riga 21 la dichiara — su PROD no. ⇒ Quella RPC su PROD **non ha mai funzionato**: non un caso raro, il **100%** per quasi tre mesi. 📊 **Misurato prima di toccare, e le due metà sono il controllo l'una dell'altra**: PROD, 22 ore di log, **40 POST → 400 e zero 200**; TEST, le stesse ore, stessa app, stessa RPC, **4 POST → 200**. Su PROD la colonna la nomina **una sola** funzione, questa. E riprodotto **sul bersaglio per la strada dell'app** — JWT di uno staff vero, transazione annullata — con lo stesso `42703` letto nella sua console. ⚠️ **Cosa costava, ed è più sottile di «un bottone rotto»**: gli stati che si VEDONO su PROD (`PRIMO_SOLLECITO`, `GESTIONE_MANUALE`…) li scrive `assessment-email-send` con un `PATCH`, che `updated_at` non lo tocca — quindi funzionavano. A non arrivare mai al cloud era **solo il cambio di stato fatto a mano dallo staff**, che restava nel `localStorage` di quel browser. Un pezzo sano accanto a uno rotto è il modo migliore per non vedere quello rotto — la stessa forma dell'11/08. E **tre dei quattro** punti di chiamata fallivano in **silenzio** (`console.error` e nient'altro). ✅ **Riparato, strada scelta da lui fra due proposte**: si aggiunge la **colonna**, identica a quella di TEST (`timestamptz not null default now()`), invece di togliere la riga dalla RPC — così è la produzione a tornare uguale a ciò che il repo dichiara, non il contrario. È la stessa cura delle 5 colonne di `pmo_parser_errors` del 14/08. ⭐ **E le 1364 righe già in tabella NON dicono «aggiornata oggi»**: il default avrebbe scritto `now()` in tutte, cioè 1364 date false — proprio il «documento che mente» che in questi giorni si sta togliendo di mezzo. Si è ricostruita la data **vera** (`greatest` dei timestamp noti): misurato dopo, **0 righe** con data di oggi, l'arco va dal **25/04** al **10/08**. 🔎 **Trovato per strada e sanato con lui, perché è la stessa cosa**: su PROD `assessment_tokens` e `self_assessments` **non avevano nessun trigger**, mentre la funzione `assessment_touch_updated_at` c'era già — impronta `77cd2033…` **identica** a quella di TEST. Mancava solo il cablaggio, come nella voce 23. Rimessi i due `updated_at`; senza, la colonna si sarebbe mossa solo quando la RPC la scrive per nome, e una colonna che si aggiorna a volte sì e a volte no è peggio di una che non c'è. ✅ **Prova end-to-end sul bersaglio, in transazione annullata**: `42703` → **`{"ok": true}`**, stato `INVITO_INVIATO` → `GESTIONE_MANUALE`, `updated_at` 10/08 → 15/08. Linter **101 → 101**, `ERROR` **0**, nessun avviso nuovo; 1364 righe intatte. 🔗 Migrazione `20260815112211`, reversibile. ⛔ **Non toccato, e dichiarato invece che fatto di nascosto**: manca a PROD anche `trg_self_assessments_mark_token_completed`, che TEST ha. Quello non è un allineamento di schema ma un cambio di **comportamento** — brucerebbe il gettone da dentro il database, mentre su PROD lo fa la edge (misurato nella voce 27: 0,15 secondi dopo). Due strade che fanno la stessa cosa si guardano insieme, non si sommano di sfuggita: è sceso fra le «nate misurando» |
 | **38** | 📡 *(14/08, chiusa dalla 17ª sessione — nata come nota dalla 14ª, promossa alla 16ª)* **`wa-shadow-proxy`: ~1540 chiamate a vuoto al giorno, disarmate e VERIFICATE.** Il pannello WhatsApp dello staff bussava una volta al minuto a una funzione **mai deployata da nessuna parte** — 623 404 al giorno su PROD, 619 su TEST — più un secondo temporizzatore, `wa_usage_stats` su `ayly…` ogni 300 s, **295 fallimenti al giorno**. Un canale **smontato il 25/07** di cui il gestionale non si era accorto: stessa famiglia delle voci 28 e 29. ⚖️ Rideployare non era un'opzione, e l'ha deciso la misura: su `ayly…` ci sono **zero** edge function e **zero** tabelle `whatsapp*`. ✅ **Disarmo minimo**: un `return` in testa a `waInit()` — il riquadro non si mostra, i due temporizzatori non partono, il codice resta dormiente — su **entrambi i rami** con lo **stesso identico blocco** estratto dal file vero (PROD **6.221**, TEST **6.231**), che è il punto della voce 31. La libreria testi e template resta viva. 🎯 **Ma il valore di questa voce non è il disarmo: è la CATENA DI PROVE FALSE che ci è voluta per crederlo, quattro in due giorni.** ① La prima sonda cercava in `edge_logs` e rispondeva **0**: le edge stanno in **`function_edge_logs`** — salvata dal controllo negativo. ② Poi i 404 sembravano fermi alle **18:26/18:29**, *prima* della cura, e la 16ª sessione ha fatto la cosa difficile: **ha rifiutato un risultato che la assolveva**, concludendo «non è la mia riparazione, è una scheda chiusa». ③ 🚨 **E anche quella era falsa**: i 404 **non si erano mai fermati** — ne arrivava uno al minuto ancora alle **19:31** — era una finestra di log che finiva lì, scambiata per la fine del traffico. ④ E alla ripresa la prima query ha risposto **0** di nuovo, perché cercava `request.path` invece di `request.pathname`: di nuovo il controllo negativo (2461 righe) a smascherarla. ⭐⭐ **La lezione, che vale più della voce**: lo scetticismo applicato **una volta sola** non è scetticismo, è un cambio di conclusione. Anche la prova che ti dà **torto** va ricontrollata — la 16ª si è fermata un passo prima, senza chiedersi se il dato su cui poggiava lo smascheramento fosse vero. 🔎 **La causa vera era banale e nessuno l'aveva nominata**: una scheda del gestionale rimasta **aperta col codice vecchio**. Una pagina già caricata non prende il codice nuovo finché non la si **ricarica**, e il buco nei log fra le 23:00 e le 10:00 era il computer chiuso per la notte, non il traffico che cessa. ✅ **CHIUSA con la prova che serviva, e non è un silenzio.** Alle **19:57** il committente ha ricaricato **entrambe** le schede — la firma è inconfondibile nei log (`pmo_get_my_staff_profile`, `pmo_ai_settings`, `pmo_lessico`, il websocket `101`) — e da lì: PROD **0** chiamate al proxy mentre l'app ne faceva **206** fino alle 20:05; TEST ultimo 404 alle **19:57:24** e poi **zero**, con **271** chiamate fino alle 20:05; `ayly…` ultimo fallimento di `wa_usage_stats` alle **19:56:24**. ⭐ **È silenzio CON L'APP CHE PARLA ACCANTO**, ed è esattamente ciò che mancava alle prove precedenti: il controllo **positivo**, non l'assenza di traffico. 📌 Il disarmo era stato verificato anche **sul file SERVITO** via `pg_net` — `200`, `APP_VERSION = '6.221'`, e il `return;` **nudo** dentro `waInit()`: controllato il **return**, non il commento, perché un blocco che *dice* di essere disarmato e non lo è sarebbe la peggiore delle prove comode. ⛔ **Resta fuori, dichiarato**: la potatura del riquadro (~150 righe di HTML) e del blocco JS `wa*` (~700), oggi irraggiungibili — è fra le «nate misurando», stessa forma delle voci 28 e 29 |
 | **37** | 🔓 *(14/08, chiusa dalla 17ª sessione — aperta dalla 16ª, nata come nota il 12/08)* **Le policy di scrittura anonima rimaste: sette tolte, due lasciate con la ragione scritta.** 🚨 **La lezione della voce non sono le policy: è che due gruppi con lo STESSO aspetto avevano portata OPPOSTA**, e solo la misura li distingueva. Su TEST le tre `ALL` (`pmo_bookings`, `pmo_parse_history`, `pmo_parser_rules_versions`) sembravano «lettura e scrittura per anonimo» e sono risultate **decorative** — ad `anon` mancano i grant di tabella, e l'attacco rispondeva `42501` **prima** di qualunque modifica ⇒ la 16ª si è **fermata** e le ha tolte solo dopo, con la ragione giusta (`20260814191255`). Le tre della **famiglia feedback**, invece, su TEST erano **portanti davvero**: i grant ci sono (INSERT+UPDATE su `responses`, SELECT su `tokens`), e la prova d'attacco prima di toccare le dà **riuscite** — 2 gettoni letti, risposta scritta (`20260814194040`). ⇒ Un rattoppo «per parità» fatto senza rimisurare sarebbe stato **giusto per caso**. ✅ **Tolte in tutto 7**: 3 su PROD (famiglia feedback, e la terza — `SELECT` sui gettoni — **non la nominava nessuna nota**: è saltata fuori guardando la famiglia intera invece della singola tabella), 3 decorative su TEST, 3 famiglia feedback su TEST. 🔀 **E fra le due ultime c'è la voce 31 in diretta, con la mano della 16ª**: l'autorizzazione diceva «PROD» ed è stata eseguita alla lettera, lasciando la famiglia chiusa di qua e aperta di là — difetto che la sessione **si è auto-denunciata** invece di sanare da sé, e che la 17ª ha chiuso il giorno stesso. ⚪ **Le due «portanti» RESTANO, ed è una scelta misurata, non una rinuncia**: `pmo_ai_turns` e `pmo_parser_errors` scrivono con la chiave pubblicabile **solo come ripiego** quando la sessione staff manca — tutte le chiamanti stanno in schermate staff, e l'app **sale** al token staff quando c'è. Una riga di SQL esisterebbe (`to anon, authenticated` → `to authenticated`) ed è **proprio quella da non fare**: il ripiego ripara un guasto vero, dichiarato nel commento del codice — *«il token grezzo dava 401 quando era scaduto, insert silenziosamente perso»* — e toglierlo lo **ricrea**. ⚖️ Portata di ciò che resta aperto: inserire **spazzatura** in due tabelle di diagnostica, niente lettura e nessun dato del circolo; `pmo_parser_errors` è ferma dal **16/06**, `pmo_ai_turns` dal **13/08**. ✅ Prove: attacco come `anon` **prima e dopo su ognuna**, col **seme** che soddisfa la chiave esterna (senza, a fermarlo sarebbe il vincolo e non l'RLS), e il **controllo negativo**. Linter PROD **99 → 101**, TEST **92 → 95** e **95 → 97**, `WARN` ed `ERROR` invariati ovunque, ogni scarto **previsto e dichiarato prima** di applicare; i nuovi sono tutti `rls_enabled_no_policy` INFO, cioè l'esito voluto. Residui zero. 🧯 **Un errore mio, tenuto perché è il pezzo che insegna**: la prima sonda «dopo» dava `42501` anche sulla RPC legittima e sembrava dire che avessi rotto la strada vera — avevo aggiunto al blocco un `count(*)` che girava ancora come `anon`. **Era la sonda a essere cambiata fra il prima e il dopo**, e stavolta il risultato comodo era quello che mi dava *torto*. ⛔ **Resta fuori, e la voce lo dichiara**: il **TRUNCATE** ad `anon` (14 tabelle su PROD) — riguarda i **grant**, non le policy, e non era ciò che era stato autorizzato. È sceso fra le «nate misurando», dove le promozioni le decide il committente. 🔗 3 migrazioni: `20260814181002`, `20260814191255`, `20260814194040`, tutte reversibili |
@@ -721,6 +625,20 @@ Le prime 6 del 13/08 nella 12ª sessione, la **30** e quella dei conteggi in ser
 > partiva dal 2/08 e mostrava `VERSIONI.md` come «creato quel giorno con 387 righe» — era il bordo
 > del troncamento. `git fetch --unshallow` (1950 commit dal 25/04) ha rimesso i conti a posto.
 >
+> **Una sonda può cambiare ciò che misura, e allora il rosso è suo.** *(15/08)* Il banco
+> `handle-test.html` dava **24/55** con 31 eccezioni `localStorage null` — ripetibile, quindi
+> credibile. Non era il codice: era il mio runner, che **interrogava la pagina mentre il giro
+> era in corso** (`waitForFunction`, poi `evaluate` ogni 3 secondi). Lo stesso codice, con un
+> runner che aspetta **alla cieca** e legge **una volta sola alla fine**, fa **55/55**. ⇒ Prima
+> di attribuire un rosso al lavoro di qualcuno, chiedersi **cosa fa lo strumento al bersaglio**:
+> qui il baseline era rotto quanto il fix, e un A/B fra due misure sbagliate sarebbe sembrato
+> pulito — 24 contro 24, «nessuna regressione». Vera la conclusione, per la ragione sbagliata.
+>
+> **E la prova che il fix FA qualcosa va cercata a parte.** Il banco passa 55/55 prima e dopo:
+> da solo non distingue «l'ho riparato» da «non ho toccato niente». Il controllo positivo è
+> stato aprire l'app nel browser e guardare i due agganci: `undefined` prima, `function` dopo.
+> Senza quello, la voce 31 si sarebbe chiusa su una rete verde che non aveva visto nulla.
+
 > **Le prove dell'utente valgono più delle mie verifiche.** I due errori del 13/08 — «Verifica
 > Gmail» disarmata e la parola sbagliata — non li ha trovati nessun test: li ha trovati lui
 > aprendo l'app. Sintassi e rete di regressione erano verdi in entrambi i casi.
