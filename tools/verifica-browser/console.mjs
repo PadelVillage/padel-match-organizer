@@ -119,9 +119,22 @@ if (arg.allowWrites) {
   console.error(`\n  ⚠️  SCRITTURE CONSENTITE su ${arg.env.toUpperCase()} — questa esecuzione può modificare dati veri.\n`);
 }
 
+// L'uscita di rete del container passa da un proxy: curl lo legge da HTTPS_PROXY,
+// Chromium no — va detto al browser, altrimenti ogni pagina muore con
+// ERR_CONNECTION_RESET e sembra un sito irraggiungibile invece di una svista qui.
+const proxyServer = process.env.HTTPS_PROXY || process.env.https_proxy || null;
 const browser = await chromium.launch({
   executablePath: process.env.PMO_CHROMIUM_PATH || undefined,
+  ...(proxyServer ? { proxy: { server: proxyServer, bypass: 'localhost,127.0.0.1' } } : {}),
+  // Il proxy lascia passare questi host in tunnel cieco (certificato vero, non
+  // sostituito) e quel tunnel si spezza sul TLS 1.3 di Chromium: la pagina muore
+  // con ERR_CONNECTION_RESET, che sembra un sito irraggiungibile. Con TLS 1.2
+  // passa. NON è un allentamento della verifica: il certificato viene validato
+  // come prima, cambia solo la versione del protocollo. Da togliere il giorno in
+  // cui il tunnel regge il 1.3 — si prova alzando questo tetto.
+  args: [`--ssl-version-max=${process.env.PMO_TLS_MAX || 'tls1.2'}`],
 });
+report.proxy = proxyServer ? 'attivo' : 'nessuno';
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 page.setDefaultTimeout(arg.timeout);
 

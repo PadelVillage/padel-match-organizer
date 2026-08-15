@@ -33,6 +33,29 @@ d'ambiente, mai nel repo e mai in chat:
 | `PMO_VERIFY_EMAIL` / `PMO_VERIFY_PASSWORD` | PROD |
 | `PMO_VERIFY_EMAIL_TEST` / `PMO_VERIFY_PASSWORD_TEST` | TEST |
 
+**3. Preparare il container.** Il container di una sessione è effimero e nasce senza due
+cose che servono al browser. Incolla `prepara-ambiente.sh` nel campo **Script di
+configurazione** dell'ambiente cloud (gira a ogni avvio, prima di Claude): installa
+`certutil` e importa la CA del proxy nel magazzino NSS di Chromium.
+
+Chromium su Linux **non** guarda i certificati di sistema, guarda il proprio magazzino, che
+nasce vuoto. Senza quel passaggio ogni pagina muore con `ERR_CERT_AUTHORITY_INVALID` — e
+`curl` intanto funziona, il che rende il sintomo confondente.
+
+## Due trappole del container, già gestite nel codice
+
+Sono scritte qui perché si ripresentano identiche in ogni sessione nuova, e il sintomo che
+producono somiglia a «il sito è irraggiungibile» invece che «l'attrezzo è configurato male».
+
+1. **Il browser non eredita il proxy.** `curl` legge `HTTPS_PROXY` da solo, Chromium no: va
+   passato a `chromium.launch({ proxy })`, altrimenti `ERR_CONNECTION_RESET` ovunque.
+2. **Il tunnel non regge il TLS 1.3.** Gli host dell'allowlist personalizzata passano in
+   tunnel cieco, col certificato vero e non sostituito, e quel tunnel si spezza sul TLS 1.3
+   di Chromium. Il browser parte con `--ssl-version-max=tls1.2`. ⚠️ **Non è un allentamento
+   della verifica**: il certificato viene validato esattamente come prima, cambia solo la
+   versione del protocollo. Si può alzare con `PMO_TLS_MAX=tls1.3` per riprovare, ed è la
+   prima cosa da rimuovere il giorno in cui il tunnel regge.
+
 ## Uso
 
 ```bash
@@ -78,6 +101,10 @@ vederlo fallire senza spiegazione.
   sessione e il suo `localStorage`, accumulati in ore d'uso; qui la pagina è sempre pulita.
   Per i sintomi che dipendono dallo stato serve `--storage-in` con un export fatto sul posto,
   e se il difetto nasce da una sequenza lunga di azioni va ricostruita la sequenza.
+- **`api.github.com` dalla pagina non risponde.** L'app di TEST interroga l'API di GitHub
+  (regole del parser): dal browser del container quella chiamata fallisce, perché il traffico
+  GitHub passa da un proxy dedicato con le sue regole. La pagina si carica lo stesso, ma le
+  funzioni che dipendono da quella lettura vanno verificate altrove.
 - **TEST ha il calendario congelato** (vedi `CLAUDE.md`): le prenotazioni lì sono una
   fotografia. Una diagnosi sulle prenotazioni fatta su TEST non fallisce — riesce mostrando
   il passato, che è peggio.
