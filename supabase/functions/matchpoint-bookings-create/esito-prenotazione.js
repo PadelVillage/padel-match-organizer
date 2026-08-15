@@ -66,3 +66,56 @@ export function decidiEsitoDelLavoro(errore, tipoLabel) {
 export function codiceDiRifiuto(errore) {
   return esitoIgnoto(errore) ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR';
 }
+
+/* ── ⏳→✅/❌ CHIUDERE UN LAVORO RIMASTO «IGNOTO» ───────────────────────────────────────────────
+ *
+ * 🚨 Il residuo della voce 23, misurato il 15/08/2026 collaudandola in produzione. Quando questa
+ * funzione decide `unknown`, l'app poi VA A GUARDARE su Matchpoint e arriva a un verdetto — ma
+ * fino a oggi quel verdetto restava nel `localStorage` di quel browser. Nel database il lavoro
+ * rimaneva `unknown` PER SEMPRE: chi legge `pmo_cloud_records` vedeva una domanda ancora aperta
+ * che era già stata chiusa. Piccola, ma della stessa famiglia dei documenti che mentono.
+ *
+ * ⭐ È qui, e non nella edge, per la ragione di tutto questo modulo: la decisione dev'essere
+ * ESEGUIBILE in un banco. Le due condizioni che contano non si vedono leggendo il codice —
+ * si vedono provandole.
+ *
+ * 🔒 ① SI CHIUDE SOLO CIÒ CHE È IGNOTO. Se il lavoro è già `done` o `error`, quella è la parola
+ *    del worker, che la cosa l'ha vista da vicino; l'app ha guardato il calendario da fuori e non
+ *    deve poterla sovrascrivere. Non è un errore chiederlo: si risponde «non chiudibile».
+ * 🚨 ② `status` e `updated_at` VANNO TOLTI dal payload vecchio prima di ricopiarlo. Chi scrive la
+ *    riga li mette per primo e ciò che arriva dopo li sovrascriverebbe: il lavoro resterebbe
+ *    `unknown` avendo però risposto «chiuso» — cioè una bugia nuova al posto di quella tolta.
+ *    Il resto si conserva: una riga di stato che perde il COSA non serve a chi la legge.
+ * ⚖️ Il terzo verdetto (`boh`) non chiude niente, e nemmeno arriva fin qui: un «non lo so» che
+ *    chiude un lavoro sarebbe il terzo esito arrotondato al secondo — il difetto di partenza,
+ *    rifatto un piano più in là.
+ */
+export function chiusuraDelLavoroIgnoto(precedente, verdetto, opzioni) {
+  if (verdetto !== 'si' && verdetto !== 'no') {
+    return { chiudibile: false, motivo: 'VERDETTO_NON_VALIDO', status: null, payload: null };
+  }
+  const riga = (precedente && typeof precedente === 'object') ? precedente : {};
+  const statusOra = String(riga.status ?? '').trim();
+  if (statusOra !== 'unknown') {
+    return { chiudibile: false, motivo: 'NON_IGNOTO', status: statusOra || null, payload: null };
+  }
+  const opts = opzioni || {};
+  const tentativi = Number(opts.tentativi) || 0;
+  const quando = String(opts.quando || '');
+  const { status: _statusVecchio, updated_at: _updatedVecchio, error: erroreIniziale, ...resto } = riga;
+  const payload = Object.assign({}, resto);
+  // L'errore di rete di allora resta scritto, ma cambia nome: su un lavoro chiuso con `si`,
+  // `error` significherebbe «non è stata creata», che è falso.
+  if (erroreIniziale) payload.errore_iniziale = erroreIniziale;
+  payload.chiusa_da = 'verifica-app';
+  payload.verdetto = verdetto;
+  if (quando) payload.chiusa_il = quando;
+  if (tentativi > 0) payload.tentativi_verifica = tentativi;
+  if (verdetto === 'si') {
+    payload.message = 'Esito ignoto risolto guardando su Matchpoint: la prenotazione C’È.';
+  } else {
+    payload.message = 'Esito ignoto risolto guardando su Matchpoint: la prenotazione NON c’è, lo slot è rimasto libero.';
+    payload.error = 'La richiesta non è arrivata a Matchpoint (verificato guardando: non risulta niente).';
+  }
+  return { chiudibile: true, motivo: '', status: verdetto === 'si' ? 'done' : 'error', payload };
+}
