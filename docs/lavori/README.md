@@ -1,6 +1,48 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 15/08/2026, a fine 22ª sessione.** Misurata, non ricordata.
+**Fotografia del 15/08/2026, a fine 23ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 23ª: **lo strumento che guarda solo un pezzo del bersaglio**
+
+La 16ª aveva imparato a diffidare della **prova che ti dà ragione**; la 20ª, dello **strumento che
+la produce**. Questa ha trovato il caso peggiore della famiglia: uno strumento che **funzionava
+benissimo su una porzione del bersaglio, e non sapeva di guardarne una sola**.
+
+| lo strumento diceva | cosa era davvero |
+|---|---|
+| «le funzioni Autovalutazione morte sono **71**» | l'analizzatore parsava **UN SOLO blocco `<script>` su cinque**. L'app ne ha uno da **976.000 caratteri** ⇒ **645 funzioni erano invisibili come chiamanti**, e tutto ciò che chiamavano risultava «senza chiamanti» |
+| «`assessmentEmailSendControlledFollowupTest` è morta» | **falso morto**: la invoca un `onclick` generato e passato **nudo** a `assessmentProcessButton(label, tipo, "nome(...)")`. La sonda cercava `onXXX=`. Potarla avrebbe rotto un bottone vivo — e con lei un'altra |
+| «il perimetro è 64 funzioni, come dice la scheda» | il filtro per prefisso `assessment*` nascondeva **34 funzioni** che si chiamano `buildAssessment*`, `openAssessment*`, `renderAssessment*` |
+| «`buildAssessmentSecretaryPrompt` è viva» | il mio elenco di controllo era filtrato **collo stesso prefisso**: quel nome non poteva comparirci nemmeno da morto |
+| «le morte sono 227» | erano **221**: contavo le 6 righe d'intestazione che lo script stampa sempre |
+
+🎯 **E a smascherare il difetto grosso non è stata una sonda più fine: è stata la verifica DOPO il
+taglio.** La prima potatura ha lasciato **due riferimenti orfani** nel file; tirando quel filo è
+venuto fuori che l'app aveva cinque blocchi e io ne guardavo uno. ⇒ Senza quel controllo avrei
+cancellato codice vivo **con tutti i verdi accesi**: sintassi verde, banco verde, nessun riferimento
+apparente. ⚖️ **La lezione non è «misura meglio prima»: è GUARDA COSA RESTA DOPO AVER AGITO**, perché
+è lì che uno strumento cieco si tradisce.
+
+🚨 **E la stessa forma mi ha fatto sbagliare una CORREZIONE**, che è il modo più insidioso: ho
+«corretto» la frase «*non è un incidente come le tre della notte del 14/08*» credendola riferita ai
+tre lavori `unknown` — che sono del 14 **e** del 15. Era **giusta com'era**: parlava delle tre
+**prenotazioni vere** create per sbaglio quella notte (misurate: 3 `staff_booking` fra le 21:55 e le
+22:00, tutte `deleted`). ⇒ **Due terzetti diversi con lo stesso numero**, e ho preso l'uno per
+l'altro. Disfatta, e annotata nel documento perché non ricapiti a chi rilegge.
+
+## 📌 Le decisioni prese dal committente nella 23ª
+
+| | |
+|---|---|
+| ⬆️ **tre voci promosse dalla coda** | la lista urgenti era **vuota da qui**: le quattro che c'erano erano tutte fuori portata. Ha scelto **15**, **28** (la potatura) e **14** (rifondare la sonda) |
+| 🔓 **il perimetro della potatura, scelto guardandolo** | messo davanti a quattro perimetri — 103/1491, 69/945, solo le email, o «mostrami il diff» — ha preso **il più largo**, quello onesto. ⚖️ Ed è stata la scelta giusta per una ragione che nessuno dei due sapeva allora: gli altri due numeri venivano dallo stesso analizzatore cieco |
+| 📚 **«riscrivi la quattordici con questi numeri»** | la voce 14 diceva «⑩ chiavi»; sono **438**. Ha scelto di **riscriverla**, non di chiuderla: la domanda vera — togliere il nome dalla chiave — resta sua |
+| ⬆️ **«promovi tutto su Test Preview»**, poi **«promovi anche a prod»** | due conferme **separate**, come la regola richiede. TEST **6.241**, PROD **6.232** |
+| 🔍 **«il deploy della 743 è fallito»** | e non era vero, ma la segnalazione era giusta: sul merge non era scattato **nessun** workflow di deploy, e il rosso erano le due **guardie**. ⇒ Misurato che l'app era già servita alla 6.241. **La cosa che vede lui non è mai da archiviare, anche quando la diagnosi cambia** |
+| 📦 **«riscrivi la coda della 28 e chiudila»** | chiusa **a residuo dichiarato**. La coda della voce era diventata falsa: parlava della potatura come se fosse da fare |
+| ❓ **«perché c'è ancora la 41 in coda?»** | ⇒ **una domanda che ha corretto una mia scelta.** Gli avevo proposto di prepararla invece di chiuderla, e lui ha preso **la terza strada che non avevo messo fra le opzioni**: promuoverla fra le urgenti |
+
+**E la 22ª, poche ore prima:**
 
 ## 🔎 Il filo della 22ª: **la misura che concorda col documento**
 
@@ -160,19 +202,20 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** |
-| 📋 **In coda** | **7** |
+| 🔴 **Urgenti** | **4** |
+| 📋 **In coda** | **6** |
 | 📦 **Chiuse** | **27** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 22ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4)
+**Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
+dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
 non li controlla: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva — questo
 commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin/test-preview`.
-📏 **La rete di regressione: PROD 87 casi, TEST 90** — e la differenza è ormai **solo** i 3 della
-simulazione incassi, che in produzione non hanno senso. A inizio giornata erano 55 contro 90.
+📏 **La rete di regressione: PROD 90 casi, TEST 93** — cresciuta di 3 su entrambi con la voce 15
+(flow `Calendario/Aperta`). La differenza fra i due resta **solo** i 3 della simulazione incassi, che
+in produzione non hanno senso. A inizio giornata erano 55 contro 90.
 
 ✅ **PROD verificata DAL SERVER, non dall'etichetta.** Alla 22ª, servita e **caricata** in un browser
 vero: `app.padelvillage.club` risponde col titolo **v6.231**, che è il numero dichiarato qui sopra —
@@ -295,7 +338,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 4
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -315,7 +358,43 @@ hanno già la causa trovata e aspettano una decisione, non un'indagine. 🚨 Ma 
 📌 Le altre quattro — **31**, **29**, **28**, **26** — erano decisioni o potature, e quelle sì si
 preparano da qui.
 
-🔄 **Aggiornamento del 15/08, 20ª sessione.** La **31** è **CHIUSA** — censita, e curati i tre reperti che contavano, a partire dalla mezza promozione (PROD **6.227**); la **29** è **chiusa dichiarando**, su sua delega esplicita; la **28** è stata misurata fino in fondo e poi **chiusa il 15/08**, potata e promossa a PROD. ⇒ Delle sei promosse ne restano **tre**, e sono le tre che da qui non si possono fare: **34** e **14bis** vogliono la VM e il repo privato del bot, la **26** aspetta la 34. 🚨 **La lista non è corta perché è quasi finita: è corta perché il resto è altrove.**
+🔄 **Aggiornamento del 15/08, 20ª sessione.** La **31** è **CHIUSA** — censita, e curati i tre reperti che contavano, a partire dalla mezza promozione (PROD **6.227**); la **29** è **chiusa dichiarando**, su sua delega esplicita; la **28** è stata misurata fino in fondo e poi **chiusa il 15/08**, potata e promossa a PROD. ⇒ Delle sei promosse ne restano **tre**: **34** e **14bis** vogliono la VM e il repo privato del bot, la **26** aspetta la 34.
+
+⬆️ **E il 15/08 sera lui ne ha promossa una quarta: la 41**, dalla sezione C — *«promuovi la quarantuno tra le urgenti»*. ⇒ Coda da **7 a 6**, urgenti da 3 a **4**. 📌 Nasce da una domanda sua sul perché fosse ancora in coda: gli avevo proposto di prepararla per il Mac invece di chiuderla, e lui l'ha spostata di sopra — che è la terza strada, quella che non avevo messo fra le opzioni.
+
+🚨 **E ora TUTTE E QUATTRO le urgenti sono fuori dalla portata di una sessione cloud**: la 41 vuole SSH sulla VM, il login staff e una prenotazione vera sul Matchpoint; la 34 la VM; la 14bis il repo privato del bot; la 26 aspetta la 34. ⚖️ **La lista non è corta perché è quasi finita: è corta perché il resto è altrove** — e da stasera è vero per intero, non quasi. La prossima sessione utile su queste è **dal Mac**.
+
+### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
+*Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
+voce, e **non è codice**: è una prova da eseguire, scritta per intero nella parte B di
+[`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
+
+⭐ **Perché vale**: è l'**unico** caso che percorre il ramo del **`si`** — esito ignoto → si guarda →
+si TROVA → lavoro chiuso `done`. Il collaudo del 15/08 prova solo il ramo del `no`. E porta con sé
+la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal banco e **mai girata**.
+📊 La finestra è **misurata su 191 lavori**: taglio a ~2 s, dentro il minimo di **4,0 s**.
+🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
+`boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
+procedura.
+⛔ **Non si fa dal cloud**, e il 15/08 è stato verificato invece che ripetuto: `~/.ssh` **vuota**,
+porta **22 di `91.99.131.243` non raggiungibile**, `ssh` **non installato**. E anche con l'accesso
+mancherebbero le altre due gambe — il calendario col **login staff** (dal cloud il dominio non
+risponde) e il fatto che la prova crea una **prenotazione vera** sul Matchpoint del circolo.
+⚠️ La previsione su cui poggia — che il worker prosegua dopo la caduta del client — **non è
+provata**: se si fermasse, il caso non sarebbe riproducibile così, e anche quello è una risposta da
+scrivere lì.
+
+✅ **PRONTA DA ESEGUIRE DAL MAC: le tre premesse sono state riverificate il 15/08 sera**, e stanno
+in fondo alla parte B del documento. ① La **finestra dei 2 secondi regge** — rimisurata su **192**
+lavori (erano 191): `done` minimo **4,0 s** invariato, i tre `unknown` a **0,2–0,3 s**, quindi il
+tempo continua a distinguere i due casi da solo. ② **`chiudi-lavoro-ignoto` non è mai girata**:
+`chiusa_da` e `verdetto` sono **0 su 192**, quindi questa prova sarebbe davvero la sua prima
+esecuzione vera. ③ I **tre `unknown` residui** sono quelli attesi e restano tali.
+🧯 **E una correzione che ho fatto e poi disfatto**, scritta perché è la trappola: avevo «corretto»
+la frase «le tre della notte del 14/08» credendola riferita ai lavori `unknown` — che sono del
+14 **e del 15**. Era giusta com'era: parla delle **tre prenotazioni vere** create per sbaglio quella
+notte, misurate ora e confermate (3 `staff_booking` fra le 21:55 e le 22:00, tutte `deleted`).
+⇒ **Due terzetti diversi con lo stesso numero**, ed è annotato nel documento perché non ricapiti.
 
 ### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
 *Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
@@ -345,11 +424,11 @@ Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante del
 
 ---
 
-## 📋 IN CODA — 7
+## 📋 IN CODA — 6
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 3
+### C — Cose sapute e non risolte — 2
 
 #### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
 *Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
@@ -385,38 +464,6 @@ si era mai potuta porre.
 corsa non è più ipotetica — è in esercizio. Il sintomo da tenere d'occhio è **una modifica che
 sparisce dagli altri dispositivi** (spostamento, disdetta, uscita di un giocatore) senza errore in
 console: è esattamente la forma che aveva il caso 12.
-
-#### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
-*Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
-voce, e **non è codice**: è una prova da eseguire, scritta per intero nella parte B di
-[`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
-
-⭐ **Perché vale**: è l'**unico** caso che percorre il ramo del **`si`** — esito ignoto → si guarda →
-si TROVA → lavoro chiuso `done`. Il collaudo del 15/08 prova solo il ramo del `no`. E porta con sé
-la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal banco e **mai girata**.
-📊 La finestra è **misurata su 191 lavori**: taglio a ~2 s, dentro il minimo di **4,0 s**.
-🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
-`boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
-procedura.
-⛔ **Non si fa dal cloud**, e il 15/08 è stato verificato invece che ripetuto: `~/.ssh` **vuota**,
-porta **22 di `91.99.131.243` non raggiungibile**, `ssh` **non installato**. E anche con l'accesso
-mancherebbero le altre due gambe — il calendario col **login staff** (dal cloud il dominio non
-risponde) e il fatto che la prova crea una **prenotazione vera** sul Matchpoint del circolo.
-⚠️ La previsione su cui poggia — che il worker prosegua dopo la caduta del client — **non è
-provata**: se si fermasse, il caso non sarebbe riproducibile così, e anche quello è una risposta da
-scrivere lì.
-
-✅ **PRONTA DA ESEGUIRE DAL MAC: le tre premesse sono state riverificate il 15/08 sera**, e stanno
-in fondo alla parte B del documento. ① La **finestra dei 2 secondi regge** — rimisurata su **192**
-lavori (erano 191): `done` minimo **4,0 s** invariato, i tre `unknown` a **0,2–0,3 s**, quindi il
-tempo continua a distinguere i due casi da solo. ② **`chiudi-lavoro-ignoto` non è mai girata**:
-`chiusa_da` e `verdetto` sono **0 su 192**, quindi questa prova sarebbe davvero la sua prima
-esecuzione vera. ③ I **tre `unknown` residui** sono quelli attesi e restano tali.
-🧯 **E una correzione che ho fatto e poi disfatto**, scritta perché è la trappola: avevo «corretto»
-la frase «le tre della notte del 14/08» credendola riferita ai lavori `unknown` — che sono del
-14 **e del 15**. Era giusta com'era: parla delle **tre prenotazioni vere** create per sbaglio quella
-notte, misurate ora e confermate (3 `staff_booking` fra le 21:55 e le 22:00, tutte `deleted`).
-⇒ **Due terzetti diversi con lo stesso numero**, ed è annotato nel documento perché non ricapiti.
 
 #### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
 *Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
