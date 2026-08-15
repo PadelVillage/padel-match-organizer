@@ -173,7 +173,6 @@
     @media (max-width: 760px) { .assessment-multi-row { grid-template-columns:28px 1fr; } .assessment-multi-badges { grid-column:2; justify-content:flex-start; } }
 
 
-
     /* v5.114 - Archivio/Ricerca soci: lista tabellare compatta */
     .assessment-archive-table { border:1px solid #e6ebf2; border-radius:14px; overflow:hidden; background:#fff; }
     .assessment-archive-table-head,
@@ -578,9 +577,6 @@
     .badge-contacted { background:#ede7f6; color:#4a148c; }
 
 
-
-
-
     /* v5.13.8 - Restyling UX Gruppi + Programmazione Partite */
     .ux-intro { background:#f8fbff; border:1px solid #dce7f5; border-left:6px solid var(--primary); border-radius:14px; padding:16px 18px; margin:0 0 18px; }
     .ux-intro h3 { margin:0 0 6px; color:var(--primary); }
@@ -659,8 +655,6 @@
     }
 
 
-
-
     /* v5.21 - Controllo operativo partite in Dashboard */
     .groups-page-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px; }
     .groups-page-head h2 { margin:0 0 4px; }
@@ -700,7 +694,6 @@
     .players-v94-right .availability-panel { margin-top:16px; }
     @media (max-width:1180px) { .players-v94-layout { grid-template-columns:1fr; } .players-v94-left { position:static; max-height:none; } }
     @media (max-width:760px) { .players-v94-right .groups-filter-bar { grid-template-columns:1fr; } .players-v94-right { padding:10px; } }
-
 
 
     /* v5.13.12 - UX semplificata per Programmazione Partite */
@@ -900,7 +893,6 @@
     [id^="anchor-"] { scroll-margin-top: 90px; }
 
 
-
     .dashboard-hero { display:flex; justify-content:space-between; gap:18px; align-items:center; background:linear-gradient(135deg,#f8fbff,#eef5ff); border:1px solid #d9e6f5; }
     .dashboard-hero h2 { margin:4px 0 6px; }
     .dashboard-hero p { color:#475569; max-width:760px; }
@@ -957,7 +949,6 @@
     .smart-guidance-item .label { color:#666; font-size:12px; font-weight:bold; margin-bottom:4px; }
     .smart-guidance-item .value { color:#223; font-size:13px; line-height:1.4; }
     .smart-reason { margin:8px 0 10px; padding:8px 10px; background:#f8fbff; border-left:4px solid #7e57c2; border-radius:8px; color:#445; font-size:12px; line-height:1.4; }
-
 
 
     /* v5.21 - Controllo operativo partite in Dashboard */
@@ -2448,8 +2439,6 @@
     }
 
 
-
-
     /* v5.83 - Dashboard: occupazione campi */
     .dashboard-import-card { display:flex; align-items:center; gap:18px; justify-content:space-between; background:#fff; border:1px solid #dfe7f1; border-radius:18px; padding:16px 18px; margin:0 0 18px; box-shadow:0 1px 6px rgba(15,23,42,.07); }
     .dashboard-import-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:#f8fbff; border:1px solid #e6edf7; color:var(--primary); font-size:28px; flex:0 0 auto; }
@@ -3647,8 +3636,6 @@
     @media (max-width:760px) { .pmo-section-head { align-items:flex-start; flex-direction:column; padding:14px; } }
 
 
-
-
     /* v5.85 - Dashboard compatta: più dati in una schermata */
     #dashboard { --dash-gap: 10px; }
     #dashboard .dashboard-import-card {
@@ -3842,7 +3829,6 @@
     .players-v94-left { order:2; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow:auto; }
     .players-v94-right { order:1; }
     @media (max-width:1180px) { .players-v94-layout { grid-template-columns:1fr; } .players-v94-left, .players-v94-right { order:initial; } }
-
 
 
     /* v5.119 - Autovalutazioni: reinvio essenziale + aggiornamento livello scheda socio */
@@ -6685,7 +6671,6 @@ body.assessment-public-mode .assessment-public-only-card {
     </div>
 
 
-
     <div id="members" class="tab-content">
       <div class="section players-page-shell">
         <div class="players-sticky-head">
@@ -7790,7 +7775,6 @@ body.assessment-public-mode .assessment-public-only-card {
         </div>
 
 
-
         <!-- Bot Telegram: chi e' entrato dal bot dei soci, con quale invito, e chi puo'
              continuare a usarlo. I dati vivono sul progetto Supabase del BOT, non su
              questo: li porta avanti e indietro l'edge `bot-telegram-admin`, che verifica
@@ -7920,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.231';
+    const APP_VERSION = '6.232';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -10263,7 +10247,6 @@ Grazie.`
         return prefix + letter.toLocaleUpperCase('it-IT');
       });
     }
-
 
 
     function showAlert(message, type='info', anchorEl=null) {
@@ -16354,8 +16337,6 @@ Grazie.`
     }
 
 
-
-
     const DATA_ACTION_CONFIG = {
       clients: { buttonId:'matchpointClientsImportButton', stateId:'matchpointClientsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna clienti', pendingText:'Aggiornamento in corso', doneText:'Aggiorna clienti' },
       bookings: { buttonId:'matchpointBookingsImportButton', stateId:'matchpointBookingsActionState', defaultClass:'btn-primary', defaultText:'Aggiorna prenotazioni', pendingText:'Aggiornamento prenotazioni...', doneText:'Aggiorna prenotazioni' },
@@ -20085,7 +20066,6 @@ Per questa partita ti tengo come riserva e ti avviso subito se si libera un post
     function getGroupOriginForRecord(record) {
       return null;
     }
-
 
 
     function parseLocalISODateOnly(dateStr) {
@@ -24556,21 +24536,6 @@ Grazie!`
     }
 
 
-    // ============================================
-    // AUTOVALUTAZIONE LIVELLI v5.11.9
-    // ============================================
-    function getAssessmentLevelFilterValue() {
-      const value = cleanCell(document.getElementById('assessmentLevelFilter')?.value || '0.5');
-      return value || '0.5';
-    }
-    function levelMatchesAssessmentFilter(member) {
-      const filter = getAssessmentLevelFilterValue();
-      if (filter === 'all') return true;
-      const memberLevel = parseLevel(member.level, 0);
-      const filterLevel = parseLevel(filter, NaN);
-      if (isNaN(filterLevel)) return true;
-      return Math.abs(memberLevel - filterLevel) < 0.001;
-    }
     function getAssessmentTokenRecord(memberId) {
       return assessmentTokens[String(memberId)] || null;
     }
@@ -24852,12 +24817,6 @@ Grazie!`
       }
       assessmentPublicSetControlState(privacy, true, true);
     }
-    function assessmentExternalSetStatus(text = 'Pronto', level = 'ok') {
-      const status = document.getElementById('assessmentExternalLinkStatus');
-      if (!status) return;
-      status.textContent = text;
-      status.classList.toggle('warn', level === 'warn');
-    }
     function setAssessmentPublicStaffPanel(panel = 'link') {
       const target = ['link','registration','questions'].includes(panel) ? panel : 'link';
       window.assessmentPublicStaffPanel = target;
@@ -24885,201 +24844,12 @@ Grazie!`
       assessmentExternalRefreshStaffPreview();
       if (!window.assessmentPublicStaffPanel) setAssessmentPublicStaffPanel('link');
     }
-    function assessmentExternalOpenRegistrationPreview() {
-      setAssessmentPublicStaffPanel('registration');
-    }
-    function assessmentExternalCopyLink(kind = 'external') {
-      const isTest = kind === 'test';
-      const value = isTest ? assessmentExternalTestLinkUrl() : (document.getElementById('assessmentExternalLinkInput')?.value || assessmentExternalLinkUrl());
-      if (!value) return assessmentExternalSetStatus('Link non disponibile', 'warn');
-      const input = document.getElementById('assessmentExternalLinkInput');
-      if (!isTest && input) input.select();
-      copyTextWithFallback(value, isTest ? '✅ Link test copiato.' : '✅ Link copiato.');
-      assessmentExternalSetStatus('Link copiato');
-      setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
-    }
-    function assessmentExternalToggleTestForm() {
-      const form = document.getElementById('assessmentExternalTestForm');
-      const button = document.getElementById('assessmentExternalTestToggle');
-      if (!form) return;
-      const willOpen = form.hidden;
-      form.hidden = !willOpen;
-      if (button) button.textContent = willOpen ? 'Chiudi test form' : 'Apri test form';
-      if (!willOpen) {
-        const privacy = document.getElementById('assessmentExternalPrivacyCheck');
-        const policy = document.getElementById('assessmentExternalPrivacyPanel');
-        const policyButton = document.getElementById('assessmentExternalPrivacyToggle');
-        const sex = document.getElementById('assessmentExternalSexSelect');
-        if (privacy) privacy.checked = false;
-        if (policy) policy.hidden = true;
-        if (policyButton) policyButton.textContent = 'Leggi Privacy Policy';
-        if (sex) sex.value = 'M';
-        assessmentExternalRefreshStaffPreview();
-      }
-      if (willOpen) assessmentExternalRefreshStaffPreview();
-      assessmentExternalSetStatus(willOpen ? 'Test form aperto' : 'Pronto');
-    }
-    function assessmentExternalTogglePrivacyPolicy() {
-      const panel = document.getElementById('assessmentExternalPrivacyPanel');
-      const button = document.getElementById('assessmentExternalPrivacyToggle');
-      if (!panel) return;
-      panel.hidden = !panel.hidden;
-      if (button) button.textContent = panel.hidden ? 'Leggi Privacy Policy' : 'Chiudi Privacy Policy';
-    }
     function assessmentExternalSetMessage(scope = 'registration', text = '', type = '') {
       const id = scope === 'questions' ? 'assessmentExternalQuestionMessage' : 'assessmentExternalRegistrationMessage';
       const box = document.getElementById(id);
       if (!box) return;
       box.textContent = text || '';
       box.className = `assessment-external-message${type ? ` ${type}` : ''}`;
-    }
-    function assessmentExternalProceedToQuestions() {
-      const privacy = document.getElementById('assessmentExternalPrivacyCheck');
-      if (!privacy?.checked) {
-        assessmentExternalSetMessage('registration', "Privacy obbligatoria: leggi l'informativa e conferma il consenso per continuare.", 'error');
-        return;
-      }
-      assessmentExternalSetMessage('registration', '');
-      const completion = document.getElementById('assessmentExternalCompletion');
-      if (completion) completion.hidden = true;
-      setAssessmentPublicStaffPanel('questions');
-    }
-    function assessmentExternalQuestionSelects() {
-      return Array.from(document.querySelectorAll('[data-assessment-external-question]'));
-    }
-    function assessmentExternalQuestionData() {
-      const value = id => document.getElementById(id)?.value || '';
-      return {
-        experience: value('assessmentExternalQExperience'),
-        frequency: value('assessmentExternalQFrequency'),
-        declaredLevel: value('assessmentExternalQDeclaredLevel'),
-        balancedLevel: value('assessmentExternalQBalancedLevel'),
-        rally: value('assessmentExternalQRally'),
-        glass: value('assessmentExternalQGlass'),
-        net: value('assessmentExternalQNet'),
-        overhead: value('assessmentExternalQOverhead')
-      };
-    }
-    function assessmentExternalRegistrationData() {
-      return {
-        firstName: cleanCell(document.getElementById('assessmentExternalFirstNameInput')?.value || ''),
-        lastName: cleanCell(document.getElementById('assessmentExternalLastNameInput')?.value || ''),
-        phone: cleanCell(document.getElementById('assessmentExternalPhoneInput')?.value || ''),
-        email: cleanCell(document.getElementById('assessmentExternalEmailInput')?.value || ''),
-        gender: assessmentPublicNormalizeGender(document.getElementById('assessmentExternalSexSelect')?.value || 'M')
-      };
-    }
-    async function assessmentExternalSubmitStaffAssessment() {
-      const selects = assessmentExternalQuestionSelects();
-      const missing = selects.filter(select => !select.value);
-      if (missing.length) {
-        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
-        return;
-      }
-      const conoscenza = assessmentKnowledgeCollect('assessmentExternalKnowledgeBlock');
-      if (conoscenza.mancanti) {
-        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
-        return;
-      }
-      const answers = assessmentExternalQuestionData();
-      /* 🔐 Anche l'anteprima dello staff passa dal server, e non per simmetria: se qui fosse
-         rimasta una correzione locale, la banca sarebbe dovuta restare in questo file — cioè
-         il buco non si sarebbe chiuso. Si apre con la SESSIONE staff, non col gettone. */
-      const box = document.getElementById('assessmentExternalKnowledgeBlock');
-      let levelCalc, knowledge;
-      try {
-        const esito = await assessmentQuizChiama({
-          azione: 'staff-valuta',
-          seme: cleanCell(box?.dataset?.knowledgeSeme || ''),
-          scheda: answers,
-          risposte: conoscenza.answers
-        }, { comeStaff: true });
-        levelCalc = esito.livello;
-        knowledge = esito.conoscenza;
-      } catch (err) {
-        console.error('Anteprima autovalutazione non riuscita:', err);
-        assessmentExternalSetMessage('questions', 'Non riesco a valutare la prova: ' + (err?.message || err), 'error');
-        return;
-      }
-      // 🚨 Qui c'era il blocco che diceva «le risposte non sono coerenti con il livello indicato,
-      // rivedi il livello o le risposte»: spiegava al furbo ESATTAMENTE come aggiustare il tiro,
-      // e lo lasciava ritentare finché non tornava. L'invio ora passa sempre e il messaggio è
-      // uguale per tutti; chi non torna lo vede solo la segreteria.
-      const registration = assessmentExternalRegistrationData();
-      const submittedAt = new Date().toISOString();
-      const daControllare = levelCalc.coherence === 'medium' || levelCalc.coherence === 'low' || knowledge.status !== 'pass';
-      window.assessmentExternalStaffPreviewSubmission = {
-        ...registration,
-        answers,
-        knowledge,
-        submittedAt,
-        declaredLevel: levelCalc.declared_level,
-        calculatedLevel: levelCalc.calculated_level,
-        consistencyStatus: levelCalc.coherence,
-        staffStatus: daControllare ? 'da_controllare' : (registration.gender === 'NA' ? 'da_completare' : 'da_validare')
-      };
-      const completion = document.getElementById('assessmentExternalCompletion');
-      if (completion) completion.hidden = false;
-      assessmentExternalStoreStaffPreviewSubmission(window.assessmentExternalStaffPreviewSubmission, { render:false });
-      assessmentExternalSetMessage('questions', '');
-      assessmentExternalSetStatus('Test inviato');
-      setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
-    }
-    function assessmentExternalStoreStaffPreviewSubmission(submission = window.assessmentExternalStaffPreviewSubmission, options = {}) {
-      if (!submission) return false;
-      const testMember = assessmentExternalTestMember();
-      assessmentExternalUpsertLocal([{
-        id: 'staff-preview-pmo-000948',
-        request_code: 'staff-preview-pmo-000948',
-        status: 'received',
-        submitted_at: submission.submittedAt || new Date().toISOString(),
-        first_name: submission.firstName || '',
-        last_name: submission.lastName || '',
-        phone: submission.phone || '',
-        email: submission.email || '',
-        gender: submission.gender || 'M',
-        privacy_accepted: true,
-        declared_level: submission.declaredLevel || '',
-        calculated_level: submission.calculatedLevel || '',
-        consistency_status: submission.consistencyStatus || '',
-        staff_status: submission.staffStatus || 'da_validare',
-        matched_member_local_id: testMember?.id || '',
-        raw_response: {
-          source: 'link-esterno',
-          origin_label: 'Origine: Da link esterno',
-          external_request_id: 'staff-preview-pmo-000948',
-          external_request_code: 'staff-preview-pmo-000948',
-          external_email: submission.email || '',
-          gender: submission.gender || 'M',
-          gender_label: assessmentPublicGenderLabel(submission.gender || 'M'),
-          gender_status: assessmentPublicGenderStatus(submission.gender || 'M'),
-          privacy_consent: true,
-          answers: submission.answers || {},
-          knowledge: submission.knowledge || null
-        }
-      }]);
-      if (options.render !== false) renderAssessmentEmailHistoryPanel();
-      return true;
-    }
-    function assessmentExternalOpenHistory() {
-      const submission = window.assessmentExternalStaffPreviewSubmission;
-      if (!submission) {
-        assessmentExternalSetMessage('questions', "Completa tutte le risposte per inviare l'autovalutazione.", 'error');
-        return;
-      }
-      assessmentExternalStoreStaffPreviewSubmission(submission);
-      setAssessmentEmailPanel('history');
-      showAlert('✅ Evento link esterno aggiunto allo Storico locale TEST.', 'success');
-    }
-    function assessmentExternalSubmitTest() {
-      const privacy = document.getElementById('assessmentExternalPrivacyCheck');
-      if (!privacy?.checked) {
-        assessmentExternalSetStatus('Privacy obbligatoria', 'warn');
-        return;
-      }
-      assessmentExternalRefreshStaffPreview();
-      assessmentExternalSetStatus('Test inviato');
-      setTimeout(() => assessmentExternalSetStatus('Pronto'), 1400);
     }
     function assessmentPublicTogglePrivacyPolicy() {
       const panel = document.getElementById('assessmentPublicPrivacyPanel');
@@ -25600,12 +25370,6 @@ Grazie!`
       if (cloudUpdate) await assessmentExternalCleanupCloudDuplicates({ id:requestId });
       assessmentExternalAfterOperationalChange();
     }
-    function openAssessmentTestLink(link) {
-      const url = cleanCell(link || '');
-      if (!url) return showAlert('⚠️ Link scheda non disponibile.', 'warning');
-      const opened = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!opened) showAlert('⚠️ Il browser ha bloccato la nuova scheda. Copia il link o abilita i popup per questa pagina.', 'warning');
-    }
     function saveAssessmentSettings(options = {}) {
       const silent = options.silent === true;
       const previous = { ...assessmentSettings };
@@ -25644,163 +25408,11 @@ Grazie!`
       }
       return assessmentTokens[key];
     }
-    function assessmentVisibleMembers() {
-      const search = normalizeText(document.getElementById('assessmentSearch')?.value || '');
-      const filter = document.getElementById('assessmentFilter')?.value || 'all';
-      return getAssessmentCandidates().filter(member => {
-        const rec = getAssessmentTokenRecord(member.id);
-        const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-        const hay = normalizeText(`${playerFullName(member)} ${member.phone || ''} ${member.email || ''}`);
-        if (search && !hay.includes(search)) return false;
-        const isReview = !!response && (response.consistency_status === 'low' || normalizeText(response.staff_status || '').includes('review') || normalizeText(response.staff_status || '').includes('attention'));
-        const isReady = !!response && !isReview;
-        if (filter === 'missingToken') return !rec;
-        if (filter === 'withToken') return !!rec;
-        if (filter === 'sent') return rec && rec.status === 'sent';
-        if (filter === 'completed') return !!response;
-        if (filter === 'newResponses') return !!response;
-        if (filter === 'ready') return isReady;
-        if (filter === 'review') return isReview;
-        if (filter === 'low') return !!response && response.consistency_status === 'low';
-        if (filter === 'notCompleted') return !response;
-        return true;
-      });
-    }
     function updateAssessmentActionBanner(completedCount, reviewCount, readyCount) {
       const banner = document.getElementById('assessmentActionBanner');
       if (!banner) return;
       banner.className = 'assessment-banner';
       banner.innerHTML = '';
-    }
-    function generateAssessmentTokenForMember(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) return showAlert('❌ Socio non trovato', 'danger');
-      const rec = ensureAssessmentToken(member);
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      showAlert(`✅ Token pronto per ${playerFullName(member)}: ${rec.token}`, 'success');
-    }
-    function regenerateAssessmentTokenForMember(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) return showAlert('❌ Socio non trovato', 'danger');
-      const existing = getAssessmentTokenRecord(member.id);
-      if (existing && existing.token) {
-        const ok = confirm(`Creare un nuovo token per ${playerFullName(member)}?\n\nUsalo quando vuoi far compilare nuovamente l'autovalutazione. Il vecchio token resta archiviato nello storico locale del socio.`);
-        if (!ok) return showAlert('Operazione annullata.', 'info');
-      }
-      const key = String(member.id);
-      const previousTokens = Array.isArray(existing?.previousTokens) ? existing.previousTokens.slice() : [];
-      if (existing && existing.token) {
-        previousTokens.push({
-          token: existing.token,
-          status: existing.status || '',
-          createdAt: existing.createdAt || '',
-          sentAt: existing.sentAt || '',
-          registeredAt: existing.registeredAt || '',
-          registeredToSupabase: !!existing.registeredToSupabase,
-          archivedAt: new Date().toISOString()
-        });
-      }
-      assessmentTokens[key] = {
-        memberId: key,
-        token: makeAssessmentToken(member),
-        memberName: playerFullName(member),
-        phone: member.phone || '',
-        email: member.email || '',
-        status: 'created',
-        createdAt: new Date().toISOString(),
-        sentAt: null,
-        completedAt: null,
-        registeredToSupabase: false,
-        registeredAt: null,
-        previousTokens
-      };
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      showAlert(`✅ Nuovo token creato per ${playerFullName(member)}. Prossimo passo: registralo in Supabase.`, 'success');
-    }
-    function getSelectedAssessmentTestMemberId() {
-      return cleanCell(document.getElementById('assessmentTestMember')?.value || '');
-    }
-    function populateAssessmentTestSelect() {
-      const select = document.getElementById('assessmentTestMember');
-      if (!select) return;
-      const current = select.value;
-      const search = normalizeText(document.getElementById('assessmentSearch')?.value || '');
-      const members = getAssessmentCandidates().filter(m => {
-        if (!search) return true;
-        return normalizeText(`${playerFullName(m)} ${m.phone || ''} ${m.email || ''}`).includes(search);
-      }).sort((a,b) => playerFullName(a).localeCompare(playerFullName(b), 'it'));
-      select.innerHTML = members.map(m => `<option value="${escapeHtml(String(m.id))}">${escapeHtml(playerFullName(m))} — liv. ${escapeHtml(m.level ?? '')}${m.phone ? ' — ' + escapeHtml(m.phone) : ''}</option>`).join('');
-      if (current && members.some(m => String(m.id) === String(current))) select.value = current;
-      renderAssessmentTestStatus();
-    }
-    function getAssessmentMemberOperationalStatus(member) {
-      const rec = member ? getAssessmentTokenRecord(member.id) : null;
-      const response = rec && getAssessmentResponseByToken(rec.token);
-      const pieces = [];
-      pieces.push(rec ? '🔐 Token presente' : '⚪ Token mancante');
-      if (rec) pieces.push(rec.registeredToSupabase ? '☁️ Registrato in Supabase' : '☁️ Da registrare in Supabase');
-      pieces.push(member?.phone ? '📱 Telefono presente' : '⚠️ Telefono mancante');
-      if (response) pieces.push('✅ Risposta ricevuta');
-      else if (rec?.status === 'sent') pieces.push('📨 Richiesta inviata');
-      else pieces.push('⏳ Non ancora compilato');
-      if (hasAssessmentRequestToday(member?.id)) pieces.push('📅 Richiesta già preparata oggi');
-      return { rec, response, pieces };
-    }
-    function renderAssessmentTestStatus() {
-      const box = document.getElementById('assessmentTestStatus');
-      if (!box) return;
-      const memberId = getSelectedAssessmentTestMemberId();
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) {
-        box.innerHTML = 'Nessun socio disponibile con i filtri attuali.';
-        return;
-      }
-      const { rec, response, pieces } = getAssessmentMemberOperationalStatus(member);
-      const link = rec?.token ? getAssessmentLink(rec.token) : '';
-      box.innerHTML = `
-        <strong>${escapeHtml(playerFullName(member))}</strong> <span class="muted">liv. ${escapeHtml(member.level ?? '')}</span><br>
-        ${pieces.map(p => `<div>${p}</div>`).join('')}
-        ${link ? `<div style="margin-top:8px;"><span class="assessment-link">${escapeHtml(link)}</span></div>` : ''}
-        ${response ? `<div class="muted" style="margin-top:8px;">Livello dichiarato: ${escapeHtml(response.declared_level || '')} · Calcolato: ${escapeHtml(response.calculated_level || '')}</div>` : ''}
-      `;
-    }
-    function generateAssessmentTestToken(forceNew=false) {
-      const memberId = getSelectedAssessmentTestMemberId();
-      if (!memberId) return showAlert('⚠️ Seleziona prima un socio per la prova.', 'warning');
-      if (forceNew) regenerateAssessmentTokenForMember(memberId);
-      else generateAssessmentTokenForMember(memberId);
-      renderAssessmentTestStatus();
-    }
-    function openAssessmentTestWhatsApp() {
-      const memberId = getSelectedAssessmentTestMemberId();
-      if (!memberId) return showAlert('⚠️ Seleziona prima un socio per la prova.', 'warning');
-      openAssessmentWhatsApp(memberId);
-      setTimeout(renderAssessmentTestStatus, 300);
-    }
-    function renderAssessmentSendDashboard() {
-      const box = document.getElementById('assessmentSendDashboard');
-      if (!box) return;
-      const all = getAssessmentCandidates();
-      const withToken = all.filter(m => getAssessmentTokenRecord(m.id));
-      const registered = all.filter(m => getAssessmentTokenRecord(m.id)?.registeredToSupabase);
-      const completed = all.filter(m => { const rec = getAssessmentTokenRecord(m.id); return rec && getAssessmentResponseByToken(rec.token); });
-      const notCompleted = all.filter(m => { const rec = getAssessmentTokenRecord(m.id); return rec && !getAssessmentResponseByToken(rec.token); });
-      const readyToSend = notCompleted.filter(m => {
-        const rec = getAssessmentTokenRecord(m.id);
-        return !!(isLevelZeroPointFive(m) && m.phone && rec && rec.registeredToSupabase && rec.status !== 'sent');
-      });
-      const sentToday = getAssessmentRequestsSentTodayCount();
-      const kpi = (label, value, note='') => `<div class="assessment-kpi"><div class="kpi-label">${escapeHtml(label)}</div><div class="kpi-value">${escapeHtml(value)}</div>${note ? `<div class="muted">${escapeHtml(note)}</div>` : ''}</div>`;
-      box.innerHTML = [
-        kpi('Soci nel filtro', all.length),
-        kpi('Token presenti', withToken.length),
-        kpi('Registrati Supabase', registered.length),
-        kpi('Pronti 0.5 da inviare', readyToSend.length),
-        kpi('Richieste oggi', `${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`),
-        kpi('Risposte ricevute', completed.length)
-      ].join('');
     }
 
     function assessmentMultiStatusFor(member) {
@@ -25841,10 +25453,6 @@ Grazie!`
     function getAssessmentMultiSelectedIds() {
       return Array.from(document.querySelectorAll('.assessment-multi-check:checked')).map(el => String(el.value));
     }
-    function assessmentMultiSelect(mode) {
-      document.querySelectorAll('.assessment-multi-check').forEach(el => { el.checked = mode === 'visible'; });
-      assessmentMultiUpdateSelectedCount();
-    }
     function assessmentMultiUpdateSelectedCount() {
       const el = document.getElementById('assessmentMultiSelectedCount');
       if (el) el.textContent = `${getAssessmentMultiSelectedIds().length} selezionati`;
@@ -25880,56 +25488,6 @@ Grazie!`
       }).join('');
       assessmentMultiUpdateSelectedCount();
       renderAssessmentMultiQueue();
-    }
-    function assessmentMultiGenerateTokens(forceNew=false) {
-      const ids = getAssessmentMultiSelectedIds();
-      if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio.', 'warning');
-      if (forceNew) {
-        const ok = confirm(`Creare un nuovo token per ${ids.length} soci selezionati?\n\nUsalo solo se vuoi far ricompilare l'autovalutazione.`);
-        if (!ok) return;
-      }
-      let done = 0, skipped = 0;
-      ids.forEach(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        if (!member) return;
-        if (forceNew) {
-          const existing = getAssessmentTokenRecord(member.id);
-          const previousTokens = Array.isArray(existing?.previousTokens) ? existing.previousTokens.slice() : [];
-          if (existing?.token) previousTokens.push({ token: existing.token, status: existing.status || '', createdAt: existing.createdAt || '', sentAt: existing.sentAt || '', registeredAt: existing.registeredAt || '', registeredToSupabase: !!existing.registeredToSupabase, archivedAt: new Date().toISOString() });
-          assessmentTokens[String(member.id)] = { memberId:String(member.id), token:makeAssessmentToken(member), memberName:playerFullName(member), phone:member.phone || '', email:member.email || '', status:'created', createdAt:new Date().toISOString(), sentAt:null, completedAt:null, registeredToSupabase:false, registeredAt:null, previousTokens };
-          done++;
-        } else if (!getAssessmentTokenRecord(member.id)) {
-          ensureAssessmentToken(member); done++;
-        } else skipped++;
-      });
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      showAlert(`✅ Token aggiornati. Creati/nuovi: ${done}. Già presenti: ${skipped}.`, 'success');
-    }
-    function assessmentMultiReadyIdsFromSelection() {
-      const problems = [];
-      const ids = getAssessmentMultiSelectedIds().filter(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        const rec = member ? getAssessmentTokenRecord(member.id) : null;
-        const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-        if (!member) return false;
-        if (!member.phone) { problems.push(`${playerFullName(member)}: telefono mancante`); return false; }
-        if (!rec?.token) { problems.push(`${playerFullName(member)}: token mancante`); return false; }
-        if (!rec.registeredToSupabase) { problems.push(`${playerFullName(member)}: token da registrare in Supabase`); return false; }
-        if (response) { problems.push(`${playerFullName(member)}: ha già compilato`); return false; }
-        return true;
-      });
-      if (problems.length) showAlert(`⚠️ Alcuni soci sono stati esclusi: ${problems.slice(0,4).join(' · ')}${problems.length>4?' ...':''}`, 'warning');
-      return ids;
-    }
-    function assessmentMultiStartGuidedSend() {
-      const selected = assessmentMultiReadyIdsFromSelection().filter(id => !hasAssessmentRequestToday(id));
-      const remaining = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - getAssessmentRequestsSentTodayCount());
-      const ids = selected.slice(0, remaining);
-      if (!ids.length) return showAlert(`⚠️ Nessun socio pronto o limite giornaliero raggiunto (${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}).`, 'warning');
-      window.__assessmentMultiQueue = { ids, index:0 };
-      renderAssessmentMultiQueue();
-      showAlert(`🚀 Invio guidato avviato: ${ids.length} soci.`, 'success');
     }
     function assessmentMultiCurrentMember() {
       const q = window.__assessmentMultiQueue;
@@ -25979,14 +25537,6 @@ Grazie!`
         </div>`;
     }
 
-    function generateAssessmentTokensForVisible() {
-      const rows = assessmentVisibleMembers();
-      let created = 0;
-      rows.forEach(m => { if (!getAssessmentTokenRecord(m.id)) { ensureAssessmentToken(m); created++; } });
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      showAlert(`✅ Token generati: ${created}. Ora clicca “🚀 Registra token in Supabase”.`, 'success');
-    }
     function sqlEscape(value) { return String(value ?? '').replace(/'/g, "''"); }
     function buildAssessmentTokensSql() {
       const records = Object.values(assessmentTokens || {});
@@ -26068,97 +25618,6 @@ Grazie!`
         setTimeout(() => { displayAssessment(); displayDailyAssistant(); }, 200);
       }
     }
-    function buildAssessmentWhatsAppMessage(member, link) {
-      const firstName = displayFirstName(member) || member.firstName || '';
-      const fallback = `Ciao ${member.firstName} 👋
-
-Padel Village sta aggiornando i livelli dei soci per organizzare partite più equilibrate e divertenti.
-
-Ti chiediamo di compilare questa breve autovalutazione:
-${link}
-
-Richiede meno di 1 minuto.
-
-Il livello indicato non è definitivo: sarà controllato dallo staff e servirà solo per proporti partite più adatte al tuo livello.
-
-Grazie!
-Padel Village 🎾`;
-      return renderWhatsAppTemplateForCategory('assessment_link', {
-        nome: firstName,
-        nome_completo: playerFullName(member),
-        link_autovalutazione: link,
-        livello_validato: pmoLivelloTestoSocio(member?.level || ''),
-        telefono: cleanCell(member?.phone || '')
-      }, fallback);
-    }
-    function canOpenAssessmentWhatsApp(memberId) {
-      if (hasAssessmentRequestToday(memberId)) return { ok:true, reason:'already_today' };
-      const sentToday = getAssessmentRequestsSentTodayCount();
-      if (sentToday >= DAILY_ASSESSMENT_REQUEST_LIMIT) {
-        return { ok:false, reason:'daily_limit', message:`⚠️ Limite giornaliero raggiunto: hai già preparato ${sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT} richieste WhatsApp oggi. Gli altri soci restano in coda per domani.` };
-      }
-      return { ok:true, reason:'new_today' };
-    }
-    function openAssessmentWhatsApp(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) return showAlert('❌ Socio non trovato', 'danger');
-      const rec = getAssessmentTokenRecord(member.id);
-      if (!rec || !rec.token) return showAlert('⚠️ Prima genera il token per questo socio.', 'warning');
-      if (!rec.registeredToSupabase) return showAlert('⚠️ Prima di aprire WhatsApp devi registrare il token in Supabase. Clicca su “☁️ Registra Supabase”, poi riprova.', 'warning');
-      const response = getAssessmentResponseByToken(rec.token);
-      if (response) return showAlert('ℹ️ Questo socio ha già compilato: non serve inviare una nuova richiesta.', 'info');
-      const phoneCheck = validateWhatsAppPhone(member.phone || '');
-      if (!phoneCheck.ok) return showAlert('⚠️ ' + phoneCheck.message, 'warning');
-      const phone = phoneCheck.digits;
-      const check = canOpenAssessmentWhatsApp(member.id);
-      if (!check.ok) return showAlert(check.message, 'warning');
-      const link = getAssessmentLink(rec.token, member);
-      openWhatsAppWebSameTab(phone, buildAssessmentWhatsAppMessage(member, link));
-      markAssessmentSent(member.id);
-    }
-    function buildAssessmentLevelNotificationMessage(member, response=null) {
-      const firstName = displayFirstName(member);
-      const level = pmoLivelloTestoSocio(response?.applied_level || member?.level || '');
-      const fallback = `Ciao ${firstName} 👋
-abbiamo controllato la tua scheda di autovalutazione Padel Village.
-Il tuo livello validato è: ${level}
-Lo useremo per proporti partite più equilibrate e adatte al tuo gioco.
-
-Grazie,
-Padel Village`;
-      return renderWhatsAppTemplateForCategory('assessment_level', {
-        nome: firstName,
-        nome_completo: playerFullName(member),
-        livello_validato: level,
-        telefono: cleanCell(member?.phone || '')
-      }, fallback);
-    }
-    function notifyAssessmentLevelApplied(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) return showAlert('⚠️ Socio non trovato.', 'warning');
-      const rec = getAssessmentTokenRecord(member.id);
-      const response = rec?.token ? getAssessmentResponseByToken(rec.token) : null;
-      const applied = !!(member.selfAssessmentToken || response?.staff_status === 'applied' || response?.applied_at);
-      if (!applied) return showAlert('⚠️ Applica prima il livello alla scheda socio, poi prepara la notifica.', 'warning');
-      const phoneCheck = validateWhatsAppPhone(member.phone || '');
-      if (!phoneCheck.ok) return showAlert('⚠️ ' + phoneCheck.message, 'warning');
-      const message = buildAssessmentLevelNotificationMessage(member, response);
-      openWhatsAppWebSameTab(phoneCheck.digits, message);
-      const now = new Date().toISOString();
-      member.selfAssessmentNotifiedAt = now;
-      member.selfAssessmentNotificationLevel = String(member.level ?? '');
-      member.selfAssessmentNotificationMode = getWhatsAppOpenMode();
-      if (response) {
-        response.notification_status = 'prepared';
-        response.notified_at = now;
-      }
-      save('giocatori', giocatori);
-      save('assessmentResponses', assessmentResponses);
-      displayAssessment();
-      try { renderAssessmentArchivePanel(); } catch (err) { console.warn('Archivio autovalutazioni non aggiornato:', err); }
-      try { openMemberCard(member.id); } catch (err) { console.warn('Scheda socio non aggiornata:', err); }
-      showAlert(`💬 Notifica preparata per ${playerFullName(member)}. Premi Invio manualmente su WhatsApp.`, 'success');
-    }
 
     function assessmentResponseNeedsReview(response) {
       return !!response && (response.consistency_status === 'low' || normalizeText(response.staff_status || '').includes('review') || normalizeText(response.staff_status || '').includes('attention'));
@@ -26214,219 +25673,7 @@ Padel Village`;
       const remainingToday = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - sentToday);
       return { all, rawAll, technicalRecords, withPhone, missingToken, unregistered, completed, newResponses, reviewResponses, readyResponses, toContact, alreadySentNotCompleted, sentToday, remainingToday };
     }
-    function assessmentSecretaryNames(items, limit = 8) {
-      const names = (items || []).map(item => {
-        const member = item && item.member ? item.member : item;
-        return member ? (member.name || `${member.firstName || ''} ${member.surname || ''}`.trim()) : '';
-      }).filter(Boolean);
-      if (!names.length) return 'nessuno';
-      const shown = names.slice(0, limit);
-      const extra = names.length - shown.length;
-      return shown.join(', ') + (extra > 0 ? `, +${extra} altri` : '');
-    }
 
-    function buildAssessmentSecretaryPrompt() {
-      const stats = getAssessmentRoutineStats();
-      const blockedNoPhone = stats.all.filter(m => !m.phone);
-      const limitStatus = stats.remainingToday > 0
-        ? `Puoi preparare ancora ${stats.remainingToday} richiesta/e autovalutazione oggi, sempre manualmente.`
-        : 'Limite giornaliero raggiunto: non preparare altri invii autovalutazione oggi.';
-      const lines = [
-        'Agisci come controllo operativo di Padel Match Organizer.',
-        '',
-        'Controlla queste autovalutazioni senza proporre modifiche al codice.',
-        '',
-        'Regole operative:',
-        '- non applicare livelli al posto mio;',
-        '- non inviare comunicazioni al posto mio;',
-        '- non superare il limite di 10 richieste autovalutazione al giorno;',
-        '- segnala solo cose operative da controllare;',
-        '- non essere allarmista;',
-        '- rispondi con: esito, riepilogo autovalutazioni, rischi/attenzioni, azioni manuali consigliate.',
-        '',
-        'Le 5 domande operative:',
-        '',
-        '1) Chi posso contattare oggi?',
-        `- Soci pronti da contattare: ${stats.toContact.length}`,
-        `- Nomi pronti da contattare: ${assessmentSecretaryNames(stats.toContact)}`,
-        '',
-        '2) Quante richieste autovalutazione mi restano oggi?',
-        `- Invii preparati oggi: ${stats.sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`,
-        `- Invii ancora disponibili oggi: ${stats.remainingToday}`,
-        `- Nota: ${limitStatus}`,
-        '',
-        '3) Chi ha risposto?',
-        `- Risposte nuove da gestire: ${stats.newResponses.length}`,
-        `- Nomi con risposta nuova: ${assessmentSecretaryNames(stats.newResponses)}`,
-        `- Risposte da controllare con attenzione: ${stats.reviewResponses.length}`,
-        `- Nomi da verificare: ${assessmentSecretaryNames(stats.reviewResponses)}`,
-        '',
-        '4) Quali livelli sono da applicare?',
-        `- Risposte pronte per applicazione livello: ${stats.readyResponses.length}`,
-        `- Nomi potenzialmente pronti: ${assessmentSecretaryNames(stats.readyResponses)}`,
-        '',
-        '5) Chi è bloccato o da sistemare?',
-        `- Soci senza telefono: ${blockedNoPhone.length}`,
-        `- Nomi senza telefono: ${assessmentSecretaryNames(blockedNoPhone)}`,
-        `- Soci senza token: ${stats.missingToken.length}`,
-        `- Nomi senza token: ${assessmentSecretaryNames(stats.missingToken)}`,
-        `- Token da registrare su Supabase: ${stats.unregistered.length}`,
-        `- Nomi con token da registrare: ${assessmentSecretaryNames(stats.unregistered)}`,
-        `- Dove registrarli: vai in Autovalutazione → Impostazioni link / Token e Supabase e usa la funzione di registrazione/sincronizzazione token.`,
-        `- Record tecnici esclusi dai controlli operativi: ${stats.technicalRecords.length ? assessmentSecretaryNames(stats.technicalRecords) : 'nessuno'}`,
-        `- Inviati senza risposta: ${stats.alreadySentNotCompleted.length}`,
-        `- Nomi inviati senza risposta: ${assessmentSecretaryNames(stats.alreadySentNotCompleted)}`,
-        '',
-        'Riepilogo generale:',
-        `- Soci candidati autovalutazione: ${stats.all.length}`,
-        `- Soci con telefono: ${stats.withPhone.length}`,
-        `- Record tecnici esclusi dai candidati operativi: ${stats.technicalRecords.length}`,
-        `- Risposte completate totali: ${stats.completed.length}`,
-        '',
-        'Nota finale:',
-        'Il controllo operativo deve aiutarmi a controllare e dare priorità, ma ogni invio WhatsApp e ogni applicazione livello resta manuale.'
-      ];
-      return lines.join('\n');
-    }
-
-    function renderAssessmentSecretaryPanel() {
-      const el = document.getElementById('assessmentSecretarySummary');
-      if (!el) return;
-      const stats = getAssessmentRoutineStats();
-      const blockedNoPhone = stats.all.filter(m => !m.phone);
-      const blockers = blockedNoPhone.length + stats.missingToken.length + stats.unregistered.length;
-      const kind = stats.reviewResponses.length ? 'danger' : (stats.newResponses.length || stats.toContact.length || stats.alreadySentNotCompleted.length || blockers ? 'wait' : 'done');
-      const status = stats.reviewResponses.length
-        ? `Attenzione: ${stats.reviewResponses.length} risposta/e richiedono verifica staff.`
-        : stats.newResponses.length
-          ? `Ci sono ${stats.newResponses.length} risposta/e nuove da controllare.`
-          : stats.toContact.length
-            ? `Ci sono ${stats.toContact.length} soci pronti da contattare manualmente.`
-            : blockers
-              ? `Ci sono ${blockers} elemento/i da sistemare tra telefono, token o Supabase.`
-              : 'Nessuna urgenza evidente sulle autovalutazioni.';
-      el.innerHTML = `<div class="assistant-checklist">
-        <div class="assistant-check ${kind}"><div class="check-title">Quadro generale</div><div>${escapeHtml(status)}</div><div class="assistant-mini">Il controllo operativo non invia messaggi e non applica livelli.</div></div>
-        <div class="assistant-check ${stats.toContact.length ? 'wait' : 'done'}"><div class="check-title">1. Chi posso contattare oggi?</div><div>Pronti da contattare: <strong>${stats.toContact.length}</strong></div><div class="assistant-mini">${escapeHtml(assessmentSecretaryNames(stats.toContact, 5))}</div></div>
-        <div class="assistant-check ${stats.remainingToday > 0 ? 'done' : 'wait'}"><div class="check-title">2. Invii rimasti oggi</div><div>Disponibili: <strong>${stats.remainingToday}</strong> su ${DAILY_ASSESSMENT_REQUEST_LIMIT}</div><div class="assistant-mini">Già preparati oggi: ${stats.sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}</div></div>
-        <div class="assistant-check ${stats.newResponses.length ? 'wait' : 'done'}"><div class="check-title">3. Chi ha risposto?</div><div>Risposte nuove: <strong>${stats.newResponses.length}</strong></div><div class="assistant-mini">Da controllare con attenzione: ${stats.reviewResponses.length} · completate totali: ${stats.completed.length}</div></div>
-        <div class="assistant-check ${stats.readyResponses.length ? 'wait' : 'done'}"><div class="check-title">4. Livelli da applicare</div><div>Potenzialmente pronti: <strong>${stats.readyResponses.length}</strong></div><div class="assistant-mini">Sempre dopo controllo manuale dello staff.</div></div>
-        <div class="assistant-check ${blockers ? 'wait' : 'done'}"><div class="check-title">5. Blocchi / attenzioni</div><div>Senza telefono: <strong>${blockedNoPhone.length}</strong> · senza token: <strong>${stats.missingToken.length}</strong></div><div class="assistant-mini">Token da registrare: ${stats.unregistered.length} · inviati senza risposta: ${stats.alreadySentNotCompleted.length}</div><div class="assistant-mini">Per i token: Autovalutazione → Impostazioni link / Token e Supabase. Record tecnici esclusi: ${stats.technicalRecords.length}</div></div>
-      </div>`;
-    }
-
-    function copyAssessmentSecretaryPrompt() {
-      copyTextWithFallback(buildAssessmentSecretaryPrompt(), '✅ Controllo autovalutazioni copiato per il controllo operativo.');
-    }
-
-    function buildDailySecretaryBriefingPrompt() {
-      const age = getMatchpointImportAgeInfo();
-      const matchpointSummary = buildLastMatchpointImportSummaryText();
-      const inviteTotals = getDashboardInviteTotals();
-      const activeRecords = getLunchInvitationRecords()
-        .filter(record => {
-          const status = getLunchRecordOperationalStatus(record);
-          return status !== 'closed' && status !== 'cancelled';
-        })
-        .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
-      const assessment = getAssessmentRoutineStats();
-      const blockedNoPhone = assessment.all.filter(m => !m.phone);
-      const topPriorities = [];
-
-      activeRecords.forEach(record => {
-        const summary = getLunchInvitationSummary(record);
-        const missing = Math.max(0, 4 - summary.confirmed);
-        const status = getLunchRecordOperationalStatus(record);
-        if (status === 'inviting' && missing > 0) {
-          topPriorities.push(`Chiudere partita “${record.groupName || record.formatName || 'Partita pranzo'}”: mancano ${missing} giocatore/i.`);
-        } else if (status === 'complete') {
-          topPriorities.push(`Partita “${record.groupName || record.formatName || 'Partita pranzo'}” completa: controllare messaggio finale e chiusura manuale.`);
-        }
-      });
-      if (age.level === 'warn' || age.level === 'alert') topPriorities.push(age.message);
-      if (assessment.reviewResponses.length) topPriorities.push(`Verificare ${assessment.reviewResponses.length} risposta/e autovalutazione con attenzione staff.`);
-      else if (assessment.newResponses.length) topPriorities.push(`Controllare ${assessment.newResponses.length} nuova/e risposta/e autovalutazione.`);
-      if (!topPriorities.length) topPriorities.push('Nessuna urgenza evidente: procedere con i controlli ordinari.');
-
-      const lines = [
-        'Agisci come controllo operativo di Padel Match Organizer.',
-        '',
-        'Fammi il briefing della giornata senza proporre modifiche al codice.',
-        '',
-        'Regole operative generali:',
-        '- non scegliere giocatori al posto mio;',
-        '- non confermare nessuno automaticamente;',
-        '- non inviare comunicazioni al posto mio;',
-        '- non applicare livelli al posto mio;',
-        '- non superare il limite di 10 richieste autovalutazione al giorno;',
-        '- segnala solo priorità operative e anomalie reali o possibili;',
-        '- non essere allarmista;',
-        '- rispondi con: esito generale, priorità di oggi, controlli per area, rischi/attenzioni, azioni manuali consigliate.',
-        '',
-        `Data/ora briefing: ${new Date().toLocaleString('it-IT')}`,
-        '',
-        'PRIORITÀ RILEVATE DALLA DASHBOARD:',
-        ...topPriorities.map((item, index) => `${index + 1}. ${item}`),
-        '',
-        '1) MATCHPOINT',
-        `- Stato: ${age.label}`,
-        `- Nota: ${age.message}`,
-        `- Ultimo import: ${matchpointSummary ? 'disponibile sotto' : 'non disponibile'}`
-      ];
-
-      if (matchpointSummary) lines.push('', 'Riepilogo ultimo import Matchpoint:', matchpointSummary);
-
-      lines.push('', '2) PARTITE E INVITI',
-        `- Partite totali salvate: ${inviteTotals.total}`,
-        `- Aperte / inviti in corso: ${inviteTotals.open}`,
-        `- Complete da chiudere: ${inviteTotals.complete}`,
-        `- Chiuse: ${inviteTotals.closed}`,
-        `- Giocatori da seguire / in attesa: ${inviteTotals.pending}`,
-        `- Confermati totali: ${inviteTotals.confirmed}`,
-        `- Forse: ${inviteTotals.maybe}`,
-        `- Riserve: ${inviteTotals.reserve}`,
-        `- No: ${inviteTotals.declined}`,
-        '', 'Dettaglio partite attive:');
-
-      if (!activeRecords.length) {
-        lines.push('- Nessuna partita aperta o completa da chiudere al momento.');
-      } else {
-        activeRecords.slice(0, 10).forEach((record, index) => {
-          const summary = getLunchInvitationSummary(record);
-          const missing = Math.max(0, 4 - summary.confirmed);
-          const title = record.groupName || record.formatName || 'Partita pranzo';
-          const dateLabel = `${weekdayLabelFromISO(record.date) || ''} ${formatDateForWhatsApp(record.date || '')}`.trim();
-          lines.push(`${index + 1}. ${title} — ${dateLabel || record.date || '-'} ${record.time || ''}${record.endTime ? ' - ' + record.endTime : ''}`,
-            `   Stato: ${lunchRecordStatusLabel(record)} · Confermati: ${summary.confirmed}/4 · Mancanti: ${missing} · In attesa: ${summary.pending + summary.contacted} · No: ${summary.declined}`);
-          const maybeNames = getLunchPlayerNamesByStatus(record, 'maybe');
-          const reserveNames = getLunchPlayerNamesByStatus(record, 'reserve');
-          if (maybeNames.length) lines.push(`   Forse: ${maybeNames.join(', ')}`);
-          if (reserveNames.length) lines.push(`   Riserve: ${reserveNames.join(', ')}`);
-        });
-        if (activeRecords.length > 10) lines.push(`- Nota: mostrate le prime 10 partite attive su ${activeRecords.length}.`);
-      }
-
-      lines.push('', '3) AUTOVALUTAZIONI',
-        `- Soci pronti da contattare: ${assessment.toContact.length}`,
-        `- Nomi pronti da contattare: ${assessmentSecretaryNames(assessment.toContact)}`,
-        `- Invii autovalutazione preparati oggi: ${assessment.sentToday}/${DAILY_ASSESSMENT_REQUEST_LIMIT}`,
-        `- Invii ancora disponibili oggi: ${assessment.remainingToday}`,
-        `- Risposte nuove da gestire: ${assessment.newResponses.length}`,
-        `- Risposte da controllare con attenzione: ${assessment.reviewResponses.length}`,
-        `- Livelli potenzialmente pronti da applicare: ${assessment.readyResponses.length}`,
-        `- Soci senza telefono: ${blockedNoPhone.length} (${assessmentSecretaryNames(blockedNoPhone)})`,
-        `- Soci senza token: ${assessment.missingToken.length}`,
-        `- Token da registrare su Supabase: ${assessment.unregistered.length}`,
-        `- Record tecnici esclusi: ${assessment.technicalRecords.length ? assessmentSecretaryNames(assessment.technicalRecords) : 'nessuno'}`,
-        '', 'Nota finale:',
-        'Usa questi dati per darmi priorità e controlli manuali. Ogni azione finale resta mia.');
-
-      return lines.join('\n');
-    }
-
-    function copyDailySecretaryBriefingPrompt() {
-      copyTextWithFallback(buildDailySecretaryBriefingPrompt(), '✅ Briefing giornata copiato per il controllo operativo.');
-    }
 
     function getAssistantLunchWeekdaySlots(daysAhead = 15, preferredWeekday = null) {
       const wantedWeekday = preferredWeekday === null || preferredWeekday === undefined || preferredWeekday === '' ? null : parseInt(preferredWeekday, 10);
@@ -29933,23 +29180,6 @@ Per confermare scrivi ELIMINA.`);
       return Number.isNaN(d.getTime()) ? null : d;
     }
 
-    function getLatestAssessmentSentDate() {
-      const dates = Object.values(assessmentTokens || {})
-        .map(rec => rec && rec.sentAt ? new Date(rec.sentAt) : null)
-        .filter(d => d && !Number.isNaN(d.getTime()));
-      if (!dates.length) return null;
-      dates.sort((a,b) => b - a);
-      return dates[0];
-    }
-
-    function isAssessmentResponsesUpdated() {
-      if (!window.__assessmentResponsesSyncedThisSession) return false;
-      const lastSync = getAssessmentResponsesLastSyncDate();
-      if (!lastSync) return false;
-      const latestSent = getLatestAssessmentSentDate();
-      if (!latestSent) return true;
-      return lastSync >= latestSent;
-    }
 
     function getAssessmentResponsesLastCheckDate() {
       const raw = pmoLocalGetItem('assessmentResponsesLastCheckAt') || '';
@@ -29978,15 +29208,6 @@ Per confermare scrivi ELIMINA.`);
 
     function hasLocalAssessmentResponses() {
       return Array.isArray(assessmentResponses) && assessmentResponses.length > 0;
-    }
-
-    async function handleTopAssessmentResponsesUpdate() {
-      pmoLocalSetItem('assessmentResponsesLastCheckAt', new Date().toISOString());
-      updateAssessmentSyncTopButton();
-      const result = await syncAssessmentResponsesFromSupabase({ fromTopButton:true });
-      updateAssessmentSyncTopButton();
-      try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
-      return result;
     }
 
 
@@ -30079,36 +29300,6 @@ Per confermare scrivi ELIMINA.`);
       }
     }
 
-    async function updateAssessmentTokenStatusFrontend(token, newStatus) {
-      try {
-        showAlert('⏳ Aggiornamento stato su Supabase...', 'info');
-        const res = await pmoStaffRpc('update_assessment_token_status_admin', {
-          p_token: token,
-          p_status_autovalutazione: newStatus
-        }, 'cloud_sync', 'aggiornare lo stato del token autovalutazione');
-        
-        if (!res || res.ok !== true) {
-          throw new Error(res?.error || 'Errore durante l\'aggiornamento dello stato.');
-        }
-
-        // Update local memory
-        const rec = Object.values(assessmentTokens || {}).find(r => cleanCell(r.token) === token);
-        if (rec) {
-          rec.status_autovalutazione = newStatus;
-          if (newStatus === 'COMPILATO' || newStatus === 'VALIDATO') {
-            rec.status = 'completed';
-            rec.completedAt = rec.completedAt || new Date().toISOString();
-          }
-          save('assessmentTokens', assessmentTokens);
-        }
-
-        showAlert('✅ Stato aggiornato con successo!', 'success');
-        renderAssessmentEmailMorningPanel();
-      } catch (err) {
-        console.error('Errore in updateAssessmentTokenStatusFrontend:', err);
-        showAlert('❌ Aggiornamento stato fallito: ' + (err.message || err), 'danger');
-      }
-    }
 
     async function syncAssessmentResponsesFromSupabase(options = {}) {
       const silent = options.silent === true;
@@ -30589,74 +29780,9 @@ Per confermare scrivi ELIMINA.`);
       displayAssessment();
       if (!options.silent) showAlert(`✅ Risposte importate: ${added} nuove, ${updated} aggiornate`, 'success');
     }
-    function openAssessmentResponseEditor(memberId) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      const rec = getAssessmentTokenRecord(memberId);
-      const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-      const modal = document.getElementById('assessmentEditCard');
-      const box = document.getElementById('assessmentEditContent');
-      if (!member || !response || !modal || !box) return showAlert('❌ Scheda valutazione non trovata', 'danger');
-      const submitted = response.submitted_at ? new Date(response.submitted_at).toLocaleString('it-IT') : 'n/d';
-      const staffState = assessmentStaffStatusInfo(response);
-      box.innerHTML = `
-        <div class="assessment-edit-head">
-          <div>
-            <div class="assessment-edit-title">📝 Modifica valutazione</div>
-            <div class="assessment-edit-subtitle"><strong>${escapeHtml(playerFullName(member))}</strong> · livello attuale ${escapeHtml(member.level ?? '')} · ${escapeHtml(member.phone || 'telefono mancante')}</div>
-          </div>
-          <button class="btn-secondary small-btn" onclick="closeAssessmentResponseEditor()">✕ Chiudi</button>
-        </div>
-        <div class="assessment-edit-summary">
-          <strong>Dati ricevuti</strong><br>
-          Invio: ${rec?.sentAt ? escapeHtml(new Date(rec.sentAt).toLocaleString('it-IT')) : 'n/d'} · Compilazione: ${escapeHtml(submitted)}<br>
-          Token: <span class="assessment-link">${escapeHtml(rec?.token || '')}</span>
-          ${renderAssessmentCalculationSummary(response, { empty:'' })}
-          ${renderAssessmentExternalSourceSummary(response, { empty:'' })}
-          ${renderAvailabilityProfile(getAssessmentAvailabilityProfile(response), { empty:'<div class="assessment-availability-box"><strong>🗓️ Disponibilità dichiarata</strong><br><span class="muted">Disponibilità non ricevuta in questa risposta. Probabile scheda compilata prima del salvataggio disponibilità.</span></div>' })}
-        </div>
-        <div class="assessment-edit-grid">
-          <div><label>Livello dichiarato</label><input id="assessmentEditDeclared" type="number" min="0" max="7" step="0.5" value="${escapeHtml(response.declared_level || '')}" /></div>
-          <div><label>Livello valutato / da applicare</label><input id="assessmentEditCalculated" type="number" min="0" max="7" step="0.5" value="${escapeHtml(response.calculated_level || response.declared_level || '')}" /></div>
-          <div><label>Coerenza</label><select id="assessmentEditCoherence">
-            <option value="high" ${response.consistency_status === 'high' ? 'selected' : ''}>high</option>
-            <option value="medium" ${response.consistency_status === 'medium' ? 'selected' : ''}>medium</option>
-            <option value="low" ${response.consistency_status === 'low' ? 'selected' : ''}>low</option>
-          </select></div>
-          <div><label>Stato controllo</label><div class="assessment-status-box"><span class="badge ${staffState.cls}">${escapeHtml(staffState.label)}</span><br><span class="muted">${escapeHtml(staffState.note)}</span></div></div>
-        </div>
-        <div><label>Note staff</label><textarea id="assessmentEditNotes" rows="3" placeholder="Motivo della modifica, osservazioni, conferma manuale...">${escapeHtml(response.staff_notes || '')}</textarea></div>
-        <div class="assessment-edit-actions">
-          <button class="btn-secondary" onclick="closeAssessmentResponseEditor()">Annulla</button>
-          <button class="btn-primary" onclick="saveAssessmentResponseEditor('${escapeHtml(String(member.id))}', false)">💾 Salva modifica</button>
-        </div>`;
-      modal.classList.add('active');
-    }
     function closeAssessmentResponseEditor() {
       const modal = document.getElementById('assessmentEditCard');
       if (modal) modal.classList.remove('active');
-    }
-    function saveAssessmentResponseEditor(memberId, applyAfterSave) {
-      const rec = getAssessmentTokenRecord(memberId);
-      const response = rec ? getAssessmentResponseByToken(rec.token) : null;
-      if (!rec || !response) return showAlert('❌ Risposta non trovata', 'danger');
-      const declared = cleanCell(document.getElementById('assessmentEditDeclared')?.value || '');
-      const calculated = cleanCell(document.getElementById('assessmentEditCalculated')?.value || '');
-      const coherence = cleanCell(document.getElementById('assessmentEditCoherence')?.value || 'medium');
-      const notes = cleanCell(document.getElementById('assessmentEditNotes')?.value || '');
-      const previousLevel = response.calculated_level || response.declared_level || '';
-      const level = parseFloat(String(calculated || declared).replace(',', '.'));
-      if (isNaN(level) || level < 0 || level > 7) return showAlert('❌ Inserisci un livello valido tra 0 e 7.', 'danger');
-      response.declared_level = declared;
-      response.calculated_level = String(level);
-      response.consistency_status = coherence;
-      response.staff_status = assessmentNextStaffStatus(response, previousLevel, level);
-      response.staff_notes = notes;
-      response.staff_edited_at = new Date().toISOString();
-      save('assessmentResponses', assessmentResponses);
-      closeAssessmentResponseEditor();
-      displayAssessment();
-      showAlert('✅ Scheda valutazione aggiornata. Puoi applicare il livello corretto quando vuoi.', 'success');
-      if (applyAfterSave) applyAssessmentLevel(memberId);
     }
     async function saveMemberAssessmentValidationFromCard(memberId, applyAfterSave) {
       if (pmoBlockWriteIfReadonly('modificare un socio')) return;
@@ -31042,12 +30168,6 @@ Per confermare scrivi ELIMINA.`);
       return assessmentMemberHasAppliedLevel(member, info.rec, info.response);
     }
     function assessmentBadge(label, cls='badge-info') { return `<span class="badge ${cls}">${escapeHtml(label)}</span>`; }
-    function assessmentPreStatusLabel(status) {
-      return { ready:'Pronto da inviare', missingToken:'Token da registrare', needsPrep:'Token da registrare', unregistered:'Token da registrare', sentNoResponse:'Inviato, non risposto', responded:'Ha già risposto', noPhone:'Senza telefono' }[status] || status;
-    }
-    function assessmentPreStatusClass(status) {
-      return { ready:'badge-warning', missingToken:'badge-warning', unregistered:'badge-warning', sentNoResponse:'badge-warning', responded:'badge-success', noPhone:'badge-danger' }[status] || 'badge-info';
-    }
     function assessmentPreEssentialStatus(member, info) {
       if (!member) return { label:'In attesa', cls:'badge-muted', canSend:false, canPrepare:false, reason:'Seleziona un socio dalla lista.' };
       if (!member.phone) return { label:'Telefono mancante', cls:'badge-danger', canSend:false, canPrepare:false, reason:'Aggiorna il telefono in Matchpoint prima dell’invio.' };
@@ -31057,32 +30177,10 @@ Per confermare scrivi ELIMINA.`);
       if (hasAssessmentRequestToday(member.id)) return { label:'Già inviato oggi', cls:'badge-warning', canSend:false, canPrepare:false, reason:'Il socio è già stato contattato oggi.' };
       return { label:'Pronto', cls:'badge-success', canSend:true, canPrepare:false, reason:'Puoi inviare il modulo tramite WhatsApp.' };
     }
-    function assessmentPrepareMissingInvites() {
-      assessmentPreSelect('visible');
-      assessmentSelectedGenerateTokens(false);
-    }
 
-    function assessmentOpenPreparationDetails() {
-      const details = document.getElementById('assessmentPreparationDetails');
-      if (details) { details.open = true; details.scrollIntoView({ behavior:'smooth', block:'center' }); }
-    }
     function assessmentStatusLevelKey(value) {
       const parsed = parseLevel(String(value || '').replace(',', '.'), NaN);
       return isNaN(parsed) ? normalizeText(value || '') : String(parsed);
-    }
-    function assessmentStaffStatusInfo(response) {
-      const status = normalizeText(response?.staff_status || '');
-      if (status === 'applied' || response?.applied_at) {
-        return { label:'Livello aggiornato', cls:'badge-success', note:"Il livello e' gia' stato scritto nella scheda socio." };
-      }
-      if (status === 'edited' || status === 'modificato dallo staff' || status === 'corretto dallo staff') {
-        return { label:'Corretto dallo staff', cls:'badge-warning', note:"Il livello e' stato corretto manualmente prima dell'applicazione." };
-      }
-      return {
-        label:'Da controllare',
-        cls: response?.consistency_status === 'low' || status === 'review' || status === 'attention' ? 'badge-warning' : 'badge-info',
-        note:'Stato automatico: cambia quando salvi una correzione o applichi il livello.'
-      };
     }
     function assessmentNextStaffStatus(response, previousLevel, nextLevel) {
       const previousStatus = normalizeText(response?.staff_status || '');
@@ -31101,16 +30199,6 @@ Per confermare scrivi ELIMINA.`);
       return assessmentAllActiveMembers().filter(isLevelZeroPointFive);
     }
     window.assessmentPreQuickFilter = window.assessmentPreQuickFilter || '';
-    function assessmentSetPreQuickFilter(status) {
-      window.assessmentPreQuickFilter = status || '';
-      const search = document.getElementById('assessmentPreSearch');
-      if (search) search.value = '';
-      renderAssessmentPrePanel();
-    }
-    function assessmentClearPreQuickFilter() {
-      window.assessmentPreQuickFilter = '';
-      assessmentUpdatePreQuickButtons();
-    }
     function assessmentCurrentPreQuickFilter() {
       return window.assessmentPreQuickFilter || '';
     }
@@ -31184,7 +30272,6 @@ Per confermare scrivi ELIMINA.`);
       });
       assessmentUpdatePreSelectedCount();
     }
-    function assessmentOpenMemberCardFromPre(memberId) { assessmentOpenMemberCard(memberId); }
     function assessmentDateMs(value) {
       const time = value ? new Date(value).getTime() : 0;
       return Number.isFinite(time) ? time : 0;
@@ -31228,9 +30315,6 @@ Per confermare scrivi ELIMINA.`);
     window.assessmentExcelImportState = window.assessmentExcelImportState || { fileName:'', rows:[], analyzedAt:'', appliedAt:'', summary:null, message:'' };
     window.assessmentExcelImportFile = window.assessmentExcelImportFile || null;
     const ASSESSMENT_EXCEL_IMPORT_ALLOWED_LEVELS = new Set(['0.5','1','1.5','2','2.5','3','3.5','4','4.5','5']);
-    function assessmentEmailFeaturePending(message) {
-      showAlert(message || 'Funzione prevista nel prossimo step tecnico.', 'info');
-    }
     function assessmentEmailTemplate(key) {
       return assessmentCommunicationTemplates[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] || DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES['primary-email'];
     }
@@ -31258,108 +30342,6 @@ Per confermare scrivi ELIMINA.`);
         type: cleanCell(template.type || key)
       };
     }
-    async function assessmentEmailSendFirstReady() {
-      const rows = assessmentEmailQueueFilteredRows();
-      if (!rows.length) return showAlert('Nessun socio 0.5 con email valida da inviare in questo momento.', 'warning');
-      const ready = rows.find(row => row.rec?.token && row.rec.registeredToSupabase) || rows[0];
-      return assessmentEmailSendMember(ready.member.id, 'primary-email');
-    }
-    async function assessmentEmailSendLevelConfirmation(memberId, options={}) {
-      const member = giocatori.find(g => String(g.id) === String(memberId));
-      if (!member) {
-        if (!options.suppressFailureAlert) showAlert('Socio non trovato.', 'warning');
-        return false;
-      }
-      const rec = getAssessmentTokenRecord(member.id);
-      const response = rec?.token ? getAssessmentResponseByToken(rec.token) : null;
-      const info = assessmentRecordFor(member);
-      if (!assessmentEmailMemberApplied(member, info)) {
-        if (!options.suppressFailureAlert) showAlert('Prima applica il livello alla scheda socio, poi invia la conferma email.', 'warning');
-        return false;
-      }
-      if (!assessmentEmailHasValidEmail(member)) {
-        if (!options.suppressFailureAlert) showAlert('Email del socio mancante o non valida: non posso inviare la conferma livello.', 'warning');
-        return false;
-      }
-      const alreadySentAt = assessmentEmailLevelConfirmationSentAt(member, response, rec);
-      if (alreadySentAt && options.skipIfAlreadySent) {
-        return true;
-      }
-      if (alreadySentAt) {
-        const ok = options.skipConfirm === true || confirm(`La conferma livello risulta gia inviata il ${assessmentEmailFormatDateTime(alreadySentAt)}.\n\nVuoi reinviarla via email?`);
-        if (!ok) return false;
-      }
-
-      try {
-        const rendered = assessmentEmailRenderTemplate(member, 'level-email', '', {
-          livello_validato: cleanCell(response?.applied_level || member.level || '')
-        });
-        if (!rendered.body) {
-          if (!options.suppressFailureAlert) showAlert('Testo email livello validato vuoto. Controlla la tab Testi.', 'warning');
-          return false;
-        }
-        if (!options.silentStart) showAlert(`Invio conferma livello via email per ${playerFullName(member)}...`, 'info');
-        const result = await pmoInvokeAssessmentEmail({
-          mode: 'level-email',
-          memberId: String(member.id),
-          member: {
-            id: String(member.id),
-            memberId: cleanCell(member.memberId || ''),
-            name: playerFullName(member),
-            firstName: cleanCell(member.firstName || ''),
-            surname: cleanCell(member.surname || ''),
-            email: assessmentEmailMemberEmail(member),
-            phone: cleanCell(member.phone || ''),
-            level: cleanCell(member.level || '')
-          },
-          level: cleanCell(response?.applied_level || member.level || ''),
-          originalRecipient: assessmentEmailMemberEmail(member),
-          token: cleanCell(rec?.token || ''),
-          link: '',
-          subject: rendered.subject,
-          body: rendered.body
-        });
-
-        const sentAt = result.sentAt || new Date().toISOString();
-        member.selfAssessmentLevelEmailSentAt = sentAt;
-        member.selfAssessmentLevelEmail = assessmentEmailMemberEmail(member);
-        member.selfAssessmentLevelEmailActualRecipient = result.actualRecipient || '';
-        member.selfAssessmentLevelEmailMessageId = result.gmailMessageId || '';
-        member.selfAssessmentNotificationChannel = 'email';
-        if (response) {
-          response.level_email_status = 'sent';
-          response.level_email_sent_at = sentAt;
-          response.level_email_actual_recipient = result.actualRecipient || '';
-          response.level_email_gmail_message_id = result.gmailMessageId || '';
-          response.level_email_mode = 'level-email';
-        }
-        if (rec) {
-          rec.levelEmailStatus = 'sent';
-          rec.levelEmailSentAt = sentAt;
-          rec.levelEmailActualRecipient = result.actualRecipient || '';
-          rec.levelEmailMessageId = result.gmailMessageId || '';
-        }
-        save('giocatori', giocatori);
-        save('assessmentResponses', assessmentResponses);
-        save('assessmentTokens', assessmentTokens);
-        if (!options.suppressRender) {
-          displayAssessment();
-          setAssessmentEmailPanel('history');
-        }
-        if (!options.suppressSuccessAlert) {
-          showAlert(options.fromApply
-            ? `Livello applicato a ${playerFullName(member)} e conferma email inviata.`
-            : `Conferma livello inviata via email a ${playerFullName(member)}.`,
-            'success');
-        }
-        return true;
-      } catch (err) {
-        const message = 'Invio conferma livello non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'inviare conferma livello');
-        if (options.throwOnError) throw new Error(message);
-        if (!options.suppressFailureAlert) showAlert(message, 'danger');
-        return false;
-      }
-    }
     function assessmentEmailMemberEmail(member) {
       return cleanCell(member?.email || member?.mail || member?.emailAddress || '');
     }
@@ -31385,15 +30367,6 @@ Per confermare scrivi ELIMINA.`);
       if (!time) return '-';
       return new Date(time).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
     }
-    function assessmentEmailNextMorningRun() {
-      const now = new Date();
-      const next = new Date(now);
-      next.setHours(5, 45, 0, 0);
-      if (next <= now) next.setDate(next.getDate() + 1);
-      const weekday = next.toLocaleDateString('it-IT', { weekday:'short' });
-      const day = weekday ? weekday.charAt(0).toUpperCase() + weekday.slice(1).replace('.', '') : '';
-      return `${day} ${next.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' })} alle 05:45`;
-    }
     function assessmentEmailNextAutoSendDateTime(baseTimeRaw) {
       const baseMs = baseTimeRaw ? Date.parse(baseTimeRaw) : 0;
       const startMs = Number.isFinite(baseMs) ? Math.max(baseMs, Date.now()) : Date.now();
@@ -31407,11 +30380,6 @@ Per confermare scrivi ELIMINA.`);
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
       return `${dateStr} alle 07:00`;
-    }
-    function assessmentEmailAddDays(value, days) {
-      const base = assessmentEmailDateMs(value) ? new Date(value) : new Date();
-      base.setDate(base.getDate() + days);
-      return base.toISOString();
     }
     function assessmentEmailLevelValue(value) {
       const n = parseFloat(String(value || '').replace(',', '.'));
@@ -31730,10 +30698,6 @@ Per confermare scrivi ELIMINA.`);
         || assessmentEmailDateMs(member?.selfAssessmentDate)
         || assessmentEmailDateMs(member?.createdAt);
     }
-    function assessmentEmailIsExplicitNewCycle(member, info=null) {
-      const rec = info?.rec || getAssessmentTokenRecord(member?.id);
-      return !!(member && rec && rec.restartReason === 'nuova_autovalutazione');
-    }
     function assessmentEmailIsCycleCandidate(row) {
       return !!(row?.member && isLevelZeroPointFive(row.member));
     }
@@ -31986,164 +30950,6 @@ Per confermare scrivi ELIMINA.`);
         console.warn('Aggiornamento automatico log autovalutazione non riuscito:', err);
       } finally {
         window.assessmentEmailCloudLogAutoImportInFlight = false;
-      }
-    }
-    function assessmentEmailSentRecordsForGmail() {
-      return assessmentEmailAllOperationalRows().map(row => {
-        const rec = row.rec || {};
-        if (rec.status !== 'sent' && !rec.gmailThreadId && !rec.gmailMessageId) return null;
-        return {
-          memberId: String(row.member?.memberId || rec.memberCode || row.member?.id || rec.memberId || ''),
-          memberName: playerFullName(row.member) || rec.memberName || '',
-          token: cleanCell(rec.token || ''),
-          originalRecipient: cleanCell(rec.emailOriginalRecipient || assessmentEmailMemberEmail(row.member) || ''),
-          actualRecipient: cleanCell(rec.emailActualRecipient || ''),
-          gmailMessageId: cleanCell(rec.gmailMessageId || ''),
-          gmailThreadId: cleanCell(rec.gmailThreadId || ''),
-          sentAt: cleanCell(rec.sentAt || rec.createdAt || '')
-        };
-      }).filter(Boolean);
-    }
-    function assessmentEmailApplyBounceMatches(matches=[]) {
-      const rows = Array.isArray(matches) ? matches : [];
-      let updated = 0;
-      rows.forEach(item => {
-        const member = findAssessmentMemberByAnyId(item.memberId || item.memberCode || '');
-        if (!member) return;
-        const rec = getAssessmentTokenRecord(member.id);
-        if (!rec) return;
-        rec.emailStatus = 'bounced';
-        rec.emailBouncedAt = item.bounceDate || new Date().toISOString();
-        rec.emailBounceReason = item.reason || item.bounceSnippet || item.bounceSubject || 'Mancata consegna rilevata da Gmail';
-        rec.emailBounceGmailMessageId = item.bounceGmailMessageId || '';
-        member.selfAssessmentEmailBouncedAt = rec.emailBouncedAt;
-        member.selfAssessmentEmailBounceReason = rec.emailBounceReason;
-        
-        // Impostiamo lo stato locale e su Supabase a GESTIONE_MANUALE
-        rec.status_autovalutazione = 'GESTIONE_MANUALE';
-        if (rec.token) {
-          pmoStaffRpc('update_assessment_token_status_admin', {
-            p_token: rec.token,
-            p_status_autovalutazione: 'GESTIONE_MANUALE'
-          }, 'cloud_sync', 'aggiornare lo stato del token bounced').catch(err => {
-            console.error('Errore nel salvare il bounce su Supabase per token:', rec.token, err);
-          });
-        }
-        
-        updated++;
-      });
-      if (updated) {
-        save('assessmentTokens', assessmentTokens);
-        save('giocatori', giocatori);
-      }
-      return updated;
-    }
-    function assessmentEmailApplyReplyMatches(matches=[]) {
-      const rows = Array.isArray(matches) ? matches : [];
-      const updatedRows = [];
-      rows.forEach(item => {
-        const member = findAssessmentMemberByAnyId(item.memberId || item.memberCode || '');
-        if (!member) return;
-        const rec = getAssessmentTokenRecord(member.id);
-        if (!rec) return;
-        rec.emailReplyStatus = 'received';
-        rec.emailReplyAt = item.replyDate || new Date().toISOString();
-        rec.emailReplyFrom = item.replyFrom || '';
-        rec.emailReplySubject = item.replySubject || '';
-        rec.emailReplySnippet = item.replySnippet || '';
-        rec.emailReplyText = item.replyText || item.replyBody || '';
-        rec.emailReplyGmailMessageId = item.replyGmailMessageId || '';
-        member.selfAssessmentEmailReplyAt = rec.emailReplyAt;
-        member.selfAssessmentEmailReplyFrom = rec.emailReplyFrom;
-        member.selfAssessmentEmailReplySubject = rec.emailReplySubject;
-        member.selfAssessmentEmailReplySnippet = rec.emailReplySnippet;
-        member.selfAssessmentEmailReplyText = rec.emailReplyText;
-        updatedRows.push({
-          memberId:String(member.id),
-          memberName:playerFullName(member),
-          replyAt:rec.emailReplyAt,
-          replySnippet:rec.emailReplySnippet
-        });
-      });
-      if (updatedRows.length) {
-        save('assessmentTokens', assessmentTokens);
-        save('giocatori', giocatori);
-      }
-      return updatedRows;
-    }
-    function assessmentEmailPanelLabel(panel) {
-      const labels = {
-        morning:'Cruscotto mattutino',
-        queue:'Da inviare 0.5',
-        pending:'Contattati / in attesa',
-        problems:'Problemi',
-        post:'Post-invio',
-        history:'Storico',
-        matchpoint:'Matchpoint',
-        texts:'Testi',
-        public:'Scheda pubblica',
-        routine:'Stato invio'
-      };
-      return labels[panel] || panel || '-';
-    }
-    function assessmentEmailPanelForMember(memberId) {
-      const sources = [
-        { panel:'pending', rows:assessmentEmailPendingRows() },
-        { panel:'post', rows:assessmentEmailPostRows() },
-        { panel:'matchpoint', rows:assessmentMatchpointPendingRows() },
-        { panel:'history', rows:assessmentEmailHistoryBaseRows() },
-        { panel:'queue', rows:assessmentEmailQueueRows() }
-      ];
-      for (const source of sources) {
-        if (source.rows.some(row => String(row.member?.id || '') === String(memberId || ''))) return source.panel;
-      }
-      return 'pending';
-    }
-    async function assessmentEmailScanBounces() {
-      try {
-        await assessmentEmailImportCloudLogs({ silent:true });
-        const sentRecords = assessmentEmailSentRecordsForGmail();
-        if (!sentRecords.length) return showAlert('Nessuna email inviata da controllare.', 'info');
-        showAlert('Controllo Gmail per eventuali mancate consegne...', 'info');
-        const result = await pmoInvokeAssessmentEmail({ action:'scan-bounces', sentRecords });
-        const updated = assessmentEmailApplyBounceMatches(result.matches || []);
-        displayAssessment();
-        if (updated) {
-          setAssessmentProcessFilter('gestione');
-          showAlert(`Mancate consegne trovate: ${updated}. I soci sono stati spostati in Gestione manuale.`, 'warning');
-        } else {
-          showAlert(`Controllo completato: nessuna mancata consegna trovata su ${result.scanned || 0} email Gmail analizzate.`, 'success');
-        }
-        return result;
-      } catch (err) {
-        showAlert('Controllo mancate consegne non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'controllare le mancate consegne Gmail'), 'danger');
-        return { ok:false, error:err?.message || err };
-      }
-    }
-    async function assessmentEmailScanReplies() {
-      try {
-        await assessmentEmailImportCloudLogs({ silent:true });
-        const sentRecords = assessmentEmailSentRecordsForGmail();
-        if (!sentRecords.length) return showAlert('Nessuna email inviata da controllare.', 'info');
-        showAlert('Aggiorno le risposte arrivate su Gmail...', 'info');
-        const result = await pmoInvokeAssessmentEmail({ action:'scan-replies', sentRecords });
-        const updatedRows = assessmentEmailApplyReplyMatches(result.matches || []);
-        const updated = updatedRows.length;
-        displayAssessment();
-        if (updated) {
-          const first = updatedRows[0];
-          const panel = assessmentEmailPanelForMember(first?.memberId);
-          assessmentEmailGoToMemberPanel(panel, first?.memberId);
-          const names = updatedRows.slice(0, 3).map(item => item.memberName).filter(Boolean).join(', ');
-          const extra = updatedRows.length > 3 ? ` e altri ${updatedRows.length - 3}` : '';
-          showAlert(`Risposte email trovate: ${updated}. ${names ? `Agganciate a: ${names}${extra}. ` : ''}Vai in ${assessmentEmailPanelLabel(panel)}.`, 'success');
-        } else {
-          showAlert(`Controllo completato: nessuna risposta email collegata agli invii su ${result.scanned || 0} email Gmail analizzate.`, 'info');
-        }
-        return result;
-      } catch (err) {
-        showAlert('Aggiornamento risposte Gmail non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'aggiornare le risposte Gmail'), 'danger');
-        return { ok:false, error:err?.message || err };
       }
     }
     function assessmentEmailProblemRows() {
@@ -32887,31 +31693,6 @@ Per confermare scrivi ELIMINA.`);
         setAssessmentProcessFilter(button.dataset.assessmentProcessFilter || ASSESSMENT_PROCESS_DEFAULT_FILTER);
       };
     }
-    function openAssessmentProcessTestMember() {
-      const member = assessmentProcessFindFollowupTestMember();
-      window.assessmentProcessForceTestMember = !!member;
-      window.assessmentProcessVisibleRowsLimit = ASSESSMENT_PROCESS_PAGE_SIZE;
-      window.assessmentProcessSearchText = '';
-      window.assessmentProcessSearchDraft = '';
-      const input = document.getElementById('assessmentProcessSearch');
-      if (input) input.value = '';
-      if (!member) {
-        window.assessmentProcessTestMemberNotice = { message:'Socio test non trovato.', type:'error' };
-      } else if (!assessmentProcessIsProtectedFollowupTestMember(member)) {
-        window.assessmentProcessTestMemberNotice = { message:'Email socio test non verificata.', type:'error' };
-      } else {
-        window.assessmentProcessTestMemberNotice = { message:'Socio test aperto.', type:'info' };
-      }
-      renderAssessmentEmailPanels();
-      setTimeout(() => {
-        const row = Array.from(document.querySelectorAll('[data-assessment-email-member]'))
-          .find(el => String(el.dataset.assessmentEmailMember || '') === String(member?.id || ''));
-        if (!row) return;
-        row.scrollIntoView({ behavior:'smooth', block:'center', inline:'nearest' });
-        row.classList.add('assessment-email-row-focus');
-        setTimeout(() => row.classList.remove('assessment-email-row-focus'), 2200);
-      }, 0);
-    }
     function assessmentProcessFilterConfig(rows, search='') {
       const allRows = assessmentEmailAllOperationalRows();
       const searchableRows = search ? allRows.filter(row => assessmentEmailRowMatchesSearch(row, search)) : allRows;
@@ -33310,12 +32091,6 @@ Per confermare scrivi ELIMINA.`);
         ${assessmentGmailReconnectGuideHtml(state)}
       </div>`;
     }
-    function assessmentShowGmailReconnectGuide() {
-      assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), showGuide:true });
-      renderAssessmentEmailPanels();
-      pmoRenderUsersGmailCheck();
-      showAlert('La riattivazione Gmail richiede login Google e aggiornamento sicuro del secret in Supabase.', 'warning');
-    }
     async function assessmentRunGmailCheck() {
       assessmentGmailCheckSave({ ...assessmentGmailCheckCurrent(), status:'checking', message:'Controllo Gmail in corso...', errorCode:'', showGuide:false, visibleUntil:0 });
       renderAssessmentEmailPanels();
@@ -33501,34 +32276,6 @@ Per confermare scrivi ELIMINA.`);
         <td data-label="Stop / Alert">${escapeHtml(view.stopAlert || '-')}</td>
         <td data-label="Azioni"><div class="assessment-process-actions">${view.actions || ''}</div></td>
       </tr>`;
-    }
-    function assessmentMorningGo(panel, memberId='') {
-      assessmentEmailGoToMemberPanel(panel || 'queue', memberId || '');
-    }
-    function assessmentMorningSectionHtml(kind, title, countLabel, panel, rowsHtml, emptyText, total=0, shown=0) {
-      const more = total > shown
-        ? `<button class="assessment-email-mini" type="button" onclick="setActionAnchor(this); setAssessmentEmailPanel('${escapeJs(panel)}')">Vedi tutti</button>`
-        : '';
-      return `<article class="assessment-morning-section ${escapeHtml(kind || '')}">
-        <div class="assessment-morning-head">
-          <div class="assessment-morning-title">${escapeHtml(title)}</div>
-          <div class="assessment-morning-count">${escapeHtml(countLabel)}</div>
-        </div>
-        <div class="assessment-morning-body">
-          ${rowsHtml || `<div class="assessment-morning-empty">${escapeHtml(emptyText)}</div>`}
-          ${more ? `<div class="assessment-morning-actions">${more}</div>` : ''}
-        </div>
-      </article>`;
-    }
-    function assessmentMorningItemHtml(member, meta, statusHtml, actionsHtml) {
-      return `<div class="assessment-morning-item" data-assessment-email-member="${escapeHtml(String(member?.id || ''))}">
-        <div class="assessment-morning-item-main">
-          <div class="assessment-morning-item-name">${escapeHtml(playerFullName(member))}</div>
-          <div class="assessment-morning-item-meta">${meta}</div>
-        </div>
-        ${statusHtml ? `<div class="assessment-morning-item-status">${statusHtml}</div>` : ''}
-        ${actionsHtml ? `<div class="assessment-morning-actions">${actionsHtml}</div>` : ''}
-      </div>`;
     }
     function renderCardSolleciti(entry) {
       const { row, status } = entry;
@@ -34694,11 +33441,6 @@ Per confermare scrivi ELIMINA.`);
       if (!row.member.phone) return { badge:assessmentEmailBadge('Telefono mancante','err'), label:'Telefono mancante', templateKey:'whatsapp-check', solution:'Aggiorna il telefono nella scheda socio se serve un recupero manuale.' };
       return { badge:assessmentEmailBadge('Terzo invio scaduto','warn'), label:'Terzo invio senza risposta', templateKey:'whatsapp-reminder', solution:'Apri la scheda socio e gestisci il recupero manuale.' };
     }
-    function assessmentEmailWhatsappLastLabel(member) {
-      return member?.selfAssessmentWhatsappCheckAt
-        ? `Ultimo recupero manuale: ${assessmentEmailFormatDateTime(member.selfAssessmentWhatsappCheckAt)}`
-        : 'Recupero manuale non ancora segnato';
-    }
 
     function renderAssessmentEmailPostPanel() {
       const box = document.getElementById('assessmentEmailPostContent');
@@ -35064,31 +33806,6 @@ Per confermare scrivi ELIMINA.`);
         showAlert('Annullamento lotto non riuscito: ' + pmoFriendlyAssessmentEmailError(err, 'annullare il lotto email mattutino'), 'danger');
       }
     }
-    async function assessmentEmailApproveMorningBatch() {
-      const batch = assessmentEmailTodayRoutineBatch();
-      const selected = assessmentEmailRoutineBatchSelectedCount(batch);
-      if (!batch || cleanCell(batch.status) !== 'pending') return showAlert('Prima prepara il lotto email mattutino.', 'warning');
-      if (!selected) return showAlert('Il lotto non contiene email da inviare.', 'warning');
-      if (!confirm(`Approvi l'invio di ${selected} email di autovalutazione?`)) return;
-      try {
-        showAlert(`Invio approvato: sto inviando ${selected} email...`, 'info');
-        const result = await pmoInvokeAssessmentEmail({
-          action: 'routine-approve',
-          scheduledLocalDate: getTodayKey(),
-          limit: DAILY_ASSESSMENT_REQUEST_LIMIT,
-          source: 'pmo_assessment_email_manual_approval'
-        });
-        assessmentEmailStoreRoutineBatch(result.batch);
-        await assessmentEmailImportCloudLogs({ silent:true });
-        displayAssessment();
-        setAssessmentEmailPanel('history');
-        const sent = Array.isArray(result.sent) ? result.sent.length : 0;
-        const failed = Array.isArray(result.failed) ? result.failed.length : 0;
-        showAlert(`Invio completato: ${sent} email inviate${failed ? `, ${failed} errori` : ''}.`, failed ? 'warning' : 'success');
-      } catch (err) {
-        showAlert('Approvazione invio non riuscita: ' + pmoFriendlyAssessmentEmailError(err, 'approvare il lotto email mattutino'), 'danger');
-      }
-    }
     async function assessmentEmailPrepareMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('Socio non trovato.', 'warning');
@@ -35297,13 +34014,6 @@ Per confermare scrivi ELIMINA.`);
       if (!data) return showAlert('Socio non trovato.', 'warning');
       copyTextWithFallback(data.replyText || '', 'Risposta email copiata.');
     }
-    function openAssessmentEmailReplyWhatsapp() {
-      const state = window.assessmentEmailReplyModalState || {};
-      const data = assessmentEmailReplyData(state.memberId || '');
-      if (!data) return showAlert('Socio non trovato.', 'warning');
-      closeAssessmentEmailReplyModal();
-      assessmentOpenMemberCard(data.member.id);
-    }
     function ensureAssessmentEmailWhatsappModalLayer() {
       const modal = document.getElementById('assessmentEmailWhatsappModal');
       if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
@@ -35475,21 +34185,6 @@ Per confermare scrivi ELIMINA.`);
     function openSelectedAssessmentEmailWhatsapp() {
       return openAssessmentEmailWhatsappFromModal(true);
     }
-    function openAssessmentEmailWhatsappWithoutText() {
-      return openAssessmentEmailWhatsappFromModal(false);
-    }
-    function markAssessmentEmailManualContactFromModal() {
-      const state = window.assessmentEmailWhatsappModalState || {};
-      const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
-      if (!member) return showAlert('Socio non trovato.', 'warning');
-      const phoneCheck = validateWhatsAppPhone(assessmentEmailWhatsappPhoneForMember(member, state));
-      if (!phoneCheck.ok) return showAlert(phoneCheck.message, 'warning');
-      assessmentEmailRegisterWhatsappOpen(member);
-      closeAssessmentEmailWhatsappModal();
-      if (state.source !== 'member-card') assessmentEmailReturnToProblemMember(member.id);
-      displayAssessment();
-      showAlert('Contatto manuale WhatsApp segnato come gestito.', 'success');
-    }
     function openAssessmentEmailWhatsappFromModal(withText=true) {
       const state = window.assessmentEmailWhatsappModalState || {};
       const member = giocatori.find(g => String(g.id) === String(state.memberId || ''));
@@ -35576,21 +34271,6 @@ Per confermare scrivi ELIMINA.`);
       }
       return result;
     }
-    async function assessmentApplyAutoApplicableResponses() {
-      const rows = assessmentEmailPostRows().filter(row => assessmentEmailIsAutoApplicable(row.response));
-      if (!rows.length) return showAlert('Nessuna scheda automatica da chiudere.', 'info');
-      if (!confirm(`Chiudere automaticamente ${rows.length} scheda/e con differenza massima 0.5 e inviare la conferma livello via email?`)) return;
-      await assessmentEmailRunAutoPostProcessing({ source:'manual' });
-    }
-    function assessmentEmailClearHistoryFilters() {
-      window.assessmentHistorySearchText = '';
-      ['assessmentHistorySearch','assessmentHistoryStatus','assessmentHistoryPeriod','assessmentHistoryChannel','assessmentHistoryReply','assessmentHistoryLevel'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.value = id === 'assessmentHistorySearch' ? '' : 'all';
-      });
-      renderAssessmentEmailHistoryPanel();
-    }
     function selectAssessmentCommunicationTemplate(key) {
       assessmentCommunicationTemplateState.selected = key || 'primary-email';
       renderAssessmentEmailTextsPanel();
@@ -35671,19 +34351,6 @@ Per confermare scrivi ELIMINA.`);
       }
       renderAssessmentEmailTextsPanel();
       showAlert('Testo autovalutazione salvato.', 'success');
-    }
-    function resetAssessmentCommunicationTemplate() {
-      const key = assessmentCommunicationTemplateState.selected || 'primary-email';
-      if (assessmentCommunicationTemplates[key]?.isCustom) {
-        return showAlert('I modelli personalizzati non possono essere ripristinati.', 'warning');
-      }
-      assessmentCommunicationTemplates[key] = { ...DEFAULT_ASSESSMENT_COMMUNICATION_TEMPLATES[key] };
-      save('assessmentCommunicationTemplates', assessmentCommunicationTemplates);
-      if (typeof pmoQueueAppSettingCloudSync === 'function') {
-        pmoQueueAppSettingCloudSync('assessmentCommunicationTemplates', assessmentCommunicationTemplates, 'ripristinare testo base autovalutazione');
-      }
-      renderAssessmentEmailTextsPanel();
-      showAlert('Testo base ripristinato.', 'success');
     }
     function ensureAssessmentEmailCreateTemplateModalLayer() {
       const modal = document.getElementById('assessmentEmailCreateTemplateModal');
@@ -36201,148 +34868,11 @@ Per confermare scrivi ELIMINA.`);
         : (area === 'archive' ? '.assessment-archive-check:checked' : '.assessment-pre-check:checked');
       return Array.from(document.querySelectorAll(selector)).map(el => String(el.value));
     }
-    function assessmentRestoreSelection(ids, area='pre') {
-      const keep = new Set((ids || []).map(id => String(id)));
-      const selector = area === 'post'
-        ? '.assessment-post-check'
-        : (area === 'archive' ? '.assessment-archive-check' : '.assessment-pre-check');
-      document.querySelectorAll(selector).forEach(el => {
-        if (keep.has(String(el.value)) && !el.disabled) el.checked = true;
-      });
-      if (area === 'post') assessmentUpdatePostSelectedCount();
-      else if (area === 'archive') {
-        if (typeof assessmentUpdateArchiveSelectedCount === 'function') assessmentUpdateArchiveSelectedCount();
-      } else assessmentUpdatePreSelectedCount();
-    }
-    function assessmentPreSelect(mode) {
-      document.querySelectorAll('.assessment-pre-check').forEach(el => { if (!el.disabled) el.checked = mode === 'visible'; });
-      assessmentUpdatePreSelectedCount();
-    }
-    function assessmentPostSelectNotResponded() {
-      document.querySelectorAll('.assessment-post-check').forEach(el => { if (!el.disabled) el.checked = true; });
-      assessmentUpdatePostSelectedCount();
-    }
-    function assessmentPostClearSelection() {
-      document.querySelectorAll('.assessment-post-check').forEach(el => { el.checked = false; });
-      assessmentUpdatePostSelectedCount();
-    }
-    function assessmentCreateOrRegenerateSelectedTokens(area='pre') {
-      const ids = assessmentSelectedIds(area);
-      if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio.', 'warning');
-      let updated = 0;
-      ids.forEach(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        if (!member) return;
-        const rec = getAssessmentTokenRecord(member.id);
-        if (rec?.token) regenerateAssessmentTokenSilently(member);
-        else ensureAssessmentToken(member);
-        updated++;
-      });
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      assessmentRestoreSelection(ids, area);
-      showAlert(`✅ Token creati/rigenerati: ${updated}.`, 'success');
-    }
-    function assessmentSelectedGenerateTokens(forceNew=false, area='pre') {
-      const ids = assessmentSelectedIds(area);
-      if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio.', 'warning');
-      if (forceNew && !confirm(`Creare un nuovo token per ${ids.length} soci selezionati?`)) return;
-      let created=0, skipped=0;
-      ids.forEach(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        if (!member) return;
-        if (forceNew) { regenerateAssessmentTokenSilently(member); created++; }
-        else if (!getAssessmentTokenRecord(member.id)) { ensureAssessmentToken(member); created++; }
-        else skipped++;
-      });
-      save('assessmentTokens', assessmentTokens);
-      displayAssessment();
-      assessmentRestoreSelection(ids, area);
-      showAlert(`✅ Token aggiornati. Creati/nuovi: ${created}. Già presenti: ${skipped}.`, 'success');
-    }
-    async function assessmentPrepareSelectedPreInvites() {
-      const ids = assessmentSelectedIds('pre');
-      if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio 0.5 da preparare.', 'warning');
-      let created = 0;
-      ids.forEach(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        if (!member || getAssessmentTokenRecord(member.id)) return;
-        ensureAssessmentToken(member);
-        created++;
-      });
-      if (created) save('assessmentTokens', assessmentTokens);
-      const needsRegister = ids.some(id => {
-        const rec = assessmentTokens[String(id)];
-        return rec?.token && !rec.registeredToSupabase;
-      });
-      if (!needsRegister) {
-        displayAssessment();
-        assessmentRestoreSelection(ids, 'pre');
-        return showAlert('✅ I selezionati sono già preparati. Puoi procedere con WhatsApp.', 'success');
-      }
-      await assessmentRegisterSelectedTokens('pre');
-    }
     function regenerateAssessmentTokenSilently(member) {
       const existing = getAssessmentTokenRecord(member.id);
       const previousTokens = Array.isArray(existing?.previousTokens) ? existing.previousTokens.slice() : [];
       if (existing?.token) previousTokens.push({ token: existing.token, status: existing.status || '', createdAt: existing.createdAt || '', sentAt: existing.sentAt || '', registeredAt: existing.registeredAt || '', registeredToSupabase: !!existing.registeredToSupabase, archivedAt: new Date().toISOString() });
       assessmentTokens[String(member.id)] = { memberId:String(member.id), token:makeAssessmentToken(member), memberName:playerFullName(member), phone:member.phone || '', email:member.email || '', status:'created', createdAt:new Date().toISOString(), sentAt:null, completedAt:null, registeredToSupabase:false, registeredAt:null, previousTokens };
-    }
-    async function assessmentRegisterSelectedTokens(area='pre') {
-      try {
-        saveAssessmentSettings();
-        const ids = assessmentSelectedIds(area);
-        if (!ids.length) return showAlert('⚠️ Seleziona almeno un socio.', 'warning');
-        const records = ids.map(id => assessmentTokens[String(id)]).filter(Boolean);
-        if (!records.length) return showAlert('⚠️ Nessun token da registrare per i soci selezionati.', 'warning');
-        const payload = records.map(r => ({ token:cleanCell(r.token), member_local_id:cleanCell(r.memberId || r.member_local_id || ''), member_name:cleanCell(r.memberName || r.member_name || 'Socio'), phone_last4:String(r.phone || '').replace(/\D/g, '').slice(-4) })).filter(r => r.token && r.member_local_id);
-        if (!payload.length) return showAlert('⚠️ Nessun token valido da registrare.', 'warning');
-        showAlert('⏳ Registro i token selezionati in Supabase...', 'info');
-        const data = await pmoStaffRpc('upsert_assessment_tokens_admin', { p_tokens: payload }, 'cloud_sync', 'registrare i token selezionati in Supabase');
-        if (!data || data.ok !== true) throw new Error(pmoFriendlyCloudError(data?.error || 'Registrazione token non riuscita', 'registrare i token selezionati in Supabase'));
-        const now = new Date().toISOString();
-        payload.forEach(item => { const rec = Object.values(assessmentTokens || {}).find(r => cleanCell(r.token) === item.token); if (rec) { rec.registeredAt=now; rec.registeredToSupabase=true; } });
-        save('assessmentTokens', assessmentTokens);
-        displayAssessment();
-        assessmentRestoreSelection(ids, area);
-        showAlert(`✅ Token selezionati registrati in Supabase: ${data.count || payload.length}.`, 'success');
-      } catch (err) { showAlert('❌ Registrazione token selezionati non riuscita: ' + (err.message || err), 'danger'); }
-    }
-    function assessmentReadyIdsFrom(area='pre') {
-      const problems=[];
-      const ids = assessmentSelectedIds(area).filter(id => {
-        const member = giocatori.find(g => String(g.id) === String(id));
-        const info = member ? assessmentRecordFor(member) : null;
-        if (!member) return false;
-        if (!member.phone) { problems.push(`${playerFullName(member)}: telefono mancante`); return false; }
-        if (!info.rec?.token) { problems.push(`${playerFullName(member)}: token mancante`); return false; }
-        if (!info.rec.registeredToSupabase) { problems.push(`${playerFullName(member)}: token da registrare`); return false; }
-        if (info.response) { problems.push(`${playerFullName(member)}: ha già compilato`); return false; }
-        if (info.paused) { problems.push(`${playerFullName(member)}: in pausa`); return false; }
-        return true;
-      });
-      if (problems.length) showAlert(`⚠️ Esclusi: ${problems.slice(0,4).join(' · ')}${problems.length>4?' ...':''}`, 'warning');
-      return ids;
-    }
-    function assessmentSendSelectedPreWhatsApp() {
-      const ids = assessmentReadyIdsFrom('pre').filter(id => !hasAssessmentRequestToday(id));
-      const id = ids[0];
-      if (!id) return showAlert(`⚠️ Nessun socio pronto o limite giornaliero raggiunto (${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}).`, 'warning');
-      assessmentOpenMemberCard(id);
-      document.querySelectorAll('.assessment-pre-check').forEach(el => { el.checked = false; });
-      window.__assessmentGuidedQueue = null;
-      setTimeout(() => { renderAssessmentPrePanel(); renderAssessmentPostPanel(); renderAssessmentOpsDashboard(); renderInitialDashboard(); }, 350);
-    }
-    function assessmentStartGuidedSendFromPre() { assessmentSendSelectedPreWhatsApp(); }
-    function assessmentStartGuidedSendFromPost() { assessmentStartGuidedSend('post'); }
-    function assessmentStartGuidedSend(area='pre') {
-      const selected = assessmentReadyIdsFrom(area).filter(id => !hasAssessmentRequestToday(id));
-      const remaining = Math.max(0, DAILY_ASSESSMENT_REQUEST_LIMIT - getAssessmentRequestsSentTodayCount());
-      const ids = selected.slice(0, remaining);
-      if (!ids.length) return showAlert(`⚠️ Nessun socio pronto o limite giornaliero raggiunto (${getAssessmentRequestsSentTodayCount()}/${DAILY_ASSESSMENT_REQUEST_LIMIT}).`, 'warning');
-      window.__assessmentGuidedQueue = { area, ids, index:0 };
-      renderAssessmentPreQueue(); renderAssessmentPostQueue();
-      showAlert(`🚀 Invio guidato avviato: ${ids.length} soci.`, 'success');
     }
     function assessmentGuidedCurrentMember() {
       const q = window.__assessmentGuidedQueue;
@@ -36374,10 +34904,6 @@ Per confermare scrivi ELIMINA.`);
     }
     function renderAssessmentPreQueue() { renderAssessmentGuidedQueueBox('assessmentPreQueue','pre'); }
     function renderAssessmentPostQueue() { renderAssessmentGuidedQueueBox('assessmentPostQueue','post'); }
-    function assessmentArchiveResetAndRender() {
-      window.__assessmentArchiveLimit = 50;
-      renderAssessmentArchivePanel();
-    }
     function assessmentArchiveHasActiveFilter() {
       const search = cleanCell(document.getElementById('assessmentArchiveSearch')?.value || '');
       const level = document.getElementById('assessmentArchiveLevel')?.value || 'all';
@@ -36437,51 +34963,6 @@ Per confermare scrivi ELIMINA.`);
       }, 900);
     }
 
-    function assessmentGoToPre(options = {}) {
-      switchTab('assessment');
-      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
-      renderAssessmentPrePanel();
-      setTimeout(() => {
-        const search = document.getElementById('assessmentPreSearch');
-        if (options.searchText && search) {
-          search.value = options.searchText;
-          renderAssessmentPrePanel();
-        }
-        const anchor = document.getElementById('assessmentEmailQueuePanel') || document.getElementById('assessmentEmailRoutinePanel');
-        if (anchor) scrollMainContentToElement(anchor);
-        if (search && options.focusSearch !== false) search.focus();
-      }, 120);
-    }
-
-    function assessmentGoToPost(options = {}) {
-      switchTab('assessment');
-      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('post');
-      renderAssessmentPostPanel();
-      setTimeout(() => {
-        const search = document.getElementById('assessmentPostSearch');
-        if (options.searchText && search) {
-          search.value = options.searchText;
-          renderAssessmentPostPanel();
-        }
-        const anchor = document.getElementById('assessmentEmailPostPanel');
-        if (anchor) scrollMainContentToElement(anchor);
-        if (search && options.focusSearch) search.focus();
-      }, 120);
-    }
-
-    function assessmentGoToArchive(options = {}) {
-      switchTab('members');
-      setTimeout(() => {
-        const search = document.getElementById('memberSearch');
-        if (options.searchText && search) {
-          search.value = options.searchText;
-          if (typeof displayMembers === 'function') displayMembers();
-        }
-        const anchor = document.getElementById('anchor-members-filtri') || document.getElementById('members');
-        if (anchor && typeof scrollMainContentToElement === 'function') scrollMainContentToElement(anchor);
-        if (search && options.focusSearch) search.focus();
-      }, 120);
-    }
 
     function assessmentOpenMemberCard(memberId, options = {}) {
       setTimeout(() => {
@@ -36577,14 +35058,6 @@ Per confermare scrivi ELIMINA.`);
     function assessmentArchiveStatusClass(status) {
       return { ready:'badge-warning', missingToken:'badge-warning', unregistered:'badge-warning', sentNoResponse:'badge-warning', responded:'badge-warning', review:'badge-warning', levelApplied:'badge-success', noPhone:'badge-danger' }[status] || 'badge-info';
     }
-    function assessmentArchiveSelect(mode) {
-      document.querySelectorAll('.assessment-archive-check').forEach(el => { el.checked = mode === 'visible'; });
-      assessmentUpdateArchiveSelectedCount();
-    }
-    function assessmentUpdateArchiveSelectedCount() {
-      const el = document.getElementById('assessmentArchiveSelectedCount');
-      if (el) el.textContent = document.querySelectorAll('.assessment-archive-check:checked').length;
-    }
 
     function setAssessmentFilter(value) {
       const post = document.getElementById('assessmentPostStatus');
@@ -36599,23 +35072,6 @@ Per confermare scrivi ELIMINA.`);
 
     // v5.119 - Modalità essenziale: applica livello nella scheda socio e prepara nuova autovalutazione.
 
-    function getAssessmentAvailabilityFromResponse(response) {
-      const profile = getAssessmentAvailabilityProfile(response);
-      if (hasAvailabilityProfile(profile)) return profile;
-
-      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || {});
-      const answers = raw.answers || raw.form || raw.data || {};
-      const fallback = {
-        time: cleanCell(answers.availabilityTime || answers.availability_time || response?.availability_time || response?.availabilityTime || ''),
-        days: cleanCell(answers.preferredDays || answers.preferred_days || response?.preferred_days || response?.preferredDays || ''),
-        frequency: cleanCell(answers.desiredFrequency || answers.desired_frequency || response?.desired_frequency || response?.desiredFrequency || ''),
-        notice: cleanCell(answers.notice || response?.notice || ''),
-        matchType: cleanCell(answers.matchType || answers.preferred_match_type || response?.preferred_match_type || response?.matchType || ''),
-        source: 'autovalutazione',
-        updatedAt: cleanCell(response?.submitted_at || raw.submitted_at || new Date().toISOString())
-      };
-      return fallback;
-    }
 
     function applyAvailabilityProfileToMember(member, profile, submittedAt) {
       if (!member || !hasAvailabilityProfile(profile)) return false;
@@ -36734,23 +35190,6 @@ Per confermare scrivi ELIMINA.`);
       return { ok:true, applied:true, level, emailSent:false, emailError:'', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
     }
 
-
-    function repairAppliedAssessmentAvailabilities() {
-      let repaired = 0, missing = 0;
-      assessmentResponses.forEach(response => {
-        if (!response || response.staff_status !== 'applied') return;
-        const memberId = response.applied_member_id;
-        const member = giocatori.find(g => String(g.id) === String(memberId));
-        if (!member) return;
-        const profile = getAssessmentAvailabilityFromResponse(response);
-        if (applyAvailabilityProfileToMember(member, profile, response.submitted_at)) repaired++;
-        else missing++;
-      });
-      save('giocatori', giocatori);
-      displayMembers();
-      try { renderAssessmentArchivePanel(); } catch {}
-      showAlert(`🔧 Ripristino disponibilità completato: ${repaired} schede aggiornate, ${missing} senza dati disponibilità.`, missing ? 'warning' : 'success');
-    }
 
     function restartAssessmentForMember(memberId) {
       const member = giocatori.find(g => String(g.id) === String(memberId));
@@ -37262,15 +35701,6 @@ Per confermare scrivi ELIMINA.`);
       return match ? match[0] : '';
     }
 
-    function assessmentPublicCoherence(declared, balanced) {
-      const d = parseFloat(String(declared || '').replace(',', '.'));
-      const b = parseFloat(String(balanced || '').replace(',', '.'));
-      if (Number.isNaN(d) || Number.isNaN(b)) return 'medium';
-      const diff = Math.abs(d - b);
-      if (diff <= 0.5) return 'high';
-      if (diff <= 1) return 'medium';
-      return 'low';
-    }
 
     function assessmentPublicSplitName(fullName) {
       const parts = cleanCell(fullName || '').split(/\s+/).filter(Boolean);
@@ -37336,26 +35766,6 @@ Per confermare scrivi ELIMINA.`);
       </div>`;
     }
 
-
-    function renderAssessmentCalculationSummary(response, options = {}) {
-      const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || {});
-      const avg = cleanCell(raw.technical_average || '');
-      const balanced = cleanCell(raw.balanced_level || '');
-      const rawScore = cleanCell(raw.raw_score || '');
-      const note = cleanCell(raw.calculation_note || '');
-      if (!avg && !balanced && !rawScore && !note) return options.empty || '';
-      return `<div class="assessment-calculation-box">
-        <strong>🧮 Calcolo tecnico</strong>
-        <div class="assessment-availability-grid">
-          <div><span>Dichiarato</span><b>${escapeHtml(response?.declared_level || '-')}</b></div>
-          <div><span>Equilibrato</span><b>${escapeHtml(balanced || '-')}</b></div>
-          <div><span>Tecnica media</span><b>${escapeHtml(avg || '-')}</b></div>
-          <div><span>Score grezzo</span><b>${escapeHtml(rawScore || '-')}</b></div>
-          <div><span>Calcolato</span><b>${escapeHtml(response?.calculated_level || '-')}</b></div>
-        </div>
-        ${note ? `<div class="muted" style="margin-top:6px;">${escapeHtml(note)}</div>` : ''}
-      </div>`;
-    }
 
     function assessmentResponseGenderValue(response) {
       const raw = normalizeAssessmentRawResponse(response?.raw_response || response?.rawResponse || response?.raw || {});
@@ -39865,6 +38275,52 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // ── Partite APERTE sulla card del calendario (voce 15) ─────────────────────
+  // Una partita aperta è un `lunchMatchInvitations` con dei posti ancora da riempire.
+  // Sul calendario staff era INDISTINGUIBILE da una partita normale: la card si
+  // costruisce da `staffCalGetSlots()` (le prenotazioni), che non sa nulla degli inviti,
+  // quindi si vedeva una partita col solo intestatario e nessun modo di capire che
+  // mancavano giocatori.
+  //
+  // 🚨 IL CAMPO SI CONFRONTA COL NUMERO NUDO, non con 'C'+n. Misurato sui 23 record veri
+  // di PROD (`record_type = 'match_invitation'`, 15/08/2026): i valori sono "Campo 1",
+  // "Campo 2", "Campo 3" — più un "" e un "2". `isSameField('Campo 1', 'C1')` è FALSO
+  // (nessuna delle due stringhe contiene l'altra) ⇒ passando 'C1' la card non sarebbe
+  // MAI comparsa, e senza errore. Col numero nudo combaciano tutte e tre le forme.
+  // Il seme di prova in questo file usa `field: 'C2'`, che regge lo stesso: 'c2' contiene '2'.
+  //
+  // 🚨 E il `field` VUOTO va scartato a mano: `isSameField('', 2)` è VERO — ''.includes()
+  // di qualunque cosa è vero — quindi un record senza campo si attaccherebbe a TUTTI E
+  // QUATTRO i campi. Ce n'è uno vero fra i 23.
+  function staffCalOpenMatchInfo(isoDate, campo, ora, durata) {
+    if (!isoDate || !ora) return null;
+    const slotStart = toMinutes(ora);
+    const slotEnd = slotStart + (durata || 90);
+    let best = null;
+    for (const record of Object.values(lunchMatchInvitations || {})) {
+      if (!record || record.date !== isoDate) continue;
+      // `closed` = roster chiuso, `cancelled` = partita annullata: né l'una né l'altra è aperta.
+      if (record.status === 'closed' || record.status === 'cancelled') continue;
+      if (!cleanCell(record.field)) continue;              // vedi nota sul campo vuoto
+      if (!isSameField(record.field, campo)) continue;
+      // Le ore si controllano da STRINGHE, non dai minuti: `toMinutes('')` vale 0, non NaN,
+      // quindi un record senza ora passerebbe per mezzanotte invece di essere scartato.
+      // Stesso idioma di `isFillSlotBlockedByLunchInvitation`.
+      const startStr = parseTimeValue(record.time || '');
+      if (!startStr) continue;
+      const endStr = parseTimeValue(record.endTime || '') || addMinutesToTime(startStr, 90);
+      if (!endStr) continue;
+      const recStart = toMinutes(startStr), recEnd = toMinutes(endStr);
+      if (!(recStart < slotEnd && recEnd > slotStart)) continue;
+      // Più record possono sovrapporsi allo stesso slot (storicamente ne restano di
+      // ricreati): vince quello che parte esattamente all'ora della card.
+      if (!best || (recStart === slotStart && toMinutes(parseTimeValue(best.time || '') || '') !== slotStart)) best = record;
+    }
+    if (!best) return null;
+    const summary = getLunchInvitationSummary(best);
+    return { record: best, confirmed: summary.confirmed, missing: Math.max(0, 4 - summary.confirmed) };
+  }
+
   // ── Slot annullati di recente (anti-"rinascita" della card) ────────────────
   // Dopo un annullamento riuscito, la cache di occupazione Matchpoint
   // (prenotazioniOccupazione) può restare "vecchia" finché non risincronizza, e la
@@ -41399,10 +39855,26 @@ Per confermare scrivi ELIMINA.`);
         const w = Math.max(28, ((e - s) / 30) * COLW - 3);
         const isMP = b.tipo !== 'staff-booking';
         const sty = ts(isMP ? (b.tipo || 'partita') : (b.tipoReale || 'partita'));
-        const lbl = _staffCalTipoLabel(b.tipoReale || b.tipo);
+        // Voce 15 — una PARTITA APERTA è comunque una partita prenotata: stesso colore di
+        // fondo, ma bordo TRATTEGGIATO ed etichetta esplicita col contatore. Il tratteggio
+        // è l'unico segno che regge anche sulla card più stretta (28px), dove il testo è
+        // già tagliato da `overflow:hidden`.
+        // Solo le PARTITE: una lezione o una manutenzione non hanno posti da riempire.
+        // Il tipo si chiede a `_staffCalTipoLabel`, la stessa funzione che disegna
+        // l'etichetta, così i due non possono divergere.
+        const _lblBase = _staffCalTipoLabel(b.tipoReale || b.tipo);
+        const _open = _lblBase === 'Partita' ? staffCalOpenMatchInfo(isoDate, c, b.ora, b.durata) : null;
+        const lbl = _open ? 'Partita aperta' : _lblBase;
         const blk = document.createElement('div');
-        blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:1px solid ' + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
+        blk.style.cssText = 'position:absolute;top:4px;bottom:4px;left:' + left + 'px;width:' + w + 'px;border-radius:6px;border:' + (_open ? '2px dashed ' : '1px solid ') + sty.bd + ';background:' + sty.bg + ';color:' + sty.tx + ';cursor:pointer;overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:2px;line-height:1.15;';
+        if (_open) blk.title = 'Partita aperta · ' + _open.confirmed + '/4 confermati' + (_open.missing ? ' · mancano ' + _open.missing : '');
         const t1 = document.createElement('div'); t1.style.cssText = 'font-size:' + (isDesktop ? '13.5px' : '17px') + ';font-weight:700;'; t1.textContent = lbl; blk.appendChild(t1);
+        if (_open) {
+          const tc = document.createElement('div');
+          tc.style.cssText = 'font-size:' + (isDesktop ? '11px' : '13px') + ';font-weight:800;';
+          tc.textContent = (_open.missing ? '🟠 ' : '🟢 ') + _open.confirmed + '/4';
+          blk.appendChild(tc);
+        }
         const t2 = document.createElement('div'); t2.style.cssText = 'font-size:' + (isDesktop ? '8px' : '10px') + ';opacity:.85;'; t2.textContent = b.ora + '–' + _staffCalEndTime(b.ora, b.durata); blk.appendChild(t2);
         const _isLez = String(b.tipoReale || b.tipo || '').toLowerCase().includes('lez');
         if (_isLez && b.istruttore) { const tm = document.createElement('div'); tm.style.cssText = 'font-size:10px;font-weight:700;opacity:.95;white-space:normal;'; tm.textContent = '\u{1F468}‍\u{1F3EB} ' + b.istruttore; blk.appendChild(tm); }
@@ -46463,7 +44935,23 @@ Per confermare scrivi ELIMINA.`);
         // v6.146 — accorcia l'orologio delle due attese del lavoro asincrono. Serve a provare il
         // ramo «continua a CHIEDERE» (esito ignoto) sullo stesso codice, senza 3 minuti di attesa.
         setPollTimings: function (t) { try { Object.assign(_STAFF_CAL_POLL, t || {}); } catch (e) {} },
-        getPollTimings: function () { return Object.assign({}, _STAFF_CAL_POLL); }
+        getPollTimings: function () { return Object.assign({}, _STAFF_CAL_POLL); },
+        // v6.240 (voce 15) — agganci per provare la card «Partita aperta». Vanno insieme ai
+        // casi che li chiamano: un aggancio senza casi non serve, dei casi senza aggancio si
+        // spengono in silenzio con `&&` ed è esattamente la mezza promozione della voce 31.
+        setInvitations: function (obj) { lunchMatchInvitations = obj || {}; try { save('lunchMatchInvitations', lunchMatchInvitations); } catch (e) {} },
+        getInvitations: function () { return lunchMatchInvitations || {}; },
+        openMatchInfo: function (iso, campo, ora, durata) { return staffCalOpenMatchInfo(iso, campo, ora, durata); },
+        renderCal: function (iso) {
+          const el = document.getElementById('staffCalDate');
+          if (el && iso) el.value = iso;
+          renderStaffCalendar();
+          // Il testo delle card: solo i nodi che hanno testo PROPRIO, così non si raccoglie
+          // due volte il contenuto dei contenitori annidati.
+          return Array.from(document.querySelectorAll('#staffCalGridTable div, #staffCalAgendaBody div'))
+            .map(function (d) { return (d.firstChild && d.firstChild.nodeType === 3) ? d.textContent : ''; })
+            .filter(Boolean).join(' | ');
+        }
       };
     } catch (e) { console.warn('hook test __PMOStaffCalTest non installato:', e); }
   }
