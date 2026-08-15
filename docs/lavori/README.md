@@ -112,7 +112,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **4** |
-| 📋 **In coda** | **6** |
+| 📋 **In coda** | **7** |
 | 📦 **Chiuse** | **25** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 20ª (15/08)** — versioni lette dall'`index.html`
@@ -331,11 +331,46 @@ Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante del
 
 ---
 
-## 📋 IN CODA — 6
+## 📋 IN CODA — 7
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 2
+### C — Cose sapute e non risolte — 3
+
+#### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
+*Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
+**domanda aperta con una prova a sostegno**, ed è per questo che sta qui e non fra le urgenti.
+
+🔎 **Il fatto.** Fino alla 6.231 ogni chiamata al cloud riscaricava `config.js` prima di partire —
+**~110 volte al minuto**, misurate su PROD viva. Quel giro di rete non serviva a niente, ma
+*ritardava* ogni RPC di qualche decina di millisecondi. Togliendolo è saltato fuori **subito** un
+difetto che quel ritardo teneva nascosto: il **caso 11** del banco finiva mentre la sua coda era
+ancora in corsa (`doCancel` prosegue in asincrono dopo il worker, con un commit locale che
+**toglie** la prenotazione) e quella coda cadeva dentro il **caso 12**, portandogli via la
+prenotazione da sotto. Riparato nel banco, non nell'app.
+
+⚠️ **La domanda è quante altre cose stessero in equilibrio su quel ritardo.** I punti di chiamata
+sono **72**: il ritardo non era locale a una funzione, era diffuso su *ogni* lettura dal cloud
+dell'intera app. Ne abbiamo trovata **una** perché il banco la copriva. Le altre, se ci sono, stanno
+dove il banco non arriva.
+
+🎯 **Cosa cercare, e non è «rileggere tutto»**: la forma è `pmoSyncCloudRecordsNow(...)` **non
+attesa** — `.catch()` e via — seguita poco dopo da una **lettura** che si aspetta di vedere quella
+scrittura. È il disegno di `staffCalCloudReassignAndSyncMove`, ed è deliberato: la push non è attesa
+per far partire subito il broadcast `staff-changed`, e il commento nel codice lo dichiara. Il punto
+non è che sia sbagliato, è che **non c'è niente che garantisca l'ordine** quando il ritardo sparisce.
+
+📌 **Da dove partire, se si apre**: `grep` delle chiamate a `pmoSyncCloudRecordsNow` e
+`pmoStaffRpcPaged` non attese, e per ciascuna la domanda «se questa arrivasse 50 ms prima, cosa
+leggerebbe?». ⚖️ E una nota che vale quanto il resto: **il banco adesso sa modellare quell'ordine**
+— la lettura finta ricorda le scritture, cosa che prima non faceva — quindi un caso scritto oggi su
+questo tema *può* dire il vero. Prima non avrebbe potuto, ed è il motivo per cui questa domanda non
+si era mai potuta porre.
+
+🚨 **Non è teoria: in produzione gira già.** La 6.231 è viva dal 15/08, quindi l'eventuale seconda
+corsa non è più ipotetica — è in esercizio. Il sintomo da tenere d'occhio è **una modifica che
+sparisce dagli altri dispositivi** (spostamento, disdetta, uscita di un giocatore) senza errore in
+console: è esattamente la forma che aveva il caso 12.
 
 #### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
 *Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
