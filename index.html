@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.224';
+    const APP_VERSION = '6.225';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44260,20 +44260,54 @@ Per confermare scrivi ELIMINA.`);
     pmoVerificheScrivi(pmoVerificheLeggi().filter(function (v) { return v.id !== String(id); }));
   }
 
+  // Quanto si aspetta che la sessione staff sia pronta, all'avvio.
+  // 🚨 Serve perché `staffCalInit()` viene chiamato il PRIMA possibile (requestAnimationFrame e
+  //    un poller di avvio), cioè nell'istante in cui il login ha MENO probabilità di essere già
+  //    ripristinato. Provare una volta sola lì dentro era esattamente lo stesso difetto che
+  //    questa voce toglie dal guardare — commesso un piano più su, nella cosa che doveva
+  //    ripararlo. Misurato il 15/08/2026: la ripresa non partiva e non lo diceva a nessuno.
+  const _PMO_VERIFICHE_RIPRESA = { tentativi: 10, attesaMs: 3000 };
+
+  // Dove si dice quello che succede. Due superfici, di proposito: sulla strada dello slot
+  // l'operatore guarda il pannello della chat, e un messaggio scritto solo nella riga di stato
+  // del calendario è un messaggio che non legge nessuno — già successo.
+  function pmoVerificheAvvisa(testo, tipo) {
+    try { if (typeof svcAddMessage === 'function') svcAddMessage('system', testo, tipo === 'error' ? 'error' : undefined); } catch (e) {}
+    try { if (typeof staffCalSetStatus === 'function') staffCalSetStatus(testo.replace(/<[^>]+>/g, ''), tipo || 'pending'); } catch (e) {}
+  }
+
+  // ⭐ Traccia leggibile DAL DATABASE. Senza questa, una ripresa che non parte è invisibile a
+  //   chiunque non sia seduto davanti a quello schermo — ed è precisamente com'è andata oggi.
+  function pmoVerificheTraccia(esito, motivo, extra) {
+    try {
+      window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'partita', esito,
+        Object.assign({ via: 'ripresa verifica', azione: 'verifica', reason: motivo }, extra || {}));
+    } catch (e) {}
+  }
+
   // Ripresa all'apertura. Non blocca l'avvio, non chiede permessi e non disturba se non c'è
   // niente da fare: senza domande in sospeso esce in silenzio.
-  async function pmoRiprendiVerificheInSospeso() {
+  async function pmoRiprendiVerificheInSospeso(tentativo) {
+    const giro = Number(tentativo) || 1;
     const lista = pmoVerificheLeggi();
     if (!lista.length) return;
     let cfg = null, tok = null;
     try {
       cfg = await loadAssessmentSupabaseConfig();
       tok = await pmoGetSupabaseStaffAccessToken();
-    } catch (e) { return; }
-    // ⛔ Non loggato, o configurazione assente: non si conclude NIENTE e si riprova alla prossima
-    //    apertura. «Non ho potuto guardare» non è «non c'è» — è l'errore che questa intera voce
-    //    esiste per non commettere più.
-    if (!tok || !cfg || !cfg.supabaseUrl || !cfg.supabaseKey) return;
+    } catch (e) { cfg = null; tok = null; }
+    // ⛔ Sessione o configurazione non ancora pronte: NON ci si arrende in silenzio — si
+    //    RIPROVA. All'avvio è il caso normale, non l'eccezione.
+    if (!tok || !cfg || !cfg.supabaseUrl || !cfg.supabaseKey) {
+      if (giro < _PMO_VERIFICHE_RIPRESA.tentativi) {
+        setTimeout(function () { pmoRiprendiVerificheInSospeso(giro + 1); }, _PMO_VERIFICHE_RIPRESA.attesaMs);
+        return;
+      }
+      // Esaurita l'attesa lo si DICHIARA, invece di sparire: la verifica resta in deposito.
+      pmoVerificheTraccia('failed', 'ripresa-senza-sessione', { inSospeso: lista.length, giri: giro });
+      return;
+    }
+    pmoVerificheTraccia('pending', 'ripresa-avviata', { inSospeso: lista.length, giri: giro });
     const staff = { accessToken: tok };
     for (const v of lista) {
       const dove = `${v.parsed.campo} · ${v.parsed.data} · ${v.parsed.ora}`;
@@ -44283,7 +44317,7 @@ Per confermare scrivi ELIMINA.`);
           {
             maxMs: 45000, stepMs: 15000,
             annuncia: function (n) {
-              staffCalSetStatus(`⌛ Riprendo una verifica rimasta in sospeso: ${dove} (${n}° tentativo)…`, 'pending');
+              pmoVerificheAvvisa(`⌛ <strong>Riprendo una verifica rimasta in sospeso</strong>: ${dove} (${n}° tentativo)…`);
             },
           });
         if (look.verdict === 'si') {
@@ -44291,14 +44325,19 @@ Per confermare scrivi ELIMINA.`);
           // ⭐ Non la si disegna a mano: è su Matchpoint, e il sync la porta dentro da sé entro un
           //   paio di minuti. Scriverla qui vorrebbe dire fabbricare una riga che nessuno ha
           //   verificato campo per campo — e le righe fabbricate sono i fantasmi di luglio.
-          staffCalSetStatus(`✅ Verifica chiusa: ${dove} È stata creata su Matchpoint. Compare sul calendario entro un paio di minuti.`, 'done');
+          pmoVerificheAvvisa(`✅ <strong>Verifica chiusa</strong>: ${dove} <strong>È stata creata</strong> su Matchpoint. Compare sul calendario entro un paio di minuti.`);
+          pmoVerificheTraccia('done', 'verifica-chiusa-si', { tentativi: look.tentativi });
         } else if (look.verdict === 'no') {
           pmoVerificheChiudi(v.id);
-          staffCalSetStatus(`❌ Verifica chiusa: ${dove} NON è stata creata. Lo slot è libero: puoi rifarla.`, 'error');
+          pmoVerificheAvvisa(`❌ <strong>Verifica chiusa</strong>: ${dove} <strong>NON è stata creata</strong>. Lo slot è libero: puoi rifarla.`, 'error');
+          pmoVerificheTraccia('failed', 'verifica-chiusa-no', { tentativi: look.tentativi });
         } else {
-          staffCalSetStatus(`⏳ ${dove}: non riesco ancora a raggiungere Matchpoint. La verifica resta aperta e la riprendo da solo.`, 'pending');
+          pmoVerificheAvvisa(`⏳ ${dove}: non riesco ancora a raggiungere Matchpoint. <strong>La verifica resta aperta</strong> e la riprendo da solo.`);
+          pmoVerificheTraccia('pending', 'verifica-ancora-aperta', { tentativi: look.tentativi });
         }
-      } catch (e) { /* resta in sospeso: si riprova alla prossima apertura */ }
+      } catch (e) {
+        pmoVerificheTraccia('failed', 'ripresa-eccezione', { errore: (e && e.message) ? String(e.message).slice(0, 120) : 'ignoto' });
+      }
     }
   }
 
