@@ -71,9 +71,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **6** |
+| 🔴 **Urgenti** | **5** |
 | 📋 **In coda** | **6** |
-| 📦 **Chiuse** | **22** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **23** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.227** · TEST **6.237** · i **4 percorsi** di
@@ -169,7 +169,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 6
+## 🔴 URGENTI — 5
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -188,6 +188,8 @@ hanno già la causa trovata e aspettano una decisione, non un'indagine. 🚨 Ma 
 
 📌 Le altre quattro — **31**, **29**, **28**, **26** — sono decisioni o potature, e quelle sì si
 preparano da qui.
+
+🔄 **Aggiornamento del 15/08, 20ª sessione.** La **31** è stata censita e la sua mezza promozione curata (PROD **6.227**); la **29** è **chiusa dichiarando**, su sua delega esplicita; la **28** è misurata fino in fondo — 64 funzioni e 1195 righe, più 12 punti vivi che puntano a pannelli tolti — e **aspetta una decisione di prodotto**, non altro lavoro di misura. ⇒ Le urgenti scendono da **6 a 5**, e delle cinque rimaste **due non si fanno dal cloud** (34 e 14bis) e una (**26**) aspetta la 34.
 
 ### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST — **censimento fatto il 15/08**
 *Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. Verificata sul bersaglio: il commit `9305323` conferma la scheda parola per parola (`main` 4 funzioni e armamento mai arrivato, `test-preview` 7 più la spunta).
@@ -208,22 +210,6 @@ preparano da qui.
 
 🚨 **Resta aperta, e la decisione è sua**: portare su `main` i **33 casi** che sorvegliano codice di PROD (lavoro grosso), promuovere **`livello-dimostrato.ts`** al ponte del bot (oggi costa nulla e chiude la porta in anticipo), o chiudere dichiarando e farne voci a sé.
 
-### 🧟 29. Le azioni email restano dentro `assessment-email-send` — **misurata il 15/08**
-*Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
-🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
-
-**Misurato sul bersaglio, non dedotto:**
-
-| | |
-|---|---|
-| il disarmo | `ALLOWED_ACTIONS` = **4 vive** (`config-check`, `gmail-check`, `staff_invite`, `staff_delete_full`); `RETIRED_EMAIL_ACTIONS` = **11 ritirate**, che escono con `410 ASSESSMENT_EMAIL_CHANNEL_RETIRED` alla riga 2607, **prima** del controllo delle ammesse |
-| ⚠️ **il default è un'azione ritirata** | `const action = clean(body.action \|\| 'send')` ⇒ chi chiama **senza `action`** prende un 410, non un «azione non valida». È voluto e va saputo prima di toccare quella riga |
-| chi la chiama davvero | **3 punti** in `index.html`, e usano solo azioni vive: `config-check`, `staff_invite`, `staff_delete_full`. Il quarto punto (riga 14742) è **il disarmo stesso**, l'imbuto unico dei suoi 11 chiamanti |
-| 🔬 **nessun automatismo la chiama** | l'unica funzione SQL che nomina `assessment-email-send` è `pmo_dispatch_assessment_followup_email_prod`, e il suo cron (**jobid 4**) è `active = false`. Gli altri tre cron dell'autovalutazione puntano altrove (`assessment-notify-staff`, `assessment-apply-level`) |
-| 📡 **zero invocazioni in 24 ore su PROD** | `function_edge_logs`, funzione `d38ed8fe…`: **0**. ⭐ Con **controllo negativo**: nella stessa finestra la sonda vede **2344 righe** e trova `bot-telegram-admin` con 14 chiamate ⇒ lo zero è uno zero vero, non una sonda cieca. ⚠️ La finestra massima è 24 ore e `staff_invite` è un gesto **manuale e raro**: «0 in un giorno» non è «non serve» |
-
-🎯 **Non c'è niente di rotto e niente da spegnere: il codice ritirato è già murato in tre punti indipendenti** (410 in testa, elenco delle ammesse, cron spento). ⇒ La domanda vera è **se vale la pena asportare** le ~1400 righe delle 11 azioni ritirate, oppure lasciarle e chiudere la voce dichiarando. 🚨 Asportarle **non è gratis**: `sendAssessmentEmailCore` e i suoi porti (Gmail, MIME, log) sono gli stessi che usa **`staff_invite`**, che è vivo — quindi non è una potatura per nome, va seguito il grafo. La decisione è sua.
-
 ### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file — **contate il 15/08: sono 64**
 *Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste. Il perché è scritto nel commento HTML nel punto dove stavano (riga ~6825).
 
@@ -239,7 +225,19 @@ preparano da qui.
 | di contorno | **53 id** della famiglia `assessment*` sono cercati con `getElementById` e non esistono più in nessun punto del file — coerente col quadro |
 | ⚠️ **il limite della misura** | il grafo segue i **nomi**. Un richiamo costruito a stringa (`window['assessment'+x]`) non lo vedrebbe: prima di tagliare va provato per bene, ed è esattamente il motivo per cui il 13/08 furono lasciate lì |
 
-🧭 **Due residui vivi che puntano al vuoto**, trovati misurando: `setAssessmentEmailPanel('post')` (riga 10074) e `setAssessmentEmailPanel(panel \|\| 'queue')` (riga 33845) chiedono pannelli che **non esistono più** — non rompono niente (il `querySelectorAll` non trova nulla da accendere), ma portano lo staff su una pagina che resta com'era. Sono **due righe**, e si curano indipendentemente dalla potatura grossa.
+🧭 **I residui vivi che puntano al vuoto: NON sono due.** Li avevo stimati «due righe» il 15/08 e la stima era sbagliata — rimisurati prima di toccarli, sono **8 punti VIVI** più **4 rami di un mappatore vivo**:
+
+| dove | cosa chiede |
+|---|---|
+| 10074 `runSidebarSectionAction` · 36395 | `'post'` |
+| 33845 `assessmentEmailGoToMemberPanel` · 36379 · 36441 · 36722 `restartAssessmentForMember` | `'queue'` |
+| 35126 | `'pending'` |
+| 35508 | `'post'` se restano risposte, altrimenti `'history'` |
+| `assessmentEmailPanelFromAnchorKey` (viva) | 4 rami: «da inviare» → `queue`, «attesa/contattati» → `pending`, «post» → `post`, «stato» → `routine` |
+
+I pannelli vivi oggi sono **cinque**: `history`, `matchpoint`, `public`, `texts`, `excel-import` (quest'ultimo solo in TEST). ⛔ **Non rompono niente** — `setAssessmentEmailPanel` accende via `querySelectorAll` e semplicemente non trova nulla — ma lo staff clicca e **la pagina resta com'era**, senza un errore che glielo dica.
+
+🚨 **Non è una potatura meccanica e per questo non è stata fatta**: per ognuno dei 12 punti va deciso **dove deve atterrare** chi clicca. `history` è il ripiego naturale (è il pannello predefinito dal 13/08), ma non vale ovunque — la riga 30757 manda già a `matchpoint`, quindi una mappatura c'è ed è una scelta di prodotto. **La decide il committente, non chi esegue.**
 
 🆕 **E una cosa più grande, vista di sfuggita e NON verificata**: fuori dalla famiglia `assessment` ci sono altri **111 id** cercati con `getElementById` e mai definiti nel file (`dashboardKpiGrid`, `memberSearch`, `statClienti`, `assistantGroup*`…). Se il campione regge, la 28 non è un caso isolato ma **la punta di un fenomeno d'app**. ⚠️ Ne ho verificati **due** a mano: non è una misura, è un indizio — e va guardato prima di essere creduto, non dopo.
 
@@ -539,17 +537,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — 13, 14 e 15/08/2026 — 22 voci
+## 📦 CHIUSE — 13, 14 e 15/08/2026 — 23 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime quattro voci sono del 15/08** — due chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime cinque voci sono del 15/08** — tre chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **29** | 📦 *(15/08, 20ª sessione — chiusa **DICHIARANDO**, su sua delega esplicita: «decidi tu»)* **Le azioni email restano dentro `assessment-email-send`.** Le 11 azioni del canale ritirato ci sono ancora, ma sono murate in **tre punti indipendenti**, misurati e non ricordati: il `410` esce alla riga 2607 **prima** del controllo delle ammesse; `ALLOWED_ACTIONS` ne ammette **4** e nessuna è del canale email; e il cron `jobid 4` — **l'unico posto in tutto il database** che nomini quella edge — è `active = false`. Sul vivo: **0 invocazioni in 24 ore** su PROD, con controllo negativo (2344 righe viste nella stessa finestra, e una funzione da 14 chiamate trovata) ⇒ lo zero è vero, non cieco. ⚖️ **Perché dichiarare e non asportare**: non c'è un guasto da riparare, e il taglio **non sarebbe per nome** — `sendAssessmentEmailCore` e i suoi porti (Gmail, MIME, log) sono **gli stessi che serve `staff_invite`**, che è vivo e usa Gmail. Tagliare per somiglianza di nome dentro un file che ha già un problema di codice morto (voce 28) vorrebbe dire fare due potature intrecciate invece di una decisa. 🚨 Resta scritto ciò che **non** si tocca: la funzione non si cancella, i secret Gmail non si tolgono, e il default di `action` è `'send'` — cioè un'azione **ritirata**: chi chiama senza `action` prende un 410, non «azione non valida». Se un domani il canale email deve tornare, si rimettono le azioni in `ALLOWED_ACTIONS` e si riaccende il cron: niente è stato distrutto. |
 | **11bis** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione — non fatta, e la differenza conta)* **Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`.** Sua idea del 2/08. ⚖️ **Aveva già perso urgenza il 3/08 e la scheda lo diceva**: la visibilità di quei soci era stata curata **alla radice** (PROD 6.169), quindi non era più una riparazione ma **una scelta** — e la scelta, oggi, è no. 📌 Resta qui e non sparisce perché una voce tolta senza il perché torna: il giorno in cui a qualcuno riverrà l'idea, questa riga dice che è già stata guardata, che il problema sotto **non c'è più**, e che il bottone sarebbe una comodità, non una cura |
 | **13** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione)* **Il ragionamento del modello, in inglese, dentro il messaggio al socio.** Visto da lui il 29/07, **1 volta su 24**. ⭐ **Il valore della voce non era il difetto, era il punto cieco che aveva rivelato, e quello resta scritto**: era la 21ª trappola vista dalla strada della **prosa**, mentre i test guardavano **i bottoni**. È la stessa lezione che il 15/08 ha fatto scoprire i gemelli della voce 23 — un banco che prova la regola e non ciò che l'utente vede davvero. ⚖️ Annullata perché **la frequenza non giustifica il lavoro** (1/24, cosmetica, nessun dato sbagliato al socio), non perché non fosse vera |
 | **23** | ⛔ *(15/08, chiusa dalla 19ª sessione — salita dalla coda il 14/08, scritta dalla 17ª, collaudata dal vivo dalla 18ª)* **«`writeBookingJob` in `create` non guarda com'è andata» — e il titolo ammetteva due letture, tutt'e due vere.** ① La funzione scartava l'esito del proprio `upsert` mentre la sorella dieci righe più su lo controlla: non una convenzione del file, una dimenticanza. ② **Il terzo esito veniva raccontato come il secondo**: gli esiti sono *fatto*, *non fatto* e **non lo so**, e l'ultimo veniva scritto «errore» — lo staff legge «fallita», rifà, e se la prima era passata il campo resta prenotato **due volte** sul sistema del circolo. 📌 Il commento nel codice lo sapeva già (*«NESSUN retry: la prenotazione potrebbe essere già stata creata»*): quello che mancava non era il retry, era **dirlo**. 🛑 **E la scheda sbagliava bersaglio**: diceva «la correzione è nell'app», mentre `writeBookingJob` ha **0 occorrenze** in `index.html` e vive nella edge. 🎯 **La cosa più importante l'ha detta il codice, non io: la macchina dell'ignoto NELL'APP C'ERA GIÀ** dalla v6.150 — la regola del committente *«quando l'esito resta IGNOTO non si indovina, si va a GUARDARE su Matchpoint»* coi tre verdetti `si`/`no`/`boh`. Il difetto non era una mancanza, era **una porta murata davanti a una stanza già arredata**. ✅ **Fatto:** l'errore di rete **marchiato** su una proprietà (non sulle parole — sarebbe il setaccio a maglie larghe della voce 36, e c'è un caso di prova apposta), il lavoro chiuso **`unknown`**, la strada sincrona che risponde `WORKER_ESITO_IGNOTO`, l'app che **insiste** 3 minuti invece di guardare una volta sola, e la domanda che si **deposita** e viene ripresa a ogni apertura. 🚨 **Ma il valore di questa voce è ciò che ha insegnato il COLLAUDO DAL VIVO, in produzione, insieme a lui** — e sono tre cose che nessun banco verde aveva visto. ① **La trappola scritta nel documento è scattata davvero**: fermare il worker **non basta**, davanti c'è **Caddy** che risponde **502**, e un 502 è *una risposta* ⇒ il terzo esito non nasce. Ecco spiegati due mesi di storico — **184 lavori, 16 `error` tutti 5xx, zero `unknown`**: non era un caso raro, era **impossibile**. Si ferma **Caddy**, e il cancello (`curl` prima e dopo) è obbligatorio perché la prima versione era **cieca**. ⚠️ Costo dell'assenza di quel cancello: **tre prenotazioni vere** create la notte del 14/08 credendo di collaudare, tutte annullate. ② **I GEMELLI (6.223 → 6.224)**: le strade di creazione sono **tre** e la correzione ne toccava **una** — lui prenota col clic sullo slot e ha ricevuto il messaggio vecchio. È la voce 31, commessa da me; il banco era verde perché provava la **regola** e non il **cablaggio**. ③ **LA RIPRESA SI ARRENDEVA IN SILENZIO (6.224 → 6.225)**: agganciata a `staffCalInit()`, usciva con un `return` muto se la sessione staff non era ancora pronta — *provare una volta sola nel momento peggiore e arrendersi in silenzio*, cioè il difetto che questa voce toglie dal guardare, **rimesso nella cosa che doveva ripararlo**. 🔍 E funzionava già: lo dimostrava `pmoVerificheInSospeso = []` nel `localStorage`, che **solo** la chiusura definitiva può scrivere — mancava che lo **dicesse**. ✅ **Chiusa il 15/08 col terzo residuo (PROD 6.226)**: il lavoro non resta più `unknown` nel database dopo che l'app l'ha risolto. La edge ha l'azione **`chiudi-lavoro-ignoto`**, la decisione sta nel modulo puro (il banco la **esegue**), e la chiamano tutte e quattro le strade. 🔒 Si chiude **solo** ciò che è `unknown`: la parola del worker — che ha visto la cosa da vicino — non la sovrascrive l'app, che ha guardato il calendario da fuori. ⚖️ Il `boh` non chiude niente, o sarebbe il terzo esito arrotondato al secondo un piano più in là. ✅ Banchi **17/17** e **29/29** (12 casi nuovi), **15/15** Node, browser **55/55** su `main` e **90/90** su TEST, e **tre sabotaggi** che li fanno diventare rossi (28/29, 16/17, 15/17). PROD letta **dal server**. ⇒ **Resta la sola parte B**, e non è più «da non fare»: ha una procedura scritta e una finestra misurata (vedi qui sotto fra le note). 📊 E una misura che vale come prova al contrario: **0 lavori appesi a `pending` su 191** in due mesi — il «lavoro fantasma» che il codice teme è un rischio del disegno che non si è mai realizzato, e dice che questa voce aveva guardato **dove doveva** |
