@@ -7,6 +7,11 @@ quello che l'esecuzione ha insegnato.** La prima versione di questo documento di
 fino alla **chiusura del lavoro** (dalla 6.226 la verifica risolta si scrive anche di là), e c'è una
 **parte B** per il caso che questo collaudo dichiarava di non poter provare.
 
+📦 **La voce 23 è CHIUSA**, per decisione del committente il 15/08: *«chiudila, ventitré resta solo
+la parte B»*. ⇒ Quello che resta del lavoro non è codice da scrivere — è **la parte B di questo
+documento**, cioè una prova da eseguire. Questo file non è più il complemento di una voce aperta: è
+**il posto dove quel lavoro vive**.
+
 Procedura da eseguire **dal Mac**, con l'accesso alla VM. Tutto ciò che segue è **misurato**, non
 ricordato: dove c'è una previsione invece di una misura, è dichiarato.
 
