@@ -1,6 +1,6 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 14/08/2026, a fine 17ª sessione.** Misurata, non ricordata.
+**Fotografia del 15/08/2026, a fine 18ª sessione.** Misurata, non ricordata.
 
 ## 🔎 Il filo della giornata: **la prova che ti dà ragione**
 
@@ -61,12 +61,20 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **13** |
 | 📦 **Chiuse** | **18** il 13–14/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 17ª** — versioni lette dall'`index.html` dei
-due rami, non ricordate: app PROD **6.222** · TEST **6.232** · `main` `34474aa`, `test-preview`
-`ef2c89b` · linter **PROD 101** (`WARN` 83, `ERROR` **0**) e **TEST 97** (`WARN` 80, `ERROR` **1**,
-`security_definer_view`, preesistente) · i **4 percorsi** di `guard-worker-sync` **identici** fra i
-rami · cron PROD 11 accesi / 2 spenti, TEST 5 accesi / 4 spenti (misura del **13/08, non
-ricontrollata**).
+**Stato del sistema, rimisurato alla chiusura della 18ª (15/08)** — versioni lette dall'`index.html`
+dei due rami, non ricordate: app PROD **6.225** · TEST **6.236** · i **4 percorsi** di
+`guard-worker-sync` **identici** fra i rami · **PR aperte 0** (ricontate) · tutte e tre le guardie
+**verdi** su entrambi i rami.
+✅ **PROD verificata DAL SERVER**, non dall'etichetta: `pg_net` su `app.padelvillage.club/index.html`
+→ **200**, `APP_VERSION = '6.225'`, e dentro `staffCalGuardaFinchePuoi`, `pmoVerificheTraccia`,
+`pmoVerificheAvvisa`. ⚠️ Alla **prima** lettura serviva ancora la versione precedente — Pages non
+aveva finito: si guarda **due volte**, sempre.
+🚨 **`guard-docs-truth` è andata rossa DUE volte oggi**, e la prima l'ha vista lui, non io: bumpavo
+la versione e non toccavo `stato-progetto-corrente.md`. ⇒ Regola imparata: **un deploy non è finito
+quando il merge riesce, è finito quando le guardie sono verdi** — e le due che contano scattano sul
+**push**, quindi non compaiono fra i check della PR. La seconda volta il rosso l'ho visto **prima**
+di promuovere, e il registro è entrato **dentro** la promozione invece che dopo.
+⚠️ Non rimisurati oggi, e da non dare per buoni: linter, cron, secret, memoria dell'app.
 
 🚨 **C'ERA UNA PR APERTA, ED ERA UNA TRAPPOLA: la #700 — ora CHIUSA su sua decisione.** Non erano
 zero, come le sessioni precedenti davano per scontato. Era la chiusura della **16ª sessione**,
@@ -254,13 +262,71 @@ onesto quanto lasciarla aperta: **decide il committente**, come per ogni voce.
 
 #### 🧪 La procedura per provarla: `docs/collaudo-voce-23-caduta-worker.md`
 
-*Scritta il 14/08, 18ª sessione, su sua richiesta.* Il collaudo **non è stato eseguito** — da una
-sessione cloud non si può — e il documento non finge il contrario: è l'elenco dei passi da fare
-**dal Mac**, con `pm2` e i log del worker sotto gli occhi.
-⚠️ Dentro c'è la trappola che invaliderebbe tutto: il terzo esito si raggiunge **solo** se la
-`fetch` lancia, quindi un `502` di un eventuale intermediario porterebbe il collaudo a passare
-**sulla strada sbagliata**. Misurato che oggi PROD punta a un IP nudo (`91.99.131.243:8787`), senza
-proxy — ma il valore va riletto nei Secret prima di partire, perché viene da un documento.
+*Scritta il 14/08 notte, 18ª sessione.* ✅ **Poi ESEGUITA** — vedi sotto. Il documento va riscritto
+col metodo che ha funzionato davvero: **si ferma Caddy, non il worker**.
+
+#### ✅ COLLAUDATA DAL VIVO — 15/08/2026, in produzione, due volte
+
+*Fatta insieme al committente: lui le mani sulla VM e sul gestionale, io le sonde sul database.*
+
+🎯 **La trappola scritta nel documento è SCATTATA DAVVERO, ed è il ritrovamento della giornata.**
+Fermare il worker **non basta**: davanti c'è **Caddy** (`worker.91.99.131.243.nip.io` →
+`localhost:8787`), che risponde **502** al posto suo. Un 502 è una *risposta*, quindi la edge lo
+chiama «errore» — correttamente — e il terzo esito non nasce.
+⇒ Ecco spiegati i due mesi di storico: **184 lavori, 16 `error` tutti `Worker error 5xx`, zero
+`unknown`**. Non era un caso raro: da un worker fermo il terzo esito **non può** nascere. Serve che
+cada la **strada intera**.
+
+**Il cancello che rende la prova valida** (la prima versione era cieca — dava «irraggiungibile» sia
+a worker acceso sia a worker spento): dal Mac, `curl https://worker…nip.io/` **prima** (deve dare
+un numero) e **dopo** aver fermato Caddy (deve dare `Failed to connect`). Solo allora si prenota.
+
+**Misurato sul bersaglio, con le previsioni dichiarate PRIMA:**
+- ✅ job **`unknown`**, non `error`, con `Connection refused` su `/create-booking`
+- ✅ l'app **insiste 13 volte** (3 minuti, un colpo ogni 15 s) invece di arrendersi al primo
+- ✅ **«La verifica resta APERTA»** invece di «controlla tu»
+- ✅ calendario **vuoto**, slot libero, **nessuna prenotazione creata** — il worker non ha mai
+  ricevuto la richiesta
+- ✅ verdetto `boh` e non `no`: a strada giù non si *può* guardare, e dirlo è la cosa giusta
+
+⚠️ **Tre prenotazioni VERE create la notte del 14/08** (campo 4 e campo 1 del 17/08, campo 1 del
+14/12) perché il `pm2 stop` non era mai stato eseguito — la sessione SSH non era aperta. **Tutte e
+tre annullate**, verificato `deleted = true`. È il motivo per cui il cancello adesso è obbligatorio.
+
+#### 🚨 Due difetti trovati PROVANDO, che il banco verde non vedeva
+
+**① I GEMELLI (6.223 → 6.224).** Le strade di creazione sono **tre** — modulo, **clic sullo slot**,
+assistente — e la 6.223 ne correggeva **una**. Il committente prenota cliccando sullo slot e ha
+ricevuto il messaggio *vecchio*. ⇒ È la forma esatta della **voce 31**, commessa da me. Il banco era
+verde perché provava la **regola** e non il **cablaggio**: i casi 18-21 ora contano i blocchi nel
+sorgente e pretendono che ognuno passi dalla stessa funzione.
+
+**② LA RIPRESA SI ARRENDEVA IN SILENZIO (6.224 → 6.225).** Agganciata a `staffCalInit()`, che parte
+il **prima possibile**, usciva con un `return` muto se la sessione staff non era ancora pronta, e non
+riprovava mai. ⇒ *Provare una volta sola nel momento peggiore, e arrendersi in silenzio*: il difetto
+che questa voce toglie dal guardare, **rimesso nella cosa che doveva ripararlo**. Ora ripianifica
+(10 giri × 3 s), avvisa su **entrambe** le superfici e **lascia traccia in `pmo_ai_turns`**.
+
+#### 🔍 E la ripresa funzionava già — l'abbiamo scoperto dallo stato che ha lasciato
+
+Dopo la ricarica non compariva niente. Misurato nel `localStorage`: la chiave
+`pmoVerificheInSospeso` **esiste** e vale **`[]`**. Solo `pmoVerificheChiudi` può scrivere una lista
+vuota, e viene chiamata **solo dopo un verdetto definitivo**.
+⇒ **La verifica era stata ripresa e chiusa davvero.** Quello che mancava non era la ripresa: era che
+lo **dicesse** — la 6.224 scriveva solo nella riga di stato del calendario, che nessuno guardava, e
+non tracciava niente. È esattamente ciò che la 6.225 corregge.
+📌 *Quando* sia successo non è pinnato: la 6.224 non lasciava tracce. La conclusione non dipende dal
+momento.
+
+#### ⇒ Cosa resta, ed è poco
+
+1. **La conferma visibile sulla 6.225**: rifare il giro (Caddy giù → prenoti → ricarichi) e vedere
+   il messaggio comparire nella chat *e* la traccia arrivare in `pmo_ai_turns`. È una conferma, non
+   una scoperta.
+2. **Il caso «il worker riceve, crea su Matchpoint, e poi la risposta si perde»**: mai provato, e
+   provarlo costa una prenotazione vera. Il codice degrada in sicurezza; la prova no.
+3. ⚠️ **Il lavoro resta `unknown` nel database anche dopo che l'app l'ha risolto**: la chiusura vive
+   solo nel browser. È una piccola bugia della stessa famiglia di quelle tolte in questi giorni.
 
 ---
 
@@ -462,6 +528,33 @@ Misurando il **14/08**, aprendo la voce 22:
 
 - 🧊 Lo specchio delle prenotazioni di TEST fermo dal 7/08 → **promossa da lui a urgente: è la voce 32.**
 - 🔢 `payment` su TEST ha **2503** righe contro le **2502** di PROD: una in più, non guardata.
+
+Misurando il **15/08**, collaudando la voce 23 in produzione:
+
+- 🔴🆕 **`assessment_tokens.updated_at` NON esiste su PROD, e l'app la scrive lo stesso.** Letto
+  **dalla console del committente**, in produzione, mentre facevamo altro:
+  `POST …/rpc/update_assessment_token_status_admin → 400 (Bad Request)`, con
+  `column "updated_at" of relation "assessment_tokens" does not exist` — **due volte in pochi
+  secondi**. ⇒ Era già scritto come nota della **voce 39** (*«`assessment_tokens` diverge in DUE
+  direzioni: `member_email` solo su PROD, `updated_at` solo su TEST»*), ma lì era una divergenza
+  censita; qui è un **guasto vivo**, ed è la stessa forma delle 5 colonne di `pmo_parser_errors`
+  sanate il 14/08. ⬆️ **Il committente ha deciso: è la PRIMA cosa della prossima sessione.**
+- 🕳️ **Il lavoro resta `unknown` nel database anche quando l'app l'ha risolto.** La chiusura della
+  verifica vive solo nel `localStorage` del browser: chi guarda `pmo_cloud_records` vede un lavoro
+  eternamente in sospeso che invece è stato chiuso. Piccola, ma è della famiglia «documento che
+  mente».
+- 🔎 **Sei divergenze fra documenti e realtà**, tutte misurate mentre servivano:
+  la chiave SSH si chiama **`padel_deploy`**, non `pmo_deploy_key`; il worker si raggiunge a
+  **`https://worker.91.99.131.243.nip.io`**, non all'IP nudo `:8787`; **davanti c'è Caddy**, non
+  documentato da nessuna parte; la **porta 8787 da fuori non risponde** (la strada è la 443); il bot
+  Telegram **ha un'anteprima** (`assistente-padel-agent-prova`, accesa, voluta) mentre `CLAUDE.md`
+  dichiara «un solo processo, né anteprima né sandbox»; e l'ultimo accesso umano alla VM era del
+  **9 giugno**.
+- ⚙️ **Da una sessione cloud non si esce verso il gestionale**: `app.padelvillage.club` e
+  `*.supabase.co` rispondono **403 CONNECT (policy denial)** sul proxy. L'unica finestra sulla
+  produzione è **il database** — `pg_net` per leggere il file servito, SQL per lavori e tracce.
+  📌 È la ragione per cui da oggi ogni pezzo nuovo deve **lasciare traccia in una tabella**: senza,
+  è invisibile a chi non è seduto davanti a quello schermo.
 
 ---
 
