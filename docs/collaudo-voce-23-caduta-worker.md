@@ -273,6 +273,82 @@ serve il contrario — Caddy dev'essere **su** quando si prenota.
 5. **Non ricaricare la pagina.** L'app sta già insistendo (3 minuti, un colpo ogni 15 s): trovando
    la strada tornata deve guardare **da sola** e vedere la prenotazione.
 
+## ✅✅ RIUSCITA IL 15/08 ALLE 22:27 — al quarto giro, e TUTTE le previsioni verificate
+
+**Eseguita dal committente**, con la sessione cloud a leggere il database in diretta. Il quarto giro
+ha usato la procedura corretta dedotta dai tre fallimenti (sotto): collegamento tenuto vivo con
+`ServerAliveInterval=15`, e **`systemctl kill -s SIGKILL caddy`** al posto dello spegnimento gentile.
+Slot: **1 settembre, Campo 4, 08:00** — scelto diverso dai precedenti per non confondere le misure.
+
+| la previsione, dichiarata prima | l'esito, misurato |
+|---|---|
+| lavoro **`unknown`**, con errore di rete **non** «connection refused» | ✅ `Worker network error … client error (SendRequest)`, tagliato a **2,2 s** |
+| l'app **insiste** invece di arrendersi | ✅ **8 tentativi** |
+| verdetto del guardare: **`si`** | ✅ trova lo slot occupato e ci riconosce il nome |
+| lavoro **`done`**, `chiusa_da = verifica-app`, `verdetto = si` | ✅ alle **22:29:15**, 163 s dopo la creazione |
+| la prenotazione **c'è** | ✅ Campo 4, 1/09, a suo nome |
+
+⭐⭐ **È la PRIMA esecuzione vera di `chiudi-lavoro-ignoto`**: prima di stasera i lavori chiusi
+dall'app erano **0 su 192** — la funzione era scritta, provata al banco e mai girata in produzione.
+⇒ La voce 41 esisteva per dimostrare una cosa sola, e l'ha dimostrata: **davanti a «non lo so» il
+gestionale non tira a indovinare, va a vedere.**
+
+🧹 **Pulizia fatta e verificata col testimone indipendente**: prenotazione cancellata alle 22:30:52,
+controllo automatico passato alle **22:32:00** — *dopo* — e nessuna riga è tornata indietro.
+**Zero residui** da tutte e quattro le prove della serata, su entrambe le date usate.
+
+⚖️ **E il valore di questa voce non è il verde: sono i tre giri falliti prima.** Senza, la procedura
+sarebbe rimasta scritta com'era — cioè non eseguibile — e nessuno l'avrebbe saputo finché non fosse
+servita davvero.
+
+## 🛑 I TRE GIRI FALLITI PRIMA — e perché la procedura originale NON POTEVA funzionare
+
+Eseguita col committente alle mani e la sessione cloud agli occhi sul database. **Tre giri, nessuno
+ha riprodotto la condizione**, e non per come è stata eseguita: per **tre difetti della procedura**,
+tutti misurati.
+
+| # | il difetto | la misura |
+|---|---|---|
+| ① | **«conta due secondi e dai lo stop» non tiene conto che lo stop ci mette del suo.** Il comando via `ssh` deve prima collegarsi | 1º giro: lavoro `done` in **5,1 s**, nessun errore. Il portone si è chiuso quando la risposta era già tornata (`caddy: failed` conferma che era giù, solo tardi) |
+| ② | 🚨 **`systemctl stop caddy` NON taglia una richiesta già in corso.** Lo spegnimento è *gentile*: chi è già dentro finisce | 2º giro, collegamento **già aperto** ⇒ stop **istantaneo** al 2º secondo: lavoro `done` in **4,3 s** lo stesso. È la prova che il taglio non avviene |
+| ③ | **Tenere il collegamento aperto mentre si va a prenotare lo fa scadere** | 3º giro: `Read from remote host: Operation timed out` prima ancora di premere. Niente eseguito |
+
+⚖️ **Il difetto ② è quello che invalida il disegno**, non i primi due. La parte A funziona perché lì
+il portone è chiuso **prima**: la richiesta trova la porta sbarrata in partenza. La parte B ha bisogno
+di tagliare **a metà**, e lo spegnimento gentile non lo fa **mai** — nemmeno col tempismo perfetto.
+
+### La procedura corretta, da provare la prossima volta
+
+1. Collegamento aperto **e tenuto vivo**, così non scade mentre si prenota:
+   ```bash
+   ssh -o ServerAliveInterval=15 -i ~/.ssh/padel_deploy root@91.99.131.243
+   ```
+2. Dentro, si prepara **lo strappo** e non lo spegnimento:
+   ```bash
+   systemctl kill -s SIGKILL caddy
+   ```
+3. Prenotare, contare due secondi, Invio. Poi `systemctl start caddy` e `systemctl is-active caddy`.
+
+✅ **PROVATA e riuscita al quarto giro** (vedi sopra): è questa la procedura da usare, non quella in
+cima alla parte B — che resta scritta solo per mostrare da dove si è partiti.
+
+### 🧯 E tre letture sbagliate MIE, la stessa sera, tutte della stessa famiglia
+
+Non sono contorno: sono il motivo per cui questa pagina è affidabile solo se le si legge accanto.
+
+1. *«la routine non ce l'ha fatta»* (voce 34) — leggevo `lastFullSuccessAt`, che appartiene a
+   un'altra strada, e lo prendevo per il verdetto di quell'import.
+2. *«il calendario non si è mosso»* — misuravo alle 21:47, la scrittura è atterrata alle 21:48:15.
+3. *«non è partita nessuna cancellazione verso Matchpoint»* — cercavo fra i `booking_job`, ma **una
+   cancellazione lì non compare**: lascia un record `staff_cancel`. Ho guardato nel cassetto
+   sbagliato e ho preso il suo silenzio per un fatto. ⇒ Ho fatto ricancellare una prenotazione che
+   era già stata cancellata, e a smentirmi è stato **il committente guardando Matchpoint**.
+
+⚖️ Tutte e tre hanno la stessa forma, ed è diversa da quella della 23ª: là la sonda era **cieca**,
+qui la sonda **guardava altrove o troppo presto**. La regola che ne esce:
+**uno zero non è un esito finché non si è verificato che la sonda guardi nel posto giusto e dopo che
+il fatto possa essere accaduto.**
+
 ## Cosa deve succedere — previsioni, dichiarate prima
 
 | passo | previsione | perché |
