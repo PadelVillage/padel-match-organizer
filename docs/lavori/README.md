@@ -398,9 +398,25 @@ la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal ba
 🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
 `boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
 procedura.
-⛔ **Non si fa dal cloud**: serve la VM per Caddy. E la previsione su cui poggia — che il worker
-prosegua dopo la caduta del client — **non è provata**: se si fermasse, il caso non sarebbe
-riproducibile così, e anche quello è una risposta da scrivere lì.
+⛔ **Non si fa dal cloud**, e il 15/08 è stato verificato invece che ripetuto: `~/.ssh` **vuota**,
+porta **22 di `91.99.131.243` non raggiungibile**, `ssh` **non installato**. E anche con l'accesso
+mancherebbero le altre due gambe — il calendario col **login staff** (dal cloud il dominio non
+risponde) e il fatto che la prova crea una **prenotazione vera** sul Matchpoint del circolo.
+⚠️ La previsione su cui poggia — che il worker prosegua dopo la caduta del client — **non è
+provata**: se si fermasse, il caso non sarebbe riproducibile così, e anche quello è una risposta da
+scrivere lì.
+
+✅ **PRONTA DA ESEGUIRE DAL MAC: le tre premesse sono state riverificate il 15/08 sera**, e stanno
+in fondo alla parte B del documento. ① La **finestra dei 2 secondi regge** — rimisurata su **192**
+lavori (erano 191): `done` minimo **4,0 s** invariato, i tre `unknown` a **0,2–0,3 s**, quindi il
+tempo continua a distinguere i due casi da solo. ② **`chiudi-lavoro-ignoto` non è mai girata**:
+`chiusa_da` e `verdetto` sono **0 su 192**, quindi questa prova sarebbe davvero la sua prima
+esecuzione vera. ③ I **tre `unknown` residui** sono quelli attesi e restano tali.
+🧯 **E una correzione che ho fatto e poi disfatto**, scritta perché è la trappola: avevo «corretto»
+la frase «le tre della notte del 14/08» credendola riferita ai lavori `unknown` — che sono del
+14 **e del 15**. Era giusta com'era: parla delle **tre prenotazioni vere** create per sbaglio quella
+notte, misurate ora e confermate (3 `staff_booking` fra le 21:55 e le 22:00, tutte `deleted`).
+⇒ **Due terzetti diversi con lo stesso numero**, ed è annotato nel documento perché non ricapiti.
 
 #### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
 *Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
