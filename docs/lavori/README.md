@@ -63,14 +63,17 @@ contesto**, non eseguire il compito scritto.
 | 📅 **le 1364 righe con la data VERA** | non `now()`, che sarebbe stato il default e avrebbe scritto 1364 date false — la stessa specie di bugia che queste giornate stanno togliendo |
 | 🔧 **e i due trigger che mancavano** | terza autorizzazione distinta della sola voce 40, chiesta separatamente perché tocca il **comportamento** e non solo la forma |
 | ✋ **un «no» implicito, rispettato** | il terzo trigger — quello che brucia il gettone da dentro il database — non è stato toccato: non era fra le tre cose autorizzate, ed è un cambio di comportamento |
+| ⛔ **due voci ANNULLATE** | la **11bis** e la **13**: *«leva e annulla perché non servono più»*. Non chiuse — **annullate**, ed è scritto nelle loro righe: una perché la causa sotto era già stata curata alla radice (quindi era una comodità), l'altra perché 1 volta su 24 non giustifica il lavoro. Di tutt'e due resta scritto **il perché**, o fra un mese tornano |
+| ⬆️ **sei voci promosse a urgenti** | 31, 29, 28, 34, 26 e 14bis, col criterio dichiarato da lui: *«così le chiudiamo velocemente»*. ⇒ La coda passa da **14 a 6**, le urgenti da 0 a **6** |
+| ⚠️ **due avvertenze date, non taciute per compiacenza** | la **34 chiude la 26** ⇒ vanno fatte in quell'ordine, e **né la 34 né la 14bis si fanno dal cloud** (VM la prima, repo privato del bot la seconda). Sono nella testa della sezione urgenti, dove le legge chi parte |
 | ⬆️ **e subito dopo: «aggiungi in coda la parte B»** | promossa da nota a **voce 41**, in sezione C. ⇒ Chiusa la voce e messo il residuo dove si vede: la coda passa da 13 a **14** |
 | 📦 **«chiudila, ventitré resta solo la parte B»** | la **23** chiusa da lui a residuo dichiarato, non a residuo finito: quello che resta è **una prova da fare dal Mac**, non codice da scrivere. ⇒ La lista urgenti torna **vuota**, e la parte B scende fra le «nate misurando» — dove le promozioni le decide lui |
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **14** |
-| 📦 **Chiuse** | **20** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 🔴 **Urgenti** | **6** |
+| 📋 **In coda** | **6** |
+| 📦 **Chiuse** | **22** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.226** · TEST **6.237** · i **4 percorsi** di
@@ -166,25 +169,69 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 6
 
-**Vuota, e per la seconda volta da quando esiste questa lista.** La prima fu il 14/08, e durò
-poche ore: il committente ne promosse quattro. Delle quattro, la 39 è stata chiusa dalla 16ª
-sessione, la 37 e la 38 dalla 17ª, e la **23** — l'ultima rimasta — il **15/08 dalla 19ª**, per
-sua decisione: *«chiudila, ventitré resta solo la parte B»*.
+**Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
+e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
+11bis e la 13; promuovi in urgenti, così le chiudiamo velocemente, la 31, la 29, la 28, la 34, la
+26 e la 14bis»*. ⇒ La coda passa da **14 a 6**: sei salite qui, due chiuse come annullate.
 
-🚨 **Vuota non vuol dire che non ci sia niente da fare**, e questa lista non si riempie da sé: le
-cose candidate stanno in **📋 IN CODA** e in **🆕 nate misurando**, e a promuoverle è il
-committente. Una sessione che parte da qui e si sceglie il lavoro da sola ha già sbagliato — è la
-regola nata il 13/08, ed è scritta in `CLAUDE.md`.
+⚖️ **Il criterio è suo ed è dichiarato: «così le chiudiamo velocemente».** Sono voci mature — quattro
+hanno già la causa trovata e aspettano una decisione, non un'indagine. 🚨 Ma tre cose vanno dette
+**prima** di partire, e sono misurate, non impressioni:
+
+| | |
+|---|---|
+| 🔗 **la 34 CHIUDE la 26** | non sono due lavori: la 26 è il **sintomo atteso** di un TEST col calendario congelato, e sparisce da sé il giorno in cui il sync riparte. ⇒ **Prima la 34.** Chiuderle nell'ordine inverso vorrebbe dire dichiarare risolto un sintomo la cui causa è ancora lì |
+| ⛔ **la 34 non si fa dal cloud** | serve la VM: accendere quel dispatcher resuscita anche i **6 sync clienti** ritirati il 3/08, e la prima giornata va guardata nei log del worker su **Hetzner**. È la più lenta delle sei, non la più veloce |
+| ⛔ **la 14bis nemmeno** | è una domanda sul **bot**, che vive nel repo privato `assistente-padel-agent` — fuori dal perimetro di questa sessione. Da qui si può misurare solo la metà del gestionale |
+
+📌 Le altre quattro — **31**, **29**, **28**, **26** — sono decisioni o potature, e quelle sì si
+preparano da qui.
+
+### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
+*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
+
+### 🧟 29. Le azioni email restano dentro `assessment-email-send`
+*Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
+🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
+
+### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file
+*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste: scrivono in `getElementById` che ora dà `null`, e cominciano tutte con `if (!box) return;` ⇒ **no-op, irraggiungibili**. Lasciate di proposito: asportarle è una potatura da provare per bene. Il perché è scritto nel commento HTML nel punto dove stavano i pannelli.
+
+### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
+*Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
+
+Costo piccolo, e misurato: la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le
+~720 di PROD sul worker condiviso ⇒ **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere
+il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, verificare
+la prima giornata.
+
+⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i
+**6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata
+va guardata nei log del worker su **Hetzner**.
+🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le
+disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di
+PROD è **parità**, ed è la parità a costare.
+🔗 **Chiude la voce 26** il giorno in cui si fa.
+
+### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
+Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
+
+🎯 **Il perché, misurato chiudendo la 32:** su TEST **non gira nessun sync delle prenotazioni**, quindi non c'è niente che riconcili — in PROD lo fa `bookings_live` ogni 2 minuti, **con lo stesso identico codice**. Il bot era sano: aveva ragione a dire «Fatto».
+
+⚖️ **Resta in coda, ma cambia natura**: non è più «indagare un guasto» — è **il sintomo atteso** di un TEST col calendario congelato per scelta (vedi `CLAUDE.md`). Sparisce da sé il giorno in cui si fa la **voce 34**, e non prima. Da chiudere allora, non oggi.
+
+### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
+Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
 
 ---
 
-## 📋 IN CODA — 14
+## 📋 IN CODA — 6
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 9
+### C — Cose sapute e non risolte — 2
 
 #### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
 *Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
@@ -202,36 +249,10 @@ procedura.
 prosegua dopo la caduta del client — **non è provata**: se si fermasse, il caso non sarebbe
 riproducibile così, e anche quello è una risposta da scrivere lì.
 
-#### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
-Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
-
-#### 13. 🇬🇧 Il ragionamento del modello, in inglese, dentro il messaggio al socio
-Visto da lui il 29/07, **1 volta su 24**. È la 21ª trappola vista dalla strada della **prosa**, non dei bottoni — e i test guardavano i bottoni.
-
 #### 14. 🔑 Le ⑩ chiavi «Ospite» che oscillano
 Avanzata il 24/07, non chiusa. Servono le **3 sonde rieseguite a distanza di ore** e diffate; ≥1 campione pulito prima di concludere «benigna e rara». ⏳ La sonda `fp_hot` è **scaduta il 4/08**: va rifondata.
 
-#### 14bis. 🎓 «Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — oggi NO
-Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante della 14.
-
-#### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
-Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
-
-🎯 **Il perché, misurato chiudendo la 32:** su TEST **non gira nessun sync delle prenotazioni**, quindi non c'è niente che riconcili — in PROD lo fa `bookings_live` ogni 2 minuti, **con lo stesso identico codice**. Il bot era sano: aveva ragione a dire «Fatto».
-
-⚖️ **Resta in coda, ma cambia natura**: non è più «indagare un guasto» — è **il sintomo atteso** di un TEST col calendario congelato per scelta (vedi `CLAUDE.md`). Sparisce da sé il giorno in cui si fa la **voce 34**, e non prima. Da chiudere allora, non oggi.
-
-#### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file
-*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste: scrivono in `getElementById` che ora dà `null`, e cominciano tutte con `if (!box) return;` ⇒ **no-op, irraggiungibili**. Lasciate di proposito: asportarle è una potatura da provare per bene. Il perché è scritto nel commento HTML nel punto dove stavano i pannelli.
-
-#### 🧟 29. Le azioni email restano dentro `assessment-email-send`
-*Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
-🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
-
-#### ⚠️ 31. La sicura dei bottoni Matchpoint stava solo su TEST
-*Nata il 13/08.* Chiusa di fatto (banco rimosso, PR #678), ma **il pattern resta**: la sicura fu scritta su TEST il 3/08 dopo un clic per sbaglio, e **mai promossa** ⇒ per dieci giorni in PROD gli stessi bottoni sono rimasti **senza**. È il caso da manuale per cui esiste la regola anti-disallineamento. Da decidere se cercarne altri della stessa forma.
-
-### D — Corpose: solo se si vogliono ATTIVARE — 5
+### D — Corpose: solo se si vogliono ATTIVARE — 4
 
 | # | cosa |
 |---|---|
@@ -239,7 +260,6 @@ Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga no
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
 | **18** | 📣 **Pannello avvisi nel gestionale** (lo staff vede cosa il bot ha mandato ai soci). 🚨 Stesso nodo del pannello autorizzazioni ⇒ **si disegnano insieme** |
-| **34** | 🧊 **«A-lite»: riaccendere il sync prenotazioni su TEST**, scongelando il calendario congelato per scelta il 14/08 (voce 32). Costo piccolo — la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le ~720 di PROD sul worker condiviso: **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, e verificare la prima giornata. ⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i **6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata va guardata nei log del worker su **Hetzner**. 🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è **la parità a costare**. 🔗 Chiude la **voce 26** il giorno in cui si fa |
 
 ---
 
@@ -475,17 +495,19 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — 13, 14 e 15/08/2026 — 20 voci
+## 📦 CHIUSE — 13, 14 e 15/08/2026 — 22 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime due voci sono del 15/08; le dieci successive del 14/08; le otto ultime del 13/08.**
+**Le prime quattro voci sono del 15/08** — due chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **11bis** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione — non fatta, e la differenza conta)* **Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`.** Sua idea del 2/08. ⚖️ **Aveva già perso urgenza il 3/08 e la scheda lo diceva**: la visibilità di quei soci era stata curata **alla radice** (PROD 6.169), quindi non era più una riparazione ma **una scelta** — e la scelta, oggi, è no. 📌 Resta qui e non sparisce perché una voce tolta senza il perché torna: il giorno in cui a qualcuno riverrà l'idea, questa riga dice che è già stata guardata, che il problema sotto **non c'è più**, e che il bottone sarebbe una comodità, non una cura |
+| **13** | ⛔ *(15/08, **ANNULLATA** dal committente a fine 19ª sessione)* **Il ragionamento del modello, in inglese, dentro il messaggio al socio.** Visto da lui il 29/07, **1 volta su 24**. ⭐ **Il valore della voce non era il difetto, era il punto cieco che aveva rivelato, e quello resta scritto**: era la 21ª trappola vista dalla strada della **prosa**, mentre i test guardavano **i bottoni**. È la stessa lezione che il 15/08 ha fatto scoprire i gemelli della voce 23 — un banco che prova la regola e non ciò che l'utente vede davvero. ⚖️ Annullata perché **la frequenza non giustifica il lavoro** (1/24, cosmetica, nessun dato sbagliato al socio), non perché non fosse vera |
 | **23** | ⛔ *(15/08, chiusa dalla 19ª sessione — salita dalla coda il 14/08, scritta dalla 17ª, collaudata dal vivo dalla 18ª)* **«`writeBookingJob` in `create` non guarda com'è andata» — e il titolo ammetteva due letture, tutt'e due vere.** ① La funzione scartava l'esito del proprio `upsert` mentre la sorella dieci righe più su lo controlla: non una convenzione del file, una dimenticanza. ② **Il terzo esito veniva raccontato come il secondo**: gli esiti sono *fatto*, *non fatto* e **non lo so**, e l'ultimo veniva scritto «errore» — lo staff legge «fallita», rifà, e se la prima era passata il campo resta prenotato **due volte** sul sistema del circolo. 📌 Il commento nel codice lo sapeva già (*«NESSUN retry: la prenotazione potrebbe essere già stata creata»*): quello che mancava non era il retry, era **dirlo**. 🛑 **E la scheda sbagliava bersaglio**: diceva «la correzione è nell'app», mentre `writeBookingJob` ha **0 occorrenze** in `index.html` e vive nella edge. 🎯 **La cosa più importante l'ha detta il codice, non io: la macchina dell'ignoto NELL'APP C'ERA GIÀ** dalla v6.150 — la regola del committente *«quando l'esito resta IGNOTO non si indovina, si va a GUARDARE su Matchpoint»* coi tre verdetti `si`/`no`/`boh`. Il difetto non era una mancanza, era **una porta murata davanti a una stanza già arredata**. ✅ **Fatto:** l'errore di rete **marchiato** su una proprietà (non sulle parole — sarebbe il setaccio a maglie larghe della voce 36, e c'è un caso di prova apposta), il lavoro chiuso **`unknown`**, la strada sincrona che risponde `WORKER_ESITO_IGNOTO`, l'app che **insiste** 3 minuti invece di guardare una volta sola, e la domanda che si **deposita** e viene ripresa a ogni apertura. 🚨 **Ma il valore di questa voce è ciò che ha insegnato il COLLAUDO DAL VIVO, in produzione, insieme a lui** — e sono tre cose che nessun banco verde aveva visto. ① **La trappola scritta nel documento è scattata davvero**: fermare il worker **non basta**, davanti c'è **Caddy** che risponde **502**, e un 502 è *una risposta* ⇒ il terzo esito non nasce. Ecco spiegati due mesi di storico — **184 lavori, 16 `error` tutti 5xx, zero `unknown`**: non era un caso raro, era **impossibile**. Si ferma **Caddy**, e il cancello (`curl` prima e dopo) è obbligatorio perché la prima versione era **cieca**. ⚠️ Costo dell'assenza di quel cancello: **tre prenotazioni vere** create la notte del 14/08 credendo di collaudare, tutte annullate. ② **I GEMELLI (6.223 → 6.224)**: le strade di creazione sono **tre** e la correzione ne toccava **una** — lui prenota col clic sullo slot e ha ricevuto il messaggio vecchio. È la voce 31, commessa da me; il banco era verde perché provava la **regola** e non il **cablaggio**. ③ **LA RIPRESA SI ARRENDEVA IN SILENZIO (6.224 → 6.225)**: agganciata a `staffCalInit()`, usciva con un `return` muto se la sessione staff non era ancora pronta — *provare una volta sola nel momento peggiore e arrendersi in silenzio*, cioè il difetto che questa voce toglie dal guardare, **rimesso nella cosa che doveva ripararlo**. 🔍 E funzionava già: lo dimostrava `pmoVerificheInSospeso = []` nel `localStorage`, che **solo** la chiusura definitiva può scrivere — mancava che lo **dicesse**. ✅ **Chiusa il 15/08 col terzo residuo (PROD 6.226)**: il lavoro non resta più `unknown` nel database dopo che l'app l'ha risolto. La edge ha l'azione **`chiudi-lavoro-ignoto`**, la decisione sta nel modulo puro (il banco la **esegue**), e la chiamano tutte e quattro le strade. 🔒 Si chiude **solo** ciò che è `unknown`: la parola del worker — che ha visto la cosa da vicino — non la sovrascrive l'app, che ha guardato il calendario da fuori. ⚖️ Il `boh` non chiude niente, o sarebbe il terzo esito arrotondato al secondo un piano più in là. ✅ Banchi **17/17** e **29/29** (12 casi nuovi), **15/15** Node, browser **55/55** su `main` e **90/90** su TEST, e **tre sabotaggi** che li fanno diventare rossi (28/29, 16/17, 15/17). PROD letta **dal server**. ⇒ **Resta la sola parte B**, e non è più «da non fare»: ha una procedura scritta e una finestra misurata (vedi qui sotto fra le note). 📊 E una misura che vale come prova al contrario: **0 lavori appesi a `pending` su 191** in due mesi — il «lavoro fantasma» che il codice teme è un rischio del disegno che non si è mai realizzato, e dice che questa voce aveva guardato **dove doveva** |
 | **40** | 🔴 *(15/08, 19ª sessione — vista in produzione dalla console del committente il 14/08 sera, promossa da lui a «prima cosa della prossima ripresa»)* **`assessment_tokens.updated_at` non esisteva su PROD, e la RPC la scriveva lo stesso: `400` a ogni cambio di stato manuale dello staff, dal 22/05.** 🔎 **L'origine ha una data, e non è di stamattina**: la migrazione `20260522120000` aggiunge `status_autovalutazione` e, dentro `update_assessment_token_status_admin`, scrive `updated_at = now()` **dando per scontato** che la colonna esista. Su TEST esisteva davvero — là `supabase/manual-sql/supabase_schema.sql` era stato applicato per intero, e alla riga 21 la dichiara — su PROD no. ⇒ Quella RPC su PROD **non ha mai funzionato**: non un caso raro, il **100%** per quasi tre mesi. 📊 **Misurato prima di toccare, e le due metà sono il controllo l'una dell'altra**: PROD, 22 ore di log, **40 POST → 400 e zero 200**; TEST, le stesse ore, stessa app, stessa RPC, **4 POST → 200**. Su PROD la colonna la nomina **una sola** funzione, questa. E riprodotto **sul bersaglio per la strada dell'app** — JWT di uno staff vero, transazione annullata — con lo stesso `42703` letto nella sua console. ⚠️ **Cosa costava, ed è più sottile di «un bottone rotto»**: gli stati che si VEDONO su PROD (`PRIMO_SOLLECITO`, `GESTIONE_MANUALE`…) li scrive `assessment-email-send` con un `PATCH`, che `updated_at` non lo tocca — quindi funzionavano. A non arrivare mai al cloud era **solo il cambio di stato fatto a mano dallo staff**, che restava nel `localStorage` di quel browser. Un pezzo sano accanto a uno rotto è il modo migliore per non vedere quello rotto — la stessa forma dell'11/08. E **tre dei quattro** punti di chiamata fallivano in **silenzio** (`console.error` e nient'altro). ✅ **Riparato, strada scelta da lui fra due proposte**: si aggiunge la **colonna**, identica a quella di TEST (`timestamptz not null default now()`), invece di togliere la riga dalla RPC — così è la produzione a tornare uguale a ciò che il repo dichiara, non il contrario. È la stessa cura delle 5 colonne di `pmo_parser_errors` del 14/08. ⭐ **E le 1364 righe già in tabella NON dicono «aggiornata oggi»**: il default avrebbe scritto `now()` in tutte, cioè 1364 date false — proprio il «documento che mente» che in questi giorni si sta togliendo di mezzo. Si è ricostruita la data **vera** (`greatest` dei timestamp noti): misurato dopo, **0 righe** con data di oggi, l'arco va dal **25/04** al **10/08**. 🔎 **Trovato per strada e sanato con lui, perché è la stessa cosa**: su PROD `assessment_tokens` e `self_assessments` **non avevano nessun trigger**, mentre la funzione `assessment_touch_updated_at` c'era già — impronta `77cd2033…` **identica** a quella di TEST. Mancava solo il cablaggio, come nella voce 23. Rimessi i due `updated_at`; senza, la colonna si sarebbe mossa solo quando la RPC la scrive per nome, e una colonna che si aggiorna a volte sì e a volte no è peggio di una che non c'è. ✅ **Prova end-to-end sul bersaglio, in transazione annullata**: `42703` → **`{"ok": true}`**, stato `INVITO_INVIATO` → `GESTIONE_MANUALE`, `updated_at` 10/08 → 15/08. Linter **101 → 101**, `ERROR` **0**, nessun avviso nuovo; 1364 righe intatte. 🔗 Migrazione `20260815112211`, reversibile. ⛔ **Non toccato, e dichiarato invece che fatto di nascosto**: manca a PROD anche `trg_self_assessments_mark_token_completed`, che TEST ha. Quello non è un allineamento di schema ma un cambio di **comportamento** — brucerebbe il gettone da dentro il database, mentre su PROD lo fa la edge (misurato nella voce 27: 0,15 secondi dopo). Due strade che fanno la stessa cosa si guardano insieme, non si sommano di sfuggita: è sceso fra le «nate misurando» |
 | **38** | 📡 *(14/08, chiusa dalla 17ª sessione — nata come nota dalla 14ª, promossa alla 16ª)* **`wa-shadow-proxy`: ~1540 chiamate a vuoto al giorno, disarmate e VERIFICATE.** Il pannello WhatsApp dello staff bussava una volta al minuto a una funzione **mai deployata da nessuna parte** — 623 404 al giorno su PROD, 619 su TEST — più un secondo temporizzatore, `wa_usage_stats` su `ayly…` ogni 300 s, **295 fallimenti al giorno**. Un canale **smontato il 25/07** di cui il gestionale non si era accorto: stessa famiglia delle voci 28 e 29. ⚖️ Rideployare non era un'opzione, e l'ha deciso la misura: su `ayly…` ci sono **zero** edge function e **zero** tabelle `whatsapp*`. ✅ **Disarmo minimo**: un `return` in testa a `waInit()` — il riquadro non si mostra, i due temporizzatori non partono, il codice resta dormiente — su **entrambi i rami** con lo **stesso identico blocco** estratto dal file vero (PROD **6.221**, TEST **6.231**), che è il punto della voce 31. La libreria testi e template resta viva. 🎯 **Ma il valore di questa voce non è il disarmo: è la CATENA DI PROVE FALSE che ci è voluta per crederlo, quattro in due giorni.** ① La prima sonda cercava in `edge_logs` e rispondeva **0**: le edge stanno in **`function_edge_logs`** — salvata dal controllo negativo. ② Poi i 404 sembravano fermi alle **18:26/18:29**, *prima* della cura, e la 16ª sessione ha fatto la cosa difficile: **ha rifiutato un risultato che la assolveva**, concludendo «non è la mia riparazione, è una scheda chiusa». ③ 🚨 **E anche quella era falsa**: i 404 **non si erano mai fermati** — ne arrivava uno al minuto ancora alle **19:31** — era una finestra di log che finiva lì, scambiata per la fine del traffico. ④ E alla ripresa la prima query ha risposto **0** di nuovo, perché cercava `request.path` invece di `request.pathname`: di nuovo il controllo negativo (2461 righe) a smascherarla. ⭐⭐ **La lezione, che vale più della voce**: lo scetticismo applicato **una volta sola** non è scetticismo, è un cambio di conclusione. Anche la prova che ti dà **torto** va ricontrollata — la 16ª si è fermata un passo prima, senza chiedersi se il dato su cui poggiava lo smascheramento fosse vero. 🔎 **La causa vera era banale e nessuno l'aveva nominata**: una scheda del gestionale rimasta **aperta col codice vecchio**. Una pagina già caricata non prende il codice nuovo finché non la si **ricarica**, e il buco nei log fra le 23:00 e le 10:00 era il computer chiuso per la notte, non il traffico che cessa. ✅ **CHIUSA con la prova che serviva, e non è un silenzio.** Alle **19:57** il committente ha ricaricato **entrambe** le schede — la firma è inconfondibile nei log (`pmo_get_my_staff_profile`, `pmo_ai_settings`, `pmo_lessico`, il websocket `101`) — e da lì: PROD **0** chiamate al proxy mentre l'app ne faceva **206** fino alle 20:05; TEST ultimo 404 alle **19:57:24** e poi **zero**, con **271** chiamate fino alle 20:05; `ayly…` ultimo fallimento di `wa_usage_stats` alle **19:56:24**. ⭐ **È silenzio CON L'APP CHE PARLA ACCANTO**, ed è esattamente ciò che mancava alle prove precedenti: il controllo **positivo**, non l'assenza di traffico. 📌 Il disarmo era stato verificato anche **sul file SERVITO** via `pg_net` — `200`, `APP_VERSION = '6.221'`, e il `return;` **nudo** dentro `waInit()`: controllato il **return**, non il commento, perché un blocco che *dice* di essere disarmato e non lo è sarebbe la peggiore delle prove comode. ⛔ **Resta fuori, dichiarato**: la potatura del riquadro (~150 righe di HTML) e del blocco JS `wa*` (~700), oggi irraggiungibili — è fra le «nate misurando», stessa forma delle voci 28 e 29 |
