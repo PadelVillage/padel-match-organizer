@@ -186,11 +186,18 @@ su `cudi…`. Una funzione che non parte non risponde nemmeno con un errore suo.
 ✅ **`manifest.json` misurato dai due domini**: PROD **200 `application/json`**, TEST **404
 `text/html`**. È la prova che quel file su `test-preview` non lo serve nessuno.
 
-🔁 **La finestra del 4bis: rossa su `test-preview` una volta su due**, alla 22ª — rossa al primo
-giro, **verde al secondo**, stessa identica procedura. Ed è la conferma che quella non è una regola
-ma una **corsa**: il colore lo decide se il riallineo atterra prima che il guard legga i ref.
-Spingendo prima TEST, quando cade, cade **là**. Il rosso vecchio è stato rilanciato a mano per non
-lasciarlo in bacheca.
+🔁 **La finestra del 4bis cade rossa a volte sì e a volte no, a parità di procedura**: alla 22ª,
+tre giri identici → **rossa, verde, rossa**.
+⚖️ **Il conteggio NON si scrive qui, di proposito**, ed è la stessa ragione per cui sopra non ci sono
+gli sha: *la spinta che aggiorna questa riga è essa stessa un giro*, quindi qualunque tally è vecchio
+nell'istante in cui lo si salva. 📏 Non è teoria: alla prima stesura questa riga diceva «rossa **una
+volta su due**», e il giro che l'ha portata sul ramo l'ha resa **falsa mentre atterrava**. È la
+malattia dei documenti curata il 13/08, colta nel suo caso più piccolo — un file che, per esistere,
+smentisce sé stesso.
+⇒ Resta scritto solo il fatto **stabile**: non è una regola, è una **corsa**, e il colore lo decide
+se il riallineo atterra prima che il guard legga i ref. Spingendo prima TEST, quando cade, cade
+**là** — che è tutto ciò che il 4bis promette. I rossi vecchi si rilanciano a mano per non lasciarli
+in bacheca.
 ⚠️ **Una cosa che il 4bis NON sa spostare**, misurata oggi: `guard-docs-truth` legge la tabella
 **sempre da `origin/main`** (`git show "origin/main:$DOC"`), qualunque ramo la faccia partire ⇒ quando
 è **TEST** a cambiare versione, la finestra è rossa su **entrambi** i rami e si può solo tenerla corta.
