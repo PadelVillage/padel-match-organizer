@@ -42,7 +42,7 @@ Chromium su Linux **non** guarda i certificati di sistema, guarda il proprio mag
 nasce vuoto. Senza quel passaggio ogni pagina muore con `ERR_CERT_AUTHORITY_INVALID` — e
 `curl` intanto funziona, il che rende il sintomo confondente.
 
-## Due trappole del container, già gestite nel codice
+## Tre trappole del container, già gestite nel codice
 
 Sono scritte qui perché si ripresentano identiche in ogni sessione nuova, e il sintomo che
 producono somiglia a «il sito è irraggiungibile» invece che «l'attrezzo è configurato male».
@@ -55,6 +55,15 @@ producono somiglia a «il sito è irraggiungibile» invece che «l'attrezzo è c
    della verifica**: il certificato viene validato esattamente come prima, cambia solo la
    versione del protocollo. Si può alzare con `PMO_TLS_MAX=tls1.3` per riprovare, ed è la
    prima cosa da rimuovere il giorno in cui il tunnel regge.
+3. **Il Chromium del container non è quello che Playwright si aspetta.** Playwright pinna un
+   numero di build preciso e cerca lì e basta; il container ne ha **uno solo**, messo in
+   `/opt/pw-browsers` quando l'immagine è stata costruita, e quasi mai coincide. Il lancio
+   muore con `Executable doesn't exist at …/chromium_headless_shell-<numero>/…` e invita a
+   `npx playwright install` — che qui è **la cosa da non fare**: l'immagine è preparata
+   apposta per non riscaricare i browser, e il download non passerebbe comunque
+   dall'allowlist. `trovaChromium()` ripiega da sé sul Chromium che il container ha davvero,
+   e solo quando quello pinnato manca. Con `PMO_CHROMIUM_PATH=<percorso>` si forza a mano.
+   Il percorso usato finisce nel report, sotto `chromium`.
 
 ## Uso
 
@@ -81,9 +90,22 @@ Lo snippet è un **corpo di funzione async**: usa `return` e può usare `await`.
 1. **Ambienti incrociati.** Ogni richiesta a un database Supabase del progetto diverso da
    quello dichiarato viene **abortita** e registrata. Vale dal primo byte, prima del login.
 2. **Coerenza dichiarato/reale.** Dopo il login — che è il momento in cui l'app carica
-   davvero la sua configurazione — si confronta `PADEL_CONFIG.SUPABASE_URL` con l'ambiente
-   richiesto, e si controlla quali host il browser ha *effettivamente* contattato. Se non
-   combaciano, lo snippet **non viene eseguito**.
+   davvero la sua configurazione — si confronta quello che la pagina **dichiara** con
+   l'ambiente richiesto, e si controlla quali host il browser ha *effettivamente*
+   contattato. Se non combaciano, lo snippet **non viene eseguito**.
+
+   Il dichiarato si legge da **due posti, in quest'ordine**: `PADEL_CONFIG.SUPABASE_URL` e,
+   se manca, `pmoExpectedSupabaseProjectRef()`. Non è ridondanza per bellezza — misurato il
+   15/08: dopo il login **su PROD `PADEL_CONFIG` resta `undefined`** (su TEST no, ed è
+   popolato su entrambi *prima* del login). Guardando solo lì, su PROD questa metà della
+   guardia leggeva `null`, saltava il confronto **in silenzio** e non controllava niente,
+   proprio nell'ambiente dove sbagliare costa. Il report dice sempre da quale delle due fonti
+   ha letto, in `configFonte`.
+
+   ⚠️ Se **nessuna** delle due risponde, l'esecuzione **prosegue** — la prova comportamentale
+   qui sotto è quella forte, e fermarsi renderebbe l'attrezzo inservibile su una pagina che
+   non espone la sua configurazione — ma lo **dichiara**, in `avvisi` e sullo standard error.
+   Un controllo saltato che non lascia traccia si legge come un controllo superato.
 3. **Sola lettura** (predefinita). Passano `GET`/`HEAD`/`OPTIONS`, le chiamate `/auth/v1/`
    e le RPC di lettura (`pmo_get_*`, `pmo_can_*`, `pmo_supabase_environment_check`). Sono
    bloccate `PATCH`/`PUT`/`DELETE`, gli insert su tabella e **tutto `/functions/v1/`**, che

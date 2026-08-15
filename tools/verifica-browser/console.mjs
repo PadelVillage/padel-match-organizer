@@ -10,7 +10,7 @@
 // guardia di rete (vedi README.md, che ne spiega anche i limiti).
 
 import { chromium } from 'playwright';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const AMBIENTI = {
   test: {
@@ -38,6 +38,33 @@ const HOST_SUPABASE_NOTI = [
 
 const RPC_DI_LETTURA = /^pmo_(get|can)_/;
 const RPC_DI_LETTURA_EXTRA = new Set(['pmo_supabase_environment_check']);
+
+// Playwright pinna un build di Chromium preciso e lo cerca lì e basta. Il
+// container però ne ha UNO solo, installato una volta per tutte in
+// /opt/pw-browsers, e quasi mai è quel numero: al primo lancio il browser muore
+// con «Executable doesn't exist» e invita a `npx playwright install` — che in
+// questo ambiente è esattamente la cosa da non fare (l'immagine è preparata
+// apposta per non riscaricare i browser).
+//
+// Quindi: se il build pinnato c'è, non ci si mette in mezzo e decide Playwright.
+// Se non c'è, si ripiega sul Chromium che il container ha davvero.
+function trovaChromium() {
+  if (process.env.PMO_CHROMIUM_PATH) return process.env.PMO_CHROMIUM_PATH;
+
+  try {
+    if (existsSync(chromium.executablePath())) return undefined;   // il build pinnato c'è
+  } catch {}                                                       // Playwright non sa dirlo: si ripiega
+
+  const radice = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  const candidati = [`${radice}/chromium`];                        // symlink stabile, se c'è
+  try {
+    for (const d of readdirSync(radice).filter(n => n.startsWith('chromium-')).sort().reverse()) {
+      candidati.push(`${radice}/${d}/chrome-linux/chrome`);
+    }
+  } catch {}
+
+  return candidati.find(p => existsSync(p));                       // undefined = nessuno: lo dirà Playwright
+}
 
 function leggiArgomenti(argv) {
   const a = { env: null, url: null, eval: null, file: null, shot: null, out: null,
@@ -101,6 +128,8 @@ const report = {
   scritture: arg.allowWrites ? 'CONSENTITE' : 'bloccate',
   appVersion: null,
   configSupabase: null,
+  configFonte: null,
+  avvisi: [],
   login: null,
   risultato: undefined,
   console: [],
@@ -123,8 +152,9 @@ if (arg.allowWrites) {
 // Chromium no — va detto al browser, altrimenti ogni pagina muore con
 // ERR_CONNECTION_RESET e sembra un sito irraggiungibile invece di una svista qui.
 const proxyServer = process.env.HTTPS_PROXY || process.env.https_proxy || null;
+const chromiumPath = trovaChromium();
 const browser = await chromium.launch({
-  executablePath: process.env.PMO_CHROMIUM_PATH || undefined,
+  executablePath: chromiumPath,
   ...(proxyServer ? { proxy: { server: proxyServer, bypass: 'localhost,127.0.0.1' } } : {}),
   // Il proxy lascia passare questi host in tunnel cieco (certificato vero, non
   // sostituito) e quel tunnel si spezza sul TLS 1.3 di Chromium: la pagina muore
@@ -135,6 +165,7 @@ const browser = await chromium.launch({
   args: [`--ssl-version-max=${process.env.PMO_TLS_MAX || 'tls1.2'}`],
 });
 report.proxy = proxyServer ? 'attivo' : 'nessuno';
+report.chromium = chromiumPath || 'quello pinnato da Playwright';
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 page.setDefaultTimeout(arg.timeout);
 
@@ -209,11 +240,35 @@ try {
 
   // Controprova, ora che il login ha costretto l'app a leggere la sua
   // configurazione: l'ambiente su cui sto lavorando è quello dichiarato?
-  const supabaseUrl = await page.evaluate(() => window.PADEL_CONFIG?.SUPABASE_URL || null);
-  report.configSupabase = supabaseUrl;
-  const hostDichiarato = supabaseUrl ? new URL(supabaseUrl).hostname : null;
-  if (hostDichiarato && hostDichiarato !== amb.supabaseHost) {
-    throw new Error(`AMBIENTE INCOERENTE: ho chiesto ${arg.env} (${amb.supabaseHost}) ma la pagina usa ${hostDichiarato}. Fermo tutto prima di eseguire lo snippet.`);
+  // Che cosa la pagina DICE di essere. Si guardano due posti, non uno:
+  // `PADEL_CONFIG` è popolato su TEST ma resta **undefined su PROD** (misurato il
+  // 15/08) — e chi si fermava lì otteneva `null`, saltava il confronto in silenzio
+  // e lasciava questa metà della guardia inerte proprio dove sbagliare costa.
+  // L'app la sua verità ce l'ha anche su PROD: `pmoExpectedSupabaseProjectRef()`.
+  const dichiarato = await page.evaluate(() => {
+    const url = window.PADEL_CONFIG?.SUPABASE_URL || null;
+    if (url) { try { return { ref: new URL(url).hostname.split('.')[0], fonte: 'PADEL_CONFIG.SUPABASE_URL', url }; } catch {} }
+    try {
+      const ref = typeof pmoExpectedSupabaseProjectRef === 'function' ? pmoExpectedSupabaseProjectRef() : null;
+      if (ref) return { ref, fonte: 'pmoExpectedSupabaseProjectRef()', url: `https://${ref}.supabase.co` };
+    } catch {}
+    return null;
+  });
+  report.configSupabase = dichiarato?.url || null;
+  report.configFonte = dichiarato?.fonte || null;
+
+  const refAtteso = amb.supabaseHost.split('.')[0];
+  if (dichiarato && dichiarato.ref !== refAtteso) {
+    throw new Error(`AMBIENTE INCOERENTE: ho chiesto ${arg.env} (${amb.supabaseHost}) ma la pagina dichiara ${dichiarato.ref} (letto da ${dichiarato.fonte}). Fermo tutto prima di eseguire lo snippet.`);
+  }
+  if (!dichiarato) {
+    // Non si ferma: la controprova comportamentale qui sotto è quella forte, e
+    // fermarsi qui renderebbe l'attrezzo inservibile su una pagina che non
+    // espone la sua configurazione. Ma non deve TACERE: un controllo saltato
+    // che non lascia traccia si legge come un controllo superato.
+    report.avvisi = [...(report.avvisi || []),
+      'Guardia dichiarato/reale SALTATA: la pagina non espone né PADEL_CONFIG.SUPABASE_URL né pmoExpectedSupabaseProjectRef(). Resta valida la sola prova comportamentale (hostSupabaseContattati).'];
+    console.error('\n  ⚠️  Guardia dichiarato/reale saltata: la pagina non dichiara il suo database. Vale solo la prova comportamentale.\n');
   }
   const estranei = [...hostVisti].filter(h => h !== amb.supabaseHost);
   if (estranei.length) {
