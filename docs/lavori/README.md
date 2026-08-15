@@ -1,6 +1,32 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 15/08/2026, a fine 19ª sessione.** Misurata, non ricordata.
+**Fotografia del 15/08/2026, a fine 20ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 20ª: **lo strumento mente prima del codice**
+
+Le sessioni precedenti avevano imparato a diffidare della *prova*. Questa ha imparato a diffidare
+dello **strumento che la produce** — ed è successo **cinque volte in un giorno**, sempre con la
+stessa forma: una misura ripetibile, quindi credibile, e falsa.
+
+| lo strumento diceva | cosa era davvero |
+|---|---|
+| il banco fa **24/55**, con 31 eccezioni `localStorage null` — e lo rifà uguale al secondo giro | era il **runner**, che interrogava la pagina *mentre il giro girava*. Aspettando alla cieca e leggendo una volta sola: **55/55**. 🚨 E l'A/B tornava lo stesso — 24 contro 24, «nessuna regressione»: conclusione giusta, con due strumenti rotti |
+| «il rimbalzo `switchTab(` c'è ancora dopo il fix» | la sonda pescava **il commento appena scritto**, che quella riga la cita. Saltando le righe di commento: **1 → 0** |
+| «la promozione su TEST non è atterrata»: due contatori sporchi | **gli stessi commenti**, di nuovo. Due ore dopo, stessa trappola |
+| «33 casi mancanti a PROD, il grosso è la famiglia vai-a-GUARDARE» | confrontavo per **id**, e gli id sono **rinumerati** fra i rami. Quella famiglia `main` **ce l'aveva**. Rifatto per **nome**: mancavano 35, e il grosso erano i **PAGAMENTI** |
+| il sabotaggio `PMO_WALLET_WRITE_ENABLED = false` non fa rosso ⇒ «la rete è debole» | **inerte**: l'harness scavalca quell'interruttore. Sabotando il *payload* la rete va **85/87** e cadono i due casi giusti |
+
+⚖️ **La lezione non è «controlla due volte»**, che è quello che si dice sempre. È più stretta:
+**una sonda che cerca una stringa nel codice deve saltare i commenti**, un runner non deve toccare
+il bersaglio mentre misura, un confronto fra rami non deve poggiare su un campo che i rami
+rinumerano, e **un sabotaggio che non fa rosso non dice che la rete è debole: dice che hai rotto la
+cosa sbagliata.** Quattro regole concrete, non un invito alla prudenza.
+
+🎯 **E una l'ha corretta il committente, non una misura**: lavoravo su «cinque pannelli tolti da una
+sezione viva», e lui ha detto *«la sezione autovalutazione l'abbiamo rimossa»*. Misurato:
+`PMO_ASSESSMENT_PARKED = true` **dal 13/06**, nascosta a tutti. ⇒ I cinque pannelli erano stati tolti
+**dentro una stanza già chiusa**, e il fix che avevo appena scritto rifiniva una stanza in cui non
+entra nessuno. È la quarta volta in tre giorni che la correzione che conta la porta lui.
 
 ## 🔎 Il filo della giornata: **la prova che ti dà ragione**
 
@@ -69,31 +95,63 @@ contesto**, non eseguire il compito scritto.
 | ⬆️ **e subito dopo: «aggiungi in coda la parte B»** | promossa da nota a **voce 41**, in sezione C. ⇒ Chiusa la voce e messo il residuo dove si vede: la coda passa da 13 a **14** |
 | 📦 **«chiudila, ventitré resta solo la parte B»** | la **23** chiusa da lui a residuo dichiarato, non a residuo finito: quello che resta è **una prova da fare dal Mac**, non codice da scrivere. ⇒ La lista urgenti torna **vuota**, e la parte B scende fra le «nate misurando» — dove le promozioni le decide lui |
 
+**E nella 20ª, lo stesso pomeriggio:**
+
+| | |
+|---|---|
+| 🔓 **«fai la due»** | curata la **mezza promozione** della voce 31: PROD chiamava due agganci di prova che in `index.html` non esistevano (PROD **6.227**) |
+| ⚖️ **«sulla 29 decidi tu»** | delega esplicita, e la voce è stata **chiusa dichiarando**: il canale email ritirato è murato in **tre punti indipendenti** e su PROD ha **0 invocazioni in 24 ore**. Asportarlo non sarebbe una potatura per nome — quei porti Gmail li usa `staff_invite`, che è vivo |
+| 🗣️ **la correzione sulla sezione Autovalutazione** | *«l'abbiamo rimossa… è rimasta una microsezione nella scheda socio»*. Ha cambiato il lavoro: i «12 vicoli ciechi» sono diventati **uno**, ed era l'unico che faceva danno (PROD **6.228**) |
+| 🔓 **«Togli» e «puoi eliminarlo»** | via il requisito dell'email dal bottone e via la conferma email al socio: due residui del canale morto (PROD **6.229**) |
+| ⬆️ **«promuovi le tre versioni su test»** | 6.228 e 6.229 portate **a rovescio del solito**, da `main` a `test-preview` (TEST **6.238**) — se no si ricreava la voce 31 al contrario il giorno stesso in cui la si censiva |
+| ⬆️ **«vai con la 31»** | la rete di regressione di PROD passa da **55 a 87 casi** (PROD **6.230**) |
+| ⬆️ **«promuovi livello-dimostrato»** | la porta del livello **in prestito** chiusa anche sul **ponte del bot**, con la premessa rimisurata sui dati vivi: `ereditato` = **0** su PROD |
+| ✅ **«sistema manifest e VERSIONI su test»** | `VERSIONI.md` allineato (era un sottoinsieme stretto). **`manifest.json` no**, e non per pigrizia: su TEST **risponde 404** — il caricatore è un repo a parte e il link è assoluto ⇒ quel file lì **non lo serve nessuno** |
+| 🤝 **una seconda sessione in parallelo** | ha unito la **#727** e la **#728** (console remota) mentre lavoravo. Nessuna sovrapposizione — me ne sono accorto perché il conteggio delle chiuse è passato da 23 a 24 **senza che lo toccassi** |
+
 | | |
 |---|---|
 | 🔴 **Urgenti** | **5** |
 | 📋 **In coda** | **6** |
 | 📦 **Chiuse** | **24** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.230** · TEST **6.238** · i **4 percorsi** di
-`guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
-guardie **verdi su entrambi i rami**.
-✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
-→ **200**, `APP_VERSION = '6.226'`, e dentro tutti e quattro i marcatori della chiusura
-(`pmoChiudiLavoroIgnoto`, `chiudi-lavoro-ignoto`, `_jobIgnoto`, il deposito col numero del lavoro).
-⚠️ Alla **prima** lettura serviva ancora la **6.225** — Pages non aveva finito: si guarda **due
-volte**, sempre, ed è la terza sessione di fila in cui quel «non ancora» avrebbe potuto passare per
-un «no».
-✅ **E le due edge sono VIVE, non solo deployate**: interrogate con `pg_net` senza credenziali,
-rispondono **401 col loro JSON** su `qqbf…` e su `cudi…` — una funzione che non parte non risponde
-nemmeno con un errore suo.
-🔁 **Le due guardie sono andate rosse su `test-preview` fra la spinta e il merge**, ed era previsto:
-per quei minuti i `docs/` dichiaravano PROD 6.226 mentre `main` stava ancora a 6.225. È la finestra
-del punto 4bis, e spingendo prima TEST è caduta **là**. Rientrate da sé col merge, rilanciate a mano
-per non lasciare un rosso vecchio in bacheca.
-⚠️ Non rimisurati oggi, e da non dare per buoni: cron, secret, memoria dell'app. Il **linter di
-PROD** sì: **101 → 101**, `ERROR` **0**, nessun avviso nuovo dopo la voce 40.
+**Stato del sistema, rimisurato alla chiusura della 20ª (15/08)** — versioni lette dall'`index.html`
+dei due rami, non ricordate: app PROD **6.230** · TEST **6.238** · i **4
+percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
+sessione · tutte le guardie **verdi su entrambi i rami**.
+📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
+non li controlla: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva — questo
+commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin/test-preview`.
+📏 **La rete di regressione: PROD 87 casi, TEST 90** — e la differenza è ormai **solo** i 3 della
+simulazione incassi, che in produzione non hanno senso. A inizio giornata erano 55 contro 90.
+
+✅ **PROD verificata DAL SERVER, non dall'etichetta**, e **due volte**: `app.padelvillage.club/index.html`
+→ `APP_VERSION = '6.230'`, e dentro i **5 agganci** promossi con la 6.230 — e **zero** dei due della
+simulazione, che in produzione non devono esistere. Verificate anche le potature: il messaggio nuovo
+del bottone è nel codice, quello vecchio sopravvive **solo dentro un commento** (controllato riga per
+riga, non a conteggio — è la trappola in cui sono caduto tre volte oggi).
+✅ **E il ponte del bot è VIVO, non solo deployato**: `consumer-player-readmodel` passa a **versione
+22** su `qqbf…`, e interrogato senza credenziali risponde **401 col suo JSON** — identico al gemello
+su `cudi…`. Una funzione che non parte non risponde nemmeno con un errore suo.
+✅ **`manifest.json` misurato dai due domini**: PROD **200 `application/json`**, TEST **404
+`text/html`**. È la prova che quel file su `test-preview` non lo serve nessuno.
+
+🔁 **Le guardie sono andate rosse su `test-preview` a ogni giro, fra la spinta e il merge**, ed era
+previsto: è la finestra del punto 4bis, e spingendo prima TEST cade **là**. Rilanciate a mano dopo
+ogni merge per non lasciare un rosso vecchio in bacheca.
+⚠️ **Una cosa che il 4bis NON sa spostare**, misurata oggi: `guard-docs-truth` legge la tabella
+**sempre da `origin/main`** (`git show "origin/main:$DOC"`), qualunque ramo la faccia partire ⇒ quando
+è **TEST** a cambiare versione, la finestra è rossa su **entrambi** i rami e si può solo tenerla corta.
+Il 4bis indirizza `guard-worker-sync`, non questa.
+
+⛔ **Non misurato da qui, e da non dare per buono** — la sessione girava dal cloud: **VM Hetzner**,
+**worker** e i suoi log, **`.env` del bot**, **secret**, **cron**, **memoria dell'app**, e soprattutto
+**la vista dell'app col login staff**. Quest'ultima pesa: la 6.228 cura un percorso che si vede solo
+cliccando «Nuova autovalutazione» dentro una scheda socio, e il 13/08 due errori veri sono passati
+sotto sintassi verde e rete verde — li ha trovati lui aprendo l'app.
+✅ Rimisurati invece: le due versioni, gli sha, le PR aperte, i 4 percorsi sorvegliati, i conteggi di
+questo file, il ponte del bot dal vivo, e i dati di PROD dietro `livello-dimostrato` (2797 soci vivi,
+533 con livello vero, 517 a origine vuota, `ereditato` = **0**).
 
 **Alla chiusura della 18ª, poche ore prima** — tenuto perché la lezione è di quel giro:
 🚨 **`guard-docs-truth` è andata rossa DUE volte**, e la prima l'ha vista lui, non io: bumpavo
