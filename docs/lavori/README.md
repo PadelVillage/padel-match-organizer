@@ -388,8 +388,25 @@ questa strada non la chiama nessuno.
    il lavoro passare da `unknown` a `done`/`error` in `pmo_cloud_records`, che è la parte
    **misurabile da lontano**. È una conferma, non una scoperta. ⛔ Chiede la VM e il gestionale:
    dal cloud non si esce verso `app.padelvillage.club` né verso `*.supabase.co`.
-2. **Il caso «il worker riceve, crea su Matchpoint, e poi la risposta si perde»**: mai provato, e
-   provarlo costa una prenotazione vera. Il codice degrada in sicurezza; la prova no.
+2. **Il caso «il worker riceve, crea su Matchpoint, e poi la risposta si perde»**: mai provato. ⤴️
+   **Ma non è più solo «da non fare»: adesso ha una procedura**, la **parte B** di
+   [`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md), scritta il
+   15/08. 🔎 Il meccanismo c'era e nessuno l'aveva guardato: il worker mette il lavoro in **coda** e
+   parla con Matchpoint **in uscita**, non attraverso Caddy ⇒ togliendo Caddy *mentre sta già
+   lavorando* la prenotazione si completa e la edge non riceve niente. 📊 E la finestra è
+   **misurata su 191 lavori veri**: il `done` più veloce è a **4,0 s** (mediana 8,1), mentre i tre
+   `unknown` della parte A stanno a **0,2–0,3 s** — tagliare a ~2 secondi è dentro il minimo con
+   margine doppio. ⭐ È anche l'**unico** caso che percorre il ramo del **`si`**: esito ignoto → si
+   guarda → si TROVA → lavoro chiuso `done`. La parte A prova solo il `no`.
+   🚨 **Due trappole scritte lì dentro, trovate leggendo il codice**: ① lo slot **non** dev'essere
+   una manutenzione — `staffCalAskMatchpoint` cerca **i nostri nomi**, e senza nomi il verdetto è
+   `boh`, quindi si proverebbe la strada sbagliata credendo di aver provato quella giusta; ② qui la
+   prenotazione è **vera per costruzione**, non per incidente, e la cancellazione fa parte della
+   procedura.
+   ⛔ Resta **da eseguire**, e dal Mac: quello che è scritto sono **previsioni dichiarate**, non
+   misure. Compresa la principale, che va detta: *non è provato* che il worker prosegua dopo la
+   caduta del client — se invece si fermasse, Matchpoint resterebbe vuoto e il caso non sarebbe
+   riproducibile così. Anche quello è una risposta, e va scritta lì invece che riprovata a caso.
 
 ---
 
@@ -593,6 +610,17 @@ Misurando il **14/08**, aprendo la voce 22:
 - 🔢 `payment` su TEST ha **2503** righe contro le **2502** di PROD: una in più, non guardata.
 
 Misurando il **15/08** nella 19ª sessione, sanando la voce 40:
+
+- ✅ **Nessun lavoro di prenotazione è MAI rimasto appeso a `pending`**: **191 lavori** da giugno,
+  **0** senza esito finale. Il «lavoro fantasma» che il commento di `writeBookingJob` teme —
+  *«resta pending PER SEMPRE e chi guarda non saprà mai com'è finita»* — è un rischio reale del
+  disegno che in due mesi non si è mai realizzato. ⭐ Vale quanto una prova al contrario: dice che
+  la cosa da guardare era il **terzo esito**, non il lavoro perso, e la voce 23 ha guardato dove
+  doveva.
+- ⚠️ **Il lavoro non sa quanto è durato.** Ogni scrittura **sostituisce** il payload intero, quindi
+  `created_at` — presente solo nella prima riga, quella `pending` — sparisce alla seconda. La durata
+  si ricava solo dalle colonne della tabella. Non fa danno oggi; sarebbe una riga in più da
+  conservare il giorno in cui si volesse misurare la lentezza del worker dal database.
 
 - 🕳️ **A PROD manca `trg_self_assessments_mark_token_completed`, che TEST ha.** Trovato facendo il
   rito «cosa c'è attaccato a questa tabella» prima di montare i due trigger dell'`updated_at`: su
