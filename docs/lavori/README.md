@@ -202,9 +202,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** |
+| 🔴 **Urgenti** | **2** |
 | 📋 **In coda** | **7** |
-| 📦 **Chiuse** | **28** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **29** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -352,7 +352,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 2
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -377,38 +377,6 @@ preparano da qui.
 ⬆️ **E il 15/08 sera lui ne ha promossa una quarta: la 41**, dalla sezione C — *«promuovi la quarantuno tra le urgenti»*. ⇒ Coda da **7 a 6**, urgenti da 3 a **4**. 📌 Nasce da una domanda sua sul perché fosse ancora in coda: gli avevo proposto di prepararla per il Mac invece di chiuderla, e lui l'ha spostata di sopra — che è la terza strada, quella che non avevo messo fra le opzioni.
 
 🚨 **E ora TUTTE E QUATTRO le urgenti sono fuori dalla portata di una sessione cloud**: la 41 vuole SSH sulla VM, il login staff e una prenotazione vera sul Matchpoint; la 34 la VM; la 14bis il repo privato del bot; la 26 aspetta la 34. ⚖️ **La lista non è corta perché è quasi finita: è corta perché il resto è altrove** — e da stasera è vero per intero, non quasi. La prossima sessione utile su queste è **dal Mac**.
-
-### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
-*Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
-voce, e **non è codice**: è una prova da eseguire, scritta per intero nella parte B di
-[`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
-
-⭐ **Perché vale**: è l'**unico** caso che percorre il ramo del **`si`** — esito ignoto → si guarda →
-si TROVA → lavoro chiuso `done`. Il collaudo del 15/08 prova solo il ramo del `no`. E porta con sé
-la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal banco e **mai girata**.
-📊 La finestra è **misurata su 191 lavori**: taglio a ~2 s, dentro il minimo di **4,0 s**.
-🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
-`boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
-procedura.
-⛔ **Non si fa dal cloud**, e il 15/08 è stato verificato invece che ripetuto: `~/.ssh` **vuota**,
-porta **22 di `91.99.131.243` non raggiungibile**, `ssh` **non installato**. E anche con l'accesso
-mancherebbero le altre due gambe — il calendario col **login staff** (dal cloud il dominio non
-risponde) e il fatto che la prova crea una **prenotazione vera** sul Matchpoint del circolo.
-⚠️ La previsione su cui poggia — che il worker prosegua dopo la caduta del client — **non è
-provata**: se si fermasse, il caso non sarebbe riproducibile così, e anche quello è una risposta da
-scrivere lì.
-
-✅ **PRONTA DA ESEGUIRE DAL MAC: le tre premesse sono state riverificate il 15/08 sera**, e stanno
-in fondo alla parte B del documento. ① La **finestra dei 2 secondi regge** — rimisurata su **192**
-lavori (erano 191): `done` minimo **4,0 s** invariato, i tre `unknown` a **0,2–0,3 s**, quindi il
-tempo continua a distinguere i due casi da solo. ② **`chiudi-lavoro-ignoto` non è mai girata**:
-`chiusa_da` e `verdetto` sono **0 su 192**, quindi questa prova sarebbe davvero la sua prima
-esecuzione vera. ③ I **tre `unknown` residui** sono quelli attesi e restano tali.
-🧯 **E una correzione che ho fatto e poi disfatto**, scritta perché è la trappola: avevo «corretto»
-la frase «le tre della notte del 14/08» credendola riferita ai lavori `unknown` — che sono del
-14 **e del 15**. Era giusta com'era: parla delle **tre prenotazioni vere** create per sbaglio quella
-notte, misurate ora e confermate (3 `staff_booking` fra le 21:55 e le 22:00, tutte `deleted`).
-⇒ **Due terzetti diversi con lo stesso numero**, ed è annotato nel documento perché non ricapiti.
 
 ### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
 *Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
@@ -916,17 +884,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — 13, 14 e 15/08/2026 — 28 voci
+## 📦 CHIUSE — 13, 14 e 15/08/2026 — 29 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime nove voci sono del 15/08** — sette chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime dieci voci sono del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **41** | ✅ *(15/08, 24ª sessione — **eseguita dal committente**, quarto giro, con la sessione cloud a leggere il database in diretta)* **«Il worker crea, e la risposta si perde» — e il gestionale è andato a GUARDARE.** La parte B della voce 23: l'unico caso che percorre il ramo del **`si`**. ✅ **Tutte le previsioni verificate**: lavoro `unknown` con errore di rete tagliato a **2,2 s**, **8 tentativi** di insistenza, verdetto **`si`**, e chiusura `done` con `chiusa_da = verifica-app` alle 22:29:15. ⭐⭐ **Prima esecuzione VERA di `chiudi-lavoro-ignoto`**: prima di stasera i lavori chiusi dall'app erano **0 su 192** — scritta, provata al banco, mai girata in produzione. ⚖️ **Ma il valore della voce sono i TRE GIRI FALLITI prima**, perché hanno dimostrato che la procedura scritta **non poteva funzionare**: ① «conta due secondi e dai lo stop» non teneva conto che il comando via `ssh` ci mette del suo; ② 🚨 **`systemctl stop caddy` non taglia una richiesta già in corso** — è uno spegnimento gentile, e con collegamento già aperto e stop istantaneo al 2º secondo il lavoro finiva `done` in 4,3 s lo stesso; ③ tenere il collegamento aperto mentre si prenota **lo fa scadere**. ⇒ La cura: `ServerAliveInterval=15` e **`systemctl kill -s SIGKILL`** al posto dello stop. 🧹 Pulizia verificata col testimone indipendente: cancellata 22:30:52, controllo automatico 22:32:00, **zero residui** su tutte e quattro le prove. 🧯 E tre letture sbagliate mie della stessa sera, tutte scritte nel documento: la peggiore — *«non è partita nessuna cancellazione»* — cercava fra i `booking_job`, ma una cancellazione lì **non compare**: lascia un `staff_cancel`. Ho guardato nel cassetto sbagliato, ho preso il silenzio per un fatto, e **a smentirmi è stato lui guardando Matchpoint**. |
 | **14bis** | 📦 *(15/08, 24ª sessione — **chiusa dal committente**)* **«Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — no, e il no era una sua decisione.** Misurato nel codice del bot: `daSeguire()` toglie le lezioni **prima** di dividere le prenotazioni fra avvisi di disdetta e promemoria, e il commento lo dichiara — *«per scelta del committente: le gestisce la segreteria»*. ⇒ La domanda aveva risposta, e la risposta era già scritta. 🔎 Misurato anche il resto, perché serviva a decidere: il riconoscimento regge sui dati veri (`/lezion/i`, e i tipi su PROD sono sei in tutto); il maestro **non è mai nel roster** (12 su 12 sta nel campo `istruttore`); il ponte `consumer-player-readmodel` **non manda affatto** l'istruttore; e oggi un maestro **non si può nemmeno invitare** nel bot, perché l'unico punto che offre il link è la proposta che compare mettendo qualcuno **in partita**. ⛔ **Chiusa senza farla, su sua decisione**: *«lasciamo perdere la situazione dei maestri, lo faremo quando ci stacchiamo da Matchpoint»* — e la ragione regge nel dato, perché sulle lezioni sincronizzate da Matchpoint il campo istruttore è **sempre vuoto**. 📌 Il mockup del passo 1 è disegnato e **non approvato**, in `mockup/invita-nel-bot-da-scheda-socio-mockup.html`: se un domani si riprende, si riparte da lì invece che da capo. |
 | **28** | 📦 *(15/08, 23ª sessione — chiusa **a residuo dichiarato**, dopo che la potatura è arrivata anche in PROD)* **I pannelli email rimossi, e la sezione Autovalutazione che era spenta da due mesi.** Nata il 13/08 come «5 pannelli tolti, 60 funzioni rimaste». ⭐ **Il fatto che ha rimesso tutto in scala l'ha detto il committente, non una sonda**: `PMO_ASSESSMENT_PARKED = true` **dal 13/06** ⇒ non erano pannelli tolti da una sezione viva, era **la sezione a essere spenta**, e i «12 punti vivi» sono scesi a **uno** — `restartAssessmentForMember`, sul bottone «Nuova autovalutazione» della scheda socio, che dirottava lo staff sulla Dashboard senza dirlo (PROD 6.228). Poi i due residui del canale email, su sua decisione (6.229). **E infine la potatura: 105 funzioni, 1590 righe, su TEST (6.241) e su PROD (6.232)**, col perimetro **rimisurato su `main`** invece che ricopiato. 🚨 **Il numero della scheda («64 e 1195») era sbagliato in tutti e due i sensi, e per trovarlo sono serviti quattro analizzatori**: il prefisso `assessment*` nascondeva 34 funzioni; la sonda delle invocazioni dinamiche non vedeva `assessmentProcessButton(label, tipo, "nomeFunzione(...)")` e produceva **due falsi morti** che avrebbero rotto due bottoni vivi; e soprattutto **leggeva un solo blocco `<script>` su cinque** — l'app ne ha uno da 976.000 caratteri, quindi 645 funzioni erano invisibili come chiamanti. 🎯 **A smascherarlo è stata la verifica DOPO il taglio, non il taglio**: due riferimenti orfani rimasti nel file potato. Senza quel controllo avrei cancellato codice vivo **con tutti i verdi accesi**. ⚖️ **IL RESIDUO DICHIARATO, misurato e non stimato**: `emailSent`/`emailError` restano nell'esito, sempre `false` e `''`. Sono **11 occorrenze in 3 funzioni VIVE** — `applyAssessmentLevel` li produce, `assessmentEmailRunAutoPostProcessing` li conta, `syncAssessmentResponsesFromSupabase` li espone come `autoEmailSent`. Non è potatura: è **modifica a percorsi che girano**, uno dei quali applica il livello a un socio, per togliere campi che valgono già zero. ⇒ Non vale il rischio, e resta scritto qui invece che in una lista. |
 | **31** | 📦 *(15/08, 20ª sessione — chiusa da lui **a residuo dichiarato**, non a residuo finito)* **«La sicura dei bottoni Matchpoint stava solo su TEST», e il censimento che ne è nato.** La domanda aperta era *«cercarne altri della stessa forma»*: cercati, trovati, e i tre che contavano sono **curati**. ① **La mezza promozione** — il banco di PROD chiamava `PMOAi.resetFlow()` e `__PMOStaffCalTest.resetCard()`, che in `main/index.html` **non esistevano** (0 occorrenze): non «la sicura non è arrivata», ma **la maniglia senza la serratura** — peggio, perché il file dichiarava di sé il contrario (PROD **6.227**). ② **La rete di regressione: 55 → 87 casi** (PROD **6.230**). 🚨 La prima conta era sbagliata nella composizione: confrontavo per **id**, e gli id sono **rinumerati** fra i rami ⇒ la famiglia «vai a GUARDARE» `main` ce l'aveva già. Rifatto per **nome**: mancavano **35**, il grosso erano i **PAGAMENTI** (18), portati **32** (i 3 di simulazione restano su TEST per costruzione). Provata coi denti: sabotando il payload verso `matchpoint-wallet-correct` va **85/87**, e cadono esattamente i due casi che quel payload lo asseriscono. ③ **`livello-dimostrato.ts` al ponte del bot**, deployato su `qqbf…` e verificato **vivo** (401 col suo JSON), con la premessa rimisurata sui dati vivi invece che ripresa dalla nota del 9/08: `ereditato` = **0** su PROD. ④ **`VERSIONI.md`** allineato su TEST (era un sottoinsieme stretto: 0 righe esclusive). ⚖️ **Due controlli negativi che valgono quanto i reperti**: il recinto `scrittura-al-circolo.ts` e la migrazione della paginazione stabile **non erano buchi**, verificato interrogando i due database; e **`manifest.json` non andava sistemato** — su TEST risponde **404**, il caricatore è un repo a parte e il link è assoluto ⇒ quel file lì non lo serve nessuno. La scheda diceva il contrario, ed era mio l'errore. 🚨 **Residui dichiarati, scritti perché non si perdano**: `supabase/functions/_archive/**` sta **solo su `test-preview`** mentre `CLAUDE.md` — identico sui due rami — lo descrive per entrambi; e **l'impalcatura dei due banchi diverge nelle DUE direzioni** (`main` ha un controllo su `svcAddMessage`, TEST il tracciamento `WS_BLOCKED`): migliorie nate separatamente, riconciliarle è un lavoro suo. Se un domani tornano, tornano da qui. |
