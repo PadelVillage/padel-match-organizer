@@ -11,6 +11,9 @@
 
 import { chromium } from 'playwright';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const AMBIENTI = {
   test: {
@@ -64,6 +67,36 @@ function trovaChromium() {
   } catch {}
 
   return candidati.find(p => existsSync(p));                       // undefined = nessuno: lo dirà Playwright
+}
+
+// Il magazzino dei certificati di Chromium nasce VUOTO e il proxy di uscita si mette in
+// mezzo alle connessioni con una CA propria: senza importarla ogni pagina muore con
+// ERR_CERT_AUTHORITY_INVALID mentre `curl` continua a funzionare — il più confondente dei
+// tre inciampi del container, perché il sintomo dice «sito irraggiungibile» e la causa è
+// qui dentro.
+//
+// prepara-ambiente.sh andrebbe incollato nel campo "Script di configurazione" dell'ambiente
+// cloud, dove gira una volta sola prima di Claude. 📏 Misurato il 15/08 durante il collaudo:
+// NON c'era, e il container era crudo — niente certutil, niente magazzino NSS. Un attrezzo
+// che dipende da una casella di configurazione che nessuno vede è un attrezzo che si rompe
+// nella sessione NUOVA, cioè esattamente quando lo si tira fuori per la prima diagnosi.
+//
+// Quindi se lo prepara da sé, e lo script resta l'unica fonte: è idempotente e costa nulla
+// quando il lavoro è già fatto. Il campo dell'ambiente resta il posto MIGLIORE — lì il costo
+// si paga una volta per sessione invece che a ogni lancio — ma non è più obbligatorio.
+function preparaContainer() {
+  if (process.env.PMO_SALTA_PREPARAZIONE) return 'saltata (PMO_SALTA_PREPARAZIONE)';
+
+  const script = join(dirname(fileURLToPath(import.meta.url)), 'prepara-ambiente.sh');
+  if (!existsSync(script)) return 'prepara-ambiente.sh non trovato accanto a console.mjs';
+
+  const esito = spawnSync('bash', [script], { encoding: 'utf8', timeout: 300000 });
+  if (esito.error) return `non eseguita: ${esito.error.message}`;
+
+  // Lo script non fallisce mai di proposito (|| true): la sua ultima riga è il verdetto.
+  const righe = `${esito.stdout || ''}\n${esito.stderr || ''}`
+    .split('\n').map(r => r.trim()).filter(Boolean);
+  return (righe.pop() || `uscita ${esito.status}`).replace('[prepara-ambiente] ', '');
 }
 
 function leggiArgomenti(argv) {
@@ -146,6 +179,16 @@ const hostVisti = new Set();
 
 if (arg.allowWrites) {
   console.error(`\n  ⚠️  SCRITTURE CONSENTITE su ${arg.env.toUpperCase()} — questa esecuzione può modificare dati veri.\n`);
+}
+
+// Prima del browser, la CA del proxy nel suo magazzino (vedi preparaContainer).
+report.caProxy = preparaContainer();
+if (!/già presente|importata/.test(report.caProxy)) {
+  // Non si ferma: un ambiente senza proxy è legittimo e lì non serve nulla. Ma non deve
+  // TACERE — se la CA manca davvero, il lancio morirà fra poco con un errore di
+  // certificato che sembra un guasto del sito, e questa riga è l'unico posto in cui la
+  // vera causa è ancora leggibile.
+  console.error(`\n  ⚠️  Preparazione del container: ${report.caProxy}\n      Se le pagine muoiono con ERR_CERT_AUTHORITY_INVALID, la causa è questa, non il sito.\n`);
 }
 
 // L'uscita di rete del container passa da un proxy: curl lo legge da HTTPS_PROXY,
@@ -240,11 +283,19 @@ try {
 
   // Controprova, ora che il login ha costretto l'app a leggere la sua
   // configurazione: l'ambiente su cui sto lavorando è quello dichiarato?
-  // Che cosa la pagina DICE di essere. Si guardano due posti, non uno:
-  // `PADEL_CONFIG` è popolato su TEST ma resta **undefined su PROD** (misurato il
-  // 15/08) — e chi si fermava lì otteneva `null`, saltava il confronto in silenzio
-  // e lasciava questa metà della guardia inerte proprio dove sbagliare costa.
-  // L'app la sua verità ce l'ha anche su PROD: `pmoExpectedSupabaseProjectRef()`.
+  // Che cosa la pagina DICE di essere. Si guardano due posti, non uno.
+  //
+  // Il motivo storico: su PROD `PADEL_CONFIG` restava **undefined** dopo il login, e chi
+  // si fermava lì otteneva `null`, saltava il confronto in silenzio e lasciava questa metà
+  // della guardia inerte proprio dove sbagliare costa. 📏 Dal 15/08 non è più così — PROD
+  // 6.231 (#734, «la configurazione Supabase si ricorda anche in produzione») lo popola, e
+  // il collaudo lo legge da `PADEL_CONFIG.SUPABASE_URL` su ENTRAMBI gli ambienti.
+  //
+  // ⚠️ Il ripiego resta, e non per inerzia: quel campo è popolato da una funzione dell'app,
+  // quindi la sua presenza è una proprietà della VERSIONE che sta in pagina, non un fatto
+  // stabile. La console gira anche su versioni vecchie e su `--url` che punta a copie
+  // locali. Una guardia che si fida di un campo apparso ieri torna cieca il giorno in cui
+  // qualcuno lo tocca — e torna cieca **in silenzio**, che è il difetto originale.
   const dichiarato = await page.evaluate(() => {
     const url = window.PADEL_CONFIG?.SUPABASE_URL || null;
     if (url) { try { return { ref: new URL(url).hostname.split('.')[0], fonte: 'PADEL_CONFIG.SUPABASE_URL', url }; } catch {} }
