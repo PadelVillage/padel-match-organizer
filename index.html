@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.226';
+    const APP_VERSION = '6.227';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -46345,6 +46345,7 @@ Per confermare scrivi ELIMINA.`);
     try {
       window.__PMOStaffCalTest = {
         openCard: function () { return staffCalEditPlayers.apply(null, arguments); },
+        resetCard: function () { staffCalPlayersState = null; try { _lastChatBooking = null; } catch (e) {} },
         getPlayersState: function () { return staffCalPlayersState; },
         setBookings: function (arr) { return save('staffBookings', Array.isArray(arr) ? arr : []); },
         getBookings: function () { return safeLoad('staffBookings', []); },
@@ -52843,7 +52844,7 @@ Per confermare scrivi ELIMINA.`);
       // Niente messaggio di benvenuto: lo usa lo staff, che già sa a cosa serve l'assistente.
     }
 
-    return { isEnabled: isEnabled, parse: parse, handle: handle, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
+    return { isEnabled: isEnabled, parse: parse, handle: handle, resetFlow: function () { aiFlowState = null; _lastChatBooking = null; }, runSandbox: runSandbox, diagnose: diagnose, copySandboxReport: copySandboxReport, reportSandbox: reportSandbox, reportInteraction: reportInteraction, loadMyReports: loadMyReports, loadTurnsInsight: loadTurnsInsight, logManual: _aiTurnLogManual, execBegin: _aiTurnExecBegin, execEnd: _aiTurnExecEnd, loadLessico: loadLessico, addLessico: addLessico, setLessicoStatus: setLessicoStatus, mineLexicon: mineLexicon, validateDelta: _validateDelta, lexPreview: lexPreview,
       setLearningMode: function (on) { _aiLearningMode = !!on; }, getLearningMode: function () { return _aiLearningMode; },
       setLearningModeGlobal: setLearningModeGlobal, refreshLearningToggle: _loadLearningModeSetting, loadAiUsage: loadAiUsage, lexRemoveExample: lexRemoveExample, lexAddCustom: lexAddCustom, lexEditExample: lexEditExample, lexSaveExample: lexSaveExample, lexCancelEditExample: lexCancelEditExample, lexEditProposal: lexEditProposal, lexSaveProposal: lexSaveProposal, toggleSandboxDictation: toggleSandboxDictation, toggleDictation: toggleDictation, initChatUI: initChatUI, setTestRoster: setTestRoster, onSandboxImagePicked: onSandboxImagePicked, clearSandboxImage: clearSandboxImage };
   })();
