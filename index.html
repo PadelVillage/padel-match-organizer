@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.225';
+    const APP_VERSION = '6.226';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -44249,15 +44249,55 @@ Per confermare scrivi ELIMINA.`);
     try { if (typeof save === 'function') save(_PMO_VERIFICHE_CHIAVE, lista || []); } catch (e) {}
   }
 
-  function pmoVerificheSegna(id, parsed, perche) {
+  // ⚠️ `jobId` è il NUMERO DEL LAVORO, ed è arrivato con la voce 23 del 15/08: senza, alla
+  //    ripresa si sa cosa chiedere a Matchpoint ma non quale riga chiudere nel database. I
+  //    depositi lasciati da una versione precedente non ce l'hanno: lì la verifica si chiude
+  //    lo stesso e il database resta com'era — meno di così, non peggio.
+  function pmoVerificheSegna(id, parsed, perche, jobId) {
     if (!id || !parsed) return;
     const lista = pmoVerificheLeggi().filter(function (v) { return v.id !== id; });
-    lista.push({ id: String(id), quando: Date.now(), perche: String(perche || ''), parsed: parsed });
+    lista.push({ id: String(id), quando: Date.now(), perche: String(perche || ''), parsed: parsed, jobId: String(jobId || '') });
     pmoVerificheScrivi(lista);
   }
 
   function pmoVerificheChiudi(id) {
     pmoVerificheScrivi(pmoVerificheLeggi().filter(function (v) { return v.id !== String(id); }));
+  }
+
+  // ⭐⭐ E LA CHIUSURA SI SCRIVE ANCHE NEL DATABASE, non solo qui dentro.
+  // 🚨 Il residuo della voce 23, misurato il 15/08/2026 collaudandola in produzione: l'app
+  //    arrivava al verdetto e chiudeva la verifica — ma solo nel `localStorage` di QUESTO
+  //    browser. Nel database il lavoro restava `unknown` per sempre, così chi guarda
+  //    `pmo_cloud_records` vedeva una domanda ancora aperta che era già stata risolta. È la
+  //    stessa famiglia dei documenti che mentono, e la regola nuova di questi giorni dice il
+  //    contrario: ogni pezzo lascia traccia in una tabella, o è invisibile a chi non è seduto
+  //    davanti a questo schermo.
+  // ⚖️ È BEST-EFFORT, di proposito: se non riesce, la verifica è comunque chiusa per l'operatore
+  //    — quello che si perde è il RACCONTO, non l'esito. Perciò non lancia mai e non blocca
+  //    niente; dice però com'è andata, che è il punto di tutta la voce.
+  // ⛔ Solo i verdetti definitivi: col `boh` non si chiude niente, o si tornerebbe ad arrotondare
+  //    il terzo esito sul secondo.
+  async function pmoChiudiLavoroIgnoto(jobId, verdetto, staff, supabaseUrl, supabaseKey, tentativi) {
+    const id = String(jobId || '').trim();
+    if (!id || (verdetto !== 'si' && verdetto !== 'no')) return false;
+    if (!staff || !staff.accessToken || !supabaseUrl || !supabaseKey) return false;
+    try {
+      const resp = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
+        body: JSON.stringify({ azione: 'chiudi-lavoro-ignoto', jobId: id, verdetto: verdetto, tentativi: Number(tentativi) || 0 }),
+      });
+      const txt = await resp.text();
+      let data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      const chiuso = !!(data && data.chiuso === true);
+      pmoVerificheTraccia(chiuso ? 'done' : 'failed', chiuso ? 'lavoro-chiuso-nel-database' : 'lavoro-non-chiuso',
+        { jobId: id, verdetto: verdetto, motivo: (data && (data.motivo || data.error)) || String(resp.status) });
+      return chiuso;
+    } catch (e) {
+      pmoVerificheTraccia('failed', 'lavoro-non-chiuso', { jobId: id, verdetto: verdetto, motivo: (e && e.message) ? String(e.message).slice(0, 120) : 'ignoto' });
+      return false;
+    }
   }
 
   // Quanto si aspetta che la sessione staff sia pronta, all'avvio.
@@ -44322,6 +44362,8 @@ Per confermare scrivi ELIMINA.`);
           });
         if (look.verdict === 'si') {
           pmoVerificheChiudi(v.id);
+          // ⭐ E si chiude anche di là: il lavoro nel database era rimasto `unknown`.
+          await pmoChiudiLavoroIgnoto(v.jobId, 'si', staff, cfg.supabaseUrl, cfg.supabaseKey, look.tentativi);
           // ⭐ Non la si disegna a mano: è su Matchpoint, e il sync la porta dentro da sé entro un
           //   paio di minuti. Scriverla qui vorrebbe dire fabbricare una riga che nessuno ha
           //   verificato campo per campo — e le righe fabbricate sono i fantasmi di luglio.
@@ -44329,6 +44371,7 @@ Per confermare scrivi ELIMINA.`);
           pmoVerificheTraccia('done', 'verifica-chiusa-si', { tentativi: look.tentativi });
         } else if (look.verdict === 'no') {
           pmoVerificheChiudi(v.id);
+          await pmoChiudiLavoroIgnoto(v.jobId, 'no', staff, cfg.supabaseUrl, cfg.supabaseKey, look.tentativi);
           pmoVerificheAvvisa(`❌ <strong>Verifica chiusa</strong>: ${dove} <strong>NON è stata creata</strong>. Lo slot è libero: puoi rifarla.`, 'error');
           pmoVerificheTraccia('failed', 'verifica-chiusa-no', { tentativi: look.tentativi });
         } else {
@@ -44557,6 +44600,9 @@ Per confermare scrivi ELIMINA.`);
     // ── Propagazione su Matchpoint in BACKGROUND (non blocca lo staff) ──
     (async function () {
       let _reqSent = false;
+      // ⭐ Il NUMERO del lavoro, per poterlo chiudere anche NEL DATABASE quando l'esito ignoto
+      // si risolve: senza, la chiusura resterebbe in questo browser e la riga resterebbe `unknown`.
+      let _jobIgnoto = null;
       const _failStatus = function (why) {
         // Non c'è niente da togliere dal calendario: non ci era mai stata scritta.
         try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
@@ -44588,17 +44634,18 @@ Per confermare scrivi ELIMINA.`);
                 : `⌛ Non ho ancora la conferma — continuo a guardare su Matchpoint (${n}° tentativo)…`, 'pending');
             },
           });
-        if (look.verdict === 'si') return _okStatus({}, true);
-        if (look.verdict === 'no') return _failStatus('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)');
+        if (look.verdict === 'si') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'si', staff, supabaseUrl, supabaseKey, look.tentativi); return _okStatus({}, true); }
+        if (look.verdict === 'no') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'no', staff, supabaseUrl, supabaseKey, look.tentativi); return _failStatus('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)'); }
         try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
         // ⭐⭐ NON SI SCARICA LA DOMANDA SULL'OPERATORE: la si DEPOSITA e la si riprende da soli.
-        try { pmoVerificheSegna(_sbId, parsed, why); } catch (e) {}
+        try { pmoVerificheSegna(_sbId, parsed, why, _jobIgnoto); } catch (e) {}
         staffCalSetStatus(`⏳ ${parsed.campo} · ${parsed.ora}–${parsed.oraFine}: dopo ${look.tentativi} tentativi non riesco a raggiungere Matchpoint per verificare (${look.why}). Sul calendario non ho scritto niente e lo slot resta libero. La verifica resta APERTA: la riprendo da solo a ogni apertura, finché non è un sì o un no. ⛔ Non rifarla nel frattempo: rischi un doppione.`, 'pending');
       };
       try {
         const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
         const jobId = submit && submit.jobId;
         if (!jobId) throw new Error('Avvio prenotazione non riuscito (nessun codice lavoro).');
+        _jobIgnoto = jobId;
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
           _okStatus(result);
@@ -45989,6 +46036,8 @@ Per confermare scrivi ELIMINA.`);
       // ⭐ «La richiesta è USCITA di casa?» — gemello del segnalino della MODIFICA. Qui però c'è
       // di più: se è uscita, il lavoro ha un NUMERO (jobId), e un numero si INTERROGA. Vedi sotto.
       let _reqSent = false;
+      // ⭐ Il NUMERO del lavoro, per poterlo chiudere anche NEL DATABASE (vedi il gemello).
+      let _jobIgnoto = null;
       const _failMsg = function (why) {
         // ⭐ Non c'è più niente da rimuovere dal calendario: non ci era mai stata scritta. Il
         //    messaggio lo dice, se no l'operatore si chiede dove sia finita.
@@ -46036,14 +46085,14 @@ Per confermare scrivi ELIMINA.`);
           });
         // ⚠️ Senza idReserva: lo riempirà il sync rileggendo da Matchpoint, e nel frattempo
         // _staffCalLookupIdReserva lo risolve dall'occupazione. Come la vecchia card ottimistica.
-        if (look.verdict === 'si') { _okMsg({ idReserva: null }, true); return; }
-        if (look.verdict === 'no') { _failMsg('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)'); return; }
+        if (look.verdict === 'si') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'si', staff, supabaseUrl, supabaseKey, look.tentativi); _okMsg({ idReserva: null }, true); return; }
+        if (look.verdict === 'no') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'no', staff, supabaseUrl, supabaseKey, look.tentativi); _failMsg('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)'); return; }
         // `true` qui vuol dire «non più in volo», NON «riuscita»: sblocca un eventuale edit in
         // attesa, che chiederà al gestionale invece di credere a una nostra supposizione.
         try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
         try { renderStaffCalendar(); } catch (e) {}
         // ⭐⭐ La domanda non si scarica sull'operatore: si deposita e la si riprende da soli.
-        try { pmoVerificheSegna(_sbId, parsed, why); } catch (e) {}
+        try { pmoVerificheSegna(_sbId, parsed, why, _jobIgnoto); } catch (e) {}
         _setSyncNote('⏳ Verifica in corso', '#b54708', '⏳ <strong>Verifica aperta</strong>');
         svcAddMessage('system', '⏳ <strong>Campo ' + campo + ' \xb7 ' + ora + '</strong>: dopo ' + look.tentativi + ' tentativi non riesco a raggiungere Matchpoint per verificare (' + _staffCalFriendlyOpError(why) + ' — ' + look.why + ').<br>⚠️ <strong>Sul calendario non ho scritto niente e lo slot resta libero.</strong> La verifica resta <strong>APERTA</strong>: la riprendo da solo a ogni apertura, finché non è un sì o un no. <strong>⛔ Non rifarla nel frattempo</strong>: rischi un doppione.');
         try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', tipoEngine || 'partita', 'failed', { via: 'slot calendario', azione: 'crea', campo: campo, data: parsed.data, ora: ora, reason: 'esito-ignoto' }); } catch (e) {}
@@ -46052,6 +46101,7 @@ Per confermare scrivi ELIMINA.`);
         const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
         const jobId = submit && submit.jobId;
         if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+        _jobIgnoto = jobId;
         const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
         if (result.status === 'done') {
           _okMsg(result);
@@ -50531,6 +50581,9 @@ Per confermare scrivi ELIMINA.`);
         // Qui permesso e configurazione stanno DENTRO il try, quindi un errore può arrivare anche
         // da prima che parta qualcosa — ed è proprio ciò che il segnalino distingue.
         let _reqSent = false;
+        // ⭐ Il NUMERO del lavoro, per poterlo chiudere anche NEL DATABASE quando l'esito
+        // ignoto si risolve: senza, la chiusura resterebbe in questo browser.
+        let _jobIgnoto = null;
         const _failMsg = function (why) {
           // Non c'è niente da togliere dal calendario: non ci era mai stata scritta.
           try { _staffCalCreateSettle(_optimKey, false); } catch (e) {}
@@ -50568,14 +50621,14 @@ Per confermare scrivi ELIMINA.`);
                   : '⌛ Non ho ancora la conferma — continuo a guardare (' + n + '° tentativo)…', '#b54708');
               },
             });
-          if (look.verdict === 'si') { _okMsg({ idReserva: null }, true); return; }
-          if (look.verdict === 'no') { _failMsg('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)'); return; }
+          if (look.verdict === 'si') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'si', staff, supabaseUrl, supabaseKey, look.tentativi); _okMsg({ idReserva: null }, true); return; }
+          if (look.verdict === 'no') { await pmoChiudiLavoroIgnoto(_jobIgnoto, 'no', staff, supabaseUrl, supabaseKey, look.tentativi); _failMsg('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)'); return; }
           // `true` = «non più in volo», NON «riuscita»: sblocca un eventuale edit in attesa, che
           // chiederà al gestionale invece di credere a una nostra supposizione.
           try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
           try { renderStaffCalendar(); } catch (e) {}
           // ⭐⭐ La domanda non si scarica sull'operatore: si deposita e la si riprende da soli.
-          try { pmoVerificheSegna(_sbId, parsed, why); } catch (e) {}
+          try { pmoVerificheSegna(_sbId, parsed, why, _jobIgnoto); } catch (e) {}
           _setSyncNote('⏳ Verifica in corso', '#b54708', '⏳ <strong>Verifica aperta</strong> — ');
           _say('⏳ <strong>Campo ' + parsed.campoNum + ' · ' + dl + ' · ' + parsed.ora + '</strong>: dopo ' + look.tentativi + ' tentativi non riesco a raggiungere Matchpoint per verificare (' + _escapeHtml(_staffCalFriendlyOpError(why)) + ' — ' + _escapeHtml(look.why) + ').<br>⚠️ <strong>Sul calendario non ho scritto niente e lo slot resta libero.</strong> La verifica resta <strong>APERTA</strong>: la riprendo da solo a ogni apertura, finché non è un sì o un no. <strong>⛔ Non rifarla nel frattempo</strong>: rischi un doppione.');
           try { _aiTurnExecEnd(_aiCreateRef, false, { via: 'assistente', azione: 'crea', reason: 'esito-ignoto' }); } catch (e) {}
@@ -50588,6 +50641,7 @@ Per confermare scrivi ELIMINA.`);
           const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
           const jobId = submit && submit.jobId;
           if (!jobId) throw new Error('Avvio non riuscito (nessun codice lavoro).');
+          _jobIgnoto = jobId;
           const result = await staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, function () {});
           if (result.status === 'done') {
             _okMsg(result);

@@ -277,6 +277,52 @@ await caso('24. l\'avviso va su ENTRAMBE le superfici: la chat e la riga di stat
   return avvisa.includes('svcAddMessage') && avvisa.includes('staffCalSetStatus');
 });
 
+console.log('\n🗄️  LA CHIUSURA ARRIVA ANCHE NEL DATABASE — non solo in questo browser\n');
+
+// 🚨 IL RESIDUO DELLA VOCE 23, misurato il 15/08/2026: l'app arrivava al verdetto e chiudeva la
+// verifica, ma solo nel proprio `localStorage`. Nel database il lavoro restava `unknown` per
+// sempre. La regola nuova di questi giorni è l'opposto — ogni pezzo lascia traccia in una
+// tabella — e vale ancora di più qui, perché da fuori quel browser non si vedeva niente.
+// ⇒ Di nuovo si prova il CABLAGGIO, non la regola (che sta nel banco `tre-esiti-prenotazione`):
+//    la regola giusta chiamata da due strade su quattro è la voce 31 daccapo.
+
+await caso('25. 🚨 OGNI strada incerta chiude il lavoro anche NEL DATABASE, su tutt\'e due i verdetti', () => {
+  const mute = incerti.filter((b) => {
+    const chiamate = (b.match(/pmoChiudiLavoroIgnoto\(/g) || []).length;
+    return chiamate < 2 || !b.includes("'si'") || !b.includes("'no'");
+  });
+  if (mute.length) mute.forEach((b) => console.log('   ↳ strada che non chiude: ' + b.split('\n')[0].trim()));
+  return mute.length === 0;
+});
+
+await caso('26. 🚨 e la RIPRESA all\'avvio pure: è la strada da cui passano le verifiche vecchie', () => [
+  sorgenteRipresa.includes("pmoChiudiLavoroIgnoto(v.jobId, 'si'"),
+  sorgenteRipresa.includes("pmoChiudiLavoroIgnoto(v.jobId, 'no'"),
+]);
+
+await caso('27. ⚠️ il deposito porta con sé il NUMERO del lavoro, o alla ripresa non c\'è cosa chiudere', () => {
+  const segna = estrai('pmoVerificheSegna');
+  const passanti = incerti.filter((b) => /pmoVerificheSegna\(_sbId, parsed, why, _jobIgnoto\)/.test(b));
+  return [
+    /function pmoVerificheSegna\(id, parsed, perche, jobId\)/.test(segna),
+    segna.includes('jobId: String(jobId'),
+    passanti.length === incerti.length,
+  ];
+});
+
+await caso('28. la chiusura NON può far fallire una verifica riuscita: non lancia mai', () => {
+  // È best-effort di proposito. Se questa scrittura potesse rompere il giro, avremmo scambiato
+  // un difetto di racconto con un difetto di sostanza — e sarebbe uno scambio in perdita.
+  const f = estrai('pmoChiudiLavoroIgnoto');
+  return [f.includes('try {'), f.includes('catch (e)'), f.includes('return false')];
+});
+
+await caso('29. 🚨 CONTROLLO NEGATIVO: il caso 25 sa diventare rosso se una strada resta muta', () => {
+  const finto = ["const _uncertainMsg = async function (why) {\n  if (look.verdict === 'si') { _okMsg(); return; }\n"];
+  const mute = finto.filter((b) => (b.match(/pmoChiudiLavoroIgnoto\(/g) || []).length < 2);
+  return mute.length === 1;
+});
+
 await caso('21. 🚨 CONTROLLO NEGATIVO: il caso 19 sa diventare rosso se una strada torna indietro', () => {
   const finto = ['const _uncertainMsg = async function (why) {\n  const look = await staffCalAskMatchpoint(a, b, c, d);\n'];
   return finto.filter((b) => !b.includes('staffCalGuardaFinchePuoi')).length === 1;

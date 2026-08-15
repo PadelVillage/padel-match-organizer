@@ -26,7 +26,7 @@ import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const MODULO = join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'esito-prenotazione.js');
-const { esitoIgnoto, erroreEsitoIgnoto, decidiEsitoDelLavoro, codiceDiRifiuto } = await import(MODULO);
+const { esitoIgnoto, erroreEsitoIgnoto, decidiEsitoDelLavoro, codiceDiRifiuto, chiusuraDelLavoroIgnoto } = await import(MODULO);
 
 const html = readFileSync(join(QUI, '..', 'index.html'), 'utf8');
 function estrai(nome) {
@@ -138,6 +138,92 @@ caso('10. uno stato SCONOSCIUTO non blocca: degrada a timeout, cioè a esito ign
   // È la rete di sicurezza per un'app vecchia contro una edge nuova, e viceversa.
   const r = await chiedi({ status: 'boh-nuovo-domani' });
   return [r.status === 'timeout'];
+});
+
+// ── LA CHIUSURA del lavoro rimasto ignoto (residuo della voce 23, 15/08) ─────
+// Il lavoro finiva `unknown` nel database e ci restava PER SEMPRE, anche dopo che l'app era
+// andata a guardare su Matchpoint e aveva saputo com'era andata. Qui si prova la decisione, non
+// il fatto che il codice la contenga: il modulo si importa, come per tutto il resto di sopra.
+
+// Quello che fa `writeBookingJob` quando scrive la riga: serve al controllo negativo del caso 16.
+const comeScriveLaRiga = (status, extra) => ({ status, updated_at: 'ADESSO', ...extra });
+
+const LAVORO_IGNOTO = {
+  status: 'unknown',
+  updated_at: '2026-08-15T09:00:00.000Z',
+  error: 'Worker network error: fetch failed',
+  booking: { campo: 4, data: '2026-08-17', ora: '19:00' },
+  created_by_email: 'staff@padelvillage.club',
+};
+
+caso('11. ⭐ un lavoro IGNOTO si chiude col verdetto «si»: diventa «done»', () => {
+  const c = chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, 'si', { tentativi: 3, quando: 'Q' });
+  return [c.chiudibile === true, c.status === 'done', c.payload.verdetto === 'si', c.payload.tentativi_verifica === 3];
+});
+
+caso('12. e col verdetto «no» diventa «error», con scritto cosa si è ANDATI A VEDERE', () => {
+  const c = chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, 'no', {});
+  return [c.status === 'error', /verificato guardando/i.test(c.payload.error), /NON c/.test(c.payload.message)];
+});
+
+caso('13. 🚨 CONTROLLO NEGATIVO: un esito GIÀ NOTO non si riscrive', () => {
+  // È la parola del worker, che la cosa l'ha vista da vicino. L'app ha guardato il calendario da
+  // fuori: se potesse sovrascriverla, questa cura diventerebbe un modo nuovo di dire il falso.
+  const a = chiusuraDelLavoroIgnoto({ status: 'done' }, 'no', {});
+  const b = chiusuraDelLavoroIgnoto({ status: 'error', error: 'campo occupato' }, 'si', {});
+  const c = chiusuraDelLavoroIgnoto({ status: 'pending' }, 'si', {});
+  return [
+    a.chiudibile === false, a.motivo === 'NON_IGNOTO', a.payload === null,
+    b.chiudibile === false, c.chiudibile === false,
+  ];
+});
+
+caso('14. 🚨 il TERZO verdetto non chiude niente: «boh» non è un sì e non è un no', () => {
+  // Un «non lo so» che chiude un lavoro sarebbe il terzo esito arrotondato al secondo — cioè il
+  // difetto che tutta questa voce esiste per togliere, rifatto un piano più in là.
+  return [
+    chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, 'boh', {}).chiudibile === false,
+    chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, '', {}).motivo === 'VERDETTO_NON_VALIDO',
+    chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, undefined, {}).chiudibile === false,
+  ];
+});
+
+caso('15. il COSA si conserva, e l\'errore di allora cambia NOME invece di sparire', () => {
+  // Una riga di stato che perde la prenotazione non serve a chi la legge; ma lasciare `error` su
+  // un lavoro chiuso con «si» direbbe «non è stata creata», che è falso.
+  const c = chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, 'si', { quando: 'Q' });
+  return [
+    c.payload.booking.campo === 4,
+    c.payload.created_by_email === 'staff@padelvillage.club',
+    c.payload.errore_iniziale === 'Worker network error: fetch failed',
+    c.payload.error === undefined,
+    c.payload.chiusa_da === 'verifica-app',
+  ];
+});
+
+caso('16. 🚨⭐⭐ CONTROLLO NEGATIVO: `status` e `updated_at` NON tornano dentro dal payload vecchio', async () => {
+  // La trappola vera di questa modifica, e non si vede leggendo: chi scrive la riga mette
+  // `{ status, updated_at, ...extra }`, quindi un `status` rimasto nel payload copiato
+  // SOVRASCRIVEREBBE quello nuovo — il lavoro resterebbe `unknown` avendo risposto «chiuso».
+  // Una bugia nuova al posto di quella tolta, e con l'aria di aver funzionato.
+  const c = chiusuraDelLavoroIgnoto(LAVORO_IGNOTO, 'si', { quando: 'Q' });
+  const riga = comeScriveLaRiga(c.status, c.payload);
+  // E il sabotaggio che lo dimostra: rimettendoceli, questo stesso caso diventa rosso.
+  const sabotata = comeScriveLaRiga(c.status, { ...c.payload, status: 'unknown', updated_at: 'VECCHIO' });
+  return [
+    riga.status === 'done', riga.updated_at === 'ADESSO',
+    'status' in c.payload === false, 'updated_at' in c.payload === false,
+    sabotata.status === 'unknown',   // ⇐ il sabotaggio fa esattamente il danno descritto
+  ];
+});
+
+caso('17. robustezza: un payload nullo o storto non fa esplodere la decisione', () => {
+  return [
+    chiusuraDelLavoroIgnoto(null, 'si', {}).chiudibile === false,
+    chiusuraDelLavoroIgnoto(undefined, 'si', {}).motivo === 'NON_IGNOTO',
+    chiusuraDelLavoroIgnoto('unknown', 'si', {}).chiudibile === false,
+    chiusuraDelLavoroIgnoto({ status: 'unknown' }, 'si', undefined).chiudibile === true,
+  ];
 });
 
 let falliti = 0;
