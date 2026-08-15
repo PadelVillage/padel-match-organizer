@@ -1,6 +1,9 @@
 # Le TABELLE dei due progetti — divergenze misurate
 
-**Misurato il 14/08/2026, 16ª sessione.** Voce 39. Gemello di
+**Misurato il 14/08/2026, 16ª sessione.** ⤴️ **Aggiornato il 15/08, 19ª sessione**: la sezione 2
+(`assessment_tokens`) non descrive più una differenza ma un **guasto vivo trovato e sanato** — e
+porta il pezzo che questo censimento aveva dichiarato di NON aver misurato, i **trigger**.
+Voce 39. Gemello di
 [`divergenze-sql-test-prod.md`](divergenze-sql-test-prod.md), che fece lo stesso lavoro sulle
 **funzioni** con la voce 33: là il piano erano le funzioni SQL, qui sono le **tabelle**, e di
 queste non se n'era mai accorto nessuno.
@@ -103,17 +106,48 @@ Su **PROD** in più: `email`, `consistency_score`, `inconsistency_reasons`, `rev
 Sono le quattro già viste il 14/08 nella 14ª sessione, quando fecero morire l'edge su TEST con un
 500. Qui sono solo **confermate**: la campionatura diceva il vero.
 
-### 2. `assessment_tokens` — 13 colonne da entrambe le parti, ma **non le stesse**
+### 2. `assessment_tokens` — la divergenza andava in DUE direzioni, e una era un guasto vivo
 
-| | |
-|---|---|
-| solo su **PROD** | `member_email` |
-| solo su **TEST** | `updated_at` |
+| | al censimento del 14/08 | dal 15/08 |
+|---|---|---|
+| solo su **PROD** | `member_email` | `member_email` — **resta**, e non fa danno (misurato) |
+| solo su **TEST** | `updated_at` | ✅ **sanata**: la colonna è stata aggiunta a PROD |
 
 🔎 **Questa è la scoperta che la campionatura non poteva fare.** La nota del 14/08 diceva
 «`assessment_tokens.member_email` c'è su PROD e non su TEST», ed è vero — ma la divergenza va in
 **tutte e due le direzioni**, e col solo conteggio delle colonne (13 = 13) sarebbe rimasta
 invisibile. È il motivo per cui qui si confronta l'**impronta**, non il numero.
+
+🔴 **E il 14/08 sera si è scoperto che una delle due direzioni era un GUASTO VIVO, non una
+differenza.** Dalla console del committente, in produzione:
+`POST …/rpc/update_assessment_token_status_admin → 400`, con
+`column "updated_at" of relation "assessment_tokens" does not exist`. La RPC — creata il 22/05 —
+scrive `updated_at = now()` dando per scontata una colonna che solo TEST aveva ⇒ su PROD **non ha
+mai funzionato**: 40 POST → 400 e **zero 200** in 22 ore di log, contro **4 su 4 a 200** su TEST
+nelle stesse ore. ✅ Sanata il 15/08 (**voce 40**): colonna aggiunta identica a TEST, righe storiche
+riempite con la data **vera** invece che con `now()`, e i due trigger `updated_at` che a PROD
+mancavano.
+
+⚖️ **L'altra direzione NON ha un gemello vivo, ed è stato misurato invece che dedotto**: su TEST
+**nessuna** funzione SQL nomina `member_email`, e nel codice compare solo dentro un commento di
+`assessment-quiz` che spiega perché non va nominata (la riga che il 14/08 aveva fatto fallire la
+prima prova su TEST, poi corretta). ⇒ **La simmetria di una tabella non implica la simmetria del
+guasto**: due colonne divergenti, una sola faceva danno.
+
+🕳️ **E i TRIGGER divergevano più delle colonne** — trovato guardando prima di montare, ed è
+esattamente ciò che l'ultima riga di questo documento avverte di non dare per buono:
+
+| trigger | PROD, prima | TEST | PROD, ora |
+|---|---|---|---|
+| `trg_assessment_tokens_updated_at` | assente | c'è | ✅ rimesso |
+| `trg_self_assessments_updated_at` | assente | c'è | ✅ rimesso |
+| `trg_self_assessments_mark_token_completed` | assente | c'è | ⛔ **lasciato assente, di proposito** |
+
+Le tre funzioni-trigger su PROD **c'erano già tutte**, identiche a quelle di TEST
+(`assessment_touch_updated_at`, impronta `77cd2033…` da entrambe le parti): mancava solo il
+cablaggio. Il terzo però non è una dimenticanza da sanare a vista — brucia il gettone **da dentro
+il database**, mentre su PROD lo fa la edge (voce 27: 0,15 secondi dopo la scheda). Aggiungerlo
+significherebbe due padroni per lo stesso stato, e va deciso guardandoli insieme.
 
 ## Le 5 solo su PROD
 
