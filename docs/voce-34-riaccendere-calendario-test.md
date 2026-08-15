@@ -61,6 +61,50 @@ apparire e non è apparsa — e vale di più di un'etichetta, ma va detta per qu
 ⏭️ **Il primo slot di calendario è alle 05:30 del 16/08.** Fino ad allora `bookings` resta a **0**, e
 non è un guasto: è che non è ancora passata l'ora.
 
+## 1ter. ✅ LA CATENA È STATA PROVATA FINO IN FONDO — 15/08, 23:45
+
+⭐ **Idea sua**: *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*.
+🚧 **Come l'aveva detta non avrebbe provato niente**, e la distinzione è la stessa del §3: il filtro
+decide solo **se chiamare**; a decidere **cosa fare** è la routine, che ha i suoi 12 orari scritti
+dentro. Mezzanotte non è fra quelli ⇒ chiamata, avrebbe guardato l'orologio e non fatto nulla.
+**Verde e a vuoto.** ⇒ Si è forzato l'orario invece, come fa il `jobid 13`:
+`pmo_dispatch_data_routines(<oggi 05:30>)`, **senza toccare la sveglia**.
+📌 La chiave creata è `..._20260815_0530`, con la data di **oggi**: diversa da quella del giro vero
+di domani (`..._20260816_0530`), quindi la prova **non ruba il posto** al primo giro automatico.
+
+🎯 **Esito: la catena regge tutta** — sveglia → filtro → routine → worker → Matchpoint → calendario.
+
+| | |
+|---|---|
+| risposta della routine | **200 `ok:true`**, `mode: browser_worker_headless` |
+| righe lette dal Matchpoint **vero** | **53** (52 importabili, 36 occupazioni) |
+| righe toccate su TEST | **258** |
+| ultimo aggiornamento del calendario | **dal 7 agosto → 15/08 21:48:15** |
+| importate | 49 prenotazioni + 54 occupazioni |
+| tolte | 79 prenotazioni + 63 occupazioni |
+| totale prenotazioni | da 82 a **52** |
+| finestra letta | 17/08 → 14/09 |
+
+⚖️ **Le 79 righe tolte non sono una perdita**: erano la parte della fotografia di otto giorni fa che
+nella realtà non esiste più. È la riconciliazione che mancava, ed è il senso di tutta la voce.
+
+🧯 **DUE letture sbagliate mie, di fila, lasciate scritte perché sono la trappola vera.**
+① Ho dichiarato *«la routine non ce l'ha fatta»* leggendo `lastFullSuccessAt` — fermo al 28/07 — e
+prendendolo per il verdetto di **questo** import: quel campo appartiene a un'altra strada.
+② Ho dichiarato *«il calendario non si è mosso»* misurando alle **21:47**, mentre la scrittura è
+atterrata alle **21:48:15**. ⇒ Ho letto un'assenza e l'ho chiamata risultato.
+🚨 Non è la sonda cieca della 23ª: è **una misura presa prima che il fatto accadesse**, che è il
+gemello speculare. La regola che ne esce: *quando si misura l'effetto di una cosa appena lanciata,
+uno zero non è un esito finché non è scaduto il tempo in cui quell'effetto può ancora arrivare.*
+
+🎯 **E questa prova ha evitato un errore che sarebbe passato per successo.** Senza, domattina si
+sarebbero viste **5 righe tutte `dispatched`** — verdi, ordinate — e si sarebbe potuto dichiarare
+che funzionava **contando i lanci invece di guardare i dati**. Il controllo ① del §4 da solo non
+distingue «la routine è partita» da «il calendario si è aggiornato»: per quello serve il ③.
+
+⏭️ **Cosa resta davvero**: il primo giro **automatico** delle 05:30, che è l'unica parte che questa
+prova non copre — qui l'orario l'ho forzato io.
+
 ## 2. Il punto di partenza, misurato il 15/08 (serve per il confronto dopo)
 
 | | |
