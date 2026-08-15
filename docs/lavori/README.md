@@ -204,7 +204,7 @@ contesto**, non eseguire il compito scritto.
 |---|---|
 | 🔴 **Urgenti** | **3** |
 | 📋 **In coda** | **7** |
-| 📦 **Chiuse** | **27** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **28** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
