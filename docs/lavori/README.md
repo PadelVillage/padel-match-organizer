@@ -1,6 +1,44 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 15/08/2026, a fine 20ª sessione.** Misurata, non ricordata.
+**Fotografia del 15/08/2026, a fine 22ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 22ª: **la misura che concorda col documento**
+
+La 16ª aveva imparato a diffidare della **prova che ti dà ragione**. La 20ª, a diffidare dello
+**strumento che la produce**. Questa le ha viste **sommarsi**, ed è la combinazione peggiore: una
+sonda che sbagliava **nella stessa direzione in cui il registro sbagliava già**.
+
+| la sonda diceva | cosa era davvero |
+|---|---|
+| «il `readonly` non vede le prenotazioni» — **e il registro lo diceva identico** | chiamavo `pmoCloudRpc` **senza `accessToken`**: partivo come **anon**, il server rispondeva `AUTH_REQUIRED` e l'app lo traduceva in «Accedi con email personale Supabase». Misuravo **la mia chiamata**, non il `readonly` |
+| «le riceve, ma di vive nemmeno una»: `{}` per tipo | **1000 righe è il tetto di PostgREST**, non la fine dei dati. Paginando: **8359** righe, vive **44 / 60 / 150**, identiche al conteggio SQL |
+| «le guardie reggono, la corsa è verde» | su PROD `richiesteBloccate` era **vuoto**: l'app non aveva **tentato** nulla. Verde perché non interrogata, non perché interrogata e assolta |
+| «la nota sulla seconda guardia descrive l'oggi» | invecchiata **in un giorno**: la 6.231 (#734) fa ricordare `PADEL_CONFIG` anche dopo il login, e la nota raccontava un guasto **già riparato** |
+| «lo script di preparazione c'è, l'ha sistemato la 21ª» | il campo «Script di configurazione» dell'ambiente era **vuoto**: container crudo, e la console non raggiungeva **nessun** sito |
+
+⚖️ **La lezione non è «ricontrolla»**, che è la versione comoda. È: **una misura che CONCORDA con ciò
+che c'è scritto non ha ancora verificato niente** — ha prodotto la seconda copia della stessa
+affermazione. E il primo verdetto sbagliato sarebbe passato per **diligenza**: *chiesto di
+verificare, verificato, confermato*, con una sonda nuova a fare da testimone. ⇒ La domanda giusta
+non è «la sonda e il documento dicono la stessa cosa?», è **«questa sonda, su questa strada, con
+questo token, cosa saprebbe vedere se il documento avesse torto?»**. Qui la risposta era *niente*:
+partendo come `anon` quella sonda avrebbe detto «non vede» **qualunque** fosse la verità.
+
+🎯 **E il secondo filo: una protezione che tace non è una protezione osservata.** Le tre guardie
+della console sono passate due collaudi senza che nessuna dicesse mai di **no** — su PROD, alla
+corsa finale, `richiesteBloccate` era vuoto. Non è una buona notizia: è **assenza di notizia**.
+Esercitate apposta con bersagli innocui, hanno risposto tutte, **compresa la controprova positiva**
+— la lettura legittima passa — che serviva perché senza di essa «blocca tutto» si legge come
+«funziona». ⚠️ Ed è rimasto scritto ciò che **non** si è potuto esercitare: il ramo di ripiego della
+seconda guardia, perché il *no* lo pronuncia sempre la prima, che aborta prima.
+
+🎯 **La terza, e riguarda dove vivono le protezioni.** `tools/verifica-browser/` su `test-preview`
+era fermo alla **#722** e non aveva mai ricevuto la **#727**: una copia della console che, lanciata
+da lì, sarebbe morta all'avvio. Nessuno l'aveva visto perché quella cartella sotto
+`guard-worker-sync` **non ci sta** — e un drift che nessuno sorveglia non fa rumore, aspetta. Stessa
+forma del difetto ①: l'attrezzo dipendeva da una **casella di configurazione che nessuno vede**, e
+quel tipo di dipendenza si rompe nella sessione **nuova**, cioè quando lo si tira fuori per la prima
+diagnosi ed è il momento in cui si è meno disposti a sospettare l'attrezzo invece del sito.
 
 ## 🔎 Il filo della 20ª: **lo strumento mente prima del codice**
 
@@ -95,6 +133,15 @@ contesto**, non eseguire il compito scritto.
 | ⬆️ **e subito dopo: «aggiungi in coda la parte B»** | promossa da nota a **voce 41**, in sezione C. ⇒ Chiusa la voce e messo il residuo dove si vede: la coda passa da 13 a **14** |
 | 📦 **«chiudila, ventitré resta solo la parte B»** | la **23** chiusa da lui a residuo dichiarato, non a residuo finito: quello che resta è **una prova da fare dal Mac**, non codice da scrivere. ⇒ La lista urgenti torna **vuota**, e la parte B scende fra le «nate misurando» — dove le promozioni le decide lui |
 
+**E nella 22ª, a sera:**
+
+| | |
+|---|---|
+| 🔓 **«fai la correzione» ×2** | le due segnalate a fine collaudo — l'auto-preparazione del container e la nota invecchiata — autorizzate **una per una**, come sempre, non in blocco |
+| 🔎 **«verifica se su prod il readonly vede le prenotazioni»** | la domanda che ha smascherato la spiegazione falsa del registro. 🚨 **Non l'avrei aperta da solo**: l'avevo lasciata come «non verificato, fuori dal chiesto» — ed è la quinta volta in tre giorni che la correzione che conta la porta lui |
+| 🔀 **«riallinea test-preview e poi fai merge su main»**, due volte | l'ordine del punto 4bis chiesto per nome. La prima volta la rossa transitoria è caduta su `test-preview` (com'è progettato), la seconda non è caduta affatto: stessa procedura, esiti diversi, che è la corsa descritta lì |
+| 🔁 **«rilancia il collaudo per confermare che tutto regge»** | ⚖️ **ed è questa richiesta ad aver prodotto il risultato migliore della sessione**: rilanciando da container freddo si è visto che su PROD la guardia delle scritture **non aveva scattato**, e da lì il sabotaggio deliberato. Un «ricontrolla» che ha trovato ciò che il collaudo normale non poteva trovare |
+
 **E nella 20ª, lo stesso pomeriggio:**
 
 | | |
@@ -115,7 +162,7 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **7** |
 | 📦 **Chiuse** | **26** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 20ª (15/08)** — versioni lette dall'`index.html`
+**Stato del sistema, rimisurato alla chiusura della 22ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.231** · TEST **6.239** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
@@ -125,7 +172,10 @@ commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin
 📏 **La rete di regressione: PROD 87 casi, TEST 90** — e la differenza è ormai **solo** i 3 della
 simulazione incassi, che in produzione non hanno senso. A inizio giornata erano 55 contro 90.
 
-✅ **PROD verificata DAL SERVER, non dall'etichetta**, e **due volte**: `app.padelvillage.club/index.html`
+✅ **PROD verificata DAL SERVER, non dall'etichetta.** Alla 22ª, servita e **caricata** in un browser
+vero: `app.padelvillage.club` risponde col titolo **v6.231**, che è il numero dichiarato qui sopra —
+non letto da `index.html` di un ramo, ma dalla pagina che gira. *(La riga che segue è la misura della
+20ª e resta agli atti: allora era la **6.230**.)* `app.padelvillage.club/index.html`
 → `APP_VERSION = '6.230'`, e dentro i **5 agganci** promossi con la 6.230 — e **zero** dei due della
 simulazione, che in produzione non devono esistere. Verificate anche le potature: il messaggio nuovo
 del bottone è nel codice, quello vecchio sopravvive **solo dentro un commento** (controllato riga per
@@ -136,9 +186,11 @@ su `cudi…`. Una funzione che non parte non risponde nemmeno con un errore suo.
 ✅ **`manifest.json` misurato dai due domini**: PROD **200 `application/json`**, TEST **404
 `text/html`**. È la prova che quel file su `test-preview` non lo serve nessuno.
 
-🔁 **Le guardie sono andate rosse su `test-preview` a ogni giro, fra la spinta e il merge**, ed era
-previsto: è la finestra del punto 4bis, e spingendo prima TEST cade **là**. Rilanciate a mano dopo
-ogni merge per non lasciare un rosso vecchio in bacheca.
+🔁 **La finestra del 4bis: rossa su `test-preview` una volta su due**, alla 22ª — rossa al primo
+giro, **verde al secondo**, stessa identica procedura. Ed è la conferma che quella non è una regola
+ma una **corsa**: il colore lo decide se il riallineo atterra prima che il guard legga i ref.
+Spingendo prima TEST, quando cade, cade **là**. Il rosso vecchio è stato rilanciato a mano per non
+lasciarlo in bacheca.
 ⚠️ **Una cosa che il 4bis NON sa spostare**, misurata oggi: `guard-docs-truth` legge la tabella
 **sempre da `origin/main`** (`git show "origin/main:$DOC"`), qualunque ramo la faccia partire ⇒ quando
 è **TEST** a cambiare versione, la finestra è rossa su **entrambi** i rami e si può solo tenerla corta.
@@ -146,9 +198,14 @@ Il 4bis indirizza `guard-worker-sync`, non questa.
 
 ⛔ **Non misurato da qui, e da non dare per buono** — la sessione girava dal cloud: **VM Hetzner**,
 **worker** e i suoi log, **`.env` del bot**, **secret**, **cron**, **memoria dell'app**, e soprattutto
-**la vista dell'app col login staff**. Quest'ultima pesa: la 6.228 cura un percorso che si vede solo
-cliccando «Nuova autovalutazione» dentro una scheda socio, e il 13/08 due errori veri sono passati
-sotto sintassi verde e rete verde — li ha trovati lui aprendo l'app.
+**la vista dell'app col login staff**. 🔭 **Ma quest'ultima è uscita dall'elenco alla 22ª**, ed è la
+novità della giornata: la console remota apre l'app **col login staff** su TEST e su PROD, da un
+container appena nato, e ci esegue dentro quello che serve. Il 13/08 due errori veri erano passati
+sotto sintassi verde e rete verde e li aveva trovati lui aprendo l'app: quel giro ora si può fare
+da qui. ⚠️ **Non per intero, e la differenza va tenuta a mente**: l'utente è un `readonly` con
+**2 permessi su 16**, e la pagina parte con `localStorage` **vuoto** — quindi si vede *un'* app col
+login staff, non **la sua**. I sintomi che nascono dallo stato accumulato in ore d'uso restano fuori
+portata senza un export fatto sul posto.
 ✅ Rimisurati invece: le due versioni, gli sha, le PR aperte, i 4 percorsi sorvegliati, i conteggi di
 questo file, il ponte del bot dal vivo, e i dati di PROD dietro `livello-dimostrato` (2797 soci vivi,
 533 con livello vero, 517 a origine vuota, `ereditato` = **0**).
