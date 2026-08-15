@@ -7942,7 +7942,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.237';
+    const APP_VERSION = '6.238';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -30360,7 +30360,7 @@ Per confermare scrivi ELIMINA.`);
         if (silent) {
           return { ok:true, count:rows.length, autoApplied:autoResult.applied || 0, autoEmailSent:autoResult.emailSent || 0 };
         } else if (autoResult.applied) {
-          showAlert(`✅ Risposte aggiornate: ${rows.length}. Auto-applicate: ${autoResult.applied}. Conferme email inviate: ${autoResult.emailSent}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
+          showAlert(`✅ Risposte aggiornate: ${rows.length}. Auto-applicate: ${autoResult.applied}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
         } else if (issueCount) {
           showAlert(`⚠️ Risposte aggiornate: ${rows.length}. Chiusura automatica non completata: ${issueCount} da controllare.`, 'warning');
         } else {
@@ -35763,7 +35763,7 @@ Per confermare scrivi ELIMINA.`);
       }
       if (!options.silent && !options.suppressSuccessAlert) {
         const issueCount = result.emailFailed + result.failed;
-        showAlert(`Schede chiuse automaticamente: ${result.applied}. Conferme email inviate: ${result.emailSent}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
+        showAlert(`Schede chiuse automaticamente: ${result.applied}.${issueCount ? ` Da controllare: ${issueCount}.` : ''}`, issueCount ? 'warning' : 'success');
       }
       return result;
     }
@@ -36908,28 +36908,21 @@ Per confermare scrivi ELIMINA.`);
         updateStats();
         try { renderInitialDashboard(); } catch (err) { console.warn('Dashboard non aggiornata:', err); }
       }
-      if (!assessmentEmailHasValidEmail(member)) {
-        if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata perche manca una email valida.`, 'warning');
-        return { ok:true, applied:true, level, emailSent:false, emailError:'Email mancante', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
-      }
-      if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Invio conferma email in corso...`, 'info');
-      try {
-        const sent = await assessmentEmailSendLevelConfirmation(member.id, {
-          fromApply: true,
-          silentStart: true,
-          skipConfirm: true,
-          skipIfAlreadySent: true,
-          throwOnError: true,
-          suppressRender: options.suppressRender,
-          suppressSuccessAlert: silent || options.suppressSuccessAlert,
-          suppressFailureAlert: silent || options.suppressFailureAlert
-        });
-        return { ok:true, applied:true, level, emailSent:!!sent, emailError: sent ? '' : 'Invio conferma email non riuscito', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
-      } catch (err) {
-        if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}. Conferma email non inviata: ${err.message || err}`, 'warning');
-        return { ok:true, applied:true, level, emailSent:false, emailError:err?.message || String(err), staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };
-      }
-    }
+      // ⛔ QUI PARTIVA UNA CONFERMA EMAIL AL SOCIO, e non poteva arrivare da nessuna parte.
+      // Il canale email dell'Autovalutazione è dismesso dal 13/08/2026: l'app lo rifiuta da sé,
+      // PRIMA di chiamare la rete (`ASSESSMENT_EMAIL_CHANNEL_RETIRED`). ⇒ Applicare un livello a
+      // mano annunciava «Invio conferma email in corso…» e subito dopo accendeva un avviso
+      // GIALLO «Conferma email non inviata». Il livello veniva applicato — non era un guasto —
+      // ma ogni applicazione suonava un allarme per una cosa decisa apposta: rumore travestito
+      // da guasto, che è il modo in cui si smette di guardare gli allarmi veri.
+      // ⇒ Tolto su sua decisione (15/08): del socio se ne occupa il bot.
+      // ⚖️ La NOTIFICA ALLO STAFF qui sopra resta e non c'entra: passa da `assessment-notify-staff`,
+      // che è viva e ha il suo cron ogni 5 minuti.
+      // 📌 `emailSent`/`emailError` restano nell'esito, a zero: li contano ancora due chiamanti
+      // (`assessmentEmailRunAutoPostProcessing`) e toglierli di qui vorrebbe dire inseguirli là.
+      // Sono residui della voce 28, e si potano con lei — non uno alla volta.
+      if (!silent) showAlert(`Livello applicato a ${playerFullName(member)}: ${level}.`, 'success');
+      return { ok:true, applied:true, level, emailSent:false, emailError:'', staffNotified:staffNotificationResult.sent || 0, staffNotificationError:staffNotificationResult.failed ? (staffNotificationResult.errors || []).join(' | ') : '' };    }
 
 
     function repairAppliedAssessmentAvailabilities() {
@@ -36953,7 +36946,12 @@ Per confermare scrivi ELIMINA.`);
       const member = giocatori.find(g => String(g.id) === String(memberId));
       if (!member) return showAlert('❌ Socio non trovato', 'danger');
       if (!member.phone) return showAlert('⚠️ Telefono mancante: aggiorna la scheda socio prima di reinviare.', 'warning');
-      if (!assessmentEmailHasValidEmail(member)) return showAlert('⚠️ Email mancante: aggiorna la scheda socio prima di avviare una nuova autovalutazione.', 'warning');
+      // ⛔ Qui si pretendeva un'EMAIL VALIDA prima di lasciar partire una nuova autovalutazione,
+      // e senza si rifiutava. Era un requisito del canale EMAIL, dismesso il 13/08/2026: oggi il
+      // link personale lo consegna il bot Telegram, che l'email non la usa e non la guarda.
+      // ⇒ Tolto su sua decisione (15/08): chiedere un dato che nessuno legge più non protegge
+      // niente, blocca e basta — e blocca proprio i soci senza email, che sono quelli per cui il
+      // passaggio al bot è servito.
       // Il reinvio è una nuova richiesta: non deve restare bloccata dal log “già inviato oggi”.
       clearAssessmentRequestSentToday(member.id);
       const existing = getAssessmentTokenRecord(member.id);
@@ -36972,19 +36970,21 @@ Per confermare scrivi ELIMINA.`);
       save('assessmentTokens', assessmentTokens);
       save('assessmentDailySendLog', assessmentDailySendLog);
 
-      switchTab('assessment');
-      if (typeof setAssessmentEmailPanel === 'function') setAssessmentEmailPanel('queue');
-      window.assessmentEmailQueueSearch = playerFullName(member);
-      window.assessmentEmailQueueSearchDraft = '';
-      window.assessmentPreQuickFilter = '';
-      renderAssessmentEmailPanels();
-      setTimeout(() => {
-        const anchor = document.getElementById('assessmentEmailQueuePanel') || document.getElementById('assessmentEmailRoutinePanel');
-        if (anchor) {
-          scrollMainContentToElement(anchor);
-        }
-      }, 50);
-      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Completa il link personale, poi procedi con il flusso email.`, 'success');
+      // 🚨⭐⭐ QUI IL BOTTONE SBALZAVA LO STAFF FUORI DALLA SCHEDA SOCIO, e non lo diceva.
+      // Da qui partiva `switchTab('assessment')` per andare a mostrare la richiesta appena
+      // preparata nel pannello «Da inviare». Ma la sezione Autovalutazione è CONGELATA dal
+      // 13/06/2026 (`PMO_ASSESSMENT_PARKED = true`): `pmoSectionVisibleFor` la nega a tutti,
+      // owner incluso, e `switchTab` allora **dirotta** su `pmoFirstAllowedSection()`, che è
+      // la **Dashboard**. ⇒ Lo staff cliccava «Nuova autovalutazione» dentro la scheda di un
+      // socio e si ritrovava sulla Dashboard, senza un errore che glielo spiegasse.
+      // ⚖️ Il lavoro che il bottone deve fare — rigenerare il token e azzerare lo stato — era
+      // già FATTO qui sopra ed è sempre riuscito: rotta era solo la parte che portava altrove.
+      // ⇒ Non si va da nessuna parte: si resta nella scheda socio e lo si dice.
+      // 🚨 E il messaggio DICEVA IL FALSO: «poi procedi con il flusso email» mandava a un
+      // canale dismesso il 13/08, che l'app rifiuta prima ancora di chiamare la rete
+      // (`ASSESSMENT_EMAIL_CHANNEL_RETIRED`). Una riga che indica una strada murata è peggio
+      // di nessuna riga: manda a cercare un guasto che non c'è.
+      showAlert(`✅ Nuova autovalutazione preparata per ${playerFullName(member)}. Il socio riceve il link personale dal bot Telegram: da qui non parte nessuna email.`, 'success');
     }
     // Le domande «che livello pensi di avere» e «con quali giocatori giochi alla pari» non hanno
     // più le opzioni scritte nell'HTML: le prende dalla tabella dei livelli, così i due moduli

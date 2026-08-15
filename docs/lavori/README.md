@@ -76,7 +76,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **23** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.229** · TEST **6.237** · i **4 percorsi** di
+dei due rami, non ricordate: app PROD **6.229** · TEST **6.238** · i **4 percorsi** di
 `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
@@ -257,6 +257,9 @@ rimbalzi nel codice della funzione **1 → 0**; banco **55/55 prima e dopo**.
 (`ready:false`), non la rilettura: la mia ricerca del confine aveva agganciato `      }` invece di
 `    }`, e `"    }\n"` è un pezzo di `"      }\n"`. ⇒ Una modifica «di due righe» che non si prova sul
 bersaglio è una modifica non fatta.
+
+✅ **E il debito è chiuso lo stesso giorno: le righe promosse anche su TEST (6.238).** Le 6.227/6.228/6.229 erano nate su `main` — il guasto si vedeva in produzione — e sarebbero rimaste solo là: `test-preview` avrebbe avuto ancora il bottone che sbalza e il ramo email morto, cioè **la voce 31 al contrario, ricreata il giorno stesso in cui la si censiva**. Promozione **a righe**: i pezzi solo-TEST sono intatti, banco **90/90** prima e dopo.
+🧯 Due contatori sono tornati «sporchi» alla verifica (`poi procedi con il flusso email` = 1, `Invio conferma email in corso` = 1) e per un istante è sembrato che la promozione non fosse atterrata: erano **i commenti appena scritti**, che quelle frasi le citano. Stessa trappola di `switchTab(` due ore prima ⇒ **una sonda che cerca una stringa nel codice deve saltare i commenti, sempre**.
 
 ⚠️ **E la potatura da 64 funzioni resta ferma**, ora con una ragione in più per non correre: dentro una
 sezione spenta non fa danno a nessuno, quindi è manutenzione, non riparazione.
