@@ -99,7 +99,7 @@ function seedStorage() {
 //   auth    → /auth/v1/token → token finto
 //   diario  → /rest/v1/pmo_ai_turns → 200
 // ─────────────────────────────────────────────────────────────────────────────
-let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, JOB_NEXT;
+let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT, CLOUD_READ_FAIL, JOB_NEXT;
 // Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
 let CLOUD_LESSICO = [];
@@ -115,7 +115,11 @@ const RT_BROADCASTS = [];
 // WebSocket tentate dall'app e bloccate da installWsMock: attese, contate a parte.
 const WS_BLOCKED = [];
 function captureReset() {
-  CAPTURED = { worker: [], cloud: [], turns: [], jobPolls: [], looks: [] };
+  CAPTURED = { worker: [], cloud: [], turns: [], payment: [], void: [], correct: [], jobPolls: [], looks: [] };
+  PAYMENT_NEXT = { ok: true };     // risposta edge matchpoint-payment-write programmabile
+  VOID_NEXT = { ok: true };        // risposta edge matchpoint-payment-void programmabile
+  CORRECT_NEXT = { ok: true };     // risposta edge matchpoint-wallet-correct programmabile
+  CLOUD_READ_FAIL = false;         // true → pmo_get_records_admin risponde 403 (per provare i fallimenti in lettura)
   // ⭐ La LETTURA di verifica su Matchpoint («vado a guardare» dopo un esito ignoto, v6.150).
   // null = non programmata → la lettura passa dal ramo generico come prima. Si accende SOLO nei
   // casi che provano quella strada, così nessun caso vecchio cambia comportamento.
@@ -165,6 +169,30 @@ function installFetchMock(win) {
       if (LOOK_NEXT.throw) { throw new Error('network down (simulato)'); }
       return jsonResponse(win, LOOK_NEXT.body || { ok: true, worker: { partecipantiFinali: [] } }, LOOK_NEXT.status || 200);
     }
+    if (/\/functions\/v1\/matchpoint-payment-write/.test(u)) {
+      CAPTURED.payment.push({ url: u, body: body });
+      if (PAYMENT_NEXT && PAYMENT_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (PAYMENT_NEXT && PAYMENT_NEXT.reject) {
+        return jsonResponse(win, PAYMENT_NEXT.body || { ok: false, message: 'COBRO_RIFIUTATO' }, PAYMENT_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, PAYMENT_NEXT && PAYMENT_NEXT.body || {}), 200);
+    }
+    if (/\/functions\/v1\/matchpoint-payment-void/.test(u)) {
+      CAPTURED.void.push({ url: u, body: body });
+      if (VOID_NEXT && VOID_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (VOID_NEXT && VOID_NEXT.reject) {
+        return jsonResponse(win, VOID_NEXT.body || { ok: false, message: 'STORNO_RIFIUTATO' }, VOID_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, VOID_NEXT && VOID_NEXT.body || {}), 200);
+    }
+    if (/\/functions\/v1\/matchpoint-wallet-correct/.test(u)) {
+      CAPTURED.correct.push({ url: u, body: body });
+      if (CORRECT_NEXT && CORRECT_NEXT.throw) { throw new Error('network down (simulato)'); }
+      if (CORRECT_NEXT && CORRECT_NEXT.reject) {
+        return jsonResponse(win, CORRECT_NEXT.body || { ok: false, message: 'STORNO_BORSELLINO_RIFIUTATO' }, CORRECT_NEXT.status || 200);
+      }
+      return jsonResponse(win, Object.assign({ ok: true }, CORRECT_NEXT && CORRECT_NEXT.body || {}), 200);
+    }
     if (/\/functions\/v1\/matchpoint-bookings-(cancel|edit|create)/.test(u)) {
       const kind = u.match(/matchpoint-bookings-(\w+)/)[1];
       CAPTURED.worker.push({ url: u, kind, body });
@@ -183,6 +211,7 @@ function installFetchMock(win) {
       return jsonResponse(win, { ok: true, count: list.length }, 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_records_admin/.test(u)) {
+      if (CLOUD_READ_FAIL) return jsonResponse(win, { message: 'PERMISSION_DENIED' }, 403);
       return jsonResponse(win, CLOUD_FAKEROWS || [], 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
@@ -1226,7 +1255,1024 @@ const CASES = [
     }
   },
   {
-    id: 36, flow: 'Giocatori', name: '🚨⭐⭐ IL CASO DELL\'1/08: rete caduta DOPO l\'invio ⇒ va a GUARDARE, trova Anna su Matchpoint, e la mette (v6.150)',
+    id: 36, flow: 'Pagamenti', name: 'incasso Cash OK → edge payment-write col payload giusto + giocatore marcato pagato (ottimistico)',
+    run: async (win, H, ctx) => {
+      // Denaro reale in PROD: qui worker/edge MOCKATI. Bypass conferma+gate via __pmoPayHarness.
+      H.setPayHarness(true);
+      PAYMENT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.collectPayment({
+        idReserva: 'R777', idCliente: 'C1', idx: '0', playerName: 'Mario Rossi',
+        method: 'cash', amountCents: 800, campo: 2, data: ctx.iso, ora: '18:00',
+      });
+      checks.push({ label: 'collectPayment risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.payment.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-payment-write chiamata', ok: got });
+      const pp = CAPTURED.payment[0];
+      checks.push({ label: 'payload {idReserva,idCliente,method,amountCents}', ok: !!pp && pp.body && pp.body.idReserva === 'R777' && pp.body.idCliente === 'C1' && pp.body.method === 'cash' && pp.body.amountCents === 800 });
+      checks.push({ label: 'una sola chiamata (no retry su denaro)', ok: CAPTURED.payment.length === 1 });
+      checks.push({ label: 'giocatore ora "pagato" nell\'indice chip (ottimistico)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
+      // Il metodo si vede SUBITO, senza aspettare la sync incassi (~5 min).
+      checks.push({ label: 'metodo noto subito dopo l\'incasso (ottimistico) = Contanti', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === 'Contanti' });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 37, flow: 'Pagamenti', name: 'incasso RIFIUTATO dall\'edge → NON marca pagato + nessun retry',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      PAYMENT_NEXT = { reject: true, body: { ok: false, message: 'COBRO_RIFIUTATO' } };
+      const checks = [];
+      const res = await H.collectPayment({
+        idReserva: 'R888', idCliente: 'C9', idx: '1', playerName: 'Luca Bianchi',
+        method: 'card', amountCents: 1200, campo: 3, data: ctx.iso, ora: '19:00',
+      });
+      checks.push({ label: 'collectPayment risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry cieco)', ok: CAPTURED.payment.length === 1 });
+      checks.push({ label: 'giocatore NON marcato pagato dopo rifiuto', ok: H.isPaid(ctx.iso, 3, '19:00', 'Luca Bianchi') === false });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 38, flow: 'Pagamenti', name: 'indice pagato+metodo dai record payment del cloud (match per giorno|campo|ora + nome, MAI per id)',
+    run: async (win, H, ctx) => {
+      // Record `payment` con la forma REALE del report 11.13. Nota bene, è il punto del test:
+      // `id_cliente_mp` (fino a v6.100 `id_reserva`) NON è il numero della prenotazione ma
+      // l'identificativo del CLIENTE → due giocatori della STESSA partita hanno valori diversi
+      // (1023 vs 278) e lo stesso giocatore porta lo stesso valore su partite diverse (1023 in
+      // entrambe). L'aggancio deve reggersi solo su Giorno+Spazio+Ora (booking_data|campo|ora) + nome.
+      // `data` (giorno del pagamento) è volutamente diverso da `booking_data`: vince il secondo.
+      CLOUD_FAKEROWS = [
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 800, method: 'cash', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '278', id_cliente: '268', player_name: 'Giulia Verdi', amount_cents: 900, method: 'card', status: 'paid', data: '2026-01-01', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+        // Stesso socio (stesso id_cliente_mp) ma ALTRA partita: non deve sporcare la prima.
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '1023', id_cliente: '1002', player_name: 'Mario Rossi', amount_cents: 1200, method: 'wallet', status: 'paid', data: ctx.iso, booking_data: ctx.iso, campo: 'Campo 4', ora: '21:00' } },
+        // Stornato in MP → tombstonato dal sync: non deve risultare pagato.
+        { record_type: 'payment', deleted: false, payload: { id_cliente_mp: '99', id_cliente: '99', player_name: 'Carlo Neri', amount_cents: 500, method: 'cash', status: 'void', booking_data: ctx.iso, campo: 'Campo 2', ora: '18:00' } },
+      ];
+      await H.refreshPaidIndex();
+      const checks = [];
+      checks.push({ label: 'pagato per giorno|campo|ora + nome (Mario Rossi)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
+      checks.push({ label: 'metodo letto dal cloud = Contanti', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === 'Contanti' });
+      checks.push({ label: 'metodo del compagno di partita = Carta (non si confondono)', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Giulia Verdi') === 'Carta' });
+      checks.push({ label: 'campo "Campo 2" del report ↔ campo 2 della scheda', ok: H.isPaid(ctx.iso, 'Campo 2', '18:00', 'Mario Rossi') === true });
+      checks.push({ label: 'pagato anche con case/spazi diversi ("  mario   rossi ")', ok: H.isPaid(ctx.iso, 2, '18:00', '  mario   rossi ') === true });
+      checks.push({ label: 'stesso socio, ALTRA partita: metodo suo = Borsellino', ok: H.paidMethodsLabel(ctx.iso, 4, '21:00', 'Mario Rossi') === 'Borsellino' });
+      checks.push({ label: 'vince booking_data (giorno partita), non data (giorno pagamento)', ok: H.isPaid('2026-01-01', 2, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'NON pagato: nome assente nella stessa prenotazione', ok: H.isPaid(ctx.iso, 2, '18:00', 'Anna Blu') === false });
+      checks.push({ label: 'NON pagato: pagamento stornato (status void)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Carlo Neri') === false });
+      checks.push({ label: 'NON pagato: stessa ora, campo diverso', ok: H.isPaid(ctx.iso, 3, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'NON pagato: stesso campo, ora diversa', ok: H.isPaid(ctx.iso, 2, '19:00', 'Mario Rossi') === false });
+      return checks;
+    }
+  },
+  {
+    id: 58, flow: 'Pagamenti', name: 'quota OFFERTA (riscossa a 0 € su MP) → pastiglia «Offerta», MAI «modalità in arrivo…»',
+    run: async (win, H, ctx) => {
+      // Un omaggio non è un pagamento: non compare nel report 11.13, quindi nessun
+      // metodo arriverà mai dalla sync. La firma è stato='riscosso' + importoCents=0
+      // letta dalla ficha MP. Senza il caso 'gift' la scheda aspetterebbe per sempre.
+      const checks = [];
+      const b = (s, c, m) => H.paidBadge(s, c, m);
+      checks.push({ label: 'riscosso + importo 0 → Offerta', ok: b('riscosso', 0, []).kind === 'gift' });
+      checks.push({ label: 'riscosso + importo 0 vince anche su un metodo presente (omonimi Ospite)', ok: b('riscosso', 0, ['contanti']).kind === 'gift' });
+      checks.push({ label: 'riscosso + importo > 0 senza metodo → attesa sync (non Offerta)', ok: b('riscosso', 800, []).kind === 'wait' });
+      checks.push({ label: 'riscosso + importo ILLEGGIBILE (null) → attesa, NON Offerta', ok: b('riscosso', null, []).kind === 'wait' });
+      checks.push({ label: 'riscosso + metodo noto → pastiglie metodo', ok: b('riscosso', 1200, ['carta']).kind === 'methods' });
+      checks.push({ label: 'in_sospeso + importo 0 → mai Offerta', ok: b('in_sospeso', 0, []).kind !== 'gift' });
+      return checks;
+    }
+  },
+  {
+    id: 59, flow: 'Pagamenti', name: 'OMAGGIO persistito a 0 € → conta zero in Incassi + chip accesa; chiave paygift| fuori dal tombstone della sync',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      // 1) Forma del record: come i payment del sync (chiave naturale) ma a 0 € e riconoscibile.
+      const rec = H.giftRecord(ctx.iso, 2, '18:00', { nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 });
+      checks.push({ label: 'record payment a 0 € (method gift, status paid, source pmo_gift)', ok: !!rec && rec.record_type === 'payment' && rec.payload.amount_cents === 0 && rec.payload.method === 'gift' && rec.payload.status === 'paid' && rec.payload.source === 'pmo_gift' });
+      checks.push({ label: 'chiave naturale booking_data/campo/ora presente', ok: !!rec && rec.payload.booking_data === ctx.iso && String(rec.payload.campo) === '2' && rec.payload.ora === '18:00' });
+      // 2) Il tombstone dell'edge riconcilia SOLO `pay|…`: la chiave omaggio NON deve matchare,
+      //    sennò la sync la cancellerebbe al giro dopo (~5 min in PROD).
+      const key = H.giftKey(ctx.iso, 2, '18:00', 'Gino Omaggio');
+      checks.push({ label: "prefisso paygift| e NON 'pay|' (contratto col filtro del tombstone)", ok: /^paygift\|/.test(key) && key.indexOf('pay|') !== 0 });
+      // 3) Dal roster della ficha scrive SOLO gli omaggi veri (riscosso + importo 0 esplicito).
+      const n1 = await H.giftSyncFromRoster(ctx.iso, 2, '18:00', [
+        { nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 },
+        { nome: 'Pia Pagante', stato: 'riscosso', importoCents: 1200 },     // pagata vera
+        { nome: 'Ugo Sospeso', stato: 'in_sospeso', importoCents: 0 },      // non riscosso
+        { nome: 'Lia Illeggibile', stato: 'riscosso', importoCents: null }, // importo illeggibile: prudenza
+      ]);
+      const written = cloudRecords().filter(r => /^paygift\|/.test(r.local_key || ''));
+      checks.push({ label: 'scrive SOLO l\'omaggio (1 record, gli altri 3 esclusi)', ok: n1 === 1 && written.length === 1 && !!written[0].payload && written[0].payload.player_name === 'Gino Omaggio' });
+      // 4) Effetti visibili: chip accesa, etichetta Offerta, importo indicizzato ZERO.
+      checks.push({ label: 'chip pagato accesa per l\'omaggio', ok: H.isPaid(ctx.iso, 2, '18:00', 'Gino Omaggio') === true });
+      checks.push({ label: 'etichetta metodo = Offerta', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Gino Omaggio') === 'Offerta' });
+      const info = H.paidInfo(ctx.iso, 2, '18:00', 'Gino Omaggio');
+      checks.push({ label: 'importo indicizzato = 0 (conteggiato come zero, non gonfia i totali)', ok: !!info && info.cents === 0 });
+      // 4b) Glifo della chip sulla card del calendario: 🎁 per l'omaggio puro; ✓ se c'è
+      //     (anche) un incasso vero — il 🎁 nasconderebbe il pagamento reale.
+      const cgGift = H.chipGlyph(info && info.methods);
+      checks.push({ label: 'glifo chip omaggio = 🎁 con title «Offerta»', ok: !!cgGift && cgGift.gift === true && cgGift.glyph === '🎁' && cgGift.title === 'Offerta' });
+      const cgCash = H.chipGlyph(['contanti']);
+      checks.push({ label: 'glifo chip pagamento vero = ✓ («Pagato · Contanti»)', ok: !!cgCash && cgCash.gift === false && cgCash.glyph === '✓' && cgCash.title === 'Pagato · Contanti' });
+      const cgMix = H.chipGlyph(['omaggio', 'contanti']);
+      checks.push({ label: 'omaggio POI incassato davvero (misto) → resta ✓ e il title cita entrambi', ok: !!cgMix && cgMix.gift === false && cgMix.glyph === '✓' && /Offerta/.test(cgMix.title) && /Contanti/.test(cgMix.title) });
+      // 5) Idempotenza: alla seconda passata non riscrive (già registrato come omaggio).
+      const n2 = await H.giftSyncFromRoster(ctx.iso, 2, '18:00', [{ nome: 'Gino Omaggio', stato: 'riscosso', importoCents: 0 }]);
+      checks.push({ label: 'seconda passata: nessuna riscrittura (idempotente)', ok: n2 === 0 });
+      return checks;
+    }
+  },
+  {
+    id: 39, flow: 'Pagamenti', name: 'storno OK → edge payment-void col payload giusto + giocatore tolto da "pagato"',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      // pre-condizione: il giocatore risulta pagato (come dopo un cobro)
+      H.paidIndexAdd(ctx.iso, 2, '18:00', 'Mario Rossi', 'cash', 800);
+      VOID_NEXT = { ok: true };
+      const checks = [];
+      checks.push({ label: 'pre: risulta pagato', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === true });
+      const res = await H.voidPayment({
+        idReserva: 'R777', idCliente: 'C1', idx: '0', playerName: 'Mario Rossi',
+        importoCents: 800, campo: 2, data: ctx.iso, ora: '18:00',
+      });
+      checks.push({ label: 'voidPayment risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.void.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-payment-void chiamata', ok: got });
+      const vp = CAPTURED.void[0];
+      checks.push({ label: 'payload {idReserva,idCliente,playerName}', ok: !!vp && vp.body && vp.body.idReserva === 'R777' && vp.body.idCliente === 'C1' && vp.body.playerName === 'Mario Rossi' });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.void.length === 1 });
+      checks.push({ label: 'giocatore NON più pagato (storno ottimistico)', ok: H.isPaid(ctx.iso, 2, '18:00', 'Mario Rossi') === false });
+      checks.push({ label: 'metodo sparito con lo storno', ok: H.paidMethodsLabel(ctx.iso, 2, '18:00', 'Mario Rossi') === '' });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 40, flow: 'Pagamenti', name: 'storno RIFIUTATO → resta pagato + nessun retry',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      H.paidIndexAdd(ctx.iso, 3, '19:00', 'Luca Bianchi', 'card', 1200);
+      VOID_NEXT = { reject: true, body: { ok: false, message: 'STORNO_RIFIUTATO' } };
+      const checks = [];
+      const res = await H.voidPayment({
+        idReserva: 'R888', idCliente: 'C9', idx: '1', playerName: 'Luca Bianchi',
+        importoCents: 1200, campo: 3, data: ctx.iso, ora: '19:00',
+      });
+      checks.push({ label: 'voidPayment risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.void.length === 1 });
+      checks.push({ label: 'giocatore RESTA pagato dopo rifiuto storno', ok: H.isPaid(ctx.iso, 3, '19:00', 'Luca Bianchi') === true });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 41, flow: 'Pagamenti', name: 'storno borsellino TOTALE OK → edge wallet-correct {idInterno,subtractCents} + cache a 0',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { balanceCentsPost: 0 } };
+      const checks = [];
+      const res = await H.voidWallet({ memberId: '', idInterno: '137', playerName: 'Maurizia Prea', subtractCents: 300, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.correct.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-wallet-correct chiamata', ok: got });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload {idInterno:137, subtractCents:300}', ok: !!cp && cp.body && cp.body.idInterno === '137' && cp.body.subtractCents === 300 });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('137');
+      checks.push({ label: 'cache saldo aggiornata a 0', ok: !!wc && wc.balance_cents === 0 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 42, flow: 'Pagamenti', name: 'storno borsellino PARZIALE OK → subtractCents parziale + cache = resto worker',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { balanceCentsPost: 200 } };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '141', playerName: 'Maurizia Prea', subtractCents: 100, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload subtractCents=100 (parziale)', ok: !!cp && cp.body && cp.body.subtractCents === 100 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('141');
+      checks.push({ label: 'cache saldo = 200 (resto dal worker)', ok: !!wc && wc.balance_cents === 200 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 43, flow: 'Pagamenti', name: 'storno borsellino RIFIUTATO → ok:false + una sola chiamata (no retry)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { reject: true, status: 409, body: { ok: false, message: 'WALLET_CORRECTION_DIALOG_NON_MAPPATO' } };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '150', playerName: 'Maurizia Prea', subtractCents: 100, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.correct.length === 1 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 44, flow: 'Pagamenti', name: 'storno borsellino > saldo → bloccato in app, edge NON chiamata',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.voidWallet({ idInterno: '160', playerName: 'Maurizia Prea', subtractCents: 500, currentCents: 300 });
+      checks.push({ label: 'voidWallet risolve ok:false (EXCEEDS_BALANCE)', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge NON chiamata (guardia lato app)', ok: CAPTURED.correct.length === 0 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 45, flow: 'Pagamenti', name: 'ricarica borsellino OK → edge wallet-correct {idInterno,addCents} + cache = saldo post worker',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { op: 'recharge', balanceCentsPost: 1300 } };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '170', playerName: 'Maurizia Prea', addCents: 1000, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:true', ok: !!(res && res.ok === true) });
+      const got = await waitFor(() => CAPTURED.correct.length > 0, 3000);
+      checks.push({ label: 'edge matchpoint-wallet-correct chiamata', ok: got });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload {idInterno:170, addCents:1000} e NESSUN subtractCents', ok: !!cp && cp.body && cp.body.idInterno === '170' && cp.body.addCents === 1000 && cp.body.subtractCents == null });
+      checks.push({ label: 'una sola chiamata (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('170');
+      checks.push({ label: 'cache saldo = 1300 (post dal worker)', ok: !!wc && wc.balance_cents === 1300 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 46, flow: 'Pagamenti', name: 'ricarica borsellino da saldo 0 OK → cache = current+add (fallback locale senza saldo post)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true, body: { op: 'recharge' } }; // worker non torna balanceCentsPost → calcolo locale
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '171', playerName: 'Maurizia Prea', addCents: 2000, currentCents: 0 });
+      checks.push({ label: 'rechargeWallet risolve ok:true (anche da borsellino vuoto)', ok: !!(res && res.ok === true) });
+      const cp = CAPTURED.correct[0];
+      checks.push({ label: 'payload addCents=2000', ok: !!cp && cp.body && cp.body.addCents === 2000 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('171');
+      checks.push({ label: 'cache saldo = 2000 (0+2000, fallback locale)', ok: !!wc && wc.balance_cents === 2000 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 47, flow: 'Pagamenti', name: 'ricarica borsellino RIFIUTATA (mismatch) → ok:false + una sola chiamata (no retry)',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { reject: true, status: 409, body: { ok: false, code: 'CORRECTION_RESULT_MISMATCH', message: 'Saldo dopo correzione ≠ atteso' } };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '172', playerName: 'Maurizia Prea', addCents: 1000, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:false', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge chiamata una sola volta (no retry)', ok: CAPTURED.correct.length === 1 });
+      const wc = win.__pmoWalletCache && win.__pmoWalletCache.get('172');
+      checks.push({ label: 'cache saldo NON aggiornata su rifiuto', ok: !wc });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 48, flow: 'Pagamenti', name: 'ricarica importo non valido (≤0) → bloccata in app, edge NON chiamata',
+    run: async (win, H, ctx) => {
+      H.setPayHarness(true);
+      CORRECT_NEXT = { ok: true };
+      const checks = [];
+      const res = await H.rechargeWallet({ idInterno: '173', playerName: 'Maurizia Prea', addCents: 0, currentCents: 300 });
+      checks.push({ label: 'rechargeWallet risolve ok:false (INVALID_AMOUNT)', ok: !!(res && res.ok === false) });
+      checks.push({ label: 'edge NON chiamata (guardia lato app)', ok: CAPTURED.correct.length === 0 });
+      H.setPayHarness(false);
+      return checks;
+    }
+  },
+  {
+    id: 52, flow: 'Giocatore/Pattern', name: 'handle: SCHEDA APERTA (Campo 4) + "mi aggiungi 3 ospiti alla partita" (cifra) → aggiunge 3 Ospite alla scheda aperta, NON legge "3" come Campo 3',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Regressione bug live 02/07: la cifra "3" di «3 ospiti» veniva letta come «campo 3» dall'euristica
+      // telegrafica in _campoX → _sameCourt falliva (scheda su Campo 4) → cadeva nella disambiguazione
+      // «Quale prenotazione?» elencando i Campi 3. La scheda è su Campo 4 apposta: se il numero tornasse
+      // a essere letto come campo, il target sarebbe Campo 3 e questo caso fallirebbe.
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-2100', campo: '4', ora: '21:00', oraFine: '22:30', giocatori: [{ nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      // 1) il parse NON deve impostare campo (la cifra è una quantità di ospiti, non un campo)
+      const r = win.PMOAi.parse('mi aggiungi 3 ospiti alla partita');
+      checks.push({ label: 'parse: NESSUN campo dedotto da "3 ospiti"', ok: !r || r.campo == null });
+      // 2) scheda aperta su Campo 4 → il comando aggiunge alla scheda aperta (no domanda "quale prenotazione?")
+      await openCard(H, iso, 4, '21:00', 90, 'partita');
+      await handleSeq(win, ['mi aggiungi 3 ospiti alla partita', 'sì']);
+      const pushed = await waitFor(() => editSavePushes()[0], 5000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato sul Campo 4 (scheda aperta)', ok: !!pushed && String(pushed.body.campo).replace(/\D/g, '') === '4' });
+      const addOsp = (pushed && pushed.body.players && Array.isArray(pushed.body.players.add)) ? pushed.body.players.add.filter(p => /ospite/i.test(p.nome)).length : 0;
+      checks.push({ label: 'players.add con TRE Ospite', ok: addOsp === 3 });
+      checks.push({ label: 'NON ha chiesto "quale prenotazione" (no disambiguazione)', ok: !/quale prenotazione/i.test(chatTranscript(win)) });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 4, '21:00').match(/Ospite/gi) || []).length === 4, 3000);
+      checks.push({ label: 'roster locale Campo 4: 1 → 4 Ospiti (+3)', ok: ok2 });
+      return checks;
+    }
+  },
+  {
+    id: 53, flow: 'Giocatore/Pattern', name: 'handle: "mi aggiungi tre ospiti" (NESSUNA scheda aperta) → chiede "a quale prenotazione?", MAI "iscrivo come nuovo socio" (un Ospite non è un socio)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07: senza scheda aperta, "aggiungi N ospiti" cadeva nella domanda socio/giocatore
+      // ("lo iscrivo come nuovo socio?") — assurda per un Ospite (socio jolly ID 000001, MAI un nuovo
+      // nominativo). Deve invece chiedere DRITTO "a quale prenotazione?" elencando quelle del giorno.
+      H.resetCard();  // garantisci NESSUNA scheda aperta (l'iframe è condiviso tra i casi)
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-0830', campo: '4', ora: '08:30', oraFine: '10:00', giocatori: [{ nome: 'Ospite' }] })]);
+      setCalDay(win, iso);
+      const checks = [];
+      await win.PMOAi.handle('mi aggiungi tre ospiti'); await sleep(200);
+      const tx = chatTranscript(win);
+      checks.push({ label: 'NON ha proposto "iscrivo/nuovo socio"', ok: !/nuovo socio/i.test(tx) && !/iscriv/i.test(tx) });
+      checks.push({ label: 'ha chiesto "a quale prenotazione"', ok: /quale prenotazione/i.test(tx) });
+      checks.push({ label: 'elenca la prenotazione Campo 4 · 08:30', ok: /08:30/.test(tx) && /Campo\s*4/i.test(tx) });
+      if (!/quale prenotazione/i.test(tx) || /nuovo socio/i.test(tx)) ctx.diag['53'] = tx;
+      return checks;
+    }
+  },
+  {
+    id: 54, flow: 'Giocatore/Pattern', name: 'handle: SCHEDA APERTA (C4, 4 Ospiti) + "mi levi due ospiti a questa partita" → toglie 2 dalla scheda aperta, NON chiede "quale prenotazione"',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07 (inverso dell'aggiunta): con la parola "partita" nel comando, il guard
+      // _wholeBooking marcava «leva due ospiti a questa partita» come annullo-intero → saltava la
+      // scheda aperta e cadeva nella disambiguazione «Quale prenotazione vuoi togliere due ospiti da?».
+      // Gli ospiti sono giocatori: deve toglierne 2 dalla scheda già aperta, senza chiedere.
+      H.resetCard();
+      H.setBookings([bookingFixture(iso, { id: 'sb-' + iso + '-c4-0800', campo: '4', ora: '08:00', oraFine: '09:30', giocatori: [{ nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }, { nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      const checks = [];
+      await openCard(H, iso, 4, '08:00', 90, 'partita');
+      await handleSeq(win, ['mi levi due ospiti a questa partita']);
+      const pushed = await waitFor(() => editSavePushes()[0], 5000).then(() => editSavePushes()[0]).catch(() => null);
+      checks.push({ label: 'worker EDIT inviato sul Campo 4 (scheda aperta)', ok: !!pushed && String(pushed.body.campo).replace(/\D/g, '') === '4' });
+      checks.push({ label: 'payload players.remove con DUE Ospite', ok: !!pushed && pushed.body.players && Array.isArray(pushed.body.players.remove) && pushed.body.players.remove.filter(n => /ospite/i.test(n)).length === 2 });
+      checks.push({ label: 'NON ha chiesto "quale prenotazione" (no disambiguazione)', ok: !/quale prenotazione/i.test(chatTranscript(win)) });
+      const ok2 = await waitFor(() => (namesOf(H.getBookings(), iso, 4, '08:00').match(/Ospite/gi) || []).length === 2, 3000);
+      checks.push({ label: 'roster locale Campo 4: 4 → 2 Ospiti (-2)', ok: ok2 });
+      if (!pushed || /quale prenotazione/i.test(chatTranscript(win))) ctx.diag['54'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    id: 55, flow: 'Cancel', name: '⭐⭐ annullo con TIMEOUT edge ("idle timeout 150s") → va a GUARDARE su Matchpoint, e se lì non c\'è più l\'annullo era passato (v6.150)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Bug live 03/07: l'edge Supabase supera il suo idle-timeout (worker in coda) e torna
+      // "Request idle timeout limit (150s) reached" come ERRORE, ma il worker completa l'annullo
+      // LO STESSO poco dopo. Prima l'app ripristinava alla cieca → app mostra la prenotazione, MP
+      // no → FANTASMA. Ora un errore di timeout NON deve ripristinare. (Contrasto col caso 2, dove
+      // SLOT_OCCUPATO è un rifiuto vero → ripristina.)
+      // ⭐⭐ v6.150: il timeout non si conclude più a naso — si VA A GUARDARE. E qui la polarità è
+      // ROVESCIATA rispetto alla prenotazione: se su Matchpoint la prenotazione NON c'è più, vuol
+      // dire che l'annullamento È passato, e allora sì che la card si toglie.
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
+      LOOK_NEXT = { body: { ok: false, message: 'PRENOTAZIONE_NON_TROVATA' } };
+      const c0 = chatCount(win);
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      const got = await waitFor(() => workerPushes('cancel').length > 0, 4000);
+      checks.push({ label: '🚨 base: la cancel è USCITA davvero', ok: got });
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '⭐⭐ sul timeout è andato a GUARDARE, non ha tirato a indovinare', ok: guardato });
+      const sparita = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 6000);
+      checks.push({ label: '⭐⭐ su Matchpoint non c\'è più ⇒ l\'annullo era passato ⇒ la card si toglie', ok: sparita });
+      checks.push({ label: 'e non ha detto «non riuscito»', ok: !/Annullamento non riuscito/i.test(chatSince(win, c0)) });
+      return checks;
+    }
+  },
+  {
+    id: 82, flow: 'Cancel', name: '⭐⭐ CONTROLLO OPPOSTO del 55: se andando a guardare la prenotazione c\'è ANCORA, l\'annullo NON è passato e la card resta',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Senza questo caso il 55 sarebbe verde anche se la card sparisse comunque dopo un timeout —
+      // cioè se avessi solo rimesso il vecchio «togli e spera».
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
+      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }] } } };
+      const c0 = chatCount(win);
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '🚨 base: è andato a guardare', ok: guardato });
+      const detto = await waitFor(() => /c'è ancora|non è passato/i.test(chatSince(win, c0)), 6000);
+      checks.push({ label: '⭐⭐ dice che su Matchpoint c\'è ancora, quindi non è stata annullata', ok: detto });
+      checks.push({ label: '⭐⭐ e la card è rimasta sul calendario', ok: findBooking(H.getBookings(), iso, 2, '18:00').length > 0 });
+      return checks;
+    }
+  },
+  {
+    id: 56, flow: 'Giocatori', name: '⭐⭐ edit con TIMEOUT edge → va a GUARDARE su Matchpoint, e se Anna c\'è la aggiunge (v6.150)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
+      // Su Matchpoint la modifica era passata davvero: la lettura di verifica trova Anna.
+      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }, { nome: 'Anna Verdi' }] } } };
+      const c0 = chatCount(win);
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: '🚨 base: la modifica è USCITA davvero', ok: editSavePushes().length > 0 });
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '⭐⭐ sul timeout è andato a GUARDARE invece di indovinare', ok: guardato });
+      const added = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 8000);
+      checks.push({ label: '⭐⭐ Anna entra nel roster solo DOPO la verifica', ok: added });
+      checks.push({ label: 'e non ha detto «Modifica non riuscita»', ok: !/Modifica non riuscita/i.test(chatSince(win, c0)) });
+      return checks;
+    }
+  },
+  {
+    // Regressione bug PROD v6.073: al riepilogo "annullo questa?" l'utente conferma con «Sì annulla»
+    // (o «annulla» secco) e l'assistente rispondeva «non ho annullato nulla». Causa: la guardia
+    // conferma generica trattava "annulla" come parola di USCITA (canon→no); per 'cancella' "annulla"
+    // È invece la conferma. La «sì» accentata non salvava (il \b dopo "ì" non è confine di parola).
+    id: 57, flow: 'Routing/Cancel', name: 'handle: "annulla la partita…" poi conferma con «Sì annulla» → annulla davvero (non "non ho annullato nulla")',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso)]);
+      setCalDay(win, iso);
+      WORKER_NEXT = { ok: true };
+      await handleSeq(win, ['annulla la partita di campo 2 di domani alle 18', 'Sì annulla']);
+      const checks = [];
+      const gone = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 4000);
+      const pushed = await waitFor(() => workerPushes('cancel').length > 0, 2000);
+      checks.push({ label: 'booking annullata (conferma "Sì annulla" letta come sì)', ok: gone });
+      checks.push({ label: 'worker cancel inviato', ok: pushed });
+      checks.push({ label: 'NON dice "non ho annullato nulla"', ok: !/non ho annullato nulla/i.test(chatTranscript(win)) });
+      if (!gone || !pushed) ctx.diag['57'] = chatTranscript(win);
+      return checks;
+    }
+  },
+  {
+    // Regressione: «Sincronizza dati locali» ripubblicava TUTTO lo storico locale con deleted:false,
+    // quindi un browser con la copia vecchia rimetteva nel cloud le righe che l'import aveva ritirato
+    // (134 il 21/07) → disfaceva la riconciliazione. Ora quali siano lo dice il cloud e si saltano.
+    // ⚠️ Si prova pmoHistoryUploadRecords e NON pmoBuildCloudRecordsFromLocalState: là il blocco sta
+    // sotto `if (!PMO_IS_TEST_ENV)` e questo harness carica l'app con ?env=test, quindi un controllo
+    // di lì sarebbe CIECO — passerebbe identico col fix e senza, non misurando nulla.
+    id: 60, flow: 'Cloud/Storico', name: 'sync locale→cloud: le righe RITIRATE dal cloud non vengono ripubblicate (niente resurrezione)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      checks.push({ label: 'pmoHistoryUploadRecords raggiungibile dall\'harness', ok: typeof win.pmoHistoryUploadRecords === 'function' });
+      if (typeof win.pmoHistoryUploadRecords !== 'function') return checks;
+      // Date del 2027: fuori dai dati veri, così il caso non dipende da cosa c'è in archivio.
+      const rows = [
+        { numero:'9001', data:'2027-03-01', ora:'18:00', campo:'Campo 1', giocatore:'Tizio Prova',      durata:'1.5' },
+        { numero:'9002', data:'2027-03-01', ora:'19:30', campo:'Campo 2', giocatore:'Caio Prova',       durata:'1'   },
+        { numero:'9003', data:'2027-03-02', ora:'21:00', campo:'Campo 3', giocatore:'Sempronio Prova',  durata:'2'   }
+      ];
+      const kRitirata = 'history|9002|2027-03-01|19:30|Campo 2|Caio Prova|1';
+      const out = win.pmoHistoryUploadRecords(rows, new Set([kRitirata]));
+      const keys = out.map(r => r.local_key);
+      checks.push({ label: 'la riga ritirata NON viene caricata', ok: !keys.includes(kRitirata) });
+      checks.push({ label: 'le altre due salgono comunque', ok: keys.length === 2
+        && keys.includes('history|9001|2027-03-01|18:00|Campo 1|Tizio Prova|1.5')
+        && keys.includes('history|9003|2027-03-02|21:00|Campo 3|Sempronio Prova|2') });
+      checks.push({ label: 'la riga ritirata si SALTA, non si ricarica come tombstone', ok: out.every(r => r.deleted === undefined) });
+      // Il Set arriva da un'altra finestra (questo harness), come nel test: se il riconoscimento
+      // tornasse a `instanceof Set` il filtro salterebbe in silenzio e questo caso lo becca.
+      const conLista = win.pmoHistoryUploadRecords(rows, [kRitirata]);
+      checks.push({ label: 'accetta anche una lista di chiavi, non solo un Set', ok: conLista.length === 2 });
+      return checks;
+    }
+  },
+  {
+    // ⭐ Taratura: sorveglia l'errore OPPOSTO al 60 — filtrare quando non si deve. Il pulsante
+    // «Sincronizza dati locali» compare proprio quando il cloud è VUOTO (primo popolamento): lì non
+    // c'è niente di ritirato e TUTTO deve salire.
+    // I due casi discriminano in direzioni opposte, verificato sabotando il codice apposta:
+    //   · filtro disattivato               → 60 ROSSO, 61 verde
+    //   · `||` invece di `&&` nella guardia → 60 verde, 61 ROSSO  (il ramo «nessun elenco passato»)
+    // Da solo nessuno dei due basta. Nota: un fix che non pubblicasse MAI lo storico farebbe
+    // fallire anche il 60 (che pretende le altre due righe), quindi non è quello il buco coperto qui.
+    id: 61, flow: 'Cloud/Storico', name: 'primo popolamento (cloud senza ritiri): TUTTE le righe salgono — taratura opposta al caso 60',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoHistoryUploadRecords !== 'function') return [{ label: 'pmoHistoryUploadRecords assente', ok: false }];
+      const rows = [
+        { numero:'9001', data:'2027-03-01', ora:'18:00', campo:'Campo 1', giocatore:'Tizio Prova',     durata:'1.5' },
+        { numero:'9002', data:'2027-03-01', ora:'19:30', campo:'Campo 2', giocatore:'Caio Prova',      durata:'1'   },
+        { numero:'9003', data:'2027-03-02', ora:'21:00', campo:'Campo 3', giocatore:'Sempronio Prova', durata:'2'   }
+      ];
+      checks.push({ label: 'cloud vuoto (Set senza chiavi): salgono tutte e 3', ok: win.pmoHistoryUploadRecords(rows, new Set()).length === 3 });
+      // Nessun elenco passato = nessun filtro: è la strada del conteggio «Record locali pronti».
+      checks.push({ label: 'nessun elenco passato: salgono tutte e 3', ok: win.pmoHistoryUploadRecords(rows, undefined).length === 3 });
+      checks.push({ label: 'una chiave che non c\'entra non toglie niente', ok: win.pmoHistoryUploadRecords(rows, new Set(['history|0000|2027-01-01|10:00|Campo 9|Nessuno|1'])).length === 3 });
+      return checks;
+    }
+  },
+  {
+    // Il collegamento, non più la sola regola: pmoUploadLocalDataToCloud deve CHIEDERE al cloud i
+    // ritiri PRIMA di caricare. Se quella lettura fallisce non si carica niente — meglio un sync
+    // non fatto che uno che resuscita. Le due metà si tarano a vicenda: da sola «zero caricamenti»
+    // passerebbe anche con la funzione rotta del tutto, quindi accanto c'è il caso che DEVE caricare.
+    id: 62, flow: 'Cloud/Storico', name: 'sync locale→cloud: lettura dei ritiri fallita → NON carica niente (fallisce chiuso); lettura ok → carica',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoUploadLocalDataToCloud !== 'function') return [{ label: 'pmoUploadLocalDataToCloud assente', ok: false }];
+      CLOUD_READ_FAIL = true;
+      await win.pmoUploadLocalDataToCloud();
+      checks.push({ label: 'lettura dei ritiri fallita → NESSUN upsert partito', ok: CAPTURED.cloud.length === 0 });
+      CLOUD_READ_FAIL = false;
+      await win.pmoUploadLocalDataToCloud();
+      checks.push({ label: 'controllo opposto: con la lettura ok il caricamento parte davvero', ok: CAPTURED.cloud.length > 0 });
+      return checks;
+    }
+  },
+  {
+    // Il verso opposto del 60: non «cosa non far salire» ma «cosa togliere da questo browser».
+    // 🚨 Il caso esiste per una trappola precisa: locale e cloud NON usano la stessa chiave —
+    // ora, campo e durata stanno solo in quella del cloud. Una prenotazione SPOSTATA e quindi due
+    // chiavi cloud (vecchia ritirata + nuova viva) ma UNA sola riga qui. Un fix scritto come «togli
+    // tutte le chiavi ritirate» avrebbe cancellato 48 righe VERE su PROD, in silenzio.
+    id: 63, flow: 'Cloud/Storico', name: 'potatura fantasmi: si toglie solo cio che il cloud ha ritirato E che non ha una gemella viva',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      checks.push({ label: 'pmoHistoryGhostRowsToDrop raggiungibile dall\'harness', ok: typeof win.pmoHistoryGhostRowsToDrop === 'function' });
+      if (typeof win.pmoHistoryGhostRowsToDrop !== 'function' || typeof win.bookingKey !== 'function') return checks;
+      // La PREMESSA della trappola, verificata e non affermata: due righe che differiscono per
+      // ora e campo hanno la STESSA chiave locale. Se un giorno smettesse di essere vero, il
+      // guardiano qui sotto misurerebbe un'altra cosa e questo check lo direbbe.
+      checks.push({ label: 'premessa: spostare ora/campo NON cambia la chiave locale', ok:
+        win.bookingKey({ numero:'9102', giocatore:'Bruno Prova', data:'2027-04-01', ora:'19:30', campo:'Campo 2' })
+        === win.bookingKey({ numero:'9102', giocatore:'Bruno Prova', data:'2027-04-01', ora:'21:00', campo:'Campo 5' }) });
+      // Date del 2027: fuori dai dati veri, il caso non dipende da cosa c'e in archivio.
+      const A = { numero:'9101', data:'2027-04-01', ora:'18:00', campo:'Campo 1', giocatore:'Anna Prova',  durata:'1' };
+      const B = { numero:'9102', data:'2027-04-01', ora:'19:30', campo:'Campo 2', giocatore:'Bruno Prova', durata:'1' };
+      const C = { numero:'9103', data:'2027-04-02', ora:'20:00', campo:'Campo 3', giocatore:'Carla Prova', durata:'1' };
+      const D = { numero:'9104', data:'2027-04-03', ora:'21:00', campo:'Campo 4', giocatore:'Dario Prova', durata:'1' };
+      const retired = new Set([
+        'history|9101|2027-04-01|18:00|Campo 1|Anna Prova|1',   // A: fantasma vero
+        'history|9102|2027-04-01|19:30|Campo 2|Bruno Prova|1'   // B: la versione VECCHIA di una spostata
+      ]);
+      // Solo B ha una gemella viva: il cloud l'ha rimandata con altra ora/campo, stessa chiave locale.
+      const live = new Set([win.bookingKey(B)]);
+      const out = win.pmoHistoryGhostRowsToDrop([A, B, C, D], retired, live);
+      checks.push({ label: 'la riga ritirata SENZA gemella viva viene tolta', ok: out.drop.includes(A) });
+      checks.push({ label: '🚨 la riga SPOSTATA (ritirata ma con gemella viva) RESTA', ok: !out.drop.includes(B) });
+      checks.push({ label: 'una riga che il cloud non ha ritirato resta', ok: !out.drop.includes(C) });
+      checks.push({ label: 'una riga che il cloud non conosce affatto resta', ok: !out.drop.includes(D) });
+      checks.push({ label: 'in tutto cade una riga sola', ok: out.drop.length === 1 && out.blocked === false });
+      // Il Set arriva da un'altra finestra: con `instanceof` il filtro salterebbe in silenzio.
+      const conListe = win.pmoHistoryGhostRowsToDrop([A, B, C, D], [...retired], [...live]);
+      checks.push({ label: 'accetta anche liste al posto dei Set (realm diversi)', ok: conListe.drop.length === 1 && conListe.drop[0] === A });
+      return checks;
+    }
+  },
+  {
+    // ⭐ Taratura: sorveglia l'errore OPPOSTO al 63 — potare quando non si deve. Verificato
+    // sabotando il codice apposta:
+    //   · guardia «gemella viva» tolta      → 63 ROSSO (cade anche B), 64 verde
+    //   · elenco assente trattato come Set vuoto senza uscire → 63 verde, 64 ROSSO
+    //   · freno tolto                        → 63 verde, 64 ROSSO (l'ultimo check)
+    // Il ramo «elenco assente» e quello che protegge la lettura fallita: senza, un cloud
+    // irraggiungibile diventerebbe «nessuna chiave ritirata»… che e diverso da «non lo so».
+    id: 64, flow: 'Cloud/Storico', name: 'potatura fantasmi: senza elenco non si tocca niente, e il freno ferma le potature di massa',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.pmoHistoryGhostRowsToDrop !== 'function') return [{ label: 'pmoHistoryGhostRowsToDrop assente', ok: false }];
+      const A = { numero:'9101', data:'2027-04-01', ora:'18:00', campo:'Campo 1', giocatore:'Anna Prova',  durata:'1' };
+      const B = { numero:'9102', data:'2027-04-01', ora:'19:30', campo:'Campo 2', giocatore:'Bruno Prova', durata:'1' };
+      const C = { numero:'9103', data:'2027-04-02', ora:'20:00', campo:'Campo 3', giocatore:'Carla Prova', durata:'1' };
+      const kA = 'history|9101|2027-04-01|18:00|Campo 1|Anna Prova|1';
+      checks.push({ label: 'lettura fallita (elenco assente): non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], null, new Set()).drop.length === 0 });
+      checks.push({ label: 'elenco non passato: non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], undefined, new Set()).drop.length === 0 });
+      checks.push({ label: 'cloud senza ritiri (Set vuoto): non cade niente', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set(), new Set()).drop.length === 0 });
+      checks.push({ label: 'una chiave ritirata che non c\'entra non tocca nessuno', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set(['history|0000|2027-01-01|10:00|Campo 9|Nessuno|1']), new Set()).drop.length === 0 });
+      // Controllo positivo accanto ai negativi: senza, «zero righe tolte» passerebbe anche a
+      // funzione morta del tutto.
+      checks.push({ label: 'controllo opposto: con una chiave che c\'entra la riga cade davvero', ok: win.pmoHistoryGhostRowsToDrop([A, B, C], new Set([kA]), new Set()).drop.length === 1 });
+      // Il freno, tarato su numeri sopra il pavimento assoluto (25). Archivio finto di 100 righe.
+      const molte = Array.from({ length: 100 }, (_, i) => ({
+        numero: '93' + String(i).padStart(2, '0'), data: '2027-06-01', ora: '18:00',
+        campo: 'Campo 1', giocatore: 'Giocatore ' + i, durata: '1'
+      }));
+      const primeNRitirate = n => new Set(molte.slice(0, n).map(r => `history|${r.numero}|2027-06-01|18:00|Campo 1|${r.giocatore}|1`));
+      const massa = win.pmoHistoryGhostRowsToDrop(molte, primeNRitirate(60), new Set());
+      checks.push({ label: 'freno: 60 righe su 100 = potatura di massa sospesa e segnalata', ok: massa.drop.length === 0 && massa.blocked === true });
+      // Taratura opposta del freno: appena sotto la soglia deve passare, altrimenti «blocked»
+      // sarebbe solo una funzione che dice sempre di no.
+      const sotto = win.pmoHistoryGhostRowsToDrop(molte, primeNRitirate(30), new Set());
+      checks.push({ label: 'controllo opposto: 30 su 100 passano, il freno non scatta', ok: sotto.drop.length === 30 && sotto.blocked === false });
+      // ⚠️ Il pavimento assoluto, che serve agli archivi piccoli: la sola quota li bloccherebbe
+      // per pochissime righe (trovato da questo banco, non a tavolino). I numeri sono scelti per
+      // DISCRIMINARE: con 10 righe la quota vale floor(10*0.4)=4, quindi 5 righe verrebbero
+      // frenate; col pavimento (25) passano. Con «1 riga su 3» il check sarebbe passato in
+      // entrambi i casi — verificato risabotando, non dedotto.
+      const piccolo = win.pmoHistoryGhostRowsToDrop(molte.slice(0, 10), primeNRitirate(5), new Set());
+      checks.push({ label: 'pavimento: 5 righe su 10 si potano lo stesso (la sola quota le fermerebbe)', ok: piccolo.drop.length === 5 && piccolo.blocked === false });
+      return checks;
+    }
+  },
+  {
+    // Il collegamento, non piu la sola regola: applyHistoricalBookingsToLocal deve davvero togliere
+    // le righe dall'archivio di questo browser. Riproduce la trappola END-TO-END: la riga spostata
+    // arriva dal cloud con ora/campo NUOVI ma fuori dalla finestra autorevole, quindi in locale
+    // resta con i dati VECCHI — cioe con la chiave cloud RITIRATA. Deve sopravvivere lo stesso.
+    id: 65, flow: 'Cloud/Storico', name: 'potatura fantasmi collegata: applyHistoricalBookingsToLocal toglie il fantasma e salva la spostata',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (typeof win.applyHistoricalBookingsToLocal !== 'function') return [{ label: 'applyHistoricalBookingsToLocal assente', ok: false }];
+      const fantasma = { numero:'9201', data:'2027-05-01', ora:'18:00', campo:'Campo 1', giocatore:'Elsa Prova',  durata:'1' };
+      const spostataVecchia = { numero:'9202', data:'2027-05-01', ora:'19:30', campo:'Campo 2', giocatore:'Fabio Prova', durata:'1' };
+      const spostataNuova   = { numero:'9202', data:'2027-05-01', ora:'21:00', campo:'Campo 5', giocatore:'Fabio Prova', durata:'1' };
+      // 1) Le due righe sono in archivio. Senza elenco di ritiri non deve cadere niente.
+      // ⚠️ Si guarda la PRESENZA, non `newRows`: questo caso scrive nell'archivio vero dell'app e
+      // il seed non lo azzera fra un giro e l'altro, quindi al secondo giro il fantasma e gia stato
+      // potato e la spostata e gia li — `newRows` varrebbe 1 e non 2. Cosi com'e il caso e
+      // idempotente: parte e finisce sempre con la sola spostata in archivio.
+      const primo = win.applyHistoricalBookingsToLocal([fantasma, spostataVecchia], { source:'test' });
+      const dopoPrimo = typeof win.safeLoad === 'function' ? win.safeLoad('storicoPrenotazioni', []) : [];
+      const c1 = dopoPrimo.some(r => r && r.numero === '9201') && dopoPrimo.some(r => r && r.numero === '9202');
+      checks.push({ label: 'le due righe sono in archivio e senza elenco non si pota niente', ok: c1 && primo.ghostRows === 0 });
+      const totaleDopoPrimo = primo.totalAfter;
+      // 2) Ora il cloud rimanda SOLO la spostata, in versione nuova, e dichiara ritirate le chiavi
+      //    vecchie di entrambe. Nessuna finestra autorevole: e la strada della routine notturna.
+      const secondo = win.applyHistoricalBookingsToLocal([spostataNuova], {
+        source:'test',
+        retiredCloudKeys: new Set([
+          'history|9201|2027-05-01|18:00|Campo 1|Elsa Prova|1',
+          'history|9202|2027-05-01|19:30|Campo 2|Fabio Prova|1'
+        ])
+      });
+      checks.push({ label: 'cade una riga sola: il fantasma', ok: secondo.ghostRows === 1 });
+      checks.push({ label: 'l\'archivio si accorcia davvero di una riga', ok: secondo.totalAfter === totaleDopoPrimo - 1 });
+      checks.push({ label: 'il freno non e scattato', ok: secondo.ghostBlocked === false });
+      // La prova che la spostata e sopravvissuta: cercarla nell'archivio SALVATO, riletto con la
+      // funzione dell'app (`save` usa prefisso e codifica sue, il localStorage grezzo non basta).
+      // Cosi si prova anche che la potatura e finita su disco, non solo nella variabile in memoria.
+      const archivio = typeof win.safeLoad === 'function' ? win.safeLoad('storicoPrenotazioni', []) : [];
+      checks.push({ label: 'l\'archivio salvato e rileggibile', ok: Array.isArray(archivio) && archivio.length === secondo.totalAfter });
+      const restaSpostata = archivio.some(r => r && r.numero === '9202' && r.giocatore === 'Fabio Prova');
+      const restaFantasma = archivio.some(r => r && r.numero === '9201' && r.giocatore === 'Elsa Prova');
+      checks.push({ label: '🚨 la riga SPOSTATA e ancora in archivio', ok: restaSpostata });
+      checks.push({ label: 'il fantasma invece non c\'e piu', ok: !restaFantasma });
+      return checks;
+    }
+  },
+  {
+    id: 66, flow: 'Organizzatore', name: 'la REGOLA: primo giocatore della partita, e nient\'altro (solo Partite, mai Ospite, mai il secondo)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      const org = H.organizzatorePartita;
+      if (typeof org !== 'function') return [{ label: 'hook organizzatorePartita assente', ok: false }];
+      const quattro = [{ idx:'0', nome:'Andrea Foltran' }, { idx:'1', nome:'Gianmario Gri' }, { idx:'2', nome:'Mattia Biz' }, { idx:'3', nome:'Mauro Schincariol' }];
+      // Caso vero misurato sui Movimenti di Matchpoint (partita 9126): chi ha creato la
+      // prenotazione dalla app mobile e Foltran, ed e il primo dell'elenco.
+      const r1 = org('partita', quattro);
+      checks.push({ label: 'partita a 4: organizzatore = il PRIMO (Foltran)', ok: !!r1 && r1.nome === 'Andrea Foltran' });
+      // ⭐ Controllo negativo: NON deve essere il secondo. Senza questo, un\'implementazione che
+      // pesca una voce qualsiasi passerebbe il caso sopra per caso.
+      checks.push({ label: '⭐ NON e il secondo (Gri)', ok: !!r1 && r1.nome !== 'Gianmario Gri' });
+      checks.push({ label: 'torna la VOCE del roster, non una copia (confronto per identita)', ok: r1 === quattro[0] });
+      // 🚨 IL CASO STORTO MISURATO: su 34 lezioni future di PROD, in 5 il primo nome era il
+      // MAESTRO. Sua decisione del 29/07: l\'organizzatore vale SOLO per le Partite.
+      checks.push({ label: '🚨 LEZIONE: nessun organizzatore (in 5 su 34 il primo e il maestro)', ok: org('lezione', quattro) === null });
+      checks.push({ label: 'manutenzione: nessun organizzatore', ok: org('manutenzione', quattro) === null });
+      checks.push({ label: 'tipo sconosciuto: nessun organizzatore (fail closed)', ok: org('torneo', quattro) === null });
+      checks.push({ label: 'tipo assente: nessun organizzatore (fail closed)', ok: org(null, quattro) === null && org('', quattro) === null });
+      // «Ospite» non e una persona: non puo essere responsabile di niente.
+      checks.push({ label: 'primo = Ospite: nessun organizzatore', ok: org('partita', [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      checks.push({ label: 'primo = OSPITE maiuscolo: nessun organizzatore', ok: org('partita', [{ idx:'0', nome:'OSPITE' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      // 🚨 Riga illeggibile al posto 0: si dice «non lo so», NON si scala al secondo — perche
+      // scalare vorrebbe dire nominare la persona SBAGLIATA.
+      checks.push({ label: '🚨 primo con nome vuoto: NULL, non scala al secondo', ok: org('partita', [{ idx:'0', nome:'' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      checks.push({ label: 'primo con nome di soli spazi: NULL', ok: org('partita', [{ idx:'0', nome:'   ' }, { idx:'1', nome:'Vera Persona' }]) === null });
+      // Roster assente/vuoto: nessun organizzatore, e nessun errore.
+      checks.push({ label: 'roster vuoto: null', ok: org('partita', []) === null });
+      checks.push({ label: 'roster null/assente: null (niente eccezioni)', ok: org('partita', null) === null && org('partita') === null });
+      checks.push({ label: 'partita con UN solo giocatore: e lui', ok: (org('partita', [{ idx:'0', nome:'Jury Piovesan' }]) || {}).nome === 'Jury Piovesan' });
+      // Caso vero 8905: il primo entrato (Anna Quaglio) e USCITO ⇒ il primo dell\'elenco attuale
+      // e Borsoi, e il ruolo scala da se senza che nessuno intervenga.
+      const dopoUscita = [{ idx:'0', nome:'Stefano Borsoi' }, { idx:'1', nome:'Massimo Tonini' }];
+      checks.push({ label: '⭐ 8905: uscito il primo, il ruolo SCALA al successivo (Borsoi)', ok: (org('partita', dopoUscita) || {}).nome === 'Stefano Borsoi' });
+      return checks;
+    }
+  },
+  {
+    id: 67, flow: 'Organizzatore', name: 'il COLLEGAMENTO: la pastiglia compare nella scheda, UNA sola, sulla riga del primo',
+    run: async (win, H, ctx) => {
+      // ⭐ Questo caso esiste perche la regola giusta non basta: se nessuno GUARDA la scheda,
+      // togliere il pezzo che disegna la pastiglia lascerebbe tutti i test verdi e la
+      // pastiglia sparirebbe dallo schermo senza un rosso. Stessa forma del test su
+      // comandiDaRegistrare() del bot.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Mario Rossi', idCliente: '11' },
+        { idx: '1', nome: 'Luca Bianchi', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      checks.push({ label: 'la scheda disegna le due righe giocatori', ok: rows.length === 2 });
+      const conPastiglia = rows.filter(r => r.querySelector('.svc-pl-org'));
+      checks.push({ label: '🚨 la pastiglia c\'e, e ce n\'e UNA SOLA', ok: conPastiglia.length === 1 });
+      const nomeOrg = conPastiglia[0] ? String((conPastiglia[0].querySelector('.svc-pl-name') || {}).textContent || '') : '';
+      checks.push({ label: 'e sulla riga del PRIMO (Mario Rossi)', ok: /Mario Rossi/.test(nomeOrg) });
+      checks.push({ label: '⭐ la riga del secondo NON ce l\'ha', ok: !!rows[1] && !rows[1].querySelector('.svc-pl-org') });
+      // v6.132 — sua decisione: la parola «Organizzatore» non c'e piu, c'e SOLO la stellina.
+      // ⇒ il significato non sta piu nel testo visibile: lo portano `aria-label` (screen reader)
+      // e `title` (chi ci passa sopra). Sono l'unico testo rimasto, quindi si sorvegliano: senza,
+      // resta un segno che nessuno sa spiegare, e nessun altro test se ne accorgerebbe.
+      const segno = conPastiglia[0] ? conPastiglia[0].querySelector('.svc-pl-org') : null;
+      checks.push({ label: 'il segno e la STELLINA (ti-star)', ok: !!(segno && segno.querySelector('i.ti-star')) });
+      checks.push({ label: '🚨 e resta spiegato: aria-label + title dicono «Organizzatore»',
+        ok: !!segno && /Organizzatore/.test(String(segno.getAttribute('aria-label') || ''))
+                    && /Organizzatore/.test(String(segno.getAttribute('title') || '')) });
+      // ⭐ I NOMI RESTANO INCOLONNATI, e qui si sorveglia la CAUSA: il posto della stellina e
+      // riservato anche sulle righe di chi NON e organizzatore. Togliere quel posto vuoto fa
+      // slittare a destra il solo nome dell'organizzatore — l'effetto che gli aveva fatto
+      // scartare la pastiglia con la parola.
+      // 🚨 La misura GEOMETRICA (i due nomi partono dalla stessa x) e stata provata e QUI NON E
+      // MISURABILE: misurato che in questo banco le righe hanno larghezza ZERO (la scheda vive
+      // in un contenitore senza impaginazione) ⇒ `getBoundingClientRect().left` da 0 su tutte, e
+      // un confronto fra due zeri sarebbe verde con l'allineamento sano E con quello rotto. Si
+      // sorveglia la struttura, che invece e osservabile; la resa a schermo la giudica lui.
+      checks.push({ label: '⭐ il posto della stellina e riservato su OGNI riga (nomi incolonnati)',
+        ok: rows.length > 0 && rows.every(r => r.querySelectorAll('.svc-pl-org-slot').length === 1) });
+      // 🚨 …e il posto riservato NON BASTA: misurato che con `min-width:auto` (il valore di
+      // default dei flex item) il posto si allarga fino al glifo — stellina 21px contro un posto
+      // da 16 ⇒ il nome dell'organizzatore partiva 5px piu a destra. Il posto c'era su tutte le
+      // righe e i nomi erano comunque storti: il controllo strutturale qui sopra era VERDE.
+      // ⇒ si sorveglia la riga di stile che lo impedisce. Si legge dal CSSOM e non dal layout:
+      // il foglio di stile esiste anche con l'iframe a `display:none`, la geometria no.
+      // 🚨 Il `try` sta DENTRO il ciclo, uno per foglio: il primo della lista e quello delle
+      // icone servito dalla CDN, cioe un ALTRO dominio, e leggerne le regole solleva. Con un
+      // solo try intorno a tutto, quell'eccezione fermava la ricerca prima di arrivare al nostro
+      // foglio e la prova si dichiarava cieca (misurato: succedeva davvero).
+      const regola = (() => {
+        for (const ss of Array.from(win.document.styleSheets)) {
+          let rules = null;
+          try { rules = Array.from(ss.cssRules || []); } catch (e) { continue; } // foglio di altro dominio
+          for (const r of rules) {
+            if (r.selectorText === '.svc-pl-org-slot') return r.style;
+          }
+        }
+        return null;
+      })();
+      if (!regola) {
+        checks.push({ label: '⚠️ regola .svc-pl-org-slot NON TROVATA nel foglio di stile: questa prova non dice niente', ok: false });
+      } else {
+        checks.push({ label: '🚨 il posto ha min-width:0 (senza, il glifo lo allarga e i nomi si storgono)', ok: regola.minWidth === '0px' });
+        checks.push({ label: 'la larghezza del posto e FISSA in px', ok: /^\d+(\.\d+)?px$/.test(String(regola.flexBasis || '')) });
+      }
+      H.resetCard();
+      return checks;
+    }
+  },
+  {
+    id: 68, flow: 'Organizzatore', name: 'la scheda di una LEZIONE non mostra nessun organizzatore (il caso storto, nella scheda vera)',
+    run: async (win, H, ctx) => {
+      // Il gemello del 67 sulla strada che sbagliava: la funzione da sola potrebbe essere
+      // giusta e la scheda passarle il tipo sbagliato. Qui si guarda lo SCHERMO.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso, { tipo: 'lezione' })]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Santiago Carabajal', idCliente: '21' },
+        { idx: '1', nome: 'Allievo Uno', idCliente: '22' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'lezione');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      checks.push({ label: 'la scheda della lezione disegna i giocatori', ok: rows.length === 2 });
+      checks.push({ label: '🚨 NESSUNA pastiglia Organizzatore sulla lezione', ok: box.querySelectorAll('.svc-pl-org').length === 0 });
+      checks.push({ label: 'il primo (che qui e il maestro) non e marcato', ok: !!rows[0] && !rows[0].querySelector('.svc-pl-org') });
+      H.resetCard();
+      return checks;
+    }
+  },
+  {
+    id: 69, flow: 'Scheda', name: 'IL NOME HA LA RIGA TUTTA PER SE: i soldi stanno sotto, non accanto',
+    run: async (win, H, ctx) => {
+      // Nasce da un difetto che ha visto LUI sullo schermo, non i test: nel pannello stretto
+      // al nome restavano ~65px e la scheda mostrava «Andr ea…» — importo, storna e pulsanti
+      // gli rubavano la riga. Scelta sua (opzione A, 30/07): sulla riga del nome solo stato,
+      // stellina e ✕; i soldi sulla riga sotto. Senza questo caso, il giorno che qualcuno
+      // rimette l'importo accanto al nome nessun rosso lo direbbe.
+      const iso = ctx.iso;
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Andrea Foltran', idCliente: '11' },
+        { idx: '1', nome: 'Claudio Zambenedetti', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const checks = [];
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      const soldi = Array.from(box.querySelectorAll('.svc-pl-money'));
+      // 🚨 GUARDIA anti-cieco: se in questo giro i controlli di pagamento non si disegnano
+      // affatto, «nessun importo accanto al nome» e vero per il motivo sbagliato e il verde
+      // non misura niente (e la 6ª trappola: uno zero compatibile col meccanismo spento).
+      const controlli = box.querySelectorAll('.svc-pl-eur, .svc-pl-paid').length;
+      if (!controlli) {
+        checks.push({ label: '⚠️ nessun controllo di pagamento disegnato: questa prova non dice niente', ok: false });
+        H.resetCard();
+        return checks;
+      }
+      checks.push({ label: 'due righe nome, una per giocatore', ok: rows.length === 2 });
+      checks.push({ label: '🚨 sulla riga del NOME non ci sono soldi (ne importo, ne pastiglia pagato)',
+        ok: rows.length > 0 && rows.every(r => !r.querySelector('.svc-pl-eur') && !r.querySelector('.svc-pl-paid')) });
+      checks.push({ label: 'la ✕ resta sulla riga del nome (riguarda la persona)',
+        ok: rows.length > 0 && rows.every(r => !!r.querySelector('.svc-pl-iconbtn')) });
+      checks.push({ label: '⭐ ogni giocatore ha la sua riga dei soldi, sotto', ok: soldi.length === rows.length });
+      checks.push({ label: 'i soldi stanno DENTRO quella riga', ok: soldi.length > 0 && soldi.every(m => !!m.querySelector('.svc-pl-eur, .svc-pl-paid')) });
+      // ⭐ Il rientro non e un numero a mano: la riga dei soldi ripete i posti vuoti di sopra.
+      // Si contano i posti, non i pixel — la geometria in questo banco non e misurabile
+      // (iframe a display:none, larghezze a zero: misurato nel caso 67).
+      checks.push({ label: '⭐ il rientro e fatto ripetendo i posti vuoti della riga sopra',
+        ok: soldi.length > 0 && soldi.every(m => m.querySelectorAll('.svc-pl-lead').length === 1
+          && m.querySelectorAll('.svc-pl-org-slot').length === rows[0].querySelectorAll('.svc-pl-org-slot').length) });
+      H.resetCard();
+      return checks;
+    }
+  },
+  {
+    id: 70, flow: 'Organizzatore', name: 'la SEGRETERIA: primo «Ospite» ⇒ e della segreteria — e «non lo so» resta un\'ALTRA cosa',
+    run: async (win, H, ctx) => {
+      // Sua regola del 30/07 sera: «puo capitare una partita con 4 ospiti… l'organizzatore e la
+      // SEGRETERIA», perche e la segreteria ad APRIRE quel tipo di partita.
+      // 🚨 Il cuore di questo caso e la DISTINZIONE: prima «Ospite» e «nome illeggibile» davano
+      // lo stesso null, e da un null non si puo scrivere una frase diversa. Se un domani
+      // qualcuno li riunisce, la scheda tornera muta sulle partite del circolo senza un rosso.
+      const checks = [];
+      const ruolo = H.ruoloOrganizzatore;
+      const org = H.organizzatorePartita;
+      if (typeof ruolo !== 'function') return [{ label: 'hook ruoloOrganizzatore assente', ok: false }];
+      const conSocioDietro = [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Marco Rossi' }, { idx:'2', nome:'Ospite' }, { idx:'3', nome:'Ospite' }];
+      const tuttiOspiti = [{ idx:'0', nome:'Ospite' }, { idx:'1', nome:'Ospite' }, { idx:'2', nome:'Ospite' }, { idx:'3', nome:'Ospite' }];
+      const normale = [{ idx:'0', nome:'Andrea Foltran' }, { idx:'1', nome:'Gianmario Gri' }];
+      // 🚨 IL BORDO, deciso da LUI il 30/07: col primo Ospite e un SOCIO dietro la partita e
+      // della segreteria LO STESSO. L'alternativa scartata («il ruolo scala al primo socio»)
+      // non avrebbe cambiato solo le parole: avrebbe dato a quel socio il diritto di far
+      // sparire il campo agli altri tre.
+      checks.push({ label: '🚨 primo Ospite CON un socio dietro: e della SEGRETERIA (suo bordo)', ok: ruolo('partita', conSocioDietro).chi === 'segreteria' });
+      checks.push({ label: 'quattro Ospite: e della segreteria (il caso che ha detto lui)', ok: ruolo('partita', tuttiOspiti).chi === 'segreteria' });
+      checks.push({ label: 'OSPITE maiuscolo / con spazi: sempre segreteria', ok: ruolo('partita', [{ idx:'0', nome:'  OSPITE ' }]).chi === 'segreteria' });
+      // ⭐ Controllo negativo dello stesso confronto: «Ospite Rossi» e una PERSONA che si chiama
+      // cosi, non un posto vuoto. Senza, una ricerca sbagliata (`indexOf('ospite')`) passerebbe
+      // tutti i controlli qui sopra e toglierebbe il ruolo a un socio vero.
+      checks.push({ label: '⭐ «Ospite Rossi» e una PERSONA: resta giocatore', ok: ruolo('partita', [{ idx:'0', nome:'Ospite Rossi' }]).chi === 'giocatore' });
+      // ⭐ Controllo negativo: la partita normale NON deve diventare della segreteria.
+      const rn = ruolo('partita', normale);
+      checks.push({ label: '⭐ partita normale: chi = giocatore, ed e il PRIMO', ok: rn.chi === 'giocatore' && rn.voce === normale[0] });
+      // 🚨 LA DISTINZIONE CHE VALE: illeggibile ≠ segreteria. Dell'Ospite sappiamo che non e un
+      // socio; di un nome vuoto non sappiamo niente, e dire «e della segreteria» sarebbe
+      // un'affermazione inventata su una partita che magari ha un organizzatore vero.
+      checks.push({ label: '🚨 primo con nome VUOTO: «ignoto», NON segreteria', ok: ruolo('partita', [{ idx:'0', nome:'' }, { idx:'1', nome:'Marco Rossi' }]).chi === 'ignoto' });
+      checks.push({ label: 'primo di soli spazi: «ignoto», non segreteria', ok: ruolo('partita', [{ idx:'0', nome:'   ' }]).chi === 'ignoto' });
+      checks.push({ label: 'roster vuoto o assente: «ignoto»', ok: ruolo('partita', []).chi === 'ignoto' && ruolo('partita', null).chi === 'ignoto' });
+      // 🚨 Il filtro sul TIPO viene PRIMA di tutto: una lezione col primo Ospite non e «della
+      // segreteria», e una lezione — sua decisione del 29/07, l'organizzatore vale solo per le
+      // Partite. Senza questo controllo la regola nuova rientrerebbe dalla finestra sulle
+      // lezioni, che sono 34 su 88.
+      checks.push({ label: '🚨 LEZIONE col primo Ospite: «ignoto», il filtro sul tipo viene prima', ok: ruolo('lezione', tuttiOspiti).chi === 'ignoto' });
+      checks.push({ label: 'manutenzione / tipo sconosciuto: «ignoto»', ok: ruolo('manutenzione', tuttiOspiti).chi === 'ignoto' && ruolo('torneo', tuttiOspiti).chi === 'ignoto' });
+      // 🚨 IL POTERE NON CAMBIA, e qui si sorveglia: la segreteria non e una persona, quindi non
+      // c'e nessuna VOCE del roster da marcare e la porta storica deve continuare a dire null.
+      // Se un domani `voce` tornasse il primo Ospite, la stellina finirebbe su «Ospite» —
+      // esattamente cio che lui ha escluso.
+      checks.push({ label: '🚨 segreteria ⇒ nessuna voce da marcare (voce null)', ok: ruolo('partita', conSocioDietro).voce === null && ruolo('partita', tuttiOspiti).voce === null });
+      // ⚠️ MISURATO col sabotaggio 7 («la segreteria si porta dietro la voce del primo Ospite»):
+      // la porta storica restava NULL e la stellina compariva lo stesso, perche la scheda legge
+      // `voce` direttamente. ⇒ La riga qui sotto sorveglia il CONTRATTO della porta storica (la
+      // usano l'aggancio e il caso 66), NON l'assenza della stellina: quella la sorveglia il 71,
+      // ed e l'unico posto che l'ha vista cadere. L'etichetta prima diceva «⇒ nessuna stellina
+      // possibile», che e falso — un'implicazione sbagliata scritta dentro un test verde.
+      checks.push({ label: 'la porta storica (aggancio + caso 66) resta null', ok: org('partita', conSocioDietro) === null && org('partita', tuttiOspiti) === null });
+      checks.push({ label: '⭐ mentre sulla partita normale le due porte concordano', ok: org('partita', normale) === rn.voce });
+      return checks;
+    }
+  },
+  {
+    id: 71, flow: 'Organizzatore', name: 'il COLLEGAMENTO: la scheda SCRIVE «Organizzata dalla segreteria» (e non lo scrive dove non va)',
+    run: async (win, H, ctx) => {
+      // ⭐ Gemello del caso 67: la regola giusta non basta. Se nessuno guarda la SCHEDA, togliere
+      // le righe che disegnano la frase lascerebbe il caso 70 tutto verde e sullo schermo non
+      // comparirebbe niente — cioe esattamente il difetto che questo lavoro doveva togliere
+      // («il codice copre il potere, non le PAROLE»).
+      const iso = ctx.iso;
+      const checks = [];
+      // ── Parte 1: la partita del circolo (primo Ospite) ────────────────────────────────
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Ospite', idCliente: '90' },
+        { idx: '1', nome: 'Marco Rossi', idCliente: '91' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const st = H.getPlayersState();
+      const box = st && st.box;
+      if (!box) return [{ label: 'scheda non aperta', ok: false }];
+      const rows = Array.from(box.querySelectorAll('.svc-pl-row'));
+      // 🚨 GUARDIA anti-cieco: se la scheda non ha disegnato i giocatori, «la riga c'e» e «non
+      // c'e la stellina» sarebbero veri per il motivo sbagliato e questo giro non misurerebbe
+      // niente (e la 6ª trappola: uno zero compatibile col meccanismo spento).
+      if (rows.length !== 2) {
+        checks.push({ label: '⚠️ la scheda non ha disegnato i due giocatori: questa prova non dice niente', ok: false });
+        H.resetCard();
+        return checks;
+      }
+      const righeSeg = Array.from(box.querySelectorAll('.svc-pl-org-seg'));
+      checks.push({ label: '🚨 la riga c\'e, e ce n\'e UNA SOLA', ok: righeSeg.length === 1 });
+      // Il testo si confronta ESATTO: e la forma che ha scelto lui fra tre, non un'idea vicina.
+      checks.push({ label: 'dice esattamente «Organizzata dalla segreteria»',
+        ok: righeSeg.length === 1 && String(righeSeg[0].textContent || '').trim() === 'Organizzata dalla segreteria' });
+      // 🚨 Sta SOPRA i nomi: sotto sembrerebbe riferita all'ultimo giocatore.
+      checks.push({ label: '🚨 sta SOPRA l\'elenco dei nomi',
+        ok: righeSeg.length === 1 && !!rows[0] && (righeSeg[0].compareDocumentPosition(rows[0]) & 4) !== 0 });
+      // ── v6.135: la RESA, dopo la sua correzione «c'e ma e poco evidente» ──────────────
+      // La prima versione era testo grigio come le etichette di servizio, e lui non la vedeva.
+      // ⇒ L'icona e la fascia NON sono decorazione: sono la cosa che ha chiesto, e vanno
+      // sorvegliate come il testo. Senza queste righe, tornare al grigio smorto sarebbe verde.
+      checks.push({ label: '🚨 c\'e la CUFFIA, e il testo non ne risente',
+        ok: righeSeg.length === 1 && !!righeSeg[0].querySelector('i.ti-headset') });
+      // 🚨 La geometria qui NON e misurabile (iframe a display:none ⇒ larghezze zero, misurato
+      // nel caso 67): si sorveglia la REGOLA che produce la fascia, leggibile dal CSSOM anche
+      // senza impaginazione. Il `try` sta DENTRO il ciclo: il primo foglio e quello delle icone
+      // servito da un ALTRO dominio e leggerne le regole solleva.
+      const regolaSeg = (() => {
+        for (const ss of Array.from(win.document.styleSheets)) {
+          let rules = null;
+          try { rules = Array.from(ss.cssRules || []); } catch (e) { continue; }
+          for (const r of rules) if (r.selectorText === '.svc-pl-org-seg') return r.style;
+        }
+        return null;
+      })();
+      if (!regolaSeg) {
+        checks.push({ label: '⚠️ regola .svc-pl-org-seg NON TROVATA: questa prova non dice niente', ok: false });
+      } else {
+        checks.push({ label: '🚨 e una FASCIA a tutta larghezza (display:flex), non una riga di testo', ok: regolaSeg.display === 'flex' });
+        // 🚑 MISURATO: `backgroundColor` qui torna VUOTO anche con lo sfondo dichiarato, perche
+        // la scorciatoia `background: var(--accent-light)` contiene una VARIABILE e il browser
+        // non la scompone nelle proprieta lunghe. Il primo giro dava rosso su un codice sano:
+        // era lo strumento a guardare la proprieta sbagliata. Si legge la scorciatoia.
+        const sfondo = String(regolaSeg.background || regolaSeg.backgroundColor || '');
+        checks.push({ label: '🚨 ha uno SFONDO che la stacca dal resto', ok: !!sfondo && !/^(none|transparent)$/.test(sfondo) });
+        // ⭐ Controllo opposto: il colore NON dev'essere il verde dei pagamenti — li dentro il
+        // verde vuol gia dire «ha pagato», e lo stesso colore su due significati si legge male.
+        checks.push({ label: '⭐ il colore e l\'accento, NON il verde di «ha pagato»',
+          ok: /accent/.test(String(regolaSeg.color || '')) || /2563eb|37,\s*99,\s*235/.test(String(regolaSeg.color || '')) });
+      }
+      // 🚨 E nessuno prende la stellina — nemmeno l'«Ospite», che non e una persona, nemmeno il
+      // socio dietro (il bordo che ha deciso lui).
+      checks.push({ label: '🚨 NESSUNA stellina in tutta la scheda', ok: box.querySelectorAll('.svc-pl-org').length === 0 });
+      checks.push({ label: '⭐ e nessun posto riservato da compensare: i nomi restano incolonnati',
+        ok: box.querySelectorAll('.svc-pl-org-slot').length === 0 });
+      // ── Parte 2: IL CONTROLLO NEGATIVO, nello stesso giro ─────────────────────────────
+      // Senza, una riga scritta SEMPRE (o su ogni partita) passerebbe tutto quello di sopra.
+      H.resetCard();
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { body: { worker: { idReserva: 'R12345', partecipantiFinali: [
+        { idx: '0', nome: 'Andrea Foltran', idCliente: '11' },
+        { idx: '1', nome: 'Gianmario Gri', idCliente: '12' }
+      ] } } };
+      H.openCard(iso, 2, '18:00', '', 90, 'partita');
+      await waitFor(() => !!H.getPlayersState(), 3000);
+      await waitFor(() => { const s = H.getPlayersState(); return !!s && !s.rosterLoading; }, 8000);
+      const st2 = H.getPlayersState();
+      const box2 = st2 && st2.box;
+      if (!box2) return checks.concat([{ label: 'seconda scheda non aperta', ok: false }]);
+      checks.push({ label: '⭐ partita normale: la riga NON c\'e', ok: box2.querySelectorAll('.svc-pl-org-seg').length === 0 });
+      checks.push({ label: '⭐ …e li la stellina c\'e, UNA, sul primo', ok: box2.querySelectorAll('.svc-pl-org').length === 1 });
+      H.resetCard();
+      return checks;
+    }
+  },
+  {
+    id: 72, flow: 'Giocatori', name: '🚨⭐⭐ IL CASO DELL\'1/08: rete caduta DOPO l\'invio ⇒ va a GUARDARE, trova Anna su Matchpoint, e la mette (v6.150)',
     run: async (win, H, ctx) => {
       const iso = ctx.iso;
       H.setBookings([bookingFixture(iso)]);
@@ -1266,7 +2312,30 @@ const CASES = [
     }
   },
   {
-    id: 37, flow: 'Giocatori', name: '⭐ CONTROLLO OPPOSTO: stesso guasto, ma il telefono dichiara NESSUNA LINEA ⇒ esito NOTO, e non si va nemmeno a guardare',
+    id: 83, flow: 'Giocatori', name: '⭐⭐ CONTROLLO OPPOSTO del 72: se andando a guardare Anna su Matchpoint NON c\'è, non si aggiunge',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Senza questo caso il 72 sarebbe verde anche se l'app aggiungesse Anna SEMPRE dopo un
+      // esito ignoto — cioè se «vado a guardare» fosse una recita e la risposta non contasse.
+      H.setBookings([bookingFixture(iso)]);
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.add.push({ nome: 'Anna Verdi' });
+      WORKER_NEXT = { throw: true };
+      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }] } } };  // Anna NON c'è
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      const uscita = await waitFor(() => editSavePushes().length > 0, 4000);
+      checks.push({ label: '🚨 base: la richiesta è USCITA davvero', ok: uscita });
+      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
+      checks.push({ label: '🚨 base: è andato a guardare', ok: guardato });
+      // Si lascia il tempo di sbagliare, poi si guarda: Anna non deve esserci.
+      const comparsa = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 4000);
+      checks.push({ label: '⭐⭐ Anna NON viene aggiunta: su Matchpoint non risulta', ok: !comparsa });
+      return checks;
+    }
+  },
+  {
+    id: 73, flow: 'Giocatori', name: '⭐ CONTROLLO OPPOSTO: stesso guasto, ma il telefono dichiara NESSUNA LINEA ⇒ esito NOTO, e non si va nemmeno a guardare',
     run: async (win, H, ctx) => {
       const iso = ctx.iso;
       H.setBookings([bookingFixture(iso)]);
@@ -1302,7 +2371,7 @@ const CASES = [
   // modifica successiva. E qui c'è un appiglio che la modifica non aveva: il NUMERO del lavoro.
   // ══════════════════════════════════════════════════════════════════════════════════════
   {
-    id: 38, flow: 'Creazione', name: '🚨⭐⭐ create: rete caduta DOPO l\'invio ⇒ NON indovina, VA A GUARDARE su Matchpoint — e se lì c\'è, la card compare',
+    id: 74, flow: 'Creazione', name: '🚨⭐⭐ create: rete caduta DOPO l\'invio ⇒ NON indovina, VA A GUARDARE su Matchpoint — e se lì c\'è, la card compare',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1329,7 +2398,7 @@ const CASES = [
     }
   },
   {
-    id: 39, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: il gestionale RISPONDE un rifiuto ⇒ la card NON deve comparire',
+    id: 75, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: il gestionale RISPONDE un rifiuto ⇒ la card NON deve comparire',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1356,7 +2425,7 @@ const CASES = [
     }
   },
   {
-    id: 40, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: telefono senza linea ⇒ la card DEVE sparire (non è mai partita)',
+    id: 76, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO: telefono senza linea ⇒ la card DEVE sparire (non è mai partita)',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1375,7 +2444,7 @@ const CASES = [
     }
   },
   {
-    id: 41, flow: 'Creazione', name: '⭐⭐ IL CUORE: scaduta l\'attesa NON indovina — continua a CHIEDERE, e quando il lavoro risponde conferma',
+    id: 77, flow: 'Creazione', name: '⭐⭐ IL CUORE: scaduta l\'attesa NON indovina — continua a CHIEDERE, e quando il lavoro risponde conferma',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1411,12 +2480,12 @@ const CASES = [
     }
   },
   {
-    id: 42, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO del 41: se il lavoro risponde TARDI «errore», allora la card non compare per niente',
+    id: 78, flow: 'Creazione', name: '⭐ CONTROLLO OPPOSTO del 77: se il lavoro risponde TARDI «errore», allora la card non compare per niente',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
       const checks = [];
-      // Stesso orologio del 41 (vedi lì la trappola dei timer bloccati a ~1 s nell'iframe nascosto).
+      // Stesso orologio del 77 (vedi lì la trappola dei timer bloccati a ~1 s nell'iframe nascosto).
       H.setPollTimings({ maxMs: 500, stepMs: 100, lateMaxMs: 12000, lateStepMs: 100 });
       // Senza questo caso, il 77 passerebbe anche se la seconda attesa dicesse SEMPRE di sì.
       JOB_NEXT = (n) => (n <= 2 ? { status: 'pending' } : { status: 'error', error: 'SLOT_OCCUPATO' });
@@ -1441,70 +2510,21 @@ const CASES = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════════════════
-  // 43-49 — LA REGOLA v6.150 in PRODUZIONE: «prima Matchpoint, poi il calendario».
-  // Stessi casi provati su test-preview (là numerati 55, 56, 79-83), portati qui perché una
-  // regola che cambia il comportamento della produzione deve avere i suoi casi nella rete
-  // della produzione — non essere verificata «per identità» con l'altro ramo.
+  // 79-81 — LA REGOLA NUOVA (v6.150), decisa dal committente il 2/08/2026:
+  //   «qualsiasi operazione fatta sul gestionale, PRIMA che appaia sul calendario, deve essere
+  //    validata dentro Matchpoint».
+  // Il 74 e il 75 provano le due risposte note; qui si provano le tre cose che la regola aggiunge:
+  // il caso in cui la verifica dice di NO (79), l'attesa vista da dentro (80) e il freno che
+  // impedisce a due operatori di prendere lo stesso campo mentre il calendario sembra libero (81).
   // ══════════════════════════════════════════════════════════════════════════════════════
   {
-    id: 43, flow: 'Cancel', name: '⭐⭐ annullo con TIMEOUT edge ("idle timeout 150s") → va a GUARDARE su Matchpoint, e se lì non c\'è più l\'annullo era passato (v6.150)',
-    run: async (win, H, ctx) => {
-      const iso = ctx.iso;
-      // Bug live 03/07: l'edge Supabase supera il suo idle-timeout (worker in coda) e torna
-      // "Request idle timeout limit (150s) reached" come ERRORE, ma il worker completa l'annullo
-      // LO STESSO poco dopo. Prima l'app ripristinava alla cieca → app mostra la prenotazione, MP
-      // no → FANTASMA. Ora un errore di timeout NON deve ripristinare. (Contrasto col caso 2, dove
-      // SLOT_OCCUPATO è un rifiuto vero → ripristina.)
-      // ⭐⭐ v6.150: il timeout non si conclude più a naso — si VA A GUARDARE. E qui la polarità è
-      // ROVESCIATA rispetto alla prenotazione: se su Matchpoint la prenotazione NON c'è più, vuol
-      // dire che l'annullamento È passato, e allora sì che la card si toglie.
-      H.setBookings([bookingFixture(iso)]);
-      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
-      LOOK_NEXT = { body: { ok: false, message: 'PRENOTAZIONE_NON_TROVATA' } };
-      const c0 = chatCount(win);
-      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
-      const checks = [];
-      const got = await waitFor(() => workerPushes('cancel').length > 0, 4000);
-      checks.push({ label: '🚨 base: la cancel è USCITA davvero', ok: got });
-      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
-      checks.push({ label: '⭐⭐ sul timeout è andato a GUARDARE, non ha tirato a indovinare', ok: guardato });
-      const sparita = await waitFor(() => findBooking(H.getBookings(), iso, 2, '18:00').length === 0, 6000);
-      checks.push({ label: '⭐⭐ su Matchpoint non c\'è più ⇒ l\'annullo era passato ⇒ la card si toglie', ok: sparita });
-      checks.push({ label: 'e non ha detto «non riuscito»', ok: !/Annullamento non riuscito/i.test(chatSince(win, c0)) });
-      return checks;
-    }
-  },
-  {
-    id: 44, flow: 'Giocatori', name: '⭐⭐ edit con TIMEOUT edge → va a GUARDARE su Matchpoint, e se Anna c\'è la aggiunge (v6.150)',
-    run: async (win, H, ctx) => {
-      const iso = ctx.iso;
-      H.setBookings([bookingFixture(iso)]);
-      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
-      st.add.push({ nome: 'Anna Verdi' });
-      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
-      // Su Matchpoint la modifica era passata davvero: la lettura di verifica trova Anna.
-      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }, { nome: 'Anna Verdi' }] } } };
-      const c0 = chatCount(win);
-      await H.playersSave({ skipConfirm: true });
-      const checks = [];
-      await waitFor(() => editSavePushes().length > 0, 4000);
-      checks.push({ label: '🚨 base: la modifica è USCITA davvero', ok: editSavePushes().length > 0 });
-      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
-      checks.push({ label: '⭐⭐ sul timeout è andato a GUARDARE invece di indovinare', ok: guardato });
-      const added = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 8000);
-      checks.push({ label: '⭐⭐ Anna entra nel roster solo DOPO la verifica', ok: added });
-      checks.push({ label: 'e non ha detto «Modifica non riuscita»', ok: !/Modifica non riuscita/i.test(chatSince(win, c0)) });
-      return checks;
-    }
-  },
-  {
-    id: 45, flow: 'Creazione', name: '⭐⭐ CONTROLLO OPPOSTO del 38: se andando a guardare Matchpoint dice che NON c\'è, la card non si disegna',
+    id: 79, flow: 'Creazione', name: '⭐⭐ CONTROLLO OPPOSTO del 74: se andando a guardare Matchpoint dice che NON c\'è, la card non si disegna',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
       const checks = [];
       await handleSeq(win, ['prenota una partita domani campo 4 alle 19']);
-      // Stessa identica situazione del 38 — esito ignoto — e cambia UN DATO: cosa risponde la
+      // Stessa identica situazione del 74 — esito ignoto — e cambia UN DATO: cosa risponde la
       // verifica. Senza questo caso, il 74 sarebbe verde anche se la verifica dicesse SEMPRE «sì».
       WORKER_NEXT = { throw: true };
       LOOK_NEXT = { body: { ok: false, message: 'PRENOTAZIONE_NON_TROVATA' } };
@@ -1521,7 +2541,7 @@ const CASES = [
     }
   },
   {
-    id: 46, flow: 'Creazione', name: '⭐⭐ IL CUORE DELLA REGOLA: DURANTE l\'attesa il calendario resta VUOTO; la card compare solo alla conferma',
+    id: 80, flow: 'Creazione', name: '⭐⭐ IL CUORE DELLA REGOLA: DURANTE l\'attesa il calendario resta VUOTO; la card compare solo alla conferma',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1554,7 +2574,7 @@ const CASES = [
     }
   },
   {
-    id: 47, flow: 'Creazione', name: '⭐⭐ FRENO ANTI-COLLISIONE: mentre una prenotazione è in volo lo stesso campo non si riprenota, anche se il calendario sembra libero',
+    id: 81, flow: 'Creazione', name: '⭐⭐ FRENO ANTI-COLLISIONE: mentre una prenotazione è in volo lo stesso campo non si riprenota, anche se il calendario sembra libero',
     run: async (win, H, ctx) => {
       H.setBookings([]);
       setCalDay(win, ctx.iso);
@@ -1580,49 +2600,6 @@ const CASES = [
       } finally {
         H.setPollTimings({ maxMs: 180000, stepMs: 1500, lateMaxMs: 360000, lateStepMs: 10000 });
       }
-    }
-  },
-  {
-    id: 48, flow: 'Cancel', name: '⭐⭐ CONTROLLO OPPOSTO del 43: se andando a guardare la prenotazione c\'è ANCORA, l\'annullo NON è passato e la card resta',
-    run: async (win, H, ctx) => {
-      const iso = ctx.iso;
-      // Senza questo caso il 55 sarebbe verde anche se la card sparisse comunque dopo un timeout —
-      // cioè se avessi solo rimesso il vecchio «togli e spera».
-      H.setBookings([bookingFixture(iso)]);
-      WORKER_NEXT = { reject: true, body: { ok: false, message: 'Request idle timeout limit (150s) reached' } };
-      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }] } } };
-      const c0 = chatCount(win);
-      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
-      const checks = [];
-      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
-      checks.push({ label: '🚨 base: è andato a guardare', ok: guardato });
-      const detto = await waitFor(() => /c'è ancora|non è passato/i.test(chatSince(win, c0)), 6000);
-      checks.push({ label: '⭐⭐ dice che su Matchpoint c\'è ancora, quindi non è stata annullata', ok: detto });
-      checks.push({ label: '⭐⭐ e la card è rimasta sul calendario', ok: findBooking(H.getBookings(), iso, 2, '18:00').length > 0 });
-      return checks;
-    }
-  },
-  {
-    id: 49, flow: 'Giocatori', name: '⭐⭐ CONTROLLO OPPOSTO del 36: se andando a guardare Anna su Matchpoint NON c\'è, non si aggiunge',
-    run: async (win, H, ctx) => {
-      const iso = ctx.iso;
-      // Senza questo caso il 72 sarebbe verde anche se l'app aggiungesse Anna SEMPRE dopo un
-      // esito ignoto — cioè se «vado a guardare» fosse una recita e la risposta non contasse.
-      H.setBookings([bookingFixture(iso)]);
-      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
-      st.add.push({ nome: 'Anna Verdi' });
-      WORKER_NEXT = { throw: true };
-      LOOK_NEXT = { body: { ok: true, worker: { partecipantiFinali: [{ nome: 'Mario Rossi' }] } } };  // Anna NON c'è
-      await H.playersSave({ skipConfirm: true });
-      const checks = [];
-      const uscita = await waitFor(() => editSavePushes().length > 0, 4000);
-      checks.push({ label: '🚨 base: la richiesta è USCITA davvero', ok: uscita });
-      const guardato = await waitFor(() => CAPTURED.looks.length >= 1, 8000);
-      checks.push({ label: '🚨 base: è andato a guardare', ok: guardato });
-      // Si lascia il tempo di sbagliare, poi si guarda: Anna non deve esserci.
-      const comparsa = await waitFor(() => /Anna Verdi/.test(namesOf(H.getBookings(), iso, 2, '18:00')), 4000);
-      checks.push({ label: '⭐⭐ Anna NON viene aggiunta: su Matchpoint non risulta', ok: !comparsa });
-      return checks;
     }
   },
   {
@@ -1800,6 +2777,73 @@ const CASES = [
       // Pulizia: il caso scrive nell'anagrafica vera di questo browser, quindi si riporta com'era.
       try {
         const puliti = elenco().filter(g => !(g && /^soc-g/.test(String(g.id))));
+        win.save('giocatori', puliti);
+      } catch (e) {}
+      CLOUD_FAKEROWS = [];
+      return checks;
+    }
+  },
+  {
+    // 🚨🚨 IL CASO DELL'11/08: le riassegnazioni dei codici si DISFACEVANO da sole.
+    // Radice misurata su PROD: la riassegnazione del 9/08 fu fatta solo nel cloud, e le due strade
+    // che riscrivono un socio in locale con ciò che arriva dal cloud copiavano OTTO campi —
+    // firstName, surname, name, phone, email, level, gender, updatedAt — e `pmoPlayerId` NON era
+    // fra questi. Quindi il browser teneva il codice di MAGGIO per sempre e lo RISPINGEVA su al
+    // primo salvataggio di scheda: tre cure disfatte in un'ora, col codice condiviso che
+    // ricompariva su altre coppie appena curata la precedente (registro: `cloud_records_upsert
+    // count:1` dell'owner, agli stessi secondi delle righe tornate in collisione).
+    id: 87, flow: 'Cloud/Soci', name: '🚨🚨 il browser IMPARA il codice Padel Village dal cloud (e non rispinge più quello vecchio)',
+    run: async (win, H, ctx) => {
+      const checks = [];
+      if (!H.onRemoteMemberChanged || !H.getMember || typeof win.pmoEnsureCloudMembersHydrated !== 'function') {
+        return [{ label: 'ganci onRemoteMemberChanged/getMember/idratazione assenti', ok: false }];
+      }
+      const R = (local_key, deleted, payload) => ({ record_type: 'member', local_key, deleted, payload });
+      // Un socio finto, seminato dalla porta vera dell'app col codice VECCHIO.
+      const VECCHIO = 'PMO-000149';
+      const NUOVO   = 'PMO-002870';
+      const socio = { id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                      level: 3, active: true, pmoPlayerId: VECCHIO, updatedAt: '2027-04-01T10:00:00.000Z' };
+      CLOUD_FAKEROWS = [R('phone:3519000009', false, socio)];
+      let presente = false;
+      for (let i = 0; i < 5 && !presente; i++) {
+        try { await win.pmoEnsureCloudMembersHydrated({ force: true }); } catch (e) {}
+        presente = !!H.getMember('soc-cod');
+        if (!presente) await new Promise(r => setTimeout(r, 150));
+      }
+      checks.push({ label: 'semina: il socio è in questo browser col codice vecchio', ok: presente && H.getMember('soc-cod').pmoPlayerId === VECCHIO });
+      if (!presente) return checks;
+
+      // 1) IL CUORE: dal cloud arriva il codice NUOVO ⇒ il browser deve impararlo.
+      H.onRemoteMemberChanged({ member: Object.assign({}, socio, { pmoPlayerId: NUOVO, updatedAt: '2027-04-02T10:00:00.000Z' }) });
+      checks.push({ label: '🚨🚨 il codice NUOVO arrivato dal cloud è stato adottato', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+
+      // 2) CONTROLLO OPPOSTO del guardiano: un avviso che NON nomina il campo non deve cancellarlo.
+      //    ⚠️ Discrimina fra `!== undefined` (giusto) e una copia secca `m.pmoPlayerId` (che qui
+      //    azzererebbe il codice). Con `||` invece questo check passerebbe uguale: per quello serve
+      //    anche il ③.
+      const senzaCampo = { id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                           level: 3, updatedAt: '2027-04-03T10:00:00.000Z' };
+      H.onRemoteMemberChanged({ member: senzaCampo });
+      checks.push({ label: 'un avviso che non nomina il codice NON lo cancella', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+
+      // 3) ⚠️ Il codice SVUOTATO nel cloud deve arrivare VUOTO: è il caso delle utenze di servizio
+      //    (Ospite, Demo App…), che per la decisione del 2/08 stanno senza codice. Questo check
+      //    DISCRIMINA `!== undefined` da `||`: con `||` il vuoto verrebbe scartato e il browser
+      //    continuerebbe a rispingere il codice vecchio — cioè il difetto, in piccolo.
+      H.onRemoteMemberChanged({ member: Object.assign({}, socio, { pmoPlayerId: '', updatedAt: '2027-04-04T10:00:00.000Z' }) });
+      checks.push({ label: '⚠️ un codice SVUOTATO nel cloud arriva vuoto (utenze di servizio)', ok: H.getMember('soc-cod').pmoPlayerId === '' });
+
+      // 4) La TERZA strada, quella dell'import Matchpoint → app: anche là il codice viene dal cloud.
+      if (H.applyMatchpointMember) {
+        H.applyMatchpointMember({ id: 'soc-cod', firstName: 'Ilaria', surname: 'Codice', phone: '351 900 0009',
+                                  memberId: '000999', pmoPlayerId: NUOVO, updatedAt: '2027-04-05T10:00:00.000Z' });
+        checks.push({ label: 'anche la strada Matchpoint→app adotta il codice dal cloud', ok: H.getMember('soc-cod').pmoPlayerId === NUOVO });
+      }
+
+      // Pulizia: il caso scrive nell'anagrafica vera di questo browser.
+      try {
+        const puliti = (win.safeLoad('giocatori', []) || []).filter(g => !(g && String(g.id) === 'soc-cod'));
         win.save('giocatori', puliti);
       } catch (e) {}
       CLOUD_FAKEROWS = [];

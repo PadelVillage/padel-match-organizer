@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.229';
+    const APP_VERSION = '6.230';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -46359,6 +46359,14 @@ Per confermare scrivi ELIMINA.`);
         getMoveState: function () { return staffCalMoveState; },
         playersSave: function () { return staffCalPlayersSave.apply(null, arguments); },
         onRemoteChange: function () { return staffCalRtOnRemoteChange(); },
+        // v6.212 — le due strade che riscrivono un socio con ciò che arriva dal cloud. Servono a
+        // provare che il browser IMPARA il codice Padel Village: senza, teneva quello vecchio per
+        // sempre e lo rispingeva su, disfacendo le riassegnazioni (misurato l'11/08 su PROD).
+        onRemoteMemberChanged: function (p) { return staffCalRtOnRemoteMemberChanged(p); },
+        applyMatchpointMember: function (m) { return staffCalRtApplyMatchpointMember(m); },
+        getMember: function (id) {
+          return (Array.isArray(giocatori) ? giocatori : []).find(function (g) { return g && String(g.id) === String(id); }) || null;
+        },
         onRemotePending: function (p) { return staffCalRtOnRemotePending(p); },
         onRemoteResolved: function (p) { return staffCalRtOnRemoteResolved(p); },
         refreshFromCloud: function (o) { return staffCalRefreshFromCloud(o); },
@@ -46383,6 +46391,12 @@ Per confermare scrivi ELIMINA.`);
         giftRecord: function (data, campo, ora, p) { return _pmoGiftRecord(data, campo, ora, p); },
         giftSyncFromRoster: function (data, campo, ora, roster) { return _pmoGiftSyncFromRoster(data, campo, ora, roster); },
         paidIndexAdd: function (data, campo, ora, name, method, cents) { return _staffCalPaidIndexAdd(_payNatKey(data, campo, ora), name, method, cents); },
+        // Organizzatore della partita (regola del 29/07/2026): torna la VOCE del roster o null.
+        organizzatorePartita: function (tipoReale, roster) { return _pmoOrganizzatorePartita(tipoReale, roster); },
+        // v6.134 — la regola COMPLETA: distingue «è della SEGRETERIA» da «non lo so», che per
+        // la funzione qui sopra sono lo stesso null. Serve alla rete per provare il caso del
+        // primo «Ospite» senza doverlo dedurre dall'assenza della stellina.
+        ruoloOrganizzatore: function (tipoReale, roster) { return _pmoRuoloOrganizzatore(tipoReale, roster); },
         // v6.146 — accorcia l'orologio delle due attese del lavoro asincrono. Serve a provare il
         // ramo «continua a CHIEDERE» (esito ignoto) sullo stesso codice, senza 3 minuti di attesa.
         setPollTimings: function (t) { try { Object.assign(_STAFF_CAL_POLL, t || {}); } catch (e) {} },
