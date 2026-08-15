@@ -76,7 +76,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **23** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.228** · TEST **6.237** · i **4 percorsi** di
+dei due rami, non ricordate: app PROD **6.229** · TEST **6.237** · i **4 percorsi** di
 `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
@@ -244,14 +244,19 @@ solo la parte che portava altrove. Ora non porta da nessuna parte e lo dice.
 🔬 Prova: nell'app che gira, `assessment` nascosta e dirottamento su `dashboard` **confermati**;
 rimbalzi nel codice della funzione **1 → 0**; banco **55/55 prima e dopo**.
 
-🚨 **Restano due cose, e sono decisioni sue:**
-1. **La scheda socio blocca il bottone se manca l'EMAIL** (`assessmentEmailHasValidEmail`), ma il link
-   oggi lo consegna **il bot Telegram**, che l'email non la usa. ⇒ È un requisito ereditato dal canale
-   dismesso: probabilmente va tolto, ma è una regola d'accesso e **non la cambio da solo**.
-2. **Applicare un livello a mano annuncia un'email che non partirà.** `applyAssessmentLevel` mostra
-   *«Invio conferma email in corso…»* e subito dopo un avviso giallo *«Conferma email non inviata:
-   canale dismesso»*. Il livello **viene applicato** — non è un guasto — ma ogni applicazione manuale
-   accende un allarme per una cosa decisa apposta. Due righe, appena mi dici cosa deve dire.
+**✅ E le due decisioni sono arrivate: «Togli» e «puoi eliminarlo» (PROD 6.229).**
+1. **Il bottone non pretende più un'email valida.** Era un requisito del canale dismesso, e bloccava
+   proprio i soci **senza** email — cioè quelli per cui il passaggio al bot è servito.
+2. **Applicare un livello non tenta più la conferma email al socio.** Via l'annuncio *«Invio conferma
+   email in corso…»* e via l'avviso giallo che seguiva ogni volta. ⚖️ La **notifica allo staff** resta
+   e non c'entra: passa da `assessment-notify-staff`, viva col suo cron ogni 5 minuti.
+   📌 `emailSent`/`emailError` restano nell'esito **a zero**: li contano ancora due chiamanti, e
+   toglierli qui vorrebbe dire inseguirli là. Sono residui della 28 e si potano **con lei**.
+   ⇒ `assessmentEmailSendLevelConfirmation` resta ora **senza chiamanti**: entra nel gruppo da potare.
+🚨 **Il primo tentativo lasciava una graffa in più e l'app NON PARTIVA.** L'ha detto il banco
+(`ready:false`), non la rilettura: la mia ricerca del confine aveva agganciato `      }` invece di
+`    }`, e `"    }\n"` è un pezzo di `"      }\n"`. ⇒ Una modifica «di due righe» che non si prova sul
+bersaglio è una modifica non fatta.
 
 ⚠️ **E la potatura da 64 funzioni resta ferma**, ora con una ragione in più per non correre: dentro una
 sezione spenta non fa danno a nessuno, quindi è manutenzione, non riparazione.
