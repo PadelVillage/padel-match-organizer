@@ -1,224 +1,193 @@
 # Collaudo della voce 23 — la caduta vera del worker
 
-**Scritto il 14/08/2026, 18ª sessione.** Procedura da eseguire **dal Mac**, con l'accesso a Hetzner:
-è l'unica parte della voce 23 che non si può provare né dal cloud né su TEST, ed è il motivo per
-cui la voce è rimasta aperta dopo essere andata in produzione (PROD 6.222).
+**Scritto il 14/08/2026 notte. ✅ ESEGUITO il 15/08/2026, in produzione, due volte — e riscritto con
+quello che l'esecuzione ha insegnato.** La prima versione di questo documento diceva di fermare il
+**worker**: è sbagliato, e sotto c'è il perché.
 
-Tutti i nomi, gli indirizzi e i numeri qui sotto sono stati **misurati** sul codice dei due rami e
-sul progetto Supabase di PROD, non ricordati. Dove c'è una previsione invece di una misura, è
-dichiarato.
+Procedura da eseguire **dal Mac**, con l'accesso alla VM. Tutto ciò che segue è **misurato**, non
+ricordato: dove c'è una previsione invece di una misura, è dichiarato.
 
 ---
 
-## Cosa si prova, e cosa no
+## Cosa si prova
 
-La voce 23 ha cambiato **quattro** cose, e sono queste che il collaudo deve vedere:
+La voce 23 ha cambiato **quattro** cose:
 
 1. l'errore di rete viene **marchiato** `esitoIgnoto` (una proprietà, non le parole del messaggio);
-2. il lavoro asincrono si chiude **`unknown`** invece di `error`;
-3. la strada **sincrona** risponde `WORKER_ESITO_IGNOTO` con `esitoIgnoto: true`;
-4. `writeBookingJob` **guarda** l'esito del proprio `upsert` invece di scartarlo.
+2. il lavoro si chiude **`unknown`** invece di `error`;
+3. la strada sincrona risponde `WORKER_ESITO_IGNOTO`;
+4. `writeBookingJob` **guarda** l'esito del proprio `upsert`.
 
-⚠️ La macchina che va a **guardare** su Matchpoint — `staffCalAskMatchpoint`, coi tre verdetti
-`si` / `no` / `boh` — c'era già dalla **v6.150** ed è una regola del committente: *«quando l'esito
-resta IGNOTO non si indovina, si va a GUARDARE»*. **Non è quella che si sta collaudando.** Il
-difetto della voce 23 era che la edge appiattiva il terzo esito sul secondo, e così quella macchina
-non veniva mai chiamata.
+E poi, il 15/08, altre due:
+
+5. quando l'esito è ignoto l'app **insiste** a guardare su Matchpoint — 3 minuti, un colpo ogni 15
+   secondi — invece di guardare una volta sola;
+6. se dopo tre minuti non sa ancora, la domanda si **deposita** e viene ripresa a ogni apertura,
+   finché non è un sì o un no.
 
 ---
 
-## 🚨 La trappola che invaliderebbe tutto il collaudo
+## 🚨 LA TRAPPOLA — ed è scattata davvero
 
 Il terzo esito si raggiunge **solo se la `fetch` lancia**, cioè se non arriva **nessuna** risposta.
-Se qualcosa risponde `502` o `503` — tipicamente un reverse proxy davanti al worker — quella **è**
-una risposta, e il codice prende la strada `error` normale. Correttamente. Ma il collaudo
-diventerebbe **verde sulla strada sbagliata**, senza dirlo.
 
-Misurato nel repo (`docs/ambienti-test-prod.md`): PROD punta a **`http://91.99.131.243:8787`** —
-IP diretto, porta nuda, UFW aperto solo su 22 e 8787 ⇒ **nessun proxy** ⇒ a worker fermo il kernel
-risponde RST ⇒ `ECONNREFUSED` ⇒ la `fetch` lancia. È la forma giusta.
+**Fermare il worker NON basta.** Davanti c'è **Caddy**:
 
-🚨 **Quel valore però viene da un DOCUMENTO, e qui i documenti hanno già mentito.** Prima di
-cominciare, aprire davvero: **Supabase PROD → Edge Functions → Secrets →
-`MATCHPOINT_BROWSER_WORKER_URL`**. Se al posto dell'IP c'è un `https://` con un dominio, **fermarsi**:
-c'è un intermediario e la procedura cambia.
+```
+/etc/caddy/Caddyfile
+worker.91.99.131.243.nip.io {
+        reverse_proxy localhost:8787
+}
+```
 
----
+A worker fermo, **Caddy risponde `502`** al posto suo — e un 502 **è una risposta**, quindi la edge
+lo tratta come un errore normale. Corretto, ma il collaudo non prova niente.
 
-## Quando farlo
+⇒ **Si ferma CADDY, non il worker.** Il worker resta acceso ma **non riceve niente**, perché tutto
+passa da lì: il rischio di creare una prenotazione vera scende a **zero per costruzione**, non per
+tempismo.
 
-Ora morta, e **evitare le 05:00** (`anagrafica-mirror`). La finestra deve durare ~15 minuti, perché
-a worker fermo cade tutto ciò che ne dipende:
+📌 **E questo spiega lo storico**: 184 lavori, 16 `error` tutti `Worker error 5xx`, **zero
+`unknown`** in due mesi. Non era un caso raro — da un worker fermo il terzo esito **non può**
+nascere.
 
-- le prenotazioni dello staff — falliscono **in sicurezza**: non viene creato niente;
-- `matchpoint-bookings-sync`, ogni 2 minuti: il calendario smette di rinfrescarsi e **si risana da
-  sé** al riavvio;
-- **il bot dei soci**: chi prenota da `@loziocoach_bot` in quella finestra finisce sulla stessa
-  strada. A ora morta è improbabile, ed è la ragione per cui la finestra resta corta.
+⚠️ `docs/ambienti-test-prod.md` dichiara `MATCHPOINT_BROWSER_WORKER_URL = http://91.99.131.243:8787`.
+**È sbagliato**: la strada vera è `https://worker.91.99.131.243.nip.io` (porta 443). Dal Mac la 8787
+non risponde affatto.
 
 ---
 
 ## Passo 0 — pre-volo
 
-### a) La edge deployata è quella nuova
-
-Verificato dal cloud il 14/08: `matchpoint-bookings-create` su `qqbfphyslczzkxoncgex` è alla
-**versione 37** e il suo `FEATURES` contiene `esito-ignoto`. Riconfermarlo il giorno stesso, dalla
-console del gestionale già loggato come staff:
-
-```js
-const cfg = await loadAssessmentSupabaseConfig();
-const tok = await pmoGetSupabaseStaffAccessToken();
-const r = await fetch(cfg.supabaseUrl + '/functions/v1/matchpoint-bookings-create?features=1',
-  { headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + tok } });
-console.log(await r.json());
-```
-
-Deve elencare `esito-ignoto`. **Se manca, fermarsi**: si starebbe collaudando il codice vecchio.
-
-### b) L'app servita è la 6.222
-
-Ricarica forzata (`Cmd-Shift-R`) e titolo della scheda. È la lezione del 14/08: Pages può ancora
-servire il file precedente, e un «non ancora» scambiato per un «no» è già costato una diagnosi.
-
-### c) Lo slot bersaglio
-
-Data lontana nel futuro, campo e ora che non usa nessuno, slot **vuoto**. Annotare campo, data e
-ora: servono per il controllo negativo.
-
-### d) Due terminali su Hetzner
+**a) La chiave SSH si chiama `padel_deploy`** (non `pmo_deploy_key`, come dice il documento degli
+ambienti):
 
 ```bash
-ssh root@91.99.131.243
-pm2 list
-tail -f ~/.pm2/logs/matchpoint-worker-*.log
+ssh -i ~/.ssh/padel_deploy root@91.99.131.243
 ```
 
-Il servizio pm2 si chiama **`matchpoint-worker`** e vive in **`/opt/matchpoint-worker`**
-(misurato in `deploy-worker-hetzner.yml`).
+**b) L'app dev'essere l'ultima.** `Cmd + Shift + R` e controlla la versione in basso a sinistra.
+Con una versione vecchia si collauda il codice vecchio — è già successo.
+
+**c) Lo slot bersaglio**: data lontana, campo e ora che non usa nessuno, slot vuoto.
+
+**d) L'ora**: il circolo dev'essere fermo. Con Caddy giù nessuno prenota — né lo staff né il bot — e
+il sync del calendario si ferma (si risana da sé al riavvio).
 
 ---
 
 ## Le previsioni, dichiarate PRIMA
 
-| passo | cosa deve succedere |
-|---|---|
-| creazione asincrona, worker fermo | lavoro chiuso **`unknown`**, non `error` |
-| messaggio in app | «⌛ Non ho la conferma — sto guardando su Matchpoint…», poi il testo lungo con «**Controlla prima di rifarla**» |
-| verdetto del guardare | **`boh`**, non `no` — la lettura passa dallo **stesso worker** (`matchpoint-bookings-edit` con `read: true`), quindi a worker fermo non *può* guardare. Un `no` qui sarebbe un difetto |
-| calendario | **niente disegnato** |
-| ricorrente | `502` con `WORKER_ESITO_IGNOTO` e `esitoIgnoto: true`; il riassunto dice le **incerte per prime** |
-| log del worker | **nessuna riga** `/create-booking` in tutta la finestra |
-| Matchpoint | slot **vuoto** |
-
-⏱️ **Con `ECONNREFUSED` la edge fallisce in millisecondi**, quindi la reazione dell'app arriva in
-**pochi secondi**. Se tocca aspettare minuti non si è nella forma «rifiuto» ma in quella
-«silenzio» (Prova 3), e questo è già un dato.
+| passo | cosa deve succedere | misurato il 15/08 |
+|---|---|---|
+| creazione, Caddy fermo | lavoro **`unknown`**, non `error` | ✅ `Connection refused` su `/create-booking` |
+| l'app insiste | contatore dei tentativi visibile | ✅ **13 tentativi** (3 min ÷ 15 s) |
+| dopo 3 minuti | «**La verifica resta APERTA**» | ✅ |
+| verdetto del guardare | **`boh`**, non `no` | ✅ passa dalla stessa strada caduta |
+| calendario | **niente disegnato** | ✅ slot libero |
+| Matchpoint | **niente creato** | ✅ 0 righe su quello slot |
 
 ---
 
-## Prova 1 — la strada asincrona
+## ① Controllo positivo — la sonda deve saper vedere
 
-1. `pm2 stop matchpoint-worker` — **annotare l'ora esatta**
-2. Calendario staff → creare una prenotazione normale sullo slot scelto
-3. Entro pochi secondi deve comparire il messaggio ⌛
-4. Trascrivere o fotografare il testo finale
-5. Verificare che sul calendario **non sia comparso niente**
+```bash
+curl -m 5 -sS -o /dev/null -w "worker: HTTP %{http_code}\n" https://worker.91.99.131.243.nip.io/
+```
 
-## Prova 2 — il ricorrente (strada sincrona)
+**Deve stampare un numero** (404 va benissimo). Se dice già «Failed to connect», **fermarsi**: la
+sonda non misura quello che si crede.
 
-Worker sempre fermo. Creare un **ricorrente di almeno 2 occorrenze** — stesso slot, settimane
-diverse.
+## ② Fermare Caddy
 
-Atteso: il riassunto che dice le incerte **per prime** — «⌛ 2 non so come sono andate (il
-gestionale non ha risposto): controllale su Matchpoint PRIMA di rifarle…». Nella scheda Network:
-`502`, `error: "WORKER_ESITO_IGNOTO"`, `esitoIgnoto: true`.
+```bash
+ssh -i ~/.ssh/padel_deploy root@91.99.131.243 'systemctl stop caddy; echo "caddy: $(systemctl is-active caddy)"'
+```
 
-🚨 **È la prova che pesa di più**: da qui passa la strada che poteva produrre **quattro doppioni
-veri di fila** sul gestionale del circolo.
+## ③ 🚦 IL CANCELLO — stesso comando del passo ①
 
-## Il controllo negativo — è la metà che decide
+```bash
+curl -m 5 -sS -o /dev/null -w "worker: HTTP %{http_code}\n" https://worker.91.99.131.243.nip.io/
+```
 
-Senza questo il collaudo non prova niente. È la lezione in cima a `docs/lavori/README.md`:
-*chiedere alla prova di cosa sarebbe capace se il fatto fosse falso*.
+**Deve dire `Failed to connect`.** Se risponde ancora un numero, **ci si ferma e non si tocca il
+calendario**.
 
-1. Nel log del worker: **zero** righe `/create-booking` nella finestra. Se ce n'è anche **una**,
-   fermarsi: la richiesta è passata e qualcosa può essere stato prenotato davvero.
-2. `pm2 start matchpoint-worker`, aspettare ~30 secondi
-3. Aprire quello slot: **vuoto**, sia in app sia su Matchpoint.
+🚨 **Perché il cancello esiste.** Senza, la notte del 14/08 sono state create **tre prenotazioni
+vere** credendo di collaudare: il `pm2 stop` non era mai stato eseguito (nessuna sessione SSH
+aperta) e nulla lo diceva. Tutte annullate, ma il costo è stato quello.
+⚠️ E la **prima** versione del cancello era **cieca**: usava la porta 8787, che dal Mac va in timeout
+sia a worker acceso sia a worker spento. Una sonda che dà sempre la stessa risposta non è una sonda —
+se ne è accorto solo il controllo positivo del passo ①.
 
-## Cosa leggere nel database, dopo
+## ④ Prenotare
 
+Dal calendario, sullo slot scelto. ⚠️ **Le strade di creazione sono tre** — il modulo, il **clic
+sullo slot** e l'assistente — e si comportano allo stesso modo solo dalla **6.224** in poi. Provare
+da quella che usa davvero lo staff: **il clic sullo slot**.
+
+## ⑤ Riaccendere
+
+```bash
+ssh -i ~/.ssh/padel_deploy root@91.99.131.243 'systemctl start caddy' && \
+curl -m 5 -sS -o /dev/null -w "worker: HTTP %{http_code}\n" https://worker.91.99.131.243.nip.io/
+```
+
+## ⑥ Ricaricare la pagina
+
+La verifica in sospeso viene **ripresa da sola** e chiusa: «NON è stata creata, lo slot è libero».
+
+---
+
+## Cosa leggere nel database
+
+**Il lavoro:**
 ```sql
-select local_key as job, payload->>'status' as stato,
-       payload->>'message' as messaggio, payload->>'error' as errore, updated_at
+select local_key, payload->>'status' as stato, payload->>'message' as messaggio,
+       left(payload->>'error', 200) as errore, updated_at
 from pmo_cloud_records
 where record_type = 'booking_job' and updated_at > now() - interval '1 hour'
 order by updated_at desc;
 ```
+Atteso: **`unknown`** con `Connection refused`. Se leggi **`error`** con `Worker error 502`, hai
+fermato il worker e non Caddy.
 
-Atteso: almeno una riga **`unknown`** col messaggio «controlla su Matchpoint prima di rifarla».
-
-- 🚨 se si legge **`error`** → la `fetch` ha ricevuto una risposta ⇒ c'è un intermediario ⇒
-  collaudo **non valido**;
-- 🚨 se si legge **`pending` che non si chiude mai** → si è nell'altra forma, ed è un ritrovamento
-  (vedi Prova 3).
-
-📌 Linea di base misurata il 14/08, prima del collaudo: su PROD **184** lavori in tutta la storia —
-168 `done`, 16 `error`, **0 `pending`**, **0 `unknown`** — e tutti e 16 gli `error` erano
-`Worker error 5xx`, cioè il worker aveva **risposto**. In due mesi (10/06 → 12/08) il terzo esito,
-sulla strada asincrona, **non si è mai verificato**. ⚠️ Quella sonda però non vede la strada
-sincrona, che non lascia righe.
-
-## Ripristino — da non saltare
-
-```bash
-pm2 start matchpoint-worker
-pm2 list      # deve dire online
-pm2 save
+**La ripresa** (dalla 6.225 lascia traccia):
+```sql
+select created_at, outcome, meta from pmo_ai_turns
+where meta::text like '%ripresa verifica%'
+order by created_at desc limit 10;
 ```
+`ripresa-avviata` · `verifica-chiusa-si` · `verifica-chiusa-no` · `ripresa-senza-sessione`.
+🚨 **Niente del tutto** significa deposito vuoto — la ripresa esce prima di tracciare.
 
-Poi una verifica **vera**, non l'etichetta: aspettare il giro di `bookings_live` (2 minuti) e
-controllare che il calendario torni a rinfrescarsi. Il worker dev'essere dimostrabilmente vivo
-prima di andarsene.
-
----
-
-## Prova 3 — opzionale, ed è la forma che NON conosciamo
-
-`pm2 stop` produce un **rifiuto**. L'altra forma è il **silenzio**: pacchetti buttati, nessuna
-risposta. Si ottiene con `ufw insert 1 deny in to any port 8787`, e si toglie con `ufw delete`.
-
-**Previsione, non misura**: la `fetch` della edge **non ha alcun timeout** — verificato, nessun
-`AbortSignal` nel sorgente di `callWorkerCreateBooking`. Quindi la connessione resta appesa finché
-il runtime non uccide il lavoro di sfondo ⇒ `writeBookingJob` non gira mai ⇒ **il lavoro resta
-`pending` per sempre** ⇒ l'app aspetta 3 minuti (`maxMs`), poi altri 6 (`lateMaxMs`), e finisce
-sullo stesso «non so com'è andata». Esito **sicuro**, ma più lento e con la ragione persa.
-
-Se va così è un **ritrovamento da voce nuova**: un lavoro che non si chiude mai, e l'argomento per
-mettere un timeout esplicito su quella `fetch`.
-
-⚠️ Costa ~9 minuti di attesa dell'app. Farla solo con tempo, e **ricordarsi di togliere la regola
-UFW**.
+**Il controllo negativo, ed è la metà che decide:**
+```sql
+select count(*) from pmo_cloud_records
+where record_type = 'staff_booking' and payload->>'data' = '<data>' and payload->>'ora' = '<ora>'
+  and deleted = false;
+```
+Deve essere **0**.
 
 ---
 
 ## Cosa questo collaudo NON prova
 
-Il caso davvero pericoloso: il worker **riceve** la richiesta, **crea** la prenotazione su
-Matchpoint, e *poi* la risposta si perde. Lì l'ambiguità è reale e il doppione sarebbe vero.
+Il caso davvero pericoloso: **il worker riceve, crea la prenotazione su Matchpoint, e poi la
+risposta si perde.** Lì la partita esiste e il gestionale non lo sa.
 
-Questa procedura non ci arriva **di proposito**, perché arrivarci significa creare una prenotazione
-vera sul gestionale del circolo. Quel caso resta coperto **dal disegno** — il messaggio dice
-«controlla prima di rifarla», e il sync riporta dentro la prenotazione da sé entro un paio di
-minuti — **non dalla prova**. Va detto invece che taciuto.
+La procedura non ci arriva **di proposito**: arrivarci significa creare una prenotazione vera. Quel
+caso resta coperto **dal disegno** — l'app dice «non so, e sto verificando», non disegna niente, e
+quando la strada torna va a guardare e trova — **non dalla prova**.
+
+---
 
 ## Pulizia
 
-Le righe `booking_job` con `unknown` restano in `pmo_cloud_records`. **Conviene lasciarle**: sono
-il verbale del collaudo, non fanno danno, e la regola qui è misurare **cosa punta a una riga** prima
-di toglierla.
+Le righe `booking_job` con `unknown` restano in `pmo_cloud_records`: sono il verbale del collaudo.
+⚠️ **Restano `unknown` anche dopo che l'app ha risolto la verifica**, perché la chiusura vive nel
+`localStorage` del browser. Chi legge il database vede un lavoro in sospeso che invece è chiuso — è
+un residuo noto, non un guasto.
 
-Nient'altro dovrebbe restare: sulla strada dell'ignoto `saveStaffBookingRecord` non viene **mai**
-chiamata — sta dentro il `try` dopo la chiamata al worker — e l'app dichiara di non aver scritto
-niente sul calendario (`_staffCalCreateSettle(_optimKey, true)`).
+Se il collaudo crea per sbaglio una prenotazione vera: **annullarla dall'app** e verificare
+`deleted = true` sulla riga corrispondente.
