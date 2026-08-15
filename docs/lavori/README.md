@@ -203,7 +203,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **4** |
-| 📋 **In coda** | **6** |
+| 📋 **In coda** | **7** |
 | 📦 **Chiuse** | **27** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
@@ -213,9 +213,23 @@ sessione · tutte le guardie **verdi su entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
 non li controlla: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva — questo
 commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin/test-preview`.
-📏 **La rete di regressione: PROD 90 casi, TEST 93** — cresciuta di 3 su entrambi con la voce 15
-(flow `Calendario/Aperta`). La differenza fra i due resta **solo** i 3 della simulazione incassi, che
-in produzione non hanno senso. A inizio giornata erano 55 contro 90.
+📏 **La rete di regressione: PROD 94 casi, TEST 97** — cresciuta di **4 su entrambi** nella 24ª: due
+sulla pulizia-orfani (voce 42) e due sul link d'ingresso al bot. La differenza fra i due resta
+**solo** i 3 della simulazione incassi, che in produzione non hanno senso. Erano 90 e 93 a fine 23ª,
+55 e 90 a inizio giornata del 15/08.
+🚨 **E i 4 nuovi sono passati per il sabotaggio, non per il verde**: tre dei quattro erano **inerti
+alla prima stesura** — verdi anche col difetto acceso. Le cause, misurate: ① la push vinceva sempre
+la corsa sulla rilettura ⇒ `CLOUD_WRITE_DELAY_MS`; ② un controllo negativo letto **subito**, cioè
+prima che la frase avesse tempo di comparire; ③ l'app **svuota la chat** dopo un'operazione
+confermata, e quel timer scatta mentre gira il caso dopo ⇒ la frase veniva detta **e cancellata
+prima di essere guardata**, con lo stesso caso ROSSO da solo e VERDE dietro al vicino.
+⚖️ La ③ è la lezione della giornata, e non è «i test vanno isolati»: è che **un caso può avere due
+verdetti opposti sullo stesso codice**, decisi da un timer di qualcun altro — e il verde arriva
+esattamente quando l'evidenza è stata cancellata. ⇒ Non si rilegge il registro **dopo**: si registra
+**mentre** (`osservaChat`), perché ciò che è stato detto resti detto.
+📌 **Fughe dal banco: 0** su entrambi i rami (erano 2 su `main`). Non uscivano davvero — il banco le
+bloccava — ma erano il segno che il **ponte del bot non era modellato**, e quindi che della proposta
+del link si provava solo il ramo del guasto.
 
 ✅ **PROD verificata DAL SERVER, non dall'etichetta.** Alla 22ª, servita e **caricata** in un browser
 vero: `app.padelvillage.club` risponde col titolo **v6.231**, che è il numero dichiarato qui sopra —
@@ -424,11 +438,47 @@ Sua domanda del 6/08, messa in coda da lui. **Voce a sé**, non una variante del
 
 ---
 
-## 📋 IN CODA — 6
+## 📋 IN CODA — 7
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 2
+### C — Cose sapute e non risolte — 3
+
+#### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
+*Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
+quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
+della stessa malattia — una **coda staccata che SCRIVE**, che è la forma con cui il difetto si era
+manifestato davvero nel banco (il caso 11 che finiva addosso al caso 12).
+
+🔎 **Il fatto, misurato su `main` (PROD 6.232), righe di commento escluse.**
+`staffCalRefreshFromCloud` ha **12 punti di chiamata** più la definizione: **8 non attese**, 3 attese,
+1 restituita (l'aggancio esportato `refreshFromCloud`). La funzione fa **commit locali dopo un
+`await`** — `applyMatchpointMembersToLocal` subito dopo la lettura dei soci dal cloud, e la
+riconciliazione delle schede socio subito dopo. ⇒ Chi la lancia senza attenderla va avanti, e la
+scrittura locale atterra **dopo**, su uno stato che nel frattempo può essere cambiato.
+
+🚨 **E il debounce NON è la rete di sicurezza che sembra.** C'è un freno di 60 s, ma lo salta chi passa
+`force: true` — e a passarlo sono **5 delle 8 chiamate non attese**. Il freno copre le altre 3.
+📌 Misurato dopo aver scritto il contrario: nella prima stesura della chiusura della 42 avevo detto
+«attenuata da un debounce», che è vero solo per meno della metà dei casi. È il tipo di frase che
+suona prudente e non lo è.
+
+⚠️ **Cosa NON è stato fatto, e va detto**: non è dimostrato che una di queste 8 produca oggi un danno
+visibile. Quello che è dimostrato è che **la forma c'è** ed è quella che nel banco ha fatto cadere un
+caso sull'altro appena è sparito il ritardo di `config.js`. ⇒ Il lavoro è **stabilire quali delle 8
+possono atterrare su una modifica locale non ancora spinta**, non «riscrivere tutto con `await`»:
+metterlo dappertutto rimetterebbe in circolo la lentezza che la 6.231 ha tolto, e su mobile quella
+lettura costava ~20 s.
+
+🧪 **Il banco adesso sa provarlo**, ed è la novità che rende la voce aggredibile: con
+`CLOUD_WRITE_DELAY_MS` (aggiunto il 15/08 coi casi 94 e 95) si può mettere la **lettura davanti alla
+scrittura** e vedere cosa succede. Senza quel ritardo qualunque caso su questo tema sarebbe **verde a
+vuoto** — è successo, ed è documentato nel banco.
+
+📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
+dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
+solo da che parte la si prende.
+
 
 #### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
 *Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
@@ -464,6 +514,54 @@ si era mai potuta porre.
 corsa non è più ipotetica — è in esercizio. Il sintomo da tenere d'occhio è **una modifica che
 sparisce dagli altri dispositivi** (spostamento, disdetta, uscita di un giocatore) senza errore in
 console: è esattamente la forma che aveva il caso 12.
+
+---
+
+🔬 **MISURATA il 15/08, 24ª sessione, su `main` (PROD 6.232).** Eseguito ciò che la voce chiedeva —
+il censimento delle due famiglie, righe di commento **escluse** (4617 su 51.878) e su **tutto** il
+file, non su un blocco `<script>` solo: è la trappola in cui era caduta la 23ª, e qui l'analizzatore
+è stato scritto per leggere l'intero sorgente.
+
+| la domanda della voce | la risposta misurata |
+|---|---|
+| le letture non attese | **non esistono**: `pmoStaffRpcPaged` ha 16 chiamate e sono **16 su 16 attese**. Una lettura non può arrivare presto se nessuno la lascia correre |
+| le scritture non attese | **14 su 16** — il numero è quello che la voce si aspettava |
+| la forma pericolosa (push non attesa → lettura che vuole vederla) | **3 candidate, e nessuna lo è** |
+
+🎯 **E le tre vanno raccontate una per una, perché la conclusione sta lì:**
+
+- **`pmoQueueImmediateMemberCloudDelete` → `pmoLoadRetiredHistoryKeysFromCloud`** — **falso positivo**:
+  sono **due funzioni diverse**, vicine nel testo e nient'altro; la prima chiude prima che la seconda
+  cominci. ⚠️ La sonda di prossimità le aveva accoppiate perché contava le **righe**, non le
+  **funzioni** — e il suo modo di indovinare la funzione che contiene una riga (l'indentazione) è
+  risultato **sbagliato** su questo file. Non l'ho aggiustato: ho letto il codice.
+- **annullo staff → «pulire eventuali doppioni»** — la forma c'è, ma la lettura **esclude per
+  costruzione** le chiavi appena spinte (`_already`).
+- **`staffCalCloudReassignAndSyncMove`** — l'archetipo dichiarato dalla voce. La forma c'è, e la
+  lettura esclude la riga appena spostata (`_destId`).
+
+⚖️ **Quindi la risposta alla domanda «cosa leggerebbe se arrivasse 50 ms prima?» è: la stessa cosa.**
+In tutt'e due i punti veri la lettura è progettata per **ignorare** ciò che la push ha appena
+scritto — cioè l'esatto contrario di «si aspetta di vedere quella scrittura». Il ritardo di
+`config.js` non le teneva in piedi: reggono da sé, e reggevano già prima.
+
+🧯 **Un'ipotesi mia, sbagliata, lasciata scritta perché è istruttiva.** Vedendo che
+`staffCalCloudReassignAndSyncMove` è **`async` e viene chiamata senza `await`** da 3 punti (ed è vero,
+e non era nella voce), avevo pensato: il chiamante della chat sposta la copia locale **prima** di
+chiamarla, quindi la funzione partirà dallo slot d'origine e non troverà più niente. **Falso**:
+cerca la `entry` al **nuovo** slot, e il commento in testa lo dichiara — *«alla voce spostata (già al
+nuovo slot in locale)»*. Il disegno è coerente coi suoi chiamanti. ⇒ Ho creduto a una corsa perché
+**cercavo corse**, ed è la forma della «prova che ti dà ragione» vista dal lato di chi indaga.
+
+🔴 **Ciò che resta scoperto è di UN'ALTRA famiglia, e la voce non la nominava.** Il caso 12 del banco
+non cadeva per una *lettura* precoce: cadeva per una **coda staccata che scriveva lo stato locale**
+dopo che il chiamante era andato avanti. Quella forma nel gestionale c'è:
+**`staffCalRefreshFromCloud`** è chiamata **senza `await`** da più punti e fa commit locali **dopo**
+un `await` (`applyMatchpointMembersToLocal`, subito dopo la lettura dei soci dal cloud). È
+**attenuata** da un debounce di 60 s (saltato da `force`), che riduce quanto spesso possa atterrare
+ma non toglie la forma.
+📌 ⇒ La voce 42, **come è scritta**, è misurata e pulita. Quello che resta non è il suo residuo: è
+una voce diversa, sulla famiglia «continuazione staccata che scrive in locale».
 
 #### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
 *Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD

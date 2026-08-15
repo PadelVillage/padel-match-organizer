@@ -111,6 +111,9 @@ let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT
 // Vocabolario appreso: fisso e vuoto → il parser usa SOLO le regole (deterministico). Se un caso
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
 let CLOUD_SCRITTI = new Map();
+let CLOUD_WRITE_DELAY_MS = 0;
+let TELEGRAM_NEXT = {};
+let TELEGRAM_CHIAMATE = [];
 let CLOUD_LESSICO = [];
 // 🚨 Chiamate uscite dal routing del mock: devono restare ZERO. Fino a oggi il mock finiva con
 // `return realFetch(url, opts)` — cioè tutto ciò che non riconosceva andava sul Supabase VERO:
@@ -141,6 +144,19 @@ function captureReset() {
   WORKER_NEXT = { ok: true };      // risposta worker programmabile per caso
   CLOUD_FAKEROWS = [];             // righe restituite da pmo_get_records_admin
   CLOUD_SCRITTI = new Map();       // record scritti dall'app in questo caso (chiave record_type|local_key)
+  // ⏳ Ritardo con cui una scrittura diventa VISIBILE alla rilettura. 0 = come prima (immediata).
+  // Serve a mettere la LETTURA DAVANTI alla SCRITTURA, che è l'ordine in cui vivono le guardie
+  // «non toccare ciò che ho appena spinto» (_destId, _already — voce 42). Senza questo, la push
+  // vince sempre la corsa dentro il banco, la rilettura vede già il dato nuovo e le guardie non
+  // entrano MAI in gioco: un caso scritto su di loro sarebbe verde anche togliendole.
+  // 🚨 Misurato il 15/08: col ritardo a 0 il sabotaggio della guardia _destId NON faceva rosso.
+  // ⚖️ Ritarda la VISIBILITÀ, non la risposta: l'app riceve il suo ok subito, come in produzione,
+  // e ciò che cambia è solo quando il dato compare a chi rilegge — cioè il fatto che si vuole provare.
+  CLOUD_WRITE_DELAY_MS = 0;
+  // 📩 Risposte del ponte del bot, per azione. Default: «è gia' dentro» → l'app tace e nessun caso
+  // vecchio cambia. Un caso che vuole la proposta del link mette nel_bot:false.
+  TELEGRAM_NEXT = { stato_bot: { ok: true, nel_bot: true } };
+  TELEGRAM_CHIAMATE = [];
 }
 function jsonResponse(win, obj, status) {
   const body = typeof obj === 'string' ? obj : JSON.stringify(obj);
@@ -218,9 +234,16 @@ function installFetchMock(win) {
     if (/\/rest\/v1\/rpc\/pmo_upsert_records_admin/.test(u)) {
       const list = (body && body.p_records) || [];
       CAPTURED.cloud.push({ records: list });
-      list.forEach(function (r) {
-        if (r && r.record_type && r.local_key != null) CLOUD_SCRITTI.set(r.record_type + '|' + r.local_key, r);
-      });
+      // Ciò che l'app HA SPINTO si registra subito (i controlli guardano lì). Ciò che la rilettura
+      // VEDE può arrivare dopo: è CLOUD_WRITE_DELAY_MS, e serve a provare le guardie della voce 42.
+      const registra = function () {
+        list.forEach(function (r) {
+          if (r && r.record_type && r.local_key != null) CLOUD_SCRITTI.set(r.record_type + '|' + r.local_key, r);
+        });
+      };
+      // setTimeout del BANCO, non quello dell'app: l'orologio dell'app è mockato, e un ritardo
+      // misurato con l'orologio del bersaglio sarebbe governato da ciò che si sta provando.
+      if (CLOUD_WRITE_DELAY_MS > 0) setTimeout(registra, CLOUD_WRITE_DELAY_MS); else registra();
       return jsonResponse(win, { ok: true, count: list.length }, 200);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_records_admin/.test(u)) {
@@ -238,6 +261,22 @@ function installFetchMock(win) {
         return !(r && r.record_type && r.local_key != null && chiaviScritte[r.record_type + '|' + r.local_key]);
       });
       return jsonResponse(win, seedTenuti.concat(scritti), 200);
+    }
+    // 📩 Il PONTE DEL BOT (`bot-telegram-admin`). Prima non era modellato: le sue chiamate finivano
+    // fra le FUGHE, il banco rispondeva a vuoto e l'app diceva «non sono riuscito a controllare».
+    // ⇒ Il ramo che PROPONE il link d'ingresso non veniva provato MAI — si provava solo il guasto.
+    // 🚨 Default `nel_bot: true` (= già dentro, quindi l'app tace) di proposito: è la risposta che
+    // NON aggiunge righe in chat, così i casi vecchi non cambiano comportamento. Chi vuole provare
+    // la proposta la chiede esplicitamente, come si fa con WORKER_NEXT.
+    if (/\/functions\/v1\/bot-telegram-admin/.test(u)) {
+      const azione = String((body && body.action) || '');
+      TELEGRAM_CHIAMATE.push({ action: azione, body: body });
+      const risposta = (TELEGRAM_NEXT && Object.prototype.hasOwnProperty.call(TELEGRAM_NEXT, azione))
+        ? TELEGRAM_NEXT[azione] : { ok: true };
+      // Lo stato HTTP si programma con __status; senza, 200. ⚠️ Serve perché l'app NON si fida del
+      // solo 200: legge `ok` dentro il corpo, e il codice del rifiuto lo prende da `error`.
+      const stato = (risposta && risposta.__status) || 200;
+      return jsonResponse(win, risposta, stato);
     }
     if (/\/rest\/v1\/rpc\/pmo_get_my_staff_profile/.test(u)) {
       return jsonResponse(win, [{ status: 'active', role: 'admin', permissions: { cloud_sync: true } }], 200);
@@ -465,6 +504,66 @@ function chatTranscript(W) {
 // da solo, rosso nel giro completo. Questi due leggono SOLO i messaggi aggiunti da un certo punto.
 function chatCount(W) {
   try { const log = W.document.getElementById('svcChatMessages'); return log ? log.children.length : 0; } catch (e) { return 0; }
+}
+// Cerca un bottone nei messaggi aggiunti da `n` in poi. Stessa finestra di chatSince, e per lo
+// stesso motivo: un bottone lasciato aperto dal caso precedente farebbe passare il controllo.
+// Come chatSince, ma REGGE la pulizia automatica della chat. L'app svuota il registro dopo
+// un'operazione confermata (svcScheduleAutoClear): da quel momento `slice(n)` con l'n di prima
+// cade oltre la fine e restituisce STRINGA VUOTA — e un controllo «non deve dire X» diventa verde
+// perché non c'è più niente da leggere, non perché X non sia stato detto.
+// 🚨 Misurato il 15/08: il caso 97 restava VERDE col sabotaggio acceso, ma solo quando girava
+// DOPO il 96 — da solo era rosso. La differenza non era il codice, era la chat svuotata dal vicino.
+// ⇒ Se il registro si è accorciato, si legge da capo: tutto ciò che c'è è per forza successivo.
+// 👁️ SPIA sulla chat: registra i messaggi NEL MOMENTO in cui compaiono, invece di rileggere il
+// registro dopo. Serve perché l'app SVUOTA la chat da sola dopo un'operazione confermata
+// (svcScheduleAutoClear), e quel timer può scattare mentre gira il caso DOPO: la frase da
+// controllare esiste, viene detta, e sparisce prima che la si guardi.
+// 🚨 Misurato il 15/08 col sabotaggio acceso: il caso 97 era ROSSO da solo e VERDE dietro al 96 —
+// due verdetti opposti sullo stesso codice, decisi da un timer del vicino. Rileggere «da capo»
+// non bastava: se la pulizia è già passata, non c'è più niente da rileggere.
+// ⇒ Ciò che è stato detto resta detto: qui si accumula e nessuna pulizia lo cancella.
+function osservaChat(W) {
+  const raccolto = [];
+  let obs = null;
+  try {
+    const log = W.document.getElementById('svcChatMessages');
+    if (log) {
+      Array.from(log.children).forEach(function () {});   // il pregresso NON si raccoglie: parte da ora
+      obs = new W.MutationObserver(function (muts) {
+        muts.forEach(function (m) {
+          Array.from(m.addedNodes || []).forEach(function (n) {
+            const t = (n && (n.innerText || n.textContent)) || '';
+            if (t) raccolto.push(String(t));
+          });
+        });
+      });
+      obs.observe(log, { childList: true });
+    }
+  } catch (e) {}
+  return {
+    testo: function () { return raccolto.join('\n'); },
+    stop: function () { try { obs && obs.disconnect(); } catch (e) {} }
+  };
+}
+function chatDopo(W, n) {
+  try {
+    const log = W.document.getElementById('svcChatMessages');
+    if (!log) return '';
+    return chatSince(W, Math.min(n, log.children.length));
+  } catch (e) { return ''; }
+}
+function trovaBottoneChat(W, n, re) {
+  try {
+    const log = W.document.getElementById('svcChatMessages');
+    if (!log) return null;
+    const dopo = Array.from(log.children).slice(Math.min(n, log.children.length));
+    for (const el of dopo) {
+      for (const b of Array.from(el.querySelectorAll('button'))) {
+        if (re.test(b.innerText || b.textContent || '')) return b;
+      }
+    }
+    return null;
+  } catch (e) { return null; }
 }
 function chatSince(W, n) {
   try {
@@ -3195,6 +3294,186 @@ const CASES = [
       H.setInvitations(rec('Campo 1'));
       const info = H.openMatchInfo(iso, 1, '18:00', 90);
       checks.push({ label: 'conta 1 confermato e 3 mancanti', ok: !!info && info.confirmed === 1 && info.missing === 3 });
+      return checks;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PULIZIA-ORFANI — che una pulizia non si porti via la riga BUONA. Nati dalla
+  // voce 42 (15/08): la forma «push non attesa, poi rilettura» esiste in due punti
+  // veri, e in tutt'e due la lettura è progettata per IGNORARE ciò che la push ha
+  // appena scritto. Oggi reggono; niente impediva che una modifica futura togliesse
+  // l'esclusione **in silenzio**, perché il danno non si vede sul device che agisce
+  // — si vede sugli ALTRI.
+  //
+  // 🚨 COSA COPRONO DAVVERO, misurato col sabotaggio e non dedotto:
+  //  · 94 copre `_destId` — tolta l'esclusione, il caso va ROSSO sul controllo giusto.
+  //    Ma solo GRAZIE a CLOUD_WRITE_DELAY_MS: col ritardo a 0 il sabotaggio restava
+  //    VERDE, perché la push vinceva la corsa e la rilettura vedeva già il dato nuovo.
+  //  · 95 copre l'AMPIEZZA dello sweep (che tocchi quello slot e non gli altri):
+  //    sabotando `slotMatch` va rosso.
+  //    ⚠️ NON copre `_already`, e non per una lacuna del caso: togliendo `_already` non
+  //    succede NIENTE di osservabile — la riga che rientrerebbe è la stessa che si sta
+  //    già cancellando, quindi il secondo tombstone è ridondante. `_already` è una
+  //    cintura in più, non una guardia portante. Scritto qui perché chi un domani la
+  //    togliesse vedrebbe il banco verde, e ha diritto di sapere che è verde a ragione.
+  // ⚖️ Nessuno dei due prova la CORSA in sé: provano l'ESITO, che dev'essere vero in
+  // entrambi gli ordini di arrivo.
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 94, flow: 'Cross-device', name: '⭐⭐ sposta: la pulizia-orfani toglie l\'ORFANO e NON la prenotazione spostata (guardia _destId)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      const mioId = 'sb-' + iso + '-c2-1800';   // = l'id di bookingFixture, cioè il futuro _destId
+      H.setBookings([bookingFixture(iso)]);
+      // ⏳ La scrittura diventa visibile DOPO la rilettura: è l'ordine in cui la guardia _destId
+      // esiste. Con 0 (il default) la push vince, la rilettura vede già il campo 3, e togliere la
+      // guardia NON farebbe rosso — misurato il 15/08 prima di aggiungere questo ritardo.
+      CLOUD_WRITE_DELAY_MS = 400;
+      // Nel cloud, al VECCHIO slot: un ORFANO di un altro device (che la pulizia DEVE portarsi via)
+      // e la prenotazione VERA, ancora alla posizione vecchia perché la push non è ancora atterrata.
+      CLOUD_FAKEROWS = [
+        { record_type: 'staff_booking', local_key: 'orfano-di-un-altro-device',
+          payload: { data: iso, campo: 'Campo 2', ora: '18:00', ora_fine: '19:30', nome: 'Mario Rossi', durata: 90, tipo: 'partita' },
+          deleted: false },
+        { record_type: 'staff_booking', local_key: mioId,
+          payload: { data: iso, campo: 'Campo 2', ora: '18:00', ora_fine: '19:30', nome: 'Mario Rossi', durata: 90, tipo: 'partita' },
+          deleted: false }
+      ];
+      const st = await openCard(H, iso, 2, '18:00', 90, 'partita');
+      st.mCampo = 3;
+      WORKER_NEXT = { ok: true };
+      await H.playersSave({ skipConfirm: true });
+      const checks = [];
+      // 🚨 base: senza la pulizia non è successo niente, e i due controlli sotto sarebbero
+      // verdi a vuoto. Si aspetta il FATTO (l'orfano tombstonato), non un tempo.
+      const pulito = await waitFor(() => cloudRecords().some(r =>
+        r.record_type === 'staff_booking' && r.local_key === 'orfano-di-un-altro-device' && r.deleted === true), 4000);
+      checks.push({ label: '🚨 base: la pulizia-orfani è girata (orfano tombstonato)', ok: pulito });
+      // ⭐⭐ La guardia: la riga appena spostata non dev'essere MAI marcata deleted. Se lo fosse,
+      // sparirebbe dagli altri device senza un errore da nessuna parte — il sintomo della voce 42.
+      const mioTombstone = cloudRecords().some(r =>
+        r.record_type === 'staff_booking' && r.local_key === mioId && r.deleted === true);
+      checks.push({ label: '⭐⭐ la prenotazione spostata NON è stata tombstonata', ok: !mioTombstone });
+      // e resta attiva al NUOVO slot
+      const attivaAlNuovo = cloudRecords().some(r =>
+        r.record_type === 'staff_booking' && r.local_key === mioId && r.deleted !== true
+        && Number(String((r.payload || {}).campo).replace(/\D/g, '')) === 3);
+      checks.push({ label: 'la prenotazione spostata è attiva sul campo 3', ok: attivaAlNuovo });
+      CLOUD_FAKEROWS = []; CLOUD_WRITE_DELAY_MS = 0;
+      return checks;
+    }
+  },
+  {
+    id: 95, flow: 'Cross-device', name: '⭐⭐ annullo: lo sweep si porta via il GEMELLO dell\'edge e non tocca altri slot',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      // Il gemello che crea l'edge matchpoint-bookings-create: stessa data/campo/ora, local_key
+      // diversa e SENZA `tipo` (in render diventerebbe "Partita" — il fantasma della v5.902).
+      // + una prenotazione di un ALTRO slot, che lo sweep non deve sfiorare.
+      CLOUD_FAKEROWS = [
+        { record_type: 'staff_booking', local_key: 'staff_booking|' + iso + '|18:00|Campo 2|utente-edge',
+          payload: { data: iso, campo: 'Campo 2', ora: '18:00', ora_fine: '19:30', nome: 'Mario Rossi', durata: 90 },
+          deleted: false },
+        { record_type: 'staff_booking', local_key: 'altro-slot-da-non-toccare',
+          payload: { data: iso, campo: 'Campo 4', ora: '20:00', ora_fine: '21:30', nome: 'Anna Verdi', durata: 90, tipo: 'partita' },
+          deleted: false }
+      ];
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { ok: true };
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const checks = [];
+      const gemelloVia = await waitFor(() => cloudRecords().some(r =>
+        r.record_type === 'staff_booking' && /utente-edge$/.test(String(r.local_key)) && r.deleted === true), 5000);
+      checks.push({ label: '⭐⭐ il gemello dell\'edge è stato tombstonato (niente fantasma "Partita")', ok: gemelloVia });
+      // ⭐ CONTROLLO OPPOSTO: senza questo, uno sweep che tombstona TUTTO sarebbe verde qui sopra.
+      const altroToccato = cloudRecords().some(r =>
+        r.record_type === 'staff_booking' && r.local_key === 'altro-slot-da-non-toccare' && r.deleted === true);
+      checks.push({ label: '⭐ lo slot NON annullato non è stato toccato', ok: !altroToccato });
+      CLOUD_FAKEROWS = [];
+      return checks;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LINK D'INGRESSO AL BOT — la proposta che compare quando si mette in partita
+  // una persona che nel bot NON c'è. Fino al 15/08 il banco non sapeva rispondere
+  // al ponte `bot-telegram-admin`: le chiamate finivano fra le FUGHE, l'app riceveva
+  // il vuoto e diceva «non sono riuscito a controllare». ⇒ Di questa funzione si
+  // provava SOLO il ramo del guasto, mai quello che serve.
+  // 📌 È la funzione che il committente aveva provato su TEST vedendola NON apparire,
+  // e che per questo era stata spostata dove le strade convergono.
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 96, flow: 'Bot/Invito', name: '⭐⭐ giocatore aggiunto e NON nel bot → compare la proposta del link, e il link si prepara',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      TELEGRAM_NEXT = {
+        stato_bot: { ok: true, nel_bot: false },
+        crea_invito: { ok: true, link: 'https://t.me/loziocoach_bot?start=XYZ',
+                       messaggio: 'Ciao Maurizio, entra nel bot del circolo: https://t.me/loziocoach_bot?start=XYZ',
+                       telefono: '333 1112222' }
+      };
+      const c0 = chatCount(win);
+      const spia = osservaChat(win);
+      await handleSeq(win, ['aggiungi Maurizio Aprea alla partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      // 🚨 base: se il giocatore non è entrato davvero, tutto il resto sarebbe verde a vuoto —
+      // la proposta non deve uscire per chi «stavo per aggiungere», solo per chi è entrato.
+      const entrato = await waitFor(() => /Maurizio/i.test(namesOf(H.getBookings(), iso, 2, '18:00')), 5000);
+      checks.push({ label: '🚨 base: Maurizio è entrato davvero in partita', ok: entrato });
+      // la domanda al ponte è stata fatta
+      const chiesto = await waitFor(() => TELEGRAM_CHIAMATE.some(c => c.action === 'stato_bot'), 4000);
+      checks.push({ label: 'il ponte è stato interrogato (stato_bot)', ok: chiesto });
+      // ⭐⭐ e la proposta è comparsa
+      const proposta = await waitFor(() => /non è nel bot Telegram/i.test(spia.testo()), 4000);
+      checks.push({ label: '⭐⭐ compare l\'avviso «non è nel bot Telegram»', ok: proposta });
+      // il bottone c'è → lo premo → il link si prepara
+      const btn = trovaBottoneChat(win, c0, /prepara il link/i);
+      checks.push({ label: 'c\'è il bottone «Prepara il link d\'ingresso»', ok: !!btn });
+      if (btn) {
+        btn.click();
+        const pronto = await waitFor(() => /Link pronto/i.test(spia.testo()), 4000);
+        checks.push({ label: 'premuto: il link è pronto', ok: pronto });
+        checks.push({ label: 'il messaggio da mandare contiene il link del ponte',
+          ok: /t\.me\/loziocoach_bot\?start=XYZ/.test(spia.testo()) });
+        checks.push({ label: 'la richiesta crea_invito è partita',
+          ok: TELEGRAM_CHIAMATE.some(c => c.action === 'crea_invito') });
+      }
+      spia.stop();
+      return checks;
+    }
+  },
+  {
+    id: 97, flow: 'Bot/Invito', name: '⭐ CONTROLLO OPPOSTO: giocatore GIÀ nel bot → nessuna proposta (silenzio)',
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      H.setBookings([bookingFixture(iso, { giocatori: [{ nome: 'Ospite' }] })]);
+      WORKER_NEXT = { ok: true };
+      TELEGRAM_NEXT = { stato_bot: { ok: true, nel_bot: true } };
+      const c0 = chatCount(win);
+      const spia = osservaChat(win);
+      await handleSeq(win, ['aggiungi Maurizio Aprea alla partita di campo 2 di domani alle 18', 'sì']);
+      const checks = [];
+      const entrato = await waitFor(() => /Maurizio/i.test(namesOf(H.getBookings(), iso, 2, '18:00')), 5000);
+      checks.push({ label: '🚨 base: Maurizio è entrato davvero in partita', ok: entrato });
+      const chiesto = await waitFor(() => TELEGRAM_CHIAMATE.some(c => c.action === 'stato_bot'), 4000);
+      checks.push({ label: '🚨 base: il ponte è stato interrogato lo stesso', ok: chiesto });
+      // 🚨 base della base: la spia deve aver visto QUALCOSA, se no «non ha detto X» è vero
+      // perché non ha detto niente — è lo zero che non sa distinguere «assente» da «cieco».
+      checks.push({ label: '🚨 base: la spia ha registrato la conversazione', ok: spia.testo().length > 0 });
+      // ⭐ Senza questo caso, il 96 sarebbe verde anche se l'app proponesse il link SEMPRE.
+      // Si legge solo da c0 in poi: la trascrizione è cumulativa e il vicino sporcherebbe.
+      // 🚨 E si ASPETTA prima di dire «non c'è»: la prima stesura leggeva subito, e l'assenza era
+      // garantita dal fatto che nulla aveva ancora avuto tempo di comparire — misurato il 15/08
+      // sabotando l'app perché proponesse SEMPRE: il caso restava VERDE. Un controllo negativo
+      // senza attesa non prova un'assenza, prova solo di aver guardato troppo presto.
+      const comparso = await waitFor(() => /non è nel bot Telegram/i.test(spia.testo()), 2500);
+      checks.push({ label: '⭐ nessun avviso «non è nel bot» (atteso 2,5 s)', ok: !comparso });
+      checks.push({ label: '⭐ e nessun bottone per il link', ok: !trovaBottoneChat(win, c0, /prepara il link/i) });
+      spia.stop();
       return checks;
     }
   }
