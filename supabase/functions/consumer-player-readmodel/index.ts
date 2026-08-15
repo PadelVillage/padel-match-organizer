@@ -9,6 +9,7 @@ import {
   rosterOrdinatoDelloSlot,
 } from './compagni-slot.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
+import { livelloDimostrato } from './livello-dimostrato.ts';
 
 // consumer-player-readmodel — ponte dati READ-ONLY per gli assistenti dei SOCI
 // (WhatsApp consumer F2.0 "chat giocatori" e, dal 24/07, il bot Telegram).
@@ -118,6 +119,8 @@ type MemberHit = {
   firstName: string;
   surname: string;
   level: string;
+  /** Da dove viene il livello. Serve a distinguere un livello dimostrato da uno in PRESTITO. */
+  levelSource: string;
 };
 
 function memberFromPayload(payload: JsonMap): MemberHit | null {
@@ -133,6 +136,7 @@ function memberFromPayload(payload: JsonMap): MemberHit | null {
     firstName: clean(payload.firstName),
     surname: clean(payload.surname),
     level: clean(payload.level),
+    levelSource: clean(payload.levelSource),
   };
 }
 
@@ -275,11 +279,13 @@ Deno.serve(async (req: Request) => {
         nome: clean(p.firstName),
         cognome: clean(p.surname),
         level: level || null,
-        // Stessa regola dell'azione 'player', e deliberatamente la stessa riga: 0.5 è il
-        // valore di partenza delle schede nuove, cioè «da definire», e l'81,2% dei soci
-        // sta lì. Divergere qui vorrebbe dire un livello annunciato in rubrica e negato
-        // nella scheda del socio.
-        level_assessed: !!level && level !== '0.5',
+        // Stessa regola dell'azione 'player', e ora deliberatamente la stessa FUNZIONE:
+        // erano due righe gemelle scritte a mano in due punti lontani del file, ed è la
+        // forma in cui una divergenza non si vede finché non fa danno — un livello
+        // annunciato in rubrica e negato nella scheda del socio.
+        // 🚨 Il modulo esiste perché la domanda non è «c'è un numero?» ma «l'ha
+        // dimostrato?»: il giorno dei livelli ereditati sono due cose diverse.
+        level_assessed: livelloDimostrato(level, p.levelSource),
         gender: g === 'M' || g === 'F' ? g : null,
         // 🆕🚨⭐⭐ 6/08/2026 — «l'Ospite lo può mettere solamente la segreteria», sua decisione,
         // che ribalta quella del 30/07. ⇒ Chi non è cliente del circolo non può più entrare in
@@ -555,8 +561,10 @@ Deno.serve(async (req: Request) => {
       // stessa regola del gestionale (index.html, filtro "Livello 0.5 dopo
       // autovalutazione" e conteggio "da completare"). Si espone il flag così
       // l'assistente non annuncia "il tuo livello è 0.5".
+      // 🚨 La regola sta in `livello-dimostrato.ts`, insieme al gemello della rubrica:
+      // se si cambia qui e non là, il bot dice due cose diverse della stessa persona.
       level: member.level || null,
-      level_assessed: !!member.level && member.level !== '0.5',
+      level_assessed: livelloDimostrato(member.level, member.levelSource),
     },
     wallet,
     bookings: bookings.slice(0, MAX_BOOKINGS),
