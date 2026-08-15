@@ -1,0 +1,17 @@
+{
+  "name": "pmo-verifica-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Console remota sul gestionale: esegue snippet di diagnosi nella pagina, su TEST o PROD, in sola lettura.",
+  "scripts": {
+    "check": "node --check console.mjs",
+    "install-browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "1.59.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
