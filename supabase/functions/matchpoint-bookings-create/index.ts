@@ -19,6 +19,7 @@ import { schedaDiProva } from './scheda-di-prova.ts';
 // di `conoscenza.js`, e per lo stesso motivo: una regola che nessuno può eseguire è una regola
 // che nessuno ha provato.
 import {
+  chiusuraDelLavoroIgnoto,
   codiceDiRifiuto,
   decidiEsitoDelLavoro,
   erroreEsitoIgnoto,
@@ -228,7 +229,7 @@ export function chiavePrenotazione(booking: BookingRequest, actorUserId: string)
 // Elenco di ciò che questa versione dell'edge SA FARE. Serve a chi chiede la prova a vuoto:
 // 🚨 un'edge vecchia che non la conosce ignorerebbe il flag e PRENOTEREBBE DAVVERO, quindi chi
 // la chiede deve poter verificare PRIMA che dall'altra parte ci sia chi la sa fare, e rifiutarsi.
-export const FEATURES = ['prova-a-vuoto-chiave', 'chiave-da-sbId', 'esito-ignoto'];
+export const FEATURES = ['prova-a-vuoto-chiave', 'chiave-da-sbId', 'esito-ignoto', 'chiusura-lavoro-ignoto'];
 
 // Fonde la fotografia della creazione (`nostro`) con quello che nella riga c'è GIÀ.
 // ⭐ Quello che c'è già VINCE campo per campo: l'ha scritto l'app, ed è lei l'autorevole sulla
@@ -505,6 +506,58 @@ Deno.serve(async (req: Request) => {
     body = await req.json();
   } catch {
     return err(400, 'INVALID_JSON', 'Request body must be valid JSON.');
+  }
+
+  // ── ⏳→✅/❌ CHIUDERE UN LAVORO RIMASTO «IGNOTO» ─────────────────────────────────────────────
+  // 🚨 Il residuo della voce 23, misurato il 15/08/2026 collaudandola in produzione: quando la
+  // edge chiude un lavoro con `unknown`, l'app poi VA A GUARDARE su Matchpoint e arriva a un
+  // verdetto — ma quel verdetto restava nel `localStorage` di quel browser. Nel database il
+  // lavoro rimaneva `unknown` PER SEMPRE: chi guarda `pmo_cloud_records` vedeva una domanda
+  // ancora aperta che invece era stata chiusa, e chi non era seduto davanti a quello schermo non
+  // poteva saperlo. È la stessa famiglia dei «documenti che mentono» tolti in questi giorni —
+  // piccola, ma della stessa specie.
+  //
+  // ⛔ QUI NON SI TOCCA IL GESTIONALE DEL CIRCOLO, e per questo si esce PRIMA del recinto: non
+  //    c'è nessuna chiamata al worker, nessuna prenotazione, nessuna disdetta. Si scrive una
+  //    riga di stato nel NOSTRO database, su un lavoro che è già finito. Un recinto che
+  //    fermasse anche questo impedirebbe di raccontare la verità su un ambiente di prova.
+  //
+  // 🔒 E NON SI PUÒ RISCRIVERE UN ESITO NOTO: si chiude solo ciò che è `unknown`. Se il lavoro è
+  //    già `done` o `error`, quella è la parola del worker — che ha visto la cosa da vicino — e
+  //    l'app, che ha guardato il calendario da fuori, non deve poterla sovrascrivere. Risponde
+  //    `chiuso: false` invece di un errore: chiamarla due volte non è un guasto, è una ripresa.
+  //
+  // ⚖️ Degrada in sicurezza in ENTRAMBI i versi, come tutto il resto di questa voce: app nuova +
+  //    edge VECCHIA → il corpo finisce nella validazione della prenotazione e torna indietro
+  //    `INVALID_CAMPO` (400) senza aver toccato niente, perché la validazione sta prima di
+  //    qualunque effetto; edge nuova + app vecchia → questa strada non la chiama nessuno.
+  //    Chi vuole saperlo prima di provarci ha `?features=1`.
+  if (clean(body.azione) === 'chiudi-lavoro-ignoto') {
+    const jobId = clean(body.jobId);
+    if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
+    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    const client = createClient(sUrl, sKey);
+    const { data, error } = await client.from('pmo_cloud_records')
+      .select('payload').eq('record_type', 'booking_job').eq('local_key', jobId).maybeSingle();
+    if (error) return err(500, 'DB_ERROR', errorText(error));
+    if (!data) return err(404, 'JOB_NOT_FOUND', 'Job non trovato.');
+    // ⭐ La decisione sta nel modulo puro, non qui: così il banco la ESEGUE invece di leggerla.
+    const chiusura = chiusuraDelLavoroIgnoto((data.payload as JsonMap) ?? {}, clean(body.verdetto), {
+      tentativi: Number(body.tentativi) || 0,
+      quando: new Date().toISOString(),
+    });
+    if (!chiusura.chiudibile) {
+      if (chiusura.motivo === 'VERDETTO_NON_VALIDO') {
+        return err(400, 'VERDETTO_NON_VALIDO', 'verdetto deve essere "si" oppure "no".');
+      }
+      // Non è un errore: chiamarla su un lavoro già concluso vuol dire che qualcuno sta
+      // riprendendo una verifica vecchia, ed è esattamente ciò che deve poter fare.
+      return ok({ jobId, chiuso: false, motivo: chiusura.motivo, status: chiusura.status });
+    }
+    const chiuso = await writeBookingJob(client, jobId, chiusura.status as string, chiusura.payload as JsonMap);
+    if (!chiuso) return err(503, 'JOB_NON_CHIUSO', 'Non sono riuscito a scrivere la chiusura del lavoro.');
+    return ok({ jobId, chiuso: true, status: chiusura.status, verdetto: clean(body.verdetto) });
   }
 
   // Validate booking fields
