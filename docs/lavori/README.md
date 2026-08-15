@@ -163,7 +163,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **26** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 22ª (15/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.231** · TEST **6.240** · i **4
+dei due rami, non ricordate: app PROD **6.231** · TEST **6.241** · i **4)
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
@@ -366,7 +366,7 @@ bersaglio è una modifica non fatta.
 ✅ **E il debito è chiuso lo stesso giorno: le righe promosse anche su TEST (6.238).** Le 6.227/6.228/6.229 erano nate su `main` — il guasto si vedeva in produzione — e sarebbero rimaste solo là: `test-preview` avrebbe avuto ancora il bottone che sbalza e il ramo email morto, cioè **la voce 31 al contrario, ricreata il giorno stesso in cui la si censiva**. Promozione **a righe**: i pezzi solo-TEST sono intatti, banco **90/90** prima e dopo.
 🧯 Due contatori sono tornati «sporchi» alla verifica (`poi procedi con il flusso email` = 1, `Invio conferma email in corso` = 1) e per un istante è sembrato che la promozione non fosse atterrata: erano **i commenti appena scritti**, che quelle frasi le citano. Stessa trappola di `switchTab(` due ore prima ⇒ **una sonda che cerca una stringa nel codice deve saltare i commenti, sempre**.
 
-⚠️ **E la potatura da 64 funzioni resta ferma**, ora con una ragione in più per non correre: dentro una
+✅ **POTATURA FATTA su TEST il 15/08 (6.241): 105 funzioni, 1590 righe.** Autorizzata da lui col perimetro rimisurato. Il numero della scheda — «64 funzioni e 1195 righe» — era sbagliato **in tutti e due i sensi**, e per trovarlo sono serviti quattro analizzatori: il filtro per prefisso `assessment*` nascondeva 34 funzioni (`buildAssessment*`, `openAssessment*`, `renderAssessment*`); la sonda delle invocazioni dinamiche non vedeva la forma `assessmentProcessButton(label, tipo, "nomeFunzione(...)")` e produceva **due falsi morti** che avrebbero rotto due bottoni vivi; e soprattutto **l'analizzatore leggeva un solo blocco `<script>` su cinque** — l'app ne ha uno da 976.000 caratteri — quindi 645 funzioni erano invisibili come chiamanti. 🎯 **A smascherarlo è stata la verifica dopo il taglio, non il taglio**: due riferimenti orfani rimasti nel file potato. Senza quel controllo avrei cancellato codice vivo con tutti i verdi accesi. Potato fino al punto fisso (morte residue: **0**), banco 93/93, zero orfani su 105 nomi, nessuna citata altrove nel repo. ⛔ **Solo su TEST**: la promozione a PROD è una conferma separata, tua. ⚠️ **Quello che resta della 28**, ora con una ragione in più per non correre: dentro una
 sezione spenta non fa danno a nessuno, quindi è manutenzione, non riparazione.
 
 ### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
