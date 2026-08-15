@@ -208,12 +208,40 @@ preparano da qui.
 
 🚨 **Resta aperta, e la decisione è sua**: portare su `main` i **33 casi** che sorvegliano codice di PROD (lavoro grosso), promuovere **`livello-dimostrato.ts`** al ponte del bot (oggi costa nulla e chiude la porta in anticipo), o chiudere dichiarando e farne voci a sé.
 
-### 🧟 29. Le azioni email restano dentro `assessment-email-send`
+### 🧟 29. Le azioni email restano dentro `assessment-email-send` — **misurata il 15/08**
 *Nata il 13/08.* `sendAssessmentEmailCore` e le sue compagne ci sono ancora, ma `ALLOWED_ACTIONS` non le ammette più e rispondono **410**. Riaccenderle = rimetterle nell'elenco.
 🚨 La funzione **non si cancella** e i secret Gmail **non si tolgono**: vedi la memoria tematica Gmail.
 
-### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file
-*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste: scrivono in `getElementById` che ora dà `null`, e cominciano tutte con `if (!box) return;` ⇒ **no-op, irraggiungibili**. Lasciate di proposito: asportarle è una potatura da provare per bene. Il perché è scritto nel commento HTML nel punto dove stavano i pannelli.
+**Misurato sul bersaglio, non dedotto:**
+
+| | |
+|---|---|
+| il disarmo | `ALLOWED_ACTIONS` = **4 vive** (`config-check`, `gmail-check`, `staff_invite`, `staff_delete_full`); `RETIRED_EMAIL_ACTIONS` = **11 ritirate**, che escono con `410 ASSESSMENT_EMAIL_CHANNEL_RETIRED` alla riga 2607, **prima** del controllo delle ammesse |
+| ⚠️ **il default è un'azione ritirata** | `const action = clean(body.action \|\| 'send')` ⇒ chi chiama **senza `action`** prende un 410, non un «azione non valida». È voluto e va saputo prima di toccare quella riga |
+| chi la chiama davvero | **3 punti** in `index.html`, e usano solo azioni vive: `config-check`, `staff_invite`, `staff_delete_full`. Il quarto punto (riga 14742) è **il disarmo stesso**, l'imbuto unico dei suoi 11 chiamanti |
+| 🔬 **nessun automatismo la chiama** | l'unica funzione SQL che nomina `assessment-email-send` è `pmo_dispatch_assessment_followup_email_prod`, e il suo cron (**jobid 4**) è `active = false`. Gli altri tre cron dell'autovalutazione puntano altrove (`assessment-notify-staff`, `assessment-apply-level`) |
+| 📡 **zero invocazioni in 24 ore su PROD** | `function_edge_logs`, funzione `d38ed8fe…`: **0**. ⭐ Con **controllo negativo**: nella stessa finestra la sonda vede **2344 righe** e trova `bot-telegram-admin` con 14 chiamate ⇒ lo zero è uno zero vero, non una sonda cieca. ⚠️ La finestra massima è 24 ore e `staff_invite` è un gesto **manuale e raro**: «0 in un giorno» non è «non serve» |
+
+🎯 **Non c'è niente di rotto e niente da spegnere: il codice ritirato è già murato in tre punti indipendenti** (410 in testa, elenco delle ammesse, cron spento). ⇒ La domanda vera è **se vale la pena asportare** le ~1400 righe delle 11 azioni ritirate, oppure lasciarle e chiudere la voce dichiarando. 🚨 Asportarle **non è gratis**: `sendAssessmentEmailCore` e i suoi porti (Gmail, MIME, log) sono gli stessi che usa **`staff_invite`**, che è vivo — quindi non è una potatura per nome, va seguito il grafo. La decisione è sua.
+
+### 🧟 28. Le ~60 funzioni dei pannelli email rimossi restano nel file — **contate il 15/08: sono 64**
+*Nata il 13/08.* Tolti i 5 pannelli (PR #677), le funzioni che li disegnavano sono rimaste. Il perché è scritto nel commento HTML nel punto dove stavano (riga ~6825).
+
+🚨 **La scheda diceva «no-op, irraggiungibili»: la prima parola è giusta, la seconda NO.** Tutte e cinque le radici sono **chiamate a ogni giro** da `renderAssessmentEmailPanels()`, che è viva e gira a ogni cambio di pannello. Non sono irraggiungibili: sono **raggiunte e tornano subito**, perché `document.getElementById(...)` dà `null` e ognuna comincia con `if (!box) return;`. ⇒ Chi le cancella **deve cancellare anche i richiami**, o l'app va in `ReferenceError` al primo cambio di pannello — che è la voce 31 al contrario: là mancava la serratura sotto la maniglia, qui si toglierebbe la serratura lasciando la maniglia.
+
+**La misura (chiusura transitiva sul grafo dei richiami, `index.html` di `main`):**
+
+| | |
+|---|---|
+| le 5 radici | `renderAssessmentEmailMorningPanel` (180 righe) · `…RoutinePanel` (90) · `…QueuePanel` (39) · `…PendingPanel` (42) · `…PostPanel` (31) |
+| **restano senza richiami** | **64 funzioni, 1195 righe**, fra riga 31320 e riga 35356. Fra queste `renderCardSolleciti`, `renderCardGestioneManuale`, `renderCardDaValidare`, tutta la famiglia `assessmentManualBatch*` e i quattro `assessmentEmailSendManualBatch*` |
+| **richiami da togliere insieme** | **6**: i cinque dentro `renderAssessmentEmailPanels()` (righe 34871–34875) e uno dentro `updateAssessmentTokenStatusFrontend()` (riga 30043), che è viva. Gli altri richiami stanno già dentro funzioni del gruppo morto |
+| di contorno | **53 id** della famiglia `assessment*` sono cercati con `getElementById` e non esistono più in nessun punto del file — coerente col quadro |
+| ⚠️ **il limite della misura** | il grafo segue i **nomi**. Un richiamo costruito a stringa (`window['assessment'+x]`) non lo vedrebbe: prima di tagliare va provato per bene, ed è esattamente il motivo per cui il 13/08 furono lasciate lì |
+
+🧭 **Due residui vivi che puntano al vuoto**, trovati misurando: `setAssessmentEmailPanel('post')` (riga 10074) e `setAssessmentEmailPanel(panel \|\| 'queue')` (riga 33845) chiedono pannelli che **non esistono più** — non rompono niente (il `querySelectorAll` non trova nulla da accendere), ma portano lo staff su una pagina che resta com'era. Sono **due righe**, e si curano indipendentemente dalla potatura grossa.
+
+🆕 **E una cosa più grande, vista di sfuggita e NON verificata**: fuori dalla famiglia `assessment` ci sono altri **111 id** cercati con `getElementById` e mai definiti nel file (`dashboardKpiGrid`, `memberSearch`, `statClienti`, `assistantGroup*`…). Se il campione regge, la 28 non è un caso isolato ma **la punta di un fenomeno d'app**. ⚠️ Ne ho verificati **due** a mano: non è una misura, è un indizio — e va guardato prima di essere creduto, non dopo.
 
 ### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
 *Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
