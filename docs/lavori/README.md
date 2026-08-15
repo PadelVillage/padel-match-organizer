@@ -73,7 +73,7 @@ contesto**, non eseguire il compito scritto.
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.226** · TEST **6.237** · i **4 percorsi** di
-`guard-worker-sync` **identici** fra i rami · **PR aperte 0** (la #714 unita) · tutte e tre le
+`guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine sessione (unite la **#714** — il codice — e la **#715**, **#716**, **#717**, tutte e tre di soli `docs/`) · tutte e tre le
 guardie **verdi su entrambi i rami**.
 ✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
 → **200**, `APP_VERSION = '6.226'`, e dentro tutti e quattro i marcatori della chiusura
