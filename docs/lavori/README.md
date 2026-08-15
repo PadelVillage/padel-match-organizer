@@ -72,18 +72,30 @@ contesto**, non eseguire il compito scritto.
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.226** · TEST **6.237** · i **4 percorsi** di
-`guard-worker-sync` **identici** fra i rami · **PR aperte 0** (ricontate) · tutte e tre le guardie
-**verdi** su entrambi i rami.
-✅ **PROD verificata DAL SERVER**, non dall'etichetta: `pg_net` su `app.padelvillage.club/index.html`
-→ **200**, `APP_VERSION = '6.225'`, e dentro `staffCalGuardaFinchePuoi`, `pmoVerificheTraccia`,
-`pmoVerificheAvvisa`. ⚠️ Alla **prima** lettura serviva ancora la versione precedente — Pages non
-aveva finito: si guarda **due volte**, sempre.
-🚨 **`guard-docs-truth` è andata rossa DUE volte oggi**, e la prima l'ha vista lui, non io: bumpavo
+`guard-worker-sync` **identici** fra i rami · **PR aperte 0** (la #714 unita) · tutte e tre le
+guardie **verdi su entrambi i rami**.
+✅ **PROD verificata DAL SERVER, non dall'etichetta**: `pg_net` su `app.padelvillage.club/index.html`
+→ **200**, `APP_VERSION = '6.226'`, e dentro tutti e quattro i marcatori della chiusura
+(`pmoChiudiLavoroIgnoto`, `chiudi-lavoro-ignoto`, `_jobIgnoto`, il deposito col numero del lavoro).
+⚠️ Alla **prima** lettura serviva ancora la **6.225** — Pages non aveva finito: si guarda **due
+volte**, sempre, ed è la terza sessione di fila in cui quel «non ancora» avrebbe potuto passare per
+un «no».
+✅ **E le due edge sono VIVE, non solo deployate**: interrogate con `pg_net` senza credenziali,
+rispondono **401 col loro JSON** su `qqbf…` e su `cudi…` — una funzione che non parte non risponde
+nemmeno con un errore suo.
+🔁 **Le due guardie sono andate rosse su `test-preview` fra la spinta e il merge**, ed era previsto:
+per quei minuti i `docs/` dichiaravano PROD 6.226 mentre `main` stava ancora a 6.225. È la finestra
+del punto 4bis, e spingendo prima TEST è caduta **là**. Rientrate da sé col merge, rilanciate a mano
+per non lasciare un rosso vecchio in bacheca.
+⚠️ Non rimisurati oggi, e da non dare per buoni: cron, secret, memoria dell'app. Il **linter di
+PROD** sì: **101 → 101**, `ERROR` **0**, nessun avviso nuovo dopo la voce 40.
+
+**Alla chiusura della 18ª, poche ore prima** — tenuto perché la lezione è di quel giro:
+🚨 **`guard-docs-truth` è andata rossa DUE volte**, e la prima l'ha vista lui, non io: bumpavo
 la versione e non toccavo `stato-progetto-corrente.md`. ⇒ Regola imparata: **un deploy non è finito
 quando il merge riesce, è finito quando le guardie sono verdi** — e le due che contano scattano sul
 **push**, quindi non compaiono fra i check della PR. La seconda volta il rosso l'ho visto **prima**
 di promuovere, e il registro è entrato **dentro** la promozione invece che dopo.
-⚠️ Non rimisurati oggi, e da non dare per buoni: linter, cron, secret, memoria dell'app.
 
 🚨 **C'ERA UNA PR APERTA, ED ERA UNA TRAPPOLA: la #700 — ora CHIUSA su sua decisione.** Non erano
 zero, come le sessioni precedenti davano per scontato. Era la chiusura della **16ª sessione**,
