@@ -63,12 +63,13 @@ contesto**, non eseguire il compito scritto.
 | 📅 **le 1364 righe con la data VERA** | non `now()`, che sarebbe stato il default e avrebbe scritto 1364 date false — la stessa specie di bugia che queste giornate stanno togliendo |
 | 🔧 **e i due trigger che mancavano** | terza autorizzazione distinta della sola voce 40, chiesta separatamente perché tocca il **comportamento** e non solo la forma |
 | ✋ **un «no» implicito, rispettato** | il terzo trigger — quello che brucia il gettone da dentro il database — non è stato toccato: non era fra le tre cose autorizzate, ed è un cambio di comportamento |
+| ⬆️ **e subito dopo: «aggiungi in coda la parte B»** | promossa da nota a **voce 41**, in sezione C. ⇒ Chiusa la voce e messo il residuo dove si vede: la coda passa da 13 a **14** |
 | 📦 **«chiudila, ventitré resta solo la parte B»** | la **23** chiusa da lui a residuo dichiarato, non a residuo finito: quello che resta è **una prova da fare dal Mac**, non codice da scrivere. ⇒ La lista urgenti torna **vuota**, e la parte B scende fra le «nate misurando» — dove le promozioni le decide lui |
 
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **13** |
+| 📋 **In coda** | **14** |
 | 📦 **Chiuse** | **20** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 19ª (15/08)** — versioni lette dall'`index.html`
@@ -179,11 +180,27 @@ regola nata il 13/08, ed è scritta in `CLAUDE.md`.
 
 ---
 
-## 📋 IN CODA — 13
+## 📋 IN CODA — 14
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
 
-### C — Cose sapute e non risolte — 8
+### C — Cose sapute e non risolte — 9
+
+#### 41. 🧪 La PARTE B del collaudo della 23 — «il worker crea, e la risposta si perde»
+*Messa in coda da lui il 15/08, subito dopo aver chiuso la voce 23.* È ciò che restava di quella
+voce, e **non è codice**: è una prova da eseguire, scritta per intero nella parte B di
+[`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
+
+⭐ **Perché vale**: è l'**unico** caso che percorre il ramo del **`si`** — esito ignoto → si guarda →
+si TROVA → lavoro chiuso `done`. Il collaudo del 15/08 prova solo il ramo del `no`. E porta con sé
+la prima esecuzione vera di `chiudi-lavoro-ignoto`, che finora è provata dal banco e **mai girata**.
+📊 La finestra è **misurata su 191 lavori**: taglio a ~2 s, dentro il minimo di **4,0 s**.
+🚨 Due trappole scritte lì: lo slot **non** dev'essere una manutenzione (senza nomi il verdetto è
+`boh`, non `si`), e la prenotazione è **vera per costruzione** ⇒ la cancellazione fa parte della
+procedura.
+⛔ **Non si fa dal cloud**: serve la VM per Caddy. E la previsione su cui poggia — che il worker
+prosegua dopo la caduta del client — **non è provata**: se si fermasse, il caso non sarebbe
+riproducibile così, e anche quello è una risposta da scrivere lì.
 
 #### 11bis. Il bottone che CREA IN MATCHPOINT chi ha solo l'ID `PMO-`
 Sua idea del 2/08. Ha **perso urgenza** il 3/08: la visibilità di quei soci è stata curata alla radice (PROD 6.169) ⇒ non è più una riparazione ma una **scelta**.
@@ -381,7 +398,8 @@ Misurando il **14/08**, aprendo la voce 22:
 Misurando il **15/08** nella 19ª sessione, sanando la voce 40 e chiudendo la 23:
 
 - 🧪 **LA PARTE B DEL COLLAUDO — «il worker riceve, crea su Matchpoint, e poi la risposta si
-  perde».** È ciò che resta della voce 23, che è stata **chiusa** per sua decisione: non è un lavoro
+  perde».** ⬆️ **Promossa da lui il 15/08, subito dopo: è la voce 41**, in coda nella sezione C.
+  È ciò che resta della voce 23, che è stata **chiusa** per sua decisione: non è un lavoro
   di codice, è **una prova da eseguire dal Mac**, e sta scritta per intero nella parte B di
   [`docs/collaudo-voce-23-caduta-worker.md`](../collaudo-voce-23-caduta-worker.md).
   🔎 **Perché ora si può, e prima si diceva di no**: non serve che il worker sia irraggiungibile,
