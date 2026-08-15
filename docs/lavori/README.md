@@ -426,6 +426,45 @@ disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono fresch
 PROD è **parità**, ed è la parità a costare.
 🔗 **Chiude la voce 26** il giorno in cui si fa.
 
+---
+
+✅ **FATTA il 15/08 alle 23:26, 24ª sessione — resta aperta solo per la verifica della prima
+giornata.** Procedura, query di controllo e comando di spegnimento:
+[`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md).
+
+🔓 **Ciò che l'ha sbloccata l'ha detto lui, e non stava in nessun file**: *«avevamo deciso insieme di
+fermare tutte le routine di test proprio perché così facevamo gli aggiornamenti manuali quando ci
+serviva di fare dei test»*. Il «perché furono spenti» che la scheda poneva come condizione **non era
+recuperabile da qui**: non erano spente per un guasto, erano spente **per avere il controllo**.
+
+🛑 **E su tre punti la scheda qui sopra è ora SMENTITA dai fatti. Restano scritti perché il confronto
+è la cosa utile:**
+
+| la scheda diceva | com'è andata |
+|---|---|
+| «accendere il cron **jobid 13**, togliere l'argomento che lo inchioda» | il **13 non è stato toccato**: resta spento e inchiodato com'era. Si è aggiunto un lavoro **nuovo** (jobid 17), così tornare indietro è cancellarlo, non ricostruire il vecchio |
+| «**non è una riga di SQL**» | **lo era**: una `cron.schedule` |
+| «**non si fa dal cloud**» | **fatta dal cloud.** Resta vero solo il quarto controllo — le letture in più nei log del worker — che vuole la VM |
+
+🎯 **Il nodo vero non era nessuno dei tre: era che il dispatcher è UNO per 12 slot** (6 clienti + 1
+storico + 5 calendario) ⇒ «riaccendere solo il calendario» non esiste come interruttore. Sciolto
+**senza toccare la funzione**: la sveglia suona ogni ora al minuto 30 e a decidere è il confronto
+sull'**ora italiana**, che nomina i cinque orari del calendario.
+🚨 Serviva **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti
+cadono al minuto 30.
+
+✅ **Il filtro è stato esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è
+partita (`succeeded`) e non ha prodotto **nessun** dispatch clienti né storico. 🔬 Ed è stata esclusa
+la spiegazione alternativa: l'insert è `on conflict do nothing`, quindi una riga preesistente avrebbe
+dato lo stesso zero: le uniche due sono `clients_0430` del **2 e 3 agosto**, mentre quel giro avrebbe
+creato una chiave nuova. ⇒ La funzione non è stata chiamata affatto.
+
+⏭️ **Cosa resta**: il primo slot di calendario è alle **05:30 del 16/08**; poi i tre controlli del
+documento (5 righe attese, zero risvegli di clienti/storico, e la data dell'ultimo aggiornamento che
+si muove dal **7 agosto**), più le letture nei log del worker **dalla VM**. ⛔ **Non chiusa da me**, e
+con lei resta aperta la **26**: la chiusura la decide il committente, e la prova che manca è di
+domani.
+
 ### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
 Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
 
