@@ -8,7 +8,7 @@ La 16ª aveva imparato a diffidare della **prova che ti dà ragione**. La 20ª, 
 **strumento che la produce**. Questa le ha viste **sommarsi**, ed è la combinazione peggiore: una
 sonda che sbagliava **nella stessa direzione in cui il registro sbagliava già**.
 
-| la sonda diceva | cosa era davvero |
+| quello che davo per buono | cosa era davvero |
 |---|---|
 | «il `readonly` non vede le prenotazioni» — **e il registro lo diceva identico** | chiamavo `pmoCloudRpc` **senza `accessToken`**: partivo come **anon**, il server rispondeva `AUTH_REQUIRED` e l'app lo traduceva in «Accedi con email personale Supabase». Misuravo **la mia chiamata**, non il `readonly` |
 | «le riceve, ma di vive nemmeno una»: `{}` per tipo | **1000 righe è il tetto di PostgREST**, non la fine dei dati. Paginando: **8359** righe, vive **44 / 60 / 150**, identiche al conteggio SQL |
@@ -139,7 +139,7 @@ contesto**, non eseguire il compito scritto.
 |---|---|
 | 🔓 **«fai la correzione» ×2** | le due segnalate a fine collaudo — l'auto-preparazione del container e la nota invecchiata — autorizzate **una per una**, come sempre, non in blocco |
 | 🔎 **«verifica se su prod il readonly vede le prenotazioni»** | la domanda che ha smascherato la spiegazione falsa del registro. 🚨 **Non l'avrei aperta da solo**: l'avevo lasciata come «non verificato, fuori dal chiesto» — ed è la quinta volta in tre giorni che la correzione che conta la porta lui |
-| 🔀 **«riallinea test-preview e poi fai merge su main»**, due volte | l'ordine del punto 4bis chiesto per nome. La prima volta la rossa transitoria è caduta su `test-preview` (com'è progettato), la seconda non è caduta affatto: stessa procedura, esiti diversi, che è la corsa descritta lì |
+| 🔀 **«riallinea test-preview e poi fai merge su main»** | l'ordine del punto 4bis chiesto **per nome, una volta**; le altre volte la procedura l'ho applicata io, seguendo la regola già scritta — e la distinzione sta qui perché questa tabella raccoglie **le sue** decisioni, non le mie iniziative prese sotto la sua regola. ⚖️ Quando la rossa transitoria è caduta, è caduta su `test-preview`, che è ciò che il 4bis promette; quante volte sia caduta **non è scritto**, per la ragione spiegata in fondo |
 | 🔁 **«rilancia il collaudo per confermare che tutto regge»** | ⚖️ **ed è questa richiesta ad aver prodotto il risultato migliore della sessione**: rilanciando da container freddo si è visto che su PROD la guardia delle scritture **non aveva scattato**, e da lì il sabotaggio deliberato. Un «ricontrolla» che ha trovato ciò che il collaudo normale non poteva trovare |
 
 **E nella 20ª, lo stesso pomeriggio:**
@@ -186,14 +186,16 @@ su `cudi…`. Una funzione che non parte non risponde nemmeno con un errore suo.
 ✅ **`manifest.json` misurato dai due domini**: PROD **200 `application/json`**, TEST **404
 `text/html`**. È la prova che quel file su `test-preview` non lo serve nessuno.
 
-🔁 **La finestra del 4bis cade rossa a volte sì e a volte no, a parità di procedura**: alla 22ª,
-tre giri identici → **rossa, verde, rossa**.
-⚖️ **Il conteggio NON si scrive qui, di proposito**, ed è la stessa ragione per cui sopra non ci sono
-gli sha: *la spinta che aggiorna questa riga è essa stessa un giro*, quindi qualunque tally è vecchio
-nell'istante in cui lo si salva. 📏 Non è teoria: alla prima stesura questa riga diceva «rossa **una
-volta su due**», e il giro che l'ha portata sul ramo l'ha resa **falsa mentre atterrava**. È la
-malattia dei documenti curata il 13/08, colta nel suo caso più piccolo — un file che, per esistere,
-smentisce sé stesso.
+🔁 **La finestra del 4bis cade rossa a volte sì e a volte no, a parità di procedura.**
+⚖️ **Quante volte NON si scrive qui**, ed è la stessa ragione per cui sopra non ci sono gli sha: *la
+spinta che aggiorna questa riga è essa stessa un giro*, quindi qualunque conteggio è vecchio
+nell'istante in cui lo si salva. 📏 Non è teoria, ed è successo **due volte di fila**: la prima
+stesura diceva «rossa **una volta su due**» e il giro che l'ha portata sul ramo l'ha resa falsa
+mentre atterrava; la correzione ha tolto quel numero e **ne ha scritto un altro** — «tre giri, rossa
+verde rossa» — che il giro successivo ha smentito entro un minuto. 🚨 **Curare l'istanza invece della
+classe non è una cura**: finché una frase enumera esiti CI, il commit che la trasporta è uno di
+quegli esiti. È la malattia dei documenti curata il 13/08, nel suo caso più piccolo — un file che,
+per esistere, smentisce sé stesso.
 ⇒ Resta scritto solo il fatto **stabile**: non è una regola, è una **corsa**, e il colore lo decide
 se il riallineo atterra prima che il guard legga i ref. Spingendo prima TEST, quando cade, cade
 **là** — che è tutto ciò che il 4bis promette. I rossi vecchi si rilanciano a mano per non lasciarli
