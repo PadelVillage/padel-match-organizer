@@ -59,9 +59,18 @@ function estrai(nome) {
 const rigaLook = html.match(/const _STAFF_CAL_LOOK = \{[^}]*\};/);
 if (!rigaLook) throw new Error('`_STAFF_CAL_LOOK` non trovata in index.html');
 
+const rigaEta = html.match(/const _PMO_VERIFICHE_ETA_MAX_MS = [^;]+;/);
+if (!rigaEta) throw new Error('`_PMO_VERIFICHE_ETA_MAX_MS` non trovata in index.html');
+
 const ctx = vm.createContext({ console });
-vm.runInContext(rigaLook[0] + '\n\n' + estrai('staffCalGuardaFinchePuoi'), ctx);
+vm.runInContext([
+  rigaLook[0],
+  rigaEta[0],
+  estrai('staffCalGuardaFinchePuoi'),
+  estrai('pmoVerificheNormalizza'),
+].join('\n\n'), ctx);
 const guarda = ctx.staffCalGuardaFinchePuoi;
+const normalizza = ctx.pmoVerificheNormalizza;
 // ⚠️ `const` non diventa una proprietà del contesto (le `function` sì): la costante si legge
 //    valutandola come espressione, o si leggerebbe `undefined` credendo di aver misurato.
 const LOOK = vm.runInContext('({ maxMs: _STAFF_CAL_LOOK.maxMs, stepMs: _STAFF_CAL_LOOK.stepMs })', ctx);
@@ -157,6 +166,51 @@ await caso('10. 🚨 CONTROLLO NEGATIVO — il banco sa diventare rosso: con la 
   const esito = await vecchia(async function () { return risposte[n++]; });
   // Con la regola vecchia esce «boh»: se un domani qualcuno la rimettesse, il caso 3 diventa rosso.
   return esito.verdict === 'boh';
+});
+
+console.log('\n⏳ LE VERIFICHE IN SOSPESO — pmoVerificheNormalizza (seconda metà)\n');
+
+const ORA = 1_000_000_000_000;
+const GIORNO = 24 * 60 * 60 * 1000;
+const voce = (id, quando) => ({ id, quando, parsed: { campo: 'Campo 1', data: '2026-12-14', ora: '08:00' } });
+
+await caso('11. una verifica fresca sopravvive al giro di pulizia', () => {
+  const r = normalizza([voce('a', ORA - 1000)], ORA, 2 * GIORNO);
+  return r.length === 1 && r[0].id === 'a';
+});
+
+await caso('12. ⚠️ oltre le 48 ore si scarta: una domanda vecchia due giorni è un residuo, non una verifica', () => {
+  const r = normalizza([voce('vecchia', ORA - 3 * GIORNO), voce('nuova', ORA - 1000)], ORA, 2 * GIORNO);
+  return r.length === 1 && r[0].id === 'nuova';
+});
+
+await caso('13. lo stesso id non si duplica, anche se il deposito lo contiene due volte', () => {
+  const r = normalizza([voce('a', ORA - 1000), voce('a', ORA - 2000)], ORA, 2 * GIORNO);
+  return r.length === 1;
+});
+
+await caso('14. 🚨 un deposito ROTTO non fa esplodere l\'avvio: vale lista vuota', () => [
+  normalizza('{non è json', ORA, 2 * GIORNO).length === 0,
+  normalizza('null', ORA, 2 * GIORNO).length === 0,
+  normalizza(null, ORA, 2 * GIORNO).length === 0,
+  normalizza({ non: 'un array' }, ORA, 2 * GIORNO).length === 0,
+  normalizza([null, 3, 'x', {}], ORA, 2 * GIORNO).length === 0,
+]);
+
+await caso('15. senza il COSA (parsed) la voce si scarta: non si può chiedere di che cosa', () => {
+  const r = normalizza([{ id: 'a', quando: ORA - 1000 }, voce('b', ORA - 1000)], ORA, 2 * GIORNO);
+  return r.length === 1 && r[0].id === 'b';
+});
+
+await caso('16. il deposito arriva anche come STRINGA (come lo restituisce lo storage) e si legge uguale', () => {
+  const r = normalizza(JSON.stringify([voce('a', ORA - 1000)]), ORA, 2 * GIORNO);
+  return r.length === 1 && r[0].id === 'a';
+});
+
+await caso('17. 🚨 CONTROLLO NEGATIVO: se la pulizia per età sparisse, il caso 12 diventerebbe rosso', () => {
+  // Senza il filtro sull'età, la vecchia di tre giorni resterebbe in lista.
+  const senzaFiltro = [voce('vecchia', ORA - 3 * GIORNO), voce('nuova', ORA - 1000)];
+  return senzaFiltro.length === 2 && normalizza(senzaFiltro, ORA, 2 * GIORNO).length === 1;
 });
 
 console.log(`\n${ko === 0 ? '✅' : '❌'} ${ok}/${ok + ko} casi passati\n`);

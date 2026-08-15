@@ -7942,7 +7942,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.233';
+    const APP_VERSION = '6.234';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -39263,6 +39263,9 @@ Per confermare scrivi ELIMINA.`);
     // ancora pronti (la griglia resta vuota finché non si clicca "Oggi"). Controlla per qualche
     // secondo e ridisegna appena la griglia è costruibile ma ancora vuota.
     staffCalEnsureRendered(0);
+    // ⭐⭐ Voce 23: se è rimasta una domanda in sospeso, la si riprende ADESSO. Non blocca
+    //    l'avvio e non dice niente se non c'è niente da riprendere.
+    try { pmoRiprendiVerificheInSospeso(); } catch (e) {}
     // staffCalInputBar permanently hidden — replaced by svc chat panel
   }
 
@@ -44593,6 +44596,112 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // 🚨⭐⭐ LE VERIFICHE IN SOSPESO — voce 23, seconda metà (15/08/2026).
+  //
+  // Regola del committente: «non possiamo avere un forse, o è sì o è no». La prima metà
+  // (`staffCalGuardaFinchePuoi`) insiste finché la pagina è aperta; ma se dopo tre minuti la
+  // strada è ancora giù, fin qui l'app MOLLAVA e scaricava la domanda sull'operatore — che è
+  // il «forse» nella sua forma peggiore, perché arriva travestito da istruzione.
+  // ⇒ Adesso se la tiene: la domanda viene DEPOSITATA e ripresa a ogni apertura, finché non
+  //   finisce in un sì o in un no. Il non-sapere smette di essere uno stato d'arrivo e diventa
+  //   una lavorazione aperta — e a portarla avanti è il sistema, non la persona.
+  //
+  // ⚖️ IL LIMITE, dichiarato invece che lasciato scoprire: il deposito è quello del BROWSER.
+  //    Riaprendo da un altro computer la verifica non riparte lì. Copre il caso vero — stessa
+  //    postazione, scheda chiusa e riaperta — non tutti.
+  // ⚠️ E si scarta da sé dopo 48 ore: una domanda senza risposta da due giorni non è più una
+  //    verifica, è un residuo. Una lista che cresce e basta è il modo in cui le liste smettono
+  //    di essere lette.
+  const _PMO_VERIFICHE_CHIAVE = 'pmoVerificheInSospeso';
+  const _PMO_VERIFICHE_ETA_MAX_MS = 48 * 60 * 60 * 1000;
+
+  // Pura: dalla lista grezza del deposito a quella buona. Niente rete, niente storage, niente
+  // orologio di sistema — così il banco la prova davvero invece di constatarla.
+  function pmoVerificheNormalizza(grezzo, adesso, etaMaxMs) {
+    let lista = grezzo;
+    if (typeof lista === 'string') { try { lista = JSON.parse(lista); } catch (e) { lista = []; } }
+    if (!Array.isArray(lista)) lista = [];
+    const max = Number(etaMaxMs) > 0 ? Number(etaMaxMs) : _PMO_VERIFICHE_ETA_MAX_MS;
+    const adessoNum = Number(adesso) || 0;
+    const viste = Object.create(null);
+    const buone = [];
+    lista.forEach(function (v) {
+      if (!v || typeof v !== 'object') return;
+      const id = String(v.id || '').trim();
+      if (!id || viste[id]) return;                         // senza nome, o già vista
+      const quando = Number(v.quando) || 0;
+      if (!quando || (adessoNum - quando) > max) return;    // senza data, o troppo vecchia
+      if (!v.parsed || typeof v.parsed !== 'object') return; // senza il COSA, non si può chiedere
+      viste[id] = true;
+      buone.push(v);
+    });
+    return buone;
+  }
+
+  function pmoVerificheLeggi() {
+    try {
+      const grezzo = (typeof safeLoad === 'function') ? safeLoad(_PMO_VERIFICHE_CHIAVE, []) : [];
+      return pmoVerificheNormalizza(grezzo, Date.now(), _PMO_VERIFICHE_ETA_MAX_MS);
+    } catch (e) { return []; }
+  }
+
+  function pmoVerificheScrivi(lista) {
+    try { if (typeof save === 'function') save(_PMO_VERIFICHE_CHIAVE, lista || []); } catch (e) {}
+  }
+
+  function pmoVerificheSegna(id, parsed, perche) {
+    if (!id || !parsed) return;
+    const lista = pmoVerificheLeggi().filter(function (v) { return v.id !== id; });
+    lista.push({ id: String(id), quando: Date.now(), perche: String(perche || ''), parsed: parsed });
+    pmoVerificheScrivi(lista);
+  }
+
+  function pmoVerificheChiudi(id) {
+    pmoVerificheScrivi(pmoVerificheLeggi().filter(function (v) { return v.id !== String(id); }));
+  }
+
+  // Ripresa all'apertura. Non blocca l'avvio, non chiede permessi e non disturba se non c'è
+  // niente da fare: senza domande in sospeso esce in silenzio.
+  async function pmoRiprendiVerificheInSospeso() {
+    const lista = pmoVerificheLeggi();
+    if (!lista.length) return;
+    let cfg = null, tok = null;
+    try {
+      cfg = await loadAssessmentSupabaseConfig();
+      tok = await pmoGetSupabaseStaffAccessToken();
+    } catch (e) { return; }
+    // ⛔ Non loggato, o configurazione assente: non si conclude NIENTE e si riprova alla prossima
+    //    apertura. «Non ho potuto guardare» non è «non c'è» — è l'errore che questa intera voce
+    //    esiste per non commettere più.
+    if (!tok || !cfg || !cfg.supabaseUrl || !cfg.supabaseKey) return;
+    const staff = { accessToken: tok };
+    for (const v of lista) {
+      const dove = `${v.parsed.campo} · ${v.parsed.data} · ${v.parsed.ora}`;
+      try {
+        const look = await staffCalGuardaFinchePuoi(
+          function () { return staffCalAskMatchpoint(v.parsed, staff, cfg.supabaseUrl, cfg.supabaseKey); },
+          {
+            maxMs: 45000, stepMs: 15000,
+            annuncia: function (n) {
+              staffCalSetStatus(`⌛ Riprendo una verifica rimasta in sospeso: ${dove} (${n}° tentativo)…`, 'pending');
+            },
+          });
+        if (look.verdict === 'si') {
+          pmoVerificheChiudi(v.id);
+          // ⭐ Non la si disegna a mano: è su Matchpoint, e il sync la porta dentro da sé entro un
+          //   paio di minuti. Scriverla qui vorrebbe dire fabbricare una riga che nessuno ha
+          //   verificato campo per campo — e le righe fabbricate sono i fantasmi di luglio.
+          staffCalSetStatus(`✅ Verifica chiusa: ${dove} È stata creata su Matchpoint. Compare sul calendario entro un paio di minuti.`, 'done');
+        } else if (look.verdict === 'no') {
+          pmoVerificheChiudi(v.id);
+          staffCalSetStatus(`❌ Verifica chiusa: ${dove} NON è stata creata. Lo slot è libero: puoi rifarla.`, 'error');
+        } else {
+          staffCalSetStatus(`⏳ ${dove}: non riesco ancora a raggiungere Matchpoint. La verifica resta aperta e la riprendo da solo.`, 'pending');
+        }
+      } catch (e) { /* resta in sospeso: si riprova alla prossima apertura */ }
+    }
+  }
+
 
   // ⭐⭐ FRENO ANTI-COLLISIONE (v6.150) — nasce dalla regola «prima Matchpoint, poi il calendario».
   // Durante l'attesa il calendario non mostra niente, quindi lo slot SEMBRA libero: se in segreteria
@@ -44843,7 +44952,9 @@ Per confermare scrivi ELIMINA.`);
         if (look.verdict === 'si') return _okStatus({}, true);
         if (look.verdict === 'no') return _failStatus('la richiesta non è arrivata a destinazione — su Matchpoint non risulta niente (l\'ho verificato)');
         try { _staffCalCreateSettle(_optimKey, true); } catch (e) {}
-        staffCalSetStatus(`⌛ ${parsed.campo} · ${parsed.ora}–${parsed.oraFine}: non so com'è andata (${why}), e dopo ${look.tentativi} tentativi di guardare su Matchpoint ${look.why}. Sul calendario non ho scritto niente: se su Matchpoint c'è, comparirà da sé entro un paio di minuti. Controlla prima di rifarla.`, 'pending');
+        // ⭐⭐ NON SI SCARICA LA DOMANDA SULL'OPERATORE: la si DEPOSITA e la si riprende da soli.
+        try { pmoVerificheSegna(_sbId, parsed, why); } catch (e) {}
+        staffCalSetStatus(`⏳ ${parsed.campo} · ${parsed.ora}–${parsed.oraFine}: dopo ${look.tentativi} tentativi non riesco a raggiungere Matchpoint per verificare (${look.why}). Sul calendario non ho scritto niente e lo slot resta libero. La verifica resta APERTA: la riprendo da solo a ogni apertura, finché non è un sì o un no. ⛔ Non rifarla nel frattempo: rischi un doppione.`, 'pending');
       };
       try {
         const submit = await staffCalSubmitSingle(parsed, staff, supabaseUrl, supabaseKey, { async: true, sbId: _sbId, onSent: function () { _reqSent = true; } });
