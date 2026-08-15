@@ -255,6 +255,28 @@ await caso('20. 🚨 OGNUNA deposita la verifica invece di scaricarla sull\'oper
   return senzaDeposito.length === 0;
 });
 
+// 🚨 IL CASO CHE AVREBBE SCOPERTO L'ERRORE DEL 15/08, SECONDA VOLTA.
+// La ripresa all'avvio provava UNA VOLTA SOLA e usciva in silenzio se la sessione staff non era
+// ancora pronta — cioè il difetto che questa voce toglie dal guardare, rimesso nella cosa che
+// doveva ripararlo. E siccome usciva muta, dal database non si vedeva niente: la diagnosi è
+// costata un giro di prova in produzione.
+const sorgenteRipresa = estrai('pmoRiprendiVerificheInSospeso');
+
+await caso('22. 🚨 la ripresa NON esce in silenzio quando la sessione non è pronta: si ripianifica', () =>
+  sorgenteRipresa.includes('setTimeout') && sorgenteRipresa.includes('pmoRiprendiVerificheInSospeso(giro + 1)'));
+
+await caso('23. 🚨 e ogni esito lascia TRACCIA nel database, o resta invisibile a chi non è allo schermo', () => [
+  sorgenteRipresa.includes('ripresa-senza-sessione'),
+  sorgenteRipresa.includes('verifica-chiusa-si'),
+  sorgenteRipresa.includes('verifica-chiusa-no'),
+  sorgenteRipresa.includes('ripresa-eccezione'),
+]);
+
+await caso('24. l\'avviso va su ENTRAMBE le superfici: la chat e la riga di stato', () => {
+  const avvisa = estrai('pmoVerificheAvvisa');
+  return avvisa.includes('svcAddMessage') && avvisa.includes('staffCalSetStatus');
+});
+
 await caso('21. 🚨 CONTROLLO NEGATIVO: il caso 19 sa diventare rosso se una strada torna indietro', () => {
   const finto = ['const _uncertainMsg = async function (why) {\n  const look = await staffCalAskMatchpoint(a, b, c, d);\n'];
   return finto.filter((b) => !b.includes('staffCalGuardaFinchePuoi')).length === 1;
