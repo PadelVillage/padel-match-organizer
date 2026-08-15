@@ -3111,6 +3111,92 @@ const CASES = [
       if (!verde) ctx.diag['90'] = testo;
       return checks;
     }
+  },
+  {
+    id: 91, flow: 'Calendario/Aperta', name: '⭐ la PARTITA APERTA si riconosce sulla card: etichetta + contatore n/4',
+    run: async (win, H, ctx) => {
+      // Voce 15. La card si costruisce da `staffCalGetSlots()` (le prenotazioni), che non sa
+      // nulla degli inviti: una partita aperta si vedeva come partita normale col solo
+      // intestatario. Senza questo caso, il giorno che qualcuno stacca il lookup dalla card
+      // nessun rosso lo direbbe — e il sintomo è un'assenza, cioè la cosa che non si nota.
+      const iso = ctx.iso;
+      const checks = [];
+      const players = (conf, tot) => { const p = {}; for (let i = 0; i < tot; i++) p['x' + i] = { id: 'x' + i, status: i < conf ? 'confirmed' : 'pending' }; return p; };
+      H.resetCard();
+      H.setBookings([]);
+      H.setOccupancy([
+        { data: iso, ora: '18:00', campo: 'Campo 1', tipo: 'partita', giocatore: 'Mario Rossi', durata: 90 },
+        { data: iso, ora: '18:00', campo: 'Campo 3', tipo: 'lezione', giocatore: 'Anna Verdi', durata: 90 }
+      ]);
+
+      H.setInvitations({});
+      const prima = H.renderCal(iso);
+      checks.push({ label: 'PRIMA: la card dice «Partita»', ok: /Partita/.test(prima) });
+      checks.push({ label: 'PRIMA: nessuna «Partita aperta», nessun contatore', ok: !/Partita aperta/.test(prima) && !/\d\/4/.test(prima) });
+
+      // 🚨 `field: 'Campo 1'` è la forma VERA, misurata sui 23 record di PROD il 15/08/2026.
+      // Con 'C1' al posto del numero nudo dentro la card questo caso diventa rosso — provato.
+      H.setInvitations({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field: 'Campo 1', status: 'inviting', players: players(2, 5) } });
+      const dopo = H.renderCal(iso);
+      checks.push({ label: 'DOPO: la card dice «Partita aperta»', ok: /Partita aperta/.test(dopo) });
+      checks.push({ label: 'DOPO: col contatore «🟠 2/4»', ok: dopo.includes('🟠 2/4') });
+      checks.push({ label: 'la LEZIONE accanto resta «Lezione»', ok: /Lezione/.test(dopo) });
+      if (!/Partita aperta/.test(dopo)) ctx.diag['91'] = dopo.slice(0, 300);
+      return checks;
+    }
+  },
+  {
+    id: 92, flow: 'Calendario/Aperta', name: '⭐⭐ CONTROLLO OPPOSTO: chiusa, annullata o su altro campo ⇒ la card resta normale',
+    run: async (win, H, ctx) => {
+      // La metà che conta: un contrassegno che compare SEMPRE non distingue niente.
+      const iso = ctx.iso;
+      const checks = [];
+      const players = (conf, tot) => { const p = {}; for (let i = 0; i < tot; i++) p['x' + i] = { id: 'x' + i, status: i < conf ? 'confirmed' : 'pending' }; return p; };
+      H.resetCard();
+      H.setBookings([]);
+      H.setOccupancy([{ data: iso, ora: '18:00', campo: 'Campo 1', tipo: 'partita', giocatore: 'Mario Rossi', durata: 90 }]);
+
+      H.setInvitations({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field: 'Campo 1', status: 'closed', players: players(4, 6) } });
+      checks.push({ label: 'roster CHIUSO ⇒ card normale', ok: !/Partita aperta/.test(H.renderCal(iso)) });
+
+      H.setInvitations({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field: 'Campo 1', status: 'cancelled', players: players(0, 4) } });
+      checks.push({ label: 'partita ANNULLATA ⇒ card normale', ok: !/Partita aperta/.test(H.renderCal(iso)) });
+
+      H.setInvitations({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field: 'Campo 2', status: 'inviting', players: players(1, 4) } });
+      checks.push({ label: 'invito su un ALTRO campo ⇒ card normale', ok: !/Partita aperta/.test(H.renderCal(iso)) });
+
+      H.setInvitations({ a: { key: 'a', date: iso, time: '21:00', endTime: '22:30', field: 'Campo 1', status: 'inviting', players: players(1, 4) } });
+      checks.push({ label: 'invito a un\'ALTRA ora ⇒ card normale', ok: !/Partita aperta/.test(H.renderCal(iso)) });
+
+      // 🚨 il bordo che `isSameField` da solo sbaglia: '' contiene qualunque stringa ⇒ senza la
+      // guardia esplicita un record SENZA campo si attaccherebbe a tutti e quattro i campi.
+      // Fra i 23 record veri di PROD ce n'è uno così.
+      H.setInvitations({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field: '', status: 'inviting', players: players(1, 4) } });
+      checks.push({ label: '🚨 campo VUOTO ⇒ non si attacca a nessun campo', ok: !/Partita aperta/.test(H.renderCal(iso)) });
+      return checks;
+    }
+  },
+  {
+    id: 93, flow: 'Calendario/Aperta', name: 'il campo si confronta col NUMERO NUDO: «Campo 1», «1» e «C1» sono la stessa cosa, «Campo 2» no',
+    run: async (win, H, ctx) => {
+      // Il cuore della voce 15, provato sulla funzione invece che sul disegno. I formati sono
+      // quelli VERI di PROD: "Campo N" (20 record su 23), "" (1) e il numero nudo (1).
+      const iso = ctx.iso;
+      const checks = [];
+      const rec = (field) => ({ a: { key: 'a', date: iso, time: '18:00', endTime: '19:30', field, status: 'inviting', players: { p0: { id: 'p0', status: 'confirmed' } } } });
+      const trova = (field, campo) => { H.setInvitations(rec(field)); return !!H.openMatchInfo(iso, campo, '18:00', 90); };
+
+      checks.push({ label: '«Campo 1» → campo 1', ok: trova('Campo 1', 1) });
+      checks.push({ label: '«Campo 1» → NON campo 2', ok: !trova('Campo 1', 2) });
+      checks.push({ label: '«2» (numero nudo) → campo 2', ok: trova('2', 2) });
+      checks.push({ label: '«C3» (forma del seme di prova) → campo 3', ok: trova('C3', 3) });
+      checks.push({ label: '«» (vuoto) → nessun campo', ok: ![1, 2, 3, 4].some(c => trova('', c)) });
+
+      H.setInvitations(rec('Campo 1'));
+      const info = H.openMatchInfo(iso, 1, '18:00', 90);
+      checks.push({ label: 'conta 1 confermato e 3 mancanti', ok: !!info && info.confirmed === 1 && info.missing === 3 });
+      return checks;
+    }
   }
 ];
 
