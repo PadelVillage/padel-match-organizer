@@ -1,0 +1,234 @@
+#!/usr/bin/env node
+// Console remota sul gestionale: apre l'app, fa login come staff, esegue uno
+// snippet nella pagina e restituisce il risultato — quello che prima si chiedeva
+// all'operatore di fare a mano in DevTools.
+//
+//   node console.mjs --env test --eval "return window.APP_VERSION"
+//   node console.mjs --env prod --file snippet.js --shot /tmp/x.png
+//
+// Di default NON scrive: le chiamate che modificano dati vengono bloccate dalla
+// guardia di rete (vedi README.md, che ne spiega anche i limiti).
+
+import { chromium } from 'playwright';
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const AMBIENTI = {
+  test: {
+    url: 'https://test.padelvillage.club/',
+    supabaseHost: 'cudiqnrrlbyqryrtaprd.supabase.co',
+    varEmail: 'PMO_VERIFY_EMAIL_TEST',
+    varPassword: 'PMO_VERIFY_PASSWORD_TEST',
+  },
+  prod: {
+    url: 'https://app.padelvillage.club/',
+    supabaseHost: 'qqbfphyslczzkxoncgex.supabase.co',
+    varEmail: 'PMO_VERIFY_EMAIL',
+    varPassword: 'PMO_VERIFY_PASSWORD',
+  },
+};
+
+// Gli altri host Supabase del progetto: se la pagina di un ambiente prova a
+// parlare col database di un altro, si ferma tutto. È lo stesso sospetto che
+// in CLAUDE.md fa riconoscere TEST in due modi indipendenti.
+const HOST_SUPABASE_NOTI = [
+  'cudiqnrrlbyqryrtaprd.supabase.co',
+  'qqbfphyslczzkxoncgex.supabase.co',
+  'aylykijfirtegyxzdwgu.supabase.co',
+];
+
+const RPC_DI_LETTURA = /^pmo_(get|can)_/;
+const RPC_DI_LETTURA_EXTRA = new Set(['pmo_supabase_environment_check']);
+
+function leggiArgomenti(argv) {
+  const a = { env: null, url: null, eval: null, file: null, shot: null, out: null,
+              storageIn: null, storageOut: null, login: true,
+              allowWrites: false, attesa: 8000, timeout: 90000 };
+  for (let i = 2; i < argv.length; i++) {
+    const k = argv[i], v = () => argv[++i];
+    if (k === '--env') a.env = v();
+    else if (k === '--url') a.url = v();
+    else if (k === '--eval') a.eval = v();
+    else if (k === '--file') a.file = v();
+    else if (k === '--shot') a.shot = v();
+    else if (k === '--out') a.out = v();
+    else if (k === '--storage-in') a.storageIn = v();
+    else if (k === '--storage-out') a.storageOut = v();
+    else if (k === '--no-login') a.login = false;
+    else if (k === '--allow-writes') a.allowWrites = true;
+    else if (k === '--attesa') a.attesa = Number(v());
+    else if (k === '--timeout') a.timeout = Number(v());
+    else throw new Error(`Argomento sconosciuto: ${k}`);
+  }
+  if (!a.env || !AMBIENTI[a.env]) {
+    throw new Error("Serve --env test | --env prod (nessun valore predefinito: l'ambiente si dichiara).");
+  }
+  return a;
+}
+
+// true = la richiesta può passare. Tutto ciò che non è riconosciuto come
+// lettura viene fermato: la guardia sbaglia per eccesso, non per difetto.
+function eLettura(method, url) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return true;
+  const p = url.pathname;
+  if (p.startsWith('/auth/v1/')) return true;          // login, refresh, logout
+  if (p.startsWith('/functions/v1/')) return false;    // edge → worker → Matchpoint vero
+  if (p.startsWith('/rest/v1/rpc/')) {
+    const nome = p.slice('/rest/v1/rpc/'.length);
+    return RPC_DI_LETTURA.test(nome) || RPC_DI_LETTURA_EXTRA.has(nome);
+  }
+  return false;                                         // insert su tabella, PATCH, DELETE…
+}
+
+const arg = leggiArgomenti(process.argv);
+const amb = { ...AMBIENTI[arg.env] };
+// --url serve a puntare l'attrezzo su una copia locale dell'app. NON allenta il
+// controllo di coerenza: la pagina servita deve comunque usare il database
+// dell'ambiente dichiarato, altrimenti si ferma lo stesso.
+if (arg.url) amb.url = arg.url;
+
+const codice = arg.file ? readFileSync(arg.file, 'utf8') : arg.eval;
+if (!codice) throw new Error('Serve --eval "<codice>" oppure --file <percorso>.');
+
+const email = process.env[amb.varEmail];
+const password = process.env[amb.varPassword];
+if (arg.login && (!email || !password)) {
+  throw new Error(`Credenziali mancanti: imposta ${amb.varEmail} e ${amb.varPassword} fra le variabili d'ambiente.`);
+}
+
+const report = {
+  ambiente: arg.env,
+  url: amb.url,
+  scritture: arg.allowWrites ? 'CONSENTITE' : 'bloccate',
+  appVersion: null,
+  configSupabase: null,
+  login: null,
+  risultato: undefined,
+  console: [],
+  erroriPagina: [],
+  richiesteBloccate: [],
+  richiesteFallite: [],
+  hostSupabaseContattati: [],
+  screenshot: null,
+};
+
+// Prova comportamentale: non "cosa dice di essere" la pagina, ma con quale
+// database ha davvero parlato. È l'unica che non si può sbagliare a dichiarare.
+const hostVisti = new Set();
+
+if (arg.allowWrites) {
+  console.error(`\n  ⚠️  SCRITTURE CONSENTITE su ${arg.env.toUpperCase()} — questa esecuzione può modificare dati veri.\n`);
+}
+
+const browser = await chromium.launch({
+  executablePath: process.env.PMO_CHROMIUM_PATH || undefined,
+});
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.setDefaultTimeout(arg.timeout);
+
+page.on('console', m => report.console.push({ tipo: m.type(), testo: m.text().slice(0, 500) }));
+page.on('pageerror', e => report.erroriPagina.push(String(e).slice(0, 500)));
+page.on('requestfailed', r => report.richiesteFallite.push({
+  url: r.url().slice(0, 200), motivo: r.failure()?.errorText || '',
+}));
+
+await page.route('**/*', async route => {
+  const req = route.request();
+  let url;
+  try { url = new URL(req.url()); } catch { return route.continue(); }
+
+  if (HOST_SUPABASE_NOTI.includes(url.hostname)) hostVisti.add(url.hostname);
+
+  const estraneo = HOST_SUPABASE_NOTI.includes(url.hostname) && url.hostname !== amb.supabaseHost;
+  if (estraneo) {
+    report.richiesteBloccate.push({ metodo: req.method(), url: req.url().slice(0, 200), motivo: 'DATABASE DI UN ALTRO AMBIENTE' });
+    return route.abort();
+  }
+
+  if (!arg.allowWrites && url.hostname === amb.supabaseHost && !eLettura(req.method(), url)) {
+    report.richiesteBloccate.push({ metodo: req.method(), url: req.url().slice(0, 200), motivo: 'scrittura (sola lettura attiva)' });
+    return route.abort();
+  }
+
+  return route.continue();
+});
+
+if (arg.storageIn) {
+  const dati = JSON.parse(readFileSync(arg.storageIn, 'utf8'));
+  await page.addInitScript(d => {
+    try { for (const [k, v] of Object.entries(d)) localStorage.setItem(k, v); } catch (e) {}
+  }, dati);
+}
+
+try {
+  await page.goto(amb.url, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(arg.attesa);
+
+  // A questo punto PADEL_CONFIG non c'è ancora: l'app lo carica pigramente, al
+  // primo login. Qui si prende solo ciò che è già disponibile; la coerenza
+  // dell'ambiente si verifica sotto, dopo il login.
+  const cfg = await page.evaluate(() => ({
+    titolo: document.title || '',
+    forceEnv: window.PMO_FORCE_ENV || null,
+    baseUrl: window.PMO_PUBLIC_BASE_URL || null,
+  }));
+  report.appVersion = (cfg.titolo.match(/v([\d.]+)/) || [])[1] || null;
+  report.forceEnv = cfg.forceEnv;
+
+  if (arg.login) {
+    await page.fill('#pmoStaffEmail', email);
+    await page.fill('#pmoStaffAuthPassword', password);
+    await page.click('#pmoLoginButton');
+    try {
+      await page.waitForFunction(
+        () => document.body.classList.contains('pmo-auth-unlocked') ||
+              getComputedStyle(document.getElementById('pmoLoginOverlay')).display === 'none',
+        { timeout: 30000 }
+      );
+      report.login = 'ok';
+    } catch {
+      const msg = await page.evaluate(() => document.getElementById('pmoLoginMessage')?.textContent || '');
+      throw new Error(`Login non riuscito: ${msg || 'nessun messaggio dalla pagina'}`);
+    }
+    await page.waitForTimeout(arg.attesa);
+  } else {
+    report.login = 'saltato';
+  }
+
+  // Controprova, ora che il login ha costretto l'app a leggere la sua
+  // configurazione: l'ambiente su cui sto lavorando è quello dichiarato?
+  const supabaseUrl = await page.evaluate(() => window.PADEL_CONFIG?.SUPABASE_URL || null);
+  report.configSupabase = supabaseUrl;
+  const hostDichiarato = supabaseUrl ? new URL(supabaseUrl).hostname : null;
+  if (hostDichiarato && hostDichiarato !== amb.supabaseHost) {
+    throw new Error(`AMBIENTE INCOERENTE: ho chiesto ${arg.env} (${amb.supabaseHost}) ma la pagina usa ${hostDichiarato}. Fermo tutto prima di eseguire lo snippet.`);
+  }
+  const estranei = [...hostVisti].filter(h => h !== amb.supabaseHost);
+  if (estranei.length) {
+    throw new Error(`AMBIENTE INCOERENTE: la pagina ha provato a contattare ${estranei.join(', ')}, che non è il database di ${arg.env}. Fermo tutto.`);
+  }
+
+  report.risultato = await page.evaluate(async src => {
+    const fn = new Function(`return (async () => { ${src} })()`);
+    const out = await fn();
+    try { JSON.parse(JSON.stringify(out ?? null)); return out ?? null; }
+    catch { return String(out); }
+  }, codice);
+
+  if (arg.shot) { await page.screenshot({ path: arg.shot, fullPage: false }); report.screenshot = arg.shot; }
+  if (arg.storageOut) {
+    const dump = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)));
+    writeFileSync(arg.storageOut, JSON.stringify(dump, null, 2));
+  }
+  report.hostSupabaseContattati = [...hostVisti];
+} catch (err) {
+  report.hostSupabaseContattati = [...hostVisti];
+  report.errore = String(err.message || err);
+  if (arg.shot) { try { await page.screenshot({ path: arg.shot }); report.screenshot = arg.shot; } catch {} }
+} finally {
+  await browser.close();
+}
+
+const testo = JSON.stringify(report, null, 2);
+if (arg.out) writeFileSync(arg.out, testo);
+console.log(testo);
+process.exit(report.errore ? 1 : 0);
