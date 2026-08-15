@@ -1,0 +1,110 @@
+# Console remota sul gestionale
+
+Esegue uno snippet di diagnosi **dentro la pagina** del gestionale, su TEST o su PROD, e
+restituisce risultato, messaggi di console, errori e screenshot. Serve a chiudere il giro che
+prima passava dall'operatore: «apri DevTools, incolla questo, dimmi cosa esce».
+
+`page.evaluate()` di Playwright è la console: stesso motore, stesso `window`, stesso contesto.
+
+## Cosa serve prima
+
+**1. Rete.** L'ambiente di esecuzione ha un allowlist di uscita. Servono questi host:
+
+```
+app.padelvillage.club              ← app PROD, e il config.js che l'app chiede in URL assoluto
+test.padelvillage.club             ← app TEST
+qqbfphyslczzkxoncgex.supabase.co   ← database PROD
+cudiqnrrlbyqryrtaprd.supabase.co   ← database TEST
+cdn.jsdelivr.net                   ← supabase-js + icone Tabler
+unpkg.com                          ← xlsx 0.18.5
+raw.githubusercontent.com          ← parser rules
+```
+
+Senza i due CDN l'app si carica a metà: `supabase.min.js` viene da jsdelivr e senza quello
+il login non parte.
+
+**2. Un utente staff per ambiente.** I due database hanno anagrafiche di accesso separate.
+Ruolo consigliato: `readonly` — i permessi sono una whitelist, quindi un `readonly` appena
+creato non vede niente finché non si spuntano le singole `view_*`. Credenziali in variabili
+d'ambiente, mai nel repo e mai in chat:
+
+| variabile | ambiente |
+|---|---|
+| `PMO_VERIFY_EMAIL` / `PMO_VERIFY_PASSWORD` | PROD |
+| `PMO_VERIFY_EMAIL_TEST` / `PMO_VERIFY_PASSWORD_TEST` | TEST |
+
+**3. Preparare il container.** Il container di una sessione è effimero e nasce senza due
+cose che servono al browser. Incolla `prepara-ambiente.sh` nel campo **Script di
+configurazione** dell'ambiente cloud (gira a ogni avvio, prima di Claude): installa
+`certutil` e importa la CA del proxy nel magazzino NSS di Chromium.
+
+Chromium su Linux **non** guarda i certificati di sistema, guarda il proprio magazzino, che
+nasce vuoto. Senza quel passaggio ogni pagina muore con `ERR_CERT_AUTHORITY_INVALID` — e
+`curl` intanto funziona, il che rende il sintomo confondente.
+
+## Due trappole del container, già gestite nel codice
+
+Sono scritte qui perché si ripresentano identiche in ogni sessione nuova, e il sintomo che
+producono somiglia a «il sito è irraggiungibile» invece che «l'attrezzo è configurato male».
+
+1. **Il browser non eredita il proxy.** `curl` legge `HTTPS_PROXY` da solo, Chromium no: va
+   passato a `chromium.launch({ proxy })`, altrimenti `ERR_CONNECTION_RESET` ovunque.
+2. **Il tunnel non regge il TLS 1.3.** Gli host dell'allowlist personalizzata passano in
+   tunnel cieco, col certificato vero e non sostituito, e quel tunnel si spezza sul TLS 1.3
+   di Chromium. Il browser parte con `--ssl-version-max=tls1.2`. ⚠️ **Non è un allentamento
+   della verifica**: il certificato viene validato esattamente come prima, cambia solo la
+   versione del protocollo. Si può alzare con `PMO_TLS_MAX=tls1.3` per riprovare, ed è la
+   prima cosa da rimuovere il giorno in cui il tunnel regge.
+
+## Uso
+
+```bash
+npm install                                   # playwright 1.59.1
+node console.mjs --env test --eval "return document.title"
+node console.mjs --env prod --file diagnosi.js --shot /tmp/x.png --out /tmp/report.json
+```
+
+Lo snippet è un **corpo di funzione async**: usa `return` e può usare `await`.
+
+| opzione | effetto |
+|---|---|
+| `--env test\|prod` | obbligatoria, nessun valore predefinito: l'ambiente si dichiara |
+| `--eval "<codice>"` / `--file <path>` | lo snippet da eseguire |
+| `--no-login` | non fa login (per le pagine pubbliche) |
+| `--shot <path>` / `--out <path>` | screenshot / report JSON su file |
+| `--storage-in` / `--storage-out` | carica o salva il `localStorage` (vedi limiti) |
+| `--url <url>` | punta a una copia locale dell'app; **non** disattiva il controllo di ambiente |
+| `--allow-writes` | disarma la guardia delle scritture. Da usare consapevolmente |
+
+## Le tre guardie
+
+1. **Ambienti incrociati.** Ogni richiesta a un database Supabase del progetto diverso da
+   quello dichiarato viene **abortita** e registrata. Vale dal primo byte, prima del login.
+2. **Coerenza dichiarato/reale.** Dopo il login — che è il momento in cui l'app carica
+   davvero la sua configurazione — si confronta `PADEL_CONFIG.SUPABASE_URL` con l'ambiente
+   richiesto, e si controlla quali host il browser ha *effettivamente* contattato. Se non
+   combaciano, lo snippet **non viene eseguito**.
+3. **Sola lettura** (predefinita). Passano `GET`/`HEAD`/`OPTIONS`, le chiamate `/auth/v1/`
+   e le RPC di lettura (`pmo_get_*`, `pmo_can_*`, `pmo_supabase_environment_check`). Sono
+   bloccate `PATCH`/`PUT`/`DELETE`, gli insert su tabella e **tutto `/functions/v1/`**, che
+   è la strada che porta al worker condiviso e quindi al Matchpoint vero.
+
+Ogni blocco finisce nel report: si vede che lo snippet *ha provato* a scrivere, invece di
+vederlo fallire senza spiegazione.
+
+## Limiti, detti chiaramente
+
+- **La guardia sbaglia per eccesso, non per difetto**: una RPC di lettura con un nome fuori
+  convenzione viene bloccata. Si aggiunge a `RPC_DI_LETTURA_EXTRA` dopo averla letta.
+- **Non è una sandbox.** Con `--allow-writes` le scritture su PROD sono vere.
+- **Lo stato parte da zero.** La console dell'operatore gira in un browser con la sua
+  sessione e il suo `localStorage`, accumulati in ore d'uso; qui la pagina è sempre pulita.
+  Per i sintomi che dipendono dallo stato serve `--storage-in` con un export fatto sul posto,
+  e se il difetto nasce da una sequenza lunga di azioni va ricostruita la sequenza.
+- **`api.github.com` dalla pagina non risponde.** L'app di TEST interroga l'API di GitHub
+  (regole del parser): dal browser del container quella chiamata fallisce, perché il traffico
+  GitHub passa da un proxy dedicato con le sue regole. La pagina si carica lo stesso, ma le
+  funzioni che dipendono da quella lettura vanno verificate altrove.
+- **TEST ha il calendario congelato** (vedi `CLAUDE.md`): le prenotazioni lì sono una
+  fotografia. Una diagnosi sulle prenotazioni fatta su TEST non fallisce — riesce mostrando
+  il passato, che è peggio.

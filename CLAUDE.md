@@ -191,5 +191,20 @@ dei ref remoti → `git fetch --prune`.
 - Rete di regressione esecuzione staff: `test/handle-test.html` (servita da `.claude/launch.json` → `pmo-static`,
   porta 8123; apri `http://localhost:8123/test/handle-test.html`, leggi `window.__RESULTS__`). Mocka il worker.
 - Worker condiviso: i log PROD sono su Hetzner (`~/.pm2/logs/matchpoint-worker-*.log`), pm2 `matchpoint-worker`.
+- 🌐 **Console remota sul gestionale** (`tools/verifica-browser/`): apre `app.padelvillage.club`
+  o `test.padelvillage.club` in Chromium, fa login come utente **di sola lettura** ed esegue uno
+  snippet dentro la pagina — `node console.mjs --env test|prod --eval "return …"`. Serve a non
+  dover più chiedere al committente «apri DevTools, incolla questo, dimmi cosa esce»:
+  `page.evaluate()` **è** quella console. Girare lo stesso snippet di là e di qua *è* la diagnosi:
+  uguale in entrambi → è il codice, diverso → sono i dati o l'ambiente.
+  📌 Vuole l'ambiente cloud configurato — allowlist dei 6 domini, le `PMO_VERIFY_*`, e lo script
+  che importa la CA del proxy nel magazzino NSS di Chromium. Il README lì dentro ha l'elenco e le
+  **tre trappole del container**: senza quelle correzioni il sintomo è «il sito non risponde»
+  mentre `curl` funziona benissimo, ed è una mezza giornata buttata a cercarlo nell'app.
+  🚨 **Di default non scrive**: bloccati PATCH/PUT/DELETE, gli insert e **tutto `/functions/v1/`**,
+  che è la strada verso il worker condiviso e quindi verso il **Matchpoint vero**. `--allow-writes`
+  disarma la guardia, e su PROD vuol dire scrivere sul serio.
+  ⚠️ Non sostituisce l'operatore quando il sintomo nasce dallo stato accumulato nel **suo** browser:
+  qui la pagina parte sempre pulita. `--storage-in` rimedia, ma vuole un export fatto sul posto.
 - Una funzione può essere **viva su Supabase senza sorgente in git**: ogni tanto incrocia
   `list_edge_functions` con `ls supabase/functions/` su entrambi i progetti.
