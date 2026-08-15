@@ -7920,7 +7920,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.230';
+    const APP_VERSION = '6.231';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -27633,16 +27633,79 @@ Per confermare scrivi ELIMINA.`);
         document.head.appendChild(script);
       });
     }
-    async function loadAssessmentSupabaseConfig() {
-      const cfgUrl = pmoResolveEnvUrl(assessmentSettings.configUrl, PMO_DEFAULT_CONFIG_URL);
+    // ── La configurazione Supabase si RICORDA, invece di riscaricarla ogni volta.
+    //
+    // Perché serviva (misurato il 15/08/2026 dalla console remota, su PROD viva):
+    // `pmoCloudRpc` chiama questa funzione come PRIMA riga, e i punti di chiamata
+    // oggi sono 72. Col calendario aperto erano ~37 scaricamenti di `config.js`
+    // ogni 20 secondi — circa 110 al minuto — cioè un giro di rete completo PRIMA
+    // di ogni singola lettura dal cloud, per rileggere 600 byte che non cambiano
+    // mai. E il `?v=Date.now()` qui sopra è messo apposta perché la cache del
+    // browser non possa intervenire: erano richieste vere, tutte quante.
+    //
+    // ⚠️ Non è mai stata una decisione, ed è il motivo per cui non se ne ricordava
+    // nessuno: il 30/04/2026 questa funzione serviva SOLO all'Autovalutazione —
+    // 3 punti di chiamata, e il nome lo dice ancora — poi il 6/05 è nato
+    // `pmoCloudRpc` e si è preso come primo passo la funzione che aveva accanto.
+    // Da 3 punti di chiamata a 72, senza che nessuno riguardasse la scelta.
+    //
+    // ⚖️ Si ricorda per POCO, non per sempre — ed è la parte che conta. Il
+    // ricaricamento continuo una cosa buona la dava: se cambia la chiave anon o
+    // l'indirizzo del progetto, lo staff se ne accorge senza ricaricare la pagina.
+    // Buttarla via per guadagnare velocità sarebbe stato uno scambio silenzioso.
+    // Con la scadenza si tiene tutt'e due: al massimo un minuto di ritardo, e una
+    // rilettura al minuto invece di centodieci.
+    const PMO_CONFIG_TTL_MS = 60000;
+    let pmoConfigMemoria = null;    // { url, valore, scadenza }
+    let pmoConfigInVolo = null;     // { url, promessa } — una sola rilettura per volta
+
+    async function pmoLeggiSupabaseConfig(cfgUrl) {
       const cfg = await loadExternalScriptOnce(cfgUrl, 'PADEL_CONFIG');
       const supabaseUrl = cleanCell(cfg?.SUPABASE_URL || '');
       const supabaseKey = cleanCell(cfg?.SUPABASE_ANON_KEY || cfg?.SUPABASE_PUBLISHABLE_KEY || '');
       if (!supabaseUrl || !supabaseKey) {
-	        throw new Error(`${PMO_IS_TEST_ENV ? 'config-test.js' : 'config.js'} trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY`);
-	      }
-	      return { supabaseUrl: supabaseUrl.replace(/\/+$/, ''), supabaseKey };
-	    }
+        throw new Error(`${PMO_IS_TEST_ENV ? 'config-test.js' : 'config.js'} trovato, ma mancano SUPABASE_URL o SUPABASE_ANON_KEY`);
+      }
+      return { supabaseUrl: supabaseUrl.replace(/\/+$/, ''), supabaseKey };
+    }
+
+    async function loadAssessmentSupabaseConfig() {
+      const cfgUrl = pmoResolveEnvUrl(assessmentSettings.configUrl, PMO_DEFAULT_CONFIG_URL);
+      if (pmoConfigMemoria && pmoConfigMemoria.url === cfgUrl && Date.now() < pmoConfigMemoria.scadenza) {
+        return pmoConfigMemoria.valore;
+      }
+      // Una sola rilettura per volta: due chiamate contemporanee condividono la
+      // stessa promessa invece di contendersi lo <script id="remoteSupabaseConfigScript">,
+      // che è UNO solo e che la seconda toglieva di sotto alla prima. Oggi non
+      // rompeva niente (52 chiamate su 52 andate a buon fine, misurate), ma è una
+      // corsa che non ha motivo di esistere: la scadenza la renderebbe solo più
+      // rara, non impossibile.
+      if (pmoConfigInVolo && pmoConfigInVolo.url === cfgUrl) return pmoConfigInVolo.promessa;
+
+      const promessa = pmoLeggiSupabaseConfig(cfgUrl)
+        .then(valore => {
+          pmoConfigMemoria = { url: cfgUrl, valore, scadenza: Date.now() + PMO_CONFIG_TTL_MS };
+          return valore;
+        })
+        .catch(err => {
+          // Se la rilettura fallisce ma una buona ce l'avevamo, si continua con
+          // quella. È lo stesso motivo per cui loadExternalScriptOnce ritenta tre
+          // volte — un blip di rete non deve far fallire una prenotazione — solo
+          // spostato un piano più in là. E si DICE nei log: una rete di sicurezza
+          // muta è indistinguibile da una che non è mai servita.
+          if (pmoConfigMemoria && pmoConfigMemoria.url === cfgUrl) {
+            console.warn('config Supabase: rilettura fallita, proseguo con l\'ultima valida', err);
+            pmoConfigMemoria.scadenza = Date.now() + PMO_CONFIG_TTL_MS;
+            return pmoConfigMemoria.valore;
+          }
+          throw err;
+        })
+        .finally(() => {
+          if (pmoConfigInVolo && pmoConfigInVolo.promessa === promessa) pmoConfigInVolo = null;
+        });
+      pmoConfigInVolo = { url: cfgUrl, promessa };
+      return promessa;
+    }
 	    function pmoProfileHasPermission(profile, permission) {
 	      if (!permission) return true;
 	      if (!pmoIsStaffProfileActive(profile)) return false;
