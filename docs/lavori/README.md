@@ -257,9 +257,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** |
+| 🔴 **Urgenti** | **2** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **31** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **32** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -424,7 +424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 2
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -461,88 +461,13 @@ metà della stessa malattia — la 42 le *letture* che arrivano presto (misurata
 non è un guasto, è **una decisione tua** — se togliere il nome dalla chiave dell'occupazione.
 📌 Tutt'e tre si lavorano **da qui**: nessuna vuole la VM né il repo del bot.
 
-### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
-*Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
-**domanda aperta con una prova a sostegno**, ed è per questo che sta qui e non fra le urgenti.
-
-🔎 **Il fatto.** Fino alla 6.231 ogni chiamata al cloud riscaricava `config.js` prima di partire —
-**~110 volte al minuto**, misurate su PROD viva. Quel giro di rete non serviva a niente, ma
-*ritardava* ogni RPC di qualche decina di millisecondi. Togliendolo è saltato fuori **subito** un
-difetto che quel ritardo teneva nascosto: il **caso 11** del banco finiva mentre la sua coda era
-ancora in corsa (`doCancel` prosegue in asincrono dopo il worker, con un commit locale che
-**toglie** la prenotazione) e quella coda cadeva dentro il **caso 12**, portandogli via la
-prenotazione da sotto. Riparato nel banco, non nell'app.
-
-⚠️ **La domanda è quante altre cose stessero in equilibrio su quel ritardo.** I punti di chiamata
-sono **72**: il ritardo non era locale a una funzione, era diffuso su *ogni* lettura dal cloud
-dell'intera app. Ne abbiamo trovata **una** perché il banco la copriva. Le altre, se ci sono, stanno
-dove il banco non arriva.
-
-🎯 **Cosa cercare, e non è «rileggere tutto»**: la forma è `pmoSyncCloudRecordsNow(...)` **non
-attesa** — `.catch()` e via — seguita poco dopo da una **lettura** che si aspetta di vedere quella
-scrittura. È il disegno di `staffCalCloudReassignAndSyncMove`, ed è deliberato: la push non è attesa
-per far partire subito il broadcast `staff-changed`, e il commento nel codice lo dichiara. Il punto
-non è che sia sbagliato, è che **non c'è niente che garantisca l'ordine** quando il ritardo sparisce.
-
-📌 **Da dove partire, se si apre**: `grep` delle chiamate a `pmoSyncCloudRecordsNow` e
-`pmoStaffRpcPaged` non attese, e per ciascuna la domanda «se questa arrivasse 50 ms prima, cosa
-leggerebbe?». ⚖️ E una nota che vale quanto il resto: **il banco adesso sa modellare quell'ordine**
-— la lettura finta ricorda le scritture, cosa che prima non faceva — quindi un caso scritto oggi su
-questo tema *può* dire il vero. Prima non avrebbe potuto, ed è il motivo per cui questa domanda non
-si era mai potuta porre.
-
-🚨 **Non è teoria: in produzione gira già.** La 6.231 è viva dal 15/08, quindi l'eventuale seconda
-corsa non è più ipotetica — è in esercizio. Il sintomo da tenere d'occhio è **una modifica che
-sparisce dagli altri dispositivi** (spostamento, disdetta, uscita di un giocatore) senza errore in
-console: è esattamente la forma che aveva il caso 12.
-
----
-
-🔬 **MISURATA il 15/08, 24ª sessione, su `main` (PROD 6.232).** Eseguito ciò che la voce chiedeva —
-il censimento delle due famiglie, righe di commento **escluse** (4617 su 51.878) e su **tutto** il
-file, non su un blocco `<script>` solo: è la trappola in cui era caduta la 23ª, e qui l'analizzatore
-è stato scritto per leggere l'intero sorgente.
-
-| la domanda della voce | la risposta misurata |
-|---|---|
-| le letture non attese | **non esistono**: `pmoStaffRpcPaged` ha 16 chiamate e sono **16 su 16 attese**. Una lettura non può arrivare presto se nessuno la lascia correre |
-| le scritture non attese | **14 su 16** — il numero è quello che la voce si aspettava |
-| la forma pericolosa (push non attesa → lettura che vuole vederla) | **3 candidate, e nessuna lo è** |
-
-🎯 **E le tre vanno raccontate una per una, perché la conclusione sta lì:**
-
-- **`pmoQueueImmediateMemberCloudDelete` → `pmoLoadRetiredHistoryKeysFromCloud`** — **falso positivo**:
-  sono **due funzioni diverse**, vicine nel testo e nient'altro; la prima chiude prima che la seconda
-  cominci. ⚠️ La sonda di prossimità le aveva accoppiate perché contava le **righe**, non le
-  **funzioni** — e il suo modo di indovinare la funzione che contiene una riga (l'indentazione) è
-  risultato **sbagliato** su questo file. Non l'ho aggiustato: ho letto il codice.
-- **annullo staff → «pulire eventuali doppioni»** — la forma c'è, ma la lettura **esclude per
-  costruzione** le chiavi appena spinte (`_already`).
-- **`staffCalCloudReassignAndSyncMove`** — l'archetipo dichiarato dalla voce. La forma c'è, e la
-  lettura esclude la riga appena spostata (`_destId`).
-
-⚖️ **Quindi la risposta alla domanda «cosa leggerebbe se arrivasse 50 ms prima?» è: la stessa cosa.**
-In tutt'e due i punti veri la lettura è progettata per **ignorare** ciò che la push ha appena
-scritto — cioè l'esatto contrario di «si aspetta di vedere quella scrittura». Il ritardo di
-`config.js` non le teneva in piedi: reggono da sé, e reggevano già prima.
-
-🧯 **Un'ipotesi mia, sbagliata, lasciata scritta perché è istruttiva.** Vedendo che
-`staffCalCloudReassignAndSyncMove` è **`async` e viene chiamata senza `await`** da 3 punti (ed è vero,
-e non era nella voce), avevo pensato: il chiamante della chat sposta la copia locale **prima** di
-chiamarla, quindi la funzione partirà dallo slot d'origine e non troverà più niente. **Falso**:
-cerca la `entry` al **nuovo** slot, e il commento in testa lo dichiara — *«alla voce spostata (già al
-nuovo slot in locale)»*. Il disegno è coerente coi suoi chiamanti. ⇒ Ho creduto a una corsa perché
-**cercavo corse**, ed è la forma della «prova che ti dà ragione» vista dal lato di chi indaga.
-
-🔴 **Ciò che resta scoperto è di UN'ALTRA famiglia, e la voce non la nominava.** Il caso 12 del banco
-non cadeva per una *lettura* precoce: cadeva per una **coda staccata che scriveva lo stato locale**
-dopo che il chiamante era andato avanti. Quella forma nel gestionale c'è:
-**`staffCalRefreshFromCloud`** è chiamata **senza `await`** da più punti e fa commit locali **dopo**
-un `await` (`applyMatchpointMembersToLocal`, subito dopo la lettura dei soci dal cloud). È
-**attenuata** da un debounce di 60 s (saltato da `force`), che riduce quanto spesso possa atterrare
-ma non toglie la forma.
-📌 ⇒ La voce 42, **come è scritta**, è misurata e pulita. Quello che resta non è il suo residuo: è
-una voce diversa, sulla famiglia «continuazione staccata che scrive in locale».
+🔄 **Aggiornamento del 16/08, 25ª sessione.** La **43** è stata **misurata** — la risposta sta nella
+sua scheda qui sotto — e su sua decisione resta **aperta a diagnosi fatta**: la cura tocca la strada
+che annulla *per davvero* su Matchpoint, e da una sessione cloud quella strada non si prova.
+📦 La **42** è **CHIUSA**, a domanda risposta: il suo censimento era già stato fatto e non ha trovato
+niente, e ciò che ne era uscito è la 43, che vive per conto suo. ⇒ Urgenti da 3 a **2**.
+⚖️ **Restano 14 e 43, e nessuna delle due è «esegui»**: sono **due decisioni tue** — se togliere il
+nome dalla chiave, e quale delle due cure dare alla finestra scoperta dell'annullo.
 
 ### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
 *Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
@@ -988,17 +913,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 31 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 32 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime DUE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime TRE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **42** | ✅ *(16/08, 25ª sessione — **chiusa su sua decisione**, a domanda risposta)* **«Cos'altro teneva in piedi quel mezzo secondo?» — nulla: le due corse vere sono progettate per ignorare ciò che la push ha appena scritto.** La voce nasceva dal caso 11 che cadeva addosso al caso 12 quando la 6.231 tolse il riscaricamento di `config.js` (~110 volte al minuto), e chiedeva di censire le altre chiamate in equilibrio su quel ritardo. 🔬 Censite il 15/08 sull'intero sorgente, righe di commento escluse: le **letture** non attese **non esistono** (`pmoStaffRpcPaged` è 16 su 16 attesa — una lettura non può arrivare presto se nessuno la lascia correre); le **scritture** non attese sono 14 su 16; la forma pericolosa dà **3 candidate e nessuna lo è** — una è un falso positivo della sonda di prossimità (due funzioni vicine nel testo, non annidate), le altre due escludono **per costruzione** le chiavi appena spinte (`_already`, `_destId`). ⇒ **«Cosa leggerebbe se arrivasse 50 ms prima?» → la stessa cosa.** 🧯 Lasciata scritta nella voce un'ipotesi mia sbagliata (`staffCalCloudReassignAndSyncMove` che partirebbe dallo slot d'origine: falso, cerca la `entry` al nuovo slot e il commento lo dichiara) — ci avevo creduto perché **cercavo corse**, che è la «prova che ti dà ragione» vista dal lato di chi indaga. ⚖️ **Si chiude a domanda RISPOSTA, non a lavoro finito**: quello che era emerso strada facendo è di un'**altra famiglia** — non una lettura precoce ma una **coda staccata che scrive** — ed è la voce **43**, che resta aperta con la sua misura. |
 | **34** | ✅ *(16/08, 24ª sessione — **accesa su sua conferma separata** la sera del 15, e **confermata dal giro automatico** la mattina del 16)* **Il calendario di TEST era una fotografia ferma al 7 agosto: adesso si aggiorna 5 volte al giorno.** 🔓 **A sbloccarla è stata un'informazione sua, che non stava in nessun file**: le routine di TEST erano state fermate *insieme e di proposito*, per fare gli aggiornamenti a mano durante le prove — la scheda poneva come condizione di sapere «perché furono spenti», e quel perché **da qui non era recuperabile**. ⚖️ **Il nodo vero non era nessuno dei tre indicati dalla scheda**: il dispatcher è **UNO per 12 slot** (6 clienti + 1 storico + 5 calendario), quindi «riaccendere solo il calendario» **non esiste come interruttore**. Sciolto **senza toccare la funzione**: sveglia ogni ora al minuto 30, e a decidere è il confronto sull'**ora italiana** che nomina i cinque orari. 🚨 Serve **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti cadono al minuto 30 — e cinque orari fissi in UTC si sarebbero rotti al cambio dell'ora **in silenzio**, cioè lo stesso guasto muto da cui nasce la voce. 🛑 **Tre punti della scheda smentiti dai fatti**: il `jobid 13` **non è stato toccato** (si è aggiunto il **17**, così tornare indietro è cancellarlo), **era** una riga di SQL, ed **è stata fatta dal cloud**. ✅ **Il filtro esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è partita (`succeeded`) senza produrre **nessun** dispatch clienti né storico, ed è stata esclusa la spiegazione alternativa (`on conflict do nothing`: le uniche due righe clienti sono del 2 e 3 agosto, chiavi che non possono collidere). ✅✅ **E la catena provata FINO IN FONDO la sera stessa, su sua idea** — *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*: forzando l'orario, **53 righe lette dal Matchpoint vero**, 258 righe toccate, calendario **dal 7 agosto a quella sera**, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di guardare i dati**. ✅ **CONFERMATA dal giro automatico del 16/08**: `bookings_morning` alle **05:30** italiane, **0** risvegli di clienti e storico, calendario aggiornato alle **05:31:55**. 🧯 Due letture sbagliate mie, nel documento: «non ce l'ha fatta» (leggevo un campo di un'altra strada) e «il calendario non si è mosso» (misuravo **un minuto prima** che la scrittura atterrasse) — non la sonda cieca della 23ª, ma **una misura presa prima che il fatto accadesse**. ⛔ **Residuo dichiarato**: le letture in più nei log del worker si vedono solo **dalla VM**. 📄 Procedura, query di controllo e comando di spegnimento in [`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md). |
 | **26** | ✅ *(16/08, 24ª sessione — **chiusa dalla 34**, come la sua stessa scheda prevedeva)* **Il «Fatto» del togli che non si vedeva: non era il bot, era il calendario fermo.** Il bot diceva di aver tolto il giocatore e la riga non spariva. La causa era stata trovata il 14/08 chiudendo la voce 32 — su TEST **non girava nessun sync delle prenotazioni**, quindi non c'era niente che riconciliasse, mentre in PROD lo fa `bookings_live` ogni 2 minuti **con lo stesso identico codice**. ⇒ Il bot era sano: aveva ragione a dire «Fatto». ✅ Dal 16/08 il calendario di TEST si aggiorna 5 volte al giorno (voce 34), quindi il sintomo **sparisce da sé**: non c'era niente da riparare, c'era da riaccendere altrove. ⚖️ È la voce che la 23ª aveva citato come costo dell'inganno del calendario congelato — *«aperta come guasto del bot quando il bot era sano»* — e si chiude senza che una riga di codice sia stata toccata. |
 | **41** | ✅ *(15/08, 24ª sessione — **eseguita dal committente**, quarto giro, con la sessione cloud a leggere il database in diretta)* **«Il worker crea, e la risposta si perde» — e il gestionale è andato a GUARDARE.** La parte B della voce 23: l'unico caso che percorre il ramo del **`si`**. ✅ **Tutte le previsioni verificate**: lavoro `unknown` con errore di rete tagliato a **2,2 s**, **8 tentativi** di insistenza, verdetto **`si`**, e chiusura `done` con `chiusa_da = verifica-app` alle 22:29:15. ⭐⭐ **Prima esecuzione VERA di `chiudi-lavoro-ignoto`**: prima di stasera i lavori chiusi dall'app erano **0 su 192** — scritta, provata al banco, mai girata in produzione. ⚖️ **Ma il valore della voce sono i TRE GIRI FALLITI prima**, perché hanno dimostrato che la procedura scritta **non poteva funzionare**: ① «conta due secondi e dai lo stop» non teneva conto che il comando via `ssh` ci mette del suo; ② 🚨 **`systemctl stop caddy` non taglia una richiesta già in corso** — è uno spegnimento gentile, e con collegamento già aperto e stop istantaneo al 2º secondo il lavoro finiva `done` in 4,3 s lo stesso; ③ tenere il collegamento aperto mentre si prenota **lo fa scadere**. ⇒ La cura: `ServerAliveInterval=15` e **`systemctl kill -s SIGKILL`** al posto dello stop. 🧹 Pulizia verificata col testimone indipendente: cancellata 22:30:52, controllo automatico 22:32:00, **zero residui** su tutte e quattro le prove. 🧯 E tre letture sbagliate mie della stessa sera, tutte scritte nel documento: la peggiore — *«non è partita nessuna cancellazione»* — cercava fra i `booking_job`, ma una cancellazione lì **non compare**: lascia un `staff_cancel`. Ho guardato nel cassetto sbagliato, ho preso il silenzio per un fatto, e **a smentirmi è stato lui guardando Matchpoint**. |
