@@ -81,6 +81,42 @@ domanda che il bot non fa.
 ⇒ La mediana di 116-138 s **è** il cron da 2 minuti. I numeri misurati e il codice si spiegano a
 vicenda, e questo è l'unico controllo che rende credibile il massimo.
 
+### 3.4 🌙 E c'è una PAUSA NOTTURNA: fra l'01:00 e le 06:00 il sync NON gira
+
+*(Misurato il 16/08, 29ª sessione — non stava in questa scheda, ed è il pezzo di ritmo che mancava.)*
+
+Il dispatcher **non è attivo 24 ore su 24**. Sta scritto nello scheduler, a lettere:
+
+```sql
+-- Sync "live" prenotazioni: … attivo SEMPRE tranne la pausa notturna 01:00-06:00 (Europe/Rome).
+if not (v_local_time >= '01:00' and v_local_time < '06:00') then
+```
+📄 `supabase/manual-sql/supabase_pmo_data_routines_scheduler_prod.sql:108`
+
+**E i dati concordano**, che è il controllo che serve: sui `data_routine_dispatch_bookings_live_*`
+l'ultimo tick della sera è alle **22:58 UTC** e la ripresa alle **04:02 UTC** — 18 240 s di buco,
+due notti su due, **agli stessi minuti**. (Clienti, storico e backup girano anche dentro la pausa:
+non sono prenotazioni future.)
+
+⚠️ **E gli ALTRI buchi non sono guasti** — è la trappola in cui questa sonda fa cadere. Su 1 457
+tick in ~62 ore i buchi oltre 3 minuti sono **103**: **2** sono la pausa notturna, gli altri **101**
+sono la guardia **anti-accavallamento** (`skipped: 'live_in_flight'`, soglia 150 s), cioè
+funzionamento normale.
+
+🚨 **E i guasti del worker da qui NON si contano, in nessun modo.** Il record del dispatch nasce
+`status: 'dispatched'` e **non viene mai riscritto con l'esito**: il tick delle 22:28:00 del 15/08
+— quello del `MATCHPOINT_BROWSER_WORKER_FAILED` delle 22:28:02 — è lì, e dice `dispatched` come
+tutti gli altri. La diagnostica sta in `matchpoint_bookings_auto_diagnostic_last`, che per
+costruzione ne tiene **una sola**. ⇒ *Quante volte è caduto il worker* resta **non misurato**, e
+chi contasse le righe `error` di quel registro otterrebbe **zero** con la stessa sicurezza con cui
+otterrebbe la verità. È la 24ª: la sonda risponde, e la risposta non vale niente.
+
+**Cosa comporta per il bot**: nella finestra 01:00-06:00 il tetto dell'attesa scade **sempre**
+senza verdetto, e la seconda risposta al socio è «non lo so ancora».
+⚖️ **La sicurezza però regge intera**, ed è la metà che conta: un «no» lì dentro **non può uscire**,
+perché `verdettoScrittura` lo concede solo con una copia certificata più fresca della scrittura, e
+di notte quella certificazione non arriva. ⇒ Si perde l'**utilità**, non la **verità**.
+
 ---
 
 ## 4. 🚨 LA PREMESSA DELLA VOCE ERA FALSA: il sync PASSA dal worker
@@ -151,6 +187,12 @@ Dei 175 job con `idReserva`, **48 non compaiono mai** nella copia. Non sono rita
 
 ⇒ Il bot non può aspettare all'infinito. Oltre un tetto deve **smettere di aspettare e dirlo**,
 non continuare a tacere.
+
+🌙 **E c'è un quinto confine, che non sta in questa tabella perché non è un'assenza definitiva ma
+un'ORA**: fra l'**01:00 e le 06:00** il sync è in pausa (§3.4). Lì aspettare *servirebbe* — ma
+servirebbe fino alle 06:02, e il tetto è di quindici minuti. ⇒ In quella finestra la seconda
+risposta è sempre «non lo so ancora». Non è un difetto da riparare di corsa: è il prezzo di un
+tetto onesto, e la scelta di tenerlo è del committente (16/08, vedi §9.3).
 
 ---
 
@@ -348,3 +390,40 @@ decidere se fidarsi di TEST oggi si farebbe un'idea sbagliata di **quanto** sia 
    e l'avevo scritto io, dodici ore dopo che la lezione era stata messa in `CLAUDE.md`.
 3. 📌 **Il tetto dell'attesa lo decide chi scrive il bot**: il massimo misurato è **604 s**, il
    tetto naturale è il **giro pieno da 15 minuti**, che è la cadenza programmata più larga.
+
+---
+
+## 9bis. 🔄 Aggiornamento del 16/08, 29ª sessione — il punto 2 è SCRITTO e in PR
+
+⭐ **La metà del bot esiste**: `attesa-esito.ts` (il ciclo), `verificaScrittura()` nel ponte,
+`scritta_alle` portato fino allo strumento, e l'aggancio su **entrambe** le strade — modello e
+bottoni, che sono due punti diversi e vanno tenute in pari.
+📄 PR **#4** su `assistente-padel-agent`, ramo `claude/voce-53-ciclo-attesa`.
+**Tetto 15 minuti, domanda ogni 60 s**, banco **1004 verdi**, `tsc` pulito, **7 sabotaggi → 7 rossi**.
+
+> 🗣️ **Decisione del committente, 16/08**, messo davanti a tre strade con i prezzi:
+> **l'attesa resta nel processo, e il limite si SCRIVE.**
+
+⛔ **Cosa vuol dire, detto per intero**: il bot è un long polling senza scheduler ⇒ **un riavvio
+durante l'attesa la perde**, e il socio resta senza la seconda risposta. L'alternativa c'era —
+appoggiare l'attesa alla memoria su `ayly…`, che regge i riavvii — ed è stata **scartata**: perdere
+l'attesa vuole **due rarità insieme** (un esito ignoto *e* un riavvio dentro quei 15 minuti),
+mentre il pezzo in più andrebbe progettato, provato e deployato **prima** del collaudo.
+🚨 Per questo la via d'uscita a mano nel primo messaggio (*«chiedimi cosa ho prenotato»*) **non è
+ridondanza e non si toglie**: è l'unica che non dipende dal fatto che quel processo sia ancora vivo.
+
+⚖️ **Scritto come SCELTA e non come residuo, di proposito**: un limite che sembra una dimenticanza,
+prima o poi qualcuno lo «ripara» senza sapere cosa era stato pesato.
+
+### Cosa manca ADESSO, e nessuna delle due si fa dal cloud
+
+1. ⛔ **Il collaudo vero**: esercitare l'esito ignoto vuole il worker **irraggiungibile**, e fermarlo
+   non basta — davanti c'è **Caddy**, che risponde **502**, e un 502 *è* una risposta
+   (📄 `docs/collaudo-voce-23-caduta-worker.md`). A Caddy fermo **nessuno prenota** ⇒ vuole una
+   finestra col circolo fermo, e le sue mani.
+2. ⛔ **Il deploy**, in due tempi: prima il **bot di prova** (`deploy-bot-hetzner.yml`, bersaglio
+   `prova`, che è il predefinito), poi — **solo con un ok separato** — bersaglio `soci`, per il quale
+   va scritta a mano la parola `SOCI`.
+
+⚠️ **E il repo del bot non ha CI**: l'unico workflow è il deploy. I 1004 verdi sono girati in locale,
+e nessuna guardia li rigirerà sulla PR.
