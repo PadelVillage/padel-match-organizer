@@ -964,13 +964,26 @@ che non dipende dal fatto che quel processo sia ancora vivo. ⚖️ Ed è scritt
 come residuo, di proposito: un limite che sembra una dimenticanza, prima o poi qualcuno lo «ripara»
 senza sapere cosa era stato pesato.
 
-⛔ **Resta aperta, e ciò che manca ADESSO è dichiarato — nessuna delle due si fa dal cloud**:
-① il **collaudo vero**, che vuole il worker **irraggiungibile**: fermarlo non basta, davanti c'è
-**Caddy** che risponde **502**, e un 502 *è* una risposta (📄 `docs/collaudo-voce-23-caduta-worker.md`);
-a Caddy fermo **nessuno prenota** ⇒ serve una finestra col circolo fermo, e le sue mani.
-② il **deploy in due tempi**: prima il bot di **prova** (`deploy-bot-hetzner.yml`, bersaglio `prova`,
-che è il predefinito), poi — **solo con un ok separato** — bersaglio `soci`, dove va scritta a mano
-la parola `SOCI`.
+🚀 **E il 16/08 il codice è ANDATO SUL BOT DI PROVA** (`deploy-bot-hetzner.yml`, bersaglio `prova`):
+il bot è ripartito e **ha dichiarato dove punta** — `ponti edge: cudi… (TEST)` · `🧪 GESTIONALE DI
+PROVA: si scrive davvero, ma il circolo non si tocca` — che è l'unica prova che valga su dove
+scrive. ⛔ Il bersaglio **`soci`** non è stato toccato: vuole un ok separato e la parola `SOCI`.
+
+⛔ **Resta aperta, e ciò che manca è UNA cosa sola: il collaudo vero**, che vuole le sue mani —
+a Caddy fermo **nessuno prenota**, quindi serve una finestra col circolo fermo.
+📄 **La scheda c'è**: [`docs/voce-53-collaudo.md`](../voce-53-collaudo.md) — pre-volo, cancello,
+previsioni minuto per minuto, e soprattutto **cosa sarebbe un rosso vero**.
+🎁 **E la finestra dura SECONDI, non quindici minuti**: l'attesa **non passa da Caddy** (`verifica`
+è una chiamata alla edge e non chiama il worker) ⇒ Caddy si riaccende **subito** dopo la
+prenotazione e il ciclo continua per conto suo. ⭐ Il che *è* la tesi della voce — *una copia
+risponde sempre, anche a worker morto* — finalmente **esercitata** invece che creduta.
+🎁 E non serve nemmeno lo **strappo a metà volo** della parte B della 41 (`SIGKILL`, i due secondi
+contati): `matchpoint-bookings-create` marchia l'ignoto a **qualunque** caduta di rete
+(`index.ts:194`), «connection refused» compreso ⇒ **basta Caddy giù prima**.
+🚨 **Ma il «sì» lì è IRRAGGIUNGIBILE, ed è dichiarato in cima alla scheda**: su TEST la scrittura è
+simulata e la copia è ferma ⇒ l'esito atteso è `rinuncia/tetto`. ⚖️ È il **ramo pericoloso**, quello
+in cui una copia stantia potrebbe far dire un «no» falso: se esce «non lo so ancora», la cosa per
+cui la voce esiste ha funzionato. La strada felice si prova solo sui **soci**.
 ⚠️ E il repo del bot **non ha CI**: l'unico workflow è il deploy, quindi i 1004 verdi sono girati in
 locale e **nessuna guardia li rigirerà sulla PR**.
 📌 La metà del **gestionale** è invece **deployata e viva**: `consumer-booking-write` è **v26 ACTIVE**

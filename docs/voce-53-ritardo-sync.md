@@ -415,15 +415,42 @@ ridondanza e non si toglie**: è l'unica che non dipende dal fatto che quel proc
 ⚖️ **Scritto come SCELTA e non come residuo, di proposito**: un limite che sembra una dimenticanza,
 prima o poi qualcuno lo «ripara» senza sapere cosa era stato pesato.
 
-### Cosa manca ADESSO, e nessuna delle due si fa dal cloud
+### 🚀 Il deploy sul bot di PROVA è FATTO (16/08)
 
-1. ⛔ **Il collaudo vero**: esercitare l'esito ignoto vuole il worker **irraggiungibile**, e fermarlo
-   non basta — davanti c'è **Caddy**, che risponde **502**, e un 502 *è* una risposta
-   (📄 `docs/collaudo-voce-23-caduta-worker.md`). A Caddy fermo **nessuno prenota** ⇒ vuole una
-   finestra col circolo fermo, e le sue mani.
-2. ⛔ **Il deploy**, in due tempi: prima il **bot di prova** (`deploy-bot-hetzner.yml`, bersaglio
-   `prova`, che è il predefinito), poi — **solo con un ok separato** — bersaglio `soci`, per il quale
-   va scritta a mano la parola `SOCI`.
+`deploy-bot-hetzner.yml`, bersaglio `prova`. Il bot è ripartito e **ha dichiarato dove punta**, che
+è l'unica prova che valga su dove scrive:
+
+```
+⚙️  ponti edge: cudiqnrrlbyqryrtaprd… (TEST) · segreto gate: presente
+🧪 prenotazioni sul GESTIONALE DI PROVA: si scrive davvero, ma il circolo non si tocca.
+```
+
+⛔ Il bersaglio **`soci`** non è stato toccato: vuole un ok separato e la parola `SOCI` scritta a mano.
+
+### Cosa manca ADESSO: una cosa sola, e vuole le sue mani
+
+⛔ **Il collaudo vero.** 📄 La scheda c'è: [`voce-53-collaudo.md`](./voce-53-collaudo.md) — pre-volo,
+cancello, previsioni minuto per minuto, e **cosa sarebbe un rosso vero**.
+
+🎁 **Ed è molto più semplice di come era stato scritto qui sopra**, per due fatti misurati il 16/08:
+
+1. **Non serve lo strappo a metà volo.** `matchpoint-bookings-create` marchia l'esito come ignoto a
+   **qualunque** caduta di rete della chiamata al worker (`index.ts:194`), e il marchio sta su una
+   **proprietà**, non sulle parole: «connection refused» ci rientra. Lo conferma la misura già
+   fatta — la **parte A** della voce 41, con Caddy fermo *prima*, diede `unknown`, non `error`.
+   ⇒ **Basta Caddy giù prima di prenotare**: niente `SIGKILL`, niente due secondi contati.
+2. **La finestra col circolo fermo dura SECONDI.** L'attesa **non passa da Caddy**: `verifica` è una
+   chiamata alla edge, e quella funzione non chiama il worker. ⇒ Caddy si riaccende **subito** dopo
+   la prenotazione, e il ciclo continua per conto suo.
+   ⭐ Il che *è* la tesi centrale della voce — *una copia risponde sempre, anche a worker morto* —
+   che così viene **esercitata** invece che creduta.
+
+🚨 **E il «sì» sul bot di prova è IRRAGGIUNGIBILE**, dichiarato prima e non dopo: su TEST la
+scrittura è **simulata** (il circolo non si tocca) e la copia non la aggiorna nessun cron ⇒ la
+prenotazione non comparirà mai, e l'esito atteso è **`rinuncia/tetto`**.
+⚖️ Non è una prova mancata: è il **ramo pericoloso**, quello in cui una copia stantia potrebbe far
+dire un «no» falso. Se esce «non lo so ancora», ciò per cui la voce esiste ha funzionato. La strada
+felice si prova solo sul bersaglio **`soci`**.
 
 ⚠️ **E il repo del bot non ha CI**: l'unico workflow è il deploy. I 1004 verdi sono girati in locale,
 e nessuna guardia li rigirerà sulla PR.
