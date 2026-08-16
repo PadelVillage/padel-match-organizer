@@ -626,6 +626,21 @@ cambio di permessi — **passano lo stesso e sovrascrivono**. ⚖️ È il caso 
 giorno: la cura era **dedotta** («la protezione esiste, basta estenderla») e la misura ha mostrato
 che protegge un'**altra** strada.
 
+🎯 **E una TERZA cosa, nata da una sua domanda: «la cura larga non è meglio, visto che copre anche
+spostamento e modifica?».** Quella frase l'avevo scritta **io**, ed era **dedotta**. Misurata: **è
+falsa.**
+
+| flusso | scrive in `prenotazioniOccupazione`? | commit locale vs rilascio della chiave |
+|---|---|---|
+| **annullo** | **sì** (43382-43387) | 🔴 **commit DOPO il rilascio — è l'unico sbagliato** |
+| **spostamento** | no, solo `staffBookings` | ✅ commit alla **42136**, rilascio alla **42165**: giusto |
+| **modifica** | no | ✅ dalla v6.150 non scrive in locale prima del sì di Matchpoint |
+
+⇒ Le uniche scritture locali a quelle due liste sono l'**import**, il **ripristino da backup**, la
+**riassegnazione dell'aggiornamento** (quella rotta) e l'**annullo**. ⚖️ Quindi la cura «larga» **non
+copre più casi**: gli altri flussi o non hanno il difetto, o non passano di lì. Il motivo per
+preferirla **non esisteva**, e a farlo cadere è stata una sua domanda — non una mia rilettura.
+
 ⛔ **Cosa resta NON provato, e va detto**: ① la finestra è stata **ricostruita**, non **colta** — che
 il momento sia raggiungibile davvero (poll ogni 4 s contro una finestra di ~100-500 ms) resta un
 **calcolo**; ② la **previsione D** — se il calendario mostri o no il fantasma — **non è stata
