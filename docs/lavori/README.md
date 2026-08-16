@@ -595,22 +595,23 @@ sul bersaglio — il codice è a posto non è funziona»*. Qui il **difetto** è
 bersaglio; la **cura** no: è provata **nel banco**, con un sabotaggio che la fa cadere, e sull'app
 vera non l'ha ancora esercitata nessuno.
 
-🔄 **Aggiornamento del 16/08, 26ª sessione: delle due cose che mancavano, ne resta UNA.** La
-**previsione D è stata ESEGUITA da qui** — misura nella scheda qui sotto — e il fantasma sul
-calendario **non si vede**, come la voce prevedeva. ⇒ Per chiudere la 43 manca **solo l'annullo vero
-su TEST dalla sua postazione**: lì il `readonly` della console non passa (`pmoBlockWriteIfReadonly`),
-e non c'è modo di aggirarlo dal cloud. Procedura in
-[`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md).
+✅ **Aggiornamento del 16/08, 26ª sessione: le due cose che mancavano SONO STATE FATTE, tutte e due
+da qui.** ① La **previsione D è stata eseguita** — il fantasma sul calendario non si vede, come la
+voce prevedeva. ② E **l'annullo vero su TEST pure**, su sua autorizzazione esplicita: il blocco non
+era la guardia della console ma il **ruolo** dell'account, cambiato per la sola durata della prova e
+**rimesso subito**. ⇒ La cura «A» è ora verificata **sul bersaglio**, che era l'unica cosa che
+teneva aperta la voce. 📌 **La chiusura resta sua.**
+📄 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md) resta come **fotografia del
+difetto**, non come collaudo della cura: le sue previsioni A e B descrivono l'app malata e oggi si
+leggono al contrario.
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 
-> 🔧 **STATO AL 16/08, 26ª: CURATA, non chiusa — e manca UNA cosa sola.** La cura «A» — *prima il
-> cloud, poi la memoria* — è scritta, provata **col sabotaggio** e promossa su entrambi i rami
-> (TEST **6.243**, PROD **6.234**, **rimisurate dal server il 16/08**: i titoli delle due pagine
-> dicono `v6.234` e `v6.243`). ⛔ **Non si chiude** perché la **cura** non è stata verificata **sul
-> bersaglio**: è provata nel banco, non sull'app vera. ✅ La **previsione D è stata eseguita** il
-> 16/08 (blocco qui sotto) ⇒ resta **solo l'annullo vero su TEST** dalla sua postazione. Il resto
-> della scheda è la diagnosi, e regge: il difetto **sì** è stato visto succedere.
+> ✅ **STATO AL 16/08, 26ª: CURA VERIFICATA SUL BERSAGLIO — non resta lavoro dentro.** La cura «A»
+> — *prima il cloud, poi la memoria* — è scritta, provata col sabotaggio, promossa (TEST **6.243**,
+> PROD **6.234**, rimisurate dal server) e ora **esercitata sull'app vera con un annullo vero**
+> (blocco «LA CURA VISTA FUNZIONARE», qui sotto). ✅ Anche la **previsione D è stata eseguita**.
+> ⇒ Le due cose che mancavano ci sono entrambe. 📌 **La chiusura la decide il committente.**
 
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
 quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
@@ -702,6 +703,58 @@ il momento sia raggiungibile davvero (poll ogni 4 s contro una finestra di ~100-
 provata**: `staffCalGetSlots` non è raggiungibile dalla console, e quella metà vuole ancora le mani
 di qualcuno davanti allo schermo. ⚠️ **Il ② è stato SMENTITO il giorno dopo** — vedi il blocco
 seguente. La riga resta com'era, non riscritta per farla tornare: l'errore era mio ed è il reperto.
+
+---
+
+✅ **LA CURA VISTA FUNZIONARE — 16/08, 26ª sessione, annullo VERO su TEST (6.243).**
+*Autorizzato dal committente: «dammi il permesso di annullare su TEST», dopo che gli avevo misurato
+che il blocco non era un permesso ma il **ruolo** (`pmoIsReadonlyStaff()` guarda `role ===
+'readonly'`).* 🔧 Toccata la **sola colonna `role`** dell'unico profilo `readonly` di `cudi…`
+(permessi invariati: 2 su 16), e **rimessa a `readonly` appena finita la prova** — verificato dopo.
+
+🚨 **Il controllo che viene prima di tutti, e che la guardia della console NON avrebbe dato.**
+Prima di lasciar partire l'annullo si è verificato **nella pagina viva** che la simulazione delle
+scritture Matchpoint fosse installata: una POST di sonda a `matchpoint-bookings-cancel` ha risposto
+`{"ok":true,"simulated":true,"warning":"TEST: modifica NON propagata a Matchpoint"}`, **status 200,
+senza uscire dal browser**. ⚖️ E la guardia «sola lettura» della console **non l'ha bloccata**,
+perché a rispondere è la simulazione dell'app *prima* della rete: ⇒ su questa strada la protezione
+è il flag `PMO_BOOKINGS_SIMULATE`, **non** l'attrezzo. Va verificato ogni volta, non dedotto.
+
+**La prova**, su `idReserva 9372` (11/09, 20:30, Campo 1 — occupazione **senza nome giocatore**), con
+la finestra allargata a 6 s ritardando la conclusione della spinta delle lapidi:
+
+| momento | righe in `prenotazioniOccupazione` |
+|---|---|
+| prima dell'annullo | **1** |
+| 2 s dopo l'avvio, spinta **in volo** | **1** ⭐ col difetto sarebbe stata **0**: è la firma della cura |
+| **dopo `refreshFromCloud({force:true})` DENTRO la finestra** | **1** 🎯 **nessun fantasma** |
+| 8 s, spinta conclusa | **0** |
+| dopo un refresh forzato finale | **0**, e ci resta |
+
+🎯 **La riga che chiude la voce è la terza**: il gesto che nella prova ricostruita aveva **resuscitato**
+la riga qui non fa più niente — perché con la cura **il locale non è mai stato avanti al cloud**, e
+un fantasma può tornare solo se qualcuno l'ha già tolto.
+
+⚠️ **E le previsioni A/B/C della procedura vanno lette al contrario, perché descrivevano l'app MALATA.**
+La **A** diceva *«a 1 s dal commit `conta()` è 0»*: oggi è **1**, e non è una smentita — è la cura. La
+**B** — il ritorno del fantasma — **non può più accadere**, quindi non è «verificata», è **resa
+impossibile**. La **C** (a lapidi atterrate, 0) ✅ regge. 📌 Chi rilegge `docs/voce-43-prova-dal-mac.md`
+deve saperlo: quelle previsioni sono la fotografia del difetto, non il collaudo della cura.
+
+🧊 **Cosa è stato scritto davvero, contato dopo**: su TEST **due righe e basta** — la lapide
+`occupancy|9372|…` (`deleted: true`) e `supp|2026-09-11|1|20:30` —, e **nessun `booking_job`,
+nessun `staff_cancel`** ⇒ verso il worker e verso Matchpoint **non è partito niente**. Si richiude da
+sé al prossimo sync di TEST (voce 34, 5 volte al giorno).
+✅ **PRODUZIONE INTATTA, misurata e non supposta**: su `qqbf…` la stessa `occupancy|9372|…` è
+`deleted: **false**`, con `updated_at` **precedente** alla prova.
+🚨 **Ed è stata scelta da lui, non da me**: sul calendario di TEST **non esiste nessuna riga di
+prova** — le 45 occupazioni future sono tutte prenotazioni vere del circolo, e le tre campionate
+risultavano **vive anche in produzione**. La regola *«se risulta anche in PRODUZIONE, fermati»* ha
+funzionato: la sessione si è fermata e ha chiesto.
+🧯 **E una mia sonda sbagliata, corretta prima di agire**: avevo consigliato la 9372 anche perché le
+attribuivo «un nome di 1 carattere». Falso — la chiave ha **6 segmenti quando il nome manca** e 7
+quando c'è, e io leggevo sempre il sesto: quel «nome» era la **durata**. La riga non ha un nome
+corto, **non ha nessun nome**; la conclusione ne esce rafforzata, il motivo che avevo dato era falso.
 
 ---
 
