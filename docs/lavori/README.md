@@ -328,9 +328,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **36** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **37** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
@@ -531,7 +531,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -582,6 +582,12 @@ la fessura su PROD è tappata, e il residuo (i gettoni deboli, le altre **33** f
 è dichiarato nella sua riga fra le chiuse, non taciuto.
 ⇒ **Urgenti da 3 a 1.** Resta la sola **43**.
 
+⬆️📦 **E il 16/08, 26ª sessione: promossa la 47 e chiusa in giornata.** Con la lista ridotta alla sola
+43 — che aspetta le sue mani — gli ho proposto cosa promuovere, e ha scelto **le 33 `SECURITY
+DEFINER` aperte ad `anon`**, che stavano fra le «nate misurando» con scritto *«nessuno le ha mai
+lette una per una»*. Censite tutte **eseguendole**, tre reperti, **tre autorizzazioni separate — mai
+due insieme** («fammene una alla volta»), e chiusa da lui la sera stessa. ⇒ Urgenti **1 → 2 → 1**.
+
 🔧 **E la 43, a fine sessione, è CURATA ma NON CHIUSA** — su sua scelta la cura «A» è stata scritta,
 provata col sabotaggio e promossa (TEST **6.243**, PROD **6.234**, verificata dal server). ⛔ **Resta
 aperta di proposito, e la ragione è una regola sua**: *«non chiudere una voce che non hai verificato
@@ -595,254 +601,6 @@ calendario **non si vede**, come la voce prevedeva. ⇒ Per chiudere la 43 manca
 su TEST dalla sua postazione**: lì il `readonly` della console non passa (`pmoBlockWriteIfReadonly`),
 e non c'è modo di aggirarlo dal cloud. Procedura in
 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md).
-
-### 47. 🔒 Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD — lette una per una
-
-> 🔬 **STATO AL 16/08, 26ª: CENSITE TUTTE, e non a campione. Reperto A CHIUSO, B e C aperti.**
-> Promossa dal committente il 16/08 dalle «nate misurando», dove stavano da due giorni con scritto
-> *«nessuno le ha mai lette una per una»*. Ora sono lette — e **eseguite**: 31 chiamate come `anon`
-> in transazioni annullate, più 2 che via RPC non si chiamano affatto.
-> ✅ **Reperti A e B curati**, autorizzati **uno per volta** come chiede lui: `get_assessment_token`
-> revocata (33 → 32) e poi **tutta la famiglia del PIN** — l'oracolo più le 11 varianti
-> `*_admin(p_admin_pin, …)` — che porta a **20**. In tutto **13 porte chiuse** su PROD in una
-> sessione, ognuna con prova prima/dopo, controprova positiva **e** negativa.
-> ✋ **Il reperto C è stato DECISO, non curato**: lasciato com'è, perché oggi non espone niente
-> (0 righe su PROD e su TEST). Nella sua riga stanno **quando** riaprirlo — prima di accendere il
-> feedback post-partita — e **come**, che è più semplice di quanto avessi detto.
-> ⇒ **I tre reperti sono chiusi o decisi: la voce non ha più lavoro dentro.** La chiusura però la
-> decide lui, e non è ancora stata chiesta.
-
-⚖️ **Perché questa e non un'altra.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per
-iscritto ciò che non aveva guardato**: *«⛔ NON esaminate: 3 letture per gettone
-(`get_assessment_token`, `get_post_match_feedback_by_tokens`, `get_self_assessments_by_tokens`) e la
-robustezza del PIN nelle varianti `p_admin_pin`»*. La **44** (16/08) ne prese **una** delle tre e ci
-trovò dietro **un socio vero col telefono**. ⇒ Restavano **le altre due e il PIN**, cioè esattamente
-il residuo che la 36 si era annotata. Non è una campionatura nuova: è la chiusura di quella vecchia.
-
-📏 **Il numero è stato ricontato, non ricopiato**: `SECURITY DEFINER` in `public` su PROD sono **58**,
-di cui **33** eseguibili da `anon` e 40 da `authenticated`. Il 33 della fotografia è vero oggi.
-
-**① Il conto per ESITO — ognuna eseguita come `anon`, nessuna dedotta dai grant**
-
-| esito | quante | quali |
-|---|---|---|
-| ⛔ **non chiamabili via RPC**: sono `trigger` | **2** | `assessment_mark_token_completed`, `post_match_feedback_mark_token_completed` — il linter le segnala come le altre, ma un trigger da PostgREST non si invoca. **Falsi positivi**, e vanno detti: gonfiano il numero che spaventa |
-| ✅ `AUTH_REQUIRED` | **12** | le varianti **senza** PIN di `pmo_get_*_admin`, `pmo_upsert_records_admin`, `pmo_set_*`, `pmo_log_routine_run_admin`, `upsert_*_tokens_admin` |
-| ✅ `INVALID_ADMIN_PIN` | **11** | le varianti **col** PIN delle stesse |
-| ✅ **0 righe**, ed è corretto | **2** | `pmo_current_staff_profile()` e `pmo_get_my_staff_profile()`: senza sessione non c'è profilo. ⭐ Sono il **collo di bottiglia** su cui poggia ogni `AUTH_REQUIRED` qui sopra |
-| ⚪ **aperte per disegno**, già note | **3** | `submit_assessment_external_request_public` (`INVALID_ORIGIN`), `submit_post_match_feedback_public` (`TOKEN_MISSING`), `pmo_can_register_staff` (oracolo di enumerazione, censito e lasciato dalla voce 36: la chiama la schermata di registrazione, dove chi la usa non è ancora autenticato) |
-| 🔴 **REPERTI** | **3** | qui sotto |
-
-⇒ **La famiglia `*_admin` regge tutta**, col PIN e senza, in lettura e in scrittura — e stavolta non
-per lettura del codice: le scritture sono state **lanciate** con un carico vero dentro transazioni
-annullate, e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga.
-
-**② ✅ Reperto A — `get_assessment_token(p_token)`: CHIUSO il 16/08, su sua autorizzazione**
-
-> 🔓 **Autorizzato da solo**, non in blocco con B e C: *«fammi le domande sulla quarantasette, però
-> fammene una alla volta»*. Revocato `EXECUTE` ad **`anon` e a PUBLIC**, `authenticated` intatto.
-> Migrazione `20260816…_voce47_revoca_get_assessment_token_da_anon`, **reversibile**, con l'SQL di
-> ripristino verbatim in testa — ricalcata sulla forma della 44, letta e non ricordata.
-
-| la prova | prima | dopo |
-|---|---|---|
-| `get_assessment_token('MAURIZIO001')` come **`anon`** | `ok:true` + nome | ⛔ `permission denied for function` |
-| **controprova positiva**: come `authenticated` | — | ✅ `ok:true`, nome presente ⇒ la strada legittima regge |
-| ACL della funzione | `=X` (PUBLIC) · `anon` · `authenticated` · `service_role` | `authenticated` · `service_role` |
-| `SECURITY DEFINER` aperte ad `anon` | **33** | **32** |
-
-⭐ **Due conferme indipendenti del 33 → 32**: il conteggio su `pg_proc` e il **linter**, che scende a
-**32 `anon_security_definer_function_executable`** (ERROR **0**, 99 avvisi in tutto) e non nomina più
-questa funzione fra le `anon` — solo fra le `authenticated`, dove è giusto che stia.
-📌 **`service_role` è sopravvissuto**, controllato apposta: è la trappola che la voce 36 incontrò
-**tre volte** in una sessione. Qui il grant era **esplicito in ACL**, quindi `revoke … from PUBLIC`
-non l'ha toccato — su `cudi…` sarebbe potuta andare diversamente, ma là questa funzione **non esiste**.
-📌 **Perimetro: PROD e basta, e non per fretta** — su `cudi…` le funzioni con questo nome sono **0**
-(misurato). Il contratto vive su un lato solo, quindi non c'era un gemello da cambiare insieme.
-
-*Il reperto com'era stato misurato:*
-
-Il corpo legge `assessment_tokens` e restituisce `member_name` e `status`. **Provato come `anon`** sul
-token debole che la 44 aveva già trovato: `get_assessment_token('MAURIZIO001')` → `ok: true`, un
-**nome di 14 caratteri** e lo stato `completed`. *(Il nome non si trascrive qui: è un socio vero.)*
-📏 La superficie indovinabile è la stessa misurata dalla 44 — **1364** token, **5** lunghi ≤ 12
-caratteri, **34** in forma nome+numero.
-⚖️ **Meno grave della 44** — quella dava nome, cognome **e telefono**, questa il solo nome — ma è la
-stessa porta, sulla stessa tabella, con gli stessi gettoni deboli.
-🎯 **E qui il rimedio è netto: `get_assessment_token` NON HA CHIAMANTI.** Cercata in tutto il repo
-(app, `test/`, `supabase/`, `consumer-app/`) e nel repo del bot: l'unica occorrenza è **il commento
-della voce 36** che la nominava fra le non esaminate. ⇒ Revocarla ad `anon` e a PUBLIC — lo stesso
-rimedio della 44 — **non può rompere niente**, e la prova è che non c'è niente da rompere.
-
-**③ ✅ Reperto B — l'ORACOLO sul PIN: CHIUSO il 16/08, e non da solo**
-
-> 🔓 **Autorizzato da solo**, dopo che la misura aveva cambiato la domanda. Revocato `EXECUTE` ad
-> `anon` e PUBLIC su **12 funzioni**: l'oracolo `pmo_admin_pin_ok` **e le 11 varianti
-> `*_admin(p_admin_pin, …)`**. Migrazione `20260816…_voce47_revoca_famiglia_pin_da_anon`,
-> reversibile.
-
-🚨 **Perché dodici e non una — è il punto, ed è misurato.** `pmo_admin_pin_ok` è la **guardia
-interna** delle 11 varianti (`if not pmo_admin_pin_ok(p_admin_pin) then …`, letto in
-`manual-sql`), quindi **ognuna di esse è a sua volta un oracolo**. Cronometrate da `anon`:
-
-| 100 tentativi da `anon` | tempo |
-|---|---|
-| `pmo_admin_pin_ok` — l'oracolo «vero» | **508 ms** |
-| `pmo_get_staff_users_admin(pin)` | **486 ms** |
-| `pmo_upsert_records_admin(pin, '[]')` | **472 ms** |
-
-⇒ Le varianti sono oracoli **alla stessa velocità, anzi appena più rapide** — e l'ultima è quella
-che, a indovinare, concede le **scritture**. ⚖️ Revocare il solo `pmo_admin_pin_ok` avrebbe
-**spostato l'attacco senza ridurlo**: una cura che sembra una cura. È la stessa specie di trappola
-del reperto C, presa dal lato opposto.
-
-| la prova, prima → dopo | |
-|---|---|
-| `pmo_admin_pin_ok('x')` come `anon` | ⛔ `permission denied for function` |
-| `pmo_get_staff_users_admin('x')` come `anon` | ⛔ `permission denied` |
-| `pmo_upsert_records_admin('x','[]')` come `anon` | ⛔ `permission denied` |
-| **controprova negativa**: la variante **senza** PIN, come `anon` | ✅ **ancora raggiungibile**, risponde `AUTH_REQUIRED` ⇒ la strada dell'app non è stata toccata |
-| **controprova positiva**: l'oracolo come `authenticated` | ✅ risponde |
-| `SECURITY DEFINER` aperte ad `anon` | **32 → 20** |
-
-⭐ **Tre conferme indipendenti del 32 → 20**: il conteggio su `pg_proc`, il **linter** che scende a
-**20 `anon_security_definer_function_executable`**, e il **totale degli avvisi** che passa da **99 a
-87** — esattamente **−12**, quante ne sono state revocate, e **nessun avviso nuovo**.
-📌 `authenticated_security_definer_function_executable` resta **40**: non è stato toccato niente
-dall'altro lato.
-
-🔎 **Perimetro verificato su TUTTI E TRE i lati prima di chiudere** — perché chiudere alla cieca è
-l'errore che insegna il reperto C: app **0** (`p_admin_pin` non compare in `index.html`), edge
-**0**, e **bot 0**, con il repo `assistente-padel-agent` agganciato apposta su sua autorizzazione.
-⭐ E lo zero del bot è **un esito, non una sonda cieca**: il controllo positivo trova i tre ponti
-noti — `consumer-booking-write`, `consumer-player-readmodel`, `consumer-assessment-link` — su 65
-file e 16.460 righe.
-
-*Il reperto com'era stato misurato:*
-
-È la stessa forma di `pmo_verify_data_routine_secret`, che la voce 36 chiuse chiamandola *«la chiave
-che apre le altre porte»* — e che **non sarebbe comparsa in nessun elenco di funzioni che scrivono**.
-Questa le è sfuggita perché la 36 il PIN se l'era annotato come non esaminato.
-
-| misurato | |
-|---|---|
-| l'hash | `$2a$06$` ⇒ bcrypt a **costo 6**, il minimo pratico |
-| ritmo da `anon` | **200 tentativi in 940 ms** ⇒ **~213/s**, in una sola chiamata SQL, senza limite, senza blocco, senza traccia |
-| cosa apre | le **12** varianti `*_admin(p_admin_pin, …)` — leggere i record, **l'elenco staff con email e permessi**, il registro di controllo, e **scrivere**: `pmo_upsert_records_admin`, `pmo_upsert_staff_user_admin`, `pmo_set_staff_user_status_admin` |
-
-⚖️ **Il PIN è quindi una scorciatoia che scavalca l'intero login staff**, e accanto c'è un banco di
-prova gratuito per indovinarlo. A 213 tentativi al secondo un PIN numerico di 4 cifre cade in
-**~47 secondi**, uno di 6 in **~78 minuti**. 🚨 Il PIN vero **non è stato provato né letto**: si
-misura l'oracolo, non il segreto.
-📌 **E l'app il PIN non lo usa**: `p_admin_pin` compare **0 volte** in `index.html`, e le due
-occorrenze di `adminPin` sono righe che lo **cancellano** dalle impostazioni (8132, 27075).
-
-**④ ⚪ Reperto C — LASCIATO APERTO, per sua decisione e con la ragione scritta**
-
-> ✋ **Decisione del committente il 16/08**, messo davanti a quattro strade: *lasciare com'è*. Non è
-> un rinvio per stanchezza, è una misura: **oggi quella funzione non espone NIENTE** —
-> `post_match_feedback_responses` ha **0 righe su PROD e 0 su TEST** (contate, non ricordate). La
-> fessura è **latente, non aperta**, e la cura completa costa una modifica all'app su due rami per
-> chiudere la porta di **una stanza vuota**.
-
-🕐 **QUANDO riaprirla — ed è la parte che serve fra sei mesi**: **prima** di accendere il feedback
-post-partita, non dopo. Il giorno in cui quella tabella prende la prima riga, questa smette di
-essere latente e diventa il reperto A: una lettura per gettone, ad `anon`, su testo libero scritto
-dai soci (`note`) più `member_local_id` e `raw_response`.
-
-🎯 **E COME, che è più semplice di come l'avevo presentato.** Avevo scritto che la cura richiede di
-*scegliere* un permesso staff, e l'avevo contato fra i costi. **Misurato dopo: non è una scelta.**
-La stessa funzionalità, **due funzioni più su nello stesso file**, fa già la cosa giusta dal lato
-della **scrittura**:
-
-| | riga | come chiama |
-|---|---|---|
-| scrittura dei gettoni feedback | **29732** | `pmoStaffRpc('upsert_post_match_feedback_tokens_admin', …, 'cloud_sync', …)` ⇒ **sessione staff** |
-| lettura delle risposte | **29852** | `fetch(…)` con `Bearer <chiave pubblicabile>` ⇒ **`anon`** |
-
-⇒ La lettura è **l'unica asimmetrica** della sua stessa famiglia, e il permesso da usare è
-`cloud_sync` **per simmetria col gemello**, non per giudizio. La cura è: portare la 29852 su
-`pmoStaffRpc`, bumpare `APP_VERSION`, un caso nel banco, e **poi** revocare `anon` — su **entrambi i
-progetti insieme**, perché la funzione esiste su tutti e due con `anon = true` e il contratto vive
-sui due lati.
-⚖️ Lo scrivo anche se **toglie forza alla ragione con cui gli avevo consigliato di lasciar perdere**:
-la decisione resta sua e resta sensata (stanza vuota), ma il costo che le avevo attribuito era **più
-alto del vero**, e un consiglio dato con un costo gonfiato è un consiglio storto.
-
-*Il reperto com'era stato misurato:*
-
-Restituisce le risposte per gettone: `note` libera, `member_local_id`, `raw_response`. **Oggi non
-espone niente**, e non per una guardia: `post_match_feedback_responses` ha **0 righe**. È una fessura
-che si apre da sé il giorno in cui la funzione del feedback si accende.
-🚨 **Ma qui NON si può copiare il rimedio della 44**, ed è il reperto vero: l'app la chiama alla
-**29598** con la **chiave anonima** (`apikey`/`Bearer` = chiave pubblicabile), dal bottone «Aggiorna
-feedback ricevuti» della **29519**, che sta in `<div id="matchHistory">` — una sezione **viva**.
-⇒ Revocare `anon` lì **romperebbe una funzione che lo staff usa**. La cura giusta è prima portare la
-chiamata sulla sessione staff (`pmoStaffRpc`, come fanno le `*_admin`), **poi** revocare.
-
-**⑤ Il debito latente della voce 44 — 🚨 e la frase con cui l'avevo annunciato era FALSA**
-
-`get_self_assessments_by_tokens` è oggi `anon = false` / `authenticated = true` — la 44 ha fatto il
-suo lavoro, verificato: come `anon` risponde `permission denied for function`.
-⛔ **Ma l'app la chiama con la chiave anonima** (`fetch` alla **29298**, `apikey`/`Bearer` alla
-**29302-29303**), esattamente come la sua gemella del reperto C. ⇒ **Quella chiamata oggi prenderebbe
-403.** Non è un guasto vivo perché sta dentro `syncAssessmentResponsesFromSupabase`, che vive nella
-sezione **Autovalutazione congelata dal 13/06** (`PMO_ASSESSMENT_PARKED = true`, riga 10446: il tab è
-negato a tutti tranne la modalità pubblica). È un **debito latente**: il giorno in cui quella sezione
-si riaccende, la sincronizzazione delle risposte non parte.
-
-🚨 **Ma l'avevo annunciato come «una conseguenza che nessuno aveva scritto», e non è vero.** Era
-scritta — **verbatim, nella migrazione stessa della voce 44**, sotto l'etichetta *«⚠️ EFFETTO NOTO:
-l'app chiama questa RPC come anon … dentro la sezione Autovalutazione CONGELATA»*, con tanto di
-numero di riga e la misura delle 42 righe di `self_assessments`.
-⚖️ **L'ho scoperto un'ora dopo, e nel modo più imbarazzante: leggendo quella migrazione per
-ricalcarla sul reperto A.** Cioè la risposta stava dentro il documento che stavo per copiare, e la
-mia frase l'aveva dichiarato inesistente **senza averlo aperto**. È la forma della 25ª ancora una
-volta — una conclusione *dedotta* («non l'ho vista nel registro» ⇒ «non l'ha scritta nessuno») da una
-premessa vera, e falsa.
-📌 **Quello che resta vero, e che vale la pena tenere**: la nota c'era **nella migrazione** e non nel
-**registro**, ed è un posto dove chi riapre la voce fra sei mesi non guarda. ⇒ Il debito è reale; a
-mancare era il *dove*, non il *se*. La frase sbagliata la lascio raccontata qui invece di
-cancellarla, perché l'errore è il reperto.
-
-**⑥ 🚨 Il reperto di METODO: due conteggi sbagliati, e la sonda era finita sull'overload sbagliata**
-
-La prima stesura di questa tabella diceva **10** `AUTH_REQUIRED` e **12** `INVALID_ADMIN_PIN`. Sono
-**12 e 11**. A smascherarlo non è stata una rilettura: è che **la somma non tornava** — 2 + 10 + 12 +
-2 + 3 + 3 fa **32**, e le funzioni sono **33**.
-
-**La causa, misurata.** `pmo_upsert_staff_user_admin` esiste in due overload — a **5** argomenti
-(senza PIN) e a **6** (col PIN) — e **tutt'e due hanno valori predefiniti**. La mia chiamata a 5
-argomenti posizionali, con `null` non tipizzato in fondo, poteva legarsi a entrambe: PostgreSQL ha
-preferito `text` a `jsonb` per l'`unknown` e l'ha risolta sulla **6-argomenti, quella COL PIN**. ⇒
-Credevo di provare la variante senza PIN e stavo riprovando quella col PIN — **la variante senza PIN
-non l'avevo mai eseguita**.
-✅ Rifatta con la **notazione per nome**, che su quella col PIN non può cadere (`p_admin_pin` è
-l'unico parametro **senza** predefinito): senza PIN → `AUTH_REQUIRED`, col PIN → `INVALID_ADMIN_PIN`.
-Ora i conti chiudono a 33 esatti.
-
-⚖️ **E la cura è stata cercare la CLASSE, non l'istanza** — la regola del 15/08 applicata a una
-sonda invece che a un documento. Invece di correggere quella riga ho chiesto al database **quali
-altre** funzioni aperte ad `anon` hanno parametri con predefiniti: sono **11**, in 5 famiglie.
-Ricontrollate una per una le risoluzioni: le altre 10 erano legate giuste (i tipi le
-disambiguavano — `text[]`, `boolean`, `integer`, `jsonb` in posizione), **una sola** era sbagliata.
-Ma la differenza sta nel *come si è saputo*: cercando la forma del difetto, non l'esemplare.
-
-📌 **Da tenere per la prossima volta**: *una funzione con overload e valori predefiniti non si prova
-per posizione.* Una chiamata posizionale può atterrare sulla gemella e **rispondere con sicurezza**,
-ed è la 24ª — «questa sonda guarda nel cassetto giusto?» — nella sua forma più subdola, perché qui i
-due cassetti hanno **lo stesso nome**.
-
-**⑦ Cosa NON è stato fatto, e perché**
-
-⛔ **Non è stata toccata una riga**: i tre reperti sono **decisioni del committente**, e due delle
-tre cure toccano il codice dell'app, non solo i grant.
-⛔ **Non è stato guardato TEST**: la voce chiedeva le 33 di **PROD**. Su `cudi…` il conto sarà
-diverso — la 36 aveva già misurato che là la famiglia era «un rattoppo a campione». È il vicino di
-casa di questa voce, non il suo residuo.
-⛔ **Il PIN non è stato indovinato né letto**, e non si farà: si misura l'oracolo, non il segreto.
-
----
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 
@@ -1356,17 +1114,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 36 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 37 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime SETTE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime OTTO voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **47** | ✅ *(16/08, 26ª sessione — **promossa e poi chiusa da lui**: «chiudi la quarantasette». Tre reperti, **tre autorizzazioni separate**, mai due insieme)* 🔒 **Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD, lette una per una — e 13 porte chiuse.** ⚖️ **Non è una campionatura nuova: è la chiusura di una vecchia.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per iscritto ciò che non aveva guardato** — *«NON esaminate: 3 letture per gettone e la robustezza del PIN»*; la **44** ne prese **una** e ci trovò dietro **un socio vero col telefono**. Restavano le altre due e il PIN. 📏 Numero **ricontato, non ricopiato**: 58 `SECURITY DEFINER` in `public`, **33** eseguibili da `anon`. 🔬 **31 eseguite come `anon`** in transazioni annullate (rollback verificata *prima* di cominciare), più **2 che via RPC non si chiamano affatto: sono `trigger`** — falsi positivi del linter, e vanno detti perché gonfiano il numero che spaventa. **La famiglia `*_admin` regge tutta**, col PIN e senza, in lettura e in scrittura — e non per lettura del codice: le scritture sono state **lanciate** con un carico vero e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga. 🔒 **Reperto A — `get_assessment_token`**, la gemella della 44 rimasta aperta: come `anon` restituisce **nome e stato di un socio vero** sul gettone debole già noto. Revocata ad `anon` e PUBLIC; **non aveva chiamanti in nessun repo**, quindi non c'era niente da rompere (**33 → 32**). 🔒 **Reperto B — `pmo_admin_pin_ok`, un ORACOLO sul PIN**, stessa forma di `pmo_verify_data_routine_secret` che la 36 chiamò «la chiave che apre le altre porte»: bcrypt **costo 6**, **~200 tentativi/s** da `anon` senza limite né traccia, e il PIN apre le 11 varianti `*_admin(p_admin_pin, …)` — elenco staff con email e permessi, registro di controllo, **e le scritture**. ⭐ **Ed è qui che la misura ha cambiato la cura**: `pmo_admin_pin_ok` è la **guardia interna** delle 11, quindi **ognuna è a sua volta un oracolo** — cronometrate, 100 tentativi in **508 / 486 / 472 ms** ⇒ le varianti sono oracoli **alla stessa velocità**, e `pmo_upsert_records_admin` è per giunta quella che a indovinare concede le **scritture**. Revocare il solo oracolo avrebbe **spostato l'attacco senza ridurlo**: una cura che sembra una cura. Revocate **tutte e 12** (**32 → 20**). ✋ **Reperto C — `get_post_match_feedback_by_tokens`: LASCIATO, su sua decisione e con la ragione scritta** — oggi non espone niente (**0 righe** su PROD *e* su TEST), quindi è latente e non aperto. Nella sua riga stanno il **quando** (prima di accendere il feedback post-partita) e il **come**. 🧯 **E il «come» smentisce un costo che avevo messo io fra le ragioni per lasciar perdere**: dicevo che bisognava *scegliere* un permesso staff — falso, la **scrittura** della stessa funzionalità due funzioni più su (29732) usa già `pmoStaffRpc(…, 'cloud_sync', …)`, e la lettura (29852) è **l'unica asimmetrica della sua famiglia** ⇒ il permesso è simmetria, non giudizio. La decisione resta sensata, il costo che le avevo attribuito no. ✅ **Ogni revoca provata prima/dopo, con controprova POSITIVA** (`authenticated` continua a eseguire) **e, sulla B, anche NEGATIVA**: la variante **senza** PIN resta raggiungibile da `anon` e risponde `AUTH_REQUIRED` ⇒ la strada che l'app usa davvero non è stata toccata. ⭐ **Il 32 → 20 confermato TRE volte**: `pg_proc`, il **linter** a 20 `anon_security_definer_function_executable`, e il **totale avvisi da 99 a 87** — esattamente **−12**, senza avvisi nuovi; `authenticated_…` resta **40**. 🔎 **Perimetro verificato su tre lati** prima di chiudere, perché chiudere alla cieca è l'errore del reperto C: app **0**, edge **0**, **bot 0** — repo `assistente-padel-agent` agganciato apposta su sua autorizzazione, e lo zero è **un esito e non una sonda cieca** perché il controllo positivo trova i tre ponti noti su 65 file / 16.460 righe. ↩️ Due migrazioni **reversibili**, con le `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate.** 🚨 **E il reperto di METODO, che vale quanto le porte chiuse: due conteggi della tabella erano SBAGLIATI** (10 e 12 invece di **12 e 11**), e a smascherarli non è stata una rilettura ma il fatto che **la somma facesse 32 su 33**. Causa: `pmo_upsert_staff_user_admin` ha due overload **entrambe con valori predefiniti**, e la chiamata a 5 argomenti **posizionali** si è risolta sulla 6-argomenti — **quella col PIN** — perché PostgreSQL preferisce `text` a `jsonb` per l'`unknown`: credevo di provare la variante senza PIN e riprovavo quella col PIN. Rifatta con la **notazione per nome**, che sulla gemella non può cadere. ⚖️ **E la cura è stata cercare la CLASSE, non l'istanza**: chieste al database **tutte** le funzioni aperte ad `anon` con parametri predefiniti — **11 in 5 famiglie** — e ricontrollate le risoluzioni una per una; le altre 10 erano legate giuste, **una sola** era sbagliata. 📌 Da tenere: **una funzione con overload e valori predefiniti non si prova per posizione** — è la 24ª nella forma più subdola, perché qui i due cassetti hanno **lo stesso nome**. ⛔ **NON guardato TEST**: la voce chiedeva le 33 di **PROD**, e su `cudi…` il conto sarà diverso — la 36 aveva già misurato che là la famiglia era «un rattoppo a campione». È il vicino di casa di questa voce, non il suo residuo. ⛔ **Il PIN non è stato indovinato né letto**, e non si farà: si misura l'oracolo, non il segreto. 🔴 **E ciò che resta scoperto, scritto perché nessuno legga «famiglia bonificata»: le 20 ancora aperte ad `anon`** non sono state rilette dopo questa potatura — quelle censite qui erano 33, e 13 sono state chiuse. |
 | **44** | ✅ *(16/08, 25ª sessione — **curata su sua autorizzazione**, e **chiusa da lui**: «chiudi da quarantaquattro»)* 🚨 **Una fessura su DATI PERSONALI VERI in produzione, chiusa.** `get_self_assessments_by_tokens` è `SECURITY DEFINER` e restituisce `first_name`, `last_name` e **`phone`**; aveva `EXECUTE` ad **`anon` e a PUBLIC** ⇒ chiunque dalla rete, con la sola chiave pubblicabile e un gettone, poteva leggerli. ⭐ **Ed è nata da una conclusione giusta nel ragionamento e sbagliata nel fatto**: la nota della 15ª diceva «non un buco aperto» perché *«vuole i gettoni in ingresso»* — premessa **vera**, ma fra i 1364 gettoni uno è da 11 caratteri, `MAURIZIO001`, e dietro c'è **un socio vero col telefono**. A vederlo non è bastato leggere i grant: è servito **eseguire la funzione come `anon`**. ✅ **Controllo negativo, fatto prima di credere alla gravità**: la lettura **diretta** della tabella come `anon` vede **0 righe** (RLS attivo, zero policy) ⇒ quella RPC era davvero l'**unica** finestra rimasta accanto alla porta chiusa il 12/08, non una fra tante. 🔧 **La cura**: `REVOKE EXECUTE … FROM anon, PUBLIC` sui **due** progetti — il contratto vive sui due lati — lasciando `authenticated`, così sparisce l'accesso *senza credenziali* e non quello dello staff. 🔬 **Provata su TEST prima che su PROD, e in tre modi**: `anon` **3 righe → 42501** su TEST e **1 riga → 42501** su PROD; **controprova positiva** (`authenticated` passa ancora, di qua e di là) fatta apposta perché senza di essa «blocca tutto» si legge come «funziona»; e una **conferma indipendente che non veniva dalla stessa sonda** — le `SECURITY DEFINER` aperte ad `anon` su PROD passano da **34 a 33**. ↩️ Migrazioni **reversibili**, con le due `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate**: tutte le prove d'attacco in transazioni annullate. ⚠️ **Residuo dichiarato e NON fatto**: il gettone `MAURIZIO001` e i quattro `TEST*` **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco — restano **gettoni deboli**, e non sono stati toccati perché dietro c'è **il dato di una persona reale**: prima di cancellare va misurato cosa ci punta. 🔴 **E ciò che questa voce NON copre, scritto perché nessuno legga «famiglia bonificata»: le altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è **l'unica letta riga per riga**; il linter le segnala tutte con lo stesso titolo da sempre, ed è esattamente la condizione in cui stava la 44 fino a stamattina — segnalata, letta da nessuno, e con un socio vero dietro. |
 | **45** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 45». PROD **6.233**, non ancora promossa)* **Tolto `fetchAssessmentRawResponsesByTokens`: un ripiego che non poteva partire.** ⭐ **La voce chiedeva «a cosa serviva», e la risposta ha trovato un secondo motivo che nessuno aveva visto.** Serviva a rileggere `raw_response` quando la RPC `get_self_assessments_by_tokens` **non portava** quella colonna. Oggi la porta **sempre** — `coalesce(s.raw_response, '{}'::jsonb)` — quindi la chiave c'è in ogni riga, e la guardia che lo accendeva (`!r?.raw_response`) era diventata **IRRAGGIUNGIBILE**: in JS `{}` è **vero**. ⇒ Il ripiego non partiva **nemmeno nei casi per cui era stato scritto** — le risposte davvero vuote, misurate **6 su 42**. 🔬 Provato sul bersaglio, non ragionato: la RPC interrogata sui token veri restituisce `raw_response` **presente e `{}`**, zero righe nulle. 🎯 **Quindi era morto DUE volte**: condizione irraggiungibile *e*, se anche fosse partito, `self_assessments` ha RLS attivo e **zero policy** ⇒ quella `GET` risponde 200 con lista vuota, sempre, sotto un `catch` che taceva. 🧯 **E due numeri della scheda erano falsi**, annotati e non corretti di nascosto: la riga è la **29214/29223**, non la 29939; e le policy sono **zero**, non «3 di INSERT». 📌 Il contesto che ridimensiona tutto: la sezione è **congelata dal 13/06**, la tabella ha l'ultima riga del **23/06** e **zero in 30 giorni** — un vicolo cieco **dentro una stanza già chiusa**, la stessa forma che la 20ª aveva già incontrato. ✅ **Verificato DOPO aver agito**, che è dove si tradisce un analizzatore cieco: **zero riferimenti orfani**, `normalizeAssessmentRawResponse` **ancora viva in 13 punti** (nessuna cascata), sintassi verde su **tutti e 5** i blocchi `<script>` — non su uno, che è la trappola della 23ª — e banco **94/94**, in **A/B contro `main` intatto**. ⚖️ **Il verde del banco NON dimostra che il codice fosse morto**: nessun caso può coprire un ramo irraggiungibile. Dimostra che togliendolo non è caduto nulla intorno; a dimostrare che era morto è la misura sulla RPC. ⛔ **Non promossa**: le righe stanno sul ramo, PROD serve ancora la 6.232 finché non lo decide lui. |
 | **46** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 46»)* **`livello.autovalutazione_url` tolta dalla kb di TEST: adesso le due kb sono IDENTICHE.** Puntava alla pagina di una sezione **congelata dal 13/06**; su PROD era stata tolta il 9/08 — ed è quel gesto ad aver prodotto `pmo_bkp_kb_livello_20260809` — su TEST no. 🔬 **Tre misure prima di scrivere, e la prima ha corretto la nota**: ① non vive nel **codice** ma nel **database** (`pmo_ai_settings`, chiave `assistant_kb`), quindi il grep in `index.html` non l'avrebbe mai trovata; ② **cosa ci punta**: zero occorrenze in tutto il repo fuori dai documenti ⇒ nessun lettore da rompere; ③ **le 13 chiavi di primo livello erano già identiche** fra i due progetti, e `livello` era l'unica a divergere (82 caratteri contro 2). ⚠️ **Ma la kb non è inerte, ed è il motivo per cui la voce esisteva**: `consumer-player-readmodel` — il **ponte del bot** — restituisce il valore **intero** (`kb: kbRow?.value`), senza filtrare le sezioni ⇒ su TEST quella riga arrivava **davvero al modello**. ⭐ **La verifica dopo non è «la divergenza è sparita», che avrebbe guardato solo ciò che sapevo di cercare: è che le due kb hanno la STESSA IMPRONTA** — `md5` identico, `c570a626…`, 6169 caratteri e 13 chiavi di qua e di là. Esclude anche le divergenze che non stavo cercando. ↩️ Migrazione **reversibile**, col valore esatto di prima trascritto **verbatim** in testa. ⛔ **Non provato dal vivo attraverso il ponte**: chiamarlo vuole il segreto, che da qui non c'è. Si è misurato **il valore che il ponte restituirebbe**, non la risposta del ponte — e la differenza è scritta perché non la si legga come una prova end-to-end. |
