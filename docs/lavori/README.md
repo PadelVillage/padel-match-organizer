@@ -1,6 +1,31 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 16/08/2026, a fine 26ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 27ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 27ª: **il residuo che si era fatto promuovere, misurato fino in fondo**
+
+La 26ª aveva chiuso la 47 lasciando scritto che «le `SECURITY DEFINER` aperte ad `anon` non le ha
+rilette nessuno» — e alla 48 quella frase si era già fatta promuovere, salvo poi rivelarsi gonfiata:
+su PROD erano un sottoinsieme esatto delle 33 già lette. Questa sessione ha fatto la cosa che
+mancava: è andata **sul perimetro vero — TEST — e le ha ESEGUITE**, non lette.
+
+⚖️ **La lezione, dal lato dell'attrezzo**: la riga di cura che sembrava ovvia era **falsa**, e a
+smascherarla è stata una transazione annullata *prima* di agire. `revoke … from anon` lascia `anon`
+dentro **via `PUBLIC`**: chi si fermava a leggere il flag `anon=false` **dopo** avrebbe creduto chiusa
+una porta ancora aperta. ⇒ La domanda della 25ª — *cosa ho eseguito, e cosa ho solo dedotto?* —
+applicata alla **cura**: la si prova col sabotaggio (qui: la `revoke` a metà) prima di fidarsene.
+
+🎯 **E il controllo positivo che conta più del negativo**: che `anon` sia bloccato lo dice il
+`42501`; che la cura non abbia rotto altro lo dice `service_role`, che risponde `INVALID_ADMIN_PIN`
+**e non** `42501` — cioè raggiunge ancora la funzione. Senza quella controprova, «anon bloccato» si
+sarebbe letto come «funziona», e la **trappola `service_role`** della 36 sarebbe passata inosservata.
+
+## 📌 Le decisioni prese dal committente nella 27ª
+
+| | |
+|---|---|
+| 🔓 **«Scegli quella che secondo te è più corretta»** | delega esplicita sullo scopo della cura: scelta la **completa su tutte e 12**, non il sottoinsieme «solo scritture» — le letture espongono staff e anagrafica veri, e mezza cura è mezzo buco |
+| 📦 **«chiudila e aggiorna i docs»** | la 48 chiusa su voce **verificata sul bersaglio eseguendo**, non solo «a codice a posto» ⇒ la lista urgenti torna **vuota** |
 
 ## 🔎 Il filo della 26ª: **il limite dichiarato che nessuno aveva provato**
 
@@ -382,9 +407,11 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **38** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **39** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+
+**La 27ª non ha toccato `index.html`**: le versioni sono quelle della 26ª, **rimisurate dal server** (PROD **6.234**, TEST **6.243**), non ricopiate. Il lavoro è stato tutto sui **permessi del database di TEST**: 12 `SECURITY DEFINER` allineate a PROD, `anon` da 32 a 20.
 
 **Stato del sistema, rimisurato alla chiusura della 26ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
@@ -592,7 +619,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 0
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -668,55 +695,15 @@ leggono al contrario.
 
 ⬆️ **E a lista appena svuotata, il 16/08 lui ne ha promossa una: «promuovi in urgenti le 20
 `SECURITY DEFINER`».** ⇒ Urgenti da **0 a 1**. 🚨 **La promozione poggiava su un residuo che avevo
-esagerato io, e la scheda lo dice**: non erano «mai lette». Il perimetro vero è **TEST**.
+esagerato io**: non erano «mai lette». Il perimetro vero era **TEST**, ed è diventato la voce 48.
 
-### 48. 🔒 Le `SECURITY DEFINER` aperte ad `anon` — la metà che non è mai stata guardata: **TEST**
+🔄 **Aggiornamento del 16/08, 27ª sessione: la 48 è CHIUSA.** Le 32 `SECURITY DEFINER` aperte ad
+`anon` su TEST sono state censite **eseguendole**, e le **12 divergenze** con PROD — le varianti col
+PIN più `pmo_admin_pin_ok` — allineate alla forma di PROD: `anon` sulle `SECURITY DEFINER` di TEST
+**32 → 20** (uguale a PROD), verificato sul bersaglio eseguendo (`42501` da `anon`, non più
+`INVALID_ADMIN_PIN`), con la **trappola `service_role`** della 36 evitata (`service_role` resta 46).
+⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse.
 
-> ⬆️ **Promossa dal committente il 16/08, 26ª sessione**, dal residuo lasciato dalla voce 47.
-> 🚨 **NON è «le 20 di PROD»**, e va detto subito perché è colpa di come l'avevo scritto io.
-
-🧯 **La correzione, prima di tutto.** Chiudendo la 47 avevo lasciato scritto *«le 20 ancora aperte ad
-`anon` non sono state rilette dopo questa potatura»*, e riferendogliela a voce l'ho detta peggio:
-**«nessuno le ha rilette»**, che suona come *mai lette*. **Falso.** Confrontate le due liste: le
-**20 di oggi sono un sottoinsieme esatto delle 33** censite stamattina — 33 meno le 13 revocate. Di
-quelle 20, **2 sono `trigger`** (via RPC non si chiamano) e le altre **18 sono state eseguite come
-`anon`** poche ore fa, ognuna con il suo esito:
-
-| esito, misurato il 16/08 | quante |
-|---|---|
-| `AUTH_REQUIRED` | **12** |
-| `0 righe`, ed è corretto (`pmo_current_staff_profile`, `pmo_get_my_staff_profile`) | **2** |
-| aperte **per disegno**, già censite (i due `submit_*_public`, `pmo_can_register_staff`) | **3** |
-| ⚪ **reperto C**, deciso da lui: `get_post_match_feedback_by_tokens` | **1** |
-| ⛔ `trigger`, non chiamabili | **2** |
-
-⇒ **Su PROD non c'è lavoro nuovo**: la somma fa 20, e ogni riga ha già una misura eseguita.
-⚖️ È la forma della 22ª — *una misura che concorda con ciò che c'è scritto non ha verificato niente*
-— presa dal lato di chi **scrive** il documento: avevo prodotto un residuo che *sembrava* un buco
-aperto, e la prima cosa che ha fatto è stata farsi promuovere.
-
-🎯 **Dove sta il lavoro vero, misurato oggi**: su **TEST** (`cudi…`) le `SECURITY DEFINER` sono
-**56**, di cui **32 aperte ad `anon`** e 39 ad `authenticated` — e **nessuna è mai stata letta**.
-Non è una supposizione: la voce **36** aveva già annotato che là la famiglia era *«un rattoppo a
-campione — alcune chiuse, altre no, senza un criterio»*, e da allora nessuno ci è tornato.
-
-⚠️ **E i due progetti sono divergenti per costruzione**, quindi il conto non si eredita: PROD ne ha
-**58** totali e **20** aperte ad `anon` *dopo* la potatura di oggi, TEST **56** e **32**. Le 13
-revocate stamattina **su TEST non sono state toccate** — `get_assessment_token` là **non esiste**
-(misurato: 0), e della famiglia del PIN non si sa nulla.
-
-**Cosa farebbe questa voce**, se la si lavora:
-① censire le **32** di TEST **eseguendole** come `anon` in transazioni annullate, col metodo della 47;
-② confrontarle con le 20 di PROD per trovare le **divergenze di protezione** nei due sensi — è la
-voce 31 applicata ai grant;
-③ e riguardare la **trappola `service_role`** che la 36 incontrò tre volte: su `cudi…` i grant a
-`service_role` spesso **non sono espliciti** in ACL, quindi un `revoke … from PUBLIC` glieli toglie.
-⇒ Su TEST, dopo **ogni** revoca, si rimisura `service_role` e lo si confronta con la fotografia
-presa **prima**, non con PROD.
-
-⛔ **Cosa NON è stato fatto qui**: nulla oltre i tre conteggi (56 / 32 / 39). Le 32 **non sono state
-eseguite**: la sessione si è fermata a dire che la premessa della promozione era sbagliata, invece di
-lavorare su di essa.
 
 ## 📋 IN CODA — 4
 
@@ -986,17 +973,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 38 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 39 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime NOVE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime DIECI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **48** | ✅ *(16/08, 27ª sessione — **curata, verificata sul bersaglio e chiusa da lui**: «chiudila e aggiorna i docs». Aperta dal committente il 16/08 a lista svuotata)* 🔒 **Le `SECURITY DEFINER` di TEST allineate a PROD.** Censite ed **ESEGUITE** tutte e **32** le funzioni aperte ad `anon` su `cudi…` (transazioni annullate, con controllo positivo): nessuna versa dati a un `anon` nudo — **12** `AUTH_REQUIRED`, **13** `INVALID_ADMIN_PIN`/`pin_ok=false`, **2** a `0 righe` corretto, **3** pubbliche per disegno, **1** reperto C (già deciso alla 47), **2** trigger. 🎯 **La divergenza vera, in UN SOLO senso**: 12 funzioni — le varianti *col PIN* delle admin più `pmo_admin_pin_ok` — erano aperte ad `anon` su TEST e **`authenticated`-only su PROD** (20 anon PROD + 12 = 32 TEST, la somma torna). ⇒ Su TEST l'intera superficie admin, **scritture comprese** (`pmo_upsert_records_admin`, `pmo_upsert_staff_user_admin`, `pmo_set_staff_user_status_admin`), era raggiungibile dalla **chiave pubblica** col solo PIN, e `pmo_admin_pin_ok` aperta ad `anon` rendeva pure **forzabile** il PIN. E `cudi…` ha gli **stessi soci veri** di PROD. 🚨 **La riga di cura proposta era insufficiente**, misurato in transazione annullata *prima* di agire: `revoke … from anon` lasciava `anon` dentro **via `PUBLIC`**. La cura vera è **tre mosse** — `grant service_role` esplicito → `revoke from public` → `revoke from anon` — che porta TEST **esattamente** alla forma ACL di PROD; applicata in un'unica transazione con `assert` che avrebbe abortito se una sola delle 12 non tornava. ✅ **Verificato sul bersaglio ESEGUENDO**: le 12 da `anon` ora `42501 permission denied` (non più `INVALID_ADMIN_PIN`), `anon` sulle `SECURITY DEFINER` di TEST **32 → 20** = uguale a PROD, le non toccate intatte (`AUTH_REQUIRED`, `TOKEN_MISSING`), e il **controllo positivo ③**: `service_role` sull'ex-12 risponde `INVALID_ADMIN_PIN` *non* `42501` ⇒ la **trappola `service_role` della 36 non ha morso** (`service_role` resta 46). ↩️ Reversibile (`grant execute … to anon` sulle 12). ⛔ **Residuo dichiarato**: l'**entropia del PIN** non è stata valutata — non serve più per questo vettore (`anon` non arriva più né su TEST né su PROD), ma resta per chi è `authenticated`; e il **reperto C** è intatto per tua decisione della 47. |
 | **43** | ✅ *(16/08, 26ª sessione — **curata, verificata sul bersaglio e chiusa da lui**: «chiudi la quarantatré». Aperta dal committente il 15/08 chiudendo la 42)* ⏱️ **La continuazione staccata che riscriveva lo stato locale — `staffCalRefreshFromCloud`.** Il difetto: `_staffCalCommitLocalCancel` toglieva le righe dalla memoria e **poi** spingeva le lapidi **senza attenderle**, lasciando una finestra di ~100-500 ms in cui il locale diceva «annullata» e il cloud ancora «attiva». 🔬 **VISTO SUCCEDERE** il 16/08 sull'app che gira, non dedotto: ricostruito lo stato della finestra dalla console remota (TEST, scritture bloccate), la riga tolta dalla memoria **è TORNATA** dopo un aggiornamento forzato, e la controprova simmetrica — una riga finta assente nel cloud — è stata **CANCELLATA**. ⇒ L'aggiornamento **non fonde, SOSTITUISCE**. ⭐ Era la **previsione B**, cioè quella che poteva smentire la diagnosi. 🚨 **E la misura ha smentito ENTRAMBE le cure che la voce proponeva**: allungavano la vita di `_staffCalPendingEdits`, ma **la strada rotta quella chiave non la legge** (la riassegnazione dell'occupazione sta 62 righe più in basso e non la riconsulta mai) ⇒ avrebbero fermato **solo** il poll a 4 s, lasciando passare gli altri quattro percorsi forzati. Ed è caduto anche il motivo per preferire la cura «larga» — *«copre anche spostamento e modifica»* — **misurato falso**: lo spostamento non scrive in quelle liste e la modifica dalla v6.150 non scrive in locale prima del sì di Matchpoint. ⚖️ **La cura scritta è una terza**, nata scrivendola: *«aspettare la spinta»* **non chiude la finestra, la sposta dentro l'attesa** — l'unico ordine che la chiude è **prima il cloud, poi la memoria**, così non esiste mai un istante in cui il locale è avanti. 🧪 **Provata col SABOTAGGIO, non col verde**: il caso 98 alla prima stesura era **inerte** (nel banco la spinta si concludeva nell'istante in cui partiva) ed è servito `CLOUD_WRITE_RESPONSE_DELAY_MS`, gemello opposto del knob della 42; con la cura **95/95** e **98/98**, togliendola **94/95** e **97/98**, e cade **solo** quel caso. ✅ **Previsione D eseguita da qui**, e la nota che la diceva irraggiungibile era una **deduzione falsa**: `staffCalGetSlots` non è su `window`, ma `renderCal` renderizza il calendario **vero** — il fantasma **non si vede**, con controllo positivo e controprova, e il bordo della protezione è il **TTL di 30′** (a 29′ nascosto, a 31′ **compare**). ✅✅ **E la CURA VISTA FUNZIONARE con un annullo VERO su TEST**, su sua autorizzazione: a 2 s dall'avvio, con la spinta in volo, la riga è **ancora lì** (col difetto sarebbe stata 0 — è la firma della cura), e **un refresh forzato dentro la finestra non resuscita più niente**; a spinta conclusa 0, e ci resta. ⇒ La previsione **B non è «verificata», è resa IMPOSSIBILE**, e le previsioni A/B della procedura vanno lette al contrario perché descrivevano l'app **malata**. 🚨 **Il controllo che ha preceduto tutto, e che la guardia della console NON dà**: verificato **nella pagina viva** che la simulazione Matchpoint fosse installata — una POST di sonda ha risposto `simulated:true` **senza uscire dal browser**, e la guardia «sola lettura» **non l'aveva bloccata**, perché a rispondere è l'app *prima* della rete. Su quella strada la protezione è il flag `PMO_BOOKINGS_SIMULATE`, **non l'attrezzo**. 🧊 **Scritte due righe su TEST** (lapide + soppressione), **nessun `booking_job` e nessun `staff_cancel`** ⇒ verso worker e Matchpoint **niente**; si richiude da sé al prossimo sync. ✅ **PRODUZIONE INTATTA, misurata**: la stessa occupazione su `qqbf…` resta `deleted: false`. 🔑 **Il blocco non era un permesso ma il RUOLO** (`role === 'readonly'`): toccata la sola colonna per la durata della prova e **rimessa subito**, verificato dopo. 🚨 **E la riga da annullare l'ha scelta lui**, perché sul calendario di TEST **non esiste nessuna riga di prova**: le 45 occupazioni future sono tutte prenotazioni vere del circolo e le tre campionate erano vive **anche in produzione** — la regola *«se risulta anche in PRODUZIONE, fermati»* ha funzionato. 🧯 **Due sonde mie sbagliate, annotate**: la chiave dell'occupazione ha **6 segmenti quando il nome manca** e 7 quando c'è, e leggendo sempre il sesto avevo scambiato la **durata** per un nome; e il ramo della PR l'avevo costruito su una base **stantia**, visto solo perché `mergeable_state` diceva `dirty`. ⛔ **Residuo dichiarato**: la finestra è stata **ricostruita** e non **colta** (che il momento sia raggiungibile davvero resta un calcolo), e la terza scrittura di `staffCalRefreshFromCloud` — quella dei **soci** (38101/38107) — **non è stata misurata**: è il vicino di casa di questa voce, non il suo residuo. 📄 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md) resta come **fotografia del difetto**, non come collaudo della cura. |
 | **47** | ✅ *(16/08, 26ª sessione — **promossa e poi chiusa da lui**: «chiudi la quarantasette». Tre reperti, **tre autorizzazioni separate**, mai due insieme)* 🔒 **Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD, lette una per una — e 13 porte chiuse.** ⚖️ **Non è una campionatura nuova: è la chiusura di una vecchia.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per iscritto ciò che non aveva guardato** — *«NON esaminate: 3 letture per gettone e la robustezza del PIN»*; la **44** ne prese **una** e ci trovò dietro **un socio vero col telefono**. Restavano le altre due e il PIN. 📏 Numero **ricontato, non ricopiato**: 58 `SECURITY DEFINER` in `public`, **33** eseguibili da `anon`. 🔬 **31 eseguite come `anon`** in transazioni annullate (rollback verificata *prima* di cominciare), più **2 che via RPC non si chiamano affatto: sono `trigger`** — falsi positivi del linter, e vanno detti perché gonfiano il numero che spaventa. **La famiglia `*_admin` regge tutta**, col PIN e senza, in lettura e in scrittura — e non per lettura del codice: le scritture sono state **lanciate** con un carico vero e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga. 🔒 **Reperto A — `get_assessment_token`**, la gemella della 44 rimasta aperta: come `anon` restituisce **nome e stato di un socio vero** sul gettone debole già noto. Revocata ad `anon` e PUBLIC; **non aveva chiamanti in nessun repo**, quindi non c'era niente da rompere (**33 → 32**). 🔒 **Reperto B — `pmo_admin_pin_ok`, un ORACOLO sul PIN**, stessa forma di `pmo_verify_data_routine_secret` che la 36 chiamò «la chiave che apre le altre porte»: bcrypt **costo 6**, **~200 tentativi/s** da `anon` senza limite né traccia, e il PIN apre le 11 varianti `*_admin(p_admin_pin, …)` — elenco staff con email e permessi, registro di controllo, **e le scritture**. ⭐ **Ed è qui che la misura ha cambiato la cura**: `pmo_admin_pin_ok` è la **guardia interna** delle 11, quindi **ognuna è a sua volta un oracolo** — cronometrate, 100 tentativi in **508 / 486 / 472 ms** ⇒ le varianti sono oracoli **alla stessa velocità**, e `pmo_upsert_records_admin` è per giunta quella che a indovinare concede le **scritture**. Revocare il solo oracolo avrebbe **spostato l'attacco senza ridurlo**: una cura che sembra una cura. Revocate **tutte e 12** (**32 → 20**). ✋ **Reperto C — `get_post_match_feedback_by_tokens`: LASCIATO, su sua decisione e con la ragione scritta** — oggi non espone niente (**0 righe** su PROD *e* su TEST), quindi è latente e non aperto. Nella sua riga stanno il **quando** (prima di accendere il feedback post-partita) e il **come**. 🧯 **E il «come» smentisce un costo che avevo messo io fra le ragioni per lasciar perdere**: dicevo che bisognava *scegliere* un permesso staff — falso, la **scrittura** della stessa funzionalità due funzioni più su (29732) usa già `pmoStaffRpc(…, 'cloud_sync', …)`, e la lettura (29852) è **l'unica asimmetrica della sua famiglia** ⇒ il permesso è simmetria, non giudizio. La decisione resta sensata, il costo che le avevo attribuito no. ✅ **Ogni revoca provata prima/dopo, con controprova POSITIVA** (`authenticated` continua a eseguire) **e, sulla B, anche NEGATIVA**: la variante **senza** PIN resta raggiungibile da `anon` e risponde `AUTH_REQUIRED` ⇒ la strada che l'app usa davvero non è stata toccata. ⭐ **Il 32 → 20 confermato TRE volte**: `pg_proc`, il **linter** a 20 `anon_security_definer_function_executable`, e il **totale avvisi da 99 a 87** — esattamente **−12**, senza avvisi nuovi; `authenticated_…` resta **40**. 🔎 **Perimetro verificato su tre lati** prima di chiudere, perché chiudere alla cieca è l'errore del reperto C: app **0**, edge **0**, **bot 0** — repo `assistente-padel-agent` agganciato apposta su sua autorizzazione, e lo zero è **un esito e non una sonda cieca** perché il controllo positivo trova i tre ponti noti su 65 file / 16.460 righe. ↩️ Due migrazioni **reversibili**, con le `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate.** 🚨 **E il reperto di METODO, che vale quanto le porte chiuse: due conteggi della tabella erano SBAGLIATI** (10 e 12 invece di **12 e 11**), e a smascherarli non è stata una rilettura ma il fatto che **la somma facesse 32 su 33**. Causa: `pmo_upsert_staff_user_admin` ha due overload **entrambe con valori predefiniti**, e la chiamata a 5 argomenti **posizionali** si è risolta sulla 6-argomenti — **quella col PIN** — perché PostgreSQL preferisce `text` a `jsonb` per l'`unknown`: credevo di provare la variante senza PIN e riprovavo quella col PIN. Rifatta con la **notazione per nome**, che sulla gemella non può cadere. ⚖️ **E la cura è stata cercare la CLASSE, non l'istanza**: chieste al database **tutte** le funzioni aperte ad `anon` con parametri predefiniti — **11 in 5 famiglie** — e ricontrollate le risoluzioni una per una; le altre 10 erano legate giuste, **una sola** era sbagliata. 📌 Da tenere: **una funzione con overload e valori predefiniti non si prova per posizione** — è la 24ª nella forma più subdola, perché qui i due cassetti hanno **lo stesso nome**. ⛔ **NON guardato TEST**: la voce chiedeva le 33 di **PROD**, e su `cudi…` il conto sarà diverso — la 36 aveva già misurato che là la famiglia era «un rattoppo a campione». È il vicino di casa di questa voce, non il suo residuo. ⛔ **Il PIN non è stato indovinato né letto**, e non si farà: si misura l'oracolo, non il segreto. 🔴 **E ciò che resta scoperto, scritto perché nessuno legga «famiglia bonificata»: le 20 ancora aperte ad `anon`** non sono state rilette dopo questa potatura — quelle censite qui erano 33, e 13 sono state chiuse. |
 | **44** | ✅ *(16/08, 25ª sessione — **curata su sua autorizzazione**, e **chiusa da lui**: «chiudi da quarantaquattro»)* 🚨 **Una fessura su DATI PERSONALI VERI in produzione, chiusa.** `get_self_assessments_by_tokens` è `SECURITY DEFINER` e restituisce `first_name`, `last_name` e **`phone`**; aveva `EXECUTE` ad **`anon` e a PUBLIC** ⇒ chiunque dalla rete, con la sola chiave pubblicabile e un gettone, poteva leggerli. ⭐ **Ed è nata da una conclusione giusta nel ragionamento e sbagliata nel fatto**: la nota della 15ª diceva «non un buco aperto» perché *«vuole i gettoni in ingresso»* — premessa **vera**, ma fra i 1364 gettoni uno è da 11 caratteri, `MAURIZIO001`, e dietro c'è **un socio vero col telefono**. A vederlo non è bastato leggere i grant: è servito **eseguire la funzione come `anon`**. ✅ **Controllo negativo, fatto prima di credere alla gravità**: la lettura **diretta** della tabella come `anon` vede **0 righe** (RLS attivo, zero policy) ⇒ quella RPC era davvero l'**unica** finestra rimasta accanto alla porta chiusa il 12/08, non una fra tante. 🔧 **La cura**: `REVOKE EXECUTE … FROM anon, PUBLIC` sui **due** progetti — il contratto vive sui due lati — lasciando `authenticated`, così sparisce l'accesso *senza credenziali* e non quello dello staff. 🔬 **Provata su TEST prima che su PROD, e in tre modi**: `anon` **3 righe → 42501** su TEST e **1 riga → 42501** su PROD; **controprova positiva** (`authenticated` passa ancora, di qua e di là) fatta apposta perché senza di essa «blocca tutto» si legge come «funziona»; e una **conferma indipendente che non veniva dalla stessa sonda** — le `SECURITY DEFINER` aperte ad `anon` su PROD passano da **34 a 33**. ↩️ Migrazioni **reversibili**, con le due `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate**: tutte le prove d'attacco in transazioni annullate. ⚠️ **Residuo dichiarato e NON fatto**: il gettone `MAURIZIO001` e i quattro `TEST*` **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco — restano **gettoni deboli**, e non sono stati toccati perché dietro c'è **il dato di una persona reale**: prima di cancellare va misurato cosa ci punta. 🔴 **E ciò che questa voce NON copre, scritto perché nessuno legga «famiglia bonificata»: le altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è **l'unica letta riga per riga**; il linter le segnala tutte con lo stesso titolo da sempre, ed è esattamente la condizione in cui stava la 44 fino a stamattina — segnalata, letta da nessuno, e con un socio vero dietro. |
