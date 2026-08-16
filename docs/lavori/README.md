@@ -1,6 +1,61 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 15/08/2026, a fine 23ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 24ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 24ª: **la sonda che guarda ALTROVE, o TROPPO PRESTO**
+
+La 23ª aveva trovato lo strumento **cieco** — che guardava un quinto del bersaglio senza saperlo.
+Questa ha trovato i due fratelli, e sono più insidiosi perché lo strumento **funziona**: cerca nel
+posto sbagliato, o guarda prima che il fatto sia successo. **Cinque volte in una sessione.**
+
+| dicevo | cos'era |
+|---|---|
+| «**nessuno** dei 4 maestri ha una scheda socio» | la sonda cercava i nomi in `nome`/`cognome`, ma le schede usano `firstName`/`surname` ⇒ **avrebbe risposto zero qualunque fosse la verità**. Ce l'hanno **due su quattro** |
+| «la routine non ce l'ha fatta» | leggevo `lastFullSuccessAt`, che appartiene a **un'altra strada**, e lo prendevo per il verdetto di quell'import |
+| «il calendario non si è mosso» | misuravo alle **21:47**; la scrittura è atterrata alle **21:48:15** |
+| «non è partita nessuna cancellazione verso Matchpoint» | cercavo fra i `booking_job`, ma una cancellazione lì **non compare**: lascia un `staff_cancel`. ⇒ Ho fatto **ricancellare una prenotazione già cancellata**, e a smentirmi è stato **lui guardando Matchpoint** |
+| «guardie verdi su entrambi i rami» | ne avevo guardate **due su quattro**: `guard-docs-truth` era **rossa su `main`** da mezz'ora, per un numero della tabella riassuntiva che non avevo aggiornato |
+
+⚖️ **La lezione non è «ricontrolla».** È che tutte e cinque le volte la sonda **ha risposto**, con
+sicurezza, e la risposta era priva di valore. ⇒ La domanda da farsi non è «cosa dice?», è **«questa
+sonda guarda nel cassetto giusto, e dopo che il fatto poteva essere accaduto?»**. Uno zero non è un
+esito finché quelle due cose non sono verificate.
+🚨 E la quinta è la peggiore, perché non era una misura sbagliata ma **una misura non fatta**: avevo
+verificato **i numeri che pensavo io** invece di quelli che controlla la guardia — e una verifica che
+riproduce metà del controllo dà **lo stesso identico verde** di una completa, finché non incontra il
+caso in cui le due metà divergono.
+
+🎯 **E il secondo filo, dal lato opposto: un caso di prova verde non vale finché non lo si sabota.**
+Dei quattro casi nuovi scritti nel banco, **tre erano INERTI alla prima stesura** — verdi anche col
+difetto acceso. Le cause, tutte misurate: ① la push vinceva sempre la corsa sulla rilettura, quindi la
+guardia non entrava mai in gioco; ② un controllo negativo letto **subito**, prima che la frase avesse
+tempo di comparire; ③ **l'app svuota la chat** dopo un'operazione confermata, e quel timer scatta
+mentre gira il caso dopo ⇒ la frase veniva detta **e cancellata prima di essere guardata**, con lo
+stesso caso **ROSSO da solo e VERDE dietro al vicino**. ⇒ Due verdetti opposti sullo stesso codice,
+decisi da un timer di qualcun altro.
+
+🎯 **E la terza: una procedura scritta bene può essere ineseguibile, e lo si scopre solo eseguendola.**
+La parte B della voce 41 è fallita **tre volte** prima di riuscire, e nessuno dei tre fallimenti era
+un errore di esecuzione: ① «conta due secondi e dai lo stop» non teneva conto che lo stop via `ssh`
+**ci mette del suo**; ② 🚨 **`systemctl stop caddy` non taglia una richiesta già in corso** — è uno
+spegnimento *gentile*, e con collegamento già aperto e stop istantaneo al 2º secondo il lavoro
+finiva `done` in 4,3 s lo stesso; ③ tenere il collegamento aperto mentre si prenota **lo fa scadere**.
+⇒ Al quarto giro, con `SIGKILL` al posto dello stop, **tutte le previsioni si sono avverate**.
+
+## 📌 Le decisioni prese dal committente nella 24ª
+
+| | |
+|---|---|
+| 🔓 **«aggancia il repo del bot»** | e la scheda della 14bis diceva che era «fuori dal perimetro»: **non lo era**. Da lì la voce si è potuta rispondere |
+| 🔓 **«insegna al banco a rispondere a quella domanda»** | il ponte del bot non era modellato ⇒ della proposta del link d'ingresso si provava **solo il ramo del guasto** |
+| ⛔ **«lasciamo perdere i maestri, lo faremo quando ci stacchiamo da Matchpoint»** | ⇒ 14bis chiusa **senza farla**, e la ragione **regge nel dato**: sulle lezioni sincronizzate il campo istruttore è **sempre vuoto** |
+| 🔑 **«avevamo deciso insieme di fermare tutte le routine di test»** | ⭐ **l'informazione che ha sbloccato la 34, e non stava in nessun file**: non erano spente per un guasto, erano spente **per avere il controllo** |
+| ⭐ **«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»** | ⇒ **ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe verdi e si poteva dichiarare fatto **contando i lanci invece di guardare i dati** |
+| ✋ **le mani sulla voce 41** | la prova la poteva fare **solo lui**: due finestre, due secondi di tempismo, e una prenotazione vera sul Matchpoint del circolo |
+| 🗣️ **«non c'è nessuna prenotazione, né sul gestionale né su Matchpoint»** | 🚨 **mi ha smentito una misura**, ed era lui ad avere ragione: guardava il sistema vero, io la nostra copia |
+| 📦 **«chiudi la 34 e la 26»**, poi **«porta in urgenti 42, 14 e 43»** | ⇒ la lista è tornata **vuota** e poi si è riempita di nuovo, **tutta di voci lavorabili dal cloud** |
+
+**E la 23ª, il giorno prima:**
 
 ## 🔎 Il filo della 23ª: **lo strumento che guarda solo un pezzo del bersaglio**
 
@@ -206,7 +261,7 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **31** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
+**Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
 sessione · tutte le guardie **verdi su entrambi i rami**.
@@ -277,6 +332,23 @@ portata senza un export fatto sul posto.
 ✅ Rimisurati invece: le due versioni, gli sha, le PR aperte, i 4 percorsi sorvegliati, i conteggi di
 questo file, il ponte del bot dal vivo, e i dati di PROD dietro `livello-dimostrato` (2797 soci vivi,
 533 con livello vero, 517 a origine vuota, `ereditato` = **0**).
+
+🔭 **Nella 24ª l'elenco si è accorciato di due voci, e non per una sonda nuova.**
+① **Il repo del bot** era dato per «fuori dal perimetro» dalla scheda della 14bis: **non lo era** —
+agganciato su sua autorizzazione, il codice del bot si legge da qui. ⚠️ Resta vero che **non lo si può
+provare dal vivo**: gira in pm2 sulla VM, e da qui si dice *cosa fa il codice*, non *l'ho visto
+succedere*.
+② **La VM** è entrata in portata **per interposta persona**, non per accesso: la voce 41 è stata
+eseguita **dalle sue mani** con questa sessione a leggere il database in diretta. ⇒ È una modalità
+nuova e vale la pena nominarla — **lui le mani, la sessione gli occhi** — perché ha chiuso una voce
+che da sola nessuna delle due parti poteva chiudere.
+⛔ **Restano fuori portata, e vanno dichiarati**: `ssh` alla VM (non installato, `~/.ssh` vuota,
+porta 22 muta — **rimisurato tre volte** in questa sessione, non ricordato), i **log del worker**,
+il **`.env` del bot** e i suoi interruttori, i **secret**, la **memoria dell'app**, e la vista
+dell'app **col login staff pieno** — la console remota arriva a un `readonly` con 2 permessi su 16 e
+`localStorage` vuoto.
+🚨 **E una gamba dichiarata mancante su una voce chiusa**: della **34** non si sono potute guardare le
+letture in più nei log del worker. È scritto nella sua riga fra le chiuse, non taciuto.
 
 **Alla chiusura della 18ª, poche ore prima** — tenuto perché la lezione è di quel giro:
 🚨 **`guard-docs-truth` è andata rossa DUE volte**, e la prima l'ha vista lui, non io: bumpavo
