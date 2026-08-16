@@ -166,9 +166,35 @@ l'utente). ⇒ Non si aggiorna con `git pull`: si usa **`deploy-bot-hetzner.yml`
 `SOCI`**. Nessun `--delete`: `.env`, le fotografie `.env.prima-*`, `node_modules` e `_prove/`
 restano intatti.
 
-⛔ **Dal cloud la VM NON si raggiunge, ed è misurato, non dedotto**: esce solo la **443**; la **22**
-e la **2222** sono bloccate. Installare `ssh` nel container **non serve** — la porta è chiusa a
-monte. ⇒ Tutto ciò che vuole la VM si fa **dal Mac** o **passando da GitHub Actions**.
+⛔ **Dalla SHELL di una sessione cloud la VM non si raggiunge**: esce solo la **443**; la **22** e
+la **2222** sono bloccate, e installare `ssh` nel container **non serve** — la porta è chiusa a
+monte.
+
+✅⭐⭐ **MA GITHUB ACTIONS SULLA VM CI ENTRA, E CI LANCIA COMANDI QUALUNQUE.** Questa è la strada
+per fare dal cloud tutto ciò che vuole la VM, e va usata invece di rinunciare.
+🗣️ L'ha rimessa in discussione il committente il **16/08/2026** — *«adesso il deploy github
+possiamo farlo, quindi non so se il fatto della SSH sulla VM ti serve»* — mentre gli scrivevo che
+il collaudo voleva le sue mani. Aveva ragione: qui c'era scritto «dal cloud la VM NON si
+raggiunge», che è vero **della shell** e **falso di Actions**.
+⚖️ È la 26ª un'altra volta — *un limite dichiarato che nessuno prova resta vero per sempre perché
+sembra prudente* — nella forma peggiore: **mezzo vero**. La metà giusta lo rendeva credibile, e
+nessuno andava a cercare l'altra.
+
+🧰 **Gli attrezzi che ci passano, tutti in `assistente-padel-agent/.github/workflows/`** (stanno lì
+e non qui per velocità, non per merito — il worker è di questo repo):
+
+| workflow | cosa fa | pericolo |
+|---|---|---|
+| `deploy-bot-hetzner.yml` | aggiorna il bot (`prova` o `soci`) | serve la parola `SOCI` per quello vero |
+| `stato-bot.yml` | 🔎 **legge** `pm2 describe` e il registro del bot, con una regex a scelta | nessuno: sola lettura |
+| `cancello-worker.yml` | ferma/riaccende **Caddy**, cioè la porta del worker | 🚨 il worker è **condiviso con PROD**, e mentre è giù si ferma anche il **sync** |
+
+🚨 Il cancello si chiude per un numero di secondi **dichiarato** (tetto 300) e si riapre **da sé**
+in un passo `always()`: è l'unico vantaggio vero sulla manovra a mano, dove un `ssh` che cade fra
+lo stop e lo start lascia il worker giù **senza che nessuno lo sappia**.
+
+⇒ Resta fuori portata solo **entrare** sulla VM con una shell interattiva. Per quello, o dal Mac,
+o si scrive un workflow che faccia la cosa che serve.
 
 ⭐ **Il bot DICHIARA all'avvio dove punta**, ed è l'unico modo di saperlo con certezza:
 `✍️ prenotazioni REALI` (gestionale vero) · `🧪 GESTIONALE DI PROVA` (scrive, ma il circolo non si
