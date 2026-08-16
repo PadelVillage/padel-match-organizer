@@ -1,6 +1,33 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 16/08/2026, a fine 28ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 29ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 29ª: **la sonda giusta puntata sul SOGGETTO sbagliato — e il «non si può» mezzo vero**
+
+La 24ª aveva trovato la sonda che guarda **altrove**; la 26ª il **limite dichiarato e mai provato**.
+Questa le ha incontrate tutte e due nello stesso collaudo, e nessuna delle due si vedeva
+rileggendo — sono venute fuori **eseguendo**.
+
+| l'ho fatto | cos'era |
+|---|---|
+| il pre-volo del collaudo: ho letto l'ambiente del **bot dei soci** — `PROD`, `prenotazioni REALI` — e ho detto «siamo pronti» | la domanda era **giusta**, il **soggetto** no: la mano del committente era sulla chat del bot di **PROVA**, dove il worker non viene chiamato mai. Ha toccato «Confermo» e ha letto **«✅ Prenotato»**: la prova non falliva, **riusciva mentendo**. ⇒ La cura è meccanica, non l'attenzione: al secondo giro **non ho chiuso il cancello** finché non ho **visto nel registro** le sue righe (`/prenota → griglia`, `tocca: giorno 2026-08-29`) su **quel** bot |
+| «dal cloud la VM non si raggiunge»: l'avevo appena riscritto io in due documenti | **mezzo vero**, che è la forma peggiore: vero della **shell**, falso di **GitHub Actions**, che sulla VM entra in SSH e ci lancia comandi qualunque — lo dimostrava il deploy del bot, girato tre volte quella sera. A rimetterlo in discussione è stato **il committente**, non io |
+| la sonda del cancello: «Caddy fermato ma risponde ancora **HTTP 000000**» | **la sonda leggeva male SÉ STESSA.** `curl -w '%{http_code}'` stampa già `000` quando non si connette **e** esce con errore ⇒ il ripiego `\|\| echo 000` ne accodava un secondo. 🚨 La stessa riga stava in **quattro** sonde e in **tre** sbagliava nel verso che **rassicura** — il controllo positivo avrebbe detto «il worker c'è» a worker morto. Ed era **inerte finché curl riusciva**: verde in tutti i casi tranne quelli per cui esiste |
+
+⚖️ **La lezione non è «controlla meglio».** È che tutte e tre le volte **qualcosa ha risposto**, con
+sicurezza: la sonda dell'ambiente, il documento, il `curl`. ⇒ La domanda da farsi non è «cosa dice?»
+ma **«sta rispondendo della cosa che sto per fare?»** — e stanotte la risposta l'ha data l'esecuzione
+in tutti e tre i casi.
+
+🎯 **E il primo sabotaggio della serata era INERTE, il che è la stessa malattia vista da dentro**:
+il comando non aveva agganciato la riga, il banco restava verde, e sembrava un caso cieco. **Un
+sabotaggio non applicato dà lo stesso identico verde di un caso inerte.** ⇒ Da lì in poi ogni
+sabotaggio **verifica di essere stato applicato** prima di girare.
+
+🛡️ **E in positivo: la rete progettata per il caso brutto ha retto al primo caso brutto vero.**
+Quando la sonda ha sbagliato, il cancello **si è rifiutato di far prenotare** e il passo `always()`
+ha riaperto Caddy **da sé in due secondi**. Il difetto era mio, e il meccanismo ha fatto esattamente
+ciò per cui era stato scritto: fallire dal lato che non fa danno.
 
 ## 🔎 Il filo della 28ª: **un esito visto UNA volta non è una regola — può essere una GARA, una METÀ, o un altro SOGGETTO**
 
@@ -522,8 +549,11 @@ metà gestionale del terzo esito è stata in PROD per ore mentre sul bot non c'e
 
 📌 **E la VM ora è scritta** in `CLAUDE.md`: indirizzo, le tre cartelle coi tre nomi pm2, e le
 trappole — `shadow-backend*` fermi, i **due bot online insieme che sono NORMALI** (token e cartelle
-diverse, non è la doppia istanza del 409), e il fatto che **dal cloud la VM non si raggiunge**
-(esce solo la 443; 22 e 2222 bloccate, misurato installando `ssh` per scoprirlo).
+diverse, non è la doppia istanza del 409).
+🚨 **CORRETTA NELLA 29ª**: qui c'era scritto che **«dal cloud la VM non si raggiunge»**. È vero
+della **shell**, ed è **falso di GitHub Actions**, che sulla VM entra e ci lancia comandi qualunque.
+Il committente l'ha rimesso in discussione la sera stessa e aveva ragione ⇒ vedi la tabella degli
+attrezzi in `CLAUDE.md`. Ciò che resta fuori portata è **entrare** con una shell interattiva.
 
 **Stato del sistema, rimisurato alla chiusura della 26ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
@@ -969,8 +999,39 @@ il bot è ripartito e **ha dichiarato dove punta** — `ponti edge: cudi… (TES
 PROVA: si scrive davvero, ma il circolo non si tocca` — che è l'unica prova che valga su dove
 scrive. ⛔ Il bersaglio **`soci`** non è stato toccato: vuole un ok separato e la parola `SOCI`.
 
-⛔ **Resta aperta, e ciò che manca è UNA cosa sola: il collaudo vero**, che vuole le sue mani —
-a Caddy fermo **nessuno prenota**, quindi serve una finestra col circolo fermo.
+## ✅✅ IL COLLAUDO È STATO FATTO — 16/08, 23:20, SU PROD, ED È VERDE
+
+**Strada dei bottoni, bot dei soci, slot `2026-08-29 09:00 C1`**, col cancello di Caddy manovrato
+**da GitHub Actions** invece che a mano. La cronologia sta nella scheda; qui il fatto che conta:
+
+⭐ **Il bot ha taciuto 3′38″ POTENDO rispondere, e ha detto «no» 86 secondi dopo aver avuto la
+prova.** Scrittura alle 21:20:23.9 · primo sync atterrato **dopo** di essa alle 21:24:02 · verdetto
+`no` alle 21:25:28. ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata*, cioè il
+bot che dichiara libero un campo senza averne la prova — **non si è verificato nella finestra in cui
+era più facile che capitasse**. È la voce intera, verificata sul bersaglio.
+
+✅ E gli altri: ciclo **partito** · griglia **non** riproposta · nessun `rinuncia/guasto` ·
+**nessuna prenotazione vera** su Matchpoint (nella copia fresca, per quello slot, solo righe del
+Campo 3 — partita di altri).
+
+⭐⭐ **Il controllo positivo non è stato costruito: stava nel registro.** Alle 20:52 della stessa
+sera, **sullo stesso bot**, un `esito IGNOTO` **senza nessuna riga `[attesa-esito]`** — il codice
+non c'era ancora. Stesso bot, stesso guasto, prima niente e dopo il ciclo: la differenza la fa
+**la cura**, e non qualcos'altro.
+
+🚨 **E la «strada del modello» della scheda era una riga FALSA.** Diceva *«si conferma scrivendo»*:
+provato, il bot risponde con la **scheda a bottoni**. Il codice è esplicito — *«il socio non deve
+mai scrivere una data né un «sì»… il sì dovrà comunque arrivare da un tocco»* (`bot.ts:3199`,
+`:3207`). ⇒ Il modello arriva **sempre** alla proposta e consegna ai bottoni: è una **protezione**,
+non una svista, e la riga della scheda è stata corretta.
+
+⛔ **La voce resta aperta, e adesso per UNA domanda sola** *(non si promuove da sé)*: se il modello
+finisce sempre in una proposta, l'aggancio dell'attesa sulla sua strada (`bot.ts:3216`) può vedere
+solo esiti **senza scrittura** ⇒ per la voce 53 **non scatterebbe mai**. 🚨 Scritta come **domanda**
+e non come verdetto di proposito: sarebbe la **terza** deduzione plausibile su questa voce in un
+giorno, e le prime due erano **entrambe false**.
+
+📌 *(Storico, prima del collaudo:)*
 📄 **La scheda c'è**: [`docs/voce-53-collaudo.md`](../voce-53-collaudo.md) — pre-volo, cancello,
 previsioni minuto per minuto, e soprattutto **cosa sarebbe un rosso vero**.
 🎁 **E la finestra dura SECONDI, non quindici minuti**: l'attesa **non passa da Caddy** (`verifica`
@@ -1078,7 +1139,24 @@ domande e dal fatto che le scritture sono **due**, non una.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-Nella **29ª**, collaudando la voce 53 — **trovata dal committente**, non da me:
+Nella **29ª**, dal collaudo eseguito (16/08, tarda sera):
+
+- ❓ **L'aggancio dell'attesa sulla strada del MODELLO può mai scattare?** `bot.ts:3216` chiama
+  `avviaAttesaEsito` quando il giro dell'assistente produce un esito. Ma il modello finisce
+  **sempre** in una proposta — la conferma è un tocco, per disegno — e senza scrittura non c'è
+  esito ignoto. ⇒ Se è così, quel ramo per la voce 53 è **codice che non scatta**, e i «due
+  agganci da tenere in pari» sono uno solo. 🚨 **Da misurare**, non da dedurre: è esattamente la
+  forma di ragionamento che oggi ha sbagliato due volte su questa stessa voce.
+- 🧰 **Gli attrezzi verso la VM sono nel repo del BOT, e il worker è di questo repo.** `cancello-worker.yml`
+  ferma Caddy — cioè il worker **condiviso con PROD** — e sta in `assistente-padel-agent` per una
+  scelta di velocità dichiarata (là non c'è `guard-worker-sync` a chiedere due PR su due rami).
+  ⚠️ Chi cercasse qui «cosa può spegnere il worker» **non lo troverebbe**: per ora lo tiene insieme
+  la tabella in `CLAUDE.md`. Se la cosa dura, quei due workflow vanno **spostati accanto a
+  `deploy-worker-hetzner.yml`**.
+- 🧹 **Due righe di prova su TEST**, lasciate dai due giri falliti sul bot di prova: `2026-08-26 09:30 C1`
+  e `2026-08-18 09:30 C2`. Innocue — il circolo non è stato toccato — ma sono lì.
+
+**E nella 29ª, collaudando la voce 53 — trovata dal committente**, non da me:
 
 - 📅 **«Mercoledì» diventa quello DOPO: il bot salta una settimana.** Chiesto *«che campi sono liberi
   mercoledì alle 15?»* **domenica 16 agosto**, il bot ha risposto **«mercoledì 26 agosto»**. Il primo
