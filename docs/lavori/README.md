@@ -836,8 +836,13 @@ che doveva provare, l'altro contava una **grafia** invece dei punti.
 ⛔ **Resta aperta, e le due cose che mancano sono dichiarate**: ① la verifica **sul bersaglio** —
 l'azione non è deployata, e il posto dove guardarla è `test-preview`, dove il calendario congelato
 esercita proprio il ramo pericoloso (deve dire `copia_ferma`, mai `no`); ② la metà del **bot** — il
-ciclo e il messaggio — che vive nel repo privato, gira in pm2 sulla VM e **dal cloud non si
-aggiorna**: è lavoro dal Mac.
+ciclo e il messaggio — nel repo privato `assistente-padel-agent`.
+🔄 **E su ② mi ero già sbagliato**: avevo scritto «dal cloud non si aggiorna, serve un `git pull` là
+sopra». La scheda della VM (#789) lo smentisce su due punti — le cartelle del bot **non sono
+repository git**, e l'aggiornamento si fa con **`deploy-bot-hetzner.yml`** (`workflow_dispatch`,
+bersaglio `soci`), cioè **da GitHub Actions**, che da qui si raggiunge. Ciò che resta fuori portata è
+**entrare sulla VM**: esce solo la 443. ⚖️ Un «non si può» scritto senza provarlo, dodici ore dopo che
+la 26ª l'aveva messo in `CLAUDE.md` come lezione.
 
 🔬 **`add`: la rete del «mai più di quattro» NON ferma il doppio — verificato ESEGUENDO**, non letto.
 Con la copia ferma a 3 il secondo `add` scrive e il quinto entra; il controllo «ci sei già» non lo

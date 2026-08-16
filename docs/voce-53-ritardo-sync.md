@@ -290,8 +290,16 @@ acceso; ② il caso del giro chiuso contava il letterale `reason: 'esito_ignoto'
    guardare è **`test-preview`** (traccia C), e su TEST il caso interessante è proprio quello
    pericoloso — il calendario è **congelato**, quindi `verifica` deve rispondere
    `non_ancora / copia_ferma` e **mai** `no`. È il ramo che vale la pena vedere eseguito.
-2. ⛔ **La metà del bot**: il ciclo che richiede e il messaggio al socio. Vive nel repo privato
-   `assistente-padel-agent`, gira in **pm2 sulla VM Hetzner** e **da una sessione cloud non si
-   aggiorna** — serve un `git pull` là sopra. È lavoro **dal Mac**.
+2. ⛔ **La metà del bot**: il ciclo che richiede e il messaggio al socio, nel repo privato
+   `assistente-padel-agent`.
+   🔄 **CORREZIONE — e non è un dettaglio**: scrivendo questa scheda avevo messo *«dal cloud non si
+   aggiorna, serve un `git pull` là sopra»*. **Falso su due punti**, e a smentirlo è la scheda della
+   VM entrata su `main` la stessa sera (#789): le cartelle del bot **non sono repository git** e la
+   VM non parla con GitHub, quindi il `git pull` non esiste proprio; e l'aggiornamento si fa con
+   **`deploy-bot-hetzner.yml`** (`workflow_dispatch`, bersaglio `soci`, con la parola `SOCI` scritta
+   a mano) — cioè **passando da GitHub Actions**, che da qui si raggiunge.
+   ⇒ Quello che davvero **non** si può fare dal cloud è entrare sulla VM: esce solo la 443, la 22 è
+   chiusa. ⚖️ È l'errore che la 26ª chiama per nome — **un limite dichiarato senza averlo provato** —
+   e l'avevo scritto io, dodici ore dopo che la lezione era stata messa in `CLAUDE.md`.
 3. 📌 **Il tetto dell'attesa lo decide chi scrive il bot**: il massimo misurato è **604 s**, il
    tetto naturale è il **giro pieno da 15 minuti**, che è la cadenza programmata più larga.
