@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.233';
+    const APP_VERSION = '6.234';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -43355,7 +43355,38 @@ Per confermare scrivi ELIMINA.`);
   // Rimozione locale (ottimistica) di una prenotazione annullata: toglie la copia da
   // staffBookings, marca lo slot soppresso e propaga al cloud (staff_booking deleted +
   // staff_suppress) così sparisce su tutti i device. `removed` = copie locali catturate PRIMA.
-  function _staffCalCommitLocalCancel(isoDate, campo, ora, removed) {
+  // ⭐⭐ v6.234 — VOCE 43, cura «A»: PRIMA il cloud, POI il locale.
+  //
+  // Prima di questa versione la funzione faceva l'opposto: toglieva le righe dalla memoria e
+  // POI spingeva le lapidi **senza attenderle** (`.catch()` e via). Fra le due cose restava una
+  // finestra di ~100-500 ms in cui il locale diceva «annullata» e il cloud diceva ancora
+  // «attiva» — e in quella finestra un aggiornamento forzato riporta indietro la riga.
+  //
+  // 🔬 NON è una deduzione: il 16/08/2026 lo si è VISTO succedere sull'app che gira (TEST 6.242,
+  // console remota, scritture bloccate). Ricostruito lo stato della finestra — riga tolta dalla
+  // memoria, lapide non spinta — e chiesto l'aggiornamento: la riga È TORNATA. E la controprova
+  // simmetrica: una riga finta, assente nel cloud, è stata CANCELLATA. ⇒ `staffCalRefreshFromCloud`
+  // non fonde, **SOSTITUISCE** la memoria con la fotografia del cloud (righe ≈38181-38184), e
+  // qualunque modifica locale non ancora spinta viene buttata via in silenzio.
+  //
+  // ⚖️ PERCHÉ QUESTO ORDINE E NON «await sulla vecchia riga». Attendere la spinta *dopo* aver già
+  // scritto in locale NON chiude la finestra: la sposta soltanto dentro l'`await`, dove un refresh
+  // può inserirsi lo stesso (il ciclo di eventi non si ferma). L'unico ordine che la chiude è
+  // questo: **si dice al cloud com'è andata, e solo dopo si tocca la memoria**. Così non esiste
+  // mai un istante in cui il locale è avanti al cloud.
+  //
+  // 🚫 SCARTATA la cura «larga» (far consultare `_staffCalPendingEdits` anche alla riassegnazione
+  // dell'occupazione): sarebbe stata una guardia davanti alla finestra invece della sua chiusura,
+  // e il motivo per preferirla — «copre anche spostamento e modifica» — è risultato **falso**.
+  // Misurato: lo spostamento scrive solo `staffBookings` e il suo commit cade GIÀ dentro la
+  // finestra protetta (≈42136 contro ≈42165); la modifica dalla v6.150 non scrive in locale prima
+  // del sì di Matchpoint. L'annullo era l'unico flusso col difetto.
+  //
+  // 📌 Se la spinta FALLISCE si procede lo stesso col commit locale, com'era prima: l'annullo su
+  // Matchpoint è già avvenuto e lasciare la card sul calendario direbbe una bugia più grossa.
+  // In quel caso la finestra resta aperta — ma è lo stesso identico comportamento di prima, non
+  // una regressione, e il `console.warn` lo dice.
+  async function _staffCalCommitLocalCancel(isoDate, campo, ora, removed) {
     const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
     const wantCampo = Number(String(campo).replace(/\D/g, ''));
     const wantOra = String(ora).trim();
@@ -43365,44 +43396,55 @@ Per confermare scrivi ELIMINA.`);
       String(b.ora).trim() === wantOra
     );
     const filtered = existing.filter((b) => !match(b));
-    if (typeof save === 'function') save('staffBookings', filtered);
-    _staffCalAddSuppressed(isoDate, campo, ora);
-    // v5.897 — Cura del flicker-annullo: rimuove SUBITO (locale + tombstone cloud) le copie
+    // v5.897 — Cura del flicker-annullo: rimuove (locale + tombstone cloud) le copie
     // booking/booking_occupancy Matchpoint dello slot annullato, invece di affidarsi al solo
     // staff_suppress. Senza, nella finestra prima che il reaper del sync le ripulisca, un refresh
     // realtime ri-renderizzava la copia (loop bookings hardcoded → "partita") per qualche secondo.
+    // 📌 v6.234: qui si CALCOLA soltanto. Le assegnazioni stanno più sotto, dopo la spinta.
     const _ghostTombstones = [];
+    let _occNext = null, _bkNext = null;
     try {
       const _gMatch = (p) => p && String(p.data).trim() === isoDate
         && Number(String(p.campo).replace(/\D/g, '')) === wantCampo
         && String(p.ora).trim() === wantOra;
       if (typeof prenotazioniOccupazione !== 'undefined' && Array.isArray(prenotazioniOccupazione)) {
         prenotazioniOccupazione.forEach((p) => { if (_gMatch(p) && p._lk) _ghostTombstones.push({ record_type: 'booking_occupancy', local_key: p._lk, payload: p, deleted: true }); });
-        const _occNext = prenotazioniOccupazione.filter((p) => !_gMatch(p));
-        if (_occNext.length !== prenotazioniOccupazione.length) { prenotazioniOccupazione = _occNext; if (typeof save === 'function') save('prenotazioniOccupazione', prenotazioniOccupazione); }
+        const _n = prenotazioniOccupazione.filter((p) => !_gMatch(p));
+        if (_n.length !== prenotazioniOccupazione.length) _occNext = _n;
       }
       if (typeof prenotazioni !== 'undefined' && Array.isArray(prenotazioni)) {
         prenotazioni.forEach((p) => { if (_gMatch(p) && p._lk) _ghostTombstones.push({ record_type: 'booking', local_key: p._lk, payload: p, deleted: true }); });
-        const _bkNext = prenotazioni.filter((p) => !_gMatch(p));
-        if (_bkNext.length !== prenotazioni.length) { prenotazioni = _bkNext; if (typeof save === 'function') save('prenotazioni', prenotazioni); }
+        const _n = prenotazioni.filter((p) => !_gMatch(p));
+        if (_n.length !== prenotazioni.length) _bkNext = _n;
       }
     } catch (e) { console.warn('staff cancel ghost cleanup:', e); }
+    // ── ① PRIMA il cloud: si aspetta che le lapidi siano atterrate ──────────────────────────
+    const _campoNum = wantCampo || 0;
+    const records = (removed || []).filter(b => b && b.id).map(b => ({
+      record_type: 'staff_booking', local_key: b.id,
+      payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
+      deleted: true
+    }));
+    records.push({
+      record_type: 'staff_suppress',
+      local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
+      payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
+      deleted: false
+    });
+    if (_ghostTombstones.length) records.push.apply(records, _ghostTombstones);
+    if (typeof pmoSyncCloudRecordsNow === 'function') {
+      try { await pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud'); }
+      catch (e) { console.warn('staff cancel cloud sync:', e); }   // fallita: si procede lo stesso
+    }
+    // ── ② POI il locale: da qui il cloud sa già, quindi nessun refresh può riportare indietro ──
+    if (typeof save === 'function') save('staffBookings', filtered);
+    _staffCalAddSuppressed(isoDate, campo, ora);
+    try {
+      if (_occNext) { prenotazioniOccupazione = _occNext; if (typeof save === 'function') save('prenotazioniOccupazione', prenotazioniOccupazione); }
+      if (_bkNext)  { prenotazioni = _bkNext;             if (typeof save === 'function') save('prenotazioni', prenotazioni); }
+    } catch (e) { console.warn('staff cancel ghost cleanup (commit):', e); }
     try {
       if (typeof pmoSyncCloudRecordsNow === 'function') {
-        const _campoNum = wantCampo || 0;
-        const records = (removed || []).filter(b => b && b.id).map(b => ({
-          record_type: 'staff_booking', local_key: b.id,
-          payload: { data: b.data, ora: b.ora, ora_fine: b.oraFine, campo: b.campo, nome: b.nome, durata: b.durata, tipo: b.tipo },
-          deleted: true
-        }));
-        records.push({
-          record_type: 'staff_suppress',
-          local_key: 'supp|' + isoDate + '|' + _campoNum + '|' + wantOra,
-          payload: { data: isoDate, campo: _campoNum, ora: wantOra, ts: Date.now() },
-          deleted: false
-        });
-        if (_ghostTombstones.length) records.push.apply(records, _ghostTombstones);
-        pmoSyncCloudRecordsNow(records, 'segnare annullata la prenotazione staff sul cloud').catch(function(e){ console.warn('staff cancel cloud sync:', e); });
         // v5.902 — Cura del fantasma "ri-comparso come Partita": la CREAZIONE via edge function
         // (matchpoint-bookings-create) scrive un SECONDO staff_booking nel cloud con local_key
         // `staff_booking|<data>|<ora>|Campo <campo>|<userId>` e SENZA `tipo` (→ in render diventa
@@ -43494,8 +43536,11 @@ Per confermare scrivi ELIMINA.`);
     };
     // ⭐ La rimozione vera, in UN SOLO posto: si chiama solo quando Matchpoint ha detto sì (o ha
     //    detto che quella prenotazione da lui non c'è più, che è la stessa cosa vista da lì).
-    const _applicaAnnullo = function () {
-      try { _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore); } catch (e) { console.warn('staff cancel commit:', e); }
+    // v6.234 (voce 43): `async` perché il commit ora ASPETTA che il cloud sappia, prima di
+    // toccare la memoria. Tutti e tre i chiamanti stanno già dentro funzioni `async` e lo
+    // attendono: senza `await` la finestra tornerebbe, spostata di qualche riga.
+    const _applicaAnnullo = async function () {
+      try { await _staffCalCommitLocalCancel(isoDate, campo, ora, _removedBefore); } catch (e) { console.warn('staff cancel commit:', e); }
       try { renderStaffCalendar(); } catch (e) {}
     };
     // Serve alla verifica «vado a guardare»: chi e cosa cercare su quello slot.
@@ -43515,7 +43560,7 @@ Per confermare scrivi ELIMINA.`);
         _setSync('⌛ Non ho la conferma — sto guardando su Matchpoint…', '#b54708');
         const look = await staffCalAskMatchpoint(_lookParsed, _staffC, _urlC, _keyC);
         if (look.verdict === 'no') {
-          _applicaAnnullo();
+          await _applicaAnnullo();
           _setSync('✅ Operazione confermata — su Matchpoint non c\'è più', '#067647', '✅ <strong>Prenotazione annullata</strong>');
           return;
         }
@@ -43553,13 +43598,13 @@ Per confermare scrivi ELIMINA.`);
 
         if (response.ok && data?.ok !== false) {
           // ⭐ È QUI che la prenotazione esce dal calendario, e solo qui: Matchpoint ha detto sì.
-          _applicaAnnullo();
+          await _applicaAnnullo();
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
           _setSync('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione annullata</strong>');
         } else if (notFoundOnMatchpoint) {
           // Su Matchpoint non c'era più (card fantasma): toglierla dal calendario è giusto, ed è
           // la stessa cosa che dice la verifica quando risponde 'no'.
-          _applicaAnnullo();
+          await _applicaAnnullo();
           _setSync('🧹 Su Matchpoint non c\'era più — tolta dal calendario', '#067647', '✅ <strong>Prenotazione annullata</strong>');
         } else if (_staffCalIsTimeoutClass(_msgTxt, response.status)) {
           // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.

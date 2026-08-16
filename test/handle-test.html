@@ -112,6 +112,15 @@ let CAPTURED, WORKER_NEXT, CLOUD_FAKEROWS, PAYMENT_NEXT, VOID_NEXT, CORRECT_NEXT
 // dovesse dipendere da un termine appreso, va messo qui come fixture, non letto dal cloud vivo.
 let CLOUD_SCRITTI = new Map();
 let CLOUD_WRITE_DELAY_MS = 0;
+// ⏱️ Il GEMELLO del knob qui sopra, e la differenza è tutta la voce 43 (16/08/2026).
+//   · CLOUD_WRITE_DELAY_MS  → l'app riceve l'ok SUBITO, il dato compare a chi rilegge DOPO.
+//     Modella il ritardo di replica: serve alle guardie «non toccare ciò che ho appena spinto».
+//   · CLOUD_WRITE_RESPONSE_DELAY_MS → la spinta stessa ci mette del tempo a CONCLUDERSI, e il
+//     dato compare quando si conclude. Modella la finestra in cui una scrittura è ANCORA IN VOLO.
+// 🚨 Senza questo secondo knob la voce 43 non è provabile: nel banco la push si conclude
+// nell'istante stesso in cui parte, quindi «aspettarla» e «non aspettarla» danno lo stesso esito
+// e un caso scritto sulla cura sarebbe VERDE anche togliendola.
+let CLOUD_WRITE_RESPONSE_DELAY_MS = 0;
 let TELEGRAM_NEXT = {};
 let TELEGRAM_CHIAMATE = [];
 let CLOUD_LESSICO = [];
@@ -153,6 +162,8 @@ function captureReset() {
   // ⚖️ Ritarda la VISIBILITÀ, non la risposta: l'app riceve il suo ok subito, come in produzione,
   // e ciò che cambia è solo quando il dato compare a chi rilegge — cioè il fatto che si vuole provare.
   CLOUD_WRITE_DELAY_MS = 0;
+  // ⏱️ Quanto ci mette la spinta a CONCLUDERSI (e quindi a comparire). 0 = come prima: istantanea.
+  CLOUD_WRITE_RESPONSE_DELAY_MS = 0;
   // 📩 Risposte del ponte del bot, per azione. Default: «è gia' dentro» → l'app tace e nessun caso
   // vecchio cambia. Un caso che vuole la proposta del link mette nel_bot:false.
   TELEGRAM_NEXT = { stato_bot: { ok: true, nel_bot: true } };
@@ -243,6 +254,13 @@ function installFetchMock(win) {
       };
       // setTimeout del BANCO, non quello dell'app: l'orologio dell'app è mockato, e un ritardo
       // misurato con l'orologio del bersaglio sarebbe governato da ciò che si sta provando.
+      // ⏱️ Spinta ANCORA IN VOLO (voce 43): la risposta tarda, e il dato compare quando arriva —
+      // non prima. È l'ordine vero: finché la POST non si è conclusa, nel database non c'è niente.
+      if (CLOUD_WRITE_RESPONSE_DELAY_MS > 0) {
+        await new Promise(function (r) { setTimeout(r, CLOUD_WRITE_RESPONSE_DELAY_MS); });
+        registra();
+        return jsonResponse(win, { ok: true, count: list.length }, 200);
+      }
       if (CLOUD_WRITE_DELAY_MS > 0) setTimeout(registra, CLOUD_WRITE_DELAY_MS); else registra();
       return jsonResponse(win, { ok: true, count: list.length }, 200);
     }
@@ -3474,6 +3492,57 @@ const CASES = [
       checks.push({ label: '⭐ nessun avviso «non è nel bot» (atteso 2,5 s)', ok: !comparso });
       checks.push({ label: '⭐ e nessun bottone per il link', ok: !trovaBottoneChat(win, c0, /prepara il link/i) });
       spia.stop();
+      return checks;
+    }
+  },
+  {
+    id: 98, flow: 'Cancel', name: '⭐⭐ voce 43: l\'annullo dice al cloud com\'è andata PRIMA di toccare la memoria',
+    // 🔬 Nasce da un fatto VISTO, non dedotto (16/08/2026, console remota su TEST 6.242):
+    // togliendo una riga dalla memoria senza spingere la lapide e chiedendo l'aggiornamento,
+    // la riga TORNA — perché `staffCalRefreshFromCloud` non fonde, SOSTITUISCE la memoria con
+    // la fotografia del cloud. Controprova simmetrica: una riga finta, assente nel cloud, viene
+    // CANCELLATA. ⇒ Qualunque modifica locale non ancora spinta viene buttata via in silenzio.
+    //
+    // Prima della cura, `_staffCalCommitLocalCancel` toglieva le righe e POI spingeva le lapidi
+    // SENZA attenderle: fra le due cose restava una finestra in cui il locale diceva «annullata»
+    // e il cloud ancora «attiva». Ora l'ordine è rovesciato: prima il cloud, poi la memoria.
+    //
+    // 🚨 QUESTO CASO È INERTE SENZA `CLOUD_WRITE_RESPONSE_DELAY_MS`: nel banco la push si conclude
+    // nell'istante in cui parte, quindi «aspettarla» e «no» darebbero lo stesso esito e il caso
+    // sarebbe verde anche togliendo la cura. Col ritardo, senza la cura va ROSSO.
+    run: async (win, H, ctx) => {
+      const iso = ctx.iso;
+      const checks = [];
+      const kMio = 'occupancy|R12345|' + iso + '|18:00|2|Mario Rossi|90';
+      const kAltro = 'occupancy|R99999|' + iso + '|20:00|3|Altro Socio|90';
+      const rigaMia   = { data: iso, campo: 'Campo 2', ora: '18:00', giocatore: 'Mario Rossi', durata: 90, _lk: kMio };
+      const rigaAltra = { data: iso, campo: 'Campo 3', ora: '20:00', giocatore: 'Altro Socio', durata: 90, _lk: kAltro };
+      // La riga «altra» non c'entra con l'annullo e resta sempre: serve a garantire che il blocco
+      // di riassegnazione dell'aggiornamento venga comunque ESEGUITO. Senza, con l'occupazione
+      // vuota da entrambe le parti il blocco si salta e il caso sarebbe verde per il motivo
+      // sbagliato — cioè non avrebbe provato niente.
+      CLOUD_FAKEROWS = [
+        { record_type: 'booking_occupancy', local_key: kMio,   deleted: false, payload: rigaMia },
+        { record_type: 'booking_occupancy', local_key: kAltro, deleted: false, payload: rigaAltra }
+      ];
+      H.setOccupancy([rigaMia, rigaAltra]);
+      H.setBookings([bookingFixture(iso)]);
+      WORKER_NEXT = { ok: true };
+      CLOUD_WRITE_RESPONSE_DELAY_MS = 500;          // la spinta ci mette mezzo secondo a concludersi
+      const occ = () => H.getOccupancy().filter(p => p && p._lk === kMio).length;
+
+      await H.doCancel(iso, 2, '18:00', 'Mario Rossi');
+      const tolta = await waitFor(() => occ() === 0, 8000);
+      checks.push({ label: 'la copia Matchpoint dello slot è uscita dalla memoria', ok: tolta });
+
+      // ⭐⭐ IL PUNTO: subito dopo il commit si forza la rilettura. Se il cloud non sapesse ancora,
+      // la riassegnazione la riporterebbe indietro — ed è esattamente ciò che si è visto succedere.
+      await H.refreshFromCloud({ force: true });
+      checks.push({ label: '⭐⭐ NON torna indietro: al commit il cloud sapeva già', ok: occ() === 0 });
+      // base: l'aggiornamento ha davvero girato e riassegnato (se no il verde qui sopra non vale)
+      checks.push({ label: '🚨 base: l\'aggiornamento ha riassegnato (l\'altra riga c\'è ancora)',
+                    ok: H.getOccupancy().filter(p => p && p._lk === kAltro).length === 1 });
+      CLOUD_WRITE_RESPONSE_DELAY_MS = 0;
       return checks;
     }
   }
