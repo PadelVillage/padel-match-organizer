@@ -202,9 +202,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **7** |
-| 📦 **Chiuse** | **29** il 13–15/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **31** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -352,7 +352,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 0
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -378,77 +378,6 @@ preparano da qui.
 
 🚨 **E ora TUTTE E QUATTRO le urgenti sono fuori dalla portata di una sessione cloud**: la 41 vuole SSH sulla VM, il login staff e una prenotazione vera sul Matchpoint; la 34 la VM; la 14bis il repo privato del bot; la 26 aspetta la 34. ⚖️ **La lista non è corta perché è quasi finita: è corta perché il resto è altrove** — e da stasera è vero per intero, non quasi. La prossima sessione utile su queste è **dal Mac**.
 
-### 34. 🧊 «A-lite»: riaccendere il sync prenotazioni su TEST
-*Salita dalla D il 15/08.* Scongela il calendario di TEST, **congelato per scelta** il 14/08 (voce 32).
-
-Costo piccolo, e misurato: la funzione che TEST **ha già** dispatcha ~12 volte al giorno contro le
-~720 di PROD sul worker condiviso ⇒ **+1,7%**, non il raddoppio che sembrava. Tre mosse: accendere
-il cron (jobid 13), togliere l'argomento `<oggi 04:30>` che lo inchioda al ramo clienti, verificare
-la prima giornata.
-
-⚠️ **Non è una riga di SQL e non si fa dal cloud**: accendere quel dispatcher resuscita anche i
-**6 sync clienti** ritirati il 3/08 — prima va saputo **perché** furono spenti — e la prima giornata
-va guardata nei log del worker su **Hetzner**.
-🚫 **Non copiare la funzione di PROD**: è quella *continua*, pensata per un gestionale dove le
-disdette devono arrivare in 2 minuti. Su TEST 5 rinfreschi al giorno sono freschezza; il ritmo di
-PROD è **parità**, ed è la parità a costare.
-🔗 **Chiude la voce 26** il giorno in cui si fa.
-
----
-
-✅ **FATTA il 15/08 alle 23:26, 24ª sessione — resta aperta solo per la verifica della prima
-giornata.** Procedura, query di controllo e comando di spegnimento:
-[`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md).
-
-🔓 **Ciò che l'ha sbloccata l'ha detto lui, e non stava in nessun file**: *«avevamo deciso insieme di
-fermare tutte le routine di test proprio perché così facevamo gli aggiornamenti manuali quando ci
-serviva di fare dei test»*. Il «perché furono spenti» che la scheda poneva come condizione **non era
-recuperabile da qui**: non erano spente per un guasto, erano spente **per avere il controllo**.
-
-🛑 **E su tre punti la scheda qui sopra è ora SMENTITA dai fatti. Restano scritti perché il confronto
-è la cosa utile:**
-
-| la scheda diceva | com'è andata |
-|---|---|
-| «accendere il cron **jobid 13**, togliere l'argomento che lo inchioda» | il **13 non è stato toccato**: resta spento e inchiodato com'era. Si è aggiunto un lavoro **nuovo** (jobid 17), così tornare indietro è cancellarlo, non ricostruire il vecchio |
-| «**non è una riga di SQL**» | **lo era**: una `cron.schedule` |
-| «**non si fa dal cloud**» | **fatta dal cloud.** Resta vero solo il quarto controllo — le letture in più nei log del worker — che vuole la VM |
-
-🎯 **Il nodo vero non era nessuno dei tre: era che il dispatcher è UNO per 12 slot** (6 clienti + 1
-storico + 5 calendario) ⇒ «riaccendere solo il calendario» non esiste come interruttore. Sciolto
-**senza toccare la funzione**: la sveglia suona ogni ora al minuto 30 e a decidere è il confronto
-sull'**ora italiana**, che nomina i cinque orari del calendario.
-🚨 Serviva **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti
-cadono al minuto 30.
-
-✅ **Il filtro è stato esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è
-partita (`succeeded`) e non ha prodotto **nessun** dispatch clienti né storico. 🔬 Ed è stata esclusa
-la spiegazione alternativa: l'insert è `on conflict do nothing`, quindi una riga preesistente avrebbe
-dato lo stesso zero: le uniche due sono `clients_0430` del **2 e 3 agosto**, mentre quel giro avrebbe
-creato una chiave nuova. ⇒ La funzione non è stata chiamata affatto.
-
-✅ **E la catena è stata provata FINO IN FONDO la sera stessa, su sua idea** (*«perché non metti un
-aggiornamento adesso a mezzanotte così proviamo?»*): forzando l'orario — **senza toccare la sveglia**
-— la routine ha letto **53 righe dal Matchpoint vero** e il calendario di TEST è passato **dal 7
-agosto a quella sera**, 258 righe toccate, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha
-evitato un errore che sarebbe passato per successo**: senza, la mattina dopo si sarebbero viste 5
-righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di
-guardare i dati**.
-🧯 Due letture sbagliate mie, di fila, e sono nel documento: ho dichiarato «non ce l'ha fatta»
-leggendo un campo di un'altra strada, e «il calendario non si è mosso» **misurando un minuto prima
-che la scrittura atterrasse**. Non la sonda cieca: **una misura presa prima che il fatto accadesse**.
-
-⏭️ **Cosa resta**: solo il primo giro **automatico** delle 05:30 del 16/08 — l'unica parte che la
-prova di stanotte non copre, perché lì l'orario è stato forzato a mano. Più le letture nei log del
-worker **dalla VM**. ⛔ **Non chiusa da me**, e con lei resta aperta la **26**: la chiusura la decide
-il committente.
-
-### 26. ✅🔴 Il «Fatto» del togli non si vede — **causa trovata il 14/08, non è il bot**
-Trovato provando l'`A6`: il bot dice di aver tolto il giocatore, ma **la riga non sparisce** dalla scheda. La forma del dato è **identica in PROD**; là si auto-corregge in ~2 minuti col sync, in prova mai.
-
-🎯 **Il perché, misurato chiudendo la 32:** su TEST **non gira nessun sync delle prenotazioni**, quindi non c'è niente che riconcili — in PROD lo fa `bookings_live` ogni 2 minuti, **con lo stesso identico codice**. Il bot era sano: aveva ragione a dire «Fatto».
-
-⚖️ **Resta in coda, ma cambia natura**: non è più «indagare un guasto» — è **il sintomo atteso** di un TEST col calendario congelato per scelta (vedi `CLAUDE.md`). Sparisce da sé il giorno in cui si fa la **voce 34**, e non prima. Da chiudere allora, non oggi.
 
 ---
 
@@ -884,17 +813,19 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — 13, 14 e 15/08/2026 — 29 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 31 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime dieci voci sono del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime DUE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **34** | ✅ *(16/08, 24ª sessione — **accesa su sua conferma separata** la sera del 15, e **confermata dal giro automatico** la mattina del 16)* **Il calendario di TEST era una fotografia ferma al 7 agosto: adesso si aggiorna 5 volte al giorno.** 🔓 **A sbloccarla è stata un'informazione sua, che non stava in nessun file**: le routine di TEST erano state fermate *insieme e di proposito*, per fare gli aggiornamenti a mano durante le prove — la scheda poneva come condizione di sapere «perché furono spenti», e quel perché **da qui non era recuperabile**. ⚖️ **Il nodo vero non era nessuno dei tre indicati dalla scheda**: il dispatcher è **UNO per 12 slot** (6 clienti + 1 storico + 5 calendario), quindi «riaccendere solo il calendario» **non esiste come interruttore**. Sciolto **senza toccare la funzione**: sveglia ogni ora al minuto 30, e a decidere è il confronto sull'**ora italiana** che nomina i cinque orari. 🚨 Serve **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti cadono al minuto 30 — e cinque orari fissi in UTC si sarebbero rotti al cambio dell'ora **in silenzio**, cioè lo stesso guasto muto da cui nasce la voce. 🛑 **Tre punti della scheda smentiti dai fatti**: il `jobid 13` **non è stato toccato** (si è aggiunto il **17**, così tornare indietro è cancellarlo), **era** una riga di SQL, ed **è stata fatta dal cloud**. ✅ **Il filtro esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è partita (`succeeded`) senza produrre **nessun** dispatch clienti né storico, ed è stata esclusa la spiegazione alternativa (`on conflict do nothing`: le uniche due righe clienti sono del 2 e 3 agosto, chiavi che non possono collidere). ✅✅ **E la catena provata FINO IN FONDO la sera stessa, su sua idea** — *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*: forzando l'orario, **53 righe lette dal Matchpoint vero**, 258 righe toccate, calendario **dal 7 agosto a quella sera**, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di guardare i dati**. ✅ **CONFERMATA dal giro automatico del 16/08**: `bookings_morning` alle **05:30** italiane, **0** risvegli di clienti e storico, calendario aggiornato alle **05:31:55**. 🧯 Due letture sbagliate mie, nel documento: «non ce l'ha fatta» (leggevo un campo di un'altra strada) e «il calendario non si è mosso» (misuravo **un minuto prima** che la scrittura atterrasse) — non la sonda cieca della 23ª, ma **una misura presa prima che il fatto accadesse**. ⛔ **Residuo dichiarato**: le letture in più nei log del worker si vedono solo **dalla VM**. 📄 Procedura, query di controllo e comando di spegnimento in [`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md). |
+| **26** | ✅ *(16/08, 24ª sessione — **chiusa dalla 34**, come la sua stessa scheda prevedeva)* **Il «Fatto» del togli che non si vedeva: non era il bot, era il calendario fermo.** Il bot diceva di aver tolto il giocatore e la riga non spariva. La causa era stata trovata il 14/08 chiudendo la voce 32 — su TEST **non girava nessun sync delle prenotazioni**, quindi non c'era niente che riconciliasse, mentre in PROD lo fa `bookings_live` ogni 2 minuti **con lo stesso identico codice**. ⇒ Il bot era sano: aveva ragione a dire «Fatto». ✅ Dal 16/08 il calendario di TEST si aggiorna 5 volte al giorno (voce 34), quindi il sintomo **sparisce da sé**: non c'era niente da riparare, c'era da riaccendere altrove. ⚖️ È la voce che la 23ª aveva citato come costo dell'inganno del calendario congelato — *«aperta come guasto del bot quando il bot era sano»* — e si chiude senza che una riga di codice sia stata toccata. |
 | **41** | ✅ *(15/08, 24ª sessione — **eseguita dal committente**, quarto giro, con la sessione cloud a leggere il database in diretta)* **«Il worker crea, e la risposta si perde» — e il gestionale è andato a GUARDARE.** La parte B della voce 23: l'unico caso che percorre il ramo del **`si`**. ✅ **Tutte le previsioni verificate**: lavoro `unknown` con errore di rete tagliato a **2,2 s**, **8 tentativi** di insistenza, verdetto **`si`**, e chiusura `done` con `chiusa_da = verifica-app` alle 22:29:15. ⭐⭐ **Prima esecuzione VERA di `chiudi-lavoro-ignoto`**: prima di stasera i lavori chiusi dall'app erano **0 su 192** — scritta, provata al banco, mai girata in produzione. ⚖️ **Ma il valore della voce sono i TRE GIRI FALLITI prima**, perché hanno dimostrato che la procedura scritta **non poteva funzionare**: ① «conta due secondi e dai lo stop» non teneva conto che il comando via `ssh` ci mette del suo; ② 🚨 **`systemctl stop caddy` non taglia una richiesta già in corso** — è uno spegnimento gentile, e con collegamento già aperto e stop istantaneo al 2º secondo il lavoro finiva `done` in 4,3 s lo stesso; ③ tenere il collegamento aperto mentre si prenota **lo fa scadere**. ⇒ La cura: `ServerAliveInterval=15` e **`systemctl kill -s SIGKILL`** al posto dello stop. 🧹 Pulizia verificata col testimone indipendente: cancellata 22:30:52, controllo automatico 22:32:00, **zero residui** su tutte e quattro le prove. 🧯 E tre letture sbagliate mie della stessa sera, tutte scritte nel documento: la peggiore — *«non è partita nessuna cancellazione»* — cercava fra i `booking_job`, ma una cancellazione lì **non compare**: lascia un `staff_cancel`. Ho guardato nel cassetto sbagliato, ho preso il silenzio per un fatto, e **a smentirmi è stato lui guardando Matchpoint**. |
 | **14bis** | 📦 *(15/08, 24ª sessione — **chiusa dal committente**)* **«Se lo staff mi prenota una LEZIONE, il bot me la ricorda?» — no, e il no era una sua decisione.** Misurato nel codice del bot: `daSeguire()` toglie le lezioni **prima** di dividere le prenotazioni fra avvisi di disdetta e promemoria, e il commento lo dichiara — *«per scelta del committente: le gestisce la segreteria»*. ⇒ La domanda aveva risposta, e la risposta era già scritta. 🔎 Misurato anche il resto, perché serviva a decidere: il riconoscimento regge sui dati veri (`/lezion/i`, e i tipi su PROD sono sei in tutto); il maestro **non è mai nel roster** (12 su 12 sta nel campo `istruttore`); il ponte `consumer-player-readmodel` **non manda affatto** l'istruttore; e oggi un maestro **non si può nemmeno invitare** nel bot, perché l'unico punto che offre il link è la proposta che compare mettendo qualcuno **in partita**. ⛔ **Chiusa senza farla, su sua decisione**: *«lasciamo perdere la situazione dei maestri, lo faremo quando ci stacchiamo da Matchpoint»* — e la ragione regge nel dato, perché sulle lezioni sincronizzate da Matchpoint il campo istruttore è **sempre vuoto**. 📌 Il mockup del passo 1 è disegnato e **non approvato**, in `mockup/invita-nel-bot-da-scheda-socio-mockup.html`: se un domani si riprende, si riparte da lì invece che da capo. |
 | **28** | 📦 *(15/08, 23ª sessione — chiusa **a residuo dichiarato**, dopo che la potatura è arrivata anche in PROD)* **I pannelli email rimossi, e la sezione Autovalutazione che era spenta da due mesi.** Nata il 13/08 come «5 pannelli tolti, 60 funzioni rimaste». ⭐ **Il fatto che ha rimesso tutto in scala l'ha detto il committente, non una sonda**: `PMO_ASSESSMENT_PARKED = true` **dal 13/06** ⇒ non erano pannelli tolti da una sezione viva, era **la sezione a essere spenta**, e i «12 punti vivi» sono scesi a **uno** — `restartAssessmentForMember`, sul bottone «Nuova autovalutazione» della scheda socio, che dirottava lo staff sulla Dashboard senza dirlo (PROD 6.228). Poi i due residui del canale email, su sua decisione (6.229). **E infine la potatura: 105 funzioni, 1590 righe, su TEST (6.241) e su PROD (6.232)**, col perimetro **rimisurato su `main`** invece che ricopiato. 🚨 **Il numero della scheda («64 e 1195») era sbagliato in tutti e due i sensi, e per trovarlo sono serviti quattro analizzatori**: il prefisso `assessment*` nascondeva 34 funzioni; la sonda delle invocazioni dinamiche non vedeva `assessmentProcessButton(label, tipo, "nomeFunzione(...)")` e produceva **due falsi morti** che avrebbero rotto due bottoni vivi; e soprattutto **leggeva un solo blocco `<script>` su cinque** — l'app ne ha uno da 976.000 caratteri, quindi 645 funzioni erano invisibili come chiamanti. 🎯 **A smascherarlo è stata la verifica DOPO il taglio, non il taglio**: due riferimenti orfani rimasti nel file potato. Senza quel controllo avrei cancellato codice vivo **con tutti i verdi accesi**. ⚖️ **IL RESIDUO DICHIARATO, misurato e non stimato**: `emailSent`/`emailError` restano nell'esito, sempre `false` e `''`. Sono **11 occorrenze in 3 funzioni VIVE** — `applyAssessmentLevel` li produce, `assessmentEmailRunAutoPostProcessing` li conta, `syncAssessmentResponsesFromSupabase` li espone come `autoEmailSent`. Non è potatura: è **modifica a percorsi che girano**, uno dei quali applica il livello a un socio, per togliere campi che valgono già zero. ⇒ Non vale il rischio, e resta scritto qui invece che in una lista. |
