@@ -22,6 +22,39 @@ nemmeno con le guardie tutte verdi e il lavoro pronto. **Un ok che non arriva va
 
 L'agente **non cancella** branch e **non chiude/forza** Pull Request: quelle restano a Maurizio.
 
+## ✅ COSA COMPRENDE UN OK — non solo il merge (FERMA)
+
+**Decisione del committente, 16/08/2026**: *«Preferisco che quando io ti do l'ok fai tu in
+automatico, però poi controlli che tutto funzioni. E se dà un problema rosso riprovi.»*
+
+⇒ **Un ok non autorizza un gesto: autorizza un ESITO.** Chi lo riceve va avanti da solo fino in
+fondo, e sono **tre** cose, non una:
+
+| | |
+|---|---|
+| ① **eseguire** | il merge, e tutto ciò che quel merge fa scattare (deploy compresi) |
+| ② **verificare che funzioni** | non che il comando sia riuscito: che la cosa **sia viva sul bersaglio**. Un verde di CI non è una verifica, è un indizio |
+| ③ **riparare i rossi** | se qualcosa cade, si ripara e si **riprova**, senza tornare a chiedere un secondo ok |
+
+🚨 **Il punto ③ è il motivo per cui questa regola esiste, ed è nato da un caso vero**: il 16/08 un
+merge ha lasciato **tre rossi in bacheca** — un conteggio sbagliato e due guardie cadute nella
+finestra fra i due rami. Erano tutti riparabili in tre minuti, ma la regola di allora non diceva se
+per ripararli servisse un ok nuovo. ⇒ Ora lo dice: **non serve**. Chi ha dato l'ok non deve fare
+anche il guardiano.
+
+⚖️ **Cosa NON allarga**: l'ok resta legato a **quel lavoro lì**. Riparare un rosso **causato da quel
+lavoro** è dentro; cogliere l'occasione per fare altro è fuori, e vuole un ok suo. La differenza è
+semplice: *sto rimettendo in piedi ciò che ho appena rovesciato, o sto aggiungendo qualcosa?*
+
+🔧 **Come si ripara un rosso, meccanicamente** (regola della 27ª): si usa **`rerun` sulla corsa
+FALLITA**, e si verifica che *quella* passi a **`run_attempt: 2` + `success`**. ⛔ **Non** si lancia
+una corsa nuova accanto: un verde **accanto** a un rosso non è un rosso riparato — la riga rossa
+resta, con lo stesso sha, ed è quella che si vede aprendo la bacheca.
+
+📌 **E se il rosso non si lascia riparare** — perché la causa non è nostra, o perché la cura vera è
+una decisione — allora **si dice**, con la diagnosi in mano. Il silenzio non è un esito: il
+committente guarda la bacheca, e un rosso che io so spiegare è comunque un rosso che lui vede.
+
 ## Perché l'agente lavora sul suo branch di sessione
 
 Ogni chat di Claude Code nasce su un **proprio** branch di sessione e tende a ignorare gli ordini di spostarsi su un branch fisso (es. `test-preview`). Inseguire un branch fisso fa **perdere lavoro**.
@@ -50,6 +83,24 @@ Vale per i file in `mockup/` e per i documenti in `docs/`.
 3. La pubblicazione del mockup avviene da `main` (GitHub Pages).
 
 **Eccezione (commit diretto su `main`):** le modifiche **solo CSS/grafiche** e i **documenti** (`docs/`) possono andare direttamente su `main` — commit diretto o `Add file → Upload files` fatto a mano — senza Pull Request. Restano comunque soggette ai controlli di sicurezza qui sotto.
+
+> 🚨 **QUESTA CORSIA VELOCE, PER L'AGENTE, È CHIUSA — misurato provandoci il 16/08/2026**, e proprio
+> nel momento in cui serviva: un rosso da riparare, **una riga** di un documento. GitHub ha risposto
+> `GH013: Repository rule violations` — *«Changes must be made through a pull request»* più il check
+> `guard-main` obbligatorio. La regola guarda il **ramo**, non i file: non sa cosa sia un documento.
+> ⇒ **L'agente passa sempre da una PR**, anche per una virgola in `docs/`.
+>
+> ⚠️ **E per Maurizio? NON verificato.** Le regole di GitHub possono avere una lista di chi le
+> scavalca, e il proprietario di solito ci sta dentro: quindi questa riga può essere **vera per lui
+> dal sito** e falsa per l'agente. Si guarda in `Settings → Rules`, ed è una cosa sua.
+>
+> 📊 Quello che la storia dice: negli ultimi **84** commit di `main`, **54** sono entrati con
+> *squash* da PR, **30** da PR mergiate con *merge commit*, e **zero** spinti dritti. ⇒ Questa
+> corsia **non l'ha mai usata nessuno** — il che spiega perché nessuno si era accorto che per
+> l'agente non funziona, ma **non dimostra** che lui non potrebbe.
+>
+> ⚖️ La riga resta **com'è finché non decide lui**: l'errore da non rifare è correggerla su una
+> deduzione, che è esattamente come ci si è arrivati.
 
 ⚠️ **Ma `docs/` sta sotto `guard-worker-sync`**: la stessa modifica va messa **anche su `test-preview`**, altrimenti la guardia trova i rami diversi e diventa rossa. E vale l'ordine del punto 4bis del `CLAUDE.md` — **prima `test-preview`, poi `main`** — così la finestra rossa, se capita, cade sul ramo che non è quello predefinito.
 
