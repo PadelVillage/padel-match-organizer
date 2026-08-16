@@ -290,9 +290,29 @@ Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`,
 
 ## Ultimo lavoro pubblicato
 
-**PROD è a v6.222** (`main`). TEST è a **v6.232** (`test-preview`). L'ultimo lavoro è quello della **17ª sessione del 14/08**, che non ha toccato `index.html`: chiusa ad `anon` la famiglia «feedback post-partita» anche su **TEST** (voce 37, migrazione `20260814194040`) — su PROD lo era dalla 16ª — e rimisurata la voce 38, dove i 404 di `wa-shadow-proxy` **non si erano affatto fermati**: ne arrivava uno al minuto da una scheda del gestionale rimasta aperta col codice vecchio, mentre il disarmo nel file **servito** da PROD è giusto e verificato.
+**PROD è a v6.234** (`main`). TEST è a **v6.243** (`test-preview`). L'ultimo lavoro è quello della
+**28ª sessione del 16/08**, che **non ha toccato `index.html`**: è stato tutto sul **bot dei soci e
+sul suo ponte**.
 
-⚠️ La riga qui sopra ha dichiarato **v6.230** per TEST mentre la tabella «Versione corrente» diceva già 6.231: la tabella è sorvegliata dalla CI, **questa riga no**, e le due si sono separate nel giro di un'ora. È la stessa malattia, allo stadio più piccolo che si possa vedere. Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio, `git log --oneline` e le PR.
+In PROD sono andate due cose, entrambe su `consumer-booking-write`: **`scheda_del_tolto`** (il ponte
+dice **chi** è stato tolto, così il bot può avvisarlo anche se non era entrato da un invito) e il
+**terzo esito** — quando il gestionale non risponde, il ponte manda `esito_ignoto` invece di
+schiacciare tutto su «errore», perché la prenotazione **potrebbe esserci lo stesso** e dire «non ci
+sono riuscito» manda il socio a rifarla.
+
+⭐ E il fatto che cambia le sessioni future: **il bot ha finalmente un deploy**
+(`deploy-bot-hetzner.yml` nel suo repo). Prima non ne aveva **nessuno** — `/opt/assistente-padel-agent`
+sulla VM non è nemmeno un repository git — e una cura mergiata restava **muta per i soci** finché
+qualcuno non si collegava a mano. Il 16/08 è successo davvero: la metà gestionale del terzo esito è
+stata in PROD **per ore** mentre sul bot non c'era.
+
+⚠️ **Questa riga è la prima cosa che invecchia in tutto il file**, e lo sa: ha già dichiarato
+**v6.230** per TEST mentre la tabella «Versione corrente» diceva 6.231, e le due si sono separate
+nel giro di un'ora. La tabella è sorvegliata dalla CI, **questa riga no**. È la stessa malattia dei
+documenti che mentono, allo stadio più piccolo che si possa vedere — e resta qui **apposta**, come
+promemoria di cosa succede a ciò che nessuna guardia controlla.
+📌 Per l'elenco dei lavori recenti vedi la tabella in `Versione corrente`; per il dettaglio,
+`git log --oneline` e le PR.
 
 ⚠️ Questo paragrafo aveva dichiarato **v6.216 / v6.217** fino al 14/08, cioè **5 e 13 versioni indietro**, citando la PR #673 come ultimo lavoro: la tabella «Versione corrente» qui sopra è sorvegliata dalla CI, **questa riga no**. È la stessa malattia, un piano più in basso — e la cura è la stessa: aggiornarla **mentre si lavora**, non a memoria dopo.
 
