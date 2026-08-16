@@ -1,11 +1,65 @@
 # Voce 53 — collaudo: il bot torna a chiedere al gestionale
 
-**Scheda del 16/08/2026, 29ª sessione. Da eseguire con le mani del committente.**
-Il codice è sul **bot di prova** (`assistente-telegram-prova`, commit `22bc111`) e il ponte è vivo
-sui due gestionali — `consumer-booking-write` **v26 su PROD**, **v34 su TEST**.
+**Scheda del 16/08/2026, 29ª sessione.** Il ponte è vivo sui due gestionali —
+`consumer-booking-write` **v26 su PROD**, **v34 su TEST** — e il ciclo è sul **bot dei soci** oltre
+che su quello di prova.
+
+# ✅ ESEGUITA IL 16/08/2026 ALLE 23:20, E VERDE — la strada dei BOTTONI
+
+**Su PROD, bot dei soci, slot `2026-08-29 09:00 C1`.** Il cancello di Caddy manovrato da GitHub
+Actions (`cancello-worker.yml`), non a mano.
+
+| istante (UTC) | fatto |
+|---|---|
+| 21:19:51 | cancello chiuso, verificato `HTTP 000` |
+| 21:20:23.9 | il tocco su «✅ Confermo» → `Connection refused` su `/create-booking` → **esito ignoto** |
+| 21:21:07 | cancello riaperto, verificato |
+| 21:24:02 | primo sync atterrato **dopo** la scrittura: la copia diventa una testimone |
+| 21:25:28 | verdetto **`no`** consegnato al socio |
+
+⇒ **5′04″** dal tocco alla verità, di cui **3′38″ di silenzio onesto**: il bot poteva rispondere e
+non l'ha fatto, perché non aveva la prova. Il «no» è uscito **86 secondi dopo** che la prova è
+arrivata, e non un istante prima.
+
+**Le parole vere al socio**, nell'ordine: *«Non ho la conferma… ⚠️ Non rifarla adesso: potrebbe
+essere passata lo stesso… Ci penso io: controllo e ti scrivo appena lo so, entro un quarto d'ora»*
+→ e poi *«Ho controllato: la prenotazione … non è stata registrata. Il campo è ancora libero»*.
+
+**I rossi della scheda, uno per uno**: ① «no» prematuro **assente** (è il guasto grosso) · ② ciclo
+**partito** · ③ griglia **non** riproposta · ⑥ nessun `rinuncia/guasto` · ⑦ **nessuna prenotazione
+vera**, verificata nella copia fresca (per il 29/08 09:00 solo righe del **Campo 3**, partita di
+altri, `idReserva 9371`).
+
+⭐ **E un controllo positivo che non è stato costruito: era nel registro.** Alle 20:52 della stessa
+sera, **sullo stesso bot**, c'era già stato un `esito IGNOTO` — e lì **nessuna riga
+`[attesa-esito]`**, perché il bot non aveva ancora il codice. Stesso bot, stesso guasto, prima
+nessun ciclo e dopo sì: è la differenza che dimostra che quelle righe le produce **la cura**.
+
+## 🚨 E LA STRADA DEL MODELLO NON È COLLAUDABILE COM'ERA SCRITTA QUI
+
+La tabella qui sotto diceva: *«modello — si chiede lo slot e si conferma **scrivendo**»*.
+**Quella cosa non può accadere**, e provarla il 16/08 l'ha dimostrato: alla frase *«sì, confermo la
+prenotazione di domenica 30 agosto alle 16:00»* il bot ha risposto con la **scheda a bottoni** dello
+slot giusto. Ha capito, e si è fermato.
+
+Il codice lo dice esplicito (`bot.ts:3199` e `:3207`):
+
+> ⭐ *Se il giro ha toccato `prenota`, comanda la scheda a bottoni: **il socio non deve mai scrivere
+> una data né un «sì»**.*
+> 🚨 *…il sì dovrà comunque arrivare da **un tocco**, che è un turno diverso.*
+
+⇒ Il modello arriva **sempre** fino alla proposta e poi consegna ai bottoni. La conferma è, per
+disegno, un tocco — e il disegno è una protezione, non una svista.
+
+❓ **DOMANDA APERTA, da misurare e non da dedurre**: se il modello finisce sempre in una proposta,
+l'aggancio dell'attesa sulla sua strada (`bot.ts:3216`) può vedere solo esiti **senza scrittura**,
+e mai un esito ignoto — cioè per la voce 53 **non scatterebbe mai**. 🚨 Non è scritto come verdetto
+di proposito: sarebbe la **terza** deduzione plausibile su questa voce in un giorno solo, e le prime
+due — *«il sync non passa dal worker»* e *«su TEST il worker viene chiamato lo stesso»* — erano
+**entrambe false**.
 
 ⛔ **Finché questa scheda non è stata eseguita la voce NON si chiude**: *«il codice è a posto non è
-funziona»*.
+funziona»*. Per la strada dei bottoni, ora, **lo è**.
 
 ---
 
@@ -142,8 +196,8 @@ prenotazioni vere** credendo di collaudare.
 
 | strada | come si esercita |
 |---|---|
-| **bottoni** | si chiede lo slot e si tocca **✅ Confermo** |
-| **modello** | si chiede lo slot e si conferma **scrivendo** |
+| **bottoni** | si chiede lo slot e si tocca **✅ Confermo** — ✅ **fatta il 16/08, verde** |
+| ~~**modello**~~ | ~~si chiede lo slot e si conferma **scrivendo**~~ 🚨 **RIGA FALSA**: confermare scrivendo è impedito per costruzione. Vedi in testa alla scheda |
 
 ## ⑤ Riaccendere Caddy — subito
 
