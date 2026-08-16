@@ -587,19 +587,24 @@ provata col sabotaggio e promossa (TEST **6.243**, PROD **6.234**, verificata da
 aperta di proposito, e la ragione è una regola sua**: *«non chiudere una voce che non hai verificato
 sul bersaglio — il codice è a posto non è funziona»*. Qui il **difetto** è stato verificato sul
 bersaglio; la **cura** no: è provata **nel banco**, con un sabotaggio che la fa cadere, e sull'app
-vera non l'ha ancora esercitata nessuno. ⇒ Quello che manca per chiuderla sono **due cose sole**: un
-annullo vero su TEST dalla sua postazione, e la **previsione D** — se il calendario mostri o no il
-fantasma — che dal cloud non si raggiunge. Procedura pronta in
+vera non l'ha ancora esercitata nessuno.
+
+🔄 **Aggiornamento del 16/08, 26ª sessione: delle due cose che mancavano, ne resta UNA.** La
+**previsione D è stata ESEGUITA da qui** — misura nella scheda qui sotto — e il fantasma sul
+calendario **non si vede**, come la voce prevedeva. ⇒ Per chiudere la 43 manca **solo l'annullo vero
+su TEST dalla sua postazione**: lì il `readonly` della console non passa (`pmoBlockWriteIfReadonly`),
+e non c'è modo di aggirarlo dal cloud. Procedura in
 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md).
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 
-> 🔧 **STATO AL 16/08, fine 25ª: CURATA, non chiusa.** La cura «A» — *prima il cloud, poi la
-> memoria* — è scritta, provata **col sabotaggio** e promossa su entrambi i rami (TEST **6.243**,
-> PROD **6.234**, verificata dal server). ⛔ **Non si chiude** perché la **cura** non è stata
-> verificata **sul bersaglio**: è provata nel banco, non sull'app vera. Mancano un annullo vero su
-> TEST e la **previsione D**. Il resto della scheda è la diagnosi, e regge: il difetto **sì** è
-> stato visto succedere.
+> 🔧 **STATO AL 16/08, 26ª: CURATA, non chiusa — e manca UNA cosa sola.** La cura «A» — *prima il
+> cloud, poi la memoria* — è scritta, provata **col sabotaggio** e promossa su entrambi i rami
+> (TEST **6.243**, PROD **6.234**, **rimisurate dal server il 16/08**: i titoli delle due pagine
+> dicono `v6.234` e `v6.243`). ⛔ **Non si chiude** perché la **cura** non è stata verificata **sul
+> bersaglio**: è provata nel banco, non sull'app vera. ✅ La **previsione D è stata eseguita** il
+> 16/08 (blocco qui sotto) ⇒ resta **solo l'annullo vero su TEST** dalla sua postazione. Il resto
+> della scheda è la diagnosi, e regge: il difetto **sì** è stato visto succedere.
 
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
 quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
@@ -689,7 +694,51 @@ preferirla **non esisteva**, e a farlo cadere è stata una sua domanda — non u
 il momento sia raggiungibile davvero (poll ogni 4 s contro una finestra di ~100-500 ms) resta un
 **calcolo**; ② la **previsione D** — se il calendario mostri o no il fantasma — **non è stata
 provata**: `staffCalGetSlots` non è raggiungibile dalla console, e quella metà vuole ancora le mani
-di qualcuno davanti allo schermo.
+di qualcuno davanti allo schermo. ⚠️ **Il ② è stato SMENTITO il giorno dopo** — vedi il blocco
+seguente. La riga resta com'era, non riscritta per farla tornare: l'errore era mio ed è il reperto.
+
+---
+
+🔬 **PREVISIONE D — ESEGUITA il 16/08, 26ª sessione, e NON dal Mac.** Console remota su
+`test.padelvillage.club` (TEST **6.243**), scritture bloccate per tutta la prova: nessuna riga
+toccata da nessuna parte, l'unico blocco registrato è una RPC di autovalutazione che l'app tenta da
+sé all'avvio.
+
+🚨 **Prima il reperto, che vale più della misura: la riga ② qui sopra era una DEDUZIONE, ed era
+falsa.** La premessa è vera — `staffCalGetSlots` sta dentro l'IIFE e su `window` non c'è. Ma la
+previsione D **non chiede quella funzione**: chiede **cosa mostra il calendario**. E
+`__PMOStaffCalTest.renderCal(iso)` è esposto, chiama `renderStaffCalendar()`, che passa **proprio da
+`staffCalGetSlots`**, e restituisce il testo delle card. ⇒ Un attrezzo dichiarato inadatto **senza
+provarlo**, con la stessa forma dei quattro casi in cima a questo file: ragionamento corretto,
+premessa vera, conclusione sbagliata, e a smentirla è bastato **far girare la cosa**.
+
+**Il metodo è quello della previsione B**: non cogliere la finestra, **ricostruire lo stato** in cui
+l'app si trova dentro di essa — una riga di occupazione presente (come appena rientrata dal cloud)
+**mentre** la soppressione locale c'è. Data **futura** (20/08), così nessuna occupazione vera e
+nessuno storico possono confondere la lettura.
+
+| | il calendario mostra il fantasma? |
+|---|---|
+| **controllo positivo** — riga presente, **nessuna** soppressione | 🟢 **sì** ⇒ la sonda sa vedere |
+| **la prova** — riga presente **+** soppressione locale | ⚪️ **no** |
+| **controprova** — soppressione tolta di nuovo | 🟢 **sì** ⇒ a nasconderlo era lei, non un effetto del primo render |
+| slot con una card staff **attiva** sopra | fantasma **no**, card staff **sì** (regola v5.687, misurata e non dedotta) |
+
+⇒ **Previsione D CONFERMATA**: il calendario non mostra il fantasma. Il danno resta quello scritto
+nella scheda — **lo stato locale sbaglia e lo schermo non lo dice** — che è poi la ragione per cui
+questo difetto non si è mai visto in due anni.
+
+🎯 **E la domanda che rende leggibile un verde — «cosa lo farebbe diventare rosso?» — ha una
+risposta precisa: il TTL.** La soppressione dura **30 minuti** (`_STAFFCAL_SUPPRESS_TTL_MS`), poi si
+pulisce da sé. Misurato ai due lati del bordo: a **29 minuti** il fantasma è ancora nascosto, a
+**31** ⇒ 🔴 **compare**. ⚖️ Che in pratica non succeda — perché un aggiornamento qualunque corregge
+l'occupazione molto prima di mezz'ora — è **dedotto**, non eseguito, e va letto come tale.
+
+⛔ **I due limiti, dichiarati**: ① lo stato è **ricostruito**, non **colto** (identico al limite
+della previsione B, e non lo toglie nessuna di queste misure); ② è misurata **solo su TEST** —
+`__PMOStaffCalTest` è gated `PMO_IS_TEST_ENV` e su PROD **non esiste**, quindi lì la conclusione
+poggia sul fatto che `staffCalGetSlots`, `_staffCalGetSuppressed`, `_staffCalSuppressKey` e il TTL
+sono **identici byte per byte** fra i due rami (diffati, non supposti). **Per PROD è dedotto.**
 
 📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
 dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia

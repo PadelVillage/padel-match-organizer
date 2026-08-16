@@ -29,10 +29,38 @@ poteva smentire la diagnosi. Il blocco è **identico su PROD** (diffato).
 
 ### Cosa di questo documento resta valido
 
-⛔ **Solo la previsione D**: se il calendario **mostri** o no il fantasma. `staffCalGetSlots` non è
-raggiungibile dalla console remota, e quella metà vuole ancora un operatore davanti allo schermo.
 ⛔ E resta valido come **ricetta per cogliere la finestra davvero**, se un domani si vorrà: qui sotto
 c'è come allargarla. Ma per *decidere la cura* non serve più — quello che si voleva sapere si sa.
+
+## 🚨 SECONDO AGGIORNAMENTO, 26ª sessione: anche la previsione D è stata fatta DA REMOTO
+
+📌 **Qui sopra c'era scritto** che della previsione D *«`staffCalGetSlots` non è raggiungibile dalla
+console remota, e quella metà vuole ancora un operatore davanti allo schermo»*. **Era falso**, ed è
+lo stesso errore che questo documento aveva già fatto una volta — dichiarare un attrezzo inadatto
+**senza provarlo**. La premessa reggeva (quella funzione sta dentro l'IIFE e su `window` non c'è);
+la conclusione no, perché la previsione D **non chiede quella funzione**, chiede *cosa mostra il
+calendario* — e `__PMOStaffCalTest.renderCal(iso)` è esposto, renderizza il calendario **vero** e
+restituisce il testo delle card.
+
+**Esito (TEST 6.243), col metodo della previsione B — ricostruire lo stato, non coglierlo:**
+
+| | il calendario mostra il fantasma? |
+|---|---|
+| controllo positivo: riga presente, **senza** soppressione | 🟢 **sì** (la sonda sa vedere) |
+| riga presente **+** soppressione locale | ⚪️ **no** |
+| controprova: soppressione tolta | 🟢 **sì** |
+
+⇒ **Previsione D confermata: il fantasma non si vede.** E il bordo della protezione è il **TTL di
+30 minuti**: misurato a **29** ⇒ nascosto, a **31** ⇒ 🔴 **compare**.
+
+### ⇒ Cosa resta DAVVERO da fare dal Mac
+
+⛔ **Una cosa sola: l'annullo vero su TEST**, cioè la procedura qui sotto. Il `readonly` della
+console remota non ci arriva — `staffCalDoCancel` esce subito su `pmoBlockWriteIfReadonly` — e serve
+a esercitare **la catena vera**: il commit locale dentro `_staffCalCommitLocalCancel` con la cura A
+attiva, che dal cloud non è mai stata fatta girare sull'app vera.
+📌 Le previsioni **A**, **B** e **C** qui sotto restano da guardare in quella corsa; la **D** no, è
+fatta.
 
 ⚖️ **La procedura qui sotto NON è stata buttata**: è la prova che è cambiata di natura, non che fosse
 sbagliata. Chi la esegue oggi esercita la catena vera dell'annullo, che la prova da remoto **non**
