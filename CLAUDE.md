@@ -120,6 +120,45 @@ il bot su PROD **senza** la simulazione, e da quel momento prenota, disdice e fa
 sullo stesso token si rubano i messaggi e Telegram risponde **409** — quindi mentre gira sulla VM
 non si lancia il bot sul Mac.
 
+## 🖥️ LA VM HETZNER: dove sta cosa, e come ci si entra
+
+**Misurato il 16/08/2026**, cercandolo — e non stava in nessun posto utile: l'indirizzo era sepolto
+in una scheda di collaudo (`docs/collaudo-voce-23-caduta-worker.md`), e la procedura per aggiornare
+il bot **non esisteva affatto**. Un'ora di caccia, scritta qui perché non ricapiti.
+
+```
+ssh -i ~/.ssh/padel_deploy root@91.99.131.243        # hostname: padel-matchpoint-bot-prod
+```
+
+La chiave sta **sul Mac**, è etichettata `deploy-padel-village`, ed è la stessa che usa GitHub
+Actions (`SSH_DEPLOY_KEY`). Node 24 in `/opt/node24`.
+
+| cartella | processo pm2 | cos'è |
+|---|---|---|
+| `/opt/matchpoint-worker` | `matchpoint-worker` | il worker, **condiviso TEST+PROD** |
+| `/opt/assistente-padel-agent` | `assistente-telegram` | 👥 **il bot dei SOCI** (PROD) |
+| `/opt/assistente-padel-agent-prova` | `assistente-telegram-prova` | 🧪 il bot di prova (`--verso-test`) |
+
+⚠️ In `pm2 list` compaiono anche `shadow-backend` e `shadow-backend-st…`: sono **fermi**, non
+riaccenderli per sbaglio. E i **due bot in `online` insieme sono normali**: token diversi, cartelle
+diverse — non è la doppia istanza che darebbe 409.
+
+🚨 **Le due cartelle del bot NON sono repository git**, e la VM **non può parlare con GitHub**
+(nessuna chiave privata in `/root/.ssh/`, `git config --global` vuoto, `git ls-remote` chiede
+l'utente). ⇒ Non si aggiorna con `git pull`: si usa **`deploy-bot-hetzner.yml`** nel repo del bot —
+`workflow_dispatch`, bersaglio `prova` (predefinito) o `soci`, e per i soci va **scritta la parola
+`SOCI`**. Nessun `--delete`: `.env`, le fotografie `.env.prima-*`, `node_modules` e `_prove/`
+restano intatti.
+
+⛔ **Dal cloud la VM NON si raggiunge, ed è misurato, non dedotto**: esce solo la **443**; la **22**
+e la **2222** sono bloccate. Installare `ssh` nel container **non serve** — la porta è chiusa a
+monte. ⇒ Tutto ciò che vuole la VM si fa **dal Mac** o **passando da GitHub Actions**.
+
+⭐ **Il bot DICHIARA all'avvio dove punta**, ed è l'unico modo di saperlo con certezza:
+`✍️ prenotazioni REALI` (gestionale vero) · `🧪 GESTIONALE DI PROVA` (scrive, ma il circolo non si
+tocca) · `🧪 prenotazioni SIMULATE` (non parte nessuna scrittura). Il `.env` non lo tocca il deploy:
+un aggiornamento lascia il bot **dov'era puntato**.
+
 ## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
 
 **Regola di architettura fissata dal committente il 16/08/2026**, e vale **anche e soprattutto per
