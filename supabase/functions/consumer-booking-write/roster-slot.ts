@@ -454,6 +454,51 @@ export function altriOmonimiVivi(
   return [...visti];
 }
 
+/**
+ * 👤 CHI È la persona che si sta togliendo — la scheda, quando ce n'è **una sola** con quel nome.
+ *
+ * ⭐⭐ Nasce l'11/08/2026 da una sua domanda: *«con il nuovo sistema di registrazione possiamo
+ * avvisare anche noi il giocatore che è stato eliminato»*. Il bot lo sapeva già fare, ma solo
+ * con chi era entrato accettando un invito — perché quella riga è attaccata a QUELLA partita.
+ * Per tutti gli altri serviva risalire dal nome alla persona, ed è il passo che la guardia
+ * degli omonimi vieta: il nome non dice chi è una persona nel mondo.
+ *
+ * ⭐ La via d'uscita non è indovinare meglio, è **restringere la domanda**: non «chi è questo
+ * nome» ma «quel nome è di UNA SOLA persona viva?». Quando la risposta è sì, il nome smette di
+ * essere un indizio e diventa una chiave; quando è no, non si avvisa nessuno.
+ *
+ * 🚨 Fallisce chiusa in DUE modi, e sono diversi fra loro:
+ *  · **zero** schede ⇒ quel nome al circolo non c'è (un Ospite, o una grafia che non combacia);
+ *  · **due o più** ⇒ è uno dei 13 gruppi di omonimi, e mandare «non sei più nella partita» a
+ *    quello sbagliato è un errore che non si recupera.
+ * ⚖️ E qui il costo dell'errore è **asimmetrico al contrario** rispetto ad `altriOmonimiVivi`:
+ * là un dubbio ferma un annullo (si perde un gesto), qui un dubbio toglie solo un avviso — la
+ * partita resta tolta comunque, e l'organizzatore legge «avvisa tu». Perciò chi chiama, davanti
+ * a una lettura che non riesce, **non deve rifiutare il togli**: deve solo non promettere.
+ *
+ * 🚨 Il confronto è `chiaveOmonimia`, la stessa di `altriOmonimiVivi` e deliberatamente più
+ * larga del match: se «Casagrande Francesco» e «Francesco Casagrande» fossero due persone
+ * diverse per questa funzione, l'avviso partirebbe **proprio nel caso** in cui non deve.
+ *
+ * @returns l'`id` della scheda, oppure `null` se le schede con quel nome non sono esattamente una.
+ */
+export function schedaUnicaConQuelNome(
+  nome: unknown,
+  candidati: SchedaPerOmonimia[],
+): string | null {
+  const cercata = chiaveNome(nome);
+  if (!cercata) return null;
+  const visti = new Set<string>();
+  for (const c of candidati) {
+    const id = clean(c.id);
+    if (!id) continue;
+    if (clean(c.active) === 'false') continue;         // archiviata: quella persona non gioca
+    if (chiaveOmonimia(c) !== cercata) continue;
+    visti.add(id);
+  }
+  return visti.size === 1 ? [...visti][0]! : null;
+}
+
 export type DirittoAnnullare = {
   /** Vero solo se questo socio può annullare una partita in cui c'è qualcun altro. */
   permesso: boolean;
