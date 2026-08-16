@@ -1,6 +1,85 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 16/08/2026, a fine 27ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 28ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 28ª: **un esito visto UNA volta non è una regola — può essere una GARA, una METÀ, o un altro SOGGETTO**
+
+Le sessioni prima avevano imparato a diffidare della *prova* (16ª), dello *strumento* (20ª), della
+*misura che concorda col documento* (22ª), dello strumento che guarda **un pezzo solo** (23ª) o
+**altrove** (24ª), della *conclusione dedotta da premessa vera* (25ª) e del *limite mai provato*
+(26ª). Questa ha trovato la forma che le tiene insieme: **si osserva un esito su un caso, e lo si
+prende per la regola.** Tre volte in un giorno, e ogni volta ciò che variava era diverso.
+
+| l'esito osservato | cosa era davvero |
+|---|---|
+| il controllo del deploy **verde sul bot di prova**, quindi «funziona» | era una **GARA**: `grep -q` chiude la pipe al primo riscontro, `echo` prende SIGPIPE e con `pipefail` l'intera pipeline risulta fallita **anche avendo trovato**. Log corto ⇒ `echo` finiva prima; log lungo (il bot dei soci) ⇒ vinceva grep. **Stesso codice, due esiti** |
+| il pre-volo sui conteggi **verde**, quindi il file era a posto | era una **METÀ**: riproducevo 4 controlli della guardia su 8 — i titoli di sezione, non la tabella in cima. E una verifica che copre metà del controllo dà **lo stesso identico verde** di una completa |
+| il push diretto su `main` **rifiutato a me**, quindi «la corsia non esiste» | era un altro **SOGGETTO**: sapevo che è chiusa per l'agente, non per il proprietario — le liste di scavalco esistono apposta. La risposta è arrivata solo **guardando la Bypass list** (vuota), non deducendola |
+
+⚖️ **La lezione non è «prova due volte».** È che davanti a un esito la domanda giusta è **«cosa
+sarebbe potuto variare fra questo caso e il prossimo?»** — il tempo, la porzione, il soggetto. Le
+tre risposte di oggi erano tutte diverse, e nessuna si vedeva rileggendo il codice.
+
+🚨 **E ce n'è una quarta, arrivata da FUORI: una mia deduzione smentita da un'altra sessione.**
+Scrivendo la voce 53 avevo dichiarato che la strada del bot sarebbe stata *migliore* di quella
+dell'app *«perché il sync è un processo a sé e non passa dal worker»* ⇒ worker giù, quella strada
+funziona ancora. **Passa dal worker** (`matchpoint-bookings-sync` → `/export-booking-history`): la
+copia si congela **insieme** al worker, e la notte del 15/08 era già successo. ⚖️ Era una
+**deduzione** travestita da reperto — la 25ª — e a smentirla è bastato che qualcuno andasse a
+**misurare** invece di rileggere. 📌 La misura è la stessa che avevo marcato come bloccante e non
+avevo fatto: mediana **~2 minuti**, massimo **10′04″** su 43 creazioni
+(📄 [`docs/voce-53-ritardo-sync.md`](../voce-53-ritardo-sync.md)).
+
+🚨 **E la seconda, che è la peggiore perché l'ho fatta CREDENDO di applicare la lezione giusta.**
+Avevo scritto di aver «rieseguito il conteggio della guardia»: ne avevo riprodotto **metà**. È la
+24ª pari pari, commessa mentre la citavo. ⇒ La cura non è «stare più attento» — l'attenzione è
+precisamente ciò che aveva già fallito: ora il pre-volo **estrae lo script della guardia dal
+workflow e lo esegue**, invece di riscriverne una parafrasi.
+
+🎯 **E il segnale che avevo sotto gli occhi e non ho raccolto**: `test-preview` **verde** e `main`
+**rosso** sullo stesso identico contenuto. La guardia legge sempre `origin/main`, quindi sul ramo di
+TEST leggeva il file di *prima* del merge — un verde che **non parlava del file che stavo
+spingendo**. Due esiti opposti sulla stessa cosa erano un'informazione, e l'ho lasciata cadere.
+
+## 🎯 Il secondo filo della 28ª: **un fatto NON SCRITTO va riscoperto ogni volta**
+
+È l'immagine speculare della 26ª — là un *limite dichiarato e mai provato* restava vero per sempre;
+qui un **fatto vero e mai scritto** costa il suo prezzo a ogni sessione che ne ha bisogno.
+
+Aggiornare il bot sulla VM è costato **un'ora**, e nessuno dei pezzi era difficile:
+· l'indirizzo della VM esisteva, **sepolto in una scheda di collaudo** (`docs/collaudo-voce-23-…`),
+  l'ultimo posto in cui uno lo cerca;
+· la procedura per aggiornare il bot **non esisteva affatto** — e non «era un'altra»: `/opt/assistente-padel-agent`
+  **non è un repository git**, i file erano stati copiati a mano l'11/08 e nessuno sapeva più da dove;
+· nel mezzo, due comandi sbagliati miei: un blocco con segnaposto che `zsh` non poteva eseguire, e
+  un `cat ~/.ssh/config` mandato a cercare un file che non c'era.
+
+⇒ Ne sono nate due cose che quel prezzo non lo faranno ripagare a nessuno: la **scheda della VM** in
+`CLAUDE.md` (indirizzo, cartelle, nomi pm2, e le trappole di `pm2 list`) e il **primo modo di
+aggiornare il bot che sia mai esistito** — `deploy-bot-hetzner.yml`, con bersaglio `prova`
+predefinito e la parola `SOCI` da scrivere a mano per toccare quello vero.
+
+🛡️ **E la terza, in positivo: un RIFIUTO ha fatto da rete.** Spingendo su `test-preview` il push è
+stato respinto perché **un'altra sessione** ci aveva appena scritto (la voce 53, su TEST). Senza
+quel rifiuto avrei sovrascritto mezz'ora di lavoro altrui **senza accorgermene**. ⇒ Il commit è
+stato **ricostruito sopra** il suo, non al posto suo, e verificato dopo che il suo fosse ancora lì.
+
+## 📌 Le decisioni prese dal committente nella 28ª
+
+| | |
+|---|---|
+| ❓ **«quando prenoto col bot, aspetta la conferma del gestionale?»** | ⭐ **la domanda che ha aperto la giornata, ed era la domanda giusta**: la risposta è **sì**, ma misurando la catena è saltato fuori il **terzo esito** — il caso in cui il bot dice «non ci sono riuscito» **senza saperlo**, e il socio rifacendo occupa il campo due volte |
+| 🔓 **«fai la uno e poi metti in coda la due»** | la toppa subito, la cura vera in coda come **voce 53**. ⇒ L'ignoto non si spaccia più per un «no», e la strada per farlo controllare al bot è scritta con dentro la misura che manca |
+| 🧭 **«il bot legge tutto dal gestionale. Non è autonomo»** | ⭐⭐ **regola d'architettura**, data lì per lì e valida **soprattutto per il futuro in cui Matchpoint si chiude**: il gestionale SA, il bot DICE. Non era un'abitudine — era già la scelta presa in tre punti, che così smettono di sembrare casi isolati |
+| 🔓 **«il merge lo fai tu dopo che io ti ho dato l'ok»** | ⚖️ **sciolta metà della regola vecchia, non tutta**: è cambiato chi tocca il bottone, **non chi sceglie** |
+| ✅ **«fai tu in automatico, però poi controlli. E se dà un problema rosso riprovi»** | ⭐ **un ok non autorizza un gesto, autorizza un ESITO** — eseguire, verificare **sul bersaglio**, riparare. Col confine scritto: rimettere in piedi ciò che si è rovesciato sta dentro, aggiungere altro no |
+| 👁️ **«attenzione»**, con una schermata del rosso | 🚨 **l'ottava sessione di fila in cui la cosa che vede lui io non l'avevo guardata.** E la causa non era la riga dimenticata: era il pre-volo che ne copriva metà |
+| ✅ **«la console si usa in autonomia, sia in test che in prod»** | ⭐ e **PROD compresa è la metà che conta**: col calendario di TEST congelato, una console autorizzata sul solo TEST avrebbe lasciato fuori metà delle diagnosi |
+| 🔎 **«dove si deve fare?»** (il ruleset) | ⚖️ **ha scelto di GUARDARE invece di farmi dedurre**, su una cosa che avevo già dichiarato falsa basandomi su un rifiuto che riguardava **me**. La Bypass list era vuota ⇒ la riga si è potuta scrivere **misurata**, non intuita |
+| 🗣️ **«ricordati che abbiamo un bot di test e uno di prod»** | ⭐ **l'informazione che ha dato forma al workflow**: bersaglio `prova` predefinito, e la parola `SOCI` da scrivere per toccare quello vero. La protezione sta nel meccanismo, non nella buona volontà di chi clicca |
+| 📄 **«aggiorna la fotografia e i docs»** | la chiusura di rito, con le lezioni della giornata scritte dove le rilegge chi apre domani |
+
+**E la 27ª, poche ore prima:**
 
 ## 🔎 Il filo della 27ª: **il residuo che si era fatto promuovere, misurato fino in fondo**
 
@@ -431,7 +510,20 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **44** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**La 27ª non ha toccato `index.html`**: le versioni sono quelle della 26ª, **rimisurate dal server** (PROD **6.234**, TEST **6.243**), non ricopiate. Il lavoro è stato tutto sui **permessi del database di TEST**: 12 `SECURITY DEFINER` allineate a PROD, `anon` da 32 a 20.
+**Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
+e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
+tolto) e il **terzo esito** (`esito_ignoto` invece di «errore») — e il bot sulla VM è stato
+aggiornato **per la prima volta con un meccanismo**, non a mano.
+
+⭐ **Il fatto nuovo che cambia le sessioni future**: il bot ha finalmente un **deploy**
+(`deploy-bot-hetzner.yml` nel suo repo). Prima non ne aveva **nessuno**, e una cura mergiata restava
+muta per i soci finché qualcuno non si collegava a mano — cosa che il 16/08 è successa davvero: la
+metà gestionale del terzo esito è stata in PROD per ore mentre sul bot non c'era.
+
+📌 **E la VM ora è scritta** in `CLAUDE.md`: indirizzo, le tre cartelle coi tre nomi pm2, e le
+trappole — `shadow-backend*` fermi, i **due bot online insieme che sono NORMALI** (token e cartelle
+diverse, non è la doppia istanza del 409), e il fatto che **dal cloud la VM non si raggiunge**
+(esce solo la 443; 22 e 2222 bloccate, misurato installando `ssh` per scoprirlo).
 
 **Stato del sistema, rimisurato alla chiusura della 26ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
