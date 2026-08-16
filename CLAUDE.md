@@ -91,7 +91,13 @@ TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
 Le prenotazioni (`booking`, `booking_occupancy`, `booking_history`) su `cudi…` **non le aggiorna
 nessun cron**, e non è mai successo: le righe `data_routine_dispatch_bookings_live_*` sono **0** in
 tutta la storia di quel database, contro **1575** su `qqbf…`. Quello che c'è è l'ultimo import
-lanciato **a mano** — al 14/08 fermo al **7 agosto**. L'anagrafica invece è viva
+lanciato **a mano** — al 14/08 fermo al **7 agosto**.
+🔄 **Ricontrollato il 16/08, e il «7 agosto» non vale più**: i giri a mano sono continuati — dei
+**108** istanti di sync distinti di sempre, **3 sono nelle ultime 48 ore** (15/08 21:45, 16/08 03:30,
+16/08 15:30). ⇒ Oggi TEST mostra **un'ora e mezza fa**, non nove giorni fa. ⚖️ L'avvertimento qui
+sotto **regge intero** — nessun cron lo tiene fresco e i buchi vanno da ore a giorni — ma la cifra
+del ritardo **non si può ricordare**: si misura, `max(synced_at)` sulle righe prenotazione.
+L'anagrafica invece è viva
 (`anagrafica-mirror`, 05:00) e i pagamenti pure: **è solo il calendario a essere fermo**, ed è
 esattamente ciò che rende l'inganno credibile.
 

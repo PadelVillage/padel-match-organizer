@@ -284,12 +284,57 @@ acceso; ② il caso del giro chiuso contava il letterale `reason: 'esito_ignoto'
 
 ---
 
+## 8bis. Cosa è stato verificato SUL BERSAGLIO (TEST), e cosa no
+
+Promossa su `test-preview` la sola cartella `consumer-booking-write` — non `docs/` né `CLAUDE.md`,
+che stanno sotto `guard-worker-sync`: spingerli su un ramo solo terrebbe la guardia rossa per tutto
+il tempo che passa in attesa dell'ok sul merge di `main`. Salgono con quello, di fila (4bis).
+
+| ✅ verificato eseguendo | come |
+|---|---|
+| il deploy su TEST è **verde** | `Deploy Edge Functions (TEST)` #228, `success` |
+| il codice nuovo è **vivo** su `cudi…`, versione **34** | letto da Supabase, non dedotto: ci sono `action === 'verifica'`, `verdettoScrittura`, `MARGINE_SCRITTURA_S = 150`, `let resAdd: Response;` |
+| l'endpoint **risponde e fallisce chiuso** | `POST` vero senza header → **401 `UNAUTHORIZED`** |
+| la regola sugli **ingressi veri di TEST** | vedi sotto |
+
+⛔ **Quello che NON è stato esercitato, e va detto**: la chiamata **autenticata** al ponte. Il
+`X-Consumer-Secret` non è leggibile da una sessione cloud (non sta nel database, e l'MCP di Supabase
+non espone i secret) ⇒ il percorso HTTP completo, con un socio vero, resta **da fare**. Quello che
+segue prova la **regola sui dati veri del bersaglio**, non il giro completo.
+
+**Gli ingressi veri di TEST**, letti il 16/08 alle 16:46 UTC: `max(synced_at)` sulle righe
+prenotazione = **15:30:06** dello stesso giorno. Dando quelli in pasto alla funzione vera:
+
+```
+non_ancora  copia_ferma            aspetta  ← scrittura ADESSO (la copia è indietro di 1h16)
+non_ancora  copia_ferma            aspetta  ← scrittura di 20 minuti fa
+no          copia_aggiornata_dopo  basta    ← scrittura delle 15:25, appena PRIMA del sync
+no          copia_aggiornata_dopo  basta    ← scrittura di ieri sera (15/08 22:27)
+non_ancora  fuori_finestra         basta    ← scrittura adesso, slot oltre i 30 giorni
+
+controprova positiva (la riga c'è): si/trovata
+```
+
+⇒ Nei due casi in cui la copia è **indietro rispetto alla scrittura** non esce mai un «no», che è
+l'unica cosa che questa funzione doveva garantire. E la controprova al contrario c'è: quando il
+sync **è** passato dopo, il «no» esce netto — senza quella, «non dice mai no» si leggerebbe come
+«funziona» invece che come «è bloccata».
+
+🔎 **E misurando il bersaglio è saltata fuori una cosa che `CLAUDE.md` non dice più giusta.** Sta
+scritto che il calendario di TEST è fermo all'ultimo import a mano, *«al 14/08 fermo al 7 agosto»*.
+La prima metà regge ed è stata ricontrollata — `data_routine_dispatch_bookings_live_*` su `cudi…` è
+**0 in tutta la storia**, nessun cron l'ha mai toccato. Ma i giri **a mano** sono continuati: dei
+**108** istanti di sync distinti di sempre, **3 sono nelle ultime 48 ore** (15/08 21:45, 16/08 03:30,
+16/08 15:30). ⇒ TEST non mostra il 7 agosto: mostra **un'ora e mezza fa**. L'avvertimento resta
+valido — nulla lo tiene fresco, e i buchi vanno da ore a giorni — ma chi legge quella riga per
+decidere se fidarsi di TEST oggi si farebbe un'idea sbagliata di **quanto** sia vecchio.
+
+---
+
 ## 9. Cosa manca per chiudere la voce
 
-1. ⛔ **La verifica SUL BERSAGLIO**: l'azione non è ancora deployata. Il posto dove ci si ferma a
-   guardare è **`test-preview`** (traccia C), e su TEST il caso interessante è proprio quello
-   pericoloso — il calendario è **congelato**, quindi `verifica` deve rispondere
-   `non_ancora / copia_ferma` e **mai** `no`. È il ramo che vale la pena vedere eseguito.
+1. ⛔ **Il giro completo sul bersaglio**: la chiamata autenticata al ponte con un socio vero (vedi
+   §8bis). Serve il `X-Consumer-Secret`, che da una sessione cloud non si legge.
 2. ⛔ **La metà del bot**: il ciclo che richiede e il messaggio al socio, nel repo privato
    `assistente-padel-agent`.
    🔄 **CORREZIONE — e non è un dettaglio**: scrivendo questa scheda avevo messo *«dal cloud non si
