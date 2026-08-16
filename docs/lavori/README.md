@@ -598,10 +598,15 @@ e non c'è modo di aggirarlo dal cloud. Procedura in
 
 ### 47. 🔒 Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD — lette una per una
 
-> 🔬 **STATO AL 16/08, 26ª: CENSITE TUTTE, e non a campione.** Promossa dal committente il 16/08
-> dalle «nate misurando», dove stavano da due giorni con scritto *«nessuno le ha mai lette una per
-> una»*. Ora sono lette — e **eseguite**: 31 chiamate come `anon` in transazioni annullate, più 2
-> che via RPC non si chiamano affatto. ⛔ **Non è stata toccata una riga**: 3 reperti da decidere.
+> 🔬 **STATO AL 16/08, 26ª: CENSITE TUTTE, e non a campione. Reperto A CHIUSO, B e C aperti.**
+> Promossa dal committente il 16/08 dalle «nate misurando», dove stavano da due giorni con scritto
+> *«nessuno le ha mai lette una per una»*. Ora sono lette — e **eseguite**: 31 chiamate come `anon`
+> in transazioni annullate, più 2 che via RPC non si chiamano affatto.
+> ✅ **Il reperto A è curato**: `get_assessment_token` revocata ad `anon` e PUBLIC su sua
+> autorizzazione, con prova prima/dopo e controprova positiva — le `SECURITY DEFINER` aperte ad
+> `anon` passano da **33 a 32**.
+> ⛔ **B e C restano decisioni sue**, e la C ha una trappola: il rimedio ovvio romperebbe una
+> funzione viva.
 
 ⚖️ **Perché questa e non un'altra.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per
 iscritto ciò che non aveva guardato**: *«⛔ NON esaminate: 3 letture per gettone
@@ -628,7 +633,30 @@ di cui **33** eseguibili da `anon` e 40 da `authenticated`. Il 33 della fotograf
 per lettura del codice: le scritture sono state **lanciate** con un carico vero dentro transazioni
 annullate, e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga.
 
-**② 🔴 Reperto A — `get_assessment_token(p_token)`: la gemella della voce 44, ancora aperta**
+**② ✅ Reperto A — `get_assessment_token(p_token)`: CHIUSO il 16/08, su sua autorizzazione**
+
+> 🔓 **Autorizzato da solo**, non in blocco con B e C: *«fammi le domande sulla quarantasette, però
+> fammene una alla volta»*. Revocato `EXECUTE` ad **`anon` e a PUBLIC**, `authenticated` intatto.
+> Migrazione `20260816…_voce47_revoca_get_assessment_token_da_anon`, **reversibile**, con l'SQL di
+> ripristino verbatim in testa — ricalcata sulla forma della 44, letta e non ricordata.
+
+| la prova | prima | dopo |
+|---|---|---|
+| `get_assessment_token('MAURIZIO001')` come **`anon`** | `ok:true` + nome | ⛔ `permission denied for function` |
+| **controprova positiva**: come `authenticated` | — | ✅ `ok:true`, nome presente ⇒ la strada legittima regge |
+| ACL della funzione | `=X` (PUBLIC) · `anon` · `authenticated` · `service_role` | `authenticated` · `service_role` |
+| `SECURITY DEFINER` aperte ad `anon` | **33** | **32** |
+
+⭐ **Due conferme indipendenti del 33 → 32**: il conteggio su `pg_proc` e il **linter**, che scende a
+**32 `anon_security_definer_function_executable`** (ERROR **0**, 99 avvisi in tutto) e non nomina più
+questa funzione fra le `anon` — solo fra le `authenticated`, dove è giusto che stia.
+📌 **`service_role` è sopravvissuto**, controllato apposta: è la trappola che la voce 36 incontrò
+**tre volte** in una sessione. Qui il grant era **esplicito in ACL**, quindi `revoke … from PUBLIC`
+non l'ha toccato — su `cudi…` sarebbe potuta andare diversamente, ma là questa funzione **non esiste**.
+📌 **Perimetro: PROD e basta, e non per fretta** — su `cudi…` le funzioni con questo nome sono **0**
+(misurato). Il contratto vive su un lato solo, quindi non c'era un gemello da cambiare insieme.
+
+*Il reperto com'era stato misurato:*
 
 Il corpo legge `assessment_tokens` e restituisce `member_name` e `status`. **Provato come `anon`** sul
 token debole che la 44 aveva già trovato: `get_assessment_token('MAURIZIO001')` → `ok: true`, un
@@ -672,17 +700,30 @@ feedback ricevuti» della **29519**, che sta in `<div id="matchHistory">` — un
 ⇒ Revocare `anon` lì **romperebbe una funzione che lo staff usa**. La cura giusta è prima portare la
 chiamata sulla sessione staff (`pmoStaffRpc`, come fanno le `*_admin`), **poi** revocare.
 
-**⑤ 🚨 E il censimento ha trovato una conseguenza della voce 44 che nessuno aveva scritto**
+**⑤ Il debito latente della voce 44 — 🚨 e la frase con cui l'avevo annunciato era FALSA**
 
 `get_self_assessments_by_tokens` è oggi `anon = false` / `authenticated = true` — la 44 ha fatto il
 suo lavoro, verificato: come `anon` risponde `permission denied for function`.
-⛔ **Ma l'app la chiama alla 29302 con la chiave anonima**, esattamente come la sua gemella del
-reperto C. ⇒ **Quella chiamata oggi prenderebbe 403.** Non se n'è accorto nessuno perché sta dentro
-`syncAssessmentResponsesFromSupabase`, che vive nella sezione **Autovalutazione congelata dal 13/06**
-(`PMO_ASSESSMENT_PARKED = true`, riga 10446: il tab è negato a tutti tranne la modalità pubblica).
-⚖️ **Non è un guasto vivo e non toglie niente alla 44**: la fuga è chiusa, ed era la cosa che
-contava. È un **debito latente** — il giorno in cui quella sezione si riaccende, la sincronizzazione
-delle risposte non parte. Sta scritto qui perché una cosa vera e non scritta è come non misurata.
+⛔ **Ma l'app la chiama con la chiave anonima** (`fetch` alla **29298**, `apikey`/`Bearer` alla
+**29302-29303**), esattamente come la sua gemella del reperto C. ⇒ **Quella chiamata oggi prenderebbe
+403.** Non è un guasto vivo perché sta dentro `syncAssessmentResponsesFromSupabase`, che vive nella
+sezione **Autovalutazione congelata dal 13/06** (`PMO_ASSESSMENT_PARKED = true`, riga 10446: il tab è
+negato a tutti tranne la modalità pubblica). È un **debito latente**: il giorno in cui quella sezione
+si riaccende, la sincronizzazione delle risposte non parte.
+
+🚨 **Ma l'avevo annunciato come «una conseguenza che nessuno aveva scritto», e non è vero.** Era
+scritta — **verbatim, nella migrazione stessa della voce 44**, sotto l'etichetta *«⚠️ EFFETTO NOTO:
+l'app chiama questa RPC come anon … dentro la sezione Autovalutazione CONGELATA»*, con tanto di
+numero di riga e la misura delle 42 righe di `self_assessments`.
+⚖️ **L'ho scoperto un'ora dopo, e nel modo più imbarazzante: leggendo quella migrazione per
+ricalcarla sul reperto A.** Cioè la risposta stava dentro il documento che stavo per copiare, e la
+mia frase l'aveva dichiarato inesistente **senza averlo aperto**. È la forma della 25ª ancora una
+volta — una conclusione *dedotta* («non l'ho vista nel registro» ⇒ «non l'ha scritta nessuno») da una
+premessa vera, e falsa.
+📌 **Quello che resta vero, e che vale la pena tenere**: la nota c'era **nella migrazione** e non nel
+**registro**, ed è un posto dove chi riapre la voce fra sei mesi non guarda. ⇒ Il debito è reale; a
+mancare era il *dove*, non il *se*. La frase sbagliata la lascio raccontata qui invece di
+cancellarla, perché l'errore è il reperto.
 
 **⑥ Cosa NON è stato fatto, e perché**
 
