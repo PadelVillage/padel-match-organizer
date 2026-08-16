@@ -507,7 +507,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **4** |
+| 📋 **In coda** | **5** |
 | 📦 **Chiuse** | **44** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
@@ -817,11 +817,11 @@ PIN più `pmo_admin_pin_ok` — allineate alla forma di PROD: `anon` sulle `SECU
 ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse.
 
 
-## 📋 IN CODA — 4
+## 📋 IN CODA — 5
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
-### C — Cose sapute e non risolte — 2
+### C — Cose sapute e non risolte — 3
 
 #### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
 
@@ -1028,6 +1028,44 @@ gestionale sono **cinque**, non uno — `create`, `leave`, `remove`, `add` (via 
 Gli altri quattro hanno la stessa `fetch` non protetta: `cancel` è innocuo (disdire due volte non
 fa danno, ed è scritto), `leave` e `remove` quasi; **`add` no** — un doppio può mettere in campo
 cinque giocatori, e lì la rete del «mai più di quattro» va verificata invece che data per buona.
+
+#### 54. 🔀 **SPOSTARE** una prenotazione: il bot non sa farlo, e manda in segreteria
+
+> 🗣️ **Messa in coda dal committente il 16/08/2026**, di sua iniziativa e a fine giornata:
+> *«non abbiamo ancora inserito modifica una prenotazione?»*. No — e non era nemmeno in lista.
+
+**Misurato, non ricordato.** Le azioni che il ponte del bot accetta sono **otto**, e stanno nella
+guardia che le filtra (`consumer-booking-write/index.ts:234`):
+
+```
+availability · availability_day · create · verifica · cancel · leave · remove · add
+```
+
+⇒ Guardare, prenotare, annullare, uscire da una partita, togliere un giocatore, aggiungerne uno.
+**Spostare** — altro giorno, altra ora, altro campo — **non c'è**, né fra le azioni del ponte né
+fra i sette strumenti del bot.
+
+🎯 **E il bot lo dichiara da sé**, in fondo a ogni conferma: *«Per spostarla, chiama la segreteria
+al +39 379 115 1472»*. Non è un buco dimenticato: è una porta che manda in segreteria, scritta.
+
+🚨 **PERCHÉ NON È UN'AZIONE IN PIÙ, ed è la ragione per cui la voce esiste invece di essere un
+lavoretto.** Il gestionale non ha un «sposta»: farlo vorrebbe dire **annullare e riprenotare**,
+cioè **due scritture al circolo** con in mezzo una finestra in cui:
+· il campo nuovo può essere preso da qualcun altro **mentre il vecchio è già perso**;
+· la seconda scrittura può restare **ignota** (il terzo esito della voce 53) — e lì il socio
+  resterebbe **senza campo** e senza sapere se ne ha uno.
+⚖️ È la stessa famiglia di problemi della voce 53, ma **con il verso peggiore**: là il rischio è
+una prenotazione **doppia**, qui una prenotazione **persa**. Un doppio si disdice; un buco no.
+
+📌 **Cosa andrebbe deciso prima di scriverne una riga**, e sono domande sue, non tecniche:
+① si prenota prima il nuovo e **solo se riesce** si annulla il vecchio (più sicuro, ma per un
+istante il socio ha **due** campi e potrebbe pagarne due)? oppure il contrario?
+② se il nuovo non è libero, il bot **tiene** il vecchio e lo dice — o chiede prima di toccare niente?
+③ e nel caso peggiore — vecchio annullato, nuovo fallito — chi rimedia: il bot che ritenta, o la
+segreteria?
+
+⛔ **Non si promuove da sé.** È scritta perché chi un giorno ci mette mano parta da queste tre
+domande e dal fatto che le scritture sono **due**, non una.
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 2
 
