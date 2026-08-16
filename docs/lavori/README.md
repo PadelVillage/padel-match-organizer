@@ -914,6 +914,23 @@ dell'export); un **«Ospite»** non ha mai una riga col suo nome; una prenotazio
 minuto** non compare (tre casi veri, 55-76 s). ⇒ Oltre un tetto il bot deve smettere di aspettare e
 dirlo, non tacere.
 
+🌙 **E ce n'è un QUARTO, trovato il 16/08 nella 29ª e che non stava in nessun documento: il sync ha
+una PAUSA NOTTURNA, 01:00-06:00 (Europe/Rome).** Letta **alla fonte** — sta nello scheduler,
+`supabase/manual-sql/supabase_pmo_data_routines_scheduler_prod.sql`, *«attivo SEMPRE tranne la pausa
+notturna»* — e i dati concordano: ultimo tick **22:58 UTC**, ripresa **04:02 UTC**, due notti su due
+agli stessi minuti. Clienti, storico e backup girano anche lì dentro: **sono solo le prenotazioni
+future a fermarsi**. ⇒ In quella finestra il tetto scade sempre senza verdetto, e la seconda risposta
+è «non lo so ancora».
+⚖️ **La sicurezza regge intera, ed è la metà che conta**: un «no» falso lì **non può uscire**, perché
+la certificazione di freschezza non arriva mai ⇒ si perde l'**utilità**, non la **verità**.
+🚨 **E la sonda per contarli è una trappola**, che ho evitato per un pelo: il registro dei dispatch
+nasce `status: 'dispatched'` e **non viene mai riscritto con l'esito** — il tick delle 22:28:00 del
+15/08, quello del worker caduto, dice `dispatched` come tutti gli altri. ⇒ **Da lì i guasti del
+worker non si contano**, e chi ne cercasse le righe `error` otterrebbe **zero** con la stessa
+sicurezza con cui otterrebbe la verità. Dei 103 buchi >3′ in 62 ore, **2** sono la notte e **101** la
+guardia anti-accavallamento: nessuno è un guasto. È la 24ª, evitata guardando *come* il registro
+viene scritto invece di fidarsi del fatto che rispondesse.
+
 🛠️ **La metà del gestionale è SCRITTA** *(16/08, su sua decisione: «il verdetto nel gestionale, con
 la freschezza»)*. `consumer-booking-write` ha l'azione **`verifica`**, che risponde già decisa —
 `si` / `no` / `non_ancora` più **`attendere`**, tenuto separato perché «aspetta e saprai» e «qui non
@@ -925,10 +942,39 @@ richiedere. **103 casi verdi**, 8 sabotaggi → 8 rossi. 🚨 Due casi su quindi
 a dirlo è stato il sabotaggio, non la rilettura: uno costruiva il proprio ingresso con la costante
 che doveva provare, l'altro contava una **grafia** invece dei punti.
 
-⛔ **Resta aperta, e le due cose che mancano sono dichiarate**: ① la verifica **sul bersaglio** —
-l'azione non è deployata, e il posto dove guardarla è `test-preview`, dove il calendario congelato
-esercita proprio il ramo pericoloso (deve dire `copia_ferma`, mai `no`); ② la metà del **bot** — il
-ciclo e il messaggio — nel repo privato `assistente-padel-agent`.
+🛠️🤖 **E il 16/08, 29ª sessione: LA METÀ DEL BOT È SCRITTA e sta in PR** — 📄 **#4** su
+`assistente-padel-agent`, ramo `claude/voce-53-ciclo-attesa`. `attesa-esito.ts` (il ciclo, tetto
+**15′** e domanda ogni **60″**), `verificaScrittura()` nel ponte, `scritta_alle` portato fino allo
+strumento, e l'aggancio su **entrambe** le strade — modello e bottoni, che sono due punti diversi e
+vanno tenute in pari. Banco **1004 verdi**, `tsc` pulito, **7 sabotaggi sul ciclo → 7 rossi**.
+🚨 E un ottavo sabotaggio ha trovato **un buco vero**: la rete che dovrebbe prendere un campo
+dimenticato nell'`outputSchema` Zod era **inerte** per il campo nuovo — tolto `scritta_alle`, 1004 su
+1004 lo stesso. L'avvertimento *«questa lista si aggiorna a mano»* era scritto lì sopra, ed è stato
+letto **dopo**. ⇒ **Un avvertimento scritto non è una rete**: la rete è il sabotaggio che lo prova.
+
+> 🗣️ **Decisione del committente, 16/08, 29ª sessione**, messo davanti a tre strade coi prezzi:
+> **l'attesa resta nel processo, e il limite si SCRIVE.**
+
+⛔ Vuol dire che il bot è un long polling senza scheduler ⇒ **un riavvio durante l'attesa la perde**.
+L'alternativa c'era — appoggiarla alla memoria su `ayly…`, che regge i riavvii — ed è stata scartata
+perché perdere l'attesa vuole **due rarità insieme** (un esito ignoto *e* un riavvio dentro quei 15
+minuti), mentre il pezzo in più andrebbe progettato, provato e deployato **prima** del collaudo.
+🚨 Perciò la via d'uscita a mano nel primo messaggio **non è ridondanza e non si toglie**: è l'unica
+che non dipende dal fatto che quel processo sia ancora vivo. ⚖️ Ed è scritta come **scelta** e non
+come residuo, di proposito: un limite che sembra una dimenticanza, prima o poi qualcuno lo «ripara»
+senza sapere cosa era stato pesato.
+
+⛔ **Resta aperta, e ciò che manca ADESSO è dichiarato — nessuna delle due si fa dal cloud**:
+① il **collaudo vero**, che vuole il worker **irraggiungibile**: fermarlo non basta, davanti c'è
+**Caddy** che risponde **502**, e un 502 *è* una risposta (📄 `docs/collaudo-voce-23-caduta-worker.md`);
+a Caddy fermo **nessuno prenota** ⇒ serve una finestra col circolo fermo, e le sue mani.
+② il **deploy in due tempi**: prima il bot di **prova** (`deploy-bot-hetzner.yml`, bersaglio `prova`,
+che è il predefinito), poi — **solo con un ok separato** — bersaglio `soci`, dove va scritta a mano
+la parola `SOCI`.
+⚠️ E il repo del bot **non ha CI**: l'unico workflow è il deploy, quindi i 1004 verdi sono girati in
+locale e **nessuna guardia li rigirerà sulla PR**.
+📌 La metà del **gestionale** è invece **deployata e viva**: `consumer-booking-write` è **v26 ACTIVE**
+su PROD (verificato il 16/08, non dedotto dal merge).
 🔄 **E su ② mi ero già sbagliato**: avevo scritto «dal cloud non si aggiorna, serve un `git pull` là
 sopra». La scheda della VM (#789) lo smentisce su due punti — le cartelle del bot **non sono
 repository git**, e l'aggiornamento si fa con **`deploy-bot-hetzner.yml`** (`workflow_dispatch`,

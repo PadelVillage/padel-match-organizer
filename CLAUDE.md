@@ -115,7 +115,17 @@ worker su Hetzner. ⇒ È un lavoro **dal Mac**, in coda come voce **A-lite**, n
 📌 Se un domani si riaccende: **non** copiare la funzione di PROD, che è quella *continua*. Su TEST
 cinque rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è la parità a costare.
 
-Anche il **bot Telegram non ha anteprima né sandbox**: è **un solo processo** sulla VM, e per
+🔄 **L'ANTEPRIMA DEL BOT ESISTE — e qui stava scritto il contrario** *(corretta il 16/08/2026)*.
+Sulla VM ci sono **DUE bot**, token diversi e cartelle diverse: `assistente-telegram` (i soci) e
+`assistente-telegram-prova`, che con `--verso-test` legge il gestionale di TEST e **ci scrive
+davvero**. Lo dicono due file che si leggono senza entrare sulla VM — la mappa dei bersagli di
+`deploy-bot-hetzner.yml` e `src/telegram/avvio-prova.ts`.
+⚖️ La frase vecchia sopravviveva a **quindici righe** dalla scheda della VM che il bot di prova lo
+**elenca**: due affermazioni vere in due momenti diversi, lasciate a contraddirsi nello stesso file.
+⇒ Quando una scheda nuova smentisce una riga vecchia, la riga vecchia **si corregge**, non si
+affianca — o il file smette di essere una fonte e diventa un archivio di versioni.
+
+⛔ **Ciò che non ha anteprima è il bot dei SOCI**: quello è **un solo processo** sulla VM, e per
 provarlo si sposta il suo `.env` fra TEST e PROD. 🚨⭐⭐ **Le righe sono TRE, non due**:
 `PMO_FUNCTIONS_URL`, `CONSUMER_BRIDGE_SECRET_FILE` e **`PMO_PRENOTAZIONI_SIMULA=1`** — e la terza
 si mette **prima** delle altre due. Verso TEST è l'**indirizzo** a far simulare le scritture,
@@ -215,6 +225,18 @@ circolo**, proprio nel caso per cui la cura serve.
 ⇒ **Il «no» si dice solo con la freschezza certificata dal gestionale** — un sync atterrato *dopo*
 la scrittura — altrimenti la risposta onesta è «non lo so ancora». È *il gestionale SA, il bot DICE*
 applicato alla freschezza: quanto sia fresca la copia **solo il gestionale** può saperlo.
+
+🌙 **E il sync ha una PAUSA NOTTURNA: 01:00-06:00 (Europe/Rome)** *(misurato il 16/08 — non stava in
+nessun documento)*. Sta scritto nello scheduler
+(`supabase/manual-sql/supabase_pmo_data_routines_scheduler_prod.sql`), e i dati concordano: ultimo
+tick 22:58 UTC, ripresa 04:02 UTC. Clienti, storico e backup girano anche lì dentro — **sono solo le
+prenotazioni future a fermarsi**. ⇒ In quella finestra ogni attesa scade senza verdetto, e la
+risposta è «non lo so ancora». ⚖️ **La sicurezza regge intera** — un «no» falso lì **non può uscire**,
+perché la certificazione di freschezza non arriva — quindi si perde l'**utilità**, non la **verità**.
+🚨 E la trappola della sonda, che è il pezzo da ricordare: il registro dei dispatch nasce
+`status: 'dispatched'` e **non viene mai riscritto con l'esito** ⇒ **da lì i guasti del worker non si
+contano**, e chi ne cercasse le righe `error` otterrebbe **zero** con la stessa sicurezza con cui
+otterrebbe la verità. La diagnostica sta in un record `_last`, che ne tiene **una sola**.
 
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
