@@ -227,6 +227,22 @@ dei ref remoti → `git fetch --prune`.
   che importa la CA del proxy nel magazzino NSS di Chromium. Il README lì dentro ha l'elenco e le
   **tre trappole del container**: senza quelle correzioni il sintomo è «il sito non risponde»
   mentre `curl` funziona benissimo, ed è una mezza giornata buttata a cercarlo nell'app.
+  ✅⭐ **SI USA IN AUTONOMIA, non si chiede il permesso ogni volta, e vale SU TUTTI E DUE GLI
+  AMBIENTI** — autorizzazione del committente del **16/08/2026**: *«quando ti serve puoi andarla a
+  leggere, sia in test che in prod»*.
+  ⇒ Davanti a una domanda sull'app viva — «cosa mostra davvero il calendario?», «questa funzione c'è
+  su `window`?», «di là e di qua rispondono uguale?» — la strada è **aprirla e guardare**, non
+  scrivere «da qui non si può» né girare la domanda a lui.
+  ⭐ **PROD compresa, ed è detto apposta**: è l'ambiente su cui verrebbe più spontaneo chiedere, ed
+  è anche quello dove sta la verità che serve — i dati veri, i soci veri, il difetto che il socio
+  vede davvero. Una console autorizzata solo su TEST avrebbe lasciato fuori metà delle diagnosi,
+  visto che il calendario di TEST è **congelato** e mostra il passato.
+  ⚖️ È la cura della 26ª messa in regola: un limite dichiarato che nessuno ha provato resta vero per
+  sempre, perché sembra prudente e nessuno lo ricontrolla. Chiedere il permesso per ogni lettura
+  produceva esattamente quelle rinunce.
+  🚨 **L'autonomia copre le LETTURE, non `--allow-writes`**: quel flag resta a domanda, e su PROD a
+  maggior ragione. La divisione non è mia — è la stessa che l'attrezzo fa da sé mettendo le
+  scritture dietro un interruttore esplicito.
   🚨 **Di default non scrive**: bloccati PATCH/PUT/DELETE, gli insert e **tutto `/functions/v1/`**,
   che è la strada verso il worker condiviso e quindi verso il **Matchpoint vero**. `--allow-writes`
   disarma la guardia, e su PROD vuol dire scrivere sul serio.
