@@ -257,7 +257,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **4** |
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **33** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -424,7 +424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 4
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -472,6 +472,79 @@ non muore con la voce** — sta in `docs/voce-14-sonda-chiavi-ospite.md` con la 
 settimane, ed è lei a dire quando riaprirla.
 ⇒ **Urgenti da 3 a 1.** Resta la sola **43**, e non è «esegui»: è **una decisione tua** — quale delle
 due cure dare alla finestra scoperta dell'annullo, sapendo che si prova solo dal Mac.
+
+### 44. 🚨 La porta di servizio dell'autovalutazione: `get_self_assessments_by_tokens` legge NOME e TELEFONO ad `anon`
+*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 15ª — dove stava
+come nota di due righe.* 🔬 **Misurata sul bersaglio prima di scriverla, e la nota diceva molto meno
+di quello che c'è.**
+
+🎯 **Il fatto, provato eseguendo — non dedotto dai grant.** La funzione è `SECURITY DEFINER`, di
+proprietà di `postgres`, con `EXECUTE` a **`anon`, `authenticated` e PUBLIC** (`=X/postgres`).
+Eseguita **come `anon`** dentro una transazione annullata, restituisce per ogni token passato:
+`first_name`, `last_name`, **`phone`**, i livelli dichiarato e calcolato e l'intero `raw_response`.
+
+✅ **Controllo negativo fatto, e cade bene**: la lettura **diretta** di `self_assessments` come `anon`
+vede **0 righe** — la tabella ha RLS attivo e **zero policy**. ⇒ La porta chiusa il 12/08 è chiusa
+davvero, e **questa RPC è l'unica finestra rimasta aperta accanto**. Non è una porta fra tante: è
+*la* strada.
+
+🚨 **E su PROD esiste un token INDOVINABILE.** Fra i 1364 token, 989 sono da 14 caratteri e 369 sono
+`GM-<uuid>` — non forzabili. Ma **cinque no**: `TEST123`, `TEST456`, `TEST789` e **`MAURIZIO001`**.
+Quattro non hanno una riga in `self_assessments`; **`MAURIZIO001` sì**, ed è **un socio vero, con
+nome, cognome e numero di telefono**, del 25/04. ⇒ Chiunque, dalla rete, con la sola chiave
+pubblicabile e indovinando quella parola, si porta via il recapito di una persona reale.
+
+⚖️ **La misura di quanto è grande**: la riga raggiungibile per tentativi è **una**. Non è una fuga di
+massa — è una fessura stretta, ma su **dati personali veri** e in **produzione**.
+📌 **Stessa forma su TEST** (`cudi…`): identica `SECURITY DEFINER`, stessi grant, RLS attivo, **0
+policy**, **7 righe**. Il contratto vive sui due lati e va cambiato insieme.
+📏 **E non è sola**: le `SECURITY DEFINER` eseguibili da `anon` su PROD, ricontate oggi, sono **34**
+(la nota della 15ª ne diceva 47 — il numero si è mosso, quindi si riconta e non si ricopia). Questa è
+**una** di quelle 34, ed è l'unica che qualcuno abbia letto riga per riga. ⚠️ **Le altre 33 restano
+non guardate**: questa voce non le copre, e dirlo fa parte della misura.
+
+⛔ **Non è stato toccato NIENTE**, ed è deliberato: revocare un `EXECUTE` cambia il comportamento di
+PROD, e la riga di `MAURIZIO001` è **un dato di una persona**, non rumore di prova. ⇒ **Le due
+decisioni sono sue**, e sono separate: *(a)* cosa fare della funzione — revocare `anon`/PUBLIC,
+oppure lasciarla e stringere i token; *(b)* cosa fare di quella riga e di quel token, sapendo che
+**prima va misurato cosa ci punta**.
+
+### 45. 🕳️ `fetchAssessmentRawResponsesByTokens`: una lettura che non può riuscire — dentro una stanza già chiusa
+*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 15ª.*
+
+🔎 **Il fatto, confermato**: è una `GET` a `/rest/v1/self_assessments` con la **chiave pubblicabile**,
+su una tabella con RLS attivo e **zero policy** ⇒ risponde **200 con lista vuota, sempre**, e il
+chiamante ha un `catch` che tace. Una lettura che non può riuscire e non lo dice a nessuno.
+
+🚨 **Due cose della nota NON tornano, e sono scritte qui invece che corrette di nascosto:**
+
+| la nota diceva | la misura |
+|---|---|
+| «riga **29939**» | la funzione è alla **29214**, la `fetch` alla **29223** |
+| «ci sono solo le **3 di INSERT**» | le policy sono **ZERO** ⇒ su quella tabella, oggi, `anon` non può nemmeno **scrivere** |
+
+⚖️ **E il contesto che la nota non poteva avere cambia il valore del lavoro**: `self_assessments` ha
+**42 righe, l'ultima del 23/06, zero negli ultimi 30 giorni** — perché la sezione Autovalutazione è
+**congelata dal 13/06** (`PMO_ASSESSMENT_PARKED = true`, nascosta a tutti). ⇒ È **un vicolo cieco
+dentro una stanza in cui non entra nessuno**: esattamente la forma che la 20ª aveva già incontrato,
+quando un fix rifiniva una stanza chiusa. Il lavoro qui non è ripararla: è **decidere se togliere il
+codice morto**, e la domanda vera resta quella di allora — *a cosa serviva*.
+
+### 46. 🔁 `livello.autovalutazione_url`: rimasta su TEST e non su PROD — la voce 31 al rovescio
+*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 14ª.*
+
+🔬 **Confermata sul bersaglio, e vive nel database e non nel codice** (`pmo_ai_settings`, chiave
+`assistant_kb`): su **TEST** il valore **cita** `autovalutazione_url`, su **PROD** no. Le due copie
+sono state toccate **lo stesso giorno a un minuto di distanza** — PROD 14/08 11:56, TEST 14/08 11:55
+— e differiscono di **80 caratteri** (6249 contro 6169), quanto una voce in più.
+
+⚖️ **Perché conta pur non facendo danno**: nessuno la legge (nel codice non c'è nemmeno più il nome),
+quindi non rompe niente — **ma sta nella kb che va in pasto al modello**, e punta a una pagina di una
+sezione congelata. Su PROD fu tolta il 9/08, ed è quel gesto ad aver prodotto
+`pmo_bkp_kb_livello_20260809`; su TEST **no**.
+📌 **È la voce 31 al rovescio**: là il pezzo mancava su PROD, qui avanza su TEST. È il lavoro più
+piccolo dei tre — una `update` su un solo progetto — ma tocca ciò che il modello legge, quindi è
+**una scrittura su TEST**, non una pulizia di forma.
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
@@ -658,6 +731,8 @@ Misurando il **14/08** nella 14ª sessione, chiudendo la voce 24:
   stamattina ho acceso l'RLS — su TEST **no**. Nessuno la legge (grep: solo il commento), quindi non
   fa danno; ma sta nella kb che va **in pasto al modello**. ⚖️ **È la forma esatta della voce 31**, e
   stavolta al contrario: il pezzo mancante sta su PROD. Non l'ho toccata — non è la 24.
+  ⬆️ **Promossa da lui il 16/08: è la voce 46**, e là è **rimisurata**: vive in `pmo_ai_settings`
+  (chiave `assistant_kb`), non nel codice.
 
 Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
 
@@ -667,14 +742,24 @@ Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
   `200` con lista **vuota**, sempre, e il chiamante ha un `catch` che tace. Non l'ho toccata: non è
   la voce 27, e va capito **a cosa serviva** prima di decidere se ripararla o toglierla. ⚠️ Non
   guardato se su TEST si comporta uguale.
+  ⬆️ **Promossa da lui il 16/08: è la voce 45** — dove **due numeri di questa nota risultano falsi**
+  (la riga è la 29214/29223, non la 29939; e le policy non sono «3 di INSERT», sono **zero**), e dove
+  è scritto il contesto che qui mancava: la sezione è **congelata dal 13/06**.
 
 - 🔎 **`get_self_assessments_by_tokens` è `SECURITY DEFINER` eseguibile da `anon`**, quindi
   scavalca anche lei la chiusura della lettura del 12/08. **Non toccata di proposito**: l'app la
   usa davvero (`index.html:30062`, ed è la strada che funziona mentre la GET REST accanto non può)
   e vuole i **gettoni in ingresso**, che non si rastrellano più. È un fatto da sapere, non un buco
   aperto — ma è la terza funzione della stessa famiglia, e la famiglia andava guardata tutta.
+  ⬆️ **Promossa da lui il 16/08: è la voce 44** — e là **la conclusione di questa nota è ribaltata**.
+  «Non un buco aperto» reggeva su *«vuole i gettoni in ingresso»*: vero, ma su PROD **un gettone è
+  indovinabile** (`MAURIZIO001`) e dietro c'è **un socio vero col telefono**. Provata **eseguendo la
+  funzione come `anon`**, non leggendo i grant. 📌 Anche la riga è sbagliata: la chiamata è alla
+  **29316**, non alla 30062.
 - 🧮 **Le funzioni `SECURITY DEFINER` chiamabili da `anon` su PROD sono 47**, e due erano quelle
   della voce 27. Il linter le segnalava **tutte e 47 da sempre**, con lo stesso identico titolo:
+  📏 **Rimisurate il 16/08: oggi sono 34, non 47.** Il numero si è mosso (le potature delle sessioni
+  16ª e 19ª), quindi non va ricopiato: si riconta. Una di queste 34 è la **voce 44**.
   ⚠️ nessuno le ha mai lette una per una. Le altre 45 **non sono state guardate** — questa è una
   campionatura di due, esattamente come le tabelle divergenti di ieri.
 
