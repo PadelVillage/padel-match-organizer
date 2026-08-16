@@ -822,12 +822,32 @@ dell'export); un **«Ospite»** non ha mai una riga col suo nome; una prenotazio
 minuto** non compare (tre casi veri, 55-76 s). ⇒ Oltre un tetto il bot deve smettere di aspettare e
 dirlo, non tacere.
 
+🛠️ **La metà del gestionale è SCRITTA** *(16/08, su sua decisione: «il verdetto nel gestionale, con
+la freschezza»)*. `consumer-booking-write` ha l'azione **`verifica`**, che risponde già decisa —
+`si` / `no` / `non_ancora` più **`attendere`**, tenuto separato perché «aspetta e saprai» e «qui non
+si saprà mai» sono due `non_ancora` diversissimi. Il «no» esce **solo** se un giro di sync è
+atterrato oltre `scritta_alle + 150 s`; la regola sta in `esito-scrittura.ts`, non nel bot. ⛔ Non
+scrive niente e **non chiama il worker**: è la sua ragione d'essere. ⭐ E il giro si chiude: ogni
+`esito_ignoto` ora consegna **`scritta_alle` e `slot`**, senza i quali il bot non aveva con che cosa
+richiedere. **103 casi verdi**, 8 sabotaggi → 8 rossi. 🚨 Due casi su quindici sono nati **inerti** e
+a dirlo è stato il sabotaggio, non la rilettura: uno costruiva il proprio ingresso con la costante
+che doveva provare, l'altro contava una **grafia** invece dei punti.
+
+⛔ **Resta aperta, e le due cose che mancano sono dichiarate**: ① la verifica **sul bersaglio** —
+l'azione non è deployata, e il posto dove guardarla è `test-preview`, dove il calendario congelato
+esercita proprio il ramo pericoloso (deve dire `copia_ferma`, mai `no`); ② la metà del **bot** — il
+ciclo e il messaggio — che vive nel repo privato, gira in pm2 sulla VM e **dal cloud non si
+aggiorna**: è lavoro dal Mac.
+
 🔬 **`add`: la rete del «mai più di quattro» NON ferma il doppio — verificato ESEGUENDO**, non letto.
 Con la copia ferma a 3 il secondo `add` scrive e il quinto entra; il controllo «ci sei già» non lo
 vede. La causa non è la rete scritta male: **tutte** le sue fonti sono la copia — anche la «scheda
 del circolo», che è il campo `descrizione` delle righe sincronizzate. ⭐ Controprova positiva fatta:
-con 4 nella copia la rete risponde `al_completo`, quindi non è inerte. ⚠️ E la `fetch` di `add`
-(`index.ts:1371`) resta **fuori dal try/catch**, come `create` prima del 16/08.
+con 4 nella copia la rete risponde `al_completo`, quindi non è inerte. ✅ **La via scoperta è
+chiusa** (sua decisione, stessa sessione): la `fetch` di `add` è ora in `try/catch` e risponde
+`esito_ignoto`. ⚠️ **Non chiude la staleness**: la rete conta ancora sulla copia, e il caso sta nel
+banco come **limite dichiarato** — il giorno che `add` rileggesse la scheda dal vivo, quel caso
+diventa rosso, ed è il segnale che il limite è stato chiuso.
 
 📌 **Perimetro da guardare quando la si apre**: i punti in cui `consumer-booking-write` chiama il
 gestionale sono **cinque**, non uno — `create`, `leave`, `remove`, `add` (via `bookings-edit`) e

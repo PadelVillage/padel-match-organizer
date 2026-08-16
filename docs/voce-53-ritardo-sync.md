@@ -220,19 +220,78 @@ errore di rete lì non diventa `esito_ignoto`: fa saltare la funzione.
 
 ---
 
-## 8. Cosa se ne fa la voce 53 (proposta, non decisione)
+## 8. Cosa è stato COSTRUITO con questa misura
 
-1. **L'attesa non è un numero solo**: è *«fino a quando un sync è atterrato dopo la scrittura»*,
-   con un tetto. Il massimo misurato è **604 s**; il tetto naturale è il **giro pieno da 15
-   minuti**, che è la cadenza programmata più larga.
-2. **Il verdetto lo dà il gestionale, non il bot.** Un solo punto di ingresso che risponde
-   `si` / `no` / `non_ancora`, dove `no` viene emesso **solo** con la freschezza verificata. Il
-   bot chiede e ripete; non calcola.
-3. **I confini del §5 vanno nella risposta**, non lasciati scoprire al bot: oltre 30 giorni e per
-   gli ospiti la copia non risponderà mai, e va detto subito invece di far aspettare.
-4. `add` va protetto come `create` (§7) — ed è lavoro a sé, perché lì non basta il terzo esito:
-   serve che la rete non conti su un dato vecchio.
+> 🗣️ **Decisione del committente, 16/08**: il verdetto sta **nel gestionale, con la freschezza
+> dentro** — non nel bot; e `add` si cura **nella stessa sessione**.
 
-📌 **Il punto 2 non è una preferenza di stile**: è la regola d'architettura del 16/08 applicata
-alla lettera — *il gestionale SA, il bot DICE*. La freschezza del sync è una cosa che **solo** il
+### 8.1 L'azione `verifica` di `consumer-booking-write`
+
+Un punto d'ingresso solo, che risponde **già deciso**. Il bot chiede e ripete; non calcola —
+è la regola del 16/08 alla lettera, e la freschezza del sync è una cosa che **solo** il
 gestionale può sapere.
+
+**Richiesta**: `action: 'verifica'`, più lo slot (`data`, `ora`, `campo`) e `scritta_alle`.
+**Risposta**:
+
+| campo | cosa |
+|---|---|
+| `esito` | `si` · `no` · `non_ancora` |
+| `motivo` | `trovata` · `fuori_finestra` · `istante_ignoto` · `copia_muta` · `copia_aggiornata_dopo` · `copia_ferma` |
+| `attendere` | ha senso richiedere fra un po'? ⭐ **separato dall'esito di proposito**: «aspetta e saprai» e «qui non si saprà mai» sono due `non_ancora` diversissimi, e dirli con la stessa parola manderebbe il bot ad aspettare a vuoto |
+| `copia_fresca_al`, `scritta_alle` | i due istanti, **sempre**, così il verdetto si può rifare a mano leggendo i log |
+
+⛔ **Non scrive niente e non chiama il worker.** È la sua ragione d'essere: legge una copia, e
+una copia risponde anche a worker morto — vecchia, ma risponde.
+
+**La regola** (`esito-scrittura.ts`), e l'ordine **è** la funzione:
+1. la riga c'è → `si`. Prima di tutto, perché nessun sync inventa una prenotazione: che la copia
+   sia fresca o stantia non cambia niente;
+2. slot oltre i 30 giorni → `non_ancora` / `fuori_finestra`, **`attendere: false`**;
+3. senza istante di scrittura, o senza copia → `non_ancora`, mai un «no»;
+4. un giro atterrato oltre **`scritta_alle + 150 s`** → **`no`**;
+5. altrimenti → `non_ancora` / `copia_ferma`.
+
+⚖️ **Il margine di 150 s non è la durata tipica** (il massimo misurato dei giri riusciti è 31 s):
+quando l'esito è ignoto il worker si è **piantato**, quindi quella durata non lo limita. Si prende
+il tetto **strutturale** — i 150 s oltre i quali l'edge viene uccisa comunque — perché sbagliare
+in eccesso costa un «non ancora» in più, sbagliare in difetto produce **un «no» falso**.
+
+### 8.2 Il giro si chiude: `esito_ignoto` consegna con che cosa richiedere
+
+Ogni «non lo so» (i due di `create` e quello nuovo di `add`) ora torna con **`scritta_alle` e
+`slot`**. Senza, il ponte era a metà: `verifica` esisteva e il bot non aveva l'istante con cui
+chiamarla. 🚨 E l'istante si prende **prima** della `fetch`: uno preso al ritorno è già in
+ritardo, e un riferimento in ritardo fa scattare il «no» troppo presto.
+
+### 8.3 `add` non salta più
+
+La `fetch` di `add` è ora in `try/catch` e risponde `esito_ignoto` invece di far esplodere la
+funzione in un 500. ⚠️ **Non chiude il limite del §7**: la rete del «mai più di quattro» conta
+ancora sulla copia. Toglie la via scoperta, non la staleness.
+
+### 8.4 Il banco
+
+**103 casi verdi** in `consumer-booking-write` (21 + **15 nuovi** + 18 + 49), e gli 8 sabotaggi
+della tabella in fondo a `esito-scrittura.test.ts` fanno **8 rossi**.
+
+🚨 **Due casi su quindici sono nati INERTI, e a dirlo è stato il sabotaggio, non la rilettura**:
+① il caso della finestra costruiva il proprio ingresso con `FINESTRA_SYNC_GIORNI` — la costante
+che doveva provare — e allargandola a 60 si spostava anche lui, restando verde col difetto
+acceso; ② il caso del giro chiuso contava il letterale `reason: 'esito_ignoto'` e ne trovava 2 su
+3, perché un ramo lo scrive in forma condizionale: contava una **grafia**, non i punti.
+⇒ È la 20ª nella forma della 24ª, due volte nella stessa mezz'ora.
+
+---
+
+## 9. Cosa manca per chiudere la voce
+
+1. ⛔ **La verifica SUL BERSAGLIO**: l'azione non è ancora deployata. Il posto dove ci si ferma a
+   guardare è **`test-preview`** (traccia C), e su TEST il caso interessante è proprio quello
+   pericoloso — il calendario è **congelato**, quindi `verifica` deve rispondere
+   `non_ancora / copia_ferma` e **mai** `no`. È il ramo che vale la pena vedere eseguito.
+2. ⛔ **La metà del bot**: il ciclo che richiede e il messaggio al socio. Vive nel repo privato
+   `assistente-padel-agent`, gira in **pm2 sulla VM Hetzner** e **da una sessione cloud non si
+   aggiorna** — serve un `git pull` là sopra. È lavoro **dal Mac**.
+3. 📌 **Il tetto dell'attesa lo decide chi scrive il bot**: il massimo misurato è **604 s**, il
+   tetto naturale è il **giro pieno da 15 minuti**, che è la cadenza programmata più larga.
