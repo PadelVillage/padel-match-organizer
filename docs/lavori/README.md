@@ -503,11 +503,33 @@ policy**, **7 righe**. Il contratto vive sui due lati e va cambiato insieme.
 **una** di quelle 34, ed è l'unica che qualcuno abbia letto riga per riga. ⚠️ **Le altre 33 restano
 non guardate**: questa voce non le copre, e dirlo fa parte della misura.
 
-⛔ **Non è stato toccato NIENTE**, ed è deliberato: revocare un `EXECUTE` cambia il comportamento di
-PROD, e la riga di `MAURIZIO001` è **un dato di una persona**, non rumore di prova. ⇒ **Le due
-decisioni sono sue**, e sono separate: *(a)* cosa fare della funzione — revocare `anon`/PUBLIC,
-oppure lasciarla e stringere i token; *(b)* cosa fare di quella riga e di quel token, sapendo che
-**prima va misurato cosa ci punta**.
+---
+
+✅ **CURATA il 16/08, su sua autorizzazione: `REVOKE EXECUTE … FROM anon, PUBLIC` sui DUE progetti.**
+Il grant ad `authenticated` **resta**: sparisce l'accesso *senza credenziali*, non quello dello staff.
+
+🔬 **Provata prima e dopo, e su TEST prima che su PROD** — non dichiarata:
+
+| | `anon` prima | `anon` dopo | `authenticated` dopo |
+|---|---|---|---|
+| **TEST** (`cudi…`) | **3 righe** | **42501** `permission denied for function` | **3 righe** |
+| **PROD** (`qqbf…`) | **1 riga** — nome, cognome, telefono di `MAURIZIO001` | **42501** | **1 riga** |
+
+✅ **La controprova positiva è stata fatta apposta**, perché senza di essa «blocca tutto» si legge
+come «funziona»: la strada legittima **passa ancora**, di qua e di là.
+✅ **E una conferma indipendente, che non veniva dalla stessa sonda**: le `SECURITY DEFINER`
+eseguibili da `anon` su PROD sono passate da **34 a 33**. Si è chiusa **una** porta, ed è quella.
+↩️ Migrazione **reversibile**, con l'SQL di ripristino **verbatim** in testa (le due `GRANT`), su
+entrambi i progetti. Nessuna riga di dati toccata: tutte le prove d'attacco in transazioni annullate.
+
+⚠️ **Residuo dichiarato, e NON è stato fatto**: il gettone `MAURIZIO001` — e i quattro `TEST*` senza
+riga — **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco;
+restano un **gettone debole**. ⛔ Non l'ho toccato di proposito: dietro c'è **il dato di una persona
+reale**, e prima di cancellare va misurato **cosa ci punta** — che è una decisione sua, non
+manutenzione.
+⚠️ **E ciò che questa voce NON copre**: le **altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è
+l'unica letta riga per riga. Le altre non sono state guardate, ed è scritto perché nessuno legga
+«famiglia bonificata».
 
 ### 45. 🕳️ `fetchAssessmentRawResponsesByTokens`: una lettura che non può riuscire — dentro una stanza già chiusa
 *Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 15ª.*
