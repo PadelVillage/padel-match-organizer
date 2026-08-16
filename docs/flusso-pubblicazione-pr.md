@@ -82,25 +82,30 @@ Vale per i file in `mockup/` e per i documenti in `docs/`.
 2. Maurizio fa il merge su **`main`** via Pull Request, controllando i "Files changed" (solo i file attesi).
 3. La pubblicazione del mockup avviene da `main` (GitHub Pages).
 
-**Eccezione (commit diretto su `main`):** le modifiche **solo CSS/grafiche** e i **documenti** (`docs/`) possono andare direttamente su `main` — commit diretto o `Add file → Upload files` fatto a mano — senza Pull Request. Restano comunque soggette ai controlli di sicurezza qui sotto.
+⛔ **NON esiste una corsia diretta su `main`: NESSUNO può spingerci senza Pull Request** — né
+l'agente né Maurizio, né per i documenti né per una modifica solo grafica. Fino al **16/08/2026**
+qui c'era scritto il contrario — *«le modifiche solo CSS/grafiche e i documenti (`docs/`) possono
+andare direttamente su `main`, commit diretto o `Add file → Upload files`, senza Pull Request»* — ed
+era **falso per tutti**.
 
-> 🚨 **QUESTA CORSIA VELOCE, PER L'AGENTE, È CHIUSA — misurato provandoci il 16/08/2026**, e proprio
-> nel momento in cui serviva: un rosso da riparare, **una riga** di un documento. GitHub ha risposto
-> `GH013: Repository rule violations` — *«Changes must be made through a pull request»* più il check
-> `guard-main` obbligatorio. La regola guarda il **ramo**, non i file: non sa cosa sia un documento.
-> ⇒ **L'agente passa sempre da una PR**, anche per una virgola in `docs/`.
->
-> ⚠️ **E per Maurizio? NON verificato.** Le regole di GitHub possono avere una lista di chi le
-> scavalca, e il proprietario di solito ci sta dentro: quindi questa riga può essere **vera per lui
-> dal sito** e falsa per l'agente. Si guarda in `Settings → Rules`, ed è una cosa sua.
->
-> 📊 Quello che la storia dice: negli ultimi **84** commit di `main`, **54** sono entrati con
-> *squash* da PR, **30** da PR mergiate con *merge commit*, e **zero** spinti dritti. ⇒ Questa
-> corsia **non l'ha mai usata nessuno** — il che spiega perché nessuno si era accorto che per
-> l'agente non funziona, ma **non dimostra** che lui non potrebbe.
->
-> ⚖️ La riga resta **com'è finché non decide lui**: l'errore da non rifare è correggerla su una
-> deduzione, che è esattamente come ci si è arrivati.
+📊 **Misurato in DUE modi indipendenti, lo stesso giorno.**
+① **Provandoci**, e proprio nel momento in cui quella corsia sarebbe servita — un rosso da riparare,
+**una riga** di un documento: GitHub ha risposto `GH013: Repository rule violations`, *«Changes must
+be made through a pull request»*, più il check `guard-main` obbligatorio.
+② **Guardando la regola**: il ruleset che protegge `main` è **Active**, il suo bersaglio è il ramo
+predefinito, e la sua **Bypass list è VUOTA** — nessun ruolo, nessun'app, nessuna persona, **nemmeno
+il proprietario**.
+
+⚖️ **Perché ci sono voluti due modi, ed è la lezione che vale più della riga.** Dal solo rifiuto si
+sapeva che la corsia è chiusa **per l'agente**, e sembrava ovvio concluderne che lo fosse per tutti:
+non lo era. Le liste di scavalco esistono apposta, e il proprietario di solito ci sta dentro. ⇒ Per
+mezza giornata qui è rimasta scritta la frase *«per Maurizio NON verificato»*, che è brutta da
+leggere ma vera — finché la verifica non è stata fatta. **Correggere un documento su una deduzione è
+il modo in cui quel documento era diventato falso la prima volta.**
+
+📌 E il fatto collaterale che la storia conferma: **84** commit su `main` — **54** con *squash* da
+PR, **30** da PR con *merge commit*, **zero** spinti dritti. Quella corsia non era chiusa da poco:
+**non l'aveva mai percorsa nessuno**, ed è per questo che nessuno si era accorto che non esisteva.
 
 ⚠️ **Ma `docs/` sta sotto `guard-worker-sync`**: la stessa modifica va messa **anche su `test-preview`**, altrimenti la guardia trova i rami diversi e diventa rossa. E vale l'ordine del punto 4bis del `CLAUDE.md` — **prima `test-preview`, poi `main`** — così la finestra rossa, se capita, cade sul ramo che non è quello predefinito.
 
