@@ -428,7 +428,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **3** |
+| 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **44** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **La 27ª non ha toccato `index.html`**: le versioni sono quelle della 26ª, **rimisurate dal server** (PROD **6.234**, TEST **6.243**), non ricopiate. Il lavoro è stato tutto sui **permessi del database di TEST**: 12 `SECURITY DEFINER` allineate a PROD, `anon` da 32 a 20.
