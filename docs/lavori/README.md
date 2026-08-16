@@ -799,14 +799,60 @@ scrive al socio un sì o un no **veri**.
 voce 23 nel gestionale va a guardare **su Matchpoint**, cioè per la **stessa strada** che è appena
 caduta — sta scritto nel codice, misurato il 14/08 con Caddy fermo: *«il primo tentativo è, per
 costruzione, quello con meno probabilità di riuscire»*. Il bot invece leggerebbe **la copia del
-gestionale**, alimentata dal **sync**, che è un processo a sé e **non passa dal worker**: quando il
-worker è giù, quella strada funziona ancora. ⇒ Non è una copia della cura dell'app: è la sua
-versione senza il difetto.
+gestionale**, e una copia **risponde sempre**, anche a worker morto. ⇒ Non è una copia della cura
+dell'app: è la sua versione senza il difetto.
 
-🚨 **La misura che manca, e va fatta PRIMA di scrivere una riga**: il **ritardo peggiore del sync**
-delle prenotazioni su PROD. È il numero che decide quanto il bot deve aspettare prima di poter dire
-«no» senza sbagliare — e oggi non è stato misurato da nessuno. Senza, si sceglierebbe un'attesa **a
-ricordo**, che è esattamente ciò che la 25ª ha insegnato a non fare.
+✅ **LA MISURA CHE MANCAVA È STATA FATTA** *(16/08, 28ª sessione — 📄 [`docs/voce-53-ritardo-sync.md`](../voce-53-ritardo-sync.md))*.
+Nell'assetto di oggi una prenotazione atterrata su Matchpoint compare nella copia del gestionale in
+**~2 minuti di mediana** e al massimo misurato in **10′04″** (604 s, su 43 creazioni dal 28/07; per
+il solo *slot* il massimo è 432 s). La mediana **è** il cron da 2 minuti, e il codice lo conferma:
+l'export copre `oggi…+30 giorni` a **ogni** tick, non solo ai giri pieni.
+
+🚨 **E la misura ha smentito una riga che stava scritta qui sopra: il sync PASSA dal worker**
+(`matchpoint-bookings-sync` → `/export-booking-history`). ⇒ **Worker giù = copia congelata**, ed è
+già successo: la notte del 15/08 il sync registrava `MATCHPOINT_BROWSER_WORKER_FAILED` alle 22:28:02,
+**un minuto prima** che l'app risolvesse a mano l'esito ignoto delle 22:27:16. ⚖️ La voce non cade —
+il bot una risposta ce l'ha comunque, l'app no — ma **l'assenza dalla copia non prova l'assenza dal
+circolo**, proprio nel caso per cui la cura è scritta. ⇒ Il «no» si può dire **solo** se il
+gestionale certifica che un sync è atterrato **dopo** la scrittura; altrimenti la risposta onesta è
+«non lo so ancora». È *il gestionale SA, il bot DICE* applicato alla freschezza.
+
+🚧 **Tre confini duri, misurati**: oltre **30 giorni** la prenotazione non comparirà mai (finestra
+dell'export); un **«Ospite»** non ha mai una riga col suo nome; una prenotazione **disdetta entro un
+minuto** non compare (tre casi veri, 55-76 s). ⇒ Oltre un tetto il bot deve smettere di aspettare e
+dirlo, non tacere.
+
+🛠️ **La metà del gestionale è SCRITTA** *(16/08, su sua decisione: «il verdetto nel gestionale, con
+la freschezza»)*. `consumer-booking-write` ha l'azione **`verifica`**, che risponde già decisa —
+`si` / `no` / `non_ancora` più **`attendere`**, tenuto separato perché «aspetta e saprai» e «qui non
+si saprà mai» sono due `non_ancora` diversissimi. Il «no» esce **solo** se un giro di sync è
+atterrato oltre `scritta_alle + 150 s`; la regola sta in `esito-scrittura.ts`, non nel bot. ⛔ Non
+scrive niente e **non chiama il worker**: è la sua ragione d'essere. ⭐ E il giro si chiude: ogni
+`esito_ignoto` ora consegna **`scritta_alle` e `slot`**, senza i quali il bot non aveva con che cosa
+richiedere. **103 casi verdi**, 8 sabotaggi → 8 rossi. 🚨 Due casi su quindici sono nati **inerti** e
+a dirlo è stato il sabotaggio, non la rilettura: uno costruiva il proprio ingresso con la costante
+che doveva provare, l'altro contava una **grafia** invece dei punti.
+
+⛔ **Resta aperta, e le due cose che mancano sono dichiarate**: ① la verifica **sul bersaglio** —
+l'azione non è deployata, e il posto dove guardarla è `test-preview`, dove il calendario congelato
+esercita proprio il ramo pericoloso (deve dire `copia_ferma`, mai `no`); ② la metà del **bot** — il
+ciclo e il messaggio — nel repo privato `assistente-padel-agent`.
+🔄 **E su ② mi ero già sbagliato**: avevo scritto «dal cloud non si aggiorna, serve un `git pull` là
+sopra». La scheda della VM (#789) lo smentisce su due punti — le cartelle del bot **non sono
+repository git**, e l'aggiornamento si fa con **`deploy-bot-hetzner.yml`** (`workflow_dispatch`,
+bersaglio `soci`), cioè **da GitHub Actions**, che da qui si raggiunge. Ciò che resta fuori portata è
+**entrare sulla VM**: esce solo la 443. ⚖️ Un «non si può» scritto senza provarlo, dodici ore dopo che
+la 26ª l'aveva messo in `CLAUDE.md` come lezione.
+
+🔬 **`add`: la rete del «mai più di quattro» NON ferma il doppio — verificato ESEGUENDO**, non letto.
+Con la copia ferma a 3 il secondo `add` scrive e il quinto entra; il controllo «ci sei già» non lo
+vede. La causa non è la rete scritta male: **tutte** le sue fonti sono la copia — anche la «scheda
+del circolo», che è il campo `descrizione` delle righe sincronizzate. ⭐ Controprova positiva fatta:
+con 4 nella copia la rete risponde `al_completo`, quindi non è inerte. ✅ **La via scoperta è
+chiusa** (sua decisione, stessa sessione): la `fetch` di `add` è ora in `try/catch` e risponde
+`esito_ignoto`. ⚠️ **Non chiude la staleness**: la rete conta ancora sulla copia, e il caso sta nel
+banco come **limite dichiarato** — il giorno che `add` rileggesse la scheda dal vivo, quel caso
+diventa rosso, ed è il segnale che il limite è stato chiuso.
 
 📌 **Perimetro da guardare quando la si apre**: i punti in cui `consumer-booking-write` chiama il
 gestionale sono **cinque**, non uno — `create`, `leave`, `remove`, `add` (via `bookings-edit`) e
