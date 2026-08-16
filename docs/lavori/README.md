@@ -328,9 +328,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **37** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **38** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
@@ -531,7 +531,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 0
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -600,304 +600,11 @@ da qui.** ① La **previsione D è stata eseguita** — il fantasma sul calendar
 voce prevedeva. ② E **l'annullo vero su TEST pure**, su sua autorizzazione esplicita: il blocco non
 era la guardia della console ma il **ruolo** dell'account, cambiato per la sola durata della prova e
 **rimesso subito**. ⇒ La cura «A» è ora verificata **sul bersaglio**, che era l'unica cosa che
-teneva aperta la voce. 📌 **La chiusura resta sua.**
+teneva aperta la voce. 📦 **CHIUSA da lui la sera stessa** — la sua riga sta fra le chiuse.
 📄 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md) resta come **fotografia del
 difetto**, non come collaudo della cura: le sue previsioni A e B descrivono l'app malata e oggi si
 leggono al contrario.
 
-### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
-
-> ✅ **STATO AL 16/08, 26ª: CURA VERIFICATA SUL BERSAGLIO — non resta lavoro dentro.** La cura «A»
-> — *prima il cloud, poi la memoria* — è scritta, provata col sabotaggio, promossa (TEST **6.243**,
-> PROD **6.234**, rimisurate dal server) e ora **esercitata sull'app vera con un annullo vero**
-> (blocco «LA CURA VISTA FUNZIONARE», qui sotto). ✅ Anche la **previsione D è stata eseguita**.
-> ⇒ Le due cose che mancavano ci sono entrambe. 📌 **La chiusura la decide il committente.**
-
-*Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
-quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
-della stessa malattia — una **coda staccata che SCRIVE**, che è la forma con cui il difetto si era
-manifestato davvero nel banco (il caso 11 che finiva addosso al caso 12).
-
-🔎 **Il fatto, misurato su `main` (PROD 6.232), righe di commento escluse.**
-`staffCalRefreshFromCloud` ha **12 punti di chiamata** più la definizione: **8 non attese**, 3 attese,
-1 restituita (l'aggancio esportato `refreshFromCloud`). La funzione fa **commit locali dopo un
-`await`** — `applyMatchpointMembersToLocal` subito dopo la lettura dei soci dal cloud, e la
-riconciliazione delle schede socio subito dopo. ⇒ Chi la lancia senza attenderla va avanti, e la
-scrittura locale atterra **dopo**, su uno stato che nel frattempo può essere cambiato.
-
-🚨 **E il debounce NON è la rete di sicurezza che sembra.** C'è un freno di 60 s, ma lo salta chi passa
-`force: true` — e a passarlo sono **5 delle 8 chiamate non attese**. Il freno copre le altre 3.
-📌 Misurato dopo aver scritto il contrario: nella prima stesura della chiusura della 42 avevo detto
-«attenuata da un debounce», che è vero solo per meno della metà dei casi. È il tipo di frase che
-suona prudente e non lo è.
-
-⚠️ **Cosa NON è stato fatto, e va detto**: non è dimostrato che una di queste 8 produca oggi un danno
-visibile. Quello che è dimostrato è che **la forma c'è** ed è quella che nel banco ha fatto cadere un
-caso sull'altro appena è sparito il ritardo di `config.js`. ⇒ Il lavoro è **stabilire quali delle 8
-possono atterrare su una modifica locale non ancora spinta**, non «riscrivere tutto con `await`»:
-metterlo dappertutto rimetterebbe in circolo la lentezza che la 6.231 ha tolto, e su mobile quella
-lettura costava ~20 s.
-
-🧪 **Il banco adesso sa provarlo**, ed è la novità che rende la voce aggredibile: con
-`CLOUD_WRITE_DELAY_MS` (aggiunto il 15/08 coi casi 94 e 95) si può mettere la **lettura davanti alla
-scrittura** e vedere cosa succede. Senza quel ritardo qualunque caso su questo tema sarebbe **verde a
-vuoto** — è successo, ed è documentato nel banco.
-
----
-
-🔬 **VISTA SUCCEDERE il 16/08, 25ª sessione — sull'app che gira, non nel codice.** Eseguita **dalla
-console remota** su `test.padelvillage.club` (TEST 6.242), con le **scritture bloccate** per tutta la
-prova: nessun annullo, nessuna riga toccata da nessuna parte.
-
-🎯 **L'idea che ha reso la prova possibile da qui**: non serve *cogliere* la finestra al volo, basta
-**ricostruire lo stato in cui l'app si trova dentro quella finestra** — una riga tolta dalla memoria
-locale e la lapide **non ancora spinta** — e poi chiedere l'aggiornamento.
-
-| | esito |
-|---|---|
-| memoria idratata (controllo positivo: la sonda sa vedere) | **65** righe |
-| riga tolta dalla memoria (Campo 1, 16/08, 08:00 — data **futura**, fuori dal ponte `_retained`) | sparita ✓ |
-| **dopo `refreshFromCloud({force:true})`** | 🔴 **TORNATA** |
-| controprova simmetrica: riga **finta** messa in memoria, assente nel cloud | 🔴 **CANCELLATA** dall'aggiornamento |
-
-⚖️ **Le due direzioni insieme sono la dimostrazione**: l'aggiornamento **non fonde, SOSTITUISCE**.
-Aggiunge ciò che il cloud ha e cancella ciò che il cloud non ha ⇒ qualunque modifica locale non
-ancora spinta viene **buttata via in silenzio**. ⭐ **Era la previsione B, cioè quella che poteva
-smentirmi**, ed era scritta prima in `docs/voce-43-prova-dal-mac.md`.
-📌 **Vale anche per PROD**: il blocco della riassegnazione è **identico** fra i due rami (diffato, non
-supposto).
-
-🚨 **E la misura ha smentito ENTRAMBE le cure che questa voce proponeva.** Tutt'e due allungano la
-vita di `_staffCalPendingEdits` — ma quella chiave **la strada rotta non la legge**:
-
-| chi consulta `_staffCalPendingEdits` | dove |
-|---|---|
-| la pre-guardia del poll a 4 s | riga **37533** — **1 sola** delle 5 chiamate forzate |
-| il merge di `staffBookings` | riga **38373** |
-| ⛔ la riassegnazione di `prenotazioni`/`prenotazioniOccupazione` | **38434-38435** — **62 righe più in basso, e non la riconsulta mai** |
-
-⇒ Tenere la chiave più a lungo ferma **solo il poll a 4 s**. Gli altri quattro percorsi forzati — la
-riconnessione realtime, il `staff-changed` da un altro dispositivo, il rientro in primo piano, il
-cambio di permessi — **passano lo stesso e sovrascrivono**. ⚖️ È il caso da manuale della lezione del
-giorno: la cura era **dedotta** («la protezione esiste, basta estenderla») e la misura ha mostrato
-che protegge un'**altra** strada.
-
-🎯 **E una TERZA cosa, nata da una sua domanda: «la cura larga non è meglio, visto che copre anche
-spostamento e modifica?».** Quella frase l'avevo scritta **io**, ed era **dedotta**. Misurata: **è
-falsa.**
-
-| flusso | scrive in `prenotazioniOccupazione`? | commit locale vs rilascio della chiave |
-|---|---|---|
-| **annullo** | **sì** (43382-43387) | 🔴 **commit DOPO il rilascio — è l'unico sbagliato** |
-| **spostamento** | no, solo `staffBookings` | ✅ commit alla **42136**, rilascio alla **42165**: giusto |
-| **modifica** | no | ✅ dalla v6.150 non scrive in locale prima del sì di Matchpoint |
-
-⇒ Le uniche scritture locali a quelle due liste sono l'**import**, il **ripristino da backup**, la
-**riassegnazione dell'aggiornamento** (quella rotta) e l'**annullo**. ⚖️ Quindi la cura «larga» **non
-copre più casi**: gli altri flussi o non hanno il difetto, o non passano di lì. Il motivo per
-preferirla **non esisteva**, e a farlo cadere è stata una sua domanda — non una mia rilettura.
-
-⛔ **Cosa resta NON provato, e va detto**: ① la finestra è stata **ricostruita**, non **colta** — che
-il momento sia raggiungibile davvero (poll ogni 4 s contro una finestra di ~100-500 ms) resta un
-**calcolo**; ② la **previsione D** — se il calendario mostri o no il fantasma — **non è stata
-provata**: `staffCalGetSlots` non è raggiungibile dalla console, e quella metà vuole ancora le mani
-di qualcuno davanti allo schermo. ⚠️ **Il ② è stato SMENTITO il giorno dopo** — vedi il blocco
-seguente. La riga resta com'era, non riscritta per farla tornare: l'errore era mio ed è il reperto.
-
----
-
-✅ **LA CURA VISTA FUNZIONARE — 16/08, 26ª sessione, annullo VERO su TEST (6.243).**
-*Autorizzato dal committente: «dammi il permesso di annullare su TEST», dopo che gli avevo misurato
-che il blocco non era un permesso ma il **ruolo** (`pmoIsReadonlyStaff()` guarda `role ===
-'readonly'`).* 🔧 Toccata la **sola colonna `role`** dell'unico profilo `readonly` di `cudi…`
-(permessi invariati: 2 su 16), e **rimessa a `readonly` appena finita la prova** — verificato dopo.
-
-🚨 **Il controllo che viene prima di tutti, e che la guardia della console NON avrebbe dato.**
-Prima di lasciar partire l'annullo si è verificato **nella pagina viva** che la simulazione delle
-scritture Matchpoint fosse installata: una POST di sonda a `matchpoint-bookings-cancel` ha risposto
-`{"ok":true,"simulated":true,"warning":"TEST: modifica NON propagata a Matchpoint"}`, **status 200,
-senza uscire dal browser**. ⚖️ E la guardia «sola lettura» della console **non l'ha bloccata**,
-perché a rispondere è la simulazione dell'app *prima* della rete: ⇒ su questa strada la protezione
-è il flag `PMO_BOOKINGS_SIMULATE`, **non** l'attrezzo. Va verificato ogni volta, non dedotto.
-
-**La prova**, su `idReserva 9372` (11/09, 20:30, Campo 1 — occupazione **senza nome giocatore**), con
-la finestra allargata a 6 s ritardando la conclusione della spinta delle lapidi:
-
-| momento | righe in `prenotazioniOccupazione` |
-|---|---|
-| prima dell'annullo | **1** |
-| 2 s dopo l'avvio, spinta **in volo** | **1** ⭐ col difetto sarebbe stata **0**: è la firma della cura |
-| **dopo `refreshFromCloud({force:true})` DENTRO la finestra** | **1** 🎯 **nessun fantasma** |
-| 8 s, spinta conclusa | **0** |
-| dopo un refresh forzato finale | **0**, e ci resta |
-
-🎯 **La riga che chiude la voce è la terza**: il gesto che nella prova ricostruita aveva **resuscitato**
-la riga qui non fa più niente — perché con la cura **il locale non è mai stato avanti al cloud**, e
-un fantasma può tornare solo se qualcuno l'ha già tolto.
-
-⚠️ **E le previsioni A/B/C della procedura vanno lette al contrario, perché descrivevano l'app MALATA.**
-La **A** diceva *«a 1 s dal commit `conta()` è 0»*: oggi è **1**, e non è una smentita — è la cura. La
-**B** — il ritorno del fantasma — **non può più accadere**, quindi non è «verificata», è **resa
-impossibile**. La **C** (a lapidi atterrate, 0) ✅ regge. 📌 Chi rilegge `docs/voce-43-prova-dal-mac.md`
-deve saperlo: quelle previsioni sono la fotografia del difetto, non il collaudo della cura.
-
-🧊 **Cosa è stato scritto davvero, contato dopo**: su TEST **due righe e basta** — la lapide
-`occupancy|9372|…` (`deleted: true`) e `supp|2026-09-11|1|20:30` —, e **nessun `booking_job`,
-nessun `staff_cancel`** ⇒ verso il worker e verso Matchpoint **non è partito niente**. Si richiude da
-sé al prossimo sync di TEST (voce 34, 5 volte al giorno).
-✅ **PRODUZIONE INTATTA, misurata e non supposta**: su `qqbf…` la stessa `occupancy|9372|…` è
-`deleted: **false**`, con `updated_at` **precedente** alla prova.
-🚨 **Ed è stata scelta da lui, non da me**: sul calendario di TEST **non esiste nessuna riga di
-prova** — le 45 occupazioni future sono tutte prenotazioni vere del circolo, e le tre campionate
-risultavano **vive anche in produzione**. La regola *«se risulta anche in PRODUZIONE, fermati»* ha
-funzionato: la sessione si è fermata e ha chiesto.
-🧯 **E una mia sonda sbagliata, corretta prima di agire**: avevo consigliato la 9372 anche perché le
-attribuivo «un nome di 1 carattere». Falso — la chiave ha **6 segmenti quando il nome manca** e 7
-quando c'è, e io leggevo sempre il sesto: quel «nome» era la **durata**. La riga non ha un nome
-corto, **non ha nessun nome**; la conclusione ne esce rafforzata, il motivo che avevo dato era falso.
-
----
-
-🔬 **PREVISIONE D — ESEGUITA il 16/08, 26ª sessione, e NON dal Mac.** Console remota su
-`test.padelvillage.club` (TEST **6.243**), scritture bloccate per tutta la prova: nessuna riga
-toccata da nessuna parte, l'unico blocco registrato è una RPC di autovalutazione che l'app tenta da
-sé all'avvio.
-
-🚨 **Prima il reperto, che vale più della misura: la riga ② qui sopra era una DEDUZIONE, ed era
-falsa.** La premessa è vera — `staffCalGetSlots` sta dentro l'IIFE e su `window` non c'è. Ma la
-previsione D **non chiede quella funzione**: chiede **cosa mostra il calendario**. E
-`__PMOStaffCalTest.renderCal(iso)` è esposto, chiama `renderStaffCalendar()`, che passa **proprio da
-`staffCalGetSlots`**, e restituisce il testo delle card. ⇒ Un attrezzo dichiarato inadatto **senza
-provarlo**, con la stessa forma dei quattro casi in cima a questo file: ragionamento corretto,
-premessa vera, conclusione sbagliata, e a smentirla è bastato **far girare la cosa**.
-
-**Il metodo è quello della previsione B**: non cogliere la finestra, **ricostruire lo stato** in cui
-l'app si trova dentro di essa — una riga di occupazione presente (come appena rientrata dal cloud)
-**mentre** la soppressione locale c'è. Data **futura** (20/08), così nessuna occupazione vera e
-nessuno storico possono confondere la lettura.
-
-| | il calendario mostra il fantasma? |
-|---|---|
-| **controllo positivo** — riga presente, **nessuna** soppressione | 🟢 **sì** ⇒ la sonda sa vedere |
-| **la prova** — riga presente **+** soppressione locale | ⚪️ **no** |
-| **controprova** — soppressione tolta di nuovo | 🟢 **sì** ⇒ a nasconderlo era lei, non un effetto del primo render |
-| slot con una card staff **attiva** sopra | fantasma **no**, card staff **sì** (regola v5.687, misurata e non dedotta) |
-
-⇒ **Previsione D CONFERMATA**: il calendario non mostra il fantasma. Il danno resta quello scritto
-nella scheda — **lo stato locale sbaglia e lo schermo non lo dice** — che è poi la ragione per cui
-questo difetto non si è mai visto in due anni.
-
-🎯 **E la domanda che rende leggibile un verde — «cosa lo farebbe diventare rosso?» — ha una
-risposta precisa: il TTL.** La soppressione dura **30 minuti** (`_STAFFCAL_SUPPRESS_TTL_MS`), poi si
-pulisce da sé. Misurato ai due lati del bordo: a **29 minuti** il fantasma è ancora nascosto, a
-**31** ⇒ 🔴 **compare**. ⚖️ Che in pratica non succeda — perché un aggiornamento qualunque corregge
-l'occupazione molto prima di mezz'ora — è **dedotto**, non eseguito, e va letto come tale.
-
-⛔ **I due limiti, dichiarati**: ① lo stato è **ricostruito**, non **colto** (identico al limite
-della previsione B, e non lo toglie nessuna di queste misure); ② è misurata **solo su TEST** —
-`__PMOStaffCalTest` è gated `PMO_IS_TEST_ENV` e su PROD **non esiste**, quindi lì la conclusione
-poggia sul fatto che `staffCalGetSlots`, `_staffCalGetSuppressed`, `_staffCalSuppressKey` e il TTL
-sono **identici byte per byte** fra i due rami (diffati, non supposti). **Per PROD è dedotto.**
-
-📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
-dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
-solo da che parte la si prende.
-
----
-
-🔬 **MISURATA il 16/08, 25ª sessione, su `main` (PROD 6.232), righe di commento escluse.**
-Prima cosa fatta: **riverificare la scheda sul bersaglio**, perché una scheda è un'ipotesi.
-✅ **Torna esatta, numero per numero** — 12 punti di chiamata più la definizione, **8 non attese /
-3 attese / 1 restituita**, e **5 delle 8** passano `force`. Non c'è niente da correggere.
-
-**① Quali delle 8 possono atterrare — la risposta che la voce chiedeva**
-
-| # | riga | opzioni | freno 60 s | pre-guardia `_staffCalPendingEdits` | atterra a metà operazione |
-|---|---|---|---|---|---|
-| 1 | 9011 | `force` | **saltato** | no | **sì** |
-| 2 | 10315 | — | frena | no | solo a freno scaduto |
-| 3 | 29933 | — | frena | no | solo a freno scaduto (avvio) |
-| 4 | 37543 | `silent` | frena | no | solo a freno scaduto |
-| 5 | 37566 | `force, silent` | **saltato** | **sì**, alla 37556 | sì, ma non con un pending aperto |
-| 6 | 37576 | `force, withMembers` | **saltato** | no | **sì** |
-| 7 | 37638 | `force` | **saltato** | no | **sì** |
-| 8 | 37678 | `force` | **saltato** | no | **sì** |
-
-⇒ **Quattro su otto** non hanno **nessuna** protezione: né il freno né la pre-guardia. La quinta —
-il poll a 4 s — è **l'unica delle dodici** che si chieda se un'operazione è in corso prima di partire.
-
-**② E dentro la funzione la guardia copre UN blocco su TRE**
-
-`_staffCalPendingEdits` compare in `staffCalRefreshFromCloud` **una volta sola**, alla **38143**, e
-serve al **solo** merge di `staffBookings` (38144-38151). Gli altri due punti in cui la funzione
-scrive lo stato locale dopo un `await` **non la consultano affatto**:
-
-- **38101** — `applyMatchpointMembersToLocal(...)` dopo `await pmoLoadMatchpointMembersFromCloud()`;
-- **38204-38207** — e questa **la scheda non la nominava**: `prenotazioni = cloud.bookings` e
-  `prenotazioniOccupazione = _occToStore`, **assegnazione secca** da una fotografia del cloud letta
-  alla **38118**. Nessun merge, nessuna esclusione delle chiavi appena toccate.
-
-⚖️ È la scrittura **più grossa** delle tre e **la meno difesa**: il merge di `staffBookings` è
-progettato per tenere il locale (`_pend`, `keptLocal`); questa sovrascrive e basta.
-
-**③ 🚨 Il reperto che cambia il quadro: la protezione si CHIUDE PRIMA della scrittura**
-
-In `staffCalDoCancel` l'ordine è questo, letto riga per riga:
-
-| riga | cosa succede |
-|---|---|
-| 43490 | `_staffCalPendingEdits.add(_pendCancelKey)` — la finestra si **apre** |
-| 43570 / 43598 | `_staffCalPendingEdits.delete(_pendCancelKey)` — la finestra si **chiude** |
-| 43579 / 43585 / 43541 | `_applicaAnnullo()` → `_staffCalCommitLocalCancel(...)` |
-
-⇒ **Tutti e tre** i punti in cui l'annullo tocca lo stato locale stanno **a valle** della `delete`.
-Controllato e non dedotto: `_applicaAnnullo` ha **esattamente 3 chiamanti**, e `_verifica` — che
-contiene il terzo — è invocata anch'essa dopo. E `_staffCalCommitLocalCancel` fa proprio la coppia
-che la voce descrive: **toglie** le righe da `prenotazioniOccupazione` e `prenotazioni`
-(43404-43410) e poi **spinge le lapidi senza attenderle** — `pmoSyncCloudRecordsNow(…).catch(…)`
-alla **43428**.
-
-🚨 **Quindi la finestra scoperta non la copre nessuno degli otto, nemmeno il numero 5**: quando il
-commit locale parte, la chiave che avrebbe fatto rinunciare il poll a 4 s **è già stata tolta**. Fra
-la rimozione locale e l'atterraggio della lapide sul cloud, un refresh forzato rilegge la fotografia
-**vecchia** e la riassegna alla 38205 — il fantasma rientra in `prenotazioniOccupazione`.
-
-**④ Cosa lo tiene a bada, e cosa no — misurato, non dedotto**
-
-⚠️ **Il calendario NON lo mostra**, e va detto subito perché ridimensiona il danno:
-`staffCalGetSlots` filtra gli slot soppressi (**38680-38697**) e quel filtro si applica a `result`,
-che contiene **anche** le righe di occupazione (costruite alla 38585) — verificato leggendo la
-funzione, non il commento. `_staffCalCommitLocalCancel` aggiunge la soppressione locale alla
-**43392**, cioè *prima* della pulizia. Finché dura il TTL il fantasma rientrato resta **invisibile
-su questo dispositivo**.
-📌 Il commento della v5.897 (43393-43396) dice il contrario — «senza, un refresh ri-renderizzava la
-copia» — ed è **il racconto di un passato**, non dell'oggi. L'ho misurato invece di crederci, ed è
-la ragione per cui questa voce **non** finisce con «guasto vivo in produzione».
-
-⇒ **Resta scoperto chi NON passa da `staffCalGetSlots`**, e sono misurati:
-`uniqueFieldOccupancyBookings` (17200, 23533), l'impronta della 18708, i roster di 40081 / 40237 /
-40344 e 43261. Lì il fantasma si vede.
-🚩 **E un solo punto lo rimanderebbe sul cloud**: `pmoBuildCloudRecordsFromLocalState` (**27614**)
-legge `prenotazioniOccupazione` **diretto**, escludendo i soli `_retained` — e un fantasma rientrato
-dal cloud `_retained` non è. ⚖️ **Ma il suo unico chiamante è `pmoUploadLocalDataToCloud` (29032),
-che è un bottone d'amministrazione, non una routine**: la resurrezione è **possibile, non
-automatica**. Lo scrivo con questa cautela perché la differenza è tutta lì, ed è esattamente il
-punto in cui una voce diventa allarmismo.
-
-**⑤ Cosa NON è stato fatto, e perché**
-
-⛔ **Non è stata toccata una riga.** La correzione naturale — spostare la `delete` **dopo**
-`_applicaAnnullo`, oppure tenere la chiave finché la spinta non è atterrata — sta sulla strada che
-**annulla per davvero** su Matchpoint, e da qui quella strada non si prova. È la stessa ragione per
-cui la 23ª ebbe *«prima diagnosi sì, patch no»*. ⇒ **Decisione del committente.**
-⛔ **Non è stata messa in scena la corsa nel banco.** `CLOUD_WRITE_DELAY_MS` saprebbe farlo, ma un
-caso scritto **oggi** proverebbe **la forma**, non il danno — e il danno, misurato, è schermato dalla
-soppressione proprio sul percorso che conta. Scriverlo prima di sapere quale delle due cure si
-prende vorrebbe dire costruire la prova sulla cura sbagliata.
-⛔ **Non è stata misurata la terza scrittura**, quella dei soci (38101 e 38107): la voce chiedeva le
-**otto chiamate**, e le otto sono fatte. È il vicino di casa di questa voce, non il suo residuo.
-
----
 
 ## 📋 IN CODA — 4
 
@@ -1167,17 +874,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 37 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 38 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime OTTO voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime NOVE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **43** | ✅ *(16/08, 26ª sessione — **curata, verificata sul bersaglio e chiusa da lui**: «chiudi la quarantatré». Aperta dal committente il 15/08 chiudendo la 42)* ⏱️ **La continuazione staccata che riscriveva lo stato locale — `staffCalRefreshFromCloud`.** Il difetto: `_staffCalCommitLocalCancel` toglieva le righe dalla memoria e **poi** spingeva le lapidi **senza attenderle**, lasciando una finestra di ~100-500 ms in cui il locale diceva «annullata» e il cloud ancora «attiva». 🔬 **VISTO SUCCEDERE** il 16/08 sull'app che gira, non dedotto: ricostruito lo stato della finestra dalla console remota (TEST, scritture bloccate), la riga tolta dalla memoria **è TORNATA** dopo un aggiornamento forzato, e la controprova simmetrica — una riga finta assente nel cloud — è stata **CANCELLATA**. ⇒ L'aggiornamento **non fonde, SOSTITUISCE**. ⭐ Era la **previsione B**, cioè quella che poteva smentire la diagnosi. 🚨 **E la misura ha smentito ENTRAMBE le cure che la voce proponeva**: allungavano la vita di `_staffCalPendingEdits`, ma **la strada rotta quella chiave non la legge** (la riassegnazione dell'occupazione sta 62 righe più in basso e non la riconsulta mai) ⇒ avrebbero fermato **solo** il poll a 4 s, lasciando passare gli altri quattro percorsi forzati. Ed è caduto anche il motivo per preferire la cura «larga» — *«copre anche spostamento e modifica»* — **misurato falso**: lo spostamento non scrive in quelle liste e la modifica dalla v6.150 non scrive in locale prima del sì di Matchpoint. ⚖️ **La cura scritta è una terza**, nata scrivendola: *«aspettare la spinta»* **non chiude la finestra, la sposta dentro l'attesa** — l'unico ordine che la chiude è **prima il cloud, poi la memoria**, così non esiste mai un istante in cui il locale è avanti. 🧪 **Provata col SABOTAGGIO, non col verde**: il caso 98 alla prima stesura era **inerte** (nel banco la spinta si concludeva nell'istante in cui partiva) ed è servito `CLOUD_WRITE_RESPONSE_DELAY_MS`, gemello opposto del knob della 42; con la cura **95/95** e **98/98**, togliendola **94/95** e **97/98**, e cade **solo** quel caso. ✅ **Previsione D eseguita da qui**, e la nota che la diceva irraggiungibile era una **deduzione falsa**: `staffCalGetSlots` non è su `window`, ma `renderCal` renderizza il calendario **vero** — il fantasma **non si vede**, con controllo positivo e controprova, e il bordo della protezione è il **TTL di 30′** (a 29′ nascosto, a 31′ **compare**). ✅✅ **E la CURA VISTA FUNZIONARE con un annullo VERO su TEST**, su sua autorizzazione: a 2 s dall'avvio, con la spinta in volo, la riga è **ancora lì** (col difetto sarebbe stata 0 — è la firma della cura), e **un refresh forzato dentro la finestra non resuscita più niente**; a spinta conclusa 0, e ci resta. ⇒ La previsione **B non è «verificata», è resa IMPOSSIBILE**, e le previsioni A/B della procedura vanno lette al contrario perché descrivevano l'app **malata**. 🚨 **Il controllo che ha preceduto tutto, e che la guardia della console NON dà**: verificato **nella pagina viva** che la simulazione Matchpoint fosse installata — una POST di sonda ha risposto `simulated:true` **senza uscire dal browser**, e la guardia «sola lettura» **non l'aveva bloccata**, perché a rispondere è l'app *prima* della rete. Su quella strada la protezione è il flag `PMO_BOOKINGS_SIMULATE`, **non l'attrezzo**. 🧊 **Scritte due righe su TEST** (lapide + soppressione), **nessun `booking_job` e nessun `staff_cancel`** ⇒ verso worker e Matchpoint **niente**; si richiude da sé al prossimo sync. ✅ **PRODUZIONE INTATTA, misurata**: la stessa occupazione su `qqbf…` resta `deleted: false`. 🔑 **Il blocco non era un permesso ma il RUOLO** (`role === 'readonly'`): toccata la sola colonna per la durata della prova e **rimessa subito**, verificato dopo. 🚨 **E la riga da annullare l'ha scelta lui**, perché sul calendario di TEST **non esiste nessuna riga di prova**: le 45 occupazioni future sono tutte prenotazioni vere del circolo e le tre campionate erano vive **anche in produzione** — la regola *«se risulta anche in PRODUZIONE, fermati»* ha funzionato. 🧯 **Due sonde mie sbagliate, annotate**: la chiave dell'occupazione ha **6 segmenti quando il nome manca** e 7 quando c'è, e leggendo sempre il sesto avevo scambiato la **durata** per un nome; e il ramo della PR l'avevo costruito su una base **stantia**, visto solo perché `mergeable_state` diceva `dirty`. ⛔ **Residuo dichiarato**: la finestra è stata **ricostruita** e non **colta** (che il momento sia raggiungibile davvero resta un calcolo), e la terza scrittura di `staffCalRefreshFromCloud` — quella dei **soci** (38101/38107) — **non è stata misurata**: è il vicino di casa di questa voce, non il suo residuo. 📄 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md) resta come **fotografia del difetto**, non come collaudo della cura. |
 | **47** | ✅ *(16/08, 26ª sessione — **promossa e poi chiusa da lui**: «chiudi la quarantasette». Tre reperti, **tre autorizzazioni separate**, mai due insieme)* 🔒 **Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD, lette una per una — e 13 porte chiuse.** ⚖️ **Non è una campionatura nuova: è la chiusura di una vecchia.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per iscritto ciò che non aveva guardato** — *«NON esaminate: 3 letture per gettone e la robustezza del PIN»*; la **44** ne prese **una** e ci trovò dietro **un socio vero col telefono**. Restavano le altre due e il PIN. 📏 Numero **ricontato, non ricopiato**: 58 `SECURITY DEFINER` in `public`, **33** eseguibili da `anon`. 🔬 **31 eseguite come `anon`** in transazioni annullate (rollback verificata *prima* di cominciare), più **2 che via RPC non si chiamano affatto: sono `trigger`** — falsi positivi del linter, e vanno detti perché gonfiano il numero che spaventa. **La famiglia `*_admin` regge tutta**, col PIN e senza, in lettura e in scrittura — e non per lettura del codice: le scritture sono state **lanciate** con un carico vero e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga. 🔒 **Reperto A — `get_assessment_token`**, la gemella della 44 rimasta aperta: come `anon` restituisce **nome e stato di un socio vero** sul gettone debole già noto. Revocata ad `anon` e PUBLIC; **non aveva chiamanti in nessun repo**, quindi non c'era niente da rompere (**33 → 32**). 🔒 **Reperto B — `pmo_admin_pin_ok`, un ORACOLO sul PIN**, stessa forma di `pmo_verify_data_routine_secret` che la 36 chiamò «la chiave che apre le altre porte»: bcrypt **costo 6**, **~200 tentativi/s** da `anon` senza limite né traccia, e il PIN apre le 11 varianti `*_admin(p_admin_pin, …)` — elenco staff con email e permessi, registro di controllo, **e le scritture**. ⭐ **Ed è qui che la misura ha cambiato la cura**: `pmo_admin_pin_ok` è la **guardia interna** delle 11, quindi **ognuna è a sua volta un oracolo** — cronometrate, 100 tentativi in **508 / 486 / 472 ms** ⇒ le varianti sono oracoli **alla stessa velocità**, e `pmo_upsert_records_admin` è per giunta quella che a indovinare concede le **scritture**. Revocare il solo oracolo avrebbe **spostato l'attacco senza ridurlo**: una cura che sembra una cura. Revocate **tutte e 12** (**32 → 20**). ✋ **Reperto C — `get_post_match_feedback_by_tokens`: LASCIATO, su sua decisione e con la ragione scritta** — oggi non espone niente (**0 righe** su PROD *e* su TEST), quindi è latente e non aperto. Nella sua riga stanno il **quando** (prima di accendere il feedback post-partita) e il **come**. 🧯 **E il «come» smentisce un costo che avevo messo io fra le ragioni per lasciar perdere**: dicevo che bisognava *scegliere* un permesso staff — falso, la **scrittura** della stessa funzionalità due funzioni più su (29732) usa già `pmoStaffRpc(…, 'cloud_sync', …)`, e la lettura (29852) è **l'unica asimmetrica della sua famiglia** ⇒ il permesso è simmetria, non giudizio. La decisione resta sensata, il costo che le avevo attribuito no. ✅ **Ogni revoca provata prima/dopo, con controprova POSITIVA** (`authenticated` continua a eseguire) **e, sulla B, anche NEGATIVA**: la variante **senza** PIN resta raggiungibile da `anon` e risponde `AUTH_REQUIRED` ⇒ la strada che l'app usa davvero non è stata toccata. ⭐ **Il 32 → 20 confermato TRE volte**: `pg_proc`, il **linter** a 20 `anon_security_definer_function_executable`, e il **totale avvisi da 99 a 87** — esattamente **−12**, senza avvisi nuovi; `authenticated_…` resta **40**. 🔎 **Perimetro verificato su tre lati** prima di chiudere, perché chiudere alla cieca è l'errore del reperto C: app **0**, edge **0**, **bot 0** — repo `assistente-padel-agent` agganciato apposta su sua autorizzazione, e lo zero è **un esito e non una sonda cieca** perché il controllo positivo trova i tre ponti noti su 65 file / 16.460 righe. ↩️ Due migrazioni **reversibili**, con le `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate.** 🚨 **E il reperto di METODO, che vale quanto le porte chiuse: due conteggi della tabella erano SBAGLIATI** (10 e 12 invece di **12 e 11**), e a smascherarli non è stata una rilettura ma il fatto che **la somma facesse 32 su 33**. Causa: `pmo_upsert_staff_user_admin` ha due overload **entrambe con valori predefiniti**, e la chiamata a 5 argomenti **posizionali** si è risolta sulla 6-argomenti — **quella col PIN** — perché PostgreSQL preferisce `text` a `jsonb` per l'`unknown`: credevo di provare la variante senza PIN e riprovavo quella col PIN. Rifatta con la **notazione per nome**, che sulla gemella non può cadere. ⚖️ **E la cura è stata cercare la CLASSE, non l'istanza**: chieste al database **tutte** le funzioni aperte ad `anon` con parametri predefiniti — **11 in 5 famiglie** — e ricontrollate le risoluzioni una per una; le altre 10 erano legate giuste, **una sola** era sbagliata. 📌 Da tenere: **una funzione con overload e valori predefiniti non si prova per posizione** — è la 24ª nella forma più subdola, perché qui i due cassetti hanno **lo stesso nome**. ⛔ **NON guardato TEST**: la voce chiedeva le 33 di **PROD**, e su `cudi…` il conto sarà diverso — la 36 aveva già misurato che là la famiglia era «un rattoppo a campione». È il vicino di casa di questa voce, non il suo residuo. ⛔ **Il PIN non è stato indovinato né letto**, e non si farà: si misura l'oracolo, non il segreto. 🔴 **E ciò che resta scoperto, scritto perché nessuno legga «famiglia bonificata»: le 20 ancora aperte ad `anon`** non sono state rilette dopo questa potatura — quelle censite qui erano 33, e 13 sono state chiuse. |
 | **44** | ✅ *(16/08, 25ª sessione — **curata su sua autorizzazione**, e **chiusa da lui**: «chiudi da quarantaquattro»)* 🚨 **Una fessura su DATI PERSONALI VERI in produzione, chiusa.** `get_self_assessments_by_tokens` è `SECURITY DEFINER` e restituisce `first_name`, `last_name` e **`phone`**; aveva `EXECUTE` ad **`anon` e a PUBLIC** ⇒ chiunque dalla rete, con la sola chiave pubblicabile e un gettone, poteva leggerli. ⭐ **Ed è nata da una conclusione giusta nel ragionamento e sbagliata nel fatto**: la nota della 15ª diceva «non un buco aperto» perché *«vuole i gettoni in ingresso»* — premessa **vera**, ma fra i 1364 gettoni uno è da 11 caratteri, `MAURIZIO001`, e dietro c'è **un socio vero col telefono**. A vederlo non è bastato leggere i grant: è servito **eseguire la funzione come `anon`**. ✅ **Controllo negativo, fatto prima di credere alla gravità**: la lettura **diretta** della tabella come `anon` vede **0 righe** (RLS attivo, zero policy) ⇒ quella RPC era davvero l'**unica** finestra rimasta accanto alla porta chiusa il 12/08, non una fra tante. 🔧 **La cura**: `REVOKE EXECUTE … FROM anon, PUBLIC` sui **due** progetti — il contratto vive sui due lati — lasciando `authenticated`, così sparisce l'accesso *senza credenziali* e non quello dello staff. 🔬 **Provata su TEST prima che su PROD, e in tre modi**: `anon` **3 righe → 42501** su TEST e **1 riga → 42501** su PROD; **controprova positiva** (`authenticated` passa ancora, di qua e di là) fatta apposta perché senza di essa «blocca tutto» si legge come «funziona»; e una **conferma indipendente che non veniva dalla stessa sonda** — le `SECURITY DEFINER` aperte ad `anon` su PROD passano da **34 a 33**. ↩️ Migrazioni **reversibili**, con le due `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate**: tutte le prove d'attacco in transazioni annullate. ⚠️ **Residuo dichiarato e NON fatto**: il gettone `MAURIZIO001` e i quattro `TEST*` **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco — restano **gettoni deboli**, e non sono stati toccati perché dietro c'è **il dato di una persona reale**: prima di cancellare va misurato cosa ci punta. 🔴 **E ciò che questa voce NON copre, scritto perché nessuno legga «famiglia bonificata»: le altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è **l'unica letta riga per riga**; il linter le segnala tutte con lo stesso titolo da sempre, ed è esattamente la condizione in cui stava la 44 fino a stamattina — segnalata, letta da nessuno, e con un socio vero dietro. |
 | **45** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 45». PROD **6.233**, non ancora promossa)* **Tolto `fetchAssessmentRawResponsesByTokens`: un ripiego che non poteva partire.** ⭐ **La voce chiedeva «a cosa serviva», e la risposta ha trovato un secondo motivo che nessuno aveva visto.** Serviva a rileggere `raw_response` quando la RPC `get_self_assessments_by_tokens` **non portava** quella colonna. Oggi la porta **sempre** — `coalesce(s.raw_response, '{}'::jsonb)` — quindi la chiave c'è in ogni riga, e la guardia che lo accendeva (`!r?.raw_response`) era diventata **IRRAGGIUNGIBILE**: in JS `{}` è **vero**. ⇒ Il ripiego non partiva **nemmeno nei casi per cui era stato scritto** — le risposte davvero vuote, misurate **6 su 42**. 🔬 Provato sul bersaglio, non ragionato: la RPC interrogata sui token veri restituisce `raw_response` **presente e `{}`**, zero righe nulle. 🎯 **Quindi era morto DUE volte**: condizione irraggiungibile *e*, se anche fosse partito, `self_assessments` ha RLS attivo e **zero policy** ⇒ quella `GET` risponde 200 con lista vuota, sempre, sotto un `catch` che taceva. 🧯 **E due numeri della scheda erano falsi**, annotati e non corretti di nascosto: la riga è la **29214/29223**, non la 29939; e le policy sono **zero**, non «3 di INSERT». 📌 Il contesto che ridimensiona tutto: la sezione è **congelata dal 13/06**, la tabella ha l'ultima riga del **23/06** e **zero in 30 giorni** — un vicolo cieco **dentro una stanza già chiusa**, la stessa forma che la 20ª aveva già incontrato. ✅ **Verificato DOPO aver agito**, che è dove si tradisce un analizzatore cieco: **zero riferimenti orfani**, `normalizeAssessmentRawResponse` **ancora viva in 13 punti** (nessuna cascata), sintassi verde su **tutti e 5** i blocchi `<script>` — non su uno, che è la trappola della 23ª — e banco **94/94**, in **A/B contro `main` intatto**. ⚖️ **Il verde del banco NON dimostra che il codice fosse morto**: nessun caso può coprire un ramo irraggiungibile. Dimostra che togliendolo non è caduto nulla intorno; a dimostrare che era morto è la misura sulla RPC. ⛔ **Non promossa**: le righe stanno sul ramo, PROD serve ancora la 6.232 finché non lo decide lui. |
