@@ -24,6 +24,10 @@ import {
 // due: TEST non contiene la forma del dato (zero righe `staff_booking` future, misurato il
 // 28/07), quindi l'unico modo di provarlo è dare i payload VERI di PROD a una funzione pura.
 import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
+// Com'è andata una scrittura di cui non si è saputo l'esito. Sta in un modulo a parte per la
+// stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
+// questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
+import { verdettoScrittura } from './esito-scrittura.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -227,7 +231,7 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add'].includes(action)) {
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add', 'verifica'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
@@ -714,6 +718,11 @@ Deno.serve(async (req: Request) => {
     // lei, la richiesta può essere arrivata lo stesso al gestionale e la prenotazione essere stata
     // creata. Prima non era nemmeno protetta — l'eccezione usciva dall'handler, diventava un 500, e
     // il bot leggeva un guasto generico. È la via **più vicina** al bot, ed era quella scoperta.
+    // ⭐ L'istante si prende PRIMA di partire, e torna indietro con ogni `esito_ignoto`: è la
+    // chiave con cui l'azione `verifica` potrà dire se un giro di sync è atterrato DOPO. Preso
+    // dopo, o ricostruito dal bot quando si accorge del guasto, sarebbe già in ritardo — e un
+    // riferimento in ritardo fa dire «no» troppo presto, che è il danno peggiore.
+    const scrittaAlle = new Date().toISOString();
     let res: Response;
     try {
       res = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
@@ -731,6 +740,10 @@ Deno.serve(async (req: Request) => {
         created: false,
         reason: 'esito_ignoto',
         detail: clean(`Nessuna risposta dal gestionale: ${testo}`).slice(0, 200),
+        // Con che cosa richiedere, e quando: senza questi due il bot non ha modo di formulare
+        // la domanda a cui `verifica` risponde, e il controllo resterebbe al socio.
+        scritta_alle: scrittaAlle,
+        slot: { data: slot.data, ora: slot.ora, campo },
       });
     }
     const data = await res.json().catch(() => null) as JsonMap | null;
@@ -748,6 +761,9 @@ Deno.serve(async (req: Request) => {
         created: false,
         reason: ignoto ? 'esito_ignoto' : 'worker_error',
         detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
+        // ⚖️ Solo sull'ignoto: su un `worker_error` la prenotazione NON c'è, e dare al bot gli
+        // attrezzi per «andare a controllare» lo inviterebbe a controllare un fatto già noto.
+        ...(ignoto ? { scritta_alle: scrittaAlle, slot: { data: slot.data, ora: slot.ora, campo } } : {}),
       });
     }
     console.log(`[booking-write] create OK ${slot.data} ${slot.ora} C${campo} per ${member.name}`);
@@ -755,6 +771,66 @@ Deno.serve(async (req: Request) => {
       member: { id: member.id, name: member.name },
       created: true,
       slot: { data: slot.data, ora: slot.ora, ora_fine: slot.oraFine, durata: slot.durata, campo },
+    });
+  }
+
+  // ── verifica: COM'È ANDATA DAVVERO ────────────────────────────────────────
+  // 🚨⭐⭐ La seconda metà della voce 53. Il terzo esito (`esito_ignoto`, 16/08) ha smesso di
+  // mentire, ma il controllo lo fa ancora il SOCIO a mano — *«fra qualche minuto chiedimi cosa
+  // ho prenotato»*. Questa azione è la domanda che il bot deve poter fare al posto suo, e la
+  // risposta esce **già decisa**: `si` / `no` / `non_ancora`, più `attendere`.
+  //
+  // ⚖️ È la regola d'architettura del committente (16/08) alla lettera — **il gestionale SA, il
+  // bot DICE**. La cosa difficile qui non è guardare se la prenotazione c'è: è sapere se la
+  // copia è abbastanza fresca perché la sua ASSENZA voglia dire qualcosa. Quello lo sa solo il
+  // gestionale, e per questo la regola sta di qua e non nel bot (`esito-scrittura.ts`).
+  //
+  // ⛔ Non scrive NIENTE, e non chiama il worker: è la sua ragione d'essere. La cura gemella
+  // nell'app va a guardare su Matchpoint, cioè per la strada che è appena caduta; questa legge
+  // una copia, e una copia risponde anche a worker morto — vecchia, ma risponde.
+  if (action === 'verifica') {
+    // L'istante della scrittura lo porta il chiamante: è l'unico che lo conosce, perché la
+    // scrittura di cui si parla non ha lasciato una risposta da cui dedurlo. Se manca, di qui
+    // non uscirà mai un «no» — vedi `verdettoScrittura`.
+    const scrittaAlle = clean(body.scritta_alle) || null;
+
+    // Il socio risulta dentro questo slot? Stesse righe e stesso roster di `leave` e `add`:
+    // una partita di quattro sono quattro record, e uno solo porta l'elenco completo.
+    const righeVerifica = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    const esitoVerifica = rosterDelloSlot(righeVerifica, GIOCATORI_PARTITA);
+    const presente = [...esitoVerifica.chiavi.keys()].some((nn) => nameVariants.has(nn));
+
+    // ⭐ LA FRESCHEZZA: `synced_at` più recente fra le righe prenotazione, cioè l'ultimo giro di
+    // sync ATTERRATO. Si guardano TUTTE le righe, anche le cancellate: una cancellata porta
+    // l'istante in cui è stata vista l'ultima volta, che è comunque un giro atterrato.
+    // 🚨 Un giro FALLITO non sposta questo valore, ed è precisamente ciò che lo rende una
+    // testimonianza: le righe si riscrivono solo a esportazione riuscita.
+    const { data: frescoRows, error: frescoErr } = await service
+      .from('pmo_cloud_records')
+      .select('synced_at')
+      .in('record_type', ['booking', 'booking_occupancy'])
+      .order('synced_at', { ascending: false })
+      .limit(1);
+    if (frescoErr) return err(500, 'DB_ERROR', 'Errore lettura freschezza della copia.');
+    const copiaFrescaAl = clean(frescoRows?.[0]?.synced_at) || null;
+
+    const verdetto = verdettoScrittura({
+      presente,
+      scrittaAlle,
+      copiaFrescaAl,
+      giornoSlot: slot.data,
+      oggi: today,
+    });
+    console.log(`[booking-write] verifica ${slot.data} ${slot.ora} C${campo} per ${member.name}: ${verdetto.esito}/${verdetto.motivo} (copia al ${copiaFrescaAl ?? '—'})`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      ...verdetto,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      // ⭐ I due istanti tornano indietro **sempre**, anche quando il verdetto è `si`: senza,
+      // un `non_ancora` non sarebbe distinguibile da un guasto, e chi guarda i log dovrebbe
+      // fidarsi del verdetto invece di poterlo rifare a mano.
+      copia_fresca_al: copiaFrescaAl,
+      scritta_alle: scrittaAlle,
     });
   }
 
@@ -1368,22 +1444,46 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const resAdd = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
-      method: 'POST',
-      headers: internalHeaders,
-      body: JSON.stringify({
-        ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
-        campo,
-        data: slot.data,
-        ora: slot.ora,
-        players: {
-          add: [{
-            nome: nomeSullaScheda,
-            ...(codiceDaAggiungere ? { codice: codiceDaAggiungere } : {}),
-          }],
-        },
-      }),
-    });
+    // 🚨⭐⭐ IL TERZO ESITO ANCHE QUI — 16/08/2026, voce 53. La cura del mattino aveva protetto
+    // solo `create`; questa `fetch` restava scoperta, e delle cinque è la seconda che fa danno
+    // vero: un doppio `add` mette **cinque giocatori in campo**.
+    // ⚖️ E la rete del «mai più di quattro» NON lo ferma — verificato ESEGUENDO il 16/08, non
+    // dedotto: con la copia ferma a 3 il secondo tentativo passa, e nemmeno il controllo «ci sei
+    // già» lo vede. La causa non è la rete scritta male: sono le sue FONTI, che sono tutte la
+    // copia — compresa la «scheda del circolo», che è la `descrizione` delle righe sincronizzate.
+    // Dentro la finestra del sync (misurata: fino a 10′04″) quel dato non c'è ancora.
+    // ⇒ Qui non si ritenta e non si indovina: si dice «non lo so», e il socio non rifà.
+    const scrittaAddAlle = new Date().toISOString();
+    let resAdd: Response;
+    try {
+      resAdd = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
+        method: 'POST',
+        headers: internalHeaders,
+        body: JSON.stringify({
+          ...(righe[0]?.idReserva ? { idReserva: righe[0].idReserva } : {}),
+          campo,
+          data: slot.data,
+          ora: slot.ora,
+          players: {
+            add: [{
+              nome: nomeSullaScheda,
+              ...(codiceDaAggiungere ? { codice: codiceDaAggiungere } : {}),
+            }],
+          },
+        }),
+      });
+    } catch (netErr) {
+      const testo = netErr instanceof Error ? netErr.message : String(netErr);
+      console.error(`[booking-write] add ESITO IGNOTO (nessuna risposta dal gestionale) ${slot.data} ${slot.ora} C${campo}: ${testo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        added: false,
+        reason: 'esito_ignoto',
+        detail: clean(`Nessuna risposta dal gestionale: ${testo}`).slice(0, 200),
+        scritta_alle: scrittaAddAlle,
+        slot: { data: slot.data, ora: slot.ora, campo },
+      });
+    }
     const dataAdd = await resAdd.json().catch(() => null) as JsonMap | null;
     if (!resAdd.ok || !dataAdd?.ok) {
       console.error(`[booking-write] add KO HTTP ${resAdd.status}:`, JSON.stringify(dataAdd).slice(0, 300));
