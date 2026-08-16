@@ -587,6 +587,66 @@ lettura costava ~20 s.
 scrittura** e vedere cosa succede. Senza quel ritardo qualunque caso su questo tema sarebbe **verde a
 vuoto** — è successo, ed è documentato nel banco.
 
+---
+
+🔬 **VISTA SUCCEDERE il 16/08, 25ª sessione — sull'app che gira, non nel codice.** Eseguita **dalla
+console remota** su `test.padelvillage.club` (TEST 6.242), con le **scritture bloccate** per tutta la
+prova: nessun annullo, nessuna riga toccata da nessuna parte.
+
+🎯 **L'idea che ha reso la prova possibile da qui**: non serve *cogliere* la finestra al volo, basta
+**ricostruire lo stato in cui l'app si trova dentro quella finestra** — una riga tolta dalla memoria
+locale e la lapide **non ancora spinta** — e poi chiedere l'aggiornamento.
+
+| | esito |
+|---|---|
+| memoria idratata (controllo positivo: la sonda sa vedere) | **65** righe |
+| riga tolta dalla memoria (Campo 1, 16/08, 08:00 — data **futura**, fuori dal ponte `_retained`) | sparita ✓ |
+| **dopo `refreshFromCloud({force:true})`** | 🔴 **TORNATA** |
+| controprova simmetrica: riga **finta** messa in memoria, assente nel cloud | 🔴 **CANCELLATA** dall'aggiornamento |
+
+⚖️ **Le due direzioni insieme sono la dimostrazione**: l'aggiornamento **non fonde, SOSTITUISCE**.
+Aggiunge ciò che il cloud ha e cancella ciò che il cloud non ha ⇒ qualunque modifica locale non
+ancora spinta viene **buttata via in silenzio**. ⭐ **Era la previsione B, cioè quella che poteva
+smentirmi**, ed era scritta prima in `docs/voce-43-prova-dal-mac.md`.
+📌 **Vale anche per PROD**: il blocco della riassegnazione è **identico** fra i due rami (diffato, non
+supposto).
+
+🚨 **E la misura ha smentito ENTRAMBE le cure che questa voce proponeva.** Tutt'e due allungano la
+vita di `_staffCalPendingEdits` — ma quella chiave **la strada rotta non la legge**:
+
+| chi consulta `_staffCalPendingEdits` | dove |
+|---|---|
+| la pre-guardia del poll a 4 s | riga **37533** — **1 sola** delle 5 chiamate forzate |
+| il merge di `staffBookings` | riga **38373** |
+| ⛔ la riassegnazione di `prenotazioni`/`prenotazioniOccupazione` | **38434-38435** — **62 righe più in basso, e non la riconsulta mai** |
+
+⇒ Tenere la chiave più a lungo ferma **solo il poll a 4 s**. Gli altri quattro percorsi forzati — la
+riconnessione realtime, il `staff-changed` da un altro dispositivo, il rientro in primo piano, il
+cambio di permessi — **passano lo stesso e sovrascrivono**. ⚖️ È il caso da manuale della lezione del
+giorno: la cura era **dedotta** («la protezione esiste, basta estenderla») e la misura ha mostrato
+che protegge un'**altra** strada.
+
+🎯 **E una TERZA cosa, nata da una sua domanda: «la cura larga non è meglio, visto che copre anche
+spostamento e modifica?».** Quella frase l'avevo scritta **io**, ed era **dedotta**. Misurata: **è
+falsa.**
+
+| flusso | scrive in `prenotazioniOccupazione`? | commit locale vs rilascio della chiave |
+|---|---|---|
+| **annullo** | **sì** (43382-43387) | 🔴 **commit DOPO il rilascio — è l'unico sbagliato** |
+| **spostamento** | no, solo `staffBookings` | ✅ commit alla **42136**, rilascio alla **42165**: giusto |
+| **modifica** | no | ✅ dalla v6.150 non scrive in locale prima del sì di Matchpoint |
+
+⇒ Le uniche scritture locali a quelle due liste sono l'**import**, il **ripristino da backup**, la
+**riassegnazione dell'aggiornamento** (quella rotta) e l'**annullo**. ⚖️ Quindi la cura «larga» **non
+copre più casi**: gli altri flussi o non hanno il difetto, o non passano di lì. Il motivo per
+preferirla **non esisteva**, e a farlo cadere è stata una sua domanda — non una mia rilettura.
+
+⛔ **Cosa resta NON provato, e va detto**: ① la finestra è stata **ricostruita**, non **colta** — che
+il momento sia raggiungibile davvero (poll ogni 4 s contro una finestra di ~100-500 ms) resta un
+**calcolo**; ② la **previsione D** — se il calendario mostri o no il fantasma — **non è stata
+provata**: `staffCalGetSlots` non è raggiungibile dalla console, e quella metà vuole ancora le mani
+di qualcuno davanti allo schermo.
+
 📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
 dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
 solo da che parte la si prende.
