@@ -5,6 +5,41 @@
 
 ---
 
+## ⚠️ AGGIORNAMENTO, poche ore dopo: la metà che conta è già stata fatta — DA REMOTO
+
+📌 **Questo documento è nato credendo che servissero le mani di qualcuno davanti allo schermo. Per
+buona parte non era vero**, e a ricordarlo è stato il committente: la **console remota**
+(`tools/verifica-browser/`, costruita nella 22ª) apre l'app in un browser vero da una sessione cloud
+ed esegue codice dentro la pagina.
+
+🎯 **E la chiave non è stata l'attrezzo, è stata la domanda**: non serve *cogliere* la finestra al
+volo — basta **ricostruire lo stato in cui l'app si trova dentro quella finestra**. Una riga tolta
+dalla memoria locale, la lapide **non spinta**, poi l'aggiornamento forzato. Nessun annullo, nessuna
+scrittura: l'attrezzo aveva le scritture **bloccate** per tutta la prova.
+
+**Esito (TEST 6.242):**
+
+| | |
+|---|---|
+| riga tolta dalla memoria, non spinta | dopo l'aggiornamento è **TORNATA** 🔴 |
+| riga **finta**, assente nel cloud | dopo l'aggiornamento è **CANCELLATA** 🔴 |
+
+⇒ **L'aggiornamento non fonde: SOSTITUISCE.** La **previsione B è confermata**, ed era quella che
+poteva smentire la diagnosi. Il blocco è **identico su PROD** (diffato).
+
+### Cosa di questo documento resta valido
+
+⛔ **Solo la previsione D**: se il calendario **mostri** o no il fantasma. `staffCalGetSlots` non è
+raggiungibile dalla console remota, e quella metà vuole ancora un operatore davanti allo schermo.
+⛔ E resta valido come **ricetta per cogliere la finestra davvero**, se un domani si vorrà: qui sotto
+c'è come allargarla. Ma per *decidere la cura* non serve più — quello che si voleva sapere si sa.
+
+⚖️ **La procedura qui sotto NON è stata buttata**: è la prova che è cambiata di natura, non che fosse
+sbagliata. Chi la esegue oggi esercita la catena vera dell'annullo, che la prova da remoto **non**
+tocca.
+
+---
+
 ## ⭐ La scoperta che cambia la prova: si fa su TEST, non su PROD
 
 La scheda della 43 dice che la sua cura *«tocca la strada che annulla per davvero su Matchpoint»*, ed
