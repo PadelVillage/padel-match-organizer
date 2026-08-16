@@ -606,7 +606,11 @@ e non c'è modo di aggirarlo dal cloud. Procedura in
 > revocata (33 → 32) e poi **tutta la famiglia del PIN** — l'oracolo più le 11 varianti
 > `*_admin(p_admin_pin, …)` — che porta a **20**. In tutto **13 porte chiuse** su PROD in una
 > sessione, ognuna con prova prima/dopo, controprova positiva **e** negativa.
-> ⛔ **Resta C**, ed è decisione sua: ha una trappola: il rimedio ovvio romperebbe una funzione viva.
+> ✋ **Il reperto C è stato DECISO, non curato**: lasciato com'è, perché oggi non espone niente
+> (0 righe su PROD e su TEST). Nella sua riga stanno **quando** riaprirlo — prima di accendere il
+> feedback post-partita — e **come**, che è più semplice di quanto avessi detto.
+> ⇒ **I tre reperti sono chiusi o decisi: la voce non ha più lavoro dentro.** La chiusura però la
+> decide lui, e non è ancora stata chiesta.
 
 ⚖️ **Perché questa e non un'altra.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per
 iscritto ciò che non aveva guardato**: *«⛔ NON esaminate: 3 letture per gettone
@@ -733,7 +737,39 @@ misura l'oracolo, non il segreto.
 📌 **E l'app il PIN non lo usa**: `p_admin_pin` compare **0 volte** in `index.html`, e le due
 occorrenze di `adminPin` sono righe che lo **cancellano** dalle impostazioni (8132, 27075).
 
-**④ 🔴 Reperto C — `get_post_match_feedback_by_tokens`: latente, e il rimedio ovvio è SBAGLIATO**
+**④ ⚪ Reperto C — LASCIATO APERTO, per sua decisione e con la ragione scritta**
+
+> ✋ **Decisione del committente il 16/08**, messo davanti a quattro strade: *lasciare com'è*. Non è
+> un rinvio per stanchezza, è una misura: **oggi quella funzione non espone NIENTE** —
+> `post_match_feedback_responses` ha **0 righe su PROD e 0 su TEST** (contate, non ricordate). La
+> fessura è **latente, non aperta**, e la cura completa costa una modifica all'app su due rami per
+> chiudere la porta di **una stanza vuota**.
+
+🕐 **QUANDO riaprirla — ed è la parte che serve fra sei mesi**: **prima** di accendere il feedback
+post-partita, non dopo. Il giorno in cui quella tabella prende la prima riga, questa smette di
+essere latente e diventa il reperto A: una lettura per gettone, ad `anon`, su testo libero scritto
+dai soci (`note`) più `member_local_id` e `raw_response`.
+
+🎯 **E COME, che è più semplice di come l'avevo presentato.** Avevo scritto che la cura richiede di
+*scegliere* un permesso staff, e l'avevo contato fra i costi. **Misurato dopo: non è una scelta.**
+La stessa funzionalità, **due funzioni più su nello stesso file**, fa già la cosa giusta dal lato
+della **scrittura**:
+
+| | riga | come chiama |
+|---|---|---|
+| scrittura dei gettoni feedback | **29732** | `pmoStaffRpc('upsert_post_match_feedback_tokens_admin', …, 'cloud_sync', …)` ⇒ **sessione staff** |
+| lettura delle risposte | **29852** | `fetch(…)` con `Bearer <chiave pubblicabile>` ⇒ **`anon`** |
+
+⇒ La lettura è **l'unica asimmetrica** della sua stessa famiglia, e il permesso da usare è
+`cloud_sync` **per simmetria col gemello**, non per giudizio. La cura è: portare la 29852 su
+`pmoStaffRpc`, bumpare `APP_VERSION`, un caso nel banco, e **poi** revocare `anon` — su **entrambi i
+progetti insieme**, perché la funzione esiste su tutti e due con `anon = true` e il contratto vive
+sui due lati.
+⚖️ Lo scrivo anche se **toglie forza alla ragione con cui gli avevo consigliato di lasciar perdere**:
+la decisione resta sua e resta sensata (stanza vuota), ma il costo che le avevo attribuito era **più
+alto del vero**, e un consiglio dato con un costo gonfiato è un consiglio storto.
+
+*Il reperto com'era stato misurato:*
 
 Restituisce le risposte per gettone: `note` libera, `member_local_id`, `raw_response`. **Oggi non
 espone niente**, e non per una guardia: `post_match_feedback_responses` ha **0 righe**. È una fessura
