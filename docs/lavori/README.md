@@ -1,6 +1,58 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 16/08/2026, a fine 24ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 25ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 25ª: **la premessa vera che regge una conclusione falsa**
+
+Le sessioni prima avevano imparato a diffidare della *prova* (16ª), dello *strumento* (20ª), della
+*misura che concorda col documento* (22ª), dello strumento che guarda **un pezzo solo** (23ª) e di
+quello che guarda **altrove o troppo presto** (24ª). Questa ha trovato la forma più educata di
+tutte: **un ragionamento corretto, da una premessa vera, a una conclusione sbagliata.** Non c'è
+niente da smascherare nella logica — l'errore sta nel fatto che non è stato *eseguito* niente.
+
+| la nota concludeva | cos'era davvero |
+|---|---|
+| «`get_self_assessments_by_tokens` è un fatto da sapere, **non un buco aperto**» — perché *«vuole i gettoni in ingresso, che non si rastrellano più»* | la **premessa è vera**. Ma non tutti i gettoni sono forti: fra i 1364 ce n'è uno da 11 caratteri, `MAURIZIO001`, e dietro c'è **un socio vero col telefono**. Eseguendo la funzione **come `anon`** torna nome, cognome e numero. La logica reggeva, il mondo no |
+| «la GET è morta perché la tabella risponde vuota» | **vero, e non è il motivo principale**: la guardia che l'accendeva (`!r?.raw_response`) era **irraggiungibile**, perché la RPC porta sempre `coalesce(…, '{}')` e in JS `{}` è **vero**. ⇒ Non partiva **proprio nei casi per cui era stata scritta** |
+| «`autovalutazione_url`: grep, **solo il commento**» | nel codice quel nome **non c'è affatto**: vive nel **database**. La conclusione («nessuno la legge») era giusta; il metodo che l'aveva prodotta **non poteva saperlo** |
+| «promosso: il merge è passato» | `main` dichiarava una versione di TEST **che non esisteva**. Il commit che la correggeva **l'avevo fatto e non spinto**, e la PR è nata dal ramo *remoto* |
+
+⚖️ **La lezione non è «diffida delle conclusioni».** È che una conclusione va marcata con **come è
+stata ottenuta**: *letta*, *dedotta*, o **eseguita**. Le prime tre righe qui sopra erano tutte
+*dedotte*, tutte da premesse vere, e tutte e tre sbagliate — e in tutti e tre i casi a smentirle è
+bastato **far girare la cosa**: chiamare la funzione come `anon`, interrogare la RPC sui token veri,
+guardare nella tabella invece che nel repo. ⇒ La domanda da farsi non è «il ragionamento tiene?», è
+**«che cosa ho eseguito, e cosa ho solo dedotto?»**.
+
+🎯 **E il secondo filo, sullo stesso tema dal lato del verde: un verde dimostra meno di quel che sembra.**
+Il banco fa **94/94** togliendo il ripiego morto — ma **non poteva** dimostrare che fosse morto:
+nessun caso può coprire un ramo **irraggiungibile**. Dimostra solo che non è caduto nulla intorno; a
+dimostrare che era morto è la misura sulla RPC. Allo stesso modo il **merge riuscito** non dimostra
+che la promozione sia atterrata: le due guardie erano rosse mentre il merge era verde. ⇒ Un verde va
+sempre letto insieme alla domanda **«che cosa sarebbe stato capace di far diventare rosso?»**.
+
+🚨 **E la terza, pagata: il mio errore l'ho trovato io, ma il rosso in bacheca l'ha visto LUI.**
+Diagnosticato e riparato il drift, ho rilanciato le guardie di `test-preview` e **ho lasciato rossi
+quelli di `main`** — riparati sul commit dopo, ma rossi in bacheca. Me l'ha mostrato con una
+schermata. ⚖️ *«I rossi vecchi si rilanciano a mano per non lasciarli in bacheca»* è scritto in
+fondo a questo file da giorni: sapevo la regola, l'ho applicata su un ramo e non sull'altro. **Una
+guardia rossa che si sa spiegare è comunque una guardia rossa**, e chi guarda la bacheca non ha la
+spiegazione in testa.
+
+## 📌 Le decisioni prese dal committente nella 25ª
+
+| | |
+|---|---|
+| 📦 **«chiudo la 42»** e **«decido la 14 adesso»** | la lista era piena di voci mature: due chiuse in un colpo, una a domanda risposta e una **dichiarando** |
+| 🔑 **«no» alla 14** | la chiave dell'occupazione **resta col nome dentro**. Deciso coi numeri di oggi davanti — 438 lapidi, `ancora_vive` **0** in **quindici settimane su quindici** — e con la ragione scritta: il costo è contabile, la cura toccherebbe **sync, app e ponti insieme** |
+| ✋ **«solo diagnosi» sulla 43** | la cura tocca la strada che annulla **per davvero** su Matchpoint ⇒ si scrive cosa non va, non si tocca. È la stessa scelta della 23ª, ripresa da lui senza che gliela ricordassi |
+| ⬆️ **«i tre reperti piccoli»** | promossi in blocco da «nate misurando» — e **uno dei tre non era piccolo**: è diventato la voce 44 |
+| 🔓 **«revoca `anon` e PUBLIC»** | l'autorizzazione che ha chiuso una **fessura su dati personali veri in produzione**. Chiesta e data **da sola**, non in blocco con le altre |
+| 🔓 **«fai la 46»**, poi **«fai la 45»** | una per volta, mai due insieme |
+| ⬆️ **«promuovi su test-preview e poi su main»** | l'ordine del 4bis chiesto **per nome**, e la finestra rossa è caduta dove il 4bis promette |
+| 👁️ **«attenzione ai deploy rossi»**, poi una **schermata** | ⭐ **la correzione della sessione, e non l'ho portata io**: avevo guardato le guardie e non i deploy, e avevo lasciato in bacheca due rossi che sapevo spiegare. È la sesta sessione di fila in cui la cosa che vede lui io non l'avevo guardata |
+
+**E la 24ª, poche ore prima:**
 
 ## 🔎 Il filo della 24ª: **la sonda che guarda ALTROVE, o TROPPO PRESTO**
 
@@ -261,14 +313,21 @@ contesto**, non eseguire il compito scritto.
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **35** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
-percorsi** di `guard-worker-sync` **identici** fra i rami · **PR aperte 0**, ricontate a fine
-sessione · tutte le guardie **verdi su entrambi i rami**.
+**Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
+dei due rami, non ricordate: app PROD **6.233** · TEST **6.242** · i **4
+percorsi** di `guard-worker-sync` **identici** fra i rami · tutte le guardie **verdi sulle punte di
+entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
 non li controlla: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva — questo
 commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin/test-preview`.
-📏 **La rete di regressione: PROD 94 casi, TEST 97** — cresciuta di **4 su entrambi** nella 24ª: due
+🚫 **E da questa sessione non si scrive più nemmeno «PR aperte: N».** `main` è **protetto**: la spinta
+diretta viene rifiutata, quindi *ogni* promozione — **compresa quella di questo file** — passa da una
+PR. ⇒ «PR aperte: 0» sarebbe **falsa nell'istante in cui atterra**, ed è esattamente la classe di
+frase vietata dalla regola del 15/08: *il commit che porta la frase è uno degli eventi che la frase
+conta*. Il fatto **stabile** è questo: `main` è protetto, le promozioni passano da PR, e quante ne
+siano aperte **si conta guardando**, non leggendo qui.
+📏 **La rete di regressione: PROD 94 casi, TEST 97** — invariata nella 25ª, che non ha aggiunto casi:
+ha **tolto** codice. La differenza fra i due resta **solo** i 3 della simulazione incassi. Cresciuta di **4 su entrambi** nella 24ª: due
 sulla pulizia-orfani (voce 42) e due sul link d'ingresso al bot. La differenza fra i due resta
 **solo** i 3 della simulazione incassi, che in produzione non hanno senso. Erano 90 e 93 a fine 23ª,
 55 e 90 a inizio giornata del 15/08.
@@ -285,6 +344,17 @@ esattamente quando l'evidenza è stata cancellata. ⇒ Non si rilegge il registr
 📌 **Fughe dal banco: 0** su entrambi i rami (erano 2 su `main`). Non uscivano davvero — il banco le
 bloccava — ma erano il segno che il **ponte del bot non era modellato**, e quindi che della proposta
 del link si provava solo il ramo del guasto.
+
+✅ **PROD verificata DAL SERVER alla 25ª, e con la trappola della 20ª evitata.** `pg_net` ha scaricato
+`app.padelvillage.club/index.html` → **200**, `APP_VERSION = '6.233'`, cioè il numero dichiarato qui
+sopra. E il codice tolto è stato controllato **per forma, non a conteggio**: `async function
+fetchAssessmentRawResponsesByTokens` **assente**, `const missingRaw` **assente**, la GET diretta su
+`self_assessments` **assente** — e il nome compare **una volta sola**, dentro il commento che spiega
+la rimozione. Contarne le occorrenze avrebbe detto «c'è ancora».
+⛔ **TEST invece NON è verificata dal server, e va detto**: `test.padelvillage.club/index.html`
+risponde 200 ma è il **caricatore** (3.261 byte, repo a parte), non l'app — non contiene
+`APP_VERSION`. Che TEST serva la 6.242 lo si sa **dal meccanismo documentato** (il caricatore prende
+l'ultimo commit del ramo), *non* da una misura. È una deduzione, ed è marcata come tale.
 
 ✅ **PROD verificata DAL SERVER, non dall'etichetta.** Alla 22ª, servita e **caricata** in un browser
 vero: `app.padelvillage.club` risponde col titolo **v6.231**, che è il numero dichiarato qui sopra —
@@ -332,6 +402,16 @@ portata senza un export fatto sul posto.
 ✅ Rimisurati invece: le due versioni, gli sha, le PR aperte, i 4 percorsi sorvegliati, i conteggi di
 questo file, il ponte del bot dal vivo, e i dati di PROD dietro `livello-dimostrato` (2797 soci vivi,
 533 con livello vero, 517 a origine vuota, `ereditato` = **0**).
+
+🔭 **La 25ª ha aggiunto una cosa che prima non si era mai fatta da qui: CHIUDERE UN BUCO su PROD.**
+Fino a ieri da una sessione cloud si misurava, si scriveva e si promuoveva codice; la voce 44 è la
+prima volta che si **toglie un permesso** al database di produzione — e la prova è stata fatta
+**eseguendo la funzione come `anon`** dentro transazioni annullate, prima e dopo, con la controprova
+positiva su `authenticated` e una conferma indipendente (le `SECURITY DEFINER` aperte ad `anon`
+passano da **34 a 33**).
+⚠️ **Il che rende più pesante ciò che resta non guardato**: quelle **33** non le ha lette nessuno. Il
+linter le segnala tutte con lo stesso titolo da sempre, ed è esattamente la condizione in cui stava
+la 44 fino a stamattina — segnalata, letta da nessuno, e con un socio vero dietro.
 
 🔭 **Nella 24ª l'elenco si è accorciato di due voci, e non per una sonda nuova.**
 ① **Il repo del bot** era dato per «fuori dal perimetro» dalla scheda della 14bis: **non lo era** —
