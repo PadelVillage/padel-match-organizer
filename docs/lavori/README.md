@@ -975,15 +975,32 @@ a Caddy fermo **nessuno prenota**, quindi serve una finestra col circolo fermo.
 previsioni minuto per minuto, e soprattutto **cosa sarebbe un rosso vero**.
 🎁 **E la finestra dura SECONDI, non quindici minuti**: l'attesa **non passa da Caddy** (`verifica`
 è una chiamata alla edge e non chiama il worker) ⇒ Caddy si riaccende **subito** dopo la
-prenotazione e il ciclo continua per conto suo. ⭐ Il che *è* la tesi della voce — *una copia
-risponde sempre, anche a worker morto* — finalmente **esercitata** invece che creduta.
+prenotazione e il ciclo continua per conto suo.
 🎁 E non serve nemmeno lo **strappo a metà volo** della parte B della 41 (`SIGKILL`, i due secondi
 contati): `matchpoint-bookings-create` marchia l'ignoto a **qualunque** caduta di rete
 (`index.ts:194`), «connection refused» compreso ⇒ **basta Caddy giù prima**.
-🚨 **Ma il «sì» lì è IRRAGGIUNGIBILE, ed è dichiarato in cima alla scheda**: su TEST la scrittura è
-simulata e la copia è ferma ⇒ l'esito atteso è `rinuncia/tetto`. ⚖️ È il **ramo pericoloso**, quello
-in cui una copia stantia potrebbe far dire un «no» falso: se esce «non lo so ancora», la cosa per
-cui la voce esiste ha funzionato. La strada felice si prova solo sui **soci**.
+
+🚨🚨 **IL PRIMO GIRO È STATO FATTO IL 16/08 SERA, ED È FALLITO — e il difetto era nella MIA scheda.**
+Cancello passato (`HTTP 000`, Caddy `failed`), prenotazione dal bot di prova ⇒ **«✅ Prenotato»**.
+Nessun esito ignoto, nessun ciclo. **Su TEST il worker non viene chiamato mai**: in
+`matchpoint-bookings-create` c'è un **recinto** *prima* della chiamata, e la guardia è **l'indirizzo
+del progetto** (`scritturaAlCircoloConsentita`, vera solo su PROD). ⇒ Su quella strada **Caddy non
+c'è**, e fermarlo non cambia niente.
+⚖️ **Premessa vera, conclusione falsa — e scritta con la faccia di una misura.** Avevo letto
+`esitoVieneDaUnaProva(workerResult)` (riga 316), che decide il **marchio sulla riga**, e ne avevo
+concluso «il worker viene chiamato comunque»; il recinto sta **350 righe più in là**. È il
+**secondo** caso identico dentro la voce 53, dopo il sync che «non passava dal worker» — e stavolta
+l'avevo etichettato *«misurato nel codice, non dedotto»*, che è ciò che lo ha reso credibile.
+⚠️ E `CLAUDE.md` mi ci ha confermato: *«quello che lo trattiene è la simulazione, non l'indirizzo»*
+vale per la strada dell'**app**; su quella del **bot** il recinto è **esattamente l'indirizzo**.
+⇒ **Il collaudo si fa su PROD o non si fa**, e la scheda è stata riscritta di conseguenza.
+🎁 In cambio là il **«no» diventa raggiungibile** — copia viva, sync che riparte, verdetto `no`
+**vero** perché con Caddy giù la richiesta a Matchpoint non arriva ⇒ si vedono **tutt'e due** le
+facce, cosa che su TEST non era possibile.
+
+🎯 **E una cosa il giro fallito l'ha dimostrata sul serio**: col cancello a `HTTP 000` la **griglia
+ha risposto lo stesso**. È la tesi della voce — *una copia risponde sempre, anche a worker morto* —
+**verificata sul bersaglio** invece che creduta.
 ⚠️ E il repo del bot **non ha CI**: l'unico workflow è il deploy, quindi i 1004 verdi sono girati in
 locale e **nessuna guardia li rigirerà sulla PR**.
 📌 La metà del **gestionale** è invece **deployata e viva**: `consumer-booking-write` è **v26 ACTIVE**
@@ -1023,7 +1040,28 @@ cinque giocatori, e lì la rete del «mai più di quattro» va verificata invece
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-Misurando il **16/08**, nella 27ª, chiudendo la voce 48:
+Nella **29ª**, collaudando la voce 53 — **trovata dal committente**, non da me:
+
+- 📅 **«Mercoledì» diventa quello DOPO: il bot salta una settimana.** Chiesto *«che campi sono liberi
+  mercoledì alle 15?»* **domenica 16 agosto**, il bot ha risposto **«mercoledì 26 agosto»**. Il primo
+  mercoledì è il **19**.
+  ✅ **Il dato che gli viene dato è GIUSTO, ed è stato eseguito** (`righeCalendario(oggiRoma(), 7)`):
+  l'elenco contiene `- mercoledì 19 agosto 2026 → 2026-08-19`, ed è il primo con quel nome. E
+  l'istruzione sotto è esplicita: *«è il **PRIMO** con quel nome in questo elenco»*.
+  ⇒ **Il modello ha disobbedito a un'istruzione esplicita avendo il dato giusto davanti.**
+  ⚖️ Non è la stessa malattia del 25/07 e del 29/07 (là **calcolava** il giorno della settimana, e la
+  cura — dargli le date già fatte — regge): qui sbaglia a scegliere **l'occorrenza**. È un residuo
+  che la cura non copre.
+  🚨 **Sul bot dei SOCI vuol dire che un socio che chiede «mercoledì» può vedersi proporre la
+  settimana dopo** — e confermare senza accorgersene, perché la scheda mostra la data per esteso ma
+  l'occhio legge quella che si aspettava.
+  📌 **Cosa manca per curarla, ed è una domanda sola**: se sia il **modello** a passare la data
+  sbagliata allo strumento, o lo **strumento** a risolverla male. Si distingue con un comando sui log
+  del bot di prova — quale data ha ricevuto `disponibilita` — e sono due difetti con due cure diverse.
+  ⛔ **Non l'ho inseguita subito per scelta del committente**: eravamo dentro la finestra col circolo
+  fermo, e questa non tocca la voce 53.
+
+**E misurando il 16/08, nella 27ª, chiudendo la voce 48:**
 
 - 🔑 **Il PIN admin: cosa resta dopo la 48, misurato e RIDIMENSIONATO.** Chiudendo la 48 avevo
   segnalato «l'entropia del PIN non è stata valutata» come residuo. Misurato ora, il quadro è meno grave

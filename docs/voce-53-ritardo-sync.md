@@ -432,7 +432,7 @@ prima o poi qualcuno lo «ripara» senza sapere cosa era stato pesato.
 ⛔ **Il collaudo vero.** 📄 La scheda c'è: [`voce-53-collaudo.md`](./voce-53-collaudo.md) — pre-volo,
 cancello, previsioni minuto per minuto, e **cosa sarebbe un rosso vero**.
 
-🎁 **Ed è molto più semplice di come era stato scritto qui sopra**, per due fatti misurati il 16/08:
+🎁 **Due semplificazioni misurate, e reggono**:
 
 1. **Non serve lo strappo a metà volo.** `matchpoint-bookings-create` marchia l'esito come ignoto a
    **qualunque** caduta di rete della chiamata al worker (`index.ts:194`), e il marchio sta su una
@@ -442,15 +442,40 @@ cancello, previsioni minuto per minuto, e **cosa sarebbe un rosso vero**.
 2. **La finestra col circolo fermo dura SECONDI.** L'attesa **non passa da Caddy**: `verifica` è una
    chiamata alla edge, e quella funzione non chiama il worker. ⇒ Caddy si riaccende **subito** dopo
    la prenotazione, e il ciclo continua per conto suo.
-   ⭐ Il che *è* la tesi centrale della voce — *una copia risponde sempre, anche a worker morto* —
-   che così viene **esercitata** invece che creduta.
 
-🚨 **E il «sì» sul bot di prova è IRRAGGIUNGIBILE**, dichiarato prima e non dopo: su TEST la
-scrittura è **simulata** (il circolo non si tocca) e la copia non la aggiorna nessun cron ⇒ la
-prenotazione non comparirà mai, e l'esito atteso è **`rinuncia/tetto`**.
-⚖️ Non è una prova mancata: è il **ramo pericoloso**, quello in cui una copia stantia potrebbe far
-dire un «no» falso. Se esce «non lo so ancora», ciò per cui la voce esiste ha funzionato. La strada
-felice si prova solo sul bersaglio **`soci`**.
+⭐ **E il punto 2 è stato VERIFICATO SUL BERSAGLIO il 16/08**: col cancello a `HTTP 000` — worker
+irraggiungibile — il bot ha comunque elencato le fasce libere. È la tesi centrale della voce
+(*una copia risponde sempre, anche a worker morto*) **eseguita**, non più creduta.
+
+## 🚨🚨 9ter. E il collaudo sul bot di PROVA È IMPOSSIBILE — provato, e fallito al primo giro
+
+**Misurato il 16/08 alle ~20:38.** Cancello passato (`HTTP 000`, Caddy `failed`), prenotazione dal
+bot di prova ⇒ il bot ha risposto **«✅ Prenotato»**. Nessun esito ignoto, nessun ciclo.
+
+**Perché**: in `matchpoint-bookings-create` c'è un **recinto** *prima* di qualunque chiamata al
+worker, e la guardia è **l'indirizzo del progetto** —
+`scritturaAlCircoloConsentita()` è vera **solo su PROD**
+(📄 `matchpoint-bookings-cancel/scrittura-al-circolo.ts:147`). ⇒ Su TEST la catena si ferma **prima**
+di Caddy: fermare Caddy non cambia niente, perché su quella strada **Caddy non c'è**.
+
+⚖️ **L'errore era mio, ed è quello di sempre in questa voce.** Scrivendo la scheda avevo letto
+`esitoVieneDaUnaProva(workerResult)` (riga **316**), che decide il **marchio sulla riga**, e ne avevo
+concluso *«la simulazione è a valle, quindi il worker viene chiamato comunque»*. Il recinto vero sta
+**350 righe più in là**. 🚨 **Premessa vera, conclusione falsa — scritta con la faccia di una misura**
+(*«misurato nel codice, non dedotto»*), che è la forma peggiore: una deduzione travestita da reperto
+si legge come un fatto e nessuno la ricontrolla. È il **secondo** caso identico dentro la voce 53,
+dopo il sync che «non passava dal worker».
+
+⚠️ **E `CLAUDE.md` mi ha confermato nell'errore**: *«quello che lo trattiene è la simulazione gated
+`PMO_IS_TEST_ENV`, non l'indirizzo»* è vero **per la strada dell'app**; sulla strada del **bot** il
+recinto è **esattamente l'indirizzo**, una porta prima. Due strade, due protezioni diverse, e una
+frase giusta applicata a quella sbagliata.
+
+⇒ **Il collaudo si fa su PROD o non si fa**, e la procedura vera sta in
+📄 [`voce-53-collaudo.md`](./voce-53-collaudo.md). 🎁 In cambio, là il **«no» diventa raggiungibile**:
+la copia di PROD è viva, quindi riacceso Caddy il sync la rinfresca e il verdetto passa a `no` —
+che è **vero**, perché con Caddy giù la richiesta non è mai arrivata a Matchpoint. Si vedono
+tutt'e due le facce, cosa che su TEST non era possibile.
 
 ⚠️ **E il repo del bot non ha CI**: l'unico workflow è il deploy. I 1004 verdi sono girati in locale,
 e nessuna guardia li rigirerà sulla PR.
