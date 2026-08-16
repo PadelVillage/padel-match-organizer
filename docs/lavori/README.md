@@ -1,6 +1,60 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 16/08/2026, a fine 25ª sessione.** Misurata, non ricordata.
+**Fotografia del 16/08/2026, a fine 26ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 26ª: **il limite dichiarato che nessuno aveva provato**
+
+La 25ª aveva trovato la conclusione *dedotta* da una premessa vera. Questa ha trovato la sua parente
+più costosa: **una frase che dice «da qui non si può fare», scritta senza averlo tentato** — e che
+per questo resta vera per sempre, perché nessuno la mette più alla prova.
+
+| stava scritto | cos'era |
+|---|---|
+| «la **previsione D** non è raggiungibile dalla console: `staffCalGetSlots` non è su `window`» | **premessa vera, conclusione falsa.** La previsione D non chiede quella funzione, chiede *cosa mostra il calendario* — e `renderCal` renderizza il calendario **vero**. Fatta in dieci minuti |
+| «per l'**annullo** serve un operatore davanti allo schermo» | il blocco non era la guardia della console ma il **ruolo** dell'account. Cambiata una colonna per la durata della prova, e la cura si è **vista funzionare** |
+| «le **20** `SECURITY DEFINER` non le ha rilette nessuno» — scritta da me chiudendo la 47 | **le 20 sono un sottoinsieme esatto delle 33 censite due ore prima.** Un residuo che *sembrava* un buco aperto, e la prima cosa che ha fatto è stata **farsi promuovere** |
+
+⚖️ **La lezione non è «prova tutto».** È che un limite dichiarato ha la stessa forma di una misura ma
+**non è stato eseguito**, e siccome sembra prudente nessuno lo ricontrolla. ⇒ La domanda da farsi
+davanti a un «non si può» è **«chi l'ha provato, e quando?»** — la stessa che la 22ª faceva alle
+sonde, applicata alle **rinunce**.
+
+🎯 **E il secondo filo, dal lato del bene: tre volte la somma ha smascherato ciò che la rilettura non
+vedeva.** ① I conteggi del censimento erano **10 e 12** invece di **12 e 11**, e a tradirli è stato
+che 2+10+12+2+3+3 fa **32** su 33 voci. ② La PR era `dirty` con **266 cancellazioni**, e l'ho visto
+chiedendo lo stato della PR invece di fidarmi dell'elenco delle corse. ③ `git diff --stat` dava
+vuoto e l'avevo preso per «nessuna modifica»: era in **staging**, e `git diff` senza `--cached` non
+la vede. ⚖️ Nessuna delle tre è stata trovata rileggendo: **tutte e tre da un totale che non
+tornava**, o da un attrezzo interrogato nel punto giusto.
+
+🚨 **E la peggiore, perché è di metodo e ha viziato una misura: una funzione con overload e valori
+predefiniti non si prova per POSIZIONE.** `pmo_upsert_staff_user_admin` esiste a 5 e a 6 argomenti,
+entrambe con default; la chiamata posizionale si è risolta sulla **6-argomenti, quella col PIN**,
+perché PostgreSQL preferisce `text` a `jsonb` per l'`unknown`. Credevo di provare la variante senza
+PIN e riprovavo quella col PIN. ⇒ È la 24ª — *«questa sonda guarda nel cassetto giusto?»* — nella
+forma più subdola, perché qui **i due cassetti hanno lo stesso nome**. ⚖️ E la cura è stata cercare
+la **classe**: chieste al database **tutte** le funzioni con parametri predefiniti (11, in 5
+famiglie) e ricontrollate una per una — le altre 10 erano legate giuste.
+
+🛡️ **La terza, e riguarda le protezioni: quella che ti salva non è sempre quella che credi.** Prima
+dell'annullo vero si è verificato **nella pagina viva** che la simulazione Matchpoint fosse
+installata: la sonda ha risposto `simulated:true` **senza uscire dal browser** — e la guardia «sola
+lettura» della console **non l'aveva bloccata**, perché a rispondere è l'app *prima* della rete. ⇒
+Su quella strada la protezione è il flag `PMO_BOOKINGS_SIMULATE`, **non l'attrezzo**: chi si fidasse
+della guardia scriverebbe sul **Matchpoint vero** credendosi al sicuro.
+
+## 📌 Le decisioni prese dal committente nella 26ª
+
+| | |
+|---|---|
+| ⬆️ **«le 33 `SECURITY DEFINER`»** | messo davanti a quattro proposte con la lista urgenti ridotta alla sola 43, ha scelto il residuo più pesante invece di una voce comoda |
+| 🔓 **«fammene una alla volta»** | ⭐ **la regola che ha fatto la qualità del lavoro**: tre reperti, **tre autorizzazioni separate**, mai due insieme. Ed è servita davvero — fra la prima e la seconda la misura ha **cambiato la cura**, da 1 funzione a 12 |
+| 🔑 **«dammi il permesso di annullare su TEST»** | l'autorizzazione che ha reso verificabile **sul bersaglio** una cura che altrimenti restava «provata nel banco» |
+| ✋ **la scelta della RIGA da annullare** | 🚨 **non l'ho presa io, e non doveva**: su TEST **non esiste nessuna riga di prova** — le 45 occupazioni future sono prenotazioni vere e le tre campionate erano vive **anche in produzione**. La regola *«se risulta anche in PRODUZIONE, fermati»* ha funzionato: la sessione si è fermata e ha chiesto |
+| 📦 **«chiudi la quarantasette»**, poi **«chiudi la quarantatré»** | due chiusure, una per volta, entrambe su voci **verificate sul bersaglio** e non solo «a codice a posto» |
+| ⬆️ **«promuovi in urgenti le 20 `SECURITY DEFINER`»** | ⚖️ e la promozione ha trovato **una mia frase gonfiata**: le 20 erano già lette. La voce esiste lo stesso, ma il suo perimetro vero è **TEST** — 32 aperte ad `anon`, mai guardate |
+
+**E la 25ª, poche ore prima:**
 
 ## 🔎 Il filo della 25ª: **la premessa vera che regge una conclusione falsa**
 
@@ -328,14 +382,21 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **38** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
-**Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
+**Stato del sistema, rimisurato alla chiusura della 26ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · tutte le guardie **verdi sulle punte di
 entrambi i rami**.
+📌 **La 26ª non ha toccato una riga di `index.html`**: le versioni sono quelle con cui la 25ª aveva
+chiuso, e sono state **rimisurate** invece che ricopiate. Il lavoro è stato tutto su **permessi del
+database** (13 revoche su PROD) e su **documenti**.
+✅ **E stavolta le due versioni sono verificate DAL SERVER tutt'e due**, cosa che la 25ª non era
+riuscita a fare per TEST: aprendo le pagine in un browser vero, i titoli dicono **v6.234** e
+**v6.243**. Quella di TEST la 25ª l'aveva **dedotta** dal meccanismo del caricatore, scrivendo che
+dal server non si misurava — si misura, basta caricare la pagina invece di scaricare il file.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
 non li controlla: un file che cita il proprio sha è vecchio nell'istante in cui lo si salva — questo
 commit stesso lo cambierebbe. Si rileggono con `git rev-parse origin/main origin/test-preview`.
@@ -531,7 +592,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -605,6 +666,57 @@ teneva aperta la voce. 📦 **CHIUSA da lui la sera stessa** — la sua riga sta
 difetto**, non come collaudo della cura: le sue previsioni A e B descrivono l'app malata e oggi si
 leggono al contrario.
 
+⬆️ **E a lista appena svuotata, il 16/08 lui ne ha promossa una: «promuovi in urgenti le 20
+`SECURITY DEFINER`».** ⇒ Urgenti da **0 a 1**. 🚨 **La promozione poggiava su un residuo che avevo
+esagerato io, e la scheda lo dice**: non erano «mai lette». Il perimetro vero è **TEST**.
+
+### 48. 🔒 Le `SECURITY DEFINER` aperte ad `anon` — la metà che non è mai stata guardata: **TEST**
+
+> ⬆️ **Promossa dal committente il 16/08, 26ª sessione**, dal residuo lasciato dalla voce 47.
+> 🚨 **NON è «le 20 di PROD»**, e va detto subito perché è colpa di come l'avevo scritto io.
+
+🧯 **La correzione, prima di tutto.** Chiudendo la 47 avevo lasciato scritto *«le 20 ancora aperte ad
+`anon` non sono state rilette dopo questa potatura»*, e riferendogliela a voce l'ho detta peggio:
+**«nessuno le ha rilette»**, che suona come *mai lette*. **Falso.** Confrontate le due liste: le
+**20 di oggi sono un sottoinsieme esatto delle 33** censite stamattina — 33 meno le 13 revocate. Di
+quelle 20, **2 sono `trigger`** (via RPC non si chiamano) e le altre **18 sono state eseguite come
+`anon`** poche ore fa, ognuna con il suo esito:
+
+| esito, misurato il 16/08 | quante |
+|---|---|
+| `AUTH_REQUIRED` | **12** |
+| `0 righe`, ed è corretto (`pmo_current_staff_profile`, `pmo_get_my_staff_profile`) | **2** |
+| aperte **per disegno**, già censite (i due `submit_*_public`, `pmo_can_register_staff`) | **3** |
+| ⚪ **reperto C**, deciso da lui: `get_post_match_feedback_by_tokens` | **1** |
+| ⛔ `trigger`, non chiamabili | **2** |
+
+⇒ **Su PROD non c'è lavoro nuovo**: la somma fa 20, e ogni riga ha già una misura eseguita.
+⚖️ È la forma della 22ª — *una misura che concorda con ciò che c'è scritto non ha verificato niente*
+— presa dal lato di chi **scrive** il documento: avevo prodotto un residuo che *sembrava* un buco
+aperto, e la prima cosa che ha fatto è stata farsi promuovere.
+
+🎯 **Dove sta il lavoro vero, misurato oggi**: su **TEST** (`cudi…`) le `SECURITY DEFINER` sono
+**56**, di cui **32 aperte ad `anon`** e 39 ad `authenticated` — e **nessuna è mai stata letta**.
+Non è una supposizione: la voce **36** aveva già annotato che là la famiglia era *«un rattoppo a
+campione — alcune chiuse, altre no, senza un criterio»*, e da allora nessuno ci è tornato.
+
+⚠️ **E i due progetti sono divergenti per costruzione**, quindi il conto non si eredita: PROD ne ha
+**58** totali e **20** aperte ad `anon` *dopo* la potatura di oggi, TEST **56** e **32**. Le 13
+revocate stamattina **su TEST non sono state toccate** — `get_assessment_token` là **non esiste**
+(misurato: 0), e della famiglia del PIN non si sa nulla.
+
+**Cosa farebbe questa voce**, se la si lavora:
+① censire le **32** di TEST **eseguendole** come `anon` in transazioni annullate, col metodo della 47;
+② confrontarle con le 20 di PROD per trovare le **divergenze di protezione** nei due sensi — è la
+voce 31 applicata ai grant;
+③ e riguardare la **trappola `service_role`** che la 36 incontrò tre volte: su `cudi…` i grant a
+`service_role` spesso **non sono espliciti** in ACL, quindi un `revoke … from PUBLIC` glieli toglie.
+⇒ Su TEST, dopo **ogni** revoca, si rimisura `service_role` e lo si confronta con la fotografia
+presa **prima**, non con PROD.
+
+⛔ **Cosa NON è stato fatto qui**: nulla oltre i tre conteggi (56 / 32 / 39). Le 32 **non sono state
+eseguite**: la sessione si è fermata a dire che la premessa della promozione era sbagliata, invece di
+lavorare su di essa.
 
 ## 📋 IN CODA — 4
 
