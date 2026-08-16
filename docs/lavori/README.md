@@ -602,11 +602,11 @@ e non c'è modo di aggirarlo dal cloud. Procedura in
 > Promossa dal committente il 16/08 dalle «nate misurando», dove stavano da due giorni con scritto
 > *«nessuno le ha mai lette una per una»*. Ora sono lette — e **eseguite**: 31 chiamate come `anon`
 > in transazioni annullate, più 2 che via RPC non si chiamano affatto.
-> ✅ **Il reperto A è curato**: `get_assessment_token` revocata ad `anon` e PUBLIC su sua
-> autorizzazione, con prova prima/dopo e controprova positiva — le `SECURITY DEFINER` aperte ad
-> `anon` passano da **33 a 32**.
-> ⛔ **B e C restano decisioni sue**, e la C ha una trappola: il rimedio ovvio romperebbe una
-> funzione viva.
+> ✅ **Reperti A e B curati**, autorizzati **uno per volta** come chiede lui: `get_assessment_token`
+> revocata (33 → 32) e poi **tutta la famiglia del PIN** — l'oracolo più le 11 varianti
+> `*_admin(p_admin_pin, …)` — che porta a **20**. In tutto **13 porte chiuse** su PROD in una
+> sessione, ognuna con prova prima/dopo, controprova positiva **e** negativa.
+> ⛔ **Resta C**, ed è decisione sua: ha una trappola: il rimedio ovvio romperebbe una funzione viva.
 
 ⚖️ **Perché questa e non un'altra.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per
 iscritto ciò che non aveva guardato**: *«⛔ NON esaminate: 3 letture per gettone
@@ -623,8 +623,8 @@ di cui **33** eseguibili da `anon` e 40 da `authenticated`. Il 33 della fotograf
 | esito | quante | quali |
 |---|---|---|
 | ⛔ **non chiamabili via RPC**: sono `trigger` | **2** | `assessment_mark_token_completed`, `post_match_feedback_mark_token_completed` — il linter le segnala come le altre, ma un trigger da PostgREST non si invoca. **Falsi positivi**, e vanno detti: gonfiano il numero che spaventa |
-| ✅ `AUTH_REQUIRED` | **10** | le varianti **senza** PIN di `pmo_get_*_admin`, `pmo_upsert_records_admin`, `pmo_set_*`, `pmo_log_routine_run_admin`, `upsert_*_tokens_admin` |
-| ✅ `INVALID_ADMIN_PIN` | **12** | le varianti **col** PIN delle stesse |
+| ✅ `AUTH_REQUIRED` | **12** | le varianti **senza** PIN di `pmo_get_*_admin`, `pmo_upsert_records_admin`, `pmo_set_*`, `pmo_log_routine_run_admin`, `upsert_*_tokens_admin` |
+| ✅ `INVALID_ADMIN_PIN` | **11** | le varianti **col** PIN delle stesse |
 | ✅ **0 righe**, ed è corretto | **2** | `pmo_current_staff_profile()` e `pmo_get_my_staff_profile()`: senza sessione non c'è profilo. ⭐ Sono il **collo di bottiglia** su cui poggia ogni `AUTH_REQUIRED` qui sopra |
 | ⚪ **aperte per disegno**, già note | **3** | `submit_assessment_external_request_public` (`INVALID_ORIGIN`), `submit_post_match_feedback_public` (`TOKEN_MISSING`), `pmo_can_register_staff` (oracolo di enumerazione, censito e lasciato dalla voce 36: la chiama la schermata di registrazione, dove chi la usa non è ancora autenticato) |
 | 🔴 **REPERTI** | **3** | qui sotto |
@@ -670,7 +670,51 @@ stessa porta, sulla stessa tabella, con gli stessi gettoni deboli.
 della voce 36** che la nominava fra le non esaminate. ⇒ Revocarla ad `anon` e a PUBLIC — lo stesso
 rimedio della 44 — **non può rompere niente**, e la prova è che non c'è niente da rompere.
 
-**③ 🔴 Reperto B — `pmo_admin_pin_ok(p_admin_pin)`: un ORACOLO sul PIN, ad `anon`**
+**③ ✅ Reperto B — l'ORACOLO sul PIN: CHIUSO il 16/08, e non da solo**
+
+> 🔓 **Autorizzato da solo**, dopo che la misura aveva cambiato la domanda. Revocato `EXECUTE` ad
+> `anon` e PUBLIC su **12 funzioni**: l'oracolo `pmo_admin_pin_ok` **e le 11 varianti
+> `*_admin(p_admin_pin, …)`**. Migrazione `20260816…_voce47_revoca_famiglia_pin_da_anon`,
+> reversibile.
+
+🚨 **Perché dodici e non una — è il punto, ed è misurato.** `pmo_admin_pin_ok` è la **guardia
+interna** delle 11 varianti (`if not pmo_admin_pin_ok(p_admin_pin) then …`, letto in
+`manual-sql`), quindi **ognuna di esse è a sua volta un oracolo**. Cronometrate da `anon`:
+
+| 100 tentativi da `anon` | tempo |
+|---|---|
+| `pmo_admin_pin_ok` — l'oracolo «vero» | **508 ms** |
+| `pmo_get_staff_users_admin(pin)` | **486 ms** |
+| `pmo_upsert_records_admin(pin, '[]')` | **472 ms** |
+
+⇒ Le varianti sono oracoli **alla stessa velocità, anzi appena più rapide** — e l'ultima è quella
+che, a indovinare, concede le **scritture**. ⚖️ Revocare il solo `pmo_admin_pin_ok` avrebbe
+**spostato l'attacco senza ridurlo**: una cura che sembra una cura. È la stessa specie di trappola
+del reperto C, presa dal lato opposto.
+
+| la prova, prima → dopo | |
+|---|---|
+| `pmo_admin_pin_ok('x')` come `anon` | ⛔ `permission denied for function` |
+| `pmo_get_staff_users_admin('x')` come `anon` | ⛔ `permission denied` |
+| `pmo_upsert_records_admin('x','[]')` come `anon` | ⛔ `permission denied` |
+| **controprova negativa**: la variante **senza** PIN, come `anon` | ✅ **ancora raggiungibile**, risponde `AUTH_REQUIRED` ⇒ la strada dell'app non è stata toccata |
+| **controprova positiva**: l'oracolo come `authenticated` | ✅ risponde |
+| `SECURITY DEFINER` aperte ad `anon` | **32 → 20** |
+
+⭐ **Tre conferme indipendenti del 32 → 20**: il conteggio su `pg_proc`, il **linter** che scende a
+**20 `anon_security_definer_function_executable`**, e il **totale degli avvisi** che passa da **99 a
+87** — esattamente **−12**, quante ne sono state revocate, e **nessun avviso nuovo**.
+📌 `authenticated_security_definer_function_executable` resta **40**: non è stato toccato niente
+dall'altro lato.
+
+🔎 **Perimetro verificato su TUTTI E TRE i lati prima di chiudere** — perché chiudere alla cieca è
+l'errore che insegna il reperto C: app **0** (`p_admin_pin` non compare in `index.html`), edge
+**0**, e **bot 0**, con il repo `assistente-padel-agent` agganciato apposta su sua autorizzazione.
+⭐ E lo zero del bot è **un esito, non una sonda cieca**: il controllo positivo trova i tre ponti
+noti — `consumer-booking-write`, `consumer-player-readmodel`, `consumer-assessment-link` — su 65
+file e 16.460 righe.
+
+*Il reperto com'era stato misurato:*
 
 È la stessa forma di `pmo_verify_data_routine_secret`, che la voce 36 chiuse chiamandola *«la chiave
 che apre le altre porte»* — e che **non sarebbe comparsa in nessun elenco di funzioni che scrivono**.
@@ -725,7 +769,35 @@ premessa vera, e falsa.
 mancare era il *dove*, non il *se*. La frase sbagliata la lascio raccontata qui invece di
 cancellarla, perché l'errore è il reperto.
 
-**⑥ Cosa NON è stato fatto, e perché**
+**⑥ 🚨 Il reperto di METODO: due conteggi sbagliati, e la sonda era finita sull'overload sbagliata**
+
+La prima stesura di questa tabella diceva **10** `AUTH_REQUIRED` e **12** `INVALID_ADMIN_PIN`. Sono
+**12 e 11**. A smascherarlo non è stata una rilettura: è che **la somma non tornava** — 2 + 10 + 12 +
+2 + 3 + 3 fa **32**, e le funzioni sono **33**.
+
+**La causa, misurata.** `pmo_upsert_staff_user_admin` esiste in due overload — a **5** argomenti
+(senza PIN) e a **6** (col PIN) — e **tutt'e due hanno valori predefiniti**. La mia chiamata a 5
+argomenti posizionali, con `null` non tipizzato in fondo, poteva legarsi a entrambe: PostgreSQL ha
+preferito `text` a `jsonb` per l'`unknown` e l'ha risolta sulla **6-argomenti, quella COL PIN**. ⇒
+Credevo di provare la variante senza PIN e stavo riprovando quella col PIN — **la variante senza PIN
+non l'avevo mai eseguita**.
+✅ Rifatta con la **notazione per nome**, che su quella col PIN non può cadere (`p_admin_pin` è
+l'unico parametro **senza** predefinito): senza PIN → `AUTH_REQUIRED`, col PIN → `INVALID_ADMIN_PIN`.
+Ora i conti chiudono a 33 esatti.
+
+⚖️ **E la cura è stata cercare la CLASSE, non l'istanza** — la regola del 15/08 applicata a una
+sonda invece che a un documento. Invece di correggere quella riga ho chiesto al database **quali
+altre** funzioni aperte ad `anon` hanno parametri con predefiniti: sono **11**, in 5 famiglie.
+Ricontrollate una per una le risoluzioni: le altre 10 erano legate giuste (i tipi le
+disambiguavano — `text[]`, `boolean`, `integer`, `jsonb` in posizione), **una sola** era sbagliata.
+Ma la differenza sta nel *come si è saputo*: cercando la forma del difetto, non l'esemplare.
+
+📌 **Da tenere per la prossima volta**: *una funzione con overload e valori predefiniti non si prova
+per posizione.* Una chiamata posizionale può atterrare sulla gemella e **rispondere con sicurezza**,
+ed è la 24ª — «questa sonda guarda nel cassetto giusto?» — nella sua forma più subdola, perché qui i
+due cassetti hanno **lo stesso nome**.
+
+**⑦ Cosa NON è stato fatto, e perché**
 
 ⛔ **Non è stata toccata una riga**: i tre reperti sono **decisioni del committente**, e due delle
 tre cure toccano il codice dell'app, non solo i grant.
