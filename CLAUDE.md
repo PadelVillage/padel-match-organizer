@@ -120,6 +120,45 @@ il bot su PROD **senza** la simulazione, e da quel momento prenota, disdice e fa
 sullo stesso token si rubano i messaggi e Telegram risponde **409** — quindi mentre gira sulla VM
 non si lancia il bot sul Mac.
 
+## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
+
+**Regola di architettura fissata dal committente il 16/08/2026**, e vale **anche e soprattutto per
+il futuro prossimo in cui Matchpoint si chiude**:
+
+> *«Il bot legge tutto quanto dal gestionale. Non è autonomo. È il gestionale che dà le informazioni
+> di qualsiasi azione che avvenga al bot. E il bot che le riceve dal gestionale e poi le scrive
+> al socio.»*
+
+⇒ La divisione dei compiti è **una sola riga**, e non ha eccezioni: **il gestionale SA, il bot
+DICE.** Il bot non calcola una verità per conto suo, non tiene un archivio parallelo, non deduce da
+ciò che ha detto prima. Chiede, riceve, e traduce in italiano per il socio.
+
+🎯 **Perché è una regola e non un'abitudine**: è la stessa scelta già presa in tre punti, che così
+smettono di sembrare casi isolati e diventano un disegno —
+① `puo_prenotare`: il bot non vede il codice Matchpoint, **chiede al ponte** un sì/no
+(*«il giorno del distacco questa riga diventa `true` per tutti e a valle non cambia nient'altro»*);
+② `livello-dimostrato`: la regola sta nel **ponte**, non nel bot, perché un livello annunciato in
+rubrica e negato nella scheda sarebbe la stessa persona con due verità;
+③ i **ruoli** dentro una partita: il ponte porta il **dato** (l'elenco ordinato), la regola di chi
+ha organizzato la applica chi la mostra — mai una terza copia.
+
+⚖️ **Cosa comporta il giorno in cui Matchpoint non c'è più.** Il worker
+(`tools/matchpoint-browser-worker/`) **muore con lui**: i suoi 21 endpoint sono tutti automazione
+del browser su Matchpoint, e senza Matchpoint non gli resta niente da fare. ⇒ Se il bot dipendesse
+dal **worker**, quel giorno andrebbe riscritto. Dipendendo dal **gestionale**, quel giorno non si
+tocca: cambia solo da dove il gestionale prende i suoi dati.
+
+🚨 **La prova pratica, e serve subito, non nel futuro**: quando il bot **non sa** com'è andata una
+scrittura, la risposta non è indovinare né arrendersi — è **tornare a chiedere al gestionale**.
+Oggi il socio lo fa a mano (*«fra qualche minuto chiedimi cosa ho prenotato»*, `esito_ignoto`);
+farlo fare al bot da sé è la **voce 53**.
+
+⚠️ **Il limite di oggi, dichiarato**: sulle prenotazioni il gestionale non è ancora la **fonte** —
+è uno **specchio** alimentato dal sync da Matchpoint, quindi con un ritardo. Per «com'è andata» va
+benissimo (non serve saperlo in due secondi, serve non mentire); per una risposta **istantanea** no.
+📌 Il ritardo peggiore di quel sync **non è mai stato misurato**, ed è il numero che serve prima di
+scrivere la 53: quanto il bot deve aspettare prima di poter dire «no» senza sbagliare.
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.
