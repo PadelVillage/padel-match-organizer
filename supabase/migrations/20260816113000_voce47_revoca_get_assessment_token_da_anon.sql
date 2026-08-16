@@ -1,0 +1,47 @@
+-- Voce 47 — 16/08/2026, 26ª sessione. Autorizzata dal committente, da sola.
+-- Ricalca verbatim la forma della voce 44 (20260816090259): stessa famiglia,
+-- stessa tabella, stessa specie di gettone.
+--
+-- PERCHE': get_assessment_token(text) e' SECURITY DEFINER e legge
+-- assessment_tokens restituendo member_name e status. Con EXECUTE ad anon e a
+-- PUBLIC, chiunque dalla rete con la sola chiave pubblicabile ottiene il NOME di
+-- un socio passando un gettone. Misurato ESEGUENDOLA come anon, non leggendo i
+-- grant: get_assessment_token('MAURIZIO001') -> ok:true, un nome di 14 caratteri,
+-- status 'completed'. Il gettone e' lo stesso indovinabile trovato dalla voce 44
+-- fra i 1364; di quei 1364, 5 sono lunghi <=12 caratteri e 34 hanno forma
+-- nome+numero.
+--
+-- E' MENO GRAVE DELLA 44, e va detto: quella dava nome, cognome E telefono,
+-- questa il solo nome. Ma e' la stessa porta sulla stessa tabella, ed era
+-- l'ultima delle tre "letture per gettone" che la voce 36 del 14/08 si era
+-- annotata per iscritto come NON esaminate.
+--
+-- COSA NON TOCCA: il grant ad `authenticated` resta. Sparisce solo l'accesso
+-- senza credenziali.
+--
+-- ⚠️ CHIAMANTI: NESSUNO. Cercata in tutto il repo dell'app (index.html, test/,
+-- supabase/, consumer-app/) e nel repo del bot: l'unica occorrenza del nome e'
+-- il commento della voce 36 che la elencava fra le non esaminate. A differenza
+-- della voce 44 — dove l'app la chiamava davvero, seppure in una sezione
+-- congelata — qui non c'e' niente che possa smettere di funzionare.
+--
+-- ⚠️ NON ESISTE SU TEST: verificato su cudi… (0 funzioni con questo nome). Il
+-- contratto vive su un lato solo, quindi non c'e' un gemello da cambiare
+-- insieme. E' il motivo per cui questa migrazione e' solo di PROD.
+--
+-- ✅ VERIFICATA DOPO, sul bersaglio e non a occhio:
+--     · come anon      -> permission denied for function   (la porta e' chiusa)
+--     · come authenticated -> ok:true, nome presente        (controprova positiva)
+--     · SECURITY DEFINER aperte ad anon: 33 -> 32, confermato DUE volte
+--       (conteggio su pg_proc, e il linter che scende a 32
+--        anon_security_definer_function_executable, ERROR 0)
+--     · service_role sopravvissuto: il suo grant era ESPLICITO in ACL, quindi
+--       revoke ... from PUBLIC non l'ha toccato. E' la trappola che la voce 36
+--       incontro' tre volte, controllata apposta invece che data per scontata.
+--
+-- ↩️ RIPRISTINO (verbatim, per tornare esattamente allo stato di prima):
+--     GRANT EXECUTE ON FUNCTION public.get_assessment_token(text) TO anon;
+--     GRANT EXECUTE ON FUNCTION public.get_assessment_token(text) TO PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION public.get_assessment_token(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_assessment_token(text) FROM PUBLIC;
