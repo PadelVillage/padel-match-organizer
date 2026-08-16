@@ -645,6 +645,100 @@ solo da che parte la si prende.
 
 ---
 
+🔬 **MISURATA il 16/08, 25ª sessione, su `main` (PROD 6.232), righe di commento escluse.**
+Prima cosa fatta: **riverificare la scheda sul bersaglio**, perché una scheda è un'ipotesi.
+✅ **Torna esatta, numero per numero** — 12 punti di chiamata più la definizione, **8 non attese /
+3 attese / 1 restituita**, e **5 delle 8** passano `force`. Non c'è niente da correggere.
+
+**① Quali delle 8 possono atterrare — la risposta che la voce chiedeva**
+
+| # | riga | opzioni | freno 60 s | pre-guardia `_staffCalPendingEdits` | atterra a metà operazione |
+|---|---|---|---|---|---|
+| 1 | 9011 | `force` | **saltato** | no | **sì** |
+| 2 | 10315 | — | frena | no | solo a freno scaduto |
+| 3 | 29933 | — | frena | no | solo a freno scaduto (avvio) |
+| 4 | 37543 | `silent` | frena | no | solo a freno scaduto |
+| 5 | 37566 | `force, silent` | **saltato** | **sì**, alla 37556 | sì, ma non con un pending aperto |
+| 6 | 37576 | `force, withMembers` | **saltato** | no | **sì** |
+| 7 | 37638 | `force` | **saltato** | no | **sì** |
+| 8 | 37678 | `force` | **saltato** | no | **sì** |
+
+⇒ **Quattro su otto** non hanno **nessuna** protezione: né il freno né la pre-guardia. La quinta —
+il poll a 4 s — è **l'unica delle dodici** che si chieda se un'operazione è in corso prima di partire.
+
+**② E dentro la funzione la guardia copre UN blocco su TRE**
+
+`_staffCalPendingEdits` compare in `staffCalRefreshFromCloud` **una volta sola**, alla **38143**, e
+serve al **solo** merge di `staffBookings` (38144-38151). Gli altri due punti in cui la funzione
+scrive lo stato locale dopo un `await` **non la consultano affatto**:
+
+- **38101** — `applyMatchpointMembersToLocal(...)` dopo `await pmoLoadMatchpointMembersFromCloud()`;
+- **38204-38207** — e questa **la scheda non la nominava**: `prenotazioni = cloud.bookings` e
+  `prenotazioniOccupazione = _occToStore`, **assegnazione secca** da una fotografia del cloud letta
+  alla **38118**. Nessun merge, nessuna esclusione delle chiavi appena toccate.
+
+⚖️ È la scrittura **più grossa** delle tre e **la meno difesa**: il merge di `staffBookings` è
+progettato per tenere il locale (`_pend`, `keptLocal`); questa sovrascrive e basta.
+
+**③ 🚨 Il reperto che cambia il quadro: la protezione si CHIUDE PRIMA della scrittura**
+
+In `staffCalDoCancel` l'ordine è questo, letto riga per riga:
+
+| riga | cosa succede |
+|---|---|
+| 43490 | `_staffCalPendingEdits.add(_pendCancelKey)` — la finestra si **apre** |
+| 43570 / 43598 | `_staffCalPendingEdits.delete(_pendCancelKey)` — la finestra si **chiude** |
+| 43579 / 43585 / 43541 | `_applicaAnnullo()` → `_staffCalCommitLocalCancel(...)` |
+
+⇒ **Tutti e tre** i punti in cui l'annullo tocca lo stato locale stanno **a valle** della `delete`.
+Controllato e non dedotto: `_applicaAnnullo` ha **esattamente 3 chiamanti**, e `_verifica` — che
+contiene il terzo — è invocata anch'essa dopo. E `_staffCalCommitLocalCancel` fa proprio la coppia
+che la voce descrive: **toglie** le righe da `prenotazioniOccupazione` e `prenotazioni`
+(43404-43410) e poi **spinge le lapidi senza attenderle** — `pmoSyncCloudRecordsNow(…).catch(…)`
+alla **43428**.
+
+🚨 **Quindi la finestra scoperta non la copre nessuno degli otto, nemmeno il numero 5**: quando il
+commit locale parte, la chiave che avrebbe fatto rinunciare il poll a 4 s **è già stata tolta**. Fra
+la rimozione locale e l'atterraggio della lapide sul cloud, un refresh forzato rilegge la fotografia
+**vecchia** e la riassegna alla 38205 — il fantasma rientra in `prenotazioniOccupazione`.
+
+**④ Cosa lo tiene a bada, e cosa no — misurato, non dedotto**
+
+⚠️ **Il calendario NON lo mostra**, e va detto subito perché ridimensiona il danno:
+`staffCalGetSlots` filtra gli slot soppressi (**38680-38697**) e quel filtro si applica a `result`,
+che contiene **anche** le righe di occupazione (costruite alla 38585) — verificato leggendo la
+funzione, non il commento. `_staffCalCommitLocalCancel` aggiunge la soppressione locale alla
+**43392**, cioè *prima* della pulizia. Finché dura il TTL il fantasma rientrato resta **invisibile
+su questo dispositivo**.
+📌 Il commento della v5.897 (43393-43396) dice il contrario — «senza, un refresh ri-renderizzava la
+copia» — ed è **il racconto di un passato**, non dell'oggi. L'ho misurato invece di crederci, ed è
+la ragione per cui questa voce **non** finisce con «guasto vivo in produzione».
+
+⇒ **Resta scoperto chi NON passa da `staffCalGetSlots`**, e sono misurati:
+`uniqueFieldOccupancyBookings` (17200, 23533), l'impronta della 18708, i roster di 40081 / 40237 /
+40344 e 43261. Lì il fantasma si vede.
+🚩 **E un solo punto lo rimanderebbe sul cloud**: `pmoBuildCloudRecordsFromLocalState` (**27614**)
+legge `prenotazioniOccupazione` **diretto**, escludendo i soli `_retained` — e un fantasma rientrato
+dal cloud `_retained` non è. ⚖️ **Ma il suo unico chiamante è `pmoUploadLocalDataToCloud` (29032),
+che è un bottone d'amministrazione, non una routine**: la resurrezione è **possibile, non
+automatica**. Lo scrivo con questa cautela perché la differenza è tutta lì, ed è esattamente il
+punto in cui una voce diventa allarmismo.
+
+**⑤ Cosa NON è stato fatto, e perché**
+
+⛔ **Non è stata toccata una riga.** La correzione naturale — spostare la `delete` **dopo**
+`_applicaAnnullo`, oppure tenere la chiave finché la spinta non è atterrata — sta sulla strada che
+**annulla per davvero** su Matchpoint, e da qui quella strada non si prova. È la stessa ragione per
+cui la 23ª ebbe *«prima diagnosi sì, patch no»*. ⇒ **Decisione del committente.**
+⛔ **Non è stata messa in scena la corsa nel banco.** `CLOUD_WRITE_DELAY_MS` saprebbe farlo, ma un
+caso scritto **oggi** proverebbe **la forma**, non il danno — e il danno, misurato, è schermato dalla
+soppressione proprio sul percorso che conta. Scriverlo prima di sapere quale delle due cure si
+prende vorrebbe dire costruire la prova sulla cura sbagliata.
+⛔ **Non è stata misurata la terza scrittura**, quella dei soci (38101 e 38107): la voce chiedeva le
+**otto chiamate**, e le otto sono fatte. È il vicino di casa di questa voce, non il suo residuo.
+
+---
+
 ## 📋 IN CODA — 4
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti), **C** (sapute e non risolte — salita tutta in urgenti il 16/08) ed **E** (manutenzione memoria) sono **vuote**.
