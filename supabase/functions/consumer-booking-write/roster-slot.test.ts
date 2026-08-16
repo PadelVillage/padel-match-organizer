@@ -21,6 +21,7 @@ import {
   restanoSoloOspiti,
   rosterDelloSlot,
   rosterOrdinatoDelloSlot,
+  schedaUnicaConQuelNome,
   senzaDiMe,
   sostituito,
   normName,
@@ -863,6 +864,85 @@ test('46) IL COLLEGAMENTO del readmodel: «people» dice se è cliente del circo
   assert.ok(ramo && ramo[0].length > 800, 'ramo «people» non isolato: la prova sarebbe cieca');
   assert.ok(/cliente_del_circolo: clienteDelCircolo\(p\.memberId\)/.test(ramo![0]),
     'il campo va CALCOLATO dalla funzione provata, non riscritto a mano dentro il ramo');
+});
+
+// ── 👤 CHI È IL TOLTO (l'avviso del bot, 11/08/2026) ─────────────────────────
+// ⭐ I nomi sono di nuovo VERI: le coppie di omonimi misurate su PROD il 3/08. Qui però la
+// domanda è rovesciata rispetto ai casi 36-39 — non «io ho un omonimo?» ma «questo nome è di
+// una persona sola?» — e il costo dell'errore è opposto: un dubbio non ferma niente, toglie
+// solo un avviso.
+
+test('47) CHI È IL TOLTO: il nome vale come chiave solo se è di UNA persona viva', () => {
+  const solo = scheda('id-A', 'Davide Zanardo');
+  const altroNome = scheda('id-B', 'Marco Micheletto');
+  // Una sola scheda con quel nome ⇒ il nome smette di essere un indizio e diventa una chiave.
+  assert.equal(schedaUnicaConQuelNome('Davide Zanardo', [solo, altroNome]), 'id-A');
+  // 🚨 IL CASO PER CUI ESISTE: due persone vere con lo stesso nome ⇒ non si avvisa NESSUNO.
+  // Mandare «non sei più nella partita» all'omonimo è un errore che non si recupera.
+  const gemello = scheda('id-C', 'Davide Zanardo');
+  assert.equal(schedaUnicaConQuelNome('Davide Zanardo', [solo, gemello]), null,
+    'due Davide Zanardo al circolo ⇒ non si sa quale, e non si tira a indovinare');
+  // 🚨 CONTROLLO NEGATIVO: chi al circolo non c'è non si avvisa. Senza questo, una funzione che
+  // torna sempre la prima scheda supererebbe il primo assert.
+  assert.equal(schedaUnicaConQuelNome('Nessuno Alcircolo', [solo, altroNome]), null);
+  // Senza nome non c'è niente da cercare (e l'Ospite non passa nemmeno di qui).
+  assert.equal(schedaUnicaConQuelNome('', [solo]), null);
+  assert.equal(schedaUnicaConQuelNome(null, [solo]), null);
+});
+
+test('48) CHI È IL TOLTO: l\'ordine non conta, l\'archiviata non conta, la stessa scheda letta due volte nemmeno', () => {
+  // 🚨⭐⭐ La forma invertita DEVE contare come la stessa persona, in tutt'e due i versi: il
+  // gestionale scrive ora «Nome Cognome» ora «Cognome Nome», e se le due non si riconoscessero
+  // uguali l'avviso partirebbe **proprio** nel caso in cui non deve — cioè con due omonimi
+  // scritti in ordine diverso, che sembrerebbero due nomi diversi e quindi «unici».
+  const dritto = scheda('id-A', 'Francesco Casagrande');
+  const rovescio = scheda('id-B', 'Casagrande Francesco');
+  assert.equal(schedaUnicaConQuelNome('Francesco Casagrande', [dritto, rovescio]), null,
+    'due schede con le stesse parole in ordine diverso sono due persone: non si avvisa');
+  // E la scheda si ritrova comunque sia scritto il nome che arriva dal roster.
+  assert.equal(schedaUnicaConQuelNome('Casagrande Francesco', [dritto]), 'id-A');
+  assert.equal(schedaUnicaConQuelNome('Francesco Casagrande', [dritto]), 'id-A');
+  // Il nome spezzato nei due campi vale quanto quello intero.
+  assert.equal(schedaUnicaConQuelNome('Francesco Casagrande',
+    [{ id: 'id-D', firstName: 'Francesco', surname: 'Casagrande' }]), 'id-D');
+  // Una persona che non gioca più non toglie l'avviso a quella viva.
+  const archiviato = scheda('id-C', 'Francesco Casagrande', { active: 'false' });
+  assert.equal(schedaUnicaConQuelNome('Francesco Casagrande', [dritto, archiviato]), 'id-A',
+    'archiviata ⇒ non è una seconda persona, e la viva va avvisata');
+  // 🚨 L'edge fa TRE letture (nome intero + ogni parola come cognome): la stessa scheda torna
+  // più volte. Se si contassero le righe invece degli id, ogni persona sembrerebbe due persone
+  // e non si avviserebbe mai nessuno — la guardia sarebbe verde e inutile.
+  assert.equal(schedaUnicaConQuelNome('Francesco Casagrande', [dritto, dritto, dritto]), 'id-A',
+    'la stessa scheda letta da due query resta UNA persona');
+});
+
+test('49) IL COLLEGAMENTO dell\'avviso: l\'edge dice CHI ha tolto, e nel dubbio tace', () => {
+  // 🚨⭐⭐ Senza questo caso l'edge potrebbe non chiamare mai la funzione (o non mandare il
+  // campo al bot) e i casi 47-48 resterebbero verdi mentre il bot continua a dire «avvisa tu»:
+  // è lo stesso buco dei casi 34 e 39, sulla riga nuova.
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+  assert.equal((src.match(/schedaUnicaConQuelNome\(cercato, candidati\)/g) ?? []).length, 1,
+    'chi è il tolto lo decide la funzione provata, in UN posto solo');
+  // 🚨 Il campo deve arrivare al bot in TUTT'E DUE le risposte: la prova a vuoto serve a
+  // misurarlo senza togliere nessuno, e senza quella si potrebbe provare solo togliendo persone
+  // vere da partite vere.
+  assert.equal((src.match(/scheda_del_tolto: schedaDelTolto/g) ?? []).length, 2,
+    'il campo va nella risposta vera E nella prova a vuoto');
+  // ⚖️ Dietro un Ospite non c'è nessuno: non si cerca, e non si avvisa.
+  assert.ok(/bersaglio\.ospite \? null : await schedaDiChiSiToglie\(bersaglio\.nome\)/.test(src),
+    'l\'Ospite è un posto occupato, non una persona da avvisare');
+  // 🚨⭐⭐ IL VERSO DEL FAIL CLOSED, ed è OPPOSTO a quello degli omonimi del socio: qui una
+  // lettura che non riesce NON deve fermare il togli (la persona è già stata tolta), deve solo
+  // togliere l'avviso. Un 503 qui farebbe pagare al socio un problema nostro.
+  const fn = src.match(/const schedaDiChiSiToglie = async[\s\S]*?\n  \};/);
+  assert.ok(fn && fn[0].length > 500, 'funzione di lettura non isolata: la prova sarebbe cieca');
+  assert.ok(/length >= OMONIMI_LIMITE/.test(fn![0]),
+    'un elenco pieno fino al limite può aver perso il secondo omonimo: vale «non lo so»');
+  assert.ok(!/OMONIMI_NON_VERIFICABILI|err\(50\d/.test(fn![0]),
+    'qui «non lo so» vale «non avviso», non «non tolgo»: nessun errore deve uscire da questa lettura');
+  assert.equal((fn![0].match(/return null/g) ?? []).length, 3,
+    'i tre modi di non sapere (nome vuoto, jolly, lettura non riuscita) tornano tutti null');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
