@@ -31,6 +31,25 @@ dimostrare che era morto è la misura sulla RPC. Allo stesso modo il **merge riu
 che la promozione sia atterrata: le due guardie erano rosse mentre il merge era verde. ⇒ Un verde va
 sempre letto insieme alla domanda **«che cosa sarebbe stato capace di far diventare rosso?»**.
 
+🚨 **E la quarta, che è la peggiore perché l'ho fatta DUE VOLTE nello stesso giorno: verifico il ramo
+LOCALE e apro la PR dal ramo REMOTO.** Le due volte il commit che aggiornava la tabella delle
+versioni l'avevo fatto **e non spinto**; la PR nasceva da `origin/<ramo>`, fermo al commit prima; e
+tutti i controlli pre-volo — versioni dichiarate contro versioni vere, docs identiche fra i rami —
+usavano `HEAD`, che quel commit **ce l'aveva**. ⇒ **Il controllo dava ragione guardando l'oggetto
+sbagliato**, che è la lezione della 22ª applicata a me, e la ripetizione dimostra che *accorgersene*
+non basta: la prima volta l'ho diagnosticata bene, spiegata bene, e **due ore dopo l'ho rifatta**.
+⚖️ La cura non è «stare attento»: è **una regola meccanica** — *si spinge PRIMA di aprire la PR, e si
+verifica `origin/<ramo>`, non `HEAD`*. Applicata alla terza, ha retto.
+
+🎯 **E la quinta, in positivo: due errori li ha presi il controllo DOPO aver agito, non prima.**
+① Il ripristino della cura dopo un sabotaggio **non è andato a segno** — il comando è girato con
+un'altra cartella corrente e ha scritto il file nel posto sbagliato — e il messaggio a schermo
+diceva «ripristinato». A smentirlo è stato il conteggio: *spinta attesa: **0***. Senza quel
+controllo avrei spinto su TEST **il codice sabotato**, con il banco che l'avrebbe pure detto rosso
+in una corsa che non stavo più guardando. ② La cura stessa, riletta mentre la scrivevo: *«aspettare
+la spinta»* **non chiude la finestra**, la sposta **dentro l'attesa**. ⇒ Sono i due casi in cui la
+lezione della 23ª — **guarda cosa resta dopo aver agito** — ha pagato in giornata.
+
 🚨 **E la terza, pagata: il mio errore l'ho trovato io, ma il rosso in bacheca l'ha visto LUI.**
 Diagnosticato e riparato il drift, ho rilanciato le guardie di `test-preview` e **ho lasciato rossi
 quelli di `main`** — riparati sul commit dopo, ma rossi in bacheca. Me l'ha mostrato con una
@@ -314,7 +333,7 @@ contesto**, non eseguire il compito scritto.
 | 📦 **Chiuse** | **36** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.233** · TEST **6.242** · i **4
+dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · tutte le guardie **verdi sulle punte di
 entrambi i rami**.
 📌 Gli **sha non sono scritti qui di proposito**, ed è la stessa ragione per cui `guard-docs-truth`
@@ -326,8 +345,16 @@ PR. ⇒ «PR aperte: 0» sarebbe **falsa nell'istante in cui atterra**, ed è es
 frase vietata dalla regola del 15/08: *il commit che porta la frase è uno degli eventi che la frase
 conta*. Il fatto **stabile** è questo: `main` è protetto, le promozioni passano da PR, e quante ne
 siano aperte **si conta guardando**, non leggendo qui.
-📏 **La rete di regressione: PROD 94 casi, TEST 97** — invariata nella 25ª, che non ha aggiunto casi:
-ha **tolto** codice. La differenza fra i due resta **solo** i 3 della simulazione incassi. Cresciuta di **4 su entrambi** nella 24ª: due
+📏 **La rete di regressione: PROD 95 casi, TEST 98** — **+1 su entrambi** nella 25ª, ed è il caso
+**98** della cura della voce 43. La differenza fra i due resta **solo** i 3 della simulazione incassi.
+🚨 **E quel caso è passato per il SABOTAGGIO, non per il verde**: alla prima stesura era **inerte** —
+nel banco la spinta si concludeva nell'istante in cui partiva, quindi «attenderla» e «no» davano lo
+stesso esito, e il caso sarebbe stato verde **anche togliendo la cura**. È servito aggiungere
+`CLOUD_WRITE_RESPONSE_DELAY_MS`, **gemello opposto** del knob della voce 42: quello ritarda *quando
+la scrittura si vede*, questo *quanto la spinta ci mette a concludersi*. Il banco distingueva già le
+due cose **a parole**; ora le distingue nei fatti. ⇒ Con la cura **95/95** e **98/98**; togliendola,
+**94/95** e **97/98**, e cade **solo** quel caso.
+📏 Erano 94 e 97 a inizio 25ª. Cresciuta di **4 su entrambi** nella 24ª: due
 sulla pulizia-orfani (voce 42) e due sul link d'ingresso al bot. La differenza fra i due resta
 **solo** i 3 della simulazione incassi, che in produzione non hanno senso. Erano 90 e 93 a fine 23ª,
 55 e 90 a inizio giornata del 15/08.
@@ -553,10 +580,27 @@ settimane, ed è lei a dire quando riaprirla.
 📦 E in fondo alla sessione la **44** — nata nella giornata stessa, curata e poi **chiusa da lui**:
 la fessura su PROD è tappata, e il residuo (i gettoni deboli, le altre **33** funzioni mai lette)
 è dichiarato nella sua riga fra le chiuse, non taciuto.
-⇒ **Urgenti da 3 a 1.** Resta la sola **43**, e non è «esegui»: è **una decisione tua** — quale delle
-due cure dare alla finestra scoperta dell'annullo, sapendo che si prova solo dal Mac.
+⇒ **Urgenti da 3 a 1.** Resta la sola **43**.
+
+🔧 **E la 43, a fine sessione, è CURATA ma NON CHIUSA** — su sua scelta la cura «A» è stata scritta,
+provata col sabotaggio e promossa (TEST **6.243**, PROD **6.234**, verificata dal server). ⛔ **Resta
+aperta di proposito, e la ragione è una regola sua**: *«non chiudere una voce che non hai verificato
+sul bersaglio — il codice è a posto non è funziona»*. Qui il **difetto** è stato verificato sul
+bersaglio; la **cura** no: è provata **nel banco**, con un sabotaggio che la fa cadere, e sull'app
+vera non l'ha ancora esercitata nessuno. ⇒ Quello che manca per chiuderla sono **due cose sole**: un
+annullo vero su TEST dalla sua postazione, e la **previsione D** — se il calendario mostri o no il
+fantasma — che dal cloud non si raggiunge. Procedura pronta in
+[`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md).
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
+
+> 🔧 **STATO AL 16/08, fine 25ª: CURATA, non chiusa.** La cura «A» — *prima il cloud, poi la
+> memoria* — è scritta, provata **col sabotaggio** e promossa su entrambi i rami (TEST **6.243**,
+> PROD **6.234**, verificata dal server). ⛔ **Non si chiude** perché la **cura** non è stata
+> verificata **sul bersaglio**: è provata nel banco, non sull'app vera. Mancano un annullo vero su
+> TEST e la **previsione D**. Il resto della scheda è la diagnosi, e regge: il difetto **sì** è
+> stato visto succedere.
+
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
 quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
 della stessa malattia — una **coda staccata che SCRIVE**, che è la forma con cui il difetto si era
