@@ -328,7 +328,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **2** |
 | 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **36** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -531,7 +531,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 2
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -595,6 +595,105 @@ calendario **non si vede**, come la voce prevedeva. ⇒ Per chiudere la 43 manca
 su TEST dalla sua postazione**: lì il `readonly` della console non passa (`pmoBlockWriteIfReadonly`),
 e non c'è modo di aggirarlo dal cloud. Procedura in
 [`docs/voce-43-prova-dal-mac.md`](../voce-43-prova-dal-mac.md).
+
+### 47. 🔒 Le 33 `SECURITY DEFINER` aperte ad `anon` su PROD — lette una per una
+
+> 🔬 **STATO AL 16/08, 26ª: CENSITE TUTTE, e non a campione.** Promossa dal committente il 16/08
+> dalle «nate misurando», dove stavano da due giorni con scritto *«nessuno le ha mai lette una per
+> una»*. Ora sono lette — e **eseguite**: 31 chiamate come `anon` in transazioni annullate, più 2
+> che via RPC non si chiamano affatto. ⛔ **Non è stata toccata una riga**: 3 reperti da decidere.
+
+⚖️ **Perché questa e non un'altra.** La voce **36** (14/08) chiuse 13 funzioni e **dichiarò per
+iscritto ciò che non aveva guardato**: *«⛔ NON esaminate: 3 letture per gettone
+(`get_assessment_token`, `get_post_match_feedback_by_tokens`, `get_self_assessments_by_tokens`) e la
+robustezza del PIN nelle varianti `p_admin_pin`»*. La **44** (16/08) ne prese **una** delle tre e ci
+trovò dietro **un socio vero col telefono**. ⇒ Restavano **le altre due e il PIN**, cioè esattamente
+il residuo che la 36 si era annotata. Non è una campionatura nuova: è la chiusura di quella vecchia.
+
+📏 **Il numero è stato ricontato, non ricopiato**: `SECURITY DEFINER` in `public` su PROD sono **58**,
+di cui **33** eseguibili da `anon` e 40 da `authenticated`. Il 33 della fotografia è vero oggi.
+
+**① Il conto per ESITO — ognuna eseguita come `anon`, nessuna dedotta dai grant**
+
+| esito | quante | quali |
+|---|---|---|
+| ⛔ **non chiamabili via RPC**: sono `trigger` | **2** | `assessment_mark_token_completed`, `post_match_feedback_mark_token_completed` — il linter le segnala come le altre, ma un trigger da PostgREST non si invoca. **Falsi positivi**, e vanno detti: gonfiano il numero che spaventa |
+| ✅ `AUTH_REQUIRED` | **10** | le varianti **senza** PIN di `pmo_get_*_admin`, `pmo_upsert_records_admin`, `pmo_set_*`, `pmo_log_routine_run_admin`, `upsert_*_tokens_admin` |
+| ✅ `INVALID_ADMIN_PIN` | **12** | le varianti **col** PIN delle stesse |
+| ✅ **0 righe**, ed è corretto | **2** | `pmo_current_staff_profile()` e `pmo_get_my_staff_profile()`: senza sessione non c'è profilo. ⭐ Sono il **collo di bottiglia** su cui poggia ogni `AUTH_REQUIRED` qui sopra |
+| ⚪ **aperte per disegno**, già note | **3** | `submit_assessment_external_request_public` (`INVALID_ORIGIN`), `submit_post_match_feedback_public` (`TOKEN_MISSING`), `pmo_can_register_staff` (oracolo di enumerazione, censito e lasciato dalla voce 36: la chiama la schermata di registrazione, dove chi la usa non è ancora autenticato) |
+| 🔴 **REPERTI** | **3** | qui sotto |
+
+⇒ **La famiglia `*_admin` regge tutta**, col PIN e senza, in lettura e in scrittura — e stavolta non
+per lettura del codice: le scritture sono state **lanciate** con un carico vero dentro transazioni
+annullate, e hanno risposto `AUTH_REQUIRED`/`INVALID_ADMIN_PIN` **prima** di toccare qualunque riga.
+
+**② 🔴 Reperto A — `get_assessment_token(p_token)`: la gemella della voce 44, ancora aperta**
+
+Il corpo legge `assessment_tokens` e restituisce `member_name` e `status`. **Provato come `anon`** sul
+token debole che la 44 aveva già trovato: `get_assessment_token('MAURIZIO001')` → `ok: true`, un
+**nome di 14 caratteri** e lo stato `completed`. *(Il nome non si trascrive qui: è un socio vero.)*
+📏 La superficie indovinabile è la stessa misurata dalla 44 — **1364** token, **5** lunghi ≤ 12
+caratteri, **34** in forma nome+numero.
+⚖️ **Meno grave della 44** — quella dava nome, cognome **e telefono**, questa il solo nome — ma è la
+stessa porta, sulla stessa tabella, con gli stessi gettoni deboli.
+🎯 **E qui il rimedio è netto: `get_assessment_token` NON HA CHIAMANTI.** Cercata in tutto il repo
+(app, `test/`, `supabase/`, `consumer-app/`) e nel repo del bot: l'unica occorrenza è **il commento
+della voce 36** che la nominava fra le non esaminate. ⇒ Revocarla ad `anon` e a PUBLIC — lo stesso
+rimedio della 44 — **non può rompere niente**, e la prova è che non c'è niente da rompere.
+
+**③ 🔴 Reperto B — `pmo_admin_pin_ok(p_admin_pin)`: un ORACOLO sul PIN, ad `anon`**
+
+È la stessa forma di `pmo_verify_data_routine_secret`, che la voce 36 chiuse chiamandola *«la chiave
+che apre le altre porte»* — e che **non sarebbe comparsa in nessun elenco di funzioni che scrivono**.
+Questa le è sfuggita perché la 36 il PIN se l'era annotato come non esaminato.
+
+| misurato | |
+|---|---|
+| l'hash | `$2a$06$` ⇒ bcrypt a **costo 6**, il minimo pratico |
+| ritmo da `anon` | **200 tentativi in 940 ms** ⇒ **~213/s**, in una sola chiamata SQL, senza limite, senza blocco, senza traccia |
+| cosa apre | le **12** varianti `*_admin(p_admin_pin, …)` — leggere i record, **l'elenco staff con email e permessi**, il registro di controllo, e **scrivere**: `pmo_upsert_records_admin`, `pmo_upsert_staff_user_admin`, `pmo_set_staff_user_status_admin` |
+
+⚖️ **Il PIN è quindi una scorciatoia che scavalca l'intero login staff**, e accanto c'è un banco di
+prova gratuito per indovinarlo. A 213 tentativi al secondo un PIN numerico di 4 cifre cade in
+**~47 secondi**, uno di 6 in **~78 minuti**. 🚨 Il PIN vero **non è stato provato né letto**: si
+misura l'oracolo, non il segreto.
+📌 **E l'app il PIN non lo usa**: `p_admin_pin` compare **0 volte** in `index.html`, e le due
+occorrenze di `adminPin` sono righe che lo **cancellano** dalle impostazioni (8132, 27075).
+
+**④ 🔴 Reperto C — `get_post_match_feedback_by_tokens`: latente, e il rimedio ovvio è SBAGLIATO**
+
+Restituisce le risposte per gettone: `note` libera, `member_local_id`, `raw_response`. **Oggi non
+espone niente**, e non per una guardia: `post_match_feedback_responses` ha **0 righe**. È una fessura
+che si apre da sé il giorno in cui la funzione del feedback si accende.
+🚨 **Ma qui NON si può copiare il rimedio della 44**, ed è il reperto vero: l'app la chiama alla
+**29598** con la **chiave anonima** (`apikey`/`Bearer` = chiave pubblicabile), dal bottone «Aggiorna
+feedback ricevuti» della **29519**, che sta in `<div id="matchHistory">` — una sezione **viva**.
+⇒ Revocare `anon` lì **romperebbe una funzione che lo staff usa**. La cura giusta è prima portare la
+chiamata sulla sessione staff (`pmoStaffRpc`, come fanno le `*_admin`), **poi** revocare.
+
+**⑤ 🚨 E il censimento ha trovato una conseguenza della voce 44 che nessuno aveva scritto**
+
+`get_self_assessments_by_tokens` è oggi `anon = false` / `authenticated = true` — la 44 ha fatto il
+suo lavoro, verificato: come `anon` risponde `permission denied for function`.
+⛔ **Ma l'app la chiama alla 29302 con la chiave anonima**, esattamente come la sua gemella del
+reperto C. ⇒ **Quella chiamata oggi prenderebbe 403.** Non se n'è accorto nessuno perché sta dentro
+`syncAssessmentResponsesFromSupabase`, che vive nella sezione **Autovalutazione congelata dal 13/06**
+(`PMO_ASSESSMENT_PARKED = true`, riga 10446: il tab è negato a tutti tranne la modalità pubblica).
+⚖️ **Non è un guasto vivo e non toglie niente alla 44**: la fuga è chiusa, ed era la cosa che
+contava. È un **debito latente** — il giorno in cui quella sezione si riaccende, la sincronizzazione
+delle risposte non parte. Sta scritto qui perché una cosa vera e non scritta è come non misurata.
+
+**⑥ Cosa NON è stato fatto, e perché**
+
+⛔ **Non è stata toccata una riga**: i tre reperti sono **decisioni del committente**, e due delle
+tre cure toccano il codice dell'app, non solo i grant.
+⛔ **Non è stato guardato TEST**: la voce chiedeva le 33 di **PROD**. Su `cudi…` il conto sarà
+diverso — la 36 aveva già misurato che là la famiglia era «un rattoppo a campione». È il vicino di
+casa di questa voce, non il suo residuo.
+⛔ **Il PIN non è stato indovinato né letto**, e non si farà: si misura l'oracolo, non il segreto.
+
+---
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 
@@ -927,6 +1026,11 @@ Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
   16ª e 19ª), quindi non va ricopiato: si riconta. Una di queste 34 è la **voce 44**.
   ⚠️ nessuno le ha mai lette una per una. Le altre 45 **non sono state guardate** — questa è una
   campionatura di due, esattamente come le tabelle divergenti di ieri.
+  ⬆️ **Promossa da lui il 16/08, 26ª sessione: è la voce 47** — e là non sono più «mai lette»:
+  **tutte e 33 eseguite come `anon`**, con 3 reperti e 2 falsi positivi (sono `trigger`, via RPC non
+  si chiamano). 📌 La riga qui sopra diceva «le altre 45»: era già vecchia quando la si è scritta,
+  perché nella stessa riga il totale era stato corretto a 34. Il numero da riconoscere è **33**, ed
+  è il motivo per cui la voce 47 lo **riconta** invece di ereditarlo.
 
 Misurando il **14/08** nella 16ª sessione, disarmando la voce 38:
 
