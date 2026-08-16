@@ -20,6 +20,15 @@ applicata alla **cura**: la si prova col sabotaggio (qui: la `revoke` a metà) p
 **e non** `42501` — cioè raggiunge ancora la funzione. Senza quella controprova, «anon bloccato» si
 sarebbe letto come «funziona», e la **trappola `service_role`** della 36 sarebbe passata inosservata.
 
+🛡️ **E la terza, arrivata a fine giornata: il rosso in bacheca l'ha visto LUI, e la mia riparazione era
+un abbaglio di metodo.** Avevo «rilanciato» due guardie rosse con `workflow_dispatch` — che crea una corsa **nuova**
+— e guardando quella verde ho dichiarato «nessun rosso in bacheca». ⚠️ **Un verde ACCANTO a un rosso non è un rosso
+riparato**: la riga rossa resta, con lo stesso sha, ed è quella che si vede. Me l'ha mostrata con una schermata, ed
+erano **due**, non una. ⇒ La cura è meccanica: si usa **`rerun_workflow_run` sull'ID della corsa fallita**, e si
+verifica che *quella* corsa passi a **`run_attempt: 2` + `success`** — non che ne esista una verde con lo stesso sha.
+⚖️ È la 22ª applicata a me un'altra volta — *guardavo l'oggetto sbagliato, e la sonda mi dava ragione* — ed è la
+settima sessione di fila in cui la cosa che vede lui io non l'avevo guardata.
+
 ## 📌 Le decisioni prese dal committente nella 27ª
 
 | | |
@@ -28,6 +37,7 @@ sarebbe letto come «funziona», e la **trappola `service_role`** della 36 sareb
 | 📦 **«chiudila e aggiorna i docs»** | la 48 chiusa su voce **verificata sul bersaglio eseguendo**, non solo «a codice a posto» ⇒ la lista urgenti torna **vuota** |
 | 📦 **«chiudi la quindici»** | la voce che aspettava **il suo sguardo** e non altro lavoro: fatta e in PROD dal 15/08, restava aperta perché la card si vede solo col login staff. L'ha guardata ⇒ chiusa |
 | ⏸️ **«la diciotto la sospendiamo, levala dall'elenco»** | ⚖️ **sospesa, non annullata** — e la differenza è scritta nella sua riga: non l'ha fermata un problema tecnico, è una priorità sua. Il perché resta agli atti, o fra un mese torna da sé |
+| 🔓 **«fai tu e scegli la migliore soluzione»** | ⚖️ **delega piena, dichiarando il perché**: *«non sono un tecnico»*. ⇒ Scelte tutte e tre le mosse su **TEST e PROD**, e prima di produzione **eseguito il ramo mai provato** (il rincaro) invece di fidarsi che fosse corretto |
 | ❓ **«fammi capire meglio quella del pin»** | ⭐ la richiesta che ha trasformato un residuo in **misura**: costo bcrypt, popolazione `authenticated` e oracolo **eseguito** invece che dedotto — e il quadro che ne esce **ridimensiona** l'allarme che avevo dato |
 
 ## 🔎 Il filo della 26ª: **il limite dichiarato che nessuno aveva provato**
@@ -412,7 +422,7 @@ contesto**, non eseguire il compito scritto.
 |---|---|
 | 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **2** |
-| 📦 **Chiuse** | **41** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **42** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **La 27ª non ha toccato `index.html`**: le versioni sono quelle della 26ª, **rimisurate dal server** (PROD **6.234**, TEST **6.243**), non ricopiate. Il lavoro è stato tutto sui **permessi del database di TEST**: 12 `SECURITY DEFINER` allineate a PROD, `anon` da 32 a 20.
 
@@ -743,7 +753,8 @@ Misurando il **16/08**, nella 27ª, chiudendo la voce 48:
   di nuovi utenti sia aperta**: da qui non si misura (`auth.config` non esiste come tabella, e la
   configurazione sta nel pannello, non nel database). 📌 È **la domanda che decide la gravità**: a
   registrazione chiusa il rischio è interno; ad essa aperta, chiunque può diventare `authenticated`.
-  ⚖️ **Non promossa**: è una nota, e le promozioni le decide il committente.
+  📦 **CHIUSA in giornata come voce 49**, su sua delega: porta chiusa ad `authenticated` su entrambi i
+  progetti, freno ai tentativi e rincaro dell'hash. La sua riga sta fra le chiuse.
 
 Misurando il **12/08**:
 
@@ -994,17 +1005,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 41 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 42 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime DODICI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime TREDICI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **49** | ✅ *(16/08, 27ª sessione — **nata come nota misurata e chiusa in giornata su sua delega**: «fai tu e scegli la migliore soluzione»)* 🔑 **Il PIN admin: chiusa la porta, non solo stretta.** 🎯 **Il reperto che ha cambiato la cura, e stava in una MIA proposta sbagliata**: avevo proposto di revocare `pmo_admin_pin_ok`, ma **3 delle 12 funzioni non lo chiamano affatto** — `upsert_assessment_tokens_admin` e `upsert_post_match_feedback_tokens_admin` fanno `extensions.crypt()` **in proprio**. Revocare il solo oracolo avrebbe chiuso la porta lasciando **due finestre** altrettanto buone per provare il PIN a ripetizione: è la 23ª — *lo strumento che guarda un pezzo solo del bersaglio* — applicata a una cura invece che a una sonda. ⇒ La cura è diventata **revoca ad `authenticated` di tutte e 12**, non di una. 🔎 **La premessa, misurata prima di toccare**: `admin_pin` compare **48 volte nel repo e tutte nei file di schema** (`manual-sql`, `migrations`) — **zero chiamanti** in client, edge e worker ⇒ quella famiglia è **codice morto**, e questo ha reso la cura a rischio nullo e insieme ne ha ridimensionato il beneficio. 🛠️ **Tre mosse, su TEST e su PROD**: ① `pmo_admin_pin_ok` **rincara l'hash a bcrypt 12** al primo accesso riuscito (l'unica strada senza il PIN in chiaro, che non va chiesto in chat); ② **12 revoche** ad `authenticated` per progetto; ③ **freno** — tavolo `pmo_admin_pin_attempts` (RLS attivo, solo `service_role`), max **10 falliti per attore in 15 minuti**, poi `PIN_THROTTLED`. 🧪 **Il ramo del rincaro non era mai stato ESEGUITO da nessuno**, quindi è stato provato a parte con un PIN finto a costo 06 in transazione annullata: sbagliato → `false` e costo **resta 6**; giusto → `true` e costo **sale a 12**; e la prova che conta, **lo stesso PIN funziona ANCHE DOPO il rincaro** (se no era una chiusura fuori). ✅ **Verificato sul bersaglio eseguendo, su entrambi i progetti**, con assert che avrebbero abortito la transazione: `authenticated` → oracolo **42501**, → finestra laterale **42501**; controlli **positivi** superati — la variante **senza** PIN resta viva, `pmo_get_records_admin` senza PIN risponde `AUTH_REQUIRED` come prima, e `service_role` raggiunge ancora l'oracolo. 📏 **Esito: `pin_ancora_esposte` = 0 su PROD e su TEST**; `authenticated` sulle `SECURITY DEFINER` scende **40→28** (PROD) e **39→27** (TEST), `anon` **20/20** invariato, `service_role` **58/46** intatto. ↩️ Reversibile, SQL di ripristino **verbatim** in testa a entrambe le migrazioni. ⛔ **Residuo dichiarato**: l'hash **resta a `$2a$06$` finché qualcuno non entra con successo almeno una volta** — e siccome nessuno chiama quel percorso, **il rincaro potrebbe non scattare mai**; è una cura che si arma da sé se la strada rivive, non un lavoro già fatto. E **non è stato verificato se la registrazione di nuovi utenti sia aperta**: da qui non si misura (`auth.config` non esiste come tabella, sta nel pannello) — con la porta ora chiusa ad `authenticated` la domanda pesa molto meno di prima, ma resta senza risposta. |
 | **15** | ✅ *(16/08, 27ª sessione — **chiusa da lui**: «chiudi la quindici». Era in sezione D, «resta qui finché non la guardi»: l'ha guardata)* 🎾 **La PARTITA APERTA si riconosce sulla card del calendario staff.** Fatta su TEST (6.240) e promossa a PROD (6.232) il 15/08; restava aperta **solo** in attesa che il committente la vedesse col login staff, che dal cloud non si raggiunge. ✅ **Rimisurata su `origin/main` prima di chiudere**, non data per buona dalla scheda: «Partita aperta» ×6, `isSameField` ×10, `match_invitation` ×6, `_staffCalBuildHorizontal` ×4 — e **`'C'+c` a ZERO**, cioè il difetto che avrebbe reso la card invisibile per sempre **non** è in produzione. ⚖️ Chiusa perché la condizione che la teneva aperta era **il suo sguardo**, e c'è stato. |
 | **18** | ⏸️ **SOSPESA** *(16/08, 27ª sessione — **decisione sua**: «la diciotto al momento la sospendiamo, quindi levala dall'elenco»)* 📣 **Pannello avvisi nel gestionale** — lo staff vede cosa il bot ha mandato ai soci. ⚠️ **Non fatta e non annullata: sospesa**, e sta qui perché è dove vivono le voci tolte dall'elenco — l'etichetta lo dice, come per le due annullate del 15/08. 📌 **Il perché, scritto perché non torni per sbaglio fra un mese**: nessun problema tecnico l'ha fermata, è una scelta di priorità del committente. ⚖️ E resta vero il vincolo che la scheda portava: condivide il nodo col **pannello autorizzazioni** ⇒ quando si riprende, **si disegnano insieme**. |
 | **48** | ✅ *(16/08, 27ª sessione — **curata, verificata sul bersaglio e chiusa da lui**: «chiudila e aggiorna i docs». Aperta dal committente il 16/08 a lista svuotata)* 🔒 **Le `SECURITY DEFINER` di TEST allineate a PROD.** Censite ed **ESEGUITE** tutte e **32** le funzioni aperte ad `anon` su `cudi…` (transazioni annullate, con controllo positivo): nessuna versa dati a un `anon` nudo — **12** `AUTH_REQUIRED`, **13** `INVALID_ADMIN_PIN`/`pin_ok=false`, **2** a `0 righe` corretto, **3** pubbliche per disegno, **1** reperto C (già deciso alla 47), **2** trigger. 🎯 **La divergenza vera, in UN SOLO senso**: 12 funzioni — le varianti *col PIN* delle admin più `pmo_admin_pin_ok` — erano aperte ad `anon` su TEST e **`authenticated`-only su PROD** (20 anon PROD + 12 = 32 TEST, la somma torna). ⇒ Su TEST l'intera superficie admin, **scritture comprese** (`pmo_upsert_records_admin`, `pmo_upsert_staff_user_admin`, `pmo_set_staff_user_status_admin`), era raggiungibile dalla **chiave pubblica** col solo PIN, e `pmo_admin_pin_ok` aperta ad `anon` rendeva pure **forzabile** il PIN. E `cudi…` ha gli **stessi soci veri** di PROD. 🚨 **La riga di cura proposta era insufficiente**, misurato in transazione annullata *prima* di agire: `revoke … from anon` lasciava `anon` dentro **via `PUBLIC`**. La cura vera è **tre mosse** — `grant service_role` esplicito → `revoke from public` → `revoke from anon` — che porta TEST **esattamente** alla forma ACL di PROD; applicata in un'unica transazione con `assert` che avrebbe abortito se una sola delle 12 non tornava. ✅ **Verificato sul bersaglio ESEGUENDO**: le 12 da `anon` ora `42501 permission denied` (non più `INVALID_ADMIN_PIN`), `anon` sulle `SECURITY DEFINER` di TEST **32 → 20** = uguale a PROD, le non toccate intatte (`AUTH_REQUIRED`, `TOKEN_MISSING`), e il **controllo positivo ③**: `service_role` sull'ex-12 risponde `INVALID_ADMIN_PIN` *non* `42501` ⇒ la **trappola `service_role` della 36 non ha morso** (`service_role` resta 46). ↩️ Reversibile (`grant execute … to anon` sulle 12). ⛔ **Residuo dichiarato**: l'**entropia del PIN** non è stata valutata — non serve più per questo vettore (`anon` non arriva più né su TEST né su PROD), ma resta per chi è `authenticated`; e il **reperto C** è intatto per tua decisione della 47. |
