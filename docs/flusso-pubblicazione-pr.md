@@ -4,9 +4,23 @@ Questa regola definisce **come il lavoro arriva su `main`** nel progetto Padel M
 
 ## Regola ferrea
 
-Il merge su `main` lo fa **sempre Maurizio**, tramite **Pull Request** da GitHub.
+Il merge su `main` **lo decide sempre Maurizio**, tramite **Pull Request** da GitHub. A
+**eseguirlo** può essere l'agente, ma **solo dopo un ok esplicito**: mai di sua iniziativa,
+nemmeno con le guardie tutte verdi e il lavoro pronto. **Un ok che non arriva vale come un no.**
 
-L'agente **non fa mai** merge su `main` da solo, **non cancella** branch e **non chiude/forza** Pull Request. Quelle azioni le esegue Maurizio a mano.
+> 🔄 **Cambiata il 16/08/2026, decisione del committente**: *«Direi che il merge lo fai tu dopo che
+> io ti ho dato l'ok»*. Fino a quel giorno qui c'era scritto che il merge lo faceva **sempre lui a
+> mano**, e che l'agente non lo faceva **mai**.
+>
+> ⚖️ **Cosa NON è cambiato, ed è la metà che porta il peso: la decisione resta sua.** È cambiato chi
+> tocca il bottone, non chi sceglie. La regola vecchia difendeva due cose insieme — *chi decide* e
+> *chi esegue* — e solo la seconda è stata sciolta.
+>
+> 📌 Nata il giorno stesso, dopo un merge fatto dall'agente su sua istruzione esplicita (#784): la
+> regola era stata **derogata prima di essere riscritta**, e un documento che dice il contrario di
+> ciò che si fa è peggio di uno vecchio — si continua a citarlo.
+
+L'agente **non cancella** branch e **non chiude/forza** Pull Request: quelle restano a Maurizio.
 
 ## Perché l'agente lavora sul suo branch di sessione
 
@@ -37,6 +51,24 @@ Vale per i file in `mockup/` e per i documenti in `docs/`.
 
 **Eccezione (commit diretto su `main`):** le modifiche **solo CSS/grafiche** e i **documenti** (`docs/`) possono andare direttamente su `main` — commit diretto o `Add file → Upload files` fatto a mano — senza Pull Request. Restano comunque soggette ai controlli di sicurezza qui sotto.
 
+⚠️ **Ma `docs/` sta sotto `guard-worker-sync`**: la stessa modifica va messa **anche su `test-preview`**, altrimenti la guardia trova i rami diversi e diventa rossa. E vale l'ordine del punto 4bis del `CLAUDE.md` — **prima `test-preview`, poi `main`** — così la finestra rossa, se capita, cade sul ramo che non è quello predefinito.
+
+### Traccia C — Edge Function (`supabase/functions/**`)
+
+🚨 **Qui il merge su `main` NON è un passo prima del deploy: È il deploy in PROD.**
+`deploy-edge-functions-prod.yml` scatta al push su `main` e pubblica su `qqbfphyslczzkxoncgex`. Non
+c'è un «poi guardo e decido»: quando l'ok arriva, la funzione va **in produzione**. Il gemello
+`deploy-edge-functions-test.yml` fa lo stesso da `test-preview` verso `cudiqnrrlbyqryrtaprd`.
+
+⇒ Un ok su una PR che tocca quella cartella vale **due cose insieme**: *mergia* **e** *pubblica in
+PROD*. Chi lo chiede ha il dovere di dirlo; chi lo dà lo sta dando a tutt'e due.
+
+⛔ **E non esiste la prova intermedia che c'è per l'app**: la Traccia A può fermarsi su TEST e farsi
+guardare. Qui il posto dove ci si ferma è **`test-preview`**, cioè *prima* della PR — non dopo.
+
+📌 Constatato il 16/08/2026 promuovendo `scheda_del_tolto` (#784): merge alle 14:28:04, funzione
+viva su PROD alle **14:28:25**. Ventun secondi.
+
 ## Controlli di sicurezza nella Pull Request (Maurizio)
 
 Prima di confermare un merge:
@@ -48,7 +80,7 @@ Prima di confermare un merge:
 
 ## Cosa NON fa mai l'agente
 
-- Non fa merge su `main`.
+- Non fa merge su `main` **senza un ok esplicito** (con l'ok invece lo esegue lui — vedi «Regola ferrea»).
 - Non cancella branch (le cancellazioni le fa Maurizio a mano).
 - Non chiude né forza Pull Request.
 - Non tocca PROD né usa `service_role` (solo `anon key` per le letture in TEST).
@@ -67,6 +99,10 @@ Approvato, mergia test-preview su main.
 ```
 
 Frasi generiche o commenti parziali non autorizzano il merge su PROD.
+
+⭐ **Dal 16/08/2026 la stessa asticella vale per OGNI merge su `main` eseguito dall'agente**, non
+solo per la Traccia A: serve un ok esplicito **su quel lavoro lì**. Un ok dato a una cosa non si
+allunga a quella dopo, e «va bene» detto guardando una PR non autorizza la successiva.
 
 ## Caccia ai branch (pulizia)
 
