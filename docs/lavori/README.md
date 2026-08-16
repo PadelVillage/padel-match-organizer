@@ -257,9 +257,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **32** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **33** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -424,7 +424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -465,73 +465,13 @@ non è un guasto, è **una decisione tua** — se togliere il nome dalla chiave 
 sua scheda qui sotto — e su sua decisione resta **aperta a diagnosi fatta**: la cura tocca la strada
 che annulla *per davvero* su Matchpoint, e da una sessione cloud quella strada non si prova.
 📦 La **42** è **CHIUSA**, a domanda risposta: il suo censimento era già stato fatto e non ha trovato
-niente, e ciò che ne era uscito è la 43, che vive per conto suo. ⇒ Urgenti da 3 a **2**.
-⚖️ **Restano 14 e 43, e nessuna delle due è «esegui»**: sono **due decisioni tue** — se togliere il
-nome dalla chiave, e quale delle due cure dare alla finestra scoperta dell'annullo.
-
-### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
-*Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
-(`pmo_cloud_records`, `record_type = 'booking_occupancy'`, misurato alle 17:36 UTC).*
-
-🚨 **La scheda vecchia era sbagliata di due ordini di grandezza, e chiedeva una prova che non serve.**
-Diceva «le ⑩ chiavi», «3 sonde rieseguite a distanza di ore e diffate», e che la sonda `fp_hot` era
-scaduta il 4/08 e andava rifondata. Misurato:
-
-| la scheda diceva | il dato vero |
-|---|---|
-| **⑩** chiavi | **571 righe**, **571 chiavi distinte**, su **568 slot** — e **438** oscillano davvero |
-| «prima di concludere **benigna e rara**» | **benigna sì**: le righe `Ospite` ancora vive sono **0**, ogni chiave finisce cancellata e lo slot si risolve. **Rara no**: **25–55 a settimana, ogni settimana da giugno**, ancora in corso (31 nella settimana del 10/08) |
-| servono **3 sonde a distanza di ore**, diffate | **non servono**: `updated_at` **è già** la serie storica. Il campionamento ripetuto sta nel dato e copre **3 mesi**, non 3 ore — una prova più forte di quella chiesta, e che non va aspettata |
-| la sonda `fp_hot` è scaduta, va rifondata | **`fp_hot` non esiste**: né nel repo né in tutta la sua storia (`git log -S`). Stava nelle memorie andate in pensione il 13/08. **Non è recuperabile**, e non serve: la sonda nuova è le quattro righe di SQL qui sotto |
-
-🎯 **La causa, misurata e non dedotta: la chiave dell'occupazione contiene il NOME del giocatore.**
-La forma è `occupancy|<idReserva>|<data>|<ora>|<campo>|<nome>|<durata>`. Un posto occupato da
-«Ospite» che poi prende un nome vero **non aggiorna** la riga: ne genera una **nuova** e lascia una
-lapide sulla vecchia. ⇒ Su 568 slot con una chiave `Ospite`, **438 hanno anche una chiave con un
-nome** per lo stesso `idReserva|data|ora|campo`: sono quelli in cui la sostituzione è avvenuta. I
-restanti **130** sono ospiti rimasti ospiti.
-
-⚖️ **Quindi non è un guasto: è il progetto della chiave.** L'oscillazione non è un sintomo da
-inseguire, è ciò che succede ogni volta che lo staff sostituisce un ospite con un socio — cioè una
-cosa che deve succedere. Il costo è **una lapide per sostituzione**, ~30 a settimana.
-
-🔬 **Controprova, e cade bene**: su `cudi…` le stesse chiavi sono **210**, ferme al **7 agosto** —
-la data esatta a cui è fermo il calendario di TEST (voce 34). Il fenomeno sta nel **meccanismo**,
-non nei dati di PROD: dove il sync gira, si accumula; dove è congelato, si è fermato lì.
-
-⇒ **La domanda vera non è più «è benigna?»** — lo è, ed è misurato. È **se valga la pena togliere il
-nome dalla chiave**, cioè farla `occupancy|<idReserva>|<data>|<ora>|<campo>` e tenere il nome nel
-payload. 🚨 Non è una riga di SQL: quella chiave la scrivono e la leggono il sync, l'app e i ponti,
-e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. **Decisione del committente**,
-non manutenzione.
-
-🧪 **La sonda rifondata** (sostituisce `fp_hot`; gira su entrambi i progetti, sola lettura):
-
-```sql
-with o as (
-  select local_key, deleted, updated_at,
-         split_part(local_key,'|',2) as idreserva, split_part(local_key,'|',3) as data,
-         split_part(local_key,'|',4) as ora,       split_part(local_key,'|',5) as campo,
-         split_part(local_key,'|',6) as nome
-  from pmo_cloud_records where record_type = 'booking_occupancy'
-), slot as (
-  select idreserva, data, ora, campo,
-         count(*) filter (where nome ilike 'ospite')     as come_ospite,
-         count(*) filter (where nome not ilike 'ospite') as con_nome,
-         bool_and(deleted) as tutte_cancellate
-  from o group by 1,2,3,4
-)
-select (select count(*) from o    where nome ilike 'ospite')                     as righe_ospite,
-       (select count(*) from o    where nome ilike 'ospite' and not deleted)     as ancora_vive,
-       (select count(*) from slot where come_ospite > 0)                         as slot_con_ospite,
-       (select count(*) from slot where come_ospite > 0 and con_nome > 0)        as slot_oscillanti,
-       (select count(*) from slot where come_ospite > 0 and con_nome > 0
-                                    and not tutte_cancellate)                    as oscillanti_vivi;
-```
-
-📌 **`ancora_vive` e `oscillanti_vivi` sono i due numeri che contano**: finché restano **0** il
-fenomeno è rumore contabile. Il giorno che uno dei due sale, allora sì c'è una riga che non si
-chiude — e quella è un'altra voce.
+niente, e ciò che ne era uscito è la 43, che vive per conto suo.
+📦 E la **14** è **CHIUSA dichiarando**, su sua decisione presa coi numeri di oggi davanti: la chiave
+resta com'è, perché il costo è contabile e la cura toccherebbe sync, app e ponti insieme. La **sonda
+non muore con la voce** — sta in `docs/voce-14-sonda-chiavi-ospite.md` con la serie di quindici
+settimane, ed è lei a dire quando riaprirla.
+⇒ **Urgenti da 3 a 1.** Resta la sola **43**, e non è «esegui»: è **una decisione tua** — quale delle
+due cure dare alla finestra scoperta dell'annullo, sapendo che si prova solo dal Mac.
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
@@ -913,17 +853,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 32 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 33 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime TRE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime QUATTRO voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **14** | ✅ *(16/08, 25ª sessione — **chiusa DICHIARANDO su sua decisione**, non eseguendo)* **Le chiavi «Ospite» che oscillano: benigne, e la chiave resta com'è.** La chiave dell'occupazione contiene il **nome** — `occupancy\|idReserva\|data\|ora\|campo\|NOME\|durata` — quindi un ospite che prende un nome vero **non aggiorna** la riga: ne crea una nuova e lascia una lapide. ⇒ Non è un guasto, **è il progetto della chiave**: succede ogni volta che lo staff sostituisce un ospite con un socio, cioè una cosa che *deve* succedere. 🔬 **Rimisurata sul bersaglio il 16/08 alle 08:47 UTC**, non ricopiata dalla scheda: **571** righe `Ospite` su 3904 di occupazione (15% della tabella), **438** slot oscillanti, `ancora_vive` **0**, `oscillanti_vivi` **0**. ⭐ **E la prova che chiude la voce non è quel totale, è la serie**: `di_cui_vive` = **0 in quindici settimane su quindici**, da maggio. «Zero oggi» è una fotografia e potrebbe essere fortuna; zero per quindici settimane è un **comportamento** — ogni chiave finisce cancellata e lo slot si risolve, sempre. ✅ **Controllo negativo fatto prima di credere allo zero** (lezione della 24ª): l'ultima riga di occupazione aveva **33 secondi**, 73 nelle 24 ore ⇒ la sonda guarda un cassetto **vivo**. Il silenzio di 2 giorni e mezzo sulle sole `Ospite` cade su **Ferragosto**, ed è una pausa del circolo, non del meccanismo. ⚖️ **Perché NON si toglie il nome dalla chiave**: il costo è **contabile e basta** (~30 lapidi a settimana, nessuna riga che resti aperta), mentre la cura è sproporzionata — quella chiave la scrivono e la leggono **sync, app e i ponti**, e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. 📄 **La sonda sopravvive alla voce**, con serie storica, controprova su TEST e il controllo negativo, in [`docs/voce-14-sonda-chiavi-ospite.md`](../voce-14-sonda-chiavi-ospite.md): 🔁 si riapre se `ancora_vive` o `oscillanti_vivi` salgono sopra zero. |
 | **42** | ✅ *(16/08, 25ª sessione — **chiusa su sua decisione**, a domanda risposta)* **«Cos'altro teneva in piedi quel mezzo secondo?» — nulla: le due corse vere sono progettate per ignorare ciò che la push ha appena scritto.** La voce nasceva dal caso 11 che cadeva addosso al caso 12 quando la 6.231 tolse il riscaricamento di `config.js` (~110 volte al minuto), e chiedeva di censire le altre chiamate in equilibrio su quel ritardo. 🔬 Censite il 15/08 sull'intero sorgente, righe di commento escluse: le **letture** non attese **non esistono** (`pmoStaffRpcPaged` è 16 su 16 attesa — una lettura non può arrivare presto se nessuno la lascia correre); le **scritture** non attese sono 14 su 16; la forma pericolosa dà **3 candidate e nessuna lo è** — una è un falso positivo della sonda di prossimità (due funzioni vicine nel testo, non annidate), le altre due escludono **per costruzione** le chiavi appena spinte (`_already`, `_destId`). ⇒ **«Cosa leggerebbe se arrivasse 50 ms prima?» → la stessa cosa.** 🧯 Lasciata scritta nella voce un'ipotesi mia sbagliata (`staffCalCloudReassignAndSyncMove` che partirebbe dallo slot d'origine: falso, cerca la `entry` al nuovo slot e il commento lo dichiara) — ci avevo creduto perché **cercavo corse**, che è la «prova che ti dà ragione» vista dal lato di chi indaga. ⚖️ **Si chiude a domanda RISPOSTA, non a lavoro finito**: quello che era emerso strada facendo è di un'**altra famiglia** — non una lettura precoce ma una **coda staccata che scrive** — ed è la voce **43**, che resta aperta con la sua misura. |
 | **34** | ✅ *(16/08, 24ª sessione — **accesa su sua conferma separata** la sera del 15, e **confermata dal giro automatico** la mattina del 16)* **Il calendario di TEST era una fotografia ferma al 7 agosto: adesso si aggiorna 5 volte al giorno.** 🔓 **A sbloccarla è stata un'informazione sua, che non stava in nessun file**: le routine di TEST erano state fermate *insieme e di proposito*, per fare gli aggiornamenti a mano durante le prove — la scheda poneva come condizione di sapere «perché furono spenti», e quel perché **da qui non era recuperabile**. ⚖️ **Il nodo vero non era nessuno dei tre indicati dalla scheda**: il dispatcher è **UNO per 12 slot** (6 clienti + 1 storico + 5 calendario), quindi «riaccendere solo il calendario» **non esiste come interruttore**. Sciolto **senza toccare la funzione**: sveglia ogni ora al minuto 30, e a decidere è il confronto sull'**ora italiana** che nomina i cinque orari. 🚨 Serve **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti cadono al minuto 30 — e cinque orari fissi in UTC si sarebbero rotti al cambio dell'ora **in silenzio**, cioè lo stesso guasto muto da cui nasce la voce. 🛑 **Tre punti della scheda smentiti dai fatti**: il `jobid 13` **non è stato toccato** (si è aggiunto il **17**, così tornare indietro è cancellarlo), **era** una riga di SQL, ed **è stata fatta dal cloud**. ✅ **Il filtro esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è partita (`succeeded`) senza produrre **nessun** dispatch clienti né storico, ed è stata esclusa la spiegazione alternativa (`on conflict do nothing`: le uniche due righe clienti sono del 2 e 3 agosto, chiavi che non possono collidere). ✅✅ **E la catena provata FINO IN FONDO la sera stessa, su sua idea** — *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*: forzando l'orario, **53 righe lette dal Matchpoint vero**, 258 righe toccate, calendario **dal 7 agosto a quella sera**, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di guardare i dati**. ✅ **CONFERMATA dal giro automatico del 16/08**: `bookings_morning` alle **05:30** italiane, **0** risvegli di clienti e storico, calendario aggiornato alle **05:31:55**. 🧯 Due letture sbagliate mie, nel documento: «non ce l'ha fatta» (leggevo un campo di un'altra strada) e «il calendario non si è mosso» (misuravo **un minuto prima** che la scrittura atterrasse) — non la sonda cieca della 23ª, ma **una misura presa prima che il fatto accadesse**. ⛔ **Residuo dichiarato**: le letture in più nei log del worker si vedono solo **dalla VM**. 📄 Procedura, query di controllo e comando di spegnimento in [`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md). |
 | **26** | ✅ *(16/08, 24ª sessione — **chiusa dalla 34**, come la sua stessa scheda prevedeva)* **Il «Fatto» del togli che non si vedeva: non era il bot, era il calendario fermo.** Il bot diceva di aver tolto il giocatore e la riga non spariva. La causa era stata trovata il 14/08 chiudendo la voce 32 — su TEST **non girava nessun sync delle prenotazioni**, quindi non c'era niente che riconciliasse, mentre in PROD lo fa `bookings_live` ogni 2 minuti **con lo stesso identico codice**. ⇒ Il bot era sano: aveva ragione a dire «Fatto». ✅ Dal 16/08 il calendario di TEST si aggiorna 5 volte al giorno (voce 34), quindi il sintomo **sparisce da sé**: non c'era niente da riparare, c'era da riaccendere altrove. ⚖️ È la voce che la 23ª aveva citato come costo dell'inganno del calendario congelato — *«aperta come guasto del bot quando il bot era sano»* — e si chiude senza che una riga di codice sia stata toccata. |
