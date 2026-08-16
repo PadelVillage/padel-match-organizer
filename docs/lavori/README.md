@@ -257,9 +257,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** |
+| 🔴 **Urgenti** | **2** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **31** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **35** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -424,7 +424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 2
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -461,152 +461,75 @@ metà della stessa malattia — la 42 le *letture* che arrivano presto (misurata
 non è un guasto, è **una decisione tua** — se togliere il nome dalla chiave dell'occupazione.
 📌 Tutt'e tre si lavorano **da qui**: nessuna vuole la VM né il repo del bot.
 
-### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
-*Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
-**domanda aperta con una prova a sostegno**, ed è per questo che sta qui e non fra le urgenti.
+🔄 **Aggiornamento del 16/08, 25ª sessione.** La **43** è stata **misurata** — la risposta sta nella
+sua scheda qui sotto — e su sua decisione resta **aperta a diagnosi fatta**: la cura tocca la strada
+che annulla *per davvero* su Matchpoint, e da una sessione cloud quella strada non si prova.
+📦 La **42** è **CHIUSA**, a domanda risposta: il suo censimento era già stato fatto e non ha trovato
+niente, e ciò che ne era uscito è la 43, che vive per conto suo.
+📦 E la **14** è **CHIUSA dichiarando**, su sua decisione presa coi numeri di oggi davanti: la chiave
+resta com'è, perché il costo è contabile e la cura toccherebbe sync, app e ponti insieme. La **sonda
+non muore con la voce** — sta in `docs/voce-14-sonda-chiavi-ospite.md` con la serie di quindici
+settimane, ed è lei a dire quando riaprirla.
+⇒ **Urgenti da 3 a 1.** Resta la sola **43**, e non è «esegui»: è **una decisione tua** — quale delle
+due cure dare alla finestra scoperta dell'annullo, sapendo che si prova solo dal Mac.
 
-🔎 **Il fatto.** Fino alla 6.231 ogni chiamata al cloud riscaricava `config.js` prima di partire —
-**~110 volte al minuto**, misurate su PROD viva. Quel giro di rete non serviva a niente, ma
-*ritardava* ogni RPC di qualche decina di millisecondi. Togliendolo è saltato fuori **subito** un
-difetto che quel ritardo teneva nascosto: il **caso 11** del banco finiva mentre la sua coda era
-ancora in corsa (`doCancel` prosegue in asincrono dopo il worker, con un commit locale che
-**toglie** la prenotazione) e quella coda cadeva dentro il **caso 12**, portandogli via la
-prenotazione da sotto. Riparato nel banco, non nell'app.
+### 44. 🚨 La porta di servizio dell'autovalutazione: `get_self_assessments_by_tokens` legge NOME e TELEFONO ad `anon`
+*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 15ª — dove stava
+come nota di due righe.* 🔬 **Misurata sul bersaglio prima di scriverla, e la nota diceva molto meno
+di quello che c'è.**
 
-⚠️ **La domanda è quante altre cose stessero in equilibrio su quel ritardo.** I punti di chiamata
-sono **72**: il ritardo non era locale a una funzione, era diffuso su *ogni* lettura dal cloud
-dell'intera app. Ne abbiamo trovata **una** perché il banco la copriva. Le altre, se ci sono, stanno
-dove il banco non arriva.
+🎯 **Il fatto, provato eseguendo — non dedotto dai grant.** La funzione è `SECURITY DEFINER`, di
+proprietà di `postgres`, con `EXECUTE` a **`anon`, `authenticated` e PUBLIC** (`=X/postgres`).
+Eseguita **come `anon`** dentro una transazione annullata, restituisce per ogni token passato:
+`first_name`, `last_name`, **`phone`**, i livelli dichiarato e calcolato e l'intero `raw_response`.
 
-🎯 **Cosa cercare, e non è «rileggere tutto»**: la forma è `pmoSyncCloudRecordsNow(...)` **non
-attesa** — `.catch()` e via — seguita poco dopo da una **lettura** che si aspetta di vedere quella
-scrittura. È il disegno di `staffCalCloudReassignAndSyncMove`, ed è deliberato: la push non è attesa
-per far partire subito il broadcast `staff-changed`, e il commento nel codice lo dichiara. Il punto
-non è che sia sbagliato, è che **non c'è niente che garantisca l'ordine** quando il ritardo sparisce.
+✅ **Controllo negativo fatto, e cade bene**: la lettura **diretta** di `self_assessments` come `anon`
+vede **0 righe** — la tabella ha RLS attivo e **zero policy**. ⇒ La porta chiusa il 12/08 è chiusa
+davvero, e **questa RPC è l'unica finestra rimasta aperta accanto**. Non è una porta fra tante: è
+*la* strada.
 
-📌 **Da dove partire, se si apre**: `grep` delle chiamate a `pmoSyncCloudRecordsNow` e
-`pmoStaffRpcPaged` non attese, e per ciascuna la domanda «se questa arrivasse 50 ms prima, cosa
-leggerebbe?». ⚖️ E una nota che vale quanto il resto: **il banco adesso sa modellare quell'ordine**
-— la lettura finta ricorda le scritture, cosa che prima non faceva — quindi un caso scritto oggi su
-questo tema *può* dire il vero. Prima non avrebbe potuto, ed è il motivo per cui questa domanda non
-si era mai potuta porre.
+🚨 **E su PROD esiste un token INDOVINABILE.** Fra i 1364 token, 989 sono da 14 caratteri e 369 sono
+`GM-<uuid>` — non forzabili. Ma **cinque no**: `TEST123`, `TEST456`, `TEST789` e **`MAURIZIO001`**.
+Quattro non hanno una riga in `self_assessments`; **`MAURIZIO001` sì**, ed è **un socio vero, con
+nome, cognome e numero di telefono**, del 25/04. ⇒ Chiunque, dalla rete, con la sola chiave
+pubblicabile e indovinando quella parola, si porta via il recapito di una persona reale.
 
-🚨 **Non è teoria: in produzione gira già.** La 6.231 è viva dal 15/08, quindi l'eventuale seconda
-corsa non è più ipotetica — è in esercizio. Il sintomo da tenere d'occhio è **una modifica che
-sparisce dagli altri dispositivi** (spostamento, disdetta, uscita di un giocatore) senza errore in
-console: è esattamente la forma che aveva il caso 12.
+⚖️ **La misura di quanto è grande**: la riga raggiungibile per tentativi è **una**. Non è una fuga di
+massa — è una fessura stretta, ma su **dati personali veri** e in **produzione**.
+📌 **Stessa forma su TEST** (`cudi…`): identica `SECURITY DEFINER`, stessi grant, RLS attivo, **0
+policy**, **7 righe**. Il contratto vive sui due lati e va cambiato insieme.
+📏 **E non è sola**: le `SECURITY DEFINER` eseguibili da `anon` su PROD, ricontate oggi, sono **34**
+(la nota della 15ª ne diceva 47 — il numero si è mosso, quindi si riconta e non si ricopia). Questa è
+**una** di quelle 34, ed è l'unica che qualcuno abbia letto riga per riga. ⚠️ **Le altre 33 restano
+non guardate**: questa voce non le copre, e dirlo fa parte della misura.
 
 ---
 
-🔬 **MISURATA il 15/08, 24ª sessione, su `main` (PROD 6.232).** Eseguito ciò che la voce chiedeva —
-il censimento delle due famiglie, righe di commento **escluse** (4617 su 51.878) e su **tutto** il
-file, non su un blocco `<script>` solo: è la trappola in cui era caduta la 23ª, e qui l'analizzatore
-è stato scritto per leggere l'intero sorgente.
+✅ **CURATA il 16/08, su sua autorizzazione: `REVOKE EXECUTE … FROM anon, PUBLIC` sui DUE progetti.**
+Il grant ad `authenticated` **resta**: sparisce l'accesso *senza credenziali*, non quello dello staff.
 
-| la domanda della voce | la risposta misurata |
-|---|---|
-| le letture non attese | **non esistono**: `pmoStaffRpcPaged` ha 16 chiamate e sono **16 su 16 attese**. Una lettura non può arrivare presto se nessuno la lascia correre |
-| le scritture non attese | **14 su 16** — il numero è quello che la voce si aspettava |
-| la forma pericolosa (push non attesa → lettura che vuole vederla) | **3 candidate, e nessuna lo è** |
+🔬 **Provata prima e dopo, e su TEST prima che su PROD** — non dichiarata:
 
-🎯 **E le tre vanno raccontate una per una, perché la conclusione sta lì:**
+| | `anon` prima | `anon` dopo | `authenticated` dopo |
+|---|---|---|---|
+| **TEST** (`cudi…`) | **3 righe** | **42501** `permission denied for function` | **3 righe** |
+| **PROD** (`qqbf…`) | **1 riga** — nome, cognome, telefono di `MAURIZIO001` | **42501** | **1 riga** |
 
-- **`pmoQueueImmediateMemberCloudDelete` → `pmoLoadRetiredHistoryKeysFromCloud`** — **falso positivo**:
-  sono **due funzioni diverse**, vicine nel testo e nient'altro; la prima chiude prima che la seconda
-  cominci. ⚠️ La sonda di prossimità le aveva accoppiate perché contava le **righe**, non le
-  **funzioni** — e il suo modo di indovinare la funzione che contiene una riga (l'indentazione) è
-  risultato **sbagliato** su questo file. Non l'ho aggiustato: ho letto il codice.
-- **annullo staff → «pulire eventuali doppioni»** — la forma c'è, ma la lettura **esclude per
-  costruzione** le chiavi appena spinte (`_already`).
-- **`staffCalCloudReassignAndSyncMove`** — l'archetipo dichiarato dalla voce. La forma c'è, e la
-  lettura esclude la riga appena spostata (`_destId`).
+✅ **La controprova positiva è stata fatta apposta**, perché senza di essa «blocca tutto» si legge
+come «funziona»: la strada legittima **passa ancora**, di qua e di là.
+✅ **E una conferma indipendente, che non veniva dalla stessa sonda**: le `SECURITY DEFINER`
+eseguibili da `anon` su PROD sono passate da **34 a 33**. Si è chiusa **una** porta, ed è quella.
+↩️ Migrazione **reversibile**, con l'SQL di ripristino **verbatim** in testa (le due `GRANT`), su
+entrambi i progetti. Nessuna riga di dati toccata: tutte le prove d'attacco in transazioni annullate.
 
-⚖️ **Quindi la risposta alla domanda «cosa leggerebbe se arrivasse 50 ms prima?» è: la stessa cosa.**
-In tutt'e due i punti veri la lettura è progettata per **ignorare** ciò che la push ha appena
-scritto — cioè l'esatto contrario di «si aspetta di vedere quella scrittura». Il ritardo di
-`config.js` non le teneva in piedi: reggono da sé, e reggevano già prima.
-
-🧯 **Un'ipotesi mia, sbagliata, lasciata scritta perché è istruttiva.** Vedendo che
-`staffCalCloudReassignAndSyncMove` è **`async` e viene chiamata senza `await`** da 3 punti (ed è vero,
-e non era nella voce), avevo pensato: il chiamante della chat sposta la copia locale **prima** di
-chiamarla, quindi la funzione partirà dallo slot d'origine e non troverà più niente. **Falso**:
-cerca la `entry` al **nuovo** slot, e il commento in testa lo dichiara — *«alla voce spostata (già al
-nuovo slot in locale)»*. Il disegno è coerente coi suoi chiamanti. ⇒ Ho creduto a una corsa perché
-**cercavo corse**, ed è la forma della «prova che ti dà ragione» vista dal lato di chi indaga.
-
-🔴 **Ciò che resta scoperto è di UN'ALTRA famiglia, e la voce non la nominava.** Il caso 12 del banco
-non cadeva per una *lettura* precoce: cadeva per una **coda staccata che scriveva lo stato locale**
-dopo che il chiamante era andato avanti. Quella forma nel gestionale c'è:
-**`staffCalRefreshFromCloud`** è chiamata **senza `await`** da più punti e fa commit locali **dopo**
-un `await` (`applyMatchpointMembersToLocal`, subito dopo la lettura dei soci dal cloud). È
-**attenuata** da un debounce di 60 s (saltato da `force`), che riduce quanto spesso possa atterrare
-ma non toglie la forma.
-📌 ⇒ La voce 42, **come è scritta**, è misurata e pulita. Quello che resta non è il suo residuo: è
-una voce diversa, sulla famiglia «continuazione staccata che scrive in locale».
-
-### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
-*Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
-(`pmo_cloud_records`, `record_type = 'booking_occupancy'`, misurato alle 17:36 UTC).*
-
-🚨 **La scheda vecchia era sbagliata di due ordini di grandezza, e chiedeva una prova che non serve.**
-Diceva «le ⑩ chiavi», «3 sonde rieseguite a distanza di ore e diffate», e che la sonda `fp_hot` era
-scaduta il 4/08 e andava rifondata. Misurato:
-
-| la scheda diceva | il dato vero |
-|---|---|
-| **⑩** chiavi | **571 righe**, **571 chiavi distinte**, su **568 slot** — e **438** oscillano davvero |
-| «prima di concludere **benigna e rara**» | **benigna sì**: le righe `Ospite` ancora vive sono **0**, ogni chiave finisce cancellata e lo slot si risolve. **Rara no**: **25–55 a settimana, ogni settimana da giugno**, ancora in corso (31 nella settimana del 10/08) |
-| servono **3 sonde a distanza di ore**, diffate | **non servono**: `updated_at` **è già** la serie storica. Il campionamento ripetuto sta nel dato e copre **3 mesi**, non 3 ore — una prova più forte di quella chiesta, e che non va aspettata |
-| la sonda `fp_hot` è scaduta, va rifondata | **`fp_hot` non esiste**: né nel repo né in tutta la sua storia (`git log -S`). Stava nelle memorie andate in pensione il 13/08. **Non è recuperabile**, e non serve: la sonda nuova è le quattro righe di SQL qui sotto |
-
-🎯 **La causa, misurata e non dedotta: la chiave dell'occupazione contiene il NOME del giocatore.**
-La forma è `occupancy|<idReserva>|<data>|<ora>|<campo>|<nome>|<durata>`. Un posto occupato da
-«Ospite» che poi prende un nome vero **non aggiorna** la riga: ne genera una **nuova** e lascia una
-lapide sulla vecchia. ⇒ Su 568 slot con una chiave `Ospite`, **438 hanno anche una chiave con un
-nome** per lo stesso `idReserva|data|ora|campo`: sono quelli in cui la sostituzione è avvenuta. I
-restanti **130** sono ospiti rimasti ospiti.
-
-⚖️ **Quindi non è un guasto: è il progetto della chiave.** L'oscillazione non è un sintomo da
-inseguire, è ciò che succede ogni volta che lo staff sostituisce un ospite con un socio — cioè una
-cosa che deve succedere. Il costo è **una lapide per sostituzione**, ~30 a settimana.
-
-🔬 **Controprova, e cade bene**: su `cudi…` le stesse chiavi sono **210**, ferme al **7 agosto** —
-la data esatta a cui è fermo il calendario di TEST (voce 34). Il fenomeno sta nel **meccanismo**,
-non nei dati di PROD: dove il sync gira, si accumula; dove è congelato, si è fermato lì.
-
-⇒ **La domanda vera non è più «è benigna?»** — lo è, ed è misurato. È **se valga la pena togliere il
-nome dalla chiave**, cioè farla `occupancy|<idReserva>|<data>|<ora>|<campo>` e tenere il nome nel
-payload. 🚨 Non è una riga di SQL: quella chiave la scrivono e la leggono il sync, l'app e i ponti,
-e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. **Decisione del committente**,
-non manutenzione.
-
-🧪 **La sonda rifondata** (sostituisce `fp_hot`; gira su entrambi i progetti, sola lettura):
-
-```sql
-with o as (
-  select local_key, deleted, updated_at,
-         split_part(local_key,'|',2) as idreserva, split_part(local_key,'|',3) as data,
-         split_part(local_key,'|',4) as ora,       split_part(local_key,'|',5) as campo,
-         split_part(local_key,'|',6) as nome
-  from pmo_cloud_records where record_type = 'booking_occupancy'
-), slot as (
-  select idreserva, data, ora, campo,
-         count(*) filter (where nome ilike 'ospite')     as come_ospite,
-         count(*) filter (where nome not ilike 'ospite') as con_nome,
-         bool_and(deleted) as tutte_cancellate
-  from o group by 1,2,3,4
-)
-select (select count(*) from o    where nome ilike 'ospite')                     as righe_ospite,
-       (select count(*) from o    where nome ilike 'ospite' and not deleted)     as ancora_vive,
-       (select count(*) from slot where come_ospite > 0)                         as slot_con_ospite,
-       (select count(*) from slot where come_ospite > 0 and con_nome > 0)        as slot_oscillanti,
-       (select count(*) from slot where come_ospite > 0 and con_nome > 0
-                                    and not tutte_cancellate)                    as oscillanti_vivi;
-```
-
-📌 **`ancora_vive` e `oscillanti_vivi` sono i due numeri che contano**: finché restano **0** il
-fenomeno è rumore contabile. Il giorno che uno dei due sale, allora sì c'è una riga che non si
-chiude — e quella è un'altra voce.
+⚠️ **Residuo dichiarato, e NON è stato fatto**: il gettone `MAURIZIO001` — e i quattro `TEST*` senza
+riga — **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco;
+restano un **gettone debole**. ⛔ Non l'ho toccato di proposito: dietro c'è **il dato di una persona
+reale**, e prima di cancellare va misurato **cosa ci punta** — che è una decisione sua, non
+manutenzione.
+⚠️ **E ciò che questa voce NON copre**: le **altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è
+l'unica letta riga per riga. Le altre non sono state guardate, ed è scritto perché nessuno legga
+«famiglia bonificata».
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
@@ -642,6 +565,100 @@ vuoto** — è successo, ed è documentato nel banco.
 📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
 dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
 solo da che parte la si prende.
+
+---
+
+🔬 **MISURATA il 16/08, 25ª sessione, su `main` (PROD 6.232), righe di commento escluse.**
+Prima cosa fatta: **riverificare la scheda sul bersaglio**, perché una scheda è un'ipotesi.
+✅ **Torna esatta, numero per numero** — 12 punti di chiamata più la definizione, **8 non attese /
+3 attese / 1 restituita**, e **5 delle 8** passano `force`. Non c'è niente da correggere.
+
+**① Quali delle 8 possono atterrare — la risposta che la voce chiedeva**
+
+| # | riga | opzioni | freno 60 s | pre-guardia `_staffCalPendingEdits` | atterra a metà operazione |
+|---|---|---|---|---|---|
+| 1 | 9011 | `force` | **saltato** | no | **sì** |
+| 2 | 10315 | — | frena | no | solo a freno scaduto |
+| 3 | 29933 | — | frena | no | solo a freno scaduto (avvio) |
+| 4 | 37543 | `silent` | frena | no | solo a freno scaduto |
+| 5 | 37566 | `force, silent` | **saltato** | **sì**, alla 37556 | sì, ma non con un pending aperto |
+| 6 | 37576 | `force, withMembers` | **saltato** | no | **sì** |
+| 7 | 37638 | `force` | **saltato** | no | **sì** |
+| 8 | 37678 | `force` | **saltato** | no | **sì** |
+
+⇒ **Quattro su otto** non hanno **nessuna** protezione: né il freno né la pre-guardia. La quinta —
+il poll a 4 s — è **l'unica delle dodici** che si chieda se un'operazione è in corso prima di partire.
+
+**② E dentro la funzione la guardia copre UN blocco su TRE**
+
+`_staffCalPendingEdits` compare in `staffCalRefreshFromCloud` **una volta sola**, alla **38143**, e
+serve al **solo** merge di `staffBookings` (38144-38151). Gli altri due punti in cui la funzione
+scrive lo stato locale dopo un `await` **non la consultano affatto**:
+
+- **38101** — `applyMatchpointMembersToLocal(...)` dopo `await pmoLoadMatchpointMembersFromCloud()`;
+- **38204-38207** — e questa **la scheda non la nominava**: `prenotazioni = cloud.bookings` e
+  `prenotazioniOccupazione = _occToStore`, **assegnazione secca** da una fotografia del cloud letta
+  alla **38118**. Nessun merge, nessuna esclusione delle chiavi appena toccate.
+
+⚖️ È la scrittura **più grossa** delle tre e **la meno difesa**: il merge di `staffBookings` è
+progettato per tenere il locale (`_pend`, `keptLocal`); questa sovrascrive e basta.
+
+**③ 🚨 Il reperto che cambia il quadro: la protezione si CHIUDE PRIMA della scrittura**
+
+In `staffCalDoCancel` l'ordine è questo, letto riga per riga:
+
+| riga | cosa succede |
+|---|---|
+| 43490 | `_staffCalPendingEdits.add(_pendCancelKey)` — la finestra si **apre** |
+| 43570 / 43598 | `_staffCalPendingEdits.delete(_pendCancelKey)` — la finestra si **chiude** |
+| 43579 / 43585 / 43541 | `_applicaAnnullo()` → `_staffCalCommitLocalCancel(...)` |
+
+⇒ **Tutti e tre** i punti in cui l'annullo tocca lo stato locale stanno **a valle** della `delete`.
+Controllato e non dedotto: `_applicaAnnullo` ha **esattamente 3 chiamanti**, e `_verifica` — che
+contiene il terzo — è invocata anch'essa dopo. E `_staffCalCommitLocalCancel` fa proprio la coppia
+che la voce descrive: **toglie** le righe da `prenotazioniOccupazione` e `prenotazioni`
+(43404-43410) e poi **spinge le lapidi senza attenderle** — `pmoSyncCloudRecordsNow(…).catch(…)`
+alla **43428**.
+
+🚨 **Quindi la finestra scoperta non la copre nessuno degli otto, nemmeno il numero 5**: quando il
+commit locale parte, la chiave che avrebbe fatto rinunciare il poll a 4 s **è già stata tolta**. Fra
+la rimozione locale e l'atterraggio della lapide sul cloud, un refresh forzato rilegge la fotografia
+**vecchia** e la riassegna alla 38205 — il fantasma rientra in `prenotazioniOccupazione`.
+
+**④ Cosa lo tiene a bada, e cosa no — misurato, non dedotto**
+
+⚠️ **Il calendario NON lo mostra**, e va detto subito perché ridimensiona il danno:
+`staffCalGetSlots` filtra gli slot soppressi (**38680-38697**) e quel filtro si applica a `result`,
+che contiene **anche** le righe di occupazione (costruite alla 38585) — verificato leggendo la
+funzione, non il commento. `_staffCalCommitLocalCancel` aggiunge la soppressione locale alla
+**43392**, cioè *prima* della pulizia. Finché dura il TTL il fantasma rientrato resta **invisibile
+su questo dispositivo**.
+📌 Il commento della v5.897 (43393-43396) dice il contrario — «senza, un refresh ri-renderizzava la
+copia» — ed è **il racconto di un passato**, non dell'oggi. L'ho misurato invece di crederci, ed è
+la ragione per cui questa voce **non** finisce con «guasto vivo in produzione».
+
+⇒ **Resta scoperto chi NON passa da `staffCalGetSlots`**, e sono misurati:
+`uniqueFieldOccupancyBookings` (17200, 23533), l'impronta della 18708, i roster di 40081 / 40237 /
+40344 e 43261. Lì il fantasma si vede.
+🚩 **E un solo punto lo rimanderebbe sul cloud**: `pmoBuildCloudRecordsFromLocalState` (**27614**)
+legge `prenotazioniOccupazione` **diretto**, escludendo i soli `_retained` — e un fantasma rientrato
+dal cloud `_retained` non è. ⚖️ **Ma il suo unico chiamante è `pmoUploadLocalDataToCloud` (29032),
+che è un bottone d'amministrazione, non una routine**: la resurrezione è **possibile, non
+automatica**. Lo scrivo con questa cautela perché la differenza è tutta lì, ed è esattamente il
+punto in cui una voce diventa allarmismo.
+
+**⑤ Cosa NON è stato fatto, e perché**
+
+⛔ **Non è stata toccata una riga.** La correzione naturale — spostare la `delete` **dopo**
+`_applicaAnnullo`, oppure tenere la chiave finché la spinta non è atterrata — sta sulla strada che
+**annulla per davvero** su Matchpoint, e da qui quella strada non si prova. È la stessa ragione per
+cui la 23ª ebbe *«prima diagnosi sì, patch no»*. ⇒ **Decisione del committente.**
+⛔ **Non è stata messa in scena la corsa nel banco.** `CLOUD_WRITE_DELAY_MS` saprebbe farlo, ma un
+caso scritto **oggi** proverebbe **la forma**, non il danno — e il danno, misurato, è schermato dalla
+soppressione proprio sul percorso che conta. Scriverlo prima di sapere quale delle due cure si
+prende vorrebbe dire costruire la prova sulla cura sbagliata.
+⛔ **Non è stata misurata la terza scrittura**, quella dei soci (38101 e 38107): la voce chiedeva le
+**otto chiamate**, e le otto sono fatte. È il vicino di casa di questa voce, non il suo residuo.
 
 ---
 
@@ -699,6 +716,10 @@ Misurando il **14/08** nella 14ª sessione, chiudendo la voce 24:
   stamattina ho acceso l'RLS — su TEST **no**. Nessuno la legge (grep: solo il commento), quindi non
   fa danno; ma sta nella kb che va **in pasto al modello**. ⚖️ **È la forma esatta della voce 31**, e
   stavolta al contrario: il pezzo mancante sta su PROD. Non l'ho toccata — non è la 24.
+  ⬆️ **Promossa da lui il 16/08: è la voce 46**, e là è **rimisurata**: vive in `pmo_ai_settings`
+  (chiave `assistant_kb`), non nel codice. ✅ **Chiusa lo stesso giorno**: tolta da TEST, e le due kb
+  hanno ora la **stessa impronta**. 📌 Questa nota diceva «grep: solo il commento» — nel codice il
+  nome **non c'è affatto**, perché la voce non è mai stata nel codice.
 
 Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
 
@@ -708,14 +729,24 @@ Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
   `200` con lista **vuota**, sempre, e il chiamante ha un `catch` che tace. Non l'ho toccata: non è
   la voce 27, e va capito **a cosa serviva** prima di decidere se ripararla o toglierla. ⚠️ Non
   guardato se su TEST si comporta uguale.
+  ⬆️ **Promossa da lui il 16/08: è la voce 45** — dove **due numeri di questa nota risultano falsi**
+  (la riga è la 29214/29223, non la 29939; e le policy non sono «3 di INSERT», sono **zero**), e dove
+  è scritto il contesto che qui mancava: la sezione è **congelata dal 13/06**.
 
 - 🔎 **`get_self_assessments_by_tokens` è `SECURITY DEFINER` eseguibile da `anon`**, quindi
   scavalca anche lei la chiusura della lettura del 12/08. **Non toccata di proposito**: l'app la
   usa davvero (`index.html:30062`, ed è la strada che funziona mentre la GET REST accanto non può)
   e vuole i **gettoni in ingresso**, che non si rastrellano più. È un fatto da sapere, non un buco
   aperto — ma è la terza funzione della stessa famiglia, e la famiglia andava guardata tutta.
+  ⬆️ **Promossa da lui il 16/08: è la voce 44** — e là **la conclusione di questa nota è ribaltata**.
+  «Non un buco aperto» reggeva su *«vuole i gettoni in ingresso»*: vero, ma su PROD **un gettone è
+  indovinabile** (`MAURIZIO001`) e dietro c'è **un socio vero col telefono**. Provata **eseguendo la
+  funzione come `anon`**, non leggendo i grant. 📌 Anche la riga è sbagliata: la chiamata è alla
+  **29316**, non alla 30062.
 - 🧮 **Le funzioni `SECURITY DEFINER` chiamabili da `anon` su PROD sono 47**, e due erano quelle
   della voce 27. Il linter le segnalava **tutte e 47 da sempre**, con lo stesso identico titolo:
+  📏 **Rimisurate il 16/08: oggi sono 34, non 47.** Il numero si è mosso (le potature delle sessioni
+  16ª e 19ª), quindi non va ricopiato: si riconta. Una di queste 34 è la **voce 44**.
   ⚠️ nessuno le ha mai lette una per una. Le altre 45 **non sono state guardate** — questa è una
   campionatura di due, esattamente come le tabelle divergenti di ieri.
 
@@ -894,17 +925,21 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 31 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 35 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime DUE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime SEI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **45** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 45». PROD **6.233**, non ancora promossa)* **Tolto `fetchAssessmentRawResponsesByTokens`: un ripiego che non poteva partire.** ⭐ **La voce chiedeva «a cosa serviva», e la risposta ha trovato un secondo motivo che nessuno aveva visto.** Serviva a rileggere `raw_response` quando la RPC `get_self_assessments_by_tokens` **non portava** quella colonna. Oggi la porta **sempre** — `coalesce(s.raw_response, '{}'::jsonb)` — quindi la chiave c'è in ogni riga, e la guardia che lo accendeva (`!r?.raw_response`) era diventata **IRRAGGIUNGIBILE**: in JS `{}` è **vero**. ⇒ Il ripiego non partiva **nemmeno nei casi per cui era stato scritto** — le risposte davvero vuote, misurate **6 su 42**. 🔬 Provato sul bersaglio, non ragionato: la RPC interrogata sui token veri restituisce `raw_response` **presente e `{}`**, zero righe nulle. 🎯 **Quindi era morto DUE volte**: condizione irraggiungibile *e*, se anche fosse partito, `self_assessments` ha RLS attivo e **zero policy** ⇒ quella `GET` risponde 200 con lista vuota, sempre, sotto un `catch` che taceva. 🧯 **E due numeri della scheda erano falsi**, annotati e non corretti di nascosto: la riga è la **29214/29223**, non la 29939; e le policy sono **zero**, non «3 di INSERT». 📌 Il contesto che ridimensiona tutto: la sezione è **congelata dal 13/06**, la tabella ha l'ultima riga del **23/06** e **zero in 30 giorni** — un vicolo cieco **dentro una stanza già chiusa**, la stessa forma che la 20ª aveva già incontrato. ✅ **Verificato DOPO aver agito**, che è dove si tradisce un analizzatore cieco: **zero riferimenti orfani**, `normalizeAssessmentRawResponse` **ancora viva in 13 punti** (nessuna cascata), sintassi verde su **tutti e 5** i blocchi `<script>` — non su uno, che è la trappola della 23ª — e banco **94/94**, in **A/B contro `main` intatto**. ⚖️ **Il verde del banco NON dimostra che il codice fosse morto**: nessun caso può coprire un ramo irraggiungibile. Dimostra che togliendolo non è caduto nulla intorno; a dimostrare che era morto è la misura sulla RPC. ⛔ **Non promossa**: le righe stanno sul ramo, PROD serve ancora la 6.232 finché non lo decide lui. |
+| **46** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 46»)* **`livello.autovalutazione_url` tolta dalla kb di TEST: adesso le due kb sono IDENTICHE.** Puntava alla pagina di una sezione **congelata dal 13/06**; su PROD era stata tolta il 9/08 — ed è quel gesto ad aver prodotto `pmo_bkp_kb_livello_20260809` — su TEST no. 🔬 **Tre misure prima di scrivere, e la prima ha corretto la nota**: ① non vive nel **codice** ma nel **database** (`pmo_ai_settings`, chiave `assistant_kb`), quindi il grep in `index.html` non l'avrebbe mai trovata; ② **cosa ci punta**: zero occorrenze in tutto il repo fuori dai documenti ⇒ nessun lettore da rompere; ③ **le 13 chiavi di primo livello erano già identiche** fra i due progetti, e `livello` era l'unica a divergere (82 caratteri contro 2). ⚠️ **Ma la kb non è inerte, ed è il motivo per cui la voce esisteva**: `consumer-player-readmodel` — il **ponte del bot** — restituisce il valore **intero** (`kb: kbRow?.value`), senza filtrare le sezioni ⇒ su TEST quella riga arrivava **davvero al modello**. ⭐ **La verifica dopo non è «la divergenza è sparita», che avrebbe guardato solo ciò che sapevo di cercare: è che le due kb hanno la STESSA IMPRONTA** — `md5` identico, `c570a626…`, 6169 caratteri e 13 chiavi di qua e di là. Esclude anche le divergenze che non stavo cercando. ↩️ Migrazione **reversibile**, col valore esatto di prima trascritto **verbatim** in testa. ⛔ **Non provato dal vivo attraverso il ponte**: chiamarlo vuole il segreto, che da qui non c'è. Si è misurato **il valore che il ponte restituirebbe**, non la risposta del ponte — e la differenza è scritta perché non la si legga come una prova end-to-end. |
+| **14** | ✅ *(16/08, 25ª sessione — **chiusa DICHIARANDO su sua decisione**, non eseguendo)* **Le chiavi «Ospite» che oscillano: benigne, e la chiave resta com'è.** La chiave dell'occupazione contiene il **nome** — `occupancy\|idReserva\|data\|ora\|campo\|NOME\|durata` — quindi un ospite che prende un nome vero **non aggiorna** la riga: ne crea una nuova e lascia una lapide. ⇒ Non è un guasto, **è il progetto della chiave**: succede ogni volta che lo staff sostituisce un ospite con un socio, cioè una cosa che *deve* succedere. 🔬 **Rimisurata sul bersaglio il 16/08 alle 08:47 UTC**, non ricopiata dalla scheda: **571** righe `Ospite` su 3904 di occupazione (15% della tabella), **438** slot oscillanti, `ancora_vive` **0**, `oscillanti_vivi` **0**. ⭐ **E la prova che chiude la voce non è quel totale, è la serie**: `di_cui_vive` = **0 in quindici settimane su quindici**, da maggio. «Zero oggi» è una fotografia e potrebbe essere fortuna; zero per quindici settimane è un **comportamento** — ogni chiave finisce cancellata e lo slot si risolve, sempre. ✅ **Controllo negativo fatto prima di credere allo zero** (lezione della 24ª): l'ultima riga di occupazione aveva **33 secondi**, 73 nelle 24 ore ⇒ la sonda guarda un cassetto **vivo**. Il silenzio di 2 giorni e mezzo sulle sole `Ospite` cade su **Ferragosto**, ed è una pausa del circolo, non del meccanismo. ⚖️ **Perché NON si toglie il nome dalla chiave**: il costo è **contabile e basta** (~30 lapidi a settimana, nessuna riga che resti aperta), mentre la cura è sproporzionata — quella chiave la scrivono e la leggono **sync, app e i ponti**, e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. 📄 **La sonda sopravvive alla voce**, con serie storica, controprova su TEST e il controllo negativo, in [`docs/voce-14-sonda-chiavi-ospite.md`](../voce-14-sonda-chiavi-ospite.md): 🔁 si riapre se `ancora_vive` o `oscillanti_vivi` salgono sopra zero. |
+| **42** | ✅ *(16/08, 25ª sessione — **chiusa su sua decisione**, a domanda risposta)* **«Cos'altro teneva in piedi quel mezzo secondo?» — nulla: le due corse vere sono progettate per ignorare ciò che la push ha appena scritto.** La voce nasceva dal caso 11 che cadeva addosso al caso 12 quando la 6.231 tolse il riscaricamento di `config.js` (~110 volte al minuto), e chiedeva di censire le altre chiamate in equilibrio su quel ritardo. 🔬 Censite il 15/08 sull'intero sorgente, righe di commento escluse: le **letture** non attese **non esistono** (`pmoStaffRpcPaged` è 16 su 16 attesa — una lettura non può arrivare presto se nessuno la lascia correre); le **scritture** non attese sono 14 su 16; la forma pericolosa dà **3 candidate e nessuna lo è** — una è un falso positivo della sonda di prossimità (due funzioni vicine nel testo, non annidate), le altre due escludono **per costruzione** le chiavi appena spinte (`_already`, `_destId`). ⇒ **«Cosa leggerebbe se arrivasse 50 ms prima?» → la stessa cosa.** 🧯 Lasciata scritta nella voce un'ipotesi mia sbagliata (`staffCalCloudReassignAndSyncMove` che partirebbe dallo slot d'origine: falso, cerca la `entry` al nuovo slot e il commento lo dichiara) — ci avevo creduto perché **cercavo corse**, che è la «prova che ti dà ragione» vista dal lato di chi indaga. ⚖️ **Si chiude a domanda RISPOSTA, non a lavoro finito**: quello che era emerso strada facendo è di un'**altra famiglia** — non una lettura precoce ma una **coda staccata che scrive** — ed è la voce **43**, che resta aperta con la sua misura. |
 | **34** | ✅ *(16/08, 24ª sessione — **accesa su sua conferma separata** la sera del 15, e **confermata dal giro automatico** la mattina del 16)* **Il calendario di TEST era una fotografia ferma al 7 agosto: adesso si aggiorna 5 volte al giorno.** 🔓 **A sbloccarla è stata un'informazione sua, che non stava in nessun file**: le routine di TEST erano state fermate *insieme e di proposito*, per fare gli aggiornamenti a mano durante le prove — la scheda poneva come condizione di sapere «perché furono spenti», e quel perché **da qui non era recuperabile**. ⚖️ **Il nodo vero non era nessuno dei tre indicati dalla scheda**: il dispatcher è **UNO per 12 slot** (6 clienti + 1 storico + 5 calendario), quindi «riaccendere solo il calendario» **non esiste come interruttore**. Sciolto **senza toccare la funzione**: sveglia ogni ora al minuto 30, e a decidere è il confronto sull'**ora italiana** che nomina i cinque orari. 🚨 Serve **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti cadono al minuto 30 — e cinque orari fissi in UTC si sarebbero rotti al cambio dell'ora **in silenzio**, cioè lo stesso guasto muto da cui nasce la voce. 🛑 **Tre punti della scheda smentiti dai fatti**: il `jobid 13` **non è stato toccato** (si è aggiunto il **17**, così tornare indietro è cancellarlo), **era** una riga di SQL, ed **è stata fatta dal cloud**. ✅ **Il filtro esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è partita (`succeeded`) senza produrre **nessun** dispatch clienti né storico, ed è stata esclusa la spiegazione alternativa (`on conflict do nothing`: le uniche due righe clienti sono del 2 e 3 agosto, chiavi che non possono collidere). ✅✅ **E la catena provata FINO IN FONDO la sera stessa, su sua idea** — *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*: forzando l'orario, **53 righe lette dal Matchpoint vero**, 258 righe toccate, calendario **dal 7 agosto a quella sera**, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di guardare i dati**. ✅ **CONFERMATA dal giro automatico del 16/08**: `bookings_morning` alle **05:30** italiane, **0** risvegli di clienti e storico, calendario aggiornato alle **05:31:55**. 🧯 Due letture sbagliate mie, nel documento: «non ce l'ha fatta» (leggevo un campo di un'altra strada) e «il calendario non si è mosso» (misuravo **un minuto prima** che la scrittura atterrasse) — non la sonda cieca della 23ª, ma **una misura presa prima che il fatto accadesse**. ⛔ **Residuo dichiarato**: le letture in più nei log del worker si vedono solo **dalla VM**. 📄 Procedura, query di controllo e comando di spegnimento in [`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md). |
 | **26** | ✅ *(16/08, 24ª sessione — **chiusa dalla 34**, come la sua stessa scheda prevedeva)* **Il «Fatto» del togli che non si vedeva: non era il bot, era il calendario fermo.** Il bot diceva di aver tolto il giocatore e la riga non spariva. La causa era stata trovata il 14/08 chiudendo la voce 32 — su TEST **non girava nessun sync delle prenotazioni**, quindi non c'era niente che riconciliasse, mentre in PROD lo fa `bookings_live` ogni 2 minuti **con lo stesso identico codice**. ⇒ Il bot era sano: aveva ragione a dire «Fatto». ✅ Dal 16/08 il calendario di TEST si aggiorna 5 volte al giorno (voce 34), quindi il sintomo **sparisce da sé**: non c'era niente da riparare, c'era da riaccendere altrove. ⚖️ È la voce che la 23ª aveva citato come costo dell'inganno del calendario congelato — *«aperta come guasto del bot quando il bot era sano»* — e si chiude senza che una riga di codice sia stata toccata. |
 | **41** | ✅ *(15/08, 24ª sessione — **eseguita dal committente**, quarto giro, con la sessione cloud a leggere il database in diretta)* **«Il worker crea, e la risposta si perde» — e il gestionale è andato a GUARDARE.** La parte B della voce 23: l'unico caso che percorre il ramo del **`si`**. ✅ **Tutte le previsioni verificate**: lavoro `unknown` con errore di rete tagliato a **2,2 s**, **8 tentativi** di insistenza, verdetto **`si`**, e chiusura `done` con `chiusa_da = verifica-app` alle 22:29:15. ⭐⭐ **Prima esecuzione VERA di `chiudi-lavoro-ignoto`**: prima di stasera i lavori chiusi dall'app erano **0 su 192** — scritta, provata al banco, mai girata in produzione. ⚖️ **Ma il valore della voce sono i TRE GIRI FALLITI prima**, perché hanno dimostrato che la procedura scritta **non poteva funzionare**: ① «conta due secondi e dai lo stop» non teneva conto che il comando via `ssh` ci mette del suo; ② 🚨 **`systemctl stop caddy` non taglia una richiesta già in corso** — è uno spegnimento gentile, e con collegamento già aperto e stop istantaneo al 2º secondo il lavoro finiva `done` in 4,3 s lo stesso; ③ tenere il collegamento aperto mentre si prenota **lo fa scadere**. ⇒ La cura: `ServerAliveInterval=15` e **`systemctl kill -s SIGKILL`** al posto dello stop. 🧹 Pulizia verificata col testimone indipendente: cancellata 22:30:52, controllo automatico 22:32:00, **zero residui** su tutte e quattro le prove. 🧯 E tre letture sbagliate mie della stessa sera, tutte scritte nel documento: la peggiore — *«non è partita nessuna cancellazione»* — cercava fra i `booking_job`, ma una cancellazione lì **non compare**: lascia un `staff_cancel`. Ho guardato nel cassetto sbagliato, ho preso il silenzio per un fatto, e **a smentirmi è stato lui guardando Matchpoint**. |

@@ -7926,7 +7926,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.241';
+    const APP_VERSION = '6.242';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -29465,36 +29465,18 @@ Per confermare scrivi ELIMINA.`);
     }
 
 
-    async function fetchAssessmentRawResponsesByTokens(supabaseUrl, supabaseKey, tokens) {
-      if (!Array.isArray(tokens) || !tokens.length) return {};
-      const out = {};
-      const chunkSize = 80;
-      for (let i = 0; i < tokens.length; i += chunkSize) {
-        const chunk = tokens.slice(i, i + chunkSize).map(t => cleanCell(t)).filter(Boolean);
-        if (!chunk.length) continue;
-        const encodedTokens = chunk.map(t => `"${String(t).replace(/"/g, '\\"')}"`).join(',');
-        try {
-          const response = await fetch(`${supabaseUrl}/rest/v1/self_assessments?select=token,raw_response&token=in.(${encodeURIComponent(encodedTokens)})`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`
-            }
-          });
-          const text = await response.text();
-          let data = [];
-          try { data = text ? JSON.parse(text) : []; } catch { data = []; }
-          if (!response.ok || !Array.isArray(data)) continue;
-          data.forEach(row => {
-            if (row?.token) out[normalizeText(row.token)] = normalizeAssessmentRawResponse(row.raw_response);
-          });
-        } catch (err) {
-          console.warn('Raw response disponibilità non recuperata:', err);
-        }
-      }
-      return out;
-    }
+    /* ⛔ TOLTO il 16/08/2026 (voce 45): `fetchAssessmentRawResponsesByTokens`, il ripiego che
+       rileggeva `raw_response` con una GET diretta su `/rest/v1/self_assessments`.
+       Serviva a quando la RPC `get_self_assessments_by_tokens` NON portava quella colonna.
+       Oggi la porta sempre — `coalesce(s.raw_response, '{}'::jsonb)` — quindi la chiave c'è
+       in ogni riga, e la guardia che accendeva il ripiego (`!r?.raw_response`) era diventata
+       IRRAGGIUNGIBILE: in JS `{}` è vero. ⇒ Non partiva nemmeno nei casi per cui era stata
+       scritta, cioè le risposte davvero vuote (misurate: 6 righe su 42).
+       E se fosse partita non avrebbe potuto riuscire: `self_assessments` ha RLS attivo e
+       ZERO policy, quindi quella GET con la chiave pubblicabile risponde 200 con lista vuota,
+       sempre — e il chiamante aveva un `catch` che taceva.
+       📌 Se un domani la RPC smette di portare `raw_response`, non si rimette questo: si
+       rimette la colonna nella RPC, che è il posto dove il dato deve stare. */
 
     async function syncAssessmentTokensFromSupabase(options = {}) {
       const silent = options.silent === true;
@@ -29585,14 +29567,9 @@ Per confermare scrivi ELIMINA.`);
           throw new Error(msg);
         }
         const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-        const missingRaw = rows.some(r => !r?.raw_response && !r?.rawResponse && !r?.raw);
-        if (rows.length && missingRaw) {
-          const rawMap = await fetchAssessmentRawResponsesByTokens(supabaseUrl, supabaseKey, rows.map(r => r.token));
-          rows.forEach(r => {
-            const raw = rawMap[normalizeText(r.token || '')];
-            if (raw && Object.keys(raw).length) r.raw_response = raw;
-          });
-        }
+        // (voce 45) Qui c'era il ripiego che rileggeva `raw_response` con una GET diretta:
+        // tolto il 16/08/2026 perché la RPC quella colonna la porta sempre, e la guardia che
+        // lo accendeva non poteva più essere vera. Vedi il commento sulla funzione rimossa.
         if (!rows.length) {
           window.__assessmentResponsesSyncedThisSession = true;
           pmoLocalSetItem('assessmentResponsesLastSyncAt', new Date().toISOString());
