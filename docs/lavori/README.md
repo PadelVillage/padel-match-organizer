@@ -202,8 +202,8 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **7** |
+| 🔴 **Urgenti** | **3** |
+| 📋 **In coda** | **4** |
 | 📦 **Chiuse** | **31** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 23ª (15/08)** — versioni lette dall'`index.html`
@@ -352,7 +352,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 3
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -379,51 +379,17 @@ preparano da qui.
 🚨 **E ora TUTTE E QUATTRO le urgenti sono fuori dalla portata di una sessione cloud**: la 41 vuole SSH sulla VM, il login staff e una prenotazione vera sul Matchpoint; la 34 la VM; la 14bis il repo privato del bot; la 26 aspetta la 34. ⚖️ **La lista non è corta perché è quasi finita: è corta perché il resto è altrove** — e da stasera è vero per intero, non quasi. La prossima sessione utile su queste è **dal Mac**.
 
 
----
+⬆️ **Promosse dal committente il 16/08/2026**, la mattina dopo che la lista era tornata **vuota**:
+*«porta in urgenti quarantadue, quattordici e quarantatré»*. ⇒ È **tutta la sezione C** — le tre voci
+«sapute e non risolte» — che sale in blocco, e la C resta in piedi vuota.
 
-## 📋 IN CODA — 7
+⚖️ **Hanno un filo in comune, e conviene saperlo prima di partire**: la **42** e la **43** sono le due
+metà della stessa malattia — la 42 le *letture* che arrivano presto (misurata **pulita**), la 43 le
+*scritture staccate* che atterrano tardi (**non** ancora indagata). La **14** è di un'altra natura:
+non è un guasto, è **una decisione tua** — se togliere il nome dalla chiave dell'occupazione.
+📌 Tutt'e tre si lavorano **da qui**: nessuna vuole la VM né il repo del bot.
 
-Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**.
-
-### C — Cose sapute e non risolte — 3
-
-#### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
-*Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
-quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
-della stessa malattia — una **coda staccata che SCRIVE**, che è la forma con cui il difetto si era
-manifestato davvero nel banco (il caso 11 che finiva addosso al caso 12).
-
-🔎 **Il fatto, misurato su `main` (PROD 6.232), righe di commento escluse.**
-`staffCalRefreshFromCloud` ha **12 punti di chiamata** più la definizione: **8 non attese**, 3 attese,
-1 restituita (l'aggancio esportato `refreshFromCloud`). La funzione fa **commit locali dopo un
-`await`** — `applyMatchpointMembersToLocal` subito dopo la lettura dei soci dal cloud, e la
-riconciliazione delle schede socio subito dopo. ⇒ Chi la lancia senza attenderla va avanti, e la
-scrittura locale atterra **dopo**, su uno stato che nel frattempo può essere cambiato.
-
-🚨 **E il debounce NON è la rete di sicurezza che sembra.** C'è un freno di 60 s, ma lo salta chi passa
-`force: true` — e a passarlo sono **5 delle 8 chiamate non attese**. Il freno copre le altre 3.
-📌 Misurato dopo aver scritto il contrario: nella prima stesura della chiusura della 42 avevo detto
-«attenuata da un debounce», che è vero solo per meno della metà dei casi. È il tipo di frase che
-suona prudente e non lo è.
-
-⚠️ **Cosa NON è stato fatto, e va detto**: non è dimostrato che una di queste 8 produca oggi un danno
-visibile. Quello che è dimostrato è che **la forma c'è** ed è quella che nel banco ha fatto cadere un
-caso sull'altro appena è sparito il ritardo di `config.js`. ⇒ Il lavoro è **stabilire quali delle 8
-possono atterrare su una modifica locale non ancora spinta**, non «riscrivere tutto con `await`»:
-metterlo dappertutto rimetterebbe in circolo la lentezza che la 6.231 ha tolto, e su mobile quella
-lettura costava ~20 s.
-
-🧪 **Il banco adesso sa provarlo**, ed è la novità che rende la voce aggredibile: con
-`CLOUD_WRITE_DELAY_MS` (aggiunto il 15/08 coi casi 94 e 95) si può mettere la **lettura davanti alla
-scrittura** e vedere cosa succede. Senza quel ritardo qualunque caso su questo tema sarebbe **verde a
-vuoto** — è successo, ed è documentato nel banco.
-
-📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
-dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
-solo da che parte la si prende.
-
-
-#### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
+### 42. 🕰️ Cos'altro teneva in piedi quel mezzo secondo?
 *Messa in coda il 15/08, subito dopo la promozione della 6.231.* Non è un guasto noto: è una
 **domanda aperta con una prova a sostegno**, ed è per questo che sta qui e non fra le urgenti.
 
@@ -506,7 +472,7 @@ ma non toglie la forma.
 📌 ⇒ La voce 42, **come è scritta**, è misurata e pulita. Quello che resta non è il suo residuo: è
 una voce diversa, sulla famiglia «continuazione staccata che scrive in locale».
 
-#### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
+### 14. 🔑 Le chiavi «Ospite» che oscillano — **RIMISURATA il 15/08: non sono 10, sono 438. Benigna sì, rara no**
 *Avanzata il 24/07. Riscritta il 15/08 su richiesta del committente, coi numeri veri di PROD
 (`pmo_cloud_records`, `record_type = 'booking_occupancy'`, misurato alle 17:36 UTC).*
 
@@ -569,6 +535,49 @@ select (select count(*) from o    where nome ilike 'ospite')                    
 📌 **`ancora_vive` e `oscillanti_vivi` sono i due numeri che contano**: finché restano **0** il
 fenomeno è rumore contabile. Il giorno che uno dei due sale, allora sì c'è una riga che non si
 chiude — e quella è un'altra voce.
+
+### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
+*Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
+quella chiedeva delle **letture** che arrivano presto ed è misurata pulita. Questa è l'altra metà
+della stessa malattia — una **coda staccata che SCRIVE**, che è la forma con cui il difetto si era
+manifestato davvero nel banco (il caso 11 che finiva addosso al caso 12).
+
+🔎 **Il fatto, misurato su `main` (PROD 6.232), righe di commento escluse.**
+`staffCalRefreshFromCloud` ha **12 punti di chiamata** più la definizione: **8 non attese**, 3 attese,
+1 restituita (l'aggancio esportato `refreshFromCloud`). La funzione fa **commit locali dopo un
+`await`** — `applyMatchpointMembersToLocal` subito dopo la lettura dei soci dal cloud, e la
+riconciliazione delle schede socio subito dopo. ⇒ Chi la lancia senza attenderla va avanti, e la
+scrittura locale atterra **dopo**, su uno stato che nel frattempo può essere cambiato.
+
+🚨 **E il debounce NON è la rete di sicurezza che sembra.** C'è un freno di 60 s, ma lo salta chi passa
+`force: true` — e a passarlo sono **5 delle 8 chiamate non attese**. Il freno copre le altre 3.
+📌 Misurato dopo aver scritto il contrario: nella prima stesura della chiusura della 42 avevo detto
+«attenuata da un debounce», che è vero solo per meno della metà dei casi. È il tipo di frase che
+suona prudente e non lo è.
+
+⚠️ **Cosa NON è stato fatto, e va detto**: non è dimostrato che una di queste 8 produca oggi un danno
+visibile. Quello che è dimostrato è che **la forma c'è** ed è quella che nel banco ha fatto cadere un
+caso sull'altro appena è sparito il ritardo di `config.js`. ⇒ Il lavoro è **stabilire quali delle 8
+possono atterrare su una modifica locale non ancora spinta**, non «riscrivere tutto con `await`»:
+metterlo dappertutto rimetterebbe in circolo la lentezza che la 6.231 ha tolto, e su mobile quella
+lettura costava ~20 s.
+
+🧪 **Il banco adesso sa provarlo**, ed è la novità che rende la voce aggredibile: con
+`CLOUD_WRITE_DELAY_MS` (aggiunto il 15/08 coi casi 94 e 95) si può mettere la **lettura davanti alla
+scrittura** e vedere cosa succede. Senza quel ritardo qualunque caso su questo tema sarebbe **verde a
+vuoto** — è successo, ed è documentato nel banco.
+
+📌 **Il sintomo da riconoscere**, se arriva prima della cura: una modifica che **sparisce dagli altri
+dispositivi** senza errore in console. È lo stesso della 42, perché la malattia è la stessa; cambia
+solo da che parte la si prende.
+
+---
+
+## 📋 IN CODA — 4
+
+Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti), **C** (sapute e non risolte — salita tutta in urgenti il 16/08) ed **E** (manutenzione memoria) sono **vuote**.
+
+### C — Cose sapute e non risolte — 0
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 4
 
