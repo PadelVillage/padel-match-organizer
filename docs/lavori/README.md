@@ -309,9 +309,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **35** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **36** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 25ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.233** · TEST **6.242** · i **4
@@ -504,7 +504,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -550,66 +550,11 @@ niente, e ciò che ne era uscito è la 43, che vive per conto suo.
 resta com'è, perché il costo è contabile e la cura toccherebbe sync, app e ponti insieme. La **sonda
 non muore con la voce** — sta in `docs/voce-14-sonda-chiavi-ospite.md` con la serie di quindici
 settimane, ed è lei a dire quando riaprirla.
+📦 E in fondo alla sessione la **44** — nata nella giornata stessa, curata e poi **chiusa da lui**:
+la fessura su PROD è tappata, e il residuo (i gettoni deboli, le altre **33** funzioni mai lette)
+è dichiarato nella sua riga fra le chiuse, non taciuto.
 ⇒ **Urgenti da 3 a 1.** Resta la sola **43**, e non è «esegui»: è **una decisione tua** — quale delle
 due cure dare alla finestra scoperta dell'annullo, sapendo che si prova solo dal Mac.
-
-### 44. 🚨 La porta di servizio dell'autovalutazione: `get_self_assessments_by_tokens` legge NOME e TELEFONO ad `anon`
-*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 15ª — dove stava
-come nota di due righe.* 🔬 **Misurata sul bersaglio prima di scriverla, e la nota diceva molto meno
-di quello che c'è.**
-
-🎯 **Il fatto, provato eseguendo — non dedotto dai grant.** La funzione è `SECURITY DEFINER`, di
-proprietà di `postgres`, con `EXECUTE` a **`anon`, `authenticated` e PUBLIC** (`=X/postgres`).
-Eseguita **come `anon`** dentro una transazione annullata, restituisce per ogni token passato:
-`first_name`, `last_name`, **`phone`**, i livelli dichiarato e calcolato e l'intero `raw_response`.
-
-✅ **Controllo negativo fatto, e cade bene**: la lettura **diretta** di `self_assessments` come `anon`
-vede **0 righe** — la tabella ha RLS attivo e **zero policy**. ⇒ La porta chiusa il 12/08 è chiusa
-davvero, e **questa RPC è l'unica finestra rimasta aperta accanto**. Non è una porta fra tante: è
-*la* strada.
-
-🚨 **E su PROD esiste un token INDOVINABILE.** Fra i 1364 token, 989 sono da 14 caratteri e 369 sono
-`GM-<uuid>` — non forzabili. Ma **cinque no**: `TEST123`, `TEST456`, `TEST789` e **`MAURIZIO001`**.
-Quattro non hanno una riga in `self_assessments`; **`MAURIZIO001` sì**, ed è **un socio vero, con
-nome, cognome e numero di telefono**, del 25/04. ⇒ Chiunque, dalla rete, con la sola chiave
-pubblicabile e indovinando quella parola, si porta via il recapito di una persona reale.
-
-⚖️ **La misura di quanto è grande**: la riga raggiungibile per tentativi è **una**. Non è una fuga di
-massa — è una fessura stretta, ma su **dati personali veri** e in **produzione**.
-📌 **Stessa forma su TEST** (`cudi…`): identica `SECURITY DEFINER`, stessi grant, RLS attivo, **0
-policy**, **7 righe**. Il contratto vive sui due lati e va cambiato insieme.
-📏 **E non è sola**: le `SECURITY DEFINER` eseguibili da `anon` su PROD, ricontate oggi, sono **34**
-(la nota della 15ª ne diceva 47 — il numero si è mosso, quindi si riconta e non si ricopia). Questa è
-**una** di quelle 34, ed è l'unica che qualcuno abbia letto riga per riga. ⚠️ **Le altre 33 restano
-non guardate**: questa voce non le copre, e dirlo fa parte della misura.
-
----
-
-✅ **CURATA il 16/08, su sua autorizzazione: `REVOKE EXECUTE … FROM anon, PUBLIC` sui DUE progetti.**
-Il grant ad `authenticated` **resta**: sparisce l'accesso *senza credenziali*, non quello dello staff.
-
-🔬 **Provata prima e dopo, e su TEST prima che su PROD** — non dichiarata:
-
-| | `anon` prima | `anon` dopo | `authenticated` dopo |
-|---|---|---|---|
-| **TEST** (`cudi…`) | **3 righe** | **42501** `permission denied for function` | **3 righe** |
-| **PROD** (`qqbf…`) | **1 riga** — nome, cognome, telefono di `MAURIZIO001` | **42501** | **1 riga** |
-
-✅ **La controprova positiva è stata fatta apposta**, perché senza di essa «blocca tutto» si legge
-come «funziona»: la strada legittima **passa ancora**, di qua e di là.
-✅ **E una conferma indipendente, che non veniva dalla stessa sonda**: le `SECURITY DEFINER`
-eseguibili da `anon` su PROD sono passate da **34 a 33**. Si è chiusa **una** porta, ed è quella.
-↩️ Migrazione **reversibile**, con l'SQL di ripristino **verbatim** in testa (le due `GRANT`), su
-entrambi i progetti. Nessuna riga di dati toccata: tutte le prove d'attacco in transazioni annullate.
-
-⚠️ **Residuo dichiarato, e NON è stato fatto**: il gettone `MAURIZIO001` — e i quattro `TEST*` senza
-riga — **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco;
-restano un **gettone debole**. ⛔ Non l'ho toccato di proposito: dietro c'è **il dato di una persona
-reale**, e prima di cancellare va misurato **cosa ci punta** — che è una decisione sua, non
-manutenzione.
-⚠️ **E ciò che questa voce NON copre**: le **altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è
-l'unica letta riga per riga. Le altre non sono state guardate, ed è scritto perché nessuno legga
-«famiglia bonificata».
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
@@ -1005,17 +950,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 35 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 36 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime SEI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime SETTE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **44** | ✅ *(16/08, 25ª sessione — **curata su sua autorizzazione**, e **chiusa da lui**: «chiudi da quarantaquattro»)* 🚨 **Una fessura su DATI PERSONALI VERI in produzione, chiusa.** `get_self_assessments_by_tokens` è `SECURITY DEFINER` e restituisce `first_name`, `last_name` e **`phone`**; aveva `EXECUTE` ad **`anon` e a PUBLIC** ⇒ chiunque dalla rete, con la sola chiave pubblicabile e un gettone, poteva leggerli. ⭐ **Ed è nata da una conclusione giusta nel ragionamento e sbagliata nel fatto**: la nota della 15ª diceva «non un buco aperto» perché *«vuole i gettoni in ingresso»* — premessa **vera**, ma fra i 1364 gettoni uno è da 11 caratteri, `MAURIZIO001`, e dietro c'è **un socio vero col telefono**. A vederlo non è bastato leggere i grant: è servito **eseguire la funzione come `anon`**. ✅ **Controllo negativo, fatto prima di credere alla gravità**: la lettura **diretta** della tabella come `anon` vede **0 righe** (RLS attivo, zero policy) ⇒ quella RPC era davvero l'**unica** finestra rimasta accanto alla porta chiusa il 12/08, non una fra tante. 🔧 **La cura**: `REVOKE EXECUTE … FROM anon, PUBLIC` sui **due** progetti — il contratto vive sui due lati — lasciando `authenticated`, così sparisce l'accesso *senza credenziali* e non quello dello staff. 🔬 **Provata su TEST prima che su PROD, e in tre modi**: `anon` **3 righe → 42501** su TEST e **1 riga → 42501** su PROD; **controprova positiva** (`authenticated` passa ancora, di qua e di là) fatta apposta perché senza di essa «blocca tutto» si legge come «funziona»; e una **conferma indipendente che non veniva dalla stessa sonda** — le `SECURITY DEFINER` aperte ad `anon` su PROD passano da **34 a 33**. ↩️ Migrazioni **reversibili**, con le due `GRANT` di ripristino **verbatim** in testa. 🧊 **Zero righe di dati toccate**: tutte le prove d'attacco in transazioni annullate. ⚠️ **Residuo dichiarato e NON fatto**: il gettone `MAURIZIO001` e i quattro `TEST*` **esistono ancora**. Oggi non aprono più niente senza credenziali, quindi non sono un buco — restano **gettoni deboli**, e non sono stati toccati perché dietro c'è **il dato di una persona reale**: prima di cancellare va misurato cosa ci punta. 🔴 **E ciò che questa voce NON copre, scritto perché nessuno legga «famiglia bonificata»: le altre 33** `SECURITY DEFINER` aperte ad `anon`. Questa è **l'unica letta riga per riga**; il linter le segnala tutte con lo stesso titolo da sempre, ed è esattamente la condizione in cui stava la 44 fino a stamattina — segnalata, letta da nessuno, e con un socio vero dietro. |
 | **45** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 45». PROD **6.233**, non ancora promossa)* **Tolto `fetchAssessmentRawResponsesByTokens`: un ripiego che non poteva partire.** ⭐ **La voce chiedeva «a cosa serviva», e la risposta ha trovato un secondo motivo che nessuno aveva visto.** Serviva a rileggere `raw_response` quando la RPC `get_self_assessments_by_tokens` **non portava** quella colonna. Oggi la porta **sempre** — `coalesce(s.raw_response, '{}'::jsonb)` — quindi la chiave c'è in ogni riga, e la guardia che lo accendeva (`!r?.raw_response`) era diventata **IRRAGGIUNGIBILE**: in JS `{}` è **vero**. ⇒ Il ripiego non partiva **nemmeno nei casi per cui era stato scritto** — le risposte davvero vuote, misurate **6 su 42**. 🔬 Provato sul bersaglio, non ragionato: la RPC interrogata sui token veri restituisce `raw_response` **presente e `{}`**, zero righe nulle. 🎯 **Quindi era morto DUE volte**: condizione irraggiungibile *e*, se anche fosse partito, `self_assessments` ha RLS attivo e **zero policy** ⇒ quella `GET` risponde 200 con lista vuota, sempre, sotto un `catch` che taceva. 🧯 **E due numeri della scheda erano falsi**, annotati e non corretti di nascosto: la riga è la **29214/29223**, non la 29939; e le policy sono **zero**, non «3 di INSERT». 📌 Il contesto che ridimensiona tutto: la sezione è **congelata dal 13/06**, la tabella ha l'ultima riga del **23/06** e **zero in 30 giorni** — un vicolo cieco **dentro una stanza già chiusa**, la stessa forma che la 20ª aveva già incontrato. ✅ **Verificato DOPO aver agito**, che è dove si tradisce un analizzatore cieco: **zero riferimenti orfani**, `normalizeAssessmentRawResponse` **ancora viva in 13 punti** (nessuna cascata), sintassi verde su **tutti e 5** i blocchi `<script>` — non su uno, che è la trappola della 23ª — e banco **94/94**, in **A/B contro `main` intatto**. ⚖️ **Il verde del banco NON dimostra che il codice fosse morto**: nessun caso può coprire un ramo irraggiungibile. Dimostra che togliendolo non è caduto nulla intorno; a dimostrare che era morto è la misura sulla RPC. ⛔ **Non promossa**: le righe stanno sul ramo, PROD serve ancora la 6.232 finché non lo decide lui. |
 | **46** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 46»)* **`livello.autovalutazione_url` tolta dalla kb di TEST: adesso le due kb sono IDENTICHE.** Puntava alla pagina di una sezione **congelata dal 13/06**; su PROD era stata tolta il 9/08 — ed è quel gesto ad aver prodotto `pmo_bkp_kb_livello_20260809` — su TEST no. 🔬 **Tre misure prima di scrivere, e la prima ha corretto la nota**: ① non vive nel **codice** ma nel **database** (`pmo_ai_settings`, chiave `assistant_kb`), quindi il grep in `index.html` non l'avrebbe mai trovata; ② **cosa ci punta**: zero occorrenze in tutto il repo fuori dai documenti ⇒ nessun lettore da rompere; ③ **le 13 chiavi di primo livello erano già identiche** fra i due progetti, e `livello` era l'unica a divergere (82 caratteri contro 2). ⚠️ **Ma la kb non è inerte, ed è il motivo per cui la voce esisteva**: `consumer-player-readmodel` — il **ponte del bot** — restituisce il valore **intero** (`kb: kbRow?.value`), senza filtrare le sezioni ⇒ su TEST quella riga arrivava **davvero al modello**. ⭐ **La verifica dopo non è «la divergenza è sparita», che avrebbe guardato solo ciò che sapevo di cercare: è che le due kb hanno la STESSA IMPRONTA** — `md5` identico, `c570a626…`, 6169 caratteri e 13 chiavi di qua e di là. Esclude anche le divergenze che non stavo cercando. ↩️ Migrazione **reversibile**, col valore esatto di prima trascritto **verbatim** in testa. ⛔ **Non provato dal vivo attraverso il ponte**: chiamarlo vuole il segreto, che da qui non c'è. Si è misurato **il valore che il ponte restituirebbe**, non la risposta del ponte — e la differenza è scritta perché non la si legga come una prova end-to-end. |
 | **14** | ✅ *(16/08, 25ª sessione — **chiusa DICHIARANDO su sua decisione**, non eseguendo)* **Le chiavi «Ospite» che oscillano: benigne, e la chiave resta com'è.** La chiave dell'occupazione contiene il **nome** — `occupancy\|idReserva\|data\|ora\|campo\|NOME\|durata` — quindi un ospite che prende un nome vero **non aggiorna** la riga: ne crea una nuova e lascia una lapide. ⇒ Non è un guasto, **è il progetto della chiave**: succede ogni volta che lo staff sostituisce un ospite con un socio, cioè una cosa che *deve* succedere. 🔬 **Rimisurata sul bersaglio il 16/08 alle 08:47 UTC**, non ricopiata dalla scheda: **571** righe `Ospite` su 3904 di occupazione (15% della tabella), **438** slot oscillanti, `ancora_vive` **0**, `oscillanti_vivi` **0**. ⭐ **E la prova che chiude la voce non è quel totale, è la serie**: `di_cui_vive` = **0 in quindici settimane su quindici**, da maggio. «Zero oggi» è una fotografia e potrebbe essere fortuna; zero per quindici settimane è un **comportamento** — ogni chiave finisce cancellata e lo slot si risolve, sempre. ✅ **Controllo negativo fatto prima di credere allo zero** (lezione della 24ª): l'ultima riga di occupazione aveva **33 secondi**, 73 nelle 24 ore ⇒ la sonda guarda un cassetto **vivo**. Il silenzio di 2 giorni e mezzo sulle sole `Ospite` cade su **Ferragosto**, ed è una pausa del circolo, non del meccanismo. ⚖️ **Perché NON si toglie il nome dalla chiave**: il costo è **contabile e basta** (~30 lapidi a settimana, nessuna riga che resti aperta), mentre la cura è sproporzionata — quella chiave la scrivono e la leggono **sync, app e i ponti**, e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. 📄 **La sonda sopravvive alla voce**, con serie storica, controprova su TEST e il controllo negativo, in [`docs/voce-14-sonda-chiavi-ospite.md`](../voce-14-sonda-chiavi-ospite.md): 🔁 si riapre se `ancora_vive` o `oscillanti_vivi` salgono sopra zero. |
