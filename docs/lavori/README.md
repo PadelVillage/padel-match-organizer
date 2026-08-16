@@ -725,11 +725,11 @@ PIN più `pmo_admin_pin_ok` — allineate alla forma di PROD: `anon` sulle `SECU
 ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse.
 
 
-## 📋 IN CODA — 3
+## 📋 IN CODA — 4
 
-Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa, con la 52.
+Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
-### C — Cose sapute e non risolte — 1
+### C — Cose sapute e non risolte — 2
 
 #### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
 
@@ -774,6 +774,46 @@ committente guardandolo, come fece allora.
 
 📌 La voce resta **in coda e non si promuove da sé**: è scritta perché chi un giorno ci mette mano
 parta da un dato vero e non da un ricordo.
+
+#### 53. 🔁 Quando il bot non sa com'è andata, **va a chiedere al gestionale** invece di lasciarlo fare al socio
+
+> 🗣️ **Messa in coda dal committente il 16/08/2026**, nella stessa frase in cui autorizzava la metà
+> piccola: *«fai la uno e poi metti in coda la due»* — e con la regola d'architettura che le sta
+> sotto, fissata lì per lì: *«il bot legge tutto quanto dal gestionale. Non è autonomo»*.
+
+**Da dove nasce.** Da una sua domanda — *«quando prenoto col bot, aspetta che sul gestionale sia
+confermata la prenotazione prima di darmi l'ok?»*. La risposta è **sì** (strada sincrona, e
+`fase: 'prenotata'` nasce solo da `created: true`), ma misurando è saltato fuori il **terzo esito**:
+quando il worker non risponde, la prenotazione **potrebbe esserci lo stesso**.
+
+✅ **Cos'è già fatto** (la «uno», chiusa il 16/08): l'ignoto non si spaccia più per un «no». Il ponte
+manda `reason: 'esito_ignoto'`, il bot non afferma né successo né fallimento, **non ripropone la
+griglia** (il tocco successivo riprenoterebbe) e dice al socio di **non rifarla**, offrendogli di
+richiedere fra qualche minuto *«cosa ho prenotato?»*.
+
+🎯 **Cosa resta da fare, ed è il punto della voce.** Quel controllo **lo fa ancora il socio a mano**.
+Deve farlo il bot: quando l'esito è ignoto, **ritorna a chiedere al gestionale** finché non sa, e poi
+scrive al socio un sì o un no **veri**.
+
+⭐ **Perché questa strada è migliore di quella che ha l'app**, ed è il reperto che vale: la cura della
+voce 23 nel gestionale va a guardare **su Matchpoint**, cioè per la **stessa strada** che è appena
+caduta — sta scritto nel codice, misurato il 14/08 con Caddy fermo: *«il primo tentativo è, per
+costruzione, quello con meno probabilità di riuscire»*. Il bot invece leggerebbe **la copia del
+gestionale**, alimentata dal **sync**, che è un processo a sé e **non passa dal worker**: quando il
+worker è giù, quella strada funziona ancora. ⇒ Non è una copia della cura dell'app: è la sua
+versione senza il difetto.
+
+🚨 **La misura che manca, e va fatta PRIMA di scrivere una riga**: il **ritardo peggiore del sync**
+delle prenotazioni su PROD. È il numero che decide quanto il bot deve aspettare prima di poter dire
+«no» senza sbagliare — e oggi non è stato misurato da nessuno. Senza, si sceglierebbe un'attesa **a
+ricordo**, che è esattamente ciò che la 25ª ha insegnato a non fare.
+
+📌 **Perimetro da guardare quando la si apre**: i punti in cui `consumer-booking-write` chiama il
+gestionale sono **cinque**, non uno — `create`, `leave`, `remove`, `add` (via `bookings-edit`) e
+`cancel`. La cura del 16/08 ha toccato **solo `create`**, che è quello dove un doppio fa danno vero.
+Gli altri quattro hanno la stessa `fetch` non protetta: `cancel` è innocuo (disdire due volte non
+fa danno, ed è scritto), `leave` e `remove` quasi; **`add` no** — un doppio può mettere in campo
+cinque giocatori, e lì la rete del «mai più di quattro» va verificata invece che data per buona.
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 2
 
