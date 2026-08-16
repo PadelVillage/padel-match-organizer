@@ -257,9 +257,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **4** |
+| 🔴 **Urgenti** | **3** |
 | 📋 **In coda** | **4** |
-| 📦 **Chiuse** | **33** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **34** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Stato del sistema, rimisurato alla chiusura della 24ª (16/08)** — versioni lette dall'`index.html`
 dei due rami, non ricordate: app PROD **6.232** · TEST **6.241** · i **4
@@ -424,7 +424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 3
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -551,22 +551,6 @@ chiamante ha un `catch` che tace. Una lettura che non può riuscire e non lo dic
 dentro una stanza in cui non entra nessuno**: esattamente la forma che la 20ª aveva già incontrato,
 quando un fix rifiniva una stanza chiusa. Il lavoro qui non è ripararla: è **decidere se togliere il
 codice morto**, e la domanda vera resta quella di allora — *a cosa serviva*.
-
-### 46. 🔁 `livello.autovalutazione_url`: rimasta su TEST e non su PROD — la voce 31 al rovescio
-*Promossa dal committente il 16/08/2026, 25ª sessione, da «nate misurando» della 14ª.*
-
-🔬 **Confermata sul bersaglio, e vive nel database e non nel codice** (`pmo_ai_settings`, chiave
-`assistant_kb`): su **TEST** il valore **cita** `autovalutazione_url`, su **PROD** no. Le due copie
-sono state toccate **lo stesso giorno a un minuto di distanza** — PROD 14/08 11:56, TEST 14/08 11:55
-— e differiscono di **80 caratteri** (6249 contro 6169), quanto una voce in più.
-
-⚖️ **Perché conta pur non facendo danno**: nessuno la legge (nel codice non c'è nemmeno più il nome),
-quindi non rompe niente — **ma sta nella kb che va in pasto al modello**, e punta a una pagina di una
-sezione congelata. Su PROD fu tolta il 9/08, ed è quel gesto ad aver prodotto
-`pmo_bkp_kb_livello_20260809`; su TEST **no**.
-📌 **È la voce 31 al rovescio**: là il pezzo mancava su PROD, qui avanza su TEST. È il lavoro più
-piccolo dei tre — una `update` su un solo progetto — ma tocca ciò che il modello legge, quindi è
-**una scrittura su TEST**, non una pulizia di forma.
 
 ### 43. ⏱️ La continuazione staccata che riscrive lo stato locale — `staffCalRefreshFromCloud`
 *Aperta dal committente il 15/08, 24ª sessione, chiudendo la 42.* ⚖️ **Non è il residuo della 42**:
@@ -754,7 +738,9 @@ Misurando il **14/08** nella 14ª sessione, chiudendo la voce 24:
   fa danno; ma sta nella kb che va **in pasto al modello**. ⚖️ **È la forma esatta della voce 31**, e
   stavolta al contrario: il pezzo mancante sta su PROD. Non l'ho toccata — non è la 24.
   ⬆️ **Promossa da lui il 16/08: è la voce 46**, e là è **rimisurata**: vive in `pmo_ai_settings`
-  (chiave `assistant_kb`), non nel codice.
+  (chiave `assistant_kb`), non nel codice. ✅ **Chiusa lo stesso giorno**: tolta da TEST, e le due kb
+  hanno ora la **stessa impronta**. 📌 Questa nota diceva «grep: solo il commento» — nel codice il
+  nome **non c'è affatto**, perché la voce non è mai stata nel codice.
 
 Misurando il **14/08** nella 15ª sessione, aprendo il residuo della voce 27:
 
@@ -960,17 +946,18 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 33 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 34 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime QUATTRO voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime CINQUE voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
 | voce | cosa |
 |---|---|
+| **46** | ✅ *(16/08, 25ª sessione — **fatta su sua autorizzazione**, «fai la 46»)* **`livello.autovalutazione_url` tolta dalla kb di TEST: adesso le due kb sono IDENTICHE.** Puntava alla pagina di una sezione **congelata dal 13/06**; su PROD era stata tolta il 9/08 — ed è quel gesto ad aver prodotto `pmo_bkp_kb_livello_20260809` — su TEST no. 🔬 **Tre misure prima di scrivere, e la prima ha corretto la nota**: ① non vive nel **codice** ma nel **database** (`pmo_ai_settings`, chiave `assistant_kb`), quindi il grep in `index.html` non l'avrebbe mai trovata; ② **cosa ci punta**: zero occorrenze in tutto il repo fuori dai documenti ⇒ nessun lettore da rompere; ③ **le 13 chiavi di primo livello erano già identiche** fra i due progetti, e `livello` era l'unica a divergere (82 caratteri contro 2). ⚠️ **Ma la kb non è inerte, ed è il motivo per cui la voce esisteva**: `consumer-player-readmodel` — il **ponte del bot** — restituisce il valore **intero** (`kb: kbRow?.value`), senza filtrare le sezioni ⇒ su TEST quella riga arrivava **davvero al modello**. ⭐ **La verifica dopo non è «la divergenza è sparita», che avrebbe guardato solo ciò che sapevo di cercare: è che le due kb hanno la STESSA IMPRONTA** — `md5` identico, `c570a626…`, 6169 caratteri e 13 chiavi di qua e di là. Esclude anche le divergenze che non stavo cercando. ↩️ Migrazione **reversibile**, col valore esatto di prima trascritto **verbatim** in testa. ⛔ **Non provato dal vivo attraverso il ponte**: chiamarlo vuole il segreto, che da qui non c'è. Si è misurato **il valore che il ponte restituirebbe**, non la risposta del ponte — e la differenza è scritta perché non la si legga come una prova end-to-end. |
 | **14** | ✅ *(16/08, 25ª sessione — **chiusa DICHIARANDO su sua decisione**, non eseguendo)* **Le chiavi «Ospite» che oscillano: benigne, e la chiave resta com'è.** La chiave dell'occupazione contiene il **nome** — `occupancy\|idReserva\|data\|ora\|campo\|NOME\|durata` — quindi un ospite che prende un nome vero **non aggiorna** la riga: ne crea una nuova e lascia una lapide. ⇒ Non è un guasto, **è il progetto della chiave**: succede ogni volta che lo staff sostituisce un ospite con un socio, cioè una cosa che *deve* succedere. 🔬 **Rimisurata sul bersaglio il 16/08 alle 08:47 UTC**, non ricopiata dalla scheda: **571** righe `Ospite` su 3904 di occupazione (15% della tabella), **438** slot oscillanti, `ancora_vive` **0**, `oscillanti_vivi` **0**. ⭐ **E la prova che chiude la voce non è quel totale, è la serie**: `di_cui_vive` = **0 in quindici settimane su quindici**, da maggio. «Zero oggi» è una fotografia e potrebbe essere fortuna; zero per quindici settimane è un **comportamento** — ogni chiave finisce cancellata e lo slot si risolve, sempre. ✅ **Controllo negativo fatto prima di credere allo zero** (lezione della 24ª): l'ultima riga di occupazione aveva **33 secondi**, 73 nelle 24 ore ⇒ la sonda guarda un cassetto **vivo**. Il silenzio di 2 giorni e mezzo sulle sole `Ospite` cade su **Ferragosto**, ed è una pausa del circolo, non del meccanismo. ⚖️ **Perché NON si toglie il nome dalla chiave**: il costo è **contabile e basta** (~30 lapidi a settimana, nessuna riga che resti aperta), mentre la cura è sproporzionata — quella chiave la scrivono e la leggono **sync, app e i ponti**, e cambiarla senza cambiarli insieme spacca l'aggancio fra le due copie. 📄 **La sonda sopravvive alla voce**, con serie storica, controprova su TEST e il controllo negativo, in [`docs/voce-14-sonda-chiavi-ospite.md`](../voce-14-sonda-chiavi-ospite.md): 🔁 si riapre se `ancora_vive` o `oscillanti_vivi` salgono sopra zero. |
 | **42** | ✅ *(16/08, 25ª sessione — **chiusa su sua decisione**, a domanda risposta)* **«Cos'altro teneva in piedi quel mezzo secondo?» — nulla: le due corse vere sono progettate per ignorare ciò che la push ha appena scritto.** La voce nasceva dal caso 11 che cadeva addosso al caso 12 quando la 6.231 tolse il riscaricamento di `config.js` (~110 volte al minuto), e chiedeva di censire le altre chiamate in equilibrio su quel ritardo. 🔬 Censite il 15/08 sull'intero sorgente, righe di commento escluse: le **letture** non attese **non esistono** (`pmoStaffRpcPaged` è 16 su 16 attesa — una lettura non può arrivare presto se nessuno la lascia correre); le **scritture** non attese sono 14 su 16; la forma pericolosa dà **3 candidate e nessuna lo è** — una è un falso positivo della sonda di prossimità (due funzioni vicine nel testo, non annidate), le altre due escludono **per costruzione** le chiavi appena spinte (`_already`, `_destId`). ⇒ **«Cosa leggerebbe se arrivasse 50 ms prima?» → la stessa cosa.** 🧯 Lasciata scritta nella voce un'ipotesi mia sbagliata (`staffCalCloudReassignAndSyncMove` che partirebbe dallo slot d'origine: falso, cerca la `entry` al nuovo slot e il commento lo dichiara) — ci avevo creduto perché **cercavo corse**, che è la «prova che ti dà ragione» vista dal lato di chi indaga. ⚖️ **Si chiude a domanda RISPOSTA, non a lavoro finito**: quello che era emerso strada facendo è di un'**altra famiglia** — non una lettura precoce ma una **coda staccata che scrive** — ed è la voce **43**, che resta aperta con la sua misura. |
 | **34** | ✅ *(16/08, 24ª sessione — **accesa su sua conferma separata** la sera del 15, e **confermata dal giro automatico** la mattina del 16)* **Il calendario di TEST era una fotografia ferma al 7 agosto: adesso si aggiorna 5 volte al giorno.** 🔓 **A sbloccarla è stata un'informazione sua, che non stava in nessun file**: le routine di TEST erano state fermate *insieme e di proposito*, per fare gli aggiornamenti a mano durante le prove — la scheda poneva come condizione di sapere «perché furono spenti», e quel perché **da qui non era recuperabile**. ⚖️ **Il nodo vero non era nessuno dei tre indicati dalla scheda**: il dispatcher è **UNO per 12 slot** (6 clienti + 1 storico + 5 calendario), quindi «riaccendere solo il calendario» **non esiste come interruttore**. Sciolto **senza toccare la funzione**: sveglia ogni ora al minuto 30, e a decidere è il confronto sull'**ora italiana** che nomina i cinque orari. 🚨 Serve **anche** contro le collisioni, non solo contro l'ora legale: pure i 6 slot dei clienti cadono al minuto 30 — e cinque orari fissi in UTC si sarebbero rotti al cambio dell'ora **in silenzio**, cioè lo stesso guasto muto da cui nasce la voce. 🛑 **Tre punti della scheda smentiti dai fatti**: il `jobid 13` **non è stato toccato** (si è aggiunto il **17**, così tornare indietro è cancellarlo), **era** una riga di SQL, ed **è stata fatta dal cloud**. ✅ **Il filtro esercitato, non dato per buono**: alle 23:30 — slot **clienti** — la sveglia è partita (`succeeded`) senza produrre **nessun** dispatch clienti né storico, ed è stata esclusa la spiegazione alternativa (`on conflict do nothing`: le uniche due righe clienti sono del 2 e 3 agosto, chiavi che non possono collidere). ✅✅ **E la catena provata FINO IN FONDO la sera stessa, su sua idea** — *«perché non metti un aggiornamento adesso a mezzanotte così proviamo?»*: forzando l'orario, **53 righe lette dal Matchpoint vero**, 258 righe toccate, calendario **dal 7 agosto a quella sera**, 49 prenotazioni importate e 79 tolte. 🎯 **Quella prova ha evitato un errore che sarebbe passato per successo**: la mattina dopo si sarebbero viste 5 righe tutte `dispatched` — verdi — e si sarebbe potuto dichiarare fatto **contando i lanci invece di guardare i dati**. ✅ **CONFERMATA dal giro automatico del 16/08**: `bookings_morning` alle **05:30** italiane, **0** risvegli di clienti e storico, calendario aggiornato alle **05:31:55**. 🧯 Due letture sbagliate mie, nel documento: «non ce l'ha fatta» (leggevo un campo di un'altra strada) e «il calendario non si è mosso» (misuravo **un minuto prima** che la scrittura atterrasse) — non la sonda cieca della 23ª, ma **una misura presa prima che il fatto accadesse**. ⛔ **Residuo dichiarato**: le letture in più nei log del worker si vedono solo **dalla VM**. 📄 Procedura, query di controllo e comando di spegnimento in [`docs/voce-34-riaccendere-calendario-test.md`](../voce-34-riaccendere-calendario-test.md). |
