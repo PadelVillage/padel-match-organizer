@@ -696,18 +696,57 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
-      method: 'POST',
-      headers: internalHeaders,
-      body: JSON.stringify(richiesta),
-    });
-    const data = await res.json().catch(() => null) as JsonMap | null;
-    if (!res.ok || !data?.ok) {
-      console.error(`[booking-write] create KO HTTP ${res.status}:`, JSON.stringify(data).slice(0, 300));
+    // 🚨⭐⭐ IL TERZO ESITO ARRIVA FIN QUI — 16/08/2026, e prima si fermava una porta più in là.
+    //
+    // `matchpoint-bookings-create` distingue da sempre TRE esiti (voce 23): fatta, non fatta, e
+    // **non lo so** — quest'ultimo quando la richiesta al worker non riceve MAI risposta, e la
+    // prenotazione può essere già finita sul Matchpoint del circolo. Lo dice marchiando
+    // `esitoIgnoto: true` e col codice `WORKER_ESITO_IGNOTO`.
+    // ⇒ Qui quel marchio veniva **buttato**: ogni fallimento usciva come `worker_error`, il bot lo
+    //   traduceva in «non sono riuscito a prenotare», e il socio rifaceva. Se la prima era passata,
+    //   il campo restava occupato DUE volte sul sistema del circolo.
+    //
+    // ⚖️ Perché non basta ritentare, ed è la stessa ragione della sorella `cancel`: disdire due
+    // volte non fa danno, prenotare due volte sì. Qui non si ritenta — si **dice la verità**, che è
+    // «non lo so», e chi legge non deve rifarla ma controllare.
+    //
+    // 🚨⭐ E le vie del «non lo so» sono DUE, non una. La seconda è questa `fetch` stessa: se cade
+    // lei, la richiesta può essere arrivata lo stesso al gestionale e la prenotazione essere stata
+    // creata. Prima non era nemmeno protetta — l'eccezione usciva dall'handler, diventava un 500, e
+    // il bot leggeva un guasto generico. È la via **più vicina** al bot, ed era quella scoperta.
+    let res: Response;
+    try {
+      res = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`, {
+        method: 'POST',
+        headers: internalHeaders,
+        body: JSON.stringify(richiesta),
+      });
+    } catch (netErr) {
+      // ⛔ NESSUN ritentativo, per la ragione scritta sopra: da qui non sappiamo se la richiesta
+      // è arrivata, e riprovare è esattamente il gesto che crea la seconda prenotazione.
+      const testo = netErr instanceof Error ? netErr.message : String(netErr);
+      console.error(`[booking-write] create ESITO IGNOTO (nessuna risposta dal gestionale): ${testo}`);
       return ok({
         member: { id: member.id, name: member.name },
         created: false,
-        reason: 'worker_error',
+        reason: 'esito_ignoto',
+        detail: clean(`Nessuna risposta dal gestionale: ${testo}`).slice(0, 200),
+      });
+    }
+    const data = await res.json().catch(() => null) as JsonMap | null;
+    if (!res.ok || !data?.ok) {
+      // Il marchio si legge su una PROPRIETÀ, non cercando parole nel messaggio: è la stessa
+      // regola di `esito-prenotazione.js`, dove sta scritto perché — una condizione si riconosce
+      // da cosa è successo, non da quali parole contiene la stringa che la racconta.
+      // ⭐ Si guardano ENTRAMBI i segni perché viaggiano insieme ma sono indipendenti: se un domani
+      // uno dei due cambiasse forma, l'altro regge — e il verso in cui si sbaglia resta quello
+      // sicuro, cioè «non lo so» invece di «no».
+      const ignoto = data?.esitoIgnoto === true || clean(data?.error) === 'WORKER_ESITO_IGNOTO';
+      console.error(`[booking-write] create KO HTTP ${res.status}${ignoto ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(data).slice(0, 300));
+      return ok({
+        member: { id: member.id, name: member.name },
+        created: false,
+        reason: ignoto ? 'esito_ignoto' : 'worker_error',
         detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
       });
     }
