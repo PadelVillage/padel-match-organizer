@@ -77,15 +77,25 @@ jobs:
           TG_CHAT: ${{ secrets.TELEGRAM_SENTINELLA_CHAT_ID }}
         run: |
           set -euo pipefail
-          if [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT:-}" ]; then
-            printf 'TELEGRAM_SENTINELLA_TOKEN=%s\nTELEGRAM_SENTINELLA_CHAT_ID=%s\nPMO_MINUTI_PER_GIRO=15\n' \
-              "$TG_TOKEN" "$TG_CHAT" > /tmp/sentinella.env
+          # 🔑 Basta il CHAT ID. Il token e' facoltativo: senza, la sentinella prende in
+          #    prestito quello del bot di PROVA, gia' sulla VM nella cartella accanto —
+          #    scelta del committente del 17/08 («il bot di test non lo leveremo mai»).
+          #    Chi un domani volesse renderla indipendente aggiunge il secret del token
+          #    e da quel momento vince quello: nessun'altra modifica.
+          if [ -n "${TG_CHAT:-}" ]; then
+            { printf 'TELEGRAM_SENTINELLA_CHAT_ID=%s\nPMO_MINUTI_PER_GIRO=15\n' "$TG_CHAT"
+              [ -n "${TG_TOKEN:-}" ] && printf 'TELEGRAM_SENTINELLA_TOKEN=%s\n' "$TG_TOKEN"
+            } > /tmp/sentinella.env
             scp -i ~/.ssh/id_ed25519 -o BatchMode=yes /tmp/sentinella.env "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env"
             ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "chmod 600 $DEPLOY_PATH/.env"
             rm -f /tmp/sentinella.env
-            echo "🔫 ARMATA: .env riscritto dai secret"
+            if [ -n "${TG_TOKEN:-}" ]; then
+              echo "🔫 ARMATA con voce PROPRIA (secret del token presente)"
+            else
+              echo "🔫 ARMATA con la voce del BOT DI PROVA (nessun secret del token: lo prende dal suo .env sulla VM)"
+            fi
           else
-            echo "🔇 secret assenti → .env NON toccato (se ce n'era uno sulla VM, resta)"
+            echo "🔇 manca TELEGRAM_SENTINELLA_CHAT_ID → .env NON toccato (se ce n'era uno sulla VM, resta)"
           fi
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
             set -euo pipefail
@@ -128,8 +138,8 @@ jobs:
           TG_CHAT: ${{ secrets.TELEGRAM_SENTINELLA_CHAT_ID }}
         run: |
           set -euo pipefail
-          if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT:-}" ]; then
-            echo "🔇 disarmata: niente da dimostrare. Metti i due secret e rilancia questo workflow."
+          if [ -z "${TG_CHAT:-}" ]; then
+            echo "🔇 disarmata: niente da dimostrare. Metti il secret TELEGRAM_SENTINELLA_CHAT_ID e rilancia questo workflow."
             exit 0
           fi
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'

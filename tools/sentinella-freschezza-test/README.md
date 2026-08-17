@@ -68,10 +68,10 @@ può risuonare per un guasto nuovo.
 | file | |
 |---|---|
 | `sentinella.mjs` | la misura e la decisione. Nessuna dipendenza: solo Node ≥18 |
-| `banco-sentinella.mjs` | 10 casi, rete finta, più il sabotaggio che spegne la pazienza |
+| `banco-sentinella.mjs` | 17 casi, rete finta, più il sabotaggio che spegne la pazienza |
 | `*.service` / `*.timer` | l'unità systemd (oneshot) e il timer da 15′ |
 | `stato.json` | ⚠️ generato sulla VM: memoria fra un giro e l'altro |
-| `.env` | ⚠️ **solo sulla VM**, mai in git: le due credenziali Telegram |
+| `.env` | ⚠️ **solo sulla VM**, mai in git: il chat id (e un token, se un giorno ne vuole uno suo) |
 
 ```bash
 node banco-sentinella.mjs     # il banco, da qui, senza toccare la rete
@@ -87,22 +87,40 @@ Il deploy finisce solo se la sentinella **ha misurato davvero** sul bersaglio: l
 lo `stato.json` che ha lasciato e fallisce se non c'è. Un'unità installata che non
 gira è il guasto che questa voce esiste per evitare, un piano più in su.
 
-### 🔑 Per armarla servono due secret di questo repo
+### 🔑 Per armarla basta UN secret di questo repo
 
 ```
-TELEGRAM_SENTINELLA_TOKEN    il token di un bot Telegram
-TELEGRAM_SENTINELLA_CHAT_ID  la chat dove scrivere
+TELEGRAM_SENTINELLA_CHAT_ID  la chat dove scrivere        ← obbligatorio
+TELEGRAM_SENTINELLA_TOKEN    un token tutto suo           ← facoltativo
 ```
 
-Senza, si installa lo stesso e gira **disarmata**: misura e scrive nel registro ciò
-che *avrebbe* mandato. ⚖️ Una guardia disarmata che lo dichiara è onesta; una che
-crede di aver mandato il messaggio no — ed è per questo che il deploy stampa se il
-`.env` c'è (guardando **che il file esista**, non il suo contenuto).
+**La sentinella non ha un bot suo: parla con quello di PROVA**, prendendone il token
+dal `.env` già sulla VM nella cartella accanto. È una decisione del committente del
+17/08/2026 — *«facciamo la B perché il bot di test non lo leveremo mai»* — presa dopo
+avergli messo davanti il costo: una voce presa in prestito dipende da un pezzo che non
+è tuo.
+
+🔎 Il token si riconosce **dalla forma** (`\d+:…`), non dal nome della riga: un parser
+legato al nome si romperebbe **in silenzio** il giorno che qualcuno la rinomina,
+rispondendo «nessun token» con la stessa sicurezza con cui direbbe la verità.
+
+⛔ Il bot dei **soci** è tenuto fuori di proposito: il suo `.env` è quello delle
+**tre righe**, dove uno sbaglio fa prenotare e disdire per davvero nel circolo. Non è
+un file a cui avvicinarsi per un avviso di servizio.
+
+📌 Il giorno che si volesse renderla indipendente basta aggiungere il secret del token:
+da quel momento vince quello, e non cambia nient'altro.
+
+Senza il chat id si installa lo stesso e gira **disarmata**: misura e scrive nel
+registro ciò che *avrebbe* mandato. ⚖️ Una guardia disarmata che lo dichiara è onesta;
+una che crede di aver mandato il messaggio no — ed è per questo che il deploy stampa
+**da dove viene la voce** e se il `.env` c'è (guardando che il file *esista*, non il
+suo contenuto).
 
 ### 👋 E se è armata, lo dimostra: `--prova`
 
-Messi i secret e rilanciato il workflow, la sentinella manda **un messaggio vero,
-subito** (`node sentinella.mjs --prova`), ed è l'unico che riceverai «perché sì».
+Messo il secret e rilanciato il workflow, la sentinella manda **un messaggio vero,
+subito** (`node sentinella.mjs --prova`).
 
 🚨 Senza quello non riceveresti **niente** finché non c'è un guasto ⇒ scopriresti il
 token sbagliato, la chat sbagliata, o il bot che non può scrivere per primo,
@@ -112,6 +130,26 @@ voce applicata a lei stessa.
 
 ⚖️ E a differenza del giro normale, `--prova` **esce rossa** se il messaggio non parte:
 è una prova, non una guardia, e una prova che fallisce deve farsi vedere.
+
+### 💓 Il battito, e perché non è rumore
+
+Ogni **7 giorni** manda un «sono viva» anche quando va tutto bene
+(`PMO_BATTITO_GIORNI=0` lo spegne).
+
+🚨 Serve a rendere **verificabile** la frase «silenzio = tutto a posto», che altrimenti
+è una speranza: una sentinella muta — token cambiato, bot rotto, VM spenta — fa **lo
+stesso identico silenzio** di una sentinella tranquilla. Col battito, il silenzio di
+cui preoccuparsi diventa **l'assenza del battito**, che è una cosa che si nota.
+
+⚖️ Ed è la cura precisa della metà di rischio che la voce presa in prestito si porta
+dietro: sul **ritiro** del bot ha risposto il committente («non lo leveremo mai»), che
+è una decisione sua e vale; sul token che **cambia o si rompe** non c'è decisione che
+tenga, e quella metà la chiude il battito.
+
+📌 Al primo giro il battito **non parte**: il «sono viva» del giorno zero è il `--prova`
+del deploy, e batterlo subito dopo darebbe due messaggi a un quarto d'ora di distanza.
+*(Trovato al banco, non rileggendo: il caso «copia fresca → nessun messaggio» è caduto
+rosso.)*
 
 ## Cosa guardare quando suona
 
