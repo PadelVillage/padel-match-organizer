@@ -1,0 +1,121 @@
+# 🎾 Le regole del LIVELLO, dal punto di vista del giocatore
+
+**Scritte il 17/08/2026, 30ª sessione**, su richiesta del committente: *«facciamo una tabella di
+riepilogo di tutte queste regole che riguardano i giocatori rispetto al test di livello»*.
+
+🚨 **Ogni riga dice se è VIVA oggi o solo DECISA.** È la distinzione che in questo progetto costa
+di più quando manca — un fatto vero e mai scritto va riscoperto ogni volta, e una regola decisa e
+mai costruita, riletta un mese dopo, sembra in servizio.
+
+| segno | vuol dire |
+|---|---|
+| ✅ | **in servizio**, misurato |
+| 🆕 | **decisa e NON costruita** |
+| ❌ | **cancellata**, e non si costruisce più |
+| 🔴 | **rotta o mancante** oggi |
+
+---
+
+## A · Chi il livello NON ce l'ha
+
+Sono **2.276 soci su 2.801**: il valore `0,5` con cui il gestionale scrive «da definire».
+
+| la regola | oggi |
+|---|---|
+| Se è **invitato**, gioca lo stesso: il livello non serve | ✅ |
+| **Non può organizzare** una partita | ✅ dall'11/08 (il «muro», rifiuto `serve_livello`) |
+| Non può nemmeno **invitare** né **togliere** un giocatore | ✅ |
+| Quando ci prova, riceve il messaggio col bottone 🎾 **TEST LIVELLO DI GIOCO** | ✅ |
+| Se **chiede** «che livello ho?», gli si dice che non ce l'ha **e come farlo**, col bottone | ✅ **dal 17/08** — prima era un vicolo cieco |
+| Riceve un **promemoria gentile**, un paio di volte al mese | 🆕 → voce **56** |
+| **Non eredita** il livello di chi lo invita | ✅ — e l'eredità è ❌ (sotto) |
+
+### ❌ L'eredità dall'organizzatore — cancellata il 17/08
+
+Il 9/08 era stata decisa così: chi entra invitato senza livello **eredita** quello
+dell'organizzatore, «da confermare», e l'eredità **scade dopo 24 ore**; chi ha un ereditato
+resta comunque **bloccato** se vuole organizzare.
+
+🚨 **Non è mai stata costruita.** Misurato il 17/08: nel gestionale non c'è una riga che scriva un
+livello ereditato, e **nessun socio ne ha uno** (`ereditato` = 0 su PROD). Esiste solo la porta
+chiusa — chi ha un livello *in prestito* non può organizzare — ma il prestito non lo dà nessuno.
+
+🗣️ **Il committente l'ha sostituita con una regola più semplice**: *«chi è invitato in una partita
+e non ha il livello, visto che è invitato dall'organizzatore, gioca senza livello. Chi vuole
+organizzare una partita deve obbligatoriamente fare il test»*.
+⚖️ E quelle due cose **erano già vere e già in servizio**: la semplificazione non ha aggiunto
+lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono più.
+
+---
+
+## B · Fare il test
+
+| la regola | oggi |
+|---|---|
+| Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
+| **Tre prove** per giro | ✅ |
+| È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **55** |
+| Finito il giro → **30 giorni** prima di rifarlo | 🔴 oggi solo dopo **tre bocciature**; chi **passa** può rifarlo **subito** → voce **55** |
+| Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
+| Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
+| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **57** |
+| Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
+| Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
+
+---
+
+## C · Chi il livello ce l'ha già
+
+| la regola | oggi |
+|---|---|
+| Può **rifare** il test | 🆕 il bottone non gli compare mai → voce **55** |
+| Se il test dice **più alto** → sale | ✅ |
+| Se dice **più basso** → **non scende** | 🔴 oggi scende **subito e per intero**, da 4 a 1 → voce **55** |
+| Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | 🆕 → voce **55** |
+| Il livello si dice sempre **a parole**, mai a numeri | ✅ |
+
+### Il giro, disegnato — sei Avanzato (4)
+
+| | il test dice | tu | come finisce |
+|---|---|---|---|
+| **1ª prova** | Intermedio | ti fermi | **resti Avanzato** — in negativo non si scende |
+| | | riprovi ↓ | |
+| **2ª prova** | Semi-Pro | ti fermi | **diventi Semi-Pro** — è quella che confermi |
+| | | riprovi ↓ | |
+| **3ª prova** | — | — | l'ultima: qui il giro finisce comunque |
+
+E il caso brutto: **tutte e tre dicono più basso** ⇒ scendi, e **solo di 0,5** (da 4 a 3,5), non al
+livello che dicono i test. Finito il giro ⇒ **30 giorni** prima di poterne fare un altro.
+
+🚨⭐⭐ **Perché questa parte è la più pesante, e non è un bottone in più.** Oggi il livello **non lo
+conferma nessuno**: lo scrive un automatismo (`assessment-apply-level`, cron ogni 15 minuti) che
+applica la scheda da sé, senza chiedere niente al socio. La regola della scelta gli mette davanti
+**una domanda** — «tieni questo o riprovi?» — cioè l'automatismo deve **smettere di decidere da
+solo** e aspettare. È nel gestionale, non nel bot.
+
+---
+
+## D · Regole di casa, sempre
+
+| la regola | oggi |
+|---|---|
+| **Mai un vicolo cieco**: se il link manca, si manda in segreteria | ✅ |
+| Le quattro strade dell'offerta del test — bottone · link scritto · segreteria · attesa | ✅ |
+| La frase **promette il bottone solo dove il bottone c'è davvero** | ✅ (la difesa vive in `frasePerIlTest`) |
+| Il livello sta nel **gestionale**; la regola di quando è «dimostrato» sta nel **ponte** | ✅ — un livello annunciato in rubrica e negato nella scheda sarebbe la stessa persona con due verità |
+
+---
+
+## ⚠️ «Autovalutazione» vuol dire DUE cose
+
+Da tenere separate, o si pota la cosa sbagliata:
+
+| | cos'è | stato |
+|---|---|---|
+| il **servizio del bot** | `assessment-quiz`, `consumer-assessment-link`, `assessment-apply-level`, `assessment-notify-staff` + le tabelle `self_assessments` e `assessment_tokens` | ✅ **vivo e in uso** |
+| la **sezione nel gestionale** | il tasto «aggiorna risposte» e la riga «Schema autovalutazioni» | ❌ **morta per scelta** → voce **52** |
+
+---
+
+📌 **Dove stanno i pezzi ancora da fare**: voci **55**, **56** e **57** in
+[`docs/lavori/README.md`](lavori/README.md).
