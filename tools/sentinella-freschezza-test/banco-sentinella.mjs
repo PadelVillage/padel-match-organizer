@@ -13,7 +13,7 @@
 // 🚨 Ogni sabotaggio verifica di essere stato APPLICATO prima di girare: un
 //    sabotaggio non applicato da' lo stesso identico verde di un caso cieco.
 // ─────────────────────────────────────────────────────────────────────────────
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -189,6 +189,61 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
   controlla('--prova disarmata: torna falso e non finge di aver mandato',
     ok3 === false && inviati.length === 0, `torna ${ok3}, messaggi=${inviati.length}`);
   rmSync(dir4, { recursive: true, force: true });
+}
+
+// ── 14-17. il TOKEN PRESO IN PRESTITO dal bot di prova, e il BATTITO ─────────
+{
+  const dir5 = mkdtempSync(join(tmpdir(), 'sentinella5-'));
+  const envFinto = join(dir5, 'bot-prova.env');
+  writeFileSync(envFinto, [
+    '# commento con dentro un finto 111:xxx che NON deve passare',
+    'NODE_ENV=production',
+    'QUALCHE_ALTRA_COSA="valore"',
+    'UNA_RIGA_QUALUNQUE=7654321:AAHfinto-token-del-bot-di-prova-lungo-abbastanza',
+    ''
+  ].join('\n'));
+
+  // Il token si riconosce dalla FORMA: la riga si chiama UNA_RIGA_QUALUNQUE apposta.
+  process.env.PMO_ENV_BOT_PROVA = envFinto;
+  delete process.env.TELEGRAM_SENTINELLA_TOKEN;
+  process.env.PMO_STATO_FILE = join(dir5, 'stato.json');
+  scenario.servita = A; scenario.sorgente = A; scenario.github = 'ok'; scenario.meta = 'ok';
+  inviati.length = 0;
+  const { giro: giroPrestito, prova: provaPrestito } = await import('./sentinella.mjs?prestito=1');
+  const zp = zittisci(); const okp = await provaPrestito(); zp();
+  controlla('token PRESO IN PRESTITO dal .env del bot di prova, riconosciuto dalla FORMA (non dal nome della riga)',
+    okp === true && inviati.length === 1, `--prova torna ${okp}, messaggi=${inviati.length}`);
+
+  // Il .env del bot non c'e' → disarmata, non finge.
+  process.env.PMO_ENV_BOT_PROVA = join(dir5, 'non-esiste.env');
+  inviati.length = 0;
+  const { prova: provaSenza } = await import('./sentinella.mjs?senza=1');
+  const zs = zittisci(); const oks = await provaSenza(); zs();
+  controlla('se il .env del bot di prova sparisce: disarmata e lo dice, non finge di aver mandato',
+    oks === false && inviati.length === 0, `--prova torna ${oks}, messaggi=${inviati.length}`);
+
+  // Il BATTITO: al primo giro NON batte (lo ha gia' fatto il --prova del deploy)...
+  process.env.PMO_ENV_BOT_PROVA = envFinto;
+  const dir6 = mkdtempSync(join(tmpdir(), 'sentinella6-'));
+  process.env.PMO_STATO_FILE = join(dir6, 'stato.json');
+  inviati.length = 0;
+  const { giro: giroBattito } = await import('./sentinella.mjs?battito=1');
+  const zb = zittisci(); await giroBattito(); await giroBattito(); zb();
+  controlla('il battito NON parte al primo giro (sarebbero due messaggi in 15 minuti)',
+    inviati.length === 0, `messaggi dopo 2 giri appena installata=${inviati.length}`);
+
+  // ...ma dopo sette giorni sì. Si invecchia lo stato invece di aspettare una settimana.
+  const st = JSON.parse(readFileSync(join(dir6, 'stato.json'), 'utf8'));
+  st.ultimoBattito = st.ultimoBattito - 8 * 86400000;
+  writeFileSync(join(dir6, 'stato.json'), JSON.stringify(st));
+  inviati.length = 0;
+  const zb2 = zittisci(); await giroBattito(); await giroBattito(); zb2();
+  controlla('dopo 7 giorni batte UNA volta: «se smette di arrivare, ho smesso di guardare»',
+    inviati.length === 1 && /sono viva/.test(inviati[0] || ''),
+    `messaggi=${inviati.length} (deve essere 1, non 1 per giro)`);
+
+  rmSync(dir5, { recursive: true, force: true });
+  rmSync(dir6, { recursive: true, force: true });
 }
 
 rmSync(dir, { recursive: true, force: true });
