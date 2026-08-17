@@ -579,7 +579,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **7** |
 | 📦 **Chiuse** | **46** il 13–17/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -807,7 +807,51 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
+
+### 58. 🔴 **L'app di TEST non si carica: `HTTP 429` da GitHub** — messa qui da LUI, 17/08
+
+> 🗣️ **Sua, il 17/08/2026**, vedendola cadere mentre lavoravamo: *«non raggiungo più test»*, e
+> poi *«segnati subito, dopo fatto questo test, di aggiustare l'app di test»*. ⇒ È lui ad
+> averle dato il posto: **la prossima**, appena chiuso il collaudo del bottone del livello.
+
+**Misurato il 17/08 alle 14:10, non dedotto** — e la prima cosa che dice la misura è che
+**TEST non è rotto**:
+
+| cosa | esito |
+|---|---|
+| `https://test.padelvillage.club/` (il caricatore) | ✅ **HTTP 200** — la pagina c'è |
+| il file dell'app da `raw.githubusercontent.com` (ramo `test-preview`) | 🔴 **HTTP 429**, 199 byte |
+| `api.github.com` **dallo stesso computer** | ✅ **58 su 60** |
+
+⇒ La pagina si apre e poi **GitHub le rifiuta il download dell'app**. Le due porte hanno due
+quote diverse: quella dell'API sta benissimo, è **`raw`** a essere strozzata. Nessun
+`retry-after` e nessun `x-ratelimit-*` nella risposta (solo `x-served-by: cache-lcy-…`, cioè la
+CDN davanti): la strozzatura è **opaca**, si sblocca da sé e non si sa dire quando.
+
+🚨 **La causa non è un caso, è il disegno**: il caricatore **riscarica l'app INTERA — ~3,4 MB —
+a ogni apertura**, in forma anonima, e **non ha nessun ripiego**. Poche ricariche di fila
+chiudono la porta, e quando è chiusa TEST è **inutilizzabile**: `TEST non caricato: HTTP 429` e
+basta. È un vicolo cieco, la cosa che in questo progetto non si fa mai — e sta nell'unico pezzo
+che nessuna delle nostre reti guarda.
+
+⚠️ **Cosa NON ho letto, e va detto invece di lasciarlo intendere: il sorgente del caricatore.**
+Vive nel **5° repo**, `padel-match-organizer-test` (`index.html` + `config-test.js` + `CNAME`),
+e non è clonato su questo Mac; provare a leggerlo da `raw` **è finito nello stesso 429**. ⇒ Le
+righe qui sopra descrivono il **comportamento osservato dall'esterno**, non il codice. Chi la
+prende **cloni prima quel repo**.
+
+📌 **Le strade possibili, da scegliere quando la si fa** (nessuna decisa):
+① un **ripiego**: tenere l'ultima copia buona dell'app nel browser e usarla quando `raw`
+rifiuta — così una strozzatura rallenta invece di fermare;
+② **non passare più da `raw`**: pubblicare il file nel repo del caricatore, che è già su Pages;
+③ al minimo, e comunque: **un messaggio che dica cosa fare** («riprova fra qualche minuto»)
+invece di un codice HTTP, e **smettere di ricaricare** — ogni tentativo consuma altra quota.
+
+⚖️ **Non tocca PROD**: `app.padelvillage.club` serve il proprio file da Pages e non passa da
+`raw`. Il guasto è **solo** di TEST, ed è per questo che è rimasto invisibile finora.
+
+
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
