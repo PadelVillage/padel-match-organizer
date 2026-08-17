@@ -72,9 +72,22 @@ serve una sonda che stia altrove.* È la 24ª — la sonda che guarda nel casset
 forma in cui **il cassetto sbagliato è la propria posizione**. ⇒ Ora sta in `CLAUDE.md`, accanto
 alla regola su dove si lavora.
 
-⭐⭐ **E il fatto che dà ragione alla cura, misurato e non argomentato**: fra i componenti in avaria
-**Pages non c'era** — `app.` e `test.` hanno risposto **200 tutto il giorno**. La porta su cui la 58
-ha spostato TEST è **rimasta in piedi durante l'avaria di GitHub**.
+⭐⭐ **E il fatto che dà ragione alla cura, misurato e non argomentato**: `app.` e `test.` hanno
+risposto **200 tutto il giorno**, avaria compresa. La porta su cui la 58 ha spostato TEST è
+**rimasta in piedi**.
+
+🚨 **CORRETTA LA SERA STESSA, e la correzione vale più della riga.** Qui c'era scritto *«fra i
+componenti in avaria Pages non c'era»*: **era vero alle 17:10 e falso alle 18:30**, quando
+l'incidente si è allargato e `Pages` è comparso nell'elenco insieme a Git Operations, API, Issues,
+Pull Requests e Actions. ⇒ La frase invitava alla lezione sbagliata — *«Pages non cade mai»* — e a
+smentirla è bastato rimisurare un'ora dopo.
+⚖️ **Quello che regge è la distinzione, non il componente**: in tutta l'avaria **servire** le pagine
+ha continuato a funzionare (200 sempre, anche con Pages dichiarato in avaria), mentre
+**pubblicarle** era rotto — il deploy della 58 è fallito con *«is githubstatus.com reporting a Pages
+outage?»* ed è servito rilanciarlo. ⇒ La cura regge perché TEST **legge** da Pages, non perché Pages
+sia immune. Se un giorno cade anche il servire, cadono TEST **e** PROD insieme.
+⭐⭐ *Uno stato letto una volta è una fotografia, non una proprietà: «X non era giù» scade, «X ha
+risposto 200 mentre misuravo» no.*
 
 🚨⭐⭐ **DUE SESSIONI SULLA STESSA VOCE, e il prezzo si è pagato.** Mentre la sessione cloud
 pubblicava `app.html`, quella sul Mac aveva costruito **e provato nel browser** una soluzione
