@@ -27,7 +27,7 @@ type CancelRequest = {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 function json(body: unknown, status = 200) {
@@ -140,7 +140,12 @@ async function callWorkerCancelBooking(opts: {
       });
     } catch (netErr) {
       if (attempt === 3) {
-        throw new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`);
+        // ⭐⭐ IL TERZO ESITO, marchiato su una PROPRIETÀ (stessa regola della sorella create):
+        // tre volte senza risposta — l'annullo può essere passato lo stesso, e da qui non è
+        // dato saperlo. Un rifiuto del worker invece È una risposta: errore normale, no marchio.
+        const e = new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`) as Error & { esitoIgnoto?: boolean };
+        e.esitoIgnoto = true;
+        throw e;
       }
       await new Promise((r) => setTimeout(r, attempt * 3000));
       continue;
@@ -200,8 +205,95 @@ async function saveStaffCancelRecord(opts: {
   if (erroreRegistro) throw new Error(`registro staff_cancel non scritto: ${erroreRegistro.message}`);
 }
 
+// ── IL LAVORO COL NUMERO — stessa meccanica di create ed edit (vedi il commento là) ───────────
+// Con `async: true` l'annullo diventa un lavoro con un numero: la riga `booking_job` porta
+// l'esito, il lavoro corre qui in sottofondo, e il telefono al risveglio chiede com'è finito.
+type ScrittoreDiJob = {
+  from: (tabella: string) => {
+    upsert: (riga: JsonMap, opzioni?: { onConflict?: string }) => PromiseLike<unknown>;
+  };
+};
+
+async function writeCancelJob(
+  client: ScrittoreDiJob,
+  jobId: string,
+  status: string,
+  extra: JsonMap = {},
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const esito = await client.from('pmo_cloud_records').upsert({
+    record_type: 'booking_job',
+    local_key: jobId,
+    payload: { status, azione: 'cancel', updated_at: now, ...extra },
+    deleted: false,
+    updated_at: now,
+    synced_at: now,
+  }, { onConflict: 'record_type,local_key' }) as { error?: { message?: string } | null } | null;
+  const errore = esito?.error;
+  if (errore) {
+    console.error(JSON.stringify({
+      event: 'cancel_job_non_scritto', jobId, status,
+      error: errore.message ?? String(errore),
+    }));
+    return false;
+  }
+  return true;
+}
+
+async function runCancelJobInBackground(opts: {
+  jobId: string; supabaseUrl: string; supabaseKey: string; actor: StaffActor;
+  cancel: CancelRequest; workerUrl: string; workerApiKey: string;
+}) {
+  const { jobId, supabaseUrl, supabaseKey, actor, cancel, workerUrl, workerApiKey } = opts;
+  const client = createClient(supabaseUrl, supabaseKey);
+  const base = { cancel, cancelled_by_email: actor.email };
+  // 🔒 IL RECINTO anche dentro la strada che non torna indietro (come nella create).
+  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel_async', jobId, cancel }));
+    await writeCancelJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
+    return;
+  }
+  try {
+    const workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
+    try {
+      await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
+    } catch (dbErr) {
+      console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
+    }
+    await writeCancelJob(client, jobId, 'done', {
+      ...base,
+      message: `Annullamento eseguito: ${cancel.idReserva ? `idReserva ${cancel.idReserva}` : `Campo ${cancel.campo} · ${cancel.data} · ${cancel.ora}`}`,
+      worker_result: workerResult,
+    });
+  } catch (workerErr) {
+    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
+    await writeCancelJob(client, jobId, ignoto ? 'unknown' : 'error', {
+      ...base,
+      error: errorText(workerErr),
+      ...(ignoto ? { message: 'Non ho ricevuto risposta dal gestionale: l\'annullo potrebbe essere passato lo stesso. Controlla su Matchpoint prima di rifarlo.' } : {}),
+    });
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  // «Com'è finito il lavoro N?» — per il telefono che si risveglia a operazione in volo.
+  if (req.method === 'GET') {
+    const actorGet = await getActor(req).catch(() => null);
+    if (!actorGet) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
+    const jobId = clean(new URL(req.url).searchParams.get('jobId'));
+    if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
+    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    const client = createClient(sUrl, sKey);
+    const { data, error } = await client.from('pmo_cloud_records')
+      .select('payload').eq('record_type', 'booking_job').eq('local_key', jobId).maybeSingle();
+    if (error) return err(500, 'DB_ERROR', errorText(error));
+    if (!data) return err(404, 'JOB_NOT_FOUND', 'Job non trovato.');
+    return ok({ jobId, ...((data.payload as JsonMap) ?? {}) });
+  }
+
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   // Auth: percorso consumer (secret interno) O staff (JWT)
@@ -251,12 +343,29 @@ Deno.serve(async (req: Request) => {
     return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
   }
 
+  // ── Modalità asincrona (opzionale): rispondi subito, annulla in sottofondo ──
+  if (body.async === true) {
+    const jobId = crypto.randomUUID();
+    const clientJob = createClient(supabaseUrl, supabaseKey);
+    const jobScritto = await writeCancelJob(clientJob, jobId, 'pending', { cancel, cancelled_by_email: actor.email, created_at: new Date().toISOString() });
+    if (!jobScritto) {
+      return err(503, 'JOB_NON_AVVIATO', 'Non sono riuscito ad aprire il lavoro: l\'annullo NON è partito, rifallo.', { cancel });
+    }
+    EdgeRuntime.waitUntil(runCancelJobInBackground({ jobId, supabaseUrl, supabaseKey, actor, cancel, workerUrl, workerApiKey }));
+    return ok({ jobId, status: 'pending', message: 'Annullamento avviato, in corso…' });
+  }
+
   // Call browser worker
   let workerResult: JsonMap;
   try {
     workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
   } catch (workerErr) {
-    return err(502, 'WORKER_ERROR', errorText(workerErr), { cancel });
+    // ⭐ Il terzo esito anche sulla strada sincrona: 502 col CODICE giusto e il marchio.
+    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
+    return err(502, ignoto ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR', errorText(workerErr), {
+      cancel,
+      ...(ignoto ? { esitoIgnoto: true } : {}),
+    });
   }
 
   // Save record to DB

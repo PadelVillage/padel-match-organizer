@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.235';
+    const APP_VERSION = '6.236';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41669,6 +41669,9 @@ Per confermare scrivi ELIMINA.`);
       // magari riuscita). Non è un dettaglio: è la differenza fra un dubbio e un danno.
       let _reqSent = false;
       let _staffE = null, _urlE = null, _keyE = null;
+      // ⭐ v6.236 — il NUMERO del lavoro: appena l'edge accetta la consegna, l'esito ha un
+      // indirizzo interrogabile con domande da un secondo, che sopravvivono allo schermo spento.
+      let _jobEdit = null;
       // ⭐⭐ ESITO IGNOTO: non si indovina, si VA A GUARDARE (regola sua).
       // ⚠️ Ma qui la verifica sa rispondere SOLO quando si aggiungono giocatori: la lettura di
       // Matchpoint torna l'elenco dei partecipanti, quindi «il giocatore c'è» si può controllare,
@@ -41677,6 +41680,32 @@ Per confermare scrivi ELIMINA.`);
       // c'entra. Quando non è verificabile si dichiara, e la modifica NON si applica.
       const _verificabile = !!(op.hasPlayers && addArr && addArr.length);
       const _verifica = async function (perche) {
+        // ① v6.236 — se il lavoro ha un NUMERO, prima si chiede a LUI: la riga porta l'esito per
+        //   OGNI tipo di modifica, anche quelle che dal roster non si leggono (durata, nota,
+        //   maestro, spostamento). Solo se il lavoro stesso non sa (unknown) si passa al roster.
+        if (_jobEdit && _staffE && _urlE && _keyE) {
+          _setEditSyncNote('⌛ Non ho la conferma — chiedo al gestionale com\'è finito il lavoro…', '#b54708');
+          const _lavV = await staffCalPollJob(_jobEdit, _staffE, _urlE, _keyE, null, { fn: 'matchpoint-bookings-edit', maxMs: 60000, stepMs: 5000 });
+          if (_lavV.status === 'done') {
+            _spegniPuntino();
+            const _frV = (_lavV.raw && _lavV.raw.worker_result && Array.isArray(_lavV.raw.worker_result.partecipantiFinali)) ? _lavV.raw.worker_result.partecipantiFinali : null;
+            _applicaModifiche(_frV);
+            _setEditSyncNote('✅ Operazione confermata — il lavoro risulta eseguito sul gestionale', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
+            _aiExecSettle(true, null);
+            return;
+          }
+          if (_lavV.status === 'error') {
+            _spegniPuntino();
+            const _msgV = _lavV.error || 'rifiutata da Matchpoint';
+            _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(_msgV), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
+            svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(_msgV) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
+            _aiExecSettle(false, String(_msgV));
+            renderStaffCalendar();
+            return;
+          }
+          // unknown/timeout: nemmeno il lavoro sa (l'edge non ha ricevuto risposta dal worker)
+          // → si guarda su Matchpoint, qui sotto. Il verdetto poi CHIUDE il lavoro nel database.
+        }
         if (!_verificabile) {
           _spegniPuntino();
           _setEditSyncNote('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
@@ -41699,12 +41728,16 @@ Per confermare scrivi ELIMINA.`);
           });
         _spegniPuntino();
         if (look.verdict === 'si') {
+          // ⭐ Il verdetto chiude il lavoro anche NEL DATABASE (voce 23 / 6.226): senza, la riga
+          // resterebbe `unknown` per sempre. No-op se il numero non c'è (edge vecchia).
+          try { await pmoChiudiLavoroIgnoto(_jobEdit, 'si', _staffE, _urlE, _keyE, look.tentativi); } catch (e) {}
           _applicaModifiche(null);
           _setEditSyncNote('✅ Operazione confermata — l\'ho verificata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
           _aiExecSettle(true, null);
           return;
         }
         if (look.verdict === 'no') {
+          try { await pmoChiudiLavoroIgnoto(_jobEdit, 'no', _staffE, _urlE, _keyE, look.tentativi); } catch (e) {}
           _setEditSyncNote('❌ Su Matchpoint la modifica non risulta', '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
           svcAddMessage('system', '❌ <strong>Modifica non riuscita</strong> (' + destTxt + '): sono andato a guardare e su Matchpoint non risulta.<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
           _aiExecSettle(false, 'verificato-non-passato');
@@ -41771,16 +41804,48 @@ Per confermare scrivi ELIMINA.`);
         const response = await fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-edit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(Object.assign({}, payload, { async: true })),
           signal: _ctrl.signal,
         });
         const respText = await response.text();
         let data = null;
         try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
         clearTimeout(_to);
+        let _ok = response.ok;
+        let _statoHttp = response.status;
+
+        // ⭐⭐ v6.236 — IL LAVORO COL NUMERO. Se l'edge ha accettato la consegna (`jobId`), da qui
+        // non si aspetta più una risposta lunga che il telefono può perdere: si CHIEDE, con
+        // domande da un secondo che riprendono da sole al risveglio (staffCalPollJob). L'edge
+        // intanto porta a termine la modifica per conto suo, anche a telefono spento.
+        // ⚖️ Un'edge VECCHIA non manda il jobId e risponde come sempre: i rami qui sotto restano
+        // interi apposta — è il degrado dolce, lo stesso patto della create.
+        if (_ok && data && data.ok !== false && data.jobId) {
+          _jobEdit = String(data.jobId);
+          let _lav = await staffCalPollJob(_jobEdit, staff, supabaseUrl, supabaseKey, null, { fn: 'matchpoint-bookings-edit' });
+          if (_lav.status === 'timeout') {
+            // Il lavoro ha un NUMERO: scaduta la prima attesa si continua a CHIEDERE, non si conclude.
+            _setEditSyncNote('⌛ Matchpoint è lento: aspetto ancora la conferma…');
+            _lav = await staffCalPollJob(_jobEdit, staff, supabaseUrl, supabaseKey, null, { fn: 'matchpoint-bookings-edit', maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
+          }
+          if (_lav.status === 'done') {
+            _ok = true; _statoHttp = 200;
+            data = { ok: true, message: (_lav.raw && _lav.raw.message) || '', worker: (_lav.raw && _lav.raw.worker_result) || null };
+          } else if (_lav.status === 'error') {
+            // Rifiuto del worker, riportato dalla riga del lavoro: esito NOTO → rami sotto.
+            _ok = false; _statoHttp = 0;
+            data = { ok: false, message: _lav.error || 'rifiutata da Matchpoint' };
+          } else {
+            // unknown (l'edge non ha ricevuto risposta dal worker), o scaduta anche l'attesa
+            // lunga: esito IGNOTO ⇒ si va a guardare (la verifica richiede PRIMA il lavoro).
+            _staffCalPendingEdits.delete(pendKey);
+            await _verifica(_lav.error || 'il gestionale non ha ancora risposto');
+            return;
+          }
+        }
         _staffCalPendingEdits.delete(pendKey);
 
-        if (response.ok && data && data.ok !== false) {
+        if (_ok && data && data.ok !== false) {
           // ⭐ È QUI che la modifica entra nel calendario, e solo qui: Matchpoint ha detto sì.
           //    Col roster AUTOREVOLE del worker, così i nomi sono quelli veri.
           const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
@@ -41808,13 +41873,13 @@ Per confermare scrivi ELIMINA.`);
             _setEditSyncNote('✅ Operazione confermata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
             _aiExecSettle(true, null);
           }
-        } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
+        } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', _statoHttp)) {
           // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.
           await _verifica((data && (data.message || data.error)) || 'Matchpoint non ha risposto in tempo');
         } else {
           // Rifiuto vero: esito NOTO. Non c'è niente da riportare indietro — la prenotazione non
           // era stata toccata — ma va detto, se no sembra che la modifica sia andata a buon fine.
-          const msg = (data && (data.message || data.error)) || ('HTTP ' + response.status);
+          const msg = (data && (data.message || data.error)) || ('HTTP ' + _statoHttp);
           _spegniPuntino();
           _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(msg), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
           svcAddMessage('system', '❌ Modifica non riuscita (' + destTxt + '): ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
@@ -42130,7 +42195,7 @@ Per confermare scrivi ELIMINA.`);
           'Authorization': `Bearer ${staff.accessToken}`,
         },
         body: JSON.stringify(Object.assign(
-          { campo: from.campo, data: from.iso, ora: from.ora,
+          { campo: from.campo, data: from.iso, ora: from.ora, async: true,
             move: { campo: toCampoNum, data: toIso, oraInizio: toOra, oraFine: toOraFine } },
           _idReservaMove ? { idReserva: _idReservaMove } : {}
         )),
@@ -42140,9 +42205,26 @@ Per confermare scrivi ELIMINA.`);
       let data = null;
       try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
       clearTimeout(_to);
+      let _ok = response.ok;
+      let _statoHttp = response.status;
+
+      // ⭐ v6.236 — IL LAVORO COL NUMERO anche qui (vedi il gemello nella MODIFICA): la consegna
+      // torna subito, l'esito si CHIEDE con domande brevi che riprendono al risveglio. Questo
+      // percorso non ha la macchina del «vado a guardare»: sull'ignoto resta il suo messaggio
+      // onesto di sempre («potrebbe essere passato, ricarica e controlla») — ma ci si arriva
+      // molto più raramente, perché la riga del lavoro risponde anche a telefono riacceso.
+      if (_ok && data && data.ok !== false && data.jobId) {
+        let _lav = await staffCalPollJob(String(data.jobId), staff, supabaseUrl, supabaseKey, null, { fn: 'matchpoint-bookings-edit' });
+        if (_lav.status === 'timeout') {
+          _lav = await staffCalPollJob(String(data.jobId), staff, supabaseUrl, supabaseKey, null, { fn: 'matchpoint-bookings-edit', maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
+        }
+        if (_lav.status === 'done') { _ok = true; _statoHttp = 200; data = { ok: true, message: (_lav.raw && _lav.raw.message) || '' }; }
+        else if (_lav.status === 'error') { _ok = false; _statoHttp = 0; data = { ok: false, message: _lav.error || 'rifiutato da Matchpoint' }; }
+        else { _ok = false; _statoHttp = 504; data = { ok: false, message: _lav.error || 'il gestionale non ha ancora risposto (timeout)' }; }
+      }
       clearInterval(_timer);
 
-      if (response.ok && data?.ok !== false) {
+      if (_ok && data?.ok !== false) {
         // Aggiorna la copia locale: sposta il record staffBookings da → a.
         const existing = (typeof safeLoad === 'function') ? safeLoad('staffBookings', []) : [];
         const updated = existing.map((b) => {
@@ -42163,12 +42245,12 @@ Per confermare scrivi ELIMINA.`);
         renderStaffCalendar();
         svcResetToNeutral(); svcAutoCloseIfMobile();
         svcScheduleAutoClear(); // spostamento confermato dal worker → pulizia chat
-      } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', response.status)) {
+      } else if (_staffCalIsTimeoutClass((data && (data.message || data.error)) || '', _statoHttp)) {
         // TIMEOUT edge (worker in coda): esito INCERTO, lo spostamento può essere passato lo stesso.
         // NON dichiarare fallimento (era il messaggio falso "non riuscito" su operazione riuscita).
         svcAddMessage('system', '⌛ <strong>Matchpoint è lento adesso</strong> (coda del worker): lo spostamento <strong>potrebbe essere passato lo stesso</strong>. Non ho revertito niente — <strong>ricarica con «Aggiorna prenotazioni» e controlla</strong> prima di rifarlo (rischi un doppione).', 'error');
       } else {
-        const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + response.status)) + '';
+        const msg = ((data && (data.message || data.error)) || ('errore HTTP ' + _statoHttp)) + '';
         svcAddMessage('system', '❌ Spostamento non riuscito: ' + _staffCalFriendlyOpError(msg));
       }
     } catch (err) {
@@ -42561,13 +42643,23 @@ Per confermare scrivi ELIMINA.`);
   // ⭐ `opts {maxMs, stepMs}` serve alla seconda attesa, più lenta e più lunga: quando i 3 minuti
   // scadono NON si tira a indovinare, si continua a CHIEDERE (il lavoro ha un numero).
   async function staffCalPollJob(jobId, staff, supabaseUrl, supabaseKey, onTick, opts) {
-    const url = `${supabaseUrl}/functions/v1/matchpoint-bookings-create?jobId=${encodeURIComponent(jobId)}`;
+    // ⭐ v6.236: il lavoro col numero non è più solo della CREAZIONE — anche modifica e annullo
+    // consegnano un jobId (opts.fn dice a quale funzione chiederlo). La domanda è la stessa.
+    const _fn = (opts && opts.fn) || 'matchpoint-bookings-create';
+    const url = `${supabaseUrl}/functions/v1/${_fn}?jobId=${encodeURIComponent(jobId)}`;
     const headers = { 'apikey': supabaseKey, 'Authorization': `Bearer ${staff.accessToken}` };
     const startedAt = Date.now();
     const MAX_MS = (opts && Number(opts.maxMs)) || _STAFF_CAL_POLL.maxMs;    // 3 minuti
     const STEP_MS = (opts && Number(opts.stepMs)) || _STAFF_CAL_POLL.stepMs;
-    while (Date.now() - startedAt < MAX_MS) {
+    for (;;) {
       await new Promise(r => setTimeout(r, STEP_MS));
+      // 📴 v6.236 — IL RISVEGLIO DEL TELEFONO. A schermo spento i timer sono fermi e le fetch
+      // muoiono; al risveglio si aspetta la rete (se manca) e si fa COMUNQUE un giro di domanda,
+      // anche a tempo scaduto: l'esito è già scritto nella riga del lavoro, e chiederlo costa un
+      // secondo. È il pezzo che trasforma «a schermo spento non lavora» in «al risveglio sa».
+      if (typeof navigator !== 'undefined' && navigator.onLine === false && typeof pmoAspettaRete === 'function') {
+        try { await pmoAspettaRete(); } catch (e) {}
+      }
       if (typeof onTick === 'function') onTick(Math.round((Date.now() - startedAt) / 1000));
       let data = null;
       try {
@@ -42575,7 +42667,7 @@ Per confermare scrivi ELIMINA.`);
         const txt = await resp.text();
         try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
       } catch { data = null; }
-      if (!data) continue;
+      if (!data) { if (Date.now() - startedAt >= MAX_MS) return { status: 'timeout' }; continue; }
       if (data.status === 'done') {
         // 🆔 Prima di buttare via la risposta: il worker ci ha appena detto l'id interno
         // Matchpoint di ogni giocatore che ha aggiunto. Si raccoglie qui perché questo è
@@ -42585,18 +42677,20 @@ Per confermare scrivi ELIMINA.`);
         // ⚠️ Non deve poter far fallire una prenotazione RIUSCITA: qualunque cosa vada
         //    storta qui resta un guaio di anagrafica, non della prenotazione.
         try { pmoAssorbiIdInterniMatchpoint(data, 'creazione prenotazione'); } catch (e) { console.warn('[id-interno] ' + (e && e.message ? e.message : e)); }
-        return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null };
+        // `raw` porta il payload intero della riga di lavoro: modifica e annullo ci trovano il
+        // `worker_result` (roster autorevole, esiti per giocatore) senza una seconda domanda.
+        return { status: 'done', message: data.message, idReserva: (data.worker_result && data.worker_result.idReserva) ? String(data.worker_result.idReserva) : null, raw: data };
       }
-      if (data.status === 'error') return { status: 'error', error: data.error || data.message };
+      if (data.status === 'error') return { status: 'error', error: data.error || data.message, raw: data };
       // ⭐⭐ VOCE 23 — il TERZO esito, scritto dalla edge quando il gestionale non le ha risposto.
       // Senza questa riga finirebbe comunque sulla strada giusta (non essendo né 'done' né
       // 'error' verrebbe letto come «in corso» fino alla scadenza), ma costerebbe minuti di
       // attesa inutile e la ragione andrebbe persa: chi guarda leggerebbe «non ha ancora
       // risposto» invece di «non ho ricevuto risposta, controlla su Matchpoint».
-      if (data.status === 'unknown') return { status: 'unknown', error: data.message || data.error };
-      // 'pending' → continua
+      if (data.status === 'unknown') return { status: 'unknown', error: data.message || data.error, raw: data };
+      // 'pending' → continua (ma la scadenza si guarda: senza, un job perso girerebbe per sempre)
+      if (Date.now() - startedAt >= MAX_MS) return { status: 'timeout' };
     }
-    return { status: 'timeout' };
   }
 
   // ⭐⭐ REGOLA DEL COMMITTENTE (v6.150): quando l'esito resta IGNOTO non si indovina — si va a
@@ -43614,10 +43708,40 @@ Per confermare scrivi ELIMINA.`);
     // ── Propagazione su Matchpoint in BACKGROUND ──
     (async function () {
       let _staffC = null, _urlC = null, _keyC = null, _reqSent = false;
+      // ⭐ v6.236 — il numero del lavoro d'annullo (vedi il gemello nella MODIFICA).
+      let _jobCancel = null;
       // ⭐⭐ ESITO IGNOTO: non si indovina, si VA A GUARDARE (regola sua). Qui la polarità è
       // ROVESCIATA rispetto alla prenotazione, ed è la parte da leggere piano: se su Matchpoint
       // la prenotazione NON c'è più, vuol dire che l'annullamento È passato. Se c'è ancora, no.
       const _verifica = async function (perche) {
+        // ① v6.236 — se il lavoro ha un NUMERO, prima si chiede a LUI. Polarità dell'annullo:
+        //   `done` = la prenotazione è stata tolta. Solo se nemmeno il lavoro sa (unknown) si
+        //   guarda il tabellone, qui sotto.
+        // ⚖️ Limite dichiarato: il verdetto del tabellone NON chiude la riga del lavoro nel
+        //   database (la chiusura di `chiudi-lavoro-ignoto` parla la lingua della creazione,
+        //   dove si=creata; per un annullo direbbe il contrario). Riga rara e onestamente
+        //   `unknown`: meglio di una chiusa con le parole sbagliate.
+        if (_jobCancel && _staffC && _urlC && _keyC) {
+          _setSync('⌛ Non ho la conferma — chiedo al gestionale com\'è finito il lavoro…', '#b54708');
+          const _lavV = await staffCalPollJob(_jobCancel, _staffC, _urlC, _keyC, null, { fn: 'matchpoint-bookings-cancel', maxMs: 60000, stepMs: 5000 });
+          if (_lavV.status === 'done') {
+            await _applicaAnnullo();
+            _setSync('✅ Operazione confermata — il lavoro risulta eseguito sul gestionale', '#067647', '✅ <strong>Prenotazione annullata</strong>');
+            return;
+          }
+          if (_lavV.status === 'error') {
+            const _msgV = _lavV.error || 'rifiutato da Matchpoint';
+            if (/PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgV)) {
+              await _applicaAnnullo();
+              _setSync('🧹 Su Matchpoint non c\'era più — tolta dal calendario', '#067647', '✅ <strong>Prenotazione annullata</strong>');
+              return;
+            }
+            _setSync('❌ NON annullata: ' + _staffCalFriendlyOpError(_msgV), '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
+            svcAddMessage('system', '❌ <strong>L\'annullamento non è passato</strong> (' + _staffCalFriendlyOpError(_msgV) + '): la prenotazione è <strong>rimasta</strong> sul calendario — puoi riprovare.');
+            return;
+          }
+          // unknown/timeout → si guarda il tabellone.
+        }
         // ⭐ NON UNA VOLTA SOLA (17/08/2026): stessa insistenza della creazione — se l'esito è
         // ignoto la strada è caduta, e il primo colpo è quello con meno probabilità di riuscire.
         const look = await staffCalGuardaFinchePuoi(
@@ -43652,13 +43776,39 @@ Per confermare scrivi ELIMINA.`);
         const response = await fetch(`${_urlC}/functions/v1/matchpoint-bookings-cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': _keyC, 'Authorization': `Bearer ${_staffC.accessToken}` },
-          body: JSON.stringify(Object.assign({ campo, data: isoDate, ora }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
+          body: JSON.stringify(Object.assign({ campo, data: isoDate, ora, async: true }, _idReservaCancel ? { idReserva: _idReservaCancel } : {})),
           signal: _ctrl.signal,
         });
         const respText = await response.text();
         let data = null;
         try { data = respText ? JSON.parse(respText) : null; } catch { data = respText; }
         clearTimeout(_to);
+        let _ok = response.ok;
+        let _statoHttp = response.status;
+
+        // ⭐⭐ v6.236 — IL LAVORO COL NUMERO (vedi il gemello nella MODIFICA): consegna accettata
+        // → si segue il numero con domande brevi che riprendono al risveglio del telefono.
+        // Un'edge vecchia senza jobId risponde come sempre: i rami sotto restano interi.
+        if (_ok && data && data.ok !== false && data.jobId) {
+          _jobCancel = String(data.jobId);
+          let _lav = await staffCalPollJob(_jobCancel, _staffC, _urlC, _keyC, null, { fn: 'matchpoint-bookings-cancel' });
+          if (_lav.status === 'timeout') {
+            _setSync('⌛ Matchpoint è lento: aspetto ancora la conferma…', '#b54708');
+            _lav = await staffCalPollJob(_jobCancel, _staffC, _urlC, _keyC, null, { fn: 'matchpoint-bookings-cancel', maxMs: _STAFF_CAL_POLL.lateMaxMs, stepMs: _STAFF_CAL_POLL.lateStepMs });
+          }
+          if (_lav.status === 'done') {
+            _ok = true; _statoHttp = 200;
+            data = { ok: true, message: (_lav.raw && _lav.raw.message) || '' };
+          } else if (_lav.status === 'error') {
+            _ok = false; _statoHttp = 0;
+            data = { ok: false, message: _lav.error || 'rifiutato da Matchpoint' };
+          } else {
+            _staffCalPendingEdits.delete(_pendCancelKey);
+            try { staffCalRtBroadcastCancelResolved(isoDate, campo, ora); } catch (e) {}
+            await _verifica(_lav.error || 'il gestionale non ha ancora risposto');
+            return;
+          }
+        }
         _staffCalPendingEdits.delete(_pendCancelKey);
         // Cross-device (v5.913): l'operazione è conclusa → l'altro device smonta l'hide ottimistico
         // e riconcilia dal cloud (resta nascosto se annullata, ricompare se rifiutata/ripristinata).
@@ -43666,7 +43816,7 @@ Per confermare scrivi ELIMINA.`);
         const _msgTxt = ((data && (data.message || data.error)) || '') + '';
         const notFoundOnMatchpoint = /PRENOTAZIONE_NON_TROVATA|nessun evento|non trovat/i.test(_msgTxt);
 
-        if (response.ok && data?.ok !== false) {
+        if (_ok && data?.ok !== false) {
           // ⭐ È QUI che la prenotazione esce dal calendario, e solo qui: Matchpoint ha detto sì.
           await _applicaAnnullo();
           try { window.PMOAi && PMOAi.logManual && PMOAi.logManual('prenotazione', 'annulla', 'confirmed', { via: 'calendario', campo: campo, data: isoDate, ora: ora }); } catch (e) {}
@@ -43676,13 +43826,13 @@ Per confermare scrivi ELIMINA.`);
           // la stessa cosa che dice la verifica quando risponde 'no'.
           await _applicaAnnullo();
           _setSync('🧹 Su Matchpoint non c\'era più — tolta dal calendario', '#067647', '✅ <strong>Prenotazione annullata</strong>');
-        } else if (_staffCalIsTimeoutClass(_msgTxt, response.status)) {
+        } else if (_staffCalIsTimeoutClass(_msgTxt, _statoHttp)) {
           // TIMEOUT edge (worker in coda): esito INCERTO ⇒ si va a guardare, non si conclude.
           await _verifica(_msgTxt || 'Matchpoint non ha risposto in tempo');
         } else {
           // Rifiuto vero: esito NOTO. Non c'è niente da ripristinare — la prenotazione non se
           // n'era mai andata dal calendario — ma va detto, se no sembra che sia stata annullata.
-          const msg = _msgTxt || ('errore HTTP ' + response.status);
+          const msg = _msgTxt || ('errore HTTP ' + _statoHttp);
           _setSync('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(msg), '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
           svcAddMessage('system', '❌ <strong>Annullamento non riuscito</strong>: ' + _staffCalFriendlyOpError(msg) + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta</strong> sul calendario, perché su Matchpoint c\'è ancora.</span>');
         }
