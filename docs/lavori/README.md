@@ -47,6 +47,44 @@ atterrato** (una regex in BRE su `grep` di macOS), e il controllo «è stato app
 | 🔓 **«parti a sviluppare da dove pensi sia meglio»** | delega sul **punto di partenza**, non sullo scopo. Scelto il pezzo che sta tutto nel bot e non può far scendere nessuno |
 | ✅ **«ok fai il merge»**, poi **«mandalo sul bot di prova»** | due autorizzazioni **separate**, una per volta, come sempre — e il bot dei **soci** non è stato toccato |
 | 📄 **«quando hai finito aggiorna i docs»** | la chiusura di rito. Le regole del livello hanno un file loro: `docs/regole-livello-giocatori.md` |
+| 🔴 **«non raggiungo più test»**, poi **«segnati subito, dopo fatto questo test, di aggiustare l'app di test»** | ⭐ **il posto in lista gliel'ha dato lui**, non io — ed è diventata la 58 |
+| ❓ **«ma perché prod va?»** | ⭐⭐ **la domanda che spiega tutta la voce 58 in una riga**: PROD **ha già** l'app dentro il sito, TEST **va a prendersela** ogni volta. Una porta contro due |
+| ❓ **«tu stai lavorando nel cloud di Claude, giusto?»** | 🚨 **ha smontato una mia conclusione**: dal Mac i miei `curl` escono dal **suo** indirizzo, quindi non potevano distinguere «GitHub è giù» da «la nostra rete è bloccata» → secondo filo qui sotto |
+| ❓ **«che differenza c'è fra cloud e computer mio? Possiamo sceglierne una per sempre?»** | ⇒ la **regola scritta in `CLAUDE.md`**: cloud per git/Actions/edge/database/bot, Mac quando serve **guardare con i propri occhi** |
+| 🔑 **«facciamo la chiave SSH»** | ⚖️ e **non c'era da farla**: esisteva già e funziona (`padel-matchpoint-bot-prod`, su da 85 giorni). Una mia nota del 12/08 diceva il contrario ed era **vecchia** |
+| 🔓 **«sì»** (al permesso `ssh` per l'agente) | dato **dopo** che gli avevo detto che quella chiave entra come **`root`**. ⚠️ La regola vincola **la chiave**, non l'host: un prefisso non può guardare oltre le opzioni |
+| ⭐ **«fai la B e poi la C»**, e **«facciamolo in una nuova chat»** | il seguito della 58 ⇒ **voce 59** |
+| 🚨 **«stai attento perché c'è un'altra sessione che lavora in parallelo»** | e aveva ragione **due volte**: il conflitto è arrivato subito dopo |
+
+## 🔎 Il secondo filo della 30ª: **una sonda che sta nel posto sbagliato — e il posto sbagliato è DOVE SEI TU**
+
+Il primo filo parlava di una riga inerte. Questo è arrivato **da una sua domanda**, e riguarda una
+cosa che nessuna rilettura avrebbe trovato: **da dove misuro**.
+
+| dicevo | cos'era |
+|---|---|
+| «`raw` dà **429** anche su `torvalds/linux` ⇒ **GitHub è in avaria**» | la conclusione era **giusta**, la sonda **non poteva saperlo**: girando sul suo Mac, i miei `curl` escono dal **suo** indirizzo. Quella misura non distingue *GitHub è giù per tutti* da *la nostra rete è bloccata*. ⭐ A dirlo sono state due prove che **non passano da lì**: il log di un deploy (che gira sui computer di GitHub) e **`githubstatus.com`**, un altro host — **Partial System Outage**, API e Actions in *major outage*, incidente aperto dalle **13:40 UTC** |
+| la cura della 58 «mette un ripiego» | il difetto era **più largo**: le pagine che morivano erano **due**. E il file che la seconda scaricava da `raw` **non è la scheda**, è un **rimando** ⇒ la catena era di **quattro salti, due su GitHub**. *Si chiedeva a GitHub il permesso di fare un salto che sapevamo già fare.* Ora ne fa **uno** e non chiede niente (#805, #806) |
+| «la copia invecchia? basta leggere `synced_at`» | **falso, e scoperto leggendo il workflow prima di scrivere la cura**: `sync-app.yml` fa `exit 0` quando l'app non è cambiata ⇒ quel campo **non è un battito**, e su una copia fresca griderebbe al lupo. ⇒ La strada è **morta**, ed è scritta come morta nella voce 59 |
+
+⚖️ **La lezione**: *una misura fatta dal Mac parla della rete del committente; per parlare del mondo
+serve una sonda che stia altrove.* È la 24ª — la sonda che guarda nel cassetto sbagliato — nella
+forma in cui **il cassetto sbagliato è la propria posizione**. ⇒ Ora sta in `CLAUDE.md`, accanto
+alla regola su dove si lavora.
+
+⭐⭐ **E il fatto che dà ragione alla cura, misurato e non argomentato**: fra i componenti in avaria
+**Pages non c'era** — `app.` e `test.` hanno risposto **200 tutto il giorno**. La porta su cui la 58
+ha spostato TEST è **rimasta in piedi durante l'avaria di GitHub**.
+
+🚨⭐⭐ **DUE SESSIONI SULLA STESSA VOCE, e il prezzo si è pagato.** Mentre la sessione cloud
+pubblicava `app.html`, quella sul Mac aveva costruito **e provato nel browser** una soluzione
+diversa. Al merge: **conflitto** — e poi un secondo conflitto un'ora dopo, perché nel frattempo lui
+aveva **chiuso la 58** di là. La versione cloud è migliore (copia *primaria*, ETag, `sync-app.yml`)
+⇒ la PR del Mac è stata **chiusa, non fusa**.
+⚖️ *Il conflitto ha fatto da rete: senza quel rifiuto una sessione avrebbe sovrascritto il lavoro
+dell'altra senza accorgersene.* È la 28ª, e stavolta ha protetto qualcun altro da noi.
+📌 **Il pezzo del Mac che varrebbe la pena innestare**: il **tetto d'attesa** (`AbortSignal.timeout`)
+sulle chiamate a GitHub. Un rifiuto arriva subito; un **appeso** lascia «Caricamento…» per sempre.
 
 ## 🔎 Il filo della 29ª: **la sonda giusta puntata sul SOGGETTO sbagliato — e il «non si può» mezzo vero**
 
@@ -579,7 +617,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **7** |
 | 📦 **Chiuse** | **47** il 13–17/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -807,7 +845,44 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
+
+### 59. 🕰️ **TEST può mostrare una copia VECCHIA senza dirlo** — il seguito della 58, messo qui da LUI
+
+> 🗣️ **Sua, il 17/08 sera**, subito dopo aver chiuso la 58: *«fai la B e poi la C»*, e
+> *«facciamolo in una nuova chat»*. ⇒ **L'ordine e il posto li ha dati lui.**
+
+**Il difetto, ed è il prezzo della cura della 58.** Ora `test.padelvillage.club` serve l'app da
+`app.html`, la copia pubblicata sul repo del caricatore. È la strada **primaria**, ed è giusto così
+— è quella che ha retto durante l'avaria di GitHub. Ma proprio perché è primaria: **se la sincronia
+si ferma, TEST mostra una versione vecchia e sullo schermo non si vede niente.**
+
+E la sincronia si può fermare in modi già noti: un'avaria di Actions (successa il 17/08), o lo
+**spegnimento automatico degli schedule dopo ~60 giorni** di repo fermo, che `sync-app.yml`
+documenta da sé.
+⚖️ Il dato per accorgersene **esiste già** — `app-meta.json` dice da quale commit viene la copia —
+ma **non lo guarda nessuno**.
+
+| | cosa | dove | perché |
+|---|---|---|---|
+| **B** | caricata l'app, **una** chiamata all'API confronta la testa di `test-preview` con `source_sha`: se la copia è indietro, **lo si dice a chi guarda**. Max una volta all'ora per browser (`localStorage`), e **mai bloccante** — se GitHub non risponde non si dice niente e non si allarma nessuno | nel caricatore, 5° repo | avvisa **chi guarda TEST** |
+| **C** | una guardia che confronta periodicamente `test-preview` con l'`app-meta.json` **servito**, e **avvisa su Telegram** se la copia resta indietro | ⭐ **sulla VM, NON su Actions** | avvisa **noi**, anche se non apre TEST nessuno |
+
+⭐⭐ **Perché la C va sulla VM e non su Actions**: su Actions morirebbe **insieme alla cosa che
+sorveglia** — cioè tacerebbe esattamente nel caso per cui esiste. La VM è l'unico pezzo del sistema
+che **non è GitHub**, ed è raggiungibile dal Mac (chiave `~/.ssh/padel_deploy`, verificata il 17/08).
+
+⛔ **UNA TERZA STRADA È GIÀ STATA SCARTATA: non rifarla.** «Leggere `synced_at` e mostrare l'età
+della copia» **non funziona**, e il motivo sta nel workflow: `sync-app.yml` fa `exit 0` quando l'app
+non è cambiata ⇒ `app-meta.json` si riscrive **solo quando la copia cambia**. `synced_at` non è un
+battito: una settimana tranquilla lo farebbe sembrare vecchio su una copia perfettamente fresca.
+⚖️ *Trovato leggendo il workflow **prima** di scrivere la cura — cioè verificando la premessa invece
+della conclusione.*
+
+⚠️ **Prima di metterci mano**: il file è nel repo del caricatore, dove il 17/08 **due sessioni si
+sono pestate i piedi**. `git fetch` e ricontrollo prima di spingere, sempre.
+
+---
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
