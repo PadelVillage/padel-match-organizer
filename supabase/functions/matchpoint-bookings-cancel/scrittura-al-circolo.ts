@@ -3,65 +3,31 @@
 // 🚨⭐⭐ IL FATTO CHE LA RENDE NECESSARIA, misurato e non dedotto: il worker che parla con
 // Matchpoint è **UNO SOLO** ed è **condiviso da TEST e PROD** (le credenziali hanno la stessa
 // impronta sui due progetti Supabase, misura del 25/07/2026). Quindi «provo su TEST» non è mai
-// stata una prova: una prenotazione fatta di là occupa un campo **VERO**.
+// stata una prova: una prenotazione fatta di là occupa un campo **VERO**, per giunta decisa su
+// dati vecchi — l'archivio prenotazioni di TEST è fermo per costruzione.
 //
 // L'app si difendeva da sé (`PMO_BOOKINGS_SIMULATE`, un intercettatore **dentro il browser**), ma
 // chi chiama queste edge **da fuori** — il bot dei soci — quel riparo non l'ha mai avuto: il bot
 // non ha un browser. Finora l'unica difesa erano cinque righe **dentro il bot**.
-// ⇒ Il riparo sta QUI, nel punto in cui la penna tocca la carta: **se non sono la produzione, al
-//   worker non ci parlo** — e vale per chiunque chiami, non solo per il bot.
+// ⇒ Il riparo si sposta QUI, nel punto in cui la penna tocca la carta: **se non sono la
+//   produzione, al worker non ci parlo** — e vale per chiunque chiami, non solo per il bot.
 //
 // ⭐ IL VERSO DEL DUBBIO è quello che il progetto usa già nell'app e nel bot (`lib/scrittura.ts`):
-// si scrive sul circolo SOLO se l'indirizzo è **certamente** quello di produzione. Indirizzo di
-// TEST, vuoto, sconosciuto, storpiato ⇒ il circolo non si tocca. Un errore di configurazione può
-// **fermare** una prenotazione, e si vede subito; non può **occuparne** una per sbaglio.
+// si scrive SOLO se l'indirizzo è **certamente** quello di produzione. Indirizzo di TEST, vuoto,
+// sconosciuto, storpiato ⇒ rifiuto. Un errore di configurazione può **fermare** una prenotazione,
+// e si vede subito perché la risposta lo dice; non può **occuparne** una per sbaglio.
 // 🚨 Conseguenza dichiarata, non nascosta: se un domani cambiasse il dominio delle funzioni,
 // PROD smetterebbe di scrivere e lo direbbe ad alta voce. È il verso giusto in cui rompersi.
 //
-// ═══════════════════════════════════════════════════════════════════════════════════════════
-// 🆕⭐⭐ 7/08/2026 — IL RECINTO NON RIFIUTA PIÙ: REGISTRA. Deciso da lui, con parole sue:
-//        *«per fare una prova reale dobbiamo portare tutto in test»* e *«mi devi lasciare la
-//        possibilità di prenotare una partita in test — logicamente dal bot»*.
-//
-// Fino a ieri, fuori dalla produzione, queste funzioni rispondevano `503 AMBIENTE_DI_PROVA`:
-// avevano capito la richiesta e non la eseguivano. Difendeva bene il circolo, ma rendeva
-// **impossibile provare davvero il bot**: si fermava tutto un passo prima del fatto.
-//
-// ⭐ E la sua premessa era GIUSTA, verificata nel codice: l'app di TEST prenota da mesi senza
-// toccare Matchpoint — intercetta la propria chiamata, risponde da sé «accettato» e registra la
-// partita nel gestionale di TEST (`index.html`, `PMO_BOOKINGS_SIMULATE`). Quello che mancava è
-// che la stessa cosa la sapesse fare il **server**, perché il bot un browser non ce l'ha.
-// ⇒ Da qui: fuori dalla produzione **il circolo non si chiama** (esattamente come prima) ma la
-//   partita **si registra qui**, marcata, e il chiamante riceve un sì onesto: «fatto, di prova».
-//
-// 🚨 Cosa NON è cambiato, ed è il punto: **il worker non viene chiamato**. Il recinto non si è
-//    aperto, ha cambiato verso — da «mi rifiuto» a «lo faccio qui». Chi un domani rimettesse la
-//    chiamata al circolo dentro questo ramo farebbe rosso un caso costruito apposta.
-// ⚖️ Il rifiuto RESTA, come ripiego: se la registrazione di prova non riesce, si risponde ancora
-//    `503` invece di raccontare un successo che non c'è stato. Nel dubbio non si dice «fatto».
-//
-// 🚨⭐⭐ E VALE SOLO PER LE PRENOTAZIONI. Questo modulo vive in **otto** copie: le tre delle
-//    prenotazioni (`bookings-create · edit · cancel`), le quattro dell'ANAGRAFICA
-//    (`clients-create · update · disable · reactivate`) e quella del BORSELLINO
-//    (`matchpoint-wallet-correct`). Le altre cinque continuano a
-//    **rifiutare** e basta, ed è voluto: una scheda cliente toccata per gioco resterebbe su
-//    Matchpoint e **tornerebbe dentro PROD** con l'import del mattino — è l'unica cosa che lo
-//    specchio notturno non ripulisce (era la ragione per cui il 6/08 sono entrate nel recinto).
-//    ⇒ Le funzioni qui sotto (`esitoDiProva`, il marchio) esistono per tutti, ma **le usa solo
-//      chi prenota**. Chi un domani volesse la stessa cosa per l'anagrafica deve prima risolvere
-//      quel ritorno, non limitarsi a copiare il ramo.
-//
 // 🆕💰⭐⭐ 9/08/2026 — L'OTTAVA COPIA: IL BORSELLINO (`matchpoint-wallet-correct`). Deciso da lui,
-//    ed era l'ultima funzione di scrittura rimasta fuori dal recinto: le correzioni del
-//    borsellino (storno e ricarica, `/correct-wallet`) toccavano il gestionale del circolo **da
-//    qualunque ambiente**. Il 6/08 era stata lasciata fuori di proposito — quella notte l'ambito
-//    erano prenotazioni e anagrafica, e **sui soldi decide lui**.
-// ⚖️ **RIFIUTA, non registra**, e la ragione non è la pigrizia della copia: il borsellino è
-//    denaro, e in questo progetto **Matchpoint è il libro mastro UNICO** — l'app è cassa e
-//    vetrina, mai un secondo libro. «Registrare qui una correzione di prova» vorrebbe dire
-//    inventare quel secondo libro proprio dove è vietato averlo. Fuori dalla produzione il
-//    borsellino non si tocca e lo si dice: `503 AMBIENTE_DI_PROVA`.
-// ═══════════════════════════════════════════════════════════════════════════════════════════
+// ed era l'ultima funzione di scrittura rimasta fuori dal recinto: le correzioni del borsellino
+// (storno e ricarica, worker `/correct-wallet`) toccavano il gestionale del circolo **da qualunque
+// ambiente**. Il 6/08 era stata lasciata fuori di proposito — quella notte l'ambito erano
+// prenotazioni e anagrafica, e **sui soldi decide lui**.
+// 🚨 E non era teorica: il borsellino era l'unico gesto dell'app di TEST che arrivava fino al
+// denaro **vero**. I pagamenti, in TEST, hanno un ramo di simulazione che il circolo non lo
+// chiama mai; il borsellino non ce l'ha **mai avuto**, e il suo interruttore
+// (`PMO_WALLET_WRITE_ENABLED`) è acceso su tutti e due i rami dell'app.
 //
 // ⚠️ QUESTO FILE VIVE IN OTTO COPIE IDENTICHE — le tre delle prenotazioni (`bookings-create` ·
 // `edit` · `cancel`), le quattro dell'anagrafica (`clients-create` · `update` · `disable` ·
@@ -70,6 +36,8 @@
 // inizia per `_`, quindi un modulo in `_shared/` **non si deployerebbe** — resterebbe la copia
 // vecchia, in silenzio e col semaforo verde. Le OTTO copie sono tenute uguali **byte per byte** da
 // `scrittura-al-circolo.test.ts`, che le rilegge dal disco.
+// 📏 Il numero qui sopra è già stato sbagliato: fino a oggi diceva «tre» mentre erano **sette**
+// dal 6/08. Chi ne aggiunge una aggiorni la frase — il banco conta le copie da sé, il commento no.
 
 /** Il progetto Supabase di PRODUZIONE: l'unico da cui si scrive sul gestionale del circolo. */
 export const REF_PROD = 'qqbfphyslczzkxoncgex';
@@ -77,32 +45,10 @@ export const REF_PROD = 'qqbfphyslczzkxoncgex';
 /** Il codice del rifiuto. Sta qui perché chi legge la risposta lo riconosca senza indovinarlo. */
 export const CODICE_AMBIENTE_DI_PROVA = 'AMBIENTE_DI_PROVA';
 
-/**
- * Cosa si risponde quando **nemmeno la registrazione di prova** è riuscita.
- * ⚖️ È il ripiego, non più la strada normale: fuori dalla produzione si registra (vedi sotto), e
- * si arriva qui solo se quella registrazione è fallita. Meglio un rifiuto che un falso sì.
- */
+/** Cosa si risponde a chi ha chiesto una scrittura da un ambiente che non è la produzione. */
 export const MESSAGGIO_AMBIENTE_DI_PROVA =
   'Ambiente di prova: da qui non si scrive sul gestionale del circolo. '
   + 'La richiesta è arrivata intera ed è stata capita, ma il gestionale non è stato toccato.';
-
-/** Cosa si risponde quando la prova è stata registrata qui. Dice **dove** è finita, non «ok». */
-export const MESSAGGIO_PROVA_REGISTRATA =
-  'Ambiente di prova: registrata qui, sul gestionale di prova. '
-  + 'Il circolo non è stato chiamato e su Matchpoint non c\'è nulla.';
-
-/**
- * Il marchio che una riga nata da una prova si porta dietro, dentro il `payload`.
- *
- * 🚨⭐⭐ SERVE A SOPRAVVIVERE AL GIRO DI SINCRONIZZAZIONE, e senza di lui tutto il resto è
- * inutile: `matchpoint-bookings-sync` **cancella** (tombstone) le righe `staff_booking` che non
- * trovano riscontro nell'occupazione letta da Matchpoint. Una partita di prova su Matchpoint non
- * c'è **per costruzione** ⇒ verrebbe marcata sparita al primo giro utile, e la beffa è che è
- * proprio **aprire l'app di TEST per guardarla** a far partire quel giro.
- * ⇒ Il reconcile salta le righe che portano questo marchio. Chi lo togliesse di qui vedrebbe le
- *   partite di prova sparire da sole dopo qualche minuto, senza un errore da nessuna parte.
- */
-export const MARCHIO_NATA_IN_PROVA = 'nata_in_prova';
 
 /**
  * Vero **solo** se questa funzione sta girando nel progetto di produzione.
@@ -121,30 +67,4 @@ export function scritturaAlCircoloConsentita(supabaseUrl: unknown): boolean {
   }
   if (host === `${REF_PROD}.supabase.co`) return true;
   return host.startsWith(`${REF_PROD}.`) && host.endsWith('.supabase.co');
-}
-
-/**
- * L'esito che si mette al posto di quello del worker quando si registra una prova.
- *
- * ⭐ Ha la **stessa forma** di quello vero (`idReserva`, che è il campo da cui tutto il resto
- * pende) perché il codice a valle non debba sapere di essere in prova: la differenza sta nel
- * **marchio**, non in una strada separata. Due strade diverse vorrebbero dire che quella di prova
- * non prova la strada vera.
- * 🚨 `idReserva` porta il prefisso `PROVA-`: chi lo legge in un registro capisce da sé che quella
- * riga non esiste su Matchpoint, senza dover risalire a chi l'ha scritta.
- */
-export function esitoDiProva(azione: 'create' | 'edit' | 'cancel'): Record<string, unknown> {
-  return {
-    simulato: true,
-    ambiente: 'prova',
-    azione,
-    idReserva: `PROVA-${crypto.randomUUID()}`,
-    nota: MESSAGGIO_PROVA_REGISTRATA,
-  };
-}
-
-/** Vero se questo esito viene da una prova e non dal circolo. Un posto solo per riconoscerlo. */
-export function esitoVieneDaUnaProva(workerResult: unknown): boolean {
-  return !!(workerResult && typeof workerResult === 'object'
-    && (workerResult as Record<string, unknown>).simulato === true);
 }
