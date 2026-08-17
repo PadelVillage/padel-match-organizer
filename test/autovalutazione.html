@@ -23,32 +23,55 @@
   </style>
 </head>
 <body>
+  <noscript><meta http-equiv="refresh" content="0; url=https://test.padelvillage.club/" /></noscript>
   <main class="loader">
     <img src="https://app.padelvillage.club/logo-padel-village.jpeg" alt="Padel Village" style="display:block;width:90px;height:auto;margin:0 auto 14px;" />
     <h1>Autovalutazione Livello di Gioco</h1>
-    <p>Caricamento dell'ultima scheda pubblicata sul canale test-preview...</p>
-    <p id="testLoaderError" class="error" hidden></p>
+    <p>Apertura della scheda…</p>
+    <p>Se non succede nulla: <a id="ripiego" href="https://test.padelvillage.club/">apri la scheda</a></p>
   </main>
   <script>
-    (async function loadTestPreview() {
-      const branch = 'test-preview';
-      const sourceUrl = `https://raw.githubusercontent.com/PadelVillage/padel-match-organizer/${branch}/autovalutazione.html?cache=${Date.now()}`;
-      try {
-        const response = await fetch(sourceUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const html = await response.text();
-        window.PMO_FORCE_ENV = 'test';
-        window.PMO_PUBLIC_BASE_URL = 'https://app.padelvillage.club/test/';
-        document.open();
-        document.write(html);
-        document.close();
-      } catch (err) {
-        const target = document.getElementById('testLoaderError');
-        if (target) {
-          target.hidden = false;
-          target.textContent = `Scheda TEST non caricata: ${err && err.message ? err.message : err}`;
-        }
-      }
+    /*
+     * 🚨⭐⭐ 17/08/2026 — VOCE 58: QUESTA PAGINA SCARICAVA DA GITHUB UN FILE CHE È SOLO UN RIMANDO.
+     *
+     * Il 17/08 il committente non riusciva più ad aprire TEST. Misurando — e la sonda che ha
+     * deciso è stata puntarla su un repo NON NOSTRO — è saltato fuori che GitHub rifiutava le
+     * richieste **anonime** da quella rete: `raw.githubusercontent.com` **429** e
+     * `api.github.com` **504** anche su `torvalds/linux`, mentre GitHub **Pages** rispondeva
+     * **200**. Un browser è anonimo per definizione, quindi ogni caricatore che passa da `raw`
+     * muore, e questo non aveva nemmeno un ripiego: il socio leggeva
+     * `Scheda TEST non caricata: HTTP 429` e il test del livello **non partiva**.
+     *
+     * 🚨 MA IL FATTO CHE HA CAMBIATO LA CURA È UN ALTRO, ed è venuto fuori solo seguendo la
+     * catena invece di leggerne un pezzo: quel file scaricato da `raw` — `autovalutazione.html`
+     * nella radice — **non è la scheda**. È una pagina di RIMANDO: fa
+     * `location.replace('./' + query)`. ⇒ La strada vera era di QUATTRO salti:
+     *
+     *   /test/autovalutazione.html  → scarica da raw una pagina di rimando   ← moriva qui
+     *     → /test/                  → rimanda a test.padelvillage.club
+     *       → test.padelvillage.club → scarica l'app da raw                   ← e qui
+     *
+     * ⇒ Si chiedeva a GitHub il permesso di **fare un salto che sapevamo già fare**. Ora il
+     * salto si fa e basta: **zero richieste**, un salto invece di tre.
+     *
+     * ⭐⭐ E la destinazione è più SICURA, non meno: su `test.padelvillage.club` l'ambiente è
+     * dichiarato dal suo caricatore **e** dall'hostname che comincia per `test.`. Qui invece
+     * l'hostname è `app.` — cioè PRODUZIONE — e l'unica cintura era la riga
+     * `PMO_FORCE_ENV` messa a mano, che per giunta era **inutile**: la pagina di rimando
+     * navigava via un istante dopo, portandosi appresso quella dichiarazione.
+     *
+     * ⚠️ La query e il frammento si portano APPRESSO: dentro c'è il gettone `?t=…` del socio,
+     * ed è l'unica cosa che lega quella scheda a quella persona. Perderlo vorrebbe dire un
+     * test che non si applica a nessuno.
+     * ⚖️ `replace` e non `href`, come fa già il rimando di `/test/`: così il tasto «indietro»
+     * non riporta qui, in un rimbalzo.
+     */
+    (function () {
+      var coda = (location.search || '') + (location.hash || '');
+      var dove = 'https://test.padelvillage.club/' + coda;
+      var a = document.getElementById('ripiego');
+      if (a) a.href = dove; // il ripiego a mano porta lo stesso gettone, non la pagina nuda
+      try { location.replace(dove); } catch (e) { location.href = dove; }
     })();
   </script>
 </body>
