@@ -160,10 +160,25 @@ Actions (`SSH_DEPLOY_KEY`). Node 24 in `/opt/node24`.
 | `/opt/matchpoint-worker` | `matchpoint-worker` | il worker, **condiviso TEST+PROD** |
 | `/opt/assistente-padel-agent` | `assistente-telegram` | 👥 **il bot dei SOCI** (PROD) |
 | `/opt/assistente-padel-agent-prova` | `assistente-telegram-prova` | 🧪 il bot di prova (`--verso-test`) |
+| `/opt/sentinella-freschezza-test` | ⛔ **non è pm2** — timer systemd | 🕰️ la sentinella della voce 59/C (sotto) |
 
 ⚠️ In `pm2 list` compaiono anche `shadow-backend` e `shadow-backend-st…`: sono **fermi**, non
 riaccenderli per sbaglio. E i **due bot in `online` insieme sono normali**: token diversi, cartelle
 diverse — non è la doppia istanza che darebbe 409.
+
+🚨 **E `pm2 list` NON vede tutto ciò che gira sulla VM.** Dal 17/08 c'è anche la **sentinella della
+freschezza di TEST** (voce 59/C), che è un `systemd` **oneshot** svegliato da un timer ogni 15′ — e
+non compare in `pm2 list` né in `ps` fra un giro e l'altro, perché fra un giro e l'altro **non
+esiste**. Si guarda così:
+```
+systemctl list-timers sentinella-freschezza-test.timer
+journalctl -u sentinella-freschezza-test.service -n 50
+cat /opt/sentinella-freschezza-test/stato.json
+```
+⚖️ Sta fuori da pm2 **di proposito**: sorveglia la sincronia dell'app di TEST, quindi non deve
+dipendere da nulla che possa cadere insieme a ciò che guarda. Sorgente e deploy in questo repo
+(`tools/sentinella-freschezza-test/`, `deploy-sentinella-hetzner.yml`), il `.env` con le credenziali
+Telegram **solo sulla VM** e mai in git — se manca, gira **disarmata** e lo scrive nel registro.
 
 🚨 **Le due cartelle del bot NON sono repository git**, e la VM **non può parlare con GitHub**
 (nessuna chiave privata in `/root/.ssh/`, `git config --global` vuoto, `git ls-remote` chiede
