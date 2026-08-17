@@ -351,9 +351,16 @@ export async function giro() {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function prova() {
   log(`--prova: voce = ${FONTE_VOCE}, chat = ${CHAT ? 'impostata' : 'MANCANTE'}`);
+  // 🚨 DUE esiti diversi, non uno.
+  //    «non ho ancora una voce» e «ho una voce e Telegram l'ha rifiutata» sono due
+  //    cose diverse, e trattarle uguale rende il deploy rosso per una credenziale che
+  //    manca — cioe' per una cosa in attesa, non per una cosa rotta. Un rosso che sta
+  //    li' per un motivo noto e accettato e' un rosso che si smette di leggere, ed e'
+  //    la stessa ragione per cui guard-worker-sync e' stata resa paziente.
   if (!TOKEN || !CHAT) {
-    log("🔇 --prova: DISARMATA, non c'è niente da provare (manca il token o la chat)");
-    return false;
+    log("🔇 --prova: DISARMATA — non c'è niente da provare, manca " +
+        (!CHAT ? 'il chat id' : 'il token') + '.');
+    return 'disarmata';
   }
   const m = await misura();
   const ok = await telegram(
@@ -377,8 +384,10 @@ export async function prova() {
 //    genere di sonda che risponde con sicurezza della cosa sbagliata.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv.includes('--prova')) {
+    // 0 = mandato · 2 = disarmata (in attesa, non rotta) · 1 = aveva una voce e non ha
+    // funzionato — l'unico caso che merita un rosso.
     prova()
-      .then((ok) => process.exit(ok ? 0 : 1))   // una PROVA fallita deve farsi vedere
+      .then((esito) => process.exit(esito === true ? 0 : esito === 'disarmata' ? 2 : 1))
       .catch((e) => { log('💥 --prova fallita:', e && e.stack ? e.stack : e); process.exit(1); });
   } else {
     giro()

@@ -167,13 +167,26 @@ jobs:
             echo "🔇 disarmata: niente da dimostrare. Metti il secret TELEGRAM_SENTINELLA_CHAT_ID e rilancia questo workflow."
             exit 0
           fi
+          # 🚨 Tre esiti, non due: 0 mandato · 2 disarmata (IN ATTESA, non rotta) · 1 rotta.
+          #    Un deploy rosso per una credenziale che manca e' un rosso che si smette di
+          #    leggere: e' la stessa ragione per cui guard-worker-sync e' paziente.
+          set +e
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
             set -euo pipefail
             cd /opt/sentinella-freschezza-test
             set -a; . ./.env; set +a
             /opt/node24/bin/node sentinella.mjs --prova
           EOF
-          echo "✅ messaggio di prova partito: guarda Telegram."
+          ESITO=$?
+          set -e
+          case "$ESITO" in
+            0) echo "✅ messaggio di prova partito: guarda Telegram." ;;
+            2) echo "::warning::La sentinella GUARDA ma non PUO' PARLARE: le manca una voce."
+               echo "Non è rotta, è in attesa. Metti il secret TELEGRAM_SENTINELLA_TOKEN e rilancia."
+               echo "🚨 Finché è così NON avvisa nessuno: misura e tace." ;;
+            *) echo "::error::La sentinella ha una voce ma il messaggio NON è partito — questo è un guasto vero."
+               exit 1 ;;
+          esac
 
       # Il deploy non e' finito quando rsync ha finito: e' finito quando la
       # sentinella ha MISURATO. Un'unita' installata che non gira e' il guasto
