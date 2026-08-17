@@ -116,6 +116,30 @@ jobs:
             if [ -s /opt/sentinella-freschezza-test/.env ]; then echo "🔫 .env presente"; else echo "🔇 DISARMATA: nessun .env"; fi
           EOF
 
+      # 👋 Se e' ARMATA, deve anche DIMOSTRARLO: un messaggio vero su Telegram, ora.
+      #    Senza, chi ha appena messo i secret non riceve niente finche' non c'e' un
+      #    guasto — e scoprirebbe il token sbagliato, la chat sbagliata o il bot che
+      #    non puo' scrivere per primo ESATTAMENTE nel momento in cui serve.
+      #    Una guardia che non ha mai parlato e una che non PUO' parlare fanno lo
+      #    stesso silenzio: e' la malattia di questa voce, applicata a lei.
+      - name: Se e' armata, lo DIMOSTRA (un messaggio vero, adesso)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_SENTINELLA_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_SENTINELLA_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT:-}" ]; then
+            echo "🔇 disarmata: niente da dimostrare. Metti i due secret e rilancia questo workflow."
+            exit 0
+          fi
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
+            set -euo pipefail
+            cd /opt/sentinella-freschezza-test
+            set -a; . ./.env; set +a
+            /opt/node24/bin/node sentinella.mjs --prova
+          EOF
+          echo "✅ messaggio di prova partito: guarda Telegram."
+
       # Il deploy non e' finito quando rsync ha finito: e' finito quando la
       # sentinella ha MISURATO. Un'unita' installata che non gira e' il guasto
       # che questa voce esiste per evitare, un piano piu' in su.
