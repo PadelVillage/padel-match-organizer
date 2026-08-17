@@ -176,9 +176,9 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
     : fetchVero(u, o));
   const z2 = zittisci(); const ok2 = await prova(); z2();
   globalThis.fetch = fetchVero;
-  controlla('--prova con Telegram che rifiuta: torna FALSO (esce rossa, non verde)',
+  controlla('--prova con Telegram che rifiuta: torna FALSO — e falso e\' ROSSO, mentre «disarmata» e\' giallo',
     ok2 === false && inviati.length === 0,
-    `torna ${ok2} (deve essere false), messaggi=${inviati.length}`);
+    `torna ${ok2} (deve essere false, non 'disarmata'), messaggi=${inviati.length}`);
 
   // Disarmata: non finge di aver mandato.
   inviati.length = 0;
@@ -186,8 +186,8 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
   const { prova: provaDisarmata } = await import('./sentinella.mjs?disarmata=1');
   const z3 = zittisci(); const ok3 = await provaDisarmata(); z3();
   process.env.TELEGRAM_SENTINELLA_TOKEN = t;
-  controlla('--prova disarmata: torna falso e non finge di aver mandato',
-    ok3 === false && inviati.length === 0, `torna ${ok3}, messaggi=${inviati.length}`);
+  controlla("--prova disarmata: torna 'disarmata' (IN ATTESA), non falso: e' diverso da «rotta»",
+    ok3 === 'disarmata' && inviati.length === 0, `torna ${ok3}, messaggi=${inviati.length}`);
   rmSync(dir4, { recursive: true, force: true });
 }
 
@@ -219,8 +219,8 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
   inviati.length = 0;
   const { prova: provaSenza } = await import('./sentinella.mjs?senza=1');
   const zs = zittisci(); const oks = await provaSenza(); zs();
-  controlla('se il .env del bot di prova sparisce: disarmata e lo dice, non finge di aver mandato',
-    oks === false && inviati.length === 0, `--prova torna ${oks}, messaggi=${inviati.length}`);
+  controlla('se la voce non si trova: torna «disarmata», non finge di aver mandato',
+    oks === 'disarmata' && inviati.length === 0, `--prova torna ${oks}, messaggi=${inviati.length}`);
 
   // ── e soprattutto: DICE PERCHE'. Un «non ci sono riuscito» muto costa un giro
   //    di indovinelli — e il 17/08 e' costato esattamente quello sulla VM vera.
