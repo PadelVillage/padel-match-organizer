@@ -892,6 +892,70 @@ creare solo il committente, e **al 17/08 sera non c'è ancora**.
 ⇒ Restano due cose, entrambe sue: il secret (facoltativo — senza si va di cron, ≤10′) e
 **vederla funzionare coi suoi occhi**. Poi la voce si sposta fra le chiuse.
 
+**🔄 58 · LA SECONDA METÀ, dalla sessione parallela sul Mac (17/08 sera).**
+*(volutamente NON un titolo `###`: dentro le urgenti la guardia dei conteggi li conta come voci,
+e questo è un aggiornamento della 58, non una voce nuova.)*
+
+🚨 **Il perché era più grosso di «GitHub strozza i percorsi per-ramo»: era un'AVARIA DICHIARATA.**
+Alle 17:10 `githubstatus.com` — che è un altro host, quindi una sonda che **non passa dalla nostra
+rete** — diceva **Partial System Outage**, con **API Requests** e **Actions** in *major outage*,
+più Issues, Pull Requests e Webhooks, e un incidente aperto dalle **13:40 UTC**, cioè ~25 minuti
+prima che lui se ne accorgesse. Lo confermava un deploy fallito con *«is githubstatus.com reporting
+a Pages outage? Please re-run the deployment at a later time»*.
+⭐⭐ **Pages NON era fra i componenti in avaria** — `app.` e `test.` hanno risposto **200 tutto il
+giorno**. ⇒ È la prova più forte possibile della cura scelta: **la porta su cui è stata spostata
+TEST è rimasta in piedi durante l'avaria**. Se `app.html` fosse già stato in servizio la mattina,
+TEST avrebbe funzionato **quel giorno stesso**.
+
+🚨 **E la 58 era più larga di com'era scritta: le pagine che morivano erano DUE.** Oltre all'app,
+**il link del test di livello** (`test/autovalutazione.html`) — e quella non aveva nemmeno il
+ripiego sbagliato: una strada sola, su `raw`. Il socio leggeva `Scheda TEST non caricata: HTTP 429`
+e **il test non partiva**.
+⭐⭐ **Ma il fatto che ha cambiato la cura è venuto solo SEGUENDO LA CATENA, non leggendone un
+pezzo**: il file che scaricava da `raw` **non è la scheda**, è una pagina di **rimando**
+(`location.replace('./' + query)`). La strada vera era di **quattro salti, due dei quali su GitHub**:
+
+```
+/test/autovalutazione.html → scarica da raw un RIMANDO          ← moriva qui
+  → /test/                 → rimanda a test.padelvillage.club
+    → test.padelvillage.club → scarica l'app da raw             ← e qui
+```
+
+⇒ *Si chiedeva a GitHub il permesso di fare un salto che sapevamo già fare.* Ora ne fa **uno** e
+**non chiede niente a nessuno** (PR #805 su `test-preview`, #806 su `main` — è `main` a servire
+quella pagina). ⭐ E la destinazione è **più sicura**: su `test.padelvillage.club` l'ambiente lo
+dichiarano il caricatore **e** l'hostname; lì l'hostname è `app.`, cioè produzione, e l'unica
+cintura era una riga `PMO_FORCE_ENV` che per giunta era **inutile** — la pagina di rimando navigava
+via un istante dopo. ✅ Verificato sul file **servito**: 0 chiamate di rete, salto presente, query e
+frammento (il gettone `?t=` del socio) portati appresso, ripiego `noscript`.
+⚠️ Il deploy di Pages che la portava live era **fallito per l'avaria** e non l'aveva rilanciato
+nessuno: rilanciato a mano, `run_attempt: 2` → `success`, e **poi** verificato sul bersaglio.
+
+🚨⭐⭐ **DUE SESSIONI HANNO LAVORATO SULLA STESSA VOCE, e il prezzo si è pagato.** Mentre la sessione
+cloud pubblicava `app.html`, quella sul Mac aveva costruito e **provato nel browser** una soluzione
+diversa (copia come ripiego dietro un bottone, con tetto d'attesa). Al merge: **conflitto**. La
+versione cloud è **migliore** — copia come strada *primaria*, rivalidazione ETag invece di
+riscaricare 3 MB, e `sync-app.yml` che la tiene fresca, cosa che l'altra aveva dichiarato
+impossibile senza un secret — quindi la PR del Mac è stata **chiusa**, non fusa.
+⚖️ *Il conflitto ha fatto da rete: senza quel rifiuto una sessione avrebbe sovrascritto il lavoro
+dell'altra senza accorgersene.* È la 28ª, e stavolta ha protetto qualcun altro da noi.
+📌 **Da innestare, se un giorno serve**: il **tetto d'attesa** (`AbortSignal.timeout`) sulle chiamate
+a GitHub. Un rifiuto arriva subito; un **appeso** lascia «Caricamento…» per sempre.
+
+⏭️ **Il seguito, deciso da lui il 17/08 sera — nell'ordine: prima la B, poi la C.**
+
+| | cosa | dove |
+|---|---|---|
+| **B** | caricata l'app, **una** chiamata all'API confronta la testa di `test-preview` con `source_sha`: se la copia è indietro, **si dice a chi guarda**. Max una volta all'ora per browser, **mai bloccante** | nel caricatore |
+| **C** | una guardia che confronta periodicamente e **avvisa su Telegram** se la copia resta indietro | ⭐ **sulla VM, non su Actions**: su Actions morirebbe insieme alla cosa che sorveglia |
+
+⛔ **Una terza strada è già stata scartata: non rifarla.** «Leggere `synced_at` e mostrare l'età della
+copia» **non funziona**, e il motivo sta nel workflow: `sync-app.yml` fa `exit 0` quando l'app non è
+cambiata ⇒ `app-meta.json` si riscrive **solo quando la copia cambia**. `synced_at` non è un battito:
+una settimana tranquilla lo farebbe sembrare vecchio su una copia perfettamente fresca.
+⚖️ *Scoperto leggendo il workflow **prima** di scrivere la cura — cioè verificando la premessa invece
+della conclusione.*
+
 
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
