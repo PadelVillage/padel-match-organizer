@@ -50,8 +50,55 @@ const GIRI_PRIMA_DI_SUONARE = Number(process.env.PMO_GIRI_PRIMA_DI_SUONARE || 3)
 const GIRI_CIECHI_PRIMA_DI_DIRLO = Number(process.env.PMO_GIRI_CIECHI || 12);
 const TETTO_ATTESA_MS = Number(process.env.PMO_TETTO_ATTESA_MS || 15000);
 
-const TOKEN = process.env.TELEGRAM_SENTINELLA_TOKEN || '';
+// ── La voce: da dove viene il token ──────────────────────────────────────────
+// Scelta del committente, 17/08/2026: *«facciamo la B perché il bot di test non lo
+// leveremo mai»*. ⇒ La sentinella non ha un bot suo: parla con quello di PROVA, il
+// cui token e' gia' sulla VM nella cartella accanto.
+//
+// ⚖️ Il rischio che questa scelta accetta, dichiarato e non taciuto: la voce della
+//    sentinella dipende da un pezzo che non e' suo. Lui ha risposto sul RITIRO del
+//    bot ("non lo leveremo mai"), che e' una decisione sua e vale. Resta l'altra
+//    meta' — il token che CAMBIA o si rompe — e quella non si decide, quindi e'
+//    chiusa altrove: col BATTITO settimanale piu' in basso.
+//
+// 🔎 Il token si riconosce dalla FORMA, non dal nome della riga: nel .env del bot
+//    quella variabile puo' chiamarsi in molti modi, e un parser legato al nome si
+//    romperebbe in silenzio il giorno che qualcuno la rinomina — restituendo
+//    "nessun token" con la stessa sicurezza con cui restituirebbe la verita'.
+const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || '/opt/assistente-padel-agent-prova/.env';
+const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
+
+function tokenDalBotDiProva() {
+  try {
+    const testo = readFileSync(ENV_BOT_PROVA, 'utf8');
+    for (const riga of testo.split('\n')) {
+      const pulita = riga.trim();
+      if (!pulita || pulita.startsWith('#')) continue;
+      const m = pulita.replace(/^[A-Za-z0-9_]+\s*=\s*/, '').replace(/^["']|["']$/g, '').match(FORMA_TOKEN);
+      if (m) return m[1];
+    }
+    return '';
+  } catch (e) { return ''; }
+}
+
+const TOKEN_PROPRIO = process.env.TELEGRAM_SENTINELLA_TOKEN || '';
+const TOKEN_PRESTATO = TOKEN_PROPRIO ? '' : tokenDalBotDiProva();
+const TOKEN = TOKEN_PROPRIO || TOKEN_PRESTATO;
+// Da dove viene la voce, in chiaro nel registro. Del token si nomina solo la parte
+// PRIMA dei due punti — e' l'id pubblico del bot, non il segreto.
+const FONTE_VOCE = TOKEN_PROPRIO ? 'secret proprio'
+  : (TOKEN_PRESTATO ? `bot di prova (${ENV_BOT_PROVA}, bot ${TOKEN_PRESTATO.split(':')[0]})` : 'nessuna');
 const CHAT = process.env.TELEGRAM_SENTINELLA_CHAT_ID || '';
+
+// 💓 IL BATTITO. Ogni tanto un «sono viva» anche quando va tutto bene.
+// 🚨 Serve a rendere VERIFICABILE la frase «silenzio = tutto a posto», che altrimenti
+//    e' una speranza: una sentinella muta (token cambiato, bot rotto, VM spenta) fa
+//    lo stesso identico silenzio di una sentinella tranquilla. Col battito, il
+//    silenzio che conta diventa l'ASSENZA del battito — una cosa che si nota.
+//    Ed e' la cura precisa del rischio che la scelta di prendere in prestito il
+//    token si porta dietro.
+// Si spegne con PMO_BATTITO_GIORNI=0.
+const BATTITO_GIORNI = Number(process.env.PMO_BATTITO_GIORNI ?? 7);
 
 const ora = () => new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z';
 const log = (...a) => console.log(`[${ora()}]`, ...a);
@@ -161,7 +208,7 @@ export async function giro() {
   let cecitaDetta = !!s.cecitaDetta;
   const mandati = [];
 
-  log(`esito=${m.esito}` + (m.perche ? ` (${m.perche})` : '') +
+  log(`voce=${FONTE_VOCE} · esito=${m.esito}` + (m.perche ? ` (${m.perche})` : '') +
       (m.impronta ? ` servita=${m.impronta.servita.slice(0, 7)} sorgente=${m.impronta.sorgente.slice(0, 7)}` : '') +
       ` · indietro di fila=${consecutiviIndietro} · ciechi di fila=${consecutiviCiechi}`);
 
@@ -202,10 +249,34 @@ export async function giro() {
   }
   if (m.esito !== 'cieca') cecitaDetta = false;
 
+  // ── 💓 il battito: rende verificabile «silenzio = tutto a posto» ──────────
+  // Non parte se c'e' un allarme in corso (li' i messaggi arrivano gia'), ne' se
+  // e' cieca: un battito da cieca direbbe «sto guardando» mentre non guarda.
+  // 🚨 Al PRIMISSIMO giro l'orologio si fa partire SENZA battere. Senza questa riga
+  //    una sentinella appena installata batteva subito, e siccome il deploy ha gia'
+  //    mandato il «👋 sono armata» il socio ne riceveva DUE a un quarto d'ora di
+  //    distanza. Il battito del giorno zero e' il --prova: qui si comincia a contare.
+  //    (Trovato al banco: il caso «copia fresca → nessun messaggio» e' caduto rosso.)
+  let ultimoBattito = s.ultimoBattito || 0;
+  if (!ultimoBattito) {
+    ultimoBattito = Date.now();
+  } else if (BATTITO_GIORNI > 0 && m.esito === 'fresca' && !allarmeAttivo &&
+      (Date.now() - ultimoBattito) > BATTITO_GIORNI * 86400000) {
+    if (await telegram(
+      `💓 <b>Sentinella di TEST: sono viva</b>\n\n` +
+      `${BASE_TEST} sta servendo la versione giusta ` +
+      `(<code>${m.impronta.sorgente.slice(0, 7)}</code>). Niente da segnalare.\n\n` +
+      `📌 Questo arriva ogni ${BATTITO_GIORNI} giorni <b>apposta</b>: se smette di arrivare, ` +
+      `vuol dire che ho smesso di guardare — e quello è l'unico silenzio di cui preoccuparsi.`
+    )) { mandati.push('battito'); }
+    ultimoBattito = Date.now();   // anche se non e' partito: non si riprova a raffica
+  }
+
   scriviStato({
     ultimoGiro: ora(), ultimoEsito: m.esito, ultimoPerche: m.perche || null,
     consecutiviIndietro, consecutiviCiechi, allarmeAttivo, cecitaDetta,
-    impronta: m.impronta || null, servitoCoerente: m.servitoCoerente ?? null
+    impronta: m.impronta || null, servitoCoerente: m.servitoCoerente ?? null,
+    fonteVoce: FONTE_VOCE, ultimoBattito
   });
   return { misura: m, consecutiviIndietro, consecutiviCiechi, allarmeAttivo, cecitaDetta, mandati };
 }
@@ -223,6 +294,7 @@ export async function giro() {
 //    e' una prova, non una guardia, e una prova che fallisce deve farsi vedere.
 // ─────────────────────────────────────────────────────────────────────────────
 export async function prova() {
+  log(`--prova: voce = ${FONTE_VOCE}, chat = ${CHAT ? 'impostata' : 'MANCANTE'}`);
   if (!TOKEN || !CHAT) {
     log("🔇 --prova: DISARMATA, non c'è niente da provare (manca il token o la chat)");
     return false;
@@ -231,7 +303,9 @@ export async function prova() {
   const ok = await telegram(
     `👋 <b>Sentinella di TEST installata e ARMATA</b>\n\n` +
     `Da adesso guardo ogni 15′ se ${BASE_TEST} sta servendo una copia vecchia, ` +
-    `e parlo <b>solo se c'è qualcosa da dire</b>: silenzio = tutto a posto.\n\n` +
+    `e parlo <b>solo se c'è qualcosa da dire</b>: silenzio = tutto a posto` +
+    (BATTITO_GIORNI > 0 ? `, più un 💓 ogni ${BATTITO_GIORNI} giorni per farti sapere che sto ancora guardando` : '') +
+    `.\n\n` +
     `Misura di adesso: <b>${m.esito}</b>` +
     (m.impronta ? ` (servita <code>${m.impronta.servita.slice(0, 7)}</code>, sorgente <code>${m.impronta.sorgente.slice(0, 7)}</code>)` : '') +
     (m.perche ? `\n<code>${m.perche}</code>` : '') +
