@@ -62,6 +62,31 @@ jobs:
           fi
           echo "✅ /opt/node24/bin/node → $V"
 
+      # 🔎 Da dove prendera' la voce? Si guarda PRIMA, e senza stampare segreti: solo
+      #    i NOMI dei file che potrebbero contenerla e se una riga ha la forma di un
+      #    token. Il 17/08 il primo giro ha detto «fonteVoce: nessuna» e non c'era
+      #    modo di sapere se mancava il file o la riga: questo passo esiste per quello.
+      - name: Dove sta la voce del bot di prova? (solo nomi, mai contenuti)
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
+            set +e
+            D=/opt/assistente-padel-agent-prova
+            echo "=== la cartella del bot di prova esiste? ==="
+            [ -d "$D" ] && echo "sì: $D" || { echo "NO — ecco cosa c'è in /opt:"; ls -1 /opt; }
+            echo
+            echo "=== file che potrebbero contenere la configurazione (nomi e dimensioni, NON il contenuto) ==="
+            ls -la "$D" 2>/dev/null | grep -iE 'env|config|ecosystem' || echo "(nessun file con env/config/ecosystem nel nome)"
+            echo
+            echo "=== qualche riga ha la forma di un token Telegram? (si stampa solo l'ID del bot, che è pubblico) ==="
+            for F in "$D"/.env "$D"/.env.* "$D"/ecosystem.config.* ; do
+              [ -f "$F" ] || continue
+              ID=$(grep -oE '[0-9]{6,}:[A-Za-z0-9_-]{30,}' "$F" 2>/dev/null | head -1 | cut -d: -f1)
+              if [ -n "$ID" ]; then echo "$F → SÌ (bot $ID)"; else echo "$F → no"; fi
+            done
+            echo "=== fine ==="
+          EOF
+
       - name: Copia la sentinella (senza toccare .env ne' lo stato)
         run: |
           set -euo pipefail

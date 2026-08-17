@@ -222,6 +222,28 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
   controlla('se il .env del bot di prova sparisce: disarmata e lo dice, non finge di aver mandato',
     oks === false && inviati.length === 0, `--prova torna ${oks}, messaggi=${inviati.length}`);
 
+  // ── e soprattutto: DICE PERCHE'. Un «non ci sono riuscito» muto costa un giro
+  //    di indovinelli — e il 17/08 e' costato esattamente quello sulla VM vera.
+  //    ⚠️ L'ordine conta: sentinella.mjs legge le variabili all'IMPORT, quindi vanno
+  //    impostate PRIMA (sbagliato al primo tentativo, e il banco l'ha detto subito).
+  async function fonteVoceCon(envBot, statoFile) {
+    process.env.PMO_ENV_BOT_PROVA = envBot;
+    process.env.PMO_STATO_FILE = statoFile;
+    const { giro: g } = await import(`./sentinella.mjs?fv=${encodeURIComponent(statoFile)}`);
+    const z = zittisci(); await g(); z();
+    return JSON.parse(readFileSync(statoFile, 'utf8')).fonteVoce || '';
+  }
+
+  const fv1 = await fonteVoceCon(join(dir5, 'non-esiste.env'), join(dir5, 'st1.json'));
+  controlla("quando la voce manca, lo stato dice PERCHE': file assente",
+    /file assente/.test(fv1), `fonteVoce = "${fv1}"`);
+
+  const senzaToken = join(dir5, 'senza-token.env');
+  writeFileSync(senzaToken, 'NODE_ENV=production\nPORT=3000\n');
+  const fv2 = await fonteVoceCon(senzaToken, join(dir5, 'st2.json'));
+  controlla("e distingue «file assente» da «il file c'e' ma nessuna riga ha la forma di un token»",
+    /nessuna delle 2 righe/.test(fv2), `fonteVoce = "${fv2}"`);
+
   // Il BATTITO: al primo giro NON batte (lo ha gia' fatto il --prova del deploy)...
   process.env.PMO_ENV_BOT_PROVA = envFinto;
   const dir6 = mkdtempSync(join(tmpdir(), 'sentinella6-'));
