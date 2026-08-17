@@ -34,7 +34,7 @@
 //    cieca e una sentinella tranquilla fanno lo stesso identico silenzio.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -65,7 +65,9 @@ const TETTO_ATTESA_MS = Number(process.env.PMO_TETTO_ATTESA_MS || 15000);
 //    quella variabile puo' chiamarsi in molti modi, e un parser legato al nome si
 //    romperebbe in silenzio il giorno che qualcuno la rinomina — restituendo
 //    "nessun token" con la stessa sicurezza con cui restituirebbe la verita'.
-const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || '/opt/assistente-padel-agent-prova/.env';
+const CARTELLA_BOT_PROVA = process.env.PMO_CARTELLA_BOT_PROVA || '/opt/assistente-padel-agent-prova';
+const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || `${CARTELLA_BOT_PROVA}/.env`;
+const FILE_CANDIDATI = [ENV_BOT_PROVA, `${CARTELLA_BOT_PROVA}/.env.local`, `${CARTELLA_BOT_PROVA}/.env.prova`];
 const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
 
 // 🚨 Torna anche il PERCHE' quando non trova niente. La prima versione aveva un
@@ -75,22 +77,63 @@ const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
 //    ⚖️ E' la malattia di questa voce commessa DENTRO la sua cura: un guasto che non
 //    dice cosa e' andato storto. Un «non ci sono riuscito» senza motivo costa un giro
 //    di indovinelli a chiunque lo legga.
-function tokenDalBotDiProva() {
-  let testo;
-  try {
-    testo = readFileSync(ENV_BOT_PROVA, 'utf8');
-  } catch (e) {
-    return { token: '', motivo: e.code === 'ENOENT' ? `file assente: ${ENV_BOT_PROVA}` : `${ENV_BOT_PROVA} illeggibile (${e.code || e.message})` };
-  }
-  let righeUtili = 0;
-  for (const riga of testo.split('\n')) {
+function cercaNelTesto(testo, separatore) {
+  for (const riga of testo.split(separatore)) {
     const pulita = riga.trim();
     if (!pulita || pulita.startsWith('#')) continue;
-    righeUtili++;
     const m = pulita.replace(/^[A-Za-z0-9_]+\s*=\s*/, '').replace(/^["']|["']$/g, '').match(FORMA_TOKEN);
-    if (m) return { token: m[1], motivo: '' };
+    if (m) return m[1];
   }
-  return { token: '', motivo: `nessuna delle ${righeUtili} righe di ${ENV_BOT_PROVA} ha la forma di un token Telegram` };
+  return '';
+}
+
+// 🚨 E il .env NON C'ERA — misurato sulla VM il 17/08, non supposto.
+//    La strada «prendi il token dal .env del bot di prova» poggiava su un'assunzione
+//    che non avevo provato: che quel bot tenga il token in un file lì dentro. Non lo
+//    fa. ⇒ Si cerca dove il token sta DI SICURO se il bot gira: nel suo AMBIENTE.
+//    Un processo vivo che parla con Telegram ha per forza il suo token, comunque
+//    gliel'abbiano dato — file, pm2, systemd o riga di comando.
+// ⚖️ E' la 26ª al contrario: non un limite dichiarato e mai provato, ma una CAPACITA'
+//    dichiarata e mai provata. Costa uguale, e si smaschera allo stesso modo:
+//    eseguendo.
+function tokenDalProcessoDiProva() {
+  let pid = '';
+  try {
+    for (const voce of readdirSync('/proc')) {
+      if (!/^\d+$/.test(voce)) continue;
+      let cmd;
+      try { cmd = readFileSync(`/proc/${voce}/cmdline`, 'utf8'); } catch (e) { continue; }
+      if (!cmd.includes(CARTELLA_BOT_PROVA)) continue;
+      pid = voce;
+      let amb;
+      try { amb = readFileSync(`/proc/${voce}/environ`, 'utf8'); } catch (e) {
+        return { token: '', motivo: `ambiente del processo ${voce} illeggibile (${e.code || e.message})` };
+      }
+      const t = cercaNelTesto(amb, '\0');
+      if (t) return { token: t, motivo: '', dove: `ambiente del processo ${voce}` };
+    }
+  } catch (e) {
+    return { token: '', motivo: `/proc illeggibile (${e.code || e.message})` };
+  }
+  return { token: '', motivo: pid
+    ? `il processo ${pid} del bot di prova gira, ma non ha un token nel suo ambiente`
+    : `nessun processo in esecuzione da ${CARTELLA_BOT_PROVA}` };
+}
+
+function tokenDalBotDiProva() {
+  // ① i file, in ordine: e' la strada piu' stabile quando c'e'.
+  const provati = [];
+  for (const f of FILE_CANDIDATI) {
+    let testo;
+    try { testo = readFileSync(f, 'utf8'); } catch (e) { provati.push(`${f}: ${e.code === 'ENOENT' ? 'assente' : e.code || e.message}`); continue; }
+    const t = cercaNelTesto(testo, '\n');
+    if (t) return { token: t, motivo: '', dove: f };
+    provati.push(`${f}: c'è ma nessuna riga ha la forma di un token`);
+  }
+  // ② l'ambiente del processo vivo: se il bot gira, il token ce l'ha per forza.
+  const dalProcesso = tokenDalProcessoDiProva();
+  if (dalProcesso.token) return dalProcesso;
+  return { token: '', motivo: `${dalProcesso.motivo}; file: ${provati.join(' · ')}` };
 }
 
 const TOKEN_PROPRIO = process.env.TELEGRAM_SENTINELLA_TOKEN || '';
@@ -99,7 +142,7 @@ const TOKEN = TOKEN_PROPRIO || PRESTITO.token;
 // Da dove viene la voce, in chiaro nel registro. Del token si nomina solo la parte
 // PRIMA dei due punti — e' l'id pubblico del bot, non il segreto.
 const FONTE_VOCE = TOKEN_PROPRIO ? 'secret proprio'
-  : (PRESTITO.token ? `bot di prova (${ENV_BOT_PROVA}, bot ${PRESTITO.token.split(':')[0]})`
+  : (PRESTITO.token ? `bot di prova — ${PRESTITO.dove} (bot ${PRESTITO.token.split(':')[0]})`
                     : `NESSUNA — ${PRESTITO.motivo}`);
 const CHAT = process.env.TELEGRAM_SENTINELLA_CHAT_ID || '';
 
