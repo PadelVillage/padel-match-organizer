@@ -1,0 +1,161 @@
+#!/usr/bin/env node
+// ─────────────────────────────────────────────────────────────────────────────
+// BANCO della sentinella (voce 59/C). Non tocca la rete: fetch e' sostituito.
+//   node banco-sentinella.mjs
+//
+// Prova le cose che una guardia sbaglia di solito, e che rileggendo sembrano a
+// posto tutte e quattro:
+//   · suona TROPPO PRESTO (e allora in un mese nessuno la legge piu');
+//   · suona DUE VOLTE per lo stesso guasto;
+//   · scambia «non lo so» per «indietro» — cioe' accusa quando e' cieca;
+//   · resta zitta da cieca, che e' lo stesso silenzio di quando va tutto bene.
+//
+// 🚨 Ogni sabotaggio verifica di essere stato APPLICATO prima di girare: un
+//    sabotaggio non applicato da' lo stesso identico verde di un caso cieco.
+// ─────────────────────────────────────────────────────────────────────────────
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const A = '1'.repeat(40);   // impronta «vecchia»
+const B = '2'.repeat(40);   // impronta «nuova»
+const SHA = 'a'.repeat(40);
+
+let scenario = { meta: 'ok', servita: A, sorgente: A, github: 'ok', headLen: 100 };
+const inviati = [];
+
+globalThis.fetch = async (url, opz = {}) => {
+  const u = String(url);
+  if (u.includes('app-meta.json')) {
+    if (scenario.meta === 'giu') return { ok: false, status: 503 };
+    return { ok: true, status: 200, json: async () => ({ source_sha: SHA }) };
+  }
+  if (u.includes('api.github.com/repos')) {
+    if (scenario.github === 'quota') return { ok: false, status: 403 };
+    if (scenario.github === 'rete') throw new Error('getaddrinfo ENOTFOUND');
+    const rif = decodeURIComponent(u.split('ref=')[1] || '');
+    const sha = rif === SHA ? scenario.servita : scenario.sorgente;
+    return { ok: true, status: 200, json: async () => ([
+      { name: 'CLAUDE.md', path: 'CLAUDE.md', type: 'file', sha: 'f'.repeat(40), size: 10 },
+      { name: 'index.html', path: 'index.html', type: 'file', sha, size: 100 }
+    ]) };
+  }
+  if (u.includes('/app.html')) {
+    return { ok: true, status: 200, headers: { get: (k) => (k === 'content-length' ? String(scenario.headLen) : null) } };
+  }
+  if (u.includes('api.telegram.org')) {
+    inviati.push(JSON.parse(opz.body).text);
+    return { ok: true, status: 200, text: async () => 'ok' };
+  }
+  throw new Error('URL non previsto dal banco: ' + u);
+};
+
+const dir = mkdtempSync(join(tmpdir(), 'sentinella-'));
+process.env.PMO_STATO_FILE = join(dir, 'stato.json');
+process.env.TELEGRAM_SENTINELLA_TOKEN = 'finto';
+process.env.TELEGRAM_SENTINELLA_CHAT_ID = '1';
+process.env.PMO_GIRI_PRIMA_DI_SUONARE = '3';
+process.env.PMO_GIRI_CIECHI = '4';
+
+const { giro } = await import('./sentinella.mjs');
+
+let ko = 0, n = 0;
+const zittisci = () => { const v = console.log; console.log = () => {}; return () => { console.log = v; }; };
+async function passo() { const r = zittisci(); try { return await giro(); } finally { r(); } }
+function controlla(nome, cond, dettaglio) {
+  n++; if (!cond) ko++;
+  console.log(`${cond ? '✅' : '❌'} ${nome}`);
+  if (dettaglio) console.log(`     ${dettaglio}`);
+}
+
+// ── 1. tutto a posto → silenzio ──────────────────────────────────────────────
+inviati.length = 0;
+await passo();
+controlla('copia fresca → nessun messaggio', inviati.length === 0, `messaggi=${inviati.length}`);
+
+// ── 2. la copia va indietro: PAZIENZA — non suona al 1° ne' al 2° giro ───────
+scenario.sorgente = B;                       // il ramo e' andato avanti
+inviati.length = 0;
+const g1 = await passo();
+const g2 = await passo();
+controlla('indietro da 1 e 2 giri → ancora zitta (la sincronia ha un cron da 10\')',
+  inviati.length === 0 && g1.consecutiviIndietro === 1 && g2.consecutiviIndietro === 2,
+  `messaggi=${inviati.length} · di fila=${g2.consecutiviIndietro}`);
+
+// ── 3. al 3° giro suona, UNA volta ───────────────────────────────────────────
+const g3 = await passo();
+controlla('al 3° giro suona', inviati.length === 1 && /copia VECCHIA/.test(inviati[0] || ''),
+  `messaggi=${inviati.length}`);
+await passo(); await passo();
+controlla('e NON risuona ai giri dopo (un guasto, un messaggio)', inviati.length === 1,
+  `messaggi dopo altri 2 giri=${inviati.length}`);
+
+// ── 4. cecita' NON e' un'accusa: GitHub muto non deve produrre allarmi ───────
+{
+  const dir2 = mkdtempSync(join(tmpdir(), 'sentinella2-'));
+  process.env.PMO_STATO_FILE = join(dir2, 'stato.json');
+  inviati.length = 0;
+  scenario.github = 'quota';
+  const a = await passo(); const b = await passo(); const c = await passo();
+  controlla('GitHub risponde 403 per 3 giri → nessun allarme di copia vecchia',
+    inviati.length === 0 && c.consecutiviIndietro === 0 && c.consecutiviCiechi === 3,
+    `messaggi=${inviati.length} · indietro di fila=${c.consecutiviIndietro} (deve restare 0) · ciechi=${c.consecutiviCiechi}`);
+
+  // ── 5. …ma la cecita' prolungata si dichiara ───────────────────────────────
+  const d = await passo();
+  controlla('al 4° giro cieco lo DICE (una sentinella cieca fa lo stesso silenzio di una tranquilla)',
+    inviati.length === 1 && /non riesce piu' a guardare/.test(inviati[0] || ''),
+    `messaggi=${inviati.length}`);
+
+  // ── 6. la rete che cade e il dominio giu' sono cecita', non guasto ─────────
+  scenario.github = 'rete';
+  const e = await passo();
+  scenario.github = 'ok'; scenario.meta = 'giu';
+  const f = await passo();
+  controlla('rete caduta e app-meta.json irraggiungibile → cecita\', mai «indietro»',
+    e.misura.esito === 'cieca' && f.misura.esito === 'cieca' && f.consecutiviIndietro === 0,
+    `esiti=${e.misura.esito}/${f.misura.esito} · indietro di fila=${f.consecutiviIndietro}`);
+  scenario.meta = 'ok';
+  rmSync(dir2, { recursive: true, force: true });
+}
+
+// ── 7. il rientro si annuncia ────────────────────────────────────────────────
+process.env.PMO_STATO_FILE = join(dir, 'stato.json');
+inviati.length = 0;
+scenario.servita = B;                        // la sincronia e' passata
+const r = await passo();
+controlla('quando torna fresca lo dice, e l\'allarme si riarma',
+  inviati.length === 1 && /tornato fresco/.test(inviati[0] || '') && r.allarmeAttivo === false,
+  `messaggi=${inviati.length} · allarmeAttivo=${r.allarmeAttivo}`);
+
+// ── 8. e puo' risuonare per un guasto NUOVO ──────────────────────────────────
+inviati.length = 0;
+scenario.sorgente = '3'.repeat(40);
+await passo(); await passo(); await passo();
+controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
+  inviati.length === 1 && /copia VECCHIA/.test(inviati[0] || ''), `messaggi=${inviati.length}`);
+
+// ── 9. SABOTAGGIO: la pazienza e' davvero misurata? ──────────────────────────
+{
+  const src = readFileSync(new URL('./sentinella.mjs', import.meta.url), 'utf8');
+  const sabotato = src.replace('consecutiviIndietro >= GIRI_PRIMA_DI_SUONARE', 'consecutiviIndietro >= 1');
+  const applicato = sabotato !== src;
+  if (!applicato) { ko++; n++; console.log('❌ SABOTAGGIO NON APPLICATO — il verde del caso 2 non varrebbe niente'); }
+  else {
+    const f = join(dir, 'sabotata.mjs');
+    (await import('node:fs')).writeFileSync(f, sabotato);
+    const dir3 = mkdtempSync(join(tmpdir(), 'sentinella3-'));
+    process.env.PMO_STATO_FILE = join(dir3, 'stato.json');
+    scenario.servita = A; scenario.sorgente = B; scenario.github = 'ok';
+    inviati.length = 0;
+    const { giro: giroSab } = await import(f);
+    const z = zittisci(); await giroSab(); z();
+    controlla('sabotaggio applicato (pazienza a 1): suona SUBITO ⇒ il caso 2 misura davvero',
+      inviati.length === 1, `col sabotaggio i messaggi al 1° giro sono ${inviati.length} (senza erano 0)`);
+    rmSync(dir3, { recursive: true, force: true });
+  }
+}
+
+rmSync(dir, { recursive: true, force: true });
+console.log(`\n${ko === 0 ? '🟢 BANCO VERDE' : '🔴 BANCO ROSSO'} — ${n - ko}/${n}`);
+process.exit(ko === 0 ? 0 : 1);

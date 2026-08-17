@@ -895,6 +895,65 @@ della conclusione.*
 ⚠️ **Prima di metterci mano**: il file è nel repo del caricatore, dove il 17/08 **due sessioni si
 sono pestate i piedi**. `git fetch` e ricontrollo prima di spingere, sempre.
 
+🔄 **Aggiornamento del 17/08 sera, 31ª sessione: B e C sono SCRITTE E PROVATE, la voce resta APERTA.**
+Nell'ordine che ha dato lui — prima la B, poi la C.
+
+🚨⭐⭐ **E la prima cosa da dire è che UNA RIGA DI QUESTA SCHEDA NON REGGEVA — la B come è scritta
+qui sopra avrebbe suonato su una copia PERFETTA.** *«confronta la testa di `test-preview` con
+`source_sha`»*: presa alla lettera, stasera sarebbe partita.
+
+| misurato il 17/08 alle 21:55 | |
+|---|---|
+| impronta di `index.html` su `test-preview` | `79d1a3a4…` |
+| impronta dei byte **serviti** da `test.padelvillage.club/app.html` | `79d1a3a4…` ⇒ **fresca al byte** |
+| `source_sha` dichiarato in `app-meta.json` | `a0640f3` |
+| testa di `test-preview` | `77feb7c` ⇒ **dodici commit più in là** |
+
+Il motivo è **la stessa riga di `sync-app.yml`** che aveva ucciso la strada `synced_at`: ricopia solo
+se `index.html` è cambiato (`cmp -s` → `exit 0`) ⇒ **ogni commit che tocca solo `docs/` allontana il
+commit senza invecchiare la copia**. E i commit che toccano solo `docs/` qui sono la maggioranza.
+⚖️ **La strada scartata e quella prescritta erano lo stesso errore a due altezze diverse**: una
+leggeva l'orologio della copia, l'altra il suo numero d'ordine, e **nessuna delle due guarda l'app**.
+Scartare la prima non aveva vaccinato dalla seconda — l'avvertimento «non rifarla» stava **quattro
+righe sotto** la riga che la rifaceva.
+⇒ Si confronta l'**impronta del contenuto**: l'unica cosa che cambia se e solo se l'app cambia.
+⭐ E a trovarlo è stato lo stesso gesto della volta prima — **misurare la premessa prima di scrivere
+la cura**, non rileggerla.
+
+| | dov'è | stato |
+|---|---|---|
+| **B** — l'avviso a chi guarda TEST | `index.html` del repo caricatore, [PR #2](https://github.com/PadelVillage/padel-match-organizer-test/pull/2) | ⏸️ **aspetta il suo ok** |
+| **C** — la sentinella che avvisa noi | `tools/sentinella-freschezza-test/` + `deploy-sentinella-hetzner.yml` | ⏸️ scritta e provata al banco, **non ancora installata sulla VM** |
+
+**B**, provata in un **Chromium vero sul file vero**: 10 casi più la prova coi 3,2 MB veri.
+🚨 Il caso **«copia vecchia → avviso»** è caduto **rosso al primo giro** — l'app, montandosi, rifà il
+`body` e si portava via l'avviso — cioè cadeva **proprio il caso per cui la voce esiste**, con gli
+altri nove verdi. ⚖️ *Un banco che copre tutto tranne il caso che conta dà lo stesso identico verde
+di uno completo.* Curato con una finestra chiusa di 20 s, e il sabotaggio (confronto spento) verifica
+di essere stato applicato prima di girare.
+📌 Innestato anche il pezzo che veniva dalla sessione Mac: il **tetto d'attesa**
+(`AbortSignal.timeout`) su ogni chiamata a GitHub.
+
+**C**, unità `systemd` **oneshot** con timer da 15′ — non un processo perpetuo, che è una cosa in più
+che può morire in silenzio. Paziente come `guard-worker-sync`: suona dopo **3 giri** (~45′), perché
+col cron da 10′ della sincronia trovarla indietro una volta è **normale**. E distingue **«indietro»**
+da **«non lo so»**: GitHub muto non accusa nessuno — ma dopo 12 giri ciechi **lo dichiara**, perché
+*una sentinella cieca fa lo stesso silenzio di una tranquilla*. Banco: 10 casi, sabotaggio compreso.
+
+⛔ **Le due cose che mancano, e sono sue:**
+① l'**ok al merge** della PR del caricatore;
+② i due secret per **armare** la C — `TELEGRAM_SENTINELLA_TOKEN` e `TELEGRAM_SENTINELLA_CHAT_ID` —
+e l'ok a lanciare il deploy sulla VM. Senza, si installa **disarmata**: misura e scrive nel registro
+ciò che *avrebbe* mandato.
+
+⚠️ **E una cosa che da una sessione cloud NON si è potuta misurare**, dichiarata invece che taciuta:
+che il repo dell'app risponda alle chiamate **anonime** del browser. Da qui i `curl` verso
+`api.github.com` passano da un proxy **che li autentica** ⇒ non sanno rispondere della domanda — è la
+lezione del secondo filo, il cassetto sbagliato che è la propria posizione. L'evidenza che regge è
+**eseguita ma non oggi**: il 17/08 i browser anonimi prendevano **429**, non 404, che è tutta la
+ragione per cui esiste la 58. ⚖️ E il disegno **sopravvive all'incertezza**: se quella chiamata
+rispondesse 404 il controllo **tace**, e non succede niente.
+
 ---
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
