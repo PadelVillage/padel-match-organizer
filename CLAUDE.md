@@ -33,12 +33,18 @@ repo**, in `~/Desktop/APP desktop/_dismissione-soci-20260725/`.
 Admin PROD e Admin TEST sono **file diversi su rami diversi** dello stesso repo: non è un
 ambiente che "punta" a due database, sono due copie dell'app.
 
-**Il caricatore di TEST vive in un 5° repo**: `padel-match-organizer-test` (public), che
-contiene solo `index.html` (scarica l'app da `test-preview`), `config-test.js` e `CNAME`.
-⚠️ **L'app di TEST NON si modifica lì**: si lavora su `test-preview` di questo repo, e ogni
-push è **subito live** (nessun workflow: il caricatore prende l'ultimo commit del ramo).
-`config-test.js` sta anche là perché l'app cerca la configurazione nella **radice del dominio
-da cui è servita**: senza, TEST non saprebbe a quale database collegarsi.
+**Il caricatore di TEST vive in un 5° repo**: `padel-match-organizer-test` (public):
+`index.html` (il caricatore), **`app.html` (COPIA generata dell'app — non si tocca a mano)**,
+`app-meta.json`, `config-test.js`, `CNAME` e il workflow `sync-app.yml`.
+⚠️ **L'app di TEST NON si modifica lì**: si lavora su `test-preview` di questo repo.
+🔄 **Dal 17/08/2026 (voce 58) il caricatore NON scarica più l'app da `raw.githubusercontent.com`**
+— GitHub strozzava quei download anonimi (429 anti-scraping) e TEST restava a terra — ma serve
+`./app.html` dalla propria origine Pages; `raw` è solo il ripiego. Un push su `test-preview`
+arriva live **entro ~10 min** (cron di `sync-app.yml` nel repo del caricatore), **subito** se nel
+repo dell'app esiste il secret `TEST_LOADER_SYNC_TOKEN` (workflow `sync-test-loader.yml` →
+`repository_dispatch`), o **a mano** lanciando `sync-app` da Actions. Quale commit è live lo dice
+`app-meta.json` su quel repo. `config-test.js` sta anche là perché l'app cerca la configurazione
+nella **radice del dominio da cui è servita**: senza, TEST non saprebbe a quale database collegarsi.
 
 🚨 **TEST è riconosciuto in DUE modi indipendenti** (dalla v6.112/6.113) — `PMO_FORCE_ENV`
 dichiarato dal caricatore, **e** l'hostname che inizia per `test.` (`pmoIsTestHostname`, usata

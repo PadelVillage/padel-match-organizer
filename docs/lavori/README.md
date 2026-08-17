@@ -841,7 +841,8 @@ e non è clonato su questo Mac; provare a leggerlo da `raw` **è finito nello st
 righe qui sopra descrivono il **comportamento osservato dall'esterno**, non il codice. Chi la
 prende **cloni prima quel repo**.
 
-📌 **Le strade possibili, da scegliere quando la si fa** (nessuna decisa):
+📌 **Le strade possibili** *(erano tre, nessuna decisa; il 17/08 pomeriggio il committente ha
+scelto — «vai con la cura vera» — e sono state fatte la ② con la ③ come cintura)*:
 ① un **ripiego**: tenere l'ultima copia buona dell'app nel browser e usarla quando `raw`
 rifiuta — così una strozzatura rallenta invece di fermare;
 ② **non passare più da `raw`**: pubblicare il file nel repo del caricatore, che è già su Pages;
@@ -850,6 +851,37 @@ invece di un codice HTTP, e **smettere di ricaricare** — ogni tentativo consum
 
 ⚖️ **Non tocca PROD**: `app.padelvillage.club` serve il proprio file da Pages e non passa da
 `raw`. Il guasto è **solo** di TEST, ed è per questo che è rimasto invisibile finora.
+
+🔄 **Aggiornamento del 17/08 pomeriggio, sessione cloud — CURA APPLICATA E LIVE.**
+Prima la misura che mancava, rifatta **da una seconda rete** (il container cloud, IP diverso dal
+Mac): il 429 usciva **anche da lì**, e **solo sui percorsi per-ramo di questo repo**
+(`test-preview/…` e a tratti `main/…` → 429; lo stesso file **pinnato allo SHA** → 200; altri
+repo, compreso quello del caricatore → 200). ⇒ Non era la rete del circolo ad aver finito una
+quota: era GitHub a strozzare i percorsi per-ramo del repo, per tutti. E il sorgente del
+caricatore stavolta **è stato letto** (repo clonato): faceva api → raw-per-SHA → raw-per-ramo
+**con cache-buster `?cache=Date.now()`**, cioè ogni tentativo un MISS alla CDN — parte del guasto,
+non un dettaglio.
+
+**Cosa è stato fatto, tutto nel repo del caricatore (commit `d8888b3` su `main`, subito live):**
+- **`app.html`**: copia byte-identica dell'app (`test-preview` @ `a0640f3`, v6.243) pubblicata
+  su Pages — il caricatore ora la legge **dalla propria origine**: niente quota, niente 429;
+- **`app-meta.json`**: dice da quale commit viene la copia e quando è stata fatta — è la cura
+  della trappola «copia vecchia che sembra viva», dichiarata invece che nascosta;
+- **caricatore riscritto**: `./app.html` primario, la vecchia strada GitHub solo come ripiego
+  (senza cache-buster), e su errore **messaggio umano + bottone «Riprova»** — niente ritentativi
+  automatici (la ③);
+- **`sync-app.yml`** (là): tiene fresca la copia — `repository_dispatch`, **cron ogni 10′**,
+  o a mano. ⚠️ GitHub spegne i cron dopo ~60 giorni di repo fermo: se TEST sembra vecchio,
+  guardare prima `app-meta.json`.
+
+**Cosa resta, ed è nel ramo `claude/domain-down-investigation-jtnqrc` di questo repo:**
+`sync-test-loader.yml` (a ogni push su `test-preview` avvisa il caricatore, così la copia è
+fresca **subito** e non entro 10′), più le correzioni a `CLAUDE.md` e a questa voce. Va fuso
+**prima su `test-preview`, poi su `main`** (regola 4bis). Il workflow **vuole un secret**,
+`TEST_LOADER_SYNC_TOKEN` (fine-grained PAT, Contents R/W sul solo repo del caricatore): **senza,
+esce verde con un avviso** e resta il cron — una guardia rossa a ogni push sarebbe una guardia
+che si smette di leggere. Il secret lo può creare solo il committente.
+⇒ La voce resta qui finché il ramo non è fuso e lui non l'ha vista funzionare.
 
 
 
