@@ -207,6 +207,39 @@ o si scrive un workflow che faccia la cosa che serve.
 tocca) · `🧪 prenotazioni SIMULATE` (non parte nessuna scrittura). Il `.env` non lo tocca il deploy:
 un aggiornamento lascia il bot **dov'era puntato**.
 
+## 🧭 DOVE si lavora: il CLOUD o il MAC (regola del committente, 17/08/2026)
+
+🗣️ Sua domanda: *«che differenza c'è per lavorare sul cloud di Claude e sul mio computer?
+Possiamo scegliere una delle due strade per sempre?»* ⇒ **No, e la regola è questa:**
+
+> **CLOUD** per tutto ciò che passa da **git, Actions, edge, database e bot**.
+> **MAC** quando serve **guardare con i propri occhi**: aprire l'app in un browser, o misurare
+> come la vede chi la usa.
+
+| | Mac | cloud |
+|---|---|---|
+| i file e i repo locali | ✅ | ❌ |
+| **aprire l'app in un browser** e guardarla | ✅ | ❌ |
+| misurare **come la vede un socio** (stessa rete) | ✅ | ❌ |
+| git, PR, edge, database, bot | ✅ | ✅ **uguale** |
+| entrare sulla **VM** | dipende dalla chiave (sopra) | ✅ **via Actions** |
+| dipende dal computer acceso e dal TCC di macOS | 🔴 sì | ✅ no |
+
+⭐ **Perché la regola non è arbitraria, ed è misurato il 17/08**: il collaudo del caricatore di
+TEST si poteva fare **solo dal Mac**, e proprio guardandolo nel browser sono usciti **due difetti
+che rileggendo non si vedevano** — che la copia, una volta aperta, è indistinguibile da TEST vero,
+e che la catena del link del quiz era di **quattro salti** e non di uno.
+
+🚨⭐⭐ **E IL ROVESCIO, che è la cosa nuova e va saputa: dal MAC certe misure NON SANNO RISPONDERE.**
+Girando sul Mac, i `curl` dell'agente escono **dallo stesso indirizzo di rete del committente**.
+Il 17/08 ho misurato *«`raw` dà 429 anche su `torvalds/linux`»* e ne ho concluso «GitHub è in
+avaria» — ma quella sonda **non poteva distinguere** fra *GitHub è giù per tutti* e *la nostra rete
+è bloccata*. A dirlo con certezza sono state due prove che **non passano da qui**: il log di un
+deploy (che gira sui computer di GitHub) e **`githubstatus.com`**, che è un altro host.
+⚖️ ⇒ *Una misura fatta dal Mac parla della rete del committente; per parlare del mondo serve una
+sonda che stia altrove.* È la 24ª — la sonda che guarda nel cassetto sbagliato — nella forma in cui
+il cassetto sbagliato è **la propria posizione**.
+
 ## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
 
 **Regola di architettura fissata dal committente il 16/08/2026**, e vale **anche e soprattutto per
