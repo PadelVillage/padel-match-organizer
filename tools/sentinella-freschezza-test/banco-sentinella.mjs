@@ -13,7 +13,7 @@
 // 🚨 Ogni sabotaggio verifica di essere stato APPLICATO prima di girare: un
 //    sabotaggio non applicato da' lo stesso identico verde di un caso cieco.
 // ─────────────────────────────────────────────────────────────────────────────
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -235,14 +235,39 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
   }
 
   const fv1 = await fonteVoceCon(join(dir5, 'non-esiste.env'), join(dir5, 'st1.json'));
-  controlla("quando la voce manca, lo stato dice PERCHE': file assente",
-    /file assente/.test(fv1), `fonteVoce = "${fv1}"`);
+  controlla("quando la voce manca, lo stato dice PERCHE': file assente E nessun processo",
+    /: assente/.test(fv1) && /nessun processo in esecuzione/.test(fv1), `fonteVoce = "${fv1}"`);
 
   const senzaToken = join(dir5, 'senza-token.env');
   writeFileSync(senzaToken, 'NODE_ENV=production\nPORT=3000\n');
   const fv2 = await fonteVoceCon(senzaToken, join(dir5, 'st2.json'));
   controlla("e distingue «file assente» da «il file c'e' ma nessuna riga ha la forma di un token»",
-    /nessuna delle 2 righe/.test(fv2), `fonteVoce = "${fv2}"`);
+    /c'è ma nessuna riga ha la forma di un token/.test(fv2), `fonteVoce = "${fv2}"`);
+
+  // ── il pezzo che conta davvero: il token letto dall'AMBIENTE DI UN PROCESSO VIVO.
+  //    Sulla VM il .env non esiste, quindi e' QUESTA la strada che verra' usata —
+  //    e una strada mai provata e' una strada che non si sa se esiste.
+  //    Si fa nascere un processo finto con un token nell'ambiente e un marcatore
+  //    nella riga di comando, e si punta li' la sentinella.
+  //    ⚠️ Il token deve stare nell'ambiente AL MOMENTO DELL'EXEC: /proc/<pid>/environ
+  //    e' una fotografia della partenza, non l'ambiente vivo.
+  if (existsSync('/proc/self/environ')) {
+    const { spawn } = await import('node:child_process');
+    const MARCATORE = 'MARCATORE-BANCO-SENTINELLA';
+    const figlio = spawn(process.execPath,
+      ['-e', `/*${MARCATORE}*/ setTimeout(() => {}, 8000)`],
+      { env: { ...process.env, UN_NOME_QUALUNQUE: '9988776655:AAHtoken-finto-nell-ambiente-del-processo' },
+        stdio: 'ignore' });
+    await new Promise((r) => setTimeout(r, 400));
+    process.env.PMO_CARTELLA_BOT_PROVA = MARCATORE;
+    const fv3 = await fonteVoceCon(join(dir5, 'non-esiste.env'), join(dir5, 'st3.json'));
+    figlio.kill();
+    delete process.env.PMO_CARTELLA_BOT_PROVA;
+    controlla('il token si legge dall\'AMBIENTE del processo vivo (la strada che serve sulla VM, dove il .env non c\'è)',
+      /ambiente del processo \d+/.test(fv3) && /bot 9988776655/.test(fv3), `fonteVoce = "${fv3}"`);
+  } else {
+    console.log('⏭️  niente /proc qui: il caso «token dall\'ambiente del processo» non è stato provato');
+  }
 
   // Il BATTITO: al primo giro NON batte (lo ha gia' fatto il --prova del deploy)...
   process.env.PMO_ENV_BOT_PROVA = envFinto;
