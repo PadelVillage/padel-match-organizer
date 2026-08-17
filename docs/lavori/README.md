@@ -874,14 +874,23 @@ non un dettaglio.
   o a mano. ⚠️ GitHub spegne i cron dopo ~60 giorni di repo fermo: se TEST sembra vecchio,
   guardare prima `app-meta.json`.
 
-**Cosa resta, ed è nel ramo `claude/domain-down-investigation-jtnqrc` di questo repo:**
-`sync-test-loader.yml` (a ogni push su `test-preview` avvisa il caricatore, così la copia è
-fresca **subito** e non entro 10′), più le correzioni a `CLAUDE.md` e a questa voce. Va fuso
-**prima su `test-preview`, poi su `main`** (regola 4bis). Il workflow **vuole un secret**,
-`TEST_LOADER_SYNC_TOKEN` (fine-grained PAT, Contents R/W sul solo repo del caricatore): **senza,
-esce verde con un avviso** e resta il cron — una guardia rossa a ogni push sarebbe una guardia
-che si smette di leggere. Il secret lo può creare solo il committente.
-⇒ La voce resta qui finché il ramo non è fuso e lui non l'ha vista funzionare.
+**Il lato repo-app** — `sync-test-loader.yml` (a ogni push su `test-preview` avvisa il
+caricatore, così la copia è fresca **subito** e non entro 10′), più le correzioni a `CLAUDE.md`
+e a questa voce — **è su entrambi i rami dal 17/08 sera**, nell'ordine del 4bis e su sua
+istruzione esplicita: *«fammi il ramo prima di test-preview e poi di main»*.
+
+✅ **Verificato, non solo spinto**: la console remota (Chromium, login staff readonly) apre
+`test.padelvillage.club` e l'app parte — titolo «Padel Match Organizer v**6.243** TEST»,
+`PMO_FORCE_ENV='test'` intatta, contattato solo `cudi…`. E il primo giro di `sync-app` nel repo
+del caricatore, lanciato a mano per collaudo, è uscito **verde** (no-op corretto: copia già
+allineata).
+
+⚠️ Il workflow del dispatch **vuole un secret**, `TEST_LOADER_SYNC_TOKEN` (fine-grained PAT,
+Contents R/W sul solo repo del caricatore): **senza, esce verde con un avviso** e resta il cron
+— una guardia rossa a ogni push sarebbe una guardia che si smette di leggere. Il secret lo può
+creare solo il committente, e **al 17/08 sera non c'è ancora**.
+⇒ Restano due cose, entrambe sue: il secret (facoltativo — senza si va di cron, ≤10′) e
+**vederla funzionare coi suoi occhi**. Poi la voce si sposta fra le chiuse.
 
 
 
