@@ -51,12 +51,13 @@ Il codice lo dice esplicito (`bot.ts:3199` e `:3207`):
 ⇒ Il modello arriva **sempre** fino alla proposta e poi consegna ai bottoni. La conferma è, per
 disegno, un tocco — e il disegno è una protezione, non una svista.
 
-❓ **DOMANDA APERTA, da misurare e non da dedurre**: se il modello finisce sempre in una proposta,
-l'aggancio dell'attesa sulla sua strada (`bot.ts:3216`) può vedere solo esiti **senza scrittura**,
-e mai un esito ignoto — cioè per la voce 53 **non scatterebbe mai**. 🚨 Non è scritto come verdetto
-di proposito: sarebbe la **terza** deduzione plausibile su questa voce in un giorno solo, e le prime
-due — *«il sync non passa dal worker»* e *«su TEST il worker viene chiamato lo stesso»* — erano
-**entrambe false**.
+✅ **DOMANDA CHIUSA, la sera stessa, leggendo il codice.** Avevo sospettato che l'aggancio del
+modello (`bot.ts:3216`) non potesse mai vedere un esito ignoto. **Sbagliato**: lo strumento `prenota`
+ha `conferma` nello schema d'ingresso, `scritta_alle` c'è in quello d'uscita (`prenota.ts:79`), e a
+decidere è `pendenti.ts` — conferma ammessa **solo** con una proposta valida in un messaggio
+precedente. ⇒ Se il modello **disobbedisce**, la scrittura parte e l'attesa scatta: quel ramo copre
+**proprio** la disobbedienza. ⚖️ Terza deduzione plausibile su questa voce in un giorno, terza
+falsa — ed è il motivo per cui era scritta come domanda.
 
 ⛔ **Finché questa scheda non è stata eseguita la voce NON si chiude**: *«il codice è a posto non è
 funziona»*. Per la strada dei bottoni, ora, **lo è**.
@@ -69,13 +70,20 @@ funziona»*. Per la strada dei bottoni, ora, **lo è**.
 può funzionare, e non per come è stata eseguita: **su TEST il worker non viene chiamato mai.**
 
 ```ts
-// matchpoint-bookings-create/index.ts — PRIMA di qualunque chiamata al worker
+// matchpoint-bookings-create/index.ts:628 — PRIMA di qualunque chiamata al worker
 if (!scritturaAlCircoloConsentita(supabaseUrl)) {
   console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create', booking }));
-  const workerResult = esitoDiProva('create');
-  …            // registra la partita di prova e risponde OK
+  return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
 }
 ```
+
+🚨 **QUESTA CITAZIONE ERA INVENTATA, e corretta il 16/08 a notte.** Diceva
+`const workerResult = esitoDiProva('create')` con il commento *«registra la partita di prova e
+risponde OK»*: quella funzione **non esiste** e quella riga **non registra niente** — torna un
+**503**. A registrare la partita di prova è il **ponte**, come `staff_booking` con
+`id_reserva: "PROVA-…"`. ⚖️ Una citazione di codice inventata è peggio di una frase vaga: ha la
+forma della prova, e chi la legge non va a controllare. Trovata cercando dove fossero finite le
+righe di prova da cancellare — cioè **eseguendo**, non rileggendo.
 
 E la guardia è **l'indirizzo del progetto**:
 
