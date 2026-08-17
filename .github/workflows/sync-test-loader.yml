@@ -1,0 +1,41 @@
+# Avvisa il repo del caricatore (padel-match-organizer-test) che test-preview
+# ha una nuova app, così il suo sync-app.yml ripubblica SUBITO app.html su
+# Pages invece di aspettare il giro di cron (≤10 minuti).
+#
+# Nasce dalla voce 58 (17/08/2026): il caricatore di test.padelvillage.club
+# non scarica più l'app da raw.githubusercontent.com (GitHub la strozzava con
+# 429 anti-scraping) ma serve una copia pubblicata sulla propria origine, e
+# quella copia va tenuta fresca.
+#
+# Vuole un secret TEST_LOADER_SYNC_TOKEN: fine-grained PAT con permesso
+# Contents: Read and write sul SOLO repo padel-match-organizer-test.
+# ⚖️ SENZA il secret il job esce VERDE con un avviso: il cron del caricatore
+# copre comunque, e un rosso fisso a ogni push sarebbe una guardia che urla
+# a vuoto — quelle si smette di leggerle.
+
+name: sync-test-loader
+
+on:
+  push:
+    branches: [test-preview]
+    paths: ['index.html']
+
+permissions: {}
+
+jobs:
+  poke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: repository_dispatch al repo del caricatore
+        env:
+          TOKEN: ${{ secrets.TEST_LOADER_SYNC_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::TEST_LOADER_SYNC_TOKEN assente: la copia su test.padelvillage.club si aggiornera' col cron (entro ~10 min). Per l'aggiornamento istantaneo, creare il secret (v. commento in testa a questo workflow)."
+            exit 0
+          fi
+          curl -sS -f -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/PadelVillage/padel-match-organizer-test/dispatches \
+            -d '{"event_type":"sync-test-app"}'
