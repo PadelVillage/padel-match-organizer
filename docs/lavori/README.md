@@ -579,9 +579,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **7** |
-| 📦 **Chiuse** | **46** il 13–17/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **47** il 13–17/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -807,92 +807,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
-
-### 58. 🔴 **L'app di TEST non si carica: `HTTP 429` da GitHub** — messa qui da LUI, 17/08
-
-> 🗣️ **Sua, il 17/08/2026**, vedendola cadere mentre lavoravamo: *«non raggiungo più test»*, e
-> poi *«segnati subito, dopo fatto questo test, di aggiustare l'app di test»*. ⇒ È lui ad
-> averle dato il posto: **la prossima**, appena chiuso il collaudo del bottone del livello.
-
-**Misurato il 17/08 alle 14:10, non dedotto** — e la prima cosa che dice la misura è che
-**TEST non è rotto**:
-
-| cosa | esito |
-|---|---|
-| `https://test.padelvillage.club/` (il caricatore) | ✅ **HTTP 200** — la pagina c'è |
-| il file dell'app da `raw.githubusercontent.com` (ramo `test-preview`) | 🔴 **HTTP 429**, 199 byte |
-| `api.github.com` **dallo stesso computer** | ✅ **58 su 60** |
-
-⇒ La pagina si apre e poi **GitHub le rifiuta il download dell'app**. Le due porte hanno due
-quote diverse: quella dell'API sta benissimo, è **`raw`** a essere strozzata. Nessun
-`retry-after` e nessun `x-ratelimit-*` nella risposta (solo `x-served-by: cache-lcy-…`, cioè la
-CDN davanti): la strozzatura è **opaca**, si sblocca da sé e non si sa dire quando.
-
-🚨 **La causa non è un caso, è il disegno**: il caricatore **riscarica l'app INTERA — ~3,4 MB —
-a ogni apertura**, in forma anonima, e **non ha nessun ripiego**. Poche ricariche di fila
-chiudono la porta, e quando è chiusa TEST è **inutilizzabile**: `TEST non caricato: HTTP 429` e
-basta. È un vicolo cieco, la cosa che in questo progetto non si fa mai — e sta nell'unico pezzo
-che nessuna delle nostre reti guarda.
-
-⚠️ **Cosa NON ho letto, e va detto invece di lasciarlo intendere: il sorgente del caricatore.**
-Vive nel **5° repo**, `padel-match-organizer-test` (`index.html` + `config-test.js` + `CNAME`),
-e non è clonato su questo Mac; provare a leggerlo da `raw` **è finito nello stesso 429**. ⇒ Le
-righe qui sopra descrivono il **comportamento osservato dall'esterno**, non il codice. Chi la
-prende **cloni prima quel repo**.
-
-📌 **Le strade possibili** *(erano tre, nessuna decisa; il 17/08 pomeriggio il committente ha
-scelto — «vai con la cura vera» — e sono state fatte la ② con la ③ come cintura)*:
-① un **ripiego**: tenere l'ultima copia buona dell'app nel browser e usarla quando `raw`
-rifiuta — così una strozzatura rallenta invece di fermare;
-② **non passare più da `raw`**: pubblicare il file nel repo del caricatore, che è già su Pages;
-③ al minimo, e comunque: **un messaggio che dica cosa fare** («riprova fra qualche minuto»)
-invece di un codice HTTP, e **smettere di ricaricare** — ogni tentativo consuma altra quota.
-
-⚖️ **Non tocca PROD**: `app.padelvillage.club` serve il proprio file da Pages e non passa da
-`raw`. Il guasto è **solo** di TEST, ed è per questo che è rimasto invisibile finora.
-
-🔄 **Aggiornamento del 17/08 pomeriggio, sessione cloud — CURA APPLICATA E LIVE.**
-Prima la misura che mancava, rifatta **da una seconda rete** (il container cloud, IP diverso dal
-Mac): il 429 usciva **anche da lì**, e **solo sui percorsi per-ramo di questo repo**
-(`test-preview/…` e a tratti `main/…` → 429; lo stesso file **pinnato allo SHA** → 200; altri
-repo, compreso quello del caricatore → 200). ⇒ Non era la rete del circolo ad aver finito una
-quota: era GitHub a strozzare i percorsi per-ramo del repo, per tutti. E il sorgente del
-caricatore stavolta **è stato letto** (repo clonato): faceva api → raw-per-SHA → raw-per-ramo
-**con cache-buster `?cache=Date.now()`**, cioè ogni tentativo un MISS alla CDN — parte del guasto,
-non un dettaglio.
-
-**Cosa è stato fatto, tutto nel repo del caricatore (commit `d8888b3` su `main`, subito live):**
-- **`app.html`**: copia byte-identica dell'app (`test-preview` @ `a0640f3`, v6.243) pubblicata
-  su Pages — il caricatore ora la legge **dalla propria origine**: niente quota, niente 429;
-- **`app-meta.json`**: dice da quale commit viene la copia e quando è stata fatta — è la cura
-  della trappola «copia vecchia che sembra viva», dichiarata invece che nascosta;
-- **caricatore riscritto**: `./app.html` primario, la vecchia strada GitHub solo come ripiego
-  (senza cache-buster), e su errore **messaggio umano + bottone «Riprova»** — niente ritentativi
-  automatici (la ③);
-- **`sync-app.yml`** (là): tiene fresca la copia — `repository_dispatch`, **cron ogni 10′**,
-  o a mano. ⚠️ GitHub spegne i cron dopo ~60 giorni di repo fermo: se TEST sembra vecchio,
-  guardare prima `app-meta.json`.
-
-**Il lato repo-app** — `sync-test-loader.yml` (a ogni push su `test-preview` avvisa il
-caricatore, così la copia è fresca **subito** e non entro 10′), più le correzioni a `CLAUDE.md`
-e a questa voce — **è su entrambi i rami dal 17/08 sera**, nell'ordine del 4bis e su sua
-istruzione esplicita: *«fammi il ramo prima di test-preview e poi di main»*.
-
-✅ **Verificato, non solo spinto**: la console remota (Chromium, login staff readonly) apre
-`test.padelvillage.club` e l'app parte — titolo «Padel Match Organizer v**6.243** TEST»,
-`PMO_FORCE_ENV='test'` intatta, contattato solo `cudi…`. E il primo giro di `sync-app` nel repo
-del caricatore, lanciato a mano per collaudo, è uscito **verde** (no-op corretto: copia già
-allineata).
-
-⚠️ Il workflow del dispatch **vuole un secret**, `TEST_LOADER_SYNC_TOKEN` (fine-grained PAT,
-Contents R/W sul solo repo del caricatore): **senza, esce verde con un avviso** e resta il cron
-— una guardia rossa a ogni push sarebbe una guardia che si smette di leggere. Il secret lo può
-creare solo il committente, e **al 17/08 sera non c'è ancora**.
-⇒ Restano due cose, entrambe sue: il secret (facoltativo — senza si va di cron, ≤10′) e
-**vederla funzionare coi suoi occhi**. Poi la voce si sposta fra le chiuse.
-
-
+## 🔴 URGENTI — 0
 
 **Promosse dal committente il 15/08/2026, a fine 19ª sessione**, con la lista appena tornata vuota
 e nello stesso respiro in cui ne ha **annullate due**: *«leva e annulla perché non servono più la
@@ -976,6 +891,13 @@ PIN più `pmo_admin_pin_ok` — allineate alla forma di PROD: `anon` sulle `SECU
 **32 → 20** (uguale a PROD), verificato sul bersaglio eseguendo (`42501` da `anon`, non più
 `INVALID_ADMIN_PIN`), con la **trappola `service_role`** della 36 evitata (`service_role` resta 46).
 ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse.
+
+🔄 **17/08, e la lista si è riempita e svuotata in giornata: la 58.** Messa qui **da lui** la
+mattina (*«segnati subito, dopo fatto questo test, di aggiustare l'app di test»*), scelta della
+cura **sua** il pomeriggio (*«vai con la cura vera»*), fusione sui due rami **sua** (*«fammi il
+ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**, a cosa vista:
+*«il gestionale di test si apre»*. ⇒ Urgenti di nuovo a **0**. La sua riga sta fra le 📦 chiuse,
+col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
 ## 📋 IN CODA — 7
@@ -1489,15 +1411,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 17/08/2026 — 46 voci
+## 📦 CHIUSE — dal 13 al 17/08/2026 — 47 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime due voci sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| — | ✅ *(17/08, 31ª sessione — aperta, curata e chiusa in giornata)* 🌐 **58. L'app di TEST non si carica: `HTTP 429` da GitHub — CHIUSA da LUI** (*«il gestionale di test si apre»*). Il guasto era nel **disegno del caricatore**: scaricava l'app INTERA (~3 MB) da `raw.githubusercontent.com` **a ogni apertura**, anonimo e con un cache-buster che azzerava la CDN — e GitHub strozzava i percorsi per-ramo del repo (429 anti-scraping, **misurato da DUE reti diverse**: non era la quota del circolo). La cura, **scelte sue la ② e la ③**: `app.html` — copia generata dell'app — pubblicata su Pages **nel repo del caricatore** e servita dalla **stessa origine** (niente quota GitHub nel percorso primario, `raw` solo ripiego e senza cache-buster); su errore **messaggio umano + «Riprova»**, niente ricariche automatiche; `sync-app.yml` tiene fresca la copia (dispatch/cron ≤10′/a mano) e `app-meta.json` dichiara **da quale commit e di quando** è la copia — l'anti-trappola della fotografia che sembra viva. Lato repo-app sui due rami (`sync-test-loader.yml`, `CLAUDE.md` corretto); verificata **dal browser vero**: v6.243 TEST, `PMO_FORCE_ENV` intatta, solo `cudi…` contattato. ⚠️ **Residuo dichiarato**: manca il secret `TEST_LOADER_SYNC_TOKEN` (solo lui può crearlo) — senza, la copia si aggiorna **entro ~10′ di cron**, non all'istante; e i cron dei repo fermi GitHub li spegne dopo ~60 giorni, quindi se un giorno TEST sembra vecchio la prima cosa da leggere è `app-meta.json`. |
 | — | ✅ *(17/08, 30ª sessione — nata da una sua richiesta, non dalla coda)* 🎾 **Chi CHIEDE il suo livello e non ce l'ha ora vede il bottone del test.** Il bottone «🎾 TEST LIVELLO DI GIOCO» esisteva dal 9/08 ma nasceva **solo** sotto il rifiuto `serve_livello`: lo vedeva chi provava a **organizzare**, non chi il livello lo **chiedeva** — che leggeva *«Non risulti ancora avere un livello di gioco assegnato.»* e basta. L'unica frase del bot che diceva «non ce l'hai» senza dire come prenderselo. ⭐ **Ci va in tutt'e due le strade** — la risposta del modello (quella normale) e la riserva di quando il modello tace: metterlo in una sola avrebbe fatto un bottone presente **metà delle volte**, ed è la lezione delle «tre schermate» dell'11/08, quando il numero del livello usciva **dal modello** proprio perché avevo cercato solo i testi. 🔧 `offertaDelTest` torna **frase e bottone insieme**, così i due punti di chiamata non possono divergere; il ponte si disturba **solo** quando il livello manca davvero, perché chiedere il link **conia un gettone**. 🧪 Banco **1035 → 1055**, typecheck pulito, **tre sabotaggi** ognuno verificato di essere atterrato — e uno **non lo era**, fermato dalla guardia invece che passato per verde. 🚨 **E il primo sabotaggio ha smascherato una mia riga inerte** (vedi il filo della 30ª). 📦 PR **#16** del repo del bot, `main` **`2a1c069`**, **deployata sul bot di PROVA** (riavvii 8 → 9); ⛔ **sui soci NO**, e ci vuole un ok suo separato. ⚠️ Il bottone lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti aspetta la voce **55** ⇒ [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) |
 | **53** | ✅ *(16/08, 29ª sessione — **chiusa da lui**: «chiudi la cinquantatré»)* 🔁 **Quando il bot non sa com'è andata, va a chiedere al gestionale.** ⭐ **Collaudata su PROD col cancello di Caddy manovrato da GitHub Actions**, sul bot dei soci, slot `2026-08-29 09:00 C1`: il bot ha **taciuto 3′38″ POTENDO rispondere** e ha detto «no» **86 secondi dopo** aver avuto la prova (scrittura 21:20:23.9 · sync atterrato dopo di essa 21:24:02 · verdetto 21:25:28). ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata* — **non si è verificato nella finestra in cui era più facile che capitasse**. Nessuna prenotazione vera nata su Matchpoint, verificata nella copia fresca. ⭐⭐ E il **controllo positivo non è stato costruito: stava nel registro** — alle 20:52 della stessa sera, sullo stesso bot, un `esito IGNOTO` **senza** riga `[attesa-esito]`, perché il codice non c'era ancora. 🚨 Due righe della scheda erano **false** e sono corrette: la «strada del modello» (*«si conferma scrivendo»*) **non esiste** — la conferma è un tocco, per disegno — e la citazione di codice sull'ambiente di prova. ❓ E la mia ipotesi che l'aggancio del modello fosse **codice morto** è **sbagliata**: `pendenti.ts` lo lascia passare se il modello disobbedisce, e `scritta_alle` arriva fino in fondo ⇒ quel ramo copre proprio la disobbedienza. |
 
