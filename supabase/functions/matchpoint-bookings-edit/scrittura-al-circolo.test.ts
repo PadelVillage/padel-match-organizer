@@ -7,15 +7,18 @@
 //      duplicato per forza e la deriva fra copie è il modo in cui questi fix si riaprono;
 //   ③ 🚨 la regola è COLLEGATA: in tutte e otto le funzioni la chiamata sta PRIMA del punto di
 //      non ritorno. Una guardia perfetta che nessuno chiama resta verde e non difende niente —
-//      è la trappola più cara di questo progetto, e qui si misura la POSIZIONE, non la parola;
-//   ④ 🆕 9/08/2026 — e cosa c'è DENTRO il ramo del rifiuto, che è il punto cieco del ③: una
-//      chiamata al circolo messa lì dentro lascerebbe il ③ verde, perché risalendo troverebbe
-//      il recinto proprio lì sopra.
+//      è la trappola più cara di questo progetto, e qui si misura la POSIZIONE, non la parola.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { REF_PROD, scritturaAlCircoloConsentita } from './scrittura-al-circolo.ts';
+import {
+  esitoDiProva,
+  esitoVieneDaUnaProva,
+  MARCHIO_NATA_IN_PROVA,
+  REF_PROD,
+  scritturaAlCircoloConsentita,
+} from './scrittura-al-circolo.ts';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const FUNZIONI = join(QUI, '..');
@@ -169,30 +172,32 @@ for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
   });
 }
 
-// ── ④ 🆕 9/08/2026 · IL «NO» VA MISURATO QUANTO IL «SÌ» ───────────────────────────────────
+// ── ④ 🆕 7/08/2026 · IL RECINTO REGISTRA INVECE DI RIFIUTARE ───────────────────────────────
 //
-// 🚨⭐⭐ IL BUCO CHE QUESTA SEZIONE CHIUDE, ed era aperto qui da quando il recinto esiste: il caso
-// 9 pretende che il recinto stia PRIMA della chiamata al circolo. Ma se qualcuno mettesse quella
-// chiamata **dentro** il ramo del rifiuto, risalendo si troverebbe il recinto lì sopra e il caso 9
-// resterebbe **verde** — mentre la funzione, fuori dalla produzione, scriverebbe eccome.
-// ⇒ Qui si guarda cosa c'è DENTRO quel ramo: il circolo non si chiama, e si dice di no con il
-//   codice giusto. Non le parole della risposta: i gesti.
+// 🚨⭐⭐ Il rischio nuovo, e va detto in faccia: fino a ieri il ramo «non sono la produzione»
+// era un vicolo cieco — usciva e basta, e non poteva far danno. Adesso quel ramo LAVORA. Se
+// qualcuno ci rimettesse dentro la chiamata al circolo, la difesa sarebbe sparita **restando
+// verde** su tutti i casi di sopra, che guardano solo la strada normale.
+// ⇒ I casi qui sotto misurano cosa c'è DENTRO quel ramo: che il worker non ci sia, e che la
+//   registrazione ci sia. Non le parole della risposta: i gesti.
 
 /**
  * TUTTI i blocchi `{…}` che cominciano su una riga di guardia, ritagliati contando le graffe.
  *
- * 🚨⭐⭐ AL PLURALE, e non è un dettaglio: `bookings-create` ha **due** recinti — davanti al bivio
- * e dentro il giro asincrono, la strada che risponde prima di lavorare. La prima versione di
- * questa funzione ne ritagliava **uno solo** (il primo del file) e avrebbe lasciato l'altro
- * completamente fuori dalla misura: un caso che guarda una strada sola su due la difende a metà.
+ * 🚨⭐⭐ AL PLURALE dal 9/08/2026, e non è un dettaglio: `bookings-create` ha **due** recinti —
+ * davanti al bivio e dentro il giro asincrono, la strada che risponde prima di lavorare. Fino a
+ * ieri questa funzione ne ritagliava **uno solo** (il primo del file), quindi il secondo restava
+ * completamente fuori dalla misura: chi ci avesse messo dentro una chiamata al circolo non
+ * avrebbe fatto rosso niente. Trovato promuovendo la voce del borsellino, con un sabotaggio
+ * costruito apposta su quel ramo.
  */
-function ramiDelRifiuto(rel: string): string[] {
+function ramiDiProva(rel: string): string[] {
   const righe = readFileSync(join(FUNZIONI, rel), 'utf8').split('\n');
   const inizi = righe
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => /if \(.*!scritturaAlCircoloConsentita\(/.test(r))
     .map(({ i }) => i);
-  assert.notEqual(inizi.length, 0, `${rel}: non trovo nessun ramo del rifiuto`);
+  assert.notEqual(inizi.length, 0, `${rel}: non trovo nessun ramo di prova`);
   return inizi.map((inizio) => {
     let graffe = 0;
     let dentro = '';
@@ -208,28 +213,132 @@ function ramiDelRifiuto(rel: string): string[] {
   });
 }
 
+const DENTRO_IL_RAMO: Record<string, { maiChiamare: RegExp; deveFare: RegExp[] }> = {
+  'matchpoint-bookings-create/index.ts': {
+    maiChiamare: /callWorkerCreateBooking\(/,
+    deveFare: [/saveStaffBookingRecord\(/],
+  },
+  'matchpoint-bookings-edit/index.ts': {
+    maiChiamare: /callWorkerEditBooking\(/,
+    deveFare: [/saveStaffEditRecord\(/],
+  },
+  'matchpoint-bookings-cancel/index.ts': {
+    maiChiamare: /callWorkerCancelBooking\(/,
+    // 🚨 Due cose, e la prima è quella trovata ragionando: chi fa sparire una partita annullata
+    // NON è questa funzione ma il giro di sincronizzazione, che su una partita di prova non ha
+    // niente da leggere. Senza `spegni…`, l'annullamento di prova lascerebbe la partita in piedi.
+    deveFare: [/spegniPartiteDiProvaSulloSlot\(/, /saveStaffCancelRecord\(/],
+  },
+};
+
+for (const [rel, atteso] of Object.entries(DENTRO_IL_RAMO)) {
+  const nome = rel.split('/')[0];
+  test(`10) 🚨 in ${nome} NESSUN ramo di prova chiama il circolo`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
+      assert.ok(ramo.length > 0, `ramo ${n + 1} vuoto: il ritaglio non ha misurato niente`);
+      assert.equal(
+        atteso.maiChiamare.test(ramo), false,
+        `nel ramo ${n + 1} di prova c'è ${atteso.maiChiamare}: da lì si arriva al Matchpoint VERO`,
+      );
+    }
+  });
+
+  test(`11) in ${nome} il ramo di prova REGISTRA (se no non è una prova, è un no)`, () => {
+    // ⚖️ Basta che UNO dei rami registri: in `create` il secondo recinto sta nel giro asincrono,
+    // che la partita l'ha già registrata prima di arrivare lì.
+    const rami = ramiDiProva(rel);
+    for (const gesto of atteso.deveFare) {
+      assert.ok(rami.some((r) => gesto.test(r)), `in nessun ramo di prova c'è ${gesto}`);
+    }
+  });
+}
+
+test('12) ⚠️ il ramo di prova esiste in tutte e tre, e il ritaglio le trova davvero', () => {
+  // ⭐ Il caso che difende gli altri due: se il ritaglio non trovasse più il ramo, i casi 10 e 11
+  // girerebbero su una stringa vuota — «nessun worker qui dentro» sarebbe vero e non vorrebbe
+  // dire niente. È la 29ª: un banco che misura ZERO.
+  for (const rel of Object.keys(DENTRO_IL_RAMO)) {
+    const rami = ramiDiProva(rel);
+    for (const [n, ramo] of rami.entries()) {
+      assert.ok(ramo.split('\n').length > 3, `${rel} ramo ${n + 1}: troppo corto, il ritaglio non ha funzionato`);
+    }
+    assert.ok(rami.some((r) => /esitoDiProva\(/.test(r)), `${rel}: in nessun ramo si compone l'esito di prova`);
+  }
+});
+
+test('13) 🚨⭐⭐ il MARCHIO è la stessa parola nel sync — due verità non si tengono a mano', () => {
+  // Il sync sta in un'altra funzione e NON può importare questo modulo (ogni edge è isolata):
+  // là dentro il marchio è scritto a mano. Se qualcuno cambiasse la costante qui, il reconcile
+  // ricomincerebbe a cancellare le partite di prova **senza un errore da nessuna parte**.
+  // ⇒ L'unico modo di legarle è un caso che rilegge i due file dal disco.
+  const sync = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8');
+  assert.ok(
+    sync.includes(MARCHIO_NATA_IN_PROVA),
+    `il sync non conosce il marchio «${MARCHIO_NATA_IN_PROVA}»: le partite di prova verrebbero cancellate`,
+  );
+});
+
+test('14) 🚨 nel sync il salto delle prove sta PRIMA del tombstone (posizione, non parola)', () => {
+  // Stessa idea del caso 9: una riga che salta le prove messa DOPO il `push` che le cancella
+  // sarebbe una riga inutile, e la parola ci sarebbe lo stesso.
+  const righe = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8').split('\n');
+  const salto = righe.findIndex((r) => r.includes(MARCHIO_NATA_IN_PROVA) && /continue/.test(r));
+  assert.notEqual(salto, -1, 'nel sync non c\'è nessuna riga che SALTA le righe di prova');
+  // Il tombstone dello staff_booking dentro il ciclo del reconcile: `deleted: true` + push.
+  const tombstone = righe.findIndex((r, i) => i > salto && /deleted:\s*true/.test(r));
+  assert.notEqual(tombstone, -1, 'non trovo il tombstone dopo il salto: il caso non misura niente');
+  assert.ok(salto < tombstone, 'il salto delle prove viene DOPO la cancellazione: non serve a nulla');
+});
+
+test('15) l\'esito di prova si riconosce, e quello vero NON si scambia per una prova', () => {
+  const prova = esitoDiProva('create');
+  assert.equal(esitoVieneDaUnaProva(prova), true);
+  assert.ok(String(prova.idReserva).startsWith('PROVA-'), 'l\'idReserva di prova deve dirsi');
+  // 🚨 Il verso che conta: un esito VERO del worker non deve mai passare per prova, se no la sua
+  // riga verrebbe marcata e il reconcile smetterebbe di sorvegliarla — una partita vera che
+  // nessuno controlla più.
+  assert.equal(esitoVieneDaUnaProva({ idReserva: '123456', ok: true }), false);
+  assert.equal(esitoVieneDaUnaProva({ simulato: 'sì' }), false, 'solo il booleano vero conta');
+  assert.equal(esitoVieneDaUnaProva(null), false);
+  assert.equal(esitoVieneDaUnaProva(undefined), false);
+});
+
+test('16) due prove di fila non sono la stessa prenotazione', () => {
+  // Se l'idReserva fosse fisso, la seconda partita di prova sovrascriverebbe la prima.
+  assert.notEqual(esitoDiProva('create').idReserva, esitoDiProva('create').idReserva);
+});
+
+// ── ⑤ 🆕 9/08/2026 · LE CINQUE CHE RIFIUTANO — anche il «no» va misurato ───────────────────
+//
+// 🚨⭐⭐ IL BUCO CHE QUESTA SEZIONE CHIUDE, e c'era da 3 giorni: il caso 9 pretende che il recinto
+// stia PRIMA della chiamata al circolo. Ma se qualcuno mettesse quella chiamata **dentro** il ramo
+// del rifiuto, risalendo si troverebbe il recinto lì sopra e il caso 9 resterebbe **verde** —
+// mentre la funzione, fuori dalla produzione, scriverebbe eccome. Per le tre prenotazioni questo
+// è già coperto (casi 10-12); per le quattro dell'anagrafica non lo era, e col borsellino
+// diventano cinque. ⇒ Qui si guarda cosa c'è DENTRO il ramo: il circolo non si chiama, e si dice
+// di no con il codice giusto.
+// ⚖️ Le prenotazioni NON stanno in questo elenco perché il loro ramo **lavora** (registra la
+// prova) invece di rifiutare: la loro misura è quella dei casi 10-12, non questa.
+
 const CHI_RIFIUTA: Record<string, RegExp> = {
-  'matchpoint-bookings-create/index.ts': /callWorkerCreateBooking\(/,
-  'matchpoint-bookings-edit/index.ts': /callWorkerEditBooking\(/,
-  'matchpoint-bookings-cancel/index.ts': /callWorkerCancelBooking\(/,
   'matchpoint-clients-create/index.ts': /callWorkerCreateClient\(/,
   'matchpoint-clients-update/index.ts': /callWorkerUpdateClient\(/,
   'matchpoint-clients-disable/index.ts': /callWorkerDisableClient\(/,
   'matchpoint-clients-reactivate/index.ts': /callWorkerReactivateClient\(/,
-  // 💰 Il borsellino rifiuta e basta, e la ragione non è la pigrizia della copia: Matchpoint è il
-  // libro mastro UNICO, quindi «registrare qui una correzione di prova» aprirebbe il secondo
-  // libro che la regola del progetto vieta.
+  // 💰 Il borsellino rifiuta e basta, e la ragione non è la pigrizia: Matchpoint è il libro
+  // mastro UNICO, quindi «registrare qui una correzione di prova» aprirebbe il secondo libro
+  // che la regola del progetto vieta. Chi un domani gli facesse registrare qualcosa deve prima
+  // rispondere a QUELLA domanda, non copiare il ramo delle prenotazioni.
   'matchpoint-wallet-correct/index.ts': /callWorkerCorrect\(/,
 };
 
 for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
   const nome = rel.split('/')[0];
 
-  test(`10) 🚨 in ${nome} NESSUN ramo del rifiuto chiama il circolo`, () => {
-    const rami = ramiDelRifiuto(rel);
-    for (const [n, ramo] of rami.entries()) {
-      // 🚨 Un ritaglio a vuoto renderebbe «non c'è il worker qui dentro» vero e inutile.
-      assert.ok(ramo.split('\n').length > 2, `${rel}: ramo ${n + 1} troppo corto, non misura niente`);
+  test(`17) 🚨 in ${nome} NESSUN ramo del rifiuto chiama il circolo`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
+      // 🚨 La 29ª: un ritaglio a vuoto renderebbe «non c'è il worker qui dentro» vero e inutile.
+      assert.ok(ramo.split('\n').length > 2, `${rel} ramo ${n + 1}: ritaglio troppo corto, non misura niente`);
       assert.equal(
         maiChiamare.test(ramo), false,
         `nel ramo ${n + 1} del rifiuto c'è ${maiChiamare}: da lì si arriva al Matchpoint VERO`,
@@ -237,26 +346,20 @@ for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
     }
   });
 
-  test(`11) in ${nome} ogni rifiuto DICHIARA di esserlo, e USCE`, () => {
-    for (const [n, ramo] of ramiDelRifiuto(rel).entries()) {
+  test(`18) in ${nome} ogni rifiuto DICHIARA di esserlo (503 + codice)`, () => {
+    for (const [n, ramo] of ramiDiProva(rel).entries()) {
       const dove = `${rel} ramo ${n + 1}`;
-      // ① Ogni ramo, comunque sia fatto, deve usare la parola condivisa del recinto.
-      assert.ok(
-        /MESSAGGIO_AMBIENTE_DI_PROVA|CODICE_AMBIENTE_DI_PROVA/.test(ramo),
-        `${dove}: non usa il messaggio condiviso — chi legge dovrebbe indovinare cos'è successo`,
-      );
-      // ② E deve USCIRE: un ramo che non torna indietro prosegue verso il worker.
-      assert.ok(/\breturn\b/.test(ramo), `${dove}: non esce, la strada continua verso il circolo`);
-
-      // ③ Il ramo che RISPONDE deve anche dire cosa avrebbe fatto.
-      // ⚖️ Non tutti rispondono, ed è giusto: il secondo recinto di `bookings-create` sta dentro
-      // il giro asincrono, dove al chiamante si è già risposto — là l'esito si registra nel job.
-      // 🚨⭐⭐ Si guarda dentro la RISPOSTA, non in tutto il ramo: la prima versione cercava le
-      // parole ovunque e restava VERDE anche togliendo `avrebbe_…` dalla risposta, perché la
-      // parola sopravviveva in una variabile locale e nel log. L'ha trovato un sabotaggio che
-      // «non mordeva» — cioè il difetto stava nel caso, non nel sabotaggio.
+      // 🚨⭐⭐ Si guarda dentro la RISPOSTA, non dentro tutto il ramo: la prima versione di questo
+      // caso cercava le parole ovunque e restava VERDE anche togliendo `avrebbe_…` dalla risposta,
+      // perché la parola sopravviveva in una variabile locale e in un log. L'ha trovato un
+      // sabotaggio che «non mordeva» — cioè il difetto stava nel caso, non nel sabotaggio.
+      // ⚖️ Non tutti i rami rispondono: quello asincrono di `create` registra l'esito nel job,
+      // perché al chiamante si è già risposto. Là non si pretende una risposta.
       const risposta = ramo.match(/return err\([\s\S]*?\);/);
-      if (!risposta) continue;
+      if (!risposta) {
+        assert.ok(/MESSAGGIO_AMBIENTE_DI_PROVA/.test(ramo), `${dove}: non risponde e non registra nulla`);
+        continue;
+      }
       const testo = risposta[0];
       assert.ok(/\b503\b/.test(testo), `${dove}: il rifiuto non risponde 503`);
       assert.ok(/CODICE_AMBIENTE_DI_PROVA/.test(testo), `${dove}: il rifiuto non usa il codice condiviso`);
@@ -268,47 +371,67 @@ for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {
   });
 }
 
+test('19) 💰⭐⭐ il borsellino RIFIUTA: non registra da nessuna parte', () => {
+  // 🚨 Il verso che conta, e vale i soldi: se un domani il ramo del borsellino cominciasse a
+  // «registrare la prova» come fanno le prenotazioni, l'app di TEST vedrebbe un saldo che non
+  // esiste su Matchpoint — cioè un SECONDO libro mastro, che in questo progetto è vietato.
+  for (const ramo of ramiDiProva('matchpoint-wallet-correct/index.ts')) {
+    assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
+    assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
+    assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
+  }
+});
+
 /* ══ 🚨⭐⭐ 11/08/2026 — «REGISTRATA» DEV'ESSERE UN FATTO, NON UNA FRASE ══════════
  *
- * Trovato provando su TEST: il ponte rispondeva «fatto» e in `pmo_cloud_records` non c'era
- * NIENTE — zero righe `staff_edit` in assoluto, **su TEST e su PROD**. Due cose insieme:
+ * Trovato provando: il ponte rispondeva «Modifica di PROVA registrata» e in
+ * `pmo_cloud_records` non c'era NIENTE — zero righe `staff_edit` in assoluto, su TEST e su
+ * PROD. Due cose, e servono tutt'e due:
  *  · il CHECK sui tipi non ammetteva `staff_edit` né `staff_cancel` ⇒ il database rifiutava;
  *  · il codice **non guardava `{ error }`** — supabase-js lo RESTITUISCE invece di lanciarlo ⇒
  *    il `try/catch` di chi chiama non poteva scattare, e il rifiuto usciva come un «fatto».
- * ⇒ In produzione la modifica al circolo riusciva comunque, ma **la traccia di chi ha
- *   modificato o annullato una prenotazione non è mai esistita**.
+ * ⭐⭐ Il caso 11 qui sopra era verde e restava verde: misurava che la funzione **venisse
+ * chiamata**, non che **scrivesse**. È la differenza fra provare la struttura e provare la resa.
  */
 
 test('20) 🚨⭐⭐ chi scrive il registro GUARDA l\'esito: un rifiuto del database non è un «fatto»', () => {
+  // Ogni upsert su `pmo_cloud_records` dentro le tre funzioni delle prenotazioni dev'essere
+  // seguito da un controllo dell'errore. Senza, il fallimento è muto — ed è già successo.
   const attesi: Array<[string, number]> = [
     ['matchpoint-bookings-edit/index.ts', 1],     // staff_edit
-    ['matchpoint-bookings-cancel/index.ts', 1],   // staff_cancel
+    ['matchpoint-bookings-cancel/index.ts', 2],   // spegnimento della prova + staff_cancel
     ['matchpoint-bookings-create/index.ts', 1],   // la riga della prenotazione
   ];
   for (const [rel, quanti] of attesi) {
     const src = readFileSync(join(FUNZIONI, rel), 'utf8');
-    const conControllo = (src.match(/const \{ error: \w+ \} = await client\.from\('pmo_cloud_records'\)/g) ?? []).length;
+    const conControllo = (src.match(/const \{ error: \w+ \} = await client\s*\n?\s*\.?from\('pmo_cloud_records'\)/g)
+      ?? src.match(/const \{ error: \w+ \} = await client\.from\('pmo_cloud_records'\)/g) ?? []).length;
     assert.equal(conControllo, quanti,
       `${rel}: mi aspetto ${quanti} scritture che guardano l'errore, ne trovo ${conControllo}`);
-    // 🚨 E il controllo deve LANCIARE: solo un'eccezione arriva a chi chiama.
+    // 🚨 E il controllo deve LANCIARE: chi chiama tratta il fallimento in due modi opposti e
+    // giusti (503 in prova, log in produzione), ma solo se gli arriva un'eccezione.
     assert.ok(/if \(errore\w*\) throw new Error\(/.test(src),
       `${rel}: l'errore si legge e non si lancia — il chiamante non lo saprà mai`);
   }
 });
 
 test('21) 🚨 la MIGRAZIONE che ammette i due tipi esiste, e li nomina tutt\'e due', () => {
+  // ⚖️ Il codice del caso 16 senza questa migrazione trasformerebbe un difetto muto in un 503 a
+  // ogni modifica di prova: la cura è la coppia, e questo caso lega le due metà.
   // 🚨 Il file NON prova che sia stata applicata (le migrazioni qui non partono da sole): prova
   // che esista e che non si perda in un merge. L'applicazione si verifica sul bersaglio.
   const MIGRAZIONI = join(FUNZIONI, '..', 'migrations');
   const file = readdirSync(MIGRAZIONI).filter((f) => /staff_edit_cancel\.sql$/.test(f));
   assert.equal(file.length, 1, 'la migrazione dei due tipi non c\'è (o ce n\'è più d\'una)');
   const sql = readFileSync(join(MIGRAZIONI, file[0]!), 'utf8');
+  // Controllo opposto: se il CHECK non si ricostruisse, il file sarebbe innocuo e verde.
   assert.ok(/ADD CONSTRAINT pmo_cloud_records_type_check/.test(sql),
     'la migrazione non ricostruisce il vincolo: non cambierebbe niente');
-  // 🚨⭐⭐ SI GUARDA SOLO L'ELENCO DEL VINCOLO, senza commenti: la prima stesura cercava i nomi
-  // nel FILE INTERO ed è rimasta VERDE a un sabotaggio che toglieva `staff_cancel`, perché quel
-  // nome resta scritto nel commento che racconta il difetto. Un caso che legge la spiegazione
-  // invece della regola giudica il racconto, non il codice.
+  // 🚨⭐⭐ SI GUARDA SOLO L'ELENCO DEL VINCOLO, senza commenti — e non è pedanteria: la prima
+  // stesura di questo caso cercava i nomi nel FILE INTERO ed è rimasta **verde** a un sabotaggio
+  // che toglieva `staff_cancel` dal vincolo, perché il nome resta scritto qui sopra, nel
+  // commento che racconta il difetto. Un caso che legge la spiegazione invece della regola
+  // giudica il racconto, non il codice. → [[metodo-costruire-i-casi-storti]]
   const vincolo = (sql.split(/ADD CONSTRAINT pmo_cloud_records_type_check/)[1] ?? '')
     .split('\n').filter((r) => !/^\s*--/.test(r)).join('\n');
   assert.ok(vincolo.length > 200, 'non riesco a ritagliare l\'elenco del vincolo: caso cieco');

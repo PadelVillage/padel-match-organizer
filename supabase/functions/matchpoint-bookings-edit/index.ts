@@ -1,15 +1,12 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
-// `EdgeRuntime.waitUntil` esiste nel runtime Supabase ma la d.ts risolta oggi dal gate
-// (`deno check` differenziale) non ne dichiara il globale — misurato sulla PR #815, TS2304.
-// La create usa lo stesso nome e passò a suo tempo: il gate controlla solo le funzioni toccate,
-// ed è così che il drift della d.ts non s'era mai visto. Dichiarazione locale, forma minima.
-declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
+  esitoDiProva,
   MESSAGGIO_AMBIENTE_DI_PROVA,
+  MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 
@@ -52,7 +49,7 @@ type EditRequest = {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 function json(body: unknown, status = 200) {
@@ -167,14 +164,7 @@ async function callWorkerEditBooking(opts: {
       body: JSON.stringify({ idReserva: edit.idReserva, campo: edit.campo, data: edit.data, ora: edit.ora, move: edit.move, players: edit.players, note: edit.note, descrizione: edit.descrizione, istruttore: edit.istruttore, read: edit.read === true, operatore: operatore ?? '' }),
     });
   } catch (netErr) {
-    // ⭐⭐ IL TERZO ESITO, marchiato su una PROPRIETÀ (stessa regola di `esito-prenotazione.js`
-    // della sorella create): qui NON è arrivata nessuna risposta, quindi la modifica può essere
-    // già sul Matchpoint del circolo — «+ Aggiungere all'elenco» persiste SUBITO — oppure no.
-    // Chi lo legge («non lo so») non deve rifare, deve controllare. Un rifiuto del worker invece
-    // È una risposta, e resta un errore normale senza marchio.
-    const e = new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`) as Error & { esitoIgnoto?: boolean };
-    e.esitoIgnoto = true;
-    throw e;
+    throw new Error(`Worker network error (nessun retry sulle modifiche): ${errorText(netErr)}`);
   }
 
   const body = await res.json().catch(() => ({}));
@@ -204,10 +194,11 @@ async function saveStaffEditRecord(opts: {
   // l'errore in `{ error }` invece di lanciarlo: senza questa riga il `try/catch` di chi chiama
   // non poteva scattare, e un rifiuto del database usciva come un «fatto».
   // 📏 Non è un'ipotesi: il CHECK sui tipi non ammetteva `staff_edit`, quindi questo registro
-  // **non è mai stato scritto** — zero righe in assoluto, su TEST e su PROD. Curato dalla
-  // migrazione `…_staff_edit_cancel`, che va applicata PRIMA di questo codice.
-  // ⇒ Qui il registro resta best-effort (la modifica al circolo è già riuscita, negarla
-  // manderebbe lo staff a rifarla): il fallimento si LOGGA. Ma finora non si loggava nemmeno.
+  // **non è mai stato scritto** — zero righe in assoluto, su TEST e su PROD — e intanto il ponte
+  // rispondeva «Modifica di PROVA registrata». Curato dalla migrazione `…_staff_edit_cancel`.
+  // ⚖️ Qui si LANCIA e non si torna un esito: i due chiamanti trattano il fallimento in modi
+  // opposti e giusti — in prova `503` (un «fatto» non provato è peggio di un no), in produzione
+  // un log (la modifica al circolo **è già riuscita**: negarla manderebbe lo staff a rifarla).
   const { error: erroreRegistro } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_edit',
     local_key: localKey,
@@ -228,107 +219,8 @@ async function saveStaffEditRecord(opts: {
   if (erroreRegistro) throw new Error(`registro staff_edit non scritto: ${erroreRegistro.message}`);
 }
 
-// ── IL LAVORO COL NUMERO — la stessa meccanica della sorella create (voce 23) ─────────────────
-// Il telefono che modifica una prenotazione può spegnersi mentre il worker lavora (1-2 minuti di
-// automazione browser): la risposta si perde e l'app deve riverificare da fuori. Con `async: true`
-// la modifica diventa un LAVORO con un numero: la riga `booking_job` in `pmo_cloud_records` porta
-// l'esito, il lavoro corre QUI in sottofondo (EdgeRuntime.waitUntil — il worker non c'entra e non
-// cambia), e il telefono al risveglio chiede «com'è finito il lavoro N?» con una GET da un secondo.
-// ⇒ Il gestionale SA, l'app CHIEDE — anche a schermo spento nel mezzo.
-// ⚖️ Stesso `record_type` della create, di proposito: la riga porta `azione: 'edit'`, e l'azione
-// `chiudi-lavoro-ignoto` (sulla create) chiude anche questi senza una terza copia della regola.
-type ScrittoreDiJob = {
-  from: (tabella: string) => {
-    upsert: (riga: JsonMap, opzioni?: { onConflict?: string }) => PromiseLike<unknown>;
-  };
-};
-
-async function writeEditJob(
-  client: ScrittoreDiJob,
-  jobId: string,
-  status: string,
-  extra: JsonMap = {},
-): Promise<boolean> {
-  const now = new Date().toISOString();
-  const esito = await client.from('pmo_cloud_records').upsert({
-    record_type: 'booking_job',
-    local_key: jobId,
-    payload: { status, azione: 'edit', updated_at: now, ...extra },
-    deleted: false,
-    updated_at: now,
-    synced_at: now,
-  }, { onConflict: 'record_type,local_key' }) as { error?: { message?: string } | null } | null;
-  const errore = esito?.error;
-  if (errore) {
-    // 🔎 L'esito della scrittura SI GUARDA (lezione dell'11/08 su saveStaffEditRecord): una riga
-    // di stato che non atterra lascerebbe il lavoro «in corso» per sempre, in silenzio.
-    console.error(JSON.stringify({
-      event: 'edit_job_non_scritto', jobId, status,
-      error: errore.message ?? String(errore),
-    }));
-    return false;
-  }
-  return true;
-}
-
-async function runEditJobInBackground(opts: {
-  jobId: string; supabaseUrl: string; supabaseKey: string; actor: StaffActor;
-  edit: EditRequest; workerUrl: string; workerApiKey: string;
-}) {
-  const { jobId, supabaseUrl, supabaseKey, actor, edit, workerUrl, workerApiKey } = opts;
-  const client = createClient(supabaseUrl, supabaseKey);
-  const base = { edit, created_by_email: actor.email };
-  // 🔒 IL RECINTO, di nuovo — qui si arriva DOPO aver già risposto al chiamante, quindi la
-  // difesa deve stare anche dentro la strada che non torna indietro (come nella create).
-  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit_async', jobId, edit }));
-    await writeEditJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
-    return;
-  }
-  try {
-    const workerResult = await callWorkerEditBooking({ workerUrl, workerApiKey, edit, operatore: actor.email });
-    try {
-      await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
-    } catch (dbErr) {
-      console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
-    }
-    await writeEditJob(client, jobId, 'done', {
-      ...base,
-      message: `Modifica eseguita (idReserva ${edit.idReserva ?? '?'})`,
-      worker_result: workerResult,
-    });
-  } catch (workerErr) {
-    // ⭐⭐ I TRE esiti: rifiuto del worker = risposta = `error`; NESSUNA risposta = `unknown`,
-    // col messaggio che porta l'istruzione, non solo la constatazione.
-    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
-    await writeEditJob(client, jobId, ignoto ? 'unknown' : 'error', {
-      ...base,
-      error: errorText(workerErr),
-      ...(ignoto ? { message: 'Non ho ricevuto risposta dal gestionale: la modifica potrebbe essere passata lo stesso. Controlla su Matchpoint prima di rifarla.' } : {}),
-    });
-  }
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
-
-  // «Com'è finito il lavoro N?» — la domanda da un secondo che un telefono appena risvegliato
-  // può fare al posto di aspettare 200 secondi una risposta che non arriverà più.
-  if (req.method === 'GET') {
-    const actorGet = await getActor(req).catch(() => null);
-    if (!actorGet) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
-    const jobId = clean(new URL(req.url).searchParams.get('jobId'));
-    if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
-    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
-    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
-    const client = createClient(sUrl, sKey);
-    const { data, error } = await client.from('pmo_cloud_records')
-      .select('payload').eq('record_type', 'booking_job').eq('local_key', jobId).maybeSingle();
-    if (error) return err(500, 'DB_ERROR', errorText(error));
-    if (!data) return err(404, 'JOB_NOT_FOUND', 'Job non trovato.');
-    return ok({ jobId, ...((data.payload as JsonMap) ?? {}) });
-  }
-
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   // Auth: percorso consumer (secret interno) O staff (JWT). Il consumer è ristretto
@@ -435,24 +327,29 @@ Deno.serve(async (req: Request) => {
   // prova (è così che si guarda un roster senza toccarlo).
   // 🚨 Sta DOPO i controlli e PRIMA del worker apposta: la richiesta viene capita per intero e
   // raccontata («ecco cosa avrei fatto»), ma non arriva a destinazione.
+  //
+  // 🆕 7/08 — di qua non si rifiuta più: si registra la modifica e si risponde di sì, senza
+  // chiamare il circolo. ⭐ Chi porta l'EFFETTO vero è il ponte dei soci, che dopo un `ok`
+  // allinea la copia in app da sé (`allineaCopiaInApp` per uscita e togli, `aggiungiACopiaInApp`
+  // per l'invito): quindi in prova un giocatore esce e rientra davvero, e si vede.
   if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit', edit }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
-  }
-
-  // ── Modalità asincrona (opzionale): rispondi subito, modifica in sottofondo ──
-  // Solo per le MODIFICHE: la lettura (`read`) risponde in pochi secondi e un numero non le serve.
-  if (body.async === true && !readOnly) {
-    const jobId = crypto.randomUUID();
-    const clientJob = createClient(supabaseUrl, supabaseKey);
-    // 🚨 Se la riga di stato NON si scrive, il numero che stiamo per consegnare non corrisponde a
-    // niente. Qui siamo ancora PRIMA di aver chiamato il circolo: «non è partita» è la verità.
-    const jobScritto = await writeEditJob(clientJob, jobId, 'pending', { edit, created_by_email: actor.email, created_at: new Date().toISOString() });
-    if (!jobScritto) {
-      return err(503, 'JOB_NON_AVVIATO', 'Non sono riuscito ad aprire il lavoro: la modifica NON è partita, rifalla.', { edit });
+    const workerResult = esitoDiProva('edit');
+    try {
+      await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
+    } catch (dbErr) {
+      // ⚖️ Come in `create`: se non si è riusciti nemmeno a registrare la prova, si torna al
+      // rifiuto. Un «fatto» non provato è peggio di un no.
+      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
     }
-    EdgeRuntime.waitUntil(runEditJobInBackground({ jobId, supabaseUrl, supabaseKey, actor, edit, workerUrl, workerApiKey }));
-    return ok({ jobId, status: 'pending', message: 'Modifica avviata, in corso…' });
+    return ok({
+      message: 'Modifica di PROVA registrata.',
+      prova: true,
+      nota: MESSAGGIO_PROVA_REGISTRATA,
+      edit,
+      worker: workerResult,
+    });
   }
 
   // Call browser worker
@@ -460,14 +357,7 @@ Deno.serve(async (req: Request) => {
   try {
     workerResult = await callWorkerEditBooking({ workerUrl, workerApiKey, edit, operatore: actor.email });
   } catch (workerErr) {
-    // ⭐ Il terzo esito anche sulla strada SINCRONA: resta un 502 (contarlo riuscito sarebbe la
-    // bugia opposta), ma cambia il CODICE e porta il marchio — che il ponte dei soci legge già
-    // (consumer-booking-write, riga «esitoIgnoto === true || error === WORKER_ESITO_IGNOTO»).
-    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
-    return err(502, ignoto ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR', errorText(workerErr), {
-      edit,
-      ...(ignoto ? { esitoIgnoto: true } : {}),
-    });
+    return err(502, 'WORKER_ERROR', errorText(workerErr), { edit });
   }
 
   // Save record to DB (best-effort). In lettura sola non si registra nessuna "modifica".

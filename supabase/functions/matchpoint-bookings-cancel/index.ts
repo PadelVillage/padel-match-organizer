@@ -1,13 +1,13 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
-// `EdgeRuntime.waitUntil` esiste nel runtime Supabase ma la d.ts risolta oggi dal gate
-// (`deno check` differenziale) non ne dichiara il globale — vedi il gemello in bookings-edit.
-declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
+import { righeDiProvaDaSpegnere } from './bersaglio-prova.ts';
 import {
   CODICE_AMBIENTE_DI_PROVA,
+  esitoDiProva,
   MESSAGGIO_AMBIENTE_DI_PROVA,
+  MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 
@@ -30,7 +30,7 @@ type CancelRequest = {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 function json(body: unknown, status = 200) {
@@ -143,12 +143,7 @@ async function callWorkerCancelBooking(opts: {
       });
     } catch (netErr) {
       if (attempt === 3) {
-        // ⭐⭐ IL TERZO ESITO, marchiato su una PROPRIETÀ (stessa regola della sorella create):
-        // tre volte senza risposta — l'annullo può essere passato lo stesso, e da qui non è
-        // dato saperlo. Un rifiuto del worker invece È una risposta: errore normale, no marchio.
-        const e = new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`) as Error & { esitoIgnoto?: boolean };
-        e.esitoIgnoto = true;
-        throw e;
+        throw new Error(`Worker network error after ${attempt} attempts: ${errorText(netErr)}`);
       }
       await new Promise((r) => setTimeout(r, attempt * 3000));
       continue;
@@ -173,6 +168,68 @@ async function callWorkerCancelBooking(opts: {
   throw new Error('Worker call failed after retries');
 }
 
+/**
+ * In prova: fa sparire la partita, cioè il lavoro che in produzione fa il giro di
+ * sincronizzazione.
+ *
+ * 🚨⭐⭐ PERCHÉ ESISTE, e non è simmetria con `create` — è un buco trovato ragionando prima di
+ * scrivere. Chi fa sparire una partita annullata NON è questa funzione: qui si registra soltanto
+ * il `staff_cancel`, cioè il REGISTRO del gesto. La riga della partita muore dopo, quando
+ * `matchpoint-bookings-sync` rilegge l'occupazione da Matchpoint e non la trova più.
+ * ⇒ Su una partita di PROVA quel giro non porta niente (su Matchpoint non c'è mai stata), e per
+ *   giunta il reconcile ora **salta apposta** le righe marcate: senza questa funzione, annullare
+ *   una partita di prova l'avrebbe lasciata al suo posto — «annullata» e ancora in elenco.
+ *
+ * ⚖️ Tocca SOLO le righe che portano il marchio della prova. Una riga vera non la sfiora nemmeno
+ * per sbaglio: se il marchio non c'è, non è roba nostra e la decide il sync, come sempre.
+ *
+ * 🚨⭐⭐ CERCA IN DUE MODI, e il secondo è stato aggiunto DOPO AVER VISTO LA PARTITA RESTARE IN
+ * PIEDI (7/08, prima prova dal vivo). La prima versione cercava solo per SLOT — e il ponte dei
+ * soci, quando la prenotazione ha un `idReserva`, manda **solo quello**: niente data, niente
+ * ora, niente campo. Le partite di prova un `idReserva` ce l'hanno (`PROVA-…`) ⇒ non si trovava
+ * mai nulla, l'annullo rispondeva «fatto» e la partita restava nell'elenco.
+ * ⭐ Il codice del ponte lo aveva perfino previsto: *«su tutti i record veri id_reserva è vuoto,
+ * quindi parte la terna — e un giorno in cui non fosse più così, questa è l'unica riga che lo
+ * direbbe prima e non dopo»*. Quel giorno era oggi, e a dirlo è stata la prova, non la lettura.
+ * ⚠️ E il caso automatico non poteva accorgersene: misurava che questa funzione fosse CHIAMATA,
+ * non che trovasse qualcosa. Struttura ≠ resa.
+ */
+async function spegniPartiteDiProvaSulloSlot(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  cancel: CancelRequest;
+}): Promise<number> {
+  const { supabaseUrl, supabaseKey, cancel } = opts;
+  const client = createClient(supabaseUrl, supabaseKey);
+  const { data, error } = await client
+    .from('pmo_cloud_records')
+    .select('local_key, payload')
+    .eq('record_type', 'staff_booking')
+    .eq('deleted', false);
+  if (error) throw error;
+  const righe = (data ?? []) as Array<{ local_key: string; payload: JsonMap }>;
+  // ⭐ La scelta del bersaglio sta in un modulo PURO (`bersaglio-prova.ts`), perché è la parte
+  // che si può sbagliare — e che infatti è stata sbagliata. Qui resta solo il girare del database.
+  const stessoSlot = righeDiProvaDaSpegnere(righe, cancel);
+  const adesso = new Date().toISOString();
+  for (const r of stessoSlot) {
+    // 🚨 Anche qui si guarda l'esito (11/08/2026): questo spegne la riga di una partita di
+    // prova, e un fallimento ignorato la lascerebbe **viva** mentre al socio si è detto
+    // «annullata». Il tipo `staff_booking` è sempre stato ammesso, quindi qui non c'era il
+    // difetto della migrazione — ma il modo di sbagliare in silenzio sì, ed è lo stesso.
+    const { error: erroreSpegnimento } = await client.from('pmo_cloud_records').upsert({
+      record_type: 'staff_booking',
+      local_key: r.local_key,
+      payload: r.payload,
+      deleted: true,
+      updated_at: adesso,
+      synced_at: adesso,
+    }, { onConflict: 'record_type,local_key' });
+    if (erroreSpegnimento) throw new Error(`riga di prova non spenta (${r.local_key}): ${erroreSpegnimento.message}`);
+  }
+  return stessoSlot.length;
+}
+
 async function saveStaffCancelRecord(opts: {
   supabaseUrl: string;
   supabaseKey: string;
@@ -186,9 +243,8 @@ async function saveStaffCancelRecord(opts: {
 
   // 🚨⭐⭐ 11/08/2026 — LO STESSO DIFETTO DI `staff_edit`, e nessuno l'aveva visto per la stessa
   // ragione: `staff_cancel` non era nell'elenco dei tipi ammessi dal CHECK, il database
-  // rifiutava, e senza guardare `{ error }` — che supabase-js RESTITUISCE invece di lanciare —
-  // il rifiuto usciva come un «fatto». Zero righe in assoluto, su TEST e su PROD.
-  // Curato dalla migrazione `…_staff_edit_cancel`, da applicare PRIMA di questo codice.
+  // rifiutava, e senza guardare `{ error }` il rifiuto usciva come un «fatto». Zero righe in
+  // assoluto, su TEST e su PROD. Curato dalla migrazione `…_staff_edit_cancel`.
   const { error: erroreRegistro } = await client.from('pmo_cloud_records').upsert({
     record_type: 'staff_cancel',
     local_key: localKey,
@@ -208,95 +264,8 @@ async function saveStaffCancelRecord(opts: {
   if (erroreRegistro) throw new Error(`registro staff_cancel non scritto: ${erroreRegistro.message}`);
 }
 
-// ── IL LAVORO COL NUMERO — stessa meccanica di create ed edit (vedi il commento là) ───────────
-// Con `async: true` l'annullo diventa un lavoro con un numero: la riga `booking_job` porta
-// l'esito, il lavoro corre qui in sottofondo, e il telefono al risveglio chiede com'è finito.
-type ScrittoreDiJob = {
-  from: (tabella: string) => {
-    upsert: (riga: JsonMap, opzioni?: { onConflict?: string }) => PromiseLike<unknown>;
-  };
-};
-
-async function writeCancelJob(
-  client: ScrittoreDiJob,
-  jobId: string,
-  status: string,
-  extra: JsonMap = {},
-): Promise<boolean> {
-  const now = new Date().toISOString();
-  const esito = await client.from('pmo_cloud_records').upsert({
-    record_type: 'booking_job',
-    local_key: jobId,
-    payload: { status, azione: 'cancel', updated_at: now, ...extra },
-    deleted: false,
-    updated_at: now,
-    synced_at: now,
-  }, { onConflict: 'record_type,local_key' }) as { error?: { message?: string } | null } | null;
-  const errore = esito?.error;
-  if (errore) {
-    console.error(JSON.stringify({
-      event: 'cancel_job_non_scritto', jobId, status,
-      error: errore.message ?? String(errore),
-    }));
-    return false;
-  }
-  return true;
-}
-
-async function runCancelJobInBackground(opts: {
-  jobId: string; supabaseUrl: string; supabaseKey: string; actor: StaffActor;
-  cancel: CancelRequest; workerUrl: string; workerApiKey: string;
-}) {
-  const { jobId, supabaseUrl, supabaseKey, actor, cancel, workerUrl, workerApiKey } = opts;
-  const client = createClient(supabaseUrl, supabaseKey);
-  const base = { cancel, cancelled_by_email: actor.email };
-  // 🔒 IL RECINTO anche dentro la strada che non torna indietro (come nella create).
-  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel_async', jobId, cancel }));
-    await writeCancelJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
-    return;
-  }
-  try {
-    const workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
-    try {
-      await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
-    } catch (dbErr) {
-      console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
-    }
-    await writeCancelJob(client, jobId, 'done', {
-      ...base,
-      message: `Annullamento eseguito: ${cancel.idReserva ? `idReserva ${cancel.idReserva}` : `Campo ${cancel.campo} · ${cancel.data} · ${cancel.ora}`}`,
-      worker_result: workerResult,
-    });
-  } catch (workerErr) {
-    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
-    await writeCancelJob(client, jobId, ignoto ? 'unknown' : 'error', {
-      ...base,
-      error: errorText(workerErr),
-      ...(ignoto ? { message: 'Non ho ricevuto risposta dal gestionale: l\'annullo potrebbe essere passato lo stesso. Controlla su Matchpoint prima di rifarlo.' } : {}),
-    });
-  }
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
-
-  // «Com'è finito il lavoro N?» — per il telefono che si risveglia a operazione in volo.
-  if (req.method === 'GET') {
-    const actorGet = await getActor(req).catch(() => null);
-    if (!actorGet) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
-    const jobId = clean(new URL(req.url).searchParams.get('jobId'));
-    if (!jobId) return err(400, 'MISSING_JOBID', 'Parametro jobId richiesto.');
-    const sUrl = clean(Deno.env.get('SUPABASE_URL'));
-    const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
-    const client = createClient(sUrl, sKey);
-    const { data, error } = await client.from('pmo_cloud_records')
-      .select('payload').eq('record_type', 'booking_job').eq('local_key', jobId).maybeSingle();
-    if (error) return err(500, 'DB_ERROR', errorText(error));
-    if (!data) return err(404, 'JOB_NOT_FOUND', 'Job non trovato.');
-    return ok({ jobId, ...((data.payload as JsonMap) ?? {}) });
-  }
-
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   // Auth: percorso consumer (secret interno) O staff (JWT)
@@ -341,21 +310,43 @@ Deno.serve(async (req: Request) => {
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // 🚨 Annullare è il gesto che non si torna indietro: qui il recinto vale doppio, perché una
   // prova finita davvero sul circolo toglierebbe il campo a quattro persone che ci contavano.
+  //
+  // 🆕 7/08 — di qua non si rifiuta più: si spegne la partita di prova e si registra il gesto,
+  // senza chiamare il circolo. 🚨 L'ordine conta: prima si SPEGNE, poi si registra — se si
+  // registrasse per prima, un guasto nel mezzo lascerebbe scritto «annullata» accanto a una
+  // partita ancora in piedi, che è la contraddizione peggiore da leggere in un registro.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel', cancel }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
-  }
-
-  // ── Modalità asincrona (opzionale): rispondi subito, annulla in sottofondo ──
-  if (body.async === true) {
-    const jobId = crypto.randomUUID();
-    const clientJob = createClient(supabaseUrl, supabaseKey);
-    const jobScritto = await writeCancelJob(clientJob, jobId, 'pending', { cancel, cancelled_by_email: actor.email, created_at: new Date().toISOString() });
-    if (!jobScritto) {
-      return err(503, 'JOB_NON_AVVIATO', 'Non sono riuscito ad aprire il lavoro: l\'annullo NON è partito, rifallo.', { cancel });
+    const workerResult = esitoDiProva('cancel');
+    let spente = 0;
+    try {
+      spente = await spegniPartiteDiProvaSulloSlot({ supabaseUrl, supabaseKey, cancel });
+      await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
+    } catch (dbErr) {
+      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
     }
-    EdgeRuntime.waitUntil(runCancelJobInBackground({ jobId, supabaseUrl, supabaseKey, actor, cancel, workerUrl, workerApiKey }));
-    return ok({ jobId, status: 'pending', message: 'Annullamento avviato, in corso…' });
+    // 🚨⭐⭐ ZERO SPENTE ⇒ NON si dice «fatto». Trovato dal vivo il 7/08: la prima versione
+    // rispondeva ok comunque, e il bot diceva al socio «ho annullato» accanto a una partita
+    // ancora in elenco. È esattamente la bugia che questo progetto insegue da luglio, e qui
+    // sarebbe nata NUOVA — dentro il pezzo costruito per provare meglio.
+    // ⚖️ Zero non vuol dire guasto: vuol dire che su quello slot non c'era nessuna partita di
+    // PROVA (per esempio è una partita vera, che di prova non si può annullare). Ma per chi
+    // chiede «annulla» le due cose finiscono uguali — non è successo niente — e va detto.
+    if (spente === 0) {
+      return err(409, 'PROVA_NIENTE_DA_ANNULLARE',
+        'Ambiente di prova: su quello slot non c\'è nessuna partita di prova da annullare. '
+        + 'Il gestionale del circolo non è stato toccato, e qui non è cambiato niente.',
+        { prova: true, cancel });
+    }
+    return ok({
+      message: `Annullamento di PROVA: ${spente === 1 ? 'la partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale di prova.`,
+      prova: true,
+      partite_di_prova_spente: spente,
+      nota: MESSAGGIO_PROVA_REGISTRATA,
+      cancel,
+      worker: workerResult,
+    });
   }
 
   // Call browser worker
@@ -363,12 +354,7 @@ Deno.serve(async (req: Request) => {
   try {
     workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
   } catch (workerErr) {
-    // ⭐ Il terzo esito anche sulla strada sincrona: 502 col CODICE giusto e il marchio.
-    const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
-    return err(502, ignoto ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR', errorText(workerErr), {
-      cancel,
-      ...(ignoto ? { esitoIgnoto: true } : {}),
-    });
+    return err(502, 'WORKER_ERROR', errorText(workerErr), { cancel });
   }
 
   // Save record to DB
