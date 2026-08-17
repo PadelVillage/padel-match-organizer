@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.234';
+    const APP_VERSION = '6.235';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41685,8 +41685,18 @@ Per confermare scrivi ELIMINA.`);
           renderStaffCalendar();
           return;
         }
-        _setEditSyncNote('⌛ Non ho la conferma — sto guardando su Matchpoint…', '#b54708');
-        const look = await staffCalAskMatchpoint({ campoNum: _curCampo, data: _curIso, ora: _curOra, nome: '', giocatori: addArr }, _staffE, _urlE, _keyE);
+        // ⭐ NON UNA VOLTA SOLA (17/08/2026): se l'esito è ignoto è perché la strada è caduta,
+        // quindi il primo colpo è quello con meno probabilità di riuscire. Stessa insistenza
+        // già collaudata sulla creazione (staffCalGuardaFinchePuoi).
+        const look = await staffCalGuardaFinchePuoi(
+          function () { return staffCalAskMatchpoint({ campoNum: _curCampo, data: _curIso, ora: _curOra, nome: '', giocatori: addArr }, _staffE, _urlE, _keyE); },
+          {
+            annuncia: function (n) {
+              _setEditSyncNote(n === 1
+                ? '⌛ Non ho la conferma — sto guardando su Matchpoint…'
+                : ('⌛ Non ho ancora la conferma — continuo a guardare su Matchpoint (' + n + '° tentativo)…'), '#b54708');
+            },
+          });
         _spegniPuntino();
         if (look.verdict === 'si') {
           _applicaModifiche(null);
@@ -41814,21 +41824,29 @@ Per confermare scrivi ELIMINA.`);
       } catch (err) {
         _staffCalPendingEdits.delete(pendKey);
         // ⭐⭐ ESITO IGNOTO ≠ FALLIMENTO. Gli esiti sono TRE, non due: (1) la risposta è arrivata →
-        // si sa, ed è il ramo sopra; (2) la richiesta NON è mai partita (errore prima della fetch,
-        // o browser dichiaratamente offline) → non è scritto, e il ripristino è GIUSTO; (3) la
-        // richiesta è PARTITA e la risposta non è tornata → NON SI SA. Il caso 3 cadeva qui dentro
-        // come "fallito" e faceva un ripristino ALLA CIECA. È successo l'1/08 su PROD: l'edge aveva
-        // risposto 200 in 10s (i giocatori erano su Matchpoint), il telefono non ha ricevuto la
-        // risposta, e l'app ha tolto i 3 giocatori dalla NOSTRA copia annunciando «NON salvata» —
-        // un messaggio falso e un disallineamento da riparare a mano. È lo stesso pericolo già
-        // riconosciuto per il timeout (vedi _staffCalIsTimeoutClass): stessa cura, non toccare
-        // niente e DIRLO. ⚠️ `navigator.onLine` è attendibile solo in NEGATIVO (false = nessuna
-        // interfaccia di rete): lo usiamo solo per AUTORIZZARE il ripristino, mai per dedurre che
-        // la scrittura sia passata. Se mente dicendo "online", finiamo nel ramo del dubbio — che
-        // è il verso buono: si chiede di controllare, non si distrugge un dato.
+        // si sa, ed è il ramo sopra; (2) la richiesta NON è mai partita (errore prima della fetch)
+        // → non è scritto, e dirlo è GIUSTO; (3) la richiesta è PARTITA e la risposta non è
+        // tornata → NON SI SA. Il caso 3 cadeva qui dentro come "fallito" e faceva un ripristino
+        // ALLA CIECA. È successo l'1/08 su PROD: l'edge aveva risposto 200 in 10s (i giocatori
+        // erano su Matchpoint), il telefono non ha ricevuto la risposta, e l'app ha tolto i 3
+        // giocatori dalla NOSTRA copia annunciando «NON salvata» — un messaggio falso e un
+        // disallineamento da riparare a mano. È lo stesso pericolo già riconosciuto per il
+        // timeout (vedi _staffCalIsTimeoutClass): stessa cura, non toccare niente e DIRLO.
+        // ⚠️ Fino al 17/08/2026 `navigator.onLine === false` mandava nel ramo «mai partita» ANCHE
+        // a richiesta uscita — ed era falso: l'offline dice che la linea manca ADESSO, non che la
+        // richiesta non sia partita quando la linea c'era (prenotazione 9476: tre aggiunte
+        // riuscite, annunciate «mai partite» due volte). Ora l'offline decide solo il QUANDO
+        // della verifica (pmoAspettaRete), mai il verdetto.
+        // 📴 17/08/2026 (prenotazione 9476): offline ADESSO non vuol dire «mai partita» — la
+        // richiesta era uscita quando la linea c'era, ed era pure RIUSCITA. Se `_reqSent` è vero
+        // l'esito è ignoto comunque: si aspetta il ritorno della rete e POI si va a guardare.
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        if ((err && err.name === 'AbortError') || (_reqSent && !_offline)) {
+        if ((err && err.name === 'AbortError') || _reqSent) {
           // La richiesta è uscita e la risposta non è tornata: esito IGNOTO ⇒ si va a guardare.
+          if (_offline) {
+            _setEditSyncNote('📴 Sei senza linea — la richiesta era già partita: appena torna la rete vado a controllare su Matchpoint…', '#b54708');
+            await pmoAspettaRete();
+          }
           await _verifica((err && err.name === 'AbortError') ? 'il gestionale non ha risposto in tempo' : ((err && err.message) ? err.message : String(err)));
         } else {
           // Qui la richiesta non è MAI partita: esito noto, e non c'era niente da applicare.
@@ -42658,6 +42676,42 @@ Per confermare scrivi ELIMINA.`);
     }
   }
 
+  // 📴 ASPETTA CHE TORNI LA LINEA — 17/08/2026, prenotazione 9476.
+  //
+  // `navigator.onLine === false` dice che la linea non c'è ADESSO — non dice che la richiesta
+  // non sia MAI partita. Il 17/08 tre aggiunte di giocatori erano riuscite su Matchpoint, ma la
+  // rete del telefono è caduta fra l'invio e la risposta: al catch l'app si trovava offline,
+  // concludeva «mai partita» e annunciava «la prenotazione è rimasta com'era» — falso, e con
+  // l'invito a rifarla. Da qui la regola: se `_reqSent` è vero l'esito è IGNOTO comunque; l'offline
+  // cambia solo il QUANDO della verifica — prima si aspetta la rete, poi si va a guardare.
+  // Risolve subito se la linea c'è già; comunque entro il tetto (5 minuti): scaduto, si prosegue
+  // lo stesso — senza rete la verifica risponde 'boh' e non conclude niente, che è il verso buono.
+  // Il risveglio della scheda (visibilitychange) conta quanto l'evento 'online': su un telefono
+  // sospeso i timer sono fermi, ed è proprio riaprendo la scheda che si torna in condizione di guardare.
+  function pmoAspettaRete(maxMs) {
+    const tetto = Number(maxMs) > 0 ? Number(maxMs) : 300000;
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      let chiuso = false;
+      let iv = null, to = null;
+      const fine = function (ok) {
+        if (chiuso) return;
+        chiuso = true;
+        try { window.removeEventListener('online', suOnline); } catch (e) {}
+        try { document.removeEventListener('visibilitychange', suRisveglio); } catch (e) {}
+        if (iv) clearInterval(iv);
+        if (to) clearTimeout(to);
+        resolve(ok);
+      };
+      const suOnline = function () { fine(true); };
+      const suRisveglio = function () { if (navigator.onLine !== false) fine(true); };
+      try { window.addEventListener('online', suOnline); } catch (e) {}
+      try { document.addEventListener('visibilitychange', suRisveglio); } catch (e) {}
+      iv = setInterval(function () { if (navigator.onLine !== false) fine(true); }, 3000);
+      to = setTimeout(function () { fine(false); }, tetto);
+    });
+  }
+
   // 🚨⭐⭐ GUARDA FINCHÉ NON SAI — voce 23, seconda metà (15/08/2026).
   //
   // Fino a ieri si guardava UNA VOLTA SOLA: se quel colpo andava a vuoto, il «non lo so»
@@ -43176,10 +43230,17 @@ Per confermare scrivi ELIMINA.`);
         }
       } catch (err) {
         // Tre esiti, non due: se il server ha RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto.
+        // 📴 17/08/2026: offline ADESSO non vuol dire «mai partita» — con `_reqSent` vero l'esito
+        // è ignoto comunque; si aspetta il ritorno della rete e poi si va a guardare.
         const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        if (!_answered && _reqSent && !_offline) await _uncertainStatus((err && err.message) ? err.message : String(err));
-        else _failStatus((err && err.message) ? err.message : String(err));
+        if (!_answered && _reqSent) {
+          if (_offline) {
+            staffCalSetStatus('📴 Sei senza linea — la richiesta era già partita: appena torna la rete vado a controllare su Matchpoint…', 'pending');
+            await pmoAspettaRete();
+          }
+          await _uncertainStatus((err && err.message) ? err.message : String(err));
+        } else _failStatus((err && err.message) ? err.message : String(err));
       } finally {
         try { if (typeof _staffCalPendingEdits !== 'undefined') _staffCalPendingEdits.delete(_optimKey); } catch (e) {}
       }
@@ -43557,8 +43618,17 @@ Per confermare scrivi ELIMINA.`);
       // ROVESCIATA rispetto alla prenotazione, ed è la parte da leggere piano: se su Matchpoint
       // la prenotazione NON c'è più, vuol dire che l'annullamento È passato. Se c'è ancora, no.
       const _verifica = async function (perche) {
-        _setSync('⌛ Non ho la conferma — sto guardando su Matchpoint…', '#b54708');
-        const look = await staffCalAskMatchpoint(_lookParsed, _staffC, _urlC, _keyC);
+        // ⭐ NON UNA VOLTA SOLA (17/08/2026): stessa insistenza della creazione — se l'esito è
+        // ignoto la strada è caduta, e il primo colpo è quello con meno probabilità di riuscire.
+        const look = await staffCalGuardaFinchePuoi(
+          function () { return staffCalAskMatchpoint(_lookParsed, _staffC, _urlC, _keyC); },
+          {
+            annuncia: function (n) {
+              _setSync(n === 1
+                ? '⌛ Non ho la conferma — sto guardando su Matchpoint…'
+                : ('⌛ Non ho ancora la conferma — continuo a guardare su Matchpoint (' + n + '° tentativo)…'), '#b54708');
+            },
+          });
         if (look.verdict === 'no') {
           await _applicaAnnullo();
           _setSync('✅ Operazione confermata — su Matchpoint non c\'è più', '#067647', '✅ <strong>Prenotazione annullata</strong>');
@@ -43621,12 +43691,18 @@ Per confermare scrivi ELIMINA.`);
         // Cross-device: conclusa (anche su errore/timeout) → l'altro device scioglie il segnaposto
         // e riconcilia dal cloud, che è autorevole.
         try { staffCalRtBroadcastCancelResolved(isoDate, campo, ora); } catch (e) {}
+        // 📴 17/08/2026: offline ADESSO non vuol dire «mai partita» — se `_reqSent` è vero
+        // l'esito è ignoto comunque; si aspetta il ritorno della rete e POI si va a guardare.
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        if ((err && err.name === 'AbortError') || (_reqSent && !_offline)) {
+        if ((err && err.name === 'AbortError') || _reqSent) {
           // La richiesta è uscita e la risposta non è tornata: esito IGNOTO ⇒ si va a guardare.
+          if (_offline) {
+            _setSync('📴 Sei senza linea — la richiesta era già partita: appena torna la rete vado a controllare su Matchpoint…', '#b54708');
+            await pmoAspettaRete();
+          }
           await _verifica((err && err.name === 'AbortError') ? 'il gestionale non ha risposto in tempo' : ((err && err.message) ? err.message : String(err)));
         } else {
-          // Non è mai partita (o il telefono è senza linea): non è stato annullato niente, e la
+          // Non è mai partita: non è stato annullato niente, e la
           // prenotazione è già dov'era. Niente da ripristinare.
           _setSync('❌ Non sono riuscito a mandarlo a Matchpoint', '#d92d20', '❌ <strong>Annullamento non eseguito</strong>');
           svcAddMessage('system', '❌ <strong>Annullamento non partito</strong>: ' + _staffCalFriendlyOpError(err?.message || err || 'sconosciuto') + '<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta</strong> sul calendario. Riprova quando la connessione torna.</span>');
@@ -44683,9 +44759,15 @@ Per confermare scrivi ELIMINA.`);
       } catch (err) {
         // Tre esiti, non due (vedi il gemello nella MODIFICA). Qui il discriminante è migliore di
         // `navigator.onLine`: se il server ha RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto.
+        // 📴 17/08/2026: offline ADESSO non vuol dire «mai partita» — con `_reqSent` vero l'esito
+        // è ignoto comunque; si aspetta il ritorno della rete e poi si va a guardare.
         const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
         const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-        if (!_answered && _reqSent && !_offline) {
+        if (!_answered && _reqSent) {
+          if (_offline) {
+            _setSyncNote('📴 Sei senza linea — la richiesta era già partita: appena torna la rete vado a controllare su Matchpoint…', '#b54708');
+            await pmoAspettaRete();
+          }
           await _uncertainMsg((err && err.message) ? err.message : String(err));
         } else {
           _failMsg((err && err.message) ? err.message : String(err));
@@ -49254,9 +49336,15 @@ Per confermare scrivi ELIMINA.`);
         } catch (err) {
           // Tre esiti, non due. Discriminante migliore di `navigator.onLine`: se il server ha
           // RISPOSTO un rifiuto (`pmoAnswered`) l'esito è noto e non c'è niente da verificare.
+          // 📴 17/08/2026: offline ADESSO non vuol dire «mai partita» — con `_reqSent` vero
+          // l'esito è ignoto comunque; si aspetta il ritorno della rete e poi si va a guardare.
           const _answered = !!(err && err.pmoAnswered) && !(err && err.pmoEsitoIgnoto);
           const _offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
-          if (!_answered && _reqSent && !_offline) {
+          if (!_answered && _reqSent) {
+            if (_offline) {
+              _setSyncNote('📴 Sei senza linea — la richiesta era già partita: appena torna la rete vado a controllare su Matchpoint…', '#b54708');
+              await pmoAspettaRete();
+            }
             await _uncertainMsg((err && err.message) ? err.message : String(err));
           } else {
             _failMsg((err && err.message) ? err.message : String(err));
