@@ -1,0 +1,132 @@
+# Installa (o aggiorna) sulla VM Hetzner la SENTINELLA DELLA FRESCHEZZA DI TEST,
+# voce 59/C. Sorgente: tools/sentinella-freschezza-test/.
+#
+# ⭐⭐ Perche' la guardia sta sulla VM ma il DEPLOY passa da qui, e non e' una
+#     contraddizione: cio' che non deve dipendere da GitHub e' il GIRO — se
+#     Actions cade, la sentinella deve continuare a guardare, e infatti gira da
+#     un timer systemd sulla VM. Installarla e' un'altra cosa, si fa una volta.
+#
+# 🚫 Non tocca il worker, ne' i due bot, ne' pm2: e' un'unita' systemd a se'.
+#    Il .env NON viene mai cancellato (niente --delete): se i secret non ci sono,
+#    quello gia' sulla VM resta dov'e'.
+#
+# 🔑 Per ARMARLA servono due secret di questo repo:
+#      TELEGRAM_SENTINELLA_TOKEN    — il token di un bot Telegram
+#      TELEGRAM_SENTINELLA_CHAT_ID  — la chat dove scrivere
+#    Senza, si installa lo stesso e gira DISARMATA: misura e scrive nel registro
+#    cio' che avrebbe mandato. Una guardia disarmata che lo dichiara e' onesta;
+#    una che crede di aver mandato il messaggio no.
+
+name: Deploy sentinella freschezza TEST (Hetzner)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/sentinella-freschezza-test/**'
+      - '.github/workflows/deploy-sentinella-hetzner.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+      DEPLOY_PATH: /opt/sentinella-freschezza-test
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Il .service dice /opt/node24/bin/node. Se quel percorso non c'e', l'unita'
+      # fallirebbe DOPO essere stata installata, e il motivo si leggerebbe solo nel
+      # journal: si controlla prima, cosi' il guasto ha un nome.
+      - name: C'e' Node dove il .service crede?
+        run: |
+          set -euo pipefail
+          V=$(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            '/opt/node24/bin/node -v 2>/dev/null || true')
+          if [ -z "$V" ]; then
+            echo "::error::/opt/node24/bin/node non risponde sulla VM. Il .service punta li': o si corregge ExecStart, o si sistema Node."
+            ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+              'echo "node trovati:"; ls -d /opt/node* 2>/dev/null; command -v node || true'
+            exit 1
+          fi
+          echo "✅ /opt/node24/bin/node → $V"
+
+      - name: Copia la sentinella (senza toccare .env ne' lo stato)
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $DEPLOY_PATH"
+          rsync -az --no-perms --no-owner --no-group \
+            --exclude '.env' --exclude 'stato.json' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes" \
+            ./tools/sentinella-freschezza-test/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+      - name: Arma (solo se i secret ci sono) e installa il timer
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_SENTINELLA_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_SENTINELLA_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT:-}" ]; then
+            printf 'TELEGRAM_SENTINELLA_TOKEN=%s\nTELEGRAM_SENTINELLA_CHAT_ID=%s\nPMO_MINUTI_PER_GIRO=15\n' \
+              "$TG_TOKEN" "$TG_CHAT" > /tmp/sentinella.env
+            scp -i ~/.ssh/id_ed25519 -o BatchMode=yes /tmp/sentinella.env "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env"
+            ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "chmod 600 $DEPLOY_PATH/.env"
+            rm -f /tmp/sentinella.env
+            echo "🔫 ARMATA: .env riscritto dai secret"
+          else
+            echo "🔇 secret assenti → .env NON toccato (se ce n'era uno sulla VM, resta)"
+          fi
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
+            set -euo pipefail
+            cd /opt/sentinella-freschezza-test
+            install -m 644 sentinella-freschezza-test.service /etc/systemd/system/
+            install -m 644 sentinella-freschezza-test.timer   /etc/systemd/system/
+            systemctl daemon-reload
+            systemctl enable --now sentinella-freschezza-test.timer
+            echo "--- il timer ---"
+            systemctl list-timers sentinella-freschezza-test.timer --no-pager || true
+          EOF
+
+      - name: Verifica SUL BERSAGLIO (un giro vero, e si guarda cosa ha fatto)
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
+            set -euo pipefail
+            echo "=== un giro adesso ==="
+            systemctl start sentinella-freschezza-test.service
+            sleep 8
+            echo "=== cosa ha scritto nel registro ==="
+            journalctl -u sentinella-freschezza-test.service -n 30 --no-pager
+            echo
+            echo "=== lo stato che ha lasciato ==="
+            cat /opt/sentinella-freschezza-test/stato.json 2>/dev/null || echo "(nessuno stato scritto — e' un problema)"
+            echo
+            echo "=== armata? (si guarda se il file esiste, NON il suo contenuto) ==="
+            if [ -s /opt/sentinella-freschezza-test/.env ]; then echo "🔫 .env presente"; else echo "🔇 DISARMATA: nessun .env"; fi
+          EOF
+
+      # Il deploy non e' finito quando rsync ha finito: e' finito quando la
+      # sentinella ha MISURATO. Un'unita' installata che non gira e' il guasto
+      # che questa voce esiste per evitare, un piano piu' in su.
+      - name: La sentinella ha davvero misurato?
+        run: |
+          set -euo pipefail
+          STATO=$(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            'cat /opt/sentinella-freschezza-test/stato.json 2>/dev/null || true')
+          echo "$STATO"
+          echo "$STATO" | grep -q '"ultimoEsito"' \
+            || { echo "::error::La sentinella non ha lasciato un esito: installata ma non sta misurando"; exit 1; }
+          if echo "$STATO" | grep -q '"ultimoEsito": *"cieca"'; then
+            echo "::warning::La sentinella gira ma non riesce a misurare (esito 'cieca') — guarda 'ultimoPerche'"
+          fi
