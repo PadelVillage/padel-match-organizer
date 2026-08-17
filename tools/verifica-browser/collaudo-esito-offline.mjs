@@ -68,7 +68,13 @@ const preparaBase = String(function base(piano) {
   }, 100);
   staffCalPlayersSave({ skipConfirm: true });
   return new Promise(function (res) {
-    setTimeout(function () { clearInterval(raccogli); res({ conta: conta, note: note }); }, piano.attesaMs || 8000);
+    setTimeout(function () {
+      clearInterval(raccogli);
+      // Il deposito «verifiche in sospeso» deve risultare CHIUSO a esito concluso (v6.237).
+      let dep = -1;
+      try { dep = pmoVerificheLeggi().length; } catch (e) {}
+      res({ conta: conta, note: note, deposito: dep });
+    }, piano.attesaMs || 8000);
   });
 });
 
@@ -151,17 +157,59 @@ const B = await (async function () {
   return esito;
 })();
 
+// E — la SCHEDA DEL BROWSER chiusa a metà (v6.237): il deposito è rimasto, la pagina si riapre,
+// la ripresa chiede al NUMERO com'è finita e chiude — senza toccare il roster.
+const E = await (async function () {
+  const page = await ctx.newPage();
+  await page.goto('http://localhost:8123/index.html?env=test', { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForFunction(() => window.__PMOStaffCalTest && typeof window.pmoRiprendiVerificheInSospeso === 'function', null, { timeout: 90000 });
+  const esito = await page.evaluate(async () => {
+    // Il deposito lasciato dalla «sessione precedente»: modifica con numero, esito mai visto.
+    pmoVerificheSegna('edit-job-E', { campo: 'Campo 2', campoNum: 2, data: '2026-08-20', ora: '18:00', nome: '', giocatori: [{ nome: 'Anna Verdi' }] }, 'modifica in corso (lavoro job-E)', 'job-E', 'edit');
+    const primaDellaRipresa = pmoVerificheLeggi().length;
+    window.loadAssessmentSupabaseConfig = async function () { return { supabaseUrl: 'http://localhost:8123/finto-supabase', supabaseKey: 'k' }; };
+    window.pmoGetSupabaseStaffAccessToken = async function () { return 'tok-di-prova'; };
+    let poll = 0, read = 0;
+    const fetchVera = window.fetch.bind(window);
+    window.fetch = async function (url, opts) {
+      const u = String(url);
+      if (u.indexOf('matchpoint-bookings-edit') === -1) return fetchVera(url, opts);
+      if (u.indexOf('jobId=') !== -1) { poll++; return new Response(JSON.stringify({ ok: true, status: 'done', message: 'Modifica eseguita' }), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+      read++;
+      return new Response('{}', { status: 200 });
+    };
+    const note = [];
+    const raccogli = setInterval(function () {
+      document.querySelectorAll('#svcChatMessages > div').forEach(function (n) {
+        const t = (n.textContent || '').trim().slice(0, 160);
+        if (t && note.indexOf(t) === -1) note.push(t);
+      });
+    }, 100);
+    await pmoRiprendiVerificheInSospeso(1);
+    await new Promise(function (r) { setTimeout(r, 500); });
+    clearInterval(raccogli);
+    return { primaDellaRipresa: primaDellaRipresa, dopoLaRipresa: pmoVerificheLeggi().length, poll: poll, read: read, note: note.slice(0, 6) };
+  });
+  await page.close();
+  console.log('\n── E: scheda chiusa a metà → ripresa dal NUMERO → deposito chiuso ──');
+  console.log(JSON.stringify(esito, null, 1));
+  return esito;
+})();
+
 const okA = A.note && A.note.some(t => t.indexOf('Operazione confermata su Matchpoint') !== -1)
-  && A.conta && A.conta.poll > 0 && A.conta.read === 0;
+  && A.conta && A.conta.poll > 0 && A.conta.read === 0 && A.deposito === 0;
 const okC = C.note && C.note.some(t => t.indexOf('Sei senza linea') !== -1)
   && C.note.some(t => t.indexOf('verificata su Matchpoint') !== -1)
   && C.conta && C.conta.read > 0;
 const okD = D.note && D.note.some(t => t.indexOf('Modifica non eseguita') !== -1)
-  && !D.note.some(t => t.indexOf('aggiornata') !== -1);
+  && !D.note.some(t => t.indexOf('aggiornata') !== -1) && D.deposito === 0;
 const okB = B.note && B.note.some(t => t.indexOf('Non sono riuscito a mandarla') !== -1);
-console.log('\nVERDETTO A (numero + risveglio, zero riletture):', okA ? 'PASSA' : 'NON PASSA');
+const okE = E.primaDellaRipresa === 1 && E.dopoLaRipresa === 0 && E.poll > 0 && E.read === 0
+  && E.note && E.note.some(t => t.indexOf('Verifica chiusa') !== -1 && t.indexOf('È passata') !== -1);
+console.log('\nVERDETTO A (numero + risveglio, zero riletture, deposito chiuso):', okA ? 'PASSA' : 'NON PASSA');
 console.log('VERDETTO B (mai partita resta ❌):', okB ? 'PASSA' : 'NON PASSA');
 console.log('VERDETTO C (consegna persa → verifica roster):', okC ? 'PASSA' : 'NON PASSA');
-console.log('VERDETTO D (rifiuto dal numero → ❌):', okD ? 'PASSA' : 'NON PASSA');
+console.log('VERDETTO D (rifiuto dal numero → ❌, deposito chiuso):', okD ? 'PASSA' : 'NON PASSA');
+console.log('VERDETTO E (scheda chiusa a metà → ripresa dal numero):', okE ? 'PASSA' : 'NON PASSA');
 await browser.close();
-process.exit(okA && okB && okC && okD ? 0 : 1);
+process.exit(okA && okB && okC && okD && okE ? 0 : 1);

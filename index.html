@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.236';
+    const APP_VERSION = '6.237';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -41672,6 +41672,9 @@ Per confermare scrivi ELIMINA.`);
       // ⭐ v6.236 — il NUMERO del lavoro: appena l'edge accetta la consegna, l'esito ha un
       // indirizzo interrogabile con domande da un secondo, che sopravvivono allo schermo spento.
       let _jobEdit = null;
+      // 🗂️ v6.237 — il deposito si toglie a ogni esito CONCLUSO; se resta (scheda chiusa a metà,
+      // esito ancora ignoto) la ripresa all'apertura chiede al numero com'è finita.
+      const _chiudiDeposito = function () { try { if (_jobEdit) pmoVerificheChiudi('edit-' + _jobEdit); } catch (e) {} };
       // ⭐⭐ ESITO IGNOTO: non si indovina, si VA A GUARDARE (regola sua).
       // ⚠️ Ma qui la verifica sa rispondere SOLO quando si aggiungono giocatori: la lettura di
       // Matchpoint torna l'elenco dei partecipanti, quindi «il giocatore c'è» si può controllare,
@@ -41687,6 +41690,7 @@ Per confermare scrivi ELIMINA.`);
           _setEditSyncNote('⌛ Non ho la conferma — chiedo al gestionale com\'è finito il lavoro…', '#b54708');
           const _lavV = await staffCalPollJob(_jobEdit, _staffE, _urlE, _keyE, null, { fn: 'matchpoint-bookings-edit', maxMs: 60000, stepMs: 5000 });
           if (_lavV.status === 'done') {
+            _chiudiDeposito();
             _spegniPuntino();
             const _frV = (_lavV.raw && _lavV.raw.worker_result && Array.isArray(_lavV.raw.worker_result.partecipantiFinali)) ? _lavV.raw.worker_result.partecipantiFinali : null;
             _applicaModifiche(_frV);
@@ -41695,6 +41699,7 @@ Per confermare scrivi ELIMINA.`);
             return;
           }
           if (_lavV.status === 'error') {
+            _chiudiDeposito();
             _spegniPuntino();
             const _msgV = _lavV.error || 'rifiutata da Matchpoint';
             _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(_msgV), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
@@ -41709,7 +41714,7 @@ Per confermare scrivi ELIMINA.`);
         if (!_verificabile) {
           _spegniPuntino();
           _setEditSyncNote('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
-          svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e <strong>questa non posso verificarla da solo</strong>: Matchpoint mi lascia rileggere i giocatori, non la durata o il maestro.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.', 'error');
+          svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e <strong>questa non posso verificarla dal roster</strong>: Matchpoint mi lascia rileggere i giocatori, non la durata o il maestro.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.' + (_jobEdit ? '<br>🗂️ La verifica resta <strong>aperta</strong>: la riprendo da solo dal numero del lavoro, anche alla prossima apertura.' : ''), 'error');
           _aiExecSettle(false, 'esito-ignoto-non-verificabile');
           renderStaffCalendar();
           return;
@@ -41731,6 +41736,7 @@ Per confermare scrivi ELIMINA.`);
           // ⭐ Il verdetto chiude il lavoro anche NEL DATABASE (voce 23 / 6.226): senza, la riga
           // resterebbe `unknown` per sempre. No-op se il numero non c'è (edge vecchia).
           try { await pmoChiudiLavoroIgnoto(_jobEdit, 'si', _staffE, _urlE, _keyE, look.tentativi); } catch (e) {}
+          _chiudiDeposito();
           _applicaModifiche(null);
           _setEditSyncNote('✅ Operazione confermata — l\'ho verificata su Matchpoint', '#067647', '✅ <strong>Prenotazione aggiornata</strong>');
           _aiExecSettle(true, null);
@@ -41738,6 +41744,7 @@ Per confermare scrivi ELIMINA.`);
         }
         if (look.verdict === 'no') {
           try { await pmoChiudiLavoroIgnoto(_jobEdit, 'no', _staffE, _urlE, _keyE, look.tentativi); } catch (e) {}
+          _chiudiDeposito();
           _setEditSyncNote('❌ Su Matchpoint la modifica non risulta', '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
           svcAddMessage('system', '❌ <strong>Modifica non riuscita</strong> (' + destTxt + '): sono andato a guardare e su Matchpoint non risulta.<br><span style="color:var(--text-muted);font-size:.78rem;">La prenotazione è <strong>rimasta com\'era</strong>.</span>', 'error');
           _aiExecSettle(false, 'verificato-non-passato');
@@ -41745,7 +41752,7 @@ Per confermare scrivi ELIMINA.`);
           return;
         }
         _setEditSyncNote('⌛ Esito non confermato', '#b54708', '⌛ <strong>Non so com\'è andata</strong>');
-        svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e sono andato a guardare su Matchpoint: ' + look.why + '.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.', 'error');
+        svcAddMessage('system', '⌛ <strong>Non ho la conferma</strong> della modifica (' + _staffCalFriendlyOpError(perche) + '), e sono andato a guardare su Matchpoint: ' + look.why + '.<br>⚠️ <strong>Sul calendario non ho cambiato niente.</strong> Premi «Aggiorna prenotazioni» e controlla prima di rifarla.' + (_jobEdit ? '<br>🗂️ La verifica resta <strong>aperta</strong>: la riprendo da solo dal numero del lavoro, anche alla prossima apertura.' : ''), 'error');
         _aiExecSettle(false, 'esito-ignoto');
         renderStaffCalendar();
       };
@@ -41822,6 +41829,10 @@ Per confermare scrivi ELIMINA.`);
         // interi apposta — è il degrado dolce, lo stesso patto della create.
         if (_ok && data && data.ok !== false && data.jobId) {
           _jobEdit = String(data.jobId);
+          // 🗂️ v6.237 — IL DEPOSITO APRE COL LAVORO, non quando l'ignoto è già maturato: così se
+          // la scheda del browser si chiude a metà, la prossima apertura trova il numero e chiede
+          // com'è finita (pmoRiprendiVerificheInSospeso, ramo 'edit'). Si toglie a esito concluso.
+          try { pmoVerificheSegna('edit-' + _jobEdit, { campo: 'Campo ' + _curCampo, campoNum: _curCampo, data: _curIso, ora: _curOra, nome: '', giocatori: addArr }, 'modifica in corso (lavoro ' + _jobEdit + ')', _jobEdit, 'edit'); } catch (e) {}
           let _lav = await staffCalPollJob(_jobEdit, staff, supabaseUrl, supabaseKey, null, { fn: 'matchpoint-bookings-edit' });
           if (_lav.status === 'timeout') {
             // Il lavoro ha un NUMERO: scaduta la prima attesa si continua a CHIEDERE, non si conclude.
@@ -41846,6 +41857,7 @@ Per confermare scrivi ELIMINA.`);
         _staffCalPendingEdits.delete(pendKey);
 
         if (_ok && data && data.ok !== false) {
+          _chiudiDeposito();
           // ⭐ È QUI che la modifica entra nel calendario, e solo qui: Matchpoint ha detto sì.
           //    Col roster AUTOREVOLE del worker, così i nomi sono quelli veri.
           const finalRoster = (data.worker && Array.isArray(data.worker.partecipantiFinali)) ? data.worker.partecipantiFinali : null;
@@ -41879,6 +41891,7 @@ Per confermare scrivi ELIMINA.`);
         } else {
           // Rifiuto vero: esito NOTO. Non c'è niente da riportare indietro — la prenotazione non
           // era stata toccata — ma va detto, se no sembra che la modifica sia andata a buon fine.
+          _chiudiDeposito();
           const msg = (data && (data.message || data.error)) || ('HTTP ' + _statoHttp);
           _spegniPuntino();
           _setEditSyncNote('❌ Matchpoint ha rifiutato: ' + _staffCalFriendlyOpError(msg), '#d92d20', '❌ <strong>Modifica non eseguita</strong>');
@@ -42914,10 +42927,12 @@ Per confermare scrivi ELIMINA.`);
   //    ripresa si sa cosa chiedere a Matchpoint ma non quale riga chiudere nel database. I
   //    depositi lasciati da una versione precedente non ce l'hanno: lì la verifica si chiude
   //    lo stesso e il database resta com'era — meno di così, non peggio.
-  function pmoVerificheSegna(id, parsed, perche, jobId) {
+  // ⭐ v6.237 — `tipo`: 'create' (predefinito, e i depositi vecchi senza campo restano create)
+  //   o 'edit'. Le modifiche si riprendono DAL NUMERO del lavoro, con parole loro.
+  function pmoVerificheSegna(id, parsed, perche, jobId, tipo) {
     if (!id || !parsed) return;
     const lista = pmoVerificheLeggi().filter(function (v) { return v.id !== id; });
-    lista.push({ id: String(id), quando: Date.now(), perche: String(perche || ''), parsed: parsed, jobId: String(jobId || '') });
+    lista.push({ id: String(id), quando: Date.now(), perche: String(perche || ''), parsed: parsed, jobId: String(jobId || ''), tipo: String(tipo || 'create') });
     pmoVerificheScrivi(lista);
   }
 
@@ -43012,7 +43027,33 @@ Per confermare scrivi ELIMINA.`);
     const staff = { accessToken: tok };
     for (const v of lista) {
       const dove = `${v.parsed.campo} · ${v.parsed.data} · ${v.parsed.ora}`;
+      const _edit = v.tipo === 'edit';
       try {
+        // 🗂️ v6.237 — le verifiche di MODIFICA hanno il numero del lavoro e si chiudono DA LÌ:
+        // l'edge porta a termine (o rifiuta) per conto suo anche a scheda del browser chiusa,
+        // quindi la riga del lavoro quasi sempre sa già com'è finita. Il roster resta il ripiego.
+        if (_edit && v.jobId) {
+          const lav = await staffCalPollJob(v.jobId, staff, cfg.supabaseUrl, cfg.supabaseKey, null, { fn: 'matchpoint-bookings-edit', maxMs: 30000, stepMs: 5000 });
+          if (lav.status === 'done') {
+            pmoVerificheChiudi(v.id);
+            pmoVerificheAvvisa(`✅ <strong>Verifica chiusa</strong>: la modifica a ${dove} <strong>È passata</strong> sul gestionale. Il calendario si allinea da sé col sync.`);
+            pmoVerificheTraccia('done', 'verifica-edit-chiusa-done', { jobId: v.jobId });
+            continue;
+          }
+          if (lav.status === 'error') {
+            pmoVerificheChiudi(v.id);
+            pmoVerificheAvvisa(`❌ <strong>Verifica chiusa</strong>: la modifica a ${dove} <strong>NON è passata</strong> (${_staffCalFriendlyOpError(lav.error || 'rifiutata dal gestionale')}). Se serve, rifalla.`, 'error');
+            pmoVerificheTraccia('failed', 'verifica-edit-chiusa-error', { jobId: v.jobId });
+            continue;
+          }
+          // unknown/timeout: se c'erano AGGIUNTE il roster qui sotto sa rispondere; per il
+          // resto (durata, nota, maestro) resta aperta — e si scarta da sé dopo 48 ore.
+          if (!(Array.isArray(v.parsed.giocatori) && v.parsed.giocatori.length)) {
+            pmoVerificheAvvisa(`⏳ ${dove}: il lavoro della modifica non ha ancora un esito leggibile. <strong>La verifica resta aperta</strong> e la riprendo da solo.`);
+            pmoVerificheTraccia('pending', 'verifica-edit-ancora-aperta', { jobId: v.jobId });
+            continue;
+          }
+        }
         const look = await staffCalGuardaFinchePuoi(
           function () { return staffCalAskMatchpoint(v.parsed, staff, cfg.supabaseUrl, cfg.supabaseKey); },
           {
@@ -43028,12 +43069,16 @@ Per confermare scrivi ELIMINA.`);
           // ⭐ Non la si disegna a mano: è su Matchpoint, e il sync la porta dentro da sé entro un
           //   paio di minuti. Scriverla qui vorrebbe dire fabbricare una riga che nessuno ha
           //   verificato campo per campo — e le righe fabbricate sono i fantasmi di luglio.
-          pmoVerificheAvvisa(`✅ <strong>Verifica chiusa</strong>: ${dove} <strong>È stata creata</strong> su Matchpoint. Compare sul calendario entro un paio di minuti.`);
+          pmoVerificheAvvisa(_edit
+            ? `✅ <strong>Verifica chiusa</strong>: la modifica a ${dove} <strong>È passata</strong> (i giocatori risultano su Matchpoint).`
+            : `✅ <strong>Verifica chiusa</strong>: ${dove} <strong>È stata creata</strong> su Matchpoint. Compare sul calendario entro un paio di minuti.`);
           pmoVerificheTraccia('done', 'verifica-chiusa-si', { tentativi: look.tentativi });
         } else if (look.verdict === 'no') {
           pmoVerificheChiudi(v.id);
           await pmoChiudiLavoroIgnoto(v.jobId, 'no', staff, cfg.supabaseUrl, cfg.supabaseKey, look.tentativi);
-          pmoVerificheAvvisa(`❌ <strong>Verifica chiusa</strong>: ${dove} <strong>NON è stata creata</strong>. Lo slot è libero: puoi rifarla.`, 'error');
+          pmoVerificheAvvisa(_edit
+            ? `❌ <strong>Verifica chiusa</strong>: la modifica a ${dove} <strong>NON risulta</strong> su Matchpoint. Se serve, rifalla.`
+            : `❌ <strong>Verifica chiusa</strong>: ${dove} <strong>NON è stata creata</strong>. Lo slot è libero: puoi rifarla.`, 'error');
           pmoVerificheTraccia('failed', 'verifica-chiusa-no', { tentativi: look.tentativi });
         } else {
           pmoVerificheAvvisa(`⏳ ${dove}: non riesco ancora a raggiungere Matchpoint. <strong>La verifica resta aperta</strong> e la riprendo da solo.`);
