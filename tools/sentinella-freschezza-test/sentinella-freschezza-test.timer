@@ -1,0 +1,20 @@
+# Ogni 15 minuti. Con la pazienza di 3 giri (PMO_GIRI_PRIMA_DI_SUONARE) l'allarme
+# arriva dopo ~45 minuti di copia ferma: oltre ogni finestra normale del cron da
+# 10' della sincronia, e molto prima che qualcuno ci lavori sopra mezza giornata.
+#
+# ⚠️ Se si cambia questo passo va cambiato ANCHE PMO_MINUTI_PER_GIRO nel .env,
+#    o il messaggio dichiarera' un numero di minuti sbagliato — una guardia che
+#    dice il falso su se' stessa e' peggio di una che tace.
+
+[Unit]
+Description=Sveglia la sentinella della freschezza di TEST ogni 15 minuti
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+# Se la VM era spenta all'ora prevista, il giro perso si recupera all'accensione.
+Persistent=true
+Unit=sentinella-freschezza-test.service
+
+[Install]
+WantedBy=timers.target

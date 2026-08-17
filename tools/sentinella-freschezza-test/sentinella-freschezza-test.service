@@ -1,0 +1,33 @@
+# Sentinella della freschezza di TEST (voce 59/C) — un giro e via.
+#
+# ⚠️ NON e' un servizio che resta in piedi: e' oneshot, lo sveglia il .timer.
+#    Voluto: un processo perpetuo in piu' sulla VM e' una cosa in piu' che puo'
+#    morire in silenzio, e una sentinella morta fa lo stesso silenzio di una
+#    sentinella tranquilla — che e' esattamente il guasto che questa deve evitare.
+#
+# 🚫 Nessun legame con pm2, col worker o coi bot: se muore tutto il resto, lei parla.
+
+[Unit]
+Description=Sentinella: TEST sta servendo una copia vecchia? (voce 59/C)
+Documentation=https://github.com/PadelVillage/padel-match-organizer/tree/main/tools/sentinella-freschezza-test
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sentinella-freschezza-test
+# Il file delle credenziali Telegram. '-' = se manca, si parte lo stesso:
+# la sentinella gira DISARMATA e scrive nel registro cio' che avrebbe mandato.
+EnvironmentFile=-/opt/sentinella-freschezza-test/.env
+ExecStart=/opt/node24/bin/node /opt/sentinella-freschezza-test/sentinella.mjs
+TimeoutStartSec=120
+
+# Non deve poter fare danno: legge la rete, scrive un solo file di stato.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/sentinella-freschezza-test
+
+[Install]
+WantedBy=multi-user.target
