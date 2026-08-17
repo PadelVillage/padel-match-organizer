@@ -210,12 +210,49 @@ export async function giro() {
   return { misura: m, consecutiviIndietro, consecutiviCiechi, allarmeAttivo, cecitaDetta, mandati };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// `--prova`: manda UN messaggio e dice se ce l'ha fatta. Serve al momento
+// dell'armamento, ed e' l'unico modo di sapere che il canale funziona.
+//
+// 🚨 Senza questo, chi mette i secret non riceve NIENTE finche' non c'e' un guasto
+//    ⇒ scoprirebbe che il canale e' rotto (token sbagliato, chat_id sbagliato, il
+//    bot che non puo' scrivere per primo) esattamente nel momento in cui serve.
+//    Una guardia che non ha mai parlato e una guardia che non PUO' parlare fanno
+//    lo stesso identico silenzio: e' la malattia di questa voce, applicata a lei.
+// ⚖️ E a differenza del giro normale, questo ESCE ROSSO se il messaggio non parte:
+//    e' una prova, non una guardia, e una prova che fallisce deve farsi vedere.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function prova() {
+  if (!TOKEN || !CHAT) {
+    log("🔇 --prova: DISARMATA, non c'è niente da provare (manca il token o la chat)");
+    return false;
+  }
+  const m = await misura();
+  const ok = await telegram(
+    `👋 <b>Sentinella di TEST installata e ARMATA</b>\n\n` +
+    `Da adesso guardo ogni 15′ se ${BASE_TEST} sta servendo una copia vecchia, ` +
+    `e parlo <b>solo se c'è qualcosa da dire</b>: silenzio = tutto a posto.\n\n` +
+    `Misura di adesso: <b>${m.esito}</b>` +
+    (m.impronta ? ` (servita <code>${m.impronta.servita.slice(0, 7)}</code>, sorgente <code>${m.impronta.sorgente.slice(0, 7)}</code>)` : '') +
+    (m.perche ? `\n<code>${m.perche}</code>` : '') +
+    `\n\n📌 Questo è l'unico messaggio che ricevi «perché sì»: è la prova che il canale funziona.`
+  );
+  log(ok ? '✅ --prova: messaggio partito' : '❌ --prova: il messaggio NON è partito');
+  return ok;
+}
+
 // Lanciata direttamente (dal timer): un giro e via. Non resta mai in piedi.
 // ⚠️ Il confronto e' sul percorso RISOLTO, non sul nome del file: un controllo per
 //    suffisso direbbe di si' anche a un altro file che finisce uguale, ed e' il
 //    genere di sonda che risponde con sicurezza della cosa sbagliata.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  giro()
-    .then((r) => process.exit(r.misura.esito === 'cieca' ? 0 : 0))   // mai rossa: e' una guardia, non un test
-    .catch((e) => { log('💥 giro fallito:', e && e.stack ? e.stack : e); process.exit(0); });
+  if (process.argv.includes('--prova')) {
+    prova()
+      .then((ok) => process.exit(ok ? 0 : 1))   // una PROVA fallita deve farsi vedere
+      .catch((e) => { log('💥 --prova fallita:', e && e.stack ? e.stack : e); process.exit(1); });
+  } else {
+    giro()
+      .then(() => process.exit(0))              // mai rossa: e' una guardia, non un test
+      .catch((e) => { log('💥 giro fallito:', e && e.stack ? e.stack : e); process.exit(0); });
+  }
 }

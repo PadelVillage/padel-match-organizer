@@ -99,6 +99,20 @@ che *avrebbe* mandato. ⚖️ Una guardia disarmata che lo dichiara è onesta; u
 crede di aver mandato il messaggio no — ed è per questo che il deploy stampa se il
 `.env` c'è (guardando **che il file esista**, non il suo contenuto).
 
+### 👋 E se è armata, lo dimostra: `--prova`
+
+Messi i secret e rilanciato il workflow, la sentinella manda **un messaggio vero,
+subito** (`node sentinella.mjs --prova`), ed è l'unico che riceverai «perché sì».
+
+🚨 Senza quello non riceveresti **niente** finché non c'è un guasto ⇒ scopriresti il
+token sbagliato, la chat sbagliata, o il bot che non può scrivere per primo,
+**esattamente nel momento in cui serve**. *Una guardia che non ha mai parlato e una
+che non **può** parlare fanno lo stesso identico silenzio* — è la malattia di questa
+voce applicata a lei stessa.
+
+⚖️ E a differenza del giro normale, `--prova` **esce rossa** se il messaggio non parte:
+è una prova, non una guardia, e una prova che fallisce deve farsi vedere.
+
 ## Cosa guardare quando suona
 
 ```bash

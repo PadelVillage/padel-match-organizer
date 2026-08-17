@@ -57,7 +57,7 @@ process.env.TELEGRAM_SENTINELLA_CHAT_ID = '1';
 process.env.PMO_GIRI_PRIMA_DI_SUONARE = '3';
 process.env.PMO_GIRI_CIECHI = '4';
 
-const { giro } = await import('./sentinella.mjs');
+const { giro, prova } = await import('./sentinella.mjs');
 
 let ko = 0, n = 0;
 const zittisci = () => { const v = console.log; console.log = () => {}; return () => { console.log = v; }; };
@@ -154,6 +154,41 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
       inviati.length === 1, `col sabotaggio i messaggi al 1° giro sono ${inviati.length} (senza erano 0)`);
     rmSync(dir3, { recursive: true, force: true });
   }
+}
+
+// ── 11-13. `--prova`: l'unica cosa che dimostra che il canale funziona ───────
+{
+  const dir4 = mkdtempSync(join(tmpdir(), 'sentinella4-'));
+  process.env.PMO_STATO_FILE = join(dir4, 'stato.json');
+  scenario.servita = A; scenario.sorgente = A; scenario.github = 'ok'; scenario.meta = 'ok';
+
+  inviati.length = 0;
+  const z1 = zittisci(); const ok1 = await prova(); z1();
+  controlla('--prova armata: manda il messaggio e torna vero',
+    ok1 === true && inviati.length === 1 && /installata e ARMATA/.test(inviati[0] || ''),
+    `torna ${ok1}, messaggi=${inviati.length}`);
+
+  // Telegram rifiuta (token o chat sbagliati): la PROVA deve dire di NO.
+  inviati.length = 0;
+  const fetchVero = globalThis.fetch;
+  globalThis.fetch = async (u, o = {}) => (String(u).includes('api.telegram.org')
+    ? { ok: false, status: 400, text: async () => 'Bad Request: chat not found' }
+    : fetchVero(u, o));
+  const z2 = zittisci(); const ok2 = await prova(); z2();
+  globalThis.fetch = fetchVero;
+  controlla('--prova con Telegram che rifiuta: torna FALSO (esce rossa, non verde)',
+    ok2 === false && inviati.length === 0,
+    `torna ${ok2} (deve essere false), messaggi=${inviati.length}`);
+
+  // Disarmata: non finge di aver mandato.
+  inviati.length = 0;
+  const t = process.env.TELEGRAM_SENTINELLA_TOKEN; delete process.env.TELEGRAM_SENTINELLA_TOKEN;
+  const { prova: provaDisarmata } = await import('./sentinella.mjs?disarmata=1');
+  const z3 = zittisci(); const ok3 = await provaDisarmata(); z3();
+  process.env.TELEGRAM_SENTINELLA_TOKEN = t;
+  controlla('--prova disarmata: torna falso e non finge di aver mandato',
+    ok3 === false && inviati.length === 0, `torna ${ok3}, messaggi=${inviati.length}`);
+  rmSync(dir4, { recursive: true, force: true });
 }
 
 rmSync(dir, { recursive: true, force: true });
