@@ -68,26 +68,39 @@ const TETTO_ATTESA_MS = Number(process.env.PMO_TETTO_ATTESA_MS || 15000);
 const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || '/opt/assistente-padel-agent-prova/.env';
 const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
 
+// 🚨 Torna anche il PERCHE' quando non trova niente. La prima versione aveva un
+//    `catch { return '' }` e un `return ''` muti: al primo giro sulla VM lo stato ha
+//    detto `fonteVoce: "nessuna"` e non c'era modo di sapere se il file mancava, se
+//    era illeggibile o se nessuna riga aveva la forma giusta.
+//    ⚖️ E' la malattia di questa voce commessa DENTRO la sua cura: un guasto che non
+//    dice cosa e' andato storto. Un «non ci sono riuscito» senza motivo costa un giro
+//    di indovinelli a chiunque lo legga.
 function tokenDalBotDiProva() {
+  let testo;
   try {
-    const testo = readFileSync(ENV_BOT_PROVA, 'utf8');
-    for (const riga of testo.split('\n')) {
-      const pulita = riga.trim();
-      if (!pulita || pulita.startsWith('#')) continue;
-      const m = pulita.replace(/^[A-Za-z0-9_]+\s*=\s*/, '').replace(/^["']|["']$/g, '').match(FORMA_TOKEN);
-      if (m) return m[1];
-    }
-    return '';
-  } catch (e) { return ''; }
+    testo = readFileSync(ENV_BOT_PROVA, 'utf8');
+  } catch (e) {
+    return { token: '', motivo: e.code === 'ENOENT' ? `file assente: ${ENV_BOT_PROVA}` : `${ENV_BOT_PROVA} illeggibile (${e.code || e.message})` };
+  }
+  let righeUtili = 0;
+  for (const riga of testo.split('\n')) {
+    const pulita = riga.trim();
+    if (!pulita || pulita.startsWith('#')) continue;
+    righeUtili++;
+    const m = pulita.replace(/^[A-Za-z0-9_]+\s*=\s*/, '').replace(/^["']|["']$/g, '').match(FORMA_TOKEN);
+    if (m) return { token: m[1], motivo: '' };
+  }
+  return { token: '', motivo: `nessuna delle ${righeUtili} righe di ${ENV_BOT_PROVA} ha la forma di un token Telegram` };
 }
 
 const TOKEN_PROPRIO = process.env.TELEGRAM_SENTINELLA_TOKEN || '';
-const TOKEN_PRESTATO = TOKEN_PROPRIO ? '' : tokenDalBotDiProva();
-const TOKEN = TOKEN_PROPRIO || TOKEN_PRESTATO;
+const PRESTITO = TOKEN_PROPRIO ? { token: '', motivo: '' } : tokenDalBotDiProva();
+const TOKEN = TOKEN_PROPRIO || PRESTITO.token;
 // Da dove viene la voce, in chiaro nel registro. Del token si nomina solo la parte
 // PRIMA dei due punti — e' l'id pubblico del bot, non il segreto.
 const FONTE_VOCE = TOKEN_PROPRIO ? 'secret proprio'
-  : (TOKEN_PRESTATO ? `bot di prova (${ENV_BOT_PROVA}, bot ${TOKEN_PRESTATO.split(':')[0]})` : 'nessuna');
+  : (PRESTITO.token ? `bot di prova (${ENV_BOT_PROVA}, bot ${PRESTITO.token.split(':')[0]})`
+                    : `NESSUNA — ${PRESTITO.motivo}`);
 const CHAT = process.env.TELEGRAM_SENTINELLA_CHAT_ID || '';
 
 // 💓 IL BATTITO. Ogni tanto un «sono viva» anche quando va tutto bene.
