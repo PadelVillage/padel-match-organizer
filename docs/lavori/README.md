@@ -534,8 +534,8 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **5** |
-| 📦 **Chiuse** | **44** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📋 **In coda** | **4** |
+| 📦 **Chiuse** | **45** il 13–16/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -847,11 +847,11 @@ PIN più `pmo_admin_pin_ok` — allineate alla forma di PROD: `anon` sulle `SECU
 ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse.
 
 
-## 📋 IN CODA — 5
+## 📋 IN CODA — 4
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
-### C — Cose sapute e non risolte — 3
+### C — Cose sapute e non risolte — 2
 
 #### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
 
@@ -896,199 +896,6 @@ committente guardandolo, come fece allora.
 
 📌 La voce resta **in coda e non si promuove da sé**: è scritta perché chi un giorno ci mette mano
 parta da un dato vero e non da un ricordo.
-
-#### 53. 🔁 Quando il bot non sa com'è andata, **va a chiedere al gestionale** invece di lasciarlo fare al socio
-
-> 🗣️ **Messa in coda dal committente il 16/08/2026**, nella stessa frase in cui autorizzava la metà
-> piccola: *«fai la uno e poi metti in coda la due»* — e con la regola d'architettura che le sta
-> sotto, fissata lì per lì: *«il bot legge tutto quanto dal gestionale. Non è autonomo»*.
-
-**Da dove nasce.** Da una sua domanda — *«quando prenoto col bot, aspetta che sul gestionale sia
-confermata la prenotazione prima di darmi l'ok?»*. La risposta è **sì** (strada sincrona, e
-`fase: 'prenotata'` nasce solo da `created: true`), ma misurando è saltato fuori il **terzo esito**:
-quando il worker non risponde, la prenotazione **potrebbe esserci lo stesso**.
-
-✅ **Cos'è già fatto** (la «uno», chiusa il 16/08): l'ignoto non si spaccia più per un «no». Il ponte
-manda `reason: 'esito_ignoto'`, il bot non afferma né successo né fallimento, **non ripropone la
-griglia** (il tocco successivo riprenoterebbe) e dice al socio di **non rifarla**, offrendogli di
-richiedere fra qualche minuto *«cosa ho prenotato?»*.
-
-🎯 **Cosa resta da fare, ed è il punto della voce.** Quel controllo **lo fa ancora il socio a mano**.
-Deve farlo il bot: quando l'esito è ignoto, **ritorna a chiedere al gestionale** finché non sa, e poi
-scrive al socio un sì o un no **veri**.
-
-⭐ **Perché questa strada è migliore di quella che ha l'app**, ed è il reperto che vale: la cura della
-voce 23 nel gestionale va a guardare **su Matchpoint**, cioè per la **stessa strada** che è appena
-caduta — sta scritto nel codice, misurato il 14/08 con Caddy fermo: *«il primo tentativo è, per
-costruzione, quello con meno probabilità di riuscire»*. Il bot invece leggerebbe **la copia del
-gestionale**, e una copia **risponde sempre**, anche a worker morto. ⇒ Non è una copia della cura
-dell'app: è la sua versione senza il difetto.
-
-✅ **LA MISURA CHE MANCAVA È STATA FATTA** *(16/08, 28ª sessione — 📄 [`docs/voce-53-ritardo-sync.md`](../voce-53-ritardo-sync.md))*.
-Nell'assetto di oggi una prenotazione atterrata su Matchpoint compare nella copia del gestionale in
-**~2 minuti di mediana** e al massimo misurato in **10′04″** (604 s, su 43 creazioni dal 28/07; per
-il solo *slot* il massimo è 432 s). La mediana **è** il cron da 2 minuti, e il codice lo conferma:
-l'export copre `oggi…+30 giorni` a **ogni** tick, non solo ai giri pieni.
-
-🚨 **E la misura ha smentito una riga che stava scritta qui sopra: il sync PASSA dal worker**
-(`matchpoint-bookings-sync` → `/export-booking-history`). ⇒ **Worker giù = copia congelata**, ed è
-già successo: la notte del 15/08 il sync registrava `MATCHPOINT_BROWSER_WORKER_FAILED` alle 22:28:02,
-**un minuto prima** che l'app risolvesse a mano l'esito ignoto delle 22:27:16. ⚖️ La voce non cade —
-il bot una risposta ce l'ha comunque, l'app no — ma **l'assenza dalla copia non prova l'assenza dal
-circolo**, proprio nel caso per cui la cura è scritta. ⇒ Il «no» si può dire **solo** se il
-gestionale certifica che un sync è atterrato **dopo** la scrittura; altrimenti la risposta onesta è
-«non lo so ancora». È *il gestionale SA, il bot DICE* applicato alla freschezza.
-
-🚧 **Tre confini duri, misurati**: oltre **30 giorni** la prenotazione non comparirà mai (finestra
-dell'export); un **«Ospite»** non ha mai una riga col suo nome; una prenotazione **disdetta entro un
-minuto** non compare (tre casi veri, 55-76 s). ⇒ Oltre un tetto il bot deve smettere di aspettare e
-dirlo, non tacere.
-
-🌙 **E ce n'è un QUARTO, trovato il 16/08 nella 29ª e che non stava in nessun documento: il sync ha
-una PAUSA NOTTURNA, 01:00-06:00 (Europe/Rome).** Letta **alla fonte** — sta nello scheduler,
-`supabase/manual-sql/supabase_pmo_data_routines_scheduler_prod.sql`, *«attivo SEMPRE tranne la pausa
-notturna»* — e i dati concordano: ultimo tick **22:58 UTC**, ripresa **04:02 UTC**, due notti su due
-agli stessi minuti. Clienti, storico e backup girano anche lì dentro: **sono solo le prenotazioni
-future a fermarsi**. ⇒ In quella finestra il tetto scade sempre senza verdetto, e la seconda risposta
-è «non lo so ancora».
-⚖️ **La sicurezza regge intera, ed è la metà che conta**: un «no» falso lì **non può uscire**, perché
-la certificazione di freschezza non arriva mai ⇒ si perde l'**utilità**, non la **verità**.
-🚨 **E la sonda per contarli è una trappola**, che ho evitato per un pelo: il registro dei dispatch
-nasce `status: 'dispatched'` e **non viene mai riscritto con l'esito** — il tick delle 22:28:00 del
-15/08, quello del worker caduto, dice `dispatched` come tutti gli altri. ⇒ **Da lì i guasti del
-worker non si contano**, e chi ne cercasse le righe `error` otterrebbe **zero** con la stessa
-sicurezza con cui otterrebbe la verità. Dei 103 buchi >3′ in 62 ore, **2** sono la notte e **101** la
-guardia anti-accavallamento: nessuno è un guasto. È la 24ª, evitata guardando *come* il registro
-viene scritto invece di fidarsi del fatto che rispondesse.
-
-🛠️ **La metà del gestionale è SCRITTA** *(16/08, su sua decisione: «il verdetto nel gestionale, con
-la freschezza»)*. `consumer-booking-write` ha l'azione **`verifica`**, che risponde già decisa —
-`si` / `no` / `non_ancora` più **`attendere`**, tenuto separato perché «aspetta e saprai» e «qui non
-si saprà mai» sono due `non_ancora` diversissimi. Il «no» esce **solo** se un giro di sync è
-atterrato oltre `scritta_alle + 150 s`; la regola sta in `esito-scrittura.ts`, non nel bot. ⛔ Non
-scrive niente e **non chiama il worker**: è la sua ragione d'essere. ⭐ E il giro si chiude: ogni
-`esito_ignoto` ora consegna **`scritta_alle` e `slot`**, senza i quali il bot non aveva con che cosa
-richiedere. **103 casi verdi**, 8 sabotaggi → 8 rossi. 🚨 Due casi su quindici sono nati **inerti** e
-a dirlo è stato il sabotaggio, non la rilettura: uno costruiva il proprio ingresso con la costante
-che doveva provare, l'altro contava una **grafia** invece dei punti.
-
-🛠️🤖 **E il 16/08, 29ª sessione: LA METÀ DEL BOT È SCRITTA e sta in PR** — 📄 **#4** su
-`assistente-padel-agent`, ramo `claude/voce-53-ciclo-attesa`. `attesa-esito.ts` (il ciclo, tetto
-**15′** e domanda ogni **60″**), `verificaScrittura()` nel ponte, `scritta_alle` portato fino allo
-strumento, e l'aggancio su **entrambe** le strade — modello e bottoni, che sono due punti diversi e
-vanno tenute in pari. Banco **1004 verdi**, `tsc` pulito, **7 sabotaggi sul ciclo → 7 rossi**.
-🚨 E un ottavo sabotaggio ha trovato **un buco vero**: la rete che dovrebbe prendere un campo
-dimenticato nell'`outputSchema` Zod era **inerte** per il campo nuovo — tolto `scritta_alle`, 1004 su
-1004 lo stesso. L'avvertimento *«questa lista si aggiorna a mano»* era scritto lì sopra, ed è stato
-letto **dopo**. ⇒ **Un avvertimento scritto non è una rete**: la rete è il sabotaggio che lo prova.
-
-> 🗣️ **Decisione del committente, 16/08, 29ª sessione**, messo davanti a tre strade coi prezzi:
-> **l'attesa resta nel processo, e il limite si SCRIVE.**
-
-⛔ Vuol dire che il bot è un long polling senza scheduler ⇒ **un riavvio durante l'attesa la perde**.
-L'alternativa c'era — appoggiarla alla memoria su `ayly…`, che regge i riavvii — ed è stata scartata
-perché perdere l'attesa vuole **due rarità insieme** (un esito ignoto *e* un riavvio dentro quei 15
-minuti), mentre il pezzo in più andrebbe progettato, provato e deployato **prima** del collaudo.
-🚨 Perciò la via d'uscita a mano nel primo messaggio **non è ridondanza e non si toglie**: è l'unica
-che non dipende dal fatto che quel processo sia ancora vivo. ⚖️ Ed è scritta come **scelta** e non
-come residuo, di proposito: un limite che sembra una dimenticanza, prima o poi qualcuno lo «ripara»
-senza sapere cosa era stato pesato.
-
-🚀 **E il 16/08 il codice è ANDATO SUL BOT DI PROVA** (`deploy-bot-hetzner.yml`, bersaglio `prova`):
-il bot è ripartito e **ha dichiarato dove punta** — `ponti edge: cudi… (TEST)` · `🧪 GESTIONALE DI
-PROVA: si scrive davvero, ma il circolo non si tocca` — che è l'unica prova che valga su dove
-scrive. ⛔ Il bersaglio **`soci`** non è stato toccato: vuole un ok separato e la parola `SOCI`.
-
-## ✅✅ IL COLLAUDO È STATO FATTO — 16/08, 23:20, SU PROD, ED È VERDE
-
-**Strada dei bottoni, bot dei soci, slot `2026-08-29 09:00 C1`**, col cancello di Caddy manovrato
-**da GitHub Actions** invece che a mano. La cronologia sta nella scheda; qui il fatto che conta:
-
-⭐ **Il bot ha taciuto 3′38″ POTENDO rispondere, e ha detto «no» 86 secondi dopo aver avuto la
-prova.** Scrittura alle 21:20:23.9 · primo sync atterrato **dopo** di essa alle 21:24:02 · verdetto
-`no` alle 21:25:28. ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata*, cioè il
-bot che dichiara libero un campo senza averne la prova — **non si è verificato nella finestra in cui
-era più facile che capitasse**. È la voce intera, verificata sul bersaglio.
-
-✅ E gli altri: ciclo **partito** · griglia **non** riproposta · nessun `rinuncia/guasto` ·
-**nessuna prenotazione vera** su Matchpoint (nella copia fresca, per quello slot, solo righe del
-Campo 3 — partita di altri).
-
-⭐⭐ **Il controllo positivo non è stato costruito: stava nel registro.** Alle 20:52 della stessa
-sera, **sullo stesso bot**, un `esito IGNOTO` **senza nessuna riga `[attesa-esito]`** — il codice
-non c'era ancora. Stesso bot, stesso guasto, prima niente e dopo il ciclo: la differenza la fa
-**la cura**, e non qualcos'altro.
-
-🚨 **E la «strada del modello» della scheda era una riga FALSA.** Diceva *«si conferma scrivendo»*:
-provato, il bot risponde con la **scheda a bottoni**. Il codice è esplicito — *«il socio non deve
-mai scrivere una data né un «sì»… il sì dovrà comunque arrivare da un tocco»* (`bot.ts:3199`,
-`:3207`). ⇒ Il modello arriva **sempre** alla proposta e consegna ai bottoni: è una **protezione**,
-non una svista, e la riga della scheda è stata corretta.
-
-⛔ **La voce resta aperta, e adesso per UNA domanda sola** *(non si promuove da sé)*: se il modello
-finisce sempre in una proposta, l'aggancio dell'attesa sulla sua strada (`bot.ts:3216`) può vedere
-solo esiti **senza scrittura** ⇒ per la voce 53 **non scatterebbe mai**. 🚨 Scritta come **domanda**
-e non come verdetto di proposito: sarebbe la **terza** deduzione plausibile su questa voce in un
-giorno, e le prime due erano **entrambe false**.
-
-📌 *(Storico, prima del collaudo:)*
-📄 **La scheda c'è**: [`docs/voce-53-collaudo.md`](../voce-53-collaudo.md) — pre-volo, cancello,
-previsioni minuto per minuto, e soprattutto **cosa sarebbe un rosso vero**.
-🎁 **E la finestra dura SECONDI, non quindici minuti**: l'attesa **non passa da Caddy** (`verifica`
-è una chiamata alla edge e non chiama il worker) ⇒ Caddy si riaccende **subito** dopo la
-prenotazione e il ciclo continua per conto suo.
-🎁 E non serve nemmeno lo **strappo a metà volo** della parte B della 41 (`SIGKILL`, i due secondi
-contati): `matchpoint-bookings-create` marchia l'ignoto a **qualunque** caduta di rete
-(`index.ts:194`), «connection refused» compreso ⇒ **basta Caddy giù prima**.
-
-🚨🚨 **IL PRIMO GIRO È STATO FATTO IL 16/08 SERA, ED È FALLITO — e il difetto era nella MIA scheda.**
-Cancello passato (`HTTP 000`, Caddy `failed`), prenotazione dal bot di prova ⇒ **«✅ Prenotato»**.
-Nessun esito ignoto, nessun ciclo. **Su TEST il worker non viene chiamato mai**: in
-`matchpoint-bookings-create` c'è un **recinto** *prima* della chiamata, e la guardia è **l'indirizzo
-del progetto** (`scritturaAlCircoloConsentita`, vera solo su PROD). ⇒ Su quella strada **Caddy non
-c'è**, e fermarlo non cambia niente.
-⚖️ **Premessa vera, conclusione falsa — e scritta con la faccia di una misura.** Avevo letto
-`esitoVieneDaUnaProva(workerResult)` (riga 316), che decide il **marchio sulla riga**, e ne avevo
-concluso «il worker viene chiamato comunque»; il recinto sta **350 righe più in là**. È il
-**secondo** caso identico dentro la voce 53, dopo il sync che «non passava dal worker» — e stavolta
-l'avevo etichettato *«misurato nel codice, non dedotto»*, che è ciò che lo ha reso credibile.
-⚠️ E `CLAUDE.md` mi ci ha confermato: *«quello che lo trattiene è la simulazione, non l'indirizzo»*
-vale per la strada dell'**app**; su quella del **bot** il recinto è **esattamente l'indirizzo**.
-⇒ **Il collaudo si fa su PROD o non si fa**, e la scheda è stata riscritta di conseguenza.
-🎁 In cambio là il **«no» diventa raggiungibile** — copia viva, sync che riparte, verdetto `no`
-**vero** perché con Caddy giù la richiesta a Matchpoint non arriva ⇒ si vedono **tutt'e due** le
-facce, cosa che su TEST non era possibile.
-
-🎯 **E una cosa il giro fallito l'ha dimostrata sul serio**: col cancello a `HTTP 000` la **griglia
-ha risposto lo stesso**. È la tesi della voce — *una copia risponde sempre, anche a worker morto* —
-**verificata sul bersaglio** invece che creduta.
-⚠️ E il repo del bot **non ha CI**: l'unico workflow è il deploy, quindi i 1004 verdi sono girati in
-locale e **nessuna guardia li rigirerà sulla PR**.
-📌 La metà del **gestionale** è invece **deployata e viva**: `consumer-booking-write` è **v26 ACTIVE**
-su PROD (verificato il 16/08, non dedotto dal merge).
-🔄 **E su ② mi ero già sbagliato**: avevo scritto «dal cloud non si aggiorna, serve un `git pull` là
-sopra». La scheda della VM (#789) lo smentisce su due punti — le cartelle del bot **non sono
-repository git**, e l'aggiornamento si fa con **`deploy-bot-hetzner.yml`** (`workflow_dispatch`,
-bersaglio `soci`), cioè **da GitHub Actions**, che da qui si raggiunge. Ciò che resta fuori portata è
-**entrare sulla VM**: esce solo la 443. ⚖️ Un «non si può» scritto senza provarlo, dodici ore dopo che
-la 26ª l'aveva messo in `CLAUDE.md` come lezione.
-
-🔬 **`add`: la rete del «mai più di quattro» NON ferma il doppio — verificato ESEGUENDO**, non letto.
-Con la copia ferma a 3 il secondo `add` scrive e il quinto entra; il controllo «ci sei già» non lo
-vede. La causa non è la rete scritta male: **tutte** le sue fonti sono la copia — anche la «scheda
-del circolo», che è il campo `descrizione` delle righe sincronizzate. ⭐ Controprova positiva fatta:
-con 4 nella copia la rete risponde `al_completo`, quindi non è inerte. ✅ **La via scoperta è
-chiusa** (sua decisione, stessa sessione): la `fetch` di `add` è ora in `try/catch` e risponde
-`esito_ignoto`. ⚠️ **Non chiude la staleness**: la rete conta ancora sulla copia, e il caso sta nel
-banco come **limite dichiarato** — il giorno che `add` rileggesse la scheda dal vivo, quel caso
-diventa rosso, ed è il segnale che il limite è stato chiuso.
-
-📌 **Perimetro da guardare quando la si apre**: i punti in cui `consumer-booking-write` chiama il
-gestionale sono **cinque**, non uno — `create`, `leave`, `remove`, `add` (via `bookings-edit`) e
-`cancel`. La cura del 16/08 ha toccato **solo `create`**, che è quello dove un doppio fa danno vero.
-Gli altri quattro hanno la stessa `fetch` non protetta: `cancel` è innocuo (disdire due volte non
-fa danno, ed è scritto), `leave` e `remove` quasi; **`add` no** — un doppio può mettere in campo
-cinque giocatori, e lì la rete del «mai più di quattro» va verificata invece che data per buona.
 
 #### 54. 🔀 **SPOSTARE** una prenotazione: il bot non sa farlo, e manda in segreteria
 
@@ -1141,20 +948,35 @@ domande e dal fatto che le scritture sono **due**, non una.
 
 Nella **29ª**, dal collaudo eseguito (16/08, tarda sera):
 
-- ❓ **L'aggancio dell'attesa sulla strada del MODELLO può mai scattare?** `bot.ts:3216` chiama
-  `avviaAttesaEsito` quando il giro dell'assistente produce un esito. Ma il modello finisce
-  **sempre** in una proposta — la conferma è un tocco, per disegno — e senza scrittura non c'è
-  esito ignoto. ⇒ Se è così, quel ramo per la voce 53 è **codice che non scatta**, e i «due
-  agganci da tenere in pari» sono uno solo. 🚨 **Da misurare**, non da dedurre: è esattamente la
-  forma di ragionamento che oggi ha sbagliato due volte su questa stessa voce.
+- ✅ **RISPOSTA (stessa sessione, un'ora dopo): l'aggancio del MODELLO non è codice morto.** Avevo
+  scritto la domanda sospettando che `bot.ts:3216` non potesse mai vedere un esito ignoto. **Falso**,
+  e misurato leggendo: lo strumento `prenota` **ha** `conferma` nello schema d'ingresso (gli è solo
+  *detto* di non passarlo), `scritta_alle` **c'è** nello schema d'uscita (`prenota.ts:79`), e a
+  decidere è `pendenti.ts` — che lascia passare la conferma **solo** con una proposta valida in un
+  messaggio precedente. ⇒ Se il modello **disobbedisce** e la rete lo ammette, la scrittura parte e
+  l'attesa scatta: quel ramo copre **proprio** la disobbedienza, che il commento dello strumento
+  dichiara già misurata sui numeri di telefono.
+  ⚖️ **Terza deduzione plausibile su questa voce in un giorno, terza sbagliata.** È l'unica ragione
+  per cui era scritta come domanda: se l'avessi scritta come verdetto, sarebbe rimasta lì.
 - 🧰 **Gli attrezzi verso la VM sono nel repo del BOT, e il worker è di questo repo.** `cancello-worker.yml`
   ferma Caddy — cioè il worker **condiviso con PROD** — e sta in `assistente-padel-agent` per una
   scelta di velocità dichiarata (là non c'è `guard-worker-sync` a chiedere due PR su due rami).
   ⚠️ Chi cercasse qui «cosa può spegnere il worker» **non lo troverebbe**: per ora lo tiene insieme
   la tabella in `CLAUDE.md`. Se la cosa dura, quei due workflow vanno **spostati accanto a
   `deploy-worker-hetzner.yml`**.
-- 🧹 **Due righe di prova su TEST**, lasciate dai due giri falliti sul bot di prova: `2026-08-26 09:30 C1`
-  e `2026-08-18 09:30 C2`. Innocue — il circolo non è stato toccato — ma sono lì.
+- ✅🧹 **Le righe di prova su TEST erano NOVE, non due, e non dov'erano scritte** — misurato e poi
+  **cancellate** su sua decisione («cancella le nove righe da test»): `PROVA-` rimaste **0**,
+  `staff_booking` da **283 a 274**, nient'altro toccato.
+  🚨 Tre cose che la nota di un'ora prima diceva sbagliate: non stanno fra le `booking` ma fra gli
+  **`staff_booking`**; erano **nove**, dal **7 agosto**; e la scheda di collaudo **citava codice che
+  non esiste** — su TEST `matchpoint-bookings-create` **non registra niente**, torna `503
+  AMBIENTE_DI_PROVA`; a registrarle è il **ponte**.
+  ⭐ Il marchio `id_reserva: "PROVA-…"` è esplicito e controllabile a macchina ⇒ nessun rischio di
+  scambiarle per partite vere, che è **l'errore della 26ª** (là le «righe di prova» su TEST erano
+  prenotazioni vive **anche in produzione**).
+  🚨 **E la verifica della cancellazione è stata sbagliata al primo colpo**: `prima`, `delete` e
+  `dopo` in **una CTE sola** leggono la **stessa fotografia**, quindi il «dopo» diceva ancora 9. È la
+  24ª — *la sonda che guarda troppo presto*. Rimisurato con una query separata: **0**.
 
 **E nella 29ª, collaudando la voce 53 — trovata dal committente**, non da me:
 
@@ -1476,14 +1298,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 16/08/2026 — 44 voci
+## 📦 CHIUSE — dal 13 al 16/08/2026 — 45 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime QUINDICI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime SEDICI voci sono del 16/08**; **le dieci successive del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+
+| **53** | ✅ *(16/08, 29ª sessione — **chiusa da lui**: «chiudi la cinquantatré»)* 🔁 **Quando il bot non sa com'è andata, va a chiedere al gestionale.** ⭐ **Collaudata su PROD col cancello di Caddy manovrato da GitHub Actions**, sul bot dei soci, slot `2026-08-29 09:00 C1`: il bot ha **taciuto 3′38″ POTENDO rispondere** e ha detto «no» **86 secondi dopo** aver avuto la prova (scrittura 21:20:23.9 · sync atterrato dopo di essa 21:24:02 · verdetto 21:25:28). ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata* — **non si è verificato nella finestra in cui era più facile che capitasse**. Nessuna prenotazione vera nata su Matchpoint, verificata nella copia fresca. ⭐⭐ E il **controllo positivo non è stato costruito: stava nel registro** — alle 20:52 della stessa sera, sullo stesso bot, un `esito IGNOTO` **senza** riga `[attesa-esito]`, perché il codice non c'era ancora. 🚨 Due righe della scheda erano **false** e sono corrette: la «strada del modello» (*«si conferma scrivendo»*) **non esiste** — la conferma è un tocco, per disegno — e la citazione di codice sull'ambiente di prova. ❓ E la mia ipotesi che l'aggancio del modello fosse **codice morto** è **sbagliata**: `pendenti.ts` lo lascia passare se il modello disobbedisce, e `scritta_alle` arriva fino in fondo ⇒ quel ramo copre proprio la disobbedienza. |
 
 | voce | cosa |
 |---|---|
