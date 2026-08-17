@@ -1,5 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// `EdgeRuntime.waitUntil` esiste nel runtime Supabase ma la d.ts risolta oggi dal gate
+// (`deno check` differenziale) non ne dichiara il globale — vedi il gemello in bookings-edit.
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {

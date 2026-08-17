@@ -1,5 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+// `EdgeRuntime.waitUntil` esiste nel runtime Supabase ma la d.ts risolta oggi dal gate
+// (`deno check` differenziale) non ne dichiara il globale — misurato sulla PR #815, TS2304.
+// La create usa lo stesso nome e passò a suo tempo: il gate controlla solo le funzioni toccate,
+// ed è così che il drift della d.ts non s'era mai visto. Dichiarazione locale, forma minima.
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
