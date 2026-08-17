@@ -922,8 +922,8 @@ la cura**, non rileggerla.
 
 | | dov'è | stato |
 |---|---|---|
-| **B** — l'avviso a chi guarda TEST | `index.html` del repo caricatore, [PR #2](https://github.com/PadelVillage/padel-match-organizer-test/pull/2) | ⏸️ **aspetta il suo ok** |
-| **C** — la sentinella che avvisa noi | `tools/sentinella-freschezza-test/` + `deploy-sentinella-hetzner.yml` | ⏸️ scritta e provata al banco, **non ancora installata sulla VM** |
+| **B** — l'avviso a chi guarda TEST | `index.html` del repo caricatore | ✅ **fusa e VIVA** su `test.padelvillage.club` |
+| **C** — la sentinella che avvisa noi | `tools/sentinella-freschezza-test/` + `deploy-sentinella-hetzner.yml` | ✅ **installata sulla VM**, 🔇 **disarmata** (mancano i secret Telegram) |
 
 **B**, provata in un **Chromium vero sul file vero**: 10 casi più la prova coi 3,2 MB veri.
 🚨 Il caso **«copia vecchia → avviso»** è caduto **rosso al primo giro** — l'app, montandosi, rifà il
@@ -940,19 +940,31 @@ col cron da 10′ della sincronia trovarla indietro una volta è **normale**. E 
 da **«non lo so»**: GitHub muto non accusa nessuno — ma dopo 12 giri ciechi **lo dichiara**, perché
 *una sentinella cieca fa lo stesso silenzio di una tranquilla*. Banco: 10 casi, sabotaggio compreso.
 
-⛔ **Le due cose che mancano, e sono sue:**
-① l'**ok al merge** della PR del caricatore;
-② i due secret per **armare** la C — `TELEGRAM_SENTINELLA_TOKEN` e `TELEGRAM_SENTINELLA_CHAT_ID` —
-e l'ok a lanciare il deploy sulla VM. Senza, si installa **disarmata**: misura e scrive nel registro
-ciò che *avrebbe* mandato.
+✅ **VERIFICATE SUL BERSAGLIO, tutte e due, la sera stessa** — e non «a codice a posto»:
 
-⚠️ **E una cosa che da una sessione cloud NON si è potuta misurare**, dichiarata invece che taciuta:
-che il repo dell'app risponda alle chiamate **anonime** del browser. Da qui i `curl` verso
-`api.github.com` passano da un proxy **che li autentica** ⇒ non sanno rispondere della domanda — è la
-lezione del secondo filo, il cassetto sbagliato che è la propria posizione. L'evidenza che regge è
-**eseguita ma non oggi**: il 17/08 i browser anonimi prendevano **429**, non 404, che è tutta la
-ragione per cui esiste la 58. ⚖️ E il disegno **sopravvive all'incertezza**: se quella chiamata
-rispondesse 404 il controllo **tace**, e non succede niente.
+- **B**: aperto `test.padelvillage.club` in un Chromium vero. Titolo `Padel Match Organizer v6.243
+  TEST`, `PMO_FORCE_ENV = 'test'` (la prima cintura intatta), **nessun errore JS**, e **nessun avviso
+  a schermo** — che è la risposta giusta su una copia fresca;
+- **C**: il deploy **non si dichiara finito finché la sentinella non ha misurato**, e infatti ha
+  letto il suo `stato.json` sulla VM: `esito=fresca · servita=79d1a3a · sorgente=79d1a3a ·
+  servitoCoerente=true`.
+
+⭐⭐ **E quel giro sulla VM ha risposto a una domanda che avevo dichiarato NON misurabile dal cloud.**
+Avevo scritto: *«che il repo risponda alle chiamate anonime del browser da qui non si può sapere —
+i `curl` verso `api.github.com` passano da un proxy che li autentica»*. Vero della **sessione**, e
+risolto da **un'altra sonda**: la VM **non ha credenziali GitHub** (`git ls-remote` lì chiede
+l'utente), quindi la chiamata che le ha restituito `79d1a3a…` era **anonima**. ⇒ Il repo risponde
+agli anonimi, e la B **non è cieca**.
+⚖️ È il secondo filo della 30ª usato al **positivo**: se una misura fatta da dove sei tu non sa
+rispondere, la risposta non è rinunciare — è **trovare una sonda che stia altrove**. Qui la sonda
+altrove esisteva già ed era il lavoro stesso: *la C ha certificato la B*.
+
+⛔ **Resta una cosa sola, ed è sua: i due secret** `TELEGRAM_SENTINELLA_TOKEN` e
+`TELEGRAM_SENTINELLA_CHAT_ID`. Finché non ci sono la sentinella gira **disarmata** — misura ogni 15′
+e scrive nel registro ciò che *avrebbe* mandato — e il deploy lo **dichiara** invece di far finta di
+niente. Messi i secret, basta rilanciare il workflow.
+🚨 **Fino ad allora la C non protegge nessuno**: misura e tace. Una guardia installata non è una
+guardia che avvisa, ed è esattamente la distinzione che questa voce esiste per non far perdere.
 
 ---
 
