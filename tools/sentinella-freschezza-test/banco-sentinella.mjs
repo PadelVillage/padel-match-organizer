@@ -44,6 +44,7 @@ globalThis.fetch = async (url, opz = {}) => {
     return { ok: true, status: 200, headers: { get: (k) => (k === 'content-length' ? String(scenario.headLen) : null) } };
   }
   if (u.includes('api.telegram.org')) {
+    if (u.endsWith('/getMe')) return { ok: true, status: 200, json: async () => ({ result: { username: 'bot_finto' } }) };
     inviati.push(JSON.parse(opz.body).text);
     return { ok: true, status: 200, text: async () => 'ok' };
   }
@@ -267,6 +268,29 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
       /ambiente del processo \d+/.test(fv3) && /bot 9988776655/.test(fv3), `fonteVoce = "${fv3}"`);
   } else {
     console.log('⏭️  niente /proc qui: il caso «token dall\'ambiente del processo» non è stato provato');
+  }
+
+  // ── il DUMP di pm2: e' il posto in cui finisce un token dato a pm2 e mai scritto
+  //    in un .env. 🚨 E va letto MIRATO: il dump ha TUTTE le app della VM, quindi il
+  //    caso che conta e' che prenda quella della cartella giusta e non un'altra.
+  {
+    const dumpFinto = join(dir5, 'dump.pm2');
+    writeFileSync(dumpFinto, JSON.stringify([
+      { name: 'assistente-telegram', pm2_env: { pm_cwd: '/opt/assistente-padel-agent',
+        TG: '5555555555:AAHtoken-del-bot-SOCI-che-NON-va-preso-qui' } },
+      { name: 'assistente-telegram-prova', pm2_env: { pm_cwd: '/opt/bot-prova-finto',
+        NODE_ENV: 'production', IL_TOKEN: '7777777777:AAHtoken-del-bot-di-PROVA-giusto' } },
+    ]));
+    process.env.PMO_DUMP_PM2 = dumpFinto;
+    process.env.PMO_CARTELLA_BOT_PROVA = '/opt/bot-prova-finto';
+    process.env.PMO_CARTELLA_BOT_SOCI = '/opt/cartella-soci-inesistente';
+    const fvd = await fonteVoceCon(join(dir5, 'non-esiste.env'), join(dir5, 'st5.json'));
+    delete process.env.PMO_DUMP_PM2;
+    delete process.env.PMO_CARTELLA_BOT_PROVA;
+    delete process.env.PMO_CARTELLA_BOT_SOCI;
+    controlla('token dal DUMP di pm2, e prende l\'app della CARTELLA GIUSTA (non un bot a caso)',
+      /dump pm2/.test(fvd) && /bot 7777777777/.test(fvd) && !/5555555555/.test(fvd),
+      `fonteVoce = "${fvd}"`);
   }
 
   // ── il RIPIEGO sulla seconda sorgente: la prima non ha niente, la seconda sì.
