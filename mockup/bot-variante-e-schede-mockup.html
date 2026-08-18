@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<!--
+  Bot Telegram — VARIANTE E: una partita per volta, scheda per scheda
+  Mockup v1 — 18/08/2026
+
+  🗣️ Sua richiesta: «fammi l'ultimo mockup della versione E con le varie soluzioni prima e
+     dopo le quarantotto ore», col testo — parole sue — «mancano meno di 48 ore e questa
+     partita non si può più disdire, ma puoi ancora modificare i giocatori».
+     ⭐ «Modificare i giocatori» è meglio di come l'avevo scritto io («togliere un
+     giocatore»): copre TOGLIERE e INVITARE, che sono le due cose che restano vive.
+
+  Gli stati NON sono inventati per il disegno: escono dalle regole che il bot già applica.
+    · `esito.azione` = 'esci' | 'annulla' | 'nessuna'   (lascia-partita.ts)
+       ⇒ 'nessuna' è scritto nel codice dal 7/08 come «si può ancora GESTIRE (togliere,
+         invitare) ma non lasciare»: è esattamente il dopo-48-ore.
+    · `puoiTogliere` vuole che TU sia l'organizzatore e che ci sia qualcuno da togliere.
+    · `invitaQui` vuole che tu sia l'organizzatore e che ci sia almeno un posto libero.
+    · Se non resta NIENTE — né uscire, né annullare, né togliere, né invitare — la partita
+      finisce fra gli `scarti` con motivo 'scaduta': resta scritta, senza azioni.
+
+  🚨 I NOMI SONO INVENTATI: questo repo è PUBBLICO.
+  Nessun dato, nessuna rete: HTML statico.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La variante E, scheda per scheda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground:      #f4f6f6;
+    --card:        #ffffff;
+    --ink:         #191d1e;
+    --ink-soft:    #5b6566;
+    --hairline:    #dfe4e4;
+    --accent:      #0e7c7b;
+    --accent-soft: #e3f0ef;
+    --warn:        #9a5b12;
+    --warn-soft:   #f8eddd;
+
+    --tg-ground:   #ffffff;
+    --tg-text:     #000000;
+    --tg-name:     #8266cc;
+    --tg-btn:      #f1f1f1;
+    --tg-btn-ink:  #1e1e1e;
+    --tg-meta:     #8a9096;
+    --tg-avatar:   #1c2b30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #101414;
+      --card:        #171c1c;
+      --ink:         #e8eded;
+      --ink-soft:    #98a4a4;
+      --hairline:    #2a3232;
+      --accent:      #4fb3ab;
+      --accent-soft: #122b2a;
+      --warn:        #d9a25c;
+      --warn-soft:   #2c2314;
+
+      --tg-ground:   #17212b;
+      --tg-text:     #ffffff;
+      --tg-name:     #a48be3;
+      --tg-btn:      #232e3c;
+      --tg-btn-ink:  #e9edf2;
+      --tg-meta:     #6d7f8f;
+      --tg-avatar:   #0f1a1e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #101414;
+    --card:        #171c1c;
+    --ink:         #e8eded;
+    --ink-soft:    #98a4a4;
+    --hairline:    #2a3232;
+    --accent:      #4fb3ab;
+    --accent-soft: #122b2a;
+    --warn:        #d9a25c;
+    --warn-soft:   #2c2314;
+
+    --tg-ground:   #17212b;
+    --tg-text:     #ffffff;
+    --tg-name:     #a48be3;
+    --tg-btn:      #232e3c;
+    --tg-btn-ink:  #e9edf2;
+    --tg-meta:     #6d7f8f;
+    --tg-avatar:   #0f1a1e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 17px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .foglio {
+    max-width: 1240px; margin: 0 auto;
+    padding: clamp(28px, 5vw, 56px) clamp(18px, 4vw, 40px) 72px;
+    display: flex; flex-direction: column; gap: clamp(26px, 4vw, 42px);
+  }
+
+  .occhiello {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: clamp(28px, 4.4vw, 42px); font-weight: 700;
+    line-height: 1.12; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 14px;
+  }
+  .sommario { max-width: 66ch; margin: 0; color: var(--ink-soft); font-size: 18px; }
+  .sommario strong { color: var(--ink); font-weight: 600; }
+
+  .regola {
+    margin-top: 18px; padding: 14px 18px;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 10px 10px 0; max-width: 78ch; font-size: 16px;
+  }
+  .regola strong { font-weight: 600; }
+
+  /* ── I due tempi ──────────────────────────────────────────────────────────── */
+  .tempo { display: flex; flex-direction: column; gap: 18px; }
+  .tempo > h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: clamp(20px, 2.6vw, 26px); font-weight: 700;
+    letter-spacing: -.01em; margin: 0;
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  }
+  .tempo > h2 .quando-cosa {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16px; font-weight: 400; color: var(--ink-soft);
+  }
+
+  .schede {
+    display: grid; grid-template-columns: 1fr;
+    gap: clamp(18px, 2.4vw, 26px); align-items: start;
+  }
+  @media (min-width: 780px)  { .schede { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1160px) { .schede { grid-template-columns: repeat(3, 1fr); } }
+
+  .scheda {
+    background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .cappello {
+    padding: 15px 18px 13px; border-bottom: 1px solid var(--hairline);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .caso {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .caso.tardi { color: var(--warn); }
+  .cappello h3 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -.005em;
+  }
+
+  /* ── Telegram ─────────────────────────────────────────────────────────────── */
+  .telegram {
+    background: var(--tg-ground); padding: 16px 14px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 15px; line-height: 1.38; color: var(--tg-text);
+    flex: 1;
+  }
+  .msg { display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--tg-avatar); display: grid; place-content: center; align-self: start;
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 9px; font-weight: 700; line-height: 1.05; text-align: center; color: #fff;
+  }
+  .avatar span { color: #57c9bd; display: block; }
+  .corpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .mittente { color: var(--tg-name); font-weight: 600; }
+  .contatore { color: var(--tg-meta); font-size: 13px; margin-bottom: 6px; }
+  .riga { display: block; }
+  .avviso { margin-top: 10px; }
+  .tastiera { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .bottone {
+    background: var(--tg-btn); color: var(--tg-btn-ink);
+    border-radius: 9px; padding: 12px 10px; font-weight: 500; text-align: center;
+    position: relative;
+  }
+  .bottone.esterno::after {
+    content: "↗"; position: absolute; right: 8px; top: 5px;
+    font-size: 11px; color: var(--tg-meta);
+  }
+  .bottone.sfoglia { color: var(--tg-meta); }
+  .ora { font-size: 12px; color: var(--tg-meta); align-self: flex-end; margin-top: 6px; }
+
+  /* ── La riga «da dove viene» ──────────────────────────────────────────────── */
+  .perche {
+    border-top: 1px solid var(--hairline);
+    padding: 13px 18px 16px;
+    font-size: 14.5px; color: var(--ink-soft); line-height: 1.45;
+  }
+  .perche b { color: var(--ink); font-weight: 600; }
+  .perche code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; background: var(--accent-soft); color: var(--ink);
+    padding: 1px 5px; border-radius: 5px;
+  }
+
+  /* ── Chiusura ─────────────────────────────────────────────────────────────── */
+  .chiusa {
+    background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 16px; padding: clamp(20px, 3vw, 30px);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .chiusa h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.01em;
+  }
+  .chiusa p { margin: 0; max-width: 78ch; }
+  .chiusa strong { font-weight: 600; }
+  .chiusa em { font-style: italic; color: var(--ink-soft); }
+  .domande { margin: 0; padding-left: 22px; max-width: 78ch; display: flex; flex-direction: column; gap: 8px; }
+  .piede {
+    font-size: 14px; color: var(--ink-soft);
+    border-top: 1px solid var(--hairline); padding-top: 16px; max-width: 78ch;
+  }
+</style>
+</head>
+<body>
+<div class="foglio">
+
+  <header>
+    <p class="occhiello">Mockup · variante E · bot Telegram · 18 agosto 2026</p>
+    <h1>La variante E, scheda per scheda</h1>
+    <p class="sommario">
+      Una partita per volta, e <strong>ogni scheda dice cosa si può ancora fare</strong>. Qui ci sono
+      tutti i casi che il bot incontra davvero — <strong>prima</strong> e <strong>dopo</strong> le 48
+      ore, da organizzatore e da invitato, più la lezione. I nomi sono inventati.
+    </p>
+    <p class="regola">
+      <strong>Gli stati non sono inventati per il disegno: sono le regole che il bot già applica.</strong>
+      Dentro le 48 ore la partita non si lascia più — ma <strong>togliere</strong> e
+      <strong>invitare</strong> restano vivi, e lo dice il codice da sé: l'esito si chiama
+      <em>«nessuna»</em> ed è commentato <em>«si può ancora gestire, ma non lasciare»</em>. Quello che
+      cambia con la E non è la regola: è che <strong>il socio la legge</strong> invece di scoprirla
+      entrando.
+    </p>
+  </header>
+
+  <!-- ══════════════════ PRIMA DELLE 48 ORE ══════════════════ -->
+  <section class="tempo">
+    <h2>Prima delle 48 ore <span class="quando-cosa">si può ancora disdire — e il resto</span></h2>
+
+    <div class="schede">
+
+      <!-- ① organizzatore, posto libero -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso">① l'hai organizzata tu · c'è posto</span>
+          <h3>Tutte le porte aperte</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 3 di 5</div>
+              <div>
+                <span class="riga">⭐ Domani · 18:00 · Campo 2</span>
+                <span class="riga">con Marta Zanella e Giulia Perin</span>
+                <span class="riga"><b>1 posto libero</b> · l'hai organizzata tu</span>
+              </div>
+              <div class="tastiera">
+                <div class="bottone">➕ Invita un amico</div>
+                <div class="bottone">➖ Togli un giocatore</div>
+                <div class="bottone">❌ Annulla la partita</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>Perché queste tre.</b> Sei l'organizzatore, quindi puoi <b>invitare</b> (c'è un posto) e
+          <b>togliere</b>; e siamo fuori dalle 48 ore, quindi la partita si <b>annulla</b> ancora.
+        </p>
+      </article>
+
+      <!-- ② organizzatore, al completo -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso">② l'hai organizzata tu · al completo</span>
+          <h3>Niente da invitare</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 4 di 5</div>
+              <div>
+                <span class="riga">⭐ Venerdì 21 agosto · 09:30 · Campo 2</span>
+                <span class="riga">con Luca Bertoldi, Sara Menegon e Andrea Cont</span>
+                <span class="riga">siete al completo · l'hai organizzata tu</span>
+              </div>
+              <div class="tastiera">
+                <div class="bottone">➖ Togli un giocatore</div>
+                <div class="bottone">❌ Annulla la partita</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>«Invita» non c'è, e non è un errore:</b> il campo è pieno. Un bottone che aprisse una
+          schermata per dire «non c'è posto» sarebbe un giro a vuoto.
+        </p>
+      </article>
+
+      <!-- ③ invitato -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso">③ ti hanno invitato</span>
+          <h3>Esci tu, non annulli la partita</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 2 di 5</div>
+              <div>
+                <span class="riga">Domani · 09:30 · Campo 3</span>
+                <span class="riga">con Elena Fabbri, Davide Nardin e Chiara Tosi</span>
+                <span class="riga">siete al completo · l'ha organizzata Elena Fabbri</span>
+              </div>
+              <div class="tastiera">
+                <div class="bottone">🚪 Esci dalla partita</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>Due parole diverse per due cose diverse.</b> Chi è stato invitato <b>esce</b> e lascia la
+          partita in piedi; solo chi l'ha organizzata la <b>annulla</b>. E togliere gli altri non gli
+          spetta: <code>puoiTogliere</code> vuole che l'organizzatore sia tu.
+        </p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════ DOPO LE 48 ORE ══════════════════ -->
+  <section class="tempo">
+    <h2>Dopo le 48 ore <span class="quando-cosa">il campo è a carico di chi l'ha preso — ma non è finita</span></h2>
+
+    <div class="schede">
+
+      <!-- ④ organizzatore, dentro le 48 -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso tardi">④ l'hai organizzata tu · meno di 48 ore</span>
+          <h3>Non si disdice, i giocatori sì</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 1 di 5</div>
+              <div>
+                <span class="riga">⭐ Oggi · 09:30 · Campo 2</span>
+                <span class="riga">con Luca Bertoldi, Sara Menegon e Paolo Rizzo</span>
+                <span class="riga">siete al completo · l'hai organizzata tu</span>
+              </div>
+              <div class="avviso">Mancano meno di 48 ore e questa partita non si può più disdire, ma puoi ancora modificare i giocatori.</div>
+              <div class="tastiera">
+                <div class="bottone">➖ Togli un giocatore</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>La frase è sua, e dice due cose in una riga</b> — cosa non si può più fare, e cosa
+          resta. <b>«Modificare i giocatori»</b> copre <b>togliere</b> e <b>invitare</b>: qui il campo
+          è pieno, quindi si vede solo il primo.
+        </p>
+      </article>
+
+      <!-- ⑤ organizzatore, dentro le 48, con posto libero -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso tardi">⑤ meno di 48 ore · c'è un posto</span>
+          <h3>Cercare il quarto è ancora possibile</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 1 di 5</div>
+              <div>
+                <span class="riga">⭐ Oggi · 18:00 · Campo 2</span>
+                <span class="riga">con Marta Zanella e Giulia Perin</span>
+                <span class="riga"><b>1 posto libero</b> · l'hai organizzata tu</span>
+              </div>
+              <div class="avviso">Mancano meno di 48 ore e questa partita non si può più disdire, ma puoi ancora modificare i giocatori.</div>
+              <div class="tastiera">
+                <div class="bottone">➕ Invita un amico</div>
+                <div class="bottone">➖ Togli un giocatore</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>È il caso in cui la frase serve di più.</b> Il campo si paga comunque: sapere che
+          <b>invitare si può ancora</b> è la differenza fra giocare in tre e trovare il quarto.
+        </p>
+      </article>
+
+      <!-- ⑥ invitato, dentro le 48 -->
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso tardi">⑥ ti hanno invitato · meno di 48 ore</span>
+          <h3>Qui non resta niente da fare</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 2 di 5</div>
+              <div>
+                <span class="riga">Oggi · 19:30 · Campo 4</span>
+                <span class="riga">con Elena Fabbri, Davide Nardin e Chiara Tosi</span>
+                <span class="riga">siete al completo · l'ha organizzata Elena Fabbri</span>
+              </div>
+              <div class="avviso">Mancano meno di 48 ore e non puoi più uscire da questa partita. Se hai un problema, chiama la segreteria al +39 379 115 1472.</div>
+              <div class="tastiera">
+                <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>Nessuna porta aperta — e questo è il caso che oggi sparisce fra le righe.</b> Non
+          organizzi, quindi non togli e non inviti; e la finestra è chiusa, quindi non esci. Oggi
+          questa partita resta scritta <b>senza bottoni</b>, e il perché sta in fondo alla lista
+          insieme a quello di tutte le altre. <b>Mai un vicolo cieco: la segreteria resta.</b>
+        </p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════ IL CASO A PARTE ══════════════════ -->
+  <section class="tempo">
+    <h2>E il caso che non dipende dalle ore <span class="quando-cosa">la lezione</span></h2>
+
+    <div class="schede">
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso">⑦ una lezione</span>
+          <h3>La gestisce la segreteria</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div class="contatore">Le tue partite · 5 di 5</div>
+              <div>
+                <span class="riga">Sabato 22 agosto · 10:00 · Campo 1</span>
+                <span class="riga">Lezione con il maestro</span>
+              </div>
+              <div class="avviso">Le lezioni le gestisce la segreteria: chiamala al +39 379 115 1472.</div>
+              <div class="tastiera">
+                <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>Decisione del committente del 6/08</b>: la lezione il socio la <b>vede</b>, ma per
+          toccarla passa dalla segreteria. Non cambia nulla con la E — cambia solo che la frase sta
+          <b>sulla lezione</b>, invece che in fondo a tutto.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="chiusa">
+    <h2>Cosa cambia davvero, e le due domande che restano</h2>
+
+    <p>
+      <strong>Il guadagno non è la disposizione: è che sparisce un bottone che promette più di quel
+      che mantiene.</strong> Oggi «Gestisci» compare uguale su tutte le partite, e cosa ci sia
+      dentro lo scopri entrando. Nei sette casi qui sopra <strong>i bottoni sono solo quelli
+      veri</strong>, e dove non ce n'è nessuno la scheda <em>dice perché</em> — mentre oggi quella
+      spiegazione è <strong>una riga sola in fondo all'elenco</strong>, valida per tutte insieme.
+    </p>
+
+    <p>
+      <strong>Il prezzo resta uno solo, e va guardato in faccia:</strong> «cosa ho questa settimana?»
+      non si legge più in un colpo — sono quattro tocchi. <em>È il baratto della E: si guarda peggio,
+      si fa meglio.</em>
+    </p>
+
+    <p><strong>Due cose che il disegno lascia aperte, e le decide il committente:</strong></p>
+    <ol class="domande">
+      <li>
+        <strong>Quale partita si apre per prima?</strong> La <strong>più vicina nel tempo</strong> è
+        quella di cui di solito si vuole sapere — ma è anche quella su cui spesso non si può più
+        fare niente (caso ⑥). L'alternativa è aprire sulla <strong>prima su cui c'è qualcosa da
+        fare</strong>.
+      </li>
+      <li>
+        <strong>«Vedi le altre partite» porta alla successiva, o all'elenco di oggi?</strong> Alla
+        successiva è un tocco solo per scorrere; all'elenco ridà il colpo d'occhio e costa un tocco
+        in più. <em>Si può anche tenere l'elenco di oggi come porta d'ingresso e la scheda E come
+        ciò che si apre toccando una partita — le due cose non si escludono.</em>
+      </li>
+    </ol>
+
+    <p class="piede">
+      Mockup statico: nessun dato reale, nessuna rete, nessun Supabase. I nomi sono inventati perché
+      questo repository è pubblico. Niente è stato sviluppato: il codice si apre solo dopo un
+      «mockup approvato».
+    </p>
+  </section>
+
+</div>
+</body>
+</html>
