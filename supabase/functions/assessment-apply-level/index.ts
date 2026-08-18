@@ -1,8 +1,18 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+import {
+  TENTATIVI_PER_GIRO,
+  ORE_SILENZIO_ASSENSO,
+  SCELTA_MI_FERMO,
+  SCELTA_RIPROVO,
+  laProvaEsaurisceIlGiro,
+} from './giro-del-test.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// assessment-apply-level — il livello dell'autovalutazione si applica DA SOLO.
+// assessment-apply-level — il livello dell'autovalutazione si applica senza che
+// nessuno apra il gestionale; e dal 19/08/2026, sulle prove col cancello, SOLO
+// quando il socio ha avuto la sua parola (la scelta, il giro finito, o il
+// silenzio-assenso — la regola intera è qualche riga più giù).
 //
 // Voce `A4ter`, sua decisione del 9/08/2026: «tutto il processo automatico, la
 // segreteria solo in casi estremi».
@@ -44,9 +54,22 @@ import { createClient } from '@supabase/supabase-js';
 //   · non tocca le schede che la segreteria ha in mano (`staff_status` non vuoto);
 //   · non tocca chi arriva dal link generico: quello non è ancora un socio.
 //
-// ⛔ Cosa NON fa ANCORA, ed è la voce 61 § A ④: il socio non sceglie a quale prova
-// fermarsi. Qui la macchina decide da sé, come prima — solo che adesso, al
-// ribasso, decide di NON fare niente finché le prove non sono tre.
+// 🚨🚨 E DAL 19/08/2026 LA MACCHINA NON DECIDE PIÙ DA SOLA — voce 61 § A ④, sua
+// regola del 17/08: *«decidi tu a quale delle tre volte ti vuoi fermare»*.
+// Una prova col cancello del quiz si applica SOLO quando c'è una di queste tre cose:
+//   · la SCELTA del socio: «mi fermo» (`member_decision`, scritta dal ponte
+//     `consumer-assessment-decision` quando il socio risponde al bot);
+//   · il giro ESAURITO: la terza prova non ha una domanda da aspettare — non c'è
+//     una quarta a cui rimandare — e si applica da sola;
+//   · il SILENZIO oltre le `ORE_SILENZIO_ASSENSO` (24): sua regola del 19/08 —
+//     *«dopo 24 ore si applica»* — perché «aspetta per sempre» riaprirebbe la porta
+//     chiusa in faccia per cui questa funzione è nata: un socio a 0,5 che ignora la
+//     domanda resterebbe senza livello e senza poter organizzare.
+// Chi ha risposto «riprovo» ha SCARTATO quella prova: non si applica mai, nemmeno
+// dopo le 24 ore — il silenzio è assenso, una risposta è una risposta.
+// ⚖️ Le schede VECCHIE senza cancello restano applicabili come sempre: vengono
+// dall'epoca delle email, nessun bot può fare loro una domanda, e la tolleranza del
+// gestionale su di loro non cambia.
 //
 // 🔒 Come le altre routine: si entra solo col segreto (`x-pmo-routine-secret`),
 // verificato dal database. Nessuna porta per lo staff, nessuna chiamata a mano.
@@ -145,9 +168,12 @@ function proveConsecutiveAlRibasso(storia: any, attuale: any, ultimoAggiornament
 // Torna { applica, motivo, livello }. `motivo` è sempre valorizzato — anche quando
 // si applica — perché il riepilogo del giro dev'essere leggibile senza il codice
 // accanto: è quello che finisce nella risposta e nei log.
-// ⭐ `storia` sono le schede di QUEL socio (la corrente compresa): serve solo al
-// ribasso, e chi non la passa ottiene «non si scende», che è il verso sicuro.
-function decidi(scheda: any, socio: any, storia: any) {
+// ⭐ `storia` sono le schede di QUEL socio (la corrente compresa): serve al ribasso
+// e al giro, e chi non la passa ottiene «non si scende» e «non si applica ancora»,
+// che sono i versi sicuri. `adessoMs` è l'orologio del giro, passato da fuori:
+// serve alla regola del silenzio, e un orologio letto qui dentro renderebbe la
+// funzione improvabile a tavolino.
+function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
   const livello = livelloDellaScheda(scheda);
   if (Number.isNaN(livello)) return { applica: false, motivo: 'la scheda non ha un livello valido', livello: null };
 
@@ -165,6 +191,27 @@ function decidi(scheda: any, socio: any, storia: any) {
   const knowledge = raw.knowledge || null;
   if (knowledge && clean(knowledge.status) !== 'pass') {
     return { applica: false, motivo: `test di conoscenza non superato (${clean(knowledge.correct)}/${clean(knowledge.total)})`, livello };
+  }
+
+  // 🚨🚨 LA SCELTA DEL SOCIO (voce 61 § A ④, 19/08/2026): su una prova col cancello
+  // la macchina non decide più da sola. Vedi l'intestazione del file per la regola
+  // intera; l'ordine dei controlli qui è il suo significato —
+  //   «riprovo» è un NO detto chiaro e vale per sempre;
+  //   «mi fermo» è il SÌ e si applica subito;
+  //   senza risposta: la terza prova non aspetta nessuno (non c'è una domanda),
+  //   le altre aspettano il socio fino a `ORE_SILENZIO_ASSENSO`, poi il silenzio
+  //   è assenso.
+  if (knowledge) {
+    const scelta = clean(scheda?.member_decision);
+    if (scelta === SCELTA_RIPROVO) {
+      return { applica: false, motivo: 'il socio ha scelto di riprovare: questa prova non si applica', livello };
+    }
+    if (scelta !== SCELTA_MI_FERMO && !laProvaEsaurisceIlGiro(storia, scheda, TENTATIVI_PER_GIRO)) {
+      const eta = adessoMs - quando(scheda?.submitted_at);
+      if (!(eta >= ORE_SILENZIO_ASSENSO * 60 * 60 * 1000)) {
+        return { applica: false, motivo: `aspetta la scelta del socio (silenzio-assenso a ${ORE_SILENZIO_ASSENSO} ore dalla prova)`, livello };
+      }
+    }
   }
 
   if (clean(scheda?.consistency_status) === 'low') return { applica: false, motivo: 'le risposte non tornano con il livello dichiarato', livello };
@@ -279,7 +326,7 @@ Deno.serve(async (req: Request) => {
   // ① Le schede candidate: quelle che nessuno ha ancora preso in mano.
   const { data: schedeRaw, error: erroreSchede } = await admin
     .from('self_assessments')
-    .select('id, token, submitted_at, first_name, last_name, declared_level, calculated_level, consistency_status, staff_status, applied_at, raw_response')
+    .select('id, token, submitted_at, first_name, last_name, declared_level, calculated_level, consistency_status, staff_status, applied_at, raw_response, member_decision, member_decision_at')
     .is('applied_at', null)
     .order('submitted_at', { ascending: true })
     .limit(MASSIMO_PER_GIRO * 4);
@@ -324,13 +371,18 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ③bis LA STORIA DI CIASCUNO, e serve a una cosa sola: al RIBASSO.
+  // ③bis LA STORIA DI CIASCUNO, e serve a due cose: al RIBASSO e al GIRO (la terza
+  // prova si applica da sola, e per riconoscerla va ricostruito il giro — vedi
+  // `laProvaEsaurisceIlGiro` in `giro-del-test.ts`).
   // Si passa per i gettoni, che sono il filo fra la persona e la scheda — la stessa
   // strada del ponte (`consumer-assessment-link`), perché il conto delle prove è lo
   // stesso fatto guardato da due parti, e due strade diverse prima o poi divergono.
   // 🔒 Se una di queste due letture non riesce NON si ferma il giro: la storia resta
   // vuota, il conto viene 0 e nessuno scende. Si perde una discesa legittima, non si
   // regala una discesa sbagliata — ed è dichiarato nella risposta, non taciuto.
+  // ⚠️ E sul lato della SCELTA il verso sicuro è l'attesa: senza storia la terza
+  // prova non si riconosce, quindi non si applica subito — la ripesca il silenzio
+  // delle 24 ore, o il giro dopo del cron quando la lettura torna a riuscire.
   const storiaPerSocio = new Map<string, JsonMap[]>();
   const avvisi: string[] = [];
   if (idSoci.length) {
@@ -351,7 +403,7 @@ Deno.serve(async (req: Request) => {
       if (tuttiIGettoni.length) {
         const { data: storicoRaw, error: erroreStorico } = await admin
           .from('self_assessments')
-          .select('token, submitted_at, declared_level, calculated_level')
+          .select('token, submitted_at, declared_level, calculated_level, raw_response, member_decision, member_decision_at')
           .in('token', tuttiIGettoni)
           .order('submitted_at', { ascending: false })
           .limit(idSoci.length * STORICO_PER_SOCIO);
@@ -384,7 +436,7 @@ Deno.serve(async (req: Request) => {
     const riga = socioId ? righePerId.get(socioId) : null;
     const payload = (riga?.payload || null) as JsonMap | null;
 
-    const esito = decidi(scheda, payload, socioId ? (storiaPerSocio.get(socioId) || []) : []);
+    const esito = decidi(scheda, payload, socioId ? (storiaPerSocio.get(socioId) || []) : [], Date.parse(adesso));
     if (!esito.applica) {
       saltate.push({ persona: nome, motivo: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });
       continue;
