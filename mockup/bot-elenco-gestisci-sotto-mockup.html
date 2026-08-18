@@ -3,14 +3,18 @@
 <head>
 <!--
   Bot Telegram — «Le tue partite»: legare il bottone GESTISCI alla sua prenotazione
-  Mockup v2 — 18/08/2026
+  Mockup v3 — 18/08/2026
 
   🗣️ Domande del committente:
      ① «il bottone gestisci può stare sotto la relativa prenotazione? Logicamente se sei
         ancora in tempo a gestire la prenotazione»
      ② «sei sicuro che non c'è nessun'altra soluzione grafica che mi puoi proporre?»
 
-  ⇒ v2 risponde alla seconda: da due strade se ne mostrano CINQUE.
+  ⇒ v2 rispondeva alla seconda: da due strade se ne mostrano CINQUE.
+     v3 CORREGGE la variante B — «però qui io vedo praticamente tutto un blocco»: ha ragione,
+     Telegram RAGGRUPPA i messaggi di fila dello stesso mittente, e la riscrittura multipla che
+     le avevo attribuito non serve (ogni messaggio si riscrive da sé). Il costo della B non è
+     visivo: sono notifiche, invii a scaglioni e schede che invecchiano separatamente.
      A · com'è oggi                 — un messaggio, i bottoni in blocco in fondo
      B · un messaggio per partita   — il bottone sotto la sua riga (l'unico modo letterale)
      C · il marcatore condiviso     — ①②③ sulla riga e sul bottone; un messaggio solo
@@ -55,6 +59,7 @@
     --tg-btn-ink:  #1e1e1e;
     --tg-meta:     #8a9096;
     --tg-avatar:   #1c2b30;
+    --tg-cucitura: rgba(0,0,0,.06);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -76,6 +81,7 @@
       --tg-btn-ink:  #e9edf2;
       --tg-meta:     #6d7f8f;
       --tg-avatar:   #0f1a1e;
+      --tg-cucitura: rgba(255,255,255,.09);
     }
   }
 
@@ -97,6 +103,7 @@
     --tg-btn-ink:  #e9edf2;
     --tg-meta:     #6d7f8f;
     --tg-avatar:   #0f1a1e;
+    --tg-cucitura: rgba(255,255,255,.09);
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -236,6 +243,16 @@
     font-size: 11px; color: var(--tg-meta);
   }
 
+  /* 🆕 v3 — l'ORA, che Telegram scrive su OGNI messaggio: è la cucitura che si vede */
+  .ora {
+    font-size: 12px;
+    color: var(--tg-meta);
+    align-self: flex-end;
+    margin-top: -2px;
+  }
+  .bolla { border-radius: 10px; padding: 2px 0; }
+  .bolla + .bolla { border-top: 1px solid var(--tg-cucitura); margin-top: 2px; padding-top: 8px; }
+
   .postilla {
     grid-column: 2;
     margin: 0;
@@ -305,7 +322,7 @@
 <div class="foglio">
 
   <header>
-    <p class="occhiello">Mockup v2 · bot Telegram · 18 agosto 2026</p>
+    <p class="occhiello">Mockup v3 · bot Telegram · 18 agosto 2026</p>
     <h1>Legare «Gestisci» alla sua partita: cinque strade</h1>
     <p class="sommario">
       La scheda <strong>«Le tue partite»</strong> in cinque disposizioni. La prima è com'è oggi;
@@ -394,7 +411,7 @@
       <div class="intestazione">
         <span class="etichetta proposta">B · un messaggio per partita</span>
         <h2>Il bottone sotto la sua riga</h2>
-        <p>L'unico modo <em>letterale</em> di avere il bottone lì sotto: se le righe sono messaggi, ognuna ha la sua tastiera.</p>
+        <p>L'unico modo <em>letterale</em> di avere il bottone lì sotto: se le righe sono messaggi, ognuna ha la sua tastiera. <strong>Telegram li raggruppa</strong> — nome e faccia una volta sola — quindi si legge come un blocco unico.</p>
       </div>
 
       <div class="telegram">
@@ -403,6 +420,7 @@
           <div class="corpo">
             <div class="mittente">MioPadel</div>
             <div>Le tue partite</div>
+            <div class="ora">23:04</div>
           </div>
         </div>
 
@@ -414,6 +432,7 @@
               <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
             </div>
             <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:04</div>
           </div>
         </div>
 
@@ -425,6 +444,7 @@
               <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
             </div>
             <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:04</div>
           </div>
         </div>
 
@@ -436,6 +456,7 @@
               <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
             </div>
             <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:05</div>
           </div>
         </div>
 
@@ -447,12 +468,22 @@
               <span class="con">con il maestro · la gestisce la segreteria</span>
             </div>
             <div class="tastiera attaccata"><div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div></div>
+            <div class="ora">23:05</div>
           </div>
         </div>
 
+        <p class="postilla">
+          <b>Sì, sembra un blocco unico — ed è giusto così.</b> Telegram <b>raggruppa</b> i messaggi
+          di fila dello stesso mittente: nome e faccia compaiono una volta, e fra uno e l'altro
+          resta poco più di una riga vuota. ⇒ <b>Il costo della B non è visivo.</b>
+          A tradirla sono due dettagli soli: <b>l'ora</b>, che Telegram scrive su ognuno, e la
+          <b>cucitura</b> fra le bolle.
+        </p>
         <p class="postilla attenzione">
-          <b>Qui il «se sei ancora in tempo» si legge meglio</b>: la spiegazione non è più una riga
-          sola in fondo a tutto — ogni partita si porta dietro la sua strada.
+          <b>Il vero prezzo si paga altrove</b>: sei messaggi = <b>sei notifiche</b> sul telefono
+          a chat chiusa, e arrivano <b>a scaglioni</b> (Telegram lascia passare circa un messaggio
+          al secondo per chat). E ogni volta che il socio richiede l'elenco, in chat ne restano
+          altri sei.
         </p>
       </div>
 
@@ -461,10 +492,12 @@
         <ul>
           <li><span class="segno piu">+</span><span>Nessun abbinamento da fare: il bottone <b>è</b> sotto la sua partita.</span></li>
           <li><span class="segno piu">+</span><span>L'etichetta può dire <b>«Gestisci» e basta</b>.</span></li>
-          <li><span class="segno meno">−</span><span>Da 1 messaggio a <b>N+1</b>: otto partite, nove messaggi di fila.</span></li>
-          <li><span class="segno meno">−</span><span><b>«Torna all'elenco» dovrebbe riscriverne N</b>: oggi ne riscrive uno, e un giro che fallisce a metà lascia residui.</span></li>
+          <li><span class="segno piu">+</span><span>🔁 <b>«Torna all'elenco» NON deve riscriverne N</b> — e qui la v2 diceva il contrario. Ogni messaggio si riscrive <b>da sé</b>: apri la 3, la 3 diventa la scheda, e tornando ridiventa la sua riga. Le altre non si toccano.</span></li>
+          <li><span class="segno meno">−</span><span><b>Sei messaggi, sei notifiche</b> a chat chiusa — e arrivano a scaglioni, ~1 al secondo per chat.</span></li>
+          <li><span class="segno meno">−</span><span>Ogni richiesta lascia in chat <b>un blocco nuovo</b>: tre domande in settimana, diciotto messaggi.</span></li>
+          <li><span class="segno meno">−</span><span>Le altre schede <b>invecchiano da sole</b>: uscendo da una partita, le altre cinque raccontano ancora il mondo di prima.</span></li>
         </ul>
-        <p class="costo">Costo: <b>alto</b> — cambia la forma della scheda</p>
+        <p class="costo">Costo: <b>medio</b> — non visivo: notifiche, invii e schede che invecchiano</p>
       </div>
     </article>
 
@@ -637,14 +670,32 @@
   </section>
 
   <section class="chiusa">
-    <h2>Come la vedo io, in tre righe</h2>
+    <h2>Come la vedo io — corretta il 18/08 sera</h2>
 
     <p>
-      <strong>La C costa quasi niente e prende quasi tutto.</strong> Il problema vero non è che il
-      bottone stia in fondo — è che <em>non si sa a chi appartiene</em>. Un marcatore condiviso
-      risolve proprio quello, senza toccare la forma della scheda e senza portarsi dietro la
-      riscrittura multipla. Se dopo averla vista sul telefono l'abbinamento ti costa ancora fatica,
-      allora la <strong>B</strong> è la risposta piena, e a quel punto il suo costo è giustificato.
+      🔁 <strong>Un mio argomento contro la B era sbagliato, e va detto per primo.</strong> Avevo
+      scritto «una colonna di schede», «otto partite nove messaggi di fila», e soprattutto che
+      «Torna all'elenco» avrebbe dovuto <em>riscriverne N</em>. Guardando il mockup, il committente
+      ha visto quello che c'era da vedere: <strong>sembra un blocco unico</strong>. Ed è vero —
+      Telegram raggruppa i messaggi di fila dello stesso mittente. E la riscrittura multipla non
+      serve: ogni messaggio <strong>si riscrive da sé</strong>, perché il bottone sta dentro il
+      messaggio che deve cambiare. ⇒ <em>La B costa meno di quanto le avevo attribuito, e il costo
+      che le resta non è visivo.</em>
+    </p>
+
+    <p>
+      <strong>Quello che le resta davvero</strong> sono tre cose, tutte fuori dallo schermo: sei
+      messaggi fanno <strong>sei notifiche</strong> a chat chiusa e arrivano a scaglioni (~1 al
+      secondo per chat); ogni richiesta lascia in chat un blocco nuovo invece di un messaggio solo;
+      e le schede <strong>invecchiano separatamente</strong> — uscendo da una partita, le altre
+      restano ferme al mondo di prima, mentre oggi il messaggio unico si rifà tutto.
+    </p>
+
+    <p>
+      <strong>La C resta la più economica</strong> — risolve l'abbinamento con due etichette e zero
+      meccanica nuova — ma non è più «la C o niente»: se la B è quella che convince guardandola, il
+      suo prezzo è <em>medio</em>, non alto, e si paga in notifiche e in schede che invecchiano, non
+      in confusione visiva.
     </p>
 
     <p>
