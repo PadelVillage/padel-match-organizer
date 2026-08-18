@@ -213,11 +213,38 @@ home Wansport e ha **due campi WPT**. L'unico controllo affidabile sono le **sch
 
 ## ❓ Questioni aperte, da decidere prima di andare in servizio
 
-- **Condizioni d'uso.** Leggere in automatico i portali di **altri circoli** con un account
-  personale è quasi certamente fuori dalle loro condizioni. Il rischio non è teorico: chiudono
-  l'account e il servizio dei soci muore. ⇒ **Chiedere un accesso da partner conviene**: uno slot
-  di prima serata disdetto e non ricoperto è incasso perso per loro, e un servizio che glielo
-  riempie è un procacciatore, non un parassita.
+- **Condizioni d'uso — LA QUESTIONE N.1**, e sotto c'è il capitolo che la scioglie.
+
+### 🔑 CON QUALE ACCOUNT SI LEGGE — tre strade, valutate il 18/08/2026
+
+📏 **Prima, la misura che le vincola tutte**: su Wansport **non esiste nessuna vista pubblica**.
+`/start` senza login risponde `303 → /component/users/?view=login`, e la home anonima offre solo
+*Accedi*, *Registrati*, *Password reset*. ⇒ Non c'è la scorciatoia «leggi la pagina pubblica»:
+qualunque strada, si entra in un'area privata con le credenziali di **qualcuno**, e la domanda è
+solo *di chi*. (Nella home compare anche `/manager`: il proprietario non ha un account come gli
+altri, ha la porta dell'amministrazione.)
+
+| strada | chi autorizza | perché è stata scartata / scelta |
+|---|---|---|
+| **① un nostro account** ✅ *in uso* | nessuno, per ora | È quella in servizio in beta, **una lettura al giorno**. Il rischio è **nostro** e cade su **un account nostro**: se ci chiudono fuori, perdiamo un servizio, non il rapporto con nessuno. È la sola in cui il danno peggiore resta in casa. |
+| **② l'account dei GIOCATORI** ❌ | il singolo socio | *Proposta del committente.* Scartata per tre ragioni, e la prima è di prodotto: si vedrebbero **solo i circoli dove quel socio è già iscritto**, cioè quelli che saprebbe già controllare da sé — sparisce proprio «il campo c'è altrove», che è il valore. Le altre due: cedere le credenziali a terzi viola le condizioni **del socio**, quindi la violazione non sparisce, **si sposta sui nostri clienti**; e obbligherebbe il circolo a custodire decine di password **recuperabili** (per fare login servono utilizzabili, non si possono hashare) di persone che le riusano altrove. ⚖️ E si vedrebbe **di più**, non di meno: venti account diversi dallo stesso datacenter non somigliano a un aggregatore, somigliano a credenziali rubate. |
+| **③ l'account dei PROPRIETARI** ❌ *come credenziale* | il proprietario del circolo | *Proposta del committente.* ⭐ **L'interlocutore è quello giusto** — la disponibilità è roba loro, e nessuno può contestargli il diritto di mostrarla. Ma la **credenziale** è la peggiore delle tre: quell'account vede anagrafica dei soci, pagamenti e nomi su ogni prenotazione, più `/manager` ⇒ custodirla significa tenere i dati personali di **centinaia di persone che non ci hanno autorizzato nulla**, senza contratto, per leggere «il campo 2 è libero alle 19» che riservato non è. 🚨 E la premessa *«pagano, quindi non possono bandirli»* **è rovesciata**: le condizioni d'uso sono scritte proprio per i clienti paganti. Il rischio non è il ban, è che **Wansport telefoni e il circolo smetta** — perché il suo gestionale vale mille volte il nostro servizio. Là non si perde un account: si logorano otto rapporti, che sono l'unica cosa che rende possibile il progetto. |
+
+⇒ **La strada ④, che tiene il buono della ③ buttando la credenziale**: dal proprietario si esce
+con **la sua richiesta al fornitore**, non con la sua password —
+*«Wansport, voglio che le mie disponibilità siano leggibili dal servizio del Padel Village: come
+si fa in modo pulito? Utenza in sola lettura, export, API?»*
+⭐ Non si custodisce niente di nessuno; se il sì arriva è **stabile**, non regge finché nessuno
+guarda; e **otto clienti paganti che chiedono la stessa funzione non sono un caso da bloccare,
+sono una richiesta di prodotto**. È la leva vera — non «non possono bandirli», ma «otto clienti
+che chiedono la stessa cosa la ottengono».
+📌 La forma legittima della ② esiste e si chiama **accesso delegato**: il giocatore autorizza, la
+piattaforma dà un permesso revocabile, **la password non passa mai da noi** (come «accedi con
+Google»). Anche quella si ottiene da Wansport, non dai soci.
+
+⚖️ **Perché tutto questo sta scritto qui**: è un'idea che tornerà in mente — a lui, alla
+segreteria, o a una chat nuova senza questa storia. Trovarla già valutata, con le ragioni,
+evita di rifare il giro e di rifarlo peggio.
 - **I 4 circoli senza utenza**: registrarsi è una scrittura coi dati anagrafici del committente. Da autorizzare.
 - **Padel Oderzo**: va chiesto al circolo di approvare l'account.
 - **Playtomic**: non ancora toccata. Architettura diversa, da misurare come si è fatto con Wansport.
