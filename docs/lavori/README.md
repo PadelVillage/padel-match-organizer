@@ -957,22 +957,35 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 **Cosa manca perché la sezione sia FINITA.** Sette pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
-🔨 **Due sono fatti — il ③ e il ②, vivi su PROD dal 18/08** (dettaglio in fondo alla scheda **A**). Restano **cinque**, e il ⑦ è nato dal ②: chiudere un pezzo nel gestionale ne apre uno nel bot, che è la forma normale di *il gestionale SA, il bot DICE*.
+🔨 **Quattro sono fatti — ③ ② nel gestionale, ① ⑦ nel bot** (dettaglio in fondo alla scheda **A**). Restano **tre**: ④ ⑤ ⑥.
+🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
+gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① e ⑦ stanno nel bot, che si
+aggiorna **solo a mano**: sono fusi e **deployati sul bot di PROVA**, e ⛔ **sui SOCI non è arrivato
+niente**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa frase**, che sui
+bot non cambia niente finché non si fonde **e** non si deploya.* La regola nasce da lì: il committente
+è andato a guardare la sezione sui due bot e **non ha visto niente**, giustamente.
 
 | | il pezzo | dove va scritto | scheda |
 |---|---|---|---|
-| ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **A** |
+| ① | ✅ **FATTO il 18/08, sul bot di PROVA** — il bottone lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai». ⛔ **sui soci NO** *(PR #18 del repo del bot)* | bot | **A** |
 | ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
 | ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
-| ⑦ | 🆕 la frase di **giro finito**: oggi il bot dice «hai sbagliato tre volte», ma le prove finite possono essere **due bocciature e una passata**. Il ponte porta il numero vero e il perché (`tentativi_falliti`, `motivo_attesa`) dal 18/08 — manca la **frase** | bot | **A** |
+| ⑦ | ✅ **FATTO il 18/08, sul bot di PROVA** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⛔ **sui soci NO** *(PR #19)* | bot | **A** |
 
-🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ e ④ **vengono
-prima** di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica
-ancora in tutti e due i versi, vuol dire far **scendere** da Avanzato a Principiante il primo socio
-che si incuriosisce — cioè fare, con la cura, esattamente il danno da cui le sue regole difendono.
+🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ **viene prima**
+di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica ancora in
+tutti e due i versi, vuol dire far **scendere** da Avanzato a Principiante il primo socio che si
+incuriosisce — cioè fare, con la cura, esattamente il danno da cui le sue regole difendono.
+✅ **Condizione soddisfatta il 18/08**: ③ è vivo su PROD, e il ① è stato aperto dopo.
+🔎 **E qui c'era scritto «③ e ④», corretto rileggendo**: il pericolo che il paragrafo descrive è
+**tutto del ③** — l'applicazione nei due versi — e il ④ non c'entra con quello. Il ④ resta il pezzo
+grosso per una ragione **diversa e non urgente**: oggi il livello non lo conferma nessuno, il che è
+vero da sempre e non peggiora aprendo il bottone. ⚖️ *Un prerequisito scritto più largo del suo
+motivo non è prudenza: è un blocco che nessuno può più verificare, e la prima cosa che si fa con un
+blocco così è scavalcarlo senza accorgersene.*
 
 ✅ **ASSORBITE QUI le voci 55, 56 e 57**, per sua decisione del **18/08**: *«sì assorbile nella
 61»* — risposta alla domanda che gli avevo lasciato aperta invece di deciderla da me. ⇒ La sezione
@@ -1077,6 +1090,50 @@ Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, 
 che applica la scheda da sé. La regola della scelta gli mette davanti **una domanda** — «tieni
 questo o riprovi?» — cioè quell'automatismo deve smettere di decidere da solo e **aspettare una
 risposta che oggi non gli arriva da nessuna parte**. È una sessione intera, forse due.
+
+🔨✅ **① e ⑦ FATTI IL 18/08 — e sono nel BOT, quindi «vivo» vuol dire un'altra cosa.**
+*(PR **#18** e **#19** del repo del bot, `main` **`3a6ed36`**, deploy run **14**.)*
+
+| | |
+|---|---|
+| ① | il bottone del test lo vedono **tutti**; a chi un livello ce l'ha l'invito dice **rifare**, non «fai» — dirglielo come a chi non ce l'ha suonerebbe come se non ce l'avesse |
+| ⑦ | a giro finito si dice «**hai finito le tue prove**» invece di «Hai già fatto tre tentativi» |
+
+✅ **Verificato SUL BERSAGLIO**, non sul verde del workflow: sulla VM `assistente-telegram-prova`
+si è riavviato all'istante del deploy (riavvii **9 → 11**, `uptime 46s`) e dichiara
+`🧪 prenotazioni sul GESTIONALE DI PROVA`. ⛔ **Il bot dei SOCI non è stato toccato**: il deploy è a
+mano e per quel bersaglio va scritta la parola `SOCI`.
+
+⚠️ **E il ⑦ oggi non si può GUARDARE**, il che è diverso da «non funziona»: esce solo a **giro
+esaurito**, e su PROD nessuno ha mai completato un test col cancello del quiz ⇒ nessuno è dentro un
+giro. È una rete tesa per quando servirà. Quello che si vede stasera sul telefono è il **①**.
+
+🔎 **La scheda diceva «una frase sola»: erano DUE, e gemelle scritte a mano** — una in
+`frasePerIlTest` (il muro, l'invito, «il mio livello») e una in `testoEsitoTest` (l'avviso dopo la
+scheda). ⚖️ È la trappola che il commento di `frasePerIlTest` **dichiara di aver già evitato una
+volta**, riformatasi **venti righe più in là**: *scampare a una malattia non vaccina il file accanto*.
+Adesso la regola è una, `fraseGiroFinito`, e due guardie tengono attaccate le due strade — una legge
+il **sorgente**, l'altra l'**uscita**.
+
+⭐ **Il numero non è stato corretto: è stato TOLTO.** Il ponte porta il conto vero
+(`tentativi_falliti`), quindi stamparlo era la strada facile — «hai sbagliato 2 volte». Ma la frase
+che ha scritto lui non conta niente, ed è giusto due volte: al socio non si dice mai *cosa* ha
+sbagliato (sua regola del 9/08), e un conteggio esatto delle bocciature è **lo stesso rimprovero con
+un numero più preciso**.
+
+🆕 **E il bot ha imparato a leggere `motivo_attesa` — per NON raccontarlo.** Il ponte lo manda dal
+18/08 e non lo leggeva nessuno. Oggi l'unico valore è `esaurito`; un motivo **ignoto** fa dire il
+*quando* e tacere sul *perché*, e il **vuoto vale `esaurito`** perché prima che il campo esistesse
+quella era l'unica attesa possibile. ⇒ Serve al giorno del **④**, quando arriverà il secondo motivo e
+il bot sulla VM sarà ancora quello di ieri: lì la scelta è fra restare vaghi e dire una cosa falsa.
+
+🚨⭐⭐ **E la guardia dei sabotaggi era ROTTA al primo giro, dentro l'attrezzo che esiste per non
+caderci.** «È atterrato?» lo chiedeva a `git diff`, che col lavoro ancora **non commesso** risponde
+«sì è cambiato» **anche a sabotaggio non applicato**: certificava il mio lavoro, non il sabotaggio.
+È la 24ª — *la sonda che guarda nel cassetto sbagliato* — e stavolta il cassetto sbagliato era il
+**metro**. Rifatta sul **file di prima** e ricontrollata con un sabotaggio che non tocca niente, che
+ora viene **dichiarato** tale. ⚖️ *Una guardia che non sa dire di NO non è una guardia: i cinque
+rossi che aveva già prodotto non valevano niente finché non l'ho rifatta.*
 
 #### B · Il promemoria gentile a chi non ha il livello
 
