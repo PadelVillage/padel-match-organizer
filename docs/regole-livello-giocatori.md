@@ -54,7 +54,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
-| È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **61** § A |
+| È il socio a **decidere a quale prova fermarsi** | 🔨 **SCRITTO il 19/08, non ancora vivo**: sta in due PR aperte *(#883 sul gestionale, #23 sul bot)* e non ha toccato nessun bersaglio → voce **61** § A ④ |
 | Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — un giro sono **tre prove**, e quando finiscono partono i 30 giorni. Prima l'attesa scattava solo dopo tre **bocciature**, e chi **passava** poteva rifarlo **subito e all'infinito** |
 | Dopo una prova **riuscita** si può ancora **affinare** | ✅ — è il giro disegnato qui sotto: quello che si è tolto è il *«all'infinito»*, non il riprovare |
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
@@ -121,11 +121,18 @@ e cinque *(PR #20)*, con un banco nuovo che rende oltre 30 messaggi e pretende c
 numero. 🚨 Il banco era **verde con tutti e cinque i difetti accesi**: *un difetto che nessun caso può
 vedere non è piccolo, è invisibile — e la sua cura lo è altrettanto.*
 
-🚨⭐⭐ **Quello che RESTA è la parte più pesante, e non è un bottone in più.** Oggi il livello **non lo
-conferma nessuno**: lo scrive un automatismo (`assessment-apply-level`, cron ogni 15 minuti) che
-applica la scheda da sé, senza chiedere niente al socio. La regola della scelta gli mette davanti
-**una domanda** — «tieni questo o riprovi?» — cioè l'automatismo deve **smettere di decidere da
-solo** e aspettare. È nel gestionale, non nel bot.
+🔨🚨⭐⭐ **④ SCRITTO IL 19/08/2026 — e non è ancora vivo per nessuno: sta in due PR aperte.**
+Fino al 18/08 il livello **non lo confermava nessuno**: lo scriveva `assessment-apply-level` (cron
+ogni 15′) applicando la scheda da sé. Adesso, su una prova col cancello del quiz, si applica solo
+con **«mi fermo»** del socio, col **giro esaurito** (la terza prova non ha una domanda da
+aspettare), o col **silenzio oltre 24 ore** — sua scelta del 19/08 contro «aspetta per sempre»,
+che riaprirebbe la porta chiusa in faccia per cui l'automatismo era nato.
+⚖️ **«Riprovo» vale per sempre** e non lo scavalcano le 24 ore: il silenzio è assenso, una
+risposta è una risposta — altrimenti la domanda sarebbe finta.
+⭐ **E non è «nel gestionale, non nel bot»**, come diceva questa riga fino a ieri: sono **due
+metà**, e il difetto più caro stava **fra le due** — il bot taceva aspettando il livello, il
+gestionale aspettava la risposta per scriverlo, e la risposta arrivava solo se il bot parlava.
+Una catena chiusa, con ognuno dei due lati corretto da solo. Il racconto intero sta nella voce 61.
 
 ---
 
