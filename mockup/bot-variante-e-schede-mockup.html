@@ -3,7 +3,7 @@
 <head>
 <!--
   Bot Telegram — VARIANTE E: una partita per volta, scheda per scheda
-  Mockup v1 — 18/08/2026
+  Mockup v2 — 18/08/2026 — con le cinque decisioni del committente
 
   🗣️ Sua richiesta: «fammi l'ultimo mockup della versione E con le varie soluzioni prima e
      dopo le quarantotto ore», col testo — parole sue — «mancano meno di 48 ore e questa
@@ -127,6 +127,27 @@
   }
   .regola strong { font-weight: 600; }
 
+  /* ── Le decisioni ─────────────────────────────────────────────────────────── */
+  .scelte {
+    background: var(--card); border: 1px solid var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    border-radius: 16px; padding: clamp(20px, 3vw, 28px);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .scelte h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -.01em;
+  }
+  .scelte ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+  .scelte li b { font-weight: 600; }
+  .postilla-scelte {
+    margin: 0; padding: 12px 14px; max-width: 80ch;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 8px 8px 0; font-size: 16px;
+  }
+  .postilla-scelte b { font-weight: 600; }
+  .postilla-scelte i { color: var(--ink-soft); }
+
   /* ── I due tempi ──────────────────────────────────────────────────────────── */
   .tempo { display: flex; flex-direction: column; gap: 18px; }
   .tempo > h2 {
@@ -198,6 +219,9 @@
     font-size: 11px; color: var(--tg-meta);
   }
   .bottone.sfoglia { color: var(--tg-meta); }
+  .tastiera.fila { flex-direction: row; gap: 4px; }
+  .tastiera.fila .bottone { flex: 1; }
+  .tastiera.fila .bottone.solo { flex: 1; }
   .ora { font-size: 12px; color: var(--tg-meta); align-self: flex-end; margin-top: 6px; }
 
   /* ── La riga «da dove viene» ──────────────────────────────────────────────── */
@@ -237,7 +261,7 @@
 <div class="foglio">
 
   <header>
-    <p class="occhiello">Mockup · variante E · bot Telegram · 18 agosto 2026</p>
+    <p class="occhiello">Mockup v2 · variante E · bot Telegram · 18 agosto 2026</p>
     <h1>La variante E, scheda per scheda</h1>
     <p class="sommario">
       Una partita per volta, e <strong>ogni scheda dice cosa si può ancora fare</strong>. Qui ci sono
@@ -253,6 +277,23 @@
       entrando.
     </p>
   </header>
+
+  <section class="scelte">
+    <h2>Le cinque decisioni, prese una domanda alla volta</h2>
+    <ol>
+      <li><b>La scheda sostituisce l'elenco.</b> Chiedendo «le mie partite» si apre subito una partita, non una lista.</li>
+      <li><b>Si sfoglia una alla volta</b> — niente elenco intermedio da cui scegliere.</li>
+      <li><b>Si apre sulla più vicina nel tempo</b>, che è quella che il socio ha in mente.</li>
+      <li><b>Due bottoni, «← Precedente» e «Successiva →»</b>: sulla prima manca il primo, sull'ultima il secondo.</li>
+      <li><b>Le azioni stanno sulla scheda</b>, non dietro un «Gestisci»: un tocco in meno, e quella parola sparisce.</li>
+    </ol>
+    <p class="postilla-scelte">
+      ⚖️ <b>La quinta chiude il giro cominciato stasera.</b> La domanda di partenza era <i>«il bottone
+      Gestisci può stare sotto la sua prenotazione?»</i> — e la risposta scelta non lo sposta: <b>lo
+      toglie</b>, perché la scheda È già la partita e le azioni sono lì. <i>La cura più economica di
+      un difetto è scoprire che il pezzo che lo aveva non serve più.</i>
+    </p>
+  </section>
 
   <!-- ══════════════════ PRIMA DELLE 48 ORE ══════════════════ -->
   <section class="tempo">
@@ -281,7 +322,10 @@
                 <div class="bottone">➕ Invita un amico</div>
                 <div class="bottone">➖ Togli un giocatore</div>
                 <div class="bottone">❌ Annulla la partita</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">← Precedente</div>
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -313,7 +357,10 @@
               <div class="tastiera">
                 <div class="bottone">➖ Togli un giocatore</div>
                 <div class="bottone">❌ Annulla la partita</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">← Precedente</div>
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -344,7 +391,10 @@
               </div>
               <div class="tastiera">
                 <div class="bottone">🚪 Esci dalla partita</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">← Precedente</div>
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -386,7 +436,9 @@
               <div class="avviso">Mancano meno di 48 ore e questa partita non si può più disdire, ma puoi ancora modificare i giocatori.</div>
               <div class="tastiera">
                 <div class="bottone">➖ Togli un giocatore</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -420,7 +472,9 @@
               <div class="tastiera">
                 <div class="bottone">➕ Invita un amico</div>
                 <div class="bottone">➖ Togli un giocatore</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -452,7 +506,10 @@
               <div class="avviso">Mancano meno di 48 ore e non puoi più uscire da questa partita. Se hai un problema, chiama la segreteria al +39 379 115 1472.</div>
               <div class="tastiera">
                 <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">← Precedente</div>
+                <div class="bottone sfoglia">Successiva →</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -492,7 +549,9 @@
               <div class="avviso">Le lezioni le gestisce la segreteria: chiamala al +39 379 115 1472.</div>
               <div class="tastiera">
                 <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
-                <div class="bottone sfoglia">📅 Vedi le altre partite · 4 →</div>
+              </div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">← Precedente</div>
               </div>
               <div class="ora">23:04</div>
             </div>
@@ -524,21 +583,14 @@
       si fa meglio.</em>
     </p>
 
-    <p><strong>Due cose che il disegno lascia aperte, e le decide il committente:</strong></p>
-    <ol class="domande">
-      <li>
-        <strong>Quale partita si apre per prima?</strong> La <strong>più vicina nel tempo</strong> è
-        quella di cui di solito si vuole sapere — ma è anche quella su cui spesso non si può più
-        fare niente (caso ⑥). L'alternativa è aprire sulla <strong>prima su cui c'è qualcosa da
-        fare</strong>.
-      </li>
-      <li>
-        <strong>«Vedi le altre partite» porta alla successiva, o all'elenco di oggi?</strong> Alla
-        successiva è un tocco solo per scorrere; all'elenco ridà il colpo d'occhio e costa un tocco
-        in più. <em>Si può anche tenere l'elenco di oggi come porta d'ingresso e la scheda E come
-        ciò che si apre toccando una partita — le due cose non si escludono.</em>
-      </li>
-    </ol>
+    <p>
+      <strong>Le cose che il disegno lasciava aperte sono state decise</strong> — stanno in cima,
+      tutte e cinque. Quello che resta da stabilire non è più grafica ma comportamento, e lo scrivo
+      qui perché non si perda: <strong>cosa dice la scheda a chi non ha nessuna partita</strong>, e
+      <strong>cosa succede quando una partita sparisce mentre il socio la sta guardando</strong>
+      (esce dall'ultima, o un compagno la annulla). <em>Il bot rilegge il mondo a ogni tocco, quindi
+      la risposta esiste già: va solo scelta la frase.</em>
+    </p>
 
     <p class="piede">
       Mockup statico: nessun dato reale, nessuna rete, nessun Supabase. I nomi sono inventati perché
