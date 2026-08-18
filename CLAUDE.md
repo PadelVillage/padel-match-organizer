@@ -177,8 +177,17 @@ cat /opt/sentinella-freschezza-test/stato.json
 ```
 ⚖️ Sta fuori da pm2 **di proposito**: sorveglia la sincronia dell'app di TEST, quindi non deve
 dipendere da nulla che possa cadere insieme a ciò che guarda. Sorgente e deploy in questo repo
-(`tools/sentinella-freschezza-test/`, `deploy-sentinella-hetzner.yml`), il `.env` con le credenziali
-Telegram **solo sulla VM** e mai in git — se manca, gira **disarmata** e lo scrive nel registro.
+(`tools/sentinella-freschezza-test/`, `deploy-sentinella-hetzner.yml`).
+🔑 **La sua voce sono due secret di questo repo** — `TELEGRAM_SENTINELLA_TOKEN` (il bot di **prova**)
+e `TELEGRAM_SENTINELLA_CHAT_ID` — che il deploy scrive nel `.env` sulla VM: quel file **non sta in
+git** e il deploy **non lo cancella mai**. Se la voce manca gira **disarmata**, lo scrive nel
+registro, e il deploy esce **giallo** (in attesa), non rosso: rosso è solo *ho una voce e non ha
+funzionato*.
+🚨 **Con quale bot parla lo dice lei**, chiedendolo a Telegram (`getMe`) invece di dedurlo dal file
+da cui ha preso il token: sono due cose diverse, e il 18/08 la differenza è costata tre giri.
+⚠️ Se un domani il secret sparisce **non ammutolisce**: ripiega sul token di un bot già sulla VM —
+prima il **prova**, poi i **soci** — e lo dichiara. Quel prestito è sicuro perché il **409** di
+Telegram riguarda il *long polling*, non l'invio, e la sentinella non chiama **mai** `getUpdates`.
 
 🚨 **Le due cartelle del bot NON sono repository git**, e la VM **non può parlare con GitHub**
 (nessuna chiave privata in `/root/.ssh/`, `git config --global` vuoto, `git ls-remote` chiede
