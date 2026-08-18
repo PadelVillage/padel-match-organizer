@@ -958,7 +958,7 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
 🔨 **Cinque sono VIVI — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**).
-🔨 **Il ④ è SCRITTO ma non vivo** *(19/08)*: sta in due PR aperte e non ha ancora toccato nessun bersaglio — dettaglio in fondo alla scheda **A**. ⇒ Resta da fare il **⑥**, e resta da **portare a terra il ④**.
+✅🎉 **E il ⑥ è l'ULTIMO: il ④ è stato fatto il 19/08 ed è vivo su PROD e per i soci** — dettaglio in fondo alla scheda **A**. ⇒ Dei sette pezzi ne resta **uno**.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
 gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① ⑦ ⑤ stanno nel bot, che si
 aggiorna **solo a mano**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa
@@ -978,7 +978,7 @@ nessuno, che è esattamente ciò che il workflow promette e che non si dà per b
 | ① | ✅ **FATTO il 18/08 — e dalla sera è VIVO ANCHE PER I SOCI** — il bottone lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» *(PR #18 del repo del bot)* | bot | **A** |
 | ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
-| ④ | 🔨 **SCRITTO IL 19/08, e NON ANCORA VIVO PER NESSUNO** — l'automatismo ha smesso di decidere da solo, la domanda esiste e la risposta ha una strada. ⛔ Manca il giro sui bersagli: PR aperte *(#883 su TEST, #23 sul bot)*, DDL su PROD e deploy dei bot **da fare** | gestionale + bot | **A** |
+| ④ | ✅🎉 **FATTO IL 19/08 — VIVO SU PROD E PER I SOCI**: l'automatismo ha smesso di decidere da solo, il bot fa la domanda e la risposta ha una strada. ⚠️ Vivo **non vuol dire visibile**: su PROD nessuno ha ancora completato un test col cancello, quindi non c'è ancora una prova a cui si applichi | gestionale + bot | **A** |
 | ⑤ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria *(PR #21)* | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
 | ⑦ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata** *(PR #19)* | bot | **A** |
@@ -1095,8 +1095,8 @@ in produzione**.
 
 🔨🚨⭐⭐ **④ SCRITTO IL 19/08/2026 — e «scritto» qui vuol dire una TERZA cosa, dopo «vivo su
 PROD» e «vivo per i soci»: sta in due PR APERTE, e non ha ancora toccato nessun bersaglio.**
-*(PR **#883** fusa su `test-preview` e **viva su `cudi…`**; PR **#23** fusa nel repo del bot e
-**deployata sul bot di PROVA**; PR **#884** verso `main` **aperta e in attesa del suo ok**.)*
+*(PR **#883** su `test-preview`, **#884** su `main`, **#23** nel repo del bot — tutte fuse; DDL
+applicato ai due database; bot di **PROVA** e dei **SOCI** deployati.)*
 
 Fino al 18/08 il livello **non lo confermava nessuno**: lo scriveva l'automatismo (cron
 `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) applicando la scheda da sé. Adesso,
@@ -1149,17 +1149,37 @@ con `GIRO_FINITO`. È il caso esatto per cui il ⑦ esiste, e adesso lo attraver
 ④ il **bot di PROVA** è aggiornato e riavviato al deploy (riavvii **12 → 13**, uptime 30 s),
 dichiara `cudi… (TEST)` e `🧪 GESTIONALE DI PROVA` ⇒ ⛔ **il bot dei SOCI non è stato toccato**.
 
-⛔ **COSA MANCA PERCHÉ SI VEDA, e va detto per intero** — tre cose, tutte fuori dal codice:
-① il **DDL su PROD** (`member_decision`, `member_decision_at`) — 🚨 va applicato **PRIMA** del
-merge su `main`, perché le funzioni chiedono le due colonne nel `select` e un `select` su una
-colonna assente **fa fallire l'intera lettura**: il ponte risponderebbe 500 e il cron
-smetterebbe di applicare **qualunque** livello *(su `cudi…` è già fatto e verificato)*;
-② il **merge su `main`** *(PR **#884**, verde su `guard-main` e `deno-check`)* — e lì il merge
-**è** il deploy su PRODUZIONE;
-③ il **deploy sui SOCI**, che non lo fa nessun merge: `deploy-bot-hetzner.yml` con la parola
-`SOCI` scritta a mano. 📌 E l'ordine fra ② e ③ conta: prima il gestionale, o il bot dei soci
-chiederebbe `puo_scegliere` a un ponte che non lo manda ancora.
-🗣️ **Tutt'e tre vogliono un ok suo**: PROD e il bot dei soci non si toccano su iniziativa mia.
+✅🎉 **E LA SERA DEL 19/08 IL GIRO SI È CHIUSO SU PROD E SUI SOCI**, su sua autorizzazione
+(*«tutti e tre, nell'ordine»*), nell'ordine imposto — che qui non era una preferenza:
+
+| | |
+|---|---|
+| ① **DDL su `qqbf…`** | le due colonne, **prima** del merge. 🚨 Le funzioni le chiedono nel `select`, e un `select` su una colonna assente **fa fallire l'intera lettura**: il ponte avrebbe risposto 500 al bot e il cron avrebbe smesso di applicare **qualunque** livello, non solo i nuovi |
+| ② **merge su `main`** *(#884)* | e lì il merge **è** il deploy in produzione |
+| ③ **deploy sui SOCI** | che nessun merge fa: `deploy-bot-hetzner.yml` con la parola `SOCI` scritta a mano |
+
+✅⭐ **Verificato sul bersaglio, e la prova che vale più di tutte è il CRON**: il giro delle
+**23:00:05** su PROD — dieci minuti **dopo** che il codice nuovo era atterrato (22:50:01) — ha
+scritto `{"esaminate":30,"applicate":0,"saltate":17,"avvisi":[]}`, **identico** ai giri di prima.
+⇒ Il `select` con le colonne nuove riesce, e la regola non ha cambiato niente per nessuno: che è
+l'esito voluto, perché questa regola può solo **impedire** una scrittura, mai aggiungerne.
+🚨⭐ **E qui la sonda ovvia sarebbe stata cieca**: i numeri identici, da soli, non distinguono «il
+codice nuovo gira e non cambia niente» da «gira ancora il vecchio». A dirlo sono stati **gli
+orari** (deploy 22:50, cron 23:00) e lo **sha del bundle**, identico fra TEST e PROD. Il 18/08 il
+marcatore era il campo `avvisi`, che allora solo la versione nuova scriveva; stavolta quel
+marcatore non c'era più, e cercarlo lo stesso avrebbe dato un verde che non provava niente.
+✅ Le altre tre: le due edge su PROD rispondono **401 e non 503** (vive e armate); lo sha del
+bundle di `consumer-assessment-decision` è **lo stesso byte per byte** su `cudi…` e `qqbf…`; e il
+bot dei soci `@loziocoach_bot` si è riavviato al deploy (**01:06:17** locale) e **dopo** dichiara
+ancora `qqbf… (PROD)` e `✍️ prenotazioni REALI` — il `.env` non lo tocca il deploy, e lo si è
+**guardato** invece di darlo per buono.
+
+⚠️⭐⭐ **MA «VIVO» NON VUOL DIRE «VISIBILE», e questa volta la distinzione è la cosa più
+importante da scrivere.** Su PROD **nessun socio ha mai completato un test col cancello del
+quiz** (42 schede, tutte senza `knowledge`) ⇒ **non esiste ancora una prova a cui la regola si
+applichi**, e il primo socio che passerà un quiz sarà anche il primo a vedere la domanda.
+⇒ Il ④ è come ①②③⑤⑦: **un prerequisito in servizio**, non una cura che ha cambiato la vita a
+qualcuno. Dirlo «fatto e finito» sarebbe vero del codice e falso dell'esperienza.
 
 🔨✅ **① e ⑦ FATTI IL 18/08 — e sono nel BOT, quindi «vivo» vuol dire un'altra cosa.**
 *(PR **#18** e **#19** del repo del bot, `main` **`3a6ed36`**, deploy run **14**.)*
