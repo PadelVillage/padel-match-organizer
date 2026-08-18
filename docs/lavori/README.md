@@ -957,7 +957,8 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 **Cosa manca perché la sezione sia FINITA.** Sette pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
-🔨 **Cinque sono fatti — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**). Restano **due**: ④ e ⑥.
+🔨 **Cinque sono VIVI — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**).
+🔨 **Il ④ è SCRITTO ma non vivo** *(19/08)*: sta in due PR aperte e non ha ancora toccato nessun bersaglio — dettaglio in fondo alla scheda **A**. ⇒ Resta da fare il **⑥**, e resta da **portare a terra il ④**.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
 gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① ⑦ ⑤ stanno nel bot, che si
 aggiorna **solo a mano**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa
@@ -977,7 +978,7 @@ nessuno, che è esattamente ciò che il workflow promette e che non si dà per b
 | ① | ✅ **FATTO il 18/08 — e dalla sera è VIVO ANCHE PER I SOCI** — il bottone lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» *(PR #18 del repo del bot)* | bot | **A** |
 | ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
-| ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
+| ④ | 🔨 **SCRITTO IL 19/08, e NON ANCORA VIVO PER NESSUNO** — l'automatismo ha smesso di decidere da solo, la domanda esiste e la risposta ha una strada. ⛔ Manca il giro sui bersagli: PR aperte *(#883 su TEST, #23 sul bot)*, DDL su PROD e deploy dei bot **da fare** | gestionale + bot | **A** |
 | ⑤ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria *(PR #21)* | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
 | ⑦ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata** *(PR #19)* | bot | **A** |
@@ -1092,11 +1093,73 @@ più in giù — innocuo oggi, trappola domani: rinominato il contatore, che è 
 dei due. ⭐ Nessuna delle due l'aveva viste il banco: le ha viste **la rilettura di ciò che è andato
 in produzione**.
 
-🚨⭐⭐ **Il pezzo pesante non è nessuna delle tre: è che oggi il livello NON LO CONFERMA NESSUNO.**
-Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15 minuti)
-che applica la scheda da sé. La regola della scelta gli mette davanti **una domanda** — «tieni
-questo o riprovi?» — cioè quell'automatismo deve smettere di decidere da solo e **aspettare una
-risposta che oggi non gli arriva da nessuna parte**. È una sessione intera, forse due.
+🔨🚨⭐⭐ **④ SCRITTO IL 19/08/2026 — e «scritto» qui vuol dire una TERZA cosa, dopo «vivo su
+PROD» e «vivo per i soci»: sta in due PR APERTE, e non ha ancora toccato nessun bersaglio.**
+*(PR **#883** fusa su `test-preview` e **viva su `cudi…`**; PR **#23** fusa nel repo del bot e
+**deployata sul bot di PROVA**; PR **#884** verso `main` **aperta e in attesa del suo ok**.)*
+
+Fino al 18/08 il livello **non lo confermava nessuno**: lo scriveva l'automatismo (cron
+`pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) applicando la scheda da sé. Adesso,
+su una prova **col cancello del quiz**, si applica solo con una di tre cose:
+
+| | |
+|---|---|
+| **«mi fermo»** | il giro si chiude e i 30 giorni partono **dalla SCELTA**, non dalla prova: fra le due possono passare ore, e farli partire dalla prova regalerebbe tempo a chi tarda |
+| **giro ESAURITO** | ⭐ sua risposta del 19/08: *arrivare alla terza È essersi fermati alla terza* — non c'è una quarta a cui rimandare, quindi l'esito vale da sé |
+| **SILENZIO oltre 24 ore** | 🚨 sua scelta del 19/08 contro «aspetta per sempre», che riaprirebbe **la porta chiusa in faccia** per cui l'automatismo era nato: un socio a 0,5 che ignora la domanda resterebbe senza livello e senza poter organizzare |
+
+⚖️ **«Riprovo» invece vale PER SEMPRE**, e non lo scavalcano le 24 ore: il silenzio è assenso,
+una **risposta è una risposta**. Se le ore lo scavalcassero, il socio si vedrebbe applicare il
+livello che aveva rifiutato — cioè la domanda sarebbe **finta**, che è peggio che non farla.
+
+🚨⭐⭐ **E IL DIFETTO PIÙ CARO NON STAVA IN NESSUNO DEI DUE LATI: stava fra i due.** La porta ②
+del bot (`siPuoAnnunciareIlTest`) taceva a test superato finché il livello non era **scritto** —
+regola giusta, del 9/08, per non annunciare una cosa che deve ancora succedere. Col ④ il
+gestionale aspetta la **risposta** per scriverlo ⇒ il bot avrebbe aspettato il livello per
+parlare, il gestionale la risposta per scrivere il livello, e **la risposta poteva arrivare solo
+se il bot parlava**. Tre pezzi giusti e una **catena chiusa**: il ④ sarebbe stato **inerte al
+100%**, e il silenzio-assenso delle 24 ore avrebbe fatto sembrare tutto normale — il livello si
+scrive, solo un giorno dopo. ⚖️ *Il difetto peggiore è quello che non rompe niente*, e non lo
+avrebbe visto nessun banco dei due repo: ognuno dei due lati, da solo, era corretto.
+⭐ La regola vecchia **non è stata indebolita**: il messaggio che esce ora non dichiara niente,
+**fa una domanda** — dice cosa *dice il test*, non cosa è stato registrato.
+
+🔪 **Provato coi SABOTAGGI, venti in tutto** — nove sul gestionale
+(`test/sabotaggi-voce-61-quattro.mjs`), undici sul bot (`test/sabotaggi-scelta-livello.mjs`):
+ogni protezione spenta una per volta, ognuna vista da un banco.
+🚨⭐ **E DUE GUARDIE ERANO ROTTE, trovate solo sabotando**: ① nel bot, quella del cablaggio
+cercava le stringhe del ramo e le trovava **anche col ramo spento** (`if (false)`) — *una
+guardia che cerca una parola prova che la parola c'è, non che il codice succeda*; ② nel banco
+del gestionale, il controllo dell'ordine confrontava la posizione della **lettura** invece che
+dell'**azione**, ed era rosso su un codice giusto. La prima l'ha trovata un sabotaggio, la
+seconda un rosso letto invece che creduto. ⚖️ *La 30ª aveva trovato la riga inerte; queste erano
+due **guardie** inerti, cioè lo stesso difetto un piano più su.*
+⭐ E in fondo a ogni serie c'è un sabotaggio che **non tocca niente**, dichiarato tale, che deve
+risultare **NON atterrato**: è il metro che misura il metro.
+
+✅ **VERIFICATO SUL BERSAGLIO TEST, non sul verde del workflow** *(19/08)*:
+① su `cudi…` la funzione nuova `consumer-assessment-decision` è **ACTIVE** e risponde **401,
+non 503** — viva e **armata**, cioè il segreto c'è e il codice arriva fino al gate;
+② il `select` con le due colonne nuove **gira sui dati veri** (era il rischio numero uno: una
+colonna assente fa fallire l'intera lettura, non solo il campo);
+③ ⭐ **la regola vera sui dati veri**: il socio di TEST con tre prove — `fail, fail, pass`, lo
+stesso su cui il committente ha visto la frase del ⑦ — dà `esaurito`, `falliti: 2`, la terza
+prova **esaurisce** il giro (⇒ si applica da sola) e una scelta su quella prova viene rifiutata
+con `GIRO_FINITO`. È il caso esatto per cui il ⑦ esiste, e adesso lo attraversano tutt'e due;
+④ il **bot di PROVA** è aggiornato e riavviato al deploy (riavvii **12 → 13**, uptime 30 s),
+dichiara `cudi… (TEST)` e `🧪 GESTIONALE DI PROVA` ⇒ ⛔ **il bot dei SOCI non è stato toccato**.
+
+⛔ **COSA MANCA PERCHÉ SI VEDA, e va detto per intero** — tre cose, tutte fuori dal codice:
+① il **DDL su PROD** (`member_decision`, `member_decision_at`) — 🚨 va applicato **PRIMA** del
+merge su `main`, perché le funzioni chiedono le due colonne nel `select` e un `select` su una
+colonna assente **fa fallire l'intera lettura**: il ponte risponderebbe 500 e il cron
+smetterebbe di applicare **qualunque** livello *(su `cudi…` è già fatto e verificato)*;
+② il **merge su `main`** *(PR **#884**, verde su `guard-main` e `deno-check`)* — e lì il merge
+**è** il deploy su PRODUZIONE;
+③ il **deploy sui SOCI**, che non lo fa nessun merge: `deploy-bot-hetzner.yml` con la parola
+`SOCI` scritta a mano. 📌 E l'ordine fra ② e ③ conta: prima il gestionale, o il bot dei soci
+chiederebbe `puo_scegliere` a un ponte che non lo manda ancora.
+🗣️ **Tutt'e tre vogliono un ok suo**: PROD e il bot dei soci non si toccano su iniziativa mia.
 
 🔨✅ **① e ⑦ FATTI IL 18/08 — e sono nel BOT, quindi «vivo» vuol dire un'altra cosa.**
 *(PR **#18** e **#19** del repo del bot, `main` **`3a6ed36`**, deploy run **14**.)*
@@ -1152,10 +1215,18 @@ rossi che aveva già prodotto non valevano niente finché non l'ho rifatta.*
 (jobid **4**) manda **email**, è **spento**, e a spegnerlo è stato lui. Quello che chiede è un
 messaggio **del bot**, su Telegram.
 
-📌 **Da misurare prima di scriverne una riga**, e cambia la taglia: i soci senza livello sono
-**2.276**, ma il promemoria può arrivare solo a chi il **bot ce l'ha** — e al 16/08, parole sue,
-*«il bot dei soci non lo usa nessuno»*. ⇒ Oggi il destinatario vero è **una manciata di persone**:
-si costruisce sapendolo, o si costruisce una cosa che non si può vedere funzionare.
+📏✅ **MISURATO IL 19/08, e la taglia è ancora più piccola di così: il destinatario vero è UNO.**
+Sul gestionale i soci senza livello sono **2.269 su 2.801** (il `0,5` di «da definire», più i
+vuoti). Ma il promemoria arriva solo a chi il **bot ce l'ha**, e nella whitelist
+(`telegram_operatori` su `ayly…`) le utenze attive sono **4**, per **3 soci distinti** — e di
+quei tre, **due un livello ce l'hanno già** (4 e 2). ⇒ Il promemoria gentile, oggi, raggiunge
+**una persona sola**.
+⚖️ Non è un motivo per non farlo — ①②③⑤⑦ sono tutti prerequisiti che non hanno ancora cambiato la
+vita a nessuno — è un motivo per **sapere cosa si sta costruendo**: una rete tesa per quando il
+bot avrà utenti, non una cura per un problema di oggi. ⭐ E la misura è costata mezz'ora, contro
+la mezza giornata che sarebbe costato scoprirlo dopo averlo scritto.
+🗣️ Combacia con la sua frase del 16/08: *«il bot dei soci non lo usa nessuno»* — che era esatta,
+non un'impressione.
 
 #### C · Semi-Pro e Professionista: oggi il bot TACE, e adesso c'è cosa dire
 
