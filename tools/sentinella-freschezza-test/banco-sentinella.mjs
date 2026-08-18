@@ -13,7 +13,7 @@
 // 🚨 Ogni sabotaggio verifica di essere stato APPLICATO prima di girare: un
 //    sabotaggio non applicato da' lo stesso identico verde di un caso cieco.
 // ─────────────────────────────────────────────────────────────────────────────
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -267,6 +267,32 @@ controlla('un guasto NUOVO risuona (il silenzio non e\' permanente)',
       /ambiente del processo \d+/.test(fv3) && /bot 9988776655/.test(fv3), `fonteVoce = "${fv3}"`);
   } else {
     console.log('⏭️  niente /proc qui: il caso «token dall\'ambiente del processo» non è stato provato');
+  }
+
+  // ── il RIPIEGO sulla seconda sorgente: la prima non ha niente, la seconda sì.
+  //    E' la situazione VERA sulla VM — il bot di prova non ha il token da nessuna
+  //    parte, quello dei soci ce l'ha nel suo .env — quindi e' il caso che decide
+  //    se la sentinella avra' una voce o no. Provarlo non e' pedanteria.
+  {
+    const cartellaVuota = join(dir5, 'primo-bot-senza-niente');
+    mkdirSync(cartellaVuota, { recursive: true });
+    const cartellaSoci = join(dir5, 'secondo-bot');
+    mkdirSync(cartellaSoci, { recursive: true });
+    writeFileSync(join(cartellaSoci, '.env'), [
+      'PMO_FUNCTIONS_URL=https://esempio.supabase.co/functions/v1',
+      'CONSUMER_BRIDGE_SECRET_FILE=/opt/segreti/ponte',
+      'PMO_PRENOTAZIONI_SIMULA=1',
+      'IL_TOKEN=1122334455:AAHtoken-del-bot-dei-soci-abbastanza-lungo',
+    ].join('\n'));
+    process.env.PMO_CARTELLA_BOT_PROVA = cartellaVuota;
+    process.env.PMO_CARTELLA_BOT_SOCI = cartellaSoci;
+    const fv4 = await fonteVoceCon(join(cartellaVuota, '.env'), join(dir5, 'st4.json'));
+    delete process.env.PMO_CARTELLA_BOT_PROVA;
+    delete process.env.PMO_CARTELLA_BOT_SOCI;
+    controlla('se il primo bot non ha niente, ripiega sul SECONDO (è il caso vero della VM)',
+      /bot dei soci/.test(fv4) && /bot 1122334455/.test(fv4), `fonteVoce = "${fv4}"`);
+    controlla('e non scambia per token le altre righe di quel .env (URL, percorsi, interruttori)',
+      !/https/.test(fv4) && !/SIMULA/.test(fv4), `fonteVoce = "${fv4}"`);
   }
 
   // Il BATTITO: al primo giro NON batte (lo ha gia' fatto il --prova del deploy)...
