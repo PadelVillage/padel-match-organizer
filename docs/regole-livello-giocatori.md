@@ -118,4 +118,6 @@ Da tenere separate, o si pota la cosa sbagliata:
 ---
 
 📌 **Dove stanno i pezzi ancora da fare**: voci **55**, **56** e **57** in
-[`docs/lavori/README.md`](lavori/README.md).
+[`docs/lavori/README.md`](lavori/README.md) — tenute insieme dalla voce **61**, *«finalizzare la
+sezione «Il mio livello» del bot»*, messa fra le 🔴 **urgenti** dal committente il 18/08/2026.
+⚠️ Le tre restano **in coda** finché non è lui a spostarle: la 61 le **elenca**, non le ha promosse.
