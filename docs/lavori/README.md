@@ -1,6 +1,65 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 17/08/2026, a fine 30ª sessione.** Misurata, non ricordata.
+**Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 31ª: **cercare il POSTO invece di chiedere il RISULTATO**
+
+La 30ª aveva trovato la sonda che parla della **propria posizione**. Questa ha trovato il difetto
+gemello, e l'ho ripetuto **quattro volte di fila** dentro lo stesso problema: davanti alla domanda
+*«con quale bot sto parlando?»* ho continuato a cercare **dove sta il token** — un file, un altro
+file, l'ambiente del processo, il dump di pm2 — quando la domanda si poteva **fare a chi risponde**.
+
+| ho detto | cos'era |
+|---|---|
+| «il token del bot di prova è nel suo `.env`, basta prenderlo» | **il `.env` non esiste.** Una **capacità dichiarata e mai provata** — la 26ª al rovescio, e costa uguale |
+| «allora sta nell'ambiente del processo» | il processo gira, l'ambiente **non ha nessun token** |
+| «allora nel dump di pm2» | **muto anche lì**. Tre cassetti, tre no, e ogni volta ho annunciato «trovata» |
+| «`fonteVoce` dice da dove viene la voce» | **diceva da quale FILE**, non **a quale BOT**. Due cose diverse, e la seconda è quella che si vede sul telefono |
+
+⇒ La riga che ha chiuso la partita è **`getMe`**: *chi parla non si deduce dal file, si chiede a chi
+riceve.* ⚖️ E a vedere la differenza è stato **lui**, guardando lo schermo — *«è arrivato sul bot dei
+soci, non su quello di test»* — mentre il mio registro rispondeva con sicurezza a una domanda
+**vicina** a quella giusta. È la 22ª, e stavolta l'oggetto sbagliato l'ho guardato per quattro giri.
+
+🚨 **E il difetto peggiore stava nella SCHEDA della voce, non nel codice.** La 59 prescriveva di
+confrontare `source_sha` con la testa del ramo: preso alla lettera, l'allarme sarebbe partito quella
+sera stessa su una copia **fresca al byte**. Era **la stessa malattia** per cui la strada `synced_at`
+era già stata scartata — e l'avvertimento «⛔ non rifarla» stava **quattro righe sotto** la riga che
+la rifaceva. ⚖️ *Scartare una strada non vaccina dalla sua parente: la cura era «leggere l'orologio»,
+la ricaduta «leggere il numero d'ordine», e nessuna delle due guarda l'app.* A trovarlo è stato il
+gesto di sempre — **misurare la premessa prima di scrivere la cura**.
+
+🎯 **E la cosa che ha funzionato meglio di tutte è una riga di diagnostica.** Il primo giro sulla VM
+diceva `fonteVoce: "nessuna"` e basta: un `catch { return '' }` muto, cioè **la malattia della voce
+commessa dentro la sua cura** — un guasto che non dice cosa è andato storto. Fatto parlare, ha
+risposto `file assente: /opt/…/.env` e da lì la diagnosi è avanzata da sola. ⭐ *Il tempo speso a far
+dire a un guasto PERCHÉ si ripaga al primo giro dopo.*
+
+🛡️ **In positivo, due meccanismi hanno fatto il loro mestiere senza che nessuno li guardasse.**
+① Il deploy **si è rifiutato di dichiararsi riuscito** finché la sentinella non aveva misurato sul
+bersaglio — ed è così che si è visto che era installata ma muta. ② Il banco ha preso **due difetti
+veri** che rileggendo non si vedevano: l'avviso che spariva quando l'app rifà il `body` (cioè
+**proprio il caso per cui la voce esiste**, con gli altri nove verdi) e il battito che partiva al
+primo giro mandando due messaggi in un quarto d'ora.
+
+⚖️ **E una regola sua, ottenuta insistendo contro di me**: *«continuo a insistere, non voglio un
+terzo bot»*, detto **due volte**. La prima volta l'avevo scartato con un motivo debole — «igiene» —
+e quel motivo mi ha impedito per tre giri di **guardare nella cartella accanto**. ⇒ *Un limite messo
+per gusto costa quanto uno messo per errore, con l'aggravante che sembra prudenza.*
+
+## 📌 Le decisioni prese dal committente nella 31ª
+
+| | |
+|---|---|
+| ⭐ **«fai la B e poi la C»** | l'ordine dei pezzi, dato la sera prima. Rispettato: B fusa e viva, poi C |
+| ✅ **«ok mergia»** | ⚖️ e copriva i **merge**, non il deploy sulla VM: quello gliel'ho chiesto a parte, perché il merge su `main` lo faceva partire da solo. Autorizzazioni separate, come sempre |
+| 🔓 **«sì, mergia e installa disarmata»** | la VM toccata **sapendo cosa sarebbe successo**: si installa e misura, ma non può parlare finché non ha una voce |
+| ❓ **«non ho capito perché dobbiamo creare un altro bot»** | ⭐⭐ **la domanda che ha smontato una mia proposta motivata male.** Gli avevo detto «igiene», che non è una ragione per aggiungere un pezzo — e la ragione vera l'ho trovata solo rispondendogli |
+| 🚨 **«continuo a insistere, non voglio un terzo bot»** | **la seconda volta**, e aveva ragione: bastava guardare nella cartella del bot dei soci, che non avevo mai aperto |
+| 🔎 **«penso che lo prenda su Supabase»** | ⚖️ pista ragionevole e **falsa**, chiusa misurando: `bot-telegram-admin` non è un bot ma un **ponte** — non chiama mai `api.telegram.org` e conosce solo lo *username*. Nessuna edge function ha un token |
+| 👁️ **«è arrivato sul bot dei soci, non su quello di test»** | ⭐⭐ **la cosa che vede lui e io non avevo guardato**, per la nona sessione di fila — e qui il log non poteva dirla, perché rispondeva della domanda sbagliata |
+| ✅ **il token del bot di prova nel secret** | ⇒ la sentinella parla da `@padelvillage_prova_bot`, **verificato con `getMe`** e non dedotto |
+| 📦 **«chiudi la voce cinquantanove e aggiorna i docs»** | la chiusura, a cosa **vista sul telefono**: il messaggio arrivato dal bot giusto |
 
 ## 🔎 Il filo della 30ª: **la riga giusta che non difende niente — e la semplificazione che CANCELLA lavoro**
 
@@ -630,9 +689,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** |
 | 📋 **In coda** | **7** |
-| 📦 **Chiuse** | **47** il 13–17/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **48** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -653,7 +712,7 @@ Il committente l'ha rimesso in discussione la sera stessa e aveva ragione ⇒ ve
 attrezzi in `CLAUDE.md`. Ciò che resta fuori portata è **entrare** con una shell interattiva.
 
 **Stato del sistema, rimisurato alla chiusura della 26ª (16/08)** — versioni lette dall'`index.html`
-dei due rami, non ricordate: app PROD **6.234** · TEST **6.243** · i **4
+dei due rami, non ricordate: app PROD **6.237** · TEST **6.243** · i **4
 percorsi** di `guard-worker-sync` **identici** fra i rami · tutte le guardie **verdi sulle punte di
 entrambi i rami**.
 📌 **La 26ª non ha toccato una riga di `index.html`**: le versioni sono quelle con cui la 25ª aveva
@@ -858,113 +917,12 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 0
 
-### 59. 🕰️ **TEST può mostrare una copia VECCHIA senza dirlo** — il seguito della 58, messo qui da LUI
-
-> 🗣️ **Sua, il 17/08 sera**, subito dopo aver chiuso la 58: *«fai la B e poi la C»*, e
-> *«facciamolo in una nuova chat»*. ⇒ **L'ordine e il posto li ha dati lui.**
-
-**Il difetto, ed è il prezzo della cura della 58.** Ora `test.padelvillage.club` serve l'app da
-`app.html`, la copia pubblicata sul repo del caricatore. È la strada **primaria**, ed è giusto così
-— è quella che ha retto durante l'avaria di GitHub. Ma proprio perché è primaria: **se la sincronia
-si ferma, TEST mostra una versione vecchia e sullo schermo non si vede niente.**
-
-E la sincronia si può fermare in modi già noti: un'avaria di Actions (successa il 17/08), o lo
-**spegnimento automatico degli schedule dopo ~60 giorni** di repo fermo, che `sync-app.yml`
-documenta da sé.
-⚖️ Il dato per accorgersene **esiste già** — `app-meta.json` dice da quale commit viene la copia —
-ma **non lo guarda nessuno**.
-
-| | cosa | dove | perché |
-|---|---|---|---|
-| **B** | caricata l'app, **una** chiamata all'API confronta la testa di `test-preview` con `source_sha`: se la copia è indietro, **lo si dice a chi guarda**. Max una volta all'ora per browser (`localStorage`), e **mai bloccante** — se GitHub non risponde non si dice niente e non si allarma nessuno | nel caricatore, 5° repo | avvisa **chi guarda TEST** |
-| **C** | una guardia che confronta periodicamente `test-preview` con l'`app-meta.json` **servito**, e **avvisa su Telegram** se la copia resta indietro | ⭐ **sulla VM, NON su Actions** | avvisa **noi**, anche se non apre TEST nessuno |
-
-⭐⭐ **Perché la C va sulla VM e non su Actions**: su Actions morirebbe **insieme alla cosa che
-sorveglia** — cioè tacerebbe esattamente nel caso per cui esiste. La VM è l'unico pezzo del sistema
-che **non è GitHub**, ed è raggiungibile dal Mac (chiave `~/.ssh/padel_deploy`, verificata il 17/08).
-
-⛔ **UNA TERZA STRADA È GIÀ STATA SCARTATA: non rifarla.** «Leggere `synced_at` e mostrare l'età
-della copia» **non funziona**, e il motivo sta nel workflow: `sync-app.yml` fa `exit 0` quando l'app
-non è cambiata ⇒ `app-meta.json` si riscrive **solo quando la copia cambia**. `synced_at` non è un
-battito: una settimana tranquilla lo farebbe sembrare vecchio su una copia perfettamente fresca.
-⚖️ *Trovato leggendo il workflow **prima** di scrivere la cura — cioè verificando la premessa invece
-della conclusione.*
-
-⚠️ **Prima di metterci mano**: il file è nel repo del caricatore, dove il 17/08 **due sessioni si
-sono pestate i piedi**. `git fetch` e ricontrollo prima di spingere, sempre.
-
-🔄 **Aggiornamento del 17/08 sera, 31ª sessione: B e C sono SCRITTE E PROVATE, la voce resta APERTA.**
-Nell'ordine che ha dato lui — prima la B, poi la C.
-
-🚨⭐⭐ **E la prima cosa da dire è che UNA RIGA DI QUESTA SCHEDA NON REGGEVA — la B come è scritta
-qui sopra avrebbe suonato su una copia PERFETTA.** *«confronta la testa di `test-preview` con
-`source_sha`»*: presa alla lettera, stasera sarebbe partita.
-
-| misurato il 17/08 alle 21:55 | |
-|---|---|
-| impronta di `index.html` su `test-preview` | `79d1a3a4…` |
-| impronta dei byte **serviti** da `test.padelvillage.club/app.html` | `79d1a3a4…` ⇒ **fresca al byte** |
-| `source_sha` dichiarato in `app-meta.json` | `a0640f3` |
-| testa di `test-preview` | `77feb7c` ⇒ **dodici commit più in là** |
-
-Il motivo è **la stessa riga di `sync-app.yml`** che aveva ucciso la strada `synced_at`: ricopia solo
-se `index.html` è cambiato (`cmp -s` → `exit 0`) ⇒ **ogni commit che tocca solo `docs/` allontana il
-commit senza invecchiare la copia**. E i commit che toccano solo `docs/` qui sono la maggioranza.
-⚖️ **La strada scartata e quella prescritta erano lo stesso errore a due altezze diverse**: una
-leggeva l'orologio della copia, l'altra il suo numero d'ordine, e **nessuna delle due guarda l'app**.
-Scartare la prima non aveva vaccinato dalla seconda — l'avvertimento «non rifarla» stava **quattro
-righe sotto** la riga che la rifaceva.
-⇒ Si confronta l'**impronta del contenuto**: l'unica cosa che cambia se e solo se l'app cambia.
-⭐ E a trovarlo è stato lo stesso gesto della volta prima — **misurare la premessa prima di scrivere
-la cura**, non rileggerla.
-
-| | dov'è | stato |
-|---|---|---|
-| **B** — l'avviso a chi guarda TEST | `index.html` del repo caricatore | ✅ **fusa e VIVA** su `test.padelvillage.club` |
-| **C** — la sentinella che avvisa noi | `tools/sentinella-freschezza-test/` + `deploy-sentinella-hetzner.yml` | ✅ **installata sulla VM**, 🔇 **disarmata** (mancano i secret Telegram) |
-
-**B**, provata in un **Chromium vero sul file vero**: 10 casi più la prova coi 3,2 MB veri.
-🚨 Il caso **«copia vecchia → avviso»** è caduto **rosso al primo giro** — l'app, montandosi, rifà il
-`body` e si portava via l'avviso — cioè cadeva **proprio il caso per cui la voce esiste**, con gli
-altri nove verdi. ⚖️ *Un banco che copre tutto tranne il caso che conta dà lo stesso identico verde
-di uno completo.* Curato con una finestra chiusa di 20 s, e il sabotaggio (confronto spento) verifica
-di essere stato applicato prima di girare.
-📌 Innestato anche il pezzo che veniva dalla sessione Mac: il **tetto d'attesa**
-(`AbortSignal.timeout`) su ogni chiamata a GitHub.
-
-**C**, unità `systemd` **oneshot** con timer da 15′ — non un processo perpetuo, che è una cosa in più
-che può morire in silenzio. Paziente come `guard-worker-sync`: suona dopo **3 giri** (~45′), perché
-col cron da 10′ della sincronia trovarla indietro una volta è **normale**. E distingue **«indietro»**
-da **«non lo so»**: GitHub muto non accusa nessuno — ma dopo 12 giri ciechi **lo dichiara**, perché
-*una sentinella cieca fa lo stesso silenzio di una tranquilla*. Banco: 10 casi, sabotaggio compreso.
-
-✅ **VERIFICATE SUL BERSAGLIO, tutte e due, la sera stessa** — e non «a codice a posto»:
-
-- **B**: aperto `test.padelvillage.club` in un Chromium vero. Titolo `Padel Match Organizer v6.243
-  TEST`, `PMO_FORCE_ENV = 'test'` (la prima cintura intatta), **nessun errore JS**, e **nessun avviso
-  a schermo** — che è la risposta giusta su una copia fresca;
-- **C**: il deploy **non si dichiara finito finché la sentinella non ha misurato**, e infatti ha
-  letto il suo `stato.json` sulla VM: `esito=fresca · servita=79d1a3a · sorgente=79d1a3a ·
-  servitoCoerente=true`.
-
-⭐⭐ **E quel giro sulla VM ha risposto a una domanda che avevo dichiarato NON misurabile dal cloud.**
-Avevo scritto: *«che il repo risponda alle chiamate anonime del browser da qui non si può sapere —
-i `curl` verso `api.github.com` passano da un proxy che li autentica»*. Vero della **sessione**, e
-risolto da **un'altra sonda**: la VM **non ha credenziali GitHub** (`git ls-remote` lì chiede
-l'utente), quindi la chiamata che le ha restituito `79d1a3a…` era **anonima**. ⇒ Il repo risponde
-agli anonimi, e la B **non è cieca**.
-⚖️ È il secondo filo della 30ª usato al **positivo**: se una misura fatta da dove sei tu non sa
-rispondere, la risposta non è rinunciare — è **trovare una sonda che stia altrove**. Qui la sonda
-altrove esisteva già ed era il lavoro stesso: *la C ha certificato la B*.
-
-⛔ **Resta una cosa sola, ed è sua: i due secret** `TELEGRAM_SENTINELLA_TOKEN` e
-`TELEGRAM_SENTINELLA_CHAT_ID`. Finché non ci sono la sentinella gira **disarmata** — misura ogni 15′
-e scrive nel registro ciò che *avrebbe* mandato — e il deploy lo **dichiara** invece di far finta di
-niente. Messi i secret, basta rilanciare il workflow.
-🚨 **Fino ad allora la C non protegge nessuno**: misura e tace. Una guardia installata non è una
-guardia che avvisa, ed è esattamente la distinzione che questa voce esiste per non far perdere.
+🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
+Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
+e poi la C»*). ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse, con dentro
+la riga della scheda che non reggeva e i tre giri che sono serviti a dare una voce alla sentinella.
 
 ---
 
@@ -1570,15 +1528,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 17/08/2026 — 47 voci
+## 📦 CHIUSE — dal 13 al 18/08/2026 — 48 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime due voci sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**La prima voce è del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **59** | ✅ *(18/08, 31ª sessione — aperta il 17 da LUI, chiusa da LUI: «chiudi la voce cinquantanove»)* 🕰️ **59. TEST poteva mostrare una copia VECCHIA senza dirlo** — il prezzo della cura della 58: `./app.html` è la strada **primaria**, quindi a sincronia ferma TEST serve codice vecchio **e sullo schermo non si vede niente**. Fatte tutte e due nell'ordine che ha dato lui. **B** — il caricatore, caricata l'app, confronta e **avvisa chi guarda**: non bloccante, silenzioso su ogni intoppo (403/429/rete/appeso), 1 chiamata/ora per browser con la memoria che si invalida da sé quando la copia servita cambia; innestato il **tetto d'attesa** che veniva dalla sessione Mac. **C** — una **sentinella sulla VM, non su Actions** (là morirebbe insieme a ciò che sorveglia): `systemd` oneshot + timer 15′, fuori da pm2 di proposito, paziente **3 giri** (~45′) come `guard-worker-sync`, che distingue **«indietro»** da **«non lo so»** e dopo 12 giri ciechi **dichiara la propria cecità**; un messaggio per guasto, il rientro annunciato, e un **💓 ogni 7 giorni** che rende *verificabile* la frase «silenzio = tutto a posto». 🚨 **E la scheda della voce prescriveva un confronto SBAGLIATO**: `source_sha` contro la testa del ramo avrebbe suonato quella sera stessa su una copia **fresca al byte** (impronta `79d1a3a4` sui due lati, **dodici commit** di distanza), perché `sync-app.yml` ricopia solo se `index.html` cambia ⇒ ogni commit su `docs/` allontana il commit senza invecchiare la copia. Era **la stessa malattia** per cui la strada `synced_at` era già stata scartata, ripresentata un gradino più in là e **quattro righe sotto** l'avvertimento «non rifarla» ⇒ si confronta l'**impronta del contenuto**. Verificate **sul bersaglio**: B aperta in un Chromium vero (v6.243 TEST, `PMO_FORCE_ENV` intatta, zero errori JS, nessun avviso su copia fresca), C letta nel suo `stato.json` sulla VM (`fresca`, `servitoCoerente: true`); banco **23 casi** col sabotaggio che verifica di essere stato applicato. ⭐ E il giro della sentinella ha **chiuso una domanda che avevo dichiarato non misurabile dal cloud**: la VM non ha credenziali GitHub, quindi la chiamata anonima che le ha risposto dimostra che **la B non è cieca**. ⚠️ **Residuo dichiarato**: la voce della sentinella è il **token del bot di prova** in un secret — e il ripiego sui bot già sulla VM resta scritto e provato, ma il secret ha la precedenza. |
 | — | ✅ *(17/08, 31ª sessione — aperta, curata e chiusa in giornata)* 🌐 **58. L'app di TEST non si carica: `HTTP 429` da GitHub — CHIUSA da LUI** (*«il gestionale di test si apre»*). Il guasto era nel **disegno del caricatore**: scaricava l'app INTERA (~3 MB) da `raw.githubusercontent.com` **a ogni apertura**, anonimo e con un cache-buster che azzerava la CDN — e GitHub strozzava i percorsi per-ramo del repo (429 anti-scraping, **misurato da DUE reti diverse**: non era la quota del circolo). La cura, **scelte sue la ② e la ③**: `app.html` — copia generata dell'app — pubblicata su Pages **nel repo del caricatore** e servita dalla **stessa origine** (niente quota GitHub nel percorso primario, `raw` solo ripiego e senza cache-buster); su errore **messaggio umano + «Riprova»**, niente ricariche automatiche; `sync-app.yml` tiene fresca la copia (dispatch/cron ≤10′/a mano) e `app-meta.json` dichiara **da quale commit e di quando** è la copia — l'anti-trappola della fotografia che sembra viva. Lato repo-app sui due rami (`sync-test-loader.yml`, `CLAUDE.md` corretto); verificata **dal browser vero**: v6.243 TEST, `PMO_FORCE_ENV` intatta, solo `cudi…` contattato. ⚠️ **Residuo dichiarato**: manca il secret `TEST_LOADER_SYNC_TOKEN` (solo lui può crearlo) — senza, la copia si aggiorna **entro ~10′ di cron**, non all'istante; e i cron dei repo fermi GitHub li spegne dopo ~60 giorni, quindi se un giorno TEST sembra vecchio la prima cosa da leggere è `app-meta.json`. |
 | — | ✅ *(17/08, 30ª sessione — nata da una sua richiesta, non dalla coda)* 🎾 **Chi CHIEDE il suo livello e non ce l'ha ora vede il bottone del test.** Il bottone «🎾 TEST LIVELLO DI GIOCO» esisteva dal 9/08 ma nasceva **solo** sotto il rifiuto `serve_livello`: lo vedeva chi provava a **organizzare**, non chi il livello lo **chiedeva** — che leggeva *«Non risulti ancora avere un livello di gioco assegnato.»* e basta. L'unica frase del bot che diceva «non ce l'hai» senza dire come prenderselo. ⭐ **Ci va in tutt'e due le strade** — la risposta del modello (quella normale) e la riserva di quando il modello tace: metterlo in una sola avrebbe fatto un bottone presente **metà delle volte**, ed è la lezione delle «tre schermate» dell'11/08, quando il numero del livello usciva **dal modello** proprio perché avevo cercato solo i testi. 🔧 `offertaDelTest` torna **frase e bottone insieme**, così i due punti di chiamata non possono divergere; il ponte si disturba **solo** quando il livello manca davvero, perché chiedere il link **conia un gettone**. 🧪 Banco **1035 → 1055**, typecheck pulito, **tre sabotaggi** ognuno verificato di essere atterrato — e uno **non lo era**, fermato dalla guardia invece che passato per verde. 🚨 **E il primo sabotaggio ha smascherato una mia riga inerte** (vedi il filo della 30ª). 📦 PR **#16** del repo del bot, `main` **`2a1c069`**, **deployata sul bot di PROVA** (riavvii 8 → 9); ⛔ **sui soci NO**, e ci vuole un ok suo separato. ⚠️ Il bottone lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti aspetta la voce **55** ⇒ [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) |
 | **53** | ✅ *(16/08, 29ª sessione — **chiusa da lui**: «chiudi la cinquantatré»)* 🔁 **Quando il bot non sa com'è andata, va a chiedere al gestionale.** ⭐ **Collaudata su PROD col cancello di Caddy manovrato da GitHub Actions**, sul bot dei soci, slot `2026-08-29 09:00 C1`: il bot ha **taciuto 3′38″ POTENDO rispondere** e ha detto «no» **86 secondi dopo** aver avuto la prova (scrittura 21:20:23.9 · sync atterrato dopo di essa 21:24:02 · verdetto 21:25:28). ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata* — **non si è verificato nella finestra in cui era più facile che capitasse**. Nessuna prenotazione vera nata su Matchpoint, verificata nella copia fresca. ⭐⭐ E il **controllo positivo non è stato costruito: stava nel registro** — alle 20:52 della stessa sera, sullo stesso bot, un `esito IGNOTO` **senza** riga `[attesa-esito]`, perché il codice non c'era ancora. 🚨 Due righe della scheda erano **false** e sono corrette: la «strada del modello» (*«si conferma scrivendo»*) **non esiste** — la conferma è un tocco, per disegno — e la citazione di codice sull'ambiente di prova. ❓ E la mia ipotesi che l'aggancio del modello fosse **codice morto** è **sbagliata**: `pendenti.ts` lo lascia passare se il modello disobbedisce, e `scritta_alle` arriva fino in fondo ⇒ quel ramo copre proprio la disobbedienza. |
