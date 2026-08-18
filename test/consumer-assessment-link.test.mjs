@@ -1,7 +1,17 @@
 // ── BANCO: «finito il giro, 30 giorni» — la regola dei tentativi del test di livello ───
 //
-// Che cosa prova: `statoDelGiro` dell'edge `consumer-assessment-link`, cioè il pezzo che
-// decide se un socio può fare il test ADESSO, che prova sarebbe, e fino a quando aspetta.
+// Che cosa prova: `giro-del-test.ts`, la camminata che decide se un socio può fare il test
+// ADESSO, che prova sarebbe, e fino a quando aspetta.
+//
+// 🔁 19/08/2026 (voce 61 § A ④): la regola è uscita da `consumer-assessment-link/index.ts`
+//    ed è diventata un modulo, perché ora la usano in tre — il ponte del link, l'automatismo
+//    che applica il livello, e il ponte della SCELTA del socio. Il modulo vive in TRE COPIE
+//    identiche (i deploy saltano `_shared/`: il perché sta nella sua intestazione), e a
+//    tenerle uguali è la guardia «le tre copie sono identiche» qui sotto.
+//
+// 🚨 IL CASO 15 È LA REGOLA NUOVA: «mi fermo» CHIUDE il giro, e i 30 giorni partono dalla
+//    scelta. Il 16 è il suo rovescio — alla terza prova l'esaurimento VINCE sulla conferma,
+//    o chi risponde a una domanda aspetterebbe più di chi la ignora.
 //
 // 🚨🚨 IL CASO 5 È LA REGOLA NUOVA (sua, 17/08 — voce 61 § A ②): chi PASSA il test chiude
 //    il giro e aspetta 30 giorni. Prima poteva rifarlo **subito**, e nessuno se n'era
@@ -24,8 +34,14 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
-const SORGENTE = join(QUI, '..', 'supabase', 'functions', 'consumer-assessment-link', 'index.ts');
-const src = readFileSync(SORGENTE, 'utf8');
+const FUNZIONI = join(QUI, '..', 'supabase', 'functions');
+const PONTE = join(FUNZIONI, 'consumer-assessment-link', 'index.ts');
+// Le tre cartelle che portano la copia del modulo. ⚠️ Chi ne aggiunge una la metta QUI:
+// la guardia conta le copie da sé, l'elenco no.
+const COPIE = ['consumer-assessment-link', 'assessment-apply-level', 'consumer-assessment-decision']
+  .map((fn) => join(FUNZIONI, fn, 'giro-del-test.ts'));
+const src = readFileSync(COPIE[0], 'utf8');
+const srcPonte = readFileSync(PONTE, 'utf8');
 
 // Stesso estrattore degli altri banchi: salta i commenti (in italiano sono pieni di
 // apostrofi) e parte dopo la lista dei parametri.
@@ -59,26 +75,49 @@ const spoglia = (codice) => codice
   .replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1')
   .replace(/\b(let|const)\s+(\w+)\s*:\s*any(\[\])?(?=\s*[=;])/g, '$1 $2');
 
-const ctx = {};
-vm.createContext(ctx);
-vm.runInContext(spoglia(['esitoDellaProva', 'quandoMs', 'statoDelGiro'].map(estrai).join('\n')), ctx);
-const { statoDelGiro, esitoDellaProva } = ctx;
-
 // ⭐ I numeri della regola si LEGGONO dal sorgente: ricopiarli qui vorrebbe dire che il banco
 // resta verde anche se domani il ponte ne usa altri — proverebbe la propria copia.
 function costante(nome) {
   const m = src.match(new RegExp(`const ${nome} = ([0-9.]+)`));
-  if (!m) throw new Error(`costante «${nome}» non trovata nell'edge`);
+  if (!m) throw new Error(`costante «${nome}» non trovata nel modulo`);
   return Number(m[1]);
+}
+function parola(nome) {
+  const m = src.match(new RegExp(`const ${nome} = '([^']+)'`));
+  if (!m) throw new Error(`costante «${nome}» non trovata nel modulo`);
+  return m[1];
 }
 const PROVE = costante('TENTATIVI_PER_GIRO');
 const GIORNI = costante('GIORNI_DI_ATTESA');
+const ORE_SILENZIO = costante('ORE_SILENZIO_ASSENSO');
+const MI_FERMO = parola('SCELTA_MI_FERMO');
+
+// ⭐ Le costanti del modulo entrano nel contesto LETTE dal modulo (`costante`/`parola`),
+// non ricopiate: una copia qui dentro lascerebbe il banco verde anche se domani il modulo
+// ne usasse altre — proverebbe la propria copia.
+const ctx = {
+  TENTATIVI_PER_GIRO: costante('TENTATIVI_PER_GIRO'),
+  GIORNI_DI_ATTESA: costante('GIORNI_DI_ATTESA'),
+  ORE_SILENZIO_ASSENSO: costante('ORE_SILENZIO_ASSENSO'),
+  SCELTA_MI_FERMO: parola('SCELTA_MI_FERMO'),
+  SCELTA_RIPROVO: parola('SCELTA_RIPROVO'),
+};
+vm.createContext(ctx);
+vm.runInContext(
+  spoglia(['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'statoDelGiro', 'laProvaEsaurisceIlGiro'].map(estrai).join('\n')),
+  ctx,
+);
+const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro } = ctx;
+
 
 // ── Il materiale ────────────────────────────────────────────────────────────────
 const GIORNO = 24 * 60 * 60 * 1000;
 const ADESSO = Date.parse('2026-08-18T12:00:00.000Z');
 const giorniFa = (n) => new Date(ADESSO - n * GIORNO).toISOString();
-const prova = (quando, esito) => ({ submitted_at: quando, raw_response: { knowledge: { status: esito } } });
+const prova = (quando, esito, extra = {}) => ({ token: `T-${quando}`, submitted_at: quando, raw_response: { knowledge: { status: esito } }, ...extra });
+// Una prova su cui il socio ha detto «mi fermo», con l'istante in cui l'ha detto.
+const fermato = (quandoProva, quandoScelta) =>
+  prova(quandoProva, 'pass', { member_decision: MI_FERMO, member_decision_at: quandoScelta });
 const stato = (schede, adesso = ADESSO) => statoDelGiro(schede, adesso, PROVE, GIORNI);
 
 const casi = [];
@@ -194,28 +233,117 @@ caso('14. l\'esito si legge dove sta davvero, e una scheda malformata non esplod
   ];
 });
 
+caso('15. 🚨🚨 LA REGOLA NUOVA (④): «mi fermo» CHIUDE il giro, e i 30 giorni partono dalla SCELTA', () => {
+  // Prima prova passata, e il socio si ferma lì: il giro è finito con due prove non usate —
+  // è esattamente ciò che la sua regola concede, «decidi tu a quale delle tre volte fermarti».
+  // ⚖️ L'attesa parte da quando ha SCELTO, non da quando ha fatto la prova: fra le due cose
+  // possono passare ore, e far partire l'attesa dalla prova regalerebbe tempo a chi tarda.
+  const s = stato([fermato(giorniFa(10), giorniFa(9))]);
+  return [
+    s.ammesso === false,
+    s.attesa?.motivo === 'confermato',
+    s.attesa?.dal === new Date(Date.parse(giorniFa(9)) + GIORNI * GIORNO).toISOString(),
+    s.falliti === 0,
+  ];
+});
+
+caso('16. 🚨 alla TERZA prova l\'esaurimento VINCE sulla conferma: l\'attesa non si allunga', () => {
+  // Se contasse la conferma, chi risponde «mi fermo» dopo la terza aspetterebbe PIÙ di chi
+  // non risponde affatto — cioè la cortesia costerebbe giorni. Il giro era finito comunque.
+  const terza = fermato(giorniFa(10), giorniFa(3));
+  const s = stato([prova(giorniFa(12), 'fail'), prova(giorniFa(11), 'fail'), terza]);
+  return [
+    s.ammesso === false,
+    s.attesa?.motivo === 'esaurito',
+    s.attesa?.dal === new Date(Date.parse(giorniFa(10)) + GIORNI * GIORNO).toISOString(),
+    s.falliti === 2,
+  ];
+});
+
+caso('17. «riprovo» NON chiude niente: il giro resta aperto e la prova dopo è la seconda', () => {
+  const s = stato([prova(giorniFa(2), 'pass', { member_decision: 'riprovo', member_decision_at: giorniFa(2) })]);
+  return [s.ammesso === true, s.prova === 2, s.attesa === null];
+});
+
+caso('18. dopo un giro CONFERMATO e scaduto, il giro nuovo nasce INTERO', () => {
+  const s = stato([fermato(giorniFa(GIORNI + 3), giorniFa(GIORNI + 2))]);
+  return [s.ammesso === true, s.prova === 1, s.ultima_prova === false];
+});
+
+caso('19. 🔒 «mi fermo» senza l\'istante della scelta non blocca nessuno', () => {
+  // La data illeggibile vale come per l'esaurito: `quandoMs` torna 0, l'attesa risulta
+  // scaduta nel 1970 e il giro riparte. Un dato storto non chiude la porta in faccia.
+  const senzaData = prova(giorniFa(2), 'pass', { member_decision: MI_FERMO, member_decision_at: '' });
+  const s = stato([senzaData]);
+  return [s.ammesso === true, s.prova === 1];
+});
+
+caso('20. ⭐ `laProvaEsaurisceIlGiro` riconosce SOLO la terza, ed è quella che si applica da sola', () => {
+  const prima = prova(giorniFa(5), 'fail');
+  const seconda = prova(giorniFa(4), 'fail');
+  const terza = prova(giorniFa(3), 'pass');
+  const tutte = [prima, seconda, terza];
+  return [
+    laProvaEsaurisceIlGiro(tutte, terza, PROVE) === true,
+    laProvaEsaurisceIlGiro(tutte, prima, PROVE) === false,
+    laProvaEsaurisceIlGiro(tutte, seconda, PROVE) === false,
+    // una prova che chiude per CONFERMA non «esaurisce»: si applica perché il socio l'ha
+    // detto, e quella strada in `decidi` esiste per conto suo.
+    laProvaEsaurisceIlGiro([fermato(giorniFa(2), giorniFa(1))], fermato(giorniFa(2), giorniFa(1)), PROVE) === false,
+  ];
+});
+
+caso('21. i giri si contano tutti, non solo l\'ultimo: due chiusi e uno aperto', () => {
+  const giri = giriDelSocio([
+    prova(giorniFa(80), 'fail'), prova(giorniFa(79), 'fail'), prova(giorniFa(78), 'fail'),
+    fermato(giorniFa(50), giorniFa(50)),
+    prova(giorniFa(2), 'fail'),
+  ], PROVE);
+  return [
+    giri.chiusi.length === 2,
+    giri.chiusi[0].motivo === 'esaurito',
+    giri.chiusi[1].motivo === 'confermato',
+    giri.corrente.length === 1,
+  ];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i modi in cui questa funzione può fare danno.
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof statoDelGiro === 'function'],
   ['i numeri sono i suoi: tre prove per giro, trenta giorni', PROVE === 3 && GIORNI === 30],
+  ['il silenzio-assenso è ventiquattr\'ore', ORE_SILENZIO === 24],
   // ⭐⭐ Il conto vive nel ponte ed è CALCOLATO dai fatti: un contatore tenuto in una colonna
   //    andrebbe azzerato, sincronizzato, e prima o poi divergerebbe dalle schede vere.
   ['il conto non è TENUTO in nessuna colonna', !/tentativi_usati|attempts_used|giri_fatti/.test(src)],
   // ⚖️ `skip` fuori dal conto: Semi-Pro e Professionista il quiz non ce l'hanno.
   ['solo `pass` e `fail` sono prove', /e === 'pass' \|\| e === 'fail'/.test(src)],
-  // 🚨 L'attesa NON è un errore HTTP: un 4xx farebbe scattare nel bot il ripiego dei guasti,
-  //    cioè un «riprova più tardi» generico, proprio dove serve la data precisa.
-  ['l\'attesa risponde 200 con `stato: attesa`, non un errore', /stato: 'attesa'/.test(src) && !/err\(4\d\d, '[A-Z_]*ATTESA/.test(src)],
-  // 🆕 Il campo che dice PERCHÉ si aspetta: senza, il bot non può distinguere «hai finito le
-  //    prove» da «hai passato», e direbbe la frase delle bocciature a chi ha passato.
-  ['la risposta dice PERCHÉ si aspetta (`motivo_attesa`)', /motivo_attesa: giro\.attesa\.motivo/.test(src)],
-  ['il ponte resta disarmato senza segreto', /CONSUMER_BRIDGE_SECRET/.test(src) && /BRIDGE_DISARMED/.test(src)],
   // 🚨 La prima stesura del 18/08 chiudeva il giro al primo `pass`: avrebbe dato le tre prove
   //    SOLO a chi sbaglia il quiz, e a chi lo passa una prova ogni 30 giorni. Corretta lo
   //    stesso giorno — questa guardia esiste perché non torni per distrazione.
   ['il giro si chiude sulle PROVE FINITE, non su una passata', !/passata \|\| corrente\.length/.test(src)],
+  // 🚨🚨 19/08 — L'ORDINE dei due modi di chiudere: l'esaurimento si guarda PRIMA della
+  //    conferma. Scambiarli allunga l'attesa a chi risponde alla domanda della terza prova,
+  //    ed è un difetto che nessun caso «felice» può vedere: il giro si chiude comunque.
+  ['l\'esaurimento si guarda PRIMA della conferma', src.indexOf("corrente.length >= provePerGiro") < src.indexOf("sceltaDellaProva(s) === SCELTA_MI_FERMO")],
+  // ── Le guardie sul PONTE, che è chi la regola la usa ──
+  ['l\'attesa risponde 200 con `stato: attesa`, non un errore', /stato: 'attesa'/.test(srcPonte) && !/err\(4\d\d, '[A-Z_]*ATTESA/.test(srcPonte)],
+  ['la risposta dice PERCHÉ si aspetta (`motivo_attesa`)', /motivo_attesa: giro\.attesa\.motivo/.test(srcPonte)],
+  ['il ponte resta disarmato senza segreto', /CONSUMER_BRIDGE_SECRET/.test(srcPonte) && /BRIDGE_DISARMED/.test(srcPonte)],
+  // 🚨 IL CABLAGGIO: la regola è una funzione pura, e una funzione che nessuno chiama resta
+  //    verde senza difendere niente. Qui si misura che il ponte la USI — e che legga dal
+  //    database le due colonne senza cui la conferma è invisibile.
+  ['il ponte CHIAMA la regola del modulo', /from '\.\/giro-del-test\.ts'/.test(srcPonte) && /statoDelGiro\(elencoSchede/.test(srcPonte)],
+  ['il ponte LEGGE la scelta dal database', /member_decision, member_decision_at/.test(srcPonte)],
+  // 🆕 ④ — il bot non può fare la domanda se il gestionale non gli dice che c'è da farla:
+  //    è «il gestionale SA, il bot DICE» applicato alla scelta.
+  ['il ponte dice al bot se c\'è una scelta da fare', /puo_scegliere:/.test(srcPonte) && /scelta_entro:/.test(srcPonte)],
+  // ── Le TRE COPIE del modulo, che il deploy costringe a esistere ──
+  // 🚨 È la stessa difesa di `scrittura-al-circolo.test.ts`: i deploy saltano `_shared/`,
+  //    quindi la regola vive in copie, e la deriva fra copie è il modo in cui questi fix si
+  //    riaprono — una funzione applicherebbe una regola e l'altra ne racconterebbe un'altra.
+  ['le tre copie del modulo sono identiche BYTE PER BYTE', COPIE.length === 3 && COPIE.every((f) => readFileSync(f, 'utf8') === src)],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {
