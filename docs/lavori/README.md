@@ -957,12 +957,13 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 **Cosa manca perché la sezione sia FINITA.** Sei pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
+🔨 **Uno è fatto: il ③, vivo su PROD dal 18/08** (dettaglio in fondo alla scheda **A**). Restano cinque.
 
 | | il pezzo | dove va scritto | scheda |
 |---|---|---|---|
 | ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **A** |
 | ② | **30 giorni fra un giro e l'altro**: oggi l'attesa parte dal **terzo fallimento** (`GIORNI_DI_ATTESA`, `consumer-assessment-link:204`) ⇒ **chi passa può rifarlo subito**, e nessuno se n'era accorto perché il bottone non gli compariva | ponte | **A** |
-| ③ | **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5** — oggi `assessment-apply-level` applica ogni scheda **in tutti e due i versi** (`index.ts:129`): da Avanzato a Principiante in un colpo | gestionale | **A** |
+| ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
 | ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
@@ -998,6 +999,34 @@ Le tre regole, tutte nel **gestionale**:
 rifarlo **subito**, e nessuno se n'era accorto perché il bottone non gli compariva mai);
 ③ se il test dice **più basso** non si scende — e **solo alla terza prova consecutiva** più bassa
 si scende, di **0,5** e non al livello che dice il test.
+
+🔨✅ **③ FATTO IL 18/08/2026, E VIVO SU PROD** — *(PR #859 su TEST, #862 su `main`)*. Al ribasso
+`assessment-apply-level` non scrive più niente finché le prove non sono **tre di fila**, e alla terza
+toglie **mezzo passo** invece del salto al livello che dice il test. Il conto **si calcola dalle
+schede**, come nel ponte: non è tenuto, quindi non c'è niente da azzerare.
+📌 Due scelte mie, dichiarate perché sono scelte: il **pavimento a 1** — `0,5` qui è «da definire» e
+chi ce l'ha non può organizzare, quindi una regola di protezione non può portarcelo per effetto
+collaterale — e il **fallire chiuso**: storia illeggibile ⇒ conto 0 ⇒ nessuno scende, con l'avviso
+nella risposta invece del silenzio.
+
+📏 **Misurato PRIMA, e ridimensiona onestamente il lavoro**: su PROD le schede in attesa collegate a
+un socio erano **20**, di cui **8** proponevano meno del livello di oggi — ma **nessuna** più recente
+dell'ultimo livello scritto, quindi le fermava già la guardia delle date. ⇒ **Non era un incendio in
+corso: è il prerequisito di ①**, che è proprio ciò che creerebbe le schede nuove e recenti che oggi
+non esistono. Con ① e senza ③, il primo socio che si incuriosisce scende da Avanzato a Principiante.
+
+✅ **Verificato SUL BERSAGLIO, non sul verde del workflow**: il giro del cron delle **15:00:03** su
+PROD ha scritto `{"esaminate":30,"applicate":0,"saltate":17,"avvisi":[]}` — e **`avvisi` è il campo
+che solo la versione nuova scrive**, quindi la riga dimostra insieme che a girare è il codice nuovo e
+che le due letture in più riescono. I numeri sono identici a quelli di prima (14:00, 14:15, 14:30,
+14:45), che è l'esito voluto: questa regola può solo **impedire** una scrittura, mai aggiungerne.
+
+🚨⭐ **E una cosa trovata deployando, che non stava scritta da nessuna parte: su TEST questa funzione
+NON LA CHIAMA NESSUNO.** Il cron esiste solo su PROD (`pmo-assessment-apply-level-prod`, jobid **16**,
+ogni 15′); su `cudi…` non c'è. ⇒ Su TEST la cura è **installata e dorme**, e senza il segreto della
+routine da una sessione cloud non la si sveglia nemmeno a mano. ⚖️ Vuol dire che per questa funzione
+**«provato su TEST» non è una prova di comportamento**: l'unico posto dove la regola gira è la
+produzione, e va saputo prima di promettere un collaudo che TEST non può dare.
 
 🚨⭐⭐ **Il pezzo pesante non è nessuna delle tre: è che oggi il livello NON LO CONFERMA NESSUNO.**
 Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15 minuti)

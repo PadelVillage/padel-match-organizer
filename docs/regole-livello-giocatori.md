@@ -70,9 +70,10 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Può **rifare** il test | 🆕 il bottone non gli compare mai → voce **61** § A |
 | Se il test dice **più alto** → sale | ✅ |
-| Se dice **più basso** → **non scende** | 🔴 oggi scende **subito e per intero**, da 4 a 1 → voce **61** § A |
-| Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | 🆕 → voce **61** § A |
+| Se dice **più basso** → **non scende** | ✅ **dal 18/08/2026**, su PROD — prima scendeva **subito e per intero**, da 4 a 1 |
+| Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | ✅ **dal 18/08/2026**, su PROD |
 | Il livello si dice sempre **a parole**, mai a numeri | ✅ |
+| Scendendo non si finisce mai **sotto Principiante (1)** | ✅ dal 18/08 — 🚨 **non è una sua regola, è la conseguenza di applicarla**: `0,5` qui vuol dire «da definire», e chi ce l'ha **non può organizzare**. Una regola nata per proteggere non può togliere quel diritto per effetto collaterale |
 
 ### Il giro, disegnato — sei Avanzato (4)
 
@@ -87,7 +88,13 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 E il caso brutto: **tutte e tre dicono più basso** ⇒ scendi, e **solo di 0,5** (da 4 a 3,5), non al
 livello che dicono i test. Finito il giro ⇒ **30 giorni** prima di poterne fare un altro.
 
-🚨⭐⭐ **Perché questa parte è la più pesante, e non è un bottone in più.** Oggi il livello **non lo
+🔨 **Fatto il 18/08/2026, e vive su PROD**: le due righe del **non scendere** qui sopra. Al ribasso
+l'automatismo non scrive più niente finché le prove non sono **tre di fila**, e alla terza toglie
+**mezzo passo** invece del salto al livello che dice il test. Il conto delle prove **si calcola dalle
+schede**, come il conto dei tentativi nel ponte: non è tenuto da nessuna parte, quindi non c'è niente
+da azzerare e niente che possa divergere dai fatti.
+
+🚨⭐⭐ **Quello che RESTA è la parte più pesante, e non è un bottone in più.** Oggi il livello **non lo
 conferma nessuno**: lo scrive un automatismo (`assessment-apply-level`, cron ogni 15 minuti) che
 applica la scheda da sé, senza chiedere niente al socio. La regola della scelta gli mette davanti
 **una domanda** — «tieni questo o riprovi?» — cioè l'automatismo deve **smettere di decidere da
