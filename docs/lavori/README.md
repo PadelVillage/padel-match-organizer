@@ -1095,7 +1095,8 @@ in produzione**.
 
 🔨🚨⭐⭐ **④ SCRITTO IL 19/08/2026 — e «scritto» qui vuol dire una TERZA cosa, dopo «vivo su
 PROD» e «vivo per i soci»: sta in due PR APERTE, e non ha ancora toccato nessun bersaglio.**
-*(PR **#883** verso `test-preview`; PR **#23** nel repo del bot.)*
+*(PR **#883** fusa su `test-preview` e **viva su `cudi…`**; PR **#23** fusa nel repo del bot e
+**deployata sul bot di PROVA**; PR **#884** verso `main` **aperta e in attesa del suo ok**.)*
 
 Fino al 18/08 il livello **non lo confermava nessuno**: lo scriveva l'automatismo (cron
 `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) applicando la scheda da sé. Adesso,
@@ -1136,15 +1137,29 @@ due **guardie** inerti, cioè lo stesso difetto un piano più su.*
 ⭐ E in fondo a ogni serie c'è un sabotaggio che **non tocca niente**, dichiarato tale, che deve
 risultare **NON atterrato**: è il metro che misura il metro.
 
+✅ **VERIFICATO SUL BERSAGLIO TEST, non sul verde del workflow** *(19/08)*:
+① su `cudi…` la funzione nuova `consumer-assessment-decision` è **ACTIVE** e risponde **401,
+non 503** — viva e **armata**, cioè il segreto c'è e il codice arriva fino al gate;
+② il `select` con le due colonne nuove **gira sui dati veri** (era il rischio numero uno: una
+colonna assente fa fallire l'intera lettura, non solo il campo);
+③ ⭐ **la regola vera sui dati veri**: il socio di TEST con tre prove — `fail, fail, pass`, lo
+stesso su cui il committente ha visto la frase del ⑦ — dà `esaurito`, `falliti: 2`, la terza
+prova **esaurisce** il giro (⇒ si applica da sola) e una scelta su quella prova viene rifiutata
+con `GIRO_FINITO`. È il caso esatto per cui il ⑦ esiste, e adesso lo attraversano tutt'e due;
+④ il **bot di PROVA** è aggiornato e riavviato al deploy (riavvii **12 → 13**, uptime 30 s),
+dichiara `cudi… (TEST)` e `🧪 GESTIONALE DI PROVA` ⇒ ⛔ **il bot dei SOCI non è stato toccato**.
+
 ⛔ **COSA MANCA PERCHÉ SI VEDA, e va detto per intero** — tre cose, tutte fuori dal codice:
 ① il **DDL su PROD** (`member_decision`, `member_decision_at`) — 🚨 va applicato **PRIMA** del
 merge su `main`, perché le funzioni chiedono le due colonne nel `select` e un `select` su una
 colonna assente **fa fallire l'intera lettura**: il ponte risponderebbe 500 e il cron
 smetterebbe di applicare **qualunque** livello *(su `cudi…` è già fatto e verificato)*;
-② i **merge** delle due PR — e su `main` il merge **è** il deploy su PRODUZIONE;
-③ il **deploy dei bot**, che non lo fa nessun merge: `deploy-bot-hetzner.yml`, e per i soci va
-scritta la parola `SOCI`. 📌 E l'ordine fra ② e ③ conta: prima il gestionale, o il bot chiederebbe
-`puo_scegliere` a un ponte che non lo manda ancora.
+② il **merge su `main`** *(PR **#884**, verde su `guard-main` e `deno-check`)* — e lì il merge
+**è** il deploy su PRODUZIONE;
+③ il **deploy sui SOCI**, che non lo fa nessun merge: `deploy-bot-hetzner.yml` con la parola
+`SOCI` scritta a mano. 📌 E l'ordine fra ② e ③ conta: prima il gestionale, o il bot dei soci
+chiederebbe `puo_scegliere` a un ponte che non lo manda ancora.
+🗣️ **Tutt'e tre vogliono un ok suo**: PROD e il bot dei soci non si toccano su iniziativa mia.
 
 🔨✅ **① e ⑦ FATTI IL 18/08 — e sono nel BOT, quindi «vivo» vuol dire un'altra cosa.**
 *(PR **#18** e **#19** del repo del bot, `main` **`3a6ed36`**, deploy run **14**.)*
