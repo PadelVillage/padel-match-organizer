@@ -102,7 +102,7 @@ atterrato** (una regex in BRE su `grep` di macOS), e il controllo «è stato app
 | 🗣️ **«decidi tu a quale delle tre volte ti vuoi fermare»** | ⭐⭐ **il pezzo che non avevo capito**: non è un calcolo, è una **scelta del socio**, prova per prova. ⇒ L'automatismo che oggi applica da sé deve **smettere di decidere da solo** |
 | 🔓 **«possiamo fare una cosa ancora più semplice»** (chi è invitato gioca senza livello) | ⭐⭐ **ha tolto dal tavolo il lavoro più grosso**: l'eredità dall'organizzatore, le 24 ore, la scadenza. Misurando, non era mai esistita |
 | 🔎 **«abbiamo detto che chi entra prende il livello dell'organizzatore, ti torna?»** | ⭐ **mi ha chiesto di verificare invece di confermare**: la regola c'era davvero (sua, 9/08) **e non era costruita**. Due cose vere insieme, e sarebbe stato facile darne una sola |
-| 🗣️ **«non una persona ma il maestro del circolo, tramite la segreteria»** | ⭐ correzione a una mia riga, e **sblocca un silenzio**: chi finisce `skip` oggi dal bot non riceve **niente**, perché *«un messaggio automatico direbbe una cosa che nessuno ha ancora deciso»*. Adesso è deciso ⇒ voce **57** |
+| 🗣️ **«non una persona ma il maestro del circolo, tramite la segreteria»** | ⭐ correzione a una mia riga, e **sblocca un silenzio**: chi finisce `skip` oggi dal bot non riceve **niente**, perché *«un messaggio automatico direbbe una cosa che nessuno ha ancora deciso»*. Adesso è deciso ⇒ voce **57**, dal 18/08 dentro la **61** § C |
 | 🔓 **«parti a sviluppare da dove pensi sia meglio»** | delega sul **punto di partenza**, non sullo scopo. Scelto il pezzo che sta tutto nel bot e non può far scendere nessuno |
 | ✅ **«ok fai il merge»**, poi **«mandalo sul bot di prova»** | due autorizzazioni **separate**, una per volta, come sempre — e il bot dei **soci** non è stato toccato |
 | 📄 **«quando hai finito aggiorna i docs»** | la chiusura di rito. Le regole del livello hanno un file loro: `docs/regole-livello-giocatori.md` |
@@ -689,8 +689,8 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **8** |
+| 🔴 **Urgenti** | **1** |
+| 📋 **In coda** | **5** |
 | 📦 **Chiuse** | **48** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
@@ -917,12 +917,134 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
 e poi la C»*). ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse, con dentro
 la riga della scheda che non reggeva e i tre giri che sono serviti a dare una voce alla sentinella.
+
+🔄 **E la sera del 18/08 la lista si è riempita di nuovo, e a riempirla è stato LUI**:
+*«inserisci nella lista dei task urgenti la finalizzazione della sezione sul bot che si chiama il mio
+livello»*. ⇒ **Urgenti da 0 a 1.**
+⬆️ **E con lei sono salite le tre voci del livello**: la domanda gliel'avevo lasciata aperta invece
+di deciderla da me — *«la 55, la 56 e la 57 restano in coda o salgono dentro la 61?»* — e la risposta
+è stata **«sì assorbile nella 61»**. ⇒ La coda passa da **8 a 5** (sezione C da 5 a 2), e le loro
+schede stanno **dentro la 61**, per intero: assorbite, non chiuse e non cancellate.
+
+### 61. 🎾 **Finalizzare la sezione «Il mio livello» del bot** — messa qui da LUI
+
+> 🗣️ **Sua, il 18/08/2026**: *«inserisci nella lista dei task urgenti la finalizzazione della
+> sezione sul bot che si chiama il mio livello»*. ⇒ È la stessa sezione che aveva aperto la 30ª —
+> *«parliamo della sezione dove c'è scritto il mio livello»* — e il posto in lista **l'ha dato lui**,
+> come per la 58 e la 59.
+
+**Cos'è la sezione.** La scheda che il socio si legge sul telefono quando chiede *«che livello ho?»*:
+gliela serve `consumer-player-readmodel`, dove il livello **si dice a parole e mai a numeri** e la
+regola di quando è «dimostrato» sta nel **ponte** (`livello-dimostrato.ts`), non nel bot. È la
+divisione di sempre — **il gestionale SA, il bot DICE**.
+
+**Cosa c'è già, e regge** — riletto nel codice il 18/08, non ricordato:
+
+| il pezzo | dove vive | stato |
+|---|---|---|
+| chi il livello **non ce l'ha** e lo chiede riceve la spiegazione **col bottone** 🎾 TEST LIVELLO DI GIOCO | bot | ✅ **dal 17/08** — prima era un vicolo cieco: leggeva «non ce l'hai» e basta |
+| il livello si dice **a parole**, e un livello **in prestito** non si annuncia | ponte (`livello-dimostrato.ts`, col gemello della rubrica) | ✅ |
+| chi non ha il livello **non organizza**; se è **invitato** gioca lo stesso | gestionale + ponte | ✅ il «muro» dall'11/08 |
+| il conto dei tentativi **non è tenuto, è calcolato dai fatti**: 3 per giro, e conta solo una scheda arrivata col cancello `fail` | ponte (`consumer-assessment-link:203`) | ✅ |
+| mai un vicolo cieco: se il link manca si manda in **segreteria** | bot | ✅ |
+
+**Cosa manca perché la sezione sia FINITA.** Sei pezzi — e **solo due, ① e ⑤, stanno tutti dentro
+il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
+divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
+
+| | il pezzo | dove va scritto | scheda |
+|---|---|---|---|
+| ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **A** |
+| ② | **30 giorni fra un giro e l'altro**: oggi l'attesa parte dal **terzo fallimento** (`GIORNI_DI_ATTESA`, `consumer-assessment-link:204`) ⇒ **chi passa può rifarlo subito**, e nessuno se n'era accorto perché il bottone non gli compariva | ponte | **A** |
+| ③ | **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5** — oggi `assessment-apply-level` applica ogni scheda **in tutti e due i versi** (`index.ts:129`): da Avanzato a Principiante in un colpo | gestionale | **A** |
+| ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
+| ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
+| ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
+
+🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ e ④ **vengono
+prima** di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica
+ancora in tutti e due i versi, vuol dire far **scendere** da Avanzato a Principiante il primo socio
+che si incuriosisce — cioè fare, con la cura, esattamente il danno da cui le sue regole difendono.
+
+✅ **ASSORBITE QUI le voci 55, 56 e 57**, per sua decisione del **18/08**: *«sì assorbile nella
+61»* — risposta alla domanda che gli avevo lasciato aperta invece di deciderla da me. ⇒ La sezione
+**C** della coda passa da **5 a 2**, e le tre schede stanno qui sotto **per intero**.
+⚖️ **Assorbire non è cancellare**: se sparissero dal testo, la 61 resterebbe un titolo e i numeri
+misurati il 17/08 andrebbero riscoperti da capo — che in questo progetto è la spesa che torna più
+spesso, ed è scritta in `CLAUDE.md` come *«un fatto non scritto va riscoperto ogni volta»*.
+
+---
+
+#### A · Le regole del RIFARE il test — decise, **non costruite**
+
+> 🗣️ **Sue, il 17/08/2026**, una risposta alla volta. *(era la voce **55**)* La specifica
+> disegnata sta in [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) § C.
+
+**Perché non è «un bottone in più».** Oggi chi ha un livello e rifà il test **scende subito e per
+intero** — da Avanzato (4) a Principiante (1), se il test dice 1 — perché `assessment-apply-level`
+applica ogni scheda più recente, **in tutti e due i versi** (`index.ts:129`). È per questo che il
+bottone del test, dal 17/08, lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti prima di
+questa scheda farebbe proprio il danno da cui le sue regole difendono.
+
+Le tre regole, tutte nel **gestionale**:
+① **tre prove per giro, e il socio sceglie a quale fermarsi** — non è un calcolo, è una scelta;
+② **finito il giro, 30 giorni** (oggi l'attesa scatta solo dopo tre bocciature: chi **passa** può
+rifarlo **subito**, e nessuno se n'era accorto perché il bottone non gli compariva mai);
+③ se il test dice **più basso** non si scende — e **solo alla terza prova consecutiva** più bassa
+si scende, di **0,5** e non al livello che dice il test.
+
+🚨⭐⭐ **Il pezzo pesante non è nessuna delle tre: è che oggi il livello NON LO CONFERMA NESSUNO.**
+Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15 minuti)
+che applica la scheda da sé. La regola della scelta gli mette davanti **una domanda** — «tieni
+questo o riprovi?» — cioè quell'automatismo deve smettere di decidere da solo e **aspettare una
+risposta che oggi non gli arriva da nessuna parte**. È una sessione intera, forse due.
+
+#### B · Il promemoria gentile a chi non ha il livello
+
+> 🗣️ **Sua, il 17/08** *(era la voce **56**)*: *«a chi non ha il livello ci dobbiamo ricordare di
+> chiedere gentilmente se può fare il test. Magari non tutte le settimane, ma un paio di volte al
+> mese»*.
+
+⚠️ **Non esiste, e quello che c'è non è questo**: `pmo-assessment-followup-dispatcher-prod`
+(jobid **4**) manda **email**, è **spento**, e a spegnerlo è stato lui. Quello che chiede è un
+messaggio **del bot**, su Telegram.
+
+📌 **Da misurare prima di scriverne una riga**, e cambia la taglia: i soci senza livello sono
+**2.276**, ma il promemoria può arrivare solo a chi il **bot ce l'ha** — e al 16/08, parole sue,
+*«il bot dei soci non lo usa nessuno»*. ⇒ Oggi il destinatario vero è **una manciata di persone**:
+si costruisce sapendolo, o si costruisce una cosa che non si può vedere funzionare.
+
+#### C · Semi-Pro e Professionista: oggi il bot TACE, e adesso c'è cosa dire
+
+> 🗣️ **Sua, il 17/08** *(era la voce **57**)*, correggendo una mia riga: *«non una persona ma il
+> maestro del circolo, che si può contattare tramite la segreteria»*.
+
+**Il fatto, misurato.** Chi dichiara Semi-Pro o Professionista non ha il quiz: la sua scheda esce
+`skip`, e `siPuoAnnunciareIlTest` la **scarta di proposito** — *«quelle schede le guarda una
+persona, e un messaggio automatico direbbe una cosa che nessuno ha ancora deciso»*
+(`promemoria.ts:123`). ⇒ Quel socio fa il test e **non riceve niente**.
+
+⚖️ **La ragione del silenzio era vera e adesso è caduta**: la cosa da dire è decisa. Resta da
+scrivere la frase e da farla passare per la stessa porta delle altre — `testoEsitoTest` oggi
+accetta solo `pass | fail`, e il terzo esito va aggiunto **là**, non con un messaggio gemello
+scritto a mano da un'altra parte.
+
+---
+
+⚠️ **Da qui se ne fa una metà sola, e va saputo prima di partire**: ①, ⑤ e la metà *«dire»* di ④
+e ⑥ vivono nel **bot**, cioè nel repo privato `assistente-padel-agent` — fuori dal perimetro di una
+sessione su questo repo. ②, ③ e le metà *«sapere»* di ④ e ⑥ stanno nel **ponte** e nel **gestionale**,
+e quelle si fanno da qui. ⇒ Un giro solo non la chiude: o si alterna coi due repo, o si fa prima
+tutta la parte del gestionale — che è anche l'ordine imposto qui sopra.
+
+📄 La specifica intera, riga per riga e col segno di cosa è **viva** e cosa solo **decisa**, sta in
+[`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md).
 
 ---
 
@@ -1017,11 +1139,16 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
-## 📋 IN CODA — 8
+## 📋 IN CODA — 5
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
-### C — Cose sapute e non risolte — 5
+🔄 **18/08: la C torna a 2.** Le tre voci del livello — **55**, **56** e **57** — sono state
+**assorbite dentro la voce 61** (urgenti) per sua decisione: *«sì assorbile nella 61»*. Non sono
+state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
+dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
+
+### C — Cose sapute e non risolte — 2
 
 #### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
 
@@ -1104,66 +1231,6 @@ segreteria?
 
 ⛔ **Non si promuove da sé.** È scritta perché chi un giorno ci mette mano parta da queste tre
 domande e dal fatto che le scritture sono **due**, non una.
-
-#### 55. ⚖️ Le regole del RIFARE il test — decise dal committente il 17/08, **non costruite**
-
-> 🗣️ **Sue, il 17/08/2026**, una risposta alla volta. La specifica intera, disegnata, sta in
-> [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) § C.
-
-**Cosa manca, e perché non è «un bottone in più».** Oggi chi ha un livello e rifà il test
-**scende subito e per intero** — da Avanzato (4) a Principiante (1), se il test dice 1 — perché
-`assessment-apply-level` applica ogni scheda più recente, **in tutti e due i versi**
-(`index.ts:129`). È per questo che il bottone del test, dal 17/08, lo vede **solo chi il livello
-non ce l'ha**: aprirlo a tutti prima di questa voce farebbe proprio il danno da cui le sue regole
-difendono.
-
-Le tre regole, tutte nel **gestionale**:
-① **tre prove per giro, e il socio sceglie a quale fermarsi** — non è un calcolo, è una scelta;
-② **finito il giro, 30 giorni** (oggi l'attesa scatta solo dopo tre bocciature: chi **passa** può
-rifarlo **subito**, e nessuno se n'era accorto perché il bottone non gli compariva mai);
-③ se il test dice **più basso** non si scende — e **solo alla terza prova consecutiva** più bassa
-si scende, di **0,5** e non al livello che dice il test.
-
-🚨⭐⭐ **Il pezzo pesante non è nessuna delle tre: è che oggi il livello NON LO CONFERMA NESSUNO.**
-Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15 minuti)
-che applica la scheda da sé. La regola della scelta gli mette davanti **una domanda** — «tieni
-questo o riprovi?» — cioè quell'automatismo deve smettere di decidere da solo e **aspettare una
-risposta che oggi non gli arriva da nessuna parte**. È una sessione intera, forse due.
-
-⛔ **Non si promuove da sé.**
-
-#### 56. 🔔 Il promemoria gentile a chi non ha il livello
-
-> 🗣️ **Sua, il 17/08**: *«a chi non ha il livello ci dobbiamo ricordare di chiedere gentilmente se
-> può fare il test. Magari non tutte le settimane, ma un paio di volte al mese»*.
-
-⚠️ **Non esiste, e quello che c'è non è questo**: `pmo-assessment-followup-dispatcher-prod`
-(jobid **4**) manda **email**, è **spento**, e a spegnerlo è stato lui. Quello che chiede è un
-messaggio **del bot**, su Telegram.
-
-📌 **Da misurare prima di scriverne una riga**, e cambia la taglia: i soci senza livello sono
-**2.276**, ma il promemoria può arrivare solo a chi il **bot ce l'ha** — e al 16/08, parole sue,
-*«il bot dei soci non lo usa nessuno»*. ⇒ Oggi il destinatario vero è **una manciata di persone**:
-si costruisce sapendolo, o si costruisce una cosa che non si può vedere funzionare.
-
-⛔ **Non si promuove da sé.**
-
-#### 57. 👨‍🏫 Semi-Pro e Professionista: oggi il bot TACE, e adesso c'è cosa dire
-
-> 🗣️ **Sua, il 17/08**, correggendo una mia riga: *«non una persona ma il maestro del circolo, che
-> si può contattare tramite la segreteria»*.
-
-**Il fatto, misurato.** Chi dichiara Semi-Pro o Professionista non ha il quiz: la sua scheda esce
-`skip`, e `siPuoAnnunciareIlTest` la **scarta di proposito** — *«quelle schede le guarda una
-persona, e un messaggio automatico direbbe una cosa che nessuno ha ancora deciso»*
-(`promemoria.ts:123`). ⇒ Quel socio fa il test e **non riceve niente**.
-
-⚖️ **La ragione del silenzio era vera e adesso è caduta**: la cosa da dire è decisa. Resta da
-scrivere la frase e da farla passare per la stessa porta delle altre — `testoEsitoTest` oggi
-accetta solo `pass | fail`, e il terzo esito va aggiunto **là**, non con un messaggio gemello
-scritto a mano da un'altra parte.
-
-⛔ **Non si promuove da sé.**
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 3
 
@@ -1540,7 +1607,7 @@ non ne apre un'altra sotto.
 
 | **59** | ✅ *(18/08, 31ª sessione — aperta il 17 da LUI, chiusa da LUI: «chiudi la voce cinquantanove»)* 🕰️ **59. TEST poteva mostrare una copia VECCHIA senza dirlo** — il prezzo della cura della 58: `./app.html` è la strada **primaria**, quindi a sincronia ferma TEST serve codice vecchio **e sullo schermo non si vede niente**. Fatte tutte e due nell'ordine che ha dato lui. **B** — il caricatore, caricata l'app, confronta e **avvisa chi guarda**: non bloccante, silenzioso su ogni intoppo (403/429/rete/appeso), 1 chiamata/ora per browser con la memoria che si invalida da sé quando la copia servita cambia; innestato il **tetto d'attesa** che veniva dalla sessione Mac. **C** — una **sentinella sulla VM, non su Actions** (là morirebbe insieme a ciò che sorveglia): `systemd` oneshot + timer 15′, fuori da pm2 di proposito, paziente **3 giri** (~45′) come `guard-worker-sync`, che distingue **«indietro»** da **«non lo so»** e dopo 12 giri ciechi **dichiara la propria cecità**; un messaggio per guasto, il rientro annunciato, e un **💓 ogni 7 giorni** che rende *verificabile* la frase «silenzio = tutto a posto». 🚨 **E la scheda della voce prescriveva un confronto SBAGLIATO**: `source_sha` contro la testa del ramo avrebbe suonato quella sera stessa su una copia **fresca al byte** (impronta `79d1a3a4` sui due lati, **dodici commit** di distanza), perché `sync-app.yml` ricopia solo se `index.html` cambia ⇒ ogni commit su `docs/` allontana il commit senza invecchiare la copia. Era **la stessa malattia** per cui la strada `synced_at` era già stata scartata, ripresentata un gradino più in là e **quattro righe sotto** l'avvertimento «non rifarla» ⇒ si confronta l'**impronta del contenuto**. Verificate **sul bersaglio**: B aperta in un Chromium vero (v6.243 TEST, `PMO_FORCE_ENV` intatta, zero errori JS, nessun avviso su copia fresca), C letta nel suo `stato.json` sulla VM (`fresca`, `servitoCoerente: true`); banco **23 casi** col sabotaggio che verifica di essere stato applicato. ⭐ E il giro della sentinella ha **chiuso una domanda che avevo dichiarato non misurabile dal cloud**: la VM non ha credenziali GitHub, quindi la chiamata anonima che le ha risposto dimostra che **la B non è cieca**. ⚠️ **Residuo dichiarato**: la voce della sentinella è il **token del bot di prova** in un secret — e il ripiego sui bot già sulla VM resta scritto e provato, ma il secret ha la precedenza. |
 | — | ✅ *(17/08, 31ª sessione — aperta, curata e chiusa in giornata)* 🌐 **58. L'app di TEST non si carica: `HTTP 429` da GitHub — CHIUSA da LUI** (*«il gestionale di test si apre»*). Il guasto era nel **disegno del caricatore**: scaricava l'app INTERA (~3 MB) da `raw.githubusercontent.com` **a ogni apertura**, anonimo e con un cache-buster che azzerava la CDN — e GitHub strozzava i percorsi per-ramo del repo (429 anti-scraping, **misurato da DUE reti diverse**: non era la quota del circolo). La cura, **scelte sue la ② e la ③**: `app.html` — copia generata dell'app — pubblicata su Pages **nel repo del caricatore** e servita dalla **stessa origine** (niente quota GitHub nel percorso primario, `raw` solo ripiego e senza cache-buster); su errore **messaggio umano + «Riprova»**, niente ricariche automatiche; `sync-app.yml` tiene fresca la copia (dispatch/cron ≤10′/a mano) e `app-meta.json` dichiara **da quale commit e di quando** è la copia — l'anti-trappola della fotografia che sembra viva. Lato repo-app sui due rami (`sync-test-loader.yml`, `CLAUDE.md` corretto); verificata **dal browser vero**: v6.243 TEST, `PMO_FORCE_ENV` intatta, solo `cudi…` contattato. ⚠️ **Residuo dichiarato**: manca il secret `TEST_LOADER_SYNC_TOKEN` (solo lui può crearlo) — senza, la copia si aggiorna **col cron**, non all'istante. 🔄 **E il «~10′» del cron è caduto il 18/08, misurato**: il cron è configurato `*/10` ma GitHub gli schedule li esegue «quando può» — intervalli reali **24-48 minuti** quel giorno, e il giro è passato **25 secondi prima** del merge della 6.244, lasciando il sito vecchio per mezz'ora mentre il committente lo guardava. La via manuale (`sync-app` da Actions) resta quella giusta quando serve adesso; e i cron dei repo fermi GitHub li spegne dopo ~60 giorni, quindi se un giorno TEST sembra vecchio la prima cosa da leggere è `app-meta.json`. |
-| — | ✅ *(17/08, 30ª sessione — nata da una sua richiesta, non dalla coda)* 🎾 **Chi CHIEDE il suo livello e non ce l'ha ora vede il bottone del test.** Il bottone «🎾 TEST LIVELLO DI GIOCO» esisteva dal 9/08 ma nasceva **solo** sotto il rifiuto `serve_livello`: lo vedeva chi provava a **organizzare**, non chi il livello lo **chiedeva** — che leggeva *«Non risulti ancora avere un livello di gioco assegnato.»* e basta. L'unica frase del bot che diceva «non ce l'hai» senza dire come prenderselo. ⭐ **Ci va in tutt'e due le strade** — la risposta del modello (quella normale) e la riserva di quando il modello tace: metterlo in una sola avrebbe fatto un bottone presente **metà delle volte**, ed è la lezione delle «tre schermate» dell'11/08, quando il numero del livello usciva **dal modello** proprio perché avevo cercato solo i testi. 🔧 `offertaDelTest` torna **frase e bottone insieme**, così i due punti di chiamata non possono divergere; il ponte si disturba **solo** quando il livello manca davvero, perché chiedere il link **conia un gettone**. 🧪 Banco **1035 → 1055**, typecheck pulito, **tre sabotaggi** ognuno verificato di essere atterrato — e uno **non lo era**, fermato dalla guardia invece che passato per verde. 🚨 **E il primo sabotaggio ha smascherato una mia riga inerte** (vedi il filo della 30ª). 📦 PR **#16** del repo del bot, `main` **`2a1c069`**, **deployata sul bot di PROVA** (riavvii 8 → 9); ⛔ **sui soci NO**, e ci vuole un ok suo separato. ⚠️ Il bottone lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti aspetta la voce **55** ⇒ [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) |
+| — | ✅ *(17/08, 30ª sessione — nata da una sua richiesta, non dalla coda)* 🎾 **Chi CHIEDE il suo livello e non ce l'ha ora vede il bottone del test.** Il bottone «🎾 TEST LIVELLO DI GIOCO» esisteva dal 9/08 ma nasceva **solo** sotto il rifiuto `serve_livello`: lo vedeva chi provava a **organizzare**, non chi il livello lo **chiedeva** — che leggeva *«Non risulti ancora avere un livello di gioco assegnato.»* e basta. L'unica frase del bot che diceva «non ce l'hai» senza dire come prenderselo. ⭐ **Ci va in tutt'e due le strade** — la risposta del modello (quella normale) e la riserva di quando il modello tace: metterlo in una sola avrebbe fatto un bottone presente **metà delle volte**, ed è la lezione delle «tre schermate» dell'11/08, quando il numero del livello usciva **dal modello** proprio perché avevo cercato solo i testi. 🔧 `offertaDelTest` torna **frase e bottone insieme**, così i due punti di chiamata non possono divergere; il ponte si disturba **solo** quando il livello manca davvero, perché chiedere il link **conia un gettone**. 🧪 Banco **1035 → 1055**, typecheck pulito, **tre sabotaggi** ognuno verificato di essere atterrato — e uno **non lo era**, fermato dalla guardia invece che passato per verde. 🚨 **E il primo sabotaggio ha smascherato una mia riga inerte** (vedi il filo della 30ª). 📦 PR **#16** del repo del bot, `main` **`2a1c069`**, **deployata sul bot di PROVA** (riavvii 8 → 9); ⛔ **sui soci NO**, e ci vuole un ok suo separato. ⚠️ Il bottone lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti aspetta la voce **55**, dal 18/08 dentro la **61** § A ⇒ [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) |
 | **53** | ✅ *(16/08, 29ª sessione — **chiusa da lui**: «chiudi la cinquantatré»)* 🔁 **Quando il bot non sa com'è andata, va a chiedere al gestionale.** ⭐ **Collaudata su PROD col cancello di Caddy manovrato da GitHub Actions**, sul bot dei soci, slot `2026-08-29 09:00 C1`: il bot ha **taciuto 3′38″ POTENDO rispondere** e ha detto «no» **86 secondi dopo** aver avuto la prova (scrittura 21:20:23.9 · sync atterrato dopo di essa 21:24:02 · verdetto 21:25:28). ⇒ Il rosso ① — *il «no» che esce prima che la copia si sia rinfrescata* — **non si è verificato nella finestra in cui era più facile che capitasse**. Nessuna prenotazione vera nata su Matchpoint, verificata nella copia fresca. ⭐⭐ E il **controllo positivo non è stato costruito: stava nel registro** — alle 20:52 della stessa sera, sullo stesso bot, un `esito IGNOTO` **senza** riga `[attesa-esito]`, perché il codice non c'era ancora. 🚨 Due righe della scheda erano **false** e sono corrette: la «strada del modello» (*«si conferma scrivendo»*) **non esiste** — la conferma è un tocco, per disegno — e la citazione di codice sull'ambiente di prova. ❓ E la mia ipotesi che l'aggancio del modello fosse **codice morto** è **sbagliata**: `pendenti.ts` lo lascia passare se il modello disobbedisce, e `scritta_alle` arriva fino in fondo ⇒ quel ramo copre proprio la disobbedienza. |
 
 | voce | cosa |
