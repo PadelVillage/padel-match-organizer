@@ -60,11 +60,11 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
 | Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
 | Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
-| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | ✅ **dal 18/08 — ma solo sul bot di PROVA**, ⛔ sui soci NO. 🚨 E vale solo per chi una fascia ce l'ha: `skip` esce **anche** quando il livello dichiarato non si è letto, e a quel socio «la guarda il maestro» sarebbe **falso** — là il bot dice che la scheda è arrivata e indica la segreteria |
+| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | ✅ **dal 18/08, e vivo anche per i SOCI**. 🚨 E vale solo per chi una fascia ce l'ha: `skip` esce **anche** quando il livello dichiarato non si è letto, e a quel socio «la guarda il maestro» sarebbe **falso** — là il bot dice che la scheda è arrivata e indica la segreteria |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
-| Il **perché** dell'attesa lo dice il ponte (`motivo_attesa`), e un motivo che il bot non conosce **non si racconta** | ✅ dal 18/08 (bot di prova) — dice il *quando* e tace sul *perché*. ⏭️ Serve al giorno del **④**, quando arriverà un secondo motivo e il bot sulla VM sarà ancora quello di ieri |
-| A giro finito il bot dice **«hai finito le tue prove»**, non «hai sbagliato tre volte» | ✅ **dal 18/08/2026 — ma solo sul bot di PROVA**: fuso e deployato là, ⛔ **sui soci NO**. Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⭐ Il numero non è stato corretto, è stato **tolto**: il ponte porta il conto vero, ma un conteggio esatto delle bocciature è lo stesso rimprovero con un numero più preciso |
+| Il **perché** dell'attesa lo dice il ponte (`motivo_attesa`), e un motivo che il bot non conosce **non si racconta** | ✅ dal 18/08 — dice il *quando* e tace sul *perché*. ⏭️ Serve al giorno del **④**, quando arriverà un secondo motivo e il bot sulla VM sarà ancora quello di ieri |
+| A giro finito il bot dice **«hai finito le tue prove»**, non «hai sbagliato tre volte» | ✅ **dal 18/08/2026, e VIVO ANCHE PER I SOCI** dalla sera. Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⭐ Il numero non è stato corretto, è stato **tolto**: il ponte porta il conto vero, ma un conteggio esatto delle bocciature è lo stesso rimprovero con un numero più preciso |
 
 ---
 
@@ -72,7 +72,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 
 | la regola | oggi |
 |---|---|
-| Può **rifare** il test | ✅ **dal 18/08/2026 — ma solo sul bot di PROVA**: fuso e deployato là, ⛔ **sui soci NO**, che vuole un suo ok e la parola `SOCI`. Il bottone lo vedono tutti, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» |
+| Può **rifare** il test | ✅ **dal 18/08/2026, e VIVO ANCHE PER I SOCI** dalla sera. Il bottone lo vedono tutti, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» |
 | Se il test dice **più alto** → sale | ✅ |
 | Se dice **più basso** → **non scende** | ✅ **dal 18/08/2026**, su PROD — prima scendeva **subito e per intero**, da 4 a 1 |
 | Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | ✅ **dal 18/08/2026**, su PROD |
@@ -102,8 +102,9 @@ da azzerare e niente che possa divergere dai fatti.
 Il bottone del test lo vedono **tutti** (PR #18), la frase di giro finito non conta più le bocciature
 (PR #19), e Semi-Pro e Professionista non restano più in silenzio (PR #21): fusi su `main` del repo
 del bot e **deployati sul bot di PROVA** (run 15, `506653b`, riavvii 9 → 12, verificato leggendo la
-riga d'avvio sulla VM). ⛔ **Sui SOCI non è arrivato niente**,
-e non ci arriva da sé: il deploy è a mano e per quel bersaglio va scritta la parola `SOCI`.
+riga d'avvio sulla VM), e **la sera anche sui SOCI** — `@loziocoach_bot`, run **16**, riavvii 4 → 5,
+e dopo il riavvio dichiara `qqbf…` (PROD) e `✍️ prenotazioni REALI` **come prima**: il `.env` non lo
+tocca il deploy, e lo si è **verificato** invece di darlo per buono.
 🚨 **La regola che ne discende, pagata il 18/08**: di un pezzo del bot non si dice mai «fatto» senza
 dire, **nella stessa frase**, che sui bot non cambia niente finché non si fonde **e** non si deploya.
 ⚠️ E il ⑦ **si è potuto guardare**, contro quello che avevo scritto: la misura «nessuno è dentro un
