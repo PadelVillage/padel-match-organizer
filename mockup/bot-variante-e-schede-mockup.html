@@ -3,7 +3,7 @@
 <head>
 <!--
   Bot Telegram — VARIANTE E: una partita per volta, scheda per scheda
-  Mockup v2 — 18/08/2026 — con le cinque decisioni del committente
+  Mockup v3 — 18/08/2026 — con le SETTE decisioni del committente, e i nove casi
 
   🗣️ Sua richiesta: «fammi l'ultimo mockup della versione E con le varie soluzioni prima e
      dopo le quarantotto ore», col testo — parole sue — «mancano meno di 48 ore e questa
@@ -261,12 +261,13 @@
 <div class="foglio">
 
   <header>
-    <p class="occhiello">Mockup v2 · variante E · bot Telegram · 18 agosto 2026</p>
+    <p class="occhiello">Mockup v3 · variante E · bot Telegram · 18 agosto 2026</p>
     <h1>La variante E, scheda per scheda</h1>
     <p class="sommario">
       Una partita per volta, e <strong>ogni scheda dice cosa si può ancora fare</strong>. Qui ci sono
-      tutti i casi che il bot incontra davvero — <strong>prima</strong> e <strong>dopo</strong> le 48
-      ore, da organizzatore e da invitato, più la lezione. I nomi sono inventati.
+      <strong>tutti e nove</strong> i casi che il bot incontra davvero — <strong>prima</strong> e
+      <strong>dopo</strong> le 48 ore, da organizzatore e da invitato, la lezione, la lista vuota e
+      il momento subito dopo un'azione. I nomi sono inventati.
     </p>
     <p class="regola">
       <strong>Gli stati non sono inventati per il disegno: sono le regole che il bot già applica.</strong>
@@ -279,13 +280,15 @@
   </header>
 
   <section class="scelte">
-    <h2>Le cinque decisioni, prese una domanda alla volta</h2>
+    <h2>Le sette decisioni, prese una domanda alla volta</h2>
     <ol>
       <li><b>La scheda sostituisce l'elenco.</b> Chiedendo «le mie partite» si apre subito una partita, non una lista.</li>
       <li><b>Si sfoglia una alla volta</b> — niente elenco intermedio da cui scegliere.</li>
       <li><b>Si apre sulla più vicina nel tempo</b>, che è quella che il socio ha in mente.</li>
       <li><b>Due bottoni, «← Precedente» e «Successiva →»</b>: sulla prima manca il primo, sull'ultima il secondo.</li>
       <li><b>Le azioni stanno sulla scheda</b>, non dietro un «Gestisci»: un tocco in meno, e quella parola sparisce.</li>
+      <li><b>Chi non ha partite legge la frase di oggi</b>, invariata — e quella scheda non si sfoglia.</li>
+      <li><b>Dopo un'uscita o un annullamento la scheda diventa la conferma e resta ferma</b>: si riparte con un tocco, non da soli.</li>
     </ol>
     <p class="postilla-scelte">
       ⚖️ <b>La quinta chiude il giro cominciato stasera.</b> La domanda di partenza era <i>«il bottone
@@ -566,6 +569,71 @@
     </div>
   </section>
 
+
+  <!-- ══════════════════ I DUE CASI AI BORDI ══════════════════ -->
+  <section class="tempo">
+    <h2>I due casi ai bordi <span class="quando-cosa">quando non c'è niente da sfogliare, e quando la partita sparisce</span></h2>
+
+    <div class="schede">
+
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso">⑧ nessuna partita</span>
+          <h3>Non cambia niente, ed è una scelta</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div>
+                <span class="riga">Non hai partite prenotate.</span>
+              </div>
+              <div class="avviso">Per prenotare un campo tocca /prenota, oppure scrivimi quando vorresti giocare.</div>
+              <div class="ora">23:04</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>L'unica scheda che non si sfoglia</b>: non c'è niente da scorrere, quindi niente
+          «Precedente» né «Successiva». <b>La frase è quella di oggi</b> — decisione sua del 18/08 —
+          e non è un vicolo cieco: <code>/prenota</code> su Telegram <b>si tocca</b>, quindi è
+          un'uscita vera e non un consiglio.
+        </p>
+      </article>
+
+      <article class="scheda">
+        <div class="cappello">
+          <span class="caso tardi">⑨ appena uscito, o appena annullata</span>
+          <h3>La scheda diventa la conferma</h3>
+        </div>
+        <div class="telegram">
+          <div class="msg">
+            <div class="avatar">Mio<span>Padel</span></div>
+            <div class="corpo">
+              <div class="mittente">MioPadel</div>
+              <div>
+                <span class="riga">Fatto: sei uscito dalla partita di domani alle 18:00, Campo 2.</span>
+              </div>
+              <div class="avviso">Non devi fare altro.</div>
+              <div class="tastiera">
+                <div class="bottone sfoglia">Le tue partite →</div>
+              </div>
+              <div class="ora">23:06</div>
+            </div>
+          </div>
+        </div>
+        <p class="perche">
+          <b>Lo schermo non si muove da solo</b> — decisione sua del 18/08. Dopo un'azione che non
+          si torna indietro, passare da sé a un'altra partita farebbe leggere la conferma come
+          riferita a <b>quella</b>: è il malinteso peggiore possibile proprio lì. ⇒ La scheda si
+          riscrive nella conferma e aspetta; il bottone riparte dalla <b>prima rimasta</b>.
+        </p>
+      </article>
+
+    </div>
+  </section>
+
   <section class="chiusa">
     <h2>Cosa cambia davvero, e le due domande che restano</h2>
 
@@ -584,12 +652,17 @@
     </p>
 
     <p>
-      <strong>Le cose che il disegno lasciava aperte sono state decise</strong> — stanno in cima,
-      tutte e cinque. Quello che resta da stabilire non è più grafica ma comportamento, e lo scrivo
-      qui perché non si perda: <strong>cosa dice la scheda a chi non ha nessuna partita</strong>, e
-      <strong>cosa succede quando una partita sparisce mentre il socio la sta guardando</strong>
-      (esce dall'ultima, o un compagno la annulla). <em>Il bot rilegge il mondo a ogni tocco, quindi
-      la risposta esiste già: va solo scelta la frase.</em>
+      <strong>Non resta niente di aperto.</strong> Le sette decisioni stanno in cima, e i nove casi
+      qui sopra sono tutti quelli che il socio può incontrare: prima e dopo le 48 ore, da
+      organizzatore e da invitato, la lezione, la lista vuota e il momento subito dopo un'azione.
+      <em>Quello che si approva è quello che si costruisce.</em>
+    </p>
+
+    <p>
+      <strong>Una cosa la misurerò prima di dare per finito il lavoro</strong>, e non si vede da un
+      disegno: che <strong>sfogliare riscriva il messaggio</strong> invece di mandarne di nuovi. È
+      ciò che tiene la promessa di <em>una notifica sola</em> — e finché non lo si guarda sul
+      telefono resta una previsione, non un fatto.
     </p>
 
     <p class="piede">
