@@ -63,7 +63,8 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 | …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **61** § C |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
-| A giro finito il bot dice **«hai finito le tue prove»**, non «hai sbagliato tre volte» | 🔴 oggi dice le tre bocciature, ma le prove finite possono essere **due bocciature e una passata**: il ponte porta il numero vero (`tentativi_falliti`), è la **frase** che manca → voce **61** ⑦ |
+| Il **perché** dell'attesa lo dice il ponte (`motivo_attesa`), e un motivo che il bot non conosce **non si racconta** | ✅ dal 18/08 (bot di prova) — dice il *quando* e tace sul *perché*. ⏭️ Serve al giorno del **④**, quando arriverà un secondo motivo e il bot sulla VM sarà ancora quello di ieri |
+| A giro finito il bot dice **«hai finito le tue prove»**, non «hai sbagliato tre volte» | ✅ **dal 18/08/2026 — ma solo sul bot di PROVA**: fuso e deployato là, ⛔ **sui soci NO**. Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⭐ Il numero non è stato corretto, è stato **tolto**: il ponte porta il conto vero, ma un conteggio esatto delle bocciature è lo stesso rimprovero con un numero più preciso |
 
 ---
 
@@ -71,7 +72,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 
 | la regola | oggi |
 |---|---|
-| Può **rifare** il test | 🆕 il bottone non gli compare mai → voce **61** § A |
+| Può **rifare** il test | ✅ **dal 18/08/2026 — ma solo sul bot di PROVA**: fuso e deployato là, ⛔ **sui soci NO**, che vuole un suo ok e la parola `SOCI`. Il bottone lo vedono tutti, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» |
 | Se il test dice **più alto** → sale | ✅ |
 | Se dice **più basso** → **non scende** | ✅ **dal 18/08/2026**, su PROD — prima scendeva **subito e per intero**, da 4 a 1 |
 | Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | ✅ **dal 18/08/2026**, su PROD |
@@ -96,6 +97,16 @@ l'automatismo non scrive più niente finché le prove non sono **tre di fila**, 
 **mezzo passo** invece del salto al livello che dice il test. Il conto delle prove **si calcola dalle
 schede**, come il conto dei tentativi nel ponte: non è tenuto da nessuna parte, quindi non c'è niente
 da azzerare e niente che possa divergere dai fatti.
+
+🔨✅ **Fatti il 18/08 anche il ① e il ⑦ — e stanno nel BOT, quindi «fatto» vuol dire un'altra cosa.**
+Il bottone del test lo vedono **tutti** (PR #18) e la frase di giro finito non conta più le bocciature
+(PR #19): fusi su `main` del repo del bot e **deployati sul bot di PROVA** (run 14, `3a6ed36`,
+riavvii 9 → 11, verificato leggendo la riga d'avvio sulla VM). ⛔ **Sui SOCI non è arrivato niente**,
+e non ci arriva da sé: il deploy è a mano e per quel bersaglio va scritta la parola `SOCI`.
+🚨 **La regola che ne discende, pagata il 18/08**: di un pezzo del bot non si dice mai «fatto» senza
+dire, **nella stessa frase**, che sui bot non cambia niente finché non si fonde **e** non si deploya.
+⚠️ E il ⑦ oggi **non si può guardare sul telefono**: esce solo a giro esaurito, e nessuno è dentro un
+giro. È una rete tesa per quando servirà, non una cosa da vedere stasera.
 
 🚨⭐⭐ **Quello che RESTA è la parte più pesante, e non è un bottone in più.** Oggi il livello **non lo
 conferma nessuno**: lo scrive un automatismo (`assessment-apply-level`, cron ogni 15 minuti) che
