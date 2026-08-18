@@ -87,7 +87,7 @@ portale.
 |---|---|---|---|
 | Padel Village | Conegliano | **Matchpoint** | il calendario è nostro, si legge dal gestionale |
 | Marco Polo Sporting Center | Vittorio Veneto | Wansport | `asdmarcopolovittorioveneto.wansport.com` |
-| Padel Conegliano | Conegliano | Wansport | `padelconegliano.wansport.com` |
+| Padel Conegliano *(detto anche «Max Padel»)* | Conegliano | Wansport | `padelconegliano.wansport.com` |
 | Centro Sportivo Collalbrigo | Conegliano | Wansport | `centrosportivocollalbrigo.wansport.com` |
 | AH Padel Club | Spresiano | Wansport | `ahpadel.wansport.com` |
 | Jungle Padel | Fonte | Wansport | `junglepadel.wansport.com` |
