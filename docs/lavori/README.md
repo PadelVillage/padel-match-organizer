@@ -690,7 +690,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** |
-| 📋 **In coda** | **7** |
+| 📋 **In coda** | **8** |
 | 📦 **Chiuse** | **48** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
@@ -1017,7 +1017,7 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
-## 📋 IN CODA — 7
+## 📋 IN CODA — 8
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -1165,12 +1165,13 @@ scritto a mano da un'altra parte.
 
 ⛔ **Non si promuove da sé.**
 
-### D — Corpose: solo se si vogliono ATTIVARE — 2
+### D — Corpose: solo se si vogliono ATTIVARE — 3
 
 | # | cosa |
 |---|---|
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
+| **60** | 🎾 **Campi liberi nei circoli vicini** — il bot risponde «dove c'è posto giovedì alle 19» leggendo **9 circoli** invece di uno. Disegno completo e autosufficiente in `docs/circoli-esterni-disegno.md`: il login Wansport si riproduce con `fetch` (**niente browser, niente worker** — quindi non muore con Matchpoint). ⚠️ **Prima del servizio**: le condizioni d'uso dei circoli terzi, che è la questione vera, non un dettaglio |
 
 ---
 
