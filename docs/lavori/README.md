@@ -691,7 +691,7 @@ contesto**, non eseguire il compito scritto.
 |---|---|
 | 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **5** |
-| 📦 **Chiuse** | **48** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **50** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1435,24 +1435,35 @@ Nella **29ª**, dal collaudo eseguito (16/08, tarda sera):
 
 **E nella 29ª, collaudando la voce 53 — trovata dal committente**, non da me:
 
-- 📅 **«Mercoledì» diventa quello DOPO: il bot salta una settimana.** Chiesto *«che campi sono liberi
-  mercoledì alle 15?»* **domenica 16 agosto**, il bot ha risposto **«mercoledì 26 agosto»**. Il primo
-  mercoledì è il **19**.
-  ✅ **Il dato che gli viene dato è GIUSTO, ed è stato eseguito** (`righeCalendario(oggiRoma(), 7)`):
-  l'elenco contiene `- mercoledì 19 agosto 2026 → 2026-08-19`, ed è il primo con quel nome. E
-  l'istruzione sotto è esplicita: *«è il **PRIMO** con quel nome in questo elenco»*.
+- 📅✅ **«Mercoledì» diventa quello DOPO: il bot salta una settimana — CURATA lo stesso giorno.**
+  Chiesto *«che campi sono liberi mercoledì alle 15?»* **domenica 16 agosto**, il bot ha risposto
+  **«mercoledì 26 agosto»**. Il primo mercoledì era il **19**.
+  ✅ **Il dato che gli veniva dato era GIUSTO, ed è stato eseguito** (`righeCalendario(oggiRoma(), 7)`):
+  l'elenco conteneva `- mercoledì 19 agosto 2026 → 2026-08-19`, ed era il primo con quel nome. E
+  l'istruzione sotto era esplicita: *«è il **PRIMO** con quel nome in questo elenco»*.
   ⇒ **Il modello ha disobbedito a un'istruzione esplicita avendo il dato giusto davanti.**
-  ⚖️ Non è la stessa malattia del 25/07 e del 29/07 (là **calcolava** il giorno della settimana, e la
-  cura — dargli le date già fatte — regge): qui sbaglia a scegliere **l'occorrenza**. È un residuo
-  che la cura non copre.
-  🚨 **Sul bot dei SOCI vuol dire che un socio che chiede «mercoledì» può vedersi proporre la
-  settimana dopo** — e confermare senza accorgersene, perché la scheda mostra la data per esteso ma
-  l'occhio legge quella che si aspettava.
-  📌 **Cosa manca per curarla, ed è una domanda sola**: se sia il **modello** a passare la data
-  sbagliata allo strumento, o lo **strumento** a risolverla male. Si distingue con un comando sui log
-  del bot di prova — quale data ha ricevuto `disponibilita` — e sono due difetti con due cure diverse.
-  ⛔ **Non l'ho inseguita subito per scelta del committente**: eravamo dentro la finestra col circolo
-  fermo, e questa non tocca la voce 53.
+  ⚖️ Non era la stessa malattia del 25/07 e del 29/07 (là **calcolava** il giorno della settimana, e
+  quella cura regge): qui sbagliava a scegliere **l'occorrenza**, dove il nome torna due volte nella
+  finestra di dodici giorni.
+  🔨 **La cura è la TABELLA DEI PRIMI**, nel bot dal 16/08 (`src/mastra/lib/formato.ts`): il primo
+  giorno di ogni nome è **precalcolato dal codice** e passato al modello già fatto — *«non
+  sceglierla dall'elenco qui sopra, dove lo stesso nome torna due volte: COPIALA da questa riga»*.
+  Difesa dal banco (`test/calendario.test.ts`, che pretende `mercoledì → 2026-08-19` sullo stesso
+  giorno del difetto), e **viva anche per i soci** dal deploy del 18/08.
+  ⭐⭐ **E la cura NON è quella che questa nota prevedeva**, che è il pezzo da tramandare. Qui era
+  scritto *«manca una domanda sola: se sia il **modello** a passare la data sbagliata o lo
+  **strumento** a risolverla male»* — due difetti, due cure, e un comando sui log per scegliere.
+  ⇒ La strada presa non ha risposto a quella domanda: **l'ha resa inutile**, togliendo al modello la
+  scelta invece di misurare come sbagliava a farla. ⚖️ Il principio stava già scritto nel commento
+  della cura del 29/07, quattro righe sopra il punto in cui il difetto è sopravvissuto — *«al
+  modello non serviva essere convinto, gli mancava un **FATTO**; le parole in più persuadono, i
+  fatti no»* — applicato alle **date** e non all'**occorrenza**: si era fermato un passo prima di sé
+  stesso.
+  🚨 **Questa riga è rimasta a dichiarare APERTO un difetto chiuso poche ore dopo** (nota scritta la
+  sera del 16/08, cura dello stesso 16/08), e a trovarla è stato l'andare a cercare *«un lavoretto
+  sul bot da fare»* il 18/08. ⇒ È la malattia di famiglia — **il documento che mente** — nella forma
+  più costosa: non spaventa nessuno, ma **fabbrica lavoro finto**, perché il prossimo che apre la
+  lista parte a curare una cosa che regge già.
 
 **E misurando il 16/08, nella 27ª, chiudendo la voce 48:**
 
@@ -1753,15 +1764,17 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 18/08/2026 — 48 voci
+## 📦 CHIUSE — dal 13 al 18/08/2026 — 50 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime tre voci sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| — | ✅ *(18/08, 32ª sessione — tre correzioni sue, viste sul telefono mentre un'altra sessione lavorava la voce 61)* 👆 **Il riscontro dei tocchi, e l'etichetta del bottone WhatsApp.** ① 🙈 **La clessidra non compare più in cima** nelle schede di «Domande e info». ⚖️ **Non era un difetto di posizione**, ed è la cosa che ha cambiato la forma della cura: quell'avviso è di **Telegram**, lo disegna il client rispondendo al tocco e **dove** metterlo lo decide lui ⇒ al bot restano due sole scelte, dirgli un testo o non dirglielo. **Non si sposta: si toglie**, e sotto ci va il messaggio vero — la strada **già costruita il 16/08** per la sua preferenza di allora (*«la preferirei sotto al bottone che ho premuto»*), che su quei bottoni non si accendeva mai. 🔎 **Perché proprio lì**: le schede si compongono **in casa** (kb in cache 30 s) e riscrivono il messaggio toccato ⇒ il lavoro finisce **sotto la soglia** di mezzo secondo, quindi il messaggio sotto non partiva e restava solo la clessidra in alto, per un'attesa **che non c'era**. ⛔ **Tenuta stretta alle sole voci del menu**: gli altri bottoni chiamano il **ponte**, dove l'attesa è vera e l'avviso in cima è l'unica cosa che Telegram sa attaccare all'istante del tocco. ② ⬅️ **«Torna all'elenco» ha un riscontro** — *«sì, sistema anche il torna all'elenco»*. Era un **limite dichiarato il 16/08 e mai chiuso**: classificato fra i tocchi istantanei mentre il ponte lo fa aspettare davvero ⇒ **niente né sopra né sotto**. ⭐ **A tenerlo aperto era una ragione che è caduta da sé**: valeva finché «toglierlo dagli istantanei» voleva dire per forza «accendergli l'avviso in cima» — separate le due cose dal punto ①, l'obiezione non ha più oggetto. ⚖️ *Un limite scritto con la sua ragione si può riaprire quando la ragione cade; uno scritto senza resta vero per sempre* — la 26ª presa dal verso buono. 🚨 E `elenca` (rubrica, togli, invito) è un **altro nome** e non si è mosso, con un caso che lo verifica: è la trappola dei cassetti omonimi che quel modulo dichiara di evitare. ③ 💬 **«Scrivi» → «Contatta la segreteria su WhatsApp»**. Non è un sinonimo: «Scrivi» dice al socio cosa fare **lui**, «Contatta» dice **a cosa serve** il bottone — e quel numero, dall'altra parte, si può anche chiamare. 📏 **34 caratteri esatti come prima**, sotto il tetto misurato di 37 ⇒ nessun bottone tronca, e c'è un caso che lo misura perché il rischio di un cambio d'etichetta è il **taglio**, che rileggendo non si vede. ⛔ Non toccato «Altri orari? Scrivi alla segreteria»: non dice «su WhatsApp» ⇒ fuori dalla richiesta, e i suoi 37 caratteri sono già il tetto. 🧪 Banco **1078 → 1087**, typecheck pulito, **quattro sabotaggi** ognuno verificato di essere atterrato. 🚨 **Non è viva finché non si deploya**: il merge non basta, e sui soci va chiesto a parte |
+| — | ✅ *(18/08, 32ª sessione — chiesta da LUI guardando il bot sul telefono)* 🅿️ **«Parcheggio ampio» → «Parcheggio»**, nella scheda **«Cosa trovi al circolo»** del menu *Domande e info sul circolo*. ⭐ **Non è una riga di codice, ed è il punto**: quell'elenco **non sta nel bot** — `faq.ts` stampa le `dotazioni` della kb voce per voce, apposta perché *«una dotazione aggiunta domani compaia da sola, senza toccare il codice»* — quindi vive in `pmo_ai_settings` → `assistant_kb`. ⇒ **Niente PR, niente deploy, niente riavvio del bot**: una `UPDATE` per ambiente, e il socio la legge entro **30 secondi** (`KB_TTL_MS` in `ponte.ts`, l'unica cache di mezzo). Fatta **prima su TEST e poi su PROD**, con la guardia `@> '["Parcheggio ampio"]'` che la rende ripetibile a vuoto, e verificata che il **resto** della kb non si fosse mosso: `md5(value - 'dotazioni')` **identico prima e dopo** su PROD — perché un `jsonb_set` sbagliato riscrive l'oggetto intero e nessuno se ne accorge finché non manca un recapito. 🧪 **Il banco è stato allineato lo stesso** (`test/faq.test.ts`): la finta kb si dichiara *«copiata dalla forma VERA»*, e una copia rimasta indietro difende una frase che il socio non legge più. ⭐ Il caso ora pretende la riga **intera** — `/^• Parcheggio$/m` — perché `/Parcheggio/` sarebbe restato **verde** con «ampio» rimesso: misurerebbe meno di quello che afferma, che è la riga inerte della 30ª. Sabotaggio eseguito: rimesso «ampio», il banco va **rosso**. Banco **1078/1078**, typecheck pulito |
 | **59** | ✅ *(18/08, 31ª sessione — aperta il 17 da LUI, chiusa da LUI: «chiudi la voce cinquantanove»)* 🕰️ **59. TEST poteva mostrare una copia VECCHIA senza dirlo** — il prezzo della cura della 58: `./app.html` è la strada **primaria**, quindi a sincronia ferma TEST serve codice vecchio **e sullo schermo non si vede niente**. Fatte tutte e due nell'ordine che ha dato lui. **B** — il caricatore, caricata l'app, confronta e **avvisa chi guarda**: non bloccante, silenzioso su ogni intoppo (403/429/rete/appeso), 1 chiamata/ora per browser con la memoria che si invalida da sé quando la copia servita cambia; innestato il **tetto d'attesa** che veniva dalla sessione Mac. **C** — una **sentinella sulla VM, non su Actions** (là morirebbe insieme a ciò che sorveglia): `systemd` oneshot + timer 15′, fuori da pm2 di proposito, paziente **3 giri** (~45′) come `guard-worker-sync`, che distingue **«indietro»** da **«non lo so»** e dopo 12 giri ciechi **dichiara la propria cecità**; un messaggio per guasto, il rientro annunciato, e un **💓 ogni 7 giorni** che rende *verificabile* la frase «silenzio = tutto a posto». 🚨 **E la scheda della voce prescriveva un confronto SBAGLIATO**: `source_sha` contro la testa del ramo avrebbe suonato quella sera stessa su una copia **fresca al byte** (impronta `79d1a3a4` sui due lati, **dodici commit** di distanza), perché `sync-app.yml` ricopia solo se `index.html` cambia ⇒ ogni commit su `docs/` allontana il commit senza invecchiare la copia. Era **la stessa malattia** per cui la strada `synced_at` era già stata scartata, ripresentata un gradino più in là e **quattro righe sotto** l'avvertimento «non rifarla» ⇒ si confronta l'**impronta del contenuto**. Verificate **sul bersaglio**: B aperta in un Chromium vero (v6.243 TEST, `PMO_FORCE_ENV` intatta, zero errori JS, nessun avviso su copia fresca), C letta nel suo `stato.json` sulla VM (`fresca`, `servitoCoerente: true`); banco **23 casi** col sabotaggio che verifica di essere stato applicato. ⭐ E il giro della sentinella ha **chiuso una domanda che avevo dichiarato non misurabile dal cloud**: la VM non ha credenziali GitHub, quindi la chiamata anonima che le ha risposto dimostra che **la B non è cieca**. ⚠️ **Residuo dichiarato**: la voce della sentinella è il **token del bot di prova** in un secret — e il ripiego sui bot già sulla VM resta scritto e provato, ma il secret ha la precedenza. |
 | — | ✅ *(17/08, 31ª sessione — aperta, curata e chiusa in giornata)* 🌐 **58. L'app di TEST non si carica: `HTTP 429` da GitHub — CHIUSA da LUI** (*«il gestionale di test si apre»*). Il guasto era nel **disegno del caricatore**: scaricava l'app INTERA (~3 MB) da `raw.githubusercontent.com` **a ogni apertura**, anonimo e con un cache-buster che azzerava la CDN — e GitHub strozzava i percorsi per-ramo del repo (429 anti-scraping, **misurato da DUE reti diverse**: non era la quota del circolo). La cura, **scelte sue la ② e la ③**: `app.html` — copia generata dell'app — pubblicata su Pages **nel repo del caricatore** e servita dalla **stessa origine** (niente quota GitHub nel percorso primario, `raw` solo ripiego e senza cache-buster); su errore **messaggio umano + «Riprova»**, niente ricariche automatiche; `sync-app.yml` tiene fresca la copia (dispatch/cron ≤10′/a mano) e `app-meta.json` dichiara **da quale commit e di quando** è la copia — l'anti-trappola della fotografia che sembra viva. Lato repo-app sui due rami (`sync-test-loader.yml`, `CLAUDE.md` corretto); verificata **dal browser vero**: v6.243 TEST, `PMO_FORCE_ENV` intatta, solo `cudi…` contattato. ⚠️ **Residuo dichiarato**: manca il secret `TEST_LOADER_SYNC_TOKEN` (solo lui può crearlo) — senza, la copia si aggiorna **col cron**, non all'istante. 🔄 **E il «~10′» del cron è caduto il 18/08, misurato**: il cron è configurato `*/10` ma GitHub gli schedule li esegue «quando può» — intervalli reali **24-48 minuti** quel giorno, e il giro è passato **25 secondi prima** del merge della 6.244, lasciando il sito vecchio per mezz'ora mentre il committente lo guardava. La via manuale (`sync-app` da Actions) resta quella giusta quando serve adesso; e i cron dei repo fermi GitHub li spegne dopo ~60 giorni, quindi se un giorno TEST sembra vecchio la prima cosa da leggere è `app-meta.json`. |
 | — | ✅ *(17/08, 30ª sessione — nata da una sua richiesta, non dalla coda)* 🎾 **Chi CHIEDE il suo livello e non ce l'ha ora vede il bottone del test.** Il bottone «🎾 TEST LIVELLO DI GIOCO» esisteva dal 9/08 ma nasceva **solo** sotto il rifiuto `serve_livello`: lo vedeva chi provava a **organizzare**, non chi il livello lo **chiedeva** — che leggeva *«Non risulti ancora avere un livello di gioco assegnato.»* e basta. L'unica frase del bot che diceva «non ce l'hai» senza dire come prenderselo. ⭐ **Ci va in tutt'e due le strade** — la risposta del modello (quella normale) e la riserva di quando il modello tace: metterlo in una sola avrebbe fatto un bottone presente **metà delle volte**, ed è la lezione delle «tre schermate» dell'11/08, quando il numero del livello usciva **dal modello** proprio perché avevo cercato solo i testi. 🔧 `offertaDelTest` torna **frase e bottone insieme**, così i due punti di chiamata non possono divergere; il ponte si disturba **solo** quando il livello manca davvero, perché chiedere il link **conia un gettone**. 🧪 Banco **1035 → 1055**, typecheck pulito, **tre sabotaggi** ognuno verificato di essere atterrato — e uno **non lo era**, fermato dalla guardia invece che passato per verde. 🚨 **E il primo sabotaggio ha smascherato una mia riga inerte** (vedi il filo della 30ª). 📦 PR **#16** del repo del bot, `main` **`2a1c069`**, **deployata sul bot di PROVA** (riavvii 8 → 9); ⛔ **sui soci NO**, e ci vuole un ok suo separato. ⚠️ Il bottone lo vede **solo chi il livello non ce l'ha**: aprirlo a tutti aspetta la voce **55**, dal 18/08 dentro la **61** § A ⇒ [`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md) |
