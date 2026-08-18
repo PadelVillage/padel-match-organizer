@@ -55,12 +55,14 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
 | È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **61** § A |
-| Finito il giro → **30 giorni** prima di rifarlo | 🔴 oggi solo dopo **tre bocciature**; chi **passa** può rifarlo **subito** → voce **61** § A |
+| Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — e un giro finisce **anche quando il test si passa**. Prima l'attesa scattava solo dopo tre bocciature, e chi **passava** rifaceva **subito** |
+| Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
 | Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
 | Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
 | …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **61** § C |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
+| Chi ha **passato** e chiede di nuovo il test si sente dire che deve aspettare | 🔴 il **ponte** lo sa e lo dice (`motivo_attesa: passato`), ma il **bot** non legge ancora quel campo: direbbe la frase delle tre bocciature → voce **61** ⑦ |
 
 ---
 

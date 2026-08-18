@@ -954,19 +954,20 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 | il conto dei tentativi **non è tenuto, è calcolato dai fatti**: 3 per giro, e conta solo una scheda arrivata col cancello `fail` | ponte (`consumer-assessment-link:203`) | ✅ |
 | mai un vicolo cieco: se il link manca si manda in **segreteria** | bot | ✅ |
 
-**Cosa manca perché la sezione sia FINITA.** Sei pezzi — e **solo due, ① e ⑤, stanno tutti dentro
+**Cosa manca perché la sezione sia FINITA.** Sette pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
-🔨 **Uno è fatto: il ③, vivo su PROD dal 18/08** (dettaglio in fondo alla scheda **A**). Restano cinque.
+🔨 **Due sono fatti — il ③ e il ②, vivi su PROD dal 18/08** (dettaglio in fondo alla scheda **A**). Restano **cinque**, e il ⑦ è nato dal ②: chiudere un pezzo nel gestionale ne apre uno nel bot, che è la forma normale di *il gestionale SA, il bot DICE*.
 
 | | il pezzo | dove va scritto | scheda |
 |---|---|---|---|
 | ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **A** |
-| ② | **30 giorni fra un giro e l'altro**: oggi l'attesa parte dal **terzo fallimento** (`GIORNI_DI_ATTESA`, `consumer-assessment-link:204`) ⇒ **chi passa può rifarlo subito**, e nessuno se n'era accorto perché il bottone non gli compariva | ponte | **A** |
+| ② | ✅ **FATTO il 18/08, vivo su PROD** — i **30 giorni** partono dalla **fine del giro**, e un giro finisce anche quando il test si **passa**. Prima l'attesa partiva dal terzo fallimento ⇒ chi passava rifaceva subito | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
 | ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
+| ⑦ | 🆕 il bot legga **`motivo_attesa`**: oggi a chi ha **passato** e richiede il test direbbe la frase delle **tre bocciature**. Il ponte la distinzione ce l'ha (`esaurito` | `passato`) dal 18/08, è la **frase** che manca | bot | **A** |
 
 🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ e ④ **vengono
 prima** di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica
@@ -1027,6 +1028,36 @@ ogni 15′); su `cudi…` non c'è. ⇒ Su TEST la cura è **installata e dorme*
 routine da una sessione cloud non la si sveglia nemmeno a mano. ⚖️ Vuol dire che per questa funzione
 **«provato su TEST» non è una prova di comportamento**: l'unico posto dove la regola gira è la
 produzione, e va saputo prima di promettere un collaudo che TEST non può dare.
+
+🔨✅ **② FATTO IL 18/08/2026, E VIVO SU PROD** — *(PR #869 su TEST, #870 su `main`)*. Un giro **si
+chiude** in due modi — le tre prove sono finite, **oppure una passa** — e da quella data partono i 30
+giorni. La regola esce dal corpo dell'handler e diventa **`statoDelGiro`**, pura, col **primo banco
+che questo ponte abbia mai avuto** (`test/consumer-assessment-link.test.mjs`, 14 casi + 7 guardie).
+
+🚨⭐ **E scrivendola è saltato fuori un difetto che nessuno aveva chiesto di cercare, e che non era
+in nessuna lista**: col conto delle sole fallite, **quattro** bocciature di fila lasciavano il conto
+≥ 3 e facevano ripartire l'attesa **dall'ultima** ⇒ passati i 30 giorni il socio otteneva **una prova
+sola**, poi altri 30 giorni, all'infinito. Chi finiva un giro non ne riceveva **mai più uno intero**.
+⚖️ Non l'ha trovato una sonda: l'ha trovato il **cambio di rappresentazione**. Contando le fallite
+quel caso è invisibile; ricostruendo i **giri** diventa il caso 8 del banco.
+
+📏 **Quanto tocca i soci veri, misurato su PROD**: le schede sono **42** in tutto, dal 25/04 al 23/06,
+e **nessuna** ha il cancello del quiz ⇒ **nessun socio ha mai completato un test** con `pass`/`fail`,
+quindi oggi **nessuno è dentro un giro**. Come il ③, è un **prerequisito** e non una riparazione a
+caldo.
+
+⚠️🤖 **E un pezzo RESTA AL BOT, dichiarato invece che taciuto**: la risposta porta ora
+`motivo_attesa` (`esaurito` | `passato`), ma **il bot non legge quel campo** — finché non lo farà,
+direbbe la frase delle **tre bocciature** anche a chi ha **passato**. La frase la dice il bot, che
+vive nel repo privato ⇒ è diventato il pezzo **⑦** della tabella qui sopra. Oggi non può raggiungere nessuno,
+per la misura qui sopra.
+
+🧹 **E due cose mie trovate RILEGGENDO il sorgente deployato**, non prima: il commento che descriveva
+il ciclo vecchio era rimasto sopra il codice nuovo (tolto, non lasciato a raccontare una cosa che il
+codice non fa più), e il mio `giro` era **ombreggiato** dal contatore `for (let giro …)` venti righe
+più in giù — innocuo oggi, trappola domani: rinominato il contatore, che è quello senza significato
+dei due. ⭐ Nessuna delle due l'aveva viste il banco: le ha viste **la rilettura di ciò che è andato
+in produzione**.
 
 🚨⭐⭐ **Il pezzo pesante non è nessuna delle tre: è che oggi il livello NON LO CONFERMA NESSUNO.**
 Lo scrive un automatismo (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15 minuti)
