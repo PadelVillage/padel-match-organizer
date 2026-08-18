@@ -28791,9 +28791,16 @@ Per confermare scrivi ELIMINA.`);
 	        const nota = c.note ? `<div class="routine-mini">${escapeHtml(c.note)}</div>` : '';
 	        // ⛔ L'indirizzo si mostra ma NON è un link: aprirlo è una visita al portale di un
 	        // altro circolo, e questa sezione ha promesso di non contattarne nessuno.
+	        // 🚨 «non rilevato» vale per chi un indirizzo ce l'ha e noi non l'abbiamo preso.
+	        // Padel Village un indirizzo da interrogare NON ce l'ha per costruzione — il suo
+	        // calendario si legge dal gestionale — e chiamarlo «non rilevato» lo farebbe
+	        // sembrare un buco da tappare invece della scelta che e'. Visto GUARDANDO la
+	        // pagina vera: nel codice le due assenze hanno la stessa forma, sullo schermo no.
 	        const indirizzo = c.base_url
 	          ? `<div class="routine-mini">${escapeHtml(String(c.base_url).replace(/^https?:\/\//, '').replace(/\/$/, ''))}</div>`
-	          : '<div class="routine-mini">indirizzo non rilevato</div>';
+	          : (c.piattaforma === 'matchpoint'
+	          ? '<div class="routine-mini">calendario letto dal gestionale</div>'
+	          : '<div class="routine-mini">indirizzo non rilevato</div>');
 	        const interroga = c.attivo
 	          ? '<div class="routine-mini">da interrogare</div>'
 	          : '<div class="routine-mini">fermo: non verrà interrogato</div>';
@@ -28807,7 +28814,7 @@ Per confermare scrivi ELIMINA.`);
 	          : '<span class="routine-mini">—</span>';
 	        return `<tr>
 	          <td><strong>${escapeHtml(c.nome)}</strong><div class="routine-mini">${escapeHtml(c.comune)}</div>${indirizzo}${nota}</td>
-	          <td>${escapeHtml(c.piattaforma)}</td>
+	          <td>${escapeHtml(cleanCell(c.piattaforma || '').replace(/^./, ch => ch.toUpperCase()))}</td>
 	          <td><span class="admin-status-pill ${pillUtenza[c.stato_utenza] || ''}">${escapeHtml(etichettaUtenza[c.stato_utenza] || c.stato_utenza)}</span>${interroga}</td>
 	          <td>${escapeHtml(pmoCircoliQuando(c.ultimo_scan_at))}</td>
 	          <td>${esito}</td>
