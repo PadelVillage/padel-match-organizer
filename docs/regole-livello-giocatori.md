@@ -54,7 +54,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
-| È il socio a **decidere a quale prova fermarsi** | 🔨 **SCRITTO il 19/08, non ancora vivo**: sta in due PR aperte *(#883 sul gestionale, #23 sul bot)* e non ha toccato nessun bersaglio → voce **61** § A ④ |
+| È il socio a **decidere a quale prova fermarsi** | 🔨 **SCRITTO il 19/08 — vivo su TEST, non su PROD e non per i soci**: le edge girano su `cudi…` e il bot di PROVA è aggiornato; restano il DDL su `qqbf…`, il merge su `main` *(PR #884)* e il deploy sui SOCI → voce **61** § A ④ |
 | Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — un giro sono **tre prove**, e quando finiscono partono i 30 giorni. Prima l'attesa scattava solo dopo tre **bocciature**, e chi **passava** poteva rifarlo **subito e all'infinito** |
 | Dopo una prova **riuscita** si può ancora **affinare** | ✅ — è il giro disegnato qui sotto: quello che si è tolto è il *«all'infinito»*, non il riprovare |
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
