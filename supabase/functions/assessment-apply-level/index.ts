@@ -23,10 +23,30 @@ import { createClient } from '@supabase/supabase-js';
 // muro acceso l'avrebbe bloccata. ⇒ Si applica una scheda solo se è più recente
 // dell'ultimo aggiornamento del livello di quel socio (`applicabile`, qui sotto).
 //
+// 🚨🚨 E LA REGOLA CHE PROTEGGE IL SOCIO DAL PROPRIO TEST — sua, il 17/08/2026:
+// *«se lo sbaglia in negativo non scende, a meno che non lo sbagli tre volte
+// consecutive»*, e *«la terza volta scende solo di 0,5»*.
+// Fino a qui la funzione applicava ogni scheda più recente **in tutti e due i
+// versi**: una brutta giornata portava da Avanzato (4) a Principiante (1) in un
+// colpo solo, e col muro del bot acceso quel socio non poteva più organizzare.
+// ⇒ Adesso: al RIALZO si applica come sempre; al RIBASSO non si scende, e solo
+// alla TERZA prova di fila più bassa si scende di mezzo passo — a 3,5, non a
+// quello che dice il test.
+// ⭐ Il conto NON è tenuto da nessuna parte: si CALCOLA dai fatti, come il conto
+// dei tentativi nel ponte (`consumer-assessment-link`). Non c'è niente da
+// azzerare e niente da tenere allineato: si guardano le schede del socio dalla
+// più recente all'indietro e ci si ferma alla prima che non dice meno.
+// 🔒 E fallisce CHIUSA: se la storia non si riesce a leggere il conto è 0, cioè
+// «non si scende». Il guasto di una lettura non può far scendere nessuno.
+//
 // ⚖️ Cosa NON fa, per decisione sua dell'11/08:
 //   · non manda nessuna email al socio (il cron delle email ai soci è spento);
 //   · non tocca le schede che la segreteria ha in mano (`staff_status` non vuoto);
 //   · non tocca chi arriva dal link generico: quello non è ancora un socio.
+//
+// ⛔ Cosa NON fa ANCORA, ed è la voce 61 § A ④: il socio non sceglie a quale prova
+// fermarsi. Qui la macchina decide da sé, come prima — solo che adesso, al
+// ribasso, decide di NON fare niente finché le prove non sono tre.
 //
 // 🔒 Come le altre routine: si entra solo col segreto (`x-pmo-routine-secret`),
 // verificato dal database. Nessuna porta per lo staff, nessuna chiamata a mano.
@@ -45,6 +65,17 @@ const CORS_HEADERS = {
 const PROD_PROJECT_REF = 'qqbfphyslczzkxoncgex';
 const MASSIMO_PER_GIRO = 50;   // un tetto: se qualcosa impazzisce, non riscrive l'anagrafica intera
 const FONTE = 'autovalutazione';
+
+// ── I numeri della regola del RIBASSO (sue, 17/08/2026) ──────────────────────
+const PROVE_PER_SCENDERE = 3;    // «a meno che non lo sbagli tre volte consecutive»
+const PASSO_DISCESA = 0.5;       // «la terza volta scende solo di 0,5»
+// 🚨 Il pavimento, e non è nella sua regola: è la conseguenza di applicarla.
+// `0.5` in questo gestionale non è un livello, è «da definire» — e chi ce l'ha
+// non può organizzare (il muro del bot). Far scendere qualcuno LÌ per tre prove
+// storte vorrebbe dire togliergli il diritto di organizzare come effetto
+// collaterale di una regola nata per PROTEGGERLO. ⇒ Si scende fino a 1, non oltre.
+const LIVELLO_MINIMO_SCESO = 1;
+const STORICO_PER_SOCIO = 20;    // quante schede si guardano indietro, come fa il ponte
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -84,10 +115,39 @@ function livelloDellaScheda(scheda: any) {
   return Number.isNaN(calcolato) ? numero(scheda?.declared_level) : calcolato;
 }
 
+// ── QUANTE PROVE DI FILA DICONO MENO ─────────────────────────────────────────
+// Si scorre la storia del socio dalla PIÙ RECENTE all'indietro e ci si ferma alla
+// prima che non dice meno del livello di oggi: quello è l'inizio della discesa.
+// ⭐ È la stessa forma del conto dei tentativi nel ponte, e per la stessa ragione:
+// un conto TENUTO va azzerato, sincronizzato e prima o poi diverge dai fatti; un
+// conto CALCOLATO non può divergere da ciò da cui è calcolato.
+// ⚖️ Due tagli dichiarati, perché sono scelte e non dettagli:
+//   · una prova più VECCHIA dell'ultimo livello scritto non conta — appartiene a
+//     un'altra epoca, e il giro comincia dopo l'ultimo aggiornamento;
+//   · una scheda SENZA livello valido non è né più né meno: si salta, e non
+//     interrompe la serie (interromperla regalerebbe una discesa in meno o in più
+//     a seconda di un dato mancante, che è il peggior modo di decidere).
+function proveConsecutiveAlRibasso(storia: any, attuale: any, ultimoAggiornamento: any) {
+  if (!Array.isArray(storia) || !storia.length) return 0;
+  if (!Number.isFinite(attuale)) return 0;
+  const elenco = storia.slice().sort((a: any, b: any) => quando(b?.submitted_at) - quando(a?.submitted_at));
+  let quante = 0;
+  for (const s of elenco) {
+    if (ultimoAggiornamento && !(quando(s?.submitted_at) > ultimoAggiornamento)) break;
+    const l = livelloDellaScheda(s);
+    if (Number.isNaN(l)) continue;
+    if (l < attuale) quante++;
+    else break;
+  }
+  return quante;
+}
+
 // Torna { applica, motivo, livello }. `motivo` è sempre valorizzato — anche quando
 // si applica — perché il riepilogo del giro dev'essere leggibile senza il codice
 // accanto: è quello che finisce nella risposta e nei log.
-function decidi(scheda: any, socio: any) {
+// ⭐ `storia` sono le schede di QUEL socio (la corrente compresa): serve solo al
+// ribasso, e chi non la passa ottiene «non si scende», che è il verso sicuro.
+function decidi(scheda: any, socio: any, storia: any) {
   const livello = livelloDellaScheda(scheda);
   if (Number.isNaN(livello)) return { applica: false, motivo: 'la scheda non ha un livello valido', livello: null };
 
@@ -126,7 +186,32 @@ function decidi(scheda: any, socio: any) {
   }
 
   // Niente scritture a vuoto: se il livello è già quello, la riga non si tocca.
-  if (numero(socio.level) === livello) return { applica: false, motivo: 'il socio ha già questo livello', livello };
+  const attuale = numero(socio.level);
+  if (attuale === livello) return { applica: false, motivo: 'il socio ha già questo livello', livello };
+
+  // 🚨🚨 IL RIBASSO, ed è la regola che protegge il socio dal proprio test.
+  // Al rialzo non cambia niente: si passa oltre e si applica come sempre.
+  if (!Number.isNaN(attuale) && livello < attuale) {
+    const quante = proveConsecutiveAlRibasso(storia, attuale, ultimo);
+    if (quante < PROVE_PER_SCENDERE) {
+      return {
+        applica: false,
+        motivo: `il test dice più basso (${livello} contro ${attuale}): non si scende — prova ${quante} di ${PROVE_PER_SCENDERE}`,
+        livello,
+      };
+    }
+    const sceso = Math.max(LIVELLO_MINIMO_SCESO, attuale - PASSO_DISCESA);
+    // Chi è già al pavimento non scende più: la regola non ha altro da togliere,
+    // e una scrittura che non cambia niente sarebbe solo una data mossa.
+    if (sceso === attuale) {
+      return { applica: false, motivo: `${quante} prove di fila più basse, ma ${attuale} è il minimo: non si scende oltre`, livello };
+    }
+    return {
+      applica: true,
+      motivo: `${quante} prove di fila più basse: da ${attuale} a ${sceso} (mezzo passo, non a ${livello})`,
+      livello: sceso,
+    };
+  }
 
   return { applica: true, motivo: `da ${clean(socio.level) || 'senza livello'} a ${livello}`, livello };
 }
@@ -201,7 +286,7 @@ Deno.serve(async (req: Request) => {
   if (erroreSchede) return json({ ok: false, error: 'SCHEDE_READ_FAILED', dettaglio: clean(erroreSchede.message) }, 500);
 
   const schede = (schedeRaw || []) as JsonMap[];
-  if (!schede.length) return json({ ok: true, ambiente, simula, esaminate: 0, applicate: 0, saltate: [], dettaglio: [] });
+  if (!schede.length) return json({ ok: true, ambiente, simula, esaminate: 0, applicate: 0, saltate: [], dettaglio: [], avvisi: [] });
 
   // ② A chi appartengono: il collegamento scheda→socio passa dal token.
   const tokens = schede.map((s) => clean(s.token)).filter(Boolean);
@@ -239,6 +324,52 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ③bis LA STORIA DI CIASCUNO, e serve a una cosa sola: al RIBASSO.
+  // Si passa per i gettoni, che sono il filo fra la persona e la scheda — la stessa
+  // strada del ponte (`consumer-assessment-link`), perché il conto delle prove è lo
+  // stesso fatto guardato da due parti, e due strade diverse prima o poi divergono.
+  // 🔒 Se una di queste due letture non riesce NON si ferma il giro: la storia resta
+  // vuota, il conto viene 0 e nessuno scende. Si perde una discesa legittima, non si
+  // regala una discesa sbagliata — ed è dichiarato nella risposta, non taciuto.
+  const storiaPerSocio = new Map<string, JsonMap[]>();
+  const avvisi: string[] = [];
+  if (idSoci.length) {
+    const { data: gettoniRaw, error: erroreGettoni } = await admin
+      .from('assessment_tokens')
+      .select('token, member_local_id')
+      .in('member_local_id', idSoci);
+    if (erroreGettoni) {
+      avvisi.push(`storia non letta (gettoni): ${clean(erroreGettoni.message)} — al ribasso nessuno scende`);
+    } else {
+      const socioPerGettone = new Map<string, string>();
+      ((gettoniRaw || []) as JsonMap[]).forEach((t) => {
+        const tok = clean(t.token);
+        const id = clean(t.member_local_id);
+        if (tok && id) socioPerGettone.set(tok, id);
+      });
+      const tuttiIGettoni = [...socioPerGettone.keys()];
+      if (tuttiIGettoni.length) {
+        const { data: storicoRaw, error: erroreStorico } = await admin
+          .from('self_assessments')
+          .select('token, submitted_at, declared_level, calculated_level')
+          .in('token', tuttiIGettoni)
+          .order('submitted_at', { ascending: false })
+          .limit(idSoci.length * STORICO_PER_SOCIO);
+        if (erroreStorico) {
+          avvisi.push(`storia non letta (schede): ${clean(erroreStorico.message)} — al ribasso nessuno scende`);
+        } else {
+          ((storicoRaw || []) as JsonMap[]).forEach((riga) => {
+            const id = socioPerGettone.get(clean(riga.token)) || '';
+            if (!id) return;
+            const finora = storiaPerSocio.get(id) || [];
+            finora.push(riga);
+            storiaPerSocio.set(id, finora);
+          });
+        }
+      }
+    }
+  }
+
   const dettaglio: JsonMap[] = [];
   const saltate: JsonMap[] = [];
   let applicate = 0;
@@ -253,7 +384,7 @@ Deno.serve(async (req: Request) => {
     const riga = socioId ? righePerId.get(socioId) : null;
     const payload = (riga?.payload || null) as JsonMap | null;
 
-    const esito = decidi(scheda, payload);
+    const esito = decidi(scheda, payload, socioId ? (storiaPerSocio.get(socioId) || []) : []);
     if (!esito.applica) {
       saltate.push({ persona: nome, motivo: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });
       continue;
@@ -301,6 +432,6 @@ Deno.serve(async (req: Request) => {
     dettaglio.push({ persona: nome, cambio: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });
   }
 
-  console.log('PMO_ASSESSMENT_APPLY_LEVEL', JSON.stringify({ ambiente, simula, esaminate: schede.length, applicate, saltate: saltate.length }));
-  return json({ ok: true, ambiente, simula, esaminate: schede.length, applicate, dettaglio, saltate });
+  console.log('PMO_ASSESSMENT_APPLY_LEVEL', JSON.stringify({ ambiente, simula, esaminate: schede.length, applicate, saltate: saltate.length, avvisi }));
+  return json({ ok: true, ambiente, simula, esaminate: schede.length, applicate, dettaglio, saltate, avvisi });
 });
