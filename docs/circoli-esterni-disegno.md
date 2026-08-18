@@ -102,7 +102,6 @@ proprio per questo che andava provata subito invece che tramandata.
 | circolo | comune | piattaforma | indirizzo |
 |---|---|---|---|
 | Padel Village | Conegliano | **Matchpoint** | il calendario è nostro, si legge dal gestionale |
-| Marco Polo Sporting Center | Vittorio Veneto | Wansport | `asdmarcopolovittorioveneto.wansport.com` |
 | Padel Conegliano *(detto anche «Max Padel»)* | Conegliano | Wansport | `padelconegliano.wansport.com` |
 | Centro Sportivo Collalbrigo | Conegliano | Wansport | `centrosportivocollalbrigo.wansport.com` |
 | AH Padel Club | Spresiano | Wansport | `ahpadel.wansport.com` |
@@ -115,10 +114,18 @@ proprio per questo che andava provata subito invece che tramandata.
 **morto** — licenza ENTERPRISE scaduta il **16/02/2021** — e **non va interrogato**. Il suo
 calendario si legge dal gestionale, con un lettore diverso.
 
+⚠️ **Erano 9: il Marco Polo Sporting Center è uscito dal perimetro il 18/08/2026, per scelta del
+committente** (*«leva Marco Polo»*, motivo non dichiarato). La riga non è stata **cancellata** ma
+**spenta** (`attivo = false`): conserva l'indirizzo, la griglia e la sonda riuscita di quel giorno
+(login in **1,76 s**) — cancellarla avrebbe buttato una misura vera per registrare una decisione,
+e il giorno che rientrasse si ripartirebbe da zero. ⇒ **Restano 8 circoli da interrogare**, di cui
+7 su Wansport più Padel Village dal gestionale.
+
 **Non operativi**, e perché:
 
 | circolo | stato |
 |---|---|
+| Marco Polo Sporting Center (Vittorio Veneto) | ⚪ **fuori perimetro per scelta del committente** (18/08) — utenza attiva e funzionante, semplicemente non si interroga |
 | Padel Oderzo (Ponte di Piave) | 🟡 password impostata, login rifiutato: *«account non ancora approvato dall'amministrazione»* ⇒ dipende da una persona di quel circolo |
 | Eurotennis Treviso · DLF Treviso · TC Oderzo · TC Salgareda | ⚪ nessuna utenza: il reset non manda nessuna mail ⇒ servirebbe registrarsi |
 | Sporting Life Center | ❌ non ha il padel |
