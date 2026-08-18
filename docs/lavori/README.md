@@ -1171,7 +1171,7 @@ scritto a mano da un'altra parte.
 |---|---|
 | **16** | 💰 **Storno/cobro PARTITA** — flag OFF mai validati; validare in TEST prima di qualsiasi attivazione |
 | **17** | 🔐 **Consumer: hook Auth «Customize Access Token»** — senza, l'RLS nega in silenzio. Rilevante **solo** quando si riprende l'app soci (0 utenti veri oggi) |
-| **60** | 🎾 **Campi liberi nei circoli vicini** — il bot risponde «dove c'è posto giovedì alle 19» leggendo **9 circoli** invece di uno. Disegno completo e autosufficiente in `docs/circoli-esterni-disegno.md`: il login Wansport si riproduce con `fetch` (**niente browser, niente worker** — quindi non muore con Matchpoint). ⚠️ **Prima del servizio**: le condizioni d'uso dei circoli terzi, che è la questione vera, non un dettaglio |
+| **60** | 🎾 **Campi liberi nei circoli vicini** — il bot risponde «dove c'è posto giovedì alle 19» leggendo **9 circoli** invece di uno. Disegno completo e autosufficiente in `docs/circoli-esterni-disegno.md`: il login Wansport si riproduce con `fetch` (**niente browser, niente worker** — quindi non muore con Matchpoint). ⚠️ **Prima del servizio**: le condizioni d'uso dei circoli terzi, che è la questione vera, non un dettaglio. 🔨 **Passo 1 di 4 FATTO su TEST (18/08, app 6.244)**: tabella `pmo_circoli_esterni` (14 righe — 9 operativi, 1 in approvazione, 4 senza utenza), RPC con guardia staff, e la sezione **«Circoli»** in Amministrazione — nome scelto dal committente. **Sola lettura: nessuno scan, nessun contatto coi portali altrui.** Restano i passi 2-4 (`circoli-scan` su un circolo, estensione a N + scadenza 5′, ponte per il bot). ⛔ **Non toccata la produzione**, e la sezione **non è ancora stata guardata in un browser** — quello vuole il Mac |
 
 ---
 
