@@ -3,7 +3,7 @@
 <head>
 <!--
   Bot Telegram — «Le tue partite»: legare il bottone GESTISCI alla sua prenotazione
-  Mockup v4 — 18/08/2026
+  Mockup v6 — 18/08/2026
 
   🗣️ Domande del committente:
      ① «il bottone gestisci può stare sotto la relativa prenotazione? Logicamente se sei
@@ -19,8 +19,11 @@
      B · un messaggio per partita   — il bottone sotto la sua riga (l'unico modo letterale)
      C · il marcatore condiviso     — ①②③ sulla riga e sul bottone; un messaggio solo
      D · righe compatte + marcatore — la lista si accorcia, i bottoni salgono sotto le righe
-     E · una partita per volta      — NON un elenco: una partita sullo schermo, le altre
-                                      si raggiungono con ◀ ▶. I bottoni sono sempre i suoi
+     E · una partita per volta      — NON un elenco: una partita sullo schermo, le altre si
+                                      raggiungono con «Vedi le altre partite». 🆕 v6, due idee
+                                      SUE: quel bottone al posto delle frecce, e — dentro le 48
+                                      ore — scrivere cosa NON si può più fare invece di mostrare
+                                      un «Gestisci» che promette meno di quel che sembra
      F · la B, silenziosa           — 🆕 v4: uguale alla B, ma solo il PRIMO messaggio suona
                                       (`disable_notification` sugli altri) ⇒ 1 notifica, non 6.
                                       🗣️ Nata dalla sua richiesta: «qualcosa verso la mia
@@ -350,7 +353,7 @@
 <div class="foglio">
 
   <header>
-    <p class="occhiello">Mockup v4 · bot Telegram · 18 agosto 2026</p>
+    <p class="occhiello">Mockup v6 · bot Telegram · 18 agosto 2026</p>
     <h1>Legare «Gestisci» alla sua partita: sei strade</h1>
     <p class="sommario">
       La scheda <strong>«Le tue partite»</strong> in sei disposizioni. La prima è com'è oggi; le
@@ -407,8 +410,8 @@
         </tr>
         <tr>
           <td><span class="via">E</span> una partita per volta</td>
-          <td>non serve legare: sullo schermo ce n'è <b>una sola</b>, le altre non si vedono</td>
-          <td class="num">1</td><td class="num">1</td><td>medio-alto</td>
+          <td>non serve legare: sullo schermo ce n'è <b>una sola</b>, e la scheda <b>spiega sé stessa</b></td>
+          <td class="num">1</td><td class="num">1</td><td>medio</td>
         </tr>
       </tbody>
     </table>
@@ -580,7 +583,7 @@
     <!-- ══════════════ F · LA B, SILENZIOSA ══════════════ -->
     <article class="colonna consigliata">
       <div class="intestazione">
-        <span class="etichetta">F · la B, silenziosa <span class="bollo">la più vicina alla tua</span></span>
+        <span class="etichetta">F · la B, silenziosa <span class="bollo">niente sei notifiche</span></span>
         <h2>Un messaggio per partita, ma suona il primo</h2>
         <p>A vedersi è <strong>identica alla B</strong>. Cambia una cosa sola: solo il primo messaggio fa rumore, gli altri entrano zitti.</p>
       </div>
@@ -791,11 +794,11 @@
     </article>
 
     <!-- ══════════════ E · UNA PARTITA PER VOLTA ══════════════ -->
-    <article class="colonna">
+    <article class="colonna consigliata">
       <div class="intestazione">
-        <span class="etichetta proposta">E · una partita per volta</span>
+        <span class="etichetta">E · una partita per volta <span class="bollo">l'unica che sa spiegare</span></span>
         <h2>La scheda si sfoglia</h2>
-        <p><strong>Non è una lista più grande: è una partita alla volta.</strong> Le altre non sono sullo schermo — si arriva con ◀ e ▶, e i bottoni sono <em>per forza</em> di quella che vedi.</p>
+        <p><strong>Non è una lista più grande: è una partita alla volta.</strong> Le altre non sono sullo schermo — ci si arriva con <em>«Vedi le altre partite»</em> — e i bottoni sono <em>per forza</em> di quella che vedi.</p>
       </div>
 
       <div class="telegram">
@@ -811,39 +814,58 @@
             </div>
 
             <div class="tastiera">
-              <div class="bottone">⚙️ Gestisci questa partita</div>
               <div class="bottone">➕ Invita un amico</div>
+              <div class="bottone">⚙️ Gestisci questa partita</div>
+              <div class="bottone">📅 Vedi le altre partite · 4 →</div>
             </div>
-            <div class="tastiera fila">
-              <div class="bottone stretto">◀</div>
-              <div class="bottone">Tutte e cinque</div>
-              <div class="bottone stretto">▶</div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>«Vedi le altre partite» dice l'azione, ◀ ▶ no.</b> Le frecce sono un simbolo da
+          interpretare; questa è una frase che si legge. Il numero accanto — <b>4</b> — dice anche
+          quante ne restano, che è la cosa che l'elenco dava gratis e qui si perderebbe.
+        </p>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div class="titolo">Le tue partite · 1 di 5</div>
+            <div>
+              <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo</span>
+              <span class="con">siete al completo</span>
+            </div>
+            <div class="nota-coda">Mancano meno di 48 ore: <b>questa non si può più disdire</b>. Puoi ancora togliere un giocatore.</div>
+
+            <div class="tastiera">
+              <div class="bottone">➖ Togli un giocatore</div>
+              <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+              <div class="bottone">📅 Vedi le altre partite · 4 →</div>
             </div>
           </div>
         </div>
 
         <p class="postilla attenzione">
-          <b>⚠️ NON è un elenco con le righe più grasse: l'elenco non c'è più.</b> Sullo schermo c'è
-          <b>una partita sola</b> — la terza di cinque — e le altre quattro <b>non si vedono</b>:
-          per arrivarci si tocca ▶, una alla volta. «Tutte e cinque» è la via di ritorno all'elenco
-          di oggi.
-        </p>
-        <p class="postilla">
-          <b>Il legame sparisce perché sparisce il problema</b>: con una sola partita sullo schermo
-          non c'è nessun abbinamento da fare. E le azioni possono salire <b>in prima pagina</b>,
-          invece di stare dietro a «Gestisci».
+          <b>⭐ Ed ecco la cosa che solo la E sa fare</b> <em>(idea sua, 18/08)</em>: dentro le 48 ore
+          la scheda <b>non mostra un bottone che non serve</b> — <b>dice cosa non si può più fare</b>,
+          e lascia sotto solo ciò che si può. Oggi quella spiegazione è <b>una riga sola in fondo
+          all'elenco</b>, uguale per tutte: qui è <b>di questa partita</b>, e sta dove il socio
+          guarda.
         </p>
       </div>
 
       <div class="conti">
         <h3>Cosa comporta</h3>
         <ul>
-          <li><span class="segno piu">+</span><span>Zero ambiguità, e <b>una sola riscrittura</b> per sfogliata.</span></li>
-          <li><span class="segno piu">+</span><span>Le azioni vere salgono in superficie: un tocco in meno per invitare.</span></li>
-          <li><span class="segno meno">−</span><span><b>Si perde il colpo d'occhio</b>: «cosa ho questa settimana?» diventa cinque tocchi.</span></li>
+          <li><span class="segno piu">+</span><span>Zero ambiguità: c'è una partita sola, i bottoni sono i suoi.</span></li>
+          <li><span class="segno piu">+</span><span>⭐ <b>Ogni scheda spiega SÉ STESSA</b>: cosa si può ancora fare, e cosa no, con la ragione accanto.</span></li>
+          <li><span class="segno piu">+</span><span>Le azioni vere salgono in superficie: <b>un tocco in meno</b> per invitare o togliere.</span></li>
+          <li><span class="segno piu">+</span><span><b>Un messaggio, una notifica</b>: sfogliare riscrive quello che c'è, non ne manda di nuovi.</span></li>
+          <li><span class="segno meno">−</span><span><b>Si perde il colpo d'occhio</b>: «cosa ho questa settimana?» diventa quattro tocchi.</span></li>
           <li><span class="segno meno">−</span><span>È una <b>schermata nuova</b> da disegnare e provare, non una disposizione diversa.</span></li>
         </ul>
-        <p class="costo">Costo: <b>medio-alto</b> — nuova navigazione</p>
+        <p class="costo">Costo: <b>medio</b> — una navigazione nuova, ma nessun messaggio in più</p>
       </div>
     </article>
 
@@ -880,11 +902,13 @@
     </p>
 
     <p>
-      <strong>Come la vedo adesso.</strong> Se quello che vuoi è il bottone sotto la sua partita,
-      la <strong>F</strong> è la B senza il suo difetto peggiore, e il prezzo che resta è onesto:
-      la chat si allunga a ogni richiesta. La <strong>C</strong> resta la più economica in assoluto
-      e non tocca niente della meccanica — ma risolve l'abbinamento, non lo elimina.
-      <em>Fra le due, la differenza non è più tecnica: è cosa vuoi che sia quella schermata.</em>
+      <strong>Come la vedo adesso — e sono rimaste tre, non sei.</strong> La <strong>C</strong> è la
+      più economica: due etichette, zero meccanica nuova, e la scheda resta quella di oggi. La
+      <strong>F</strong> dà il bottone sotto la sua partita e paga una chat che si allunga. La
+      <strong>E</strong> è l'unica che cambia <em>cosa dice</em> il bot, non solo come lo dispone,
+      e paga il colpo d'occhio sulla settimana.
+      <em>La domanda non è più quale sia meglio: è se quella schermata debba servire a guardare
+      (C) o a fare (E).</em>
     </p>
 
     <p>
@@ -895,9 +919,13 @@
     </p>
 
     <p>
-      <strong>La E non è un ripiego, è un'altra idea:</strong> vale se un domani si decide che la
-      scheda serve più a <em>fare</em> che a <em>guardare</em>. Non la proporrei per questa domanda,
-      ma va detta, perché è l'unica che toglie il problema invece di curarlo.
+      🔁 <strong>La E è cresciuta, e non per una mia idea.</strong> L'avevo messa fra le «da dire ma
+      non da fare». Poi due osservazioni sue l'hanno cambiata: ① il bottone <em>«Vedi le altre
+      partite»</em> al posto delle frecce — <em>una frase si legge, un simbolo si interpreta</em>;
+      ② dentro le 48 ore, al posto di un «Gestisci» che promette meno di quel che sembra,
+      <strong>si scrive cosa non si può più fare</strong> e si lasciano sotto solo le azioni vive.
+      ⇒ È l'<strong>unica</strong> delle sei in cui ogni partita <strong>spiega sé stessa</strong>:
+      oggi quella spiegazione è una riga sola in fondo all'elenco, uguale per tutte.
     </p>
 
     <p>
