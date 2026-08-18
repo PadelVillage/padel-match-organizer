@@ -60,7 +60,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
 | Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
 | Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
-| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **61** § C |
+| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | ✅ **dal 18/08 — ma solo sul bot di PROVA**, ⛔ sui soci NO. 🚨 E vale solo per chi una fascia ce l'ha: `skip` esce **anche** quando il livello dichiarato non si è letto, e a quel socio «la guarda il maestro» sarebbe **falso** — là il bot dice che la scheda è arrivata e indica la segreteria |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
 | Il **perché** dell'attesa lo dice il ponte (`motivo_attesa`), e un motivo che il bot non conosce **non si racconta** | ✅ dal 18/08 (bot di prova) — dice il *quando* e tace sul *perché*. ⏭️ Serve al giorno del **④**, quando arriverà un secondo motivo e il bot sulla VM sarà ancora quello di ieri |
@@ -98,15 +98,27 @@ l'automatismo non scrive più niente finché le prove non sono **tre di fila**, 
 schede**, come il conto dei tentativi nel ponte: non è tenuto da nessuna parte, quindi non c'è niente
 da azzerare e niente che possa divergere dai fatti.
 
-🔨✅ **Fatti il 18/08 anche il ① e il ⑦ — e stanno nel BOT, quindi «fatto» vuol dire un'altra cosa.**
-Il bottone del test lo vedono **tutti** (PR #18) e la frase di giro finito non conta più le bocciature
-(PR #19): fusi su `main` del repo del bot e **deployati sul bot di PROVA** (run 14, `3a6ed36`,
-riavvii 9 → 11, verificato leggendo la riga d'avvio sulla VM). ⛔ **Sui SOCI non è arrivato niente**,
+🔨✅ **Fatti il 18/08 anche il ①, il ⑦ e il ⑤ — e stanno nel BOT, quindi «fatto» vuol dire un'altra cosa.**
+Il bottone del test lo vedono **tutti** (PR #18), la frase di giro finito non conta più le bocciature
+(PR #19), e Semi-Pro e Professionista non restano più in silenzio (PR #21): fusi su `main` del repo
+del bot e **deployati sul bot di PROVA** (run 15, `506653b`, riavvii 9 → 12, verificato leggendo la
+riga d'avvio sulla VM). ⛔ **Sui SOCI non è arrivato niente**,
 e non ci arriva da sé: il deploy è a mano e per quel bersaglio va scritta la parola `SOCI`.
 🚨 **La regola che ne discende, pagata il 18/08**: di un pezzo del bot non si dice mai «fatto» senza
 dire, **nella stessa frase**, che sui bot non cambia niente finché non si fonde **e** non si deploya.
-⚠️ E il ⑦ oggi **non si può guardare sul telefono**: esce solo a giro esaurito, e nessuno è dentro un
-giro. È una rete tesa per quando servirà, non una cosa da vedere stasera.
+⚠️ E il ⑦ **si è potuto guardare**, contro quello che avevo scritto: la misura «nessuno è dentro un
+giro» valeva su **PROD**, e il gestionale di TEST — quello a cui punta il bot di prova — ha invece un
+giro chiuso. ⇒ Lo scatto del committente ha mostrato la frase nuova **sul caso esatto per cui esiste**:
+un giro fatto di **due bocciature e una passata**, dove il bot vecchio avrebbe detto «hai già fatto
+tre tentativi». ⚖️ *Una misura giusta letta sul database sbagliato è una misura sbagliata.*
+⚠️ Il **⑤** invece davvero non si vede: schede `skip` non ne esiste **nessuna**, di qua né di là.
+
+🔤 **E dallo stesso scatto è uscito un difetto che nessuno cercava**: la frase finiva **senza punto**
+dopo il numero della segreteria. Erano **cinque** punti che scrivevano il punto *solo se il numero non
+c'era*, contro **sedici** che lo scrivevano sempre — un'eccezione che sembrava uno stile. Curati tutti
+e cinque *(PR #20)*, con un banco nuovo che rende oltre 30 messaggi e pretende che nessuno finisca col
+numero. 🚨 Il banco era **verde con tutti e cinque i difetti accesi**: *un difetto che nessun caso può
+vedere non è piccolo, è invisibile — e la sua cura lo è altrettanto.*
 
 🚨⭐⭐ **Quello che RESTA è la parte più pesante, e non è un bottone in più.** Oggi il livello **non lo
 conferma nessuno**: lo scrive un automatismo (`assessment-apply-level`, cron ogni 15 minuti) che

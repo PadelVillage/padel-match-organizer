@@ -957,7 +957,7 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 **Cosa manca perché la sezione sia FINITA.** Sette pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
-🔨 **Quattro sono fatti — ③ ② nel gestionale, ① ⑦ nel bot** (dettaglio in fondo alla scheda **A**). Restano **tre**: ④ ⑤ ⑥.
+🔨 **Cinque sono fatti — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**). Restano **due**: ④ e ⑥.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
 gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① e ⑦ stanno nel bot, che si
 aggiorna **solo a mano**: sono fusi e **deployati sul bot di PROVA**, e ⛔ **sui SOCI non è arrivato
@@ -971,7 +971,7 @@ bot non cambia niente finché non si fonde **e** non si deploya.* La regola nasc
 | ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
-| ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
+| ⑤ | ✅ **FATTO il 18/08, sul bot di PROVA** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria. ⛔ **sui soci NO** *(PR #21)* | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
 | ⑦ | ✅ **FATTO il 18/08, sul bot di PROVA** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⛔ **sui soci NO** *(PR #19)* | bot | **A** |
 
@@ -1160,10 +1160,30 @@ si costruisce sapendolo, o si costruisce una cosa che non si può vedere funzion
 persona, e un messaggio automatico direbbe una cosa che nessuno ha ancora deciso»*
 (`promemoria.ts:123`). ⇒ Quel socio fa il test e **non riceve niente**.
 
-⚖️ **La ragione del silenzio era vera e adesso è caduta**: la cosa da dire è decisa. Resta da
-scrivere la frase e da farla passare per la stessa porta delle altre — `testoEsitoTest` oggi
-accetta solo `pass | fail`, e il terzo esito va aggiunto **là**, non con un messaggio gemello
-scritto a mano da un'altra parte.
+⚖️ **La ragione del silenzio era vera e adesso è caduta**: la cosa da dire è decisa. La frase è
+passata per la **stessa porta delle altre** — `testoEsitoTest`, che adesso accetta il terzo esito —
+e non da un messaggio gemello scritto a mano da un'altra parte.
+
+🔨✅ **FATTO il 18/08, sul bot di PROVA** *(PR #21; ⛔ sui soci no)*. Sotto la frase va la tastiera
+della **segreteria**: nominare una strada senza darne il modo di percorrerla è il vicolo cieco che
+su questo bot non si fa mai.
+
+🚨⭐⭐ **E QUESTA SCHEDA DICEVA MENO DEL VERO — l'ha detto la misura, non la rilettura.** A `skip`
+ci si arriva in **due modi opposti** (`assessKnowledgeEvaluate`, nel gestionale):
+① **Semi-Pro / Professionista** — in banca non ci sono domande per quelle fasce ⇒ il caso deciso;
+② **fascia illeggibile** — nessuna domanda perché il livello dichiarato non si è **letto** ⇒ il
+guasto silenzioso documentato lì il 14/08.
+⇒ Un messaggio solo per tutti e due avrebbe rifatto, **in forma nuova, la malattia esatta per cui il
+silenzio esisteva**: dichiarare una cosa che nessuno ha deciso — stavolta a chi è incappato in un
+difetto. Là il bot dice che la scheda è arrivata e indica la segreteria, **senza nominare il maestro**.
+⭐ **E a distinguerli non serve una copia della scala dei livelli nel bot** — sarebbe la **terza**, e
+il ponte dichiara di averla evitata apposta: **basta la fascia**. `skip` con una fascia scritta vuol
+dire «una fascia vera, e senza domande», cioè esattamente le due che il quiz non interroga.
+⚖️ La regola sta in **una** funzione (`laGuardaIlMaestro`) e la usano i due posti che fanno la stessa
+domanda: la **porta** (*parlo?*) e la **frase** (*cosa dico?*).
+
+📏 **Perimetro misurato PRIMA di scrivere una riga**: schede `skip` in archivio **ZERO**, su PROD e
+su TEST. ⇒ Come ①②③, è un **prerequisito**: oggi non raggiunge nessuno.
 
 ---
 
