@@ -335,9 +335,12 @@ Deno.serve(async (req: Request) => {
       return err(500, 'DB_ERROR', `Lettura delle schede non riuscita: ${erroreSchede.message}`);
     }
 
-    // Si scorre dalla PIÙ RECENTE all'indietro e ci si ferma alla prima passata: quello è
-    // l'inizio del giro corrente. ⭐ Contare tutte le fallite di sempre punirebbe per errori
-    // già rimediati.
+    // ⚠️ Qui sotto si prepara SOLO `ultimaScheda`, l'avviso che il bot manda dopo il test.
+    // Il conto delle prove non si fa più in questo punto: lo calcola `statoDelGiro`
+    // sull'elenco intero. 📌 Fino al 18/08 qui c'era un ciclo che scorreva all'indietro
+    // fermandosi alla prima passata — è quello che la regola dei giri ha sostituito, e il
+    // commento che lo descriveva è stato tolto invece che lasciato a raccontare una cosa
+    // che il codice non fa più.
     const elenco = (schede ?? []) as JsonMap[];
     if (elenco.length) {
       const s = elenco[0];
@@ -452,7 +455,7 @@ Deno.serve(async (req: Request) => {
   // 2) Altrimenti se ne fabbrica uno. `token` ha un vincolo di unicità (il gestionale ci fa
   // sopra `on conflict (token)`): su collisione si riprova, invece di rispondere un errore
   // per un dado uscito male. Tre giri sono già oltre l'assurdo con 36^14 possibilità.
-  for (let giro = 0; giro < 3; giro++) {
+  for (let tentativo = 0; tentativo < 3; tentativo++) {
     const token = nuovoGettone();
     const { error: erroreInserimento } = await db
       .from('assessment_tokens')
