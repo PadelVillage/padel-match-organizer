@@ -959,21 +959,28 @@ il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gesti
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
 🔨 **Cinque sono fatti — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**). Restano **due**: ④ e ⑥.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
-gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① e ⑦ stanno nel bot, che si
-aggiorna **solo a mano**: sono fusi e **deployati sul bot di PROVA**, e ⛔ **sui SOCI non è arrivato
-niente**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa frase**, che sui
-bot non cambia niente finché non si fonde **e** non si deploya.* La regola nasce da lì: il committente
-è andato a guardare la sezione sui due bot e **non ha visto niente**, giustamente.
+gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① ⑦ ⑤ stanno nel bot, che si
+aggiorna **solo a mano**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa
+frase**, che sui bot non cambia niente finché non si fonde **e** non si deploya.* La regola nasce da
+lì: il committente è andato a guardare la sezione sui due bot e **non ha visto niente**, giustamente.
+
+✅🎉 **E la sera del 18/08 il giro si è chiuso davvero: DEPLOY SUI SOCI**, su sua richiesta
+(*«facciamo il deploy ai soci»*). `@loziocoach_bot`, run **16**, `506653b`, riavvii **4 → 5**.
+⭐ **Letto il «prima» e il «dopo»**, e il prima è servito: alla prima lettura la sonda si è
+**rifiutata di dedurre** — il bot era su da 47 ore e le righe d'avvio erano scorse via — e ha detto
+«non si può dire dove punta» invece di indovinare. Riletta a 4000 righe: `qqbf…` (PROD),
+`✍️ prenotazioni REALI`. **Dopo il deploy dichiara la stessa cosa** ⇒ il `.env` non l'ha toccato
+nessuno, che è esattamente ciò che il workflow promette e che non si dà per buono senza guardare.
 
 | | il pezzo | dove va scritto | scheda |
 |---|---|---|---|
-| ① | ✅ **FATTO il 18/08, sul bot di PROVA** — il bottone lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai». ⛔ **sui soci NO** *(PR #18 del repo del bot)* | bot | **A** |
+| ① | ✅ **FATTO il 18/08 — e dalla sera è VIVO ANCHE PER I SOCI** — il bottone lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifare**, non «fai» *(PR #18 del repo del bot)* | bot | **A** |
 | ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
-| ⑤ | ✅ **FATTO il 18/08, sul bot di PROVA** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria. ⛔ **sui soci NO** *(PR #21)* | bot | **C** |
+| ⑤ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria *(PR #21)* | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
-| ⑦ | ✅ **FATTO il 18/08, sul bot di PROVA** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata**. ⛔ **sui soci NO** *(PR #19)* | bot | **A** |
+| ⑦ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata** *(PR #19)* | bot | **A** |
 
 🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ **viene prima**
 di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica ancora in
