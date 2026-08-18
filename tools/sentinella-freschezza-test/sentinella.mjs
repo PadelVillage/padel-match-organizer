@@ -86,12 +86,21 @@ const CARTELLA_BOT_PROVA = process.env.PMO_CARTELLA_BOT_PROVA || '/opt/assistent
 const CARTELLA_BOT_SOCI = process.env.PMO_CARTELLA_BOT_SOCI || '/opt/assistente-padel-agent';
 const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || `${CARTELLA_BOT_PROVA}/.env`;
 // L'ordine e' voluto: prima il bot di PROVA (e' quello di servizio), poi i SOCI.
+const configDi = (c) => [`${c}/.env`, `${c}/.env.local`, `${c}/.env.prova`,
+  `${c}/ecosystem.config.js`, `${c}/ecosystem.config.cjs`, `${c}/ecosystem.config.json`];
 const SORGENTI_VOCE = [
   { etichetta: 'bot di prova', cartella: CARTELLA_BOT_PROVA,
-    file: [ENV_BOT_PROVA, `${CARTELLA_BOT_PROVA}/.env.local`, `${CARTELLA_BOT_PROVA}/.env.prova`] },
-  { etichetta: 'bot dei soci', cartella: CARTELLA_BOT_SOCI,
-    file: [`${CARTELLA_BOT_SOCI}/.env`, `${CARTELLA_BOT_SOCI}/.env.local`] },
+    file: [ENV_BOT_PROVA, ...configDi(CARTELLA_BOT_PROVA).slice(1)] },
+  { etichetta: 'bot dei soci', cartella: CARTELLA_BOT_SOCI, file: configDi(CARTELLA_BOT_SOCI) },
 ];
+// pm2 tiene l'ambiente con cui ha avviato ogni app nel suo `dump`. E' il posto in cui
+// finisce un token passato a pm2 e mai scritto in un .env — cioe' esattamente il caso
+// del bot di PROVA, che il 17/08 risultava senza token da nessuna parte.
+// 🚨 Si legge in modo MIRATO, non a tentoni: si prende solo l'app il cui `pm_cwd` o
+//    `pm_exec_path` sta dentro la cartella giusta. Un dump contiene TUTTE le app della
+//    VM, soci compresi: pescarne un token qualunque vorrebbe dire parlare con un bot
+//    a caso credendo di sapere quale.
+const DUMP_PM2 = process.env.PMO_DUMP_PM2 || '/root/.pm2/dump.pm2';
 const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
 
 // 🚨 Torna anche il PERCHE' quando non trova niente. La prima versione aveva un
@@ -120,6 +129,26 @@ function cercaNelTesto(testo, separatore) {
 // ⚖️ E' la 26ª al contrario: non un limite dichiarato e mai provato, ma una CAPACITA'
 //    dichiarata e mai provata. Costa uguale, e si smaschera allo stesso modo:
 //    eseguendo.
+function tokenDalDumpPm2(cartella, etichetta) {
+  let dump;
+  try { dump = JSON.parse(readFileSync(DUMP_PM2, 'utf8')); }
+  catch (e) { return { token: '', motivo: `${etichetta}: ${DUMP_PM2} ${e.code === 'ENOENT' ? 'assente' : 'illeggibile/illegibile JSON'}` }; }
+  const app = (Array.isArray(dump) ? dump : []).filter((a) => {
+    const e = a?.pm2_env || a || {};
+    return String(e.pm_cwd || '').includes(cartella) || String(e.pm_exec_path || '').includes(cartella);
+  });
+  if (!app.length) return { token: '', motivo: `${etichetta}: nel dump pm2 nessuna app sotto ${cartella}` };
+  for (const a of app) {
+    const amb = a?.pm2_env || {};
+    for (const [k, v] of Object.entries(amb)) {
+      if (typeof v !== 'string') continue;
+      const m = v.match(FORMA_TOKEN);
+      if (m) return { token: m[1], motivo: '', dove: `${etichetta}, dump pm2 (${a.name || 'app'} → ${k})` };
+    }
+  }
+  return { token: '', motivo: `${etichetta}: l'app nel dump pm2 non ha un token fra le sue variabili` };
+}
+
 function tokenDalProcesso(cartella, etichetta) {
   let pid = '';
   try {
@@ -161,6 +190,9 @@ function tokenDalBotDiProva() {
     const dalProcesso = tokenDalProcesso(sorgente.cartella, sorgente.etichetta);
     if (dalProcesso.token) return dalProcesso;
     provati.push(dalProcesso.motivo);
+    const dalDump = tokenDalDumpPm2(sorgente.cartella, sorgente.etichetta);
+    if (dalDump.token) return dalDump;
+    provati.push(dalDump.motivo);
   }
   return { token: '', motivo: provati.join(' · ') };
 }
@@ -265,6 +297,22 @@ function leggiStato() {
 function scriviStato(s) {
   try { mkdirSync(dirname(STATO), { recursive: true }); writeFileSync(STATO, JSON.stringify(s, null, 2)); }
   catch (e) { log('⚠️ non riesco a scrivere lo stato:', e.message); }
+}
+
+// 🚨 CHI PARLA? Non lo si deduce dal file da cui viene il token — lo si CHIEDE.
+//    Il 18/08 il messaggio e' arrivato da «MioPadel», il bot dei SOCI, e il
+//    committente se n'e' accorto guardando il telefono: dal registro non si poteva
+//    sapere, perche' `fonteVoce` diceva da quale FILE veniva il token, non a quale
+//    BOT corrispondesse. Sono due cose diverse, e la seconda e' quella che si vede.
+// ⚖️ E' la 22a: la sonda rispondeva con sicurezza di una cosa vicina a quella giusta.
+async function chiSonoSuTelegram() {
+  if (!TOKEN) return '';
+  try {
+    const r = await prendi(`https://api.telegram.org/bot${TOKEN}/getMe`);
+    if (!r.ok) return '';
+    const d = await r.json();
+    return d?.result?.username ? '@' + d.result.username : '';
+  } catch (e) { return ''; }
 }
 
 async function telegram(testo) {
@@ -392,8 +440,11 @@ export async function prova() {
     return 'disarmata';
   }
   const m = await misura();
+  const chi = await chiSonoSuTelegram();
+  log(`--prova: su Telegram sono ${chi || '(getMe non ha risposto)'}`);
   const ok = await telegram(
     `👋 <b>Sentinella di TEST installata e ARMATA</b>\n\n` +
+    (chi ? `Ti parlo da <b>${chi}</b> — voce presa in prestito, non ho un bot mio.\n\n` : '') +
     `Da adesso guardo ogni 15′ se ${BASE_TEST} sta servendo una copia vecchia, ` +
     `e parlo <b>solo se c'è qualcosa da dire</b>: silenzio = tutto a posto` +
     (BATTITO_GIORNI > 0 ? `, più un 💓 ogni ${BATTITO_GIORNI} giorni per farti sapere che sto ancora guardando` : '') +
