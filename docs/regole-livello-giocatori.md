@@ -54,7 +54,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
-| È il socio a **decidere a quale prova fermarsi** | 🔨 **SCRITTO il 19/08 — vivo su TEST, non su PROD e non per i soci**: le edge girano su `cudi…` e il bot di PROVA è aggiornato; restano il DDL su `qqbf…`, il merge su `main` *(PR #884)* e il deploy sui SOCI → voce **61** § A ④ |
+| È il socio a **decidere a quale prova fermarsi** | ✅ **dal 19/08/2026, e VIVO ANCHE PER I SOCI**: l'automatismo non applica più da sé, il bot chiede «tieni questo o riprovi?», e il silenzio vale assenso dopo 24 ore. ⚠️ Vivo non vuol dire visibile: su PROD nessuno ha ancora passato un quiz, quindi non c'è ancora una prova a cui si applichi → voce **61** § A ④ |
 | Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — un giro sono **tre prove**, e quando finiscono partono i 30 giorni. Prima l'attesa scattava solo dopo tre **bocciature**, e chi **passava** poteva rifarlo **subito e all'infinito** |
 | Dopo una prova **riuscita** si può ancora **affinare** | ✅ — è il giro disegnato qui sotto: quello che si è tolto è il *«all'infinito»*, non il riprovare |
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
@@ -121,7 +121,7 @@ e cinque *(PR #20)*, con un banco nuovo che rende oltre 30 messaggi e pretende c
 numero. 🚨 Il banco era **verde con tutti e cinque i difetti accesi**: *un difetto che nessun caso può
 vedere non è piccolo, è invisibile — e la sua cura lo è altrettanto.*
 
-🔨🚨⭐⭐ **④ SCRITTO IL 19/08/2026 — e non è ancora vivo per nessuno: sta in due PR aperte.**
+✅🎉⭐⭐ **④ FATTO IL 19/08/2026 — VIVO SU PROD E PER I SOCI.**
 Fino al 18/08 il livello **non lo confermava nessuno**: lo scriveva `assessment-apply-level` (cron
 ogni 15′) applicando la scheda da sé. Adesso, su una prova col cancello del quiz, si applica solo
 con **«mi fermo»** del socio, col **giro esaurito** (la terza prova non ha una domanda da
