@@ -54,13 +54,26 @@ function estrai(nome) {
 // romperebbe niente in silenzio: questa `vm` non riuscirebbe più a valutare la funzione.
 const spoglia = (codice) => codice.replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1');
 
-const ctx = { FONTE: 'autovalutazione' };
+// ⭐ I NUMERI della regola si LEGGONO dal sorgente, non si ricopiano qui: ricopiarli
+// vorrebbe dire che il banco resta verde anche se domani qualcuno mette 2 prove invece
+// di 3 — proverebbe la propria copia. Se una costante sparisce o cambia forma, questo
+// muore rumorosamente invece di misurare un'altra cosa.
+function costante(nome) {
+  const m = src.match(new RegExp(`const ${nome} = ([0-9.]+)`));
+  if (!m) throw new Error(`costante «${nome}» non trovata nell'edge`);
+  return Number(m[1]);
+}
+const PROVE_PER_SCENDERE = costante('PROVE_PER_SCENDERE');
+const PASSO_DISCESA = costante('PASSO_DISCESA');
+const LIVELLO_MINIMO_SCESO = costante('LIVELLO_MINIMO_SCESO');
+
+const ctx = { FONTE: 'autovalutazione', PROVE_PER_SCENDERE, PASSO_DISCESA, LIVELLO_MINIMO_SCESO };
 vm.createContext(ctx);
 vm.runInContext(
-  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato'].map(estrai).join('\n')),
+  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'proveConsecutiveAlRibasso', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato'].map(estrai).join('\n')),
   ctx
 );
-const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio } = ctx;
+const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio, proveConsecutiveAlRibasso } = ctx;
 
 // ── Il materiale, modellato sui dati veri di PROD ────────────────────────────────
 const scheda = (extra = {}) => ({
@@ -214,6 +227,103 @@ caso('18. la scheda senza socio non sparisce: passa alla regola, che dirà perch
   return [tenute.length === 1, decidi(tenute[0], null).applica === false];
 });
 
+// ── IL RIBASSO: la regola che protegge il socio dal proprio test (sua, 17/08) ────
+// 🚨🚨 IL CASO 19 È IL DIFETTO VERO, quello per cui il bottone del test è rimasto
+//    chiuso a chi un livello ce l'ha: una brutta giornata portava da Avanzato (4) a
+//    Principiante (1) in un colpo solo. Chi toglie la regola deve vedere un rosso.
+const provaBassa = (quandoIso, livello) => ({ token: 'T', submitted_at: quandoIso, declared_level: livello, calculated_level: livello });
+const avanzato = (extra = {}) => socio({ level: '4', levelSource: 'autovalutazione', lastLevelUpdateAt: '2026-05-01T00:00:00.000Z', ...extra });
+const schedaBassa = (quandoIso, livello) => scheda({ submitted_at: quandoIso, declared_level: livello, calculated_level: livello });
+
+caso('19. 🚨🚨 UNA scheda più bassa NON fa scendere: da 4 a 1 non succede più', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  const esito = decidi(schedaBassa(oggi, 1), avanzato(), [provaBassa(oggi, 1)]);
+  return [esito.applica === false, /non si scende/.test(esito.motivo), new RegExp(`prova 1 di ${PROVE_PER_SCENDERE}`).test(esito.motivo)];
+});
+
+caso('20. due prove più basse non bastano: si aspetta la terza', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  const storia = [provaBassa('2026-08-01T10:00:00.000Z', 2), provaBassa(oggi, 1)];
+  const esito = decidi(schedaBassa(oggi, 1), avanzato(), storia);
+  return [esito.applica === false, new RegExp(`prova 2 di ${PROVE_PER_SCENDERE}`).test(esito.motivo)];
+});
+
+caso('21. ⭐ tre prove di fila più basse: si scende di MEZZO PASSO, non al livello del test', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  const storia = [provaBassa('2026-08-01T10:00:00.000Z', 2), provaBassa('2026-08-05T10:00:00.000Z', 2), provaBassa(oggi, 1)];
+  const esito = decidi(schedaBassa(oggi, 1), avanzato(), storia);
+  return [
+    esito.applica === true,
+    esito.livello === 4 - PASSO_DISCESA,   // 3,5
+    esito.livello !== 1,                   // NON quello che dice il test
+    /mezzo passo/.test(esito.motivo),
+  ];
+});
+
+caso('22. al RIALZO non cambia niente: si applica come sempre, storia o non storia', () => {
+  const su = scheda({ submitted_at: '2026-08-09T10:00:00.000Z', declared_level: 2, calculated_level: 2 });
+  const esito = decidi(su, socio({ level: '1', lastLevelUpdateAt: '2026-05-01T00:00:00.000Z' }), []);
+  return [esito.applica === true, esito.livello === 2, /da 1 a 2/.test(esito.motivo)];
+});
+
+caso('23. la serie si INTERROMPE: una prova che dice uguale o più riazzera il conto', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  // due basse recenti, ma in mezzo — più recente di loro — una che dice 4,5: la discesa
+  // comincia dopo quella, quindi le prove di fila sono una sola.
+  const storia = [
+    provaBassa('2026-08-01T10:00:00.000Z', 2),
+    provaBassa('2026-08-03T10:00:00.000Z', 2),
+    provaBassa('2026-08-05T10:00:00.000Z', 4.5),
+    provaBassa(oggi, 1),
+  ];
+  const esito = decidi(schedaBassa(oggi, 1), avanzato(), storia);
+  return [esito.applica === false, new RegExp(`prova 1 di ${PROVE_PER_SCENDERE}`).test(esito.motivo)];
+});
+
+caso('24. le prove di UN\'ALTRA EPOCA non contano: il giro comincia dall\'ultimo livello scritto', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  // due prove basse di aprile, cioè PRIMA che il livello 4 fosse scritto (1° maggio).
+  const storia = [
+    provaBassa('2026-04-10T10:00:00.000Z', 1),
+    provaBassa('2026-04-20T10:00:00.000Z', 1),
+    provaBassa(oggi, 1),
+  ];
+  const esito = decidi(schedaBassa(oggi, 1), avanzato(), storia);
+  return [esito.applica === false, new RegExp(`prova 1 di ${PROVE_PER_SCENDERE}`).test(esito.motivo)];
+});
+
+caso('25. 🚨 IL PAVIMENTO: da 1 non si scende a 0,5, che qui vuol dire «senza livello» (e muro)', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  const storia = [provaBassa('2026-08-01T10:00:00.000Z', 0.5), provaBassa('2026-08-05T10:00:00.000Z', 0.5), provaBassa(oggi, 0.5)];
+  const alMinimo = socio({ level: String(LIVELLO_MINIMO_SCESO), lastLevelUpdateAt: '2026-05-01T00:00:00.000Z' });
+  const esito = decidi(schedaBassa(oggi, 0.5), alMinimo, storia);
+  return [esito.applica === false, /minimo/.test(esito.motivo)];
+});
+
+caso('26. 🔒 FALLISCE CHIUSA: senza storia (lettura andata male) nessuno scende', () => {
+  const oggi = '2026-08-09T10:00:00.000Z';
+  return [
+    decidi(schedaBassa(oggi, 1), avanzato(), []).applica === false,
+    decidi(schedaBassa(oggi, 1), avanzato(), null).applica === false,
+    decidi(schedaBassa(oggi, 1), avanzato(), undefined).applica === false,
+  ];
+});
+
+caso('27. il conto guarda dalla PIÙ RECENTE all\'indietro, comunque arrivi l\'elenco', () => {
+  const disordinate = [
+    provaBassa('2026-08-09T10:00:00.000Z', 1),
+    provaBassa('2026-08-01T10:00:00.000Z', 2),
+    provaBassa('2026-08-05T10:00:00.000Z', 2),
+  ];
+  const dopoIlLivello = Date.parse('2026-05-01T00:00:00.000Z');
+  return [
+    proveConsecutiveAlRibasso(disordinate, 4, dopoIlLivello) === 3,
+    proveConsecutiveAlRibasso([], 4, dopoIlLivello) === 0,
+    // una scheda senza livello valido non è né più né meno: si salta, non spezza la serie
+    proveConsecutiveAlRibasso([...disordinate, { submitted_at: '2026-08-06T10:00:00.000Z', declared_level: null, calculated_level: null }], 4, dopoIlLivello) === 3,
+  ];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i tre modi in cui questa funzione può fare danno.
@@ -231,6 +341,16 @@ const guardie = [
   // ⚠️ L'ordine dei due passi: prima il livello, poi la marcatura. Al contrario, un livello
   //    mai scritto risulterebbe applicato e nessuno ci tornerebbe sopra.
   ['il livello si scrive PRIMA di marcare la scheda', src.indexOf("from('pmo_cloud_records')\n      .update") < src.indexOf("from('self_assessments')\n      .update")],
+  // ── La regola del ribasso, guardata sulla base e non solo sui casi ──
+  ['la regola del ribasso esiste ed è estratta', typeof proveConsecutiveAlRibasso === 'function'],
+  ['i numeri sono i suoi: tre prove, mezzo passo', PROVE_PER_SCENDERE === 3 && PASSO_DISCESA === 0.5],
+  // 🚨 `0.5` in questo gestionale è «da definire», e chi ce l'ha non può organizzare:
+  //    un pavimento sotto 1 trasformerebbe una regola di protezione in un muro.
+  ['il pavimento non scende sotto 1', LIVELLO_MINIMO_SCESO >= 1],
+  ['il conto si CALCOLA dalle schede, non è tenuto in una colonna', !/prove_al_ribasso|discese_consecutive/.test(src)],
+  // 🔒 Se la storia non si legge, il giro continua e nessuno scende: il guasto di una
+  //    lettura non deve poter far scendere qualcuno, e non deve nemmeno restare muto.
+  ['la storia che non si legge diventa un avviso, non una discesa', /avvisi\.push/.test(src) && /al ribasso nessuno scende/.test(src)],
 ];
 
 test('BANCO — il livello si applica da solo, ma una scheda vecchia non scavalca mai', () => {
