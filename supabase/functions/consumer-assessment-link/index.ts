@@ -1,5 +1,15 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  TENTATIVI_PER_GIRO,
+  GIORNI_DI_ATTESA,
+  ORE_SILENZIO_ASSENSO,
+  quandoMs,
+  sceltaDellaProva,
+  stessaProva,
+  giriDelSocio,
+  statoDelGiro,
+} from './giro-del-test.ts';
 
 // consumer-assessment-link — il LINK PERSONALE del test di livello, per il bot dei soci.
 //
@@ -93,106 +103,14 @@ function indirizzoScheda(supabaseUrl: string): string {
  * `btoa(Date.now()+id+random)`, qui non c'è `btoa` sul lato server e ricopiarne il giro non
  * aggiungerebbe niente. Quello che conta è che l'app lo sappia leggere, e legge una stringa.
  */
-// ── LO STATO DEL GIRO, e da qui in giù è JavaScript NUDO ─────────────────────
-// I parametri sono annotati SOLO con `: any` di proposito: così
-// `test/consumer-assessment-link.test.mjs` può ESTRARRE queste funzioni dal sorgente
-// vero e provarle una per una. Una copia riscritta nel banco proverebbe la copia.
-//
-// 🔁⭐⭐ **LA REGOLA CAMBIATA IL 18/08/2026** (voce 61 § A ②). Prima i 30 giorni
-// partivano dal **terzo fallimento** e una scheda che PASSAVA azzerava il conto ⇒
-// chi passava poteva rifare il test **all'infinito**, subito. Sua regola: *«finito
-// il giro, 30 giorni prima di rifarlo»* — e un giro sono **tre prove**.
-//
-// 🚨⭐⭐ **E il primo modo in cui l'avevo scritta era SBAGLIATO, corretto lo stesso
-// giorno**: avevo fatto chiudere il giro alla prima prova che **passa**. Sembrava
-// fedele e non lo era: nel giro che il committente ha disegnato, dopo una prova
-// riuscita si può **riprovare per salire ancora** — *«decidi tu a quale delle tre
-// volte ti vuoi fermare»*. Chiudendo al primo `pass`, le tre prove sarebbero
-// toccate **solo a chi sbaglia il quiz**, e chi lo passa avrebbe avuto **una prova
-// ogni 30 giorni**. ⇒ Il giro si chiude quando le **prove sono finite**, punto.
-// ⚖️ Quello che il difetto voleva togliere era il *«subito e all'infinito»*, non il
-// riprovare: adesso chi passa può ancora affinare — **due volte**, non sempre.
-//
-// ⏭️ Quando ci sarà il ④ (il socio sceglie a quale prova fermarsi) si aggiungerà un
-// secondo modo di chiudere: la sua CONFERMA. Oggi quel modo non esiste — nessuno
-// gli chiede niente — e inventarlo qui vorrebbe dire chiuderlo per lui.
-//
-// 🚨 E la ricostruzione a giri ripara un secondo difetto che il conto delle sole
-// fallite aveva addosso e che nessuno aveva visto: con quattro fallite di fila il
-// vecchio conto restava ≥ 3 e faceva ripartire l'attesa **dall'ultima**, cioè dopo
-// i 30 giorni il socio otteneva **una prova sola** e poi altri 30 giorni, per
-// sempre. Coi giri, passata l'attesa il giro dopo nasce **intero**.
-//
-// ⚖️ `skip` resta FUORI dal conto, come prima: sono Semi-Pro e Professionista, che
-// il quiz non ce l'hanno. Non consuma una prova e non chiude un giro — trattarlo
-// come prova li chiuderebbe 30 giorni per una regola che non li riguarda.
-function esitoDellaProva(scheda: any) {
-  const knowledge = ((scheda || {}).raw_response || {}).knowledge || {};
-  return String(knowledge.status ?? '').trim();
-}
-
-function quandoMs(value: any) {
-  const t = Date.parse(String(value ?? '').trim());
-  return Number.isNaN(t) ? 0 : t;
-}
-
-// Torna sempre la stessa forma, anche quando ammette: il bot deve poter dire «è la
-// tua seconda prova, te ne resta una» senza tenere niente in memoria.
-function statoDelGiro(schede: any, adessoMs: any, provePerGiro: any, giorniDiAttesa: any) {
-  const prove = (Array.isArray(schede) ? schede : [])
-    .filter((s: any) => { const e = esitoDellaProva(s); return e === 'pass' || e === 'fail'; })
-    .slice()
-    .sort((a: any, b: any) => quandoMs(a?.submitted_at) - quandoMs(b?.submitted_at));
-
-  // Si formano i giri in ordine di tempo: un giro si CHIUDE quando le sue prove sono
-  // finite. Quello che resta in fondo è il giro aperto.
-  // ⚠️ Un giro cominciato e abbandonato resta APERTO, anche per mesi: chi ha fatto una
-  // prova sola e non è più tornato ne ha ancora due. Farlo scadere sarebbe una regola
-  // che nessuno ha deciso, e qui non si inventano regole per il socio.
-  let corrente: any[] = [];
-  let chiuso: any = null;
-  for (const s of prove) {
-    corrente.push(s);
-    if (corrente.length >= provePerGiro) {
-      chiuso = {
-        motivo: 'esaurito',
-        chiusoIl: String(s?.submitted_at ?? '').trim(),
-        falliti: corrente.filter((x: any) => esitoDellaProva(x) === 'fail').length,
-      };
-      corrente = [];
-    }
-  }
-
-  const falliteAperte = corrente.filter((x: any) => esitoDellaProva(x) === 'fail').length;
-  if (corrente.length) {
-    return { ammesso: true, prova: corrente.length + 1, falliti: falliteAperte, ultima_prova: corrente.length + 1 >= provePerGiro, attesa: null };
-  }
-
-  if (chiuso) {
-    const sbloccoMs = quandoMs(chiuso.chiusoIl) + giorniDiAttesa * 24 * 60 * 60 * 1000;
-    // 🔒 Se la data di chiusura non si legge NON si blocca nessuno: `quandoMs` torna 0,
-    // l'attesa risulterebbe scaduta nel 1970 e il giro riparte. Un dato storto non deve
-    // trasformarsi in una porta chiusa in faccia a un socio che non ha fatto niente.
-    if (quandoMs(chiuso.chiusoIl) && adessoMs < sbloccoMs) {
-      return {
-        ammesso: false,
-        prova: 0,
-        falliti: chiuso.falliti,
-        ultima_prova: false,
-        attesa: {
-          motivo: chiuso.motivo,
-          dal: new Date(sbloccoMs).toISOString(),
-          giorni: Math.max(1, Math.ceil((sbloccoMs - adessoMs) / (24 * 60 * 60 * 1000))),
-        },
-      };
-    }
-  }
-
-  // Nessuna prova, o attesa scaduta: il giro nuovo nasce INTERO.
-  // ⭐ È il vantaggio del conto calcolato: il tempo fa da sé quello che altrove
-  // sarebbe una riga da aggiornare (e da dimenticare).
-  return { ammesso: true, prova: 1, falliti: 0, ultima_prova: provePerGiro <= 1, attesa: null };
-}
+// ── LO STATO DEL GIRO vive in `giro-del-test.ts`, qui accanto ─────────────────
+// 🔁 SPOSTATO il 19/08/2026 (voce 61 § A ④): da quando il socio può FERMARSI a una
+// prova, il giro lo devono ricostruire più funzioni — questa, `assessment-apply-level`
+// e `consumer-assessment-decision` — e la camminata è una sola, in tre copie identiche
+// (il perché delle copie sta nell'intestazione del modulo). La storia della regola —
+// il primo `pass` che chiudeva il giro per sbaglio, le quattro bocciature che
+// bloccavano per sempre — sta là, insieme alla regola.
+// Il banco resta `test/consumer-assessment-link.test.mjs`, che ora estrae dal modulo.
 
 function nuovoGettone(): string {
   const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -309,11 +227,9 @@ Deno.serve(async (req: Request) => {
      dietro senza che nessuno l'avesse visto: con **quattro** fallite di fila il conto restava
      ≥ 3 e l'attesa ripartiva **dall'ultima**, cioè passati i 30 giorni il socio otteneva **una
      prova sola** e poi altri 30 giorni, all'infinito. Coi giri, il giro dopo nasce **intero**.
-     📌 La regola vive in `statoDelGiro`, qui sopra, ed è provata dal banco
-     `test/consumer-assessment-link.test.mjs`.
+     📌 La regola vive in `giro-del-test.ts` qui accanto (coi numeri: tre prove, trenta
+     giorni), ed è provata dal banco `test/consumer-assessment-link.test.mjs`.
      ═══════════════════════════════════════════════════════════════════════════════════════ */
-  const TENTATIVI_PER_GIRO = 3;
-  const GIORNI_DI_ATTESA = 30;
 
   // Le schede di QUESTO socio: si passa per i suoi gettoni, che sono il filo fra la persona e
   // la scheda (la scheda pubblica non porta l'anagrafica, porta il gettone).
@@ -343,7 +259,7 @@ Deno.serve(async (req: Request) => {
   if (suoi.length) {
     const { data: schede, error: erroreSchede } = await db
       .from('self_assessments')
-      .select('token, submitted_at, raw_response')
+      .select('token, submitted_at, raw_response, member_decision, member_decision_at')
       .in('token', suoi)
       .order('submitted_at', { ascending: false })
       .limit(20);
@@ -393,7 +309,29 @@ Deno.serve(async (req: Request) => {
           return quandoLivello >= quandoScheda - 60_000;
         })(),
         livello: clean(payload.level),
+        // 🆕 ④ (19/08/2026) — la SCELTA del socio su questa prova, e se può ancora farla.
+        // È il gestionale che SA: il bot legge questi tre campi e fa la domanda «ti fermi
+        // o riprovi?» solo dove la domanda esiste davvero. `puo_scegliere` è vero solo se
+        // la prova ha passato il cancello, nessuna scelta è già registrata, il livello non
+        // è già stato applicato e il giro è ancora APERTO su questa prova (alla terza non
+        // c'è niente da chiedere: si applica da sola). `scelta_entro` è il momento in cui
+        // il silenzio diventa assenso (`ORE_SILENZIO_ASSENSO`) — il bot può dire «hai
+        // tempo fino a…» senza tenere il numero in casa.
+        scelta: sceltaDellaProva(s),
+        puo_scegliere: (() => {
+          if (esito !== 'pass') return false;
+          if (sceltaDellaProva(s)) return false;
+          const corrente = giriDelSocio(elenco, TENTATIVI_PER_GIRO).corrente;
+          return corrente.length > 0 && stessaProva(corrente[corrente.length - 1], s);
+        })(),
+        scelta_entro: quandoMs(s.submitted_at)
+          ? new Date(quandoMs(s.submitted_at) + ORE_SILENZIO_ASSENSO * 60 * 60 * 1000).toISOString()
+          : null,
       };
+      // ⚠️ `puo_scegliere` mente se il livello è GIÀ stato applicato (silenzio scaduto o
+      // «mi fermo» già lavorato dal cron): quel caso lo copre `livello_applicato`, e la
+      // correzione si fa qui — dopo, perché l'oggetto serve intero per calcolarlo.
+      if (ultimaScheda.livello_applicato) ultimaScheda.puo_scegliere = false;
     }
     elencoSchede = elenco;
   }
@@ -410,12 +348,10 @@ Deno.serve(async (req: Request) => {
       tentativi_falliti: giro.falliti,
       riprova_dal: giro.attesa.dal,
       giorni_mancanti: giro.attesa.giorni,
-      // 🆕 Perché si aspetta, ed è un campo NUOVO che il bot ancora non legge. Oggi l'unico
-      // valore è `esaurito`: le prove del giro sono finite. ⏭️ Col ④ se ne aggiungerà un
-      // secondo — la conferma del socio — e allora la distinzione servirà davvero.
-      // ⚠️ Nel frattempo la frase del bot resta da correggere lo stesso, e non per questo
-      // campo: `tentativi_falliti` può valere **2** in un giro esaurito (bocciato, bocciato,
-      // passato), mentre il bot dice «tre bocciature». È il pezzo ⑦ della voce 61.
+      // Perché si aspetta. 🆕 Dal 19/08/2026 (④) i valori sono DUE: `esaurito` — le prove
+      // del giro sono finite — e `confermato` — il socio ha detto «mi fermo». Un bot che
+      // non conosce ancora il secondo dice il *quando* e tace sul *perché*, per la regola
+      // sua del 18/08: meglio vaghi che falsi.
       motivo_attesa: giro.attesa.motivo,
     });
   }

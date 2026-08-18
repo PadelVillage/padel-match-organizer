@@ -21,14 +21,20 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
-const SORGENTE = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level', 'index.ts');
+const CARTELLA = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level');
+const SORGENTE = join(CARTELLA, 'index.ts');
 const src = readFileSync(SORGENTE, 'utf8');
+// 🆕 19/08/2026 (④): `decidi` non decide più da sola — chiede al GIRO se questa prova è
+// l'ultima, e il giro vive nel modulo qui accanto (in tre copie identiche: il perché sta
+// nella sua intestazione). Il banco estrae da tutti e due i file, o proverebbe metà regola.
+const srcGiro = readFileSync(join(CARTELLA, 'giro-del-test.ts'), 'utf8');
 
 // Stesso estrattore degli altri banchi: salta i commenti (in italiano sono pieni di
 // apostrofi) e parte dopo la lista dei parametri.
-function estrai(nome) {
+function estrai(nome, testo = src) {
+  const src = testo;
   const inizio = src.indexOf(`function ${nome}(`);
-  if (inizio < 0) throw new Error(`funzione «${nome}» non trovata nell'edge`);
+  if (inizio < 0) throw new Error(`funzione «${nome}» non trovata nel sorgente`);
   let t = src.indexOf('(', inizio), tonde = 0;
   for (; t < src.length; t++) {
     if (src[t] === '(') tonde++;
@@ -52,28 +58,51 @@ function estrai(nome) {
 // `deno check` della CI, che gira in modalità `strict`. Qui si toglie — è l'unica differenza
 // fra il testo del sorgente e quello che si prova. Chi nell'edge usasse un tipo diverso non
 // romperebbe niente in silenzio: questa `vm` non riuscirebbe più a valutare la funzione.
-const spoglia = (codice) => codice.replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1');
+// ⚠️ Si tolgono le annotazioni `any` sui parametri E sulle variabili locali: il modulo del
+// giro ne ha due (`const chiusi: any[]`, `let corrente: any[]`), ed è la stessa spoglia del
+// banco del ponte. Chi usasse un tipo diverso non romperebbe niente in silenzio: questa
+// `vm` non riuscirebbe più a valutare la funzione e il banco morirebbe rumorosamente.
+const spoglia = (codice) => codice
+  .replace(/([(,]\s*\w+)\s*:\s*any\b/g, '$1')
+  .replace(/\b(let|const)\s+(\w+)\s*:\s*any(\[\])?(?=\s*[=;])/g, '$1 $2');
 
 // ⭐ I NUMERI della regola si LEGGONO dal sorgente, non si ricopiano qui: ricopiarli
 // vorrebbe dire che il banco resta verde anche se domani qualcuno mette 2 prove invece
 // di 3 — proverebbe la propria copia. Se una costante sparisce o cambia forma, questo
 // muore rumorosamente invece di misurare un'altra cosa.
-function costante(nome) {
-  const m = src.match(new RegExp(`const ${nome} = ([0-9.]+)`));
-  if (!m) throw new Error(`costante «${nome}» non trovata nell'edge`);
+function costante(nome, testo = src) {
+  const m = testo.match(new RegExp(`const ${nome} = ([0-9.]+)`));
+  if (!m) throw new Error(`costante «${nome}» non trovata nel sorgente`);
   return Number(m[1]);
+}
+function parola(nome, testo = srcGiro) {
+  const m = testo.match(new RegExp(`const ${nome} = '([^']+)'`));
+  if (!m) throw new Error(`costante «${nome}» non trovata nel modulo del giro`);
+  return m[1];
 }
 const PROVE_PER_SCENDERE = costante('PROVE_PER_SCENDERE');
 const PASSO_DISCESA = costante('PASSO_DISCESA');
 const LIVELLO_MINIMO_SCESO = costante('LIVELLO_MINIMO_SCESO');
+const TENTATIVI_PER_GIRO = costante('TENTATIVI_PER_GIRO', srcGiro);
+const ORE_SILENZIO_ASSENSO = costante('ORE_SILENZIO_ASSENSO', srcGiro);
+const SCELTA_MI_FERMO = parola('SCELTA_MI_FERMO');
+const SCELTA_RIPROVO = parola('SCELTA_RIPROVO');
 
-const ctx = { FONTE: 'autovalutazione', PROVE_PER_SCENDERE, PASSO_DISCESA, LIVELLO_MINIMO_SCESO };
+const ctx = {
+  FONTE: 'autovalutazione', PROVE_PER_SCENDERE, PASSO_DISCESA, LIVELLO_MINIMO_SCESO,
+  TENTATIVI_PER_GIRO, ORE_SILENZIO_ASSENSO, SCELTA_MI_FERMO, SCELTA_RIPROVO,
+};
 vm.createContext(ctx);
 vm.runInContext(
-  spoglia(['clean', 'numero', 'quando', 'livelloDellaScheda', 'proveConsecutiveAlRibasso', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato'].map(estrai).join('\n')),
+  spoglia([
+    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro']
+      .map((n) => estrai(n, srcGiro)),
+    ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'proveConsecutiveAlRibasso', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
+      .map((n) => estrai(n)),
+  ].join('\n')),
   ctx
 );
-const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio, proveConsecutiveAlRibasso } = ctx;
+const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio, proveConsecutiveAlRibasso, laProvaEsaurisceIlGiro } = ctx;
 
 // ── Il materiale, modellato sui dati veri di PROD ────────────────────────────────
 const scheda = (extra = {}) => ({
@@ -89,6 +118,27 @@ const scheda = (extra = {}) => ({
   ...extra,
 });
 const socio = (extra = {}) => ({ id: 'soc-1', level: '0.5', ...extra });
+
+// ── Il materiale del ④: le prove col cancello del quiz, e l'orologio ─────────────
+// ⭐ L'orologio si passa da FUORI (`decidi(..., adessoMs)`): una funzione che leggesse
+//    l'ora da sé darebbe due risposte diverse alla stessa scheda a un'ora di distanza, e
+//    la regola del silenzio non si potrebbe provare a tavolino.
+const ADESSO_MS = Date.parse('2026-08-19T12:00:00.000Z');
+const oreFa = (n) => new Date(ADESSO_MS - n * 60 * 60 * 1000).toISOString();
+// Una prova col cancello: `scheda` per la regola, `provaGiro` per la storia (che è quello
+// che `laProvaEsaurisceIlGiro` cammina). Lo stesso gettone e lo stesso istante: è così che
+// `stessaProva` le riconosce come la stessa cosa vista da due elenchi.
+const provaPassata = (token, quandoIso, extra = {}) => scheda({
+  token, submitted_at: quandoIso,
+  raw_response: { source: 'scheda-pubblica', knowledge: { status: 'pass', correct: 4, total: 4 } },
+  ...extra,
+});
+const provaGiro = (token, quandoIso, esito, extra = {}) => ({
+  token, submitted_at: quandoIso,
+  declared_level: 1, calculated_level: 1,
+  raw_response: { knowledge: { status: esito } },
+  ...extra,
+});
 
 const casi = [];
 const caso = (nome, fn) => casi.push({ nome, fn });
@@ -129,12 +179,15 @@ caso('7. «dichiara alto ma gioca da poco» resta alla segreteria', () => {
   return [esito.applica === false];
 });
 
-caso('8. il test di conoscenza: fallito no, passato sì, ASSENTE sì (le schede vecchie non ce l\'hanno)', () => {
+caso('8. il test di conoscenza: fallito no; passato SOLO col ④; ASSENTE sì (le schede vecchie)', () => {
+  // 🔁 19/08/2026: il «passato sì» di prima è diventato «passato quando il socio ha detto
+  //    la sua» — vedi i casi 28-34. Qui resta la parte che il ④ non tocca: la bocciatura
+  //    non si applica mai, e una scheda SENZA cancello si applica come sempre (viene
+  //    dall'epoca delle email, e a lei nessun bot può fare domande).
   const conTest = (status) => scheda({ raw_response: { source: 'scheda-pubblica', knowledge: { status, correct: 2, total: 4 } } });
   return [
-    decidi(conTest('fail'), socio()).applica === false,
-    decidi(conTest('pass'), socio()).applica === true,
-    decidi(scheda(), socio()).applica === true,   // nessun `knowledge`: come prima
+    decidi(conTest('fail'), socio(), [], ADESSO_MS).applica === false,
+    decidi(scheda(), socio(), [], ADESSO_MS).applica === true,   // nessun `knowledge`: come prima
   ];
 });
 
@@ -324,6 +377,86 @@ caso('27. il conto guarda dalla PIÙ RECENTE all\'indietro, comunque arrivi l\'e
   ];
 });
 
+// ── IL ④: la macchina smette di decidere da sola (sua regola, 17-19/08/2026) ────
+// 🚨🚨 IL CASO 28 È IL CUORE: prima di oggi una prova passata si applicava entro 15 minuti
+//    senza che nessuno chiedesse niente al socio. Chi toglie la regola vede un rosso qui.
+// ⚖️ E il 29 è la sua metà indispensabile: «aspetta per sempre» riaprirebbe la porta chiusa
+//    in faccia per cui questa funzione è nata — un socio a 0,5 che ignora la domanda
+//    resterebbe senza livello e senza poter organizzare.
+
+caso('28. 🚨🚨 una prova PASSATA non si applica più da sola: si aspetta la scelta del socio', () => {
+  const p = provaPassata('T1', oreFa(1));
+  const esito = decidi(p, socio(), [provaGiro('T1', oreFa(1), 'pass')], ADESSO_MS);
+  return [esito.applica === false, /aspetta la scelta/.test(esito.motivo)];
+});
+
+caso('29. ⭐ il SILENZIO è assenso dopo 24 ore: nessuno resta senza livello per non aver risposto', () => {
+  const p = provaPassata('T1', oreFa(ORE_SILENZIO_ASSENSO + 1));
+  const storia = [provaGiro('T1', oreFa(ORE_SILENZIO_ASSENSO + 1), 'pass')];
+  const esito = decidi(p, socio(), storia, ADESSO_MS);
+  return [esito.applica === true, esito.livello === 1];
+});
+
+caso('30. il confine delle 24 ore: un minuto prima si aspetta, all\'ora esatta si applica', () => {
+  const quasi = provaPassata('T1', oreFa(ORE_SILENZIO_ASSENSO - 0.02));
+  const esatto = provaPassata('T2', oreFa(ORE_SILENZIO_ASSENSO));
+  return [
+    decidi(quasi, socio(), [provaGiro('T1', quasi.submitted_at, 'pass')], ADESSO_MS).applica === false,
+    decidi(esatto, socio(), [provaGiro('T2', esatto.submitted_at, 'pass')], ADESSO_MS).applica === true,
+  ];
+});
+
+caso('31. ⭐ «mi fermo»: si applica SUBITO, senza aspettare le 24 ore', () => {
+  const p = provaPassata('T1', oreFa(1), { member_decision: SCELTA_MI_FERMO, member_decision_at: oreFa(0.5) });
+  const storia = [provaGiro('T1', oreFa(1), 'pass', { member_decision: SCELTA_MI_FERMO, member_decision_at: oreFa(0.5) })];
+  const esito = decidi(p, socio(), storia, ADESSO_MS);
+  return [esito.applica === true, esito.livello === 1];
+});
+
+caso('32. 🚨 «riprovo» vale PER SEMPRE: non si applica nemmeno passate le 24 ore', () => {
+  // ⚖️ Il silenzio è assenso; una RISPOSTA è una risposta. Se le 24 ore scavalcassero anche
+  //    il «riprovo», il socio si vedrebbe applicare il livello che aveva rifiutato — cioè
+  //    la domanda sarebbe finta, che è peggio che non farla.
+  const p = provaPassata('T1', oreFa(ORE_SILENZIO_ASSENSO + 48), { member_decision: SCELTA_RIPROVO, member_decision_at: oreFa(ORE_SILENZIO_ASSENSO + 47) });
+  const storia = [provaGiro('T1', p.submitted_at, 'pass', { member_decision: SCELTA_RIPROVO })];
+  const esito = decidi(p, socio(), storia, ADESSO_MS);
+  return [esito.applica === false, /riprovare/.test(esito.motivo)];
+});
+
+caso('33. ⭐ la TERZA prova si applica da sola: non c\'è una quarta a cui rimandare', () => {
+  // Sua risposta del 19/08: arrivare alla terza È essersi fermati alla terza. Qui la prova è
+  // di un minuto fa e non ha nessuna scelta addosso: senza questa regola aspetterebbe 24 ore
+  // per una domanda che non ha senso fare.
+  const terza = provaPassata('T3', oreFa(0.1));
+  const storia = [
+    provaGiro('T1', oreFa(50), 'fail'),
+    provaGiro('T2', oreFa(30), 'fail'),
+    provaGiro('T3', oreFa(0.1), 'pass'),
+  ];
+  const esito = decidi(terza, socio(), storia, ADESSO_MS);
+  return [esito.applica === true, laProvaEsaurisceIlGiro(storia, terza, TENTATIVI_PER_GIRO) === true];
+});
+
+caso('34. 🔒 FALLISCE CHIUSA sulla scelta: senza storia la terza prova non si riconosce, e si aspetta', () => {
+  // Se la lettura della storia va male (l'avviso lo dice), il verso sicuro è l'attesa: la
+  // ripesca il silenzio delle 24 ore, o il giro dopo del cron. Applicare per default
+  // vorrebbe dire che un guasto di lettura scavalca la scelta del socio.
+  const terza = provaPassata('T3', oreFa(0.1));
+  return [
+    decidi(terza, socio(), [], ADESSO_MS).applica === false,
+    decidi(terza, socio(), null, ADESSO_MS).applica === false,
+  ];
+});
+
+caso('35. il ④ non tocca il RIBASSO: una prova passata più bassa resta ferma alla regola del ③', () => {
+  // Anche col «mi fermo» addosso, una prova che dice meno non fa scendere: le due regole si
+  // sommano, e la scelta del socio non è un permesso di farsi male.
+  const p = provaPassata('T1', oreFa(1), { declared_level: 1, calculated_level: 1, member_decision: SCELTA_MI_FERMO, member_decision_at: oreFa(0.5) });
+  const storia = [provaGiro('T1', oreFa(1), 'pass', { member_decision: SCELTA_MI_FERMO })];
+  const esito = decidi(p, avanzato(), storia, ADESSO_MS);
+  return [esito.applica === false, /non si scende/.test(esito.motivo)];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i tre modi in cui questa funzione può fare danno.
@@ -351,6 +484,18 @@ const guardie = [
   // 🔒 Se la storia non si legge, il giro continua e nessuno scende: il guasto di una
   //    lettura non deve poter far scendere qualcuno, e non deve nemmeno restare muto.
   ['la storia che non si legge diventa un avviso, non una discesa', /avvisi\.push/.test(src) && /al ribasso nessuno scende/.test(src)],
+  // ── Il ④: la scelta del socio, guardata sulla BASE e non solo sui casi ──
+  // 🚨 IL CABLAGGIO, che è il punto cieco dei casi: `decidi` può essere perfetta e non
+  //    ricevere mai i dati che le servono. Queste due guardie misurano che l'edge LEGGA la
+  //    scelta dal database e passi l'orologio alla regola — senza, tutti i casi qui sopra
+  //    restano verdi mentre in produzione nessuna prova aspetta nessuno.
+  ['l\'edge LEGGE la scelta dal database', /member_decision, member_decision_at/.test(src)],
+  ['la storia porta il cancello del quiz (`raw_response`), o il giro non si ricostruisce', /select\('token, submitted_at, declared_level, calculated_level, raw_response/.test(src)],
+  ['`decidi` riceve l\'orologio da fuori, non lo legge da sé', /decidi\(scheda, payload, socioId \? \(storiaPerSocio\.get\(socioId\) \|\| \[\]\) : \[\], Date\.parse\(adesso\)\)/.test(src)],
+  ['la regola del giro arriva dal modulo, non da una copia locale', /from '\.\/giro-del-test\.ts'/.test(src) && !/function laProvaEsaurisceIlGiro/.test(src)],
+  ['il silenzio-assenso è ventiquattr\'ore, e sta nel modulo', ORE_SILENZIO_ASSENSO === 24],
+  // ⚖️ «riprovo» non ha scadenza: se le 24 ore lo scavalcassero, la domanda sarebbe finta.
+  ['«riprovo» esce PRIMA del silenzio-assenso', src.indexOf('SCELTA_RIPROVO') < src.indexOf('ORE_SILENZIO_ASSENSO * 60')],
 ];
 
 test('BANCO — il livello si applica da solo, ma una scheda vecchia non scavalca mai', () => {
