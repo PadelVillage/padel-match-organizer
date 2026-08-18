@@ -40,9 +40,13 @@ ambiente che "punta" a due database, sono due copie dell'app.
 🔄 **Dal 17/08/2026 (voce 58) il caricatore NON scarica più l'app da `raw.githubusercontent.com`**
 — GitHub strozzava quei download anonimi (429 anti-scraping) e TEST restava a terra — ma serve
 `./app.html` dalla propria origine Pages; `raw` è solo il ripiego. Un push su `test-preview`
-arriva live **entro ~10 min** (cron di `sync-app.yml` nel repo del caricatore), **subito** se nel
-repo dell'app esiste il secret `TEST_LOADER_SYNC_TOKEN` (workflow `sync-test-loader.yml` →
-`repository_dispatch`), o **a mano** lanciando `sync-app` da Actions. Quale commit è live lo dice
+arriva live **quando passa il cron** di `sync-app.yml` nel repo del caricatore — configurato ogni
+10′, ma gli schedule GitHub li esegue «quando può»: **misurati 24-48 minuti** il 18/08, e quel
+giorno il giro è passato **25 secondi prima** del merge, quindi la finestra reale può superare
+la mezz'ora. **Subito** se nel repo dell'app esiste il secret `TEST_LOADER_SYNC_TOKEN` (workflow
+`sync-test-loader.yml` → `repository_dispatch`) — è la via che rende TEST puntuale come PROD, e
+al 18/08 **manca ancora**: solo il committente può creare quel PAT. O **a mano** lanciando
+`sync-app` da Actions, che è la via giusta quando serve adesso. Quale commit è live lo dice
 `app-meta.json` su quel repo. `config-test.js` sta anche là perché l'app cerca la configurazione
 nella **radice del dominio da cui è servita**: senza, TEST non saprebbe a quale database collegarsi.
 
