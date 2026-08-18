@@ -114,6 +114,16 @@ Su Wansport **l'anagrafica delle persone è comune, l'utenza è per circolo**: i
 circolo mai visitato risponde «utente già esiste», ma la password vive su ogni portale
 separatamente.
 
+✅ **E la password che ABBIAMO è la stessa su tutti i portali** *(confermato dal committente il
+18/08)* ⇒ **una sola coppia `WANSPORT_USER`/`WANSPORT_PASS` basta**, e il passo 3 non ha bisogno
+di credenziali per circolo. Le tre sonde riuscite quel giorno (Marco Polo, Collalbrigo, Padel
+Conegliano) concordano.
+🚨 **Ma è un fatto sul nostro account, NON sulla piattaforma**: la stessa password sta ovunque
+perché è stata scelta uguale durante i reset, non perché Wansport la sincronizzi. Il giorno che
+un portale ne imponga il cambio, quel circolo **smette di funzionare da solo** mentre gli altri
+continuano — e il sintomo sarebbe `LOGIN_RIFIUTATO` su una riga sola, che somiglia a un guasto
+del circolo e invece è una password disallineata. Se capita, si guarda qui prima di altrove.
+
 | stato | come si riconosce | cosa si può fare |
 |---|---|---|
 | `attiva` | login → `/start` | si legge |
@@ -138,9 +148,11 @@ spam»**, perché Gmail **non inoltra** ciò che classifica spam.
 - **geometria rilevata**: `slot_minuti`, `apertura`, `chiusura`, `campi[]`
 - `ultimo_scan_at`, `ultimo_esito`, `ultima_latenza_ms`
 
-⭐ **Le credenziali NON stanno qui.** L'account Wansport è **uno solo per tutti i circoli**: va nei
-segreti della edge function (`WANSPORT_USER` / `WANSPORT_PASS`), non ripetuto in ogni riga. Un
-posto solo da proteggere e da ruotare. **In questo file la password non è scritta, di proposito.**
+⭐ **Le credenziali NON stanno qui.** L'utenza è una sola e la password è **la stessa su tutti i
+portali** (confermato il 18/08 — vedi il riquadro sopra per il perché è un fatto fragile): va nei
+segreti della edge function (`WANSPORT_USER` / `WANSPORT_PASS`), non ripetuta in ogni riga. Un
+posto solo da proteggere e da ruotare. **In questo file la password non è scritta, di proposito**,
+e nei segreti di TEST c'è dal 18/08.
 
 **`pmo_disponibilita_snapshot`** — la fotografia
 - `circolo_id`, `data`, `campo`, `inizio`, `fine`, `libero`
