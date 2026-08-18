@@ -690,7 +690,7 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **1** |
-| 📋 **In coda** | **5** |
+| 📋 **In coda** | **6** |
 | 📦 **Chiuse** | **50** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
@@ -1387,7 +1387,7 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
-## 📋 IN CODA — 5
+## 📋 IN CODA — 6
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -1396,7 +1396,79 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 2
+### C — Cose sapute e non risolte — 3
+
+#### 62. 🎾 **«Le tue partite» diventa una scheda per volta — MOCKUP APPROVATO, codice da scrivere**
+
+> ✅ **Approvato dal committente il 18/08/2026, 32ª sessione**: *«creami un prompt di passaggio…
+> comprensivo di file di mockup che ti approvo in pieno»*. ⇒ La regola dei mockup è soddisfatta:
+> si può aprire il codice.
+> 📄 Il disegno: [`mockup/bot-variante-e-schede-mockup.html`](../../mockup/bot-variante-e-schede-mockup.html)
+> — i **nove casi**, uno per uno. Il confronto fra le sei strade che ci ha portati qui sta in
+> [`mockup/bot-elenco-gestisci-sotto-mockup.html`](../../mockup/bot-elenco-gestisci-sotto-mockup.html).
+
+**Da dove nasce, ed è una domanda sua guardando il telefono**: *«il bottone gestisci può stare sotto
+la relativa prenotazione? Logicamente se sei ancora in tempo a gestire la prenotazione»*.
+
+🧱 **Il vincolo che ha deciso tutto**: Telegram attacca la tastiera **al messaggio**, non alle
+righe, e la disegna sotto tutto il testo. Dentro un messaggio solo **non** si infila un bottone fra
+due partite. ⇒ Si sceglie **quanti messaggi** mandare e **come legare** la riga al suo bottone.
+Sei strade disegnate, e la scelta è caduta sulla **E**.
+
+⚖️ **E la risposta scelta NON sposta quel bottone: lo TOGLIE.** Con la scheda che è già la partita,
+le azioni stanno lì e la parola «Gestisci» sparisce. *La cura più economica di un difetto è
+scoprire che il pezzo che lo aveva non serve più.*
+
+**LE SETTE DECISIONI, prese una domanda alla volta** (sue, 18/08 — non si re-interpretano):
+
+| | |
+|---|---|
+| ① | la **scheda sostituisce l'elenco**: chiedendo «le mie partite» si apre subito **una** partita |
+| ② | si **sfoglia una alla volta**, senza elenco intermedio da cui scegliere |
+| ③ | si apre sulla **più vicina nel tempo** |
+| ④ | due bottoni: **«← Precedente»** e **«Successiva →»** — sulla prima manca il primo, sull'ultima il secondo |
+| ⑤ | le **azioni stanno sulla scheda** (Invita · Togli · Annulla), non dietro un «Gestisci» |
+| ⑥ | **nessuna partita** → resta la frase di oggi, invariata, e quella scheda non si sfoglia |
+| ⑦ | **dopo un'uscita o un annullamento** la scheda **diventa la conferma e resta ferma**, con un bottone solo che riparte dalla prima rimasta |
+
+🚨 **Il ⑦ ha una ragione che va tramandata**: passare da sé a un'altra partita farebbe leggere la
+conferma come riferita a **quella** — il malinteso peggiore possibile proprio dopo un annullamento.
+
+**I NOVE CASI da coprire** — e non sono inventati per il disegno: escono dalle regole già in
+servizio (`lascia-partita.ts`, `puoiTogliere`, `invitaQui`).
+
+| | quando | cosa mostra |
+|---|---|---|
+| ① | prima delle 48h · organizzatore · c'è posto | Invita · Togli · Annulla |
+| ② | prima delle 48h · organizzatore · al completo | Togli · Annulla |
+| ③ | prima delle 48h · invitato | **Esci** (non «annulla»: sono due cose diverse) |
+| ④ | dentro le 48h · organizzatore · al completo | la frase + Togli |
+| ⑤ | dentro le 48h · organizzatore · c'è posto | la frase + Invita e Togli |
+| ⑥ | dentro le 48h · **invitato** | **niente**: solo la segreteria |
+| ⑦ | lezione | segreteria (sua decisione del 6/08) |
+| ⑧ | nessuna partita | la frase di oggi, senza sfoglio |
+| ⑨ | appena uscito / annullata | la conferma, ferma |
+
+🗣️ **La frase delle 48 ore è SUA, parola per parola**: *«Mancano meno di 48 ore e questa partita
+non si può più disdire, ma puoi ancora modificare i giocatori.»*
+⭐ **«Modificare i giocatori» è meglio di «togliere un giocatore»**, che era la mia: copre
+**togliere E invitare**, e invitare — a campo ormai pagato — è la cosa che serve davvero (trovare
+il quarto). ⚠️ Nel bot **esiste già** una frase di questa famiglia dentro la scheda della singola
+partita (`gestisci-testi.ts`, ramo `responsabileBloccato`): **non se ne scrive una seconda**, si
+adatta quella. Due copie della stessa regola in questo progetto sono già divergute.
+
+🔨 **Quanto è già costruito, misurato leggendo il codice il 18/08 e non ricordato.** La scheda della
+singola partita **esiste** (`schedaGestisci` → `disegnaGestisci`), mostra **solo i bottoni
+possibili**, e la riga delle 48 ore la scrive già. ⇒ Il lavoro **non è disegnare una schermata
+nuova**: è farla diventare **la porta d'ingresso** invece del posto dove si entra, aggiungere lo
+**sfoglio** (← →) e cablare i casi ⑧ e ⑨.
+
+⛔ **DA MISURARE PRIMA DI DIRE CHE FUNZIONA, e non si deduce da un disegno**: che sfogliare
+**riscriva il messaggio** (`editMessageText`) invece di mandarne di nuovi. È l'unica cosa che tiene
+la promessa di **una notifica sola** — la ragione per cui la E ha battuto la B, che di notifiche ne
+manda una per partita.
+
+📌 Il ramo dove sta il mockup è `claude/bot-micro-fixes-9jpqji`; **il codice non è stato aperto**.
 
 #### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
 

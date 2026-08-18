@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<!--
+  Bot Telegram — «Le tue partite»: legare il bottone GESTISCI alla sua prenotazione
+  Mockup v6 — 18/08/2026
+
+  🗣️ Domande del committente:
+     ① «il bottone gestisci può stare sotto la relativa prenotazione? Logicamente se sei
+        ancora in tempo a gestire la prenotazione»
+     ② «sei sicuro che non c'è nessun'altra soluzione grafica che mi puoi proporre?»
+
+  ⇒ v2 rispondeva alla seconda: da due strade se ne mostrano CINQUE.
+     v3 CORREGGE la variante B — «però qui io vedo praticamente tutto un blocco»: ha ragione,
+     Telegram RAGGRUPPA i messaggi di fila dello stesso mittente, e la riscrittura multipla che
+     le avevo attribuito non serve (ogni messaggio si riscrive da sé). Il costo della B non è
+     visivo: sono notifiche, invii a scaglioni e schede che invecchiano separatamente.
+     A · com'è oggi                 — un messaggio, i bottoni in blocco in fondo
+     B · un messaggio per partita   — il bottone sotto la sua riga (l'unico modo letterale)
+     C · il marcatore condiviso     — ①②③ sulla riga e sul bottone; un messaggio solo
+     D · righe compatte + marcatore — la lista si accorcia, i bottoni salgono sotto le righe
+     E · una partita per volta      — NON un elenco: una partita sullo schermo, le altre si
+                                      raggiungono con «Vedi le altre partite». 🆕 v6, due idee
+                                      SUE: quel bottone al posto delle frecce, e — dentro le 48
+                                      ore — scrivere cosa NON si può più fare invece di mostrare
+                                      un «Gestisci» che promette meno di quel che sembra
+     F · la B, silenziosa           — 🆕 v4: uguale alla B, ma solo il PRIMO messaggio suona
+                                      (`disable_notification` sugli altri) ⇒ 1 notifica, non 6.
+                                      🗣️ Nata dalla sua richiesta: «qualcosa verso la mia
+                                      soluzione che non complichi troppo la vita e non faccia
+                                      arrivare sei notifiche una vicino all'altra».
+
+  🧱 Il vincolo che regge tutto: Telegram attacca la tastiera AL MESSAGGIO e la disegna
+     sotto tutto il testo. Dentro un solo messaggio non si infila un bottone fra due righe.
+     Quello che si può scegliere è QUANTI messaggi mandare e COME legare riga e bottone.
+
+  🚨 I NOMI SONO INVENTATI, e non è pigrizia: questo repo è PUBBLICO. Nomi veri di soci in
+     un file di mockup finirebbero in git per sempre. È anche ciò che chiede la regola dei
+     mockup — «non collegare il mockup a dati reali».
+
+  Nessun dato, nessuna rete, nessun Supabase: HTML statico e basta.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestisci sotto la partita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  /* ── Token: la tavolozza CHIARA sta qui, sul :root nudo ──────────────────────── */
+  :root {
+    color-scheme: light dark;
+
+    --ground:      #f4f6f6;
+    --card:        #ffffff;
+    --ink:         #191d1e;
+    --ink-soft:    #5b6566;
+    --hairline:    #dfe4e4;
+    --accent:      #0e7c7b;   /* il teal del logo «Mio» */
+    --accent-soft: #e3f0ef;
+    --warn:        #9a5b12;
+    --warn-soft:   #f8eddd;
+
+    --tg-ground:   #ffffff;
+    --tg-text:     #000000;
+    --tg-name:     #8266cc;
+    --tg-btn:      #f1f1f1;
+    --tg-btn-ink:  #1e1e1e;
+    --tg-meta:     #8a9096;
+    --tg-avatar:   #1c2b30;
+    --tg-cucitura: rgba(0,0,0,.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #101414;
+      --card:        #171c1c;
+      --ink:         #e8eded;
+      --ink-soft:    #98a4a4;
+      --hairline:    #2a3232;
+      --accent:      #4fb3ab;
+      --accent-soft: #122b2a;
+      --warn:        #d9a25c;
+      --warn-soft:   #2c2314;
+
+      --tg-ground:   #17212b;
+      --tg-text:     #ffffff;
+      --tg-name:     #a48be3;
+      --tg-btn:      #232e3c;
+      --tg-btn-ink:  #e9edf2;
+      --tg-meta:     #6d7f8f;
+      --tg-avatar:   #0f1a1e;
+      --tg-cucitura: rgba(255,255,255,.09);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #101414;
+    --card:        #171c1c;
+    --ink:         #e8eded;
+    --ink-soft:    #98a4a4;
+    --hairline:    #2a3232;
+    --accent:      #4fb3ab;
+    --accent-soft: #122b2a;
+    --warn:        #d9a25c;
+    --warn-soft:   #2c2314;
+
+    --tg-ground:   #17212b;
+    --tg-text:     #ffffff;
+    --tg-name:     #a48be3;
+    --tg-btn:      #232e3c;
+    --tg-btn-ink:  #e9edf2;
+    --tg-meta:     #6d7f8f;
+    --tg-avatar:   #0f1a1e;
+    --tg-cucitura: rgba(255,255,255,.09);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .foglio {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: clamp(28px, 5vw, 56px) clamp(18px, 4vw, 40px) 72px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(26px, 4vw, 40px);
+  }
+
+  /* ── Testata ──────────────────────────────────────────────────────────────── */
+  .occhiello {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: clamp(28px, 4.4vw, 42px);
+    font-weight: 700; line-height: 1.12; letter-spacing: -.015em;
+    text-wrap: balance; margin: 0 0 14px;
+  }
+  .sommario { max-width: 66ch; margin: 0; color: var(--ink-soft); font-size: 18px; }
+  .sommario strong { color: var(--ink); font-weight: 600; }
+
+  /* il vincolo, in evidenza sotto il titolo */
+  .vincolo {
+    margin-top: 18px;
+    padding: 14px 18px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 10px 10px 0;
+    max-width: 76ch;
+    font-size: 16px;
+  }
+  .vincolo strong { font-weight: 600; }
+
+  /* ── La tabella per scegliere ─────────────────────────────────────────────── */
+  .scelta { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 16px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  caption {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+    color: var(--ink-soft); text-align: left; padding: 16px 20px 12px;
+  }
+  th, td { padding: 11px 16px; text-align: left; border-top: 1px solid var(--hairline); font-size: 15px; }
+  thead th {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft); border-top: 0;
+  }
+  td.num { font-variant-numeric: tabular-nums; text-align: center; }
+  tbody tr.spicca { background: var(--accent-soft); }
+  tbody tr.spicca td { font-weight: 600; }
+  td .via { font-family: Archivo, system-ui, sans-serif; font-weight: 700; color: var(--accent); }
+
+  /* il pallino che dice se quel messaggio suona */
+  .campanello { font-size: 12px; color: var(--tg-meta); align-self: flex-end; }
+
+  /* ── La griglia delle varianti ────────────────────────────────────────────── */
+  .varianti {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(20px, 2.6vw, 28px);
+    align-items: start;
+  }
+  @media (min-width: 760px)  { .varianti { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1180px) { .varianti { grid-template-columns: repeat(3, 1fr); } }
+
+  .colonna {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .colonna.consigliata { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .intestazione {
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid var(--hairline);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .etichetta {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .etichetta.proposta { color: var(--warn); }
+  .bollo {
+    font-size: 10px; letter-spacing: .08em;
+    background: var(--accent); color: var(--card);
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .intestazione h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 19px; font-weight: 600; letter-spacing: -.01em; margin: 0;
+  }
+  .intestazione p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+  /* ── La finestra di Telegram ──────────────────────────────────────────────── */
+  .telegram {
+    background: var(--tg-ground);
+    padding: 18px 16px 22px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 15px; line-height: 1.38; color: var(--tg-text);
+    flex: 1; display: flex; flex-direction: column; gap: 14px;
+  }
+  .msg { display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--tg-avatar);
+    display: grid; place-content: center; align-self: start;
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 9px; font-weight: 700; line-height: 1.05;
+    text-align: center; color: #ffffff;
+  }
+  .avatar span { color: #57c9bd; display: block; }
+  .avatar.vuoto { background: transparent; }
+  .corpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .mittente { color: var(--tg-name); font-weight: 600; font-size: 15px; }
+  .titolo { margin-bottom: 10px; }
+  .partite { display: flex; flex-direction: column; gap: 14px; }
+  .partite.strette { gap: 6px; }
+  .quando, .con { display: block; }
+  .con { }
+  .marcatore { font-weight: 600; }
+  .nota-coda { margin-top: 14px; }
+
+  .tastiera { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .tastiera.attaccata { margin-top: 6px; }
+  .tastiera.fila { flex-direction: row; }
+  .tastiera.fila .bottone { flex: 1; }
+  .tastiera.fila .stretto { flex: 0 0 56px; }
+
+  .bottone {
+    background: var(--tg-btn); color: var(--tg-btn-ink);
+    border: 0; border-radius: 9px; padding: 13px 12px;
+    font: inherit; font-weight: 500; text-align: center;
+    position: relative;
+  }
+  .bottone.esterno::after {
+    content: "↗"; position: absolute; right: 8px; top: 6px;
+    font-size: 11px; color: var(--tg-meta);
+  }
+
+  /* 🆕 v3 — l'ORA, che Telegram scrive su OGNI messaggio: è la cucitura che si vede */
+  .ora {
+    font-size: 12px;
+    color: var(--tg-meta);
+    align-self: flex-end;
+    margin-top: -2px;
+  }
+  .bolla { border-radius: 10px; padding: 2px 0; }
+  .bolla + .bolla { border-top: 1px solid var(--tg-cucitura); margin-top: 2px; padding-top: 8px; }
+
+  .postilla {
+    grid-column: 2;
+    margin: 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 8px 8px 0;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 14px; line-height: 1.45; color: var(--ink);
+  }
+  .postilla.attenzione { border-left-color: var(--warn); background: var(--warn-soft); }
+  .postilla b { font-weight: 600; }
+
+  /* ── Le conseguenze ───────────────────────────────────────────────────────── */
+  .conti {
+    border-top: 1px solid var(--hairline);
+    padding: 16px 20px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .conti h3 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0;
+  }
+  .conti ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .conti li {
+    display: grid; grid-template-columns: 1.35em 1fr; gap: 6px;
+    font-size: 15px; line-height: 1.45; color: var(--ink-soft);
+  }
+  .conti li b { color: var(--ink); font-weight: 600; }
+  .segno { font-family: Archivo, system-ui, sans-serif; font-weight: 700; }
+  .segno.piu  { color: var(--accent); }
+  .segno.meno { color: var(--warn); }
+
+  .costo {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .04em;
+    color: var(--ink-soft);
+    border-top: 1px dashed var(--hairline);
+    padding-top: 10px;
+  }
+  .costo b { color: var(--ink); }
+
+  /* ── Chiusura ─────────────────────────────────────────────────────────────── */
+  .chiusa {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: clamp(20px, 3vw, 30px);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .chiusa h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.01em;
+  }
+  .chiusa p { margin: 0; max-width: 78ch; }
+  .chiusa strong { font-weight: 600; }
+  .chiusa em { font-style: italic; color: var(--ink-soft); }
+  .piede {
+    font-size: 14px; color: var(--ink-soft);
+    border-top: 1px solid var(--hairline);
+    padding-top: 16px; max-width: 78ch;
+  }
+</style>
+</head>
+<body>
+<div class="foglio">
+
+  <header>
+    <p class="occhiello">Mockup v6 · bot Telegram · 18 agosto 2026</p>
+    <h1>Legare «Gestisci» alla sua partita: sei strade</h1>
+    <p class="sommario">
+      La scheda <strong>«Le tue partite»</strong> in sei disposizioni. La prima è com'è oggi; le
+      altre cinque rispondono alla stessa domanda — <strong>far capire a colpo d'occhio quale
+      bottone appartiene a quale partita</strong> — e la <strong>F</strong> è nata da una richiesta
+      precisa: la B, ma <strong>senza sei notifiche di fila</strong>. I nomi sono inventati.
+    </p>
+    <p class="vincolo">
+      <strong>Il vincolo, che vale per tutte e sei:</strong> Telegram attacca la tastiera
+      <strong>al messaggio</strong>, non alle righe, e la disegna sotto tutto il testo. Dentro un
+      solo messaggio <strong>non</strong> si può infilare un bottone fra due partite. Quello che si
+      sceglie è <strong>quanti messaggi</strong> mandare e <strong>come legare</strong> la riga al
+      suo bottone.
+    </p>
+  </header>
+
+  <section class="scelta">
+    <table>
+      <caption>Le sei strade, in una riga ciascuna</caption>
+      <thead>
+        <tr>
+          <th>via</th>
+          <th>cosa lega la riga al bottone</th>
+          <th>messaggi</th>
+          <th>notifiche</th>
+          <th>costo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="via">A</span> com'è oggi</td>
+          <td>la data ripetuta nell'etichetta</td>
+          <td class="num">1</td><td class="num">1</td><td>zero</td>
+        </tr>
+        <tr>
+          <td><span class="via">B</span> un messaggio per partita</td>
+          <td><b>il bottone è sotto la sua riga</b></td>
+          <td class="num">6</td><td class="num">6</td><td>medio</td>
+        </tr>
+        <tr class="spicca">
+          <td><span class="via">F</span> la B, silenziosa</td>
+          <td><b>il bottone è sotto la sua riga</b></td>
+          <td class="num">5</td><td class="num">1</td><td>medio-basso</td>
+        </tr>
+        <tr>
+          <td><span class="via">C</span> il marcatore condiviso</td>
+          <td>lo stesso numero ①②③ sui due</td>
+          <td class="num">1</td><td class="num">1</td><td>basso</td>
+        </tr>
+        <tr>
+          <td><span class="via">D</span> righe compatte</td>
+          <td>la vicinanza: la lista si dimezza</td>
+          <td class="num">1</td><td class="num">1</td><td>basso, ma toglie i compagni</td>
+        </tr>
+        <tr>
+          <td><span class="via">E</span> una partita per volta</td>
+          <td>non serve legare: sullo schermo ce n'è <b>una sola</b>, e la scheda <b>spiega sé stessa</b></td>
+          <td class="num">1</td><td class="num">1</td><td>medio</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="varianti">
+
+    <!-- ══════════════ A · COM'È OGGI ══════════════ -->
+    <article class="colonna">
+      <div class="intestazione">
+        <span class="etichetta">A · com'è oggi</span>
+        <h2>Un messaggio, bottoni in fondo</h2>
+        <p>La data ripetuta nell'etichetta è l'unica cosa che lega il bottone alla sua riga.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite</div>
+            <div class="partite">
+              <div>
+                <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+                <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando">Domani · 09:30 · Campo 3</span>
+                <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando">⭐ Domani · 18:00 · Campo 2</span>
+                <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
+              </div>
+              <div>
+                <span class="quando">⭐ Venerdì 21 agosto · 09:30 · Campo 2</span>
+                <span class="con">con Luca Bertoldi, Sara Menegon e Andrea Cont · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando">Lezione · Sabato 22 · 10:00 · Campo 1</span>
+                <span class="con">con il maestro</span>
+              </div>
+            </div>
+            <div class="nota-coda">Per la lezione decide la segreteria: chiamala al +39 379 115 1472.</div>
+
+            <div class="tastiera">
+              <div class="bottone">⚙️ Gestisci · oggi 19 · 09:30</div>
+              <div class="bottone">⚙️ Gestisci · domani 20 · 09:30</div>
+              <div class="bottone">⚙️ Gestisci · domani 20 · 18:00</div>
+              <div class="bottone">⚙️ Gestisci · ven 21 · 09:30</div>
+              <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>La lezione non ha «Gestisci»</b>, e la riga sopra dice perché: è la regola che già
+          esiste — il testo elenca <b>tutte</b> le prenotazioni, i bottoni compaiono <b>solo</b>
+          dove c'è ancora qualcosa da fare.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span><b>Un blocco solo</b> da leggere, e <b>una sola riscrittura</b> quando si torna all'elenco.</span></li>
+          <li><span class="segno meno">−</span><span>Il bottone è <b>lontano</b> dalla sua riga: l'occhio deve rifare l'abbinamento sulla data.</span></li>
+          <li><span class="segno meno">−</span><span>Con molte partite la fila <b>si allunga</b> e l'etichetta rischia il taglio.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>zero</b> — è già così</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ B · UN MESSAGGIO PER PARTITA ══════════════ -->
+    <article class="colonna">
+      <div class="intestazione">
+        <span class="etichetta proposta">B · un messaggio per partita</span>
+        <h2>Il bottone sotto la sua riga</h2>
+        <p>L'unico modo <em>letterale</em> di avere il bottone lì sotto: se le righe sono messaggi, ognuna ha la sua tastiera. <strong>Telegram li raggruppa</strong> — nome e faccia una volta sola — quindi si legge come un blocco unico.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div>Le tue partite</div>
+            <div class="ora">23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Domani · 09:30 · Campo 3</span>
+              <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Domani · 18:00 · Campo 2</span>
+              <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="ora">23:05</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Lezione · Sabato 22 · 10:00 · Campo 1</span>
+              <span class="con">con il maestro · la gestisce la segreteria</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div></div>
+            <div class="ora">23:05</div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>Sì, sembra un blocco unico — ed è giusto così.</b> Telegram <b>raggruppa</b> i messaggi
+          di fila dello stesso mittente: nome e faccia compaiono una volta, e fra uno e l'altro
+          resta poco più di una riga vuota. ⇒ <b>Il costo della B non è visivo.</b>
+          A tradirla sono due dettagli soli: <b>l'ora</b>, che Telegram scrive su ognuno, e la
+          <b>cucitura</b> fra le bolle.
+        </p>
+        <p class="postilla attenzione">
+          <b>Il vero prezzo si paga altrove</b>: sei messaggi = <b>sei notifiche</b> sul telefono
+          a chat chiusa, e arrivano <b>a scaglioni</b> (Telegram lascia passare circa un messaggio
+          al secondo per chat). E ogni volta che il socio richiede l'elenco, in chat ne restano
+          altri sei.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>Nessun abbinamento da fare: il bottone <b>è</b> sotto la sua partita.</span></li>
+          <li><span class="segno piu">+</span><span>L'etichetta può dire <b>«Gestisci» e basta</b>.</span></li>
+          <li><span class="segno piu">+</span><span>🔁 <b>«Torna all'elenco» NON deve riscriverne N</b> — e qui la v2 diceva il contrario. Ogni messaggio si riscrive <b>da sé</b>: apri la 3, la 3 diventa la scheda, e tornando ridiventa la sua riga. Le altre non si toccano.</span></li>
+          <li><span class="segno meno">−</span><span><b>Sei messaggi, sei notifiche</b> a chat chiusa — e arrivano a scaglioni, ~1 al secondo per chat.</span></li>
+          <li><span class="segno meno">−</span><span>Ogni richiesta lascia in chat <b>un blocco nuovo</b>: tre domande in settimana, diciotto messaggi.</span></li>
+          <li><span class="segno meno">−</span><span>Le altre schede <b>invecchiano da sole</b>: uscendo da una partita, le altre cinque raccontano ancora il mondo di prima.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>medio</b> — non visivo: notifiche, invii e schede che invecchiano</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ F · LA B, SILENZIOSA ══════════════ -->
+    <article class="colonna consigliata">
+      <div class="intestazione">
+        <span class="etichetta">F · la B, silenziosa <span class="bollo">niente sei notifiche</span></span>
+        <h2>Un messaggio per partita, ma suona il primo</h2>
+        <p>A vedersi è <strong>identica alla B</strong>. Cambia una cosa sola: solo il primo messaggio fa rumore, gli altri entrano zitti.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite</div>
+            <div>
+              <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔔 questo suona · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Domani · 09:30 · Campo 3</span>
+              <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Domani · 18:00 · Campo 2</span>
+              <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Venerdì 21 agosto · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Andrea Cont · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Lezione · Sabato 22 · 10:00 · Campo 1</span>
+              <span class="con">con il maestro · la gestisce la segreteria</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>Da cinque notifiche a zero: è un interruttore che Telegram offre già.</b> Ogni invio può
+          partire <b>silenzioso</b> — il messaggio entra in chat senza suono e senza avviso. Si dà
+          la voce <b>solo al primo</b>, che è anche quello che porta il titolo: il socio riceve
+          <b>una</b> notifica, come oggi, e trova sotto tutta la lista.
+        </p>
+        <p class="postilla attenzione">
+          <b>Quello che il silenzio NON toglie</b>: i messaggi restano cinque, quindi la chat si
+          allunga a ogni richiesta, e possono arrivare <b>a scaglioni</b> di qualche decimo l'uno
+          dall'altro. ⇒ <b>Da misurare sul bot di prova</b>, non da dedurre: quanto ci mettono
+          davvero a comparire tutti e cinque.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>Tutto il guadagno della B: <b>il bottone sotto la sua partita</b>, etichetta corta, spiegazione accanto a chi la riguarda.</span></li>
+          <li><span class="segno piu">+</span><span><b>Una notifica sola</b>, come oggi.</span></li>
+          <li><span class="segno piu">+</span><span>Un messaggio in meno della B: <b>il titolo sta insieme alla prima partita</b>.</span></li>
+          <li><span class="segno meno">−</span><span>La chat <b>si allunga</b> lo stesso a ogni richiesta.</span></li>
+          <li><span class="segno meno">−</span><span>L'arrivo <b>a scaglioni</b> resta possibile: va guardato, non dedotto.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>medio-basso</b> — la B più un interruttore già pronto</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ C · IL MARCATORE CONDIVISO ══════════════ -->
+    <article class="colonna">
+      <div class="intestazione">
+        <span class="etichetta">C · il marcatore condiviso</span>
+        <h2>Lo stesso numero sulla riga e sul bottone</h2>
+        <p>Il bottone non si sposta: si <em>lega</em>. ①②③ da una parte e dall'altra, e l'abbinamento non è più da indovinare.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite</div>
+            <div class="partite">
+              <div>
+                <span class="quando"><span class="marcatore">①</span> ⭐ Oggi · 09:30 · Campo 2</span>
+                <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando"><span class="marcatore">②</span> Domani · 09:30 · Campo 3</span>
+                <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando"><span class="marcatore">③</span> ⭐ Domani · 18:00 · Campo 2</span>
+                <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
+              </div>
+              <div>
+                <span class="quando"><span class="marcatore">④</span> ⭐ Venerdì 21 agosto · 09:30 · Campo 2</span>
+                <span class="con">con Luca Bertoldi, Sara Menegon e Andrea Cont · siete al completo</span>
+              </div>
+              <div>
+                <span class="quando">Lezione · Sabato 22 · 10:00 · Campo 1</span>
+                <span class="con">con il maestro · la gestisce la segreteria</span>
+              </div>
+            </div>
+
+            <div class="tastiera">
+              <div class="bottone">① ⚙️ Gestisci · oggi 09:30</div>
+              <div class="bottone">② ⚙️ Gestisci · domani 09:30</div>
+              <div class="bottone">③ ⚙️ Gestisci · domani 18:00</div>
+              <div class="bottone">④ ⚙️ Gestisci · ven 09:30</div>
+              <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>Il numero non è decorazione: è il legame.</b> Chi non ha il bottone non ha nemmeno il
+          numero — così la lezione si distingue <b>prima</b> di arrivare in fondo a leggere perché.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>Risolve l'abbinamento <b>senza toccare la forma</b>: resta un messaggio, una riscrittura.</span></li>
+          <li><span class="segno piu">+</span><span>L'etichetta <b>si accorcia</b> (il giorno lo dice il numero) ⇒ meno rischio di taglio.</span></li>
+          <li><span class="segno piu">+</span><span>Il marcatore dice anche <b>chi un bottone non ce l'ha</b>, prima della spiegazione.</span></li>
+          <li><span class="segno meno">−</span><span>Il bottone resta <b>in fondo</b>: l'occhio fa un salto, ma corto e guidato.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>basso</b> — due etichette, nessuna riscrittura in più</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ D · RIGHE COMPATTE ══════════════ -->
+    <article class="colonna">
+      <div class="intestazione">
+        <span class="etichetta">D · righe compatte</span>
+        <h2>Accorciare la distanza, non spostare il bottone</h2>
+        <p>Una riga per partita, i compagni dentro la scheda. Il blocco dei bottoni risale e si trova <em>quasi</em> sotto le righe.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite</div>
+            <div class="partite strette">
+              <div><span class="marcatore">①</span> ⭐ Oggi · 09:30 · C2 · al completo</div>
+              <div><span class="marcatore">②</span> Domani · 09:30 · C3 · al completo</div>
+              <div><span class="marcatore">③</span> ⭐ Domani · 18:00 · C2 · <b>1 posto libero</b></div>
+              <div><span class="marcatore">④</span> ⭐ Ven 21 · 09:30 · C2 · al completo</div>
+              <div>&nbsp;&nbsp;&nbsp;Lezione · Sab 22 · 10:00 · C1</div>
+            </div>
+            <div class="nota-coda">Con chi giochi lo vedi aprendo la partita.</div>
+
+            <div class="tastiera">
+              <div class="bottone">① ⚙️ Gestisci · oggi 09:30</div>
+              <div class="bottone">② ⚙️ Gestisci · domani 09:30</div>
+              <div class="bottone">③ ⚙️ Gestisci · domani 18:00</div>
+              <div class="bottone">④ ⚙️ Gestisci · ven 09:30</div>
+              <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="postilla attenzione">
+          <b>Qui si paga qualcosa</b>: i compagni spariscono dall'elenco. Oggi il socio li legge
+          senza toccare niente — ed è una delle cose per cui apre la scheda.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>La lista si <b>dimezza</b>: riga e bottone finiscono quasi affiancati.</span></li>
+          <li><span class="segno piu">+</span><span>Regge meglio le <b>liste lunghe</b>: otto partite restano una schermata.</span></li>
+          <li><span class="segno meno">−</span><span><b>Toglie informazione</b>: i compagni si vedono solo aprendo.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>basso</b> — ma è una rinuncia, non solo una disposizione</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ E · UNA PARTITA PER VOLTA ══════════════ -->
+    <article class="colonna consigliata">
+      <div class="intestazione">
+        <span class="etichetta">E · una partita per volta <span class="bollo">l'unica che sa spiegare</span></span>
+        <h2>La scheda si sfoglia</h2>
+        <p><strong>Non è una lista più grande: è una partita alla volta.</strong> Le altre non sono sullo schermo — ci si arriva con <em>«Vedi le altre partite»</em> — e i bottoni sono <em>per forza</em> di quella che vedi.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite · 3 di 5</div>
+            <div>
+              <span class="quando">⭐ Domani · 18:00 · Campo 2</span>
+              <span class="con">con Marta Zanella e Giulia Perin</span>
+              <span class="con"><b>1 posto libero</b> · l'hai organizzata tu</span>
+            </div>
+
+            <div class="tastiera">
+              <div class="bottone">➕ Invita un amico</div>
+              <div class="bottone">⚙️ Gestisci questa partita</div>
+              <div class="bottone">📅 Vedi le altre partite · 4 →</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>«Vedi le altre partite» dice l'azione, ◀ ▶ no.</b> Le frecce sono un simbolo da
+          interpretare; questa è una frase che si legge. Il numero accanto — <b>4</b> — dice anche
+          quante ne restano, che è la cosa che l'elenco dava gratis e qui si perderebbe.
+        </p>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div class="titolo">Le tue partite · 1 di 5</div>
+            <div>
+              <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo</span>
+              <span class="con">siete al completo</span>
+            </div>
+            <div class="nota-coda">Mancano meno di 48 ore: <b>questa non si può più disdire</b>. Puoi ancora togliere un giocatore.</div>
+
+            <div class="tastiera">
+              <div class="bottone">➖ Togli un giocatore</div>
+              <div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div>
+              <div class="bottone">📅 Vedi le altre partite · 4 →</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="postilla attenzione">
+          <b>⭐ Ed ecco la cosa che solo la E sa fare</b> <em>(idea sua, 18/08)</em>: dentro le 48 ore
+          la scheda <b>non mostra un bottone che non serve</b> — <b>dice cosa non si può più fare</b>,
+          e lascia sotto solo ciò che si può. Oggi quella spiegazione è <b>una riga sola in fondo
+          all'elenco</b>, uguale per tutte: qui è <b>di questa partita</b>, e sta dove il socio
+          guarda.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>Zero ambiguità: c'è una partita sola, i bottoni sono i suoi.</span></li>
+          <li><span class="segno piu">+</span><span>⭐ <b>Ogni scheda spiega SÉ STESSA</b>: cosa si può ancora fare, e cosa no, con la ragione accanto.</span></li>
+          <li><span class="segno piu">+</span><span>Le azioni vere salgono in superficie: <b>un tocco in meno</b> per invitare o togliere.</span></li>
+          <li><span class="segno piu">+</span><span><b>Un messaggio, una notifica</b>: sfogliare riscrive quello che c'è, non ne manda di nuovi.</span></li>
+          <li><span class="segno meno">−</span><span><b>Si perde il colpo d'occhio</b>: «cosa ho questa settimana?» diventa quattro tocchi.</span></li>
+          <li><span class="segno meno">−</span><span>È una <b>schermata nuova</b> da disegnare e provare, non una disposizione diversa.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>medio</b> — una navigazione nuova, ma nessun messaggio in più</p>
+      </div>
+    </article>
+
+  </section>
+
+  <section class="chiusa">
+    <h2>Come la vedo io — corretta il 18/08 sera</h2>
+
+    <p>
+      🔁 <strong>Un mio argomento contro la B era sbagliato, e va detto per primo.</strong> Avevo
+      scritto «una colonna di schede», «otto partite nove messaggi di fila», e soprattutto che
+      «Torna all'elenco» avrebbe dovuto <em>riscriverne N</em>. Guardando il mockup, il committente
+      ha visto quello che c'era da vedere: <strong>sembra un blocco unico</strong>. Ed è vero —
+      Telegram raggruppa i messaggi di fila dello stesso mittente. E la riscrittura multipla non
+      serve: ogni messaggio <strong>si riscrive da sé</strong>, perché il bottone sta dentro il
+      messaggio che deve cambiare. ⇒ <em>La B costa meno di quanto le avevo attribuito, e il costo
+      che le resta non è visivo.</em>
+    </p>
+
+    <p>
+      <strong>Quello che le resta davvero</strong> sono tre cose, tutte fuori dallo schermo: sei
+      messaggi fanno <strong>sei notifiche</strong> a chat chiusa e arrivano a scaglioni (~1 al
+      secondo per chat); ogni richiesta lascia in chat un blocco nuovo invece di un messaggio solo;
+      e le schede <strong>invecchiano separatamente</strong> — uscendo da una partita, le altre
+      restano ferme al mondo di prima, mentre oggi il messaggio unico si rifà tutto.
+    </p>
+
+    <p>
+      🆕 <strong>E la F toglie il pezzo più fastidioso dei tre.</strong> Delle tre obiezioni qui
+      sopra, la prima — sei notifiche una dietro l'altra — <strong>non era una fatalità</strong>:
+      Telegram lascia mandare un messaggio <strong>in silenzio</strong>, e basta dare la voce al
+      primo. ⇒ Una notifica sola, come oggi, e sotto tutta la lista col bottone al posto giusto.
+      <em>Era la cosa da cercare invece di elencare un costo e fermarsi lì.</em>
+    </p>
+
+    <p>
+      <strong>Come la vedo adesso — e sono rimaste tre, non sei.</strong> La <strong>C</strong> è la
+      più economica: due etichette, zero meccanica nuova, e la scheda resta quella di oggi. La
+      <strong>F</strong> dà il bottone sotto la sua partita e paga una chat che si allunga. La
+      <strong>E</strong> è l'unica che cambia <em>cosa dice</em> il bot, non solo come lo dispone,
+      e paga il colpo d'occhio sulla settimana.
+      <em>La domanda non è più quale sia meglio: è se quella schermata debba servire a guardare
+      (C) o a fare (E).</em>
+    </p>
+
+    <p>
+      <strong>Una cosa la misurerei prima di scrivere il codice</strong>, e si fa in un giro sul bot
+      di prova: <em>quanto ci mettono davvero a comparire tutti e cinque i messaggi.</em> Telegram
+      dichiara circa un messaggio al secondo per chat, ma dichiarato non vuol dire misurato — e se
+      arrivassero a scaglioni visibili, la F perderebbe gran parte del suo senso.
+    </p>
+
+    <p>
+      🔁 <strong>La E è cresciuta, e non per una mia idea.</strong> L'avevo messa fra le «da dire ma
+      non da fare». Poi due osservazioni sue l'hanno cambiata: ① il bottone <em>«Vedi le altre
+      partite»</em> al posto delle frecce — <em>una frase si legge, un simbolo si interpreta</em>;
+      ② dentro le 48 ore, al posto di un «Gestisci» che promette meno di quel che sembra,
+      <strong>si scrive cosa non si può più fare</strong> e si lasciano sotto solo le azioni vive.
+      ⇒ È l'<strong>unica</strong> delle sei in cui ogni partita <strong>spiega sé stessa</strong>:
+      oggi quella spiegazione è una riga sola in fondo all'elenco, uguale per tutte.
+    </p>
+
+    <p>
+      <strong>E una cosa che non cambia in nessuna delle cinque:</strong> il bottone compare solo
+      dove c'è ancora qualcosa da fare — uscire o annullare, togliere un giocatore, invitare
+      qualcuno. Basta una porta aperta, ed è per questo che dentro le 48 ore il bottone c'è lo
+      stesso: disdire non si può più, ma invitare sì.
+    </p>
+
+    <p class="piede">
+      Mockup statico: nessun dato reale, nessuna rete, nessun Supabase — come vuole la regola dei
+      mockup. I nomi sono inventati perché questo repository è pubblico. Niente è stato sviluppato:
+      il codice si apre solo dopo un «mockup approvato».
+    </p>
+  </section>
+
+</div>
+</body>
+</html>
