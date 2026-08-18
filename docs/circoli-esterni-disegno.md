@@ -18,6 +18,7 @@ libero**, guardando **più circoli della zona** invece di uno solo.
 | **solo padel** | gli altri sport dei circoli non ci interessano |
 | **scan a domanda** | non sorveglianza continua: si guarda quando il socio chiede |
 | **fotografia valida 5 minuti** | oltre, si rilegge |
+| 🔄 **BETA: una lettura al giorno per circolo** *(18/08)* | *«prima devo andare a parlare con Wansport»*. ⚠️ Con 24 ore di invecchiamento il servizio **non può dire «c'è posto»**, solo com'era ieri: la freschezza a 5 minuti torna il giorno dell'accordo, non prima |
 | **perimetro: vicinanza, non provincia** | XTRE (Pordenone) dentro, Stone Padel (Padova) fuori |
 | **piattaforme: Wansport + Playtomic** | SportClubby esclusa |
 
@@ -54,9 +55,31 @@ endpoint sono tutti automazione del browser su Matchpoint. Legare l'aggregatore 
 significato riscriverlo quel giorno. Così nasce già indipendente, ed è la regola *il gestionale SA,
 il bot DICE* applicata a una funzione nuova.
 
-⚠️ **Non verificato**: se il calendario dentro `/start` sia HTML da spolpare o abbia un endpoint
-JSON. Nella pagina compare `option=com_wansport` ma nessun endpoint dati evidente. **Da misurare
-prima di scrivere il parser** — cambia il lavoro, non l'architettura.
+✅ **MISURATO il 18/08/2026, su tre circoli** (Marco Polo, Collalbrigo, Padel Conegliano) — e la
+risposta non è nessuna delle due: **`/start` è un GUSCIO**.
+
+| | misura |
+|---|---|
+| peso | **~1,07 MB** di HTML |
+| orari nella pagina (`\d\d:\d\d`) | **0** |
+| occorrenze di «padel» | **0** |
+| segnaposti di template (`{{…}}`) | **2229** |
+| `task=` visibili nell'HTML | **1**, ed è `profilo.downloadModelloDocumento&format=raw` |
+| latenza login+lettura | **1,7-1,8 s** |
+
+Identico sui tre ⇒ è la **piattaforma**, non il singolo circolo. La griglia non è nella pagina: la
+disegna il browser dopo aver chiesto i dati.
+🚨 **Un parser HTML avrebbe trovato una tabella vuota e detto «nessun campo libero»** — il «no»
+falso che questo servizio non deve mai dire. La regola «misurare prima di scrivere il parser» ha
+pagato: il parser che si stava per scrivere era quello sbagliato.
+
+⇒ **La domanda ora è un'altra: DA DOVE prende i dati.** La pista è la convenzione Joomla
+`task=<controller>.<metodo>&format=raw`, e gli endpoint stanno nei **bundle minificati** —
+`/templates/wsfrontend5/html/assets/javascripts/ws5-libs-start.min.js` e `app-ws5_utils.min.js`
+(23 copioni in tutto, versione `?v8672`).
+⭐ **E quei bundle sono file statici PUBBLICI**: si leggono senza login e senza consumare la
+lettura giornaliera del circolo. È lì che va guardato il passo 2b, prima di toccare ancora un
+portale.
 
 ## 🗺️ I 9 circoli operativi
 
