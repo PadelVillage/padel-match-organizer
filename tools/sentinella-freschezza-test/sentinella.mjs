@@ -65,9 +65,33 @@ const TETTO_ATTESA_MS = Number(process.env.PMO_TETTO_ATTESA_MS || 15000);
 //    quella variabile puo' chiamarsi in molti modi, e un parser legato al nome si
 //    romperebbe in silenzio il giorno che qualcuno la rinomina — restituendo
 //    "nessun token" con la stessa sicurezza con cui restituirebbe la verita'.
+//
+// 🔄 CORRETTO IL 17/08 SERA, dopo tre misure: il bot di PROVA non ha il token in
+//    nessun posto prendibile (ne' .env, ne' ambiente del processo). Il bot dei SOCI
+//    invece il suo .env ce l'ha — e' il file delle "tre righe" di CLAUDE.md.
+//    ⇒ Si guarda in tutti e due, PROVA per primo. E il committente ha ribadito due
+//    volte: niente terzo bot.
+//
+// ⚠️ USARE IL TOKEN DEL BOT DEI SOCI E' SICURO, e la ragione e' precisa:
+//    il 409 di Telegram («terminated by other getUpdates») riguarda il LONG POLLING,
+//    non l'invio. Due processi che fanno getUpdates sullo stesso token si rubano i
+//    messaggi; un sendMessage in piu' non disturba nessuno. La sentinella non chiama
+//    MAI getUpdates — solo sendMessage — quindi non puo' rubare un messaggio ai soci.
+//    🚨 Se un domani qualcuno le facesse leggere gli aggiornamenti, quella garanzia
+//    cadrebbe: e' il polling il confine, non il token.
+// ⛔ E il .env dei soci si LEGGE e basta. Il pericolo di quel file sta nello
+//    SCRIVERLO — spostarne le righe fra TEST e PROD fa prenotare e disdire per
+//    davvero nel circolo. Leggerlo e' inerte.
 const CARTELLA_BOT_PROVA = process.env.PMO_CARTELLA_BOT_PROVA || '/opt/assistente-padel-agent-prova';
+const CARTELLA_BOT_SOCI = process.env.PMO_CARTELLA_BOT_SOCI || '/opt/assistente-padel-agent';
 const ENV_BOT_PROVA = process.env.PMO_ENV_BOT_PROVA || `${CARTELLA_BOT_PROVA}/.env`;
-const FILE_CANDIDATI = [ENV_BOT_PROVA, `${CARTELLA_BOT_PROVA}/.env.local`, `${CARTELLA_BOT_PROVA}/.env.prova`];
+// L'ordine e' voluto: prima il bot di PROVA (e' quello di servizio), poi i SOCI.
+const SORGENTI_VOCE = [
+  { etichetta: 'bot di prova', cartella: CARTELLA_BOT_PROVA,
+    file: [ENV_BOT_PROVA, `${CARTELLA_BOT_PROVA}/.env.local`, `${CARTELLA_BOT_PROVA}/.env.prova`] },
+  { etichetta: 'bot dei soci', cartella: CARTELLA_BOT_SOCI,
+    file: [`${CARTELLA_BOT_SOCI}/.env`, `${CARTELLA_BOT_SOCI}/.env.local`] },
+];
 const FORMA_TOKEN = /\b(\d{6,}:[A-Za-z0-9_-]{30,})\b/;
 
 // 🚨 Torna anche il PERCHE' quando non trova niente. La prima versione aveva un
@@ -96,44 +120,49 @@ function cercaNelTesto(testo, separatore) {
 // ⚖️ E' la 26ª al contrario: non un limite dichiarato e mai provato, ma una CAPACITA'
 //    dichiarata e mai provata. Costa uguale, e si smaschera allo stesso modo:
 //    eseguendo.
-function tokenDalProcessoDiProva() {
+function tokenDalProcesso(cartella, etichetta) {
   let pid = '';
   try {
     for (const voce of readdirSync('/proc')) {
       if (!/^\d+$/.test(voce)) continue;
       let cmd;
       try { cmd = readFileSync(`/proc/${voce}/cmdline`, 'utf8'); } catch (e) { continue; }
-      if (!cmd.includes(CARTELLA_BOT_PROVA)) continue;
+      if (!cmd.includes(cartella)) continue;
       pid = voce;
       let amb;
       try { amb = readFileSync(`/proc/${voce}/environ`, 'utf8'); } catch (e) {
-        return { token: '', motivo: `ambiente del processo ${voce} illeggibile (${e.code || e.message})` };
+        return { token: '', motivo: `${etichetta}: ambiente del processo ${voce} illeggibile (${e.code || e.message})` };
       }
       const t = cercaNelTesto(amb, '\0');
-      if (t) return { token: t, motivo: '', dove: `ambiente del processo ${voce}` };
+      if (t) return { token: t, motivo: '', dove: `${etichetta}, ambiente del processo ${voce}` };
     }
   } catch (e) {
     return { token: '', motivo: `/proc illeggibile (${e.code || e.message})` };
   }
   return { token: '', motivo: pid
-    ? `il processo ${pid} del bot di prova gira, ma non ha un token nel suo ambiente`
-    : `nessun processo in esecuzione da ${CARTELLA_BOT_PROVA}` };
+    ? `${etichetta}: il processo ${pid} gira, ma non ha un token nel suo ambiente`
+    : `${etichetta}: nessun processo in esecuzione da ${cartella}` };
 }
 
+// Cerca in TUTTE le sorgenti, in ordine, e per ognuna prima i file e poi il processo.
+// Quando non trova, racconta ogni posto guardato: il 17/08 un motivo muto e' costato
+// tre giri di deploy per scoprire una cosa che il primo giro poteva gia' dire.
 function tokenDalBotDiProva() {
-  // ① i file, in ordine: e' la strada piu' stabile quando c'e'.
   const provati = [];
-  for (const f of FILE_CANDIDATI) {
-    let testo;
-    try { testo = readFileSync(f, 'utf8'); } catch (e) { provati.push(`${f}: ${e.code === 'ENOENT' ? 'assente' : e.code || e.message}`); continue; }
-    const t = cercaNelTesto(testo, '\n');
-    if (t) return { token: t, motivo: '', dove: f };
-    provati.push(`${f}: c'è ma nessuna riga ha la forma di un token`);
+  for (const sorgente of SORGENTI_VOCE) {
+    for (const f of sorgente.file) {
+      let testo;
+      try { testo = readFileSync(f, 'utf8'); }
+      catch (e) { provati.push(`${f}: ${e.code === 'ENOENT' ? 'assente' : e.code || e.message}`); continue; }
+      const t = cercaNelTesto(testo, '\n');
+      if (t) return { token: t, motivo: '', dove: `${sorgente.etichetta}, ${f}` };
+      provati.push(`${f}: c'è ma nessuna riga ha la forma di un token`);
+    }
+    const dalProcesso = tokenDalProcesso(sorgente.cartella, sorgente.etichetta);
+    if (dalProcesso.token) return dalProcesso;
+    provati.push(dalProcesso.motivo);
   }
-  // ② l'ambiente del processo vivo: se il bot gira, il token ce l'ha per forza.
-  const dalProcesso = tokenDalProcessoDiProva();
-  if (dalProcesso.token) return dalProcesso;
-  return { token: '', motivo: `${dalProcesso.motivo}; file: ${provati.join(' · ')}` };
+  return { token: '', motivo: provati.join(' · ') };
 }
 
 const TOKEN_PROPRIO = process.env.TELEGRAM_SENTINELLA_TOKEN || '';
@@ -142,7 +171,7 @@ const TOKEN = TOKEN_PROPRIO || PRESTITO.token;
 // Da dove viene la voce, in chiaro nel registro. Del token si nomina solo la parte
 // PRIMA dei due punti — e' l'id pubblico del bot, non il segreto.
 const FONTE_VOCE = TOKEN_PROPRIO ? 'secret proprio'
-  : (PRESTITO.token ? `bot di prova — ${PRESTITO.dove} (bot ${PRESTITO.token.split(':')[0]})`
+  : (PRESTITO.token ? `${PRESTITO.dove} (bot ${PRESTITO.token.split(':')[0]})`
                     : `NESSUNA — ${PRESTITO.motivo}`);
 const CHAT = process.env.TELEGRAM_SENTINELLA_CHAT_ID || '';
 

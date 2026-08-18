@@ -10,12 +10,14 @@
 #    Il .env NON viene mai cancellato (niente --delete): se i secret non ci sono,
 #    quello gia' sulla VM resta dov'e'.
 #
-# 🔑 Per ARMARLA servono due secret di questo repo:
-#      TELEGRAM_SENTINELLA_TOKEN    — il token di un bot Telegram
-#      TELEGRAM_SENTINELLA_CHAT_ID  — la chat dove scrivere
-#    Senza, si installa lo stesso e gira DISARMATA: misura e scrive nel registro
-#    cio' che avrebbe mandato. Una guardia disarmata che lo dichiara e' onesta;
-#    una che crede di aver mandato il messaggio no.
+# 🔑 Per ARMARLA basta UN secret: TELEGRAM_SENTINELLA_CHAT_ID.
+#    Il token e' FACOLTATIVO: senza, la sentinella prende in prestito quello di un
+#    bot gia' sulla VM — prima il bot di PROVA, poi quello dei SOCI.
+#    ⛔ Niente terzo bot: e' una richiesta del committente, ribadita due volte il
+#       17/08/2026 («continuo a insistere, non voglio un terzo bot»).
+#    Senza il chat id si installa lo stesso e gira DISARMATA: misura e scrive nel
+#    registro cio' che avrebbe mandato. Una guardia disarmata che lo dichiara e'
+#    onesta; una che crede di aver mandato il messaggio no.
 
 name: Deploy sentinella freschezza TEST (Hetzner)
 
@@ -66,23 +68,22 @@ jobs:
       #    i NOMI dei file che potrebbero contenerla e se una riga ha la forma di un
       #    token. Il 17/08 il primo giro ha detto «fonteVoce: nessuna» e non c'era
       #    modo di sapere se mancava il file o la riga: questo passo esiste per quello.
-      - name: Dove sta la voce del bot di prova? (solo nomi, mai contenuti)
+      - name: Dove sta la voce? (i due bot, solo nomi e mai contenuti)
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'EOF'
             set +e
-            D=/opt/assistente-padel-agent-prova
-            echo "=== la cartella del bot di prova esiste? ==="
-            [ -d "$D" ] && echo "sì: $D" || { echo "NO — ecco cosa c'è in /opt:"; ls -1 /opt; }
-            echo
-            echo "=== file che potrebbero contenere la configurazione (nomi e dimensioni, NON il contenuto) ==="
-            ls -la "$D" 2>/dev/null | grep -iE 'env|config|ecosystem' || echo "(nessun file con env/config/ecosystem nel nome)"
-            echo
-            echo "=== qualche riga ha la forma di un token Telegram? (si stampa solo l'ID del bot, che è pubblico) ==="
-            for F in "$D"/.env "$D"/.env.* "$D"/ecosystem.config.* ; do
-              [ -f "$F" ] || continue
-              ID=$(grep -oE '[0-9]{6,}:[A-Za-z0-9_-]{30,}' "$F" 2>/dev/null | head -1 | cut -d: -f1)
-              if [ -n "$ID" ]; then echo "$F → SÌ (bot $ID)"; else echo "$F → no"; fi
+            for D in /opt/assistente-padel-agent-prova /opt/assistente-padel-agent ; do
+              echo "──────── $D ────────"
+              [ -d "$D" ] || { echo "  la cartella NON esiste"; continue; }
+              echo "  file di configurazione (nomi e dimensioni, MAI il contenuto):"
+              ls -la "$D" 2>/dev/null | grep -iE 'env|config|ecosystem' || echo "    (nessuno con env/config/ecosystem nel nome)"
+              echo "  qualche riga ha la forma di un token? (si stampa solo l'ID del bot, che è pubblico)"
+              for F in "$D"/.env "$D"/.env.* "$D"/ecosystem.config.* ; do
+                [ -f "$F" ] || continue
+                ID=$(grep -oE '[0-9]{6,}:[A-Za-z0-9_-]{30,}' "$F" 2>/dev/null | head -1 | cut -d: -f1)
+                if [ -n "$ID" ]; then echo "    $F → SÌ (bot $ID)"; else echo "    $F → no"; fi
+              done
             done
             echo "=== fine ==="
           EOF
@@ -103,8 +104,8 @@ jobs:
         run: |
           set -euo pipefail
           # 🔑 Basta il CHAT ID. Il token e' facoltativo: senza, la sentinella prende in
-          #    prestito quello del bot di PROVA, gia' sulla VM nella cartella accanto —
-          #    scelta del committente del 17/08 («il bot di test non lo leveremo mai»).
+          #    prestito quello di un bot gia' sulla VM: prima il PROVA, poi i SOCI —
+          #    il committente non vuole un terzo bot, e l'ha ribadito due volte.
           #    Chi un domani volesse renderla indipendente aggiunge il secret del token
           #    e da quel momento vince quello: nessun'altra modifica.
           if [ -n "${TG_CHAT:-}" ]; then
@@ -117,7 +118,7 @@ jobs:
             if [ -n "${TG_TOKEN:-}" ]; then
               echo "🔫 ARMATA con voce PROPRIA (secret del token presente)"
             else
-              echo "🔫 ARMATA con la voce del BOT DI PROVA (nessun secret del token: lo prende dal suo .env sulla VM)"
+              echo "🔫 ARMATA con la voce PRESA IN PRESTITO da un bot della VM (quale, lo dice il giro qui sotto)"
             fi
           else
             echo "🔇 manca TELEGRAM_SENTINELLA_CHAT_ID → .env NON toccato (se ce n'era uno sulla VM, resta)"
