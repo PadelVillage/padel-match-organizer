@@ -68,7 +68,7 @@ può risuonare per un guasto nuovo.
 | file | |
 |---|---|
 | `sentinella.mjs` | la misura e la decisione. Nessuna dipendenza: solo Node ≥18 |
-| `banco-sentinella.mjs` | 17 casi, rete finta, più il sabotaggio che spegne la pazienza |
+| `banco-sentinella.mjs` | 22 casi, rete finta, più il sabotaggio che spegne la pazienza |
 | `*.service` / `*.timer` | l'unità systemd (oneshot) e il timer da 15′ |
 | `stato.json` | ⚠️ generato sulla VM: memoria fra un giro e l'altro |
 | `.env` | ⚠️ **solo sulla VM**, mai in git: il chat id (e un token, se un giorno ne vuole uno suo) |
@@ -91,22 +91,34 @@ gira è il guasto che questa voce esiste per evitare, un piano più in su.
 
 ```
 TELEGRAM_SENTINELLA_CHAT_ID  la chat dove scrivere        ← obbligatorio
-TELEGRAM_SENTINELLA_TOKEN    un token tutto suo           ← facoltativo
+TELEGRAM_SENTINELLA_TOKEN    un token tutto suo           ← facoltativo, di norma NON serve
 ```
 
-**La sentinella non ha un bot suo: parla con quello di PROVA**, prendendone il token
-dal `.env` già sulla VM nella cartella accanto. È una decisione del committente del
-17/08/2026 — *«facciamo la B perché il bot di test non lo leveremo mai»* — presa dopo
-avergli messo davanti il costo: una voce presa in prestito dipende da un pezzo che non
-è tuo.
+**La sentinella non ha un bot suo: prende in prestito la voce di uno già sulla VM** —
+prima il **bot di prova**, e se lì non c'è quello dei **soci**. Decisione del
+committente del 17/08/2026, ribadita due volte: *«continuo a insistere, non voglio un
+terzo bot»*.
 
-🔎 Il token si riconosce **dalla forma** (`\d+:…`), non dal nome della riga: un parser
-legato al nome si romperebbe **in silenzio** il giorno che qualcuno la rinomina,
-rispondendo «nessun token» con la stessa sicurezza con cui direbbe la verità.
+🔎 Il token si cerca **dalla forma**, non dal nome della riga, e in due posti per ogni
+bot: i file di configurazione, e — se lì non c'è — l'**ambiente del processo vivo**
+(`/proc/<pid>/environ`). Un bot che gira e parla con Telegram ha per forza il suo
+token, comunque gliel'abbiano dato.
 
-⛔ Il bot dei **soci** è tenuto fuori di proposito: il suo `.env` è quello delle
-**tre righe**, dove uno sbaglio fa prenotare e disdire per davvero nel circolo. Non è
-un file a cui avvicinarsi per un avviso di servizio.
+🚨 **Misurato il 17/08, e ha smentito due assunzioni di fila**: il bot di prova **non**
+ha il token in nessun posto prendibile — né `.env`, né ambiente del processo — e non
+ce l'ha nemmeno Supabase (`bot-telegram-admin` non è un bot ma un *ponte*: non chiama
+mai `api.telegram.org` e conosce solo lo *username*). ⇒ Nella pratica la voce viene dal
+**bot dei soci**, che il suo `.env` ce l'ha.
+
+⚠️ **Usare il token del bot dei soci è sicuro, e la ragione è precisa**: il `409` di
+Telegram riguarda il **long polling**, non l'invio. Due processi che fanno `getUpdates`
+sullo stesso token si rubano i messaggi; un `sendMessage` in più non disturba nessuno.
+La sentinella non chiama **mai** `getUpdates`. 🚨 Il confine è il *polling*, non il
+token: chi un domani le facesse leggere gli aggiornamenti farebbe cadere la garanzia.
+
+⛔ E quel `.env` si **legge** e basta. Il pericolo di quel file sta nello **scriverlo**
+— spostarne le righe fra TEST e PROD fa prenotare e disdire per davvero nel circolo.
+Leggerlo è inerte.
 
 📌 Il giorno che si volesse renderla indipendente basta aggiungere il secret del token:
 da quel momento vince quello, e non cambia nient'altro.
