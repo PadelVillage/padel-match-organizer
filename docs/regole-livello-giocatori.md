@@ -27,7 +27,7 @@ Sono **2.276 soci su 2.801**: il valore `0,5` con cui il gestionale scrive «da 
 | Non può nemmeno **invitare** né **togliere** un giocatore | ✅ |
 | Quando ci prova, riceve il messaggio col bottone 🎾 **TEST LIVELLO DI GIOCO** | ✅ |
 | Se **chiede** «che livello ho?», gli si dice che non ce l'ha **e come farlo**, col bottone | ✅ **dal 17/08** — prima era un vicolo cieco |
-| Riceve un **promemoria gentile**, un paio di volte al mese | 🆕 → voce **56** |
+| Riceve un **promemoria gentile**, un paio di volte al mese | 🆕 → voce **61** § B |
 | **Non eredita** il livello di chi lo invita | ✅ — e l'eredità è ❌ (sotto) |
 
 ### ❌ L'eredità dall'organizzatore — cancellata il 17/08
@@ -54,11 +54,11 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
-| È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **55** |
-| Finito il giro → **30 giorni** prima di rifarlo | 🔴 oggi solo dopo **tre bocciature**; chi **passa** può rifarlo **subito** → voce **55** |
+| È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **61** § A |
+| Finito il giro → **30 giorni** prima di rifarlo | 🔴 oggi solo dopo **tre bocciature**; chi **passa** può rifarlo **subito** → voce **61** § A |
 | Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
 | Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
-| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **57** |
+| …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **61** § C |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
 
@@ -68,10 +68,10 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 
 | la regola | oggi |
 |---|---|
-| Può **rifare** il test | 🆕 il bottone non gli compare mai → voce **55** |
+| Può **rifare** il test | 🆕 il bottone non gli compare mai → voce **61** § A |
 | Se il test dice **più alto** → sale | ✅ |
-| Se dice **più basso** → **non scende** | 🔴 oggi scende **subito e per intero**, da 4 a 1 → voce **55** |
-| Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | 🆕 → voce **55** |
+| Se dice **più basso** → **non scende** | 🔴 oggi scende **subito e per intero**, da 4 a 1 → voce **61** § A |
+| Solo se **tutte e tre** le prove dicono più basso → scende, e **solo di 0,5** | 🆕 → voce **61** § A |
 | Il livello si dice sempre **a parole**, mai a numeri | ✅ |
 
 ### Il giro, disegnato — sei Avanzato (4)
@@ -117,7 +117,11 @@ Da tenere separate, o si pota la cosa sbagliata:
 
 ---
 
-📌 **Dove stanno i pezzi ancora da fare**: voci **55**, **56** e **57** in
-[`docs/lavori/README.md`](lavori/README.md) — tenute insieme dalla voce **61**, *«finalizzare la
-sezione «Il mio livello» del bot»*, messa fra le 🔴 **urgenti** dal committente il 18/08/2026.
-⚠️ Le tre restano **in coda** finché non è lui a spostarle: la 61 le **elenca**, non le ha promosse.
+📌 **Dove stanno i pezzi ancora da fare**: tutti dentro la voce **61** di
+[`docs/lavori/README.md`](lavori/README.md) — *«finalizzare la sezione «Il mio livello» del bot»*,
+messa fra le 🔴 **urgenti** dal committente il 18/08/2026.
+🔄 **Le vecchie voci 55, 56 e 57 non esistono più come voci a sé**: assorbite nella 61 la sera
+stessa (*«sì assorbile nella 61»*), e le loro schede stanno là dentro per intero — § **A** le regole
+del rifare, § **B** il promemoria gentile, § **C** il silenzio su Semi-Pro e Professionista.
+🚨 **L'ordine non è libero**: le regole del § A (in negativo non si scende) vengono **prima** di
+aprire il bottone a chi un livello ce l'ha, o la cura fa il danno da cui difende.
