@@ -55,14 +55,15 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
 | È il socio a **decidere a quale prova fermarsi** | 🆕 → voce **61** § A |
-| Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — e un giro finisce **anche quando il test si passa**. Prima l'attesa scattava solo dopo tre bocciature, e chi **passava** rifaceva **subito** |
+| Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — un giro sono **tre prove**, e quando finiscono partono i 30 giorni. Prima l'attesa scattava solo dopo tre **bocciature**, e chi **passava** poteva rifarlo **subito e all'infinito** |
+| Dopo una prova **riuscita** si può ancora **affinare** | ✅ — è il giro disegnato qui sotto: quello che si è tolto è il *«all'infinito»*, non il riprovare |
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
 | Chi viene bocciato **non sa perché**: nessun suggerimento, solo l'offerta di rifarlo | ✅ — un test che spiega è un oracolo |
 | Semi-Pro e Professionista il quiz non ce l'hanno (`skip`) | ✅ |
 | …e la loro scheda la guarda **il maestro del circolo**, che si contatta **tramite la segreteria** | 🆕 (17/08) — 🔴 oggi il bot **tace** → voce **61** § C |
 | Dopo tre bocciature: 30 giorni, e si può parlare con la **segreteria** | ✅ |
 | Il conto dei tentativi vive nel **ponte**, non nel bot | ✅ — un bot si riavvia, il conto no |
-| Chi ha **passato** e chiede di nuovo il test si sente dire che deve aspettare | 🔴 il **ponte** lo sa e lo dice (`motivo_attesa: passato`), ma il **bot** non legge ancora quel campo: direbbe la frase delle tre bocciature → voce **61** ⑦ |
+| A giro finito il bot dice **«hai finito le tue prove»**, non «hai sbagliato tre volte» | 🔴 oggi dice le tre bocciature, ma le prove finite possono essere **due bocciature e una passata**: il ponte porta il numero vero (`tentativi_falliti`), è la **frase** che manca → voce **61** ⑦ |
 
 ---
 

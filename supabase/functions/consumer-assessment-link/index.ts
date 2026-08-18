@@ -99,10 +99,23 @@ function indirizzoScheda(supabaseUrl: string): string {
 // vero e provarle una per una. Una copia riscritta nel banco proverebbe la copia.
 //
 // 🔁⭐⭐ **LA REGOLA CAMBIATA IL 18/08/2026** (voce 61 § A ②). Prima i 30 giorni
-// partivano dal **terzo fallimento**; sua regola: partono dalla **fine del giro**,
-// e un giro finisce anche quando il test si PASSA — *«finito il giro, 30 giorni
-// prima di rifarlo»*. Prima chi passava poteva rifarlo **subito**, e nessuno se
-// n'era accorto perché il bottone non gli compariva mai.
+// partivano dal **terzo fallimento** e una scheda che PASSAVA azzerava il conto ⇒
+// chi passava poteva rifare il test **all'infinito**, subito. Sua regola: *«finito
+// il giro, 30 giorni prima di rifarlo»* — e un giro sono **tre prove**.
+//
+// 🚨⭐⭐ **E il primo modo in cui l'avevo scritta era SBAGLIATO, corretto lo stesso
+// giorno**: avevo fatto chiudere il giro alla prima prova che **passa**. Sembrava
+// fedele e non lo era: nel giro che il committente ha disegnato, dopo una prova
+// riuscita si può **riprovare per salire ancora** — *«decidi tu a quale delle tre
+// volte ti vuoi fermare»*. Chiudendo al primo `pass`, le tre prove sarebbero
+// toccate **solo a chi sbaglia il quiz**, e chi lo passa avrebbe avuto **una prova
+// ogni 30 giorni**. ⇒ Il giro si chiude quando le **prove sono finite**, punto.
+// ⚖️ Quello che il difetto voleva togliere era il *«subito e all'infinito»*, non il
+// riprovare: adesso chi passa può ancora affinare — **due volte**, non sempre.
+//
+// ⏭️ Quando ci sarà il ④ (il socio sceglie a quale prova fermarsi) si aggiungerà un
+// secondo modo di chiudere: la sua CONFERMA. Oggi quel modo non esiste — nessuno
+// gli chiede niente — e inventarlo qui vorrebbe dire chiuderlo per lui.
 //
 // 🚨 E la ricostruzione a giri ripara un secondo difetto che il conto delle sole
 // fallite aveva addosso e che nessuno aveva visto: con quattro fallite di fila il
@@ -131,16 +144,18 @@ function statoDelGiro(schede: any, adessoMs: any, provePerGiro: any, giorniDiAtt
     .slice()
     .sort((a: any, b: any) => quandoMs(a?.submitted_at) - quandoMs(b?.submitted_at));
 
-  // Si formano i giri in ordine di tempo: un giro si CHIUDE quando le prove sono
-  // finite oppure quando una passa. Quello che resta in fondo è il giro aperto.
+  // Si formano i giri in ordine di tempo: un giro si CHIUDE quando le sue prove sono
+  // finite. Quello che resta in fondo è il giro aperto.
+  // ⚠️ Un giro cominciato e abbandonato resta APERTO, anche per mesi: chi ha fatto una
+  // prova sola e non è più tornato ne ha ancora due. Farlo scadere sarebbe una regola
+  // che nessuno ha deciso, e qui non si inventano regole per il socio.
   let corrente: any[] = [];
   let chiuso: any = null;
   for (const s of prove) {
     corrente.push(s);
-    const passata = esitoDellaProva(s) === 'pass';
-    if (passata || corrente.length >= provePerGiro) {
+    if (corrente.length >= provePerGiro) {
       chiuso = {
-        motivo: passata ? 'passato' : 'esaurito',
+        motivo: 'esaurito',
         chiusoIl: String(s?.submitted_at ?? '').trim(),
         falliti: corrente.filter((x: any) => esitoDellaProva(x) === 'fail').length,
       };
@@ -283,9 +298,11 @@ Deno.serve(async (req: Request) => {
 
      🔁⭐⭐ **CAMBIATA IL 18/08/2026, sua regola** (voce 61 § A ②): *«finito il giro, 30 giorni
      prima di rifarlo»*. Fino a qui i 30 giorni partivano dal **terzo fallimento** e una scheda
-     che PASSAVA azzerava il conto ⇒ chi passava poteva rifare il test **subito**, e nessuno se
-     n'era accorto perché il bottone non gli compariva mai. Adesso un giro **si chiude** in due
-     modi — prove finite, oppure una passa — e da quella data partono i 30 giorni.
+     che PASSAVA azzerava il conto ⇒ chi passava poteva rifare il test **subito e all'infinito**,
+     e nessuno se n'era accorto perché il bottone non gli compariva mai. Adesso un giro sono
+     **tre prove**, e quando finiscono partono i 30 giorni.
+     🚨 La prima stesura chiudeva il giro al primo `pass`: sbagliata, e corretta lo stesso
+     giorno — avrebbe dato le tre prove **solo a chi sbaglia il quiz**. Vedi `statoDelGiro`.
      ⚖️ I 30 giorni partono dalla **chiusura**, non da ogni prova: chi ne fa tre in dieci minuti
      aspetta da quel momento, non tre volte.
      🚨 E la ricostruzione a giri ripara un difetto che il conto delle sole fallite si portava
@@ -393,11 +410,12 @@ Deno.serve(async (req: Request) => {
       tentativi_falliti: giro.falliti,
       riprova_dal: giro.attesa.dal,
       giorni_mancanti: giro.attesa.giorni,
-      // 🆕 Perché si aspetta, ed è un campo NUOVO che il bot ancora non legge: `esaurito`
-      // (le tre prove sono finite) oppure `passato` (il test è stato superato e il giro è
-      // chiuso). ⚠️ Finché il bot non lo guarda dirà la frase delle tre bocciature anche a
-      // chi ha PASSATO — sta scritto nella voce 61 come pezzo che resta, perché il bot vive
-      // in un altro repo e la frase la dice lui, non questo ponte.
+      // 🆕 Perché si aspetta, ed è un campo NUOVO che il bot ancora non legge. Oggi l'unico
+      // valore è `esaurito`: le prove del giro sono finite. ⏭️ Col ④ se ne aggiungerà un
+      // secondo — la conferma del socio — e allora la distinzione servirà davvero.
+      // ⚠️ Nel frattempo la frase del bot resta da correggere lo stesso, e non per questo
+      // campo: `tentativi_falliti` può valere **2** in un giro esaurito (bocciato, bocciato,
+      // passato), mentre il bot dice «tre bocciature». È il pezzo ⑦ della voce 61.
       motivo_attesa: giro.attesa.motivo,
     });
   }

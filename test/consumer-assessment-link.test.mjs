@@ -110,22 +110,27 @@ caso('4. tre bocciature: giro ESAURITO, e i 30 giorni partono dall\'ultima', () 
   ];
 });
 
-caso('5. 🚨🚨 LA REGOLA NUOVA: chi PASSA chiude il giro e aspetta — prima rifaceva subito', () => {
+caso('5. 🚨🚨 chi PASSA non chiude il giro: può ancora AFFINARE, due volte', () => {
+  // ⚖️ Il difetto da togliere era il «subito e all'INFINITO», non il riprovare: nel giro
+  //    disegnato dal committente, dopo una prova riuscita si può riprovare per salire ancora.
+  //    Chiudere al primo `pass` darebbe le tre prove solo a chi sbaglia il quiz.
   const s = stato([prova(giorniFa(3), 'pass')]);
-  return [
-    s.ammesso === false,
-    s.attesa?.motivo === 'passato',
-    s.falliti === 0,               // ha passato: non ha sbagliato niente
-    s.attesa?.giorni === GIORNI - 3,
-  ];
+  return [s.ammesso === true, s.prova === 2, s.falliti === 0, s.ultima_prova === false];
 });
 
-caso('6. bocciato e poi passato: il giro si chiude sulla PASSATA, non sulla bocciatura', () => {
+caso('6. bocciato e poi passato: siamo alla terza, ed è l\'ultima del giro', () => {
   const s = stato([prova(giorniFa(5), 'fail'), prova(giorniFa(4), 'pass')]);
+  return [s.ammesso === true, s.prova === 3, s.falliti === 1, s.ultima_prova === true];
+});
+
+caso('6bis. ⭐ tre prove con una PASSATA in mezzo: giro esaurito, ma le bocciature sono DUE', () => {
+  // 🚨 È il caso per cui il bot non può dire «hai sbagliato tre volte»: `tentativi_falliti`
+  //    vale 2, e la frase giusta parla di prove finite, non di bocciature (pezzo ⑦).
+  const s = stato([prova(giorniFa(6), 'fail'), prova(giorniFa(5), 'pass'), prova(giorniFa(4), 'fail')]);
   return [
     s.ammesso === false,
-    s.attesa?.motivo === 'passato',
-    s.falliti === 1,
+    s.attesa?.motivo === 'esaurito',
+    s.falliti === 2,
     s.attesa?.dal === new Date(Date.parse(giorniFa(4)) + GIORNI * GIORNO).toISOString(),
   ];
 });
@@ -168,15 +173,15 @@ caso('11. l\'ordine dell\'elenco non conta: dal database arrivano dalla più rec
 });
 
 caso('12. i giorni mancanti si arrotondano per ECCESSO e non sono mai 0', () => {
-  // chiusura 29 giorni e mezzo fa: manca mezza giornata, e «0 giorni» sarebbe una bugia
+  // giro chiuso 29 giorni e mezzo fa: manca mezza giornata, e «0 giorni» sarebbe una bugia
   const mezzaGiornataAllaFine = new Date(ADESSO - (GIORNI - 0.5) * GIORNO).toISOString();
-  const s = stato([prova(mezzaGiornataAllaFine, 'pass')]);
+  const s = stato([prova(giorniFa(31), 'fail'), prova(giorniFa(30.5), 'fail'), prova(mezzaGiornataAllaFine, 'fail')]);
   return [s.ammesso === false, s.attesa.giorni === 1];
 });
 
 caso('13. 🔒 una data di chiusura illeggibile NON chiude la porta in faccia a nessuno', () => {
-  const rotta = { submitted_at: 'non-una-data', raw_response: { knowledge: { status: 'pass' } } };
-  const s = stato([rotta]);
+  const rotta = { submitted_at: 'non-una-data', raw_response: { knowledge: { status: 'fail' } } };
+  const s = stato([rotta, rotta, rotta]);
   return [s.ammesso === true, s.prova === 1];
 });
 
@@ -207,6 +212,10 @@ const guardie = [
   //    prove» da «hai passato», e direbbe la frase delle bocciature a chi ha passato.
   ['la risposta dice PERCHÉ si aspetta (`motivo_attesa`)', /motivo_attesa: giro\.attesa\.motivo/.test(src)],
   ['il ponte resta disarmato senza segreto', /CONSUMER_BRIDGE_SECRET/.test(src) && /BRIDGE_DISARMED/.test(src)],
+  // 🚨 La prima stesura del 18/08 chiudeva il giro al primo `pass`: avrebbe dato le tre prove
+  //    SOLO a chi sbaglia il quiz, e a chi lo passa una prova ogni 30 giorni. Corretta lo
+  //    stesso giorno — questa guardia esiste perché non torni per distrazione.
+  ['il giro si chiude sulle PROVE FINITE, non su una passata', !/passata \|\| corrente\.length/.test(src)],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {
