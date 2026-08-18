@@ -74,12 +74,28 @@ falso che questo servizio non deve mai dire. La regola «misurare prima di scriv
 pagato: il parser che si stava per scrivere era quello sbagliato.
 
 ⇒ **La domanda ora è un'altra: DA DOVE prende i dati.** La pista è la convenzione Joomla
-`task=<controller>.<metodo>&format=raw`, e gli endpoint stanno nei **bundle minificati** —
-`/templates/wsfrontend5/html/assets/javascripts/ws5-libs-start.min.js` e `app-ws5_utils.min.js`
-(23 copioni in tutto, versione `?v8672`).
-⭐ **E quei bundle sono file statici PUBBLICI**: si leggono senza login e senza consumare la
-lettura giornaliera del circolo. È lì che va guardato il passo 2b, prima di toccare ancora un
-portale.
+`task=<controller>.<metodo>&format=raw`.
+
+🧯 **E la prima ipotesi è stata MISURATA E SMENTITA, il 18/08 stesso.** Avevo scritto che gli
+endpoint stavano nei **bundle minificati** — sembrava ovvio, ed era comodo perché quei file sono
+pubblici. Scaricati tutti e tre (**2,4 MB**: `ws5-libs-start.min.js`, `ws5-libs.min.js`,
+`app-ws5_utils.min.js`) e cercati dentro:
+
+| parola | occorrenze |
+|---|---|
+| `prenot` · `disponib` · `campo` · `court` · `option=` | **0** |
+| `task=` | **0** |
+| `calendar` | 221 — ma sono `calendarWeeks`, `calendarEl`, `calendarSelect`: **un selettore di date**, non il calendario delle prenotazioni |
+
+⇒ Sono **librerie generiche** (helper Babel, `WsfUtils` per modali e ajax), non la logica
+dell'applicazione. **L'endpoint lì dentro non c'è.**
+
+⭐ **Dove guardare invece**: dentro il **corpo di `/start`** — quel megabyte che finora è stato
+solo campionato per 1500 caratteri. La logica con gli indirizzi è quasi certamente in JavaScript
+in linea nella pagina, che è anche il motivo per cui la pagina pesa così tanto. ⇒ Il passo 2b
+comincia allargando `circoli-scan` a cercare **nel corpo intero**, non in un assaggio.
+⚖️ Nota di metodo: l'ipotesi «sta nei bundle» era comoda (file pubblici, nessun costo) ed è
+proprio per questo che andava provata subito invece che tramandata.
 
 ## 🗺️ I 9 circoli operativi
 
