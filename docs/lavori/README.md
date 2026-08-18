@@ -689,7 +689,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** |
+| 🔴 **Urgenti** | **1** |
 | 📋 **In coda** | **8** |
 | 📦 **Chiuse** | **48** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -917,12 +917,71 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
 e poi la C»*). ⇒ **Urgenti da 1 a 0 — lista vuota.** La sua riga sta fra le 📦 chiuse, con dentro
 la riga della scheda che non reggeva e i tre giri che sono serviti a dare una voce alla sentinella.
+
+🔄 **E la sera del 18/08 la lista si è riempita di nuovo, e a riempirla è stato LUI**:
+*«inserisci nella lista dei task urgenti la finalizzazione della sezione sul bot che si chiama il mio
+livello»*. ⇒ **Urgenti da 0 a 1.** 🚨 **Dalla coda non ho spostato niente**: la **55**, la **56**
+e la **57** sono i pezzi che a quella sezione mancano, ma promuoverle è una sua decisione — la domanda
+sta in fondo alla scheda, non l'ho eseguita da me.
+
+### 61. 🎾 **Finalizzare la sezione «Il mio livello» del bot** — messa qui da LUI
+
+> 🗣️ **Sua, il 18/08/2026**: *«inserisci nella lista dei task urgenti la finalizzazione della
+> sezione sul bot che si chiama il mio livello»*. ⇒ È la stessa sezione che aveva aperto la 30ª —
+> *«parliamo della sezione dove c'è scritto il mio livello»* — e il posto in lista **l'ha dato lui**,
+> come per la 58 e la 59.
+
+**Cos'è la sezione.** La scheda che il socio si legge sul telefono quando chiede *«che livello ho?»*:
+gliela serve `consumer-player-readmodel`, dove il livello **si dice a parole e mai a numeri** e la
+regola di quando è «dimostrato» sta nel **ponte** (`livello-dimostrato.ts`), non nel bot. È la
+divisione di sempre — **il gestionale SA, il bot DICE**.
+
+**Cosa c'è già, e regge** — riletto nel codice il 18/08, non ricordato:
+
+| il pezzo | dove vive | stato |
+|---|---|---|
+| chi il livello **non ce l'ha** e lo chiede riceve la spiegazione **col bottone** 🎾 TEST LIVELLO DI GIOCO | bot | ✅ **dal 17/08** — prima era un vicolo cieco: leggeva «non ce l'hai» e basta |
+| il livello si dice **a parole**, e un livello **in prestito** non si annuncia | ponte (`livello-dimostrato.ts`, col gemello della rubrica) | ✅ |
+| chi non ha il livello **non organizza**; se è **invitato** gioca lo stesso | gestionale + ponte | ✅ il «muro» dall'11/08 |
+| il conto dei tentativi **non è tenuto, è calcolato dai fatti**: 3 per giro, e conta solo una scheda arrivata col cancello `fail` | ponte (`consumer-assessment-link:203`) | ✅ |
+| mai un vicolo cieco: se il link manca si manda in **segreteria** | bot | ✅ |
+
+**Cosa manca perché la sezione sia FINITA.** Cinque pezzi — e **quattro su cinque non stanno nel bot**:
+
+| | il pezzo | dove va scritto | voce |
+|---|---|---|---|
+| ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **55** |
+| ② | **30 giorni fra un giro e l'altro**: oggi l'attesa parte dal **terzo fallimento** (`GIORNI_DI_ATTESA`, `consumer-assessment-link:204`) ⇒ **chi passa può rifarlo subito**, e nessuno se n'era accorto perché il bottone non gli compariva | ponte | **55** |
+| ③ | **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5** — oggi `assessment-apply-level` applica ogni scheda **in tutti e due i versi** (`index.ts:129`): da Avanzato a Principiante in un colpo | gestionale | **55** |
+| ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale | **55** |
+| ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente**. La cosa da dire adesso è decisa — *«il maestro del circolo, tramite la segreteria»* — e va aggiunta in `testoEsitoTest`, che oggi accetta solo `pass \| fail` | bot | **57** |
+
+📌 Fuori dalla scheda ma sullo stesso tavolo: il **promemoria gentile** a chi il livello non ce
+l'ha, un paio di volte al mese (voce **56**).
+
+❓⭐ **LA DOMANDA CHE ASPETTA UNA SUA RISPOSTA, e non l'ho decisa io**: la **55**, la **56** e la **57**
+restano in coda, o salgono **dentro** questa? Sono esattamente i pezzi che «finalizzare» vuol dire, ma
+**le promozioni dalla coda le decide il committente**. Se le assorbe, la sezione C passa da **5 a 2** e
+la 61 diventa il contenitore; se restano dove sono, la 61 è il **filo** che le tiene insieme e si
+chiudono una per volta.
+
+⚠️ **Da qui se ne fa metà, e va saputo prima di partire**: ①, ④ e ⑤ toccano il **bot**, che vive nel
+repo privato `assistente-padel-agent` — fuori dal perimetro di una sessione su questo repo. ② e ③
+stanno nel **ponte** e nel **gestionale**, e quelli si fanno da qui.
+
+📌 **E una misura da rifare prima di scrivere una riga**, perché cambia la taglia di tutto: al 16/08,
+parole sue, *«il bot dei soci non lo usa nessuno»*. Un pezzo che nessuno può vedere funzionare si
+costruisce sapendolo — non è un motivo per non farlo, è un motivo per non **collaudarlo guardando il
+traffico**.
+
+📄 La specifica intera, riga per riga e col segno di cosa è **viva** e cosa solo **decisa**, sta in
+[`docs/regole-livello-giocatori.md`](../regole-livello-giocatori.md).
 
 ---
 
