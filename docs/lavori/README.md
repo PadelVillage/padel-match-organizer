@@ -962,12 +962,12 @@ divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
 | | il pezzo | dove va scritto | scheda |
 |---|---|---|---|
 | ① | a chi **un livello ce l'ha** il bottone «rifai il test» non compare **mai** | bot, ma **solo dopo** ③ | **A** |
-| ② | ✅ **FATTO il 18/08, vivo su PROD** — i **30 giorni** partono dalla **fine del giro**, e un giro finisce anche quando il test si **passa**. Prima l'attesa partiva dal terzo fallimento ⇒ chi passava rifaceva subito | ponte | **A** |
+| ② | ✅ **FATTO il 18/08, vivo su PROD** — un giro sono **tre prove**, e quando finiscono partono i **30 giorni**. Prima l'attesa partiva dal terzo **fallimento** ⇒ chi passava rifaceva subito e **all'infinito** | ponte | **A** |
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | 🚨 **il pezzo pesante**: è il **socio** a scegliere a quale prova fermarsi ⇒ l'automatismo che oggi applica da sé (cron `pmo-assessment-apply-level-prod`, jobid **16**, ogni 15′) deve **smettere di decidere da solo** e aspettare una risposta che oggi non gli arriva da nessuna parte | gestionale (+ il bot per **fare** la domanda) | **A** |
 | ⑤ | **Semi-Pro e Professionista**: la loro scheda esce `skip`, il bot la **scarta di proposito**, e quel socio **non riceve niente** | bot | **C** |
 | ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
-| ⑦ | 🆕 il bot legga **`motivo_attesa`**: oggi a chi ha **passato** e richiede il test direbbe la frase delle **tre bocciature**. Il ponte la distinzione ce l'ha (`esaurito` | `passato`) dal 18/08, è la **frase** che manca | bot | **A** |
+| ⑦ | 🆕 la frase di **giro finito**: oggi il bot dice «hai sbagliato tre volte», ma le prove finite possono essere **due bocciature e una passata**. Il ponte porta il numero vero e il perché (`tentativi_falliti`, `motivo_attesa`) dal 18/08 — manca la **frase** | bot | **A** |
 
 🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ e ④ **vengono
 prima** di ①. Aprire il bottone a chi un livello ce l'ha, con `assessment-apply-level` che applica
@@ -1029,10 +1029,22 @@ routine da una sessione cloud non la si sveglia nemmeno a mano. ⚖️ Vuol dire
 **«provato su TEST» non è una prova di comportamento**: l'unico posto dove la regola gira è la
 produzione, e va saputo prima di promettere un collaudo che TEST non può dare.
 
-🔨✅ **② FATTO IL 18/08/2026, E VIVO SU PROD** — *(PR #869 su TEST, #870 su `main`)*. Un giro **si
-chiude** in due modi — le tre prove sono finite, **oppure una passa** — e da quella data partono i 30
-giorni. La regola esce dal corpo dell'handler e diventa **`statoDelGiro`**, pura, col **primo banco
+🔨✅ **② FATTO IL 18/08/2026, E VIVO SU PROD** — *(PR #869 su TEST, #870 su `main`)*. Un giro sono
+**tre prove**: quando finiscono partono i 30 giorni. La regola esce dal corpo dell'handler e diventa **`statoDelGiro`**, pura, col **primo banco
 che questo ponte abbia mai avuto** (`test/consumer-assessment-link.test.mjs`, 14 casi + 7 guardie).
+
+🚨⭐⭐ **E LA PRIMA STESURA ERA SBAGLIATA — corretta lo stesso giorno, dopo che gliel'ho fatta
+rileggere.** L'avevo scritta così: *una prova che passa chiude il giro*. Sembrava fedele alla sua
+frase e non lo era: nel giro che ha disegnato lui, dopo una prova **riuscita** si può **riprovare per
+salire ancora** (*«decidi tu a quale delle tre volte ti vuoi fermare»*). Chiudendo al primo `pass`, le
+tre prove sarebbero toccate **solo a chi sbaglia il quiz**, e chi lo passa avrebbe avuto **una prova
+ogni 30 giorni** — cioè avrei tolto, senza accorgermene, proprio la cosa che il giro esiste per dare.
+⚖️ **Il difetto da togliere era il «subito e ALL'INFINITO», non il riprovare**, e le due cose stanno
+in una frase sola: *«chi passa può rifarlo subito»*. Ne avevo sentita metà.
+⭐ **A trovarlo non è stata una prova rossa** — il banco era verde su tutt'e due le versioni, perché
+i casi li avevo scritti io sulla mia lettura. L'ha trovato il **confronto con la tabella del giro** in
+`regole-livello-giocatori.md`, cioè rileggere il disegno **suo** invece del codice **mio**. Confermata
+da lui prima di toccare niente: *«sì l'hai letta giusta»*.
 
 🚨⭐ **E scrivendola è saltato fuori un difetto che nessuno aveva chiesto di cercare, e che non era
 in nessuna lista**: col conto delle sole fallite, **quattro** bocciature di fila lasciavano il conto
@@ -1046,9 +1058,10 @@ e **nessuna** ha il cancello del quiz ⇒ **nessun socio ha mai completato un te
 quindi oggi **nessuno è dentro un giro**. Come il ③, è un **prerequisito** e non una riparazione a
 caldo.
 
-⚠️🤖 **E un pezzo RESTA AL BOT, dichiarato invece che taciuto**: la risposta porta ora
-`motivo_attesa` (`esaurito` | `passato`), ma **il bot non legge quel campo** — finché non lo farà,
-direbbe la frase delle **tre bocciature** anche a chi ha **passato**. La frase la dice il bot, che
+⚠️🤖 **E un pezzo RESTA AL BOT, dichiarato invece che taciuto**: a giro finito il bot dice *«hai
+sbagliato tre volte»*, ma un giro esaurito può essere **due bocciature e una passata** — il ponte
+porta il numero vero (`tentativi_falliti`) e il perché (`motivo_attesa: esaurito`), è la **frase** che
+manca. La frase la dice il bot, che
 vive nel repo privato ⇒ è diventato il pezzo **⑦** della tabella qui sopra. Oggi non può raggiungere nessuno,
 per la misura qui sopra.
 
