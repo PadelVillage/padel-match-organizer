@@ -1,6 +1,6 @@
 # Stato progetto corrente
 
-Ultimo aggiornamento: 2026-08-13
+Ultimo aggiornamento: 2026-08-18
 
 Questo file e' la fonte rapida ufficiale per capire su quale versione del progetto stanno lavorando le chat RAGIONAMENTO, MOCK-UP e SVILUPPO.
 
@@ -52,6 +52,11 @@ Righe rimosse da questa tabella il 13/08/2026, perché descrivevano cose che non
 - `Assistente TEST` e `Assistente LAVORO` / `test/accessi-assistente` — **la web app dei soci è DISMESSA dal 25/07/2026** (vedi `CLAUDE.md`). Il canale verso i soci è ora il bot Telegram `@loziocoach_bot`, che vive nel repo privato `assistente-padel-agent` e **non ha né anteprima né sandbox**. Il mockup locale `padel-assistant-soci-mockup.html` non è più un ambiente di lavoro.
 
 ### Ultimi lavori chiusi (PR su `main`)
+
+⚠️ **Questa tabella è ferma alla #673 (13/08/2026)** e nessuno la riempie più: da allora le PR su
+`main` sono centinaia. **Non usarla per sapere cosa è stato fatto** — per quello valgono
+`git log --oneline` e `docs/lavori/README.md`, che è aggiornato a ogni sessione. Resta qui come
+fotografia di quel giorno.
 
 | PR | Cosa |
 |---|---|
@@ -281,10 +286,39 @@ Nota precedente v5.440: TEST e PROD app erano allineati a v5.440. La promozione 
 
 Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`, e' stata applicata solo la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` sul project ref PROD `qqbfphyslczzkxoncgex`, gia preparata e testata in TEST al commit `467f536`. Stato verificato dopo applicazione: `post_match_feedback_tokens` e `post_match_feedback_responses` esistono; RPC `upsert_post_match_feedback_tokens_admin`, `submit_post_match_feedback_public` e `get_post_match_feedback_by_tokens` presenti; `upsert_post_match_feedback_tokens_admin('[]'::jsonb)` restituisce `AUTH_REQUIRED` e non errore relazione; `get_post_match_feedback_by_tokens(array[]::text[])` restituisce 0 righe. Non sono stati modificati app HTML, Edge Function, scheduler, segreti, Gmail, WhatsApp, Matchpoint o dati reali; `cron.job` PROD contiene ancora solo `pmo-data-routines-dispatcher-prod`.
 
+## 🕰️ Cosa è cambiato il 18/08 e NON si vede dalla versione dell'app
+
+🚨 **Le versioni qui sopra non si sono mosse, e il sistema sì.** La **voce 59** è stata chiusa senza
+toccare `index.html`: chi legge solo la tabella «Versione corrente» conclude che il 18/08 non è
+successo niente, ed è falso. ⇒ Questo blocco esiste per i lavori che vivono **fuori dall'app**.
+
+| dove | cosa |
+|---|---|
+| **caricatore di TEST** (repo `padel-match-organizer-test`) | caricata l'app, **una** chiamata all'API confronta l'**impronta del contenuto** e avvisa a schermo se la copia servita è indietro. Mai bloccante, silenzioso su ogni intoppo, 1 chiamata/ora per browser |
+| **VM Hetzner** | 🕰️ una **sentinella** (`systemd` oneshot + timer 15′, fuori da pm2) confronta `test-preview` con la copia servita e avvisa **su Telegram** — da `@padelvillage_prova_bot`. Sorgente e deploy in `tools/sentinella-freschezza-test/` |
+
+🚨 **Il confronto è sull'IMPRONTA del contenuto, non sul commit** — e vale per tutti e due. Il
+confronto ovvio (`source_sha` contro la testa del ramo) è **sbagliato**: `sync-app.yml` ricopia solo
+se `index.html` cambia, quindi ogni commit che tocca solo `docs/` allontana il commit **senza
+invecchiare la copia**. Misurato il 17/08: copia fresca al byte (`79d1a3a4` sui due lati) con
+**dodici commit** di distanza fra gli sha.
+
+📌 **Se un giorno TEST sembra vecchio**, l'ordine da seguire è: l'**avviso a schermo** (se c'è, la
+copia è davvero indietro) → `app-meta.json` sul repo del caricatore → **Actions → `sync-app`**, che
+è il posto dove si ripara. E se gli schedule sono stati spenti da GitHub (succede dopo ~60 giorni di
+repo fermo), si riaccendono da lì.
+
 ## Link
 
 - **PROD**: `https://app.padelvillage.club` (Pages dal ramo `main`, vedi `CNAME`)
-- **TEST**: `https://test.padelvillage.club` (caricatore nel repo a parte `padel-match-organizer-test`, che serve l'ultimo commit di `test-preview`: **ogni push è subito live**)
+- **TEST**: `https://test.padelvillage.club` (caricatore nel repo a parte `padel-match-organizer-test`).
+  🚨 **NON è più «ogni push subito live»** — lo era prima della **voce 58** (17/08/2026), e questa
+  riga lo dichiarava ancora. Oggi il caricatore serve `./app.html`, una **copia** che
+  `sync-app.yml` tiene fresca: **entro ~10′** col suo cron, **subito** se esiste il secret
+  `TEST_LOADER_SYNC_TOKEN`, o **a mano** da Actions. Da quale commit venga la copia lo dice
+  `app-meta.json` su quel repo.
+  ⚖️ *Una riga che prometteva più di quanto il sistema faccia: il tipo di errore per cui questo
+  file è peggio di nessun file, non semplicemente vecchio.*
 
 ⚠️ Il vecchio `https://padelvillage.github.io/padel-match-organizer/test/?env=test` **non è più l'app di TEST**: dalla v6.114 è un semplice rimando. Stava sulla stessa origine di PROD e le due si dividevano la quota di `localStorage` — causa di fondo del guasto del 20/07. Il resto di `/test/` è invece vivo e si usa dal percorso: `test/handle-test.html` (rete di regressione), `test/parser-test.html`, `test/autovalutazione.html`, `test/config-test.js`.
 
