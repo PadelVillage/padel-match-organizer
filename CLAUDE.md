@@ -430,6 +430,20 @@ dei ref remoti → `git fetch --prune`.
   dover più chiedere al committente «apri DevTools, incolla questo, dimmi cosa esce»:
   `page.evaluate()` **è** quella console. Girare lo stesso snippet di là e di qua *è* la diagnosi:
   uguale in entrambi → è il codice, diverso → sono i dati o l'ambiente.
+  🔑⭐⭐ **DOVE STANNO LE CREDENZIALI, e perché la domanda torna ogni volta.** Non sono nel repo e
+  non devono entrarci **mai**: vivono in **quattro variabili dell'ambiente cloud** —
+  `PMO_VERIFY_EMAIL_TEST`/`PMO_VERIFY_PASSWORD_TEST` (TEST) e `PMO_VERIFY_EMAIL`/`PMO_VERIFY_PASSWORD`
+  (PROD). Se ci sono, **ogni sessione nuova le ha già** e la console parte senza chiedere niente; se
+  mancano, la console non fa login e **va chiesto al committente di riempire quella casella**, non
+  di incollare la password in chat.
+  🚨 **Una password incollata in chat è già bruciata**: resta nella conversazione, e se qualcuno la
+  scrive in `CLAUDE.md`, in `docs/` o in uno script finisce **in git per sempre** — anche
+  cancellandola dopo, perché la storia la conserva. Il README di `tools/verifica-browser` lo dice
+  con parole sue: *«Credenziali in variabili d'ambiente, mai nel repo e mai in chat»*.
+  ⚖️ **E l'utenza giusta è quella di SOLA LETTURA, non l'owner.** L'attrezzo è disegnato per un
+  ruolo `readonly`, e la 22ª ha già misurato che quel ruolo **vede le prenotazioni tutte** — quindi
+  per diagnosticare basta. Con l'owner ogni svista su PROD costa molto di più, e l'unica protezione
+  che resta è la guardia dell'attrezzo (che è brava, ma è **una** guardia invece di due).
   📌 Vuole l'ambiente cloud configurato — allowlist dei 6 domini, le `PMO_VERIFY_*`, e lo script
   che importa la CA del proxy nel magazzino NSS di Chromium. Il README lì dentro ha l'elenco e le
   **tre trappole del container**: senza quelle correzioni il sintomo è «il sito non risponde»
