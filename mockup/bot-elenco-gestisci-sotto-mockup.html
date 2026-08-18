@@ -3,7 +3,7 @@
 <head>
 <!--
   Bot Telegram — «Le tue partite»: legare il bottone GESTISCI alla sua prenotazione
-  Mockup v3 — 18/08/2026
+  Mockup v4 — 18/08/2026
 
   🗣️ Domande del committente:
      ① «il bottone gestisci può stare sotto la relativa prenotazione? Logicamente se sei
@@ -20,6 +20,11 @@
      C · il marcatore condiviso     — ①②③ sulla riga e sul bottone; un messaggio solo
      D · righe compatte + marcatore — la lista si accorcia, i bottoni salgono sotto le righe
      E · una partita per volta      — la scheda si sfoglia, i bottoni sono sempre i suoi
+     F · la B, silenziosa           — 🆕 v4: uguale alla B, ma solo il PRIMO messaggio suona
+                                      (`disable_notification` sugli altri) ⇒ 1 notifica, non 6.
+                                      🗣️ Nata dalla sua richiesta: «qualcosa verso la mia
+                                      soluzione che non complichi troppo la vita e non faccia
+                                      arrivare sei notifiche una vicino all'altra».
 
   🧱 Il vincolo che regge tutto: Telegram attacca la tastiera AL MESSAGGIO e la disegna
      sotto tutto il testo. Dentro un solo messaggio non si infila un bottone fra due righe.
@@ -154,6 +159,28 @@
     font-size: 16px;
   }
   .vincolo strong { font-weight: 600; }
+
+  /* ── La tabella per scegliere ─────────────────────────────────────────────── */
+  .scelta { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 16px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  caption {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+    color: var(--ink-soft); text-align: left; padding: 16px 20px 12px;
+  }
+  th, td { padding: 11px 16px; text-align: left; border-top: 1px solid var(--hairline); font-size: 15px; }
+  thead th {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft); border-top: 0;
+  }
+  td.num { font-variant-numeric: tabular-nums; text-align: center; }
+  tbody tr.spicca { background: var(--accent-soft); }
+  tbody tr.spicca td { font-weight: 600; }
+  td .via { font-family: Archivo, system-ui, sans-serif; font-weight: 700; color: var(--accent); }
+
+  /* il pallino che dice se quel messaggio suona */
+  .campanello { font-size: 12px; color: var(--tg-meta); align-self: flex-end; }
 
   /* ── La griglia delle varianti ────────────────────────────────────────────── */
   .varianti {
@@ -322,21 +349,69 @@
 <div class="foglio">
 
   <header>
-    <p class="occhiello">Mockup v3 · bot Telegram · 18 agosto 2026</p>
-    <h1>Legare «Gestisci» alla sua partita: cinque strade</h1>
+    <p class="occhiello">Mockup v4 · bot Telegram · 18 agosto 2026</p>
+    <h1>Legare «Gestisci» alla sua partita: sei strade</h1>
     <p class="sommario">
-      La scheda <strong>«Le tue partite»</strong> in cinque disposizioni. La prima è com'è oggi;
-      le altre quattro sono modi diversi di rispondere alla stessa domanda — <strong>far capire
-      a colpo d'occhio quale bottone appartiene a quale partita</strong>. I nomi sono inventati.
+      La scheda <strong>«Le tue partite»</strong> in sei disposizioni. La prima è com'è oggi; le
+      altre cinque rispondono alla stessa domanda — <strong>far capire a colpo d'occhio quale
+      bottone appartiene a quale partita</strong> — e la <strong>F</strong> è nata da una richiesta
+      precisa: la B, ma <strong>senza sei notifiche di fila</strong>. I nomi sono inventati.
     </p>
     <p class="vincolo">
-      <strong>Il vincolo, che vale per tutte e cinque:</strong> Telegram attacca la tastiera
+      <strong>Il vincolo, che vale per tutte e sei:</strong> Telegram attacca la tastiera
       <strong>al messaggio</strong>, non alle righe, e la disegna sotto tutto il testo. Dentro un
       solo messaggio <strong>non</strong> si può infilare un bottone fra due partite. Quello che si
       sceglie è <strong>quanti messaggi</strong> mandare e <strong>come legare</strong> la riga al
       suo bottone.
     </p>
   </header>
+
+  <section class="scelta">
+    <table>
+      <caption>Le sei strade, in una riga ciascuna</caption>
+      <thead>
+        <tr>
+          <th>via</th>
+          <th>cosa lega la riga al bottone</th>
+          <th>messaggi</th>
+          <th>notifiche</th>
+          <th>costo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="via">A</span> com'è oggi</td>
+          <td>la data ripetuta nell'etichetta</td>
+          <td class="num">1</td><td class="num">1</td><td>zero</td>
+        </tr>
+        <tr>
+          <td><span class="via">B</span> un messaggio per partita</td>
+          <td><b>il bottone è sotto la sua riga</b></td>
+          <td class="num">6</td><td class="num">6</td><td>medio</td>
+        </tr>
+        <tr class="spicca">
+          <td><span class="via">F</span> la B, silenziosa</td>
+          <td><b>il bottone è sotto la sua riga</b></td>
+          <td class="num">5</td><td class="num">1</td><td>medio-basso</td>
+        </tr>
+        <tr>
+          <td><span class="via">C</span> il marcatore condiviso</td>
+          <td>lo stesso numero ①②③ sui due</td>
+          <td class="num">1</td><td class="num">1</td><td>basso</td>
+        </tr>
+        <tr>
+          <td><span class="via">D</span> righe compatte</td>
+          <td>la vicinanza: la lista si dimezza</td>
+          <td class="num">1</td><td class="num">1</td><td>basso, ma toglie i compagni</td>
+        </tr>
+        <tr>
+          <td><span class="via">E</span> una partita per volta</td>
+          <td>non serve legare: ce n'è una sola</td>
+          <td class="num">1</td><td class="num">1</td><td>medio-alto</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
 
   <section class="varianti">
 
@@ -501,10 +576,108 @@
       </div>
     </article>
 
-    <!-- ══════════════ C · IL MARCATORE CONDIVISO ══════════════ -->
+    <!-- ══════════════ F · LA B, SILENZIOSA ══════════════ -->
     <article class="colonna consigliata">
       <div class="intestazione">
-        <span class="etichetta">C · il marcatore condiviso <span class="bollo">la più economica</span></span>
+        <span class="etichetta">F · la B, silenziosa <span class="bollo">la più vicina alla tua</span></span>
+        <h2>Un messaggio per partita, ma suona il primo</h2>
+        <p>A vedersi è <strong>identica alla B</strong>. Cambia una cosa sola: solo il primo messaggio fa rumore, gli altri entrano zitti.</p>
+      </div>
+
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">Mio<span>Padel</span></div>
+          <div class="corpo">
+            <div class="mittente">MioPadel</div>
+            <div class="titolo">Le tue partite</div>
+            <div>
+              <span class="quando">⭐ Oggi · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Paolo Rizzo · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔔 questo suona · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Domani · 09:30 · Campo 3</span>
+              <span class="con">con Elena Fabbri, Davide Nardin e Chiara Tosi · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Domani · 18:00 · Campo 2</span>
+              <span class="con">con Marta Zanella e Giulia Perin · 1 posto libero</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">⭐ Venerdì 21 agosto · 09:30 · Campo 2</span>
+              <span class="con">con Luca Bertoldi, Sara Menegon e Andrea Cont · siete al completo</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone">⚙️ Gestisci</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar vuoto"></div>
+          <div class="corpo">
+            <div>
+              <span class="quando">Lezione · Sabato 22 · 10:00 · Campo 1</span>
+              <span class="con">con il maestro · la gestisce la segreteria</span>
+            </div>
+            <div class="tastiera attaccata"><div class="bottone esterno">💬 Contatta la segreteria su WhatsApp</div></div>
+            <div class="campanello">🔕 silenzioso · 23:04</div>
+          </div>
+        </div>
+
+        <p class="postilla">
+          <b>Da cinque notifiche a zero: è un interruttore che Telegram offre già.</b> Ogni invio può
+          partire <b>silenzioso</b> — il messaggio entra in chat senza suono e senza avviso. Si dà
+          la voce <b>solo al primo</b>, che è anche quello che porta il titolo: il socio riceve
+          <b>una</b> notifica, come oggi, e trova sotto tutta la lista.
+        </p>
+        <p class="postilla attenzione">
+          <b>Quello che il silenzio NON toglie</b>: i messaggi restano cinque, quindi la chat si
+          allunga a ogni richiesta, e possono arrivare <b>a scaglioni</b> di qualche decimo l'uno
+          dall'altro. ⇒ <b>Da misurare sul bot di prova</b>, non da dedurre: quanto ci mettono
+          davvero a comparire tutti e cinque.
+        </p>
+      </div>
+
+      <div class="conti">
+        <h3>Cosa comporta</h3>
+        <ul>
+          <li><span class="segno piu">+</span><span>Tutto il guadagno della B: <b>il bottone sotto la sua partita</b>, etichetta corta, spiegazione accanto a chi la riguarda.</span></li>
+          <li><span class="segno piu">+</span><span><b>Una notifica sola</b>, come oggi.</span></li>
+          <li><span class="segno piu">+</span><span>Un messaggio in meno della B: <b>il titolo sta insieme alla prima partita</b>.</span></li>
+          <li><span class="segno meno">−</span><span>La chat <b>si allunga</b> lo stesso a ogni richiesta.</span></li>
+          <li><span class="segno meno">−</span><span>L'arrivo <b>a scaglioni</b> resta possibile: va guardato, non dedotto.</span></li>
+        </ul>
+        <p class="costo">Costo: <b>medio-basso</b> — la B più un interruttore già pronto</p>
+      </div>
+    </article>
+
+    <!-- ══════════════ C · IL MARCATORE CONDIVISO ══════════════ -->
+    <article class="colonna">
+      <div class="intestazione">
+        <span class="etichetta">C · il marcatore condiviso</span>
         <h2>Lo stesso numero sulla riga e sul bottone</h2>
         <p>Il bottone non si sposta: si <em>lega</em>. ①②③ da una parte e dall'altra, e l'abbinamento non è più da indovinare.</p>
       </div>
@@ -692,10 +865,26 @@
     </p>
 
     <p>
-      <strong>La C resta la più economica</strong> — risolve l'abbinamento con due etichette e zero
-      meccanica nuova — ma non è più «la C o niente»: se la B è quella che convince guardandola, il
-      suo prezzo è <em>medio</em>, non alto, e si paga in notifiche e in schede che invecchiano, non
-      in confusione visiva.
+      🆕 <strong>E la F toglie il pezzo più fastidioso dei tre.</strong> Delle tre obiezioni qui
+      sopra, la prima — sei notifiche una dietro l'altra — <strong>non era una fatalità</strong>:
+      Telegram lascia mandare un messaggio <strong>in silenzio</strong>, e basta dare la voce al
+      primo. ⇒ Una notifica sola, come oggi, e sotto tutta la lista col bottone al posto giusto.
+      <em>Era la cosa da cercare invece di elencare un costo e fermarsi lì.</em>
+    </p>
+
+    <p>
+      <strong>Come la vedo adesso.</strong> Se quello che vuoi è il bottone sotto la sua partita,
+      la <strong>F</strong> è la B senza il suo difetto peggiore, e il prezzo che resta è onesto:
+      la chat si allunga a ogni richiesta. La <strong>C</strong> resta la più economica in assoluto
+      e non tocca niente della meccanica — ma risolve l'abbinamento, non lo elimina.
+      <em>Fra le due, la differenza non è più tecnica: è cosa vuoi che sia quella schermata.</em>
+    </p>
+
+    <p>
+      <strong>Una cosa la misurerei prima di scrivere il codice</strong>, e si fa in un giro sul bot
+      di prova: <em>quanto ci mettono davvero a comparire tutti e cinque i messaggi.</em> Telegram
+      dichiara circa un messaggio al secondo per chat, ma dichiarato non vuol dire misurato — e se
+      arrivassero a scaglioni visibili, la F perderebbe gran parte del suo senso.
     </p>
 
     <p>
