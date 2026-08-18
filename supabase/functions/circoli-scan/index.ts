@@ -43,9 +43,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 //    `stato_utenza='attiva'`, piattaforma `wansport` e un `base_url`. È lo stesso
 //    vincolo che sta nel database, ripetuto alla porta: interrogare un circolo che
 //    ci rifiuta il login è rumore verso terzi, cioè il modo di farsi chiudere fuori.
-//  ④ INTERVALLO MINIMO. Due sonde sullo stesso circolo a meno di 60 secondi: la
-//    seconda viene rifiutata. Non è una gentilezza, è la differenza fra un cliente
-//    e un molestatore.
+//  ④ UNA LETTURA AL GIORNO PER CIRCOLO (24 ore). Non è una gentilezza, è la
+//    differenza fra un cliente e un molestatore — e ha un costo dichiarato: con
+//    questo ritmo la fotografia invecchia fino a 24 ore, quindi il servizio NON
+//    può ancora dire «c'è posto». Vedi il commento sulla costante.
 //  ⑤ SOLO LETTURA VERSO L'ESTERNO. Le uniche richieste che escono sono la GET della
 //    home, la POST del login e la GET di /start. Nessuna prenotazione, mai.
 //  ⑥ SI PRESENTA PER QUELLO CHE È. Lo User-Agent dichiara chi siamo e dove
@@ -64,7 +65,19 @@ const CORS_HEADERS = {
 const UA = 'PadelVillage-CircoliScan/1.0 (+https://padelvillage.club; contatto: padelvillage.club@gmail.com)';
 const TIMEOUT_MS = 20000;         // per singola richiesta
 const MAX_BYTES = 4 * 1024 * 1024; // /start è ~1 MB: oltre 4 non è più la pagina che credevamo
-const INTERVALLO_MINIMO_MS = 60_000;
+// 🗣️ UNA LETTURA AL GIORNO PER CIRCOLO — deciso dal committente il 18/08/2026.
+// Era 60 secondi; ora sono 24 ore, e il numero non è tecnico ma una scelta di
+// misura verso server che non sono nostri.
+// ⚠️ E HA UNA CONSEGUENZA SUL PRODOTTO, scritta qui perché non si perda: con una
+// lettura al giorno la fotografia può essere vecchia di 24 ore, mentre il disegno
+// prometteva 5 minuti. Un campo prenotato stamattina risulterebbe ancora libero
+// stasera ⇒ **in questo assetto il servizio non può rispondere «c'è posto»**, può
+// solo dire com'era ieri. La regola della freschezza del gestionale vale qui
+// identica: il verdetto si dà solo con una fotografia certificata fresca,
+// altrimenti la risposta onesta è «non lo so».
+// ⇒ È una postura da BETA, non il disegno finale: la frequenza vera si alza il
+//    giorno che c'è un accordo con Wansport, non prima.
+const INTERVALLO_MINIMO_MS = 24 * 60 * 60 * 1000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -161,10 +174,25 @@ function radiografia(testo: string, contentType: string) {
     quantiOrari: conta(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g),
     paroleCampo: unici(/\b(?:campo|court|pista|sintetico|indoor|outdoor|esterno|coperto)\s*[0-9A-Za-z]{0,12}/gi, 20),
     parolePadel: conta(/padel/gi),
-    // Se la pagina è un guscio, la griglia arriva da qui: vale la pena saperlo
-    // prima di scrivere un parser HTML che troverebbe una tabella vuota.
-    chiamateAjax: unici(/(?:fetch|ajax|XMLHttpRequest|axios)\s*\(?\s*['"][^'"]{4,120}['"]/gi, 12),
-    scriptSrcInteressanti: unici(/src="[^"]*(?:calendar|book|prenot|slot|court|campo)[^"]*"/gi, 12),
+    // ⭐ MISURATO IL 18/08 SU DUE CIRCOLI: `/start` è un GUSCIO. 1,07 MB di HTML con
+    // zero orari e zero «padel», e segnaposto di template (`{{hash}}`) al posto dei
+    // dati ⇒ la griglia NON è nell'HTML, la disegna il browser dopo aver chiesto i
+    // dati a qualcuno. Un parser HTML qui troverebbe una tabella vuota e direbbe
+    // «nessun campo libero»: il «no» falso che questo servizio non deve mai dire.
+    // ⇒ La domanda non è più «html o json», è DA DOVE PRENDE I DATI. Queste sonde
+    //    servono a quello, e non a spolpare la pagina.
+    segnapostiTemplate: conta(/\{\{\s*[a-zA-Z_$][\w.$]*\s*\}\}/g),
+    // Joomla espone gli endpoint dei componenti come `task=<controller>.<metodo>`:
+    // l'unico visto finora è `profilo.downloadModelloDocumento&format=raw`, quindi
+    // il calendario quasi certamente vive su un fratello di quella forma.
+    tuttiITask: unici(/task=[a-zA-Z][\w.]{2,60}/g, 60),
+    formatiRichiesti: unici(/format=[a-z]{3,8}/gi, 10),
+    // Tutti i copioni caricati: se la logica sta in un bundle esterno, il prossimo
+    // passo è leggere QUELLO, non la pagina.
+    copioni: unici(/<script[^>]+src="([^"]+)"/gi, 40),
+    // Qualunque cosa somigli a un indirizzo dentro il codice della pagina.
+    indirizziNelCodice: unici(/["'](?:\/[a-z0-9._~\-]+){1,4}(?:\.(?:json|php))?(?:\?[^"']{0,80})?["']/gi, 40),
+    chiamateAjax: unici(/(?:fetch|ajax|url|open)\s*[:(]\s*['"][^'"]{4,140}['"]/gi, 30),
     // Il pezzo che alla fine si legge con gli occhi. Bounded di proposito.
     assaggio: testo.slice(0, 1500),
   };
@@ -238,7 +266,7 @@ Deno.serve(async (req) => {
     if (passati >= 0 && passati < INTERVALLO_MINIMO_MS) {
       return ko('TROPPO_PRESTO', {
         circolo: slug, attendi_ms: INTERVALLO_MINIMO_MS - passati,
-        dettaglio: `Ultima sonda ${Math.round(passati / 1000)}s fa. Minimo ${INTERVALLO_MINIMO_MS / 1000}s fra due letture dello stesso circolo.`,
+        dettaglio: `Ultima lettura ${Math.round(passati / 3600000)}h fa. Si legge lo stesso circolo UNA VOLTA AL GIORNO: è una scelta di misura verso server che non sono nostri.`,
       }, 429);
     }
   }
