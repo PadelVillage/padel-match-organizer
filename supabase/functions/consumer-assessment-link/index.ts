@@ -93,6 +93,92 @@ function indirizzoScheda(supabaseUrl: string): string {
  * `btoa(Date.now()+id+random)`, qui non c'è `btoa` sul lato server e ricopiarne il giro non
  * aggiungerebbe niente. Quello che conta è che l'app lo sappia leggere, e legge una stringa.
  */
+// ── LO STATO DEL GIRO, e da qui in giù è JavaScript NUDO ─────────────────────
+// I parametri sono annotati SOLO con `: any` di proposito: così
+// `test/consumer-assessment-link.test.mjs` può ESTRARRE queste funzioni dal sorgente
+// vero e provarle una per una. Una copia riscritta nel banco proverebbe la copia.
+//
+// 🔁⭐⭐ **LA REGOLA CAMBIATA IL 18/08/2026** (voce 61 § A ②). Prima i 30 giorni
+// partivano dal **terzo fallimento**; sua regola: partono dalla **fine del giro**,
+// e un giro finisce anche quando il test si PASSA — *«finito il giro, 30 giorni
+// prima di rifarlo»*. Prima chi passava poteva rifarlo **subito**, e nessuno se
+// n'era accorto perché il bottone non gli compariva mai.
+//
+// 🚨 E la ricostruzione a giri ripara un secondo difetto che il conto delle sole
+// fallite aveva addosso e che nessuno aveva visto: con quattro fallite di fila il
+// vecchio conto restava ≥ 3 e faceva ripartire l'attesa **dall'ultima**, cioè dopo
+// i 30 giorni il socio otteneva **una prova sola** e poi altri 30 giorni, per
+// sempre. Coi giri, passata l'attesa il giro dopo nasce **intero**.
+//
+// ⚖️ `skip` resta FUORI dal conto, come prima: sono Semi-Pro e Professionista, che
+// il quiz non ce l'hanno. Non consuma una prova e non chiude un giro — trattarlo
+// come prova li chiuderebbe 30 giorni per una regola che non li riguarda.
+function esitoDellaProva(scheda: any) {
+  const knowledge = ((scheda || {}).raw_response || {}).knowledge || {};
+  return String(knowledge.status ?? '').trim();
+}
+
+function quandoMs(value: any) {
+  const t = Date.parse(String(value ?? '').trim());
+  return Number.isNaN(t) ? 0 : t;
+}
+
+// Torna sempre la stessa forma, anche quando ammette: il bot deve poter dire «è la
+// tua seconda prova, te ne resta una» senza tenere niente in memoria.
+function statoDelGiro(schede: any, adessoMs: any, provePerGiro: any, giorniDiAttesa: any) {
+  const prove = (Array.isArray(schede) ? schede : [])
+    .filter((s: any) => { const e = esitoDellaProva(s); return e === 'pass' || e === 'fail'; })
+    .slice()
+    .sort((a: any, b: any) => quandoMs(a?.submitted_at) - quandoMs(b?.submitted_at));
+
+  // Si formano i giri in ordine di tempo: un giro si CHIUDE quando le prove sono
+  // finite oppure quando una passa. Quello che resta in fondo è il giro aperto.
+  let corrente: any[] = [];
+  let chiuso: any = null;
+  for (const s of prove) {
+    corrente.push(s);
+    const passata = esitoDellaProva(s) === 'pass';
+    if (passata || corrente.length >= provePerGiro) {
+      chiuso = {
+        motivo: passata ? 'passato' : 'esaurito',
+        chiusoIl: String(s?.submitted_at ?? '').trim(),
+        falliti: corrente.filter((x: any) => esitoDellaProva(x) === 'fail').length,
+      };
+      corrente = [];
+    }
+  }
+
+  const falliteAperte = corrente.filter((x: any) => esitoDellaProva(x) === 'fail').length;
+  if (corrente.length) {
+    return { ammesso: true, prova: corrente.length + 1, falliti: falliteAperte, ultima_prova: corrente.length + 1 >= provePerGiro, attesa: null };
+  }
+
+  if (chiuso) {
+    const sbloccoMs = quandoMs(chiuso.chiusoIl) + giorniDiAttesa * 24 * 60 * 60 * 1000;
+    // 🔒 Se la data di chiusura non si legge NON si blocca nessuno: `quandoMs` torna 0,
+    // l'attesa risulterebbe scaduta nel 1970 e il giro riparte. Un dato storto non deve
+    // trasformarsi in una porta chiusa in faccia a un socio che non ha fatto niente.
+    if (quandoMs(chiuso.chiusoIl) && adessoMs < sbloccoMs) {
+      return {
+        ammesso: false,
+        prova: 0,
+        falliti: chiuso.falliti,
+        ultima_prova: false,
+        attesa: {
+          motivo: chiuso.motivo,
+          dal: new Date(sbloccoMs).toISOString(),
+          giorni: Math.max(1, Math.ceil((sbloccoMs - adessoMs) / (24 * 60 * 60 * 1000))),
+        },
+      };
+    }
+  }
+
+  // Nessuna prova, o attesa scaduta: il giro nuovo nasce INTERO.
+  // ⭐ È il vantaggio del conto calcolato: il tempo fa da sé quello che altrove
+  // sarebbe una riga da aggiornare (e da dimenticare).
+  return { ammesso: true, prova: 1, falliti: 0, ultima_prova: provePerGiro <= 1, attesa: null };
+}
+
 function nuovoGettone(): string {
   const alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const bytes = new Uint8Array(14);
@@ -191,14 +277,23 @@ Deno.serve(async (req: Request) => {
      mandato. Non c'è niente da azzerare, niente da sincronizzare, e due bot che chiedono
      insieme leggono lo stesso numero.
 
-     ⭐ **Cosa conta come tentativo**: una scheda ARRIVATA il cui cancello è `fail`. Non un
+     ⭐ **Cosa conta come prova**: una scheda ARRIVATA col cancello `pass` o `fail`. Non un
      gettone chiesto — chi tocca il bottone dieci volte senza compilare non consuma niente, e
      infatti il gettone non usato si riusa (più sotto).
-     ⭐ **Cosa azzera il conto**: una scheda che PASSA. Da lì in poi si riparte da zero, perché
-     la strada l'ha percorsa. (Quando la segreteria mette il livello a mano il conto non serve
-     più: quella persona un livello ce l'ha.)
-     ⚖️ **I 30 giorni partono dal TERZO fallimento**, non da ogni tentativo: chi ne fa tre in
-     dieci minuti aspetta da quel momento, non tre volte.
+
+     🔁⭐⭐ **CAMBIATA IL 18/08/2026, sua regola** (voce 61 § A ②): *«finito il giro, 30 giorni
+     prima di rifarlo»*. Fino a qui i 30 giorni partivano dal **terzo fallimento** e una scheda
+     che PASSAVA azzerava il conto ⇒ chi passava poteva rifare il test **subito**, e nessuno se
+     n'era accorto perché il bottone non gli compariva mai. Adesso un giro **si chiude** in due
+     modi — prove finite, oppure una passa — e da quella data partono i 30 giorni.
+     ⚖️ I 30 giorni partono dalla **chiusura**, non da ogni prova: chi ne fa tre in dieci minuti
+     aspetta da quel momento, non tre volte.
+     🚨 E la ricostruzione a giri ripara un difetto che il conto delle sole fallite si portava
+     dietro senza che nessuno l'avesse visto: con **quattro** fallite di fila il conto restava
+     ≥ 3 e l'attesa ripartiva **dall'ultima**, cioè passati i 30 giorni il socio otteneva **una
+     prova sola** e poi altri 30 giorni, all'infinito. Coi giri, il giro dopo nasce **intero**.
+     📌 La regola vive in `statoDelGiro`, qui sopra, ed è provata dal banco
+     `test/consumer-assessment-link.test.mjs`.
      ═══════════════════════════════════════════════════════════════════════════════════════ */
   const TENTATIVI_PER_GIRO = 3;
   const GIORNI_DI_ATTESA = 30;
@@ -215,8 +310,9 @@ Deno.serve(async (req: Request) => {
   }
 
   const suoi = (gettoniSuoi ?? []).map(r => clean((r as JsonMap).token)).filter(Boolean);
-  let falliti = 0;
-  let ultimoFallitoIl = '';
+  // Lo stato del giro lo calcola `statoDelGiro` sulle schede vere: qui si tiene solo
+  // l'elenco, e la regola sta in una funzione pura che il banco può provare.
+  let elencoSchede: JsonMap[] = [];
   /**
    * 🆕🔔 L'ULTIMA scheda arrivata, qualunque sia andata: serve all'avviso che il bot manda
    * DOPO il test — sua richiesta del 9/08: *«dopo aver fatto il test, il bot ti deve
@@ -279,41 +375,28 @@ Deno.serve(async (req: Request) => {
         livello: clean(payload.level),
       };
     }
-    for (const s of elenco) {
-      const conoscenza = ((s.raw_response as JsonMap)?.knowledge ?? {}) as JsonMap;
-      const stato = clean(conoscenza.status);
-      // 🚨 `skip` non è un fallimento: sono Semi-Pro e Professionista, che il quiz non ce
-      // l'hanno e vanno in segreteria per un'altra strada. Trattarlo come fallito li
-      // manderebbe in attesa di 30 giorni per una regola che non li riguarda.
-      if (stato === 'fail') {
-        falliti++;
-        if (!ultimoFallitoIl) ultimoFallitoIl = clean(s.submitted_at);
-      } else if (stato === 'pass') {
-        break;
-      }
-    }
+    elencoSchede = elenco;
   }
 
-  if (falliti >= TENTATIVI_PER_GIRO) {
-    const ultimo = new Date(ultimoFallitoIl);
-    const sbloccoMs = ultimo.getTime() + GIORNI_DI_ATTESA * 24 * 60 * 60 * 1000;
-    const adesso = Date.now();
-    if (Number.isFinite(sbloccoMs) && adesso < sbloccoMs) {
-      // ⚖️ NON è un errore HTTP: la richiesta è stata capita ed eseguita, la risposta è «non
-      // adesso». Un 4xx qui farebbe scattare nel bot il ripiego dei guasti — cioè un «riprova
-      // più tardi» generico — proprio dove serve la frase precisa con la data e la segreteria.
-      return ok({
-        stato: 'attesa',
-        ultima_scheda: ultimaScheda,
-        tentativi_falliti: falliti,
-        riprova_dal: new Date(sbloccoMs).toISOString(),
-        giorni_mancanti: Math.max(1, Math.ceil((sbloccoMs - adesso) / (24 * 60 * 60 * 1000))),
-      });
-    }
-    // Passati i 30 giorni il giro riparte: non si azzera niente nei dati, semplicemente le
-    // vecchie fallite non contano più. ⭐ È il vantaggio del conto CALCOLATO: il tempo fa da
-    // sé quello che altrove sarebbe una riga da aggiornare (e da dimenticare).
-    falliti = 0;
+  const giro = statoDelGiro(elencoSchede, Date.now(), TENTATIVI_PER_GIRO, GIORNI_DI_ATTESA);
+
+  if (!giro.ammesso && giro.attesa) {
+    // ⚖️ NON è un errore HTTP: la richiesta è stata capita ed eseguita, la risposta è «non
+    // adesso». Un 4xx qui farebbe scattare nel bot il ripiego dei guasti — cioè un «riprova
+    // più tardi» generico — proprio dove serve la frase precisa con la data e la segreteria.
+    return ok({
+      stato: 'attesa',
+      ultima_scheda: ultimaScheda,
+      tentativi_falliti: giro.falliti,
+      riprova_dal: giro.attesa.dal,
+      giorni_mancanti: giro.attesa.giorni,
+      // 🆕 Perché si aspetta, ed è un campo NUOVO che il bot ancora non legge: `esaurito`
+      // (le tre prove sono finite) oppure `passato` (il test è stato superato e il giro è
+      // chiuso). ⚠️ Finché il bot non lo guarda dirà la frase delle tre bocciature anche a
+      // chi ha PASSATO — sta scritto nella voce 61 come pezzo che resta, perché il bot vive
+      // in un altro repo e la frase la dice lui, non questo ponte.
+      motivo_attesa: giro.attesa.motivo,
+    });
   }
 
   // 1) Si RIUSA il gettone che il socio ha già, se non l'ha ancora usato.
@@ -355,10 +438,10 @@ Deno.serve(async (req: Request) => {
   const conteggio = {
     stato: 'link',
     ultima_scheda: ultimaScheda,
-    tentativi_falliti: falliti,
-    tentativo: falliti + 1,
+    tentativi_falliti: giro.falliti,
+    tentativo: giro.prova,
     tentativi_totali: TENTATIVI_PER_GIRO,
-    ultimo_tentativo: falliti + 1 >= TENTATIVI_PER_GIRO,
+    ultimo_tentativo: giro.ultima_prova,
   };
 
   if (esistenti && esistenti.length > 0 && clean(esistenti[0].token)) {
