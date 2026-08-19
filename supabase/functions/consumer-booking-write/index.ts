@@ -7,6 +7,7 @@ import {
   altriOmonimiVivi,
   bersaglioDaTogliere,
   clean,
+  compagniDaAvvisare,
   dirittoDiAnnullare,
   normName,
   type SchedaPerOmonimia,
@@ -68,6 +69,10 @@ import {
 //                 PROD, e il primo a girarlo sarebbe stato un socio vero su una partita vera.
 //                 🚨 `cancelled` resta `false`: chi non conosce il campo `dry_run` legge «non
 //                 ho annullato niente», che è la verità. L'equivoco cade dalla parte sicura.
+//                 👥 Torna `compagni: [{ nome, scheda }]` — chi ALTRO ci rimette il campo, col
+//                 numero di scheda con cui il bot ne ritrova la chat (gemello plurale di
+//                 `scheda_del_tolto` del `remove`). `scheda: null` = quel nome non è di una
+//                 sola persona viva ⇒ non si avvisa. C'è anche nella prova a vuoto, apposta.
 // - leave:        { member_id, data, ora, campo } → RITIRO DELLA PRESENZA: toglie il solo
 //                 socio dal roster via matchpoint-bookings-edit. La partita RESTA in piedi
 //                 per gli altri. Rifiuta se il socio è l'unico giocatore (lì servirebbe una
@@ -592,6 +597,13 @@ Deno.serve(async (req: Request) => {
    * entrato accettando un invito — quella riga è attaccata a QUELLA partita — e resta muto con
    * tutti gli altri. Questo è il pezzo che gli dice **a chi** scrivere anche per loro.
    *
+   * ⭐ 19/08/2026 — la chiama anche `cancel`, un nome per volta, per l'avviso ai compagni di
+   * una partita annullata. La domanda è identica («chi è, se quel nome è di uno solo»), quindi
+   * la funzione resta UNA: due copie divergerebbero, e divergere qui vuol dire un avviso
+   * mandato all'omonimo. ⚠️ Per questo `azione` è un parametro e non una costante nel testo dei
+   * log: una diagnosi che dice «remove» mentre si stava annullando manda a cercare il guasto
+   * nel posto sbagliato — è la stessa ragione per cui `omonimiDelSocio` ce l'ha già.
+   *
    * 🚨 Il verso del fail closed è OPPOSTO a quello di `omonimiDelSocio`, ed è voluto: là un
    * dubbio ferma un gesto irreversibile (503, non si annulla); qui un dubbio toglie **solo un
    * avviso** — il giocatore è tolto comunque e l'organizzatore legge «avvisa tu». Fermare il
@@ -604,7 +616,7 @@ Deno.serve(async (req: Request) => {
    * Cognome» oppure «Cognome Nome». A decidere resta `schedaUnicaConQuelNome`, che confronta
    * con la chiave che ignora l'ordine.
    */
-  const schedaDiChiSiToglie = async (nome: string): Promise<string | null> => {
+  const schedaDiChiSiToglie = async (nome: string, azione: string): Promise<string | null> => {
     const cercato = clean(nome);
     if (!cercato) return null;
     // ⚠️ `%` e `_` sono i jolly di `ilike`: lasciati passare allargherebbero il filtro. Il verso
@@ -629,7 +641,7 @@ Deno.serve(async (req: Request) => {
       // portato via **proprio** il secondo omonimo: si tornerebbe un id spacciandolo per unico.
       // Qui «non lo so» vale «non avviso», come sopra.
       if (error || (data ?? []).length >= OMONIMI_LIMITE) {
-        console.log(`[booking-write] remove: chi è "${cercato}" non verificabile su ${f.campo} → nessun avviso`);
+        console.log(`[booking-write] ${azione}: chi è "${cercato}" non verificabile su ${f.campo} → nessun avviso`);
         return null;
       }
       for (const row of data ?? []) {
@@ -642,7 +654,7 @@ Deno.serve(async (req: Request) => {
     }
     const scheda = schedaUnicaConQuelNome(cercato, candidati);
     if (!scheda) {
-      console.log(`[booking-write] remove: "${cercato}" non è di UNA sola persona viva (${candidati.length} schede lette) → nessun avviso`);
+      console.log(`[booking-write] ${azione}: "${cercato}" non è di UNA sola persona viva (${candidati.length} schede lette) → nessun avviso`);
     }
     return scheda;
   };
@@ -1148,7 +1160,7 @@ Deno.serve(async (req: Request) => {
     // proposito: così finisce anche nella prova a vuoto e si può misurare senza togliere
     // nessuno — la stessa ragione per cui l'allineamento della copia si calcola qui sopra.
     // ⚖️ Dietro un Ospite non c'è una persona: è un posto occupato, e non si cerca nessuno.
-    const schedaDelTolto = bersaglio.ospite ? null : await schedaDiChiSiToglie(bersaglio.nome);
+    const schedaDelTolto = bersaglio.ospite ? null : await schedaDiChiSiToglie(bersaglio.nome, 'remove');
 
     if (dryRun) {
       console.log(`[booking-write] remove PROVA A VUOTO ${slot.data} ${slot.ora} C${campo}: ${member.name} toglierebbe ${bersaglio.nome} (in ${esito.roster.length}, su ${righe.length} righe)`);
@@ -1679,6 +1691,34 @@ Deno.serve(async (req: Request) => {
     console.log(`[booking-write] cancel diritto ORGANIZZATORE ${slot.data} ${slot.ora} C${campo}: ${member.name} è il primo di ${rosterSlot.length}`);
   }
 
+  // 👥⭐⭐ 19/08/2026 — CHI ALTRO CI RIMETTE IL CAMPO, e come il bot lo ritrova per avvisarlo.
+  //
+  // 🗣️ Decisione del committente: fino a oggi la conferma dell'annullo diceva al socio *«avvisa
+  // tu chi giocava con te, io non posso scrivere al posto tuo»* — ed era **falso**, perché dal
+  // 6 e dall'11/08 il bot avvisa davvero chi viene TOLTO da una partita. La stessa strada del
+  // `remove`, non un ripiego: il ponte manda i numeri di scheda, il bot ci ritrova le chat.
+  //
+  // 🚨 Si chiede **PRIMA** della scrittura, esattamente come in `remove` e per la stessa
+  // ragione: così finisce anche nella **prova a vuoto**, e l'elenco si misura senza annullare
+  // niente. Metterlo dopo l'annullo lo renderebbe provabile solo su partite vere.
+  //
+  // ⚖️ `scheda: null` NON è un guasto ed è la cosa importante da non curare: vuol dire «quel
+  // nome al circolo non è di UNA sola persona viva» ⇒ quella persona non si avvisa, e al bot
+  // resta da dire all'organizzatore di farlo lui. Il verso del fail closed è quello di
+  // `schedaDiChiSiToglie`: nel dubbio si perde un avviso, mai si scrive alla persona sbagliata.
+  //
+  // ⭐ In fila e non in parallelo: i compagni sono al massimo tre (una partita è di quattro), e
+  // ogni nome costa poche letture. Chi era solo in campo non ne fa nessuna — l'elenco è vuoto.
+  const compagni = compagniDaAvvisare(rosterSlot, nameVariants);
+  const compagniConScheda: JsonMap[] = [];
+  for (const nome of compagni) {
+    compagniConScheda.push({ nome, scheda: await schedaDiChiSiToglie(nome, 'cancel') });
+  }
+  if (compagni.length) {
+    const noti = compagniConScheda.filter((c) => c.scheda).length;
+    console.log(`[booking-write] cancel compagni ${slot.data} ${slot.ora} C${campo}: ${compagni.length} da avvisare, ${noti} con scheda`);
+  }
+
   // ⭐ Come in `create`: la richiesta si compone UNA volta sola e serve a tutt'e due le
   // strade. Se la prova a vuoto ne stampasse una copia scritta accanto, mostrerebbe una
   // richiesta che non è quella che parte — ed è proprio quella divergenza che nessuno vedrebbe.
@@ -1718,6 +1758,10 @@ Deno.serve(async (req: Request) => {
         // percorsi diversi che finiscono nella stessa riga.
         come: organizzatoreChePuo ? 'organizzatore' : 'unico_giocatore',
         organizzatore: organizzatoreChePuo,
+        // 👥 CHI andrebbe avvisato, e con quale numero di scheda. È il campo che rende questo
+        // avviso misurabile senza annullare niente: `scheda: null` vuol dire «non è di una
+        // persona sola» ⇒ non si avvisa, e non è un errore.
+        compagni: compagniConScheda,
       },
     });
   }
@@ -1747,5 +1791,10 @@ Deno.serve(async (req: Request) => {
     // un annullamento da organizzatore è l'unico che tolga il campo a qualcun altro.
     come: organizzatoreChePuo ? 'organizzatore' : 'unico_giocatore',
     giocatori: rosterSlot.length,
+    // 👥 CHI ha perso il campo, col numero di scheda con cui il bot ritrova la sua chat senza
+    // passare dal nome. ⭐ Gemello di `scheda_del_tolto` del `remove`, al plurale: là la
+    // persona è una, qui sono fino a tre. Gli Ospiti non ci sono — dietro non c'è nessuno da
+    // avvisare — e chi era solo in campo trova l'elenco vuoto, che è la verità.
+    compagni: compagniConScheda,
   });
 });

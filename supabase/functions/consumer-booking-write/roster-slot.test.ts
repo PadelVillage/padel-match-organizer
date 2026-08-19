@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import {
   altriOmonimiVivi,
   bersaglioDaTogliere,
+  compagniDaAvvisare,
+  eOspite,
   playersFromDescrizione,
   dirittoDiAnnullare,
   variantiDelNome,
@@ -930,7 +932,7 @@ test('49) IL COLLEGAMENTO dell\'avviso: l\'edge dice CHI ha tolto, e nel dubbio 
   assert.equal((src.match(/scheda_del_tolto: schedaDelTolto/g) ?? []).length, 2,
     'il campo va nella risposta vera E nella prova a vuoto');
   // ⚖️ Dietro un Ospite non c'è nessuno: non si cerca, e non si avvisa.
-  assert.ok(/bersaglio\.ospite \? null : await schedaDiChiSiToglie\(bersaglio\.nome\)/.test(src),
+  assert.ok(/bersaglio\.ospite \? null : await schedaDiChiSiToglie\(bersaglio\.nome, 'remove'\)/.test(src),
     'l\'Ospite è un posto occupato, non una persona da avvisare');
   // 🚨⭐⭐ IL VERSO DEL FAIL CLOSED, ed è OPPOSTO a quello degli omonimi del socio: qui una
   // lettura che non riesce NON deve fermare il togli (la persona è già stata tolta), deve solo
@@ -943,6 +945,105 @@ test('49) IL COLLEGAMENTO dell\'avviso: l\'edge dice CHI ha tolto, e nel dubbio 
     'qui «non lo so» vale «non avviso», non «non tolgo»: nessun errore deve uscire da questa lettura');
   assert.equal((fn![0].match(/return null/g) ?? []).length, 3,
     'i tre modi di non sapere (nome vuoto, jolly, lettura non riuscita) tornano tutti null');
+});
+
+test('50) I COMPAGNI DA AVVISARE: sono gli ALTRI, senza me, senza Ospiti e senza doppioni', () => {
+  // Il socio che annulla, con le due grafie che il gestionale usa davvero.
+  const io = variantiDelNome({ id: 'io', name: 'Manuel Casagrande', firstName: 'Manuel', surname: 'Casagrande' });
+
+  // ⭐ Il caso normale: quattro in campo, io sono uno, restano tre da avvisare.
+  assert.deepEqual(
+    compagniDaAvvisare(['Manuel Casagrande', 'Lidia Comes', 'Sergio Dal Bianco', 'Davide Zanardo'], io),
+    ['Lidia Comes', 'Sergio Dal Bianco', 'Davide Zanardo'],
+  );
+
+  // 🚨⭐⭐ IL CASO PER CUI ESISTE LA VARIANTE: il gestionale scrive «Cognome Nome». Con un
+  // confronto esatto io resterei nel mio stesso elenco — cioè il bot manderebbe a me l'avviso
+  // che la MIA partita è stata annullata, mentre lo sto annullando io.
+  assert.deepEqual(
+    compagniDaAvvisare(['Casagrande Manuel', 'Lidia Comes'], io),
+    ['Lidia Comes'],
+    'la forma invertita sono sempre io: non mi avviso da solo',
+  );
+
+  // ⚖️ Dietro un Ospite non c'è nessuno da avvisare, e tre Ospiti non sono tre destinatari.
+  assert.deepEqual(
+    compagniDaAvvisare(['Manuel Casagrande', 'Ospite', 'Ospite', 'Lidia Comes'], io),
+    ['Lidia Comes'],
+  );
+
+  // 🚨 Niente doppioni: `rosterDelloSlot` tiene le ripetizioni apposta, ma due avvisi identici
+  // alla stessa persona sono un difetto. Il nome torna com'è scritto la PRIMA volta.
+  assert.deepEqual(
+    compagniDaAvvisare(['Manuel Casagrande', 'Lidia Comes', 'lidia  comes'], io),
+    ['Lidia Comes'],
+  );
+
+  // 🚨 CONTROLLO NEGATIVO: chi era SOLO in campo non ha nessuno da avvisare. Senza questo, una
+  // funzione che torna sempre tutto il roster supererebbe i casi qui sopra a metà.
+  assert.deepEqual(compagniDaAvvisare(['Manuel Casagrande'], io), [],
+    'era solo: l\'elenco è vuoto, e la frase «avvisa gli altri» non deve nemmeno uscire');
+  assert.deepEqual(compagniDaAvvisare([], io), []);
+  // Le voci illeggibili non diventano destinatari fantasma.
+  assert.deepEqual(compagniDaAvvisare(['', '   ', 'Lidia Comes'], io), ['Lidia Comes']);
+});
+
+test('51) L\'OSPITE è una regola sola: la stessa domanda in quattro punti', () => {
+  // ⭐ Se `eOspite` divergesse da com'era scritta nei tre punti che la usavano, il difetto
+  // uscirebbe in silenzio: un Ospite conterebbe come persona in un posto e non nell'altro.
+  assert.equal(eOspite('Ospite'), true);
+  assert.equal(eOspite('ospite'), true);
+  assert.equal(eOspite('  OSPITE  '), true);
+  assert.equal(eOspite('Lidia Comes'), false);
+  // 🚨 «Ospite» come COGNOME di una persona vera non è un posto vuoto: la regola guarda il
+  // nome intero, non una parola dentro.
+  assert.equal(eOspite('Mario Ospite'), false);
+  assert.equal(eOspite(''), false);
+  assert.equal(eOspite(null), false);
+  // E i due usi storici continuano a leggerla allo stesso modo.
+  assert.equal(restanoSoloOspiti(['Ospite', 'ospite']), true);
+  assert.equal(restanoSoloOspiti(['Ospite', 'Lidia Comes']), false);
+  assert.equal(organizzatoreDelloSlot([
+    { descrizione: '-Ospite.-Lidia Comes.', tipo: 'Partita' } as RigaSlotTipata,
+  ]), null, 'primo «Ospite» ⇒ nessun organizzatore, e non si scala al secondo');
+});
+
+test('52) IL COLLEGAMENTO dell\'avviso ai COMPAGNI: l\'annullo dice chi ci rimette il campo', () => {
+  // 🚨⭐⭐ Gemello del caso 49, sulla riga nuova: senza questo l'edge potrebbe non chiamare mai
+  // `compagniDaAvvisare` (o non mandare il campo al bot), e il caso 50 resterebbe verde mentre
+  // la conferma dell'annullo continua a dire «avvisa tu, io non posso scrivere al posto tuo».
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
+  assert.equal((src.match(/compagniDaAvvisare\(rosterSlot, nameVariants\)/g) ?? []).length, 1,
+    'chi va avvisato lo decide la funzione provata, in UN posto solo, e con le varianti del socio');
+
+  // 🚨 Il campo deve arrivare al bot in TUTT'E DUE le risposte. La prova a vuoto è ciò che
+  // rende l'elenco misurabile senza annullare partite vere — la stessa ragione del `remove`.
+  assert.equal((src.match(/compagni: compagniConScheda,/g) ?? []).length, 2,
+    'l\'elenco va nella risposta vera E nella prova a vuoto');
+
+  // 🚨⭐⭐ E va calcolato PRIMA della scrittura: dopo il `fetch` che toglie il campo sarebbe
+  // fuori dalla prova a vuoto, cioè provabile solo annullando davvero.
+  const iCompagni = src.indexOf('const compagni = compagniDaAvvisare(');
+  const laProva = src.indexOf('cancel PROVA A VUOTO');
+  // ⚠️ La sonda cerca la riga che CHIAMA il ponte, non la parola: «matchpoint-bookings-cancel»
+  // compare anche nel commento in testa al file, cioè PRIMA di tutto — e con quella un
+  // controllo sull'ordine sarebbe rosso qualunque cosa faccia il codice. Costato un giro.
+  const laScrittura = src.indexOf('functions/v1/matchpoint-bookings-cancel');
+  assert.ok(iCompagni > 0 && laProva > 0 && laScrittura > 0, 'punti di riferimento non trovati');
+  assert.ok(iCompagni < laProva && iCompagni < laScrittura,
+    'i compagni si cercano PRIMA della prova a vuoto e PRIMA della riga che toglie il campo');
+
+  // ⚖️ Il verso del fail closed: `scheda: null` non è un errore, è «non lo so» ⇒ non si avvisa.
+  // Se da qui uscisse un 503, un nome ambiguo impedirebbe di annullare la propria partita.
+  const ramo = src.slice(iCompagni, laScrittura);
+  assert.ok(!/OMONIMI_NON_VERIFICABILI|err\(50\d/.test(ramo),
+    'un compagno non riconosciuto toglie un avviso, non l\'annullo');
+
+  // 🚨 La scheda la cerca la funzione condivisa col `remove`, e dichiarando l'azione: una
+  // diagnosi che dice «remove» mentre si annullava manda a cercare il guasto altrove.
+  assert.ok(/schedaDiChiSiToglie\(nome, 'cancel'\)/.test(src),
+    'stessa lettura del «togli», ma i log devono dire quale azione la stava usando');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
