@@ -27,7 +27,7 @@ Sono **2.276 soci su 2.801**: il valore `0,5` con cui il gestionale scrive «da 
 | Non può nemmeno **invitare** né **togliere** un giocatore | ✅ |
 | Quando ci prova, riceve il messaggio col bottone 🎾 **TEST LIVELLO DI GIOCO** | ✅ |
 | Se **chiede** «che livello ho?», gli si dice che non ce l'ha **e come farlo**, col bottone | ✅ **dal 17/08** — prima era un vicolo cieco |
-| Riceve un **promemoria gentile**, un paio di volte al mese | ✅ **VIVO dal 19/08, su PROD e per i soci** — ogni **15 giorni** (24,3 all'anno), col bottone del test. La regola di *a chi* sta nel ponte (`promemoria-livello.ts`), la frase nel bot. ⭐ È l'unico dei sette pezzi della 61 che qualcuno abbia **davvero ricevuto**: 19/08 alle **11:43**, una persona: voce **61** § B |
+| Riceve un **promemoria gentile**, un paio di volte al mese | ✅ **VIVO dal 19/08, su PROD e per i soci** — ogni **15 giorni** (24,3 all'anno), col bottone del test. La regola di *a chi* sta nel ponte (`promemoria-livello.ts`), la frase nel bot. ⭐ È l'unico dei sette pezzi della 61 che qualcuno abbia **davvero ricevuto**: 19/08 alle **11:43**, una persona: voce **61**, fra le 📦 chiuse |
 | **Non eredita** il livello di chi lo invita | ✅ — e l'eredità è ❌ (sotto) |
 
 ### ❌ L'eredità dall'organizzatore — cancellata il 17/08
@@ -54,7 +54,7 @@ lavoro, ne ha tolto — l'eredità, le 24 ore e la scadenza non si costruiscono 
 |---|---|
 | Il link è **personale**: non è un indirizzo da girare a un amico | ✅ |
 | **Tre prove** per giro | ✅ |
-| È il socio a **decidere a quale prova fermarsi** | ✅ **dal 19/08/2026, e VIVO ANCHE PER I SOCI**: l'automatismo non applica più da sé, il bot chiede «tieni questo o riprovi?», e il silenzio vale assenso dopo 24 ore. ⚠️ Vivo non vuol dire visibile: su PROD nessuno ha ancora passato un quiz, quindi non c'è ancora una prova a cui si applichi → voce **61** § A ④ |
+| È il socio a **decidere a quale prova fermarsi** | ✅ **dal 19/08/2026, e VIVO ANCHE PER I SOCI**: l'automatismo non applica più da sé, il bot chiede «tieni questo o riprovi?», e il silenzio vale assenso dopo 24 ore. ⚠️ Vivo non vuol dire visibile: su PROD nessuno ha ancora passato un quiz, quindi non c'è ancora una prova a cui si applichi → voce **61**, fra le 📦 chiuse |
 | Finito il giro → **30 giorni** prima di rifarlo | ✅ **dal 18/08/2026** — un giro sono **tre prove**, e quando finiscono partono i 30 giorni. Prima l'attesa scattava solo dopo tre **bocciature**, e chi **passava** poteva rifarlo **subito e all'infinito** |
 | Dopo una prova **riuscita** si può ancora **affinare** | ✅ — è il giro disegnato qui sotto: quello che si è tolto è il *«all'infinito»*, non il riprovare |
 | Finita l'attesa, il giro dopo nasce **intero** (tre prove, non una) | ✅ dal 18/08 — 🚨 prima no, e nessuno l'aveva visto: con **quattro** bocciature di fila il conto restava ≥ 3 e l'attesa ripartiva dall'ultima ⇒ **una prova ogni 30 giorni, per sempre** |
@@ -158,11 +158,16 @@ Da tenere separate, o si pota la cosa sbagliata:
 
 ---
 
-📌 **Dove stanno i pezzi ancora da fare**: tutti dentro la voce **61** di
-[`docs/lavori/README.md`](lavori/README.md) — *«finalizzare la sezione «Il mio livello» del bot»*,
-messa fra le 🔴 **urgenti** dal committente il 18/08/2026.
-🔄 **Le vecchie voci 55, 56 e 57 non esistono più come voci a sé**: assorbite nella 61 la sera
-stessa (*«sì assorbile nella 61»*), e le loro schede stanno là dentro per intero — § **A** le regole
-del rifare, § **B** il promemoria gentile, § **C** il silenzio su Semi-Pro e Professionista.
-🚨 **L'ordine non è libero**: le regole del § A (in negativo non si scende) vengono **prima** di
-aprire il bottone a chi un livello ce l'ha, o la cura fa il danno da cui difende.
+📦 **NON CI SONO PIÙ PEZZI DA FARE: la voce 61 è CHIUSA dal 19/08/2026**, e la sua riga sta fra le
+📦 **chiuse** di [`docs/lavori/README.md`](lavori/README.md) — non più fra le urgenti, dove era stata
+messa dal committente il 18/08. Tutti e sette i pezzi sono **vivi**, sul gestionale e sui bot.
+🔄 **Le vecchie voci 55, 56 e 57 non esistono più come voci a sé**: assorbite nella 61 il 18/08
+(*«sì assorbile nella 61»*), e chiuse con lei. ⚠️ **E le loro schede non si citano più come § A, § B,
+§ C**: chiudendo la 61 la scheda lunga è diventata **una riga sola** fra le chiuse, che le tiene
+tutt'e tre. Il racconto per esteso resta nella storia di git, non in un paragrafo che non c'è più.
+⚖️ **L'ordine che allora non era libero — in negativo non si scende **prima** di aprire il bottone
+a chi un livello ce l'ha — è stato rispettato**: il ③ è andato su PROD il 18/08 e il ① è stato
+aperto dopo. Si scrive al passato perché è un fatto compiuto, non una regola ancora da osservare.
+⚠️ **Ma «tutti vivi» non vuol dire «tutti visti»**: sei dei sette sono **prerequisiti in servizio**
+— su PROD nessun socio ha ancora completato un test col cancello del quiz, quindi il ④ e il ⑦ non
+hanno ancora avuto una prova a cui applicarsi. L'unico che qualcuno ha **ricevuto** è il ⑥.
