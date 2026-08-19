@@ -123,3 +123,72 @@ export function verdettoScrittura(o: {
   }
   return { esito: 'non_ancora', motivo: 'copia_ferma', attendere: true };
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔒⭐⭐ IL VOCABOLARIO CHE ESCE DAL GESTIONALE — 19/08/2026, regola ferrea del committente.
+//
+// 🗣️ *«ti ricordo che il bot deve prendere solo ordini dal gestionale non da Matchpoint… Il
+// worker il bot non deve proprio filarselo, perché il worker è il tramite fra la nostra webapp
+// (gestionale) e Matchpoint.»* ⇒ Il worker, per il bot, **non esiste**: né indirizzo, né stato,
+// **né NOME**.
+//
+// 🚨 E il 19/08 alle 18:53 il nome è uscito lo stesso: il registro del bot ha scritto
+// `[griglia] rifiutata (worker_error)` — cioè il gestionale ha risposto al bot col nome di un
+// suo pezzo interno, e il bot l'ha girato al socio come un rifiuto.
+//
+// ⚖️ **Quella sera la violazione era il NOME, non la sostanza** — misurato, non supposto: il
+// worker aveva fallito su `SAVE_BUTTON_NOT_FOUND`, che è un fallimento CERTO (il bottone di
+// salvataggio non è mai stato premuto), e sulla copia del gestionale quella prenotazione non è
+// mai esistita, nemmeno cancellata, con la copia fresca di un'ora e mezza DOPO. Il «no» era
+// vero. Sbagliata era la parola con cui è stato detto.
+// ⇒ Distinguere le due metà conta: chi legge «violazione» e corregge la sostanza cura un difetto
+//   che quella sera non c'era, e lascia in piedi quello che c'era.
+//
+// 🎯 La prova che questo nome deve superare: *il giorno in cui Matchpoint si spegne, il bot non
+// si tocca*. `worker_error` quel giorno non vorrebbe più dire niente; «la scrittura è stata
+// rifiutata» sì, perché è il GESTIONALE a dirlo, e il gestionale resta.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Il motivo che il gestionale dà al bot quando una scrittura **non è passata, e lo sappiamo**.
+ *
+ * ⭐ Sta in una costante e non in cinque stringhe scritte a mano: erano cinque copie di
+ * `'worker_error'` sparse in `index.ts`, e cinque copie della stessa parola divergono al primo
+ * ripensamento — o, peggio, se ne corregge una e le altre quattro continuano a dire la parola
+ * vietata senza che nessuno se ne accorga.
+ * ⚠️ È l'unico nome che può uscire per un fallimento certo: `esito_ignoto` è per l'altro caso,
+ * e nessuno dei due nomina un pezzo interno.
+ */
+export const MOTIVO_SCRITTURA_RIFIUTATA = 'scrittura_rifiutata';
+
+/**
+ * La risposta di una edge di scrittura sta dicendo **«non lo so»**?
+ *
+ * ⭐ Estratta qui il 19/08 da dentro il ramo `create`, dove era l'unica copia esistente: gli
+ * altri quattro punti che scrivono (`leave`, `remove`, `add`, `cancel`) il marchio non lo
+ * guardavano affatto. Una regola che vive in un `if` dentro una funzione lunga non si può
+ * riusare, e infatti non era stata riusata.
+ *
+ * 🚨 Il marchio si legge su una PROPRIETÀ, non cercando parole dentro il messaggio: una
+ * condizione si riconosce da **cosa è successo**, non da quali parole contiene la stringa che
+ * la racconta. E si guardano ENTRAMBI i segni perché viaggiano insieme ma sono indipendenti: se
+ * un domani uno dei due cambiasse forma, l'altro regge — e il verso in cui si sbaglia resta
+ * quello sicuro, cioè «non lo so» invece di «no».
+ *
+ * 🚧 **DOVE ANCORA NON SI USA, e non è una dimenticanza — dichiarato il 19/08.** Oggi la chiama
+ * solo il ramo `create`. Gli altri quattro (`leave`, `remove`, `add`, `cancel`) continuano a
+ * dire «rifiutata» anche quando l'esito è ignoto, ed è una scelta con un motivo misurato: il bot
+ * sa dire «non lo so» **soltanto** sulla prenotazione (`testoRifiuto`, `case 'esito_ignoto'`).
+ * Per uscita, togli, aggiungi e annulla non esiste nessuna frase del genere — quelle schede
+ * traducono un elenco chiuso di motivi — quindi mandargli `esito_ignoto` oggi gli farebbe dire
+ * una frase da prenotazione su un'uscita, o cadere nel generico.
+ * ⚖️ E il danno non è simmetrico, che è la ragione per cui l'ordine è questo: **prenotare due
+ * volte occupa un campo, disdire due volte no**. Il caso che fa male è coperto.
+ * ⇒ Il resto è un lavoro sui DUE repo insieme (le frasi di là, il marchio di qua), non una riga
+ *   da aggiungere qui: chi lo farà cominci dalle frasi, non da questa funzione.
+ */
+export function esitoIgnotoDaRisposta(data: unknown): boolean {
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (d.esitoIgnoto === true) return true;
+  return String(d.error ?? '').trim() === 'WORKER_ESITO_IGNOTO';
+}
