@@ -302,6 +302,47 @@ il futuro prossimo in cui Matchpoint si chiude**:
 > di qualsiasi azione che avvenga al bot. E il bot che le riceve dal gestionale e poi le scrive
 > al socio.»*
 
+🔒🔒 **RIBADITA E RESA PIÙ STRETTA il 19/08/2026, e da qui in poi è FERREA — parole sue:**
+
+> *«ti ricordo che il bot deve prendere solo ordini dal gestionale non da Matchpoint, anche perché
+> a breve dismettiamo Matchpoint. Quindi TUTTE le operazioni devono essere confermate sul
+> gestionale e così poi il bot le riporta al socio.»*
+> *«Il worker il bot non deve proprio filarselo, perché il worker è il tramite fra la nostra
+> webapp (gestionale) e Matchpoint.»*
+
+⇒ **Le tre parti, e nessuna è un dettaglio:**
+① il bot parla **solo** col gestionale — mai con Matchpoint, mai col worker;
+② un'operazione è andata a buon fine **quando lo dice il gestionale**, non quando lo dice il worker;
+③ il **worker non esiste**, per il bot: è un affare interno fra gestionale e Matchpoint, e il bot
+non deve conoscerne né l'indirizzo, né lo stato, **né il nome**.
+
+📏 **Misurato il 19/08 prima di scriverlo, perché una regola non si dichiara sulla fiducia**: nel
+codice del bot ci sono **zero** riferimenti a worker/Matchpoint/Hetzner fuori dai commenti, e il
+ponte chiama **quattro** edge, tutte `consumer-*` del gestionale (`consumer-booking-write`,
+`consumer-player-readmodel`, `consumer-assessment-link`, `consumer-assessment-decision`).
+⇒ ①  e ③ **reggono già** nella struttura. Quello che NON regge è il **vocabolario**.
+
+🚨⭐⭐ **LA VIOLAZIONE VIVA, trovata la sera stessa: `worker_error` arriva fino al bot.** Il
+19/08 alle 18:53 il registro del bot ha scritto `[griglia] rifiutata (worker_error)` — cioè il
+gestionale ha risposto al bot **col nome di un suo pezzo interno**, e il bot l'ha girato al socio
+come un **rifiuto**.
+⚖️ È sbagliato due volte: rompe ③ (il bot sente parlare del worker) e rompe ②, che è la metà che
+costa — *«non ho prenotato»* detto sulla parola del worker **può essere falso**, perché un worker
+che non risponde non vuol dire che Matchpoint non abbia scritto. E se era passata, il socio che
+riprova occupa il campo **due volte**.
+⇒ La forma giusta esiste già ed è `esito_ignoto` (voce 53, `supabase/functions/consumer-booking-write/esito-scrittura.ts`):
+*«non lo so ancora»*, con l'ordine di **non rifarla**. Un guasto del worker deve entrare **lì**,
+non uscire con un nome proprio. 📌 Curarlo è un lavoro dichiarato, non ancora fatto.
+
+⛔ **Come si applica, quando si scrive codice:**
+· nelle risposte delle edge verso il bot **non compaiono** `worker`, `matchpoint`, `browser`,
+  `hetzner` né i loro codici d'errore: si traducono in verdetti del **gestionale**
+  (`fatto` · `rifiutato con un motivo che il socio capisce` · `non lo so`);
+· il bot non aggiunge un secondo indirizzo a cui chiedere: se il gestionale non sa, la risposta è
+  **«non lo so ancora»**, mai una supposizione;
+· 🎯 **la prova del futuro**: il giorno in cui Matchpoint si spegne, il bot **non si tocca**. Se una
+  riga del bot dovesse cambiare quel giorno, quella riga è già sbagliata oggi.
+
 ⇒ La divisione dei compiti è **una sola riga**, e non ha eccezioni: **il gestionale SA, il bot
 DICE.** Il bot non calcola una verità per conto suo, non tiene un archivio parallelo, non deduce da
 ciò che ha detto prima. Chiede, riceve, e traduce in italiano per il socio.
