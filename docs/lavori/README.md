@@ -689,9 +689,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** |
+| 🔴 **Urgenti** | **0** — vuota, e per **sua scelta**: il 19/08, chiusa la 61, alla domanda su cosa promuovere ha risposto *«niente per ora»* |
 | 📋 **In coda** | **6** |
-| 📦 **Chiuse** | **50** il 13–18/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **51** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
