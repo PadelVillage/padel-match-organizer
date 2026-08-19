@@ -690,8 +690,8 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** — vuota, e per **sua scelta**: il 19/08, chiusa la 61, alla domanda su cosa promuovere ha risposto *«niente per ora»* |
-| 📋 **In coda** | **6** |
-| 📦 **Chiuse** | **51** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📋 **In coda** | **4** — la **62** (in lavorazione in un'altra sessione) più i tre della **D**, in attesa di lui: *«fra un po' dico cosa farne»* |
+| 📦 **Chiuse** | **53** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1030,7 +1030,7 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
-## 📋 IN CODA — 6
+## 📋 IN CODA — 4
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -1039,7 +1039,31 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 3
+### C — Cose sapute e non risolte — 1
+
+🔄 **19/08, 35ª sessione: due delle tre voci di questa sezione sono uscite, e per DUE MOTIVI
+DIVERSI** — su sue istruzioni. ⇒ **Coda da 6 a 4.** 🗣️ Della **D** ha detto *«fra un po' dico cosa
+farne»*: quindi la D **non si tocca** finché non lo dice.
+
+| | dov'è finita | perché la distinzione conta |
+|---|---|---|
+| **52** Autovalutazione morta | 📦 **CHIUSA DICHIARANDO** | non era un lavoro, era una **decisione presa** il 16/08 (*«lasciare com'è, scrivendolo»*): una decisione dentro una coda di cose da fare fa smettere la coda di dire cosa c'è da fare |
+| **54** Spostare una prenotazione | ⛔ **ANNULLATA** — *«non la facciamo più»* | non chiusa: **annullata**. L'etichetta è diversa apposta, perché *«non serviva più»* e *«è stato fatto»* non sono la stessa cosa, e chi legge fra un anno non deve poterle confondere |
+
+🚨⭐⭐ **E LA 62 RESTA QUI, che è la cosa da non sbagliare.** Alla sua frase *«levala dall'elenco
+perché la sto lavorando in un'altra sessione»* la lettura comoda era **cancellarla di qui**: sarebbe
+stata sbagliata, e l'ha chiarito lui — voleva dire *toglila dalle cose che mi proponi*, non dai
+documenti.
+⚖️ **Cancellarla avrebbe buttato la scheda VIVA di un'altra sessione**, che il 19/08 ci ha scritto
+dentro il codice fuso, **tre scelte dichiarate che aspettano una sua parola** e un limite sul campo
+illeggibile — e l'ha lasciata **aperta di proposito**, per la sua regola: *«non chiudere una voce
+che non hai verificato sul bersaglio»*. La 62 non sarebbe risultata né fatta né annullata: sarebbe
+**sparita**.
+📌 **Il fatto di metodo, pagato oggi**: due sessioni scrivevano lo **stesso file** nella stessa
+mezz'ora. A fermarmi non è stata la prudenza — è stato un `git apply` **caduto** perché la mia base
+era invecchiata di due ore. ⇒ *Con più di una sessione viva, una base non è vecchia quando te ne
+accorgi: è vecchia da subito.*
+
 
 #### 62. 🎾 **«Le tue partite» diventa una scheda per volta — MOCKUP APPROVATO, codice da scrivere**
 
@@ -1112,88 +1136,6 @@ la promessa di **una notifica sola** — la ragione per cui la E ha battuto la B
 manda una per partita.
 
 📌 Il ramo dove sta il mockup è `claude/bot-micro-fixes-9jpqji`; **il codice non è stato aperto**.
-
-#### 52. 🧟 Il pezzo dell'Autovalutazione rotto nel gestionale — **morto per scelta, non da riparare**
-
-> ⛔ **Decisione del committente, 16/08, 27ª sessione**: *«Lasciare com'è, scrivendolo»*, dopo aver
-> dichiarato che *«il processo dell'autovalutazione l'abbiamo già fatto col bot, quindi penso che la
-> sezione che c'era dentro il gestionale non sarà mai più riattivata»*.
-
-**Cos'è rotto, misurato via HTTP il 16/08** (non dedotto): `get_self_assessments_by_tokens` chiamata
-come la chiama l'app risponde **401 / `42501`**. Ne dipendono **due cose sole**, entrambe dentro la
-sezione congelata dal 13/06 (`PMO_ASSESSMENT_PARKED`): il tasto **«aggiorna risposte»** e la riga
-**«Schema autovalutazioni»** del pannello diagnostico.
-
-⚖️ **Perché è rotto, e perché NON è un errore della voce 44.** La 44 tolse ad `anon` una funzione che
-versa nome, cognome e telefono: cosa giusta, verificata, e che regge. Il punto è che **l'app entrava
-proprio da lì** — chiama con la **chiave pubblica** invece che col token dello staff
-(`index.html:29298`), a differenza delle sonde lì accanto che il token lo passano. ⇒ Non è una
-regressione da disfare: è un chiamante scritto male, in una stanza che intanto ha chiuso.
-
-🛠️ **La riparazione esiste ed è piccola** — far passare il token dello staff in quelle due chiamate,
-così la guardia della voce 50 riconosce chi chiama — **e si è scelto di NON farla**: rimetterebbe in
-funzione un bottone dentro una stanza in cui non entra nessuno, al prezzo di una modifica all'app e
-di una promozione a PROD.
-
-✅ **E il flusso VIVO del bot è sano — controllato prima di archiviare, perché sarebbe stato l'errore
-grosso.** `assessment-quiz` scrive le risposte **nella stessa tabella di prima** (`self_assessments`,
-upsert su `token`), quindi «nessuna risposta nuova» poteva voler dire *guasto*. Non lo è: dei **19**
-gettoni creati negli ultimi 30 giorni **nessuno è `completed`** — sono tutti `created`, cioè generati
-e mai aperti. ⇒ Non arrivano risposte perché **nessuno ha ancora finito il questionario**, non perché
-la scrittura fallisca. Un `completed` senza riga corrispondente sarebbe invece un guasto: **è quello
-il segnale da guardare** se un domani il sospetto torna.
-
-🚨 **Se un giorno si vuole POTARE, due avvertenze misurate il 16/08**:
-① «Autovalutazione» oggi vuol dire **due cose diverse** — la sezione **morta** nel gestionale e il
-servizio **vivo** del bot. Sono vive e in uso `assessment-quiz`, `consumer-assessment-link`,
-`assessment-apply-level` e `assessment-notify-staff`, più le tabelle `self_assessments` e
-`assessment_tokens` (1364 righe, ultima creazione **10/08**). Potare l'una senza toccare l'altro si
-può, ma va misurato.
-② Nel gestionale restano **459 funzioni** col nome `assessment` e **4678 occorrenze** della parola —
-e **non sono tutte morte**. ⚠️ La 23ª insegna che l'analizzatore che decide cosa è morto **ha già
-mentito una volta**, di brutto: leggeva un blocco `<script>` su cinque. Il perimetro lo decide il
-committente guardandolo, come fece allora.
-
-📌 La voce resta **in coda e non si promuove da sé**: è scritta perché chi un giorno ci mette mano
-parta da un dato vero e non da un ricordo.
-
-#### 54. 🔀 **SPOSTARE** una prenotazione: il bot non sa farlo, e manda in segreteria
-
-> 🗣️ **Messa in coda dal committente il 16/08/2026**, di sua iniziativa e a fine giornata:
-> *«non abbiamo ancora inserito modifica una prenotazione?»*. No — e non era nemmeno in lista.
-
-**Misurato, non ricordato.** Le azioni che il ponte del bot accetta sono **otto**, e stanno nella
-guardia che le filtra (`consumer-booking-write/index.ts:234`):
-
-```
-availability · availability_day · create · verifica · cancel · leave · remove · add
-```
-
-⇒ Guardare, prenotare, annullare, uscire da una partita, togliere un giocatore, aggiungerne uno.
-**Spostare** — altro giorno, altra ora, altro campo — **non c'è**, né fra le azioni del ponte né
-fra i sette strumenti del bot.
-
-🎯 **E il bot lo dichiara da sé**, in fondo a ogni conferma: *«Per spostarla, chiama la segreteria
-al +39 379 115 1472»*. Non è un buco dimenticato: è una porta che manda in segreteria, scritta.
-
-🚨 **PERCHÉ NON È UN'AZIONE IN PIÙ, ed è la ragione per cui la voce esiste invece di essere un
-lavoretto.** Il gestionale non ha un «sposta»: farlo vorrebbe dire **annullare e riprenotare**,
-cioè **due scritture al circolo** con in mezzo una finestra in cui:
-· il campo nuovo può essere preso da qualcun altro **mentre il vecchio è già perso**;
-· la seconda scrittura può restare **ignota** (il terzo esito della voce 53) — e lì il socio
-  resterebbe **senza campo** e senza sapere se ne ha uno.
-⚖️ È la stessa famiglia di problemi della voce 53, ma **con il verso peggiore**: là il rischio è
-una prenotazione **doppia**, qui una prenotazione **persa**. Un doppio si disdice; un buco no.
-
-📌 **Cosa andrebbe deciso prima di scriverne una riga**, e sono domande sue, non tecniche:
-① si prenota prima il nuovo e **solo se riesce** si annulla il vecchio (più sicuro, ma per un
-istante il socio ha **due** campi e potrebbe pagarne due)? oppure il contrario?
-② se il nuovo non è libero, il bot **tiene** il vecchio e lo dice — o chiede prima di toccare niente?
-③ e nel caso peggiore — vecchio annullato, nuovo fallito — chi rimedia: il bot che ritenta, o la
-segreteria?
-
-⛔ **Non si promuove da sé.** È scritta perché chi un giorno ci mette mano parta da queste tre
-domande e dal fatto che le scritture sono **due**, non una.
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 3
 
@@ -1570,15 +1512,17 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 19/08/2026 — 51 voci
+## 📦 CHIUSE — dal 13 al 19/08/2026 — 53 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime tre voci sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **54** | ⛔ **ANNULLATA** *(19/08, 35ª sessione — sua decisione: «non la facciamo più». ⚖️ **Annullata, non chiusa**: l'etichetta è diversa apposta, perché «non serviva più» e «è stato fatto» non sono la stessa cosa)* 🔀 **54. SPOSTARE una prenotazione: il bot non sa farlo, e manda in segreteria.** L'aveva messa in coda **lui** il 16/08 di sua iniziativa (*«non abbiamo ancora inserito modifica una prenotazione?»*), e il 19/08 l'ha tolta. 📏 **Il fatto misurato resta vero e vale la pena tenerlo**: le azioni che il ponte accetta sono **otto** (`consumer-booking-write/index.ts:234`) — `availability · availability_day · create · verifica · cancel · leave · remove · add` — e **spostare non c'è**, né lì né fra i sette strumenti del bot. 🎯 Non era un buco dimenticato: il bot **lo dichiara da sé** in fondo a ogni conferma (*«Per spostarla, chiama la segreteria»*), cioè è una porta che manda in segreteria, **scritta**. 🚨⭐ **E la ragione per cui non era un lavoretto è la cosa da non perdere**: il gestionale non ha uno «sposta», quindi farlo vuol dire **annullare e riprenotare** — **due scritture** al circolo con in mezzo una finestra in cui il campo nuovo può essere preso da un altro **mentre il vecchio è già perso**, e in cui la seconda scrittura può restare **ignota** (il terzo esito della 53). ⚖️ Stessa famiglia della **53**, ma **col verso peggiore**: là il rischio è una prenotazione **doppia**, qui una prenotazione **persa** — *un doppio si disdice, un buco no*. 📌 Le tre domande che sarebbero venute prima di scrivere una riga erano **sue e non tecniche** (si prenota prima il nuovo e solo se riesce si annulla il vecchio, col socio che per un istante ha **due** campi da pagare? se il nuovo non è libero il bot **tiene** il vecchio o chiede? e nel caso peggiore — vecchio annullato, nuovo fallito — chi rimedia?) ⇒ **annullandola ha risposto alla prima**: non si fa. |
+| **52** | 📦 ✅ **CHIUSA DICHIARANDO** *(19/08, 35ª sessione — «esce perché è già decisa». ⚖️ Non era un lavoro ma una **decisione presa** il 16/08, e una decisione dentro una coda di cose da fare fa smettere la coda di dire cosa c'è da fare)* 🧟 **52. Il pezzo dell'Autovalutazione rotto nel gestionale — morto per scelta, non da riparare.** 🗣️ Sua, il 16/08: *«lasciare com'è, scrivendolo»*, dopo *«il processo dell'autovalutazione l'abbiamo già fatto col bot, quindi penso che la sezione che c'era dentro il gestionale non sarà mai più riattivata»*. 📏 **Cos'è rotto, misurato via HTTP e non dedotto**: `get_self_assessments_by_tokens` chiamata **come la chiama l'app** risponde **401 / `42501`**. Ne dipendono **due cose sole**, entrambe dentro la sezione congelata dal 13/06 (`PMO_ASSESSMENT_PARKED`): il tasto **«aggiorna risposte»** e la riga **«Schema autovalutazioni»** del pannello diagnostico. ⚖️ **E NON è una regressione della voce 44**, che è la conclusione facile e sbagliata: la 44 tolse ad `anon` una funzione che versa nome, cognome e telefono — cosa giusta, verificata, e che regge. Il punto è che **l'app entrava proprio da lì**, chiamando con la **chiave pubblica** invece che col token dello staff (`index.html:29298`), a differenza delle sonde lì accanto che il token lo passano. ⇒ *Non una regressione da disfare: un chiamante scritto male, in una stanza che intanto ha chiuso.* 🛠️ **La riparazione esiste ed è piccola** — far passare il token dello staff in quelle due chiamate — **e si è scelto di non farla**: rimetterebbe in funzione un bottone dentro una stanza in cui non entra nessuno, al prezzo di una modifica all'app e di una promozione a PROD. ✅⭐ **E il flusso VIVO del bot è SANO, controllato prima di archiviare perché sarebbe stato l'errore grosso**: `assessment-quiz` scrive nella **stessa tabella di prima** (`self_assessments`, upsert su `token`), quindi «nessuna risposta nuova» poteva voler dire **guasto**. Non lo è — dei **19** gettoni creati negli ultimi 30 giorni **nessuno è `completed`**: sono tutti `created`, generati e mai aperti. 🚨 **Il segnale da guardare se un domani il sospetto torna è l'opposto**: un `completed` **senza riga corrispondente**, quello sì sarebbe un guasto. 🚨 **Due avvertenze per il giorno in cui si volesse POTARE**: ① «Autovalutazione» vuol dire **due cose diverse** — la sezione **morta** nel gestionale e il servizio **vivo** del bot (`assessment-quiz`, `consumer-assessment-link`, `assessment-apply-level`, `assessment-notify-staff`, più `self_assessments` e `assessment_tokens`): potare l'una senza toccare l'altro si può, ma **va misurato**; ② restano **459 funzioni** col nome `assessment` e **4678 occorrenze** della parola, e **non sono tutte morte** — la 23ª insegna che l'analizzatore che decide cosa è morto **ha già mentito una volta**, leggendo un blocco `<script>` su cinque. Il perimetro lo decide il committente **guardandolo**. |
 | **61** | ✅ *(19/08, 35ª sessione — messa in urgenti da LUI il 18/08, chiusa da LUI il 19 **a cosa vista**: il settimo pezzo era arrivato sul telefono di una persona vera venti minuti prima)* 🎾 **61. La sezione «Il mio livello» del bot, finita — sette pezzi, e il settimo è l'unico che qualcuno abbia RICEVUTO.** ⇒ ① il bottone del test lo vedono **tutti**, e a chi un livello ce l'ha l'invito dice **rifai** · ② i **30 giorni** partono dalla **fine del giro**, e un giro sono tre prove (prima l'attesa scattava dal terzo *fallimento*: chi passava rifaceva **subito e all'infinito**) · ③ **in negativo non si scende**, e solo alla terza prova più bassa si scende di **0,5** (prima `assessment-apply-level` applicava in tutti e due i versi: da Avanzato a Principiante in un colpo) · ④ **il socio sceglie a quale prova fermarsi**, e l'automatismo ha smesso di decidere da solo · ⑤ a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro**, tramite la segreteria · ⑦ a giro finito si dice «**hai finito le tue prove**», non un conto di bocciature · ⑥ il **promemoria gentile** a chi il livello non ce l'ha, ogni **15 giorni**. 🚨⭐⭐ **E il ⑥ è l'unico dei sette che non fosse un prerequisito silenzioso: il destinatario era stato MISURATO PRIMA E NOMINATO** — `Fabiola Limuti`, l'unica delle tre utenze della whitelist senza livello — e la previsione ha retto riga per riga. Merge **09:38** UTC, deploy sui SOCI **09:41:57**, messaggio **09:43:02**, cioè **11:43 di mattina a Roma**. ⭐ Il valore di quella tabella non è di aver indovinato: è di aver reso **falsificabile in anticipo** una cosa che, andando storta, si sarebbe scoperta da un socio sorpreso invece che da una riga di registro. ⚖️ **La decisione che regge il ⑥: il periodo è una CASELLA DI CALENDARIO** (15 giorni dall'epoca fissa), non «15 giorni dall'ultima volta». La strada ovvia vorrebbe una colonna scritta da chi manda il messaggio, e a mandarlo è il **bot** ⇒ quella memoria finirebbe in un **terzo posto** ancora. La casella si **calcola** e non la tiene nessuno; l'«una volta sola» lo garantisce il registro del bot con la chiave `livello:<casella>` — 24,3 messaggi all'anno, cioè la sua frase *«un paio di volte al mese»*. 🌙🚨⭐⭐ **IL DIFETTO CHE STA NELL'INCONTRO FRA TRE COSE GIUSTE, ed è il reperto di metodo della voce.** Il promemoria parte al **primo giro utile** della casella; le caselle cominciano a **mezzanotte UTC**; il giro passa **ogni quarto d'ora**. Nessuna delle tre è sbagliata, e insieme facevano arrivare il «promemoria **gentile**» sempre **verso le due del mattino**. Il banco era verde e i sabotaggi tutti visti: **non lo poteva vedere nessuna sonda** — si vede solo chiedendosi *a che ora, in pratica, questo messaggio arriva a qualcuno*. Curato con una **quarta porta** (di notte si tace), e la reazione è l'**opposta** degli avvisi di disdetta: quelli di notte si **anticipano**, questo si **rimanda**. ⭐ **E la cura non l'ha verificata una sonda: l'ha verificata l'orologio del primo che l'ha ricevuto** — 11:43, non le due. 🚨⭐ **E il difetto gemello del ④ stava FRA i due repo, dove nessun banco dei due poteva vederlo**: la porta `siPuoAnnunciareIlTest` taceva finché il livello non era **scritto**, e col ④ il gestionale aspettava la **risposta** per scriverlo ⇒ il bot avrebbe aspettato il livello per parlare, il gestionale la risposta per scrivere, e la risposta poteva arrivare **solo se il bot parlava**. Tre pezzi giusti e una **catena chiusa**: il ④ sarebbe stato **inerte al 100%**, e il silenzio-assenso delle 24 ore avrebbe fatto sembrare tutto normale. ⚖️ *Il difetto peggiore è quello che non rompe niente.* 🔪 **Provato coi sabotaggi, 45 in tutto** su quattro attrezzi (`sabotaggi-voce-61-quattro.mjs` 9+1, `sabotaggi-voce-61-sei.mjs` 10+1 nel gestionale; `sabotaggi-scelta-livello.mjs` 10+1, `sabotaggi-promemoria-livello.mjs` 13+1 nel bot), e **in fondo a ogni serie un sabotaggio che NON TOCCA NIENTE**, dichiarato tale, che deve risultare **non atterrato**: è il metro che misura il metro. 🚨⭐ **Due guardie rotte e una bugiarda, tutte trovate sabotando o leggendo il rosso invece di crederci**: ① la guardia del cablaggio trovava le stringhe **anche col ramo spento** (`if (false)`) — *una guardia che cerca una parola prova che la parola c'è, non che il codice succeda*; curata **ancorando la regex a inizio riga** (`/^\s*await .../m`), perché un `if` davanti **sposta la riga**; ② un controllo d'ordine confrontava la posizione della **lettura** invece che dell'**azione**, ed era **rosso su codice giusto**; ③ «il ponte guarda l'orologio una volta sola» contava `Date.now()` **anche nei commenti**, compreso quello che spiega perché la chiamata dev'essere una sola. ⇒ *Prima di riparare il codice per un rosso: **cosa misura la sonda?*** — e la stessa domanda va fatta **prima di credere al verde**. 📦 **Assorbite qui e chiuse con lei le voci 55, 56 e 57**, per sua decisione del 18/08 (*«sì assorbile nella 61»*). ⚠️ **Residuo dichiarato, perché nessuno legga «sezione finita e visibile»**: dei sette pezzi **sei sono prerequisiti in servizio** — vivi, e senza nessuno che li possa ancora vedere, perché su PROD **nessun socio ha mai completato un test col cancello del quiz** (42 schede, tutte senza `knowledge`). Il primo che passerà un quiz sarà anche il primo a vedere il ④ e il ⑦. *Vivo non vuol dire visibile*, e dirlo «finito» sarebbe vero del codice e falso dell'esperienza. 🧊 **E una cosa da sapere prima di provare il ⑥ su TEST**: là **tutte e due** le utenze della whitelist un livello ce l'hanno ⇒ `dovuto` è **sempre falso**, per costruzione. Come per il ③, *l'unico posto dove quella regola gira è la produzione*. |
 | — | ✅ *(18/08, 32ª sessione — tre correzioni sue, viste sul telefono mentre un'altra sessione lavorava la voce 61)* 👆 **Il riscontro dei tocchi, e l'etichetta del bottone WhatsApp.** ① 🙈 **La clessidra non compare più in cima** nelle schede di «Domande e info». ⚖️ **Non era un difetto di posizione**, ed è la cosa che ha cambiato la forma della cura: quell'avviso è di **Telegram**, lo disegna il client rispondendo al tocco e **dove** metterlo lo decide lui ⇒ al bot restano due sole scelte, dirgli un testo o non dirglielo. **Non si sposta: si toglie**, e sotto ci va il messaggio vero — la strada **già costruita il 16/08** per la sua preferenza di allora (*«la preferirei sotto al bottone che ho premuto»*), che su quei bottoni non si accendeva mai. 🔎 **Perché proprio lì**: le schede si compongono **in casa** (kb in cache 30 s) e riscrivono il messaggio toccato ⇒ il lavoro finisce **sotto la soglia** di mezzo secondo, quindi il messaggio sotto non partiva e restava solo la clessidra in alto, per un'attesa **che non c'era**. ⛔ **Tenuta stretta alle sole voci del menu**: gli altri bottoni chiamano il **ponte**, dove l'attesa è vera e l'avviso in cima è l'unica cosa che Telegram sa attaccare all'istante del tocco. ② ⬅️ **«Torna all'elenco» ha un riscontro** — *«sì, sistema anche il torna all'elenco»*. Era un **limite dichiarato il 16/08 e mai chiuso**: classificato fra i tocchi istantanei mentre il ponte lo fa aspettare davvero ⇒ **niente né sopra né sotto**. ⭐ **A tenerlo aperto era una ragione che è caduta da sé**: valeva finché «toglierlo dagli istantanei» voleva dire per forza «accendergli l'avviso in cima» — separate le due cose dal punto ①, l'obiezione non ha più oggetto. ⚖️ *Un limite scritto con la sua ragione si può riaprire quando la ragione cade; uno scritto senza resta vero per sempre* — la 26ª presa dal verso buono. 🚨 E `elenca` (rubrica, togli, invito) è un **altro nome** e non si è mosso, con un caso che lo verifica: è la trappola dei cassetti omonimi che quel modulo dichiara di evitare. ③ 💬 **«Scrivi» → «Contatta la segreteria su WhatsApp»**. Non è un sinonimo: «Scrivi» dice al socio cosa fare **lui**, «Contatta» dice **a cosa serve** il bottone — e quel numero, dall'altra parte, si può anche chiamare. 📏 **34 caratteri esatti come prima**, sotto il tetto misurato di 37 ⇒ nessun bottone tronca, e c'è un caso che lo misura perché il rischio di un cambio d'etichetta è il **taglio**, che rileggendo non si vede. ⛔ Non toccato «Altri orari? Scrivi alla segreteria»: non dice «su WhatsApp» ⇒ fuori dalla richiesta, e i suoi 37 caratteri sono già il tetto. 🧪 Banco **1078 → 1087**, typecheck pulito, **quattro sabotaggi** ognuno verificato di essere atterrato. 🚨 **Non è viva finché non si deploya**: il merge non basta, e sui soci va chiesto a parte |
 | — | ✅ *(18/08, 32ª sessione — chiesta da LUI guardando il bot sul telefono)* 🅿️ **«Parcheggio ampio» → «Parcheggio»**, nella scheda **«Cosa trovi al circolo»** del menu *Domande e info sul circolo*. ⭐ **Non è una riga di codice, ed è il punto**: quell'elenco **non sta nel bot** — `faq.ts` stampa le `dotazioni` della kb voce per voce, apposta perché *«una dotazione aggiunta domani compaia da sola, senza toccare il codice»* — quindi vive in `pmo_ai_settings` → `assistant_kb`. ⇒ **Niente PR, niente deploy, niente riavvio del bot**: una `UPDATE` per ambiente, e il socio la legge entro **30 secondi** (`KB_TTL_MS` in `ponte.ts`, l'unica cache di mezzo). Fatta **prima su TEST e poi su PROD**, con la guardia `@> '["Parcheggio ampio"]'` che la rende ripetibile a vuoto, e verificata che il **resto** della kb non si fosse mosso: `md5(value - 'dotazioni')` **identico prima e dopo** su PROD — perché un `jsonb_set` sbagliato riscrive l'oggetto intero e nessuno se ne accorge finché non manca un recapito. 🧪 **Il banco è stato allineato lo stesso** (`test/faq.test.ts`): la finta kb si dichiara *«copiata dalla forma VERA»*, e una copia rimasta indietro difende una frase che il socio non legge più. ⭐ Il caso ora pretende la riga **intera** — `/^• Parcheggio$/m` — perché `/Parcheggio/` sarebbe restato **verde** con «ampio» rimesso: misurerebbe meno di quello che afferma, che è la riga inerte della 30ª. Sabotaggio eseguito: rimesso «ampio», il banco va **rosso**. Banco **1078/1078**, typecheck pulito |
