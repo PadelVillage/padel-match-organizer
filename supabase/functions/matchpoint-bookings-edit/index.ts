@@ -30,7 +30,14 @@ type EditMove = {
 type EditPlayers = {
   remove?: string[];
   removeAll?: boolean;
-  add?: Array<{ nome: string; codice?: string; costo?: string }>;
+  // 🚨 20/08 — `codice` e `codiceCliente` sono DUE numerazioni diverse di Matchpoint e non
+  // vanno scambiate: `codice` è l'id interno (`HiddenFieldIdPeople`), `codiceCliente` è il
+  // codice della tendina («001013-Nome Cognome»). Il gemello di questa riga sta in
+  // `matchpoint-bookings-create/index.ts`, dove la stessa avvertenza è scritta dal 2/08.
+  // ⚖️ `codiceCliente` mancava QUI, e l'oggetto passava lo stesso perché questa edge inoltra
+  // `players` così com'è — ma un tipo che non nomina un campo è un campo che il primo che
+  // rimaneggia la funzione butta via senza accorgersene. È già successo, in `create`.
+  add?: Array<{ nome: string; codice?: string; codiceCliente?: string; costo?: string }>;
 };
 
 type EditRequest = {
