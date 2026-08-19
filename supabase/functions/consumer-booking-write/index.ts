@@ -28,7 +28,7 @@ import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // Com'è andata una scrittura di cui non si è saputo l'esito. Sta in un modulo a parte per la
 // stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
 // questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
-import { verdettoScrittura } from './esito-scrittura.ts';
+import { esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura } from './esito-scrittura.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -718,7 +718,7 @@ Deno.serve(async (req: Request) => {
     // **non lo so** — quest'ultimo quando la richiesta al worker non riceve MAI risposta, e la
     // prenotazione può essere già finita sul Matchpoint del circolo. Lo dice marchiando
     // `esitoIgnoto: true` e col codice `WORKER_ESITO_IGNOTO`.
-    // ⇒ Qui quel marchio veniva **buttato**: ogni fallimento usciva come `worker_error`, il bot lo
+    // ⇒ Qui quel marchio veniva **buttato**: ogni fallimento usciva col nome di un pezzo interno, il bot lo
     //   traduceva in «non sono riuscito a prenotare», e il socio rifaceva. Se la prima era passata,
     //   il campo restava occupato DUE volte sul sistema del circolo.
     //
@@ -760,20 +760,19 @@ Deno.serve(async (req: Request) => {
     }
     const data = await res.json().catch(() => null) as JsonMap | null;
     if (!res.ok || !data?.ok) {
-      // Il marchio si legge su una PROPRIETÀ, non cercando parole nel messaggio: è la stessa
-      // regola di `esito-prenotazione.js`, dove sta scritto perché — una condizione si riconosce
-      // da cosa è successo, non da quali parole contiene la stringa che la racconta.
-      // ⭐ Si guardano ENTRAMBI i segni perché viaggiano insieme ma sono indipendenti: se un domani
-      // uno dei due cambiasse forma, l'altro regge — e il verso in cui si sbaglia resta quello
-      // sicuro, cioè «non lo so» invece di «no».
-      const ignoto = data?.esitoIgnoto === true || clean(data?.error) === 'WORKER_ESITO_IGNOTO';
+      // ⭐ Il riconoscimento del marchio è uscito di qui il 19/08 ed è diventato
+      // `esitoIgnotoDaRisposta` (`esito-scrittura.ts`), dove sta scritto perché si legge una
+      // PROPRIETÀ e non le parole del messaggio. Era l'unica copia esistente, dentro un `if` in
+      // mezzo a una funzione lunga — e infatti gli altri quattro punti che scrivono non la
+      // riusavano: non potevano.
+      const ignoto = esitoIgnotoDaRisposta(data);
       console.error(`[booking-write] create KO HTTP ${res.status}${ignoto ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(data).slice(0, 300));
       return ok({
         member: { id: member.id, name: member.name },
         created: false,
-        reason: ignoto ? 'esito_ignoto' : 'worker_error',
+        reason: ignoto ? 'esito_ignoto' : MOTIVO_SCRITTURA_RIFIUTATA,
         detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
-        // ⚖️ Solo sull'ignoto: su un `worker_error` la prenotazione NON c'è, e dare al bot gli
+        // ⚖️ Solo sull'ignoto: su una scrittura rifiutata la prenotazione NON c'è, e dare al bot gli
         // attrezzi per «andare a controllare» lo inviterebbe a controllare un fatto già noto.
         ...(ignoto ? { scritta_alle: scrittaAlle, slot: { data: slot.data, ora: slot.ora, campo } } : {}),
       });
@@ -1000,7 +999,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
-        reason: 'worker_error',
+        reason: MOTIVO_SCRITTURA_RIFIUTATA,
         detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
       });
     }
@@ -1215,7 +1214,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         removed: false,
-        reason: 'worker_error',
+        reason: MOTIVO_SCRITTURA_RIFIUTATA,
         detail: clean(dataRemove?.message ?? dataRemove?.error ?? `HTTP ${resRemove.status}`).slice(0, 200),
       });
     }
@@ -1502,7 +1501,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         added: false,
-        reason: 'worker_error',
+        reason: MOTIVO_SCRITTURA_RIFIUTATA,
         detail: clean(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`).slice(0, 200),
       });
     }
@@ -1777,7 +1776,7 @@ Deno.serve(async (req: Request) => {
     return ok({
       member: { id: member.id, name: member.name },
       cancelled: false,
-      reason: 'worker_error',
+      reason: MOTIVO_SCRITTURA_RIFIUTATA,
       detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
     });
   }

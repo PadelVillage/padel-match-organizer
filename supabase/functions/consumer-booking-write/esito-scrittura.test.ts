@@ -10,8 +10,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  esitoIgnotoDaRisposta,
   FINESTRA_SYNC_GIORNI,
   MARGINE_SCRITTURA_S,
+  MOTIVO_SCRITTURA_RIFIUTATA,
   giornoPiu,
   verdettoScrittura,
 } from './esito-scrittura.ts';
@@ -174,7 +176,10 @@ test('15) IL GIRO SI CHIUDE: chi dice «non lo so» consegna anche CON CHE COSA 
   // cui chiamarla. ⚠️ E l'istante va preso PRIMA della fetch, non dopo: uno preso al ritorno,
   // o ricostruito dal bot quando si accorge del guasto, è già in ritardo — e un riferimento in
   // ritardo fa scattare il «no» troppo presto.
-  const src = readFileSync('/home/user/padel-match-organizer/supabase/functions/consumer-booking-write/index.ts', 'utf8');
+  // 🩹 19/08: qui c'era un percorso ASSOLUTO della macchina di chi l'ha scritto. Funzionava
+  // per caso — in un'altra cartella o su un runner questo caso non sarebbe diventato rosso:
+  // sarebbe **esploso**, che è un modo diverso e peggiore di non misurare niente.
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
   const primaDellaFetch = src.indexOf('const scrittaAlle = new Date().toISOString();');
   const fetchCreate = src.indexOf("fetch(`${supabaseUrl}/functions/v1/matchpoint-bookings-create`");
   assert.ok(primaDellaFetch > 0, "`create` non registra più l'istante della scrittura");
@@ -246,6 +251,76 @@ test('14) LIMITE: la rete del «mai più di quattro» NON ferma il doppio `add`'
 // chiamata viva al ponte. Che `presente` sia calcolato sulle righe giuste e che `synced_at`
 // letto dal database sia davvero l'ultimo giro atterrato lo prova solo una chiamata all'edge
 // vera — è la stessa distinzione che `occupazione.test.ts` dichiara in fondo a sé stesso.
+
+
+// ── IL VOCABOLARIO CHE ESCE DAL GESTIONALE (regola ferrea del 19/08) ───────────────────────
+
+test('16) «non lo so» si riconosce da una PROPRIETÀ, non dalle parole del messaggio', () => {
+  assert.equal(esitoIgnotoDaRisposta({ esitoIgnoto: true }), true, 'il marchio esplicito non è visto');
+  assert.equal(esitoIgnotoDaRisposta({ error: 'WORKER_ESITO_IGNOTO' }), true, 'il codice non è visto');
+  assert.equal(esitoIgnotoDaRisposta({ error: '  WORKER_ESITO_IGNOTO  ' }), true, 'gli spazi lo nascondono');
+  // 🚨 IL CASO CHE CONTA: la stessa parola dentro un MESSAGGIO non è un marchio. Un fallimento
+  // certo che per caso racconta l'altro non deve diventare «non lo so» — sarebbe la regola
+  // dell'`esito-prenotazione` al contrario, e trasformerebbe dei «no» veri in attese inutili.
+  assert.equal(
+    esitoIgnotoDaRisposta({ error: 'SAVE_BUTTON_NOT_FOUND', message: 'niente WORKER_ESITO_IGNOTO qui' }),
+    false,
+    'legge le parole del messaggio invece della proprietà',
+  );
+  assert.equal(esitoIgnotoDaRisposta({ ok: false, error: 'SAVE_BUTTON_NOT_FOUND' }), false);
+  assert.equal(esitoIgnotoDaRisposta(null), false, 'una risposta assente non è «non lo so»: è niente');
+  assert.equal(esitoIgnotoDaRisposta(undefined), false);
+});
+
+test('17) 🔒 NESSUN NOME INTERNO esce dal gestionale come «reason»', () => {
+  // 🗣️ La regola ferrea del committente (19/08): *«il worker il bot non deve proprio filarselo»*
+  // — né indirizzo, né stato, **né nome**. Il 19/08 alle 18:53 il registro del bot scriveva
+  // «rifiutata (worker_error)»: il gestionale gli aveva risposto col nome di un suo pezzo interno.
+  // 🎯 La prova: il giorno in cui Matchpoint si spegne, il bot non si tocca.
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
+  const reasons = src.match(/reason:[^,\n]+/g) ?? [];
+  // ⭐ IL CONTROLLO POSITIVO, e la prima stesura NON REGGEVA: diceva solo `reasons.length >= 5`,
+  // e il sabotaggio «cambio `reason:` in `motivo:` nei cinque punti» **non lo faceva cadere** —
+  // perché nel file ci sono altri `reason:` che tenevano su il conto da soli. Era la guardia che
+  // non difende niente, trovata dove si trova sempre: sabotando, non rileggendo.
+  // ⇒ Adesso il controllo NOMINA quello che deve vedere: se i due motivi veri escono dalla presa
+  //   della regex, questo caso cade PRIMA di quello sotto, invece di lasciarlo passare a vuoto.
+  const testi = reasons.join(' | ');
+  assert.ok(reasons.length >= 5, `trovati solo ${reasons.length} «reason»: la forma è cambiata`);
+  assert.ok(
+    testi.includes('MOTIVO_SCRITTURA_RIFIUTATA'),
+    'il rifiuto non è più fra i «reason» visti dalla guardia: è cambiata la forma, e la guardia sta guardando altrove',
+  );
+  assert.ok(
+    testi.includes("'esito_ignoto'"),
+    'l’esito ignoto non è più fra i «reason» visti dalla guardia',
+  );
+  const vietati = reasons.filter((r) => /worker|matchpoint|hetzner|browser|playwright|caddy/i.test(r));
+  assert.deepEqual(vietati, [], `un pezzo interno esce col suo nome verso il bot: ${vietati.join(' | ')}`);
+  // E il nome vecchio non deve tornare nemmeno di straforo, fuori da un `reason:`.
+  assert.ok(!/'worker_error'/.test(src), 'il letterale `worker_error` è tornato in `index.ts`');
+});
+
+test('18) 🔗 il nome del rifiuto sta in UNA costante, e la usano tutti e cinque i punti', () => {
+  // Erano cinque copie della stessa stringa scritta a mano. Cinque copie divergono al primo
+  // ripensamento — o se ne corregge una e le altre quattro continuano a dire la parola vietata.
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
+  // 🚨 Si contano gli usi COME VALORE DI `reason:`, non le apparizioni della parola nel file —
+  // e la differenza l'ha trovata un sabotaggio, non una rilettura. Contando le apparizioni, il
+  // sabotaggio «`reason:` diventa `motivo:` nei cinque punti» NON cadeva: la parola restava lì,
+  // e il bot avrebbe ricevuto `reason: undefined` con la guardia tutta verde.
+  // ⇒ Una guardia deve contare la cosa che il bot LEGGE, non la cosa che il file CONTIENE.
+  const comeReason = src.match(/reason:[^,\n]*MOTIVO_SCRITTURA_RIFIUTATA/g) ?? [];
+  assert.equal(comeReason.length, 5, `il rifiuto esce come «reason» in ${comeReason.length} punti invece di 5`);
+  const usi = src.match(/MOTIVO_SCRITTURA_RIFIUTATA/g) ?? [];
+  assert.equal(usi.length, 6, `attesi 5 usi + 1 import, trovati ${usi.length}`);
+  assert.match(src, /from '\.\/esito-scrittura\.ts'/, 'manca l’import del modulo');
+  assert.equal(MOTIVO_SCRITTURA_RIFIUTATA, 'scrittura_rifiutata');
+  // 🚨 E il riconoscimento dell'ignoto non deve tornare a essere scritto a mano nel ramo create:
+  // è uscito di lì proprio perché era l'unica copia e nessun altro poteva riusarla.
+  assert.match(src, /esitoIgnotoDaRisposta\(data\)/, 'il ramo `create` non usa più la funzione condivisa');
+  assert.ok(!/esitoIgnoto === true \|\|/.test(src), 'il riconoscimento è stato ricopiato a mano dentro index.ts');
+});
 
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed > 0) process.exitCode = 1;
