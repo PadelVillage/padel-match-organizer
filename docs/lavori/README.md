@@ -2,6 +2,34 @@
 
 **Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
 
+## 🔎 Il filo della 33ª: **un disegno approvato descrive la FORMA, non le regole che attraversa**
+
+Il mockup della voce 62 era approvato *«in pieno»*, e lo restava anche mentre lo si costruiva: il
+difetto non era nel disegno. Era che **un disegno non può dichiarare le regole che tocca** — e
+questo ne attraversava due, tutt'e due **sue**, scritte mesi prima e in un altro file.
+
+| il disegno diceva | cosa attraversava |
+|---|---|
+| ⑥ e ⑦ sono schede come le altre | quelle due partite **non hanno una schermata per costruzione**: finiscono negli `scarti` proprio perché senza poteri, e la ragione scritta lì è *«una schermata senza bottoni è un vicolo cieco»*. Il disegno lo **risolveva** (ci mette la segreteria) — ma la scheda del lavoro lo chiamava «cablaggio», e chi si fosse fidato avrebbe riaperto quel vicolo una scheda alla volta |
+| le frecce vanno sotto «❌ Annulla» | ci avrebbe messo il bottone **irreversibile** sopra quello che il pollice cerca per primo. ⚖️ E la contro-decisione era **già sua**, del 6/08: «⬅️ Torna all'elenco» sta **sopra** «Annulla», scelto guardando tre forme sul telefono |
+
+⇒ Nessuna delle due si vedeva **rileggendo il disegno**: si sono viste **aprendo il codice che il
+disegno tocca**. ⭐ *Approvare una forma non approva le regole che quella forma incontra: quelle
+si vanno a rileggere una per una, e stanno sempre in un altro file.*
+
+🔨 **E il secondo filo è nel banco: TRE casi su ventidue non difendevano quello che dicevano**, e a
+dirlo non è stata una rilettura — è stato spegnere la riga e guardare. Il ⑨ provava la porta di
+dietro invece dell'istante dopo l'azione; il caso del campo illeggibile cercava un bottone
+**rotto** mentre il difetto è un bottone che **manca** (lo sfoglio si chiude a metà, in silenzio);
+il terzo non guardava niente. ⚖️ È la 30ª di nuovo — *la riga giusta che non difende niente* — ma
+in casa mia e **tre volte nello stesso file**, cioè non un incidente: la forma normale di un caso
+scritto insieme al codice che deve sorvegliare.
+
+🚨 **E una premessa della consegna era vecchia di due ore.** «Le tre correzioni non vivono, chiedi
+dove mandarle»: erano **già sui soci dalle 11:41**, portate dal deploy di un'altra sessione che
+spingeva lo stesso commit. ⇒ *Prima di chiedere un'autorizzazione, misurare se serve ancora* —
+la domanda giusta fatta su un mondo scaduto è comunque la domanda sbagliata.
+
 ## 🔎 Il filo della 31ª: **cercare il POSTO invece di chiedere il RISULTATO**
 
 La 30ª aveva trovato la sonda che parla della **propria posizione**. Questa ha trovato il difetto
@@ -1065,7 +1093,7 @@ era invecchiata di due ore. ⇒ *Con più di una sessione viva, una base non è 
 accorgi: è vecchia da subito.*
 
 
-#### 62. 🎾 **«Le tue partite» diventa una scheda per volta — MOCKUP APPROVATO, codice da scrivere**
+#### 62. 🎾 **«Le tue partite» diventa una scheda per volta — CODICE SCRITTO E FUSO, non ancora visto sul telefono**
 
 > ✅ **Approvato dal committente il 18/08/2026, 32ª sessione**: *«creami un prompt di passaggio…
 > comprensivo di file di mockup che ti approvo in pieno»*. ⇒ La regola dei mockup è soddisfatta:
@@ -1135,7 +1163,57 @@ nuova**: è farla diventare **la porta d'ingresso** invece del posto dove si ent
 la promessa di **una notifica sola** — la ragione per cui la E ha battuto la B, che di notifiche ne
 manda una per partita.
 
-📌 Il ramo dove sta il mockup è `claude/bot-micro-fixes-9jpqji`; **il codice non è stato aperto**.
+📌 Il ramo dove sta il mockup è `claude/bot-micro-fixes-9jpqji`.
+
+---
+
+🔨 **19/08, 33ª sessione — IL CODICE È SCRITTO E FUSO** (`assistente-padel-agent` PR **#26**),
+e mandato sul **bot di prova**. ⛔ **La voce resta APERTA**, ed è la sua regola: *«non chiudere
+una voce che non hai verificato sul bersaglio — il codice è a posto non è funziona»*. Qui manca
+esattamente quello: guardarla sul telefono.
+
+✅ **Quello che la scheda prometteva e che ha retto**: la schermata della singola partita
+esisteva davvero, mostra solo i bottoni possibili, e la riga delle 48 ore la scrive di suo.
+⭐ **E la cosa che la voce vietava di dedurre dal disegno è stata MISURATA**: sfogliare
+**riscrive** il messaggio. Le frecce non sono un codice nuovo — portano un `g|a|…`, lo stesso
+del bottone che apriva dall'elenco, e quella famiglia nel dispatch chiama già `editMessageText`.
+⇒ La promessa di *una notifica sola* la tiene la strada che c'era, non una scritta apposta.
+
+🚨 **DUE VOLTE LA MISURA HA SMENTITO IL DISEGNO, e vanno tenute perché nessuna era visibile
+rileggendo.**
+
+| | |
+|---|---|
+| ⑥ e ⑦ **non erano «cablaggio»** | La scheda dava per «due casi ai bordi» quello che sono **quattro**. La partita dell'invitato dentro le 48 ore e la lezione oggi **non hanno una schermata per costruzione**: `partiteLasciabili` le manda negli `scarti` proprio perché non hanno poteri, e la ragione è scritta lì — *«una voce senza nessun potere aprirebbe una schermata senza bottoni, cioè un vicolo cieco»*. ⇒ Sfogliarle con la schermata di prima avrebbe **riaperto quel vicolo una scheda alla volta**. La cura è nel mockup e non nella voce: la scheda non è muta, porta la segreteria |
+| 🚨 le frecce **sotto** «❌ Annulla» | Il mockup le disegna lì. Farlo avrebbe messo il bottone che **non si torna indietro** esattamente sopra quello che il pollice cerca per primo. ⚖️ E la contro-decisione era **già sua**: il 6/08, guardando tre forme sul telefono, aveva messo «⬅️ Torna all'elenco» **sopra** «Annulla» per questa identica ragione. Le frecce sono il seguito di quel bottone e ne prendono il posto ⇒ **fatto così, non come nel disegno** |
+
+⚖️ **La lezione delle due insieme**: *un mockup approvato descrive la FORMA, non le regole che
+la forma attraversa* — e le regole che ha attraversato qui erano due, tutt'e due sue, tutt'e due
+scritte mesi prima e in un altro file.
+
+🔨 **Dieci sabotaggi, ognuno verificato di essere atterrato, tutti rossi. E TRE erano passati
+VERDI al primo giro** — cioè tre casi non difendevano quello che dicevano:
+
+| il caso | cosa guardava davvero |
+|---|---|
+| ⑨ la conferma resta ferma | provava la **porta di dietro** (riaprire una partita già lasciata) invece dell'istante **dopo l'azione**, che è la strada per cui la decisione esiste |
+| il campo illeggibile | guardava i bottoni **rotti**, mentre il difetto è un bottone che **MANCA**: lo sfoglio si chiuderebbe a metà **in silenzio**. ⇒ Rifatto: adesso il caso **cammina** dalla prima all'ultima e conta se ne mancano |
+| frecce ↔ «Torna all'elenco» | l'esclusione fra le due navigazioni non era difesa da **niente** |
+
+⚠️ **Tre scelte dichiarate, tutte da una riga se le vuole diverse**: ① il **corpo** della scheda
+resta quello di oggi (il roster coi «— posto libero —»), non la riga compatta del mockup — la
+voce diceva *«non devi disegnare una schermata nuova»*, e cambiarlo scarterebbe tre sue decisioni
+del 4-7/08; ② il caso ① mostra **sei** bottoni e non tre («👥 Gli inviti mandati» e «🚪 Esci»
+esistono già per l'organizzatore: è di prima); ③ la frase della **lezione** è la sua del 6/08 e
+non quella nuova del mockup — scriverne una seconda era la copia che questo progetto punisce.
+
+⚠️ **Limite dichiarato**: una prenotazione col **campo illeggibile** (`numeroCampo` torna 0) non
+è indirizzabile da nessun `callback_data` ⇒ resta fuori dallo sfoglio. **Non sparisce**: lì si
+ripiega sull'elenco di prima, invece di dire «non hai partite» a chi ne ha una.
+
+🧪 Banco **1132 → 1154**, `tsc --noEmit` pulito. 📄 Le nove schede sono state **stampate** come le
+legge il socio prima di fondere: è il controllo che in questo progetto ha già trovato quello che
+i casi non vedevano (le tre righe vuote del 5/08).
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 3
 
