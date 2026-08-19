@@ -1,0 +1,227 @@
+name: Stato del worker (sola lettura)
+
+# ⭐⭐ IL GEMELLO DI `stato-bot.yml`, PER IL WORKER — 19/08/2026.
+#
+# Nato da un guasto vero: la sera del 19/08 le SCRITTURE del bot verso Matchpoint fallivano
+# («rifiutata» dopo 72 secondi) mentre le LETTURE riuscivano tutte — import prenotazioni,
+# pagamenti, wallet. ⇒ Non era il worker in blocco: era **la strada della scrittura**. E la
+# diagnosi si è fermata lì, perché per andare avanti servivano i log del worker e da una
+# sessione cloud **non esisteva un modo di leggerli**.
+#
+# 🧰 Nel repo c'era solo `deploy-worker-hetzner.yml`, che **scrive** (rsync + `pm2 restart`);
+# nel repo del bot c'è `cancello-worker.yml`, che **ferma Caddy** — e fermando Caddy si ferma
+# anche il sync di PROD. Nessuno dei due si può usare per guardare. ⇒ Questa sonda.
+#
+# ⛔ NON TOCCA NIENTE: nessun `start`, `stop`, `restart`, `reload`; nessun file copiato;
+# nessuna POST al worker. Le uniche cose che partono verso la VM sono `pm2 describe`,
+# `pm2 jlist` (non stampato, vedi sotto), `tail` e una GET su `/health`. È di proposito che
+# non ha né conferme né scelte pericolose: una sonda che chiede il permesso è una sonda che
+# non si usa, ed è così che ci si ritrova a dedurre.
+#
+# 🚨 TRE COSE MISURATE PRIMA DI SCRIVERE QUESTO FILE, e ognuna ha cambiato una riga:
+#
+# ① **`/poller/status` NON è qui, ed è una scelta.** Sarebbe la GET più ghiotta (`lastRunError`
+#    del poller), ma `handlePollerStatus` chiama `requireWorkerAuth` ⇒ vorrebbe il gettone, che
+#    vive nel `.env` sulla VM. Portare un segreto dentro un `curl` dentro un log di Actions è
+#    un rischio che questa sonda non ha bisogno di correre: `/health` non chiede autenticazione
+#    e dice già **che cosa sa fare** il processo in servizio.
+#
+# ② **`pm2 describe` e `pm2 jlist` PORTANO CON SÉ L'AMBIENTE DEL PROCESSO** — cioè le credenziali
+#    Matchpoint del worker (`describe` stampa in coda le «divergent env variables»). ⇒ Qui non
+#    si stampa mai l'output grezzo: si filtra a **lista bianca**, cella per cella. Una sonda di
+#    sola lettura che pubblica una password nel registro pubblico di Actions ha fatto più danno
+#    del guasto che cercava.
+#
+# ③ **I percorsi dei log NON si indovinano: si chiedono a pm2.** `CLAUDE.md` dice
+#    `~/.pm2/logs/matchpoint-worker-*.log`, ed è quasi certamente giusto — ma «quasi certamente»
+#    è una deduzione, ed è la 31ª (*chi parla non si deduce dal file, si chiede a chi riceve*).
+#    I due percorsi escono da `pm2 describe`; il default resta come **ripiego dichiarato**.
+#
+# 🔒 **L'input dell'utente non arriva MAI sulla VM.** La regex si applica **sul runner**, su una
+#    copia della coda del log: verso la VM partono solo comandi fissi. Non è pignoleria — è la
+#    differenza fra una casella di testo e una shell su una macchina che scrive nel gestionale
+#    del circolo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      righe:
+        description: 'Quante righe di coda leggere da CIASCUNO dei due log (out ed error)'
+        required: false
+        default: '800'
+      cerca:
+        description: 'Regex da cercare nella finestra letta (vuoto = solo i guasti)'
+        required: false
+        default: ''
+
+jobs:
+  stato:
+    runs-on: ubuntu-latest
+    env:
+      # Stessi default del deploy accanto: la traduzione host/utente/servizio sta in un posto
+      # solo per repo, perché due tabelle che dicono la stessa cosa prima o poi divergono — e
+      # qui divergere vuol dire leggere la macchina sbagliata e credere di aver verificato.
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+      DEPLOY_SERVICE: ${{ vars.HETZNER_WORKER_SERVICE || 'matchpoint-worker' }}
+    steps:
+      - name: Valida gli input
+        id: v
+        env:
+          RIGHE: ${{ inputs.righe }}
+          CERCA: ${{ inputs.cerca }}
+        run: |
+          set -euo pipefail
+          case "$RIGHE" in
+            ''|*[!0-9]*) echo "::error::«righe» non è un numero: $RIGHE"; exit 1 ;;
+          esac
+          if [ "$RIGHE" -lt 1 ] || [ "$RIGHE" -gt 20000 ]; then
+            echo "::error::«righe» dev'essere fra 1 e 20000 (ricevuto: $RIGHE)"; exit 1
+          fi
+          echo "righe=$RIGHE" >> "$GITHUB_OUTPUT"
+          # 🚨 E la REGEX si valida QUI, prima di partire — trovato sabotando questo file.
+          #    Una regex malformata (`[`, `(`, `*` in testa) fa fallire `grep`, il `|| true` la
+          #    rende una lista vuota, e la sonda stampa «nessuna riga corrisponde»: cioè
+          #    risponde **«non c'è»** a una domanda che **non ha capito**. È la malattia di
+          #    famiglia di questo progetto — la sonda che risponde con sicurezza alla domanda
+          #    sbagliata — e costa di più qui, perché l'assenza è proprio ciò che si va a
+          #    cercare. Meglio rossa subito che verde e bugiarda.
+          #    ⚖️ E i tre esiti di `grep` NON sono due: 0 trovato · 1 NON trovato · ≥2 regex
+          #    rotta. Confondere l'1 col 2 è il modo di scrivere questo controllo in cui
+          #    boccia le regex buone — provato, e sbagliato, mentre lo scrivevo.
+          if [ -n "${CERCA:-}" ]; then
+            RC=0
+            printf '' | grep -E "$CERCA" >/dev/null 2>&1 || RC=$?
+            if [ "$RC" -gt 1 ]; then
+              echo "::error::«cerca» non è una regex valida per grep -E: $CERCA"; exit 1
+            fi
+          fi
+
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_HOST:-}" ]; then echo "::error::Manca DEPLOY_HOST."; exit 1; fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Il processo — come sta e quale codice esegue
+        id: proc
+        run: |
+          set -euo pipefail
+          SSH="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i $HOME/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST"
+          DESC=$($SSH "pm2 describe $DEPLOY_SERVICE 2>/dev/null || true")
+          if [ -z "$DESC" ]; then
+            echo "::error::pm2 non conosce «$DEPLOY_SERVICE» su $DEPLOY_HOST (o pm2 non risponde)."
+            exit 1
+          fi
+          echo "── $DEPLOY_SERVICE ──────────────────────────"
+          # 🚨 Lista BIANCA per cella (vedi ② in testa): l'etichetta dev'essere l'INTERA prima
+          #    colonna della tabella di pm2. Il nome di una variabile d'ambiente non può
+          #    somigliare a queste etichette, quindi le credenziali non passano di qui.
+          FILTRO='(^|│)[[:space:]]*(status|uptime|restarts|unstable restarts|pid|exec cwd|script path|out log path|error log path|node version|version|watch & reload)[[:space:]]*│'
+          grep -E "$FILTRO" <<< "$DESC" || echo "  (nessuna riga riconosciuta nella tabella di pm2)"
+          echo
+
+          # ③ I percorsi si chiedono a pm2, non si indovinano.
+          OUT_LOG=$(grep -E '(^|│)[[:space:]]*out log path[[:space:]]*│' <<< "$DESC" | grep -oE '/[A-Za-z0-9_./-]+\.log' | head -1 || true)
+          ERR_LOG=$(grep -E '(^|│)[[:space:]]*error log path[[:space:]]*│' <<< "$DESC" | grep -oE '/[A-Za-z0-9_./-]+\.log' | head -1 || true)
+          RIPIEGO=no
+          if [ -z "$OUT_LOG" ] || [ -z "$ERR_LOG" ]; then
+            RIPIEGO=si
+            OUT_LOG="/root/.pm2/logs/${DEPLOY_SERVICE}-out.log"
+            ERR_LOG="/root/.pm2/logs/${DEPLOY_SERVICE}-error.log"
+            echo "::warning::pm2 non ha dichiarato i percorsi dei log: uso il ripiego $OUT_LOG / $ERR_LOG. Quello che segue potrebbe non essere il registro di questo processo."
+          fi
+          echo "out log: $OUT_LOG"
+          echo "err log: $ERR_LOG"
+          echo "out=$OUT_LOG" >> "$GITHUB_OUTPUT"
+          echo "err=$ERR_LOG" >> "$GITHUB_OUTPUT"
+          echo "ripiego=$RIPIEGO" >> "$GITHUB_OUTPUT"
+
+      - name: Cosa sa fare il processo in servizio (/health, GET, senza gettone)
+        run: |
+          set -euo pipefail
+          SSH="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i $HOME/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST"
+          echo "── /health, visto da dentro la VM ───────────"
+          # ⭐ `features` e `routes` dicono CHE COSA SA FARE questo processo, non che versione
+          #    dice di essere: è il campo nato dal guasto del 3/08, quando sulla VM era finito
+          #    codice vecchio e l'interfaccia annunciava «niente è stato creato» mentre un
+          #    cliente vero veniva creato.
+          $SSH "curl -s --max-time 8 http://127.0.0.1:8787/health" || echo "  (health non raggiungibile da 127.0.0.1:8787)"
+          echo
+          echo
+
+      - name: La finestra letta, i guasti dentro, e la regex a scelta
+        env:
+          CERCA: ${{ inputs.cerca }}
+          RIGHE: ${{ steps.v.outputs.righe }}
+          OUT_LOG: ${{ steps.proc.outputs.out }}
+          ERR_LOG: ${{ steps.proc.outputs.err }}
+        run: |
+          set -euo pipefail
+          SSH="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i $HOME/.ssh/id_ed25519 $DEPLOY_USER@$DEPLOY_HOST"
+          # 🔒 Verso la VM parte un comando FISSO: i percorsi vengono da pm2, il numero è già
+          #    stato validato come intero. La regex dell'utente resta di qua (vedi 🔒 in testa).
+          $SSH "tail -n $RIGHE '$OUT_LOG' 2>/dev/null || true" > out.log
+          $SSH "tail -n $RIGHE '$ERR_LOG' 2>/dev/null || true" > err.log
+          cat out.log err.log > tutto.log
+
+          N_OUT=$(wc -l < out.log); N_ERR=$(wc -l < err.log)
+
+          echo "── LA FINESTRA LETTA ────────────────────────"
+          echo "righe lette: out=$N_OUT  err=$N_ERR  (chieste $RIGHE per ciascuno)"
+          # 🚨⭐ LA RIGA PIÙ IMPORTANTE DI TUTTO IL FILE, e non è un vezzo.
+          #    Il worker scrive una riga per ogni richiesta: con un tetto di righe la coda può
+          #    non arrivare al momento che si sta cercando — e allora «non c'è niente» significa
+          #    «non ho guardato lì», non «non è successo». È la trappola già pagata due volte in
+          #    questo progetto (*l'assenza nel registro è una misura*, ma **solo** se la finestra
+          #    contiene l'istante). Qui la finestra si DICHIARA, così l'assenza si può leggere.
+          PRIMO=$(grep -oE '"time":"[^"]+"' tutto.log | head -1 | cut -d'"' -f4 || true)
+          ULTIMO=$(grep -oE '"time":"[^"]+"' tutto.log | tail -1 | cut -d'"' -f4 || true)
+          if [ -n "$PRIMO" ] && [ -n "$ULTIMO" ]; then
+            echo "la finestra va da  $PRIMO  a  $ULTIMO   (UTC — a Roma sono due ore in più)"
+            echo "::notice::Finestra letta: da $PRIMO a $ULTIMO UTC. Fuori da qui questa sonda non ha guardato."
+          else
+            echo "nessun campo \"time\" riconosciuto: la finestra non si può dichiarare."
+            echo "::warning::Non si sa quale intervallo copra questa lettura: un'assenza qui sotto non prova niente."
+          fi
+          echo
+
+          echo "── I GUASTI DENTRO LA FINESTRA ──────────────"
+          # Gli `event` che il worker usa per dire che qualcosa è andato storto — presi dal suo
+          # codice, non inventati: `request_error` (il catch del server), `unhandled_rejection`
+          # (Playwright che muore fuori dai try), e la famiglia `*_failed` / `*_error`.
+          GUASTI=$(grep -E '"event":"(request_error|unhandled_rejection|[a-z_]*(_failed|_error))"' tutto.log || true)
+          if [ -n "$GUASTI" ]; then
+            echo "$GUASTI" | tail -30
+            echo
+            echo "conteggio per tipo, dentro questa finestra:"
+            grep -oE '"event":"[a-z_]+"' <<< "$GUASTI" | sort | uniq -c | sort -rn
+          else
+            echo "  (nessuna riga di guasto nella finestra letta)"
+          fi
+          echo
+
+          if [ -n "${CERCA:-}" ]; then
+            echo "── RIGHE CHE CONTENGONO: $CERCA ─────────────"
+            # 🚨 NIENTE `echo … | grep -q`, ed è una cicatrice di questo progetto: grep chiude la
+            #    pipe al primo riscontro, `echo` prende SIGPIPE e con `pipefail` la pipeline
+            #    risulta FALLITA anche avendo trovato — verde sui log corti e rossa su quelli
+            #    lunghi. Stesso codice, due esiti: una GARA, non una regola. Qui si usano solo
+            #    here-string e file.
+            TROVATE=$(grep -E "$CERCA" tutto.log || true)
+            if [ -n "$TROVATE" ]; then
+              echo "$TROVATE" | tail -40
+              echo
+              echo "corrispondenze nella finestra: $(wc -l <<< "$TROVATE")"
+            else
+              echo "  (nessuna riga corrisponde)"
+              echo "::warning::«$CERCA» non compare NELLA FINESTRA LETTA. Non vuol dire che non sia successo: rileggere con più righe prima di concludere."
+            fi
+            echo
+          fi
+
+          echo "── fine lettura. Niente è stato toccato. ────"
