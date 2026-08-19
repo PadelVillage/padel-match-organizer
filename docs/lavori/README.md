@@ -2,6 +2,37 @@
 
 **Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
 
+## 🔎 Il filo della 36ª: **anche un difetto VISTO è un'ipotesi finché non si misura il bersaglio**
+
+La 33ª mi ha consegnato un difetto che lui aveva visto con i suoi occhi — *«su una scheda dove la
+partita è completa c'era la possibilità di mandare un invito»* — più **quattro strade già escluse**,
+ognuna con la sua sonda. **Il difetto non c'era**: la partita non era completa, i giocatori erano
+due, e me l'ha confermato lui.
+
+⚖️ **Le quattro sonde della 33ª non erano sbagliate: stavano tutte a VALLE della stessa premessa.**
+La scheda al completo · il roster più corto del vero · l'invio su una partita piena · le tre
+prenotazioni al completo — tutte e quattro rispondono a *«perché il bot offre un invito su una
+partita completa?»*, che dà per vera la parola **completa**. Nessuna guardava **se lo fosse**.
+⇒ *Quando quattro misure indipendenti dicono «qui non c'è niente», la cosa da sospettare non è la
+quinta strada: è la premessa che le tiene insieme.*
+
+⭐ **E la sonda che ha chiuso in dieci minuti non era più intelligente: stava più a MONTE** — una
+riga di SQL sul gestionale, prima ancora di aprire il codice del bot. È *il gestionale SA, il bot
+DICE* applicato alla **diagnosi**: quanti giocatori ci sono su una partita lo sa il gestionale, e
+chiederlo alla schermata che la racconta è chiederlo alla persona sbagliata.
+
+👁️ **E a fare la differenza, ancora una volta, è stata una cosa che ha guardato LUI.** Gli avevo
+chiesto quale schermata fosse, con quattro risposte a scelta: ha risposto «la scheda della partita»
+— e poi ha mandato **lo screenshot**, che diceva un'altra cosa («👥 Gli inviti mandati») e per giunta
+**nominava la partita**, che lui non ricordava. ⇒ *Il ricordo di una schermata è una descrizione;
+uno screenshot è una misura.* Chiedere «quale?» costa una domanda; chiedere «me la fai vedere?»
+costa la stessa domanda e ne risponde a tre.
+
+🩹 **E una pista mia, scartata, perché scartata è un'informazione**: i due slot da due giocatori
+hanno `durata: "1"` e quelli pieni `"1.5"`, e ho pensato a un formato a due. **Falso** — in un mese
+su PROD ci sono **3** slot da un'ora in tutto, e **45** da un'ora e mezza con **un nome solo**.
+
+
 ## 🔎 Il filo della 33ª: **un disegno approvato descrive la FORMA, non le regole che attraversa**
 
 Il mockup della voce 62 era approvato *«in pieno»*, e lo restava anche mentre lo si costruiva: il
@@ -718,8 +749,8 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** — vuota, e per **sua scelta**: il 19/08, chiusa la 61, alla domanda su cosa promuovere ha risposto *«niente per ora»* |
-| 📋 **In coda** | **2** — la **62** (in lavorazione in un'altra sessione) e la **60** (due passi su quattro vivi su TEST, in attesa che parli con Wansport) |
-| 📦 **Chiuse** | **55** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📋 **In coda** | **1** — la sola **60** (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08 |
+| 📦 **Chiuse** | **56** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1058,7 +1089,7 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
-## 📋 IN CODA — 2
+## 📋 IN CODA — 1
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -1067,7 +1098,7 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 1
+### C — Cose sapute e non risolte — 0
 
 🔄 **19/08, 35ª sessione: due delle tre voci di questa sezione sono uscite, e per DUE MOTIVI
 DIVERSI** — su sue istruzioni. ⇒ **Coda da 6 a 4.** 🗣️ Della **D** ha detto *«fra un po' dico cosa
@@ -1078,142 +1109,22 @@ farne»*: quindi la D **non si tocca** finché non lo dice.
 | **52** Autovalutazione morta | 📦 **CHIUSA DICHIARANDO** | non era un lavoro, era una **decisione presa** il 16/08 (*«lasciare com'è, scrivendolo»*): una decisione dentro una coda di cose da fare fa smettere la coda di dire cosa c'è da fare |
 | **54** Spostare una prenotazione | ⛔ **ANNULLATA** — *«non la facciamo più»* | non chiusa: **annullata**. L'etichetta è diversa apposta, perché *«non serviva più»* e *«è stato fatto»* non sono la stessa cosa, e chi legge fra un anno non deve poterle confondere |
 
-🚨⭐⭐ **E LA 62 RESTA QUI, che è la cosa da non sbagliare.** Alla sua frase *«levala dall'elenco
-perché la sto lavorando in un'altra sessione»* la lettura comoda era **cancellarla di qui**: sarebbe
-stata sbagliata, e l'ha chiarito lui — voleva dire *toglila dalle cose che mi proponi*, non dai
-documenti.
-⚖️ **Cancellarla avrebbe buttato la scheda VIVA di un'altra sessione**, che il 19/08 ci ha scritto
-dentro il codice fuso, **tre scelte dichiarate che aspettano una sua parola** e un limite sul campo
-illeggibile — e l'ha lasciata **aperta di proposito**, per la sua regola: *«non chiudere una voce
-che non hai verificato sul bersaglio»*. La 62 non sarebbe risultata né fatta né annullata: sarebbe
-**sparita**.
-📌 **Il fatto di metodo, pagato oggi**: due sessioni scrivevano lo **stesso file** nella stessa
-mezz'ora. A fermarmi non è stata la prudenza — è stato un `git apply` **caduto** perché la mia base
-era invecchiata di due ore. ⇒ *Con più di una sessione viva, una base non è vecchia quando te ne
+🔄📦 **19/08, 36ª sessione: e la 62 è uscita anche lei — CHIUSA da LUI**, a difetto **cercato e
+non trovato**. ⇒ **La sezione C resta in piedi VUOTA, e la coda passa da 2 a 1.**
+
+⚖️ **Ed è uscita dalla PORTA GIUSTA, che è il punto della riga di stamattina.** Alla sua frase
+*«levala dall'elenco perché la sto lavorando in un'altra sessione»* la lettura comoda era
+**cancellarla di qui**: sarebbe stata sbagliata, e l'ha chiarito lui — voleva dire *toglila dalle
+cose che mi proponi*, non dai documenti. Cancellarla avrebbe buttato la scheda **viva** di un'altra
+sessione, e la 62 non sarebbe risultata né fatta né annullata: sarebbe **sparita**. Restando, quella
+scheda è servita fino a sera — è la premessa da cui è ripartita la caccia all'invito, e senza di lei
+la caccia sarebbe ricominciata da zero. 📌 La sua riga sta ora fra le 📦 chiuse, col difetto misurato,
+le **tre scelte dichiarate** che aspettano ancora una sua parola e il residuo di un'altra famiglia.
+
+📌 **Il fatto di metodo, pagato il 19/08 mattina**: due sessioni scrivevano lo **stesso file** nella
+stessa mezz'ora. A fermarmi non è stata la prudenza — è stato un `git apply` **caduto** perché la mia
+base era invecchiata di due ore. ⇒ *Con più di una sessione viva, una base non è vecchia quando te ne
 accorgi: è vecchia da subito.*
-
-
-#### 62. 🎾 **«Le tue partite» diventa una scheda per volta — CODICE SCRITTO E FUSO, non ancora visto sul telefono**
-
-> ✅ **Approvato dal committente il 18/08/2026, 32ª sessione**: *«creami un prompt di passaggio…
-> comprensivo di file di mockup che ti approvo in pieno»*. ⇒ La regola dei mockup è soddisfatta:
-> si può aprire il codice.
-> 📄 Il disegno: [`mockup/bot-variante-e-schede-mockup.html`](../../mockup/bot-variante-e-schede-mockup.html)
-> — i **nove casi**, uno per uno. Il confronto fra le sei strade che ci ha portati qui sta in
-> [`mockup/bot-elenco-gestisci-sotto-mockup.html`](../../mockup/bot-elenco-gestisci-sotto-mockup.html).
-
-**Da dove nasce, ed è una domanda sua guardando il telefono**: *«il bottone gestisci può stare sotto
-la relativa prenotazione? Logicamente se sei ancora in tempo a gestire la prenotazione»*.
-
-🧱 **Il vincolo che ha deciso tutto**: Telegram attacca la tastiera **al messaggio**, non alle
-righe, e la disegna sotto tutto il testo. Dentro un messaggio solo **non** si infila un bottone fra
-due partite. ⇒ Si sceglie **quanti messaggi** mandare e **come legare** la riga al suo bottone.
-Sei strade disegnate, e la scelta è caduta sulla **E**.
-
-⚖️ **E la risposta scelta NON sposta quel bottone: lo TOGLIE.** Con la scheda che è già la partita,
-le azioni stanno lì e la parola «Gestisci» sparisce. *La cura più economica di un difetto è
-scoprire che il pezzo che lo aveva non serve più.*
-
-**LE SETTE DECISIONI, prese una domanda alla volta** (sue, 18/08 — non si re-interpretano):
-
-| | |
-|---|---|
-| ① | la **scheda sostituisce l'elenco**: chiedendo «le mie partite» si apre subito **una** partita |
-| ② | si **sfoglia una alla volta**, senza elenco intermedio da cui scegliere |
-| ③ | si apre sulla **più vicina nel tempo** |
-| ④ | due bottoni: **«← Precedente»** e **«Successiva →»** — sulla prima manca il primo, sull'ultima il secondo |
-| ⑤ | le **azioni stanno sulla scheda** (Invita · Togli · Annulla), non dietro un «Gestisci» |
-| ⑥ | **nessuna partita** → resta la frase di oggi, invariata, e quella scheda non si sfoglia |
-| ⑦ | **dopo un'uscita o un annullamento** la scheda **diventa la conferma e resta ferma**, con un bottone solo che riparte dalla prima rimasta |
-
-🚨 **Il ⑦ ha una ragione che va tramandata**: passare da sé a un'altra partita farebbe leggere la
-conferma come riferita a **quella** — il malinteso peggiore possibile proprio dopo un annullamento.
-
-**I NOVE CASI da coprire** — e non sono inventati per il disegno: escono dalle regole già in
-servizio (`lascia-partita.ts`, `puoiTogliere`, `invitaQui`).
-
-| | quando | cosa mostra |
-|---|---|---|
-| ① | prima delle 48h · organizzatore · c'è posto | Invita · Togli · Annulla |
-| ② | prima delle 48h · organizzatore · al completo | Togli · Annulla |
-| ③ | prima delle 48h · invitato | **Esci** (non «annulla»: sono due cose diverse) |
-| ④ | dentro le 48h · organizzatore · al completo | la frase + Togli |
-| ⑤ | dentro le 48h · organizzatore · c'è posto | la frase + Invita e Togli |
-| ⑥ | dentro le 48h · **invitato** | **niente**: solo la segreteria |
-| ⑦ | lezione | segreteria (sua decisione del 6/08) |
-| ⑧ | nessuna partita | la frase di oggi, senza sfoglio |
-| ⑨ | appena uscito / annullata | la conferma, ferma |
-
-🗣️ **La frase delle 48 ore è SUA, parola per parola**: *«Mancano meno di 48 ore e questa partita
-non si può più disdire, ma puoi ancora modificare i giocatori.»*
-⭐ **«Modificare i giocatori» è meglio di «togliere un giocatore»**, che era la mia: copre
-**togliere E invitare**, e invitare — a campo ormai pagato — è la cosa che serve davvero (trovare
-il quarto). ⚠️ Nel bot **esiste già** una frase di questa famiglia dentro la scheda della singola
-partita (`gestisci-testi.ts`, ramo `responsabileBloccato`): **non se ne scrive una seconda**, si
-adatta quella. Due copie della stessa regola in questo progetto sono già divergute.
-
-🔨 **Quanto è già costruito, misurato leggendo il codice il 18/08 e non ricordato.** La scheda della
-singola partita **esiste** (`schedaGestisci` → `disegnaGestisci`), mostra **solo i bottoni
-possibili**, e la riga delle 48 ore la scrive già. ⇒ Il lavoro **non è disegnare una schermata
-nuova**: è farla diventare **la porta d'ingresso** invece del posto dove si entra, aggiungere lo
-**sfoglio** (← →) e cablare i casi ⑧ e ⑨.
-
-⛔ **DA MISURARE PRIMA DI DIRE CHE FUNZIONA, e non si deduce da un disegno**: che sfogliare
-**riscriva il messaggio** (`editMessageText`) invece di mandarne di nuovi. È l'unica cosa che tiene
-la promessa di **una notifica sola** — la ragione per cui la E ha battuto la B, che di notifiche ne
-manda una per partita.
-
-📌 Il ramo dove sta il mockup è `claude/bot-micro-fixes-9jpqji`.
-
----
-
-🔨 **19/08, 33ª sessione — IL CODICE È SCRITTO E FUSO** (`assistente-padel-agent` PR **#26**),
-e mandato sul **bot di prova**. ⛔ **La voce resta APERTA**, ed è la sua regola: *«non chiudere
-una voce che non hai verificato sul bersaglio — il codice è a posto non è funziona»*. Qui manca
-esattamente quello: guardarla sul telefono.
-
-✅ **Quello che la scheda prometteva e che ha retto**: la schermata della singola partita
-esisteva davvero, mostra solo i bottoni possibili, e la riga delle 48 ore la scrive di suo.
-⭐ **E la cosa che la voce vietava di dedurre dal disegno è stata MISURATA**: sfogliare
-**riscrive** il messaggio. Le frecce non sono un codice nuovo — portano un `g|a|…`, lo stesso
-del bottone che apriva dall'elenco, e quella famiglia nel dispatch chiama già `editMessageText`.
-⇒ La promessa di *una notifica sola* la tiene la strada che c'era, non una scritta apposta.
-
-🚨 **DUE VOLTE LA MISURA HA SMENTITO IL DISEGNO, e vanno tenute perché nessuna era visibile
-rileggendo.**
-
-| | |
-|---|---|
-| ⑥ e ⑦ **non erano «cablaggio»** | La scheda dava per «due casi ai bordi» quello che sono **quattro**. La partita dell'invitato dentro le 48 ore e la lezione oggi **non hanno una schermata per costruzione**: `partiteLasciabili` le manda negli `scarti` proprio perché non hanno poteri, e la ragione è scritta lì — *«una voce senza nessun potere aprirebbe una schermata senza bottoni, cioè un vicolo cieco»*. ⇒ Sfogliarle con la schermata di prima avrebbe **riaperto quel vicolo una scheda alla volta**. La cura è nel mockup e non nella voce: la scheda non è muta, porta la segreteria |
-| 🚨 le frecce **sotto** «❌ Annulla» | Il mockup le disegna lì. Farlo avrebbe messo il bottone che **non si torna indietro** esattamente sopra quello che il pollice cerca per primo. ⚖️ E la contro-decisione era **già sua**: il 6/08, guardando tre forme sul telefono, aveva messo «⬅️ Torna all'elenco» **sopra** «Annulla» per questa identica ragione. Le frecce sono il seguito di quel bottone e ne prendono il posto ⇒ **fatto così, non come nel disegno** |
-
-⚖️ **La lezione delle due insieme**: *un mockup approvato descrive la FORMA, non le regole che
-la forma attraversa* — e le regole che ha attraversato qui erano due, tutt'e due sue, tutt'e due
-scritte mesi prima e in un altro file.
-
-🔨 **Dieci sabotaggi, ognuno verificato di essere atterrato, tutti rossi. E TRE erano passati
-VERDI al primo giro** — cioè tre casi non difendevano quello che dicevano:
-
-| il caso | cosa guardava davvero |
-|---|---|
-| ⑨ la conferma resta ferma | provava la **porta di dietro** (riaprire una partita già lasciata) invece dell'istante **dopo l'azione**, che è la strada per cui la decisione esiste |
-| il campo illeggibile | guardava i bottoni **rotti**, mentre il difetto è un bottone che **MANCA**: lo sfoglio si chiuderebbe a metà **in silenzio**. ⇒ Rifatto: adesso il caso **cammina** dalla prima all'ultima e conta se ne mancano |
-| frecce ↔ «Torna all'elenco» | l'esclusione fra le due navigazioni non era difesa da **niente** |
-
-⚠️ **Tre scelte dichiarate, tutte da una riga se le vuole diverse**: ① il **corpo** della scheda
-resta quello di oggi (il roster coi «— posto libero —»), non la riga compatta del mockup — la
-voce diceva *«non devi disegnare una schermata nuova»*, e cambiarlo scarterebbe tre sue decisioni
-del 4-7/08; ② il caso ① mostra **sei** bottoni e non tre («👥 Gli inviti mandati» e «🚪 Esci»
-esistono già per l'organizzatore: è di prima); ③ la frase della **lezione** è la sua del 6/08 e
-non quella nuova del mockup — scriverne una seconda era la copia che questo progetto punisce.
-
-⚠️ **Limite dichiarato**: una prenotazione col **campo illeggibile** (`numeroCampo` torna 0) non
-è indirizzabile da nessun `callback_data` ⇒ resta fuori dallo sfoglio. **Non sparisce**: lì si
-ripiega sull'elenco di prima, invece di dire «non hai partite» a chi ne ha una.
-
-🧪 Banco **1132 → 1154**, `tsc --noEmit` pulito. 📄 Le nove schede sono state **stampate** come le
-legge il socio prima di fondere: è il controllo che in questo progetto ha già trovato quello che
-i casi non vedevano (le tre righe vuote del 5/08).
 
 ### D — Corpose: solo se si vogliono ATTIVARE — 1
 
@@ -1604,15 +1515,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 19/08/2026 — 55 voci
+## 📦 CHIUSE — dal 13 al 19/08/2026 — 56 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime cinque voci sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime sei voci sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **62** | ✅ *(19/08, 36ª sessione — codice fuso dalla 33ª, **chiusa da LUI** dopo che l'ultimo difetto rimasto è stato cercato e non trovato: «Chiudila»)* 🎾 **62. «Le tue partite» è una scheda per volta, e si sfoglia.** Chiedendo le proprie partite si apre **una** partita — la più vicina nel tempo — e la si sfoglia con «← Precedente» / «Successiva →»; le azioni stanno **sulla scheda** (Invita · Togli · Annulla) e la parola «Gestisci» sparisce. ⭐ **La cura più economica di un difetto è scoprire che il pezzo che lo aveva non serve più**: la domanda di partenza era sua — *«il bottone gestisci può stare sotto la relativa prenotazione?»* — e la risposta scelta quel bottone non lo **sposta**, lo **toglie**. ✅ **Verificata sul telefono da lui** (*«mi sembra che funzioni tutto bene»*), che è l'unica verifica che la sua regola accetta: *«il codice è a posto non è funziona»*. ⭐ E la promessa per cui la variante E aveva battuto le altre cinque — **una notifica sola** — la tiene lo sfoglio che **riscrive** il messaggio (`editMessageText`) invece di mandarne di nuovi: misurata, non dedotta dal disegno. 🚨⭐⭐ **E L'ULTIMA COSA APERTA ERA UN DIFETTO CHE NON C'ERA — vale più del lavoro.** *«Su una scheda dove la partita è completa c'era la possibilità di mandare un invito»*, visto da lui sul bot di prova. Non era la **scheda** ma «👥 Gli inviti mandati»; e soprattutto **la partita non era completa**: su `2026-08-21 17:00 campo 3` i giocatori sono **due** (`-Maurizio Aprea.-pierfrancesco biggi.`), e concordano **tre copie della riga, su TEST e su PROD**, `booking` e `staff_booking`. ⇒ Il bot ha scritto *«Puoi invitare qualcuno dalla tua rubrica»* perché `liberi = 4 − 2 > 0`; con quattro avrebbe scritto **«Siete al completo»**, che è l'altra metà della stessa riga (`invito-partita-testi.ts:227`). Il cancello ha funzionato. 🧊 **E NON era il calendario congelato di TEST** — l'esclusione da fare per prima, che si è chiusa **al rovescio di come me l'aspettavo**: la copia di **PROD** è stata rinfrescata **21 minuti DOPO** lo screenshot e dice le stesse due persone. ⇒ **Confermata la riga 2 della tabella della 33ª** (*«il roster più corto del vero: ipotesi ragionevole e falsa»*). 🔎 **La misura è stata fatta ESEGUENDO il codice del ponte** — `compagni-slot.ts` copiato e girato sui payload veri — **non riscrivendone la regola in SQL**: è l'errore che aveva già morso due volte la 33ª, e una sonda sbagliata dà una risposta **sicura e falsa**. 📏 **Un contorno misurato, che non è un difetto ma va saputo**: su PROD, tipo «Partita», 19/08→19/09, **31 schede distinte su 48 (65%) hanno meno di quattro nomi** ⇒ il bot offrirà «Invita» sulla maggioranza delle partite. Se là dentro ce ne sono che si giocano in quattro, il buco è **in Matchpoint**, non nel bot — *il gestionale SA, il bot DICE*. ⚠️ **TRE SCELTE DICHIARATE, ancora senza la sua parola e tutte da una riga**: ① il **corpo** della scheda è il roster coi «— posto libero —» di oggi e non la riga compatta del mockup (cambiarlo scarterebbe tre sue decisioni del 4-7/08); ② il caso ① mostra **sei** bottoni e non tre («👥 Gli inviti mandati» e «🚪 Esci» esistono già per l'organizzatore); ③ la frase della **lezione** è la sua del 6/08 e non quella nuova del mockup — scriverne una seconda era la copia che questo progetto punisce. ⚠️ **Limite dichiarato**: una prenotazione col **campo illeggibile** (`numeroCampo` torna 0) non è indirizzabile da nessun `callback_data` ⇒ resta fuori dallo sfoglio; lì si ripiega sull'elenco di prima, invece di dire «non hai partite» a chi ne ha una. ⚠️ **Segnalato e NON curato, perché è di un'altra famiglia**: `togli:conferma` scrive al circolo come `uscita:conferma` ma non sta in `SOTTO_AL_BOTTONE` ⇒ il messaggio sotto aspetta la soglia invece di partire subito. 📦 `assistente-padel-agent` **#26** (la voce) e **#27** (la clessidra sotto, su tutti i bottoni), vivi **sul bot di PROVA**; il bot dei **SOCI non è stato toccato**. 🧪 Banco **1132 → 1160**, `tsc --noEmit` pulito, **dieci sabotaggi** ognuno verificato di essere atterrato — e **tre casi erano passati verdi al primo giro**, cioè non difendevano quello che dicevano. |
 | **17** | ⛔ **ANNULLATA** *(19/08, 35ª sessione — sua decisione: «la sedici e la diciassette non verranno mai fatte»)* 🔐 **17. Consumer: hook Auth «Customize Access Token».** Senza quell'hook l'RLS **nega in silenzio**, ed era il prerequisito per far funzionare i permessi dell'app dei soci. ⭐ **E l'annullamento discende da una decisione già presa, non è un capriccio**: quell'hook serviva **all'app dei soci**, **dismessa dal 25/07** per sua scelta — Pages spento, repo tornato privato, DNS rimosso, e le due edge di login **cancellate**. Il canale verso i soci è **il bot**. ⚖️ *Una voce che prepara il terreno a una cosa che non esiste più non è «in coda»: è un residuo che sembra un piano* — e la sua riga in coda diceva già la verità (*«rilevante solo quando si riprende l'app soci, 0 utenti veri oggi»*), solo che la teneva viva invece di trarne la conseguenza. |
 | **16** | ⛔ **ANNULLATA** *(19/08, 35ª sessione — sua decisione: «la sedici e la diciassette non verranno mai fatte»)* 💰 **16. Storno/cobro PARTITA — flag OFF mai validati.** Andavano validati in TEST prima di qualunque attivazione, e non è mai stato fatto. 🔎 **Il fatto resta vero, e va scritto perché la riga non si legga come «era inutile»**: i flag sono **davvero** OFF e **davvero** mai validati. ⚖️ *Annullarla non dice che il problema non c'era: dice che non lo si affronta* — che è una cosa diversa, e più onesta. 📌 Se un domani si volesse attivarli, il punto di partenza non è cambiato: **si validano in TEST prima**, perché toccano i soldi. |
 | **54** | ⛔ **ANNULLATA** *(19/08, 35ª sessione — sua decisione: «non la facciamo più». ⚖️ **Annullata, non chiusa**: l'etichetta è diversa apposta, perché «non serviva più» e «è stato fatto» non sono la stessa cosa)* 🔀 **54. SPOSTARE una prenotazione: il bot non sa farlo, e manda in segreteria.** L'aveva messa in coda **lui** il 16/08 di sua iniziativa (*«non abbiamo ancora inserito modifica una prenotazione?»*), e il 19/08 l'ha tolta. 📏 **Il fatto misurato resta vero e vale la pena tenerlo**: le azioni che il ponte accetta sono **otto** (`consumer-booking-write/index.ts:234`) — `availability · availability_day · create · verifica · cancel · leave · remove · add` — e **spostare non c'è**, né lì né fra i sette strumenti del bot. 🎯 Non era un buco dimenticato: il bot **lo dichiara da sé** in fondo a ogni conferma (*«Per spostarla, chiama la segreteria»*), cioè è una porta che manda in segreteria, **scritta**. 🚨⭐ **E la ragione per cui non era un lavoretto è la cosa da non perdere**: il gestionale non ha uno «sposta», quindi farlo vuol dire **annullare e riprenotare** — **due scritture** al circolo con in mezzo una finestra in cui il campo nuovo può essere preso da un altro **mentre il vecchio è già perso**, e in cui la seconda scrittura può restare **ignota** (il terzo esito della 53). ⚖️ Stessa famiglia della **53**, ma **col verso peggiore**: là il rischio è una prenotazione **doppia**, qui una prenotazione **persa** — *un doppio si disdice, un buco no*. 📌 Le tre domande che sarebbero venute prima di scrivere una riga erano **sue e non tecniche** (si prenota prima il nuovo e solo se riesce si annulla il vecchio, col socio che per un istante ha **due** campi da pagare? se il nuovo non è libero il bot **tiene** il vecchio o chiede? e nel caso peggiore — vecchio annullato, nuovo fallito — chi rimedia?) ⇒ **annullandola ha risposto alla prima**: non si fa. |
