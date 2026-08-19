@@ -957,8 +957,15 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 **Cosa manca perché la sezione sia FINITA.** Sette pezzi — e **solo due, ① e ⑤, stanno tutti dentro
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
-🔨 **Cinque sono VIVI — ③ ② nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**).
-✅🎉 **E il ⑥ è l'ULTIMO: il ④ è stato fatto il 19/08 ed è vivo su PROD e per i soci** — dettaglio in fondo alla scheda **A**. ⇒ Dei sette pezzi ne resta **uno**.
+🔨 **Sei sono VIVI — ③ ② ④ nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**).
+✅🎉 **E il 19/08, 34ª sessione, è stato SCRITTO ANCHE IL ⑥, che era l'ultimo** — dettaglio in fondo alla scheda **B**. ⇒ **I sette pezzi ci sono tutti.**
+🚨⭐⭐ **Ma il ⑥ NON è come gli altri sei, e questa è la cosa da leggere prima di autorizzare
+qualcosa.** ①②③④⑤⑦ sono **prerequisiti silenziosi**: vivi, e senza un destinatario che li possa
+vedere. Il ⑥ **manda un messaggio, da solo, a una persona vera** — e il giro delle misure dice
+esattamente **chi**: `Fabiola Limuti`, l'unica delle tre utenze della whitelist senza un livello.
+⇒ Il giorno del merge su `main`, al primo giro degli avvisi, quel messaggio **parte**. È il primo
+pezzo di questa voce per cui «vivo» e «visibile» coincidono, e per cui l'autorizzazione non
+riguarda solo il codice.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
 gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① ⑦ ⑤ stanno nel bot, che si
 aggiorna **solo a mano**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa
@@ -980,7 +987,7 @@ nessuno, che è esattamente ciò che il workflow promette e che non si dà per b
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | ✅🎉 **FATTO IL 19/08 — VIVO SU PROD E PER I SOCI**: l'automatismo ha smesso di decidere da solo, il bot fa la domanda e la risposta ha una strada. ⚠️ Vivo **non vuol dire visibile**: su PROD nessuno ha ancora completato un test col cancello, quindi non c'è ancora una prova a cui si applichi | gestionale + bot | **A** |
 | ⑤ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria *(PR #21)* | bot | **C** |
-| ⑥ | il **promemoria gentile** a chi il livello non ce l'ha, un paio di volte al mese | bot + gestionale | **B** |
+| ⑥ | ✅🔨 **SCRITTO IL 19/08** — il **promemoria gentile** a chi il livello non ce l'ha, ogni **15 giorni**. ⚠️ Non è un prerequisito silenzioso come gli altri sei: al primo giro dopo il merge su `main` **parte davvero**, a una persona vera | bot + gestionale | **B** |
 | ⑦ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata** *(PR #19)* | bot | **A** |
 
 🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ **viene prima**
@@ -1247,6 +1254,70 @@ bot avrà utenti, non una cura per un problema di oggi. ⭐ E la misura è costa
 la mezza giornata che sarebbe costato scoprirlo dopo averlo scritto.
 🗣️ Combacia con la sua frase del 16/08: *«il bot dei soci non lo usa nessuno»* — che era esatta,
 non un'impressione.
+
+🔨✅ **SCRITTO IL 19/08/2026, 34ª sessione — e «scritto» qui è la terza cosa, dopo «vivo su PROD»
+e «vivo per i soci»: sta in due PR, e al momento in cui si legge questa riga può non aver ancora
+toccato nessun bersaglio.**
+
+**Come funziona, in una riga**: il ponte dice *sì/no* e **una casella di calendario**; il bot manda
+il messaggio e il suo registro impedisce che parta due volte nella stessa casella.
+
+| | |
+|---|---|
+| **il gestionale SA** | `consumer-assessment-link` risponde `promemoria: { dovuto, periodo, fino_a, motivo }`. La regola vive in `promemoria-livello.ts`, funzione pura: quattro porte, tutte «non parlare» |
+| **il bot DICE** | `messaggioPromemoriaLivello` compone la frase — che è `offertaDelTest` con un'apertura diversa, **non una gemella scritta a mano** — e `avvisaPromemoriaLivello` la manda dal giro degli avvisi |
+| **una volta sola** | la chiave del registro è `livello:<casella>`, e la colonna `promemoria_livello` (aggiunta su `ayly…` **prima** del codice) si scrive solo se vuota: il doppio invio lo impedisce il **database**, come per l'esito del test dal 9/08 |
+
+⚖️ **LA DECISIONE CHE REGGE TUTTO: il periodo è una CASELLA DI CALENDARIO, non «15 giorni
+dall'ultima volta».** La strada ovvia — ricordare quando si è parlato e contare da lì — vorrebbe
+una colonna nuova, scritta da chi manda il messaggio: e a mandarlo è il **bot**, quindi quella
+memoria finirebbe in un terzo posto ancora, né dove sta la verità sul socio né dove sta la regola.
+⇒ Qui il periodo si **calcola** dall'epoca fissa, a passi di 15 giorni. È lo stesso mestiere del
+conto delle prove — *non è tenuto, è calcolato* — e ha lo stesso vantaggio: niente da azzerare,
+niente da sincronizzare, e due processi che chiedono insieme leggono la stessa casella.
+📏 La casella corrente, al 19/08, è **`2026-08-14` → `2026-08-29`**; sono **24,3 messaggi
+all'anno**, cioè la sua frase *«un paio di volte al mese»*.
+
+🚨⭐⭐ **E UN DIFETTO CHE NESSUN BANCO DEI DUE LATI AVREBBE VISTO — trovato ragionando sui
+confini, non provando.** Il ponte tace se il socio ha una scheda **dentro** la casella corrente;
+ma una casella **appena cominciata** può lasciarne fuori una di **due ore fa** ⇒ quel socio si
+sarebbe visto arrivare, nello stesso giro, *«ecco com'è andato il test»* **e** *«ricordati di fare
+il test»*. ⚖️ Ognuno dei due lati, da solo, era corretto — è la stessa forma del difetto del ④,
+che stava **fra** i due repo. La cura è la terza porta di `siPuoMandareIlPromemoria`: se c'è un
+esito da annunciare, il promemoria **tace**, sempre. Vince l'esito, che parla di una cosa che il
+socio ha appena fatto.
+
+🔪 **Provato coi SABOTAGGI, ventitré in tutto** — undici sul gestionale
+(`test/sabotaggi-voce-61-sei.mjs`), dodici sul bot (`test/sabotaggi-promemoria-livello.mjs`) —
+e in fondo a ognuna delle due serie il sabotaggio che **non tocca niente**, che deve risultare
+**non atterrato**. Banchi: **58 casi** nel gestionale, **18** nel bot.
+🚨⭐ **E il sabotaggio ⑥ del bot è quello che il 19/08, nel ④, era passato VERDE**: `if (false)`
+davanti alla chiamata: le parole restano tutte, il pezzo è inerte. Rifatto apposta, e stavolta la
+guardia lo vede — perché è **ancorata a inizio riga**, non a una sottostringa. *Una guardia che
+cerca una parola prova che la parola c'è, non che il codice succeda.*
+🚨⭐ **E una guardia era ROSSA su codice giusto**, dall'altro capo: «il ponte guarda l'orologio una
+volta sola» contava `Date.now()` **anche nei commenti** — compreso quello che spiega perché la
+chiamata dev'essere una sola. *Prima di riparare il codice per un rosso: cosa misura la sonda?*
+
+🚨⭐⭐ **CHI LO RICEVE, MISURATO SUI DATI VERI E NON DEDOTTO** *(19/08)* — ed è ciò che rende il
+⑥ diverso dagli altri sei pezzi:
+
+| socio | livello | il ⑥ |
+|---|---|---|
+| Maurizio Aprea (`000004`) | 4 | ⛔ no — `ha_livello` |
+| Lidia Comes (`001013`) | 2 | ⛔ no — `ha_livello` |
+| **Fabiola Limuti (`000291`)** | `0,5` («da definire»), **nessuna scheda** | ✅ **sì**, alla prima passata del giro |
+
+⇒ **Il ⑥ non è inerte, ed è l'unico dei sette a non esserlo**: appena il codice arriva su PROD e
+sul bot dei soci, a quella persona **parte un messaggio che non ha chiesto**. Dirne «prerequisito
+in servizio», come per gli altri sei, sarebbe falso.
+
+⛔🚨 **E SUL BOT DI PROVA NON SI PUÒ GUARDARE, il che è diverso da «non funziona».** Il bot di
+prova legge il gestionale di TEST, e su `cudi…` **tutte e due** le utenze della whitelist un
+livello ce l'hanno (4 e 2) ⇒ là `dovuto` è **sempre falso**, per costruzione. È la stessa forma
+del limite del ③ — *l'unico posto dove quella regola gira è la produzione* — e va saputo **prima**
+di promettere un collaudo che TEST non può dare. ⇒ Su TEST si verifica che la funzione sia viva,
+armata e che le sue letture reggano; il **messaggio** si vede solo su PROD.
 
 #### C · Semi-Pro e Professionista: oggi il bot TACE, e adesso c'è cosa dire
 
