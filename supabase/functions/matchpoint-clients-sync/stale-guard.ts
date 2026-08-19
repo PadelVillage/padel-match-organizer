@@ -51,8 +51,24 @@ export function isMatchpointGoverned(payload: Payload) {
   return clean(p.source) === 'matchpoint_auto' || !!clean(p.matchpointImportedAt);
 }
 
+// La scheda jolly «Ospite» (codice Matchpoint 000001). NON compare mai in nessuno dei due
+// export che scarichiamo — è il motivo per cui l'app la ricrea da sé dopo ogni import
+// (`ensureOspiteMember`) — quindi su di lei «assente dall'export» non significa niente:
+// l'export non è autorevole, né per disattivarla né per potarla.
+// 📏 Misurato il 19/08/2026: senza questa eccezione la regola ② l'ha disattivata il 4-5/08
+// su PROD e su TEST (`matchpoint_snapshot_absent`), e da lì l'app scartava l'Ospite dalle
+// partite (Chiudi Partite e Riempi slot filtrano i soci `active === false`).
+// Doppia firma come nell'app (`isGuestJollyMember`): il flag, o il codice riservato.
+export function isGuestJolly(payload: Payload) {
+  const p = payload || {};
+  return p.guestJolly === true || clean(p.memberId) === '000001';
+}
+
 export function decideStaleMember(payload: Payload, importedMemberIds: Set<string>): StaleOutcome {
   const p = payload || {};
+  // Il jolly prima di ogni altra regola: per lui anche il churn è impossibile (000001 non è
+  // mai fra i codici importati), quindi qui può solo uscire 'keep'.
+  if (isGuestJolly(p)) return 'keep';
   if (!isMatchpointGoverned(p)) return 'keep';
 
   const code = clean(p.memberId);
@@ -175,6 +191,36 @@ export function buildDeactivatedMemberRecord(
       active: false,
       matchpointInactiveAt: importedAt,
       matchpointInactiveReason: MATCHPOINT_INACTIVE_REASON,
+      updatedAt: importedAt,
+    },
+    payload_hash: null,
+    deleted: false,
+    synced_at: importedAt,
+  };
+}
+
+// Il verso che GUARISCE: se una passata vecchia di questa stessa regola ha disattivato il
+// jolly «Ospite» (è successo il 4-5/08/2026, prima dell'eccezione qui sopra), il giro stale
+// lo riattiva da sé — così i due database si riparano al primo import dopo il deploy, senza
+// una scrittura a mano da coordinare col deploy stesso.
+// Riattiva SOLO chi porta il marcatore automatico: una disattivazione fatta a mano nell'app
+// non ce l'ha e resta intatta — stessa divisione di `activeFieldsOnImport` (caso K dei test).
+export function buildReactivatedGuestJollyRecord(
+  record: { local_key?: unknown; payload?: Payload },
+  importedAt: string,
+): MemberCloudRecord | null {
+  const payload: Record<string, unknown> = record?.payload || {};
+  if (!isGuestJolly(payload)) return null;
+  if (payload.active !== false) return null;
+  if (clean(payload.matchpointInactiveReason) !== MATCHPOINT_INACTIVE_REASON) return null;
+  return {
+    record_type: 'member',
+    local_key: clean(record?.local_key),
+    payload: {
+      ...payload,
+      active: true,
+      matchpointInactiveAt: '',
+      matchpointInactiveReason: '',
       updatedAt: importedAt,
     },
     payload_hash: null,
