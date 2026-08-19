@@ -27,7 +27,7 @@ Sono **2.276 soci su 2.801**: il valore `0,5` con cui il gestionale scrive «da 
 | Non può nemmeno **invitare** né **togliere** un giocatore | ✅ |
 | Quando ci prova, riceve il messaggio col bottone 🎾 **TEST LIVELLO DI GIOCO** | ✅ |
 | Se **chiede** «che livello ho?», gli si dice che non ce l'ha **e come farlo**, col bottone | ✅ **dal 17/08** — prima era un vicolo cieco |
-| Riceve un **promemoria gentile**, un paio di volte al mese | 🔨 **scritto il 19/08** — ogni **15 giorni** (24,3 all'anno), col bottone del test. La regola di *a chi* sta nel ponte (`promemoria-livello.ts`), la frase nel bot. ⚠️ Vivo solo dal merge su `main` **più** il deploy sui soci — e, a differenza degli altri sei pezzi della 61, quel giorno **parte davvero**: voce **61** § B |
+| Riceve un **promemoria gentile**, un paio di volte al mese | ✅ **VIVO dal 19/08, su PROD e per i soci** — ogni **15 giorni** (24,3 all'anno), col bottone del test. La regola di *a chi* sta nel ponte (`promemoria-livello.ts`), la frase nel bot. ⭐ È l'unico dei sette pezzi della 61 che qualcuno abbia **davvero ricevuto**: 19/08 alle **11:43**, una persona: voce **61** § B |
 | **Non eredita** il livello di chi lo invita | ✅ — e l'eredità è ❌ (sotto) |
 
 ### ❌ L'eredità dall'organizzatore — cancellata il 17/08
