@@ -193,6 +193,19 @@ export type EsitoRoster = {
 const OSPITE = 'ospite';
 
 /**
+ * «Ospite» non è una persona: è un POSTO occupato da qualcuno che il circolo non conosce.
+ *
+ * ⭐ Sta in una funzione sola perché la stessa domanda serve ormai in quattro punti — chi
+ * resta in campo, chi ha organizzato, chi si può togliere, e da oggi **chi va avvisato che la
+ * partita non c'è più**. Scritta a mano in quattro posti divergerebbe, e divergere qui vuol
+ * dire un avviso mandato a un posto vuoto, o negato a una persona vera che poi si presenta al
+ * campo. È la stessa ragione per cui `chiaveNome` è una sola.
+ */
+export function eOspite(nome: unknown): boolean {
+  return normName(nome) === OSPITE;
+}
+
+/**
  * Dopo che il socio è uscito, in campo resterebbero SOLO ospiti — cioè nessun socio.
  *
  * ⭐ Decisione del committente (27/07), presa davanti alla misura: una partita fatta di soli
@@ -203,7 +216,50 @@ const OSPITE = 'ospite';
  * partita fra soci, e da quella si esce normalmente.
  */
 export function restanoSoloOspiti(restanti: string[]): boolean {
-  return restanti.length > 0 && restanti.every((n) => normName(n) === OSPITE);
+  return restanti.length > 0 && restanti.every((n) => eOspite(n));
+}
+
+/**
+ * 👥 CHI ALTRO gioca in questa partita: le persone a cui l'annullamento toglie il campo, e che
+ * quindi vanno avvisate.
+ *
+ * ⭐⭐ Funzione pura e a sé, per la stessa ragione di `dirittoDiAnnullare` e di
+ * `bersaglioDaTogliere`: decide **a chi arriva un messaggio**. Un elenco sbagliato qui manda
+ * «la tua partita è stata annullata» a chi non c'entra, oppure — molto peggio — lascia senza
+ * avviso chi si presenterà al campo trovandolo occupato da altri. Sepolta nell'handler non
+ * sarebbe provabile senza annullare partite vere.
+ *
+ * 🚨 SÉ STESSI si toglie con le **varianti**, non col nome esatto: il gestionale scrive ora
+ * «Nome Cognome» ora «Cognome Nome», e un confronto esatto lascerebbe l'organizzatore dentro
+ * il proprio elenco — cioè gli manderebbe l'avviso che la sua partita è stata annullata, da sé.
+ * ⭐ Sono le STESSE varianti con cui si è deciso che la prenotazione è sua: la chiave che dice
+ * «questa partita è tua» e quella che dice «questa riga sei tu» devono essere una sola.
+ * ⚖️ E qui la variante è la chiave GIUSTA, non solo la comoda: `chiaveNome` (le parole in
+ * ordine alfabetico) è più larga, e più larga qui vuol dire scartare per sbaglio un compagno
+ * vero — cioè togliergli l'avviso. Il verso in cui costa sbagliare è **opposto** a quello del
+ * diritto di annullare, dove largo = un rifiuto e stretto = la partita di un altro cancellata.
+ *
+ * ⚠️ Si tolgono TUTTE le occorrenze del socio, non una sola come in `senzaDiMe`, ed è giusto:
+ * quando ci sono compagni, gli omonimi del socio al circolo sono già stati esclusi a monte
+ * (`dirittoDiAnnullare` rifiuta se ce ne sono), quindi un secondo nome uguale in campo non può
+ * essere un'altra persona.
+ *
+ * ⚖️ Gli Ospiti escono dall'elenco: dietro non c'è nessuno da avvisare. Stessa ragione per cui
+ * il «togli» non cerca la scheda di un Ospite.
+ *
+ * 🚨 E l'elenco è SENZA RIPETIZIONI. `rosterDelloSlot` le tiene apposta (tre «Ospite» sono tre
+ * posti), ma due avvisi identici alla stessa persona non sono una precisione: sono un difetto.
+ */
+export function compagniDaAvvisare(roster: string[], varianti: Set<string>): string[] {
+  const visti = new Set<string>();
+  const compagni: string[] = [];
+  for (const n of roster) {
+    const nn = normName(n);
+    if (!nn || varianti.has(nn) || eOspite(n) || visti.has(nn)) continue;
+    visti.add(nn);
+    compagni.push(clean(n));
+  }
+  return compagni;
 }
 
 /** L'elenco senza UNA occorrenza del nome dato: chi esce toglie sé stesso, non tutti gli omonimi. */
@@ -367,7 +423,7 @@ export function organizzatoreDelloSlot(righe: RigaSlotTipata[]): string | null {
   const ordinato = rosterOrdinatoDelloSlot(righe.map((r) => playersFromDescrizione(r.descrizione)));
   const primo = clean(ordinato[0]);
   if (!primo) return null;
-  if (normName(primo) === OSPITE) return null;
+  if (eOspite(primo)) return null;
   return primo;
 }
 
