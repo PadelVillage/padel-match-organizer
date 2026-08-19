@@ -42,30 +42,70 @@ const COPIE = ['consumer-assessment-link', 'assessment-apply-level', 'consumer-a
   .map((fn) => join(FUNZIONI, fn, 'giro-del-test.ts'));
 const src = readFileSync(COPIE[0], 'utf8');
 const srcPonte = readFileSync(PONTE, 'utf8');
+// 🆕 ⑥ (19/08) — la regola del PROMEMORIA GENTILE, che vive in una copia sola (la usa un
+// ponte solo): il perché sta nella sua intestazione.
+const MODULO_PROM = join(FUNZIONI, 'consumer-assessment-link', 'promemoria-livello.ts');
+const srcProm = readFileSync(MODULO_PROM, 'utf8');
+// 🆕 ⑥ — e le DUE copie di `livello-dimostrato.ts`: da qui il ponte decide chi il livello
+// ce l'ha, e dal readmodel si decide chi può organizzare. Due letture diverse della stessa
+// domanda sbaglierebbero persona in tutti e due i versi.
+const COPIE_LIVELLO = ['consumer-player-readmodel', 'consumer-assessment-link']
+  .map((fn) => join(FUNZIONI, fn, 'livello-dimostrato.ts'));
 
 // Stesso estrattore degli altri banchi: salta i commenti (in italiano sono pieni di
 // apostrofi) e parte dopo la lista dei parametri.
-function estrai(nome) {
-  const inizio = src.indexOf(`function ${nome}(`);
+function estraiDa(fonte, nome) {
+  const inizio = fonte.indexOf(`function ${nome}(`);
   if (inizio < 0) throw new Error(`funzione «${nome}» non trovata nell'edge`);
-  let t = src.indexOf('(', inizio), tonde = 0;
-  for (; t < src.length; t++) {
-    if (src[t] === '(') tonde++;
-    else if (src[t] === ')') { tonde--; if (tonde === 0) { t++; break; } }
+  let t = fonte.indexOf('(', inizio), tonde = 0;
+  for (; t < fonte.length; t++) {
+    if (fonte[t] === '(') tonde++;
+    else if (fonte[t] === ')') { tonde--; if (tonde === 0) { t++; break; } }
   }
-  let i = src.indexOf('{', t), livello = 0, stringa = null, prec = '';
-  for (; i < src.length; i++) {
-    const c = src[i], succ = src[i + 1];
+  let i = fonte.indexOf('{', t), livello = 0, stringa = null, prec = '';
+  for (; i < fonte.length; i++) {
+    const c = fonte[i], succ = fonte[i + 1];
     if (stringa) { if (c === stringa && prec !== '\\') stringa = null; }
-    else if (c === '/' && succ === '/') { const fine = src.indexOf('\n', i); i = fine < 0 ? src.length : fine; prec = '\n'; continue; }
-    else if (c === '/' && succ === '*') { const fine = src.indexOf('*/', i + 2); i = fine < 0 ? src.length : fine + 1; prec = '/'; continue; }
+    else if (c === '/' && succ === '/') { const fine = fonte.indexOf('\n', i); i = fine < 0 ? fonte.length : fine; prec = '\n'; continue; }
+    else if (c === '/' && succ === '*') { const fine = fonte.indexOf('*/', i + 2); i = fine < 0 ? fonte.length : fine + 1; prec = '/'; continue; }
     else if (c === '"' || c === "'" || c === '`') stringa = c;
     else if (c === '{') livello++;
     else if (c === '}') { livello--; if (livello === 0) { i++; break; } }
     prec = c;
   }
-  return src.slice(inizio, i);
+  return fonte.slice(inizio, i);
 }
+const estrai = (nome) => estraiDa(src, nome);
+
+/**
+ * Il sorgente SENZA commenti né stringhe — per le guardie che contano OCCORRENZE.
+ *
+ * 🚨⭐ Nata da un rosso su codice giusto, il 19/08/2026: la guardia «il ponte guarda
+ * l'orologio una volta sola» contava `Date.now()` con un `match` sul file intero e ne
+ * trovava TRE — due erano dentro commenti che PARLANO di `Date.now()`, compreso quello che
+ * spiega perché la chiamata dev'essere una sola. ⚖️ È il gemello del difetto del ④, dove il
+ * controllo dell'ordine confrontava la posizione della lettura invece che dell'azione: prima
+ * di riparare il codice per un rosso conviene chiedersi **cosa misura la sonda**.
+ * ⇒ Le stringhe si tolgono con i commenti perché in questo file ce ne sono di piene di `//`
+ * (gli indirizzi delle schede): un tagliatore ingenuo si mangerebbe metà del sorgente.
+ */
+function senzaCommenti(fonte) {
+  let out = '', stringa = null, prec = '';
+  for (let i = 0; i < fonte.length; i++) {
+    const c = fonte[i], succ = fonte[i + 1];
+    if (stringa) {
+      if (c === stringa && prec !== '\\') stringa = null;
+      prec = prec === '\\' ? '' : c;
+      continue;                                  // il contenuto delle stringhe non si conta
+    }
+    if (c === '/' && succ === '/') { const fine = fonte.indexOf('\n', i); i = fine < 0 ? fonte.length : fine; out += '\n'; prec = '\n'; continue; }
+    if (c === '/' && succ === '*') { const fine = fonte.indexOf('*/', i + 2); i = fine < 0 ? fonte.length : fine + 1; out += ' '; prec = ' '; continue; }
+    if (c === '"' || c === "'" || c === '`') { stringa = c; prec = c; continue; }
+    out += c; prec = c;
+  }
+  return out;
+}
+const codicePonte = senzaCommenti(srcPonte);
 
 // ⚠️ Si tolgono SOLO le annotazioni `any` — sui parametri e sulle variabili locali. Sono
 // l'unica concessione al `deno check` in modalità `strict`, e l'unica differenza fra il
@@ -77,16 +117,18 @@ const spoglia = (codice) => codice
 
 // ⭐ I numeri della regola si LEGGONO dal sorgente: ricopiarli qui vorrebbe dire che il banco
 // resta verde anche se domani il ponte ne usa altri — proverebbe la propria copia.
-function costante(nome) {
-  const m = src.match(new RegExp(`const ${nome} = ([0-9.]+)`));
+function costanteDa(fonte, nome) {
+  const m = fonte.match(new RegExp(`const ${nome} = ([0-9.]+)`));
   if (!m) throw new Error(`costante «${nome}» non trovata nel modulo`);
   return Number(m[1]);
 }
-function parola(nome) {
-  const m = src.match(new RegExp(`const ${nome} = '([^']+)'`));
+function parolaDa(fonte, nome) {
+  const m = fonte.match(new RegExp(`const ${nome} = '([^']+)'`));
   if (!m) throw new Error(`costante «${nome}» non trovata nel modulo`);
   return m[1];
 }
+const costante = (nome) => costanteDa(src, nome);
+const parola = (nome) => parolaDa(src, nome);
 const PROVE = costante('TENTATIVI_PER_GIRO');
 const GIORNI = costante('GIORNI_DI_ATTESA');
 const ORE_SILENZIO = costante('ORE_SILENZIO_ASSENSO');
@@ -108,6 +150,25 @@ vm.runInContext(
   ctx,
 );
 const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro } = ctx;
+
+// ── 🆕 ⑥ IL PROMEMORIA GENTILE — secondo modulo, stesso trattamento ────────────
+// ⭐ Le costanti si LEGGONO dal modulo: la cadenza è una decisione del committente («un paio
+// di volte al mese»), e ricopiarla qui lascerebbe il banco verde anche se domani il modulo
+// ne usasse un'altra — proverebbe la propria copia.
+const GIORNI_PROM = costanteDa(srcProm, 'GIORNI_TRA_PROMEMORIA');
+const EPOCA = parolaDa(srcProm, 'EPOCA_PROMEMORIA');
+const MOTIVI = Object.fromEntries(
+  ['MOTIVO_HA_LIVELLO', 'MOTIVO_IN_ATTESA', 'MOTIVO_SCHEDA_RECENTE', 'MOTIVO_DA_PERSONA',
+   'MOTIVO_DATA_ILLEGGIBILE', 'MOTIVO_OROLOGIO', 'MOTIVO_DOVUTO']
+    .map((n) => [n, parolaDa(srcProm, n)]),
+);
+const ctxProm = { EPOCA_PROMEMORIA: EPOCA, ...MOTIVI };
+vm.createContext(ctxProm);
+vm.runInContext(
+  spoglia(['casellaDelPromemoria', 'promemoriaDelLivello'].map((n) => estraiDa(srcProm, n)).join('\n')),
+  ctxProm,
+);
+const { casellaDelPromemoria, promemoriaDelLivello } = ctxProm;
 
 
 // ── Il materiale ────────────────────────────────────────────────────────────────
@@ -307,6 +368,109 @@ caso('21. i giri si contano tutti, non solo l\'ultimo: due chiusi e uno aperto',
   ];
 });
 
+// ── 🆕🔔 ⑥ IL PROMEMORIA GENTILE — «a chi non ha il livello, un paio di volte al mese» ──
+//
+// 🗣️ Sua, 17/08/2026. 🚨 Ogni porta di questa regola è un «NON parlare»: il promemoria è un
+//    messaggio che nessuno ha chiesto, quindi il costo di mandarlo a sproposito è molto più
+//    alto del costo di saltarne uno — e i casi qui sotto misurano i silenzi, non gli invii.
+// ⭐ Il caso 26 è il difetto che si sarebbe visto solo dal vivo: un socio con una domanda in
+//    sospeso (il ④) non è in attesa e non ha il livello ⇒ senza la porta della scheda recente
+//    riceverebbe «fai il test» mentre il bot aspetta la sua risposta alla domanda di prima.
+
+const promProva = (d) => promemoriaDelLivello({ giorni: GIORNI_PROM, adessoMs: ADESSO, ...d });
+// Un socio nudo: nessun livello, nessuna scheda, giro aperto. È il destinatario del ⑥.
+const SENZA_NULLA = { haIlLivello: false, ammesso: true, ultimaSchedaMs: 0, ultimoEsito: '' };
+const casella = (t) => casellaDelPromemoria(t, GIORNI_PROM);
+
+caso('22. ⑥ chi non ha il livello e può fare il test: il promemoria è DOVUTO', () => {
+  const r = promProva(SENZA_NULLA);
+  return [r.dovuto === true, r.motivo === MOTIVI.MOTIVO_DOVUTO, r.periodo !== '', r.fino_a !== ''];
+});
+
+caso('23. ⑥ chi il livello ce l\'ha già non lo riceve', () => {
+  const r = promProva({ ...SENZA_NULLA, haIlLivello: true });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_HA_LIVELLO];
+});
+
+caso('24. ⑥ chi è in ATTESA non lo riceve: sarebbe mandarlo contro una porta chiusa', () => {
+  const r = promProva({ ...SENZA_NULLA, ammesso: false });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_IN_ATTESA];
+});
+
+caso('25. ⑥ una scheda arrivata DENTRO la casella tace; una PRIMA della casella no', () => {
+  const c = casella(ADESSO);
+  const dentro = promProva({ ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs });
+  const prima = promProva({ ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs - 1 });
+  return [
+    dentro.dovuto === false, dentro.motivo === MOTIVI.MOTIVO_SCHEDA_RECENTE,
+    prima.dovuto === true,
+  ];
+});
+
+caso('26. ⭐🚨 ⑥ chi ha una DOMANDA IN SOSPESO (il ④) non viene sollecitato', () => {
+  // Ha passato una prova ORA, il livello non gli è ancora stato applicato (aspetta la sua
+  // risposta) e il giro è aperto ⇒ `haIlLivello` falso e `ammesso` vero. Senza la porta
+  // della scheda recente il bot gli direbbe «fai il test» mentre aspetta la sua risposta.
+  const r = promProva({ haIlLivello: false, ammesso: true, ultimaSchedaMs: ADESSO, ultimoEsito: 'pass' });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_SCHEDA_RECENTE];
+});
+
+caso('27. ⑥ `skip` tace SEMPRE, anche vecchio di mesi: quella scheda la guarda una persona', () => {
+  const r = promProva({ ...SENZA_NULLA, ultimaSchedaMs: ADESSO - 200 * GIORNO, ultimoEsito: 'skip' });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_DA_PERSONA];
+});
+
+caso('28. ⑥ una data di scheda ILLEGGIBILE tace, e lo dice con un motivo suo', () => {
+  // 🚨 Non è la stessa cosa di «nessuna scheda» (che vale 0 e fa partire il promemoria):
+  //    qui una scheda c'è, e non si può dire se cada in questa casella. Il dubbio vale
+  //    silenzio, come in tutte le altre porte.
+  const r = promProva({ ...SENZA_NULLA, ultimaSchedaMs: Number.NaN });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_DATA_ILLEGGIBILE];
+});
+
+caso('29. ⑥ un orologio illeggibile tace, e non inventa una casella', () => {
+  const r = promemoriaDelLivello({ ...SENZA_NULLA, giorni: GIORNI_PROM, adessoMs: Number.NaN });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_OROLOGIO, r.periodo === '', r.fino_a === ''];
+});
+
+caso('30. ⑥ la casella CONTIENE il suo istante, e due istanti vicini cadono nella stessa', () => {
+  const c = casella(ADESSO);
+  const stessa = casella(ADESSO + 60 * 60 * 1000);
+  return [
+    c.inizioMs <= ADESSO, ADESSO < c.fineMs,
+    stessa.chiave === c.chiave,
+    c.fineMs - c.inizioMs === GIORNI_PROM * GIORNO,
+  ];
+});
+
+caso('31. ⭐ ⑥ passata la casella la chiave CAMBIA — è ciò che riapre il promemoria', () => {
+  const c = casella(ADESSO);
+  const dopo = casella(c.fineMs);
+  return [
+    dopo.chiave !== c.chiave,
+    Date.parse(dopo.inizio) === c.fineMs,
+    // ⚖️ Due caselle distano quindici giorni: due chiavi-data non possono coincidere, ed è
+    //    ciò che permette di usarle come chiave del registro del bot.
+    (Date.parse(dopo.inizio) - Date.parse(c.inizio)) === GIORNI_PROM * GIORNO,
+  ];
+});
+
+caso('32. ⭐⭐ ⑥ la casella NON dipende dal socio: due soci nello stesso istante, stessa chiave', () => {
+  // È la ragione per cui non serve nessuna colonna: il «quando» è un fatto del calendario,
+  // non uno stato di qualcuno. Un promemoria «ogni 15 giorni dall'ultima volta» avrebbe
+  // voluto una memoria per persona, e una memoria per persona prima o poi diverge.
+  const a = promProva(SENZA_NULLA);
+  const b = promProva({ ...SENZA_NULLA, ultimaSchedaMs: ADESSO - 100 * GIORNO });
+  return [a.periodo === b.periodo, a.dovuto === true, b.dovuto === true];
+});
+
+caso('33. ⑥ l\'ordine delle porte: il livello vince sull\'attesa', () => {
+  // Chi ha il livello ED è in attesa (rifà il test e aspetta) non riceve niente, e il motivo
+  // che si legge dal vivo è quello VERO: «ce l'ha già», non «sta aspettando».
+  const r = promProva({ ...SENZA_NULLA, haIlLivello: true, ammesso: false });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_HA_LIVELLO];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i modi in cui questa funzione può fare danno.
@@ -344,6 +508,33 @@ const guardie = [
   //    quindi la regola vive in copie, e la deriva fra copie è il modo in cui questi fix si
   //    riaprono — una funzione applicherebbe una regola e l'altra ne racconterebbe un'altra.
   ['le tre copie del modulo sono identiche BYTE PER BYTE', COPIE.length === 3 && COPIE.every((f) => readFileSync(f, 'utf8') === src)],
+  // ── 🆕 ⑥ IL PROMEMORIA GENTILE ──
+  // 🚨⭐⭐ QUESTE GUARDIE MISURANO LA CONDIZIONE, NON LA PAROLA. La lezione del 19/08 (④) è
+  //    costata un sabotaggio passato VERDE: nel bot la guardia del cablaggio cercava le
+  //    stringhe del ramo e le trovava anche col ramo SPENTO (`if (false)`). Qui non basta
+  //    che `promemoriaDelLivello` compaia: si misura che gli arrivino i valori VERI —
+  //    chi sostituisse un argomento con una costante avrebbe una regola inerte e verde.
+  ['il ponte CHIAMA la regola del promemoria', /const promemoria = promemoriaDelLivello\(\{/.test(srcPonte)],
+  ['e le passa il livello VERO, non una costante', /haIlLivello: livelloDimostrato\(payload\.level, payload\.levelSource\)/.test(srcPonte)],
+  ['e l\'ammissione VERA del giro, non una costante', /ammesso: giro\.ammesso/.test(srcPonte)],
+  ['e la data VERA dell\'ultima scheda', /ultimaSchedaMs: ultimaScheda \? Date\.parse/.test(srcPonte)],
+  // ⚖️ Il promemoria esce da TUTTE E DUE le strade della risposta — quella dell'attesa e
+  //    quella del link — o il bot leggerebbe la risposta in due modi a seconda della strada.
+  ['il promemoria esce dalle DUE strade della risposta', (srcPonte.match(/^\s+promemoria,$/gm) || []).length === 2],
+  // 🚨 UN SOLO orologio: con due `Date.now()` la casella e l'attesa possono cadere ai due
+  //    lati di un confine. Raro, quindi il tipo di difetto che nessuno riesce a riprodurre.
+  ['il ponte guarda l\'orologio UNA volta sola', (codicePonte.match(/Date\.now\(\)/g) || []).length === 1],
+  // ⭐ La cadenza è sua: «magari non tutte le settimane, ma un paio di volte al mese».
+  ['la cadenza è di quindici giorni, cioè due volte al mese', GIORNI_PROM === 15],
+  // ⭐⭐ Il «quando» è un fatto del CALENDARIO, non uno stato di qualcuno: il modulo non
+  //    legge e non scrive niente. È lo stesso principio del conto delle prove — non è
+  //    tenuto, è calcolato — e ha lo stesso vantaggio: niente da azzerare, niente che diverga.
+  ['il periodo non è TENUTO da nessuna parte', !/\bfrom\(|\.insert\(|\.update\(|\.upsert\(/.test(srcProm)],
+  // 🚨 La regola di «avere il livello» è quella del readmodel, byte per byte: due letture
+  //    diverse vorrebbero dire ricordare il test a chi ce l'ha, o tacere con chi non ce l'ha.
+  ['le due copie di livello-dimostrato sono identiche BYTE PER BYTE',
+    COPIE_LIVELLO.length === 2 && new Set(COPIE_LIVELLO.map((f) => readFileSync(f, 'utf8'))).size === 1],
+  ['il ponte non si riscrive in casa la regola del livello', !/'0\.5'/.test(srcPonte)],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {
