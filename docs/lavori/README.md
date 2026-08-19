@@ -1287,10 +1287,10 @@ che stava **fra** i due repo. La cura è la terza porta di `siPuoMandareIlPromem
 esito da annunciare, il promemoria **tace**, sempre. Vince l'esito, che parla di una cosa che il
 socio ha appena fatto.
 
-🔪 **Provato coi SABOTAGGI, ventitré in tutto** — undici sul gestionale
-(`test/sabotaggi-voce-61-sei.mjs`), dodici sul bot (`test/sabotaggi-promemoria-livello.mjs`) —
-e in fondo a ognuna delle due serie il sabotaggio che **non tocca niente**, che deve risultare
-**non atterrato**. Banchi: **58 casi** nel gestionale, **18** nel bot.
+🔪 **Provato coi SABOTAGGI, venticinque in tutto** — undici sul gestionale
+(`test/sabotaggi-voce-61-sei.mjs`), quattordici sul bot (`test/sabotaggi-promemoria-livello.mjs`)
+— e in fondo a ognuna delle due serie il sabotaggio che **non tocca niente**, che deve risultare
+**non atterrato**. Banchi: **58 casi** nel gestionale, **20** nel bot.
 🚨⭐ **E il sabotaggio ⑥ del bot è quello che il 19/08, nel ④, era passato VERDE**: `if (false)`
 davanti alla chiamata: le parole restano tutte, il pezzo è inerte. Rifatto apposta, e stavolta la
 guardia lo vede — perché è **ancorata a inizio riga**, non a una sottostringa. *Una guardia che
@@ -1311,6 +1311,21 @@ chiamata dev'essere una sola. *Prima di riparare il codice per un rosso: cosa mi
 ⇒ **Il ⑥ non è inerte, ed è l'unico dei sette a non esserlo**: appena il codice arriva su PROD e
 sul bot dei soci, a quella persona **parte un messaggio che non ha chiesto**. Dirne «prerequisito
 in servizio», come per gli altri sei, sarebbe falso.
+
+🌙🚨⭐⭐ **E UN SECONDO DIFETTO, trovato ragionando sul MECCANISMO invece che provando — e non
+era un caso estremo, era il caso NORMALE.** Il promemoria parte al **primo giro utile della sua
+casella**; le caselle cominciano a **mezzanotte UTC** e il giro passa **ogni quarto d'ora** ⇒ il
+«promemoria **gentile**» sarebbe arrivato, **ogni volta**, verso le **due del mattino**.
+⇒ Quarta porta: di notte si tace. ⚖️ E la reazione è l'**opposta** di quella degli avvisi di
+disdetta — quelli di notte si **anticipano** (dopo la scadenza non servirebbero più), questo si
+**rimanda**, perché basta tacere e ci pensa il giro dopo. ⭐ La regola dell'orario resta **una**:
+`dentroLaNotte` è stata **estratta** da `fuoriDallaNotte`, che ora la chiama — e l'ora d'inizio
+arriva dalla **kb**, non da una costante nel bot (*«un messaggio mandato con orari inventati è
+peggio di uno che non parte»*, regola di `configAvvisi`).
+⚖️ **Nessuna sonda poteva vederlo**: il banco era verde, i sabotaggi tutti visti, e il difetto non
+stava in una riga sbagliata — stava nell'**incontro** fra tre cose giuste (la casella a mezzanotte,
+il giro ogni 15′, «al primo giro utile»). Si vede solo chiedendosi *a che ora, in pratica, questo
+messaggio arriva a qualcuno*.
 
 ⛔🚨 **E SUL BOT DI PROVA NON SI PUÒ GUARDARE, il che è diverso da «non funziona».** Il bot di
 prova legge il gestionale di TEST, e su `cudi…` **tutte e due** le utenze della whitelist un
