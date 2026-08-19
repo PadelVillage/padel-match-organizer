@@ -10,6 +10,8 @@ import {
   giriDelSocio,
   statoDelGiro,
 } from './giro-del-test.ts';
+import { livelloDimostrato } from './livello-dimostrato.ts';
+import { GIORNI_TRA_PROMEMORIA, promemoriaDelLivello } from './promemoria-livello.ts';
 
 // consumer-assessment-link — il LINK PERSONALE del test di livello, per il bot dei soci.
 //
@@ -336,7 +338,41 @@ Deno.serve(async (req: Request) => {
     elencoSchede = elenco;
   }
 
-  const giro = statoDelGiro(elencoSchede, Date.now(), TENTATIVI_PER_GIRO, GIORNI_DI_ATTESA);
+  // ⭐ UN SOLO orologio da qui in poi: `statoDelGiro` e il promemoria devono guardare lo
+  // stesso istante. Con due `Date.now()` la casella del calendario e l'attesa potrebbero
+  // cadere ai due lati di un confine — raro, e per questo il tipo di difetto che si
+  // ripresenta per mesi senza che nessuno riesca a riprodurlo.
+  const adessoMs = Date.now();
+  const giro = statoDelGiro(elencoSchede, adessoMs, TENTATIVI_PER_GIRO, GIORNI_DI_ATTESA);
+
+  /* ═════════════════════════════════════════════════════════════════════════════════════
+     🆕🔔⭐⭐ 19/08/2026 — IL PROMEMORIA GENTILE (voce 61 ⑥), e qui c'è solo il SAPERE.
+
+     🗣️ Sua, il 17/08: *«a chi non ha il livello ci dobbiamo ricordare di chiedere gentilmente
+     se può fare il test. Magari non tutte le settimane, ma un paio di volte al mese»*.
+
+     ⭐ Il bot riceve un sì/no e la CASELLA di calendario in cui cade la risposta: non impara
+     né chi è senza livello, né ogni quanto si parla. È lo stesso disegno di `puo_scegliere`
+     del ④ — *il gestionale SA, il bot DICE* — e ha lo stesso effetto pratico: il giorno in
+     cui il committente cambia la cadenza, sulla VM non si tocca niente.
+     🚨 La casella serve al bot per una cosa sola: farne la chiave del suo registro, che è ciò
+     che impedisce il doppio invio. Il «quando» lo decide questo file, l'«una volta sola» il
+     database di là. Nessuno dei due sa fare il mestiere dell'altro.
+     ⚖️ Non costa una chiamata in più: il giro degli avvisi questo ponte lo interroga già una
+     volta per socio, per l'esito del test.
+     ═════════════════════════════════════════════════════════════════════════════════════ */
+  const promemoria = promemoriaDelLivello({
+    adessoMs,
+    giorni: GIORNI_TRA_PROMEMORIA,
+    // La regola di «avere il livello» è quella del readmodel, byte per byte: due letture
+    // diverse vorrebbero dire ricordare il test a chi ce l'ha già.
+    haIlLivello: livelloDimostrato(payload.level, payload.levelSource),
+    ammesso: giro.ammesso,
+    // 0 = nessuna scheda; NaN = una scheda con la data illeggibile. Sono due casi opposti,
+    // e il modulo li tiene distinti apposta.
+    ultimaSchedaMs: ultimaScheda ? Date.parse(clean(ultimaScheda.quando)) : 0,
+    ultimoEsito: ultimaScheda ? clean(ultimaScheda.esito) : '',
+  });
 
   if (!giro.ammesso && giro.attesa) {
     // ⚖️ NON è un errore HTTP: la richiesta è stata capita ed eseguita, la risposta è «non
@@ -353,6 +389,10 @@ Deno.serve(async (req: Request) => {
       // non conosce ancora il secondo dice il *quando* e tace sul *perché*, per la regola
       // sua del 18/08: meglio vaghi che falsi.
       motivo_attesa: giro.attesa.motivo,
+      // Anche qui, e vale sempre `dovuto: false`: chi aspetta il test non lo può rifare, e
+      // ricordarglielo sarebbe mandarlo contro una porta chiusa. Il campo c'è lo stesso
+      // perché il bot legga la risposta allo stesso modo dalle due strade.
+      promemoria,
     });
   }
 
@@ -399,6 +439,7 @@ Deno.serve(async (req: Request) => {
     tentativo: giro.prova,
     tentativi_totali: TENTATIVI_PER_GIRO,
     ultimo_tentativo: giro.ultima_prova,
+    promemoria,
   };
 
   if (esistenti && esistenti.length > 0 && clean(esistenti[0].token)) {
