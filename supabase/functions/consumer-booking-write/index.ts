@@ -29,6 +29,7 @@ import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
 // questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
 import { esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura } from './esito-scrittura.ts';
+import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -1431,7 +1432,11 @@ Deno.serve(async (req: Request) => {
           // ⭐ Il nome che finirebbe SULLA SCHEDA, che può non essere quello della persona.
           // È la riga più importante della prova a vuoto: dice se il circolo saprà chi è.
           sulla_scheda: nomeSullaScheda,
-          codice: codiceDaAggiungere,
+          // 🚨 20/08 — si chiama `codice_cliente` e non `codice`, perché è il codice CLIENTE
+          // («001013-Lidia Comes») e non l'id interno di Matchpoint. Il nome corto è quello
+          // che ha coperto per settimane lo scambio fra le due numerazioni: una prova a vuoto
+          // che riporta un numero deve dire QUALE numero è.
+          codice_cliente: codiceDaAggiungere,
           // ⚖️ Resta scritto anche se ormai può valere solo 'socio': una prova a vuoto che
           // NON dice come si entrerebbe smetterebbe di essere una prova il giorno che i modi
           // tornassero due.
@@ -1476,10 +1481,15 @@ Deno.serve(async (req: Request) => {
           data: slot.data,
           ora: slot.ora,
           players: {
-            add: [{
+            // 🚨⭐⭐ 20/08 — LA COMPOSIZIONE STA IN UNA FUNZIONE SOLA, e non è pignoleria:
+            // fin qui il codice CLIENTE partiva dentro `codice`, che il worker confronta con
+            // l'ID INTERNO. Per Lidia: 1013 contro 1034 ⇒ rifiuto, ogni volta, per chiunque.
+            // Il perché delle due numerazioni sta in `giocatore-da-aggiungere.ts`, coi numeri.
+            add: [giocatoreDaAggiungere({
               nome: nomeSullaScheda,
-              ...(codiceDaAggiungere ? { codice: codiceDaAggiungere } : {}),
-            }],
+              codiceCliente: codiceDaAggiungere,
+              idInterno: schedaDaAggiungere.matchpointIdInterno,
+            })],
           },
         }),
       });
