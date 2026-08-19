@@ -958,14 +958,20 @@ divisione di sempre — **il gestionale SA, il bot DICE**.
 il bot**: gli altri hanno la parte che porta il peso nel **ponte** o nel **gestionale**, che è la
 divisione dichiarata in `CLAUDE.md` — *il gestionale SA, il bot DICE*.
 🔨 **Sei sono VIVI — ③ ② ④ nel gestionale, ① ⑦ ⑤ nel bot** (dettaglio in fondo alle schede **A** e **C**).
-✅🎉 **E il 19/08, 34ª sessione, è stato SCRITTO ANCHE IL ⑥, che era l'ultimo** — dettaglio in fondo alla scheda **B**. ⇒ **I sette pezzi ci sono tutti.**
-🚨⭐⭐ **Ma il ⑥ NON è come gli altri sei, e questa è la cosa da leggere prima di autorizzare
-qualcosa.** ①②③④⑤⑦ sono **prerequisiti silenziosi**: vivi, e senza un destinatario che li possa
-vedere. Il ⑥ **manda un messaggio, da solo, a una persona vera** — e il giro delle misure dice
-esattamente **chi**: `Fabiola Limuti`, l'unica delle tre utenze della whitelist senza un livello.
-⇒ Il giorno del merge su `main`, al primo giro degli avvisi, quel messaggio **parte**. È il primo
-pezzo di questa voce per cui «vivo» e «visibile» coincidono, e per cui l'autorizzazione non
-riguarda solo il codice.
+✅🎉 **E il 19/08 il ⑥, che era l'ultimo, è stato scritto E MESSO IN SERVIZIO** — dettaglio in fondo alla scheda **B**. ⇒ **I sette pezzi ci sono tutti, e sono tutti VIVI: sei su PROD e per i soci, il ⑥ pure — con in più l'unica cosa che agli altri sei manca, qualcuno che l'ha vista.**
+🚨⭐⭐ **Il ⑥ NON era come gli altri sei, e la previsione si è avverata alla lettera.**
+①②③④⑤⑦ sono **prerequisiti silenziosi**: vivi, e senza un destinatario che li possa vedere. Il ⑥
+**manda un messaggio, da solo, a una persona vera** — e il giro delle misure aveva detto in
+anticipo **chi**: `Fabiola Limuti`, l'unica delle tre utenze della whitelist senza un livello.
+✅ **Ed è andata così**, il 19/08 su sua autorizzazione (le due, chieste separate perché la prima
+si poteva dare senza la seconda): merge sulle **09:38** UTC, deploy sui soci alle **09:41:57**,
+messaggio **09:43:02** — cioè **11:43 di mattina** a Roma, a una persona sola.
+⭐ **Ed è la PROVA CHE LA QUARTA PORTA SERVIVA, non un dettaglio d'orario**: senza la cura della
+34ª questo identico messaggio sarebbe uscito **verso le due di notte**, perché la casella comincia
+a mezzanotte UTC e il giro passa ogni quarto d'ora. Il difetto stava nell'**incontro fra tre cose
+giuste** e nessun banco poteva vederlo — si vedeva solo chiedendosi *a che ora, in pratica, questo
+arriva a qualcuno*. ⇒ La cura non è stata verificata da una sonda: è stata verificata **dall'ora
+sull'orologio del primo che l'ha ricevuto**.
 🚨⭐⭐ **E «fatto» vuol dire DUE COSE DIVERSE, che è la lezione del 18/08 sera.** ③ e ② stanno nel
 gestionale, dove il merge **è** il deploy ⇒ sono **vivi su PROD**. ① ⑦ ⑤ stanno nel bot, che si
 aggiorna **solo a mano**. ⇒ *Di un pezzo del bot non si dice mai «fatto» senza dire, **nella stessa
@@ -987,7 +993,7 @@ nessuno, che è esattamente ciò che il workflow promette e che non si dà per b
 | ③ | ✅ **FATTO il 18/08, vivo su PROD** — **in negativo non si scende**, e solo alla **terza prova consecutiva** più bassa si scende di **0,5**. Prima `assessment-apply-level` applicava ogni scheda **in tutti e due i versi**: da Avanzato a Principiante in un colpo | gestionale | **A** |
 | ④ | ✅🎉 **FATTO IL 19/08 — VIVO SU PROD E PER I SOCI**: l'automatismo ha smesso di decidere da solo, il bot fa la domanda e la risposta ha una strada. ⚠️ Vivo **non vuol dire visibile**: su PROD nessuno ha ancora completato un test col cancello, quindi non c'è ancora una prova a cui si applichi | gestionale + bot | **A** |
 | ⑤ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a Semi-Pro e Professionista si dice che la scheda **la guarda il maestro del circolo**, contattabile tramite la segreteria *(PR #21)* | bot | **C** |
-| ⑥ | ✅🔨 **SCRITTO IL 19/08** — il **promemoria gentile** a chi il livello non ce l'ha, ogni **15 giorni**. ⚠️ Non è un prerequisito silenzioso come gli altri sei: al primo giro dopo il merge su `main` **parte davvero**, a una persona vera | bot + gestionale | **B** |
+| ⑥ | ✅🎉 **FATTO IL 19/08 — VIVO SU PROD E PER I SOCI, e a differenza degli altri sei QUALCUNO L'HA RICEVUTO**: il promemoria gentile è partito alle **11:43** a `Fabiola Limuti`, casella `2026-08-14` | bot + gestionale | **B** |
 | ⑦ | ✅ **FATTO il 18/08 — VIVO ANCHE PER I SOCI** — a giro finito si dice «**hai finito le tue prove**». Diceva «Hai già fatto **tre tentativi**», col tre scritto a mano, mentre un giro finito può essere **due bocciature e una passata** *(PR #19)* | bot | **A** |
 
 🚨⭐ **L'ORDINE NON È LIBERO, ed è la cosa da sapere prima di aprire un file**: ③ **viene prima**
@@ -1255,9 +1261,10 @@ la mezza giornata che sarebbe costato scoprirlo dopo averlo scritto.
 🗣️ Combacia con la sua frase del 16/08: *«il bot dei soci non lo usa nessuno»* — che era esatta,
 non un'impressione.
 
-🔨✅ **SCRITTO IL 19/08/2026, 34ª sessione — e «scritto» qui è la terza cosa, dopo «vivo su PROD»
-e «vivo per i soci»: sta in due PR, e al momento in cui si legge questa riga può non aver ancora
-toccato nessun bersaglio.**
+🔨✅🎉 **FATTO IL 19/08/2026 — E QUI «FATTO» VUOL DIRE LA COSA PIENA, che in questa voce non era
+ancora mai capitata: vivo su PROD, vivo per i soci, E RICEVUTO DA QUALCUNO.**
+*(PR **#891** su `test-preview`, **#892** su `main`, **#24** e **#25** nel repo del bot — tutte
+fuse; DDL su `ayly…` applicato prima del codice; bot dei **SOCI** deployato, run **21**.)*
 
 **Come funziona, in una riga**: il ponte dice *sì/no* e **una casella di calendario**; il bot manda
 il messaggio e il suo registro impedisce che parta due volte nella stessa casella.
@@ -1311,6 +1318,10 @@ chiamata dev'essere una sola. *Prima di riparare il codice per un rosso: cosa mi
 ⇒ **Il ⑥ non è inerte, ed è l'unico dei sette a non esserlo**: appena il codice arriva su PROD e
 sul bot dei soci, a quella persona **parte un messaggio che non ha chiesto**. Dirne «prerequisito
 in servizio», come per gli altri sei, sarebbe falso.
+✅ **E la previsione ha retto riga per riga**: i due che il livello ce l'hanno non hanno ricevuto
+niente, la terza sì. ⭐ Il valore di questa tabella non è di aver indovinato — è di aver reso
+**falsificabile in anticipo** una cosa che, andando storta, si sarebbe scoperta da un socio
+sorpreso invece che da una riga di registro.
 
 🌙🚨⭐⭐ **E UN SECONDO DIFETTO, trovato ragionando sul MECCANISMO invece che provando — e non
 era un caso estremo, era il caso NORMALE.** Il promemoria parte al **primo giro utile della sua
@@ -1333,6 +1344,28 @@ livello ce l'hanno (4 e 2) ⇒ là `dovuto` è **sempre falso**, per costruzione
 del limite del ③ — *l'unico posto dove quella regola gira è la produzione* — e va saputo **prima**
 di promettere un collaudo che TEST non può dare. ⇒ Su TEST si verifica che la funzione sia viva,
 armata e che le sue letture reggano; il **messaggio** si vede solo su PROD.
+✅ **E su PROD si è visto**, il 19/08 — dettaglio nel blocco di verifica qui sotto.
+
+✅⭐⭐ **VERIFICATO SUL BERSAGLIO, NON SUL VERDE DEL WORKFLOW** *(19/08)* — e per la prima volta
+in questa voce il bersaglio è **una persona**, non una funzione viva:
+
+| la prova | cosa ha detto |
+|---|---|
+| il **registro del bot dei soci** | `2026-08-19 · 11:43:02  🎾 promemoria del livello a Fabiola Limuti (casella 2026-08-14)`, e nello stesso istante `avvisi ACCESI … 1 mandati ora` |
+| il **registro su `ayly…`** | riga `livello:2026-08-14` · `promemoria_livello = inviato` · `persona_id 640a444a…` |
+| **dove punta il bot, DOPO il riavvio** | ancora `qqbf… (PROD)` e `✍️ prenotazioni REALI` — il `.env` non lo tocca il deploy, e lo si è **guardato** invece di darlo per buono |
+
+⭐ **E il registro su `ayly…` prova più di quel che sembra.** L'ordine è *prima ci si aggiudica il
+turno, poi si manda*, e un invio fallito **rimette la casella a vuoto**: quindi un `inviato` che
+**resta** non dice «ci ho provato», dice **«è arrivato»**. È la stessa forma dell'esito del test dal
+9/08 — il doppio invio lo impedisce il **database**, non la buona memoria del processo.
+⚖️ **Le due letture sono indipendenti e vanno tenute tutt'e due**: il registro del bot è ciò che il
+bot *crede* di aver fatto, la riga su `ayly…` è ciò che *risulta* a chi non era in quella stanza.
+Una sola delle due sarebbe di nuovo *chiedere al posto sbagliato*.
+
+📏 **Il «prima» era stato letto apposta**, e senza sarebbe stato inutile: alla stessa domanda, mezz'ora
+prima del deploy, la sonda rispondeva **«nessuna riga corrisponde»**. Un `grep` che trova qualcosa
+non dice quando quella cosa è nata — lo dice il confronto con un `grep` che non trovava niente.
 
 #### C · Semi-Pro e Professionista: oggi il bot TACE, e adesso c'è cosa dire
 
