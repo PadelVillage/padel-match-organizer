@@ -171,21 +171,49 @@ jobs:
 
           N_OUT=$(wc -l < out.log); N_ERR=$(wc -l < err.log)
 
+          # 🩹⭐⭐ LA FINESTRA SI MISURA PER FILE, E NON È UN DETTAGLIO — corretto il 19/08, al
+          #    PRIMO uso della sonda. La prima stesura prendeva il primo e l'ultimo `"time"` di
+          #    `tutto.log`, che è `out.log` + `err.log` INCOLLATI: il «primo» veniva dall'uno e
+          #    l'«ultimo» dall'altro, e i due file coprono periodi diversi (uno riceve una riga
+          #    per ogni richiesta, l'altro solo i guasti — quindi a parità di righe l'err va
+          #    indietro di giorni). Risultato: la sonda dichiarava «dal 18/08 al 19/08» mentre
+          #    fra i guasti mostrava righe del **16/08**.
+          # ⚖️ Sbagliava PER DIFETTO — diceva di aver guardato meno di quanto avesse guardato —
+          #    quindi non ha prodotto nessuna conclusione falsa. Ma è la riga che esiste apposta
+          #    per dire «fin dove ho guardato»: una finestra sbagliata rende inutilizzabile
+          #    l'unica cosa che permette di leggere un'assenza, ed è il difetto peggiore che
+          #    potesse avere proprio questo pezzo.
+          # 📌 E si è vista solo USANDOLA su dati veri: rileggendo il file non si vedeva, perché
+          #    il codice fa esattamente quello che sembra fare.
+          finestraDi () {
+            # $1 = file. Stampa "dal X al Y", oppure niente se non ci sono istanti riconoscibili.
+            # 🚨 `2>/dev/null` sul grep, non per pigrizia: `head -1` chiude la pipe e grep prende
+            #    SIGPIPE, stampando «write error: Broken pipe» in mezzo al referto. Il `|| true`
+            #    già reggeva l'esito; questo toglie il rumore.
+            local P U
+            P=$(grep -oE '"time":"[^"]+"' "$1" 2>/dev/null | head -1 | cut -d'"' -f4 || true)
+            U=$(grep -oE '"time":"[^"]+"' "$1" 2>/dev/null | tail -1 | cut -d'"' -f4 || true)
+            [ -n "$P" ] && [ -n "$U" ] && echo "dal $P al $U"
+          }
+          F_OUT=$(finestraDi out.log)
+          F_ERR=$(finestraDi err.log)
+
           echo "── LA FINESTRA LETTA ────────────────────────"
           echo "righe lette: out=$N_OUT  err=$N_ERR  (chieste $RIGHE per ciascuno)"
+          echo "  out (una riga per richiesta): ${F_OUT:-(nessun istante riconoscibile)}"
+          echo "  err (solo i guasti):          ${F_ERR:-(nessun istante riconoscibile)}"
+          echo "  ⇒ le due coperture sono DIVERSE, ed è normale: a parità di righe il registro"
+          echo "    dei guasti va molto più indietro nel tempo di quello di tutte le richieste."
           # 🚨⭐ LA RIGA PIÙ IMPORTANTE DI TUTTO IL FILE, e non è un vezzo.
           #    Il worker scrive una riga per ogni richiesta: con un tetto di righe la coda può
           #    non arrivare al momento che si sta cercando — e allora «non c'è niente» significa
           #    «non ho guardato lì», non «non è successo». È la trappola già pagata due volte in
           #    questo progetto (*l'assenza nel registro è una misura*, ma **solo** se la finestra
           #    contiene l'istante). Qui la finestra si DICHIARA, così l'assenza si può leggere.
-          PRIMO=$(grep -oE '"time":"[^"]+"' tutto.log | head -1 | cut -d'"' -f4 || true)
-          ULTIMO=$(grep -oE '"time":"[^"]+"' tutto.log | tail -1 | cut -d'"' -f4 || true)
-          if [ -n "$PRIMO" ] && [ -n "$ULTIMO" ]; then
-            echo "la finestra va da  $PRIMO  a  $ULTIMO   (UTC — a Roma sono due ore in più)"
-            echo "::notice::Finestra letta: da $PRIMO a $ULTIMO UTC. Fuori da qui questa sonda non ha guardato."
+          echo "  (gli istanti sono UTC — a Roma sono due ore in più)"
+          if [ -n "$F_OUT" ] || [ -n "$F_ERR" ]; then
+            echo "::notice::Finestra letta — richieste: ${F_OUT:-nessuna} · guasti: ${F_ERR:-nessuno}. Fuori da qui questa sonda non ha guardato."
           else
-            echo "nessun campo \"time\" riconosciuto: la finestra non si può dichiarare."
             echo "::warning::Non si sa quale intervallo copra questa lettura: un'assenza qui sotto non prova niente."
           fi
           echo
@@ -219,7 +247,7 @@ jobs:
               echo "corrispondenze nella finestra: $(wc -l <<< "$TROVATE")"
             else
               echo "  (nessuna riga corrisponde)"
-              echo "::warning::«$CERCA» non compare NELLA FINESTRA LETTA. Non vuol dire che non sia successo: rileggere con più righe prima di concludere."
+              echo "::warning::«$CERCA» non compare nella finestra letta (richieste: ${F_OUT:-nessuna} · guasti: ${F_ERR:-nessuno}). Non vuol dire che non sia successo: rileggere con più righe prima di concludere."
             fi
             echo
           fi
