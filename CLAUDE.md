@@ -111,6 +111,31 @@ L'anagrafica invece è viva
 (`anagrafica-mirror`, 05:00) e i pagamenti pure: **è solo il calendario a essere fermo**, ed è
 esattamente ciò che rende l'inganno credibile.
 
+🔎 **E il PERCHÉ di quello zero, misurato il 19/08 — non è «nessuno ha acceso il cron».** Su `cudi…`
+la funzione `pmo_dispatch_data_routines` è la versione **VECCHIA**: il ramo `bookings_live` — quello
+che su PROD manda il sync ogni 2 minuti — **lì dentro non c'è proprio**, e il suo `else` finale si
+limita a tornare `dispatched: false`. ⇒ Il dispatcher di TEST sa chiedere **solo** le routine a orario
+fisso (clienti, storico, backup): le prenotazioni **non sa nemmeno chiederle**. Le righe sono zero
+perché non possono esistere, non perché un interruttore è giù.
+⚖️ Cambia cosa costa riaccenderlo: non è un `update` su una tabella di schedulazione, è **portare su
+TEST la funzione di PROD** — e quella, come dice il paragrafo qui sotto, è la versione *continua*.
+📌 Si legge senza credere a questo file: `select prosrc from pg_proc where proname =
+'pmo_dispatch_data_routines'` sul progetto di TEST.
+
+🚨⭐⭐ **E UNA PRENOTAZIONE FATTA DAL BOT SU TEST NON SOPRAVVIVE A UN SYNC.** *(19/08/2026, pagata
+con una prenotazione di prova del committente.)* Su TEST le scritture verso Matchpoint sono
+**simulate**, quindi quella prenotazione esiste **solo** come copia locale (`staff_booking`); il
+sync riconcilia contro il Matchpoint **vero**, non la trova, e la **tomba** — passati i 120 secondi
+di grazia (`STAFF_RECONCILE_GRACE_MS`).
+⚖️ ⇒ Su TEST quella prenotazione **non può in nessun modo** arrivare a un roster leggibile, ed è un
+vicolo chiuso, non un ritardo: **senza** sync manca `descrizione` (l'elenco ordinato nasce **solo**
+da lì, `rosterFromPayload` chiude con `scheda: daScheda`) e il bot dice *«Non riesco a leggere chi
+c'è in campo adesso»*; **con** il sync la riga sparisce. Lanciare il sync per «sbloccarla» la
+cancella — consiglio dato e sbagliato il 19/08.
+⇒ Per esercitare i bottoni di gestione su TEST si usa una partita **arrivata dal sync**, cioè vera
+su Matchpoint, in cui il socio compare. Le prenotazioni nate dal bot servono a provare la
+**scrittura**, non la **rilettura**.
+
 🚨 **Non provare su TEST nulla che dipenda da prenotazioni aggiornate**: una disdetta non arriva, un
 giocatore tolto non sparisce, una partita nuova del circolo non compare. La prova non fallisce —
 **riesce mostrando il passato**, che è peggio. Ha già prodotto due danni: la voce 26 aperta come
