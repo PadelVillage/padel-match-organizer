@@ -23,6 +23,16 @@
 //   tetto RELATIVO alla popolazione (il primo disegno, scartato)    R
 //   confine `<=` scritto `<`                                       P
 //   count() senza guardia su NaN/negativi                          S
+//   ── jolly «Ospite» (19/08, tabella rimisurata) ────────────────
+//   tolta l'eccezione jolly in decideStaleMember                   U, V
+//   isGuestJolly ridotto a UNA delle due firme (l'una o l'altra)   V
+//   la riattivazione ignora il marcatore (riattiva sempre)         X
+//   la riattivazione tocca anche i non-jolly                       Y
+//   la riattivazione riscrive anche chi è già attivo               Z
+//
+//   ⚠️ U — il caso REALE, con tutt'e due le firme addosso — resta VERDE sotto entrambi i
+//   dimezzamenti del predicato, proprio perché l'altra metà lo copre: le due firme le isola
+//   solo V, con le prove dirette su isGuestJolly. Misurato, non previsto.
 //
 // Ogni sabotaggio ne fa cadere almeno uno: nessuna metà della regola è priva del caso che la
 // isola. L'unico caso che non discrimina nulla è J — è la linea di base (socio normale, nessun
@@ -44,8 +54,10 @@ import assert from 'node:assert/strict';
 import {
   activeFieldsOnImport,
   buildDeactivatedMemberRecord,
+  buildReactivatedGuestJollyRecord,
   decideStaleMember,
   decideStaleSweep,
+  isGuestJolly,
   isMatchpointGoverned,
   MATCHPOINT_INACTIVE_REASON,
   STALE_SWEEP_MAX_PER_PASS,
@@ -257,6 +269,112 @@ test('T · isMatchpointGoverned riconosce entrambe le firme e nient\'altro', () 
   assert.equal(isMatchpointGoverned({ source: 'rubrica-google' }), false);
   assert.equal(isMatchpointGoverned({}), false);
   assert.equal(isMatchpointGoverned(null), false);
+});
+
+// ── il jolly «Ospite» (000001) · l'eccezione e la guarigione ─────────────────
+//
+// CASO REALE del 19/08/2026: la scheda jolly non compare mai nell'export clienti, la regola ②
+// l'ha disattivata il 4-5/08 su PROD e TEST (`matchpoint_snapshot_absent`) e da lì l'app
+// scartava l'Ospite dalle partite (i flussi filtrano i soci `active === false`).
+
+// U) ⭐ ISOLA l'eccezione dal lato del FLAG: jolly riconosciuto da `guestJolly === true`,
+//    governato, con codice valido e assente dall'export — il caso esatto del 4-5/08, che
+//    senza eccezione prende la strada ② (deactivate).
+test('U · jolly per flag guestJolly, assente dall\'export → keep (caso reale del 4-5/08)', () => {
+  assert.equal(
+    decideStaleMember(
+      { matchpointImportedAt: '2026-06-17T11:49:29.201Z', memberId: '000001', guestJolly: true, active: true },
+      IMPORTED,
+    ),
+    'keep',
+  );
+});
+
+// V) ⭐ ISOLA la seconda metà del predicato: codice riservato 000001 SENZA flag (una scheda
+//    ricreata a mano, o un payload vecchio senza il campo). Stessa doppia firma dell'app.
+test('V · jolly per solo codice 000001, senza flag → keep', () => {
+  assert.equal(
+    decideStaleMember(
+      { source: 'matchpoint_auto', memberId: '000001', active: true },
+      IMPORTED,
+    ),
+    'keep',
+  );
+  assert.equal(isGuestJolly({ memberId: '000001' }), true);
+  assert.equal(isGuestJolly({ guestJolly: true }), true);
+  assert.equal(isGuestJolly({ memberId: '001068' }), false);
+});
+
+// W) La GUARIGIONE: jolly disattivato da una passata vecchia (marcatore automatico) → record
+//    riattivato, marcatori azzerati, `deleted` false, payload conservato. Stessa forma dello
+//    scioglimento di `activeFieldsOnImport` (caso L), applicata a chi nell'export non tornerà mai.
+test('W · jolly auto-disattivato → riattivato, marcatori azzerati, payload conservato', () => {
+  const out = buildReactivatedGuestJollyRecord(
+    {
+      local_key: '4071f9b3-5ec7-4c6a-a785-e7fc622520c9',
+      payload: {
+        memberId: '000001', name: 'Ospite', guestJolly: true, level: 3, active: false,
+        matchpointInactiveAt: '2026-08-05T10:30:03.115Z',
+        matchpointInactiveReason: MATCHPOINT_INACTIVE_REASON,
+      },
+    },
+    '2026-08-19T17:00:00.000Z',
+  );
+  assert.ok(out);
+  assert.equal(out!.deleted, false);
+  assert.equal(out!.payload.active, true);
+  assert.equal(out!.payload.matchpointInactiveAt, '');
+  assert.equal(out!.payload.matchpointInactiveReason, '');
+  assert.equal(out!.payload.updatedAt, '2026-08-19T17:00:00.000Z');
+  assert.equal(out!.payload.name, 'Ospite');
+  assert.equal(out!.payload.level, 3);
+});
+
+// X) ⭐ ISOLA il marcatore: jolly disattivato A MANO (nessun marcatore) NON si riattiva.
+//    È la stessa divisione del caso K — la regola non calpesta una decisione umana.
+test('X · jolly disattivato a mano (senza marcatore) → nessuna riattivazione', () => {
+  assert.equal(
+    buildReactivatedGuestJollyRecord(
+      { local_key: 'k', payload: { memberId: '000001', guestJolly: true, active: false } },
+      '2026-08-19T17:00:00.000Z',
+    ),
+    null,
+  );
+});
+
+// Y) ⭐ ISOLA il perimetro: un socio NORMALE auto-disattivato non passa di qui — per lui la via
+//    del ritorno resta `activeFieldsOnImport`, che scatta solo se ricompare nell'export.
+test('Y · socio normale auto-disattivato → nessuna riattivazione da questa via', () => {
+  assert.equal(
+    buildReactivatedGuestJollyRecord(
+      {
+        local_key: 'k',
+        payload: { memberId: '000344', active: false, matchpointInactiveReason: MATCHPOINT_INACTIVE_REASON },
+      },
+      '2026-08-19T17:00:00.000Z',
+    ),
+    null,
+  );
+});
+
+// Z) ⭐ ISOLA il controllo su `active`: jolly già attivo ma col marcatore ancora addosso —
+//    stato REALE, non costruito: il «Riattiva» dell'app (`toggleMemberActive`) rimette
+//    `active: true` senza azzerare i marcatori. Senza questo controllo la guarigione lo
+//    riscriverebbe a ogni passata, ribattendo `updatedAt` (stessa ragione del caso D).
+test('Z · jolly già attivo (marcatore rimasto) → nessuna riscrittura', () => {
+  assert.equal(
+    buildReactivatedGuestJollyRecord(
+      {
+        local_key: 'k',
+        payload: {
+          memberId: '000001', guestJolly: true, active: true,
+          matchpointInactiveReason: MATCHPOINT_INACTIVE_REASON,
+        },
+      },
+      '2026-08-19T17:00:00.000Z',
+    ),
+    null,
+  );
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
