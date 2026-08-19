@@ -1152,6 +1152,38 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+Nella **40ª**, dallo screenshot di un telefono vero (19/08, notte):
+
+- 🗣️👁️⭐⭐ **NELLA CHAT DI UN SOCIO NON SI CAPISCE CHI PARLA — e la causa non è grafica: è che il
+  socio NON SCRIVE MAI.** Sue parole, guardando il telefono di Fabiola: *«non si capisce chi è che
+  scrive»*, *«manca l'icona di quando ti parla l'assistente e di quando parli tu»*.
+  📏 **Misurato nel registro invece che dedotto dallo schermo**: in tutta la sua conversazione
+  Fabiola ha prodotto **un solo messaggio** — `16:32:50 ▸ /livello` — e per il resto solo **tocchi**
+  (`22:15:10 tocca: invito non_posso`, `00:39:28 tocca: invito ci_sto`). Un tocco su un bottone
+  inline **non lascia nessun messaggio in chat**. ⇒ Telegram distingue chi parla mettendo l'utente
+  a destra e il bot a sinistra: se l'utente non scrive mai, **tutte** le bolle sono a sinistra. La
+  chat non *sembra* un monologo, **lo è**.
+  🚨 **E la seconda metà è NOSTRA, non di Telegram**: il bot **riscrive** i propri messaggi
+  (`riscriviOMandaNuovo`, voce ④ del 19/08). Quando lei ha toccato «Ci sto», il messaggio d'invito
+  coi due bottoni è stato **sostituito** dalla risposta ⇒ nello screenshot alle 23:43 c'è «Sei in
+  campo: domani alle 17:00, campo 3.» e **la domanda non c'è più**. Stessa cosa alle 18:34: *«Va
+  bene, ho detto che non puoi»* arriva senza che si veda **a cosa**. Restano affermazioni senza
+  domande e senza risposte, ed è questo a rendere illeggibile chi parla.
+  ⛔ **Ciò che NON si può fare, dichiarato perché nessuno ci riprovi: l'icona accanto alle bolle.**
+  In chat privata Telegram non mostra avatar per messaggio, per nessun bot — lo decide il client.
+  Quello che si vede nell'altro suo allegato (foto + nome) è la **vista elenco**, non la chat.
+  ✅ **La cura progettata**: restituire la METÀ MANCANTE del dialogo, cioè far portare a ogni
+  risposta **cosa ha scelto il socio** — «✅ Hai risposto: Ci sto» sopra «Sei in campo: …».
+  📌 **Due sue decisioni, già prese, che qui restano scritte perché non si ridiscutano:**
+  ① **perimetro = solo le DECISIONI** (Ci sto · Non posso · Sì annulla · Esci · Togli un giocatore ·
+  Tengo questo livello · Riprovo il test), **non** la navigazione (scegli giorno, scegli ora,
+  sfoglia, apri, torna indietro): là sarebbe una didascalia a ogni tocco su schermate che si
+  riscrivono sul posto, cioè rumore;
+  ② **ordine = DOPO la ③ e la ④** della consegna della 39ª (`SAVE_BUTTON_NOT_FOUND` e il terzo
+  esito sulle quattro azioni). Non è una voce in coda: la promozione la dà lui.
+  ⚖️ **Perché sta qui e non fra le urgenti**: non è un difetto che rompe qualcosa — tocca il **tono**
+  di tutti i messaggi decisivi del bot, che è una scelta di prodotto e non una riparazione.
+
 Nella **29ª**, dal collaudo eseguito (16/08, tarda sera):
 
 - ✅ **RISPOSTA (stessa sessione, un'ora dopo): l'aggancio del MODELLO non è codice morto.** Avevo
