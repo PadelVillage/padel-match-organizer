@@ -1152,6 +1152,66 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+Nella **43ª**, da uno **screenshot suo** e poi misurando (20/08, tardo pomeriggio):
+
+- 🚨⭐⭐ **LA CHAT NON È PIÙ IN ORDINE DI TEMPO, E DUE BOLLE VICINE SI SMENTISCONO SU UN FATTO
+  CONTABILE.** 🗣️ Sue parole mandando la foto: *«segnati anche questo messaggio da correggere
+  perché c'è troppa roba che si contraddice»*.
+  📏 **Cosa si legge nella foto, dall'alto in basso:**
+
+  | | |
+  |---|---|
+  | in alto | **«Fatto: Fabiola Limuti non è più nella partita di lunedì 24 agosto alle 14:00, campo 1.»** · *«Adesso in campo ci sei solo tu»* · roster: ⭐ Maurizio Aprea e **tre** posti liberi |
+  | in basso | **«Fabiola Limuti ci sta: è in campo per la partita di lunedì 24 agosto alle 14:00, campo 1.»** · *«Restano **2** posti liberi»* |
+
+  ⇒ Nella stessa schermata: è fuori **e** è dentro, tre posti liberi **e** due. E la seconda
+  frase, stando sotto, si legge come **l'ultima notizia**.
+
+  📏 **E il registro del bot dice che è esattamente il contrario — misurato, non dedotto:**
+
+  | ora (Roma) | fatto |
+  |---|---|
+  | `15:13:59` | tocca «invito manda» ⇒ *«Hai invitato Fabiola Limuti…»* |
+  | `15:14:29` | **Fabiola tocca «Ci sto»** ⇒ parte a lui *«Fabiola Limuti ci sta: è in campo… Restano 2 posti liberi»* |
+  | `15:53:35` | tocca «togli conferma» |
+  | `15:53:41` | **«Fatto: Fabiola Limuti non è più nella partita…»** ⇒ roster a un nome, tre liberi |
+
+  ⇒ **Le due frasi sono tutt'e due VERE, a 39 minuti di distanza.** Nessun dato è sbagliato,
+  nessuna edge ha fallito: sbagliato è **dove stanno nella chat**.
+
+  ⭐⭐ **LA CAUSA, e non si vedeva dallo screenshot: è la RISCRITTURA SUL POSTO.** La scheda
+  della partita non viene rimandata a ogni tocco — viene **riscritta dentro la bolla che
+  esisteva già** (`riscriviOMandaNuovo(chatId, messageId, …)` in `bot.ts`, otto punti). Quella
+  bolla sta dove è stata **creata la prima volta**, e lì resta per sempre. L'avviso *«X ci sta»*
+  invece è un **messaggio nuovo**, e i messaggi nuovi vanno **in fondo**.
+  ⇒ Il risultato è meccanico: **più la scheda è vecchia, più in alto sta il suo contenuto più
+  nuovo.** In una chat, dove l'ordine verticale *è* l'ordine del tempo, questo non è un
+  disallineamento estetico — è una **storia raccontata al contrario**.
+
+  ⚖️ **E la riscrittura sul posto NON è un difetto da togliere: è una cura, del 19/08.** Serve a
+  non lasciare in fondo alla chat una fila di schede doppione — e i doppioni erano peggio, perché
+  un doppione è *un bottone vivo che promette una cosa e ne fa un'altra* (misurato sul suo
+  telefono il 19/08 alle 23:42: toccò «Invita» su un doppione **di un'altra partita**, e l'invito
+  partì per la partita sbagliata). ⇒ Chi «curasse» questo tornando a mandare messaggi nuovi
+  riaprirebbe quel difetto. **È un compromesso da riprogettare, non un bug da rovesciare.**
+
+  🔎 **Le tre strade, per quando la deciderà lui** — nessuna ancora provata:
+  ① la scheda **si sposta in fondo** quando qualcosa la cambia da fuori (cancella e rimanda solo
+  in quel caso): l'ordine torna vero, e il doppione non nasce perché la vecchia sparisce;
+  ② gli avvisi che riguardano una partita **non sono messaggi nuovi** ma entrano nella scheda
+  stessa, che è già l'unico posto dove quella partita si racconta;
+  ③ ogni bolla **si data** («alle 15:14»), così l'ordine di lettura smette di essere l'unico
+  indizio. ⚠️ Costa la riga più corta ma non toglie la contraddizione: la spiega.
+
+  📌 **E dentro la stessa bolla resta il difetto ① della 42ª, non chiuso**: esito, «Le mie
+  partite · 7 di 8» e la **scheda operativa coi bottoni** sono ancora **tre cose in una bolla
+  sola**, e il grassetto separa la testata, non i tre blocchi.
+
+  🚨 **Da NON confondere col doppio «togli» della 42ª**: quello era una scrittura fatta due
+  volte, questo non scrive niente di sbagliato. Stessa persona, stessa partita, stessa foto —
+  difetti diversi. ⇒ *Due difetti che si vedono nella stessa schermata non sono lo stesso
+  difetto.*
+
 Nella **42ª**, da uno **screenshot suo** e poi misurando (20/08, primo pomeriggio):
 
 - 🚨⭐⭐ **DUE TOCCHI SU «TOGLI UN GIOCATORE» TOGLIEVANO DUE VOLTE — CURATO E VIVO SUI SOCI
