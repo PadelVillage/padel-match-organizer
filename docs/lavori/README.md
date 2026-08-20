@@ -1152,6 +1152,68 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+Nella **42ª**, da uno **screenshot suo** e poi misurando (20/08, primo pomeriggio):
+
+- 🚨⭐⭐ **DUE TOCCHI SU «TOGLI UN GIOCATORE» TOGLIEVANO DUE VOLTE — CURATO E VIVO SUI SOCI
+  DALLE 13:57.** Sue parole guardando il telefono di chi era stata tolta: *«sono arrivati 2
+  messaggi uguali, non è corretto»*. Prima ancora, sul suo: *«non mi ha aggiornato la partita.
+  C'è ancora Fabiola se leggi bene il testo»*.
+  📏 **La catena, dal registro del bot e dai log delle edge — non dedotta:**
+
+  | ora (Roma) | fatto |
+  |---|---|
+  | `13:18:59` | tocca «✅ Confermo» |
+  | `13:19:06` | «Fatto: … non è più nella partita» — e **sotto la scheda con lei ancora dentro** |
+  | `13:19:07` | tocca «✅ Confermo» una seconda volta |
+  | `13:19:12` | «Fatto» identico ⇒ **seconda rimozione vera** e **secondo avviso** a lei |
+  | `13:24:48` | il sync riporta il roster giusto: due nomi |
+
+  Sul gestionale: due `consumer-booking-write`, **`request_id` diversi**, `200` tutt'e due,
+  `remove OK` tutt'e due. La seconda parte **0,42 s dopo che la prima ha risposto** — non un
+  doppio tocco simultaneo, ma il tocco successivo lavorato dal ciclo.
+  ⭐ **Due difetti legati da causa a effetto, ed è per questo che la cura è UNA.** ① La scheda
+  ridisegnata dopo l'azione legge le righe che arrivano dal circolo, ferme a **prima** della
+  scrittura: mostrava tre nomi sotto la frase «non è più nella partita». Non è un difetto di
+  lettura — *l'elenco giusto, in quell'istante, non esisteva da nessuna parte*. ② E la scheda
+  vecchia è ciò che fa toccare di nuovo.
+  🚨⭐⭐ **E IL FRENO CONTRO IL DOPPIO TOCCO ESISTEVA GIÀ DAL 28/07 E NON POTEVA SCATTARE.**
+  `in-corso.ts` frena una gemella **in volo**; ma il ciclo del bot lavora gli aggiornamenti
+  **uno per volta con `await`**, e `gestisciTocco` li aspetta fino in fondo ⇒ due tocchi non
+  si sovrappongono mai, e il secondo trova il posto già libero. Chiedeva *«ce n'è una in
+  volo?»* in un mondo dove una gemella in volo **non può esistere**.
+  ⚖️ **E il banco lo dichiarava senza accorgersene**: *«si può misurare solo tenendo la prima
+  in volo»* — il caso tiene la prima sospesa **a mano** (`sblocca`), cioè costruisce uno stato
+  che il bot vero non produce. Verde da sempre, cieco sul difetto. È la **30ª** — *una riga può
+  essere giusta e non difendere niente, e a distinguerle non è rileggerla* — al livello di un
+  modulo intero, con la sua prova che dice la verità e misura un'altra cosa.
+  🔨 **La cura**: `src/mastra/lib/tolto-di-recente.ts` nel repo del bot — una memoria che chiede
+  **«è già stata fatta?»** invece di «è in volo?». È la forma di `fatto-compiuto.ts`, che per
+  l'**uscita** esiste già ed è il motivo per cui lì il difetto non c'è. ⇒ Il «togli» era
+  **l'unico dei tre gesti senza guardia dopo l'esecuzione**: l'uscita ha `fattoCompiuto`,
+  l'invito ha lo stato dell'invito. *Una regola curata in due punti su tre.*
+  ⭐ Dalla stessa memoria escono le due metà: il secondo tocco **non riesegue e non riavvisa**
+  (dice «Avevo già tolto X», non «Fatto»), e i roster non elencano più chi è appena uscito — il
+  filtro sta in `readmodelPlayer`, il punto **unico** da cui passano tutte le sedi che mostrano
+  una partita al socio. Si scorda da sé appena il circolo si è aggiornato, e scade comunque a
+  15 minuti.
+  ⭐ La guardia sta **PRIMA** di `ritrovaBersaglio`: dopo, il secondo tocco non troverebbe più
+  quella persona nel roster e risponderebbe *«la partita è cambiata»* — vero alla lettera e
+  fuorviante, che manda a cercare un guasto quando è andato tutto bene.
+  🔨 Banco: **18 casi nuovi** che chiamano `schedaTogli` **due volte di seguito** (la forma che
+  il bot vero produce), più **10 sabotaggi** visti cadere sul caso giusto e uno che non tocca
+  niente e non atterra. Uno dei casi è di **cablaggio**, perché `readmodelPlayer` chiama la rete
+  e dal banco non si esercita: senza, staccare il filtro dal ponte lascerebbe gli altri
+  diciassette verdi. Suite intera **1243 verdi**, `tsc` pulito.
+  📌 **PR #34 del repo del bot, fusa; deploy `prova` e poi `soci`, verdi; bot ripartito alle
+  13:57 e — misurato — ancora su `qqbf… (PROD)` con `prenotazioni REALI`.**
+  ⚠️ **RESIDUO DICHIARATO, e non è una formalità**: la cura è provata **nel banco**, non sul
+  bersaglio. Nessuno ha ancora tolto un giocatore vero toccando due volte. Per la sua regola —
+  *«il codice è a posto non è funziona»* — questo lavoro **non è chiuso**.
+  📌 `in-corso.ts` **non è stato tolto**: resta la difesa giusta se un domani gli aggiornamenti
+  arrivassero in parallelo (webhook). Ma ora **dichiara di non bastare**, invece di sembrare
+  completo — che era la parte pericolosa.
+
+
 Nella **41ª**, misurando il worker prima di curarlo (20/08, mattina):
 
 - 🚨⭐⭐ **`SAVE_BUTTON_NOT_FOUND` NON È COLPA DI `fillOsservazioni`, e la scheda che lo diceva è
