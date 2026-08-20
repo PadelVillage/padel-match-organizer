@@ -2,6 +2,78 @@
 
 **Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
 
+## 🔎 Il filo della 44ª: **un caso che chiama il passo A MANO non prova il BOTTONE**
+
+Il colpo più grave della giornata sarebbe passato, e il banco era **tutto verde**. Scrivendo le
+spunte sul «togli un giocatore», un sabotaggio ha cambiato il `callback_data` del bottone
+«👋 Togli i 2 giocatori» da *«chiedi conferma»* a *«esegui»*: **1320 casi su 1320 verdi**, e il
+socio che tocca quel bottone si ritrova due persone fuori dal campo **senza aver confermato
+niente**, su una scrittura che il bot sa fare e non sa disfare.
+
+⇒ La ragione: il mio caso chiamava `schedaTogli({ tipo: 'chiedi_segnati' })` **a mano**. Provava che
+*quel passo* chiede conferma — vero, e inutile — senza mai guardare **dove porta il bottone**.
+
+📌 *Il socio non chiama funzioni: tocca bottoni. Fra il bottone e la funzione c'è un
+`callback_data`, ed è esattamente il filo che si può scambiare senza che nessun caso se ne accorga.*
+⚖️ Non è la 43ª (*il verde muto perché nessun caso arriva lì*): qui il caso **arrivava**, ma entrava
+dalla **porta di servizio**. Un caso che entra dal retro prova la stanza, non la porta.
+🔨 La cura è di una riga e vale per tutte le famiglie di bottoni: si legge il **dato** del bottone
+(`leggiTogli(bottone.callback_data).tipo`), non il suo **testo**. Il testo è quello che promette, il
+dato è quello che fa — la stessa distinzione che il 19/08 è costata la scheda doppione.
+
+🔪 **E la seconda cosa, che rovescia l'uso dei sabotaggi: uno che non diventa MAI rosso a volte non
+accusa il banco — accusa il CODICE.** Un colpo diceva «il gruppo esegue anche i segni di chi non è
+più in partita» e restava verde. Guardando perché, quel filtro in `bot.ts` **non faceva niente**:
+chi disegna la tastiera conta già partendo dai giocatori veri. Non era una rete in più, era una
+**seconda regola che diceva la stessa cosa** — cioè il posto da cui il giorno dopo nasce una
+divergenza. ⇒ Cancellata la riga, e cancellato il colpo con lei.
+📌 *Un sabotaggio che non si riesce a far mordere è una domanda sul codice, non sul banco.*
+
+🔁 **E la terza, gemella e opposta: un sabotaggio che smette di DESCRIVERE il codice dice «non
+protetto» dove la protezione c'è.** Due colpi del banco del roster sono caduti a vuoto perché il
+lavoro di oggi aveva spostato le righe a cui erano ancorati — e uno colpiva la riga **giusta nel
+ramo sbagliato**, perché quella riga adesso esiste in due punti e la sostituzione prende il primo.
+⇒ Ri-ancorati con il contesto che li distingue. *Un sabotaggio scaduto non è meno grave di un banco
+cieco: la volta dopo nessuno lo legge.*
+
+## 🎨 Il secondo filo della 44ª: **una scelta che si VEDE non si decide leggendo**
+
+🗣️ Sue parole, dopo aver provato le spunte sul telefono: *«ho fatto un test con le spunte, però non
+è che visivamente si capisca molto»*.
+
+⇒ Il difetto **nel codice non si vedeva**: tutti i test erano verdi, e lo sono tuttora. La domanda
+che apriva — *«quale forma si vede meglio?»* — non ha una risposta leggibile in un file: dipende dal
+telefono, dal tema chiaro o scuro, dal font delle emoji di **quel** sistema, e dall'occhio di chi
+guarda. ⇒ L'unico modo di rispondere è **metterle tutte in mano sua e fargliele toccare**.
+
+⭐ Da qui `/stili` (`src/telegram/vetrina-stili.ts`): **otto forme, una bolla per ciascuna**, con
+quattro nomi finti da toccare. Non è un usa-e-getta e non sta nel banco di prova: sta in `src/`
+perché la forma scelta serve in **due posti** (l'invito e il «togli»), e averle in tabella vuol dire
+che il giorno della scelta si cambia **una riga**.
+
+📏 **Le tre misure che hanno disegnato le otto forme**, e nessuna si vedeva rileggendo il codice:
+
+| | |
+|---|---|
+| **Telegram CENTRA il testo dei bottoni** | un segno messo solo a sinistra non fa una colonna: **sposta il nome**. Segnandone due in un elenco di quattro, gli altri **ballano** — e l'occhio legge il movimento invece della spunta |
+| **il contrasto vero è di COLORE, non di forma** | `⬜` e `☑️` sono due quadratini della **stessa taglia**, e su parecchi sistemi il secondo è grigio-azzurro spento: resta un ticchio di pochi pixel |
+| **c'è chi il colore non lo distingue** | perciò una delle otto regge in **bianco e nero** — il maiuscolo, dove a cambiare è la **sagoma** della parola |
+
+🗣️ **Ha scelto la 2 e la 8**, e le due scelte insieme dicono una cosa che una sola non avrebbe detto:
+**non è lo stesso segno per i due elenchi**. Sull'invito la spunta vuol dire *questo lo chiamo*
+(`✅`); sul «togli» vuol dire *questo esce* (`👋`), e un verde direbbe «tutto bene» nel punto esatto
+in cui bisogna leggere prima di toccare.
+
+🗣️🚨 **E una lezione sul MODO di chiedere, pagata subito.** Alla domanda sulla conferma ha risposto:
+*«non ho capito bene le domande che mi hai fatto. Puoi farmele più semplici?»*. La domanda era scritta
+col vocabolario del progetto — «la forma a spunte ha tolto il passaggio di conferma» — cioè con le
+parole di chi ha in testa il codice. Rifatta **con le schermate**, prima e dopo, e con una domanda
+sola in fondo (*«dopo che tocchi «Togli i 2 giocatori», il bot deve chiederti ancora sei sicuro?»*),
+ha risposto in una riga.
+⇒ *Una domanda che chiede al committente di ricostruire il contesto non è una domanda breve: è una
+domanda che gli fa fare il lavoro di formularla.* La forma che funziona è **mostrare i due schermi e
+chiedere la differenza**, non nominare il meccanismo.
+
 ## 🔎 Il filo della 43ª: **un VERDE che sopravvive a un cambio di comportamento è un avviso**
 
 Tre volte nella stessa sessione ho cambiato cosa il socio **vede**, e il banco è rimasto verde:
@@ -41,6 +113,17 @@ alzare la voce»*. Il perimetro nuovo lo rovescia — ma quella ragione **non er
 **risolta altrove**: a non alzare la voce su un no ci pensa adesso il **segno** (⚠️ o 🔧, mai ✅).
 ⇒ *La domanda giusta è: la cosa che la vecchia regola proteggeva, adesso chi la protegge? Se la
 risposta è «nessuno», il rovescio è una perdita travestita da decisione.*
+
+## 📌 Le decisioni prese dal committente nella 44ª
+
+| | |
+|---|---|
+| 🗣️ **«non è che visivamente si capisca molto»** | ⇒ la vetrina delle otto forme (`/stili`). ⭐ Il difetto **non si vedeva nel codice**: tutti i test erano verdi, e lo sono tuttora |
+| 🎨 **«scelgo la 2 e la 8»** | la **spunta verde** sull'invito e **il saluto** sul «togli». ⛔ Due segni diversi di proposito: `✅` dice «tutto bene», e sul «togli» sarebbe detto davanti a una cosa che non si torna indietro |
+| ✅ **«sì, chiedimelo sempre»** | la conferma sul «togli» **resta**, ed è **una sola per tutto il gruppo**. ⚖️ Sull'invito la forma a spunte l'ha tolta, ma lì non ce n'era una da togliere: qui difende l'irreversibile ⇒ il gesto lungo diventa corto **una volta**, non zero |
+| 🚀 **«si fondi e si deploy sul bot dei soci»** | detto **due volte**, per le spunte e poi per il «togli». ⚠️ Nessuna delle due era stata guardata su un telefono: la scelta di andare in servizio senza anteprima è **sua**, dichiarata |
+| 🗣️ **«non ho capito bene le domande. Puoi farmele più semplici?»** | ⭐ vedi il secondo filo: una domanda scritta col vocabolario del codice fa fare a lui il lavoro di formularla. Rifatta **con le schermate**, ha risposto in una riga |
+| 📄 **«si aggiorna i documenti»** | ⇒ questa sezione. Le tre PR del bot restano fra le 🆕 «nate misurando», **non promosse**: le promozioni le decide lui |
 
 ## 📌 Le decisioni prese dal committente nella 43ª
 
@@ -1206,6 +1289,85 @@ che è il modo in cui un residuo diventa un mistero.
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+Nella **44ª** (20/08, sera), tutte e tre **chieste da lui** e tutte e tre **fuse e deployate sui
+soci**. ⚠️ Restano qui e non fra le 📦 chiuse perché non erano voci numerate: erano ordini suoi
+dati a voce nella sessione stessa.
+
+- ✅🎨⭐⭐ **LA VETRINA DELLE OTTO FORME (`/stili`) — e la domanda vera non era il quadratino.**
+  🗣️ *«ho fatto un test con le spunte, però non è che visivamente si capisca molto. Mi sviluppi
+  altri modi similari in cui quando io spingo su un nome si vede che quel nome viene selezionato?»*
+  ⇒ Otto forme, **una bolla per ciascuna**, con quattro nomi finti da toccare. Il comando è **fuori
+  dal menu ☰** (come `/invita`, e per la stessa ragione: è un attrezzo per decidere), **non scrive
+  niente** da nessuna parte, e il bottone «Manda» è una **fotografia inerte con un codice suo** —
+  dargli il dato di un nome avrebbe fatto un bottone che promette una cosa e ne fa un'altra.
+  ⭐ Le tre misure che hanno disegnato le forme stanno nel **secondo filo** qui sopra: il testo dei
+  bottoni è **centrato** (un segno solo a sinistra fa ballare i nomi), il contrasto vero è di
+  **colore** e non di forma, e una delle otto deve reggere in **bianco e nero**.
+  🔨 Il banco è quasi tutto **giri su `STILI`**: difende anche la nona forma, che scriverà chi non
+  avrà letto niente di tutto questo. **Tre buchi li ha trovati il banco, non una rilettura** —
+  `Number('') === 0` faceva passare un dato tagliato (`vs|a|`) come **tocco sul primo nome**; la
+  prova dell'ordine si fermava al quarto e restava verde togliendo il ripiego oltre la nona cifra;
+  il caso del «non si mescolano» usava due forme con segni **diversi** e restava verde buttando via
+  il controllo della forma. **12 sabotaggi, tutti visti.**
+  📌 **PR #42 del repo del bot, fusa e deployata sui soci.**
+
+- ✅⬜🗣️ **LA SPUNTA DELL'INVITO DIVENTA IL `✅` VERDE — la 2.**
+  ⚖️ **La riga vecchia non era sbagliata**: `⬜`/`☑️` è la coppia «quadratino spento / quadratino
+  segnato», il modo in cui una spunta si disegna da sempre. Ma poggiava su una cosa che **sul
+  telefono non regge** — i due quadratini hanno la **stessa taglia**, e su parecchi sistemi il
+  segnato è grigio spento. ⇒ Col `✅` cambia il **colore**, non la forma.
+  🚨 **E i TRE casi che scrivevano il carattere a mano ora leggono le costanti.** Non è pulizia:
+  col carattere copiato sarebbero rimasti **verdi guardando un segno che non esiste più** — una
+  protezione svuotata senza che nessuno la tolga.
+  ⭐⭐ **La guardia nuova nasce da un verde sospetto**: cambiato il segno, il banco è rimasto verde
+  su **1299 casi su 1299**. È giusto — *quale* segno sia è una decisione, non un difetto, e i casi
+  leggono le costanti apposta — ma vuol dire che da lì in poi **nessuno guarda più** che i due
+  segni siano **diversi**. Con `SPUNTA_SI === SPUNTA_NO` la selezione diventerebbe **invisibile sul
+  telefono** col banco tutto verde: cioè il difetto che la vetrina è nata per curare, rimesso
+  dentro il codice.
+  📌 **PR #43 del repo del bot, fusa e deployata sui soci.**
+
+- ✅👋⭐⭐ **LE SPUNTE SUL «TOGLI UN GIOCATORE», COL `👋` E LA CONFERMA CHE RESTA — la 8.**
+  🗣️ Suo ordine: *«aggiungi come primo task da fare la spunta sugli invita e togli un giocatore»*.
+  ⚠️⚠️ **NON è la gemella dell'invito**, ed è la cosa da capire prima di scrivere una riga: dall'invito
+  si torna indietro (si ritira), da qui **mai**; l'invito **non ha** conferma ed è una sua decisione,
+  qui **c'è** e difende l'irreversibile; l'invito manda un **messaggio**, qui si **scrive sul
+  gestionale del circolo**. ⇒ Copiare la forma dell'invito riga per riga avrebbe portato con sé anche
+  ciò che sull'invito è giusto **perché lì non c'era niente da perdere**.
+  ✅ **La conferma resta, una sola per tutto il gruppo** — sua decisione fra tre strade: *«sì,
+  chiedimelo sempre»*. I nomi si leggono **uno per riga**: è l'ultima schermata prima di una cosa che
+  non si disfa, e una riga per nome è la forma in cui l'occhio conta senza rileggere.
+  ⭐ **Il bottone della conferma porta i segni DENTRO il dato** invece di rileggerli dallo schermo:
+  quello che il testo nomina e quello che il bottone toglie sono la stessa lista, decisa nello stesso
+  istante. ⇒ È la voce della **frase e del roster che dicono due numeri diversi** (qui sotto) evitata
+  **per costruzione**, invece che curata dopo.
+  🚨 **L'esito è PER PERSONA**, e il segno in testa lo decide **l'esito, mai l'intenzione**: `✅` solo
+  se qualcuno è uscito davvero · `👍` se erano già tutti fuori · `⚠️` se non è andata. Fra la spunta e
+  il tocco su «Togli» passano minuti, e uno può essere già uscito: un «fatto» detto per il gruppo
+  sarebbe **falso su di lui**, un «non ha funzionato» detto per il gruppo manderebbe a **rifare** ciò
+  che per gli altri era riuscito.
+  ⛔ **E il racconto del gruppo NON scrive quanti restano in campo**, deliberatamente: è proprio il
+  numero che nella voce qui sotto contraddice l'elenco. **Non se ne fa una seconda copia.**
+  ⭐ Lettere **nuove** (`s`, `q`, `z`): i bottoni sono fotografie, e un «Togli un giocatore» aperto
+  ieri deve continuare a fare quello di ieri. `c` e `k` non cambiano di un carattere.
+  🔨 **17 sabotaggi, tutti visti** — compresi i tre buchi del **primo filo** qui sopra.
+  📌 **PR #44 del repo del bot, fusa e deployata sui soci.**
+
+⚠️ **Il residuo dichiarato, e vale per tutte e tre: nessuna è stata guardata su un TELEFONO.** Il
+banco dice che il codice fa la cosa giusta; **cosa il socio VEDE lo dice solo un telefono** — e la
+terza è la schermata che **scrive sul gestionale del circolo**. 🗣️ La scelta di mandarle in servizio
+senza anteprima è **sua e dichiarata** (*«si fondi e si deploy sul bot dei soci»*, detto due volte).
+🚨 Nessuna delle tre è provabile fino in fondo sul **bot di prova**: in collaudo l'invito non parte
+affatto, quindi la funzione esce **prima** della schermata nuova.
+
+🔎 **E una riga della 43ª si chiude, misurandola invece di ricordarla.** La scheda della frase e del
+roster lasciava aperto: *«ai tocchi `togli conferma` delle 21:03:30 e 21:04:11 non segue nessuna riga
+di risposta»*, con l'avvertenza che la regex della sonda non conteneva `tolt`. ⇒ Riletto il registro:
+**le righe ci sono**, alle `21:03:33` e `21:04:15`, e dicono ⚠️ *«Quella persona non risulta più in
+partita»* — cioè la famiglia **«non si può»**, non il `👍 avevo già tolto` che la scheda dava per il
+comportamento giusto. 📌 Misura, **non diagnosi**: è una lettura sola, incontrata di striscio, e
+quale delle due frasi sia quella giusta lì **non è stato guardato**.
 
 Nella **43ª**, da uno **screenshot suo** e poi misurando (20/08, tardo pomeriggio):
 
