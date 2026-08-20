@@ -1290,7 +1290,51 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-Nella **44ª** (20/08, sera), tutte e tre **chieste da lui** e tutte e tre **fuse e deployate sui
+Nella **45ª** (20/08, notte), **chiesta da lui** e **fusa e deployata sui soci**. ⚠️ Sta qui e non
+fra le 📦 chiuse per la stessa ragione delle tre della 44ª: non era una voce numerata, era un suo
+ordine dato a voce nella sessione stessa.
+
+- ✅⏳🗣️⭐⭐ **GLI INVITI DURANO 3 ORE — e la scadenza vale finalmente da TUTT'E DUE I LATI.**
+  🗣️ Sue parole, in due frasi a un minuto l'una dall'altra: *«tagliamo la testa al toro. Gli inviti
+  mandati alle persone durano 3 ore. Non di più. Dopodiché spariscono»*, e poi *«sull'invio dopo la
+  mezzanotte il messaggio deve durare un po' di più, perché uno va a dormire dopo mezzanotte e si
+  sveglia alle sei di mattina minimo»*.
+  ⇒ **Tre regole in ordine**: ① 3 ore · ② mai prima delle **9 del mattino**, che è la sveglia (6)
+  più le 3 ore per leggerlo · ③ mai oltre l'inizio della partita, che **vince sulle altre due**.
+  ⚖️ **La notte è scritta guardando QUANDO l'invito muore, non quando è partito**, e non è una
+  libertà presa: il danno che lui descrive è *morire mentre l'altro dorme*, e a quel danno l'ora
+  d'invio non importa. Un invito mandato alle **23:00** morirebbe alle 02:00 — lo stesso caso, che
+  la formulazione «mandato dopo mezzanotte» avrebbe lasciato fuori.
+  🚨⭐⭐ **E LA METÀ CHE MANCAVA, misurata PRIMA di toccare una riga: la scadenza valeva DA UN LATO
+  SOLO.** Chi riceveva l'invito e toccava «Ci sto» si sentiva dire «scaduto» (`statoInvito`);
+  l'**elenco di chi puoi invitare** non guardava l'orologio per niente — e da quella lettura sola
+  scendono **quattro** comportamenti: i nomi sotto «gli inviti mandati», i bottoni «ritira»,
+  l'esclusione dall'elenco degli invitabili, e la frase del 20/08 che spiega perché un nome non
+  compare. ⇒ Cambiare **solo il numero** avrebbe prodotto una cura che *sembra* fatta.
+  ⚖️⭐⭐ **E non era una dimenticanza, che è la cosa da ricordare**: `invito-partita.ts`
+  **dichiarava** che a guardare l'orologio pensa «chi legge» — e chi legge **non lo faceva**. *Un
+  contratto scritto e non onorato è peggio di un buco: chi rilegge trova scritto che il caso è
+  coperto, e smette di cercare.* Adesso «chi legge» ha un nome, ed è scritto lì accanto.
+  📏 **Perché non si vedeva**: la scadenza cadeva **all'inizio della partita**, e a quell'ora
+  quell'elenco non lo guarda più nessuno ⇒ il 20/08 gli inviti scaduti-ma-in-sospeso erano **zero
+  in tutto il sistema**. Con le 3 ore diventa il caso di tutti i giorni.
+  📏 **E una misura ha smentito la scheda, senza cambiare la conclusione**: la consegna diceva che
+  invitare la stessa persona a **più partite** «nei dati non è mai capitato». È capitato: il 20/08
+  alle 20:51, per **46 secondi**, due inviti vivi su due partite diverse. ⇒ Quella metà non era
+  solo prevista dal codice — il database l'aveva già accettata. Non c'era niente da costruire.
+  🔨 **1343 casi verdi** (+9) e **8 sabotaggi su 8**, compresi i due che rimettono apposta la **cura
+  a metà**. ⭐ I casi nuovi entrano da `schedaInvito`, cioè **dal bottone**: è la lezione della 44ª
+  (*un caso che chiama il passo a mano non prova il bottone*) applicata a un altro filo.
+  ⛔🔪⭐⭐ **UN NONO COLPO C'ERA E NON MORDE, ed è dichiarato invece che tolto in silenzio**: la riga
+  che passa l'orologio **alla creazione** dell'invito. Il banco **non raggiunge quel codice** —
+  `statoScrittura()` vi risponde `simula: true` — e per arrivarci un caso dovrebbe **dichiararsi la
+  produzione**, cioè spegnere dentro il banco l'unico freno che impedisce di mandare «vieni a
+  giocare» a persone vere durante una prova. ⚖️ *Un sabotaggio che non morde è una domanda sul
+  codice; qui la risposta non era «togli il colpo», era «quel codice non lo prova nessuno, e il
+  motivo è buono».* La ragione sta in testa a `test/sabotaggi-scadenza-invito.mjs`.
+  📌 **Non è retroattivo**: l'unico invito vivo alla consegna tiene la vecchia scadenza.
+
+⬇️ Nella **44ª** (20/08, sera), tutte e tre **chieste da lui** e tutte e tre **fuse e deployate sui
 soci**. ⚠️ Restano qui e non fra le 📦 chiuse perché non erano voci numerate: erano ordini suoi
 dati a voce nella sessione stessa.
 
