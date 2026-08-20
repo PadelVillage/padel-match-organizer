@@ -1,6 +1,10 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+import {
+  tipoFichaDa, annulloSupportato,
+  CODICE_ANNULLO_NON_SUPPORTATO, MOTIVO_ANNULLO_NON_SUPPORTATO,
+} from './tipo-ficha.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -7577,10 +7581,7 @@ async function editBookingWithBrowser(input = {}) {
         `Nessuna scheda con pulsante "Spostare" per id ${idReserva} (partita/lezione/manutenzione).`,
         diagnostic);
     }
-    diagnostic.steps.push('ficha_detected:' + (
-      fichaUrl.includes('ClaseSuelta') ? 'lezione' :
-      fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
-    ));
+    diagnostic.steps.push('ficha_detected:' + tipoFichaDa(fichaUrl));
 
     // Repeater partecipanti dipendente dal tipo scheda: partita = WUCUsuarioPartida,
     // lezione = WUCUsuarioClase. Stessi soci, stessa ricerca per nome; cambia solo il
@@ -7638,7 +7639,7 @@ async function editBookingWithBrowser(input = {}) {
       // MANUTENZIONE — leggi anche la DESCRIZIONE (TextBox2): è il testo visibile sul tabellone.
       // Lettura via evaluate (niente auto-wait del locator: se assente torna null, no timeout lungo).
       let descrizioneLetta = null;
-      if (fichaUrl.includes('Mantenimiento')) {
+      if (tipoFichaDa(fichaUrl) === 'manutenzione') {
         descrizioneLetta = await page.evaluate(() => {
           const el = document.querySelector('#CC_Datos_FormViewFicha_TextBox2');
           return el ? (el.value || '') : null;
@@ -7739,7 +7740,7 @@ async function editBookingWithBrowser(input = {}) {
     // La manutenzione non ha giocatori: ha la DESCRIZIONE (TextBox2, il testo del tabellone) e le
     // OSSERVAZIONI (TextBoxObservaciones). Le gestiamo qui, prima del ramo giocatori.
     let addResults = [];
-    const isManutFicha = fichaUrl.includes('Mantenimiento');
+    const isManutFicha = tipoFichaDa(fichaUrl) === 'manutenzione';
     if (isManutFicha && (descrizioneProvided || noteProvided)) {
       if (descrizioneProvided) {
         await page.locator('#CC_Datos_FormViewFicha_TextBox2').first().fill(String(descrizione ?? ''), { timeout: 6000 }).catch(() => {});
@@ -8850,10 +8851,8 @@ async function cancelBookingWithBrowser(input = {}) {
         `Nessuna scheda valida per id ${idReserva} (partita/lezione/manutenzione).`,
         diagnostic);
     }
-    diagnostic.steps.push('ficha_detected:' + (
-      fichaUrl.includes('ClaseSuelta') ? 'lezione' :
-      fichaUrl.includes('Mantenimiento') ? 'manutenzione' : 'partita'
-    ));
+    const tipoFicha = tipoFichaDa(fichaUrl);
+    diagnostic.steps.push('ficha_detected:' + tipoFicha);
 
     // Verifica stato iniziale (se già annullata, esci ok)
     const giaAnnullata = await page.evaluate(() => /ANNULLATA/i.test(document.body.innerText || ''));
@@ -8863,19 +8862,38 @@ async function cancelBookingWithBrowser(input = {}) {
       return { ok: true, idReserva, alreadyCancelled: true, diagnostic };
     }
 
+    // 🚨⭐⭐ IL RAMO CHE IL COMMENTO QUI SOTTO PROMETTEVA E CHE NON ESISTEVA — 20/08/2026.
+    // Fino a oggi la manutenzione proseguiva insieme a partita e lezione, aspettava dieci secondi
+    // un `#CC_Datos_ButtonAnular` che nei casi misurati non è MAI comparso, e falliva con un
+    // timeout grezzo di Playwright: nessun codice, nessun motivo, e — non essendo un `fail()` —
+    // nemmeno la diagnostica. Da quella riga di registro non si poteva sapere che tipo fosse: a
+    // dirlo è stata una lettura sullo stesso slot tredici secondi prima.
+    // 📏 Sedici volte in cinque raffiche; nei due casi del 19/08 in cui ho i tempi, 13,7 e 13,8
+    // secondi ciascuna, sulla coda CONDIVISA col sync.
+    // Il perché, i numeri e la prova che il caso del 19/08 era davvero una manutenzione stanno
+    // in `tipo-ficha.mjs`, insieme alla regola.
+    //
+    // ⭐ L'ORDINE È PARTE DELLA CURA, e sta DOPO il controllo «già annullata» di proposito: una
+    // manutenzione già cancellata deve continuare a rispondere `alreadyCancelled: true`, che è
+    // vero, è utile e non tocca niente. Mettere il rifiuto prima l'avrebbe trasformata in un
+    // errore — cioè avrebbe rotto un caso che funzionava per curarne uno che non funzionava.
+    if (!annulloSupportato(tipoFicha)) {
+      diagnostic.steps.push('annullo_non_supportato:' + tipoFicha);
+      throw fail(CODICE_ANNULLO_NON_SUPPORTATO, MOTIVO_ANNULLO_NON_SUPPORTATO, diagnostic);
+    }
+
     // ⚠️ CRUCIALE: registra l'handler per il popup nativo window.confirm PRIMA di cliccare.
     // Matchpoint mostra un confirm() nativo dopo la conferma; se non viene accettato
     // l'annullamento non si finalizza pur tornando HTTP 200 (falso successo silenzioso).
     page.on('dialog', (d) => d.accept().catch(() => {}));
 
-    // Il flusso di conferma DIPENDE DAL TIPO:
-    //  • PARTITA/LEZIONE → "Annullare" apre un iframe fancybox anularreserva.aspx (ButtonAnular).
-    //  • MANUTENZIONE    → NON supportata dal worker. La procedura reale di cancellazione si
-    //    innesca SOLO entrando dal tabellone (non dall'URL diretta ?modo=fancy usata dal worker)
-    //    e tocca rimborsi/pagamenti. Falliamo SUBITO con un errore chiaro invece di tentare un
-    //    flusso che non cancella nulla (vecchia "FIX B": ~30s di attesa inutile e poi 502).
-    // PARTITA / LEZIONE / MANUTENZIONE: il click apre l'iframe fancybox anularreserva.aspx con ButtonAnular.
-    diagnostic.steps.push('click_annulla:partita/lezione');
+    // Da qui in poi il tipo può essere SOLO partita o lezione: la manutenzione è già uscita
+    // dalla porta qui sopra. Per tutt'e due, "Annullare" apre l'iframe fancybox
+    // anularreserva.aspx che contiene `#CC_Datos_ButtonAnular`.
+    // 📌 Il commento che stava qui diceva la cosa giusta («MANUTENZIONE → non supportata,
+    // falliamo subito») e la riga sotto la smentiva trattando i tre tipi uguali. Non è stato
+    // ammorbidito il commento: è stata resa vera la riga.
+    diagnostic.steps.push('click_annulla:' + tipoFicha);
     await page.locator('#CC_Datos_FormViewFicha_ButtonAnularReserva').first().click({ timeout: 10000 });
     diagnostic.steps.push('attendi_dialogo');
     const dlg = page.frameLocator('iframe[src*="anularreserva.aspx"]');
