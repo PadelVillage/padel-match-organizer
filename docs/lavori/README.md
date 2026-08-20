@@ -1290,9 +1290,64 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-Nella **45ª** (20/08, notte), **chiesta da lui** e **fusa e deployata sui soci**. ⚠️ Sta qui e non
-fra le 📦 chiuse per la stessa ragione delle tre della 44ª: non era una voce numerata, era un suo
-ordine dato a voce nella sessione stessa.
+Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per la stessa ragione delle
+tre della 44ª: non erano voci numerate. **La prima è FATTA** — un suo ordine dato a voce, fuso e
+deployato sui soci. **Le altre tre sono MISURATE E BASTA**: nessuna è stata promossa, e la scelta
+di cosa farne resta sua.
+📌 E tutte e tre sono nate **guardando la cosa vera insieme a lui**, non rileggendo il codice: due
+dai suoi screenshot, una da una partita che lui aveva spostato. *Le sonde di stanotte hanno trovato
+in un'ora tre cose che nessuna rilettura aveva visto in settimane.*
+
+- 🚨⭐⭐ **UN AVVISO AUTOMATICO SI METTE IN FILA DAVANTI A UNA RISPOSTA CHE STAI ASPETTANDO** —
+  *portata da lui con due screenshot, 21/08 notte, e la sua diagnosi era SBAGLIATA in un modo che
+  vale più della diagnosi giusta.*
+  🗣️ Sue parole: *«secondo me c'è un problema di lettura del nostro gestionale. È andato troppo
+  veloce a leggere prima che c'era la notifica»*.
+  📏 **Misurato, ed è il contrario: è andato LENTO.** Al secondo, dal registro del bot e da quello
+  del worker messi insieme —
+  `00:12:25` conferma l'annullamento · `00:14:15` **il worker fallisce** (`/cancel-booking`,
+  `locator.click: Timeout 10000ms`, un `fancybox-overlay` di Matchpoint si mette davanti al bottone
+  «Annullare» e si mangia il clic) · `00:14:38` **il secondo tentativo riesce** · `00:20:03` il
+  gestionale lo registra (righe vive per quella partita: **0**).
+  ⇒ **L'annullamento era vero**, e il «Fatto» non era una conferma falsa — cosa che a metà indagine
+  sembrava, e che è stata detta come sospetto e non come fatto finché la riga del sync non è
+  atterrata. ⚖️ *Fra «il worker ha fallito» e «il bot ha mentito» ci sono 23 secondi e un secondo
+  tentativo: chi si ferma al primo dei due referti scrive la voce sbagliata.*
+  🚨 **Il difetto vero sta in quei 2 minuti e 13 secondi di attesa**: dentro ci è entrato un avviso
+  `tornata_incompleta`, che gli è comparso fra «⏳ Attendi un attimo…» e la risposta. Da fuori
+  sembra che il bot abbia risposto un'altra cosa.
+  📏 **E il meccanismo è stato guardato prima di proporre una cura**, che è ciò che ha impedito di
+  scrivere la cura sbagliata: quell'avviso **non nasce dal gesto**. `promemoria.ts` fa un **giro
+  periodico** che confronta i giocatori di **adesso** con quanti ne aveva contati **l'ultima volta**,
+  e se il numero è calato avvisa. ⇒ Non sa che c'è una conversazione in corso, e **non sa chi ha
+  causato il calo**: non lo sa *per costruzione*, non per dimenticanza.
+  ⚖️ **Perciò NON è una riga da correggere**, ed è il motivo per cui il 21/08 non è stata toccata:
+  per fargli saltare chi ha premuto il bottone servirebbe che il bot ricordasse **chi ha fatto
+  cosa** — cioè una memoria parallela, contro la regola ferrea (*il gestionale SA, il bot DICE*).
+  📌 Tre difetti distinti, e si curano in tre posti diversi: ① un avviso può scavalcare una risposta
+  attesa; ② quell'avviso era **già superato quando è partito** (alle 00:13:09 l'annullamento era
+  confermato dalle 00:12:25: gli ha ricordato la scadenza per disdire una partita che stava
+  sparendo); ③ è arrivato **anche a chi il gesto l'aveva fatto**.
+
+- ✅🔨⭐⭐ **LA CONFERMA SUL «TOGLI» FUNZIONA SUL BOT VIVO — provata su tre persone vere.**
+  ⭐ Vale scritta perché chiude, **sulla cosa e non sul banco**, la paura più grossa della 44ª: il
+  sabotaggio che spostava il bottone da *«chiedi conferma»* a *«esegui»* restando verde 1320 volte
+  su 1320. Dal registro, `00:11:04` `chiedi_segnati` → `00:11:07` **«Vuoi togliere 3 giocatori?»**
+  coi tre nomi → `00:11:10` conferma → `00:11:37` fatto. **Una conferma sola per il gruppo**, che è
+  la sua decisione (*«sì, chiedimelo sempre»*), e gli avvisi ai tre partiti davvero.
+  📌 E un pezzo **NON** l'ha ancora visto nessuno: la frase che dice **perché** un giocatore non
+  esce. Lo stesso gesto era fallito alle 22:57 con tre *«non ci sono riuscito»* generici — ma quello
+  era **prima** che la cura andasse viva (23:16), quindi non è una regressione: è la vecchia
+  versione. Stanotte è andata bene, e la frase nuova è rimasta invisibile.
+
+- ⚠️⭐ **SPOSTARE UNA PARTITA LASCIA GLI INVITI ATTACCATI AL VUOTO, IN SILENZIO.**
+  📏 Visto sul vero il 21/08: la prenotazione `9535` si è spostata dal **24** al **31 agosto** (la
+  riga del 24 `deleted: true`, quella del 31 viva). L'invito mandato a una persona restava agganciato
+  a `2026-08-24|14:00|1`, che **non esiste più** ⇒ nel bot quella partita non compare, l'invito non è
+  né vivo né morto, e **non l'ha saputo né l'invitata né chi l'aveva mandato**.
+  ⚖️ Non è un difetto aperto dal lavoro sulle 3 ore: è la famiglia degli **inviti orfani**, che nel
+  repo del bot ha già un banco suo (`sabotaggi-inviti-orfani.mjs` — con un colpo dall'àncora scaduta
+  da prima della 44ª, residuo dichiarato).
 
 - ✅⏳🗣️⭐⭐ **GLI INVITI DURANO 3 ORE — e la scadenza vale finalmente da TUTT'E DUE I LATI.**
   🗣️ Sue parole, in due frasi a un minuto l'una dall'altra: *«tagliamo la testa al toro. Gli inviti
@@ -1692,10 +1747,25 @@ Nella **41ª**, misurando il worker prima di curarlo (20/08, mattina):
   ⛔ **La cura che la scheda vecchia implicava — far guardare ai chiamanti il valore di ritorno di
   `fillOsservazioni`, o rimetterla sulla linguetta giusta — NON avrebbe curato niente.**
 
-- 🔴 **`read-tabellone` sfora i 90 secondi OLTRE 40 VOLTE IN 16 GIORNI**, e nessuno ha mai misurato
-  perché. Dal 4 al 20/08, ~2,5 al giorno, **tutti i giorni** — è di gran lunga il guasto più
-  frequente del worker, e ogni volta `mpWarmInvalidate()` butta giù il **browser condiviso** sotto
-  chiunque lo stia usando. È la causa a monte del reperto qui sopra.
+- 🔴 **`read-tabellone` sfora i 90 secondi, e il numero che stava scritto qui NON REGGE PIÙ.**
+  🚨⭐⭐ **Rimisurato il 21/08 alle 00:19** (`stato-worker.yml`, finestra di 400 righe): nel **solo
+  20 agosto** ce ne sono **almeno 17** — 10:05, 10:27, 11:41, 11:47, 11:59, 12:32, 13:55, 14:28,
+  14:53, 15:55, 19:00, 19:04, 19:07, 20:54, 20:58, 22:13, 22:16 (UTC). Contro il **«~2,5 al
+  giorno»** che questa riga dichiarava dal 4 al 20/08.
+  ⚖️ **«Almeno», e la parola è pesata**: la finestra era filtrata da una regex, quindi 17 è un
+  **pavimento**, non un totale. E non si può dire se sia una **crescita** o se la misura vecchia
+  **contasse male**: le due finestre non sono confrontabili, e chiamarla «peggiorato» sarebbe una
+  conclusione che il dato non regge. ⇒ Quello che è certo è che **~2,5 al giorno non descrive più
+  niente**, ed era il numero su cui si decideva quanto fosse urgente.
+  📌 *Un numero vecchio in un documento non invecchia in silenzio: continua a rispondere alla
+  domanda «quanto è grave?» con la sicurezza del giorno in cui era vero.* È la ragione per cui
+  `guard-docs-truth` esiste — e la ragione per cui non può bastare: quella guardia confronta ciò
+  che il file dichiara di **sé**, non ciò che il file dichiara del **mondo**.
+  ⭐ È di gran lunga il guasto più frequente del worker, e ogni volta `mpWarmInvalidate()` butta giù
+  il **browser condiviso** sotto chiunque lo stia usando. È la causa a monte del reperto qui sopra —
+  e il 21/08 si è visto **cosa costa a valle**: la coda occupata ha fatto saltare **due giri di sync
+  di fila** (00:16 e 00:18), lasciando il calendario del gestionale fermo per **6 minuti** proprio
+  mentre il committente stava annullando una partita.
   ⚖️ **Non si tocca senza aver prima misurato PERCHÉ quella lettura sfori**: alzare il tetto o
   togliere l'invalidazione sono due cure opposte, e quale sia quella giusta dipende da una cosa che
   nessuno ha guardato.
