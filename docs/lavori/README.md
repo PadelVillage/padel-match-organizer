@@ -1291,12 +1291,12 @@ che è il modo in cui un residuo diventa un mistero.
 ## 🆕 Nate misurando, **non** ancora in coda
 
 Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per la stessa ragione delle
-tre della 44ª: non erano voci numerate. **La prima è FATTA** — un suo ordine dato a voce, fuso e
-deployato sui soci. **Le altre tre sono MISURATE E BASTA**: nessuna è stata promossa, e la scelta
-di cosa farne resta sua.
-📌 E tutte e tre sono nate **guardando la cosa vera insieme a lui**, non rileggendo il codice: due
-dai suoi screenshot, una da una partita che lui aveva spostato. *Le sonde di stanotte hanno trovato
-in un'ora tre cose che nessuna rilettura aveva visto in settimane.*
+tre della 44ª: non erano voci numerate. **Tre sono FATTE, fuse e deployate sui soci** (le ultime
+tre dell'elenco); **le prime tre sono MISURATE E BASTA** — nessuna promossa, e la scelta di cosa
+farne resta sua.
+📌 E sono nate tutte **guardando la cosa vera insieme a lui**, non rileggendo il codice: dai suoi
+screenshot, da una partita che aveva spostato, e da due ore di prove col bot su **persone vere**.
+*In quelle due ore sono usciti cinque difetti che settimane di riletture non avevano visto.*
 
 - 🚨⭐⭐ **UN AVVISO AUTOMATICO SI METTE IN FILA DAVANTI A UNA RISPOSTA CHE STAI ASPETTANDO** —
   *portata da lui con due screenshot, 21/08 notte, e la sua diagnosi era SBAGLIATA in un modo che
@@ -1348,6 +1348,68 @@ in un'ora tre cose che nessuna rilettura aveva visto in settimane.*
   ⚖️ Non è un difetto aperto dal lavoro sulle 3 ore: è la famiglia degli **inviti orfani**, che nel
   repo del bot ha già un banco suo (`sabotaggi-inviti-orfani.mjs` — con un colpo dall'àncora scaduta
   da prima della 44ª, residuo dichiarato).
+
+- ✅🎨🗣️⭐⭐ **NOVE SEGNI MONOCROMI DIVENTANO COLORATI — e la guardia impara a leggere i BOTTONI.**
+  *(#49, 21/08)* 🗣️ Sua segnalazione, col telefono in mano: *«l'emoticon in testa a invita un
+  giocatore è scuro. Abbiamo detto che gli emoticon grigi o neri o bianchi non si devono mettere»*.
+  E la regola, detta per esteso quando gli ho chiesto conferma sui rimpiazzi: *«il nero e il bianco,
+  se non hanno un contorno, cioè un background di un colore diverso, non si vedono»*.
+  ⇒ **Non è una preferenza estetica**: un segno nero su fondo bianco non è un segno, è **un
+  carattere in più**, e il bottone perde la cosa che doveva farlo riconoscere a colpo d'occhio.
+  🚨 **Erano NOVE, non uno** — trovati cercandoli tutti invece di curare il caso segnalato:
+  `➕ Invita un giocatore` · `➖ Togli un giocatore` · `➕ Invita una persona nuova` ·
+  `➖ Togli qualcuno dalla rubrica` · il `➕` dell'elenco invitabili · `◀ Torna alle domande` ·
+  `◀ Giorni prima` · `Altri giorni ▸` · `◀ Altri giorni`. Adesso `🎾 👋 ⬅️ ➡️`.
+  ⚖️⭐⭐ **E IL REPERTO È PERCHÉ ERANO ANCORA LÌ**: la guardia contro i segni monocromi **esisteva
+  già** — nata il 20/08 da una sua osservazione sul telefono di Lidia — ma controllava **l'apertura
+  dei MESSAGGI**, e questi erano tutti **BOTTONI**. La stessa malattia, nella metà che nessuno
+  guardava. 📌 *Una guardia che copre metà della superficie non protegge metà del problema:
+  protegge la metà che qualcuno si era ricordato di elencare, e lascia crescere l'altra.*
+  🚨⭐ **E LA SONDA STESSA MISURAVA MALE, trovato provando**: l'intervallo `U+2795-27BF` contiene
+  anche `➡` (U+27A1), che col carattere invisibile **`U+FE0F`** diventa la freccia **azzurra** `➡️`
+  — mentre la gemella `⬅️` (U+2B05) sta **fuori** dall'intervallo. ⇒ La regola vecchia avrebbe
+  **bocciato una freccia colorata e lasciato passare la stessa freccia nera**: una sonda che
+  risponde con sicurezza alla domanda **vicina** a quella giusta, che è la 24ª. Ora la regola è
+  *nell'intervallo **e senza** `U+FE0F`*, che è il meccanismo con cui Unicode dice «a colori».
+  ⚠️ **Il buco che resta è dichiarato nel codice**: `➕️` col `U+FE0F` passerebbe e resterebbe nero
+  lo stesso, perché quel segno una versione colorata non ce l'ha.
+  🔁 **Tre casi sono caduti, e nessuno per il comportamento**: riscrivevano i segni **a mano**
+  invece di prenderli dalle costanti — e l'avvertimento era **già scritto** in `mai-un-vicolo-cieco`
+  (*«un carattere copiato non diventa rosso: resta verde guardando un segno che non esiste più»*).
+  ⇒ Le due frecce entrano nel **vocabolario** (`EMOJI.indietro`/`avanti`), così la guardia del
+  monocromo le copre da sola. 🔪 E **due sabotaggi avevano l'àncora scaduta**, dicendo «non
+  protetto» dove la protezione c'è: ri-ancorati, non tolti.
+
+- ✅🚨⭐⭐ **CHI È IN CAMPO LEGGE CHE È IN CAMPO — il difetto che non rompeva niente, con una
+  persona vera dentro.** *(#50, 21/08 notte.)*
+  📏 **Il fatto, al secondo, dai due registri messi insieme:** `00:34:26` Lidia accetta l'invito ·
+  `00:36:48` **il worker fallisce** (`PLAYER_ID_NOT_LOCKED`: l'autocomplete di Matchpoint non
+  aggancia, la casella dell'id resta vuota, e il worker **si rifiuta di salvare** — fallisce
+  **chiuso**, ed è giusto) · `00:36:49` lei ritocca · `00:37:41` **il secondo tentativo RIESCE** e
+  il bot le scrive «✅ Sei in campo» · `00:37:41` **nello stesso secondo lei ritocca ancora**, e la
+  risposta a quel tocco — «Avevi già risposto» — **riscrive sopra** la buona notizia.
+  ⇒ **È rimasta in campo senza saperlo**, con davanti agli occhi un *«non ci sono riuscito,
+  contatta la segreteria»*. 📌 *Il tocco che ha cancellato la notizia è proprio quello che uno fa
+  perché non l'ha ancora vista.*
+  ⚖️ **Dove NON stava la cura**, ed è la metà che ha impedito di scrivere quella sbagliata: **non**
+  nel meccanismo dei messaggi, che è giusto (si risponde riscrivendo la schermata del bottone, e ha
+  già il suo ripiego: se non riesce a riscrivere, manda nuovo). La cura è nell'**ordine dei
+  motivi**: *se la persona È in campo, quello è il fatto, e nessuna contabilità dell'invito lo
+  batte.* Ritirato, scaduto, già risposto sono cose vere dell'**invito**; nessuna delle tre è più
+  importante di **dove si trova la persona adesso**.
+  📌⭐⭐ **E LA REGOLA ERA GIÀ SCRITTA IN QUEL FILE, DUE RIGHE SOTTO**, applicata a **un caso solo**:
+  *«Prima "ci sei già" e poi "è pieno": chi è già in campo su una partita al completo deve leggere
+  che è dentro, non che è arrivato tardi. L'ordine è la frase che riceve.»* Valeva contro «è pieno»
+  e non contro gli altri tre. ⇒ *La stessa regola applicata in un punto e non nell'altro è il modo
+  in cui questo difetto è già tornato più volte su questo progetto.*
+  🚨🔨 **Il verde che non voleva dire niente**: dopo la cura il banco è rimasto **verde su 1344
+  casi**, perché quel comportamento non lo guardava nessuno. I casi sono stati scritti **dopo**, con
+  un sabotaggio che rimette il difetto di Lidia **identico** e uno che prova la **bugia opposta**
+  («ci sei già» detto a chi in campo non c'è). 1346 verdi, sabotaggi 5 su 5.
+  ⛔ **Quello che questa cura NON fa, dichiarato**: l'autocomplete di Matchpoint continua a non
+  agganciare ogni tanto (ha colpito **Fabiola alle 22:55 e Lidia alle 00:36**, e il 19/08 «Ospite»
+  due volte), e **ogni tentativo costa ~52 secondi**. Quello è di là, ed è la voce **A** dei
+  difetti misurati e non curati.
 
 - ✅⏳🗣️⭐⭐ **GLI INVITI DURANO 3 ORE — e la scadenza vale finalmente da TUTT'E DUE I LATI.**
   🗣️ Sue parole, in due frasi a un minuto l'una dall'altra: *«tagliamo la testa al toro. Gli inviti
