@@ -2,6 +2,61 @@
 
 **Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
 
+## 🔎 Il filo della 43ª: **un VERDE che sopravvive a un cambio di comportamento è un avviso**
+
+Tre volte nella stessa sessione ho cambiato cosa il socio **vede**, e il banco è rimasto verde:
+
+| | cosa è cambiato | il banco |
+|---|---|---|
+| ① | la schermata dopo un invito mandato — da «torna alla partita» a «resta sull'elenco» | **1272 su 1272 verdi** |
+| ② | otto messaggi riscritti col vocabolario delle emoji | **1282 su 1282 verdi** |
+| ③ | le etichette dei due bottoni gemelli | verde finché non ho scritto il caso apposta |
+
+⇒ Ogni volta la ragione era la stessa e non «va tutto bene»: **nessun caso arrivava lì**. Il ① aveva
+**un solo** test su quel ramo, e passava con **un amico solo** in rubrica — quindi cadeva sempre nel
+ramo di ripiego — e per giunta **in collaudo la funzione esce prima**.
+⚖️ Non è la 30ª (*la riga giusta che non difende niente*): quei casi difendevano davvero qualcosa,
+solo **non quel pezzo**. Il verde era **vero e muto**, che è più insidioso di un verde bugiardo
+perché non c'è niente da correggere — c'è qualcosa da **aggiungere**, e nessuno lo sa.
+
+⭐⭐ **La cura NON è un caso per ogni messaggio: è una guardia della CLASSE.**
+`test/vocabolario-emoji.test.ts` tiene 26 messaggi in tabella e quattro regole (il segno c'è · è
+quello della sua famiglia · non è monocromo · titolo e dettaglio hanno **due pesi diversi**), più il
+controllo del metro che costruisce a mano i tre difetti.
+📌 *Un caso per messaggio difende i messaggi che qualcuno si è ricordato di elencare; una guardia
+della classe difende anche quelli che scriverà domani chi non avrà letto niente di tutto questo.*
+
+🩹 **E il corollario, pagato TRE volte e sempre scoperto da un rosso, mai rileggendo: non cambiare
+le PAROLE dove serve solo l'EMOJI.** Ho scritto «Ci sto ancora lavorando» al posto di «Sto ancora
+eseguendo», «Eri già uscito» al posto di «sei già uscito», e un titolo che duplicava «domani».
+⇒ La disciplina giusta è **tenere le parole**, spezzarle in titolo + dettaglio, aggiungere il segno.
+Si accorcia **solo** dove una parola è diventata ridondante col segno («Fatto:» davanti a un ✅).
+⚖️ Lui aveva autorizzato ad accorciare — e proprio per questo la mano scappa: *un permesso a
+cambiare non è un obbligo a cambiare*, e ogni parola toccata senza una ragione è una sua decisione
+rovesciata di sfuggita.
+
+🔁 **E la terza cosa, che vale oltre oggi: QUANDO UNA REGOLA VIENE ROVESCIATA, la domanda non è
+«chi aveva ragione».** Un caso diceva *«le domande e i rifiuti restano SENZA grassetto: su un no è
+alzare la voce»*. Il perimetro nuovo lo rovescia — ma quella ragione **non era sbagliata**, è stata
+**risolta altrove**: a non alzare la voce su un no ci pensa adesso il **segno** (⚠️ o 🔧, mai ✅).
+⇒ *La domanda giusta è: la cosa che la vecchia regola proteggeva, adesso chi la protegge? Se la
+risposta è «nessuno», il rovescio è una perdita travestita da decisione.*
+
+## 📌 Le decisioni prese dal committente nella 43ª
+
+| | |
+|---|---|
+| 🗣️ **«uniformiamo le parole: se abbiamo messo togli un giocatore, anche invita un giocatore»** | ⭐ E la misura gli ha dato ragione oltre l'estetica: «amico» era l'**unica stringa visibile di tutto il bot** con quella parola, contro quindici che dicono «giocatore» — compresa quella **due centimetri sopra lo stesso bottone** |
+| ⛔ **la forma corta («Togli» / «Invita») offerta da lui e NON presa** | ⚖️ gliel'ho detto con la ragione: collide con una **sua** decisione del 5/08 — su Telegram i bottoni sono tutti dello stesso colore, e «Togli», «Esci» e «❌ Annulla» stanno a un dito di distanza |
+| 🎨 **«deve essere colorato in quanto tutto il resto è monocolore»** | ⇒ `➖` (U+2796) esce **nero**: era l'unica delle quattro `apertura()` senza colore. Scelta **👋** fra tre proposte |
+| ✂️ **«leverei, che lo fai valere per tutti quanti, il fatto di chiama la segreteria»** | 📏 «tutti quanti» sono **due** messaggi, contati. ⭐ La ragione regge da sé: lì il socio non ha un problema **col circolo** ma con **una persona**, e la segreteria non può sapere perché |
+| 🗣️ **«dopo che ho aggiunto un giocatore… però poi come proseguo?»** | ⭐⭐ **due lamentele, un difetto solo**: la frase prometteva «puoi invitare anche altri» e sotto ci metteva la **scheda della partita** — la strada per un'altra cosa |
+| ⬜ **«decidere con una spunta chi voglio invitare… e poi un bottone sotto per l'invio»** | ⚖️⭐⭐ **rovescia la forma a un tocco che aveva scelto lui, e che IO avevo difeso** con un conto di tocchi (3 contro 4). Chiesto **dopo averlo visto dal vivo**: *una decisione presa guardando la cosa vera vince su una presa guardando un conto* |
+| ⛔ **«📨 Invita tutti quelli che restano»: no, per ora** | manderebbe un messaggio **vero** a persone vere con un tocco solo e nessuna conferma |
+| 🎨 **«gli emoticon vanno messi sempre. Il motivo? Così differenziamo un messaggio dall'altro»** | ⭐⭐ **la sua ragione detta anche COME sceglierle**: cento emoji diverse non differenzierebbero niente ⇒ **undici famiglie**, approvate da lui, non cento decorazioni |
+| ✂️ **«dove puoi accorciare i testi fallo»** | ⚠️ e vedi il corollario del filo qui sopra: il permesso è stato usato **tre volte di troppo**, e ogni volta l'ha detto un rosso |
+| 📄 **«segnati questo messaggio da correggere»** | ⇒ la voce sta fra le 🆕 «nate misurando», **non promossa**: le promozioni le decide lui |
+
 ## 🔎 Il filo della 36ª: **anche un difetto VISTO è un'ipotesi finché non si misura il bersaglio**
 
 La 33ª mi ha consegnato un difetto che lui aveva visto con i suoi occhi — *«su una scheda dove la
@@ -1153,6 +1208,93 @@ che è il modo in cui un residuo diventa un mistero.
 ## 🆕 Nate misurando, **non** ancora in coda
 
 Nella **43ª**, da uno **screenshot suo** e poi misurando (20/08, tardo pomeriggio):
+
+- ✅⭐ **LE PAROLE DEI DUE GESTI GEMELLI, UNIFORMATE — e non era estetica.** 🗣️ *«se abbiamo messo
+  togli un giocatore direi che possiamo uniformarlo mettendo anche invita un giocatore»*.
+  📏 **Misurato prima di toccare**: «amico» era l'**unica stringa visibile di tutto il bot** con
+  quella parola, contro **quindici** che dicono «giocatore» — compresa quella che sta **due
+  centimetri sopra lo stesso bottone** nella scheda «✅ Prenotato» (*«Tocca qui sotto per invitare
+  i giocatori»*). Il socio leggeva «giocatori» e toccava «amico». ⇒ Non si imponeva una regola
+  nuova: si **toglieva un'eccezione**.
+  ⛔ **La forma corta («Togli» / «Invita») l'ha offerta lui e NON è stata presa**, con la ragione
+  detta: collide con una **sua** decisione del **5/08** — su Telegram i bottoni sono tutti dello
+  stesso colore, e «Togli», «Esci dalla partita» e «❌ Annulla la partita» stanno a un dito di
+  distanza. ⇒ Accorciare lì non è sintesi, è togliere l'unica difesa rimasta a tre bottoni vicini
+  di cui uno è irreversibile.
+  ⭐ Le due etichette sono diventate **costanti gemelle, accanto**: due etichette che descrivono il
+  verso opposto dello stesso gesto devono potersi leggere insieme, o si uniforma una e si dimentica
+  l'altra. 🔨 `test/parole-uniformi.test.ts` difende **le due decisioni che tirano in versi
+  opposti** (uniformare / non accorciare) nello stesso file — o chi uniformasse **accorciando**
+  resterebbe verde. 10 sabotaggi, tutti visti.
+  📌 **PR #39 del repo del bot, fusa e deployata sui soci.**
+
+- ✅🗣️ **«COME PROSEGUO?» E «NON POSSO FARE INVITI MULTIPLI» ERANO LO STESSO DIFETTO.** 🗣️ *«dopo
+  che io ho aggiunto un giocatore sulla mia chat tu me lo confermi, però poi come proseguo? Tra
+  l'altro mi sono accorto adesso che non posso fare una richiesta multipla di inviti»*.
+  ⭐ Il testo prometteva *«nel frattempo puoi invitare anche altri»* e sotto ci metteva **la scheda
+  della partita**: la parola diceva «continua», lo schermo diceva «finito». ⇒ *Una frase che
+  promette una strada e una schermata che ne offre un'altra non è un'imprecisione: è la strada che
+  manca.*
+  📏 **E l'invito multiplo non aveva bisogno di nessuna meccanica nuova**, misurato prima di
+  scrivere: ① la gara *«il posto lo prende chi risponde per primo»* è già decisa al momento della
+  **risposta** (`esitoDellaRisposta` rilegge il roster e dà `posto_finito`), non dell'invio;
+  ② `invitabili` toglie già da sé chi è in campo e chi ha un invito in sospeso. **Mancava solo lo
+  schermo.**
+  ⚖️ Rovescia a metà la regola del 19/08 (*«dopo un invito mandato si resta sulla partita»*), e va
+  detto: quella regola nasceva perché *«senza la scheda sotto quel "puoi" non aveva dove»* — il
+  problema era il **vicolo cieco**, non la partita. Qui il «dove» c'è ed è migliore, e il ritorno
+  alla partita resta in fondo.
+  📌 **PR #40 del repo del bot, fusa e deployata sui soci alle 14:48.**
+
+- ✅⬜⭐⭐ **LA SCELTA A SPUNTE — e la domanda vera non era il quadratino.** 🗣️ Chiesta da lui
+  **dopo averlo visto dal vivo**: *«vorrei la possibilità di decidere con una spunta chi voglio
+  invitare, quindi uno, due, tre, quattro, cinque, sei, sette giocatori, facendo sì che col flag li
+  attivo per inviarli e poi un bottone sotto per l'invio»*.
+  ⚖️ **Rovescia la forma «un tocco, un invito» che aveva scelto lui stesso, e che IO avevo difeso**
+  con un conto di tocchi (3 contro 4, e chi ne invita uno solo passa da 1 a 2). Aveva ragione lui:
+  *una decisione presa guardando la cosa vera vince su una presa guardando un conto.*
+  ⭐⭐ **La domanda vera era DOVE VIVE LA SELEZIONE fra un tocco e l'altro.** Le tre strade ovvie
+  hanno tutte un difetto: una memoria in processo **si perde al riavvio** (e i deploy del bot
+  riavviano — misurato tre volte nella stessa giornata), una memoria su database va scritta e
+  ripulita, e il `callback_data` ha **64 byte** in tutto.
+  ⇒ La quarta: **la selezione È LO SCHERMO.** Telegram, insieme al tocco, ridà il messaggio con la
+  sua `reply_markup`, e le spunte si rileggono da lì (`segnatiIn`). Niente da tenere, niente da
+  scadere, e due partite aperte nella stessa chat non si mescolano — ogni messaggio porta le sue.
+  📌 `TgMessage` non dichiarava quel campo: **Telegram lo mandava già**, non si poteva leggere.
+  🚨 Lettere **nuove** (`p`, `q`) e non riuso di `m`: i bottoni vecchi restano in chat e toccabili,
+  e cambiare il significato di una lettera già disegnata fa fare al bottone vecchio **una cosa
+  nuova** — il difetto peggiore, perché è silenzioso.
+  🚨 La spunta dice **«lo volevo», non «si può»**: all'invio si passa dall'elenco riletto adesso,
+  perché fra il flag e il tocco su «Manda» possono passare minuti.
+  📌 **PR #41 del repo del bot, fusa e deployata sui soci alle 20:52.**
+
+- ✅🎨🗣️ **L'EMOJI SU TUTTI I MESSAGGI: un vocabolario di famiglie, non cento decorazioni.**
+  🗣️ Guardando il telefono di una socia: *«guarda l'ultimo messaggio che ha ricevuto, non ci sono
+  gli emoticon. Secondo me vanno messi sempre. Il motivo? Così differenziamo un messaggio
+  dall'altro.»* 📏 Misurato: su **~118 aperture di messaggio, solo 10** avevano un'emoji.
+  ⭐⭐ **La sua ragione detta anche COME sceglierle**, ed è il pezzo da non perdere: se ogni
+  messaggio avesse la sua, cento emoji diverse non differenzierebbero niente — sarebbero cento
+  decorazioni. A distinguere è la **ripetizione**. ⇒ *Un'emoji per messaggio è decorazione;
+  un'emoji per FAMIGLIA è un vocabolario.*
+  ⇒ **Undici famiglie** in `EMOJI` (`lib/formato.ts`), **in un posto solo**, approvate da lui:
+  ✅ fatto · 👋 brutta notizia · 🎾 invito · ❓ domanda · ⚠️ non si può · 🔧 guasto · ⏰ promemoria ·
+  👍 ho preso nota · 💶 soldi · 🎯 livello · 📇 rubrica.
+  🚨 **Tutte a colori, ed è un requisito e non un gusto**: `➖` (U+2796) esce **nero** su Telegram,
+  e in una colonna di testo nero non si vede — *«non lo devi mettere nero o grigio»*, sue parole.
+  La guardia vieta la **classe** (il blocco «matematico»), non il singolo carattere: vietare il
+  solo `➖` lascerebbe passare il `➕`, che ha lo stesso identico difetto.
+  ⚠️ **RESIDUO DICHIARATO**: convertiti i **cinque** file che il socio incontra nell'uso normale
+  (invito, togli, uscita, avvisi, rubrica). Restano `ingresso-testi.ts` (l'ingresso, che si vede una
+  volta sola) e le schermate di `gestisci-testi.ts`, che hanno già la loro testata. **La guardia lo
+  dichiara nel proprio commento** invece di lasciar credere di coprire tutto.
+  📌 **PR #41**, insieme alle spunte.
+
+⚠️ **E il residuo che vale per tutte e quattro: nessuna è stata guardata su un TELEFONO da lui.**
+Il banco dice che il codice fa la cosa giusta; **cosa il socio VEDE lo dice solo un telefono** — ed
+è la lezione che questa giornata ha imparato tre volte. 🚨 Le spunte per giunta **non sono
+provabili sul bot di prova**: in collaudo l'invito non parte affatto (è un messaggio a una persona
+vera, e un Telegram di prova non esiste), quindi la funzione esce **prima** della schermata nuova.
+
 
 - 🚨⭐⭐ **LA CHAT NON È PIÙ IN ORDINE DI TEMPO, E DUE BOLLE VICINE SI SMENTISCONO SU UN FATTO
   CONTABILE.** 🗣️ Sue parole mandando la foto: *«segnati anche questo messaggio da correggere
