@@ -17,6 +17,7 @@ import {
 import {
   activeFieldsOnImport,
   buildDeactivatedMemberRecord,
+  buildReactivatedGuestJollyRecord,
   decideStaleMember,
   decideStaleSweep,
   isMatchpointGoverned,
@@ -1720,6 +1721,7 @@ function buildStaleMatchpointMemberOutcomes(
 ) {
   const tombstones = [];
   const deactivations = [];
+  const reactivations = [];
   // Denominatore del tetto (./stale-guard.ts): la popolazione Matchpoint IN ARCHIVIO, contata
   // PRIMA dell'esclusione, quindi anche i soci presenti in questa passata.
   // ⚠️ Contarla dopo l'esclusione sarebbe inutile: lì restano i soli ASSENTI, cioè un numero
@@ -1730,6 +1732,15 @@ function buildStaleMatchpointMemberOutcomes(
     const localKey = clean(record?.local_key || '');
     if (!localKey) continue;
     if (isMatchpointGoverned(record.payload || {})) considered += 1;
+    // Il jolly «Ospite» qui può solo GUARIRE: `decideStaleMember` per lui risponde sempre
+    // 'keep', e se una passata vecchia di questa stessa regola l'aveva disattivato (4-5/08,
+    // marcatore `matchpoint_snapshot_absent`) si riattiva. Prima dell'esclusione di proposito:
+    // il jolly non è mai fra gli importati, ma la guarigione non deve dipendere da questo.
+    const healedJolly = buildReactivatedGuestJollyRecord(record, importedAt);
+    if (healedJolly) {
+      reactivations.push(healedJolly);
+      continue;
+    }
     if (excludedLocalKeys.has(localKey)) continue;
     const outcome = decideStaleMember(record.payload || {}, importedMemberIds);
     if (outcome === 'keep') continue;
@@ -1739,7 +1750,7 @@ function buildStaleMatchpointMemberOutcomes(
     }
     tombstones.push(buildDeletedMemberRecord(record, importedAt, 'matchpoint_snapshot_stale'));
   }
-  return { tombstones, deactivations, considered };
+  return { tombstones, deactivations, reactivations, considered };
 }
 
 function cloudRecordBatchKey(record: any) {
@@ -2010,7 +2021,9 @@ Deno.serve(async (req) => {
     let duplicateDeleted = 0;
     let staleDeleted = 0;
     let staleDeactivated = 0;
+    let staleReactivated = 0;
     const staleDeactivatedSample: Array<{ memberId: string; name: string }> = [];
+    const staleReactivatedSample: Array<{ memberId: string; name: string }> = [];
     // Esito del tetto per passata. Il valore di partenza descrive «non c'era niente da fare»:
     // se l'import fallisce prima del giro stale, il report non deve far credere a un blocco.
     let staleSweep = { apply: true, total: 0, cap: 0, considered: 0 };
@@ -2178,6 +2191,19 @@ Deno.serve(async (req) => {
       deactivations: staleOutcomes.deactivations.length,
       considered: staleOutcomes.considered,
     });
+    // Le riattivazioni del jolly «Ospite» passano FUORI dal tetto, di proposito: il tetto para
+    // le scritture distruttive di un export inaffidabile, e questa è l'opposto — restaurativa,
+    // e limitata per costruzione alle sole schede jolly. Bloccarla sotto sweep bloccato
+    // significherebbe non guarire mai proprio nelle passate in cui qualcosa è già storto.
+    records.push(...staleOutcomes.reactivations);
+    staleReactivated = staleOutcomes.reactivations.length;
+    for (const record of staleOutcomes.reactivations) {
+      if (staleReactivatedSample.length >= 10) break;
+      staleReactivatedSample.push({
+        memberId: clean(record.payload?.memberId || ''),
+        name: clean(record.payload?.name || ''),
+      });
+    }
     if (staleSweep.apply) {
       // Campione nel report: una disattivazione automatica è silenziosa e va potuta controllare.
       for (const record of staleOutcomes.deactivations) {
@@ -2219,6 +2245,10 @@ Deno.serve(async (req) => {
         duplicateDeleted,
         staleDeleted,
         staleDeactivated,
+        // Riattivazioni del jolly «Ospite» (guarigione, fuori dal tetto). Contate dall'esito
+        // del giro e non ricalcolate da `finalRecords`: una scheda riattivata è indistinguibile
+        // da un import normale — marcatori azzerati apposta, come fa `activeFieldsOnImport`.
+        staleReactivated,
         // Il tetto per passata: `staleSweepBlocked` è il campanello, gli altri due dicono
         // «quanto voleva fare» contro «quanto gli era concesso» — senza i due numeri il
         // blocco non è diagnosticabile e resta un rifiuto muto.
@@ -2233,6 +2263,7 @@ Deno.serve(async (req) => {
         updated,
       },
       staleDeactivatedSample,
+      staleReactivatedSample,
       staleSweepBlockedSample,
       file: {
         filename: exported.filename,
@@ -2307,6 +2338,8 @@ Deno.serve(async (req) => {
       staleDeleted,
       staleDeactivated,
       staleDeactivatedSample,
+      staleReactivated,
+      staleReactivatedSample,
       staleSweepBlocked: !staleSweep.apply,
       staleSweepTotal: staleSweep.total,
       staleSweepCap: staleSweep.cap,
@@ -2336,6 +2369,7 @@ Deno.serve(async (req) => {
         duplicateDeleted,
         staleDeleted,
         staleDeactivated,
+        staleReactivated,
         staleSweepBlocked: !staleSweep.apply,
         added,
         updated,
