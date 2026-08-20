@@ -1152,6 +1152,63 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+Nella **41ª**, misurando il worker prima di curarlo (20/08, mattina):
+
+- 🚨⭐⭐ **`SAVE_BUTTON_NOT_FOUND` NON È COLPA DI `fillOsservazioni`, e la scheda che lo diceva è
+  smentita dal registro.** La consegna della 40ª concludeva *«il worker si sposta da solo dove il
+  bottone non c'è, e poi si lamenta che non c'è»* — cioè il click sulla linguetta «Osservazioni»
+  porta la pagina altrove e `clickFormSave` cerca il salvataggio da lì.
+  📏 **Il dump nella riga stessa che quella scheda cita dice il contrario**: `nearbyText` =
+  *«Nuova partita - 24/08/2026 09:30-11:00 Generale Osservazioni Prenotazione Campo»* e
+  `CC_HiddenFieldPestanyaIluminada` = **`"0"`**. La pagina è ancora il form, con le tre linguette
+  al posto loro, e la linguetta accesa è ancora la **0 = Generale**. Il postback non è mai
+  atterrato: **non si è spostato niente.**
+  ⭐ **La causa vera sta due piani più su, ed è misurata al millisecondo.** I tempi cumulati
+  (`mp_op_timing`, `op:"create"`, `ok:false`): `player_added` 14,7 s → `osservazioni_tab_click`
+  20,8 s → `osservazioni_textarea_absent` 28,8 s → `save_button_not_found` **58,8 s**. Trenta
+  secondi fra i due: sono gli **otto selettori** di `clickFormSave` che scadono **tutti**. Non è un
+  bottone altrove, è **una pagina che non risponde più a niente**.
+  E la riga di prima nel registro: `16:52:19.788` — `read-tabellone` `QUEUE_JOB_TIMEOUT`, *«oltre
+  90s: annullata per non bloccare la coda»*. La create è partita a `16:52:19.787`
+  (`time` 16:53:18.643 meno `runMs` 58856), **un millisecondo dopo**, seconda in coda
+  (`queueWaitMs` 11967), su sessione **`warm_new`** — browser nuovo, perché il timeout aveva appena
+  chiuso quello vecchio. Ha funzionato venti secondi, poi le è morto sotto.
+  ⚖️ **E il codice questa malattia se l'era già scritta**: il commento del timeout di coda dice
+  *«Playwright NON è stata interrotta e sta ancora usando la pagina warm CONDIVISA (zombie)…
+  origine dei `warm_new` rotti nei log»*; e `edit-booking` ha **già** una guardia contro esattamente
+  questo — *«la Ficha non è renderizzata del tutto — tipico SUBITO dopo un rilancio del browser
+  (incidente 01/07 10:14: sessione warm_new in login)»* — ma **solo nel ramo delle rimozioni**.
+  ⇒ È la frase con cui è stata chiusa la #920 il giorno prima: *una regola curata in un punto e non
+  nell'altro è la forma in cui questo difetto è già tornato una volta.*
+  🔎 **Confidenza, dichiarata invece che sottintesa**: che la create sia partita sul relitto è
+  **misurato**. *Perché* la pagina muoia al ventesimo secondo è **ipotesi** — il `release(failed)`
+  dello zombie chiama `mpWarmInvalidate()` senza guardare, e a quel punto `_mpWarm` è il browser di
+  qualcun altro. Coerente col codice, **non** vista.
+  📌 **Il difetto è misurato UNA volta sola**: la finestra di `out.log` copre ~40 ore e dentro c'è
+  un solo `create` fallito così. *Un esito visto una volta non è una regola.*
+  ⛔ **La cura che la scheda vecchia implicava — far guardare ai chiamanti il valore di ritorno di
+  `fillOsservazioni`, o rimetterla sulla linguetta giusta — NON avrebbe curato niente.**
+
+- 🔴 **`read-tabellone` sfora i 90 secondi OLTRE 40 VOLTE IN 16 GIORNI**, e nessuno ha mai misurato
+  perché. Dal 4 al 20/08, ~2,5 al giorno, **tutti i giorni** — è di gran lunga il guasto più
+  frequente del worker, e ogni volta `mpWarmInvalidate()` butta giù il **browser condiviso** sotto
+  chiunque lo stia usando. È la causa a monte del reperto qui sopra.
+  ⚖️ **Non si tocca senza aver prima misurato PERCHÉ quella lettura sfori**: alzare il tetto o
+  togliere l'invalidazione sono due cure opposte, e quale sia quella giusta dipende da una cosa che
+  nessuno ha guardato.
+
+- ⚠️ **`guard-worker-sync` del worker sorveglia SOLO `server.mjs`**, non la cartella. La sua lista è
+  `tools/matchpoint-browser-worker/src/server.mjs .github/workflows CLAUDE.md docs`.
+  🚨 **Il 20/08 è mancato poco che costasse**: il `server.mjs` nuovo importa `./tipo-ficha.mjs`, e il
+  riallineo prescritto dal punto 2 di `CLAUDE.md` — *«copia `server.mjs`»* — preso alla lettera
+  avrebbe lasciato su `test-preview` un file che importa qualcosa che là non esiste, **con la
+  guardia verde**. È la 24ª nella forma peggiore: una sonda che risponde con sicurezza alla domanda
+  **vicina** a quella giusta.
+  ⇒ Due strade, e la scelta è del committente: allargare la lista a tutta la cartella del worker,
+  **oppure** correggere il testo del punto 2 perché dica «la cartella» e non «il file». La prima
+  protegge anche chi non legge; la seconda non tocca la guardia. Il 20/08 il riallineo è stato fatto
+  a mano su tutt'e cinque i file, quindi oggi i due rami sono allineati davvero.
+
 Nella **40ª**, dallo screenshot di un telefono vero (19/08, notte):
 
 - 🗣️👁️⭐⭐ **NELLA CHAT DI UN SOCIO NON SI CAPISCE CHI PARLA — e la causa non è grafica: è che il
