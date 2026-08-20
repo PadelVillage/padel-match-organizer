@@ -1209,6 +1209,39 @@ che è il modo in cui un residuo diventa un mistero.
 
 Nella **43ª**, da uno **screenshot suo** e poi misurando (20/08, tardo pomeriggio):
 
+- 🚨⭐⭐ **LA FRASE E IL ROSTER, NELLA STESSA BOLLA, DICONO DUE NUMERI DIVERSI.** 🗣️ Sue parole
+  mandando la foto: *«ho tolto Lidia e Fabiola dalla partita, però come vedi nel messaggio in fondo
+  dice che sono ancora presenti, e questo non è corretto»*.
+  📏 **Misurato nel registro, e la misura dice più della foto: si contraddicono in TUTT'E DUE I
+  VERSI** — il che **esclude** «il roster è indietro», perché un ritardo sbaglia sempre dalla stessa
+  parte.
+
+  | ora | tolta | la FRASE dice | il ROSTER sotto mostra |
+  |---|---|---|---|
+  | `21:02:43` | Fabiola | *«Adesso in campo **ci sei solo tu**»* (= 1) | ⭐ Maurizio **e Lidia Comes** (= **2**) |
+  | `21:06:02` | Lidia | *«Adesso in campo **siete in 2**»* | ⭐ Maurizio e **tre posti liberi** (= **1**) |
+
+  ⇒ **Le due metà della stessa bolla vengono da due fonti diverse e non si parlano**: il numero
+  della frase è `restano`, che arriva dalla **risposta del gestionale alla rimozione**; l'elenco
+  sotto è il roster passato da `roster-di-recente`, la memoria in processo che toglie chi è appena
+  uscito. Nella prima riga la memoria non aveva ancora tolto Lidia; nella seconda le aveva tolte
+  tutt'e due mentre il gestionale ne contava ancora una.
+  🔎 **La cura non è aggiustare il numero: è farlo venire dallo STESSO POSTO da cui viene
+  l'elenco.** Un numero calcolato dal roster che si sta per mostrare **non può** contraddire quel
+  roster — è vero per costruzione. Oggi sono due misure indipendenti della stessa cosa, e due
+  misure indipendenti prima o poi divergono. ⇒ *Il difetto non è il valore sbagliato: è che i
+  valori siano DUE.*
+  ⚖️ **Parente stretto della voce qui sotto (la chat fuori ordine), ma NON la stessa cosa**: là due
+  bolle diverse si smentiscono per una questione di **posizione**, qui è **una bolla sola** che si
+  smentisce **da sé**. 🚨 *Due difetti che si vedono nella stessa schermata non sono lo stesso
+  difetto* — ed è la seconda volta oggi che vale, sulla stessa partita e con le stesse persone.
+  📌 **Cura NON scritta.** Voce fra le «nate misurando», **non promossa**.
+  🔎 **E una cosa da RIGUARDARE, non da concludere**: ai tocchi `togli conferma` delle `21:03:30` e
+  `21:04:11` **non segue nessuna riga di risposta nel registro**. Non è (ancora) un difetto — la
+  regex della sonda non conteneva `tolt`, quindi una risposta *«👍 Avevo già tolto Lidia Comes»*,
+  che è il comportamento **giusto** del freno, sarebbe stata **filtrata via**. Va riletto con
+  `cerca` = `tolt|togli`. 📌 *Una riga che manca in un log filtrato non è una riga che manca.*
+
 - ✅⭐ **LE PAROLE DEI DUE GESTI GEMELLI, UNIFORMATE — e non era estetica.** 🗣️ *«se abbiamo messo
   togli un giocatore direi che possiamo uniformarlo mettendo anche invita un giocatore»*.
   📏 **Misurato prima di toccare**: «amico» era l'**unica stringa visibile di tutto il bot** con
