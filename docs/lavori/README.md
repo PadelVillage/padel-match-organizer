@@ -1789,15 +1789,34 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**
+✅ ~~🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**~~ — **CHIUSA la
+sera del 21/08**, e come si è chiusa vale più del fatto che si sia chiusa.
+
 `test/guarda-finche-non-sai.test.mjs`, caso **27** — *«il deposito porta con sé il NUMERO del
-lavoro, o alla ripresa non c'è cosa chiudere»* — **fallisce su `origin/main` pulito**, misurato
-riportando l'albero a `main` senza nessuna riga del lavoro di giornata: **28 casi su 29**.
-⚠️ Sta qui e non fra le urgenti perché **le promozioni le decide il committente**. Ma va detto
-com'è messa: un banco che è rosso e resta rosso è un banco che si smette di leggere, ed è lo
-stesso meccanismo per cui il 14/08 `guard-worker-sync` è stata resa paziente. 📌 Nessuno l'ha
-scoperto prima perché il banco del gestionale **non gira in CI**: si lancia a mano, un file per
-volta.
+lavoro»* — falliva su `main` pulito: **28 su 29**. La scheda diceva anche la ragione di fondo:
+*«nessuno l'ha scoperto prima perché il banco del gestionale non gira in CI»*.
+
+🔎 **La causa, misurata**: `pmoVerificheSegna` ha preso un **quinto parametro** (`tipo`) con la
+#853 del **18/08**, e la guardia cercava la firma esatta a quattro ⇒ rossa da **tre giorni**.
+⭐ **La regola era intatta, il meccanismo no** — `jobId` c'è ancora, al suo posto, e i tre
+chiamanti incerti lo passano. ⇒ La guardia si **AGGIORNA**, non si allenta: ora pretende i
+quattro nomi nell'ordine e tollera solo ciò che viene **dopo**. Se `jobId` sparisce o cambia
+posto, torna rossa.
+
+🚨⭐⭐ **E curando la causa di fondo — le prove che non giravano — ne sono usciti ALTRI DUE, della
+stessa famiglia ma peggiori**: `test/creazione-cliente-telefono.test.mjs` e
+`test/schede-non-collegate.test.mjs` contavano i falliti, li **stampavano**, e uscivano **0 lo
+stesso**. ⇒ Dentro un gate sarebbero state **prove finte**: rosse per intero, col semaforo verde.
+Ora escono col codice giusto, e il **controllo negativo** lo dimostra (copia sabotata → `exit 1`).
+
+⚖️ **La lezione, che è la ragione per cui questa scheda resta invece di sparire**: il difetto
+visibile era **uno**, ed era il meno grave. Un banco rosso lo si vede; una prova che non sa
+diventare rossa non la vede nessuno, **per costruzione**. Chi cura solo ciò che si vede lascia
+in piedi proprio la classe di difetti che si nasconde.
+
+📌 **La cura vera è `prove.yml`** (PR #956): 42 file, due corridoi (Node e Deno), gate
+**assoluto** perché non c'era debito da tollerare. E i file si **rilevano**, non si elencano —
+un elenco a mano dimentica il file nuovo, che è come 42 prove sono rimaste a terra.
 
 
 Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per la stessa ragione delle
