@@ -304,7 +304,14 @@ await caso('27. ⚠️ il deposito porta con sé il NUMERO del lavoro, o alla ri
   const segna = estrai('pmoVerificheSegna');
   const passanti = incerti.filter((b) => /pmoVerificheSegna\(_sbId, parsed, why, _jobIgnoto\)/.test(b));
   return [
-    /function pmoVerificheSegna\(id, parsed, perche, jobId\)/.test(segna),
+    // 🔧 21/08/2026 — la regex NON pretende più la firma esatta a quattro parametri: ne è
+    // stato aggiunto un quinto (`tipo`) e questa guardia cadeva pur essendo la regola intatta.
+    // ⭐ Continua a pretendere i quattro nomi NELL'ORDINE, `jobId` compreso: se sparisce o
+    // cambia posto torna rossa. Quello che tollera è solo ciò che VIENE DOPO.
+    // ⚖️ È la regola del progetto sulle guardie del banco: quando cambia il meccanismo e non
+    // la regola, si insegna loro il posto nuovo — allentarle sarebbe perdere la protezione
+    // fingendo di tenerla.
+    /function pmoVerificheSegna\(\s*id,\s*parsed,\s*perche,\s*jobId\s*[,)]/.test(segna),
     segna.includes('jobId: String(jobId'),
     passanti.length === incerti.length,
   ];
