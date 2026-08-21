@@ -1700,6 +1700,40 @@ di codice da decidere.
 ⭐ Ma la protezione ora è **doppia e indipendente**: anche col doppione tornato, la #955 riconosce
 le due schede come una persona sola e l'avviso parte lo stesso.
 
+🔌⭐⭐ **E C'È UN INTERRUTTORE, dalla sera del 21/08.** Si spegne cambiando **un `true` in
+`false`** nella kb — sezione `avvisi_dal_circolo`, chiave `attivi` — su `pmo_ai_settings`
+(`assistant_kb`, `env='prod'`). **Nessun deploy, effetto al giro dopo.**
+
+🚨 **Perché serviva, e non era un lusso**: prima, per fermare questi avvisi, l'unica strada era
+**rideployare il bot su un commit precedente** — che avrebbe spento anche tutto il resto atterrato
+con loro (le due fasi del flusso, le cure delle frasi del 21/08). ⇒ *Un rimedio che costa più del
+guasto è un rimedio che non si usa.*
+
+⚖️ **Fail closed**, come le due famiglie gemelle: kb assente, sezione assente o `attivi` diverso
+da `true` ⇒ **spento**. E il confronto è `=== true`: la stringa `"false"` è **vera** in
+JavaScript, e sarebbe proprio la forma in cui qualcuno prova a spegnerlo di fretta.
+🚨 Sta **prima** della chiamata al ponte: da spento non si ritira niente, e ritirare è
+**irreversibile** — il gestionale marca consegnato ciò che dà. Un interruttore che spegnesse solo
+l'invio brucerebbe i fatti in silenzio.
+
+📌 **La chiave è stata scritta nella kb PRIMA del codice**, di proposito: col fail-closed, l'ordine
+inverso avrebbe lasciato la voce 68 spenta nel frattempo.
+
+🔎⭐ **E scrivendolo sono usciti DUE difetti, prima che arrivassero ai soci** — vale la pena
+saperlo perché dice qualcosa sul metodo, non solo su questa voce:
+① **le famiglie erano diventate tre e il codice ne contava due**: il giro usciva quando le due a
+orario erano spente, e gli avvisi del circolo si sarebbero spenti **con loro** pur avendo
+l'interruttore acceso. Un accoppiamento invisibile: il sintomo sarebbe comparso solo il giorno in
+cui qualcuno avesse spento le altre due, e non avrebbe portato da nessuna parte;
+② rendendo possibile quel caso, una `configGioco!` poco sotto sarebbe diventata un **crash del
+giro intero**. Il primo rimedio — una costante di ripiego — **l'ha respinto il banco**, e aveva
+ragione: la regola *«un messaggio mandato con orari inventati è peggio di uno che non parte»* è
+scritta in **due** punti del codice. ⇒ Se la kb non dà l'ora, la risposta è `null`, e chi la
+riceve **non manda**.
+⚖️ **Il secondo l'ha trovato la CI, mezz'ora dopo che l'avevo scritto** — cioè la stessa rete
+messa in piedi quella sera (`prove.yml`). Senza, quella costante sarebbe arrivata sul telefono dei
+soci. *È la dimostrazione più diretta del perché un banco che gira valga più di uno che esiste.*
+
 ⛔ **COSA MANCA, in ordine**, e il primo passo è a mano perché il file SQL non si deploya da sé:
 
 ~~1. eseguire il SQL~~ · ~~2. mergiare~~ · ~~3. aggiornare il bot~~ · ~~4. collaudare~~ —
