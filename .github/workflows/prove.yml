@@ -1,0 +1,107 @@
+# 🔴 LE PROVE, A OGNI SPINTA (21/08/2026)
+#
+# 🚨⭐⭐ PERCHÉ NASCE, ed è la stessa scoperta fatta ieri sul repo del bot: questo repo aveva
+# **42 file di prova** e **nessuno che li facesse girare**. C'era `typecheck-edge-functions`,
+# che controlla i TIPI e non il comportamento, e nient'altro.
+# ⚖️ Un banco che non gira non è una protezione: è una protezione **che si crede di avere**, ed
+# è peggio di nessuna, perché non si compensa con la prudenza.
+#
+# 📏 E non è teoria — scrivendo questo workflow sono usciti TRE difetti, tutti invisibili
+# perché nessuno lanciava niente:
+#   · `test/guarda-finche-non-sai.test.mjs` era **rosso da tre giorni** (dalla #853 del 18/08):
+#     `pmoVerificheSegna` aveva preso un quinto parametro e la guardia cercava la firma esatta
+#     a quattro. La regola era intatta, il meccanismo no ⇒ guardia **aggiornata**, non allentata;
+#   · `test/creazione-cliente-telefono.test.mjs` e `test/schede-non-collegate.test.mjs`
+#     contavano i falliti, li stampavano, e **uscivano 0 lo stesso**: dentro un gate sarebbero
+#     state prove finte — rosse per intero col semaforo verde.
+#
+# ⭐ NASCE VERDE, e la differenza conta: misurato il 21/08 prima di scriverlo, tutti i file
+# passano. Un gate che eredita debito è un gate che qualcuno spegnerà.
+# ⇒ Per questo è **ASSOLUTO**, non differenziale come `typecheck-edge-functions`: là 11 funzioni
+# su 30 avevano errori preesistenti e un gate secco avrebbe bloccato ogni PR per debito altrui.
+# Qui non c'è debito da tollerare, quindi non si tollera niente.
+#
+# 🚨 NON deploya niente. Il deploy delle edge resta ai suoi workflow, e il worker e il bot si
+# aggiornano a mano: una spinta che deploya da sé toglierebbe la pausa fra un commit e i soci.
+name: Prove
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # I tre file che importano da `jsr:` sono prove DENO, non Node: `deno test` è l'unico
+      # che sa lanciarle. Senza questo passo resterebbero fuori in silenzio — e «fuori in
+      # silenzio» è esattamente la condizione da cui questo workflow nasce.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # ⭐ I FILE SI RILEVANO, NON SI ELENCANO. Un elenco scritto a mano dimentica il file
+      # nuovo, e chi lo scrive non se ne accorge mai: è precisamente il difetto per cui 42
+      # prove non giravano. Chi aggiunge una prova domani non deve toccare questo workflow.
+      #
+      # La distinzione fra i due corridoi si legge dal FILE: se importa da `jsr:` è una prova
+      # Deno, se no è una prova Node. Anche quella è una rilevazione, non un elenco.
+      - name: Il banco (Node)
+        run: |
+          set -uo pipefail
+          rossi=0
+          verdi=0
+          while IFS= read -r f; do
+            grep -q "jsr:" "$f" && continue          # è una prova Deno: la lancia il passo dopo
+            if node "$f" > /tmp/out.txt 2>&1; then
+              verdi=$((verdi+1))
+              echo "  ✅ $f"
+            else
+              rossi=$((rossi+1))
+              echo "::group::❌ $f"
+              cat /tmp/out.txt
+              echo "::endgroup::"
+              echo "::error file=$f::prove rosse in $f"
+            fi
+          done < <(find supabase consumer-app tools test \
+                     \( -name '*.test.ts' -o -name '*.test.mjs' \) 2>/dev/null | sort)
+          echo
+          echo "── Node: $verdi verdi, $rossi rossi ──"
+          [ "$rossi" -eq 0 ]
+
+      - name: Il banco (Deno)
+        run: |
+          set -uo pipefail
+          rossi=0
+          verdi=0
+          while IFS= read -r f; do
+            grep -q "jsr:" "$f" || continue
+            # `--allow-read` e basta: queste prove leggono sorgenti e non devono poter fare
+            # altro. Una prova che tocca la rete non è più una prova deterministica.
+            if ( cd "$(dirname "$f")" && deno test --allow-read --quiet "$(basename "$f")" ) ; then
+              verdi=$((verdi+1))
+              echo "  ✅ $f"
+            else
+              rossi=$((rossi+1))
+              echo "::error file=$f::prove rosse in $f"
+            fi
+          done < <(find supabase consumer-app -name '*.test.ts' 2>/dev/null | sort)
+          echo
+          echo "── Deno: $verdi verdi, $rossi rossi ──"
+          [ "$rossi" -eq 0 ]
+
+# ⏸️ COSA RESTA FUORI, di proposito: i `test/sabotaggi-*.mjs`. Sono un'altra cosa — spengono
+# una protezione per volta e controllano che il banco diventi rosso, cioè misurano il METRO
+# invece del codice. Sono lenti e si lanciano quando si tocca la protezione che sorvegliano:
+# `node test/sabotaggi-<nome>.mjs`.
+#
+# ⏸️ E le pagine di collaudo (`test/handle-test.html`, `parser-test.html`): vogliono un browser
+# e un server, e vivono in `.claude/launch.json`. Metterle qui vorrebbe dire portarsi dietro
+# Playwright per ogni spinta — vale quando qualcuno lo chiederà, non prima.

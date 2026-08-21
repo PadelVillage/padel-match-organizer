@@ -1655,22 +1655,82 @@ del calendario, **non si confronta niente**. Un export mozzato manderebbe a cent
 nome che corrisponde a due schede vive non riceve niente. Un «ti hanno tolto dalla partita»
 recapitato a un estraneo è un danno che per giunta gli rivela chi gioca e quando.
 
+✅⭐⭐ **COLLAUDATA SUL VIVO, su PROD, la sera del 21/08 — la catena intera, non i pezzi.**
+Con l'autorizzazione del committente (*«fai tutto su prod usando maurizio aprea e lidia comes»*).
+
+| anello | come è stato provato | esito |
+|---|---|---|
+| ① sync → fatti | i **dati veri** di PROD passati al modulo, in sola lettura: aggiunta, rimozione, annullamento, e il caso «nessuno tocca niente» | ✅ 1 fatto · 1 fatto · **2** fatti · **0** |
+| ② coda → ponte | `consegnato_at` valorizzato dopo la quiete | ✅ 20:50:44 |
+| ③ ponte → bot | l'evento è arrivato al giro dei promemoria | ✅ |
+| ④ bot → telefono | riga nel registro: `🔔 detto a Maurizio Aprea: il circolo ha aggiunto — 2026-08-31\|09:30\|1` | ✅ |
+
+📏 **Tempo misurato dal fatto al messaggio: 15′21″**, dentro la finestra 4-19′ dichiarata qui sopra.
+
+🗣️✅ **E il quarto anello l'ha confermato LUI, guardando il telefono**: *«Confermo che Maurizio ha
+ricevuto il messaggio sul bot del suo cellulare»*.
+⚖️ **Non è la stessa cosa che dice il registro, ed è per questo che si chiede.** Il registro prova
+che il messaggio è **partito** — che `sendMessage` non ha sollevato un errore. Fra «partito» e
+«arrivato sul telefono di una persona» restano Telegram, la chat giusta, e un testo che si legge:
+tre cose che nessuna sonda del progetto può vedere da sé. È la regola del 17/08 — *dal cloud si
+fa tutto tranne guardare con i propri occhi* — applicata all'ultimo metro di questa catena.
+
+🚨⭐⭐ **E IL COLLAUDO HA TROVATO UN DIFETTO CHE LE 42 PROVE NON POTEVANO VEDERE** — che è
+esattamente la ragione per cui si collauda sul vivo. *«Lidia Comes»* aveva **due schede** in
+anagrafica; la regola appena scritta, «più di una scheda ⇒ non si scrive a nessuno», le rifiutava
+entrambe. ⇒ Lidia **non avrebbe mai ricevuto un avviso**, e nessuno se ne sarebbe accorto: *un
+avviso che non parte è indistinguibile da un fatto che non è successo*.
+⚖️ La cura (#955) è nella domanda giusta: non «quante schede?» ma **«puntano alla stessa
+persona?»**. Due schede con la stessa impronta — i due identificativi presi insieme — sono un
+duplicato d'anagrafica, non un'ambiguità. L'ambiguità vera, quella da cui la guardia nasce (24
+codici socio condivisi da 48 persone), è quando le impronte **differiscono**: lì si tace.
+📌 Una prova che passa non dice che il codice è giusto: dice che è giusto **sui casi che qualcuno
+ha immaginato**. L'anagrafica vera ne aveva uno che nessuno aveva immaginato.
+
+🧹 **E il doppione è stato curato alla radice** (21/08, su richiesta del committente, che aveva
+verificato che *«su matchpoint c'è solo una lidia comes»*). Le due righe erano **entrambe**
+`matchpoint_auto`: due importazioni della stessa scheda. `memberCloudKey` usa il **telefono** se
+c'è, altrimenti l'email ⇒ quando l'export è arrivato **senza telefono** (alla copia manca anche
+`matchpointIdInterno`), il sync è ricaduto sull'email, non ha riconosciuto la riga esistente e ne
+ha creata una seconda. Cancellata la `email:`, che non è la canonica e non portava nessun dato
+esclusivo. Su 2810 soci vivi le persone con più di una scheda sono ora **zero**.
+⚠️ **Può tornare**: se un export darà di nuovo Lidia senza telefono, la riga `email:` si rifà. La
+cura strutturale sarebbe far cercare al sync anche per `payload.id` — **non fatta**, è un cambio
+di codice da decidere.
+⭐ Ma la protezione ora è **doppia e indipendente**: anche col doppione tornato, la #955 riconosce
+le due schede come una persona sola e l'avviso parte lo stesso.
+
 ⛔ **COSA MANCA, in ordine**, e il primo passo è a mano perché il file SQL non si deploya da sé:
 
-1. **eseguire `supabase_pmo_eventi_staff.sql`** sul SQL Editor di `qqbf…` (e `cudi…`);
-2. **mergiare** → parte il deploy dell'edge nuova e del sync;
-3. **aggiornare il bot** (`deploy-bot-hetzner.yml`, bersaglio `soci`, conferma `SOCI`);
-4. **collaudare** togliendo un giocatore dal gestionale e guardando il registro del bot con
-   `stato-bot.yml`.
+~~1. eseguire il SQL~~ · ~~2. mergiare~~ · ~~3. aggiornare il bot~~ · ~~4. collaudare~~ —
+**tutti e quattro fatti la sera del 21/08**, in quest'ordine, ed è la tabella qui sopra.
+
+⛔ **Resta invece:**
+1. **guardare il PRIMO GIORNO vero**: finora l'unico fatto consegnato è quello di prova. Il primo
+   gesto vero della segreteria è la misura che manca, e va guardata nel registro del bot
+   (`stato-bot.yml`, regex `detto a|staff`);
+2. **decidere sulla cura strutturale del doppione** (sopra): far cercare al sync anche per
+   `payload.id`, così una scheda senza telefono non genera una riga nuova;
+3. **le prove delle edge non girano in CI su questo repo** — c'è solo `typecheck-edge-functions`.
+   È lo stesso difetto curato il 21/08 nel repo del bot con `prove.yml`: qui i 42 casi della voce
+   68 si lanciano solo a mano, e **nessuno se ne accorgerebbe se un domani diventassero rossi**.
 
 ⚖️ **L'ordine è consigliato, non obbligatorio, e vale la pena sapere perché**: se il deploy
 arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel registro e
 proseguirebbe — l'innesto sta dentro un `try` apposta. Nessun danno, solo fatti non raccolti
 finché la tabella non c'è.
 
-🕰️ **Quanto ci mette ad arrivare un avviso**: il ritardo del sync (mediana ~2′) **più** i due
-minuti di quiete **più** l'attesa del prossimo giro dei promemoria. ⇒ **Cinque-dieci minuti**, non
-istantaneo, ed è per costruzione: la fretta qui produrrebbe messaggi su una raffica non finita.
+🕰️ **Quanto ci mette ad arrivare un avviso — MISURATO il 21/08, e il primo numero scritto qui
+era sbagliato.** Diceva «cinque-dieci minuti»: è la somma del ritardo del sync (mediana ~2′) e dei
+due minuti di quiete, e **dimentica il pezzo più grosso**. Il giro dei promemoria del bot passa
+ogni **15 minuti** (`PERIODO_MS`, `promemoria.ts:51`), e un fatto maturo aspetta lì fermo fino al
+giro dopo.
+⇒ La cifra vera è **da 4 a ~19 minuti**, con **~11 in media**. Non è un difetto: è la somma di tre
+attese ognuna delle quali serve. Ma va detta giusta, perché è quella che decide se il collaudo
+«non funziona» o «non è ancora arrivato» — e i due si somigliano moltissimo.
+⚖️ È la regola del 15/08 applicata a sé stessa: *un numero dichiarato che non corrisponde al
+misurato è precisamente il difetto che questo progetto cura*. Quello vecchio nasceva da una somma
+fatta a mente invece che dal codice.
 
 📌 **Da non confondere con la cura del 21/08 sera** (`aggiornato_al` + la terza porta di
 `roster-di-recente`): quella riguardava il bot che **nascondeva** per quindici minuti un
@@ -1729,15 +1789,34 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**
+✅ ~~🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**~~ — **CHIUSA la
+sera del 21/08**, e come si è chiusa vale più del fatto che si sia chiusa.
+
 `test/guarda-finche-non-sai.test.mjs`, caso **27** — *«il deposito porta con sé il NUMERO del
-lavoro, o alla ripresa non c'è cosa chiudere»* — **fallisce su `origin/main` pulito**, misurato
-riportando l'albero a `main` senza nessuna riga del lavoro di giornata: **28 casi su 29**.
-⚠️ Sta qui e non fra le urgenti perché **le promozioni le decide il committente**. Ma va detto
-com'è messa: un banco che è rosso e resta rosso è un banco che si smette di leggere, ed è lo
-stesso meccanismo per cui il 14/08 `guard-worker-sync` è stata resa paziente. 📌 Nessuno l'ha
-scoperto prima perché il banco del gestionale **non gira in CI**: si lancia a mano, un file per
-volta.
+lavoro»* — falliva su `main` pulito: **28 su 29**. La scheda diceva anche la ragione di fondo:
+*«nessuno l'ha scoperto prima perché il banco del gestionale non gira in CI»*.
+
+🔎 **La causa, misurata**: `pmoVerificheSegna` ha preso un **quinto parametro** (`tipo`) con la
+#853 del **18/08**, e la guardia cercava la firma esatta a quattro ⇒ rossa da **tre giorni**.
+⭐ **La regola era intatta, il meccanismo no** — `jobId` c'è ancora, al suo posto, e i tre
+chiamanti incerti lo passano. ⇒ La guardia si **AGGIORNA**, non si allenta: ora pretende i
+quattro nomi nell'ordine e tollera solo ciò che viene **dopo**. Se `jobId` sparisce o cambia
+posto, torna rossa.
+
+🚨⭐⭐ **E curando la causa di fondo — le prove che non giravano — ne sono usciti ALTRI DUE, della
+stessa famiglia ma peggiori**: `test/creazione-cliente-telefono.test.mjs` e
+`test/schede-non-collegate.test.mjs` contavano i falliti, li **stampavano**, e uscivano **0 lo
+stesso**. ⇒ Dentro un gate sarebbero state **prove finte**: rosse per intero, col semaforo verde.
+Ora escono col codice giusto, e il **controllo negativo** lo dimostra (copia sabotata → `exit 1`).
+
+⚖️ **La lezione, che è la ragione per cui questa scheda resta invece di sparire**: il difetto
+visibile era **uno**, ed era il meno grave. Un banco rosso lo si vede; una prova che non sa
+diventare rossa non la vede nessuno, **per costruzione**. Chi cura solo ciò che si vede lascia
+in piedi proprio la classe di difetti che si nasconde.
+
+📌 **La cura vera è `prove.yml`** (PR #956): 42 file, due corridoi (Node e Deno), gate
+**assoluto** perché non c'era debito da tollerare. E i file si **rilevano**, non si elencano —
+un elenco a mano dimentica il file nuovo, che è come 42 prove sono rimaste a terra.
 
 
 Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per la stessa ragione delle
