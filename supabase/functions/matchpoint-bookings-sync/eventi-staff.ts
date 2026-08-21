@@ -220,3 +220,51 @@ export function fattiDaConfronto(
 
   return fatti;
 }
+
+/**
+ * La chiave di uno slot: `data|ora|campo-in-cifre`.
+ *
+ * ⭐ Stessa convenzione di `consumer-player-readmodel`, e non per gusto dell'uniformità: la
+ * stessa partita esiste in più copie che scrivono il campo in due modi diversi («Campo 1» dal
+ * sync Matchpoint, «1» dallo `staff_booking` dell'app). Tenendo solo le cifre le due copie
+ * cadono nella stessa chiave; tenendo il testo diventerebbero due partite.
+ */
+export function chiaveSlot(data: unknown, ora: unknown, campo: unknown): string {
+  const d = String(data ?? '').trim();
+  const o = String(ora ?? '').trim();
+  const c = String(campo ?? '').replace(/\D/g, '');
+  return `${d}|${o}|${c}`;
+}
+
+/**
+ * La fotografia del calendario: uno slot per partita, col roster più completo fra le sue copie.
+ *
+ * 🚨 «Il più completo» e non «l'unione»: le copie sono la STESSA partita e ognuna ripete
+ * l'intero elenco. Unirle nome per nome fonderebbe gli «Ospite» di una stessa partita in uno
+ * solo — è il difetto che `compagni-slot.ts` ha già pagato una volta, e la cura è la stessa.
+ *
+ * @param righe   I payload delle prenotazioni (una riga per copia).
+ * @param roster  Come si leggono i nomi da una descrizione. Si passa da fuori per non fare
+ *                una TERZA copia del parser: quello vero vive già in `index.ts` e in
+ *                `compagni-slot.ts`, e una terza divergerebbe.
+ */
+export function fotografia(
+  righe: Array<Record<string, unknown>>,
+  roster: (descrizione: unknown) => string[],
+): Map<string, SlotRoster> {
+  const foto = new Map<string, SlotRoster>();
+  for (const p of righe) {
+    const data = String(p?.data ?? '').trim();
+    const ora = String(p?.ora ?? '').trim();
+    const campo = String(p?.campo ?? '').trim();
+    if (!data) continue;
+    const nomi = roster(p?.descrizione);
+    if (!nomi.length) continue;   // titoli liberi («Torneo aziendale»): non è un roster
+    const slot = chiaveSlot(data, ora, campo);
+    const gia = foto.get(slot);
+    if (!gia || nomi.length > gia.roster.length) {
+      foto.set(slot, { slot, data, ora, campo, roster: nomi });
+    }
+  }
+  return foto;
+}

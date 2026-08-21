@@ -2,12 +2,21 @@
 // Esegui:  node supabase/functions/matchpoint-bookings-sync/eventi-staff.test.ts
 import assert from 'node:assert/strict';
 import {
+  chiaveSlot,
   confrontoAttendibile,
   fattiDaConfronto,
+  fotografia,
   normNome,
   puoRicevere,
   type SlotRoster,
 } from './eventi-staff.ts';
+
+/** Il parser del roster, com'è in `index.ts`: si passa da fuori per non farne una terza copia. */
+const roster = (d: unknown): string[] => {
+  const t = String(d ?? '').trim();
+  if (!t.startsWith('-')) return [];
+  return t.split('.').map((s) => s.replace(/^-+/, '').trim()).filter(Boolean);
+};
 
 let passed = 0;
 let failed = 0;
@@ -160,6 +169,43 @@ test('normNome e puoRicevere', () => {
   assert.equal(puoRicevere('OSPITE'), false);
   assert.equal(puoRicevere(''), false);
   assert.equal(puoRicevere('Lidia Comes'), true);
+});
+
+// ── La fotografia: da righe sparse a uno slot per partita ────────────────────────────────
+test('le copie della stessa partita cadono in UNO slot, e vince la più completa', () => {
+  const f = fotografia([
+    { data: '2026-08-31', ora: '09:30', campo: 'Campo 1', descrizione: '-Maurizio Aprea.' },
+    { data: '2026-08-31', ora: '09:30', campo: '1', descrizione: '-Maurizio Aprea.-Lidia Comes.' },
+  ], roster);
+  assert.equal(f.size, 1, '«Campo 1» e «1» sono la stessa partita');
+  assert.deepEqual(f.get('2026-08-31|09:30|1')?.roster, ['Maurizio Aprea', 'Lidia Comes']);
+});
+
+test('un titolo libero non è un roster e non entra nella fotografia', () => {
+  const f = fotografia([
+    { data: '2026-08-31', ora: '09:30', campo: '1', descrizione: 'Torneo aziendale' },
+  ], roster);
+  assert.equal(f.size, 0);
+});
+
+test('chiaveSlot tiene solo le cifre del campo', () => {
+  assert.equal(chiaveSlot('2026-08-31', '09:30', 'Campo 12'), '2026-08-31|09:30|12');
+  assert.equal(chiaveSlot('2026-08-31', '09:30', '12'), '2026-08-31|09:30|12');
+});
+
+test('🔗 dal payload al fatto, senza scorciatoie: il caso vero del 21/08', () => {
+  // Le righe come le scrive il circolo, prima e dopo il gesto dello staff.
+  const prima = fotografia([
+    { data: '2026-08-31', ora: '09:30', campo: 'Campo 1', descrizione: '-Maurizio Aprea.-Fabiola Limuti.-Lidia Comes.' },
+  ], roster);
+  const dopo = fotografia([
+    { data: '2026-08-31', ora: '09:30', campo: 'Campo 1', descrizione: '-Maurizio Aprea.-Lidia Comes.' },
+  ], roster);
+  // Un solo slot per parte: la guardia del crollo direbbe di no (1 → 1 va bene, 1 → 0 no).
+  const f = fattiDaConfronto(prima, dopo);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Fabiola Limuti');
+  assert.equal(f[0].gesto, 'tolto');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
