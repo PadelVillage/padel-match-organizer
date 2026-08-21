@@ -1369,6 +1369,29 @@ non si vede, ed è dichiarato nel codice.
 dopo diventerebbe il «prima» da cui si misura il calo, e la prova che erano in quattro sparirebbe
 in silenzio.
 
+🔎⭐⭐ **E COME SI PROVA SUL BERSAGLIO — misurato il 21/08, perché la prova che sembrava sicura non
+lo era.** L'idea era: *fai un gesto su una partita usando «Ospite» (che non ha una chat Telegram,
+quindi nessun messaggio parte) e al giro dopo nel registro compare `⏸️`.* Andando a leggere il
+codice che gira, **non funziona così**, e per due ragioni indipendenti:
+
+| | |
+|---|---|
+| ⏱️ **il `⏸️` quasi sempre non compare** | i due rami hanno due vite diverse: `fattoDaChiunqueSulla` dura 15 minuti ma lo alimenta **solo** `segnaFatto`, chiamato in **un punto solo** e **solo** per `esci`/`annulla`. Un `togli`/`aggiungi` lascia traccia **solo** in `gestoInVoloSullaPartita`, e quel posto si libera in un `finally` ⇒ dura quanto la scrittura, decine di secondi. Il giro passa ogni 15′: la probabilità che caschi lì dentro è intorno al 5% |
+| 🚨 **e può far partire messaggi VERI** | il giro legge il roster da `readmodelPlayer`, che applica già `senzaGiocatoriTolti`: l'Ospite tolto sparisce **subito** dalla vista del bot. Se la partita era in quattro ed era stata vista in quattro, al giro dopo `decidiTornataIncompleta` manda «un giocatore è uscito dalla tua partita» **a tutti i soci di quella partita**. «Ospite» protegge l'Ospite, non gli altri |
+
+⭐ **La prova che regge è a orario**, e si può fare perché il ritmo del giro è prevedibile: il primo
+parte **60 secondi dopo l'avvio** (`RITARDO_AVVIO_MS`) e da lì il timer batte ogni **15 minuti
+dall'istante dell'avvio** — non dal primo giro. Toccando «togli Ospite» ~30 secondi prima di un
+istante di quelli, la scrittura è ancora in volo quando il giro passa, e il `⏸️ … gesto in volo`
+esce davvero. Su una partita dove **l'unico socio col bot è chi prova**, così il «tornata
+incompleta» del giro successivo — che è anche la prova di non-regressione — arriva solo a lui.
+⚠️ **I giri muti non scrivono niente**: la riga di riepilogo esce solo se c'è qualcosa da dire
+(`daDire`), mentre il `⏸️` esce sempre. ⇒ Non vedere niente non vuol dire che il giro non sia
+passato.
+⛔ **Il ramo dei 15 minuti non si può provare senza costo**: vuole un `esci` o un `annulla` vero, e
+il `⏸️` non comparirebbe nemmeno per chi agisce — la sua partita sparisce già dal suo elenco per
+`senzaPartiteLasciate`. Comparirebbe **solo per un altro socio** dentro quella partita.
+
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
 
 🗣️ La regola ferrea del 19/08: *«il worker il bot non deve proprio filarselo»* — né indirizzo, né
@@ -1395,6 +1418,23 @@ esatta in cui il difetto si è presentato: `https?://` sta nella lista accanto a
 🩹 Il caso che sorveglia la classe non conta quante volte la funzione compare: conta che **nessun**
 `detail:` le sfugga — la lezione del caso 18, cioè *si conta ciò che il bot LEGGE, non ciò che il
 file contiene*.
+
+🚨⭐⭐ **IL COLLAUDO È STATO TENTATO IL 21/08 E NON HA POTUTO CONCLUDERE — e il difetto era nella
+SONDA, non nella cura.** Questa voce si collauda **per assenza** (`Worker|matchpoint|https://` non
+deve uscire), e un'assenza vale solo dentro una finestra dichiarata: la cura è viva dalle **11:40**
+(deploy edge `61a48c2`), quindi la domanda vera è *«dopo le 11:40 è arrivato un nome del worker?»*.
+📏 Nel registro il nome c'era ancora, due volte — e **non si potevano datare**, per due ragioni che
+si sommano: ① sono scritte con `console.warn`, che finisce nello stream degli **errori**, e `pm2
+logs` lo stampa in un **blocco a parte** ⇒ la posizione nel listato non dice l'ordine; ② **non
+portano l'ora**, perché l'ora la metteva `log()` e `console.warn` non ci passa.
+⇒ *Una riga che non si può datare non è una misura.* È la lezione ② di questa stessa sessione — la
+diagnostica mancava proprio dove il guasto colpisce — in un'altra stanza.
+🔨 **Curato nel bot (PR #52)**: il registro porta l'ora su **tutte** le righe (`log`, `warn`,
+`error`, `info`), da un posto solo, e `oraDelCircolo` smette di esistere in due copie. Si è curata
+la **classe** e non l'istanza: mettere l'ora su quella riga sola sarebbe stato un commit di due
+caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `console.*`.
+⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
+ancora. Non prima: prima non c'è niente da leggere.
 
 ### **66** — 🔎 `PLAYER_ID_NOT_LOCKED`: diagnosi fatta, cura NON scritta — di proposito
 
