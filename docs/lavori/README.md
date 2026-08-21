@@ -1542,6 +1542,60 @@ da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
 |---|---|
 | **68** | 🔕 **Lo staff agisce dal gestionale e ai soci non arriva niente** — 🗣️ sua segnalazione: *«quando da gestionale faccio un'azione, cioè metto, levo giocatori o attivo partite o elimino partite, sul bot dei soci non succede niente, cioè non arriva nessun avviso»*. 📏 **MISURATO il 21/08, ed è un buco di disegno in tre punti sommati, non un guasto:** ① il bot **non ha un tipo di avviso** per «partita cambiata dallo staff» — `TipoAvviso` (`avvisi.ts:41`) elenca i nove che esistono e nessuno lo è; ② l'unico rilevatore di cambiamento è `decidiTornataIncompleta` (`avvisi.ts:398-424`), che confronta **un solo numero** (`giocatori_visti`, l'unica memoria del roster: `registro-avvisi.ts:38-40`) e scatta **solo** sul calo da 4 a meno di 4, una volta sola, prima della scadenza disdetta ⇒ **le AGGIUNTE non lo attivano** (porta 3), i cali sotto quota 4 nemmeno (porta 2), e una **sostituzione** è invisibile perché il conteggio non cambia; ③ una **partita annullata** non viene nemmeno esaminata — il giro itera `for (const b of seguite)` (`promemoria.ts:525`), cioè solo sulle partite che ci sono **adesso**, e nessuna riga confronta l'elenco di oggi con quello del giro prima. ⭐ **Il DATO arriva**: `consumer-player-readmodel` rilegge `booking`+`staff_booking` live a ogni giro, col ritardo del sync (~2′, max 10′04″). Manca **chi lo confronti e chi lo dica**. ⚖️ **Il contrasto che lo rende evidente**: la stessa azione fatta dal SOCIO dal bot avvisa gli altri subito (`bot.ts:1384`, `bot.ts:1468` iniettano `avvisa:`); fatta dallo STAFF non ha nessun equivalente. 🚪 **E la porta esiste già**: `bot-telegram-admin` è il ponte gestionale→bot, con credenziali funzionanti e deploy separato per ambiente — oggi ci passano **solo** whitelist e inviti d'accesso (tabelle `telegram_operatori` e `telegram_inviti`, nessun `sendMessage`). ⇒ Aggiungere lì la notifica sarebbe conforme alla regola ferrea — *il gestionale SA, il bot DICE* — al contrario di una diff calcolata nel bot, che sarebbe la «memoria parallela» esclusa dalla 64. ⚠️ **Il limite era già dichiarato** ma come nota a margine di altri lavori (voce 64, riga 1365: «coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui non si vede»): questa è la prima volta che ha una scheda sua. ⛔ **Da decidere PRIMA di scrivere**: quali gesti meritano un messaggio e a chi (tutti i giocatori? solo l'interessato?), perché un avviso per ogni ritocco dello staff diventa rumore — ed è la stessa ragione per cui il ritiro degli inviti orfani (voce 63) è **muto per scelta** |
 
+🗣️⭐⭐ **LA REGOLA, dettata da lui la sera stessa** — alla domanda «quali gesti e a chi?»:
+
+> *«Logicamente ogni volta che si fa un'azione [dal] gestionale e si interpella un giocatore, al
+> giocatore vanno i messaggi.»*
+
+⇒ **Il principio è quello, e ne discende una forma precisa: un'azione dello staff che tocca un
+giocatore produce per lui lo STESSO messaggio che produrrebbe la stessa azione fatta da un socio
+dal bot.** Non si inventano messaggi nuovi — si riusano quelli che ci sono già
+(`testoSeiStatoTolto`, `testoPartitaAnnullata`, `testoSeiEntrato`…), scritti e approvati.
+⚖️ È anche ciò che tiene il lavoro piccolo: la parte difficile di un avviso non è mandarlo, è
+**come è scritto**, e quella è già fatta.
+
+🚨 **I TRE PUNTI che quella frase non decide**, e che vanno fissati PRIMA di scrivere codice —
+non sono cavilli, sono i tre modi in cui questa cura può diventare peggio del difetto:
+
+| | la domanda | proposta (da confermare) |
+|---|---|---|
+| ① | oltre all'interpellato, **gli altri in campo**? Aggiungo Lidia dove ci sono già Marco e Anna: Lidia lo sa, ma la partita è cambiata anche per loro | **Sì**, con la distinzione che il bot fa già: a chi subisce il gesto il testo dedicato, agli altri la notizia. Quando il gesto lo fa un socio dal bot funziona così (`avvisa:` iniettato in `bot.ts:1384` e `:1468`) |
+| ② | la **RAFFICA**: in segreteria non si fa *un* gesto, se ne fanno cinque in due minuti — togli, rimetti, correggi il nome, sposta l'ora. Alla lettera sarebbero cinque messaggi alla stessa persona | **Si aspetta che lo staff abbia finito**: una finestra di quiete (~2-3 minuti) e poi si manda **lo stato finale**, non ogni passaggio. 📏 Non è teorico: il 21/08 la partita del 31/08 09:30 è cambiata più volte fra le 20:48 e le 20:56 |
+| ③ | **toccato ≠ cambiato**: lo staff apre una scheda e la salva senza modificare niente | Si confronta **cosa è cambiato**, non «qualcuno ha salvato». Nessun cambiamento ⇒ nessun messaggio |
+
+📏 **COSA IL BOT MANDA GIÀ OGGI** (misurato il 21/08, e cambia la forma del lavoro: la parte
+difficile di un avviso non è mandarlo, è **come è scritto** — e quella è quasi tutta già fatta):
+
+| gesto fatto **dal bot** | chi riceve | funzione |
+|---|---|---|
+| il socio **esce** | 🚨 **NESSUNO** — ed è una **decisione del committente**, non una dimenticanza: il bot dice *«Avvisa tu i tuoi compagni: io non posso scrivere al posto tuo»* | `testoFatto` ramo `esci` |
+| l'organizzatore **annulla** | tutti i compagni raggiungibili | `testoPartitaAnnullata` |
+| l'organizzatore **toglie** | la persona tolta (mai un «Ospite») | `testoSeiStatoTolto` |
+| un invitato **accetta** | chi entra + chi ha invitato + chi aspettava a posto pieno | `testoSeiEntrato`, `testoHaAccettato`, `testoPostoPreso` |
+
+🚨⭐⭐ **E LA PRIMA RIGA È LA PIÙ IMPORTANTE PER QUESTA VOCE**: sull'**uscita** il bot NON avvisa
+nessuno, per scelta esplicita. ⇒ «lo staff fa come il socio» **non** si applica meccanicamente:
+là il silenzio è voluto perché chi esce è presente e può avvisare lui. Quando invece è lo **staff**
+a togliere qualcuno, quel qualcuno **non sa niente e non c'era**: è il caso di `testoSeiStatoTolto`,
+non quello dell'uscita. La regola va scritta sul **chi subisce**, non sul verbo.
+
+⚠️ **Manca UN messaggio solo, e va scritto da zero**: «ti hanno messo in partita», per chi viene
+aggiunto **senza** passare da un invito. Misurato: `grep -riE "sei stato aggiunt|ti ha messo"` su
+tutto `src/` → **nessun risultato**. Oggi chi entra riceve `testoSeiEntrato` solo come esito del
+proprio «Ci sto». Sarebbe il gemello mancante di `testoSeiStatoTolto`, in versione ✅.
+
+🚨⭐⭐ **IL PUNTO TECNICO CHE DECIDE IL DISEGNO, e va letto prima di scegliere la strada.** Gli
+avvisi puntuali (annulla · togli · accetta) **NON passano dal registro** `telegram_avvisi_disdetta`:
+non hanno nessun marcatore persistente. La loro unica difesa contro il doppione sono le **memorie
+di processo del bot** (`in-corso.ts` 3 min, `fatto-compiuto.ts` 15 min, `roster-di-recente.ts`), che
+un'edge function del gestionale **non condivide e non può vedere**.
+⇒ Se il gestionale mandasse avvisi per conto suo, non erediterebbe **nessuna** di quelle protezioni
+— e il ② della tabella qui sopra (la raffica) diventerebbe il difetto principale invece di un
+dettaglio. ⚖️ Questo spinge verso una forma precisa: il gestionale **dichiara il fatto** (una riga
+di coda che il bot legge), e **il bot decide se e quando dirlo**, dove le protezioni già vivono.
+Resta conforme a *il gestionale SA, il bot DICE*: il gestionale dice **cosa è successo**, non
+**a chi scrivere**.
+
 📌 **Da non confondere con la cura del 21/08 sera** (`aggiornato_al` + la terza porta di
 `roster-di-recente`): quella riguardava il bot che **nascondeva** per quindici minuti un
 giocatore rimesso dallo staff, ed è un'altra cosa — là il socio guardava e non vedeva, qui non
