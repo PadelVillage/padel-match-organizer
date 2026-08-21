@@ -126,6 +126,8 @@ export function confrontoAttendibile(
  *
  * @param prima  Gli slot com'erano al sync precedente.
  * @param dopo   Gli slot come sono adesso.
+ * @param oggi   La data di oggi a Roma (`YYYY-MM-DD`): sotto questa, uno slot è passato e non
+ *               produce nessun fatto — vedi la nota dentro la funzione.
  *
  * ⇒ Torna `[]` — e non un errore — quando il confronto non è attendibile: chi chiama non deve
  * decidere niente, e un silenzio non fa danno.
@@ -133,7 +135,33 @@ export function confrontoAttendibile(
 export function fattiDaConfronto(
   prima: Map<string, SlotRoster>,
   dopo: Map<string, SlotRoster>,
+  oggi: string,
 ): FattoStaff[] {
+  // 🌙🚨⭐⭐ SI CONFRONTA SOLO LA FINESTRA CHE LE DUE FOTOGRAFIE HANNO IN COMUNE, e questa
+  // riga è nata da un danno vero: la notte del 21/08/2026, all'una e un minuto, sono usciti
+  // **36 falsi annullamenti su 32 persone** — tutti per le partite del giorno prima.
+  //
+  // ⇒ La causa non è un guasto: è il CALENDARIO. Il sync guarda da oggi in avanti, quindi a
+  // ogni mezzanotte il giorno appena finito **esce dalla finestra**. La fotografia di prima ce
+  // l'ha, quella di dopo no ⇒ per il confronto quelle partite sono «sparite», e sparire vuol
+  // dire annullata. *Una partita già giocata non è stata annullata: è stata GIOCATA.*
+  //
+  // ⚖️ E `confrontoAttendibile` non poteva fermarlo, il che è la parte istruttiva: quella
+  // guardia difende dal CROLLO — metà del calendario sparito insieme — ed è tarata su una
+  // proporzione. A mezzanotte se ne va **un giorno su trenta**: troppo poco per farla
+  // scattare, e abbastanza per mentire a tutti quelli che avevano giocato ieri.
+  // ⇒ *Una protezione giusta puntata sul guasto sbagliato lascia passare quello che c'è.*
+  //
+  // 📌 Il filtro sta PRIMA della guardia apposta: le proporzioni vanno misurate sulla stessa
+  // finestra, o il calo fisiologico di ogni notte le falserebbe comunque.
+  const nellaFinestra = (m: Map<string, SlotRoster>) => {
+    const out = new Map<string, SlotRoster>();
+    for (const [k, v] of m) if (!v.data || v.data >= oggi) out.set(k, v);
+    return out;
+  };
+  prima = nellaFinestra(prima);
+  dopo = nellaFinestra(dopo);
+
   if (!confrontoAttendibile(prima.size, dopo.size)) return [];
 
   const fatti: FattoStaff[] = [];

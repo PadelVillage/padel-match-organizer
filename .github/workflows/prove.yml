@@ -59,7 +59,11 @@ jobs:
           rossi=0
           verdi=0
           while IFS= read -r f; do
-            grep -q "jsr:" "$f" && continue          # è una prova Deno: la lancia il passo dopo
+            # 🚨 Si cerca un IMPORT da jsr, non la parola in un punto qualsiasi: il 21/08 un
+            # commento che NOMINAVA `jsr:` per dire «questa prova NON è Deno» ha spedito quella
+            # prova nel corridoio Deno. *Una guardia che cerca una parola prova che la parola
+            # c'è, non che il codice succeda* — già pagata il 19/08, e ancora valida qui.
+            grep -qE "^\s*(import|export).*['\"]jsr:" "$f" && continue   # prova Deno: la lancia il passo dopo
             if node "$f" > /tmp/out.txt 2>&1; then
               verdi=$((verdi+1))
               echo "  ✅ $f"
@@ -82,7 +86,7 @@ jobs:
           rossi=0
           verdi=0
           while IFS= read -r f; do
-            grep -q "jsr:" "$f" || continue
+            grep -qE "^\s*(import|export).*['\"]jsr:" "$f" || continue
             # `--allow-read` e basta: queste prove leggono sorgenti e non devono poter fare
             # altro. Una prova che tocca la rete non è più una prova deterministica.
             if ( cd "$(dirname "$f")" && deno test --allow-read --quiet "$(basename "$f")" ) ; then
