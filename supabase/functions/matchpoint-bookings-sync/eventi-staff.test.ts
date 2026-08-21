@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   chiaveSlot,
   confrontoAttendibile,
-  fattiDaConfronto,
+  fattiDaConfronto as fattiDaConfrontoReale,
   fotografia,
   normNome,
   puoRicevere,
@@ -29,6 +29,22 @@ function test(name: string, fn: () => void) {
     failed += 1;
     console.error(`FAIL - ${name}\n      ${(e as Error).message}`);
   }
+}
+
+/**
+ * Il giorno in cui «girano» le prove esistenti. Tutte usano il 31/08 o il 15/09, quindi con
+ * questo `oggi` sono tutte nel futuro e si comportano esattamente come prima che la finestra
+ * esistesse. I casi che la finestra la provano davvero passano la data per esteso.
+ */
+const OGGI = '2026-08-21';
+
+/** Le prove storiche non passavano `oggi`: lo mette questa scorciatoia, sempre lo stesso. */
+function fattiDaConfronto(
+  prima: Map<string, SlotRoster>,
+  dopo: Map<string, SlotRoster>,
+  oggi: string = OGGI,
+): ReturnType<typeof fattiDaConfrontoReale> {
+  return fattiDaConfrontoReale(prima, dopo, oggi);
 }
 
 /** Scorciatoia: una fotografia con gli slot indicati. */
@@ -208,5 +224,49 @@ test('🔗 dal payload al fatto, senza scorciatoie: il caso vero del 21/08', () 
   assert.equal(f[0].gesto, 'tolto');
 });
 
-console.log(`\n${passed} passed, ${failed} failed`);
+
+
+// ── LA MEZZANOTTE (21/08/2026): il giorno che esce dalla finestra ───────────────────────────
+// 📏 Danno vero, non ipotesi: 36 falsi «la tua partita non c'è più» a 32 persone, tutti alle
+// 00:01:47, tutti per le partite del giorno prima.
+
+test('30. le partite di IERI escono dalla finestra e NON sono annullamenti', () => {
+  const ieri: [string, string[]] = ['2026-08-21|09:30|2', ['Maurizio Aprea', 'Fabio De Luca']];
+  const domani: [string, string[]] = ['2026-08-31|11:00|1', ['Maurizio Aprea']];
+  // Prima di mezzanotte la fotografia ha entrambe; dopo, solo quella futura.
+  const f = fattiDaConfronto(foto(ieri, domani), foto(domani), '2026-08-22');
+  assert.deepEqual(f, [], 'una partita già giocata non è stata annullata');
+});
+
+test('31. un annullamento VERO nel futuro continua a passare', () => {
+  const futura: [string, string[]] = ['2026-08-31|11:00|1', ['Maurizio Aprea', 'Lidia Comes']];
+  const altra: [string, string[]] = ['2026-09-15|10:00|2', ['Marco Aprea']];
+  const f = fattiDaConfronto(foto(futura, altra), foto(altra), '2026-08-22');
+  assert.equal(f.length, 2, 'la partita futura sparita avvisa tutti e due i giocatori');
+  assert.ok(f.every((x) => x.gesto === 'annullata'));
+});
+
+test('32. OGGI resta dentro la finestra: una partita di stamattina annullata si dice', () => {
+  const stamattina: [string, string[]] = ['2026-08-22|09:30|2', ['Maurizio Aprea']];
+  const altra: [string, string[]] = ['2026-09-15|10:00|2', ['Marco Aprea']];
+  const f = fattiDaConfronto(foto(stamattina, altra), foto(altra), '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].gesto, 'annullata');
+});
+
+test('33. il calo fisiologico della mezzanotte non falsa la guardia del crollo', () => {
+  // Sei slot di ieri e due di domani: dopo mezzanotte restano due. Sul conteggio GREZZO il
+  // calo è del 75% e la guardia si sarebbe spenta, zittendo anche gli annullamenti veri.
+  // Filtrando prima, il confronto è 2 contro 2 e l'annullamento vero esce.
+  const ieri: Array<[string, string[]]> = [1, 2, 3, 4, 5, 6].map(
+    (i) => [`2026-08-21|0${i}:00|1`, ['Tizio Uno']] as [string, string[]],
+  );
+  const a: [string, string[]] = ['2026-08-31|11:00|1', ['Maurizio Aprea']];
+  const b: [string, string[]] = ['2026-09-15|10:00|2', ['Marco Aprea']];
+  const f = fattiDaConfronto(foto(...ieri, a, b), foto(b), '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Maurizio Aprea');
+});
+
+console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed > 0) process.exit(1);
