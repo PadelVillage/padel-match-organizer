@@ -1524,7 +1524,7 @@ entro mezz'ora da un annullo in cui la prenotazione nuova **si vede**.
 nascosta come prima, e una soppressione **vecchia** — nata senza la lista — nasconde tutto lo slot
 come prima. Sono i casi che non si sanno leggere, e lì il verso prudente è quello di sempre.
 
-## 📋 IN CODA — 2
+## 📋 IN CODA — 3
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -1533,7 +1533,7 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 1
+### C — Cose sapute e non risolte — 2
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -1770,6 +1770,15 @@ fatta a mente invece che dal codice.
 `roster-di-recente`): quella riguardava il bot che **nascondeva** per quindici minuti un
 giocatore rimesso dallo staff, ed è un'altra cosa — là il socio guardava e non vedeva, qui non
 gli arriva niente da guardare. La prima è chiusa, questa no.
+
+---
+
+🆕 **21/08 sera, 48ª sessione: entra la 69** — messa in coda **da lui**: *«metti in lista questo:
+la cura strutturale del doppione»*. ⇒ **Coda da 1 a 2.**
+
+| | |
+|---|---|
+| **69** | 🧬 **Una scheda senza telefono nell'export genera un socio DOPPIO** — 📏 **misurato il 21/08 sera su PROD**, curando il caso di *«Lidia Comes»*, che aveva **due schede vive**. ⭐ Non erano due persone: stesso `payload.id`, stesso ID Padel Village (`PMO-000583`), stesso codice del circolo (`001013`) — **la stessa scheda, importata due volte sotto due chiavi diverse**. 🔎 **La causa sta in `memberCloudKey`** (`matchpoint-clients-sync/index.ts:234`): la chiave è il **telefono se c'è**, altrimenti l'**email**, altrimenti il nome. Quando l'export Matchpoint arriva **senza telefono** — e alla copia di Lidia mancava anche `matchpointIdInterno`, che è il segno che quel record era più povero — il sync ricade sull'email, `collectExistingMemberCandidates` cerca con le chiavi del membro **importato** (che il telefono non ce l'ha) e **non trova** la riga esistente ⇒ ne crea una seconda. ⚖️ **Il duplicato è NOSTRO, non di Matchpoint**: il committente ha verificato di persona che là la scheda è una sola. 📊 **Quanto è diffuso: UNO su 2810 soci vivi** — il caso di Lidia, e nessun altro. ⇒ Non è un incendio, è una crepa. 🩹 **La cura proposta**: far cercare al sync anche per `payload.id`, che è l'unica cosa che non cambia quando cambiano i contatti. ⚠️ **Da guardare prima di scrivere**: il sync ha già `chooseExistingMemberRecord` e `buildDeletedMemberRecord`, cioè **sa già deduplicare** — e su Lidia non l'ha fatto. Prima di aggiungere una via nuova va capito perché quella che c'è non è scattata, se no si mettono due meccanismi dove non ne funziona nemmeno uno. 🚨 **E il caso di oggi NON è più visibile**: la riga `email:` è stata cancellata a mano (marcatori identici a quelli che il sync mette da sé). ⇒ Chi riapre la voce deve **rifabbricarsi il caso**, non cercarlo — o misurarlo se ricompare. ⭐ **Nessuna urgenza, e va detto perché**: dal 21/08 il ponte riconosce due schede con la **stessa impronta** come una persona sola (PR #955), quindi **anche se il doppione tornasse, il socio riceve lo stesso i suoi avvisi**. Le due protezioni sono indipendenti: questa cura toglie la causa, quella regge l'effetto |
 
 🔄 **19/08, 35ª sessione: due delle tre voci di questa sezione sono uscite, e per DUE MOTIVI
 DIVERSI** — su sue istruzioni. ⇒ **Coda da 6 a 4.** 🗣️ Della **D** ha detto *«fra un po' dico cosa
