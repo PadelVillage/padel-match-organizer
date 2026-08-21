@@ -432,7 +432,19 @@ Deno.serve(async (req: Request) => {
   // ── 3. Prenotazioni future: name-match sul roster ───────────────────────
   const { data: bookingRows, error: bookingErr } = await service
     .from('pmo_cloud_records')
-    .select('record_type, payload')
+    // 🆕⏱️ 21/08/2026 — `synced_at` ESCE, ed è la freschezza di QUESTA riga.
+    // 🗣️ Nasce da un caso vero: il committente toglie due giocatori dal bot, ne rimette uno
+    // dal gestionale, e il bot continua a non mostrarlo. Il bot nasconde per 15 minuti chi ha
+    // appena tolto (il sync ci mette ~2 minuti a recepire, e senza quel ricordo il socio
+    // rivedrebbe la persona appena tolta) e si arrende solo quando quella persona sparisce dal
+    // dato. Ma se qualcun ALTRO la rimette, lei nel dato c'è — e il ricordo la nasconde lo
+    // stesso, per tutti i quindici minuti.
+    // ⇒ Il bot non può distinguere «il sync non ha ancora recepito la mia rimozione» da
+    // «qualcuno l'ha rimessa dopo» finché non sa QUANDO quel dato è stato aggiornato.
+    // ⚖️ E lo deve dire il gestionale, non dedurlo il bot: *il gestionale SA, il bot DICE*.
+    // È la stessa freschezza che `consumer-booking-write` azione `verifica` usa già per
+    // rispondere «no» con certezza — qui serve alla stessa domanda, fatta da un altro lato.
+    .select('record_type, payload, synced_at')
     .in('record_type', ['booking', 'staff_booking'])
     .not('deleted', 'is', true)
     .gte('payload->>data', today)
@@ -460,6 +472,16 @@ Deno.serve(async (req: Request) => {
   // perché le due copie hanno roster di completezza diversa.
   const byKey = new Map<string, JsonMap>();
   const listeByKey = new Map<string, string[][]>();
+  /**
+   * ⏱️ Il `synced_at` PIÙ RECENTE fra le righe di ogni slot.
+   * ⭐ Il massimo e non il minimo: dice «l'ultima volta che il circolo mi ha raccontato questa
+   * partita», che è la domanda a cui serve rispondere. Il minimo direbbe quanto è vecchia la
+   * riga più stantia, che è un'altra cosa e servirebbe a un'altra domanda.
+   * ⚠️ Gli `staff_booking` non arrivano dal sync — il loro `synced_at` è l'istante in cui li
+   * abbiamo scritti noi — e vanno bene lo stesso: anche quello è «quando questo dato è stato
+   * toccato l'ultima volta», ed è ciò che il bot deve confrontare col proprio ricordo.
+   */
+  const frescoByKey = new Map<string, string>();
   // Le liste della SOLA scheda del circolo, separate dalle altre: sono l'unica fonte
   // ORDINATA, e l'ordine è ciò che dice chi ha organizzato (il primo dell'elenco).
   const schedeByKey = new Map<string, string[][]>();
@@ -500,6 +522,12 @@ Deno.serve(async (req: Request) => {
       else schedeByKey.set(key, [roster.scheda]);
     }
 
+    const fresco = clean(row.synced_at);
+    if (fresco) {
+      const finora = frescoByKey.get(key);
+      if (!finora || fresco > finora) frescoByKey.set(key, fresco);
+    }
+
     if (byKey.has(key)) continue;
     byKey.set(key, {
       data,
@@ -521,6 +549,13 @@ Deno.serve(async (req: Request) => {
     // ⚠️ Nessun dato personale in più dei `compagni`: gli stessi nomi, più quello del socio
     // stesso, che sta già in `member.name`.
     giocatori: rosterOrdinatoDelloSlot(schedeByKey.get(key) ?? []),
+    // ⏱️ Quando questo roster è stato aggiornato l'ultima volta. Serve a chi tiene una memoria
+    // a tempo di ciò che ha appena fatto (il bot) per sapere se il dato che sta leggendo è più
+    // recente del proprio ricordo — cioè se qualcun altro è intervenuto dopo di lui.
+    // ⚠️ `null` quando nessuna riga porta l'istante: chi legge deve trattarlo come «non lo so»
+    // e tenersi il ricordo, che è il verso prudente (nasconde per qualche minuto in più,
+    // invece di mostrare qualcuno che è stato tolto davvero).
+    aggiornato_al: frescoByKey.get(key) ?? null,
   }));
   bookings.sort((a, b) =>
     `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
