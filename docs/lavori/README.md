@@ -1606,6 +1606,72 @@ di coda che il bot legge), e **il bot decide se e quando dirlo**, dove le protez
 Resta conforme a *il gestionale SA, il bot DICE*: il gestionale dice **cosa è successo**, non
 **a chi scrivere**.
 
+---
+
+## 🔨 VOCE 68 — COSA È GIÀ SCRITTO (21/08/2026 sera), e cosa manca
+
+⭐ Il codice c'è, sui due repo, e segue esattamente la forma proposta: **il gestionale dichiara
+il fatto, il bot decide se e quando dirlo**.
+
+| dove | cosa | prove |
+|---|---|---|
+| `matchpoint-bookings-sync/eventi-staff.ts` | il confronto fra le due fotografie del calendario → i fatti, uno per persona toccata | **20** verdi |
+| `manual-sql/supabase_pmo_eventi_staff.sql` | la coda `pmo_eventi_staff`, su **qqbf** e **cudi**, con RLS chiusa e potatura a 14 giorni | — |
+| `matchpoint-bookings-sync/index.ts` | l'innesto, **dopo** l'upsert riuscito e dentro un `try` che non può fermare il sync | — |
+| `consumer-staff-events/` | la consegna: i **2 minuti** di quiete, la raffica ridotta al netto, il nome risolto a una persona | **12** verdi |
+| bot: `staff-testi.ts`, `staff-avvisi.ts`, `ponte.ts`, `promemoria.ts` | trovare la chat e scrivere in italiano | **14** verdi (banco a **1439**) |
+
+🚨⭐⭐ **UNA COSA È ANDATA DIVERSAMENTE DA COME LA VOCE LA PREVEDEVA, e va saputa: i TESTI SONO
+NUOVI.** Qui sopra sta scritto *«non si inventano messaggi nuovi — si riusano quelli che ci
+sono»*, e provando a farlo si scopre che **direbbero il falso**:
+
+> `testoSeiStatoTolto` → *«Ti ha tolto **Maurizio Aprea**, che l'aveva organizzata.»*
+> *«Se pensi che ci sia un errore, parlane con **Maurizio Aprea**.»*
+
+Quando a togliere è la **segreteria**, la prima frase accusa una persona che non ha fatto
+niente e la seconda manda il socio a chiedere spiegazioni a chi non può dargliene. ⇒ Sono le
+**stesse tre frasi curate il 21/08 perché dicevano il falso**: riusarle qui le rimetterebbe
+nella stessa condizione, da un'altra porta.
+
+⭐⭐ **E la ragione originale conferma il contrario**, che è ciò che rende questa una deduzione e
+non una libertà: il 20/08 il committente ha tolto la segreteria da quelle frasi perché *«il socio
+non ha un problema col circolo, ha un problema con una persona — e la segreteria non sa e non può
+sapere perché quella persona abbia fatto quel gesto»*. Qui è il **rovescio esatto**: il gesto
+l'ha fatto il circolo, quindi la segreteria **rientra**, perché stavolta la risposta ce l'ha.
+⇒ Stessa regola, caso opposto, testo opposto. Le frasi nuove riusano la **forma** (apertura
+colorata, quando-e-dove, una strada da seguire) e cambiano solo l'**attribuzione**.
+
+📌 **E l'annullamento è l'unica eccezione alla decisione ①**, dichiarata: la ① risponde a
+*«oltre all'interpellato, anche gli spettatori?»*, e in un annullamento spettatori non ce ne
+sono — la partita salta a tutti quelli che ci giocavano. Avvisarne uno solo manderebbe gli
+altri tre al campo.
+
+🚨 **LE DUE PROTEZIONI che valgono più del resto**, e che è il caso di conoscere prima del
+collaudo:
+① **la guardia del crollo** (`CROLLO_SOSPETTO`): se da un sync all'altro sparisce più di metà
+del calendario, **non si confronta niente**. Un export mozzato manderebbe a centinaia di soci un
+«la tua partita è stata annullata» falso — non un silenzio, una **bugia moltiplicata**;
+② **fail closed sugli omonimi**: le prenotazioni identificano i giocatori **solo per nome**, e un
+nome che corrisponde a due schede vive non riceve niente. Un «ti hanno tolto dalla partita»
+recapitato a un estraneo è un danno che per giunta gli rivela chi gioca e quando.
+
+⛔ **COSA MANCA, in ordine**, e il primo passo è a mano perché il file SQL non si deploya da sé:
+
+1. **eseguire `supabase_pmo_eventi_staff.sql`** sul SQL Editor di `qqbf…` (e `cudi…`);
+2. **mergiare** → parte il deploy dell'edge nuova e del sync;
+3. **aggiornare il bot** (`deploy-bot-hetzner.yml`, bersaglio `soci`, conferma `SOCI`);
+4. **collaudare** togliendo un giocatore dal gestionale e guardando il registro del bot con
+   `stato-bot.yml`.
+
+⚖️ **L'ordine è consigliato, non obbligatorio, e vale la pena sapere perché**: se il deploy
+arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel registro e
+proseguirebbe — l'innesto sta dentro un `try` apposta. Nessun danno, solo fatti non raccolti
+finché la tabella non c'è.
+
+🕰️ **Quanto ci mette ad arrivare un avviso**: il ritardo del sync (mediana ~2′) **più** i due
+minuti di quiete **più** l'attesa del prossimo giro dei promemoria. ⇒ **Cinque-dieci minuti**, non
+istantaneo, ed è per costruzione: la fretta qui produrrebbe messaggi su una raffica non finita.
+
 📌 **Da non confondere con la cura del 21/08 sera** (`aggiornato_al` + la terza porta di
 `roster-di-recente`): quella riguardava il bot che **nascondeva** per quindici minuti un
 giocatore rimesso dallo staff, ed è un'altra cosa — là il socio guardava e non vedeva, qui non
