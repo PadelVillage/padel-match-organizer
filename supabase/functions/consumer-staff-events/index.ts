@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { riduci, type FattoInCoda } from './riduzione.ts';
+import { destinatarioPerNome, normNome, type SchedaMinima } from './identifica.ts';
 
 // consumer-staff-events — il gestionale CONSEGNA al bot i fatti della segreteria (voce 68).
 //
@@ -65,41 +66,6 @@ function safeEqual(a: string, b: string): boolean {
   let diff = 0;
   for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
   return diff === 0;
-}
-
-/** Forma normalizzata per confrontare due nomi. Gemella di quella del readmodel e del sync. */
-function normNome(value: unknown): string {
-  return clean(value)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-/**
- * Da un nome del roster alla persona, o a niente.
- *
- * 🚨⭐⭐ FAIL CLOSED SUGLI OMONIMI, ed è la protezione più importante di questa funzione.
- * Le prenotazioni identificano i giocatori **solo per nome** — nel payload Matchpoint non c'è
- * un id. Due soci che si chiamano uguale sono indistinguibili da qui, e non è un caso di
- * scuola: sul gestionale i codici socio condivisi da più persone sono già stati misurati (24
- * codici per 48 persone, 9/08/2026).
- * ⇒ Se un nome corrisponde a più di una scheda viva, **non si scrive a nessuno**. Un avviso
- * mancato è un fastidio; un «ti hanno tolto dalla partita» recapitato a un estraneo che con
- * quella partita non c'entra niente è un danno, e per giunta rivela a lui che qualcun altro
- * gioca e quando.
- */
-function risolviUnaSola(
-  nome: string,
-  schede: Array<{ id: string; pmoPlayerId: string; memberId: string; nome: string }>,
-): { id: string; pmoPlayerId: string; memberId: string } | null {
-  const n = normNome(nome);
-  if (!n) return null;
-  const trovate = schede.filter((s) => normNome(s.nome) === n);
-  if (trovate.length !== 1) return null;
-  const s = trovate[0];
-  return { id: s.id, pmoPlayerId: s.pmoPlayerId, memberId: s.memberId };
 }
 
 Deno.serve(async (req: Request) => {
@@ -167,7 +133,7 @@ Deno.serve(async (req: Request) => {
   const daDire = ridotti.filter((e) => e.gesto !== null);
   const nomi = [...new Set(daDire.map((e) => e.persona))];
 
-  const schede: Array<{ id: string; pmoPlayerId: string; memberId: string; nome: string }> = [];
+  const schede: SchedaMinima[] = [];
   if (nomi.length) {
     const { data: membri, error: memberErr } = await service
       .from('pmo_cloud_records')
@@ -208,12 +174,15 @@ Deno.serve(async (req: Request) => {
 
     if (eventi.length >= MAX_ESITI) { troncato = true; continue; }
 
-    const chi = risolviUnaSola(e.persona, schede);
+    const chi = destinatarioPerNome(e.persona, schede);
     if (!chi) {
       // 🚨 Si chiude lo stesso, e va spiegato: questo nome non diventerà risolvibile domani.
-      // O è una persona che il circolo non ha in anagrafica, o sono due omonimi — e in
-      // nessuno dei due casi riprovare fra un'ora cambia qualcosa. Tenerlo in coda vorrebbe
-      // dire riesaminarlo a ogni giro per sempre.
+      // O è una persona che il circolo non ha in anagrafica, o sono due OMONIMI VERI (schede
+      // con identificativi diversi) — e in nessuno dei due casi riprovare fra un'ora cambia
+      // qualcosa. Tenerlo in coda vorrebbe dire riesaminarlo a ogni giro per sempre.
+      // ⚠️ Le schede DUPLICATE della stessa persona non finiscono qui: `destinatarioPerNome`
+      // le riconosce e consegna. Il 21/08 la regola secca «più di una scheda ⇒ nessuno»
+      // avrebbe tolto per sempre gli avvisi a una socia vera, in silenzio.
       daChiudere.push(...e.ids);
       nonRiconosciuti += 1;
       continue;
