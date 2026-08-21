@@ -1668,9 +1668,17 @@ arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel regist
 proseguirebbe — l'innesto sta dentro un `try` apposta. Nessun danno, solo fatti non raccolti
 finché la tabella non c'è.
 
-🕰️ **Quanto ci mette ad arrivare un avviso**: il ritardo del sync (mediana ~2′) **più** i due
-minuti di quiete **più** l'attesa del prossimo giro dei promemoria. ⇒ **Cinque-dieci minuti**, non
-istantaneo, ed è per costruzione: la fretta qui produrrebbe messaggi su una raffica non finita.
+🕰️ **Quanto ci mette ad arrivare un avviso — MISURATO il 21/08, e il primo numero scritto qui
+era sbagliato.** Diceva «cinque-dieci minuti»: è la somma del ritardo del sync (mediana ~2′) e dei
+due minuti di quiete, e **dimentica il pezzo più grosso**. Il giro dei promemoria del bot passa
+ogni **15 minuti** (`PERIODO_MS`, `promemoria.ts:51`), e un fatto maturo aspetta lì fermo fino al
+giro dopo.
+⇒ La cifra vera è **da 4 a ~19 minuti**, con **~11 in media**. Non è un difetto: è la somma di tre
+attese ognuna delle quali serve. Ma va detta giusta, perché è quella che decide se il collaudo
+«non funziona» o «non è ancora arrivato» — e i due si somigliano moltissimo.
+⚖️ È la regola del 15/08 applicata a sé stessa: *un numero dichiarato che non corrisponde al
+misurato è precisamente il difetto che questo progetto cura*. Quello vecchio nasceva da una somma
+fatta a mente invece che dal codice.
 
 📌 **Da non confondere con la cura del 21/08 sera** (`aggiornato_al` + la terza porta di
 `roster-di-recente`): quella riguardava il bot che **nascondeva** per quindici minuti un
