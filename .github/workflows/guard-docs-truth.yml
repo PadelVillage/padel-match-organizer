@@ -175,8 +175,18 @@ jobs:
 
           # --- ciò che il file CONTIENE ---
           URG_N=$(awk '/^## .*URGENTI —/{f=1;next} /^## .*IN CODA —/{f=0} f && /^### /{c++} END{print c+0}' /tmp/lavori.md)
-          C_N=$(awk '/^### C —/{f=1;next} /^### D —/{f=0} f && /^#### /{c++} END{print c+0}' /tmp/lavori.md)
-          D_N=$(awk '/^### D —/{f=1;next} /^## /{f=0} f && /^\| \*\*[0-9]/{c++} END{print c+0}' /tmp/lavori.md)
+          # Una voce VIVA di C o di D è una riga di tabella il cui numero sta da solo nella
+          # prima cella: `| **68** | ...`. Il `\|` subito dopo le due stelle è ciò che la
+          # distingue dalle tabelle STORICHE della stessa sezione, dove il numero è seguito
+          # dal titolo nella stessa cella (`| **52** Autovalutazione morta | 📦 CHIUSA…`):
+          # quelle raccontano dove una voce è finita, non sono voci in coda.
+          # 🚨 Qui prima si contavano i titoli `#### ` — uno stile che la sezione C NON usa.
+          # Finché C è stata VUOTA il controllo passava (0 dichiarato, 0 contato) e sembrava
+          # funzionante; è diventato rosso alla prima voce entrata davvero, e ci è rimasto.
+          # ⇒ Una guardia che passa su una sezione vuota non ha ancora dimostrato di saperla
+          # contare: il verde diceva «i conti tornano» e voleva dire «non c'è niente da contare».
+          C_N=$(awk '/^### C —/{f=1;next} /^### D —/{f=0} f && /^\| \*\*[0-9]+\*\* \|/{c++} END{print c+0}' /tmp/lavori.md)
+          D_N=$(awk '/^### D —/{f=1;next} /^## /{f=0} f && /^\| \*\*[0-9]+\*\* \|/{c++} END{print c+0}' /tmp/lavori.md)
           # Una riga-voce delle chiuse ha nella prima cella `—` (voce mai numerata) oppure
           # `**N**` (voce che aveva un numero in coda). Intestazione e separatore non hanno
           # quella forma ed escono da soli. Si chiude alla PRIMA riga che comincia per `#`,
