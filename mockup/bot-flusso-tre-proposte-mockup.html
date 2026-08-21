@@ -16,6 +16,11 @@
   🔄 AGGIORNATO IL 21/08 (v2), su delega del committente: le decisioni sono PRESE e scritte
      nella pagina — 1+2 insieme (Fase A), la riga «chi stai aspettando» sulla scheda (Fase B,
      sezione nuova), la 3 rimandata. Resta al committente il «vai» dopo averla guardata.
+  🔄 v3, stesso giorno — sua domanda: «hai pensato anche a chi è dall'altra parte?». No, non
+     fino in fondo, e guardando: DUE cose vere, verificate nel codice — l'invito non dichiara
+     la sua scadenza (si impara dal rifiuto), e la promessa «se qualcuno arriva prima di te,
+     te lo dico» non è mantenuta (si avvisa solo l'organizzatore; chi aspetta lo scopre solo
+     toccando). Entrambe in Fase B, sezione «il lato di chi riceve».
 
   Da dove viene ogni pezzo, nel codice del bot (repo assistente-padel-agent):
     · la bolla unica            → `conLaPartitaSotto` (bot.ts:1873): `${frase}\n\n${scheda.testo}`
@@ -282,9 +287,10 @@
     così profondo nel decidere: l'obiettivo è che organizzare e chiudere una partita sia
     comprensibile per i soci»</em>). Il criterio usato per decidere è uno solo:
     <strong>chi organizza deve sempre sapere «a che punto sono», senza cercarlo</strong>.
-    Ne esce: la <strong>1 e la 2 si fanno, insieme</strong> (Fase A); si aggiunge una cosa
-    nuova trovata col criterio in mano — <strong>la scheda dice anche chi stai aspettando</strong>
-    (Fase B, in fondo); la <strong>3 si rimanda</strong>. Le domande aperte sono state chiuse,
+    Ne esce: la <strong>1 e la 2 si fanno, insieme</strong> (Fase A); si aggiungono due cose
+    nuove trovate col criterio in mano — <strong>la scheda dice anche chi stai aspettando</strong>
+    e, dal lato di chi riceve, <strong>l'invito dichiara la sua scadenza e mantiene la promessa
+    «te lo dico»</strong> (Fase B, le due sezioni in fondo); la <strong>3 si rimanda</strong>. Le domande aperte sono state chiuse,
     ed è scritto come e perché. Per partire basta un «vai» dopo aver guardato questa pagina.
   </p>
 </header>
@@ -746,6 +752,130 @@
   </p>
 </section>
 
+<!-- ══════════════════════════════════════════════════ FASE B · CHI RICEVE -->
+<section class="proposta">
+  <header>
+    <p class="numero">La cosa nuova · Fase B, il lato di chi riceve</p>
+    <h2>L'invito dice le sue regole — e mantiene la sua promessa</h2>
+    <p class="movente">
+      Nata da una domanda del committente (<em>«hai pensato anche a chi è dall'altra parte?»</em>),
+      e la risposta onesta era: non fino in fondo. Guardando con gli occhi di chi riceve, due
+      cose — verificate nel codice, non supposte. <b>① L'invito non dice che scade</b>: vale
+      tre ore, la data di morte è già scritta su ogni invito, ma il messaggio la tace — il
+      socio la impara solo dal rifiuto, cioè sbagliando. <b>② La promessa «te lo dico» non è
+      mantenuta</b>: quando il posto finisce, il bot avvisa solo l'organizzatore. Chi aspettava
+      lo scopre soltanto se tocca — e intanto può tenersi libera la serata per una partita che
+      si è riempita alle tre del pomeriggio.
+    </p>
+  </header>
+
+  <div class="confronto tre">
+    <article class="scheda">
+      <div class="cappello">
+        <p class="caso">Com'è oggi</p>
+        <h3>Le regole si scoprono sbagliando</h3>
+      </div>
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">🎾 <b>Marco ti invita a giocare</b></span>
+            <span class="riga">Giovedì 28 alle 09:30, campo 1</span>
+            <span class="riga vuota"></span>
+            <span class="riga">In campo ci sono Marco e Giulia. Restano 2 posti liberi.</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Se ci stai entri in campo subito. Il posto va a chi risponde
+              per primo: se qualcuno arriva prima di te, te lo dico.</span>
+            <div class="tastiera">
+              <div class="bottone">Ci sto</div>
+              <div class="bottone">Non posso</div>
+            </div>
+            <span class="ora">15:32</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        Niente dice che alle <b>18:32 questo invito muore</b>. E il «te lo dico» vale solo se
+        tocchi: chi aspetta senza toccare <b>non riceve niente</b> quando il posto finisce —
+        i due bottoni restano lì, vivi e ormai falsi.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe · 1</p>
+        <h3>La scadenza sta scritta sull'invito</h3>
+      </div>
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">🎾 <b>Marco ti invita a giocare</b></span>
+            <span class="riga">Giovedì 28 alle 09:30, campo 1</span>
+            <span class="riga vuota"></span>
+            <span class="riga">In campo ci sono Marco e Giulia. Restano 2 posti liberi.</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Se ci stai entri in campo subito. Il posto va a chi risponde
+              per primo: se qualcuno arriva prima di te, te lo dico.</span>
+            <span class="riga vuota"></span>
+            <span class="riga">⏰ L'invito vale fino alle 18:32.</span>
+            <div class="tastiera">
+              <div class="bottone">Ci sto</div>
+              <div class="bottone">Non posso</div>
+            </div>
+            <span class="ora">15:32</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Una riga, e il dato c'è già</b>: la scadenza viene scritta su ogni invito nel
+        momento in cui parte (tre ore, mai prima delle 9, mai oltre l'inizio della partita).
+        Oggi quella regola il socio la legge per la prima volta <b>nel messaggio di rifiuto</b>
+        — «gli inviti valgono poche ore» — cioè quando è troppo tardi per usarla.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe · 2</p>
+        <h3>La promessa mantenuta</h3>
+      </div>
+      <div class="telegram">
+        <p class="etichetta-bolla">l'invito, riscritto quando il posto finisce</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">⚠️ <b>Il posto è già stato preso</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Per giovedì 28 alle 09:30, campo 1: ha risposto prima
+              qualcun altro.</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Se ti va di giocare comunque, prenoti un campo tuo:
+              tocca /prenota.</span>
+            <span class="ora">16:05</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        Quando il posto finisce, chi aspettava <b>lo viene a sapere subito</b>: il suo invito
+        si riscrive con la notizia e <b>i bottoni spariscono</b> — niente più «Ci sto» su un
+        posto che non c'è. Non è rumore: è la risposta a una domanda che quella persona ha
+        aperta. La colonna per farlo (<code>messaggio_id</code>) esiste già nella tabella
+        degli inviti, scritta nel disegno e mai riempita: questa è la cosa per cui era nata.
+      </p>
+    </article>
+  </div>
+
+  <p class="prezzo">
+    <b>Il filo delle due cose è uno solo, ed è lo stesso della riga qui sopra:</b> nessuna
+    regola si scopre sbagliando, nessuno stato si scopre toccando. Vale per l'organizzatore
+    (chi sto aspettando?) e per l'invitato (quanto vale il mio invito? il posto c'è ancora?).
+  </p>
+</section>
+
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <section class="chiusa">
   <h2>Il piano, e cosa resta a te</h2>
@@ -756,10 +886,12 @@
     dopo, una chat riletta il giorno dopo racconta la storia vera, nell'ordine vero.
   </p>
   <p>
-    <strong>Fase B — la scheda risponde ad «a che punto sono».</strong> La riga di chi stai
-    aspettando (qui sopra), più due cure piccole già misurate nei documenti: la frase e il
-    roster che nella stessa bolla dicono due numeri diversi, e l'avviso automatico che non deve
-    più infilarsi fra «attendi un attimo» e la risposta che stavi aspettando.
+    <strong>Fase B — nessuno stato si scopre toccando, da nessuno dei due lati.</strong>
+    Per l'organizzatore: la riga di chi stai aspettando. Per chi riceve: la scadenza scritta
+    sull'invito, e la promessa «te lo dico» mantenuta quando il posto finisce. Più due cure
+    piccole già misurate nei documenti: la frase e il roster che nella stessa bolla dicono due
+    numeri diversi, e l'avviso automatico che non deve più infilarsi fra «attendi un attimo» e
+    la risposta che stavi aspettando.
   </p>
   <p>
     <strong>Fase C — rimandata.</strong> Il colpo d'occhio sulla settimana resta disegnato qui
