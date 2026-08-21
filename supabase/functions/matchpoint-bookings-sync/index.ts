@@ -1424,7 +1424,7 @@ Deno.serve(async (req) => {
         validation.bookings as unknown as JsonMap[],
         (d) => playersFromDescrizione(d as string),
       );
-      const fatti = fattiDaConfronto(primaFoto, dopoFoto);
+      const fatti = fattiDaConfronto(primaFoto, dopoFoto, todayIsoRome());
       if (fatti.length) {
         const { error: codaError } = await admin
           .from('pmo_eventi_staff')

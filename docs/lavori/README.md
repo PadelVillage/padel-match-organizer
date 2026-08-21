@@ -1712,6 +1712,37 @@ nove, l'errore ferma il giro, e se il freno d'emergenza morde **non si chiude ni
 restano in coda e il giro dopo riprova, perché *meglio un avviso in ritardo che una riga chiusa
 a vuoto*. Provata sabotandola: rimessa la lettura sola, **4 casi su 8 diventano rossi**.
 
+🌙🚨⭐⭐ **E ALLA PRIMA MEZZANOTTE HA MANDATO 36 FALSI ANNULLAMENTI A 32 PERSONE.**
+*(Misurato e CURATO la notte del 21/08, quattro minuti dopo che è successo — lo screenshot del
+telefono di Maurizio è arrivato mentre stavo scrivendo la cura del difetto precedente.)*
+
+Alle **00:01:47** sono nati 36 fatti `annullata`, tutti con `data = 2026-08-21`, cioè le partite
+**del giorno appena finito**. Testo recapitato: *«👋 La tua partita non c'è più — È stata
+annullata dal circolo»*.
+
+🔎 **La causa non è un guasto: è il CALENDARIO.** Il sync guarda **da oggi in avanti**, quindi a
+ogni mezzanotte il giorno finito **esce dalla finestra**. La fotografia di prima ce l'ha, quella
+di dopo no ⇒ per il confronto quelle partite sono *sparite*, e sparire vuol dire annullata.
+⇒ *Una partita già giocata non è stata annullata: è stata **giocata**.*
+
+⚖️⭐⭐ **E la protezione c'era — puntata sul guasto sbagliato.** `confrontoAttendibile` difende
+dal **crollo**: metà del calendario sparito insieme, che è il caso dell'export mozzato. A
+mezzanotte se ne va **un giorno su trenta**: troppo poco per farla scattare, abbastanza per
+mentire a tutti quelli che avevano giocato ieri.
+⇒ *Una protezione giusta puntata sul guasto sbagliato non attenua il difetto che le passa
+accanto: lo lascia passare intero, e per giunta fa credere che qualcuno stia guardando.*
+
+📏 **Il danno vero è stato piccolo per una ragione che non è merito di nessuno**: dei 32 nomi,
+**uno solo** ha il bot (Maurizio, 3 messaggi). Gli altri 31 non l'hanno, quindi niente è partito.
+🚨 Con i soci tutti dentro sarebbero **32 persone ogni notte** — cioè la cosa che fa disinstallare
+un bot. *Il difetto non era più piccolo: era solo puntato su una platea di cinque.*
+
+🔨 **La cura**: le due fotografie si confrontano **sulla finestra che hanno in comune** (`oggi`
+passato dal sync, `todayIsoRome()`), e il filtro sta **prima** della guardia del crollo — se no
+il calo fisiologico di ogni notte falserebbe comunque la proporzione, e a furia di falsarla la
+guardia si sarebbe spenta anche sugli annullamenti veri. 🧪 Quattro casi nuovi (30-33), e il
+sabotaggio che toglie il filtro ne fa cadere **due**: quello di ieri e quello della proporzione.
+
 ⚠️ **E resta una cosa NON curata, che è una decisione da prendere**: `consegnato_at` viene
 scritto **anche** quando il destinatario non si riconosce — cioè la colonna dice *fatto* su un
 messaggio mai partito. Oggi è deliberato (`daChiudere` include il ramo `nonRiconosciuti`,
