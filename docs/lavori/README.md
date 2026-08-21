@@ -1655,13 +1655,57 @@ del calendario, **non si confronta niente**. Un export mozzato manderebbe a cent
 nome che corrisponde a due schede vive non riceve niente. Un «ti hanno tolto dalla partita»
 recapitato a un estraneo è un danno che per giunta gli rivela chi gioca e quando.
 
+✅⭐⭐ **COLLAUDATA SUL VIVO, su PROD, la sera del 21/08 — la catena intera, non i pezzi.**
+Con l'autorizzazione del committente (*«fai tutto su prod usando maurizio aprea e lidia comes»*).
+
+| anello | come è stato provato | esito |
+|---|---|---|
+| ① sync → fatti | i **dati veri** di PROD passati al modulo, in sola lettura: aggiunta, rimozione, annullamento, e il caso «nessuno tocca niente» | ✅ 1 fatto · 1 fatto · **2** fatti · **0** |
+| ② coda → ponte | `consegnato_at` valorizzato dopo la quiete | ✅ 20:50:44 |
+| ③ ponte → bot | l'evento è arrivato al giro dei promemoria | ✅ |
+| ④ bot → telefono | riga nel registro: `🔔 detto a Maurizio Aprea: il circolo ha aggiunto — 2026-08-31\|09:30\|1` | ✅ |
+
+📏 **Tempo misurato dal fatto al messaggio: 15′21″**, dentro la finestra 4-19′ dichiarata qui sopra.
+
+🚨⭐⭐ **E IL COLLAUDO HA TROVATO UN DIFETTO CHE LE 42 PROVE NON POTEVANO VEDERE** — che è
+esattamente la ragione per cui si collauda sul vivo. *«Lidia Comes»* aveva **due schede** in
+anagrafica; la regola appena scritta, «più di una scheda ⇒ non si scrive a nessuno», le rifiutava
+entrambe. ⇒ Lidia **non avrebbe mai ricevuto un avviso**, e nessuno se ne sarebbe accorto: *un
+avviso che non parte è indistinguibile da un fatto che non è successo*.
+⚖️ La cura (#955) è nella domanda giusta: non «quante schede?» ma **«puntano alla stessa
+persona?»**. Due schede con la stessa impronta — i due identificativi presi insieme — sono un
+duplicato d'anagrafica, non un'ambiguità. L'ambiguità vera, quella da cui la guardia nasce (24
+codici socio condivisi da 48 persone), è quando le impronte **differiscono**: lì si tace.
+📌 Una prova che passa non dice che il codice è giusto: dice che è giusto **sui casi che qualcuno
+ha immaginato**. L'anagrafica vera ne aveva uno che nessuno aveva immaginato.
+
+🧹 **E il doppione è stato curato alla radice** (21/08, su richiesta del committente, che aveva
+verificato che *«su matchpoint c'è solo una lidia comes»*). Le due righe erano **entrambe**
+`matchpoint_auto`: due importazioni della stessa scheda. `memberCloudKey` usa il **telefono** se
+c'è, altrimenti l'email ⇒ quando l'export è arrivato **senza telefono** (alla copia manca anche
+`matchpointIdInterno`), il sync è ricaduto sull'email, non ha riconosciuto la riga esistente e ne
+ha creata una seconda. Cancellata la `email:`, che non è la canonica e non portava nessun dato
+esclusivo. Su 2810 soci vivi le persone con più di una scheda sono ora **zero**.
+⚠️ **Può tornare**: se un export darà di nuovo Lidia senza telefono, la riga `email:` si rifà. La
+cura strutturale sarebbe far cercare al sync anche per `payload.id` — **non fatta**, è un cambio
+di codice da decidere.
+⭐ Ma la protezione ora è **doppia e indipendente**: anche col doppione tornato, la #955 riconosce
+le due schede come una persona sola e l'avviso parte lo stesso.
+
 ⛔ **COSA MANCA, in ordine**, e il primo passo è a mano perché il file SQL non si deploya da sé:
 
-1. **eseguire `supabase_pmo_eventi_staff.sql`** sul SQL Editor di `qqbf…` (e `cudi…`);
-2. **mergiare** → parte il deploy dell'edge nuova e del sync;
-3. **aggiornare il bot** (`deploy-bot-hetzner.yml`, bersaglio `soci`, conferma `SOCI`);
-4. **collaudare** togliendo un giocatore dal gestionale e guardando il registro del bot con
-   `stato-bot.yml`.
+~~1. eseguire il SQL~~ · ~~2. mergiare~~ · ~~3. aggiornare il bot~~ · ~~4. collaudare~~ —
+**tutti e quattro fatti la sera del 21/08**, in quest'ordine, ed è la tabella qui sopra.
+
+⛔ **Resta invece:**
+1. **guardare il PRIMO GIORNO vero**: finora l'unico fatto consegnato è quello di prova. Il primo
+   gesto vero della segreteria è la misura che manca, e va guardata nel registro del bot
+   (`stato-bot.yml`, regex `detto a|staff`);
+2. **decidere sulla cura strutturale del doppione** (sopra): far cercare al sync anche per
+   `payload.id`, così una scheda senza telefono non genera una riga nuova;
+3. **le prove delle edge non girano in CI su questo repo** — c'è solo `typecheck-edge-functions`.
+   È lo stesso difetto curato il 21/08 nel repo del bot con `prove.yml`: qui i 42 casi della voce
+   68 si lanciano solo a mano, e **nessuno se ne accorgerebbe se un domani diventassero rossi**.
 
 ⚖️ **L'ordine è consigliato, non obbligatorio, e vale la pena sapere perché**: se il deploy
 arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel registro e
