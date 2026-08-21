@@ -1,6 +1,58 @@
 # Padel Match Organizer — i lavori
 
-**Fotografia del 18/08/2026, a fine 31ª sessione.** Misurata, non ricordata.
+**Fotografia del 21/08/2026, a fine 46ª sessione.** Misurata, non ricordata.
+
+## 🔎 Il filo della 46ª: **una scheda descrive il difetto che qualcuno ha VISTO**
+
+Il committente ha promosso quattro difetti misurati la notte prima, ognuno con la sua scheda. **Due
+schede su quattro dicevano meno di quello che c'era**, e la differenza non si vedeva rileggendole:
+si è vista andando a misurare il bersaglio.
+
+| | la scheda diceva | la misura ha detto |
+|---|---|---|
+| **64** | l'avviso *«arriva anche a chi il gesto l'ha fatto»* | è arrivato a **quattro** persone, e **tre non avevano toccato niente** |
+| **63** | *«spostare una partita lascia gli inviti attaccati al vuoto, in silenzio»* | e un invito così può **riagganciarsi a una partita nuova sullo stesso slot**: qualcuno entra in campo dove nessuno l'ha invitato |
+
+⚖️ Non erano schede sbagliate: erano scritte **da chi aveva visto il difetto succedere**, e uno
+vede la parte che gli è capitata davanti. La 64 l'ha vista lui sul proprio telefono — quindi la
+scheda racconta **il suo** messaggio, non i tre che erano partiti verso altre persone.
+⇒ *Chi scrive una scheda racconta il punto da cui guardava. La misura serve a trovare gli altri.*
+
+🚨 E la conseguenza pratica non è «diffidare delle schede»: è che **la cura cambia forma**. Sulla
+64, una guardia legata a **chi agisce** avrebbe curato per intero il caso della scheda e lasciato
+in piedi i tre avvisi agli estranei — cioè avrebbe curato la metà visibile e lasciato quella che
+fa la figura peggiore. Le due domande si fanno **per partita**, e quella decisione viene dalla
+misura, non dal difetto raccontato.
+
+## 🔎 Il secondo filo della 46ª: **la diagnostica mancava proprio dove il guasto colpisce**
+
+La voce **66** (`PLAYER_ID_NOT_LOCKED`) non si è potuta curare, e la ragione non è che il difetto
+sia difficile: è che **il ramo in cui si presenta era l'unico senza diagnostica**.
+`createBookingWithBrowser` allega `steps=[…] url=…` ai suoi errori da sempre;
+`editBookingWithBrowser` faceva `catch (_e) { throw _e }`. I due fallimenti veri del 20/08 —
+Fabiola alle 20:55:11, Lidia alle 22:36:48 — sono **tutti e due** su `edit-booking`.
+
+📏 Dal registro si leggeva «Autocomplete non agganciato per: Lidia Comes» e nient'altro. I modi di
+fallire sono **due** e hanno **due cure diverse** — la tendina che non compare mai, e la tendina
+che compare ma lascia vuoto il campo nascosto — e da quella riga non si distinguono.
+
+⇒ *Un guasto intermittente si diagnostica solo dove lascia traccia, e la traccia mancava proprio
+lì.* Il lavoro della giornata su quella voce è stato **aggiungere la traccia**, non indovinare la
+cura: l'ipotesi c'è (tre casi su tre col campo vuoto hanno **due** liste di autocomplete in
+pagina), ma tre casi sono una correlazione, non una prova — e il worker è **uno solo, condiviso
+TEST+PROD**, quindi ogni prova scrive sul Matchpoint vero.
+📌 *Prima la misura, poi la riga* — e la voce si chiude quando quel fallimento sarà arrivato e
+letto, non quando il codice «sembra a posto».
+
+## 📌 Le decisioni prese dal committente nella 46ª
+
+| | |
+|---|---|
+| ⬆️ **«promuovi tutte e quattro»** | a lista vuota, sulle quattro schede che gli ho messo davanti. ⇒ Urgenti da **0 a 4**, e sono le **63**, **64**, **65**, **66** |
+| 🔎 **«solo la diagnostica»** sulla 66 | fra tre strade (diagnostica sola · diagnostica + cura ipotizzata · niente), ha scelto la prima. ⭐ È la scelta che questa casa raccomanda da sé: la cura poggiava su tre casi, e il worker scrive sul circolo vero |
+| 🔀 **«fondi la 943 e poi la 944»** | l'ordine del 4bis, detto da lui. La guardia su `test-preview` è partita 20 secondi prima che `main` arrivasse, ha aspettato i suoi 90 secondi, ha riletto ed è passata: **la finestra di transizione, non drift** — che è esattamente il caso per cui il 14/08 è stata resa paziente |
+| 🚀 **«fondi anche la 51»** e poi **«lancia tu»** | il deploy sul bot dei **soci**, con la parola `SOCI`, lanciato da qui. ⚠️ Nessuna delle due cure era stata guardata su un telefono: la scelta di andare in servizio senza anteprima è **sua**, dichiarata — come il 20/08 per le spunte |
+| 📄 **«aggiorna i documenti»** | ⇒ questa sezione. Le quattro voci restano **urgenti**: tre sono curate e in servizio, ma la loro **cura** nessuno l'ha ancora vista succedere sul bersaglio |
 
 ## 🔎 Il filo della 44ª: **un caso che chiama il passo A MANO non prova il BOTTONE**
 
@@ -886,7 +938,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **0** — vuota, e per **sua scelta**: il 19/08, chiusa la 61, alla domanda su cosa promuovere ha risposto *«niente per ora»* |
+| 🔴 **Urgenti** | **4** — promosse **tutte e quattro da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima. Tre sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno |
 | 📋 **In coda** | **1** — la sola **60** (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08 |
 | 📦 **Chiuse** | **57** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -1114,7 +1166,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 4
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1227,6 +1279,154 @@ ramo prima di test-preview e poi di main»*), e **CHIUSA da lui la sera stessa**
 col residuo dichiarato (il secret facoltativo per il sync istantaneo).
 
 
+⬆️ **Promosse dal committente il 21/08/2026, 46ª sessione**, a lista vuota e su mia proposta:
+gli ho messo davanti i quattro difetti misurati la notte prima e **li ha promossi tutti e
+quattro**. ⇒ Urgenti da **0 a 4**.
+⚖️ Tre sono **curate, fuse e in servizio** nella stessa giornata; **restano aperte lo stesso**, ed
+è la sua regola: *«non chiudere una voce che non hai verificato sul bersaglio — il codice è a
+posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tutt'e tre; la **cura**
+no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
+📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
+nella sua scheda.
+
+### **63** — 🚨 Gli inviti restano attaccati a una partita che non c'è più — CURATA, in servizio
+
+🗣️ Visto sul vero il 20/08, non dedotto: la prenotazione `9535` si è spostata dal 24 al 31 agosto
+e l'invito di Laura è rimasto agganciato al **24**, che non esiste più. Nessuno l'ha saputo — non
+chi aveva invitato (sotto la partita nuova quell'invito non compare, e la vecchia non è più fra le
+sue), non chi era stata invitata, con in mano un bottone che non porta più da nessuna parte.
+
+📏 **E non è un caso di scuola**, misurato il 21/08 incrociando `telegram_inviti_partita` (su
+`ayly…`) con `pmo_cloud_records` (su `qqbf…`): delle **4** partite che hanno mai avuto inviti,
+**2 non esistono più** — **12 inviti su 17**.
+
+🚨⭐⭐ **E la scheda non nominava la cosa peggiore.** Un invito che sopravvive alla sua partita può
+**riagganciarsi a una partita NUOVA nello stesso slot** e far entrare in campo qualcuno che nessuno
+ha invitato lì. È lo stesso danno che il ritiro del 19/08 impedisce quando la partita la annulla il
+socio **dal bot** — solo che lì il bot lo sa, e qui deve accorgersene.
+⇒ *Una scheda descrive il difetto che qualcuno ha VISTO, non tutto il difetto che c'è.*
+
+🔨 **La cura** (PR #51 del bot): al giro degli avvisi, gli inviti in sospeso il cui slot non è più
+fra le partite del socio si **ritirano**. E il dubbio non ritira niente, in tre casi:
+① **la copia più vecchia del fatto** ⇒ si ritira solo alla **seconda conferma** (due giri, mezz'ora):
+sulle prenotazioni il gestionale è uno specchio con qualche minuto di ritardo, e un ritiro deciso su
+una lettura stantia ucciderebbe l'invito di una partita **viva**;
+② **l'elenco tagliato** ⇒ il ponte manda al massimo **10** prenotazioni (`MAX_BOOKINGS` in
+`consumer-player-readmodel`) e lo dichiara con `bookings_truncated`: alla partita numero undici
+l'assenza dall'elenco non vuol dire niente, e il socio ne aveva già **7**;
+③ **il campo illeggibile** ⇒ una partita con la stessa data e ora il cui campo non si legge come
+numero vale come «potrebbe essere questa».
+⚖️ Il verso giusto del dubbio è **lasciarli vivere**: un orfano di troppo costa un bottone che dice
+«quella partita non c'è più»; un invito ritirato per errore costa una persona che non entra in campo
+e non sa perché.
+
+🚨 **Nessun messaggio parte, ed è dichiarato**: se il socio debba anche **leggere** che quegli
+inviti non valgono più è una decisione **sua**, e finché non l'ha presa il bot non aggiunge avvisi
+che nessuno ha chiesto.
+
+⛔ **Quello che la cura NON fa, e non è una svista**: distinguere due prenotazioni diverse sullo
+stesso slot. Il **ponte** identifica le partite per `data|ora|campo` e fonde di proposito le due
+copie (`booking` del sync e `staff_booking` del percorso consumer) sotto la stessa chiave. Finché
+quel dato non arriva dal gestionale, il bot non ha modo — ed è il pezzo che resta scoperto.
+
+### **64** — 🚨 Un avviso automatico parte su una partita che stiamo cambiando noi — CURATA, in servizio
+
+📏 La sequenza, letta nel registro del bot dei soci e misurata al secondo:
+
+| | |
+|---|---|
+| `00:12:25` | Maurizio tocca «conferma annulla» — 31 agosto, 14:00, campo 1 |
+| `00:13:09` | 🔔 «tornata_incompleta» **a Maurizio** — 44 secondi dopo il tocco |
+| `00:13:10` | 🔔 «tornata_incompleta» **a Lidia Comes** — non aveva toccato niente |
+| `00:13:11` | 🔔 «tornata_incompleta» **a Fabiola Limuti** |
+| `00:13:12` | 🔔 «tornata_incompleta» **a Marco Aprea** |
+| `00:14:38` | ↳ «Fatto: ho annullato la partita» — **un minuto e mezzo DOPO** gli avvisi |
+
+⇒ Quattro persone vere hanno letto «un giocatore è uscito dalla tua partita» un minuto e mezzo
+prima che quella partita venisse **annullata**. L'avviso era già superato quando è partito: la
+partita non stava perdendo un giocatore, **stava sparendo**.
+
+⚖️ **La causa non è una regola sbagliata.** Annullare passa dal circolo e ci mette un paio di
+minuti, e in quei due minuti il roster si svuota **prima** che la partita sparisca: il giro degli
+avvisi ha guardato il mondo **nel mezzo di un'operazione** e ha raccontato il transitorio come un
+fatto.
+
+🚨⭐⭐ **E qui la scheda diceva metà.** Era scritta come *«arriva anche a chi il gesto l'ha fatto»*;
+i destinatari erano **quattro**, e **tre non avevano toccato niente**. Una guardia legata a **chi
+agisce** avrebbe curato il caso più facile da vedere e lasciato in piedi quello che fa la figura
+peggiore. ⇒ Le due domande si fanno **per PARTITA**:
+· `gestoInVoloSullaPartita` (`in-corso.ts`) — copre i due minuti dell'operazione;
+· `fattoDaChiunqueSulla` (`fatto-compiuto.ts`) — copre i quindici in cui il circolo non l'ha ancora
+recepito.
+
+⚖️ **Nessuna delle due è una memoria del MONDO**, e la distinzione tiene in piedi la regola ferrea:
+sono la memoria di ciò che stiamo facendo **noi**, che è l'unica cosa che il dato non può
+raccontare. Lo stato della partita resta del gestionale — *il gestionale SA, il bot DICE*.
+⚠️ Coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui
+non si vede, ed è dichiarato nel codice.
+
+🚨 Si salta la voce **per intero, conteggio compreso**: un numero letto a metà operazione al giro
+dopo diventerebbe il «prima» da cui si misura il calo, e la prova che erano in quattro sparirebbe
+in silenzio.
+
+### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
+
+🗣️ La regola ferrea del 19/08: *«il worker il bot non deve proprio filarselo»* — né indirizzo, né
+stato, **né nome**. Quel giorno è stato curato il `reason` (`worker_error` →
+`scrittura_rifiutata`) e messa la guardia che lo sorveglia. Il **dettaglio** no.
+
+📏 Misurato nel registro del bot dei soci il 21/08 alle 09:28, sull'esito ignoto di una
+prenotazione del giorno prima: `Worker network error: error sending request for url
+(https://worker…/create-booking): tcp connect error: Connection refused` è arrivato **intero** fino
+al bot.
+
+🚨 **E non finisce solo nel log.** Per ogni rifiuto che non sia `esito_ignoto`, il bot passa quel
+testo come `spiegazione` al modello che scrive al socio (`prenotazione.ts`): il nome di un pezzo
+interno poteva arrivare **sullo schermo di chi gioca**, dentro una frase riformulata. È il difetto
+del 29/07 in un'altra stanza.
+
+🔨 La cura (`dettaglioPerIlBot` in `consumer-booking-write/esito-scrittura.ts`, applicata a **tutti
+e otto** i punti che scrivono `detail:`): il grezzo resta nel `console.error` dell'edge — dove serve
+a noi per la diagnosi — e verso il bot esce una frase muta. **Fallisce chiusa**: al minimo sospetto
+non si ritaglia il pezzo colpevole lasciando il resto, perché ritagliare lascia in piedi la metà che
+nessuno ha pensato di cercare.
+⚖️ **Un url è un nome interno anche quando non contiene nessuna parola vietata**, ed è la forma
+esatta in cui il difetto si è presentato: `https?://` sta nella lista accanto ai nomi.
+🩹 Il caso che sorveglia la classe non conta quante volte la funzione compare: conta che **nessun**
+`detail:` le sfugga — la lezione del caso 18, cioè *si conta ciò che il bot LEGGE, non ciò che il
+file contiene*.
+
+### **66** — 🔎 `PLAYER_ID_NOT_LOCKED`: diagnosi fatta, cura NON scritta — di proposito
+
+📏 L'autocomplete di Matchpoint ogni tanto non aggancia e `HiddenFieldIdPeople` resta vuoto: il
+worker si rifiuta di salvare (fallisce **chiuso**, ed è giusto) e ogni tentativo costa **~52
+secondi**. Ha colpito **Fabiola alle 22:55** e **Lidia alle 00:36** della notte del 21/08, e il
+19/08 «Ospite» due volte.
+
+🚨⭐⭐ **Il reperto che cambia il lavoro: il ramo dove il difetto colpisce era l'unico senza
+diagnostica.** I due fallimenti di quella notte sono su `/edit-booking` — e
+`createBookingWithBrowser` allega `steps=[…] url=…` ai suoi errori **da sempre**, mentre
+`editBookingWithBrowser` faceva `catch (_e) { throw _e }` e basta. ⇒ Dal registro si leggeva
+«Autocomplete non agganciato per: Lidia Comes» e **nient'altro**, quindi non si poteva distinguere
+i due modi di fallire, che hanno **due cure diverse**:
+· la tendina non compare mai → `player_option_not_found` ×3;
+· compare, si clicca, e il campo nascosto resta vuoto → `player_id_check:…:id=`.
+⇒ *Il posto dove un guasto si presenta era esattamente il posto in cui non si poteva guardare.*
+
+📏 **L'ipotesi, dai casi che gli steps ce l'hanno** — e va detta come ipotesi, perché sono **tre**:
+dove il campo nascosto resta vuoto in pagina ci sono sempre **due** liste di autocomplete
+(`list=2` — 16/08 18:04, 19/08 10:36, 19/08 10:41); dove l'id si aggancia, la lista è **una**
+(`list=1`, e allora `id=4`, `id=10`, `id=223`, `id=1034`). L'id però si legge con `.last()`: se
+anche del campo **nascosto** restassero due copie, si starebbe leggendo quella che non si riempie
+mai.
+
+🔨 **Fatto (PR #944)**: gli steps si allegano anche su `edit-booking`; `player_ctrl_count` conta
+anche le copie del campo nascosto; e sul fallimento `player_id_check` riporta **cosa c'è in tutte**.
+⛔ **La cura NON è stata scritta**, ed è una scelta: sarebbe poggiata su un'ipotesi non chiusa, e il
+worker è **uno solo, condiviso TEST+PROD** — ogni sua prova scrive sul **Matchpoint vero**.
+⇒ *Prima la misura, poi la riga.* Al prossimo fallimento vero il registro dirà quale delle due cure
+serve. **Questa voce si chiude quando quel fallimento sarà arrivato e letto**, non prima.
+
 ## 📋 IN CODA — 1
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
@@ -1294,6 +1494,16 @@ Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per
 tre della 44ª: non erano voci numerate. **Tre sono FATTE, fuse e deployate sui soci** (le ultime
 tre dell'elenco); **le prime tre sono MISURATE E BASTA** — nessuna promossa, e la scelta di cosa
 farne resta sua.
+
+🔄⬆️ **Aggiornamento del 21/08, 46ª sessione: due delle tre "misurate e basta" sono state promosse
+da lui, e sono diventate voci numerate.** L'avviso che si mette in fila è la **64** (la sua metà
+piccola e curabile: l'avviso che parte su una partita che stiamo cambiando noi); gli inviti
+attaccati al vuoto sono la **63**. ⇒ Le loro schede restano **qui per intero** — sono il racconto
+del momento in cui il difetto si è visto — e il lavoro sta di sopra, fra le 🔴 urgenti.
+⚠️ **E leggendole insieme si vede la cosa che è costata la giornata**: la scheda della 64 dice
+*«arriva anche a chi il gesto l'ha fatto»*, e i destinatari erano **quattro**, di cui **tre** che
+non avevano toccato niente. Non è un errore di chi l'ha scritta: l'ha scritta chi ha visto arrivare
+**il proprio** messaggio. ⇒ Vedi il filo della 46ª, in cima.
 📌 E sono nate tutte **guardando la cosa vera insieme a lui**, non rileggendo il codice: dai suoi
 screenshot, da una partita che aveva spostato, e da due ore di prove col bot su **persone vere**.
 *In quelle due ore sono usciti cinque difetti che settimane di riletture non avevano visto.*
