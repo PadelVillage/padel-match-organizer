@@ -1667,6 +1667,14 @@ Con l'autorizzazione del committente (*«fai tutto su prod usando maurizio aprea
 
 📏 **Tempo misurato dal fatto al messaggio: 15′21″**, dentro la finestra 4-19′ dichiarata qui sopra.
 
+🗣️✅ **E il quarto anello l'ha confermato LUI, guardando il telefono**: *«Confermo che Maurizio ha
+ricevuto il messaggio sul bot del suo cellulare»*.
+⚖️ **Non è la stessa cosa che dice il registro, ed è per questo che si chiede.** Il registro prova
+che il messaggio è **partito** — che `sendMessage` non ha sollevato un errore. Fra «partito» e
+«arrivato sul telefono di una persona» restano Telegram, la chat giusta, e un testo che si legge:
+tre cose che nessuna sonda del progetto può vedere da sé. È la regola del 17/08 — *dal cloud si
+fa tutto tranne guardare con i propri occhi* — applicata all'ultimo metro di questa catena.
+
 🚨⭐⭐ **E IL COLLAUDO HA TROVATO UN DIFETTO CHE LE 42 PROVE NON POTEVANO VEDERE** — che è
 esattamente la ragione per cui si collauda sul vivo. *«Lidia Comes»* aveva **due schede** in
 anagrafica; la regola appena scritta, «più di una scheda ⇒ non si scrive a nessuno», le rifiutava
