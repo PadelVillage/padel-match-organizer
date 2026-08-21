@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<!--
+  Bot Telegram — TRE PROPOSTE sul flusso, nate dalla revisione del 21/08/2026
+  Mockup v1 — ognuna con «com'è oggi» accanto a «come sarebbe»
+
+  🗣️ Richiesta del committente: «controllami tutto il flusso che abbiamo creato sul bot…
+     ho bisogno di una tua valutazione su come abbiamo deciso di organizzare il flusso
+     per l'utente, se secondo te si può migliorare la usability».
+
+  ⚖️ Le tre proposte NON sono invenzioni: ognuna cura un difetto già MISURATO e scritto in
+     docs/lavori/README.md, che però non è mai stato promosso a lavoro. Sono qui perché
+     la regola dei mockup dice che una modifica visibile si guarda PRIMA di scriverla.
+
+  🚨 Nessuna è decisa: si guardano, se ne approva una, nessuna o tutte e tre.
+
+  Da dove viene ogni pezzo, nel codice del bot (repo assistente-padel-agent):
+    · la bolla unica            → `conLaPartitaSotto` (bot.ts:1873): `${frase}\n\n${scheda.testo}`
+    · la riscrittura sul posto  → `riscriviOMandaNuovo` (api.ts:413) + `eAncoraLUltima`
+    · la riga «3 di 5»          → `rigaPosizione` (gestisci-testi.ts:281)
+    · le decisioni con eco      → i tocchi `i|s` `i|n` (invito), `u|c…` (uscita/annulla),
+                                   `t|z` (togli), `sl|mi_fermo` `sl|riprovo` (livello)
+    · lo sfoglio                → `elencoSfogliabile` + `tastieraSfoglia` (voce 62, 19/08)
+
+  🚨 I NOMI SONO INVENTATI: questo repo è PUBBLICO.
+  Nessun dato, nessuna rete: HTML statico.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tre proposte sul flusso del bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ground:      #f4f6f6;
+    --card:        #ffffff;
+    --ink:         #191d1e;
+    --ink-soft:    #5b6566;
+    --hairline:    #dfe4e4;
+    --accent:      #0e7c7b;
+    --accent-soft: #e3f0ef;
+    --warn:        #9a5b12;
+    --warn-soft:   #f8eddd;
+
+    --tg-ground:   #ffffff;
+    --tg-text:     #000000;
+    --tg-name:     #8266cc;
+    --tg-btn:      #f1f1f1;
+    --tg-btn-ink:  #1e1e1e;
+    --tg-meta:     #8a9096;
+    --tg-avatar:   #1c2b30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #101414;
+      --card:        #171c1c;
+      --ink:         #e8eded;
+      --ink-soft:    #98a4a4;
+      --hairline:    #2a3232;
+      --accent:      #4fb3ab;
+      --accent-soft: #122b2a;
+      --warn:        #d9a25c;
+      --warn-soft:   #2c2314;
+
+      --tg-ground:   #17212b;
+      --tg-text:     #ffffff;
+      --tg-name:     #a48be3;
+      --tg-btn:      #232e3c;
+      --tg-btn-ink:  #e9edf2;
+      --tg-meta:     #6d7f8f;
+      --tg-avatar:   #0f1a1e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #101414;
+    --card:        #171c1c;
+    --ink:         #e8eded;
+    --ink-soft:    #98a4a4;
+    --hairline:    #2a3232;
+    --accent:      #4fb3ab;
+    --accent-soft: #122b2a;
+    --warn:        #d9a25c;
+    --warn-soft:   #2c2314;
+
+    --tg-ground:   #17212b;
+    --tg-text:     #ffffff;
+    --tg-name:     #a48be3;
+    --tg-btn:      #232e3c;
+    --tg-btn-ink:  #e9edf2;
+    --tg-meta:     #6d7f8f;
+    --tg-avatar:   #0f1a1e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 17px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .foglio {
+    max-width: 1240px; margin: 0 auto;
+    padding: clamp(28px, 5vw, 56px) clamp(18px, 4vw, 40px) 72px;
+    display: flex; flex-direction: column; gap: clamp(30px, 4.5vw, 50px);
+  }
+
+  .occhiello {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: clamp(28px, 4.4vw, 42px); font-weight: 700;
+    line-height: 1.12; letter-spacing: -.015em; text-wrap: balance; margin: 0 0 14px;
+  }
+  .sommario { max-width: 66ch; margin: 0; color: var(--ink-soft); font-size: 18px; }
+  .sommario strong { color: var(--ink); font-weight: 600; }
+
+  .regola {
+    margin-top: 18px; padding: 14px 18px;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    border-radius: 0 10px 10px 0; max-width: 78ch; font-size: 16px;
+  }
+  .regola strong { font-weight: 600; }
+
+  /* ── Una proposta ─────────────────────────────────────────────────────────── */
+  .proposta { display: flex; flex-direction: column; gap: 18px; }
+  .proposta > header { display: flex; flex-direction: column; gap: 8px; }
+  .numero {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .proposta > header h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: clamp(21px, 2.8vw, 28px); font-weight: 700;
+    letter-spacing: -.012em; margin: 0; text-wrap: balance;
+  }
+  .proposta > header .movente {
+    margin: 0; max-width: 78ch; color: var(--ink-soft); font-size: 16.5px;
+  }
+  .proposta > header .movente b { color: var(--ink); font-weight: 600; }
+
+  .confronto {
+    display: grid; grid-template-columns: 1fr; gap: clamp(16px, 2.2vw, 24px);
+    align-items: start;
+  }
+  @media (min-width: 860px) { .confronto { grid-template-columns: repeat(2, 1fr); } }
+  .confronto.tre { grid-template-columns: 1fr; }
+  @media (min-width: 860px)  { .confronto.tre { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1160px) { .confronto.tre { grid-template-columns: repeat(3, 1fr); } }
+
+  .scheda {
+    background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .scheda.buona { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .cappello {
+    padding: 15px 18px 13px; border-bottom: 1px solid var(--hairline);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .caso {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--warn);
+  }
+  .caso.dopo { color: var(--accent); }
+  .cappello h3 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -.005em;
+  }
+
+  /* ── Telegram ─────────────────────────────────────────────────────────────── */
+  .telegram {
+    background: var(--tg-ground); padding: 16px 14px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    font-size: 15px; line-height: 1.38; color: var(--tg-text);
+    flex: 1;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .msg { display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--tg-avatar); display: grid; place-content: center; align-self: start;
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 9px; font-weight: 700; line-height: 1.05; text-align: center; color: #fff;
+  }
+  .avatar span { color: #57c9bd; display: block; }
+  .corpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .mittente { color: var(--tg-name); font-weight: 600; }
+  .contatore { color: var(--tg-meta); font-size: 13px; margin-bottom: 6px; }
+  .riga { display: block; }
+  .vuota { height: 8px; }
+  .tastiera { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .bottone {
+    background: var(--tg-btn); color: var(--tg-btn-ink);
+    border-radius: 9px; padding: 12px 10px; font-weight: 500; text-align: center;
+  }
+  .bottone.sfoglia { color: var(--tg-meta); }
+  .tastiera.fila { flex-direction: row; gap: 4px; }
+  .tastiera.fila .bottone { flex: 1; }
+  .ora { font-size: 12px; color: var(--tg-meta); align-self: flex-end; margin-top: 6px; }
+
+  /* la fascetta che spiega cosa sta succedendo alla bolla */
+  .etichetta-bolla {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--tg-meta); padding-left: 50px;
+  }
+  .eco {
+    display: inline-block;
+    border-left: 2px solid #57c9bd; padding-left: 8px;
+    color: var(--tg-meta);
+  }
+
+  /* ── La riga «da dove viene» ──────────────────────────────────────────────── */
+  .perche {
+    border-top: 1px solid var(--hairline);
+    padding: 13px 18px 16px;
+    font-size: 14.5px; color: var(--ink-soft); line-height: 1.45;
+  }
+  .perche b { color: var(--ink); font-weight: 600; }
+  .perche code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; background: var(--accent-soft); color: var(--ink);
+    padding: 1px 5px; border-radius: 5px;
+  }
+
+  .prezzo {
+    margin: 0; padding: 12px 16px; max-width: 82ch;
+    border-left: 3px solid var(--warn); background: var(--warn-soft);
+    border-radius: 0 8px 8px 0; font-size: 16px;
+  }
+  .prezzo b { font-weight: 600; }
+
+  /* ── Chiusura ─────────────────────────────────────────────────────────────── */
+  .chiusa {
+    background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 16px; padding: clamp(20px, 3vw, 30px);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .chiusa h2 {
+    font-family: Archivo, system-ui, sans-serif;
+    font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.01em;
+  }
+  .chiusa p { margin: 0; max-width: 78ch; }
+  .chiusa strong { font-weight: 600; }
+  .chiusa em { font-style: italic; color: var(--ink-soft); }
+  .domande { margin: 0; padding-left: 22px; max-width: 78ch; display: flex; flex-direction: column; gap: 9px; }
+  .piede {
+    font-size: 14px; color: var(--ink-soft);
+    border-top: 1px solid var(--hairline); padding-top: 16px; max-width: 78ch;
+  }
+</style>
+</head>
+<body>
+<div class="foglio">
+
+<header>
+  <p class="occhiello">Mockup · 21 agosto 2026</p>
+  <h1>Tre proposte sul flusso del bot</h1>
+  <p class="sommario">
+    Nate rileggendo tutto il giro che fa il socio — <strong>prenota un campo, organizza la
+    partita, invita dalla rubrica, fa il test del livello, chiude</strong>. Il flusso regge:
+    quello che si guasta è come le cose <strong>appaiono in chat</strong> mentre succedono.
+    Le tre proposte curano tre difetti già misurati e scritti nei documenti, mai promossi
+    a lavoro.
+  </p>
+  <p class="regola">
+    <strong>Nessuna è decisa.</strong> Si guardano, e se ne approva una, nessuna, o tutte e
+    tre. Ogni scheda porta sotto la riga <em>da dove viene</em>: il punto del codice che
+    cambierebbe, così il prezzo si vede prima di pagarlo.
+  </p>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════════════ 1 -->
+<section class="proposta">
+  <header>
+    <p class="numero">Proposta 1</p>
+    <h2>Dividere la bolla che fa tre cose</h2>
+    <p class="movente">
+      Oggi un'azione finisce in <b>una bolla sola</b> che contiene l'esito, la riga «3 di 5»
+      e la scheda operativa coi bottoni. E siccome quella bolla si <b>riscrive dov'è nata</b>,
+      più la scheda è vecchia più il suo contenuto nuovo sta in alto: la chat smette di essere
+      in ordine di tempo, e due bolle vicine possono smentirsi.
+    </p>
+  </header>
+
+  <div class="confronto">
+    <article class="scheda">
+      <div class="cappello">
+        <p class="caso">Com'è oggi</p>
+        <h3>Un messaggio, tre mestieri</h3>
+      </div>
+      <div class="telegram">
+        <p class="etichetta-bolla">↑ più su nella chat, scritta alle 18:04</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">✅ <b>Fatto: sei uscito dalla partita</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Di domani alle 18:00, Campo 2. Non devi fare altro.</span>
+            <span class="riga vuota"></span>
+            <span class="contatore">Le tue partite · 3 di 5</span>
+            <span class="riga"><b>giovedì 28 · 09:30 · Campo 1</b></span>
+            <span class="riga">⭐ Marco Bianchi</span>
+            <span class="riga">Giulia Ferri</span>
+            <span class="riga">— posto libero —</span>
+            <span class="riga">— posto libero —</span>
+            <div class="tastiera">
+              <div class="bottone">🎾 Invita un giocatore</div>
+              <div class="bottone">👋 Togli un giocatore</div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">⬅️ Precedente</div>
+                <div class="bottone sfoglia">Successiva ➡️</div>
+              </div>
+              <div class="bottone">❌ Annulla la partita</div>
+            </div>
+            <span class="ora">18:04</span>
+          </div>
+        </div>
+        <p class="etichetta-bolla">↓ in fondo alla chat, arrivata alle 18:11</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">⏰ <b>Domani giochi alle 18:00</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Campo 2, con Giulia, Marco e Anna.</span>
+            <span class="ora">18:11</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Il difetto si vede qui.</b> L'avviso delle 18:11 parla della partita da cui il socio
+        è <b>uscito alle 18:04</b> — e il promemoria periodico non sa che qualcuno se n'è andato.
+        Intanto la bolla di sopra, riscritta, mostra <b>un'altra partita ancora</b>. Tre fatti,
+        due bolle, nessun ordine.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe</p>
+        <h3>L'esito resta fermo, la scheda si muove</h3>
+      </div>
+      <div class="telegram">
+        <p class="etichetta-bolla">↑ l'esito: nasce qui e non cambia mai più</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">✅ <b>Fatto: sei uscito dalla partita</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Di domani alle 18:00, Campo 2. Non devi fare altro.</span>
+            <span class="ora">18:04</span>
+          </div>
+        </div>
+        <p class="etichetta-bolla">↓ la scheda operativa: sempre l'ultima della chat</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="contatore">Le tue partite · 3 di 5</span>
+            <span class="riga"><b>giovedì 28 · 09:30 · Campo 1</b></span>
+            <span class="riga">⭐ Marco Bianchi</span>
+            <span class="riga">Giulia Ferri</span>
+            <span class="riga">— posto libero —</span>
+            <span class="riga">— posto libero —</span>
+            <div class="tastiera">
+              <div class="bottone">🎾 Invita un giocatore</div>
+              <div class="bottone">👋 Togli un giocatore</div>
+              <div class="tastiera fila">
+                <div class="bottone sfoglia">⬅️ Precedente</div>
+                <div class="bottone sfoglia">Successiva ➡️</div>
+              </div>
+              <div class="bottone">❌ Annulla la partita</div>
+            </div>
+            <span class="ora">18:11</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Due mestieri, due bolle.</b> L'esito è un <b>fatto datato</b>: si scrive una volta e
+        resta lì a fare da ricevuta. La scheda è uno <b>strumento</b>: si riscrive quanto serve,
+        ma sta sempre in fondo, dove il pollice la trova. La chat torna in ordine di tempo
+        perché l'unica bolla che cambia è l'ultima.
+      </p>
+    </article>
+  </div>
+
+  <p class="prezzo">
+    <b>Il prezzo, dichiarato.</b> Sono <b>due notifiche</b> invece di una, e la voce 62 aveva
+    scelto la riscrittura proprio per averne una sola. La differenza: quella scelta valeva
+    per <b>lo sfoglio</b> (Precedente/Successiva), dove le notifiche sarebbero una per tocco —
+    e lì <b>non cambia niente</b>, la scheda continua a riscriversi. Qui si separa solo
+    l'<b>esito di un'azione</b>, che capita una volta ogni tanto e che il socio vuole poter
+    ritrovare domani.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ 2 -->
+<section class="proposta">
+  <header>
+    <p class="numero">Proposta 2</p>
+    <h2>Far vedere che ha risposto lui</h2>
+    <p class="movente">
+      Il socio col bot non scrive mai: <b>tocca</b>. E siccome i tocchi non lasciano traccia e
+      il bot riscrive i propri messaggi, nella chat restano <b>solo affermazioni del bot</b>,
+      senza le domande e senza le risposte. Riaprendola il giorno dopo non si capisce chi ha
+      deciso cosa — e su Telegram, in una chat privata, <b>non si può</b> mettere un'icona
+      accanto alle bolle per distinguerle.
+    </p>
+  </header>
+
+  <div class="confronto">
+    <article class="scheda">
+      <div class="cappello">
+        <p class="caso">Com'è oggi</p>
+        <h3>La domanda sparisce con la risposta</h3>
+      </div>
+      <div class="telegram">
+        <p class="etichetta-bolla">prima del tocco</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">🎾 <b>Marco ti invita a giocare</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Giovedì 28 alle 09:30, Campo 1.</span>
+            <span class="riga">In campo: Marco, Giulia. Un posto libero.</span>
+            <div class="tastiera">
+              <div class="bottone">Ci sto</div>
+              <div class="bottone">Non posso</div>
+            </div>
+            <span class="ora">20:14</span>
+          </div>
+        </div>
+        <p class="etichetta-bolla">dopo il tocco: la stessa bolla, riscritta</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">✅ <b>Sei in campo</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Giovedì 28 alle 09:30, Campo 1. Ti aspettano.</span>
+            <span class="ora">20:14</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Sparisce l'invito e sparisce la scelta.</b> Chi rilegge trova un bot che annuncia
+        una cosa che sembra aver deciso da sé. Ed è lo stesso su <b>«Sì, annulla»</b>,
+        <b>«Esci dalla partita»</b>, <b>«Tengo questo livello»</b>: le sette decisioni vere
+        del bot spariscono tutte allo stesso modo.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe</p>
+        <h3>La risposta resta scritta</h3>
+      </div>
+      <div class="telegram">
+        <p class="etichetta-bolla">prima del tocco — identico a oggi</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">🎾 <b>Marco ti invita a giocare</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Giovedì 28 alle 09:30, Campo 1.</span>
+            <span class="riga">In campo: Marco, Giulia. Un posto libero.</span>
+            <div class="tastiera">
+              <div class="bottone">Ci sto</div>
+              <div class="bottone">Non posso</div>
+            </div>
+            <span class="ora">20:14</span>
+          </div>
+        </div>
+        <p class="etichetta-bolla">dopo il tocco: l'eco in cima, poi l'esito</p>
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga eco">✅ Hai risposto: <b>Ci sto</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">✅ <b>Sei in campo</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">Giovedì 28 alle 09:30, Campo 1. Ti aspettano.</span>
+            <span class="ora">20:14</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Una riga sola, e solo sulle decisioni.</b> Non sulla navigazione: «Precedente»,
+        «Torna all'elenco» e l'apertura di una scheda <b>non lasciano eco</b>, o la chat si
+        riempirebbe di rumore. Le sette che la lasciano sono: <code>Ci sto</code> ·
+        <code>Non posso</code> · <code>Sì, annulla</code> · <code>Esci</code> ·
+        <code>Togli un giocatore</code> · <code>Tengo questo livello</code> ·
+        <code>Riprovo il test</code>.
+      </p>
+    </article>
+  </div>
+
+  <p class="prezzo">
+    <b>Da decidere guardandolo:</b> l'eco va <b>in cima</b> (come qui, si legge per primo il
+    proprio gesto e poi cosa ne è uscito) o <b>in fondo</b> (l'esito resta il titolo, la
+    ricevuta è una postilla)? Sul telefono le due si leggono in modo diverso, e questa è la
+    domanda che il mockup esiste per fare.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ 3 -->
+<section class="proposta">
+  <header>
+    <p class="numero">Proposta 3</p>
+    <h2>Restituire il colpo d'occhio sulla settimana</h2>
+    <p class="movente">
+      La scheda-per-volta è <b>giusta per agire</b>: apre sulla partita più vicina e ha le
+      azioni sotto le dita. Ma il suo prezzo era stato dichiarato il 18/08 —
+      <em>«cosa ho questa settimana non si legge più in un colpo: sono quattro tocchi»</em>.
+      Questa proposta <b>non tocca lo sfoglio</b>: aggiunge la vista che manca.
+    </p>
+  </header>
+
+  <div class="confronto tre">
+    <article class="scheda">
+      <div class="cappello">
+        <p class="caso">Com'è oggi</p>
+        <h3>Una per volta, e basta</h3>
+      </div>
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="contatore">Le tue partite · 1 di 5</span>
+            <span class="riga"><b>domani · 18:00 · Campo 2</b></span>
+            <span class="riga">⭐ Tu</span>
+            <span class="riga">Giulia Ferri</span>
+            <span class="riga">Anna Conti</span>
+            <span class="riga">Marco Bianchi</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Siete al completo.</span>
+            <div class="tastiera">
+              <div class="bottone">👋 Togli un giocatore</div>
+              <div class="bottone sfoglia">Successiva ➡️</div>
+              <div class="bottone">❌ Annulla la partita</div>
+            </div>
+            <span class="ora">10:02</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        Per sapere se giovedì è libero servono <b>quattro tocchi</b> su «Successiva», e alla
+        fine il quadro sta nella <b>memoria</b> di chi ha sfogliato, non sullo schermo.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe · 1</p>
+        <h3>Una riga in cima, e un bottone</h3>
+      </div>
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="contatore">Le tue partite · 1 di 5 · dom 22 → sab 28</span>
+            <span class="riga"><b>domani · 18:00 · Campo 2</b></span>
+            <span class="riga">⭐ Tu</span>
+            <span class="riga">Giulia Ferri</span>
+            <span class="riga">Anna Conti</span>
+            <span class="riga">Marco Bianchi</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Siete al completo.</span>
+            <div class="tastiera">
+              <div class="bottone">👋 Togli un giocatore</div>
+              <div class="bottone sfoglia">Successiva ➡️</div>
+              <div class="bottone sfoglia">📋 Vedile tutte e cinque</div>
+              <div class="bottone">❌ Annulla la partita</div>
+            </div>
+            <span class="ora">10:02</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        La scheda resta <b>identica</b>: cambia solo la riga del contatore, che adesso dice
+        anche <b>fin dove arrivano</b> le cinque partite, e si aggiunge un bottone di lettura
+        fra lo sfoglio e «Annulla». <b>«Annulla la partita» resta ultimo</b>, come vuole la
+        regola.
+      </p>
+    </article>
+
+    <article class="scheda buona">
+      <div class="cappello">
+        <p class="caso dopo">Come sarebbe · 2</p>
+        <h3>L'elenco che si legge, non si tocca</h3>
+      </div>
+      <div class="telegram">
+        <div class="msg">
+          <div class="avatar">LO<span>ZIO</span></div>
+          <div class="corpo">
+            <span class="mittente">Lo Zio Coach</span>
+            <span class="riga">📋 <b>Le tue cinque partite</b></span>
+            <span class="riga vuota"></span>
+            <span class="riga">🎾 <b>domani</b> · 18:00 · Campo 2 — al completo</span>
+            <span class="riga">🎾 <b>gio 28</b> · 09:30 · Campo 1 — 2 posti liberi</span>
+            <span class="riga">🎾 <b>ven 29</b> · 19:00 · Campo 3 — 1 posto libero</span>
+            <span class="riga">📘 <b>sab 30</b> · 11:00 · Campo 2 — lezione</span>
+            <span class="riga">🎾 <b>lun 1</b> · 20:30 · Campo 4 — al completo</span>
+            <span class="riga vuota"></span>
+            <span class="riga">Per gestirne una, tocca qui sotto e la apro.</span>
+            <div class="tastiera">
+              <div class="bottone">⬅️ Torna a domani · 18:00</div>
+            </div>
+            <span class="ora">10:03</span>
+          </div>
+        </div>
+      </div>
+      <p class="perche">
+        <b>Nessuna azione qui dentro</b>, ed è la decisione che tiene in piedi la proposta:
+        questo elenco <b>si legge</b>. Niente «Annulla» accanto a cinque righe, dove un dito
+        distratto costerebbe una partita. Chi vuole agire torna alla scheda, che è il posto
+        dove il bot chiede conferma.
+      </p>
+    </article>
+  </div>
+
+  <p class="prezzo">
+    <b>La domanda aperta:</b> l'elenco elenca <b>tutte</b> le partite (come qui, cinque) o
+    solo quelle <b>dei prossimi sette giorni</b>? Con molte partite avanti la lista si allunga,
+    e Telegram taglia i messaggi lunghi. Se il tetto serve, dirlo nella riga: <em>«le prime
+    otto — ce ne sono altre tre»</em>, mai troncare in silenzio.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<section class="chiusa">
+  <h2>Cosa serve da te</h2>
+  <p>
+    Le tre proposte sono <strong>indipendenti</strong>: si può approvarne una sola. Se dovessi
+    metterle in ordine di guadagno per il socio, direi <strong>1, poi 2, poi 3</strong> — la
+    prima cura una chat che si contraddice, che è la cosa che fa perdere fiducia più in fretta.
+  </p>
+  <ul class="domande">
+    <li><strong>Proposta 1</strong> — l'esito si stacca dalla scheda: sì o no? È l'unica che
+        cambia il numero di notifiche, quindi è anche l'unica con un prezzo vero.</li>
+    <li><strong>Proposta 2</strong> — l'eco della risposta: <strong>in cima</strong> o
+        <strong>in fondo</strong> al messaggio riscritto?</li>
+    <li><strong>Proposta 3</strong> — l'elenco di lettura: <strong>tutte</strong> le partite o
+        solo la <strong>settimana</strong>? E il bottone si chiama «Vedile tutte e cinque»
+        (col numero) o «Le tue partite in breve»?</li>
+  </ul>
+  <p class="piede">
+    Nessuna di queste è stata scritta nel codice: sono disegni. Le decisioni già prese —
+    «Annulla la partita» sempre ultimo, mai un vicolo cieco, la conferma sempre a un tocco,
+    il livello detto a parole e mai a numeri — <strong>valgono tutte</strong> e non sono
+    rimesse in discussione da nessuna delle tre.
+  </p>
+</section>
+
+</div>
+</body>
+</html>
