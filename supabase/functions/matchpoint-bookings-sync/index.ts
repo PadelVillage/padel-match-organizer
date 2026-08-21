@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
+import { fattiDaConfronto, fotografia } from './eventi-staff.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -1396,6 +1397,58 @@ Deno.serve(async (req) => {
       .from('pmo_cloud_records')
       .upsert(records, { onConflict: 'record_type,local_key' });
     if (upsertError) throw upsertError;
+
+    // ── VOCE 68: il gestionale DICHIARA cosa è cambiato, e il bot lo dirà ────────────────
+    // 🗣️ Dalla segnalazione del committente: «quando da gestionale faccio un'azione — metto,
+    // levo giocatori, attivo o elimino partite — sul bot dei soci non arriva nessun avviso».
+    // Il dato arrivava già: mancava chi lo confrontasse. La regola sta in `eventi-staff.ts`,
+    // qui c'è solo il gesto di accodare — *il gestionale SA, il bot DICE*.
+    //
+    // 🚨 STA DOPO L'UPSERT, di proposito: si dichiara un fatto solo su una realtà che è già
+    // stata salvata. Dichiararlo prima vorrebbe dire che un upsert fallito lascerebbe in coda
+    // l'annuncio di un cambiamento che non è mai avvenuto.
+    //
+    // ⚖️ E NON PUÒ ROMPERE IL SYNC: tutto dentro un try che al massimo scrive nel registro.
+    // Il sync porta il calendario a 2800 soci e al gestionale del circolo; questa coda serve
+    // a mandare dei messaggi. Se un giorno la seconda si guasta, la prima deve continuare —
+    // *un avviso perso è un fastidio, un calendario fermo è un guasto del circolo.*
+    let eventiStaffAccodati = 0;
+    try {
+      const primaFoto = fotografia(
+        existingRecords
+          .filter((r) => clean(r?.record_type || '') === 'booking')
+          .map((r) => (r?.payload || {}) as JsonMap),
+        (d) => playersFromDescrizione(d as string),
+      );
+      const dopoFoto = fotografia(
+        validation.bookings as unknown as JsonMap[],
+        (d) => playersFromDescrizione(d as string),
+      );
+      const fatti = fattiDaConfronto(primaFoto, dopoFoto);
+      if (fatti.length) {
+        const { error: codaError } = await admin
+          .from('pmo_eventi_staff')
+          .insert(fatti.map((f) => ({ ...f, visto_at: importedAt })));
+        if (codaError) throw codaError;
+        eventiStaffAccodati = fatti.length;
+      }
+      console.log(JSON.stringify({
+        event: 'eventi_staff',
+        slotPrima: primaFoto.size,
+        slotDopo: dopoFoto.size,
+        accodati: eventiStaffAccodati,
+      }));
+    } catch (err) {
+      // 🚨 `warn` e non `error`: al calendario non è successo niente: l'upsert è andato.
+      // ⚠️ MA IL FATTO È PERSO, e va saputo: il prossimo giro NON lo ritrova. Il confronto è
+      // fra la fotografia salvata e quella nuova, e la fotografia salvata a quel punto è già
+      // quella aggiornata ⇒ il cambiamento, per il giro dopo, non è mai avvenuto.
+      // ⚖️ Si accetta invece di rendere le due scritture una transazione sola: il prezzo
+      // sarebbe far dipendere il calendario di 2800 soci dalla salute di una coda di
+      // messaggi. *Un avviso perso è un fastidio, un calendario fermo è un guasto del
+      // circolo* — e questa riga nel registro è ciò che rende il fastidio diagnosticabile.
+      console.warn(JSON.stringify({ event: 'eventi_staff_error', error: String(err) }));
+    }
 
     await logAudit(admin, actor, 'matchpoint_bookings_auto_import_success', {
       sourceRows: validation.sourceRows,
