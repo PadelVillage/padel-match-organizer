@@ -6371,11 +6371,22 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   if (!(await formCtx.locator(PFX + 'LinkButtonAnyadir').count().catch(() => 0))) { diagnostic.steps.push('player_add_link_not_found'); return { nome, added: false, reason: 'add_link_missing' }; }
 
   const hiddenId = formCtx.locator(PFX + 'HiddenFieldIdPeople').last();
+  // ⭐ Le copie TUTTE, per la sola diagnostica del 21/08: `hiddenId` resta `.last()` e il
+  // comportamento non cambia di una riga. Questa serve a rispondere alla domanda «quale copia
+  // si riempie?», che è ciò che manca per sapere se la cura è leggerne un'altra.
+  const hiddenAll = formCtx.locator(PFX + 'HiddenFieldIdPeople');
   try {
     const nInputTot = await formCtx.locator(PFX + 'TextBoxTitular').count();
     const nInputVis = await formCtx.locator(PFX + 'TextBoxTitular:visible').count();
     const nList = await formCtx.locator(PFX + 'AutoCompleteTitular_completionListElem').count();
-    diagnostic.steps.push(`player_ctrl_count:${nome}:inputTot=${nInputTot}:inputVis=${nInputVis}:list=${nList}`);
+    // 🔎⭐⭐ 21/08 — SI CONTA ANCHE IL CAMPO NASCOSTO, e prima no: è il pezzo che manca per
+    // chiudere la diagnosi di `PLAYER_ID_NOT_LOCKED`. L'id si legge con `.last()`, quindi se
+    // dopo un postback ne restano DUE copie — come già succede per l'input e per la lista — si
+    // potrebbe star leggendo la copia che non si riempie mai. Finché non lo si conta, questa
+    // resta un'ipotesi: `list=2` compare in tutti i fallimenti col campo vuoto, ma il numero
+    // delle copie dell'HIDDEN non l'ha mai misurato nessuno.
+    const nHid = await formCtx.locator(PFX + 'HiddenFieldIdPeople').count().catch(() => -1);
+    diagnostic.steps.push(`player_ctrl_count:${nome}:inputTot=${nInputTot}:inputVis=${nInputVis}:list=${nList}:hidden=${nHid}`);
   } catch (e) {}
   // ⚠️ Dopo un postback parziale, Matchpoint lascia in pagina la VECCHIA lista di
   // autocomplete (vuota/nascosta) e ne crea una NUOVA con lo STESSO id: il selettore
@@ -6474,7 +6485,22 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
         candidateId = (await hiddenId.first().inputValue().catch(() => '')).trim();
         if (candidateId) break;
       }
-      diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}`);
+      // 🔎 21/08 — quando l'id NON si aggancia si guarda cosa c'è nelle ALTRE copie del campo
+      // nascosto: se una di loro porta il numero, il guasto è che stiamo leggendo la copia
+      // sbagliata (si cura leggendo la prima non vuota); se sono vuote tutte, l'autocomplete
+      // non ha proprio risposto, ed è un altro guasto con un'altra cura. Due ipotesi che oggi
+      // si somigliano nei log, e questa riga le separa. ⛔ Solo sul fallimento: sul buon esito
+      // sarebbe una lettura in più a ogni giocatore, per dire una cosa che già si sa.
+      let tutte = '';
+      if (!candidateId) {
+        const quante = await hiddenAll.count().catch(() => 0);
+        const letti = [];
+        for (let h = 0; h < quante; h++) {
+          letti.push((await hiddenAll.nth(h).inputValue().catch(() => '?')).trim());
+        }
+        tutte = `:hidden=[${letti.join(',')}]`;
+      }
+      diagnostic.steps.push(`player_id_check:${nome}:attempt${attempt}:i=${i}:id=${candidateId}${tutte}`);
       if (!candidateId) break; // id non agganciato: riprova col prossimo attempt
       // Verifica id interno SOLO per match primario (regola 1) e SOLO se il candidato
       // non è già stato confermato via codice cliente dall'etichetta (regole 2/3).
@@ -8081,6 +8107,22 @@ async function editBookingWithBrowser(input = {}) {
     return { ok: true, idReserva, moved, slotFinale, partecipantiFinali, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, resolvedPlayers: resolvedPlayersEdit, diagnostic };
   } catch (_e) {
     _opFailed = true;
+    // 🔎⭐⭐ 21/08/2026 — GLI STEPS SI ALLEGANO ANCHE QUI, e fino a oggi no.
+    //
+    // `createBookingWithBrowser` lo fa da sempre, questo ramo mai: i suoi errori uscivano come
+    // una riga sola («Autocomplete non agganciato … per: Lidia Comes»), senza i passi e senza
+    // l'indirizzo della pagina. ⇒ Il difetto `PLAYER_ID_NOT_LOCKED` colpisce proprio qui — il
+    // 20/08 su Fabiola alle 20:55:11 e su Lidia alle 22:36:48 — ed è **l'unico ramo dove non
+    // si può diagnosticare**: dagli steps si legge se la tendina non è mai comparsa o se è
+    // comparsa e il campo nascosto è rimasto vuoto, che sono due guasti diversi.
+    // 📏 Non è un sospetto: dei fallimenti con gli steps, quelli col campo nascosto vuoto
+    // hanno TUTTI `list=2` (due liste di autocomplete in pagina), e quelli riusciti `list=1`.
+    // Senza gli steps di qui, quella correlazione su questo ramo non si può nemmeno guardare.
+    // ⛔ Non cambia nessun comportamento: aggiunge testo a un errore che stava già uscendo.
+    const urlStr = (() => { try { return page?.url() ?? '?'; } catch { return '?'; } })();
+    const extra = ` | steps=${JSON.stringify(diagnostic.steps)} url=${urlStr}`;
+    if (!_e.message.includes('steps=')) _e.message = `${_e.message}${extra}`;
+    if (!_e.diagnostic) _e.diagnostic = diagnostic;
     throw _e;
   } finally {
     await acq.release(_opFailed);
