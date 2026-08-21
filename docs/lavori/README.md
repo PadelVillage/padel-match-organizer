@@ -1166,7 +1166,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 5
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1467,6 +1467,63 @@ worker è **uno solo, condiviso TEST+PROD** — ogni sua prova scrive sul **Matc
 ⇒ *Prima la misura, poi la riga.* Al prossimo fallimento vero il registro dirà quale delle due cure
 serve. **Questa voce si chiude quando quel fallimento sarà arrivato e letto**, non prima.
 
+### **67** — 🚨 Una soppressione nasconde lo SLOT, e con lui la prenotazione NUOVA che ci arriva sopra — CURATA, in servizio
+
+🗣️ **Segnalata da lui il 21/08**, guardando il gestionale: *«la lezione di sabato, cioè di domani
+mattina alle ore nove del maestro Lucas, c'è su matchpoint ma non c'è sul nostro gestionale»*.
+
+📏 **La sequenza, misurata al secondo su `qqbf…`** — la lezione nel gestionale **c'era**:
+
+| ora (Roma) | |
+|---|---|
+| `12:13:17` | viene annullata una partita sul 22/08 · 09:00 · campo 4 ⇒ parte `staff_suppress supp\|2026-08-22\|4\|09:00`, TTL **30′** |
+| `12:17:34` | sullo **stesso slot** nasce un'altra prenotazione: la lezione con **Lucas Vidal**, due allieve, `idReserva 9556` |
+| `12:18:46` | il sync la porta nel gestionale, **viva** (riaggiornata alle 12:39) |
+| — | ma la soppressione nasconde **lo slot** ⇒ per **27 minuti** il calendario staff ha mostrato quel campo **libero** |
+
+⚖️ **Il verso che fa male non è la lezione che sparisce: è il campo che sembra libero.** Una card
+fantasma è rumore; un campo che risulta libero mentre è occupato è lo slot su cui qualcuno prenota
+sopra. ⇒ Nel dubbio si continua a nascondere, mai a mostrare.
+
+📏 **Quante volte è capitato: una, questa.** Sulle altre soppressioni della storia la prenotazione
+nuova è arrivata **38 e 51 ore** dopo, cioè a soppressione già scaduta. Serve una coincidenza
+stretta — riprenotazione entro mezz'ora — ed è rara. Quando capita, capita su un campo occupato.
+
+🩹 **La guardia c'era già e diceva la cosa giusta A METÀ** (v5.687): *«una prenotazione staff ATTIVA
+sullo slot ha la precedenza sulla soppressione»*. Guardava il **tipo** della riga
+(`staff-booking`), quindi copriva solo le riprenotazioni fatte dalla nostra app — non quelle che
+arrivano dal **circolo**, che sono la maggioranza.
+⇒ *La domanda giusta non è «che tipo di riga è questa?» ma «è la STESSA prenotazione che ho
+annullato?».* La soppressione porta con sé gli `idReserva` che erano sullo slot quando è nata
+(`pmoSoppressioneIds`) e nasconde solo quelli (`pmoSoppressioneNasconde`). Il record si costruisce
+in **un posto solo** (`pmoRecordSoppressione`): i punti che sopprimono sono **tre** — annullo,
+spostamento, rimozione della card fantasma — e uno che se la scrivesse da sé nascerebbe **cieco**.
+
+⛔ **La strada del TEMPO è stata misurata e scartata**, ed era quella che veniva in mente per prima:
+*«nascondi solo ciò che c'era prima dell'annullo»*. `updated_at` delle occupazioni **si rinfresca a
+ogni giro di sync** — righe create il 27 luglio risultavano «aggiornate» alle 12:44 del 21/08 —
+quindi «più recente della soppressione» sarebbe vero per **tutto** dopo due minuti, e la
+soppressione non proteggerebbe più da niente. 📌 Vale la pena ricordarlo: è una colonna che sembra
+dire *quando è cambiata questa riga* e dice invece *quando è passato il sync*.
+
+🔪 **E il sabotaggio che non mordeva, che è il pezzo da tenere.** Il colpo ⑤ spegneva la **RACCOLTA**
+degli id invece della decisione: la funzione continuava a decidere benissimo **su una lista sempre
+vuota**, cioè ogni soppressione nasceva cieca e il difetto tornava **intero** col banco tutto verde.
+⇒ La risposta stava sul **banco**, non sul colpo: mancavano i casi sulla raccolta. È la 43ª — *il
+verde muto perché il dato non arriva mai fin lì*.
+
+✅ **In servizio**: TEST **6.246** (#949), PROD **6.238** (#950, promossa a righe, non a file).
+Verificato che i due domini servano davvero la cura. Banco: **15 casi** e **7 sabotaggi**.
+
+📌 **Perché resta APERTA**: il **difetto** è verificato sul bersaglio (l'ha visto lui, e la lezione è
+ricomparsa da sé alla scadenza della soppressione, come la diagnosi prevedeva); la **cura** no —
+gira su PROD ma nessuno l'ha ancora vista *impedire* il difetto. Si chiude alla prima riprenotazione
+entro mezz'ora da un annullo in cui la prenotazione nuova **si vede**.
+
+⚠️ **Residui dichiarati**: una riga **senza `idReserva`** (manutenzioni, card vecchie) resta
+nascosta come prima, e una soppressione **vecchia** — nata senza la lista — nasconde tutto lo slot
+come prima. Sono i casi che non si sanno leggere, e lì il verso prudente è quello di sempre.
+
 ## 📋 IN CODA — 1
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
@@ -1529,6 +1586,17 @@ che è il modo in cui un residuo diventa un mistero.
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**
+`test/guarda-finche-non-sai.test.mjs`, caso **27** — *«il deposito porta con sé il NUMERO del
+lavoro, o alla ripresa non c'è cosa chiudere»* — **fallisce su `origin/main` pulito**, misurato
+riportando l'albero a `main` senza nessuna riga del lavoro di giornata: **28 casi su 29**.
+⚠️ Sta qui e non fra le urgenti perché **le promozioni le decide il committente**. Ma va detto
+com'è messa: un banco che è rosso e resta rosso è un banco che si smette di leggere, ed è lo
+stesso meccanismo per cui il 14/08 `guard-worker-sync` è stata resa paziente. 📌 Nessuno l'ha
+scoperto prima perché il banco del gestionale **non gira in CI**: si lancia a mano, un file per
+volta.
+
 
 Nella **45ª** (20-21/08, notte). ⚠️ Stanno qui e non fra le 📦 chiuse per la stessa ragione delle
 tre della 44ª: non erano voci numerate. **Tre sono FATTE, fuse e deployate sui soci** (le ultime
