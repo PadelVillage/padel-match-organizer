@@ -192,3 +192,66 @@ export function esitoIgnotoDaRisposta(data: unknown): boolean {
   if (d.esitoIgnoto === true) return true;
   return String(d.error ?? '').trim() === 'WORKER_ESITO_IGNOTO';
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🔒⭐⭐ IL «DETTAGLIO» CHE ESCE VERSO IL BOT — 21/08/2026, la metà che mancava del 19/08.
+//
+// 🗣️ Regola ferrea del committente: *«il worker il bot non deve proprio filarselo, perché il
+// worker è il tramite fra la nostra webapp (gestionale) e Matchpoint»* — né indirizzo, né
+// stato, **né nome**.
+//
+// ⚖️ Il 19/08 è stato curato il `reason` (`worker_error` → `scrittura_rifiutata`), e la
+// guardia che lo sorveglia sta nei casi di questo modulo. Ma il **dettaglio** no: `detail`
+// nasce da `data.message` dell'edge interna, e quel messaggio è scritto per noi —
+// `Worker network error: error sending request for url (https://worker…/create-booking)`.
+// 📏 Misurato nel registro del bot dei soci il 21/08 alle 09:28, sull'esito ignoto di una
+// prenotazione del giorno prima: quella riga è arrivata **intera** fino al bot.
+//
+// 🚨 E non finisce solo nel log: per ogni rifiuto che non sia `esito_ignoto`, il bot passa
+// quel testo come `spiegazione` al modello che scrive al socio (`prenotazione.ts`). ⇒ Il nome
+// di un pezzo interno poteva arrivare sullo schermo di chi gioca, dentro una frase riformulata.
+//
+// ⛔ Il grezzo NON si butta: resta nel `console.error` dell'edge, che è il posto dove serve —
+// a noi, per la diagnosi. Quello che cambia è ciò che **esce**.
+//
+// 🎯 La prova di sempre: il giorno in cui Matchpoint si spegne, il bot non si tocca. Un
+// dettaglio che nomina il worker quel giorno diventerebbe incomprensibile; «il circolo non ha
+// dato un motivo comprensibile» no, perché è il gestionale a dirlo, e il gestionale resta.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * I nomi dei pezzi interni, e gli indirizzi. Chi ne aggiunge uno lo aggiunga **qui**: è la
+ * stessa lista con cui i casi sorvegliano `index.ts`, e due copie divergerebbero.
+ * ⚠️ `https?://` c'è perché un url è un nome interno anche quando non contiene nessuna di
+ * queste parole — ed è la forma in cui il difetto del 21/08 si è presentato.
+ */
+export const NOMI_INTERNI = /worker|matchpoint|hetzner|playwright|caddy|nip\.io|browser|https?:\/\//i;
+
+/**
+ * Cosa legge il bot quando il gestionale non ha un motivo che si possa raccontare.
+ *
+ * ⚖️ Non dice «è andata male» e non dice «non è passata»: quelli sono verdetti, e il verdetto
+ * lo porta il `reason`. Questo dice soltanto che una spiegazione non c'è.
+ */
+export const DETTAGLIO_SENZA_SPIEGAZIONE = 'il circolo non ha dato un motivo comprensibile';
+
+/**
+ * Il dettaglio, ripulito, così com'è lecito che il bot lo legga.
+ *
+ * 🚨 Fallisce CHIUSA: al minimo sospetto — una parola interna, un indirizzo — non si prova a
+ * cancellare il pezzo colpevole lasciando il resto. Ritagliare un messaggio tecnico
+ * lascerebbe in piedi la metà che nessuno ha pensato di cercare, e questo è un posto in cui
+ * un mezzo successo vale zero: basta un url perché la regola sia rotta.
+ *
+ * ⚠️ `clean` non si usa qui e non è una svista: quella funzione toglie i caratteri di
+ * controllo, questa decide **se il testo può uscire**. Sono due lavori diversi, e infilarli
+ * in una funzione sola vorrebbe dire che chi cerca il secondo trova il nome del primo.
+ */
+export function dettaglioPerIlBot(grezzo: unknown): string {
+  const testo = String(grezzo ?? '')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!testo) return '';
+  return (NOMI_INTERNI.test(testo) ? DETTAGLIO_SENZA_SPIEGAZIONE : testo).slice(0, 200);
+}

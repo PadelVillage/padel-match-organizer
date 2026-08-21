@@ -28,7 +28,9 @@ import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // Com'è andata una scrittura di cui non si è saputo l'esito. Sta in un modulo a parte per la
 // stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
 // questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
-import { esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura } from './esito-scrittura.ts';
+import {
+  dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
+} from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
@@ -752,7 +754,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         created: false,
         reason: 'esito_ignoto',
-        detail: clean(`Nessuna risposta dal gestionale: ${testo}`).slice(0, 200),
+        detail: dettaglioPerIlBot(`Nessuna risposta dal gestionale: ${testo}`),
         // Con che cosa richiedere, e quando: senza questi due il bot non ha modo di formulare
         // la domanda a cui `verifica` risponde, e il controllo resterebbe al socio.
         scritta_alle: scrittaAlle,
@@ -772,7 +774,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         created: false,
         reason: ignoto ? 'esito_ignoto' : MOTIVO_SCRITTURA_RIFIUTATA,
-        detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
+        detail: dettaglioPerIlBot(data?.message ?? data?.error ?? `HTTP ${res.status}`),
         // ⚖️ Solo sull'ignoto: su una scrittura rifiutata la prenotazione NON c'è, e dare al bot gli
         // attrezzi per «andare a controllare» lo inviterebbe a controllare un fatto già noto.
         ...(ignoto ? { scritta_alle: scrittaAlle, slot: { data: slot.data, ora: slot.ora, campo } } : {}),
@@ -1001,7 +1003,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         left: false,
         reason: MOTIVO_SCRITTURA_RIFIUTATA,
-        detail: clean(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`).slice(0, 200),
+        detail: dettaglioPerIlBot(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`),
       });
     }
     // 🚨⭐⭐ Seconda scrittura, e senza di lei l'uscita restava mezza fatta. Il gestionale ha
@@ -1216,7 +1218,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         removed: false,
         reason: MOTIVO_SCRITTURA_RIFIUTATA,
-        detail: clean(dataRemove?.message ?? dataRemove?.error ?? `HTTP ${resRemove.status}`).slice(0, 200),
+        detail: dettaglioPerIlBot(dataRemove?.message ?? dataRemove?.error ?? `HTTP ${resRemove.status}`),
       });
     }
     // Seconda scrittura, identica a quella di `leave` e per lo stesso motivo: senza, i ponti
@@ -1500,7 +1502,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         added: false,
         reason: 'esito_ignoto',
-        detail: clean(`Nessuna risposta dal gestionale: ${testo}`).slice(0, 200),
+        detail: dettaglioPerIlBot(`Nessuna risposta dal gestionale: ${testo}`),
         scritta_alle: scrittaAddAlle,
         slot: { data: slot.data, ora: slot.ora, campo },
       });
@@ -1512,7 +1514,7 @@ Deno.serve(async (req: Request) => {
         member: { id: member.id, name: member.name },
         added: false,
         reason: MOTIVO_SCRITTURA_RIFIUTATA,
-        detail: clean(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`).slice(0, 200),
+        detail: dettaglioPerIlBot(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`),
       });
     }
 
@@ -1538,7 +1540,7 @@ Deno.serve(async (req: Request) => {
           member: { id: member.id, name: member.name },
           added: false,
           reason: 'non_agganciato',
-          detail: `la scheda del circolo conta ${finali.length} giocatori, erano ${esito.roster.length}`,
+          detail: dettaglioPerIlBot(`la scheda del circolo conta ${finali.length} giocatori, erano ${esito.roster.length}`),
           giocatori: finali.length,
         });
       }
@@ -1787,7 +1789,7 @@ Deno.serve(async (req: Request) => {
       member: { id: member.id, name: member.name },
       cancelled: false,
       reason: MOTIVO_SCRITTURA_RIFIUTATA,
-      detail: clean(data?.message ?? data?.error ?? `HTTP ${res.status}`).slice(0, 200),
+      detail: dettaglioPerIlBot(data?.message ?? data?.error ?? `HTTP ${res.status}`),
     });
   }
   console.log(`[booking-write] cancel OK ${slot.data} ${slot.ora} C${campo} per ${member.name} (${organizzatoreChePuo ? `organizzatore, erano in ${rosterSlot.length}` : 'era solo'})`);
