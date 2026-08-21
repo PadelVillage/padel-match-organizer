@@ -287,3 +287,11 @@ for (const c of casi) {
   }
 }
 console.log(`\n— ${passati} passati, ${falliti} falliti su ${casi.length} casi —`);
+
+// 🚨 21/08/2026 — SENZA QUESTA RIGA IL BANCO NON DICE NIENTE A NESSUNO.
+// Il file contava i falliti, li stampava, e usciva **0 lo stesso**: dentro un gate di CI
+// sarebbe una prova finta — può diventare rossa per intero e il semaforo resta verde.
+// ⚖️ È la stessa famiglia di difetti per cui questo repo aveva 42 file di prova e nessuno
+// che li facesse girare: una protezione che si CREDE di avere è peggio di nessuna, perché
+// non si compensa con la prudenza.
+process.exit(falliti === 0 ? 0 : 1);
