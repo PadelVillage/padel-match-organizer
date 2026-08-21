@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  DETTAGLIO_SENZA_SPIEGAZIONE,
+  dettaglioPerIlBot,
   esitoIgnotoDaRisposta,
   FINESTRA_SYNC_GIORNI,
   MARGINE_SCRITTURA_S,
@@ -320,6 +322,53 @@ test('18) 🔗 il nome del rifiuto sta in UNA costante, e la usano tutti e cinqu
   // è uscito di lì proprio perché era l'unica copia e nessun altro poteva riusarla.
   assert.match(src, /esitoIgnotoDaRisposta\(data\)/, 'il ramo `create` non usa più la funzione condivisa');
   assert.ok(!/esitoIgnoto === true \|\|/.test(src), 'il riconoscimento è stato ricopiato a mano dentro index.ts');
+});
+
+test('19) 🔒 il DETTAGLIO che nomina un pezzo interno non esce: esce al suo posto una frase muta', () => {
+  // 📏 La riga vera, letta nel registro del bot dei soci il 21/08 alle 09:28. Prima di oggi
+  // arrivava intera: `reason` giusto (esito ignoto) e dentro il dettaglio l'indirizzo del
+  // worker. La regola ferrea del 19/08 chiede tutte e tre le cose — né indirizzo, né stato,
+  // né nome — e questa era la terza.
+  const vera = 'Worker network error: error sending request for url '
+    + '(https://worker.example.nip.io/create-booking): client error (Connect): tcp connect error: '
+    + 'Connection refused (os error 111)';
+  assert.equal(dettaglioPerIlBot(vera), DETTAGLIO_SENZA_SPIEGAZIONE);
+  // 🚨 E ognuna delle strade da sola: un url senza nessuna parola vietata basta a fermare
+  // tutto, ed è il caso che una lista di sole parole avrebbe lasciato passare.
+  assert.equal(dettaglioPerIlBot('non risponde: https://10.0.0.1/create'), DETTAGLIO_SENZA_SPIEGAZIONE);
+  assert.equal(dettaglioPerIlBot('MATCHPOINT non raggiungibile'), DETTAGLIO_SENZA_SPIEGAZIONE);
+  assert.equal(dettaglioPerIlBot('timeout del browser'), DETTAGLIO_SENZA_SPIEGAZIONE);
+});
+
+test('20) ⚖️ e un dettaglio PULITO passa: la guardia non è una museruola', () => {
+  // Il verso opposto, e va provato: una guardia che cancella tutto proteggerebbe la regola
+  // togliendo l'unica cosa che il dettaglio serve a dare — il perché.
+  assert.equal(dettaglioPerIlBot('HTTP 409'), 'HTTP 409');
+  assert.equal(
+    dettaglioPerIlBot('la scheda del circolo conta 3 giocatori, erano 4'),
+    'la scheda del circolo conta 3 giocatori, erano 4',
+  );
+  assert.equal(dettaglioPerIlBot(''), '', 'un dettaglio vuoto resta vuoto: non si inventa un motivo');
+  assert.equal(dettaglioPerIlBot(null), '');
+  assert.equal(dettaglioPerIlBot(undefined), '');
+  // Righe e caratteri di controllo appiattiti, e il tetto dei 200 che c'era prima resta.
+  assert.equal(dettaglioPerIlBot('due\nrighe'), 'due righe');
+  assert.equal(dettaglioPerIlBot('x'.repeat(400)).length, 200);
+});
+
+test('21) 🔗 TUTTI i «detail» verso il bot passano dalla stessa mano', () => {
+  // ⭐ La lezione del caso 18, applicata al dettaglio: non si conta quante volte la funzione
+  // compare, si conta che non esista NESSUN `detail:` che le sfugga. Otto punti oggi; se
+  // domani ne nasce un nono scritto a mano, questo caso lo trova — ed è l'unico modo, perché
+  // un dettaglio che sfugge non rompe niente e nessuno lo va a cercare.
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
+  const tutti = src.match(/^\s*detail:.*$/gm) ?? [];
+  assert.ok(tutti.length >= 8, `trovati ${tutti.length} «detail»: la forma è cambiata e la guardia sta guardando altrove`);
+  const scoperti = tutti.filter((r) => !r.includes('dettaglioPerIlBot('));
+  assert.deepEqual(scoperti, [], `un dettaglio esce senza passare dalla ripulitura: ${scoperti.join(' | ')}`);
+  // 🚨 E il grezzo deve restare da qualche parte, o si è curata la regola perdendo la diagnosi:
+  // i due punti dell'esito ignoto lo scrivono nel log dell'edge, che è il posto giusto.
+  assert.match(src, /console\.error\(`\[booking-write\] create ESITO IGNOTO/);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
