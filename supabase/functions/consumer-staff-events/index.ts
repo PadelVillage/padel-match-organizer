@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { riduci, type FattoInCoda } from './riduzione.ts';
 import { destinatarioPerNome, normNome, type SchedaMinima } from './identifica.ts';
+import { leggiImpaginato } from './impaginazione.ts';
 
 // consumer-staff-events — il gestionale CONSEGNA al bot i fatti della segreteria (voce 68).
 //
@@ -44,6 +45,20 @@ const CORS_HEADERS = {
  * silenziosa si legge come «non c'era altro».
  */
 const MAX_ESITI = 100;
+
+/**
+ * Quante righe il client restituisce al massimo in una lettura, qualunque cosa si chieda.
+ * ⚠️ NON è una scelta: è il tetto imposto dal client, ed è la stessa costante che le altre
+ * funzioni di questo repo chiamano `SUPABASE_PAGE_SIZE`. Chiedere di più non lo alza.
+ */
+const SUPABASE_PAGE_SIZE = 1000;
+
+/**
+ * Il freno d'emergenza dell'impaginazione: se l'anagrafica superasse questo numero, si smette
+ * di leggere e lo si SCRIVE nel registro. È dieci volte i soci di oggi (2810 il 21/08/2026):
+ * arrivarci vuol dire che è successo qualcos'altro.
+ */
+const MAX_SCHEDE_ANAGRAFICA = 30000;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -135,18 +150,45 @@ Deno.serve(async (req: Request) => {
 
   const schede: SchedaMinima[] = [];
   if (nomi.length) {
-    const { data: membri, error: memberErr } = await service
-      .from('pmo_cloud_records')
-      .select('payload')
-      .eq('record_type', 'member')
-      .not('deleted', 'is', true)
-      .limit(5000);
-    if (memberErr) {
-      console.error('[staff-events] errore lettura anagrafica:', memberErr.message);
+    // 🚨⭐⭐ SI IMPAGINA, e non è una raffinatezza: `.limit(5000)` ne restituisce **1000**.
+    // Il client tronca a mille per volta comunque lo si chieda — sta scritto in questo stesso
+    // repo (`anagrafica-report-telefoni`: «i soci sono ~2800 e il client tronca a 1000 per
+    // volta») e le altre nove funzioni che leggono l'anagrafica impaginano tutte.
+    // 📏 MISURATO su PROD il 21/08/2026, al primo collaudo con due persone diverse: il ponte
+    // vedeva le prime 1000 schede su 2810. «Maurizio Aprea» sta in posizione 628 ⇒ avviso
+    // consegnato; «Lidia Comes» in posizione 2721 ⇒ `nonRiconosciuti: 1`, e il messaggio non
+    // è mai partito. Due persone ai due lati del taglio, e il difetto si vedeva solo così.
+    // ⚖️ Il numero che rende l'idea: **1810 soci su 2810** non potevano ricevere NIENTE, in
+    // silenzio, con la riga chiusa come se fosse stata consegnata.
+    // 🚨 Il chiesto era 5000 — cioè più delle schede che esistono — e proprio per questo
+    // sembrava al sicuro: un tetto chiesto più alto del vero non protegge da un tetto
+    // imposto più basso. *Un limite che si dichiara non è un limite che si ottiene.*
+    const cercati = new Set(nomi.map((n) => normNome(n)));
+    const lettura = await leggiImpaginato<JsonMap>(
+      async (from, to) => {
+        const { data, error } = await service
+          .from('pmo_cloud_records')
+          .select('payload')
+          .eq('record_type', 'member')
+          .not('deleted', 'is', true)
+          .range(from, to);
+        return { righe: (data ?? []) as JsonMap[], errore: error?.message ?? null };
+      },
+      { pagina: SUPABASE_PAGE_SIZE, tetto: MAX_SCHEDE_ANAGRAFICA },
+    );
+    if (lettura.errore) {
+      console.error('[staff-events] errore lettura anagrafica:', lettura.errore);
       return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
     }
-    const cercati = new Set(nomi.map((n) => normNome(n)));
-    for (const row of membri ?? []) {
+    // 🚨 Se il freno ha morso, l'elenco è incompleto e qualcuno tornerebbe «non riconosciuto»
+    // per una ragione che non è sua: si smette, senza chiudere niente. I fatti restano in coda
+    // e il giro dopo riprova. *Meglio un avviso in ritardo che una riga chiusa a vuoto* — che
+    // è esattamente il difetto del 21/08.
+    if (lettura.troncato) {
+      console.error('[staff-events] anagrafica troncata a', lettura.righe.length, 'schede.');
+      return err(500, 'DB_ERROR', 'Anagrafica troppo grande per un giro solo: niente consegnato.');
+    }
+    for (const row of lettura.righe) {
       const p = (row.payload ?? {}) as JsonMap;
       const nome = clean(p.name) || `${clean(p.firstName)} ${clean(p.surname)}`.trim();
       if (!nome) continue;
