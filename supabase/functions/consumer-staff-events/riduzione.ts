@@ -50,6 +50,41 @@ export type EsitoRidotto = {
  */
 export const QUIETE_MS = 2 * 60 * 1000;
 
+/**
+ * 🚨⭐⭐ PERCHÉ LA QUIETE NON SI ABBASSA SOTTO UN GIRO DI SYNC — 22/08/2026, e il conto è
+ * diverso da quello che sembra.
+ *
+ * 🗣️ Il committente ha proposto di portarla a **60 secondi**, con una premessa giusta: *«la
+ * segreteria quando fa le variazioni sicuramente ci mette meno di un minuto»*. Sul **gesto
+ * singolo** è vero.
+ *
+ * ⚖️ Ma questa costante non misura il gesto: misura la distanza fra due `visto_at`, e
+ * **`visto_at` è l'istante del GIRO DI SYNC**, non del gesto (`visto_at: importedAt`, nel
+ * ramo della voce 68 dentro `matchpoint-bookings-sync`). Tutti i fatti nati dallo stesso giro
+ * portano lo stesso timbro; due gesti caduti in giri **diversi** risultano distanti quanto i
+ * giri — anche se la segreteria li ha fatti a dieci secondi l'uno dall'altro.
+ *
+ * ⇒ *Una quiete più corta di un giro di sync non può fondere quasi niente*, e il caso che
+ * perderebbe è proprio **togli-e-rimetti fatto in fretta**: cioè quello per cui la quiete
+ * esiste, e l'unico in cui il messaggio non è rumore ma **allarme**.
+ *
+ * 📌 Il guadagno rinunciato è **un minuto**; la spesa vera dell'attesa era altrove — il bot
+ * chiedeva ogni **quindici** minuti, ed è quella la cifra che è stata tagliata (a 2′).
+ * ⇒ *Prima di stringere una soglia, guardare quale dei termini della somma è quello grosso.*
+ */
+
+/**
+ * Entro quanto un nuovo fatto sulla stessa coppia (persona, partita) fa sospettare che una
+ * raffica sia stata **spezzata**: le si era già consegnato qualcosa, e adesso arriva altro.
+ *
+ * ⚠️ Serve SOLO al registro, e non cambia niente di quello che si consegna. È il modo di
+ * decidere il valore della quiete **sui dati** invece che sulle stime: se fra qualche giorno
+ * questa riga non compare mai, la quiete si abbassa senza discutere; se compare spesso, si
+ * alza con un numero in mano. *Una soglia senza una misura che la sorvegli è un'opinione che
+ * ha preso la forma di una costante.*
+ */
+export const SOSPETTO_RAFFICA_SPEZZATA_MS = 15 * 60 * 1000;
+
 /** Chiave della coppia: una persona in una partita. È il grano della decisione ①. */
 export function coppia(persona: string, slot: string): string {
   return `${persona.trim().toLowerCase()}\u0000${slot}`;

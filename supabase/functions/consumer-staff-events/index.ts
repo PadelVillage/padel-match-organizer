@@ -1,6 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { riduci, type FattoInCoda } from './riduzione.ts';
+import { riduci, SOSPETTO_RAFFICA_SPEZZATA_MS, type FattoInCoda } from './riduzione.ts';
 import { destinatarioPerNome, normNome, type SchedaMinima } from './identifica.ts';
 import { leggiImpaginato } from './impaginazione.ts';
 import {
@@ -356,10 +356,45 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // ── 5bis. LE RAFFICHE SPEZZATE, solo per il registro ────────────────────────────────
+  // 🚨 Non cambia niente di ciò che si consegna: conta le volte in cui a una coppia (persona,
+  // partita) si era GIÀ consegnato qualcosa poco fa, e adesso le si consegna dell'altro. È il
+  // sintomo che la quiete non ha tenuto insieme una raffica.
+  // ⚖️ Esiste per rendere DECIDIBILE sui dati il valore di `QUIETE_MS`, che il 22/08 è stato
+  // discusso su delle stime: *una soglia senza una misura che la sorvegli è un'opinione che ha
+  // preso la forma di una costante.* Se questa riga non compare mai, la quiete si abbassa
+  // senza discutere; se compare spesso, si alza con un numero in mano.
+  // ⚠️ Best effort e dentro un try: una diagnostica non deve poter far fallire una consegna.
+  let raffichePezzate = 0;
+  if (eventi.length) {
+    try {
+      const daQuando = new Date(Date.now() - SOSPETTO_RAFFICA_SPEZZATA_MS).toISOString();
+      const slotDetti = [...new Set(ridotti.filter((e) => e.gesto !== null).map((e) => e.slot))];
+      const { data: gia } = await service
+        .from('pmo_eventi_staff')
+        .select('slot, persona')
+        .in('slot', slotDetti)
+        .not('consegnato_at', 'is', null)
+        .gte('consegnato_at', daQuando);
+      const gaCoppie = new Set((gia ?? []).map((r) =>
+        `${normNome((r as JsonMap).persona)}\u0000${clean((r as JsonMap).slot)}`));
+      for (const e of ridotti) {
+        if (e.gesto === null) continue;
+        if (gaCoppie.has(`${normNome(e.persona)}\u0000${e.slot}`)) {
+          raffichePezzate += 1;
+          console.warn(`[staff-events] raffica SPEZZATA: ${e.persona} ${e.data} ${e.ora} C${e.campo} — le era già stato consegnato qualcosa negli ultimi ${Math.round(SOSPETTO_RAFFICA_SPEZZATA_MS / 60000)} minuti`);
+        }
+      }
+    } catch (e) {
+      console.warn('[staff-events] conteggio raffiche spezzate non riuscito:', clean((e as Error)?.message ?? 'errore'));
+    }
+  }
+
   console.log(JSON.stringify({
     event: 'staff_events_consegna',
     inCoda: fatti.length,
     copertiDaRicevuta: coperti.length,
+    raffichePezzate,
     ridotti: ridotti.length,
     consegnati: eventi.length,
     nettoNullo: ridotti.length - daDire.length,
