@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **6** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 🆕 **22/08 sera: entra la 75**, segnalata da lui dal vivo col messaggio sullo schermo — il bot dice «✅ Prenotato» e il bottone che offre lui stesso risponde «non trovo quella partita» e manda in segreteria. Diagnosi fino alla riga; **cura non scritta** |
+| 🔴 **Urgenti** | **6** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 🆕 **22/08 sera: entra la 75**, segnalata da lui dal vivo col messaggio sullo schermo — il bot dice «✅ Prenotato» e il bottone che offre lui stesso risponde «non trovo quella partita» e manda in segreteria. Diagnosi fino alla riga; **metà A curata la sera stessa**, metà B no |
 | 📋 **In coda** | **8** — la **68** (avvisi dal gestionale, curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** (curata il 22/08 e in servizio: resta finché non la si è vista succedere) e la **71** entrate nella notte del 21/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08. 🆕 **22/08: entrano la 72 e la 73**, segnalate dal committente dal vivo durante il collaudo — la seconda misurata fino alla causa, **curata e vista funzionare** lo stesso pomeriggio; la **72 è curata la sera** e resta aperta finché non la si è vista succedere. 🆕 **E nel pomeriggio entra la 74**, trovata da una sua domanda un'ora dopo: uno spostamento manda solo la metà cattiva della notizia |
 | 📦 **Chiuse** | **57** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -1671,7 +1671,7 @@ entro mezz'ora da un annullo in cui la prenotazione nuova **si vede**.
 nascosta come prima, e una soppressione **vecchia** — nata senza la lista — nasconde tutto lo slot
 come prima. Sono i casi che non si sanno leggere, e lì il verso prudente è quello di sempre.
 
-### **75** — 🚨 Il bot dice «✅ Prenotato», e il suo stesso bottone risponde «non trovo quella partita» — NON CURATA
+### **75** — 🚨 Il bot dice «✅ Prenotato», e il suo stesso bottone risponde «non trovo quella partita» — metà A CURATA, metà B no
 
 🗣️ **Segnalata da lui il 22/08 sera, dal vivo**, con lo schermo in mano: *«Questo è il messaggio che
 ho ricevuto sul bot»* — *«Non trovo più quella partita fra le tue: può essere già cambiata nel
@@ -1771,8 +1771,36 @@ esattamente il danno che la voce 72 esiste per evitare. Ed è un **vicolo cieco 
 strada**: il bottone lo offre il bot stesso, due righe sotto la propria conferma — la cosa che la
 scheda del 19/08 aveva messo per iscritto di non fare.
 
-📌 **Nessuna riga di codice scritta**: la diagnosi è ferma alla causa, per sua decisione di procedere
-una voce per volta.
+✅ **METÀ A SCRITTA la sera stessa**, su sua decisione (*«Direi di curare questo ultimo difetto che
+abbiamo trovato e riprovare»*). La regola vive in un modulo puro —
+`supabase/functions/matchpoint-bookings-create/lapide-prenotazione.js` — e l'edge le chiede il
+verdetto invece di uscire sul flag. Banco: **18 casi** (`test/scrivere-sopra-una-lapide.test.mjs`,
+compreso quello coi dati veri del 22/08) e **8 sabotaggi** (`test/sabotaggi-voce-75.mjs`), tutti
+visti far cadere il caso giusto.
+
+🚨⭐⭐ **E LA CURA NE NASCONDEVA UNA SECONDA, che senza scriverla sarebbe stata peggiore del difetto.**
+L'upsert fonde `{...nostro, ...esistente}` e **l'esistente vince campo per campo** — regola giusta su
+una riga viva, dove l'app può aver aggiornato il roster dopo di noi. Ma i campi di una **lapide** sono
+quelli dell'**altra** partita: fondendoli, la prenotazione nuova sarebbe nata col **nome, i giocatori
+e l'`id_reserva` della morta**, e il bot avrebbe elencato gente che in campo non c'è. ⇒ Su una riga
+viva si fonde, sopra una lapide si **sostituisce**. 📌 *Il difetto stava nel pezzo che la cura non
+cambiava, ed è la stessa lezione della 72: si legge tutto, si cambia il minimo — ma «tutto» comprende
+ciò che la riga toccata trascina con sé.*
+
+🔄 **Tre guardie di `test/prenotazione-chiave-unica.test.mjs` AGGIORNATE, non allentate**: erano
+rosse perché sorvegliavano il *meccanismo* vecchio (`select('payload, deleted')`, l'uscita sul flag,
+la fusione sempre). La regola che difendono è la stessa; il modo di leggerla è cambiato. Riscriverle
+per farle tornare verdi sarebbe stato allentarle, e accanto a ciascuna è annotato cosa non deve
+sparire.
+
+⏳ **Metà B non scritta**: la frase «sto ancora registrando» al posto del rifiuto, sulla strada della
+71 (`ricontrollaUscita`, repo del bot). Con la A in servizio non scatta quasi mai — ma copre ogni
+altro motivo per cui un elenco può arrivare incompleto, e senza di lei quel ramo continua a mandare
+in segreteria per un'operazione riuscita.
+
+📌 **Perché resta APERTA**: la cura non l'ha ancora vista funzionare nessuno. Si chiude quando una
+riprenotazione su uno slot annullato **entro la stessa giornata** produce un «Invita» che funziona
+al primo tocco.
 
 ⚠️ **Due reperti collaterali, misurati la stessa sera e da NON confondere con questa voce:**
 ① **oltre i 7 giorni il ritardo del sync non è ~2 minuti, è fino a ~17.** Il tick `near` copre 7

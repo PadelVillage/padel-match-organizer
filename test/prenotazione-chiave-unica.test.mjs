@@ -207,9 +207,21 @@ const guardie = [
     return iProva > 0 && iProva < iAsync && iProva < iWorker;
   })()],
   ['l\'edge DICHIARA che cosa sa fare', /export const FEATURES = \[/.test(ts) && /prova-a-vuoto-chiave/.test(ts)],
-  ['prima di scrivere LEGGE la riga esistente', /\.select\('payload, deleted'\)/.test(ts)],
-  ['⛔ non resuscita una prenotazione ANNULLATA', /esistente\?\.deleted === true\)\s*return/.test(ts)],
-  ['usa la fusione invece di scrivere alla cieca', /payload = fondiPayloadPrenotazione\(/.test(ts)],
+  // 🔄 22/08/2026 (voce 75) — le tre guardie qui sotto sono state AGGIORNATE, non allentate:
+  // la regola che difendono è la stessa, il meccanismo è cambiato. Prima l'edge usciva sul
+  // flag (`deleted === true`) e fondeva sempre; ora chiede a `lapide-prenotazione.js` SE quella
+  // lapide riguardi questa prenotazione, e sopra una lapide sostituisce invece di fondere.
+  // 🚨 Riscriverle per farle tornare verdi sarebbe stato allentarle. Quello che ciascuna
+  // difende è annotato accanto, così chi le legge fra sei mesi sa cosa non deve sparire.
+  // ⇒ Il caso «non si resuscita l'annullo di QUESTA prenotazione» non è più leggibile dal
+  //   sorgente: è una decisione, e vive nel banco che la esegue
+  //   (`test/scrivere-sopra-una-lapide.test.mjs`, più i suoi otto sabotaggi).
+  ['prima di scrivere LEGGE la riga esistente, e ne legge anche l\'ISTANTE',
+    /\.select\('payload, deleted, updated_at'\)/.test(ts)],
+  ['⛔ non resuscita alla cieca: chiede alla regola se quella lapide è la SUA',
+    /^\s*const verdettoLapide = siPuoScrivereSopraLapide\(\{/m.test(ts) && /^\s*if \(!verdettoLapide\.si\) return;/m.test(ts)],
+  ['usa la fusione su una riga VIVA, e sostituisce sopra una lapide',
+    /payload = esistente\?\.deleted === true \? nostro : fondiPayloadPrenotazione\(/.test(ts)],
   ['la fusione è una funzione a sé, provabile', /export function fondiPayloadPrenotazione/.test(ts)],
   ['la fusione non scrive da sola sul database', !/\.upsert\(|\.insert\(|createClient\(/.test(estraiSenzaTipi('fondiPayloadPrenotazione'))],
 ];
