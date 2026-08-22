@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
-import { fattiDaConfronto, fotografia } from './eventi-staff.ts';
+import { fattiDaConfronto, fotografia, sepoltiDaResuscitare } from './eventi-staff.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -855,6 +855,65 @@ async function loadExistingBookingRecords(admin: any) {
   return records;
 }
 
+// ── VOCE 73 — ciò che l'APP ha seppellito da quando ho guardato l'ultima volta ─────────────
+// La regola (e il perché) sta in `eventi-staff.ts`, accanto a `sepoltiDaResuscitare`. Qui c'è
+// solo il gesto di andarle a prendere. 🚨 Sono DUE letture e non una: le lapidi da sole non
+// bastano — il sync ne produce a ogni giro — e a distinguerle è la soppressione, che l'app
+// scrive e il sync non scrive mai.
+
+/** L'istante dell'export del giro precedente: il confine oltre il quale «non l'ho ancora visto». */
+async function ultimoGiroImportedAt(admin: any): Promise<string | null> {
+  const { data, error } = await admin
+    .from('pmo_audit_log')
+    .select('created_at,detail')
+    .eq('action', 'matchpoint_bookings_auto_import_success')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const riga = Array.isArray(data) ? data[0] : null;
+  if (!riga) return null;
+  // ⚠️ `created_at` è il RIPIEGO, ed è la fine del giro invece del suo inizio: vale solo per il
+  // primo giro dopo questo deploy, quando `importedAt` nel dettaglio ancora non c'è. Sbaglia
+  // per DIFETTO — guarda una finestra più stretta — quindi al massimo perde un avviso.
+  return clean((riga?.detail || {})?.importedAt || '') || riga?.created_at || null;
+}
+
+/**
+ * Quanto si guarda INDIETRO rispetto al confine per le sole lapidi.
+ *
+ * 🚨 Non allarga la finestra dei fatti — quella la decide la SOPPRESSIONE, che resta sul
+ * confine esatto. Serve perché lapide e soppressione le scrive la stessa funzione dell'app ma
+ * come righe diverse dello stesso invio: se il confine cadesse esattamente fra loro, la
+ * soppressione entrerebbe e la sua lapide no, e la cura sarebbe muta proprio nel caso limite.
+ */
+const MARGINE_LAPIDI_MS = 5 * 60 * 1000;
+
+/** Le lapidi `booking` e le soppressioni dichiarate dall'app, dal confine in poi. */
+async function loadSepoltiESoppressioni(admin: any, confineIso: string) {
+  const daQuandoLapidi = new Date(Date.parse(confineIso) - MARGINE_LAPIDI_MS).toISOString();
+  const [sepolti, soppressioni] = await Promise.all([
+    admin
+      .from('pmo_cloud_records')
+      .select('local_key,payload,updated_at')
+      .eq('record_type', 'booking')
+      .eq('deleted', true)
+      .gte('updated_at', daQuandoLapidi)
+      .limit(PAGE_SIZE),
+    admin
+      .from('pmo_cloud_records')
+      .select('local_key,payload,deleted,updated_at')
+      .eq('record_type', 'staff_suppress')
+      .gt('updated_at', confineIso)
+      .limit(PAGE_SIZE),
+  ]);
+  if (sepolti.error) throw sepolti.error;
+  if (soppressioni.error) throw soppressioni.error;
+  return {
+    sepolti: Array.isArray(sepolti.data) ? sepolti.data : [],
+    soppressioni: Array.isArray(soppressioni.data) ? soppressioni.data : [],
+  };
+}
+
 async function saveDiagnosticExport(_admin: any, exported: MatchpointExport, importedAt: string) {
   return {
     saved: false,
@@ -1431,10 +1490,38 @@ Deno.serve(async (req) => {
     // *un avviso perso è un fastidio, un calendario fermo è un guasto del circolo.*
     let eventiStaffAccodati = 0;
     try {
+      // 🚨⭐ VOCE 73 — la fotografia di PRIMA è ciò che c'era l'ULTIMA VOLTA CHE HO GUARDATO,
+      // e l'app nel frattempo riscriveva il passato: annullando, seppellisce subito le proprie
+      // copie `booking` dello slot, e `existingRecords` legge solo le righe vive ⇒ quello slot
+      // «nella prima non c'era già più». Nessuna sparizione, nessun fatto, nessun avviso — e
+      // l'annullo è il gesto che toglie il campo alle persone.
+      // ⇒ Si rimettono nella fotografia solo le lapidi degli slot che l'APP dichiara di aver
+      //   annullato dal giro scorso in qua (`staff_suppress`, che il sync non scrive mai): il
+      //   perché sta per esteso accanto a `sepoltiDaResuscitare`.
+      // ⚖️ Dentro il try che c'è già: se questa lettura in più fallisce, si perde un avviso —
+      //   non il calendario. E `confine` nullo (primissimo giro) vuol dire «non so da quando
+      //   guardare» ⇒ non si resuscita niente, che è il verso prudente.
+      let risorti: JsonMap[] = [];
+      const confineVoce73 = await ultimoGiroImportedAt(admin);
+      if (confineVoce73) {
+        const { sepolti, soppressioni } = await loadSepoltiESoppressioni(admin, confineVoce73);
+        risorti = sepoltiDaResuscitare(sepolti, soppressioni, confineVoce73) as JsonMap[];
+        if (risorti.length) {
+          console.log(JSON.stringify({
+            event: 'eventi_staff_sepolti_risorti',
+            confine: confineVoce73,
+            soppressioni: soppressioni.length,
+            righe: risorti.length,
+          }));
+        }
+      }
       const primaFoto = fotografia(
-        existingRecords
-          .filter((r) => clean(r?.record_type || '') === 'booking')
-          .map((r) => (r?.payload || {}) as JsonMap),
+        [
+          ...existingRecords
+            .filter((r) => clean(r?.record_type || '') === 'booking')
+            .map((r) => (r?.payload || {}) as JsonMap),
+          ...risorti,
+        ],
         (d) => playersFromDescrizione(d as string),
       );
       const dopoFoto = fotografia(
@@ -1484,6 +1571,10 @@ Deno.serve(async (req) => {
       totalOccupanciesBefore,
       totalOccupanciesAfter,
       diagnosticFile,
+      // ⭐ VOCE 73: è il CONFINE che il giro successivo userà per sapere che cosa l'app ha
+      // seppellito da quando ha guardato l'ultima volta. È l'istante dell'export, non la fine
+      // del giro, ed è la differenza che evita di perdere gli annulli fatti mentre giravo.
+      importedAt,
       upserted: records.length,
       fullTick: isFullTick,
       fullTickRecovered: tickDecision.recovered,
