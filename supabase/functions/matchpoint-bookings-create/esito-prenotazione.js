@@ -119,3 +119,92 @@ export function chiusuraDelLavoroIgnoto(precedente, verdetto, opzioni) {
   }
   return { chiudibile: true, motivo: '', status: verdetto === 'si' ? 'done' : 'error', payload };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+ * ⚖️⭐⭐ QUANDO UN RIFIUTO DEL WORKER È DAVVERO UN RIFIUTO — voce 72, 22/08/2026.
+ *
+ * 🚨 IL BUCO, misurato leggendo il codice e non supposto. Fin qui l'ignoto nasceva in UN punto
+ * solo: la `fetch` verso il worker che non riceve risposta (`erroreEsitoIgnoto`, sopra). Il
+ * commento che l'accompagna dice *«un rifiuto del worker è una risposta, e quello resta un
+ * errore normale»* — vero per i rifiuti che il worker sa di dare, FALSO per uno che dà senza
+ * saperlo:
+ *
+ *   · la coda del worker ha concorrenza 1 e un timeout di 180 s sulle interattive. Quando
+ *     scatta, `Promise.race` **smette di aspettare ma non interrompe Playwright** — lo dice il
+ *     commento del worker stesso, «l'operazione NON è stata interrotta… zombie» — e il browser
+ *     viene chiuso sotto. Se il timeout cade DOPO il click su «Salvare», la prenotazione sul
+ *     sistema del circolo **c'è**;
+ *   · quel timeout esce come un errore qualunque (HTTP 500, `QUEUE_JOB_TIMEOUT`) ⇒ arrivava
+ *     qui come `WORKER_ERROR`, cioè come **«non è passata»**.
+ *
+ * ⚖️ Il verso in cui si può sbagliare NON è simmetrico, ed è tutta la ragione di questa regola:
+ *   · un «non lo so» di troppo costa **un'attesa** — il bot controlla e lo dice lui;
+ *   · un «non è passata» falso costa **una doppia prenotazione**, cioè un campo occupato due
+ *     volte e il socio che paga il conto di una cosa che non ha chiesto.
+ * ⇒ Perciò si elencano i codici **CERTI**, e tutto il resto — codici nuovi compresi — cade
+ *   nell'ignoto. È la stessa forma di `dettaglioPerIlBot`: fallisce CHIUSA.
+ *
+ * 📏 L'elenco non è a sentimento: sono i codici che `createBookingWithBrowser` può lanciare
+ * **prima** del click su «Salvare» (validazioni, campo, tabellone, form non aperto, giocatore
+ * non agganciato), più quelli che non arrivano nemmeno al browser (autenticazione, rotta
+ * assente, endpoint non implementato). Chi ne aggiunge uno al worker lo aggiunga qui **solo se
+ * sa dire dove sta rispetto al salvataggio**: nel dubbio, non aggiungerlo — il dubbio è già la
+ * risposta giusta.
+ * ══════════════════════════════════════════════════════════════════════════════════════════ */
+export const CODICI_FALLIMENTO_CERTO = new Set([
+  // Non è mai arrivato al browser
+  'WORKER_UNAUTHORIZED',
+  'MATCHPOINT_WORKER_API_KEY_MISSING',
+  'MATCHPOINT_WORKER_SECRETS_MISSING',
+  'NOT_FOUND',
+  'WORKER_CREATE_BOOKING_NOT_IMPLEMENTED',
+  // Validazioni della richiesta, prima di aprire qualunque pagina
+  'INVALID_CAMPO', 'INVALID_DATA', 'INVALID_ORA', 'INVALID_NOME', 'INVALID_TIPO',
+  'CAMPO_NON_VALIDO',
+  // Il form non si è mai aperto, o lo slot era già occupato
+  'TABELLONE_CELL_NOT_FOUND',
+  'BOOKING_FORM_NOT_FOUND',
+  'FICHA_FORM_NOT_VISIBLE',
+  'FICHA_LEZIONE_FORM_NOT_VISIBLE',
+  'FICHA_MANUTENZIONE_FORM_NOT_VISIBLE',
+  'SLOT_NOT_FREE',
+  // Il giocatore non si è agganciato: il worker si ferma APPOSTA prima di salvare
+  // («NON salvare dichiarando "creata". Fallisci esplicito → l'app SA di dover ritentare»).
+  'PLAYER_ADD_INCOMPLETE',
+  // Il bottone di salvataggio non è stato trovato ⇒ non è stato premuto.
+  // ⚠️ Con una riserva, che è il caso qui sotto: vale solo se non è stato nemmeno TENTATO.
+  'SAVE_BUTTON_NOT_FOUND',
+]);
+
+/**
+ * Il worker ha **provato** a premere «Salvare» prima di arrendersi?
+ *
+ * 🚨⭐ È la crepa dentro `SAVE_BUTTON_NOT_FOUND`, e senza questa funzione l'elenco di sopra
+ * direbbe una bugia. `clickFormSave` prova i selettori in fila: se un click parte e poi
+ * fallisce — l'elemento si stacca perché la pagina sta già navigando, cioè **proprio quando il
+ * salvataggio è andato a buon fine** — l'errore viene messo da parte, il ciclo continua sui
+ * selettori seguenti (che ormai non si vedono più) e finisce con «bottone non trovato».
+ * ⇒ Lo stesso codice racconta due fatti opposti: *nessun bottone c'era* e *ho premuto e non so
+ * com'è finita*. A distinguerli basta ciò che il worker **già scrive** in `navigationAttempts`,
+ * senza toccarlo: `action: 'save_attempt'` compare solo dopo un click partito.
+ */
+export function salvataggioTentato(diagnostic) {
+  const d = (diagnostic && typeof diagnostic === 'object') ? diagnostic : {};
+  const tentativi = Array.isArray(d.navigationAttempts) ? d.navigationAttempts : [];
+  return tentativi.some((t) => t && typeof t === 'object' && String(t.action || '') === 'save_attempt');
+}
+
+/**
+ * Il corpo con cui il worker ha rifiutato → `'certo'` oppure `'ignoto'`.
+ *
+ * ⭐ Prende il CORPO, non il messaggio: la condizione si riconosce da cosa è successo, non da
+ * quali parole contiene la stringa che la racconta — la stessa ragione per cui `esitoIgnoto`
+ * guarda una proprietà (voce 36, i sette dispatcher classificati per le parole del sorgente).
+ */
+export function esitoDellaRispostaWorker(corpo) {
+  const c = (corpo && typeof corpo === 'object') ? corpo : {};
+  const codice = String(c.error ?? '').trim().toUpperCase();
+  if (!CODICI_FALLIMENTO_CERTO.has(codice)) return 'ignoto';
+  if (codice === 'SAVE_BUTTON_NOT_FOUND' && salvataggioTentato(c.diagnostic)) return 'ignoto';
+  return 'certo';
+}

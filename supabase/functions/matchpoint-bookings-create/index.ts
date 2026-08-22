@@ -23,6 +23,7 @@ import {
   codiceDiRifiuto,
   decidiEsitoDelLavoro,
   erroreEsitoIgnoto,
+  esitoDellaRispostaWorker,
 } from './esito-prenotazione.js';
 
 type JsonMap = Record<string, unknown>;
@@ -201,9 +202,15 @@ async function callWorkerCreateBooking(opts: {
     throw new Error('WORKER_CREATE_BOOKING_NOT_IMPLEMENTED: Il worker browser non supporta ancora la creazione di prenotazioni. Contatta l\'amministratore per aggiornare il worker.');
   }
 
-  throw new Error(
-    `Worker error ${res.status}: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-  );
+  // ⚖️⭐⭐ voce 72 — UN RIFIUTO DEL WORKER NON È PER FORZA UN FALLIMENTO.
+  // Fin qui ogni risposta non-ok usciva come errore normale, sulla regola «un rifiuto è una
+  // risposta». Regge per i rifiuti che il worker sa di dare; non regge per il `QUEUE_JOB_TIMEOUT`,
+  // che il worker dà **smettendo di aspettare** un'operazione ancora in corso — e se ha smesso
+  // dopo il click su «Salvare», la prenotazione sul sistema del circolo c'è. La regola che
+  // separa i due casi sta nel modulo puro, dove si può provare: qui c'è solo il cablaggio.
+  const testo = `Worker error ${res.status}: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`;
+  if (esitoDellaRispostaWorker(body) === 'ignoto') throw erroreEsitoIgnoto(testo);
+  throw new Error(testo);
 }
 
 // Ripulisce l'id che l'app ci manda, prima che diventi la CHIAVE di una riga del cloud.
