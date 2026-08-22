@@ -6,7 +6,8 @@ import {
   normName,
   playersFromDescrizione,
   rosterFromPayload,
-  rosterOrdinatoDelloSlot,
+  copiaNostra,
+  ordineDelloSlot,
 } from './compagni-slot.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
@@ -485,6 +486,15 @@ Deno.serve(async (req: Request) => {
   // Le liste della SOLA scheda del circolo, separate dalle altre: sono l'unica fonte
   // ORDINATA, e l'ordine è ciò che dice chi ha organizzato (il primo dell'elenco).
   const schedeByKey = new Map<string, string[][]>();
+  /**
+   * ⭐ Vero finché di questo slot abbiamo visto SOLO copie scritte da noi (`staff_booking`) —
+   * cioè finché il circolo non ne ha ancora raccontato la sua scheda (voce 71). È il fatto che
+   * distingue *«l'ordine non lo so ancora»* da *«l'ordine non si sa»*, e senza il quale il bot
+   * dice a chi ha appena prenotato che la partita non è sua.
+   * ⚠️ Parte da vero e si spegne alla prima riga sincronizzata: una sola basta, perché una sola
+   * vuol dire che il circolo ha parlato.
+   */
+  const soloCopieNostreByKey = new Map<string, boolean>();
   const order: string[] = [];
 
   for (const row of bookingRows ?? []) {
@@ -522,6 +532,14 @@ Deno.serve(async (req: Request) => {
       else schedeByKey.set(key, [roster.scheda]);
     }
 
+    // Voce 71: da dove viene questa riga. 🚨 Si guarda il `record_type`, non la presenza della
+    // scheda: una riga sincronizzata SENZA lista (un titolo libero, «Torneo aziendale») è
+    // comunque il circolo che ha parlato, e lì l'ordine è davvero ignoto — non «non ancora».
+    soloCopieNostreByKey.set(
+      key,
+      (soloCopieNostreByKey.get(key) ?? true) && copiaNostra(row.record_type),
+    );
+
     const fresco = clean(row.synced_at);
     if (fresco) {
       const finora = frescoByKey.get(key);
@@ -548,7 +566,16 @@ Deno.serve(async (req: Request) => {
     // applica la regola (una sola implementazione per parte, non una terza copia).
     // ⚠️ Nessun dato personale in più dei `compagni`: gli stessi nomi, più quello del socio
     // stesso, che sta già in `member.name`.
-    giocatori: rosterOrdinatoDelloSlot(schedeByKey.get(key) ?? []),
+    ...(() => {
+      // ⭐⭐ Voce 71 — `giocatori: []` diceva DUE cose diverse: «il circolo non ha ancora
+      // raccontato la sua scheda» e «l'ordine non si sa». Il bot, non potendole distinguere,
+      // sceglieva la peggiore e diceva a chi aveva appena prenotato *«questa partita non l'hai
+      // organizzata tu»*, mandandolo **da sé stesso**. Ora il perché esce insieme al dato.
+      // ⚠️ `giocatori` non cambia forma né significato: `ordine` si AGGIUNGE, così un bot più
+      // vecchio di questa funzione continua a leggere quello che leggeva.
+      const o = ordineDelloSlot(schedeByKey.get(key) ?? [], soloCopieNostreByKey.get(key) ?? false);
+      return { giocatori: o.giocatori, ordine: o.ordine };
+    })(),
     // ⏱️ Quando questo roster è stato aggiornato l'ultima volta. Serve a chi tiene una memoria
     // a tempo di ciò che ha appena fatto (il bot) per sapere se il dato che sta leggendo è più
     // recente del proprio ricordo — cioè se qualcun altro è intervenuto dopo di lui.
