@@ -8,19 +8,26 @@ la mezzanotte del 22: se qualcosa sembra contraddirli, **vince questo**.
 
 ---
 
-## 0. 🚨 LA PRIMA COSA DA FARE — c'è del lavoro NON FUSO
+## 0. ✅ La prima cosa da fare: CONTROLLARE, non fidarsi di questa riga
 
-Sul repo `padel-match-organizer` esiste il ramo **`claude/leggi-allegato-p2e7uz`** con **un commit
-non ancora fuso**: la regola di architettura in `CLAUDE.md` e l'aggiornamento della voce 75.
+**Verifica che `main` e `test-preview` siano allineati** su `CLAUDE.md` e `docs/`:
 
-⛔ **Non è codice**: sono solo `CLAUDE.md` e `docs/lavori/README.md`. Ma sono file **sorvegliati da
-`guard-worker-sync`**, quindi vanno fatti atterrare su **tutt'e due i rami**, in quest'ordine
-(punto 4bis della regola anti-disallineamento):
+```
+git fetch origin main test-preview
+git diff origin/main origin/test-preview -- CLAUDE.md docs/
+```
 
-1. prima `test-preview` — portando **le righe**, non il file, se ci fossero divergenze;
-2. poi `main`, via PR.
+Nessun output = tutto atterrato, si parte dal §1. Output = qualcosa è rimasto per strada, e va
+portato **prima su `test-preview`, poi su `main`** (punto 4bis della regola anti-disallineamento).
 
-📌 Tutto il resto della notte **è già in servizio**: edge su PROD, bot deployato ai soci.
+⚖️ **Perché questa sezione dice «controlla» e non «è fuso» o «non è fuso».** La prima stesura
+diceva *«c'è del lavoro non fuso»* — e sarebbe diventata falsa **nel commit stesso che la
+trasportava**, cioè quello che il lavoro lo fondeva. È la regola del 15/08: *nei documenti si
+scrivono i fatti stabili, non le misure che il documento stesso muove.* Un comando che si può
+eseguire non invecchia; una dichiarazione di stato sì.
+
+📌 **Il fatto stabile, quello sì:** la notte del 22/08 sono atterrati la cura della voce 75 sulle
+edge di PROD, il bot deployato ai soci, e questi documenti. Il dettaglio nei §3 e §8.
 
 ---
 
@@ -44,7 +51,7 @@ difetto che rileggendo il codice non si vedeva** — due su due.
 
 ## 2. 🔁 LA REGOLA NUOVA — «chi conferma, chi registra, chi parla»
 
-Disegnata **dal committente** stanotte, e già scritta in `CLAUDE.md` (nel commit non fuso, §0).
+Disegnata **dal committente** stanotte, e scritta in `CLAUDE.md` — la sezione «CHI CONFERMA, CHI REGISTRA, CHI PARLA».
 
 > **Ogni gesto va detto al socio SOLO DOPO che il circolo l'ha confermato — e nello STESSO ISTANTE
 > dev'essere registrato dal gestionale.**
@@ -276,8 +283,7 @@ sono ancora valide.
 - bot: **#60** → `main`, deploy ai soci **`d65e94b`**, processo ripartito **22:20:01**, dichiara
   `✍️ prenotazioni REALI`.
 
-**NON fuso** (§0): ramo `claude/leggi-allegato-p2e7uz` — `CLAUDE.md` (regola nuova) + voce 75
-aggiornata.
+**Questi documenti** — `CLAUDE.md` (regola nuova), voce 75 aggiornata, questo passaggio di consegne — sono passati per `test-preview` e poi per `main`, nell'ordine del punto 4bis. Il §0 dice come verificarlo invece di dichiararlo.
 
 **Stato dei banchi alla consegna:**
 - gestionale **47 verdi, 0 rossi** (Node) + Deno verde; **8 sabotaggi nuovi**
