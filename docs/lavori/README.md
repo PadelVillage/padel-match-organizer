@@ -68,6 +68,46 @@ una decisione, e le decisioni sono ciò che il codice dimentica per primo.*
 
 ## 📌 Le decisioni prese dal committente il 22/08 mattina
 
+🆕 **22/08, primo pomeriggio — la cadenza degli avvisi, e una soglia che NON si abbassa.**
+
+🗣️ Sua domanda, guardando la prova dal vivo: *«ma secondo te non sono troppi quindici minuti?»*.
+Poi, sulla quiete: *«la segreteria quando fa le variazioni sicuramente ci mette meno di un minuto,
+quindi puoi… abbassare i due minuti a sessanta secondi»*. Infine: *«visto che tu hai il progetto in
+mano, dimmi tu come pensi sia la cosa migliore»*.
+
+📏 **Il conto misurato sulla sua stessa partita**, quel pomeriggio: gesto → il sync se ne accorge
+**3′55″**; quiete **2′**; il bot chiede **fino a 15′**. ⇒ **~6′ nel caso buono, ~27′ nel cattivo.**
+
+⇒ **Deciso così, e le due metà vanno nei versi opposti:**
+
+| | prima | dopo | perché |
+|---|---|---|---|
+| **consegna** al bot | 15′ | **2′** | il numero era **ereditato** dai promemoria, dove un quarto d'ora è giusto. Un giro a coda vuota è una query su un indice parziale: la spesa vera (l'anagrafica) scatta solo quando ci sono fatti |
+| **quiete** (`QUIETE_MS`) | 2′ | **2′, invariata** | vedi sotto |
+
+🚨⭐⭐ **PERCHÉ LA QUIETE NON SI ABBASSA, ed è il pezzo che cambia il conto:** `visto_at` **non è
+l'istante del gesto — è l'istante del GIRO DI SYNC** (`visto_at: importedAt`). Tutti i fatti di uno
+stesso giro portano lo stesso timbro, e due gesti caduti in giri **diversi** risultano distanti
+quanto i giri, anche se la segreteria li ha fatti a dieci secondi l'uno dall'altro.
+⇒ *Una quiete più corta di un giro di sync non fonde quasi più niente*, e il caso che perderebbe è
+**togli-e-rimetti fatto in fretta** — cioè quello per cui la quiete esiste, e l'unico in cui il
+messaggio non è rumore ma **allarme**. Guadagno rinunciato: **un minuto**.
+
+⚖️ **E prima di decidere ho sbagliato un'obiezione, che è la parte istruttiva.** Avevo difeso la
+quiete citando la raffica misurata del 21/08 (quattro gesti fra le 20:48 e le 20:56). Rifacendo il
+conto: **intervalli medi ~2,7 minuti ⇒ la quiete da 2′ non l'avrebbe fusa comunque.** A fonderla è
+stata la **lentezza** del giro da 15 minuti. ⇒ *La protezione che stavo difendendo non era dove
+credevo: accelerando la consegna si perde una fusione che nessuna costante stava garantendo.*
+📌 Il che rende la scelta più onesta: **veloce** e **fuso** sono la stessa manopola nei due versi,
+e la manopola è la quiete. La decisione è per **veloce**, sapendo cosa costa.
+
+🔎 **E la soglia resta decidibile sui dati, non sulle opinioni**: da oggi `consumer-staff-events`
+scrive nel registro ogni volta che una **raffica viene spezzata** (a una coppia persona/partita si
+era già consegnato qualcosa entro 15′). Se fra qualche giorno quella riga non compare mai, la quiete
+si abbassa senza discutere; se compare spesso, si alza con un numero in mano.
+⇒ *Una soglia senza una misura che la sorvegli è un'opinione che ha preso la forma di una costante.*
+
+
 ⚠️ **Qui c'è una data e non un ordinale, di proposito**: il lavoro delle 08:54 di stamattina
 (#960, Santiago tolto dai maestri) non ha lasciato una scheda di sessione, quindi da questo repo
 non si può misurare se sia stata la 48ª o la coda della 47ª. ⇒ *Un numero che non si può misurare
