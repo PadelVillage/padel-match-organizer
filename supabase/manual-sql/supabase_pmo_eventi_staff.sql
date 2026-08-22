@@ -33,6 +33,19 @@ create table if not exists public.pmo_eventi_staff (
 
   gesto text not null,
 
+  -- 🗣️⭐ VOCE 74 (22/08/2026) — che cosa è lo slot, DETTO CON LE PAROLE DEL GESTIONALE:
+  -- `lezione` o `partita`. Serve a due cose che vivono in due repo diversi: qui decide se si
+  -- avvisa anche il primo dell'elenco (in una lezione sì — non ha un organizzatore fra i
+  -- giocatori), e nel bot decide la PAROLA, che fino al 22/08 era «partita» sempre.
+  -- 🔒 NON è il tipo di Matchpoint: `Lezione Libera` è una parola SUA, e per la regola ferrea
+  -- del 19/08 al bot non arrivano i nomi del sistema che stiamo per dismettere. La traduzione
+  -- sta in `eventi-staff.ts`, in un punto solo. ⇒ Il giorno del distacco questa colonna non
+  -- si tocca: cambia solo chi la riempie.
+  -- ⚠️ Nullable, e senza `check`: i fatti già in coda non hanno un tipo e devono continuare a
+  -- valere, e a valle un valore sconosciuto vale «partita», cioè il comportamento di prima.
+  --    Aggiunta con `alter table` su qqbf… e su cudi… (migrazione `pmo_eventi_staff_tipo`).
+  tipo text,
+
   -- Quando il sync ha VISTO il cambiamento. È l'istante su cui si misurano i due minuti di
   -- quiete della decisione ②: finché l'ultimo fatto di una coppia (persona, slot) è più
   -- recente di così, la segreteria potrebbe non aver finito.
@@ -81,9 +94,11 @@ as $$
 declare
   quanti integer;
 begin
+  -- 🚨 `get diagnostics` e basta: un `returning 1 into quanti` qui va in ERRORE appena le
+  -- righe da potare sono più d'una (`INTO` vuole una riga sola), cioè in tutti i casi in cui
+  -- la potatura serve davvero. Trovato applicando questo file a mano il 21/08.
   delete from public.pmo_eventi_staff
-   where created_at < now() - make_interval(days => giorni)
-  returning 1 into quanti;
+   where created_at < now() - make_interval(days => giorni);
   get diagnostics quanti = row_count;
   return quanti;
 end;

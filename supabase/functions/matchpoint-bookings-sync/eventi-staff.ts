@@ -37,6 +37,8 @@ export type SlotRoster = {
   campo: string;
   /** I nomi come li scrive il circolo, ripetizioni comprese (tre «Ospite» sono tre persone). */
   roster: string[];
+  /** `Partita` o `Lezione Libera`, come lo scrive Matchpoint. Assente = non lo so. */
+  tipo?: string;
 };
 
 /** Cosa è successo a UNA persona in UNA partita. */
@@ -48,7 +50,20 @@ export type FattoStaff = {
   /** Il nome come lo scrive il circolo: chi consegna lo risolverà a una scheda. */
   persona: string;
   gesto: 'aggiunto' | 'tolto' | 'annullata';
+  /**
+   * Che cosa è lo slot, **detto con le parole del gestionale**: `'lezione'` o `'partita'`.
+   *
+   * 🔒⭐ NON è il tipo di Matchpoint, ed è deliberato: `Lezione Libera` è una parola SUA, e la
+   * regola ferrea del 19/08 dice che al bot non arrivano i nomi dei nostri pezzi interni né
+   * quelli del sistema che stiamo per dismettere. Il giorno in cui Matchpoint si spegne,
+   * questa colonna e il bot **non si toccano**: cambia solo chi la riempie.
+   * ⚠️ Assente = non lo so ⇒ a valle vale «partita», che è il comportamento di prima.
+   */
+  tipo?: TipoSlot;
 };
+
+/** Che cos'è uno slot, con le parole del gestionale. */
+export type TipoSlot = 'lezione' | 'partita';
 
 /**
  * Il nome che NON è una persona: un posto occupato da qualcuno che il circolo non ha in
@@ -59,6 +74,12 @@ export type FattoStaff = {
  * È la stessa distinzione che il bot fa già in `testoSeiStatoTolto`, «mai un Ospite».
  */
 export const NON_E_UNA_PERSONA = 'ospite';
+
+/** Il testo ripulito, o `undefined` se non c'è niente da tenere. */
+function clean(v: unknown): string | undefined {
+  const t = String(v ?? '').trim();
+  return t || undefined;
+}
 
 /** Forma normalizzata per confrontare due nomi, mai per mostrarli. Gemella di `normName`. */
 export function normNome(value: unknown): string {
@@ -75,6 +96,60 @@ export function normNome(value: unknown): string {
 export function puoRicevere(nome: unknown): boolean {
   const n = normNome(nome);
   return !!n && n !== NON_E_UNA_PERSONA;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🗣️⭐⭐ VOCE 74 — «QUANDO SI TRATTA DI UNA LEZIONE, QUEI GIOCATORI CHE STANNO NELL'ELENCO
+//    DEVONO RICEVERE LA NOTIFICA.» Decisione del committente, 22/08/2026.
+//
+// 📏 Il fatto che l'ha provocata, misurato quel pomeriggio: la lezione di Maria Pia Bettiol
+// si sposta dalle 10:00 alle 12:30 del 25/08. Lo slot vecchio sparisce (⇒ `annullata`,
+// consegnato), quello nuovo nasce — e per il nuovo **nessun fatto**. Sul telefono le è
+// arrivato «la tua partita non c'è più» e nient'altro, mentre la lezione esisteva ancora.
+//
+// 🔎 LA CAUSA era una regola giusta applicata dove non vale: nelle partite nuove si salta **il
+// primo dell'elenco**, perché è l'organizzatore e annunciargli ciò che ha appena fatto lui
+// sarebbe la voce 70. Ma una lezione **non ha un organizzatore fra i giocatori**: la scrive la
+// segreteria, e se il socio è uno solo il primo dell'elenco è anche l'unico ⇒ si saltava
+// l'unica persona da avvisare.
+//
+// ⚖️ E il salto era comunque un SURROGATO. La domanda vera non è «chi è il primo?», è **«chi
+// ha chiesto la scrittura?»** — e a quella, dal 22/08, risponde la RICEVUTA della voce 70,
+// che copre tutte e cinque le scritture del ponte, `create` compresa. ⇒ Togliere il salto
+// nelle lezioni non riapre il difetto della 70: chi prenota dal bot resta coperto dalla
+// ricevuta, che è la risposta esatta invece che il suo surrogato.
+//
+// 🚨 Perché il salto RESTA sulle partite: lì il primo dell'elenco è davvero chi l'ha voluta, e
+// la ricevuta copre solo ciò che passa dal ponte — una partita scritta a mano sul gestionale
+// dall'organizzatore stesso non lascia ricevuta, e senza il salto gli si annuncerebbe il
+// proprio gesto. Due casi diversi, due regole diverse, e la differenza è nel DATO.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Vero se questo slot è una LEZIONE.
+ *
+ * 📏 Misurato su PROD prima di scriverlo: `tipo` ha due soli valori in tutta la tabella —
+ * `Partita` (3030 righe) e `Lezione Libera` (1230). Non è un campo libero.
+ * 🚨 Si riconosce la lezione per la parola «lezione», non per «diverso da Partita»: se domani
+ * Matchpoint aggiungesse un terzo tipo (un torneo, una manutenzione), «diverso da Partita» lo
+ * tratterebbe da lezione **senza che nessuno se ne accorga**, cioè avviserebbe anche il primo
+ * dell'elenco di una cosa che non è una lezione. ⇒ Il verso in cui si sbaglia è tacere.
+ * ⚠️ `tipo` assente vale **non lezione**: è il comportamento di prima, e un fatto vecchio o una
+ * riga senza tipo non deve cambiare di segno.
+ */
+export function eLezione(tipo: unknown): boolean {
+  return /lezione/i.test(String(tipo ?? ''));
+}
+
+/**
+ * Il tipo di Matchpoint tradotto nella parola del gestionale.
+ *
+ * ⭐ La traduzione sta QUI, in un punto solo, e ciò che esce da questo modulo non nomina più
+ * Matchpoint: chi legge il fatto — la coda, il ponte, il bot — vede `lezione` o `partita` e
+ * non ha bisogno di sapere come li chiamava il sistema di prima.
+ */
+export function tipoDelloSlot(tipoGrezzo: unknown): TipoSlot {
+  return eLezione(tipoGrezzo) ? 'lezione' : 'partita';
 }
 
 /**
@@ -185,6 +260,7 @@ export function fattiDaConfronto(
           campo: slotPrima.campo,
           persona: v.comeScritto,
           gesto: 'annullata',
+          tipo: tipoDelloSlot(slotPrima.tipo),
         });
       }
       continue;
@@ -214,6 +290,7 @@ export function fattiDaConfronto(
         campo: slotDopo.campo,
         persona: comeScritto,
         gesto: quanteDopo > quantePrima ? 'aggiunto' : 'tolto',
+        tipo: tipoDelloSlot(slotDopo.tipo),
       });
     }
   }
@@ -230,10 +307,14 @@ export function fattiDaConfronto(
   // altrettanto vero, perché in campo ce li ha messi lui e loro non lo sanno.
   for (const [slot, slotDopo] of dopo) {
     if (prima.has(slot)) continue;
-    let primo = true;
+    // 🗣️⭐ VOCE 74: in una LEZIONE non si salta nessuno — il perché sta per esteso accanto a
+    // `eLezione`. In breve: una lezione non ha un organizzatore fra i giocatori, e a chi ha
+    // prenotato dal bot ci pensa la RICEVUTA della voce 70, che è la risposta esatta invece
+    // del surrogato «è il primo dell'elenco».
+    let daSaltare = eLezione(slotDopo.tipo) ? 0 : 1;
     for (const g of slotDopo.roster) {
       if (!normNome(g)) continue;
-      if (primo) { primo = false; continue; }   // l'organizzatore
+      if (daSaltare > 0) { daSaltare -= 1; continue; }   // l'organizzatore
       if (!puoRicevere(g)) continue;
       fatti.push({
         slot,
@@ -242,6 +323,7 @@ export function fattiDaConfronto(
         campo: slotDopo.campo,
         persona: String(g).trim(),
         gesto: 'aggiunto',
+        tipo: tipoDelloSlot(slotDopo.tipo),
       });
     }
   }
@@ -291,7 +373,9 @@ export function fotografia(
     const slot = chiaveSlot(data, ora, campo);
     const gia = foto.get(slot);
     if (!gia || nomi.length > gia.roster.length) {
-      foto.set(slot, { slot, data, ora, campo, roster: nomi });
+      // ⚠️ Il `tipo` viaggia con la copia scelta, non si fonde: le copie sono la STESSA
+      // partita e lo ripetono uguale — prenderlo da un'altra riga sarebbe una terza fonte.
+      foto.set(slot, { slot, data, ora, campo, roster: nomi, tipo: clean(p?.tipo) });
     }
   }
   return foto;
