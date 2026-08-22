@@ -5,6 +5,12 @@ import {
   tipoFichaDa, annulloSupportato,
   CODICE_ANNULLO_NON_SUPPORTATO, MOTIVO_ANNULLO_NON_SUPPORTATO,
 } from './tipo-ficha.mjs';
+// ⭐⭐ CHI passa dalla coda e in che ordine — regola pura, in un modulo a sé perché `server.mjs`
+// chiama `listen()` appena lo si importa e quindi da un banco non si può eseguire. Il perché di
+// ogni riga (e il reperto del 22/08: quattro endpoint scavalcavano la coda) sta là dentro.
+// ⚠️ Si importa SOLO `mpJobPriority`: gli elenchi delle op vivono là e chi li vuole leggere va
+// là. Importarli qui senza usarli darebbe l'impressione che questo file li consulti ancora.
+import { mpJobPriority } from './coda-priorita.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -168,11 +174,10 @@ const mpQueue = {
 // non si interrompe (page warm condivisa → una sola op per volta sulla pagina); la
 // priorità agisce solo nella SCELTA del prossimo job. Il "cedere il passo" durante
 // il sync è ottenuto spezzando read-tabellone in chunk (vedi handleReadTabellone).
-const MP_INTERACTIVE_OPS = new Set(['create', 'edit', 'cancel', 'client', 'disable-client', 'reactivate-client']);
-function mpJobPriority(meta) {
-  if (meta && typeof meta.priority === 'number') return meta.priority;
-  return (meta && MP_INTERACTIVE_OPS.has(meta.op)) ? 1 : 0;
-}
+// 🔄 22/08/2026 — `MP_INTERACTIVE_OPS` e `mpJobPriority` stavano QUI e ora stanno in
+// `coda-priorita.mjs`, con l'aggiunta del livello di mezzo per le sincronizzazioni. Spostate,
+// non riscritte: una regola che nessuno può eseguire in un banco è una regola non provata.
+// ⚠️ Le priorità non sono più 1/0 ma 2/1/0 — chi legge `priority` in un log lo sappia.
 // Op di background SEMPRE BREVI se sane → timeout corto (90s). Tutto il resto (interattive
 // + poll/export che possono durare legittimamente >90s) tiene i 180s. Vedi commento sopra.
 const MP_SHORT_BG_OPS = new Set(['read-tabellone', 'keepalive']);
@@ -1242,14 +1247,14 @@ async function exportBookingHistoryWithBrowser(options = {}) {
 async function handleExport(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await exportClientsWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('export-clients', body), () => exportClientsWithBrowser(body));
   json(res, 200, result);
 }
 
 async function handleHistoryExport(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await exportBookingHistoryWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('export-history', body), () => exportBookingHistoryWithBrowser(body));
   json(res, 200, result);
 }
 
@@ -3447,7 +3452,7 @@ async function exportSlotScheduleWithBrowser(options = {}) {
 async function handleSlotScheduleExport(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await exportSlotScheduleWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('export-slot-schedule', body), () => exportSlotScheduleWithBrowser(body));
   json(res, 200, result);
 }
 
@@ -3662,7 +3667,7 @@ async function readTabelloneWithBrowser(options = {}) {
 async function handleGetSlots(req, res) {
   requireWorkerAuth(req);
   const body = await readBody(req);
-  const result = await getSlotsWithBrowser(body);
+  const result = await mpQueueRun(mpJobMeta('get-slots', body), () => getSlotsWithBrowser(body));
   json(res, 200, result);
 }
 
