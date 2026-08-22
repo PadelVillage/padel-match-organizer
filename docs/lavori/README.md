@@ -1085,9 +1085,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **6** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 🆕 **22/08 sera: entra la 75**, segnalata da lui dal vivo col messaggio sullo schermo — il bot dice «✅ Prenotato» e il bottone che offre lui stesso risponde «non trovo quella partita» e manda in segreteria. Curata la sera stessa e **vista funzionare**; restano due residui sull'annullo dal bot |
+| 🔴 **Urgenti** | **5** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 📦 **La 75 è CHIUSA da lui la notte del 22/08**, a giro completo visto sul telefono — riprenotazione sopra una lapide senza id (ramo ② della regola, mai esercitato prima) e bottone 🔄 che apre la rubrica. I **due residui dell'annullo dal bot** non sono chiusi con lei: stanno fra le 🆕 nate misurando, e cosa farne lo decide lui |
 | 📋 **In coda** | **8** — la **68** (avvisi dal gestionale, curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** (curata il 22/08 e in servizio: resta finché non la si è vista succedere) e la **71** entrate nella notte del 21/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08. 🆕 **22/08: entrano la 72 e la 73**, segnalate dal committente dal vivo durante il collaudo — la seconda misurata fino alla causa, **curata e vista funzionare** lo stesso pomeriggio; la **72 è curata la sera** e resta aperta finché non la si è vista succedere. 🆕 **E nel pomeriggio entra la 74**, trovata da una sua domanda un'ora dopo: uno spostamento manda solo la metà cattiva della notizia |
-| 📦 **Chiuse** | **57** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **58** il 13–22/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 6
+## 🔴 URGENTI — 5
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1671,184 +1671,6 @@ entro mezz'ora da un annullo in cui la prenotazione nuova **si vede**.
 nascosta come prima, e una soppressione **vecchia** — nata senza la lista — nasconde tutto lo slot
 come prima. Sono i casi che non si sanno leggere, e lì il verso prudente è quello di sempre.
 
-### **75** — 🚨 Il bot dice «✅ Prenotato», e il suo stesso bottone risponde «non trovo quella partita» — CURATA e VISTA, con due residui
-
-🗣️ **Segnalata da lui il 22/08 sera, dal vivo**, con lo schermo in mano: *«Questo è il messaggio che
-ho ricevuto sul bot»* — *«Non trovo più quella partita fra le tue: può essere già cambiata nel
-frattempo. […] per questo serve la segreteria: +39 379 115 1472»*.
-
-📏 **La sequenza, misurata al secondo** (registro del bot, ora di Roma; `pmo_cloud_records` su
-`qqbf…`, UTC, riportato qui in Roma):
-
-| ora (Roma) | |
-|---|---|
-| `20:57:53` | `/prenota` → griglia |
-| `20:58:02` | tocca: giorno **31/08** |
-| `20:58:10` | tocca: ora **09:30** |
-| `20:58:21` | tocca: **conferma** |
-| `20:58:32` | il bot: `[griglia] prenotata` ⇒ **«✅ Prenotato… Tocca qui sotto per invitare i giocatori»** |
-| `20:58:53` | tocca: **«Invita un giocatore»** — il bottone che il bot ha appena offerto |
-| `20:58:57` | il bot: **«Non trovo più quella partita fra le tue»** + numero della segreteria |
-| `21:02:18` | il sync porta la partita nel gestionale (`booking\|9585\|2026-08-31\|09:30\|Campo 1\|Maurizio Aprea\|1.5`) |
-
-⇒ **Venticinque secondi dopo aver detto «Prenotato», il bot rinnega la propria prenotazione e manda
-in segreteria.** La partita su Matchpoint c'era — n. **9585**, verificata sullo schermo del
-committente — e ci è rimasta.
-
-🎯 **LA CAUSA, e sta nel gestionale, non nel bot**:
-`supabase/functions/matchpoint-bookings-create/index.ts:283`
-
-```
-// ⛔ Se quella riga è già una lapide, NON la si resuscita: rimetterla viva farebbe ricomparire
-// una prenotazione annullata — è per definizione il fantasma che inseguiamo da luglio.
-if (esistente?.deleted === true) return;
-```
-
-Alle **10:53:59** dello stesso giorno era stata annullata una partita di prova sullo **stesso slot**
-(31/08 · 09:30 · Campo 1), e quell'annullo aveva sepolto la copia locale
-`staff_booking|2026-08-31|09:30|Campo 1|consumer-assistente-soci` → `deleted: true`. La
-riprenotazione delle 20:58 arriva **sullo stesso slot col medesimo attore** ⇒ **stessa chiave** ⇒ la
-guardia vede la lapide e fa `return`: **la copia locale non viene scritta**. Misurato: fra le 20:50
-e le 21:05 nessun `staff_booking` né `booking_job` risulta creato o aggiornato.
-
-⇒ Fra le 20:58:32 e le 21:02:18 nel gestionale di quella partita **non esisteva nulla** — né la
-copia locale, né (ancora) la riga del sync. Il bot legge solo dal gestionale, e ha detto quello che
-il gestionale sapeva: niente.
-
-⚖️ **L'ORDINE VERO DEI TRE MOMENTI, e la correzione che l'ha stabilito.** In sessione avevo scritto
-che «il gestionale scrive la copia locale subito, perché il socio non debba aspettare il sync», e
-lui ha chiesto di ricontrollare: *«a me sembra che invece il flusso era che finché Matchpoint non
-aveva confermato la prenotazione, non appariva sul nostro gestionale»*. **Aveva ragione**, e si legge
-nelle chiamate, non nei commenti — `saveStaffBookingRecord` riceve `workerResult` come parametro, in
-tutt'e due le strade (sincrona `:677`, asincrona `:401`):
-
-| | |
-|---|---|
-| **T0** | il worker guida Matchpoint e ottiene la conferma (`idReserva`) |
-| **T1** | **solo dopo** si scrive la copia locale `staff_booking` |
-| **T2** | il sync porta la riga ufficiale (oltre i 7 giorni: fino a ~17′, vedi sotto) |
-
-📌 *La copia locale non aspetta il **sync**, ma aspetta eccome **Matchpoint**.* Le due cose erano
-state fuse in una frase sola, e la frase diceva il falso sulla metà che conta.
-
-⭐ **E questo rende il difetto più netto, non meno**: T0 era avvenuto — è da lì che nasce il «✅
-Prenotato» — quindi nell'istante in cui il socio legge la conferma il gestionale **ha già in mano
-tutto**. È **T1** a non essere successo. ⇒ **Non c'è nessuna attesa legittima da rispettare**: la
-partita poteva essere visibile al secondo successivo.
-
-🔎 **Perché la frase d'attesa, che ESISTE, non è arrivata.** La cura della voce **71** sa dire *«Sto
-ancora registrando questa prenotazione col circolo…»*, ma agisce in `possibilitaInvito`, che gira
-**solo se la partita è stata trovata**. Qui il flusso muore un gradino prima, in `ricontrollaUscita`
-(`src/mastra/lib/uscita.ts:252`), dove le uniche risposte sono `finestra_chiusa`, `non_e_una_partita`
-e `booking_not_found`. Nessuna dice «non ancora».
-⇒ **La 71 ha curato il caso in cui la partita c'è e il roster è vuoto; il caso in cui la partita non
-c'è ancora affatto è rimasto scoperto — stesso difetto, un gradino più su.**
-
-⚖️ **La forma è quella della 70 e della 71: un dato che significa due cose.** `deleted: true` dice
-insieme *questa prenotazione è stata annullata* e *questo slot è tornato libero, e qualcuno ci ha
-prenotato sopra*. Chi lo legge sceglie, e stasera ha scelto di non scrivere proprio quando scrivere
-serviva.
-
-🩹 **LA CURA, in due metà — nessuna delle due è un'attesa a tempo:**
-
-- **A — la radice, nel gestionale.** La copia locale si scrive anche sopra una lapide quando la
-  lapide è **più vecchia dell'inizio di questa scrittura** (10:53 contro 20:58: non può essere
-  l'annullo *di questa* prenotazione), o quando il worker consegna un **`idReserva` diverso** (9585
-  contro 9549: un id nuovo non è una resurrezione). La guardia resta viva per il caso per cui è
-  nata — la risposta tardiva che rimetterebbe in piedi un annullo vero.
-- **B — la cintura, sulla strada della 71.** Quando la partita non è nell'elenco ma è appena stata
-  prenotata, la risposta è «sto ancora registrando», **non** «non la trovo» — e **senza** il numero
-  della segreteria, che su un'operazione riuscita è rumore (la regola è già scritta sopra
-  `rigaAltreRichieste` e sopra `testoPrenotata`, ed è già stata infranta una volta).
-
-⛔ **La strada del TEMPO è scartata in partenza**, ed è la stessa scartata dalla 71: far «aspettare»
-il bot sarebbe una soglia su un ritardo con la coda lunga. Con la **A** fatta non c'è niente da
-aspettare; la **B** copre gli altri motivi per cui un elenco può arrivare incompleto.
-
-🚨 **Perché è urgente e non in coda**: sta sul percorso **più comune** del bot — prenota → invita —
-è stata vista su una persona vera, e manda in segreteria per un'operazione **riuscita**, che è
-esattamente il danno che la voce 72 esiste per evitare. Ed è un **vicolo cieco con l'aria di una
-strada**: il bottone lo offre il bot stesso, due righe sotto la propria conferma — la cosa che la
-scheda del 19/08 aveva messo per iscritto di non fare.
-
-✅ **METÀ A SCRITTA la sera stessa**, su sua decisione (*«Direi di curare questo ultimo difetto che
-abbiamo trovato e riprovare»*). La regola vive in un modulo puro —
-`supabase/functions/matchpoint-bookings-create/lapide-prenotazione.js` — e l'edge le chiede il
-verdetto invece di uscire sul flag. Banco: **18 casi** (`test/scrivere-sopra-una-lapide.test.mjs`,
-compreso quello coi dati veri del 22/08) e **8 sabotaggi** (`test/sabotaggi-voce-75.mjs`), tutti
-visti far cadere il caso giusto.
-
-🚨⭐⭐ **E LA CURA NE NASCONDEVA UNA SECONDA, che senza scriverla sarebbe stata peggiore del difetto.**
-L'upsert fonde `{...nostro, ...esistente}` e **l'esistente vince campo per campo** — regola giusta su
-una riga viva, dove l'app può aver aggiornato il roster dopo di noi. Ma i campi di una **lapide** sono
-quelli dell'**altra** partita: fondendoli, la prenotazione nuova sarebbe nata col **nome, i giocatori
-e l'`id_reserva` della morta**, e il bot avrebbe elencato gente che in campo non c'è. ⇒ Su una riga
-viva si fonde, sopra una lapide si **sostituisce**. 📌 *Il difetto stava nel pezzo che la cura non
-cambiava, ed è la stessa lezione della 72: si legge tutto, si cambia il minimo — ma «tutto» comprende
-ciò che la riga toccata trascina con sé.*
-
-🔄 **Tre guardie di `test/prenotazione-chiave-unica.test.mjs` AGGIORNATE, non allentate**: erano
-rosse perché sorvegliavano il *meccanismo* vecchio (`select('payload, deleted')`, l'uscita sul flag,
-la fusione sempre). La regola che difendono è la stessa; il modo di leggerla è cambiato. Riscriverle
-per farle tornare verdi sarebbe stato allentarle, e accanto a ciascuna è annotato cosa non deve
-sparire.
-
-⏳ **Metà B non scritta**: la frase «sto ancora registrando» al posto del rifiuto, sulla strada della
-71 (`ricontrollaUscita`, repo del bot). Con la A in servizio non scatta quasi mai — ma copre ogni
-altro motivo per cui un elenco può arrivare incompleto, e senza di lei quel ramo continua a mandare
-in segreteria per un'operazione riuscita.
-
-✅⭐⭐ **LA METÀ A È STATA VISTA FUNZIONARE, la sera stessa e su una prenotazione vera.** Deploy su
-PROD alle 21:50 (#987); alle **21:54:28** il committente riprenota dal bot lo slot 31/08 · 11:00 ·
-Campo 1, sopra la lapide dell'annullo delle 10:54. La copia locale **nasce nell'istante della
-conferma** — `deleted: false`, `id_reserva 9587` — dove poche ore prima non nasceva affatto.
-⭐ **E si è vista funzionare anche la metà nascosta**: la lapide portava `giocatori: [Maurizio,
-Lidia]`, la riga nuova ha **solo Maurizio**. Senza la sostituzione al posto della fusione, quella
-partita sarebbe nata coi giocatori della morta.
-📏 Il bot, toccando «Invita» subito dopo, non ha più detto «non trovo più quella partita»: ha detto
-«sto ancora registrando». ⇒ **Il difetto è passato di gradino**, che era lo scopo.
-
-🩹 **METÀ B: non andava scritta — esisteva già.** La frase d'attesa è la cura della voce 71, e non si
-vedeva mai perché il flusso moriva un gradino prima. Curata la A, è diventata raggiungibile.
-🚨 **Ma appena visibile ha mostrato un difetto suo, segnalato da lui sul messaggio vero**: *«Se tu
-dici al socio di riprovare, lui riprova a prenotare. Non va sulle mie partite. La gente si
-confonde.»* ⇒ «Riprova» non diceva riprovare **COSA**, ed è la trappola della 72 spostata dall'esito
-all'**oggetto**: un'istruzione senza complemento, letta da chi ha prenotato venti secondi prima,
-produce la **doppia prenotazione**. E «fra un minuto» prometteva un tempo non mantenibile (oltre i
-7 giorni l'organizzatore arriva col giro pieno: misurati **4′21″**).
-✅ **Curata e in servizio ai soci** (bot #60, deploy #d65e94b, processo ripartito alle 22:20:01): si
-dice **«✅ La partita è prenotata: non rifarla»** prima di offrire il gesto, l'oggetto del riprovare
-diventa un **bottone** che rifà lo stesso tocco, e il tempo si dice **una volta sola** («Attendi un
-attimo…», sua scelta fra due proposte). Banco bot: **1459 verdi**, con due casi nuovi sul cablaggio
-e una guardia aggiornata — chiedeva `/riprova/i`, e la parola c'era: era la frase difettosa a
-soddisfarla.
-
-🆕🚨 **DUE REPERTI NUOVI, misurati la sera stessa e NON curati** — nascono dal fatto che *annullare
-dal bot e annullare dal gestionale non fanno la stessa cosa*:
-① **l'annullo dal bot non chiude la copia locale**: se n'è andata col sync **3′40″ dopo** (annullo
-22:25:10, sepoltura 22:28:50). In quella finestra su Matchpoint il campo era libero e da noi
-risultava occupato — ⚖️ il verso che fa male, perché è un socio che non gioca su un campo che c'è;
-② **quell'annullo si registra con data, ora e campo VUOTI**: `staff_cancel|||Campo |9587|consumer-…`
-contro `staff_cancel|2026-08-31|11:00|Campo 1|9571|…` di quello staff. L'`idReserva` c'è, ma chi
-cerca gli annulli **per slot** non li trova — ed è probabilmente lo stesso motivo per cui non parte
-la soppressione.
-📌 I due sono facce dello stesso pezzo mancante: chi scrive quell'annullo **lo slot non ce l'ha in
-mano**. È la metà «stesso istante» della regola nuova di `CLAUDE.md`, rotta sul verso dell'annullo.
-
-📌 **Perché resta APERTA**: la metà A è vista, la B è in servizio ma **non ancora vista** su una
-scrittura che fallisce, e i due reperti qui sopra sono aperti. Si chiude quando un annullo dal bot
-chiude la copia locale nello stesso istante, come la creazione la apre.
-
-⚠️ **Due reperti collaterali, misurati la stessa sera e da NON confondere con questa voce:**
-① **oltre i 7 giorni il ritardo del sync non è ~2 minuti, è fino a ~17.** Il tick `near` copre 7
-giorni, il 31/08 ne distava 9 ⇒ tre giri leggeri (20:54, 20:56, 20:58) le sono passati sopra
-leggendo **144** righe, e la partita è entrata solo col giro **pieno** delle 21:00:05, a **145**. La
-misura della voce 53 (mediana ~2′) vale **entro** la settimana. Da questo caso non discende un
-difetto: discende che la cifra va detta insieme al suo perimetro.
-② un avviso `il circolo ha annullata — 2026-08-24|09:00|1` risulta **consegnato due volte** alle
-19:17:11, a fronte di **una sola** riga in `pmo_eventi_staff` (`consegnato_at 17:17:11.094` UTC). Da
-verificare se sono due messaggi veri o il registro che stampa due volte.
-
 ## 📋 IN CODA — 8
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
@@ -2199,6 +2021,46 @@ che è il modo in cui un residuo diventa un mistero.
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+🆕🚨 **Nati la notte del 22/08 (49ª sessione), chiudendo la voce 75 — I DUE REPERTI DELL'ANNULLO
+DAL BOT.** Non sono la 75 e non ci sono mai stati dentro: nascono dal fatto che *annullare dal bot
+e annullare dal gestionale non fanno la stessa cosa*. **Misurati e basta — nessuno promosso, e la
+scelta di cosa farne resta sua.**
+
+① **L'annullo dal bot NON chiude la copia locale.** Misurato: annullo `22:25:10`, sepoltura col
+sync `22:28:50` ⇒ **3′40″** in cui su Matchpoint il campo era libero e da noi risultava
+**occupato**. ⚖️ È il verso che fa male: un campo che sembra occupato mentre è libero è **un socio
+che non gioca**.
+
+② **Quell'annullo si registra con data, ora e campo VUOTI:**
+
+```
+staff_cancel|||Campo |9587|consumer-assistente-soci      ← dal bot
+staff_cancel|2026-08-31|11:00|Campo 1|9571|41e635df…     ← dal gestionale
+```
+
+L'`idReserva` c'è, ma chi cerca gli annulli **per slot** non li trova — ed è probabilmente lo
+stesso motivo per cui **non parte la soppressione** (il meccanismo della voce 67 che fa sparire la
+card all'istante).
+
+📌 I due sono facce dello stesso pezzo mancante: **chi scrive quell'annullo lo slot non ce l'ha in
+mano.** È la metà «stesso istante» della regola dei tre passi di `CLAUDE.md`, rotta sul verso
+dell'**annullo** — mentre sulla **creazione** quella metà è stata misurata e regge (voce 75, chiusa:
+copia locale scritta 225 ms prima che la create dicesse OK).
+⚠️ Gli altri gesti — entrare, uscire, togliere — **non sono stati misurati**: darli per buoni
+sarebbe prendere un esito visto una volta per una regola.
+
+⚠️ **E due reperti collaterali della stessa sera, da NON confondere coi due qui sopra:**
+① **oltre i 7 giorni il ritardo del sync non è ~2 minuti.** Il tick `near` copre 7 giorni, il 31/08
+ne distava 9 ⇒ i giri leggeri le passano sopra e la partita entra col giro **pieno**. 📏 Le misure
+sono **due, non una**: **4′21″** il 22/08 sera e **1′51″** la notte stessa, sullo stesso tipo di
+slot. ⇒ Da qui non discende un difetto: discende che **la cifra va detta col suo perimetro**, e che
+una sola estrazione non è una durata. La misura della voce 53 (mediana ~2′) vale **entro** la
+settimana.
+② un avviso `il circolo ha annullata — 2026-08-24|09:00|1` risulta **consegnato due volte** alle
+19:17:11, a fronte di **una sola** riga in `pmo_eventi_staff` (`consegnato_at 17:17:11.094` UTC). Da
+verificare se sono due messaggi veri o il registro che stampa due volte.
+
 
 ✅ ~~🔴 **Trovata nella 47ª (21/08), e non è mia: è un banco ROSSO su `main`.**~~ — **CHIUSA la
 sera del 21/08**, e come si è chiusa vale più del fatto che si sia chiusa.
@@ -3189,15 +3051,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 19/08/2026 — 57 voci
+## 📦 CHIUSE — dal 13 al 22/08/2026 — 58 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime sette voci sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**La prima voce è del 22/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **75** | ✅ *(22/08 notte, 49ª sessione — **chiusa da LUI** a giro completo visto sul telefono: «Chiudi pure la settantacinque»)* 🚨 **75. Il bot diceva «✅ Prenotato», e il suo stesso bottone rispondeva «non trovo quella partita».** La chiave della copia locale (`staff_booking|<data>|<ora>|Campo <n>|<attore>`) non contiene l'id della prenotazione ⇒ due partite diverse sullo stesso slot **si dividevano la riga**, e la guardia anti-fantasma (`if (esistente?.deleted === true) return`) vedeva la lapide di quella annullata al mattino e usciva **senza scrivere**: per quasi quattro minuti, fino al sync, di quella partita nel gestionale non esisteva niente — e il bot, che legge solo da lì, mandava in segreteria per un'operazione **riuscita**. 🩹 La cura vive in un modulo puro (`lapide-prenotazione.js`) e distingue con **due fatti**, mai con una soglia: ① l'`idReserva` quando c'è da entrambe le parti (diverso ⇒ è un'altra partita, si scrive; uguale ⇒ è l'annullo di questa, non si tocca); ② l'**ordine** fra sepoltura e inizio della scrittura, altrimenti — *un annullo non precede la prenotazione che annulla*. Senza fatti confrontabili si **fallisce chiusi**. 🚨 E la cura ne nascondeva una seconda, nella riga **subito sotto** quella toccata: l'upsert fonde `{...nostro, ...esistente}` e l'esistente vince campo per campo — ma i campi di una lapide sono quelli dell'**altra** partita ⇒ la prenotazione nuova sarebbe nata col nome e i giocatori della morta. Su una riga viva si fonde, sopra una lapide si **sostituisce**. 📏 **Vista per intero la notte del 22/08**, su prenotazioni vere e sui **due** rami della regola: il ramo ① alle 21:54:28 (31/08 · 11:00 · Campo 1, lapide con `id_reserva 9587`); il ramo ② — mai visto prima — alle **23:07:00.998** su 31/08 · 09:30 · Campo 1, dove la lapide non aveva id e la decisione è caduta sull'ordine (`motivo: "lapide_precedente"`, `scritta: true`, id nuovo **9588**). La copia locale è nata **225 ms PRIMA** che la create dicesse OK (23:07:01.223) ⇒ la metà «stesso istante» della regola dei tre passi è **misurata**, non promessa. E la sostituzione ha tenuto: la lapide portava «Maurizio Aprea, Lidia Comes», la riga nuova porta **il solo Maurizio**. 🩹 **La metà B non andava scritta: esisteva già** — è la cura della voce 71, e non si vedeva mai perché il flusso moriva un gradino prima. Resa raggiungibile, ha mostrato un difetto suo, visto da lui sul messaggio vero: *«riprova» non diceva riprovare **COSA***, e chi ha prenotato venti secondi prima riprenota — la doppia prenotazione. Curata (bot #60, `d65e94b`): si dice **«✅ La partita è prenotata: non rifarla»** prima di offrire il gesto, l'oggetto del riprovare diventa un **bottone** che rifà lo stesso tocco, e il tempo si dice una volta sola. Vista alle 23:07:06 (il messaggio d'attesa, con `ordine: 'non_ancora'` dal ponte) e chiusa alle **23:12:44**, quando il bottone 🔄 ha aperto la rubrica — 4 nomi, 3 posti liberi. ⚖️ **E la misura che il giro ha corretto**: la scheda del circolo — unica fonte dell'ordine, quindi di chi ha organizzato — è arrivata in **1′51″**, contro i **4′21″** della sera prima sullo stesso tipo di slot (oltre i 7 giorni). ⇒ *Quel 4′21″ non era la durata dell'attesa: era un'estrazione sola.* 📌 Restano aperti i **due reperti dell'annullo dal bot**: non sono questa voce, e stanno fra le 🆕 nate misurando. |
 | — | ✅ *(19/08, chiesta da LUI a voce: «non mi fa più aggiungere un ospite alle partite»)* 🅿️ **L'«Ospite» sparito dalle partite: il sync clienti aveva disattivato il jolly 000001.** Il 4-5/08 la regola stale di `matchpoint-clients-sync` — quella che disattiva chi ha un codice Matchpoint e non compare più nell'export — ha colpito la scheda jolly «Ospite», che nell'export clienti **non compare MAI**: è il motivo per cui l'app la ricrea da sé (`ensureOspiteMember`), e nessuna eccezione la proteggeva. Da lì Chiudi Partite e Riempi slot — che scartano i soci `active === false` — buttavano l'Ospite **in silenzio**: la riga del gruppo diceva pure «Trovato», e la partita nasceva senza. 🔎 Trovato guardando l'app viva con la console remota (`active:false` sulla scheda in memoria) e poi il payload su Supabase: `matchpointInactiveReason: matchpoint_snapshot_absent`, su PROD **e** su TEST, con date 4-5/08. ⚖️ Riattivarla a mano non avrebbe retto: la passata dopo l'avrebbe rispenta — e il «Riattiva» dell'app **non azzera i marcatori**. Cura in `stale-guard.ts`, due versi: ① l'eccezione `isGuestJolly` (flag **o** codice 000001) in `decideStaleMember` → `keep`, sempre; ② la **guarigione** — il giro stale riattiva da sé il jolly che porta il marcatore automatico, fuori dal tetto di proposito (è restaurativa e limitata al jolly per costruzione) — così i due database si riparano **al primo import dopo il deploy**, senza una scrittura a mano da coordinare col deploy. Test U-Z con la tabella dei sabotaggi **rimisurata**, non prevista: le due metà del predicato le isola solo V, perché il caso reale U porta le due firme insieme e resta verde sotto ogni dimezzamento. 🚨 Il percorso del calendario staff non era rotto — scrivere «Ospite» lì aggiunge diretto, senza passare dall'anagrafica — ed è il motivo per cui il guasto è rimasto invisibile per due settimane: la strada usata più spesso funzionava, le altre mentivano con un «Trovato». |
 | **62** | ✅ *(19/08, 36ª sessione — codice fuso dalla 33ª, **chiusa da LUI** dopo che l'ultimo difetto rimasto è stato cercato e non trovato: «Chiudila»)* 🎾 **62. «Le tue partite» è una scheda per volta, e si sfoglia.** Chiedendo le proprie partite si apre **una** partita — la più vicina nel tempo — e la si sfoglia con «← Precedente» / «Successiva →»; le azioni stanno **sulla scheda** (Invita · Togli · Annulla) e la parola «Gestisci» sparisce. ⭐ **La cura più economica di un difetto è scoprire che il pezzo che lo aveva non serve più**: la domanda di partenza era sua — *«il bottone gestisci può stare sotto la relativa prenotazione?»* — e la risposta scelta quel bottone non lo **sposta**, lo **toglie**. ✅ **Verificata sul telefono da lui** (*«mi sembra che funzioni tutto bene»*), che è l'unica verifica che la sua regola accetta: *«il codice è a posto non è funziona»*. ⭐ E la promessa per cui la variante E aveva battuto le altre cinque — **una notifica sola** — la tiene lo sfoglio che **riscrive** il messaggio (`editMessageText`) invece di mandarne di nuovi: misurata, non dedotta dal disegno. 🚨⭐⭐ **E L'ULTIMA COSA APERTA ERA UN DIFETTO CHE NON C'ERA — vale più del lavoro.** *«Su una scheda dove la partita è completa c'era la possibilità di mandare un invito»*, visto da lui sul bot di prova. Non era la **scheda** ma «👥 Gli inviti mandati»; e soprattutto **la partita non era completa**: su `2026-08-21 17:00 campo 3` i giocatori sono **due** (`-Maurizio Aprea.-pierfrancesco biggi.`), e concordano **tre copie della riga, su TEST e su PROD**, `booking` e `staff_booking`. ⇒ Il bot ha scritto *«Puoi invitare qualcuno dalla tua rubrica»* perché `liberi = 4 − 2 > 0`; con quattro avrebbe scritto **«Siete al completo»**, che è l'altra metà della stessa riga (`invito-partita-testi.ts:227`). Il cancello ha funzionato. 🧊 **E NON era il calendario congelato di TEST** — l'esclusione da fare per prima, che si è chiusa **al rovescio di come me l'aspettavo**: la copia di **PROD** è stata rinfrescata **21 minuti DOPO** lo screenshot e dice le stesse due persone. ⇒ **Confermata la riga 2 della tabella della 33ª** (*«il roster più corto del vero: ipotesi ragionevole e falsa»*). 🔎 **La misura è stata fatta ESEGUENDO il codice del ponte** — `compagni-slot.ts` copiato e girato sui payload veri — **non riscrivendone la regola in SQL**: è l'errore che aveva già morso due volte la 33ª, e una sonda sbagliata dà una risposta **sicura e falsa**. 📏 **Un contorno misurato, che non è un difetto ma va saputo**: su PROD, tipo «Partita», 19/08→19/09, **31 schede distinte su 48 (65%) hanno meno di quattro nomi** ⇒ il bot offrirà «Invita» sulla maggioranza delle partite. Se là dentro ce ne sono che si giocano in quattro, il buco è **in Matchpoint**, non nel bot — *il gestionale SA, il bot DICE*. ⚠️ **TRE SCELTE DICHIARATE, ancora senza la sua parola e tutte da una riga**: ① il **corpo** della scheda è il roster coi «— posto libero —» di oggi e non la riga compatta del mockup (cambiarlo scarterebbe tre sue decisioni del 4-7/08); ② il caso ① mostra **sei** bottoni e non tre («👥 Gli inviti mandati» e «🚪 Esci» esistono già per l'organizzatore); ③ la frase della **lezione** è la sua del 6/08 e non quella nuova del mockup — scriverne una seconda era la copia che questo progetto punisce. ⚠️ **Limite dichiarato**: una prenotazione col **campo illeggibile** (`numeroCampo` torna 0) non è indirizzabile da nessun `callback_data` ⇒ resta fuori dallo sfoglio; lì si ripiega sull'elenco di prima, invece di dire «non hai partite» a chi ne ha una. ⚠️ **Segnalato e NON curato, perché è di un'altra famiglia**: `togli:conferma` scrive al circolo come `uscita:conferma` ma non sta in `SOTTO_AL_BOTTONE` ⇒ il messaggio sotto aspetta la soglia invece di partire subito. 📦 `assistente-padel-agent` **#26** (la voce) e **#27** (la clessidra sotto, su tutti i bottoni), vivi **sul bot di PROVA**; il bot dei **SOCI non è stato toccato**. 🧪 Banco **1132 → 1160**, `tsc --noEmit` pulito, **dieci sabotaggi** ognuno verificato di essere atterrato — e **tre casi erano passati verdi al primo giro**, cioè non difendevano quello che dicevano. |
 | **17** | ⛔ **ANNULLATA** *(19/08, 35ª sessione — sua decisione: «la sedici e la diciassette non verranno mai fatte»)* 🔐 **17. Consumer: hook Auth «Customize Access Token».** Senza quell'hook l'RLS **nega in silenzio**, ed era il prerequisito per far funzionare i permessi dell'app dei soci. ⭐ **E l'annullamento discende da una decisione già presa, non è un capriccio**: quell'hook serviva **all'app dei soci**, **dismessa dal 25/07** per sua scelta — Pages spento, repo tornato privato, DNS rimosso, e le due edge di login **cancellate**. Il canale verso i soci è **il bot**. ⚖️ *Una voce che prepara il terreno a una cosa che non esiste più non è «in coda»: è un residuo che sembra un piano* — e la sua riga in coda diceva già la verità (*«rilevante solo quando si riprende l'app soci, 0 utenti veri oggi»*), solo che la teneva viva invece di trarne la conseguenza. |
