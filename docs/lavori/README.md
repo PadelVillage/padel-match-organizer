@@ -1085,9 +1085,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **5** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 📦 **La 75 è CHIUSA da lui la notte del 22/08**, a giro completo visto sul telefono — riprenotazione sopra una lapide senza id (ramo ② della regola, mai esercitato prima) e bottone 🔄 che apre la rubrica. I **due residui dell'annullo dal bot** non sono chiusi con lei: stanno fra le 🆕 nate misurando, e cosa farne lo decide lui |
+| 🔴 **Urgenti** | **4** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 📦 **Chiuse da lui nella notte fra il 22 e il 23/08**: la **75** (riprenotazione sopra una lapide, ramo ② mai esercitato prima) e la **64**, vista tacere a orologio — tocco alle 00:04:56, giro alle 00:05:02, `⏸️ gesto in volo` nel registro. I **due residui dell'annullo dal bot** e la cadenza del «un giocatore è uscito» stanno fra le 🆕 nate misurando: cosa farne lo decide lui |
 | 📋 **In coda** | **8** — la **68** (avvisi dal gestionale, curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** (curata il 22/08 e in servizio: resta finché non la si è vista succedere) e la **71** entrate nella notte del 21/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08. 🆕 **22/08: entrano la 72 e la 73**, segnalate dal committente dal vivo durante il collaudo — la seconda misurata fino alla causa, **curata e vista funzionare** lo stesso pomeriggio; la **72 è curata la sera** e resta aperta finché non la si è vista succedere. 🆕 **E nel pomeriggio entra la 74**, trovata da una sua domanda un'ora dopo: uno spostamento manda solo la metà cattiva della notizia |
-| 📦 **Chiuse** | **58** il 13–22/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **59** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 5
+## 🔴 URGENTI — 4
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1475,69 +1475,6 @@ che nessuno ha chiesto.
 stesso slot. Il **ponte** identifica le partite per `data|ora|campo` e fonde di proposito le due
 copie (`booking` del sync e `staff_booking` del percorso consumer) sotto la stessa chiave. Finché
 quel dato non arriva dal gestionale, il bot non ha modo — ed è il pezzo che resta scoperto.
-
-### **64** — 🚨 Un avviso automatico parte su una partita che stiamo cambiando noi — CURATA, in servizio
-
-📏 La sequenza, letta nel registro del bot dei soci e misurata al secondo:
-
-| | |
-|---|---|
-| `00:12:25` | Maurizio tocca «conferma annulla» — 31 agosto, 14:00, campo 1 |
-| `00:13:09` | 🔔 «tornata_incompleta» **a Maurizio** — 44 secondi dopo il tocco |
-| `00:13:10` | 🔔 «tornata_incompleta» **a Lidia Comes** — non aveva toccato niente |
-| `00:13:11` | 🔔 «tornata_incompleta» **a Fabiola Limuti** |
-| `00:13:12` | 🔔 «tornata_incompleta» **a Marco Aprea** |
-| `00:14:38` | ↳ «Fatto: ho annullato la partita» — **un minuto e mezzo DOPO** gli avvisi |
-
-⇒ Quattro persone vere hanno letto «un giocatore è uscito dalla tua partita» un minuto e mezzo
-prima che quella partita venisse **annullata**. L'avviso era già superato quando è partito: la
-partita non stava perdendo un giocatore, **stava sparendo**.
-
-⚖️ **La causa non è una regola sbagliata.** Annullare passa dal circolo e ci mette un paio di
-minuti, e in quei due minuti il roster si svuota **prima** che la partita sparisca: il giro degli
-avvisi ha guardato il mondo **nel mezzo di un'operazione** e ha raccontato il transitorio come un
-fatto.
-
-🚨⭐⭐ **E qui la scheda diceva metà.** Era scritta come *«arriva anche a chi il gesto l'ha fatto»*;
-i destinatari erano **quattro**, e **tre non avevano toccato niente**. Una guardia legata a **chi
-agisce** avrebbe curato il caso più facile da vedere e lasciato in piedi quello che fa la figura
-peggiore. ⇒ Le due domande si fanno **per PARTITA**:
-· `gestoInVoloSullaPartita` (`in-corso.ts`) — copre i due minuti dell'operazione;
-· `fattoDaChiunqueSulla` (`fatto-compiuto.ts`) — copre i quindici in cui il circolo non l'ha ancora
-recepito.
-
-⚖️ **Nessuna delle due è una memoria del MONDO**, e la distinzione tiene in piedi la regola ferrea:
-sono la memoria di ciò che stiamo facendo **noi**, che è l'unica cosa che il dato non può
-raccontare. Lo stato della partita resta del gestionale — *il gestionale SA, il bot DICE*.
-⚠️ Coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui
-non si vede, ed è dichiarato nel codice.
-
-🚨 Si salta la voce **per intero, conteggio compreso**: un numero letto a metà operazione al giro
-dopo diventerebbe il «prima» da cui si misura il calo, e la prova che erano in quattro sparirebbe
-in silenzio.
-
-🔎⭐⭐ **E COME SI PROVA SUL BERSAGLIO — misurato il 21/08, perché la prova che sembrava sicura non
-lo era.** L'idea era: *fai un gesto su una partita usando «Ospite» (che non ha una chat Telegram,
-quindi nessun messaggio parte) e al giro dopo nel registro compare `⏸️`.* Andando a leggere il
-codice che gira, **non funziona così**, e per due ragioni indipendenti:
-
-| | |
-|---|---|
-| ⏱️ **il `⏸️` quasi sempre non compare** | i due rami hanno due vite diverse: `fattoDaChiunqueSulla` dura 15 minuti ma lo alimenta **solo** `segnaFatto`, chiamato in **un punto solo** e **solo** per `esci`/`annulla`. Un `togli`/`aggiungi` lascia traccia **solo** in `gestoInVoloSullaPartita`, e quel posto si libera in un `finally` ⇒ dura quanto la scrittura, decine di secondi. Il giro passa ogni 15′: la probabilità che caschi lì dentro è intorno al 5% |
-| 🚨 **e può far partire messaggi VERI** | il giro legge il roster da `readmodelPlayer`, che applica già `senzaGiocatoriTolti`: l'Ospite tolto sparisce **subito** dalla vista del bot. Se la partita era in quattro ed era stata vista in quattro, al giro dopo `decidiTornataIncompleta` manda «un giocatore è uscito dalla tua partita» **a tutti i soci di quella partita**. «Ospite» protegge l'Ospite, non gli altri |
-
-⭐ **La prova che regge è a orario**, e si può fare perché il ritmo del giro è prevedibile: il primo
-parte **60 secondi dopo l'avvio** (`RITARDO_AVVIO_MS`) e da lì il timer batte ogni **15 minuti
-dall'istante dell'avvio** — non dal primo giro. Toccando «togli Ospite» ~30 secondi prima di un
-istante di quelli, la scrittura è ancora in volo quando il giro passa, e il `⏸️ … gesto in volo`
-esce davvero. Su una partita dove **l'unico socio col bot è chi prova**, così il «tornata
-incompleta» del giro successivo — che è anche la prova di non-regressione — arriva solo a lui.
-⚠️ **I giri muti non scrivono niente**: la riga di riepilogo esce solo se c'è qualcosa da dire
-(`daDire`), mentre il `⏸️` esce sempre. ⇒ Non vedere niente non vuol dire che il giro non sia
-passato.
-⛔ **Il ramo dei 15 minuti non si può provare senza costo**: vuole un `esci` o un `annulla` vero, e
-il `⏸️` non comparirebbe nemmeno per chi agisce — la sua partita sparisce già dal suo elenco per
-`senzaPartiteLasciate`. Comparirebbe **solo per un altro socio** dentro quella partita.
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
 
@@ -2021,6 +1958,44 @@ che è il modo in cui un residuo diventa un mistero.
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+🆕🗣️ **Nata la notte del 23/08 (49ª sessione), da una sua frase — e la frase era MIA finché non gliel'ho
+chiesto.** ⇒ **«UN GIOCATORE È USCITO DALLA TUA PARTITA» VIAGGIA SUL GIRO SBAGLIATO.**
+
+🗣️ Lui, aspettando il battito per la prova della 64: *«aspettare questi quindici minuti sono un
+abisso»*. ⚠️ Parlava della **prova**, non del prodotto: sono stato io a girarla in una domanda sul
+prodotto e a restituirgliela come se fosse sua. Gliel'ho detto, e alla domanda rifatta bene — *«un
+socio che aspetta fino a un quarto d'ora per sapere che un compagno è uscito dalla sua partita: ti dà
+fastidio?»* — ha risposto: **«mi sembra sì troppo tempo»**. ⇒ Adesso la voce è sua; prima non lo era.
+📌 *Attribuire al committente una frase che non ha detto è la stessa cosa, dal verso opposto, del
+lasciare una sua decisione nel racconto di chi c'era.*
+
+📏 **La misura, presa leggendo il codice del bot.** Ci sono **due giri**, e portano notizie diverse a
+velocità diverse:
+
+| notizia | giro | quanto ci mette ad arrivare al socio |
+|---|---|---|
+| «la tua partita di domani è stata annullata» | `PERIODO_CIRCOLO_MS` = **2′** | sync (~2-4′) + quiete 2′ + fino a 2′ ⇒ **~6-8 minuti** |
+| «un giocatore è uscito dalla tua partita» | `PERIODO_MS` = **15′** | sync (~2-4′) + fino a 15′ ⇒ **fino a ~19 minuti** |
+
+`decidiTornataIncompleta` sta a `promemoria.ts:648`, **dentro il giro da 15 minuti**; il giro da 2
+minuti (`giroC`) chiama `giroCircolo()`, che consegna un'altra cosa.
+
+⚖️ **Il 22/08 pomeriggio il primo dei due era stato abbassato da 15′ a 2′ su sua richiesta.** Il
+secondo è rimasto dov'era — **non per una scelta, ma perché nessuno l'aveva guardato**: viaggia su un
+giro diverso, e la domanda di quel pomeriggio era stata risolta su una metà sola.
+📌 *Una manopola aggiustata non aggiusta le sue gemelle: se una cadenza è stata ereditata in due
+punti, abbassarla in uno lascia l'altro esattamente com'era, e con l'aria di essere a posto.*
+
+🚨 **E la cura NON è «metti 2 al posto di 15»**, che è la ragione per cui questa scheda esiste invece
+di una riga di codice. Il giro dei promemoria legge gli inviti **socio per socio** e costa; quello dei
+fatti del circolo, a coda vuota, è una sola query su un indice parziale — la spesa vera la paga solo
+quando ci sono fatti da consegnare, quindi cresce con gli eventi e non con la frequenza. ⇒ La cura è
+**spostare quel singolo avviso sull'altro giro**, cioè rifare sull'altra metà l'operazione già fatta
+il 22/08. È lavoro vero.
+
+📌 **Misurata e basta — non promossa.** Se la vuole in coda lo dice lui.
+
 
 🆕🚨 **Nati la notte del 22/08 (49ª sessione), chiudendo la voce 75 — I DUE REPERTI DELL'ANNULLO
 DAL BOT.** Non sono la 75 e non ci sono mai stati dentro: nascono dal fatto che *annullare dal bot
@@ -3051,15 +3026,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 22/08/2026 — 58 voci
+## 📦 CHIUSE — dal 13 al 23/08/2026 — 59 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 22/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime due voci sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **64** | ✅ *(23/08 notte, 49ª sessione — **chiusa da LUI** dopo averla vista tacere sul bersaglio: «la sessantaquattro la chiudiamo»)* 🚨 **64. Un avviso automatico partiva su una partita che stavamo cambiando noi.** La notte del 21/08: annullo toccato alle 00:12:25, «un giocatore è uscito dalla tua partita» partito alle 00:13:09 a **quattro** persone — e **tre non avevano toccato niente** — con il «Fatto, ho annullato» arrivato alle 00:14:38, un minuto e mezzo **dopo**. ⚖️ La causa non era una regola sbagliata: annullare passa dal circolo e ci mette un paio di minuti, e in quei due minuti il roster si svuota **prima** che la partita sparisca ⇒ il giro degli avvisi guardava il mondo **nel mezzo** di un'operazione e raccontava il transitorio come un fatto. 🩹 Le due domande si fanno **per PARTITA e non per persona** — ed è la differenza che conta, perché una guardia legata a chi agisce avrebbe salvato lui e lasciato gli altri tre: `gestoInVoloSullaPartita` (`in-corso.ts`) copre i minuti dell'operazione, `fattoDaChiunqueSulla` (`fatto-compiuto.ts`) i quindici in cui il circolo non l'ha ancora recepito. Si salta la voce **intera, conteggio compreso**: un numero letto a metà operazione diventerebbe al giro dopo il «prima» da cui si misura il calo. 📏 **Vista sul bersaglio la notte del 23/08**, a orologio: tocco «togli Ospite» alle **00:04:56**, giro degli avvisi alle **00:05:02** — cioè **nel mezzo** — e il registro scrive `⏸️ 2026-08-31|09:30|1: niente avvisi, c'è un gesto in volo su questa partita`; la scrittura si chiude alle 00:05:07. Nessun «un giocatore è uscito»: la non-regressione tiene. ⚠️ **Provato il ramo dei minuti, NON quello dei quindici**: `fattoDaChiunqueSulla` lo alimenta solo `segnaFatto`, chiamato nel solo flusso di uscita (`bot.ts:1564`), quindi un `togli` non lo accende — resta quello che la scheda dichiarava non provabile senza costo. 🚨 **E la prova è costata due tentativi, per un difetto della PROVA e non della cura**: al primo giro la conferma è caduta alle 23:50:03 contro un battito alle 23:50:01 — **due secondi tardi** — perché l'istruzione diceva «tocca la conferma» dove la bottoniera ha **due** tocchi, «Togli» e poi «sei sicuro?». ⇒ È la 44ª applicata a chi scriveva la prova: *il socio non chiama funzioni, tocca bottoni*, e chi progetta il tempo di un gesto deve contarli. 📌 La finestra è stretta di suo: `SCADENZA_MS` vale 3 minuti ma il posto si libera in un `finally` (`bot.ts:1625`), quindi dura **quanto la scrittura** — ~10 secondi misurati — e il giro passa ogni 15 minuti: senza puntare il battito la probabilità di beccarlo è intorno al 5%, cioè un verde muto quasi garantito. |
 | **75** | ✅ *(22/08 notte, 49ª sessione — **chiusa da LUI** a giro completo visto sul telefono: «Chiudi pure la settantacinque»)* 🚨 **75. Il bot diceva «✅ Prenotato», e il suo stesso bottone rispondeva «non trovo quella partita».** La chiave della copia locale (`staff_booking|<data>|<ora>|Campo <n>|<attore>`) non contiene l'id della prenotazione ⇒ due partite diverse sullo stesso slot **si dividevano la riga**, e la guardia anti-fantasma (`if (esistente?.deleted === true) return`) vedeva la lapide di quella annullata al mattino e usciva **senza scrivere**: per quasi quattro minuti, fino al sync, di quella partita nel gestionale non esisteva niente — e il bot, che legge solo da lì, mandava in segreteria per un'operazione **riuscita**. 🩹 La cura vive in un modulo puro (`lapide-prenotazione.js`) e distingue con **due fatti**, mai con una soglia: ① l'`idReserva` quando c'è da entrambe le parti (diverso ⇒ è un'altra partita, si scrive; uguale ⇒ è l'annullo di questa, non si tocca); ② l'**ordine** fra sepoltura e inizio della scrittura, altrimenti — *un annullo non precede la prenotazione che annulla*. Senza fatti confrontabili si **fallisce chiusi**. 🚨 E la cura ne nascondeva una seconda, nella riga **subito sotto** quella toccata: l'upsert fonde `{...nostro, ...esistente}` e l'esistente vince campo per campo — ma i campi di una lapide sono quelli dell'**altra** partita ⇒ la prenotazione nuova sarebbe nata col nome e i giocatori della morta. Su una riga viva si fonde, sopra una lapide si **sostituisce**. 📏 **Vista per intero la notte del 22/08**, su prenotazioni vere e sui **due** rami della regola: il ramo ① alle 21:54:28 (31/08 · 11:00 · Campo 1, lapide con `id_reserva 9587`); il ramo ② — mai visto prima — alle **23:07:00.998** su 31/08 · 09:30 · Campo 1, dove la lapide non aveva id e la decisione è caduta sull'ordine (`motivo: "lapide_precedente"`, `scritta: true`, id nuovo **9588**). La copia locale è nata **225 ms PRIMA** che la create dicesse OK (23:07:01.223) ⇒ la metà «stesso istante» della regola dei tre passi è **misurata**, non promessa. E la sostituzione ha tenuto: la lapide portava «Maurizio Aprea, Lidia Comes», la riga nuova porta **il solo Maurizio**. 🩹 **La metà B non andava scritta: esisteva già** — è la cura della voce 71, e non si vedeva mai perché il flusso moriva un gradino prima. Resa raggiungibile, ha mostrato un difetto suo, visto da lui sul messaggio vero: *«riprova» non diceva riprovare **COSA***, e chi ha prenotato venti secondi prima riprenota — la doppia prenotazione. Curata (bot #60, `d65e94b`): si dice **«✅ La partita è prenotata: non rifarla»** prima di offrire il gesto, l'oggetto del riprovare diventa un **bottone** che rifà lo stesso tocco, e il tempo si dice una volta sola. Vista alle 23:07:06 (il messaggio d'attesa, con `ordine: 'non_ancora'` dal ponte) e chiusa alle **23:12:44**, quando il bottone 🔄 ha aperto la rubrica — 4 nomi, 3 posti liberi. ⚖️ **E la misura che il giro ha corretto**: la scheda del circolo — unica fonte dell'ordine, quindi di chi ha organizzato — è arrivata in **1′51″**, contro i **4′21″** della sera prima sullo stesso tipo di slot (oltre i 7 giorni). ⇒ *Quel 4′21″ non era la durata dell'attesa: era un'estrazione sola.* 📌 Restano aperti i **due reperti dell'annullo dal bot**: non sono questa voce, e stanno fra le 🆕 nate misurando. |
 | — | ✅ *(19/08, chiesta da LUI a voce: «non mi fa più aggiungere un ospite alle partite»)* 🅿️ **L'«Ospite» sparito dalle partite: il sync clienti aveva disattivato il jolly 000001.** Il 4-5/08 la regola stale di `matchpoint-clients-sync` — quella che disattiva chi ha un codice Matchpoint e non compare più nell'export — ha colpito la scheda jolly «Ospite», che nell'export clienti **non compare MAI**: è il motivo per cui l'app la ricrea da sé (`ensureOspiteMember`), e nessuna eccezione la proteggeva. Da lì Chiudi Partite e Riempi slot — che scartano i soci `active === false` — buttavano l'Ospite **in silenzio**: la riga del gruppo diceva pure «Trovato», e la partita nasceva senza. 🔎 Trovato guardando l'app viva con la console remota (`active:false` sulla scheda in memoria) e poi il payload su Supabase: `matchpointInactiveReason: matchpoint_snapshot_absent`, su PROD **e** su TEST, con date 4-5/08. ⚖️ Riattivarla a mano non avrebbe retto: la passata dopo l'avrebbe rispenta — e il «Riattiva» dell'app **non azzera i marcatori**. Cura in `stale-guard.ts`, due versi: ① l'eccezione `isGuestJolly` (flag **o** codice 000001) in `decideStaleMember` → `keep`, sempre; ② la **guarigione** — il giro stale riattiva da sé il jolly che porta il marcatore automatico, fuori dal tetto di proposito (è restaurativa e limitata al jolly per costruzione) — così i due database si riparano **al primo import dopo il deploy**, senza una scrittura a mano da coordinare col deploy. Test U-Z con la tabella dei sabotaggi **rimisurata**, non prevista: le due metà del predicato le isola solo V, perché il caso reale U porta le due firme insieme e resta verde sotto ogni dimezzamento. 🚨 Il percorso del calendario staff non era rotto — scrivere «Ospite» lì aggiunge diretto, senza passare dall'anagrafica — ed è il motivo per cui il guasto è rimasto invisibile per due settimane: la strada usata più spesso funzionava, le altre mentivano con un «Trovato». |
 | **62** | ✅ *(19/08, 36ª sessione — codice fuso dalla 33ª, **chiusa da LUI** dopo che l'ultimo difetto rimasto è stato cercato e non trovato: «Chiudila»)* 🎾 **62. «Le tue partite» è una scheda per volta, e si sfoglia.** Chiedendo le proprie partite si apre **una** partita — la più vicina nel tempo — e la si sfoglia con «← Precedente» / «Successiva →»; le azioni stanno **sulla scheda** (Invita · Togli · Annulla) e la parola «Gestisci» sparisce. ⭐ **La cura più economica di un difetto è scoprire che il pezzo che lo aveva non serve più**: la domanda di partenza era sua — *«il bottone gestisci può stare sotto la relativa prenotazione?»* — e la risposta scelta quel bottone non lo **sposta**, lo **toglie**. ✅ **Verificata sul telefono da lui** (*«mi sembra che funzioni tutto bene»*), che è l'unica verifica che la sua regola accetta: *«il codice è a posto non è funziona»*. ⭐ E la promessa per cui la variante E aveva battuto le altre cinque — **una notifica sola** — la tiene lo sfoglio che **riscrive** il messaggio (`editMessageText`) invece di mandarne di nuovi: misurata, non dedotta dal disegno. 🚨⭐⭐ **E L'ULTIMA COSA APERTA ERA UN DIFETTO CHE NON C'ERA — vale più del lavoro.** *«Su una scheda dove la partita è completa c'era la possibilità di mandare un invito»*, visto da lui sul bot di prova. Non era la **scheda** ma «👥 Gli inviti mandati»; e soprattutto **la partita non era completa**: su `2026-08-21 17:00 campo 3` i giocatori sono **due** (`-Maurizio Aprea.-pierfrancesco biggi.`), e concordano **tre copie della riga, su TEST e su PROD**, `booking` e `staff_booking`. ⇒ Il bot ha scritto *«Puoi invitare qualcuno dalla tua rubrica»* perché `liberi = 4 − 2 > 0`; con quattro avrebbe scritto **«Siete al completo»**, che è l'altra metà della stessa riga (`invito-partita-testi.ts:227`). Il cancello ha funzionato. 🧊 **E NON era il calendario congelato di TEST** — l'esclusione da fare per prima, che si è chiusa **al rovescio di come me l'aspettavo**: la copia di **PROD** è stata rinfrescata **21 minuti DOPO** lo screenshot e dice le stesse due persone. ⇒ **Confermata la riga 2 della tabella della 33ª** (*«il roster più corto del vero: ipotesi ragionevole e falsa»*). 🔎 **La misura è stata fatta ESEGUENDO il codice del ponte** — `compagni-slot.ts` copiato e girato sui payload veri — **non riscrivendone la regola in SQL**: è l'errore che aveva già morso due volte la 33ª, e una sonda sbagliata dà una risposta **sicura e falsa**. 📏 **Un contorno misurato, che non è un difetto ma va saputo**: su PROD, tipo «Partita», 19/08→19/09, **31 schede distinte su 48 (65%) hanno meno di quattro nomi** ⇒ il bot offrirà «Invita» sulla maggioranza delle partite. Se là dentro ce ne sono che si giocano in quattro, il buco è **in Matchpoint**, non nel bot — *il gestionale SA, il bot DICE*. ⚠️ **TRE SCELTE DICHIARATE, ancora senza la sua parola e tutte da una riga**: ① il **corpo** della scheda è il roster coi «— posto libero —» di oggi e non la riga compatta del mockup (cambiarlo scarterebbe tre sue decisioni del 4-7/08); ② il caso ① mostra **sei** bottoni e non tre («👥 Gli inviti mandati» e «🚪 Esci» esistono già per l'organizzatore); ③ la frase della **lezione** è la sua del 6/08 e non quella nuova del mockup — scriverne una seconda era la copia che questo progetto punisce. ⚠️ **Limite dichiarato**: una prenotazione col **campo illeggibile** (`numeroCampo` torna 0) non è indirizzabile da nessun `callback_data` ⇒ resta fuori dallo sfoglio; lì si ripiega sull'elenco di prima, invece di dire «non hai partite» a chi ne ha una. ⚠️ **Segnalato e NON curato, perché è di un'altra famiglia**: `togli:conferma` scrive al circolo come `uscita:conferma` ma non sta in `SOTTO_AL_BOTTONE` ⇒ il messaggio sotto aspetta la soglia invece di partire subito. 📦 `assistente-padel-agent` **#26** (la voce) e **#27** (la clessidra sotto, su tutti i bottoni), vivi **sul bot di PROVA**; il bot dei **SOCI non è stato toccato**. 🧪 Banco **1132 → 1160**, `tsc --noEmit` pulito, **dieci sabotaggi** ognuno verificato di essere atterrato — e **tre casi erano passati verdi al primo giro**, cioè non difendevano quello che dicevano. |
