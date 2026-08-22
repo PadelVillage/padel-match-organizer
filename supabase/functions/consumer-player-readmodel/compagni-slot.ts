@@ -121,6 +121,82 @@ export function rosterOrdinatoDelloSlot(schede: string[][]): string[] {
   return piene.reduce((a, b) => (b.length > a.length ? b : a));
 }
 
+/**
+ * ⭐⭐ PERCHÉ L'ELENCO È VUOTO — e sono DUE cose diverse, non una (voce 71).
+ *
+ * 🗣️ Difetto misurato al secondo la notte del 21/08/2026: il committente prenota dal bot
+ * (31/08, 11:00, campo 1), conferma, e il bot gli risponde *«Questa partita non l'hai
+ * organizzata tu, quindi non posso invitare altri giocatori. Puoi chiederlo a chi l'ha
+ * organizzata.»* — cioè lo manda **da sé stesso**.
+ *
+ * 🔎 LA CAUSA È UNA FINESTRA, NON UN ERRORE DI REGOLA. L'ordine dell'elenco si legge **solo**
+ * dalla scheda del circolo (`descrizione`), e quella la scrive **Matchpoint**: una prenotazione
+ * appena nata dal bot non ce l'ha ancora. 📏 Misurato sulla prenotazione vera: `staff_booking`
+ * scritto alle **21:31:14** con `descrizione` vuota, `booking` tornato dal sync alle **21:32:47**
+ * ⇒ **1′33″**, e il messaggio è caduto lì dentro. Riprovando quattro minuti dopo l'invito parte
+ * senza storie.
+ *
+ * ⚖️ IL DIFETTO NON È IL CANCELLO, È LA FRASE. Il cancello ha ragione a non far invitare quando
+ * non sa chi ha organizzato; sbaglia a dire **«non sei tu»** quando la verità è **«non lo so
+ * ancora»**. Ma il bot quella differenza non poteva vederla: `giocatori: []` diceva tutti e due.
+ * ⇒ *Un solo silenzio per due domande diverse costringe chi ascolta a indovinare, e chi indovina
+ * sceglie sempre la risposta che ha in mano — qui, la peggiore.*
+ *
+ * ⭐ LA DISTINZIONE È STRUTTURALE, NON A TEMPO, ed è una scelta: si guarda **da dove arrivano le
+ * righe** dello slot. Se ne esiste anche una sola venuta dal circolo, il circolo ha già parlato e
+ * un ordine mancante è un ordine che davvero non sappiamo; se invece ci sono solo le copie che
+ * abbiamo scritto noi (`staff_booking`), il circolo **non ha ancora parlato**.
+ * ⛔ Scartata la strada del TEMPO — «se la prenotazione ha meno di N minuti allora è presto» —
+ * perché sarebbe una soglia inventata: nessuno l'ha misurata, e il ritardo del sync ha già mostrato
+ * una coda lunga (mediana ~2′, massimo misurato 10′04″). Il fatto strutturale è vero comunque.
+ * 📌 E a chi volesse comunque invecchiare il messaggio, il dato c'è già: ogni slot porta
+ * `aggiornato_al`. Non serve una seconda regola qui.
+ *
+ * ⚠️ Qui non si decide COSA DIRE al socio: si porta il **dato**. La frase la sceglie il bot — è
+ * la divisione della regola ferrea del 19/08, *il gestionale SA, il bot DICE*.
+ */
+export type OrdineDelloSlot = {
+  /** L'elenco nell'ordine della scheda, vuoto quando l'ordine non si sa. */
+  giocatori: string[];
+  /**
+   * · `noto` — l'elenco c'è: il primo è chi ha organizzato.
+   * · `non_ancora` — di questa partita esistono solo le nostre copie: il circolo non ha ancora
+   *   raccontato la sua scheda, quindi l'ordine **arriverà**.
+   * · `ignoto` — il circolo ha parlato e l'ordine non se ne ricava: nessuna lista (un titolo
+   *   libero, «Torneo aziendale»), oppure due copie che **si contraddicono** sul primo nome.
+   */
+  ordine: 'noto' | 'non_ancora' | 'ignoto';
+};
+
+/**
+ * L'elenco ordinato dello slot, più il PERCHÉ quando manca.
+ *
+ * @param schede            Le liste che vengono dalla scheda del circolo, una per riga.
+ * @param soloCopieNostre   Vero se ogni riga di questo slot è una copia scritta da noi
+ *                          (`staff_booking`) e nessuna viene dal sync.
+ */
+/**
+ * Vero se questa riga è una copia scritta da NOI e non il racconto del circolo.
+ *
+ * 🚨⭐ IL VERSO DEL DUBBIO, e non è simmetrico: un tipo di record che non riconosciamo torna
+ * **falso**, cioè «viene dal circolo». Così uno slot con dentro qualcosa di inatteso ricade in
+ * `ignoto` — che è il comportamento di prima della voce 71 — invece di far promettere al bot
+ * *«riprova fra un minuto»* per una scheda che non arriverà mai.
+ * ⇒ *Sbagliando si torna al fastidio vecchio, non a una promessa che non si può mantenere.*
+ */
+export function copiaNostra(recordType: unknown): boolean {
+  return clean(recordType) === 'staff_booking';
+}
+
+export function ordineDelloSlot(
+  schede: string[][],
+  soloCopieNostre: boolean,
+): OrdineDelloSlot {
+  const giocatori = rosterOrdinatoDelloSlot(schede);
+  if (giocatori.length) return { giocatori, ordine: 'noto' };
+  return { giocatori: [], ordine: soloCopieNostre ? 'non_ancora' : 'ignoto' };
+}
+
 // ROSTER AUTOREVOLE dei record `booking`: copia VERBATIM di playersFromDescrizione
 // in matchpoint-bookings-sync/index.ts (unica regola, non una seconda). Estrae i
 // nomi solo quando la descrizione è in formato lista "-Nome.-Nome." (inizia con

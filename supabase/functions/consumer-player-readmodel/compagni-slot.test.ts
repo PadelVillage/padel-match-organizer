@@ -5,7 +5,14 @@
 // 26/07. È il modo di provare una forma di dato che l'ambiente di TEST non contiene — là
 // non esistono partite con più «Ospite».
 import assert from 'node:assert/strict';
-import { compagniDelloSlot, normName, rosterFromPayload, rosterOrdinatoDelloSlot } from './compagni-slot.ts';
+import {
+  compagniDelloSlot,
+  copiaNostra,
+  normName,
+  ordineDelloSlot,
+  rosterFromPayload,
+  rosterOrdinatoDelloSlot,
+} from './compagni-slot.ts';
 
 let passed = 0;
 let failed = 0;
@@ -264,6 +271,74 @@ test('21. l\'accento non fa sembrare discordi due copie uguali', () => {
   const a = ['Filipe Neves De Sa', 'Anna Neri'];
   const b = ['Filipe Neves De Sà', 'Anna Neri', 'Bruno Sala'];
   assert.deepEqual(rosterOrdinatoDelloSlot([a, b]), b);
+});
+
+// ── VOCE 71: perché l'elenco è vuoto, e sono DUE cose diverse ──────────────────────────
+
+test('22. ⭐ il caso del 21/08: appena prenotato dal bot ⇒ «non ancora», non «non sei tu»', () => {
+  // Lo staff_booking scritto dal ponte non ha descrizione, quindi nessuna scheda: se questo
+  // fosse letto come «ordine ignoto», il bot direbbe a chi ha appena prenotato che la partita
+  // non è sua e lo manderebbe da sé stesso. Misurato: la finestra dura 1'33".
+  const o = ordineDelloSlot([], true);
+  assert.equal(o.ordine, 'non_ancora');
+  assert.deepEqual(o.giocatori, []);
+});
+
+test('23. il circolo ha parlato e l\'ordine non si ricava ⇒ ignoto, non «non ancora»', () => {
+  // Una riga sincronizzata con un titolo libero («Torneo aziendale») non dà lista: qui
+  // aspettare non serve a niente, e promettere «riprova fra un minuto» sarebbe una bugia.
+  const o = ordineDelloSlot([], false);
+  assert.equal(o.ordine, 'ignoto');
+});
+
+test('24. l\'elenco c\'è ⇒ noto, e il primo resta il primo', () => {
+  const scheda = ['Andrea Foltran', 'Gianmario Gri', 'Mattia Biz'];
+  const o = ordineDelloSlot([scheda], false);
+  assert.equal(o.ordine, 'noto');
+  assert.equal(o.giocatori[0], 'Andrea Foltran');
+});
+
+test('25. 🚨 l\'elenco c\'è: «solo copie nostre» NON lo declassa', () => {
+  // Il verso conta: se un ordine leggibile diventasse «non ancora» per via della provenienza,
+  // si perderebbe un organizzatore che si conosce — cioè si romperebbe l'invito che oggi funziona.
+  const o = ordineDelloSlot([['Andrea Foltran', 'Gianmario Gri']], true);
+  assert.equal(o.ordine, 'noto');
+});
+
+test('26. 🚨 due copie che si contraddicono ⇒ IGNOTO, anche se una è nostra', () => {
+  // È il fail closed della 19ª, e non deve essere addolcito: qui non è che l'ordine arrivera',
+  // e' che due fonti dicono cose diverse. Dire «riprova fra un minuto» rimanderebbe il socio
+  // a una risposta che non cambia.
+  const a = ['Andrea Foltran', 'Gianmario Gri'];
+  const b = ['Mattia Biz', 'Gianmario Gri', 'Andrea Foltran'];
+  assert.equal(ordineDelloSlot([a, b], false).ordine, 'ignoto');
+});
+
+test('27. i tre esiti sono esaustivi e si escludono', () => {
+  const casi = [
+    ordineDelloSlot([['Anna Neri']], false),
+    ordineDelloSlot([], true),
+    ordineDelloSlot([], false),
+  ];
+  assert.deepEqual(casi.map((c) => c.ordine), ['noto', 'non_ancora', 'ignoto']);
+  // Un elenco pieno solo su `noto`: sugli altri due chi legge non deve trovare mezza risposta.
+  assert.ok(casi[0].giocatori.length > 0);
+  assert.equal(casi[1].giocatori.length, 0);
+  assert.equal(casi[2].giocatori.length, 0);
+});
+
+test('28. da dove viene la riga: il `booking` e\' il circolo, lo `staff_booking` siamo noi', () => {
+  assert.equal(copiaNostra('staff_booking'), true);
+  assert.equal(copiaNostra('booking'), false);
+});
+
+test('29. 🚨 un tipo di riga che non riconosciamo NON e\' nostro', () => {
+  // Il verso non e' simmetrico: cosi' uno slot con dentro qualcosa di inatteso ricade in
+  // `ignoto` — il comportamento di prima della voce 71 — invece di far promettere al bot
+  // «riprova fra un minuto» per una scheda che non arrivera' mai.
+  for (const t of ['', null, undefined, 'qualcosaltro', 42]) {
+    assert.equal(copiaNostra(t), false, `«${String(t)}» non deve valere come copia nostra`);
+  }
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
