@@ -8,6 +8,8 @@ import {
   fotografia,
   normNome,
   puoRicevere,
+  eLezione,
+  tipoDelloSlot,
   sepoltiDaResuscitare,
   slotDichiaratiAnnullati,
   type SlotRoster,
@@ -364,6 +366,126 @@ test('41. il campo si confronta a CIFRE: «Campo 1» della lapide e l\'1 della s
   const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
   const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z')];
   assert.equal(sepoltiDaResuscitare(sepolti, supp, CONFINE).length, 1);
+});
+
+// ── VOCE 74 — in una LEZIONE non si salta nessuno ───────────────────────────────────────
+//
+// 🗣️ «Quando si tratta di una lezione, quei giocatori che stanno nell'elenco devono ricevere
+// la notifica.» — committente, 22/08/2026.
+
+/** Una fotografia in cui gli slot portano anche il tipo. */
+function fotoT(tipo: string, ...slots: Array<[string, string[]]>): Map<string, SlotRoster> {
+  const m = foto(...slots);
+  for (const v of m.values()) v.tipo = tipo;
+  return m;
+}
+
+test('42. una LEZIONE nuova avvisa anche il PRIMO — il caso di Maria Pia, che era sola', () => {
+  // È il caso misurato il 22/08: lezione spostata, slot nuovo con un nome solo, zero fatti.
+  const dopo = new Map([
+    ...fotoT('Lezione Libera', ['2026-08-25|12:30|1', ['Maria Pia Bettiol']]),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Maria Pia Bettiol');
+  assert.equal(f[0].gesto, 'aggiunto');
+  assert.equal(f[0].tipo, 'lezione', 'il fatto porta la parola NOSTRA, non quella di Matchpoint');
+});
+
+test('43bis. il fatto di una PARTITA porta `tipo: partita`, non il nome di Matchpoint', () => {
+  const dopo = new Map([
+    ...fotoT('Partita', ['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f[0].tipo, 'partita');
+});
+
+test('43. una PARTITA nuova continua a saltare il primo — la voce 70 non si riapre', () => {
+  const dopo = new Map([
+    ...fotoT('Partita', ['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Lidia Comes', 'l\'organizzatore non si annuncia da sé');
+});
+
+test('44. una LEZIONE con più giocatori li avvisa TUTTI', () => {
+  const dopo = new Map([
+    ...fotoT('Lezione Libera', ['2026-08-25|12:30|1', ['Maria Pia Bettiol', 'Carla Mattana']]),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.deepEqual(f.map((x) => x.persona).sort(), ['Carla Mattana', 'Maria Pia Bettiol']);
+});
+
+test('45. `tipo` assente vale NON lezione: il comportamento di prima non cambia', () => {
+  const dopo = new Map([
+    ...foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Lidia Comes');
+});
+
+test('46. un tipo SCONOSCIUTO non è una lezione — si tace, non si avvisa', () => {
+  // 🚨 Il caso da cui la regola si difende: se domani Matchpoint aggiungesse «Torneo», una
+  // regola scritta come «diverso da Partita» lo tratterebbe da lezione senza che nessuno se ne
+  // accorga. Il verso in cui si sbaglia dev'essere tacere.
+  assert.equal(eLezione('Torneo aziendale'), false);
+  assert.equal(eLezione('Manutenzione'), false);
+  assert.equal(eLezione(undefined), false);
+  assert.equal(eLezione('Partita'), false);
+  assert.equal(eLezione('Lezione Libera'), true);
+  assert.equal(eLezione('lezione'), true);
+  // 🔒 E ciò che ESCE non nomina mai Matchpoint: «Lezione Libera» è una parola sua.
+  assert.equal(tipoDelloSlot('Lezione Libera'), 'lezione');
+  assert.equal(tipoDelloSlot('Partita'), 'partita');
+  assert.equal(tipoDelloSlot('Torneo aziendale'), 'partita');
+  assert.equal(tipoDelloSlot(undefined), 'partita');
+  const dopo = new Map([
+    ...fotoT('Torneo aziendale', ['2026-08-25|12:30|1', ['Maria Pia Bettiol']]),
+    ...foto(...contorno(4)),
+  ]);
+  assert.deepEqual(fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22'), []);
+});
+
+test('47. il tipo viaggia anche sui fatti che NON nascono da uno slot nuovo', () => {
+  // Serve al bot, che con quel campo sceglie la parola: senza, direbbe «partita» a una lezione.
+  const prima = new Map([
+    ...fotoT('Lezione Libera', ['2026-08-25|10:00|1', ['Maria Pia Bettiol', 'Carla Mattana']]),
+    ...foto(...contorno(4)),
+  ]);
+  const tolto = fattiDaConfronto(
+    prima,
+    new Map([...fotoT('Lezione Libera', ['2026-08-25|10:00|1', ['Maria Pia Bettiol']]), ...foto(...contorno(4))]),
+    '2026-08-22',
+  );
+  assert.equal(tolto.length, 1);
+  assert.equal(tolto[0].gesto, 'tolto');
+  assert.equal(tolto[0].tipo, 'lezione');
+
+  const annullata = fattiDaConfronto(prima, foto(...contorno(4)), '2026-08-22');
+  assert.equal(annullata.length, 2);
+  assert.ok(annullata.every((x) => x.tipo === 'lezione' && x.gesto === 'annullata'));
+});
+
+test('48. dal payload al fatto: il tipo si legge dalla riga vera, non si passa a mano', () => {
+  // La riga è quella misurata su PROD il 22/08, `tipo` compreso.
+  const dopo = new Map([
+    ...fotografia(
+      [{ data: '2026-08-25', ora: '12:30', campo: 'Campo 1', descrizione: '-Maria Pia Bettiol.', tipo: 'Lezione Libera' }],
+      roster,
+    ),
+    ...foto(...contorno(4)),
+  ]);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Maria Pia Bettiol');
+  assert.equal(f[0].tipo, 'lezione', 'il fatto porta la parola NOSTRA, non quella di Matchpoint');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
