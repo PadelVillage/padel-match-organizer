@@ -32,6 +32,7 @@ import {
   dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
+import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -295,6 +296,48 @@ Deno.serve(async (req: Request) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!supabaseUrl || !serviceKey) return err(503, 'MISSING_ENV', 'SUPABASE_URL/SERVICE_ROLE_KEY non configurati.');
   const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  /**
+   * 🧾⭐⭐ LA RICEVUTA DI CIÒ CHE ABBIAMO SCRITTO (voce 70) — si chiama DOPO ogni scrittura
+   * riuscita, e serve a una cosa sola: impedire che il **circolo** annunci al socio un gesto
+   * che ha fatto lui.
+   *
+   * 🗣️ Il difetto è misurato al secondo (21/08/2026): Lidia accetta un invito dal bot, il bot
+   * le dice «✅ Sei in campo», e fra i 4 e i 19 minuti dopo un avviso del circolo le annuncia
+   * la stessa cosa. Chi produce quell'avviso confronta due fotografie del calendario: vede
+   * *cosa* è cambiato e non può sapere **chi**. ⇒ Glielo diciamo noi, che lo sappiamo.
+   *
+   * ⚖️ BEST EFFORT, e il verso è scelto: se questa scrittura fallisce **non** si tocca la
+   * risposta al socio. La scrittura vera è già andata, e il peggio che può capitare è tornare
+   * al fastidio di prima (un avviso di troppo) — mai perdere una prenotazione per una riga di
+   * contabilità. 🚨 Ma si SCRIVE nel registro: un avviso falso che ricompare deve poter essere
+   * spiegato, e senza questa riga sembrerebbe che la cura non funzioni.
+   */
+  const lasciaRicevuta = async (
+    azione: string,
+    partita: { data: string; ora: string; campo: unknown },
+    gesti: GestoScritto[],
+  ): Promise<void> => {
+    try {
+      const righe = righeRicevuta({
+        azione,
+        richiestaDa: member?.name ?? '',
+        data: partita.data,
+        ora: partita.ora,
+        campo: partita.campo,
+        gesti,
+      });
+      if (!righe.length) return;
+      const { error } = await service.from('pmo_ricevute_gesti').insert(righe);
+      if (error) {
+        console.error(`[booking-write] ricevuta KO (${azione}) ${partita.data} ${partita.ora} C${partita.campo}: ${error.message} — il circolo potrebbe annunciare questo gesto al socio che l'ha fatto`);
+        return;
+      }
+      console.log(`[booking-write] ricevuta ${azione} ${partita.data} ${partita.ora} C${partita.campo}: ${righe.map((r) => `${r.persona}=${r.gesto}`).join(', ')}`);
+    } catch (e) {
+      console.error(`[booking-write] ricevuta KO (${azione}):`, clean((e as Error)?.message ?? 'errore'));
+    }
+  };
 
   // ── Identità → member (per member_id o phone) ────────────────────────────
   let memberQuery = service
@@ -781,6 +824,14 @@ Deno.serve(async (req: Request) => {
       });
     }
     console.log(`[booking-write] create OK ${slot.data} ${slot.ora} C${campo} per ${member.name}`);
+    // 🧾 Dal bot nasce una partita col SOLO organizzatore (`giocatori: [{ nome: member.name }]`),
+    // e l'organizzatore `eventi-staff` lo salta già perché è il primo dell'elenco. ⇒ Questa
+    // ricevuta oggi non copre niente, ed è una RETE: quel salto poggia sull'ORDINE dell'elenco
+    // del circolo, che è una convenzione di Matchpoint e non una promessa. Questa riga invece è
+    // un fatto nostro, e regge il giorno in cui l'ordine cambiasse.
+    await lasciaRicevuta('create', { data: slot.data, ora: slot.ora, campo }, [
+      { persona: member.name, gesto: 'aggiunto' },
+    ]);
     return ok({
       member: { id: member.id, name: member.name },
       created: true,
@@ -1050,6 +1101,12 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[booking-write] leave OK ${slot.data} ${slot.ora} C${campo}: esce ${mioNome} (erano in ${rosterUnito.length})`);
+    // 🧾 Sull'uscita il bot non avvisa NESSUNO, per decisione del committente — «avvisa tu i
+    // tuoi compagni». Ma il fatto che ne nasce riguarda **chi è uscito da sé**: senza ricevuta
+    // il circolo gli annuncerebbe la propria uscita, che è la voce 70 in persona.
+    await lasciaRicevuta('leave', { data: slot.data, ora: slot.ora, campo }, [
+      { persona: mioNome, gesto: 'tolto' },
+    ]);
     return ok({
       member: { id: member.id, name: member.name },
       left: true,
@@ -1250,6 +1307,12 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[booking-write] remove OK ${slot.data} ${slot.ora} C${campo}: ${member.name} toglie ${bersaglio.nome} (erano in ${esito.roster.length})`);
+    // 🧾 Qui chi subisce NON è chi chiede — ed è proprio il caso in cui il bot parla già, con
+    // `testoSeiStatoTolto`. Senza ricevuta la persona tolta riceverebbe due volte la stessa
+    // notizia, la seconda attribuita al circolo che non l'ha decisa.
+    await lasciaRicevuta('remove', { data: slot.data, ora: slot.ora, campo }, [
+      { persona: bersaglio.nome, gesto: 'tolto' },
+    ]);
     return ok({
       member: { id: member.id, name: member.name },
       removed: true,
@@ -1584,6 +1647,13 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[booking-write] add OK ${slot.data} ${slot.ora} C${campo}: ${member.name} fa entrare ${nomeSullaScheda} (codice ${codiceDaAggiungere}) — erano in ${esito.roster.length}`);
+    // 🧾⭐ È IL CASO DA CUI LA VOCE 70 NASCE, misurato il 21/08: Lidia tocca «Ci sto», il bot le
+    // dice «✅ Sei in campo», e il circolo glielo ripete. ⚠️ Si scrive `nomeSullaScheda` e non
+    // il nome della persona: è quello che il sync rileggerà dalla scheda del circolo, quindi è
+    // l'unico su cui il fatto e la ricevuta possono riconoscersi.
+    await lasciaRicevuta('add', { data: slot.data, ora: slot.ora, campo }, [
+      { persona: nomeSullaScheda, gesto: 'aggiunto' },
+    ]);
     return ok({
       member: { id: member.id, name: member.name },
       added: true,
@@ -1793,6 +1863,11 @@ Deno.serve(async (req: Request) => {
     });
   }
   console.log(`[booking-write] cancel OK ${slot.data} ${slot.ora} C${campo} per ${member.name} (${organizzatoreChePuo ? `organizzatore, erano in ${rosterSlot.length}` : 'era solo'})`);
+  // 🧾 L'annullamento tocca TUTTI quelli che c'erano — è l'unica eccezione dichiarata alla
+  // decisione ① — e il bot li avvisa già tutti (`testoPartitaAnnullata`). ⇒ La ricevuta è al
+  // plurale: una per ognuno, Ospiti esclusi (dietro non c'è nessuno da avvisare).
+  await lasciaRicevuta('cancel', { data: slot.data, ora: slot.ora, campo },
+    rosterSlot.map((persona: string) => ({ persona, gesto: 'annullata' as const })));
   return ok({
     member: { id: member.id, name: member.name },
     cancelled: true,
