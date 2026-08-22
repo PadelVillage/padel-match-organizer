@@ -3,6 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { riduci, type FattoInCoda } from './riduzione.ts';
 import { destinatarioPerNome, normNome, type SchedaMinima } from './identifica.ts';
 import { leggiImpaginato } from './impaginazione.ts';
+import {
+  copertura,
+  FINESTRA_RICEVUTA_MS,
+  TOLLERANZA_ANTICIPO_MS,
+  type Ricevuta,
+} from './ricevute.ts';
 
 // consumer-staff-events — il gestionale CONSEGNA al bot i fatti della segreteria (voce 68).
 //
@@ -134,11 +140,103 @@ Deno.serve(async (req: Request) => {
   const fatti = (righe ?? []) as FattoInCoda[];
   if (!fatti.length) return ok({ eventi: [], troncato: false });
 
+  // ── 1bis. QUALI DI QUESTI FATTI NON LI HA FATTI IL CIRCOLO (voce 70) ─────────────────
+  // 🗣️ Difetto misurato al secondo la notte del 21/08/2026: Lidia accetta un invito dal bot,
+  // il bot le dice «✅ Sei in campo», e fra i 4 e i 19 minuti dopo un avviso **del circolo** le
+  // annuncia la stessa cosa. Il gesto era suo.
+  //
+  // 🔎 `eventi-staff.ts` confronta due fotografie del calendario: vede *cosa* è cambiato e non
+  // può sapere **chi**. Ma il gestionale lo sa, perché la scrittura l'ha eseguita lui — e da
+  // oggi la lascia detta in `pmo_ricevute_gesti`. Qui le due cose si incontrano.
+  //
+  // 🚨⭐⭐ E SI FA QUI, PRIMA DELLA RIDUZIONE, non dopo: un socio che entra dal bot e che poi la
+  // **segreteria** toglie produce due fatti, `aggiunto` (suo) e `tolto` (del circolo). Scartando
+  // prima resta il `tolto` e lui lo sente; scartando dopo i due si sarebbero già fusi in un netto
+  // nullo e non avrebbe saputo di essere stato tolto. La prova sta in `ricevute.test.ts`.
+  //
+  // ⏱️ Si leggono solo le ricevute che possono riguardare QUESTI fatti: dal più vecchio di loro,
+  // meno la finestra. Non è un'ottimizzazione — è ciò che tiene la lettura piccola e prevedibile
+  // anche il giorno in cui la coda si allunga.
+  const vistoPiuVecchio = fatti
+    .map((f) => Date.parse(f.visto_at))
+    .filter((n) => Number.isFinite(n))
+    .reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY);
+  const daQuando = Number.isFinite(vistoPiuVecchio)
+    ? new Date(vistoPiuVecchio - FINESTRA_RICEVUTA_MS - TOLLERANZA_ANTICIPO_MS).toISOString()
+    : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: righeRic, error: ricErr } = await service
+    .from('pmo_ricevute_gesti')
+    .select('id, data, ora, campo, persona, gesto, scritta_at')
+    .is('usata_at', null)
+    .gte('scritta_at', daQuando)
+    .order('scritta_at', { ascending: true })
+    .limit(SUPABASE_PAGE_SIZE);
+  if (ricErr) {
+    // 🚨 Non si tira dritto: senza le ricevute questo giro rimanderebbe in circolo esattamente
+    // gli avvisi falsi che la voce 70 cura, e li manderebbe **davvero**. I fatti restano in coda
+    // e il giro dopo riprova. *Un avviso in ritardo è un fastidio; un avviso falso è una bugia.*
+    console.error('[staff-events] errore lettura ricevute:', ricErr.message);
+    return err(500, 'DB_ERROR', 'Errore lettura delle ricevute: niente consegnato.');
+  }
+  const ricevute = (righeRic ?? []) as Ricevuta[];
+  // 🚨⭐ SE IL TETTO MORDE SI FERMA, e questa riga è la lezione del 21/08 applicata prima di
+  // pagarla una seconda volta: là `.limit(5000)` ne restituiva 1000 e nessuno lo sapeva, perché
+  // *un limite che si dichiara non è un limite che si ottiene*. Qui una lettura tronca vorrebbe
+  // dire ricevute mancanti ⇒ avvisi falsi consegnati **davvero**, con la coda vuotata. I fatti
+  // restano dove sono e il giro dopo riprova.
+  if (ricevute.length >= SUPABASE_PAGE_SIZE) {
+    console.error(`[staff-events] ricevute troncate a ${ricevute.length}: niente consegnato.`);
+    return err(500, 'DB_ERROR', 'Troppe ricevute per un giro solo: niente consegnato.');
+  }
+  const { daConsegnare, coperti } = copertura(fatti, ricevute);
+
+  // Le ricevute consumate si marcano subito: se il giro morisse qui, il peggio che può capitare
+  // è che un fatto già scartato non trovi più la sua ricevuta — e quel fatto è già chiuso.
+  if (!dryRun && coperti.length) {
+    const adesso = new Date().toISOString();
+    const { error: chiudiRicErr } = await service
+      .from('pmo_eventi_staff')
+      .update({ consegnato_at: adesso })
+      .in('id', coperti.map((c) => c.fatto.id));
+    if (chiudiRicErr) {
+      // Se non si riesce a chiudere i coperti si ferma tutto: proseguire vorrebbe dire
+      // riesaminarli al giro dopo con le ricevute ormai consumate, cioè consegnarli.
+      console.error('[staff-events] errore chiusura dei coperti:', chiudiRicErr.message);
+      return err(500, 'DB_ERROR', 'Errore nella chiusura dei fatti coperti: niente consegnato.');
+    }
+    for (const c of coperti) {
+      const { error: usaErr } = await service
+        .from('pmo_ricevute_gesti')
+        .update({ usata_at: adesso, usata_da: c.fatto.id })
+        .eq('id', c.ricevuta.id);
+      if (usaErr) {
+        // ⚠️ Best effort col verso giusto: il fatto è già chiuso, quindi il danno di una
+        // ricevuta rimasta libera è al massimo un secondo gesto uguale coperto per sbaglio
+        // entro la finestra. Va scritto, però: è l'unica traccia che lo spiegherebbe.
+        console.error(`[staff-events] ricevuta ${c.ricevuta.id} non marcata usata: ${usaErr.message}`);
+      }
+    }
+  }
+  if (coperti.length) {
+    // 🚨 Si DICHIARA, uno per uno. Un avviso soppresso è indistinguibile da un fatto che non è
+    // successo, e senza questa riga la cura sarebbe invisibile tanto quanto il difetto.
+    for (const c of coperti) {
+      console.log(`[staff-events] non consegnato (l'ha fatto il socio): ${c.fatto.persona} ${c.fatto.gesto} ${c.fatto.data} ${c.fatto.ora} C${c.fatto.campo}`);
+    }
+  }
+  if (!daConsegnare.length) {
+    return ok({ eventi: [], troncato: false, coperti_da_ricevuta: coperti.length });
+  }
+
   // ── 2. La quiete e il netto ──────────────────────────────────────────────────────────
-  const ridotti = riduci(fatti, Date.now());
+  const ridotti = riduci(daConsegnare, Date.now());
   if (!ridotti.length) {
     // C'erano righe, ma sono tutte ancora calde: la segreteria sta lavorando adesso.
-    return ok({ eventi: [], troncato: false, in_attesa_di_quiete: fatti.length });
+    return ok({
+      eventi: [], troncato: false,
+      in_attesa_di_quiete: daConsegnare.length,
+      coperti_da_ricevuta: coperti.length,
+    });
   }
 
   // ── 3. Chi sono queste persone ───────────────────────────────────────────────────────
@@ -261,6 +359,7 @@ Deno.serve(async (req: Request) => {
   console.log(JSON.stringify({
     event: 'staff_events_consegna',
     inCoda: fatti.length,
+    copertiDaRicevuta: coperti.length,
     ridotti: ridotti.length,
     consegnati: eventi.length,
     nettoNullo: ridotti.length - daDire.length,
@@ -269,5 +368,11 @@ Deno.serve(async (req: Request) => {
     dryRun,
   }));
 
-  return ok({ eventi, troncato, non_riconosciuti: nonRiconosciuti, dry_run: dryRun });
+  return ok({
+    eventi,
+    troncato,
+    non_riconosciuti: nonRiconosciuti,
+    coperti_da_ricevuta: coperti.length,
+    dry_run: dryRun,
+  });
 });
