@@ -397,6 +397,64 @@ perché la certificazione di freschezza non arriva — quindi si perde l'**utili
 contano**, e chi ne cercasse le righe `error` otterrebbe **zero** con la stessa sicurezza con cui
 otterrebbe la verità. La diagnostica sta in un record `_last`, che ne tiene **una sola**.
 
+## 🔁 CHI CONFERMA, CHI REGISTRA, CHI PARLA — l'ordine dei tre passi (FERMA, 22/08/2026)
+
+🗣️ **Disegnata dal committente**, la sera in cui la voce 75 ha mostrato cosa costa sbagliare
+l'ordine. Sta qui e non fra i lavori perché non è un difetto da curare: è la forma che ogni gesto
+deve avere, oggi e dopo Matchpoint.
+
+> **Ogni gesto va detto al socio SOLO DOPO che il circolo l'ha confermato — e nello STESSO ISTANTE
+> dev'essere registrato dal gestionale.**
+
+⇒ Sono **due** metà che governano due momenti diversi, e si confondono facilmente:
+
+| | governa | se si sbaglia |
+|---|---|---|
+| **solo dopo** | il **parlare** | un rifiuto di Matchpoint lascia dei soci avvisati di una cosa mai successa |
+| **stesso istante** | il **registrare** | il socio legge «fatto» e un attimo dopo il gestionale non sa di cosa parli |
+
+🚨⭐⭐ **E LA CORREZIONE CHE HA DATO LUI, che vale più della regola stessa perché è quella che si
+sbaglia disegnandola:** l'ok di Matchpoint **torna al gestionale e si ferma lì**. Non prosegue verso
+il bot in nessuno dei due versi — né quando il gesto parte dalla segreteria, né quando parte dal
+socio. A parlare col socio è **sempre e solo il gestionale**.
+⚖️ Non è pignoleria di disegno: se Matchpoint rispondesse al bot, il giorno in cui lo si spegne il
+bot andrebbe riscritto. È la stessa ragione della regola qui sopra — *il bot non deve filarsi il
+worker* — vista dal verso del ritorno invece che dell'andata.
+
+```
+① gesto dalla SEGRETERIA
+   Segreteria → Gestionale → worker → Matchpoint
+                    ↑                      │
+                    └──────── ok ──────────┘   (si ferma qui)
+                    │
+                    └──→ Socio · bot          (solo adesso: avviso)
+
+② gesto dal SOCIO
+   Socio·bot → Gestionale → worker → Matchpoint
+                    ↑                      │
+                    └──────── ok ──────────┘   (si ferma qui)
+                    ├──→ ① copia locale        (registra: la partita, da noi)
+                    └──→ ② Socio · bot         (risponde)
+
+   ⛔ Socio·bot ⇠⇢ worker / Matchpoint : MAI, in nessuno dei due versi.
+```
+
+📌 **`①` e `②` del secondo schema non sono due momenti: sono lo stesso.** Registrare e rispondere
+partono insieme dalla conferma. È esattamente il punto in cui la voce 75 si era rotta — il bot
+diceva «✅ Prenotato» alle 20:58:32 e alle 20:58:57 il gestionale non trovava quella partita, perché
+la ② era partita senza la ①.
+
+🎯 **La prova che tiene onesta la regola, e si può applicare oggi a ogni riga nuova**: *il giorno in
+cui Matchpoint si spegne, il bot non si tocca.* Se una modifica al bot dovesse cambiare quel giorno,
+quella modifica è già sbagliata adesso.
+
+⏳ **Cosa NON è ancora vero, misurato il 22/08 e da non dare per fatto:** la metà «stesso istante»
+vale per la **creazione** (voce 75, in servizio da quella sera) ma **non per l'annullo** — un annullo
+dal bot non chiude la copia locale, che se n'è andata col sync **3′40″ dopo**. In quella finestra su
+Matchpoint il campo era libero e da noi risultava occupato. Gli altri gesti (entrare, uscire,
+togliere) **non sono stati misurati**: darli per buoni sarebbe prendere un esito visto una volta per
+una regola.
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.

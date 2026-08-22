@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **6** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 🆕 **22/08 sera: entra la 75**, segnalata da lui dal vivo col messaggio sullo schermo — il bot dice «✅ Prenotato» e il bottone che offre lui stesso risponde «non trovo quella partita» e manda in segreteria. Diagnosi fino alla riga; **metà A curata la sera stessa**, metà B no |
+| 🔴 **Urgenti** | **6** — quattro promosse **da lui** il 21/08 (**63**, **64**, **65**, **66**), dai difetti misurati la notte prima, più la **67** nata misurando lo stesso giorno. Quattro sono già curate e in servizio: restano aperte perché la **cura** non l'ha ancora vista succedere nessuno. 🆕 **22/08 sera: entra la 75**, segnalata da lui dal vivo col messaggio sullo schermo — il bot dice «✅ Prenotato» e il bottone che offre lui stesso risponde «non trovo quella partita» e manda in segreteria. Curata la sera stessa e **vista funzionare**; restano due residui sull'annullo dal bot |
 | 📋 **In coda** | **8** — la **68** (avvisi dal gestionale, curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** (curata il 22/08 e in servizio: resta finché non la si è vista succedere) e la **71** entrate nella notte del 21/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). La **62** è chiusa il 19/08. 🆕 **22/08: entrano la 72 e la 73**, segnalate dal committente dal vivo durante il collaudo — la seconda misurata fino alla causa, **curata e vista funzionare** lo stesso pomeriggio; la **72 è curata la sera** e resta aperta finché non la si è vista succedere. 🆕 **E nel pomeriggio entra la 74**, trovata da una sua domanda un'ora dopo: uno spostamento manda solo la metà cattiva della notizia |
 | 📦 **Chiuse** | **57** il 13–19/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -1671,7 +1671,7 @@ entro mezz'ora da un annullo in cui la prenotazione nuova **si vede**.
 nascosta come prima, e una soppressione **vecchia** — nata senza la lista — nasconde tutto lo slot
 come prima. Sono i casi che non si sanno leggere, e lì il verso prudente è quello di sempre.
 
-### **75** — 🚨 Il bot dice «✅ Prenotato», e il suo stesso bottone risponde «non trovo quella partita» — metà A CURATA, metà B no
+### **75** — 🚨 Il bot dice «✅ Prenotato», e il suo stesso bottone risponde «non trovo quella partita» — CURATA e VISTA, con due residui
 
 🗣️ **Segnalata da lui il 22/08 sera, dal vivo**, con lo schermo in mano: *«Questo è il messaggio che
 ho ricevuto sul bot»* — *«Non trovo più quella partita fra le tue: può essere già cambiata nel
@@ -1798,9 +1798,46 @@ sparire.
 altro motivo per cui un elenco può arrivare incompleto, e senza di lei quel ramo continua a mandare
 in segreteria per un'operazione riuscita.
 
-📌 **Perché resta APERTA**: la cura non l'ha ancora vista funzionare nessuno. Si chiude quando una
-riprenotazione su uno slot annullato **entro la stessa giornata** produce un «Invita» che funziona
-al primo tocco.
+✅⭐⭐ **LA METÀ A È STATA VISTA FUNZIONARE, la sera stessa e su una prenotazione vera.** Deploy su
+PROD alle 21:50 (#987); alle **21:54:28** il committente riprenota dal bot lo slot 31/08 · 11:00 ·
+Campo 1, sopra la lapide dell'annullo delle 10:54. La copia locale **nasce nell'istante della
+conferma** — `deleted: false`, `id_reserva 9587` — dove poche ore prima non nasceva affatto.
+⭐ **E si è vista funzionare anche la metà nascosta**: la lapide portava `giocatori: [Maurizio,
+Lidia]`, la riga nuova ha **solo Maurizio**. Senza la sostituzione al posto della fusione, quella
+partita sarebbe nata coi giocatori della morta.
+📏 Il bot, toccando «Invita» subito dopo, non ha più detto «non trovo più quella partita»: ha detto
+«sto ancora registrando». ⇒ **Il difetto è passato di gradino**, che era lo scopo.
+
+🩹 **METÀ B: non andava scritta — esisteva già.** La frase d'attesa è la cura della voce 71, e non si
+vedeva mai perché il flusso moriva un gradino prima. Curata la A, è diventata raggiungibile.
+🚨 **Ma appena visibile ha mostrato un difetto suo, segnalato da lui sul messaggio vero**: *«Se tu
+dici al socio di riprovare, lui riprova a prenotare. Non va sulle mie partite. La gente si
+confonde.»* ⇒ «Riprova» non diceva riprovare **COSA**, ed è la trappola della 72 spostata dall'esito
+all'**oggetto**: un'istruzione senza complemento, letta da chi ha prenotato venti secondi prima,
+produce la **doppia prenotazione**. E «fra un minuto» prometteva un tempo non mantenibile (oltre i
+7 giorni l'organizzatore arriva col giro pieno: misurati **4′21″**).
+✅ **Curata e in servizio ai soci** (bot #60, deploy #d65e94b, processo ripartito alle 22:20:01): si
+dice **«✅ La partita è prenotata: non rifarla»** prima di offrire il gesto, l'oggetto del riprovare
+diventa un **bottone** che rifà lo stesso tocco, e il tempo si dice **una volta sola** («Attendi un
+attimo…», sua scelta fra due proposte). Banco bot: **1459 verdi**, con due casi nuovi sul cablaggio
+e una guardia aggiornata — chiedeva `/riprova/i`, e la parola c'era: era la frase difettosa a
+soddisfarla.
+
+🆕🚨 **DUE REPERTI NUOVI, misurati la sera stessa e NON curati** — nascono dal fatto che *annullare
+dal bot e annullare dal gestionale non fanno la stessa cosa*:
+① **l'annullo dal bot non chiude la copia locale**: se n'è andata col sync **3′40″ dopo** (annullo
+22:25:10, sepoltura 22:28:50). In quella finestra su Matchpoint il campo era libero e da noi
+risultava occupato — ⚖️ il verso che fa male, perché è un socio che non gioca su un campo che c'è;
+② **quell'annullo si registra con data, ora e campo VUOTI**: `staff_cancel|||Campo |9587|consumer-…`
+contro `staff_cancel|2026-08-31|11:00|Campo 1|9571|…` di quello staff. L'`idReserva` c'è, ma chi
+cerca gli annulli **per slot** non li trova — ed è probabilmente lo stesso motivo per cui non parte
+la soppressione.
+📌 I due sono facce dello stesso pezzo mancante: chi scrive quell'annullo **lo slot non ce l'ha in
+mano**. È la metà «stesso istante» della regola nuova di `CLAUDE.md`, rotta sul verso dell'annullo.
+
+📌 **Perché resta APERTA**: la metà A è vista, la B è in servizio ma **non ancora vista** su una
+scrittura che fallisce, e i due reperti qui sopra sono aperti. Si chiude quando un annullo dal bot
+chiude la copia locale nello stesso istante, come la creazione la apre.
 
 ⚠️ **Due reperti collaterali, misurati la stessa sera e da NON confondere con questa voce:**
 ① **oltre i 7 giorni il ritardo del sync non è ~2 minuti, è fino a ~17.** Il tick `near` copre 7
