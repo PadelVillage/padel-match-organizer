@@ -1,5 +1,5 @@
 {
-  "versione": "v2.0",
+  "versione": "v2.1",
   "data_ultimo_aggiornamento": "2026-07-29T13:05:00.000Z",
   "aggiornato_da": "claude_maestro_lucas_vidal",
   "intents": {
@@ -123,14 +123,11 @@
     },
     "istruttore": {
       "valori_validi": [
-        "Santiago",
         "LoZio",
         "Spinazze",
         "Lucas Vidal"
       ],
       "fuzzy_match": {
-        "Santi": "Santiago",
-        "santi": "Santiago",
         "Lo Zio": "LoZio",
         "lo zio": "LoZio",
         "Spinazzi": "Spinazze",
@@ -140,7 +137,7 @@
         "Luca Vidal": "Lucas Vidal",
         "luca vidal": "Lucas Vidal"
       },
-      "domanda_se_manca": "Quale istruttore? (Santiago, LoZio, Spinazze, Lucas Vidal)",
+      "domanda_se_manca": "Quale istruttore? (LoZio, Spinazze, Lucas Vidal)",
       "attivata_quando": "tipo === 'lezione'"
     },
     "ricorrenza": {
