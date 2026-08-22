@@ -26,6 +26,8 @@ export type FattoInCoda = {
   gesto: 'aggiunto' | 'tolto' | 'annullata';
   /** Quando il sync l'ha visto, in ISO. */
   visto_at: string;
+  /** `lezione` o `partita` — la parola del GESTIONALE, non quella di Matchpoint (voce 74). */
+  tipo?: 'lezione' | 'partita' | null;
 };
 
 /** Cosa dire a una persona di una partita, dopo aver fuso tutto quello che le è successo. */
@@ -37,6 +39,12 @@ export type EsitoRidotto = {
   persona: string;
   /** `null` quando il netto è nullo: non c'è niente da dire, e i fatti si chiudono lo stesso. */
   gesto: 'aggiunto' | 'tolto' | 'annullata' | null;
+  /**
+   * Il tipo dello slot, dall'ULTIMO fatto della raffica — come tutto il resto qui.
+   * ⚖️ Non si fonde e non si vota: una partita non diventa una lezione a metà raffica, e se
+   * un giorno succedesse è comunque l'ultimo stato quello che si racconta.
+   */
+  tipo?: 'lezione' | 'partita' | null;
   /** Gli id dei fatti che questo esito riassume: si chiudono tutti insieme, detto o no. */
   ids: string[];
 };
@@ -164,6 +172,7 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       ora: ultimo.ora,
       campo: ultimo.campo,
       persona: ultimo.persona,
+      tipo: ultimo.tipo ?? null,
       gesto: statoFinale(gruppo.map((g) => g.gesto)),
       ids: gruppo.map((g) => g.id),
     });

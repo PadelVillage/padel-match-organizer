@@ -129,7 +129,7 @@ Deno.serve(async (req: Request) => {
   // diventare venti esiti. Tagliare prima di ridurre spezzerebbe una raffica a metà.
   const { data: righe, error: codaErr } = await service
     .from('pmo_eventi_staff')
-    .select('id, slot, data, ora, campo, persona, gesto, visto_at')
+    .select('id, slot, data, ora, campo, persona, gesto, visto_at, tipo')
     .is('consegnato_at', null)
     .order('visto_at', { ascending: true })
     .limit(1000);
@@ -332,7 +332,12 @@ Deno.serve(async (req: Request) => {
       persona: e.persona,
       pmo_player_id: chi.pmoPlayerId || null,
       member_id: chi.memberId || null,
-      partita: { data: e.data, ora: e.ora, campo: e.campo, slot: e.slot },
+      // ⭐ VOCE 74: `tipo` viaggia fino al bot perché le sue frasi dicono tutte «partita», e a
+      // una lezione vanno dette con la sua parola. È la parola del GESTIONALE (`lezione` /
+      // `partita`), tradotta a monte in `eventi-staff.ts`: qui non si ritraduce niente, o
+      // sarebbero due copie della stessa regola. `null` = non lo so ⇒ il bot dice «partita»,
+      // che è il comportamento di prima.
+      partita: { data: e.data, ora: e.ora, campo: e.campo, slot: e.slot, tipo: e.tipo ?? null },
     });
     daChiudere.push(...e.ids);
   }

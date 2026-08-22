@@ -127,5 +127,23 @@ test('i gesti si ordinano per istante, non per come arrivano dal database', () =
   assert.equal(e[0].gesto, null, 'tolto poi aggiunto = niente; l\'ordine sbagliato direbbe «tolto»');
 });
 
+// ── VOCE 74 — il tipo dello slot arriva fino a chi consegna ─────────────────────────────
+test('il tipo dello slot sopravvive alla riduzione: senza, il bot direbbe «partita» a una lezione', () => {
+  const base = { slot: '2026-08-25|12:30|1', data: '2026-08-25', ora: '12:30', campo: 'Campo 1', persona: 'Maria Pia Bettiol' };
+  const r = riduci([
+    { id: 'a', ...base, gesto: 'aggiunto', visto_at: '2026-08-22T10:00:00.000Z', tipo: 'lezione' },
+  ], new Date('2026-08-22T10:05:00.000Z'));
+  assert.equal(r.length, 1);
+  assert.equal(r[0].tipo, 'lezione');
+});
+
+test('un fatto VECCHIO senza tipo esce con null, non con undefined: il bot deve poter dire «non lo so»', () => {
+  const base = { slot: '2026-08-25|12:30|1', data: '2026-08-25', ora: '12:30', campo: 'Campo 1', persona: 'Maria Pia Bettiol' };
+  const r = riduci([
+    { id: 'a', ...base, gesto: 'aggiunto', visto_at: '2026-08-22T10:00:00.000Z' },
+  ], new Date('2026-08-22T10:05:00.000Z'));
+  assert.equal(r[0].tipo, null);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
