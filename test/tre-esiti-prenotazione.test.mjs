@@ -26,7 +26,10 @@ import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const MODULO = join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'esito-prenotazione.js');
-const { esitoIgnoto, erroreEsitoIgnoto, decidiEsitoDelLavoro, codiceDiRifiuto, chiusuraDelLavoroIgnoto } = await import(MODULO);
+const {
+  esitoIgnoto, erroreEsitoIgnoto, decidiEsitoDelLavoro, codiceDiRifiuto, chiusuraDelLavoroIgnoto,
+  esitoDellaRispostaWorker, salvataggioTentato, CODICI_FALLIMENTO_CERTO,
+} = await import(MODULO);
 
 const html = readFileSync(join(QUI, '..', 'index.html'), 'utf8');
 function estrai(nome) {
@@ -223,6 +226,109 @@ caso('17. robustezza: un payload nullo o storto non fa esplodere la decisione', 
     chiusuraDelLavoroIgnoto(undefined, 'si', {}).motivo === 'NON_IGNOTO',
     chiusuraDelLavoroIgnoto('unknown', 'si', {}).chiudibile === false,
     chiusuraDelLavoroIgnoto({ status: 'unknown' }, 'si', undefined).chiudibile === true,
+  ];
+});
+
+// ── ⚖️ VOCE 72 (22/08/2026): quando un RIFIUTO del worker non è un fallimento ────────────────
+// Il terzo esito nasceva in un punto solo — la `fetch` che non riceve risposta. Ma il worker sa
+// rifiutare anche **senza sapere com'è finita**: il timeout della sua coda smette di aspettare
+// un'operazione che sta ancora andando, e il click su «Salvare» può essere già partito.
+// ⇒ Qui si prova la regola che li separa. Il verso in cui deve sbagliare è UNO: verso l'ignoto.
+
+caso('18. 🚨🚨 IL DIFETTO DELLA 72: il TIMEOUT DELLA CODA non è un fallimento, è un ignoto', () => {
+  // È il caso vero: `Promise.race` ha smesso di aspettare, Playwright no. Se il click su
+  // «Salvare» era già partito, la prenotazione sul sistema del circolo C'È — e chiamarla
+  // «rifiutata» manda il socio a rifarla, cioè a occupare il campo due volte.
+  const corpo = { ok: false, error: 'QUEUE_JOB_TIMEOUT', message: 'Operazione "prenotazione · partita · Campo 2 · 19:00" oltre 180s: annullata per non bloccare la coda.' };
+  return [esitoDellaRispostaWorker(corpo) === 'ignoto'];
+});
+
+caso('19. ⭐ CONTROLLO POSITIVO: i rifiuti che il worker SA di dare restano certi', () => {
+  // Senza questo caso la cura sarebbe «chiama tutto ignoto», che toglie il danno insieme
+  // all'utilità: il socio aspetterebbe un quarto d'ora per sapere che il campo era occupato.
+  return [
+    esitoDellaRispostaWorker({ error: 'SLOT_NOT_FREE' }) === 'certo',
+    esitoDellaRispostaWorker({ error: 'INVALID_DATA' }) === 'certo',
+    esitoDellaRispostaWorker({ error: 'FICHA_FORM_NOT_VISIBLE' }) === 'certo',
+    esitoDellaRispostaWorker({ error: 'TABELLONE_CELL_NOT_FOUND' }) === 'certo',
+    esitoDellaRispostaWorker({ error: 'WORKER_UNAUTHORIZED' }) === 'certo',
+    // Il worker si ferma APPOSTA prima di salvare quando il giocatore non si è agganciato.
+    esitoDellaRispostaWorker({ error: 'PLAYER_ADD_INCOMPLETE' }) === 'certo',
+  ];
+});
+
+caso('20. 🚨⭐⭐ LA CREPA DENTRO «SAVE_BUTTON_NOT_FOUND»: lo stesso codice racconta due fatti opposti', () => {
+  // `clickFormSave` prova i selettori in fila. Se un click PARTE e poi fallisce — l'elemento si
+  // stacca perché la pagina sta già navigando, cioè proprio quando il salvataggio è riuscito —
+  // l'errore va da parte, il ciclo continua, e finisce con «bottone non trovato».
+  // ⇒ Senza questa distinzione l'elenco dei codici certi direbbe una bugia in un caso su due.
+  const nessunBottone = { error: 'SAVE_BUTTON_NOT_FOUND', diagnostic: { navigationAttempts: [] } };
+  const premutoEPoiBoh = { error: 'SAVE_BUTTON_NOT_FOUND', diagnostic: { navigationAttempts: [
+    { action: 'save_attempt', sel: '#CC_Datos_FormViewFicha_ButtonInsertarYSalir', error: 'Element is not attached to the DOM' },
+  ] } };
+  return [
+    esitoDellaRispostaWorker(nessunBottone) === 'certo',
+    esitoDellaRispostaWorker(premutoEPoiBoh) === 'ignoto',
+    salvataggioTentato(premutoEPoiBoh.diagnostic) === true,
+    salvataggioTentato(nessunBottone.diagnostic) === false,
+    // Il caso misurato il 19/08 (fallimento CERTO, la prenotazione non è mai esistita) resta certo.
+    esitoDellaRispostaWorker({ error: 'SAVE_BUTTON_NOT_FOUND' }) === 'certo',
+  ];
+});
+
+caso('21. 🚨⭐ FALLISCE CHIUSA: un codice che nessuno ha ancora scritto cade nell\'IGNOTO', () => {
+  // ⚖️ È il verso deliberato dell'elenco: si elencano i CERTI, non gli ignoti. Un elenco al
+  // contrario lascerebbe passare per «non è passata» ogni guasto futuro — e il guasto futuro è
+  // esattamente quello di cui non si sa niente.
+  // 🧨 E il sabotaggio che lo mostra: se la regola tornasse 'certo' sul codice sconosciuto,
+  //    questo caso diventerebbe rosso, e con lui il timeout del 18.
+  const sconosciuto = esitoDellaRispostaWorker({ error: 'BROWSER_DISCONNECTED_DOMANI' });
+  const alContrario = (c) => (c === 'QUEUE_JOB_TIMEOUT' ? 'ignoto' : 'certo'); // ⇐ l'elenco sbagliato
+  return [
+    sconosciuto === 'ignoto',
+    esitoDellaRispostaWorker({ error: '' }) === 'ignoto',
+    esitoDellaRispostaWorker({}) === 'ignoto',
+    alContrario('BROWSER_DISCONNECTED_DOMANI') === 'certo', // ⇐ il danno che l'elenco al contrario farebbe
+  ];
+});
+
+caso('22. robustezza: un corpo nullo, storto o senza diagnostic non fa esplodere la decisione', () => {
+  return [
+    esitoDellaRispostaWorker(null) === 'ignoto',
+    esitoDellaRispostaWorker('QUEUE_JOB_TIMEOUT') === 'ignoto',
+    esitoDellaRispostaWorker({ error: 'slot_not_free' }) === 'certo',     // minuscolo: stesso codice
+    esitoDellaRispostaWorker({ error: ' SLOT_NOT_FREE ' }) === 'certo',   // con spazi
+    salvataggioTentato(null) === false,
+    salvataggioTentato({ navigationAttempts: 'boh' }) === false,
+    salvataggioTentato({ navigationAttempts: [null, 'x', {}] }) === false,
+  ];
+});
+
+caso('23. il CABLAGGIO: dall\'ignoto nuovo esce lo stesso codice del vecchio', () => {
+  // Se `esitoDellaRispostaWorker` dice «ignoto», l'edge deve fabbricare l'errore MARCHIATO — cioè
+  // finire nella macchina che esiste già (voce 23 + voce 53), non in una strada nuova accanto.
+  const e = erroreEsitoIgnoto('Worker error 500: QUEUE_JOB_TIMEOUT');
+  return [
+    esitoIgnoto(e) === true,
+    codiceDiRifiuto(e) === 'WORKER_ESITO_IGNOTO',
+    decidiEsitoDelLavoro(e, 'Partita').status === 'unknown',
+    CODICI_FALLIMENTO_CERTO.has('QUEUE_JOB_TIMEOUT') === false,
+  ];
+});
+
+
+caso('24. 🔌 IL CABLAGGIO NELL\'EDGE: la regola non basta scriverla, bisogna che qualcuno la chiami', () => {
+  // ⚠️ Questo caso legge il SORGENTE, e va detto perché è l'eccezione: `callWorkerCreateBooking`
+  // è TypeScript per Deno e da Node non si esegue. ⇒ Prova che la chiamata **c'è**, non che
+  // succeda — che è meno di quanto valga per il resto di questo file, ma è tutto ciò che si può
+  // avere qui, e vale comunque: senza, la regola più giusta del mondo resta un modulo che
+  // nessuno importa. La prova che manca la dà il sabotaggio (`test/sabotaggi-voce-72.mjs`).
+  const edge = readFileSync(join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'index.ts'), 'utf8');
+  return [
+    /import\s*\{[^}]*esitoDellaRispostaWorker[^}]*\}\s*from\s*'\.\/esito-prenotazione\.js'/s.test(edge),
+    // Chiamata E conseguenza: il ramo 'ignoto' deve fabbricare l'errore MARCHIATO, se no
+    // finisce nella strada di prima con un nome nuovo.
+    /esitoDellaRispostaWorker\([^)]*\)\s*===\s*'ignoto'\s*\)\s*throw\s+erroreEsitoIgnoto\(/.test(edge),
   ];
 });
 
