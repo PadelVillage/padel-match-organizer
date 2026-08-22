@@ -25,6 +25,7 @@ import {
   erroreEsitoIgnoto,
   esitoDellaRispostaWorker,
 } from './esito-prenotazione.js';
+import { siPuoScrivereSopraLapide } from './lapide-prenotazione.js';
 
 type JsonMap = Record<string, unknown>;
 
@@ -261,8 +262,15 @@ async function saveStaffBookingRecord(opts: {
   actor: StaffActor;
   booking: BookingRequest;
   workerResult: JsonMap;
+  /**
+   * 🆕 22/08/2026 (voce 75) — l'istante in cui QUESTA scrittura è partita, cioè prima di
+   * chiamare il worker. Serve a distinguere una lapide che c'era già (un annullo precedente,
+   * sopra cui si scrive) da una arrivata nel frattempo (che può essere l'annullo proprio di
+   * ciò che stiamo scrivendo, e allora non si tocca). Senza, la regola fallisce chiusa.
+   */
+  scritturaIniziataAlle?: string | null;
 }) {
-  const { supabaseUrl, supabaseKey, actor, booking, workerResult } = opts;
+  const { supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle } = opts;
   const client = createClient(supabaseUrl, supabaseKey);
   // 🚨⭐⭐ LA CHIAVE È QUELLA DELL'APP, QUANDO L'APP CE LA DÀ (v6.172, 3/08/2026).
   // Prima si usava sempre `staff_booking|<data>|<ora>|Campo <n>|<userId>`, e l'app scriveva la SUA
@@ -283,14 +291,35 @@ async function saveStaffBookingRecord(opts: {
   // ciò che c'è già — `{...nostro, ...esistente}`, dove l'esistente vince campo per campo.
   const { data: esistente } = await client
     .from('pmo_cloud_records')
-    .select('payload, deleted')
+    .select('payload, deleted, updated_at')
     .eq('record_type', 'staff_booking')
     .eq('local_key', localKey)
     .maybeSingle();
 
-  // ⛔ Se quella riga è già una lapide, NON la si resuscita: rimetterla viva farebbe ricomparire
-  // una prenotazione annullata — è per definizione il fantasma che inseguiamo da luglio.
-  if (esistente?.deleted === true) return;
+  // ⛔ Se quella riga è già una lapide, di regola NON la si resuscita: rimetterla viva farebbe
+  // ricomparire una prenotazione annullata — è il fantasma che inseguiamo da luglio.
+  // 🆕 22/08/2026 (voce 75) — MA una lapide non vuol dire sempre quello. La chiave non contiene
+  // l'id della prenotazione, quindi due partite diverse sullo stesso slot, dello stesso attore,
+  // si dividono la riga: riprenotando uno slot annullato la seconda trovava la lapide della
+  // prima e usciva di qui SENZA SCRIVERE. ⇒ Il socio restava senza la sua prenotazione nella
+  // copia del gestionale fino al giro di sync, e il bot — che legge solo da lì — gli rispondeva
+  // «non trovo più quella partita fra le tue» venticinque secondi dopo avergli detto «Prenotato».
+  // La regola sta in `lapide-prenotazione.js`, è pura, ed è provata dal banco: qui si decide solo
+  // cosa farne. Il motivo si registra sempre — anche quando si scrive — perché «ho scritto sopra
+  // una lapide» è esattamente il fatto che un domani si vorrà poter cercare nel registro.
+  const verdettoLapide = siPuoScrivereSopraLapide({
+    lapide: esistente?.deleted === true,
+    payloadLapide: (esistente?.payload ?? null) as JsonMap | null,
+    idNuovo: idReserva,
+    sepoltaAlle: clean((esistente as JsonMap | null)?.updated_at) || null,
+    scritturaIniziataAlle: scritturaIniziataAlle ?? null,
+  });
+  if (esistente?.deleted === true) {
+    console.log(JSON.stringify({
+      event: 'lapide_incontrata', scritta: verdettoLapide.si, motivo: verdettoLapide.motivo, localKey, idReserva,
+    }));
+  }
+  if (!verdettoLapide.si) return;
 
   const giaScritto = (esistente?.payload ?? {}) as JsonMap;
 
@@ -337,7 +366,16 @@ async function saveStaffBookingRecord(opts: {
     if (scheda) nostro.descrizione = scheda;
   }
 
-  const payload = fondiPayloadPrenotazione(nostro, giaScritto);
+  // 🚨⭐⭐ SOPRA UNA LAPIDE NON SI FONDE — 22/08/2026, voce 75, e senza questa riga la cura
+  // avrebbe creato un difetto peggiore di quello che chiude. La fusione esiste per non
+  // cancellare il roster che l'app ha aggiornato dopo di noi: `{...nostro, ...esistente}`, dove
+  // l'esistente VINCE campo per campo. Ma i campi di una lapide sono quelli dell'ALTRA partita,
+  // quella annullata — nome, giocatori, `id_reserva` vecchi. Fondendoli, la prenotazione nuova
+  // sarebbe nata indossando i panni della morta: un roster sbagliato, e per il bot un elenco che
+  // nomina gente che in campo non c'è.
+  // ⇒ Su una riga VIVA si fonde (l'altra copia può saperne di più); su una lapide si sostituisce
+  //   in pieno (quella riga non sa più niente di vero).
+  const payload = esistente?.deleted === true ? nostro : fondiPayloadPrenotazione(nostro, giaScritto);
 
   // 🚨⭐⭐ 11/08/2026 — SI GUARDA L'ESITO. Qui il difetto della migrazione non c'era
   // (`staff_booking` è sempre stato fra i tipi ammessi, ed è il motivo per cui «dal bot si
@@ -425,9 +463,13 @@ async function runBookingJobInBackground(opts: {
   // fallire una prova che invece è andata a buon fine. Il circolo, anche qui, non si chiama.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create_async', jobId, booking }));
+    // 🆕 22/08 (voce 75): anche la prova segna l'istante. Senza, la regola della lapide
+    // fallisce chiusa e su TEST la copia locale non nascerebbe mai su uno slot riprenotato —
+    // cioè proprio il difetto che si sta curando, sopravvissuto nell'unico ramo che è di qua.
+    const scritturaIniziataAlle = new Date().toISOString();
     const workerResult = esitoDiProva('create');
     try {
-      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
       await writeBookingJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
       return;
@@ -440,10 +482,14 @@ async function runBookingJobInBackground(opts: {
     });
     return;
   }
+  // 🆕 22/08 (voce 75): si segna PRIMA di chiamare il circolo. Una lapide più vecchia di questo
+  // istante non può essere l'annullo di questa prenotazione — un annullo non precede ciò che
+  // annulla — e su quella si scrive.
+  const scritturaIniziataAlle = new Date().toISOString();
   try {
     const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
     try {
-      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
       console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
     }
@@ -683,9 +729,13 @@ Deno.serve(async (req: Request) => {
   // che un caso costruito apposta va a verificare). Il perché sta in `scrittura-al-circolo.ts`.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create', booking }));
+    // 🆕 22/08 (voce 75): anche la prova segna l'istante. Senza, la regola della lapide
+    // fallisce chiusa e su TEST la copia locale non nascerebbe mai su uno slot riprenotato —
+    // cioè proprio il difetto che si sta curando, sopravvissuto nell'unico ramo che è di qua.
+    const scritturaIniziataAlle = new Date().toISOString();
     const workerResult = esitoDiProva('create');
     try {
-      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
       // ⚖️ Qui il rifiuto di prima torna a servire, ed è il verso giusto: se la registrazione non
       // è riuscita, la partita NON esiste da nessuna parte — dirle «fatto» sarebbe la bugia che
@@ -720,6 +770,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // Call browser worker
+  // 🆕 22/08 (voce 75): come nella strada asincrona, l'istante si segna PRIMA della chiamata.
+  const scritturaIniziataAlle = new Date().toISOString();
   let workerResult: JsonMap;
   try {
     workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
@@ -739,7 +791,7 @@ Deno.serve(async (req: Request) => {
 
   // Save record to DB
   try {
-    await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult });
+    await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
   } catch (dbErr) {
     // Non-fatal: worker succeeded, just log
     console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
