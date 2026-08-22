@@ -296,3 +296,109 @@ export function fotografia(
   }
   return foto;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ VOCE 73 — LA FOTOGRAFIA DI PRIMA NON È «COSA C'È ADESSO CHE È VECCHIO»: È COSA C'ERA
+//    L'ULTIMA VOLTA CHE HO GUARDATO. E qualcuno, nel frattempo, riscriveva il passato.
+//
+// 📏 Misurato il 22/08/2026, non dedotto: due partite annullate dal gestionale alle 10:53:59 e
+// 10:54:08 UTC, e **zero fatti** in coda. Il socio non ha saputo niente — ed è il gesto che gli
+// toglie il campo: chi non lo sa **si presenta a giocare**.
+//
+// 🔎 LA CAUSA È UNA CURA DELL'INTERFACCIA CHE NE SPEGNE UN'ALTRA. L'app, annullando, seppellisce
+// subito le proprie copie `booking` dello slot (`deleted: true` — «v5.897, Cura del
+// flicker-annullo», in `index.html`): senza, per qualche secondo un refresh ri-mostrava la
+// partita appena annullata. Ma la fotografia di PRIMA nasce da `pmo_cloud_records` letto con
+// `.eq('deleted', false)` ⇒ al giro dopo, quello slot **nella fotografia di prima non c'è già
+// più**.
+// ⇒ *La partita non è sparita fra le due fotografie: nella prima non c'era.* Nessuna sparizione,
+//   nessun fatto, nessun avviso.
+//
+// ⚖️ È IL ROVESCIO ESATTO DEL PREGIO DELLA VOCE 68. Confrontare **dati** invece di **eventi**
+// regala il «toccato ≠ cambiato» e costa i cambiamenti che qualcun altro ha già scritto nella
+// fotografia. La voce 70 era la stessa scelta che nasconde **CHI**; questa è la stessa scelta
+// che nasconde **CHE COSA**, quando a cambiarlo è l'app.
+//
+// 🔨 LA CURA — e la parte da capire è PERCHÉ non basta «leggere anche le righe sepolte».
+// Sepolte lo sono anche quelle che il sync stesso mette via ogni giro, quando una partita
+// sparisce da Matchpoint per davvero: resuscitarle **tutte** rifarebbe nascere, un giro dopo,
+// i fatti già dichiarati — un «la tua partita è stata annullata» al giro, per sempre.
+// ⇒ Si resuscita **solo ciò che l'app dichiara di aver seppellito lei**, e la dichiarazione
+//   esiste già e non è stata inventata per l'occasione: `staff_suppress`, che l'app scrive
+//   nello stesso istante e per lo stesso slot (`supp|<data>|<campo>|<ora>`). Il sync una
+//   soppressione non la scrive **mai** ⇒ le sue lapidi non possono entrare da questa porta.
+//
+// ⏱️ E la finestra è «da quando ho guardato l'ultima volta», non «gli ultimi N minuti»: una
+// soglia a tempo farebbe rientrare lo stesso slot per più giri di fila. Il confine è
+// l'`importedAt` del giro precedente, che è l'istante in cui è stato preso l'export — quindi
+// *ciò che l'app ha dichiarato dopo che avevo già guardato*, cioè esattamente ciò che il giro
+// precedente non poteva vedere.
+//
+// ⚠️ IL RESIDUO, dichiarato: se l'annullo su Matchpoint cade nei pochi secondi **fra** l'export
+// del giro precedente e la dichiarazione dell'app, il fatto può nascere due volte — una dal
+// giro precedente (che nell'export vedeva già lo slot sparito) e una da qui. Non si perde
+// nessun avviso e non se ne inventa nessuno: se ne dice uno due volte, e a fonderli c'è già la
+// riduzione di `consumer-staff-events`, che ragiona per coppia (persona, partita).
+// ⇒ Il verso in cui questa cura sbaglia è **ripetere**, mai **tacere**: è il verso giusto per
+//   un avviso che, mancando, manda qualcuno al campo per niente.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/** Una riga sepolta (`deleted: true`) come arriva da `pmo_cloud_records`. */
+export type RigaSepolta = { payload?: Record<string, unknown> | null };
+
+/** Una soppressione dichiarata dall'app: lo slot che ha appena annullato. */
+export type SoppressioneDichiarata = {
+  payload?: Record<string, unknown> | null;
+  deleted?: boolean | null;
+  updated_at?: string | null;
+};
+
+/**
+ * Gli slot che l'app dichiara di aver annullato **dopo** il confine, come chiavi di slot.
+ *
+ * 🚨 `deleted` si guarda: una soppressione ritirata (l'annullo rifiutato da Matchpoint, e l'app
+ * che rimette a posto) non deve resuscitare niente — lì la partita non è mai sparita.
+ * 🚨 Un `updated_at` illeggibile vale **fuori finestra**: davanti a un istante che non si sa
+ * leggere, il verso prudente è non resuscitare — al massimo si perde un avviso, che è il danno
+ * piccolo, invece di rifarne nascere uno vecchio, che è quello grosso.
+ */
+export function slotDichiaratiAnnullati(
+  soppressioni: SoppressioneDichiarata[],
+  confineIso: string,
+): Set<string> {
+  const confine = Date.parse(String(confineIso ?? ''));
+  const slot = new Set<string>();
+  if (!Number.isFinite(confine)) return slot;   // confine ignoto ⇒ non si resuscita niente
+  for (const s of soppressioni || []) {
+    if (s?.deleted === true) continue;
+    const quando = Date.parse(String(s?.updated_at ?? ''));
+    if (!Number.isFinite(quando) || quando <= confine) continue;
+    const p = (s?.payload || {}) as Record<string, unknown>;
+    const chiave = chiaveSlot(p?.data, p?.ora, p?.campo);
+    if (chiave.split('|').every((pezzo) => pezzo)) slot.add(chiave);
+  }
+  return slot;
+}
+
+/**
+ * Le righe sepolte che tornano nella fotografia di PRIMA: quelle, e soltanto quelle, degli slot
+ * che l'app dichiara di aver annullato dopo il confine.
+ *
+ * ⇒ Torna i **payload**, cioè quello che `fotografia()` sa leggere: la riga sepolta se li porta
+ * ancora dietro interi, roster compreso (`descrizione`), ed è ciò che rende la cura possibile
+ * senza chiedere niente a nessuno — l'elenco di chi c'era è già lì, nella lapide.
+ */
+export function sepoltiDaResuscitare(
+  sepolti: RigaSepolta[],
+  soppressioni: SoppressioneDichiarata[],
+  confineIso: string,
+): Array<Record<string, unknown>> {
+  const slot = slotDichiaratiAnnullati(soppressioni, confineIso);
+  if (!slot.size) return [];
+  const fuori: Array<Record<string, unknown>> = [];
+  for (const r of sepolti || []) {
+    const p = (r?.payload || {}) as Record<string, unknown>;
+    if (slot.has(chiaveSlot(p?.data, p?.ora, p?.campo))) fuori.push(p);
+  }
+  return fuori;
+}

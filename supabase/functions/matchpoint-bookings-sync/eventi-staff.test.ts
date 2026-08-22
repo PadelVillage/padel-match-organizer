@@ -8,6 +8,8 @@ import {
   fotografia,
   normNome,
   puoRicevere,
+  sepoltiDaResuscitare,
+  slotDichiaratiAnnullati,
   type SlotRoster,
 } from './eventi-staff.ts';
 
@@ -266,6 +268,102 @@ test('33. il calo fisiologico della mezzanotte non falsa la guardia del crollo',
   const f = fattiDaConfronto(foto(...ieri, a, b), foto(b), '2026-08-22');
   assert.equal(f.length, 1);
   assert.equal(f[0].persona, 'Maurizio Aprea');
+});
+
+// ── VOCE 73 — le righe che l'app ha seppellito tornano nella fotografia di PRIMA ────────────
+//
+// 🚨 Il caso 34 è quello MISURATO il 22/08: due partite annullate dal gestionale, zero fatti.
+// I dati sono le righe vere lette su PROD, `descrizione` compresa.
+
+/** Una lapide come sta in `pmo_cloud_records`: il payload se lo porta dietro intero. */
+const lapide = (data: string, ora: string, campo: string, descr: string) =>
+  ({ payload: { data, ora, campo, descrizione: descr } });
+
+/** Una soppressione dichiarata dall'app per uno slot, a un certo istante. */
+const soppressione = (data: string, ora: string, campo: number, updated_at: string, deleted = false) =>
+  ({ payload: { data, ora, campo }, deleted, updated_at });
+
+const CONFINE = '2026-08-22T10:52:00.000Z';
+
+test('34. l\'annullo dal gestionale torna a produrre fatti (il caso del 22/08)', () => {
+  const sepolti = [
+    lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.-Lidia Comes.'),
+    lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.-Lidia Comes.'),
+  ];
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z')];
+  const risorti = sepoltiDaResuscitare(sepolti, supp, CONFINE);
+  assert.equal(risorti.length, 2, 'tornano tutte le copie dello slot');
+
+  // E dal confronto escono i due `annullata`, uno per persona — che è ciò che mancava.
+  // Il contorno c'è per la guardia del crollo: un «dopo» vuoto non è un annullamento di massa,
+  // è un export mozzato, e da lì non deve uscire NIENTE (caso 8).
+  const prima = new Map([...fotografia(risorti, roster), ...foto(...contorno(4))]);
+  const f = fattiDaConfronto(prima, foto(...contorno(4)), '2026-08-22');
+  assert.equal(f.length, 2);
+  assert.deepEqual(f.map((x) => x.persona).sort(), ['Lidia Comes', 'Maurizio Aprea']);
+  assert.ok(f.every((x) => x.gesto === 'annullata'));
+});
+
+test('35. le lapidi del SYNC non risorgono: senza soppressione non passa niente', () => {
+  // È la protezione che rende la cura possibile. Il sync seppellisce righe a ogni giro, quando
+  // una partita sparisce da Matchpoint per davvero: se entrassero anche loro, il fatto già
+  // dichiarato rinascerebbe a ogni giro, per sempre.
+  const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, [], CONFINE), []);
+});
+
+test('36. una soppressione PRIMA del confine non resuscita niente (niente doppioni al giro dopo)', () => {
+  const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:40:00.000Z')];
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, supp, CONFINE), []);
+});
+
+test('37. una soppressione RITIRATA non resuscita niente', () => {
+  // L'annullo rifiutato da Matchpoint: l'app rimette a posto e ritira la soppressione. Lì la
+  // partita non è mai sparita, e un «annullata» sarebbe una bugia.
+  const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z', true)];
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, supp, CONFINE), []);
+});
+
+test('38. la soppressione resuscita SOLO il proprio slot', () => {
+  const sepolti = [
+    lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.'),
+    lapide('2026-08-31', '11:00', 'Campo 1', '-Marco Aprea.'),
+    lapide('2026-08-31', '09:30', 'Campo 2', '-Lidia Comes.'),
+  ];
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z')];
+  const risorti = sepoltiDaResuscitare(sepolti, supp, CONFINE);
+  assert.equal(risorti.length, 1);
+  assert.equal(risorti[0].descrizione, '-Maurizio Aprea.');
+});
+
+test('39. un istante illeggibile vale FUORI finestra: si tace, non si ripete', () => {
+  const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, [soppressione('2026-08-31', '09:30', 1, 'boh')], CONFINE), []);
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, [soppressione('2026-08-31', '09:30', 1, '')], CONFINE), []);
+  // E un CONFINE illeggibile spegne tutto: non si sa da quando guardare ⇒ non si guarda.
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z')];
+  assert.deepEqual(sepoltiDaResuscitare(sepolti, supp, 'mai'), []);
+  assert.equal(slotDichiaratiAnnullati(supp, '').size, 0);
+});
+
+test('40. una soppressione senza slot leggibile non entra', () => {
+  const rotte = [
+    { payload: { data: '', ora: '09:30', campo: 1 }, deleted: false, updated_at: '2026-08-22T10:53:59.000Z' },
+    { payload: { data: '2026-08-31', ora: '', campo: 1 }, deleted: false, updated_at: '2026-08-22T10:53:59.000Z' },
+    { payload: { data: '2026-08-31', ora: '09:30', campo: '' }, deleted: false, updated_at: '2026-08-22T10:53:59.000Z' },
+  ];
+  assert.equal(slotDichiaratiAnnullati(rotte, CONFINE).size, 0);
+});
+
+test('41. il campo si confronta a CIFRE: «Campo 1» della lapide e l\'1 della soppressione sono lo stesso slot', () => {
+  // La lapide porta `campo: "Campo 1"` (come lo scrive Matchpoint), la soppressione `campo: 1`
+  // (come lo scrive l'app). Confrontarli come stringhe non troverebbe mai niente — e la cura
+  // sarebbe verde nelle prove e muta in produzione.
+  const sepolti = [lapide('2026-08-31', '09:30', 'Campo 1', '-Maurizio Aprea.')];
+  const supp = [soppressione('2026-08-31', '09:30', 1, '2026-08-22T10:53:59.000Z')];
+  assert.equal(sepoltiDaResuscitare(sepolti, supp, CONFINE).length, 1);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
