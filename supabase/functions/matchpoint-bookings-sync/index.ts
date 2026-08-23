@@ -4,7 +4,13 @@ import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
-import { fattiDaConfronto, fotografia, sepoltiDaResuscitare } from './eventi-staff.ts';
+import {
+  fattiDaConfronto,
+  finestraDedup,
+  fotografia,
+  sepoltiDaResuscitare,
+  togliGiaDichiarati,
+} from './eventi-staff.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -1512,18 +1518,67 @@ Deno.serve(async (req) => {
         (d) => playersFromDescrizione(d as string),
       );
       const fatti = fattiDaConfronto(primaFoto, dopoFoto, todayIsoRome());
-      if (fatti.length) {
+
+      // ── 🚨⭐⭐ VOCE 76 — CIÒ CHE IL GESTIONALE HA GIÀ DETTO NON SI RIDICE ──────────────
+      // Dalla risposta del committente del 23/08: *il sync resta rete*. Le due strade si
+      // sommano, ma un gesto raccontato due volte sono **due messaggi allo stesso socio** —
+      // e un avviso doppio è allarme per un fatto che non è successo (voce 63).
+      // ⚖️ La finestra è quella che il confronto copre davvero (dal giro precedente, più un
+      // margine), non una costante: il perché — la pausa notturna del sync — sta per esteso
+      // accanto a `finestraDedup`.
+      // 🚨 FALLISCE APERTO, ed è deliberato: se questa lettura in più non riesce si accodano
+      // TUTTI i fatti. Il rischio diventa un doppione; fallire chiuso vorrebbe dire non
+      // accodare niente, cioè un silenzio — e fra i due il progetto ha già scelto che il
+      // silenzio è il danno peggiore quando riguarda un campo che salta.
+      let scartatiPerchéGiaDetti = 0;
+      let daAccodare = fatti;
+      const daQuandoConferme = finestraDedup(confineVoce73);
+      if (fatti.length && daQuandoConferme) {
+        try {
+          const { data: gia, error: giaErr } = await admin
+            .from('pmo_eventi_staff')
+            .select('slot, persona, gesto')
+            .eq('origine', 'conferma')
+            .gte('visto_at', daQuandoConferme);
+          if (giaErr) throw giaErr;
+          const esito = togliGiaDichiarati(fatti, gia || []);
+          daAccodare = esito.daAccodare;
+          scartatiPerchéGiaDetti = esito.scartati.length;
+        } catch (dedupErr) {
+          console.warn(JSON.stringify({
+            event: 'eventi_staff_dedup_saltato',
+            error: String(dedupErr),
+            daQuando: daQuandoConferme,
+          }));
+        }
+      }
+
+      if (daAccodare.length) {
         const { error: codaError } = await admin
           .from('pmo_eventi_staff')
-          .insert(fatti.map((f) => ({ ...f, visto_at: importedAt })));
+          // 🚨⭐⭐ `origine` NON si scrive qui, ed è una scelta contro l'istinto. Scriverlo
+          // esplicito sarebbe più chiaro da leggere, ma legherebbe **il calendario di 2800
+          // soci** all'essere già stata applicata la migrazione della voce 76: colonna
+          // assente ⇒ insert rifiutato ⇒ `eventi_staff_error` ⇒ **nessun avviso, a nessuno**.
+          // ⚖️ Omettendolo, questa riga funziona identica nei due mondi — col default `'sync'`
+          // se la colonna c'è, e senza colonna se non c'è ancora — e a valle `origine` assente
+          // vale comunque `sync` (quiete piena). *Il verso in cui si sbaglia resta l'attesa.*
+          // 📌 È la lezione di `staff_edit`, pagata l'11/08: un CHECK che non ammetteva il tipo
+          // faceva rifiutare il registro dal database, e per mesi le righe sono state **zero**
+          // su TEST e su PROD senza che nessuno se ne accorgesse.
+          .insert(daAccodare.map((f) => ({ ...f, visto_at: importedAt })));
         if (codaError) throw codaError;
-        eventiStaffAccodati = fatti.length;
+        eventiStaffAccodati = daAccodare.length;
       }
       console.log(JSON.stringify({
         event: 'eventi_staff',
         slotPrima: primaFoto.size,
         slotDopo: dopoFoto.size,
         accodati: eventiStaffAccodati,
+        // ⭐ Si conta a parte perché «ne ho accodati meno» e «il gestionale l'aveva già detto»
+        // sono due cose diverse, e una delle due è un guasto. Senza questa riga la voce 76
+        // non sarebbe verificabile dai log.
+        giaDettiDallaConferma: scartatiPerchéGiaDetti,
       }));
     } catch (err) {
       // 🚨 `warn` e non `error`: al calendario non è successo niente: l'upsert è andato.

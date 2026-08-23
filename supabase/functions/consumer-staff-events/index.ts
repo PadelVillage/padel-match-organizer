@@ -127,17 +127,46 @@ Deno.serve(async (req: Request) => {
   // ── 1. I fatti ancora in coda ────────────────────────────────────────────────────────
   // Si legge PIÙ del tetto: la riduzione fonde le raffiche, quindi mille righe possono
   // diventare venti esiti. Tagliare prima di ridurre spezzerebbe una raffica a metà.
-  const { data: righe, error: codaErr } = await service
-    .from('pmo_eventi_staff')
-    .select('id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da')
-    .is('consegnato_at', null)
-    .order('visto_at', { ascending: true })
-    .limit(1000);
-  if (codaErr) {
-    console.error('[staff-events] errore lettura coda:', codaErr.message);
+  // 🔄 VOCE 76 — `origine` si legge perché governa QUANTO SI ASPETTA (`quietaDovuta`), e
+  // ⛔ non esce di qui: nella risposta al bot non c'è e non ci deve andare. Al bot arrivano i
+  // gesti che già conosce — è il paletto 4, zero righe nel suo repo.
+  // ⚠️ Le colonne si passano come VARIABILE, e ha un prezzo dichiarato: supabase-js deduce la
+  // forma del risultato solo da una stringa letterale, quindi da qui in poi il tipo non lo
+  // garantisce più il compilatore — lo garantisce `COLONNE`, che è l'unica fonte dei nomi.
+  // Chi tocca questa stringa deve guardare `FattoInCoda`.
+  const COLONNE = 'id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da';
+  const leggiCoda = async (colonne: string) => {
+    const esito = await service
+      .from('pmo_eventi_staff')
+      .select(colonne)
+      .is('consegnato_at', null)
+      .order('visto_at', { ascending: true })
+      .limit(1000);
+    return {
+      righe: (esito.data ?? []) as unknown as FattoInCoda[],
+      errore: esito.error,
+    };
+  };
+
+  let { righe, errore } = await leggiCoda(`${COLONNE}, origine`);
+  if (errore) {
+    // 🚨⭐⭐ SI RIPROVA SENZA `origine`, e non è una gentilezza: se la migrazione della voce 76
+    // non fosse ancora applicata su questo progetto, chiedere una colonna che non esiste
+    // fermerebbe **tutti gli avvisi a tutti i soci**, in silenzio e senza che il guasto
+    // assomigli alla sua causa.
+    // ⚖️ Il ripiego non perde niente di importante: `origine` assente vale `sync`, cioè la
+    // quiete piena — si torna al comportamento di prima della voce, che è esattamente ciò che
+    // deve succedere finché la colonna non c'è.
+    // 📌 È la lezione di `staff_edit` (11/08): un tipo non ammesso dal database faceva
+    // rifiutare la scrittura, e le righe sono state zero per mesi senza che nessuno lo vedesse.
+    console.warn(`[staff-events] coda senza 'origine' (${errore.message}): riprovo senza — quiete piena per tutti`);
+    ({ righe, errore } = await leggiCoda(COLONNE));
+  }
+  if (errore) {
+    console.error('[staff-events] errore lettura coda:', errore.message);
     return err(500, 'DB_ERROR', 'Errore lettura della coda.');
   }
-  const fatti = (righe ?? []) as FattoInCoda[];
+  const fatti = righe;
   if (!fatti.length) return ok({ eventi: [], troncato: false });
 
   // ── 1bis. QUALI DI QUESTI FATTI NON LI HA FATTI IL CIRCOLO (voce 70) ─────────────────

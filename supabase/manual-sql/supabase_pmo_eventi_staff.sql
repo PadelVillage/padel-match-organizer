@@ -65,10 +65,27 @@ create table if not exists public.pmo_eventi_staff (
   -- le coordinate vecchie: chi scrive il messaggio deve reggere senza.
   da jsonb,
 
+  -- 🚨⭐⭐ VOCE 76 (23/08/2026) — CHI HA RIEMPITO IL FATTO: la CONFERMA del circolo, o lo
+  -- SPECCHIO. Fino alla 76 l'unico riempitore era `matchpoint-bookings-sync`, che vive
+  -- **leggendo Matchpoint** ⇒ il giorno dello spegnimento gli avvisi non rallentavano:
+  -- cessavano. Adesso le due strade si SOMMANO (paletto 5): la conferma è quella veloce e
+  -- quella che sopravvive al distacco, il sync resta la rete per ciò che cambia su Matchpoint
+  -- senza passare da noi (chi prenota al banco sul vecchio sistema).
+  -- ⚖️ Governa due cose e nessuna delle due esce verso il bot: il DEDUP (il sync non racconta
+  -- una seconda volta ciò che la conferma ha già detto) e la QUIETE — su una conferma
+  -- `visto_at` è l'istante VERO del gesto, mentre da sync è l'istante del GIRO.
+  --    Aggiunta con `alter table` su qqbf… e su cudi… (migrazione `voce76_origine_del_fatto`).
+  origine text not null default 'sync',
+
   -- 🔄 `spostata` è entrato il 23/08 con la regola del committente: «gli avvisi se devono
   -- arrivare devono arrivare corretti fino in fondo». Prima uno spostamento usciva come
   -- `annullata`, che è falso — chi legge «annullata» dà la partita per persa.
-  constraint pmo_eventi_staff_gesto_check check (gesto in ('aggiunto', 'tolto', 'annullata', 'spostata'))
+  constraint pmo_eventi_staff_gesto_check check (gesto in ('aggiunto', 'tolto', 'annullata', 'spostata')),
+
+  -- 🚨 Il `check` c'è perché questa colonna governa QUANTO SI ASPETTA prima di parlare a un
+  -- socio: un valore inatteso finirebbe nel ramo «non è una conferma» e allungherebbe l'attesa
+  -- in silenzio. Meglio un rifiuto del database, che si vede.
+  constraint pmo_eventi_staff_origine_check check (origine in ('sync', 'conferma'))
 );
 
 -- Il ritiro chiede sempre «cosa non è ancora consegnato»: l'indice parziale tiene piccolo
@@ -81,6 +98,14 @@ create index if not exists idx_pmo_eventi_staff_da_consegnare
 create index if not exists idx_pmo_eventi_staff_coppia
   on public.pmo_eventi_staff(persona, slot)
   where consegnato_at is null;
+
+-- Voce 76 — il dedup chiede sempre la stessa cosa: «di questo slot, per questa persona, con
+-- questo gesto, c'è già una dichiarazione da conferma nell'ultimo quarto d'ora?». Le righe da
+-- conferma sono la minoranza e quelle vecchie non interessano: l'indice parziale tiene piccolo
+-- l'unico accesso caldo.
+create index if not exists idx_pmo_eventi_staff_conferme_recenti
+  on public.pmo_eventi_staff(slot, persona, gesto, visto_at)
+  where origine = 'conferma';
 
 -- ── Chi può leggerla ──────────────────────────────────────────────────────────────────────
 -- 🚨 Nessuno, se non il service role. Questa tabella dice CHI GIOCA CON CHI e QUANDO per

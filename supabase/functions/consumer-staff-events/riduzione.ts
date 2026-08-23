@@ -26,8 +26,24 @@ export type FattoInCoda = {
   gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata';
   /** 🔄 Solo su `spostata`: lo slot di PARTENZA. Le altre coordinate sono quelle d'arrivo. */
   da?: { data: string; ora: string; campo: string } | null;
-  /** Quando il sync l'ha visto, in ISO. */
+  /**
+   * Quando il fatto è stato visto, in ISO.
+   *
+   * 🚨⭐⭐ VOCE 76 — DA QUI IN POI QUESTO ISTANTE VUOL DIRE DUE COSE DIVERSE, e a dire quale
+   * è `origine`. Da `conferma` è l'istante **vero** del gesto (il circolo ha appena detto sì);
+   * da `sync` è l'istante del **giro**, che è ciò che rendeva impossibile accorciare la quiete.
+   */
   visto_at: string;
+  /**
+   * 🚨⭐⭐ VOCE 76 — CHI HA RIEMPITO IL FATTO. `conferma`: il gestionale l'ha dichiarato appena
+   * il circolo ha confermato. `sync`: lo specchio l'ha ri-scoperto rileggendo Matchpoint.
+   *
+   * ⚠️ Assente vale **`sync`**, ed è il verso prudente: i fatti già in coda al momento della
+   * migrazione, e qualunque riga di cui non si sappia la provenienza, tengono la quiete piena.
+   * Sbagliare qui significa parlare troppo presto a un socio.
+   * ⛔ NON esce verso il bot: governa quanto si aspetta, non cosa si dice.
+   */
+  origine?: 'sync' | 'conferma' | null;
   /** `lezione` o `partita` — la parola del GESTIONALE, non quella di Matchpoint (voce 74). */
   tipo?: 'lezione' | 'partita' | null;
 };
@@ -61,6 +77,44 @@ export type EsitoRidotto = {
  * ha fatto. Misurarli dal primo consegnerebbe a metà di una raffica lunga.
  */
 export const QUIETE_MS = 2 * 60 * 1000;
+
+/**
+ * 🚨⭐⭐ VOCE 76 — LA QUIETE QUANDO L'ISTANTE È QUELLO VERO, e perché è stata RIPENSATA invece
+ * che abbassata. *(23/08/2026, risposta del committente: «sì, ma più corta».)*
+ *
+ * ⚖️ Il commento qui sopra spiega perché due minuti non si potevano toccare: la quiete non
+ * misura il gesto, misura la distanza fra due `visto_at`, e `visto_at` era **l'istante del
+ * giro di sync**. Due gesti fatti a dieci secondi l'uno dall'altro ma caduti in giri diversi
+ * risultavano distanti quanto i giri — quindi una quiete più corta di un giro non fondeva
+ * quasi niente, e il caso che perdeva era proprio *togli-e-rimetti fatto in fretta*.
+ *
+ * ⇒ Quella premessa CADE per i fatti che nascono da una conferma: lì `visto_at` è l'istante in
+ * cui il circolo ha detto sì, cioè il gesto stesso. La domanda «la segreteria ha finito?» non
+ * si risponde più per ipotesi sul timbro, perché il timbro è esatto.
+ *
+ * 🚨 E PERCHÉ NON ZERO, che sarebbe la conclusione affrettata: questo resta un **margine**, non
+ * un'attesa. Serve a raccogliere due dichiarazioni che il gestionale emette a pochi secondi
+ * l'una dall'altra sullo stesso socio e sulla stessa partita. Non serve più a indovinare se
+ * la segreteria ha finito — a quella domanda, con l'istante vero in mano, non si risponde più
+ * tirando a indovinare.
+ *
+ * ⛔ E SI APPLICA SOLO SE **TUTTI** I FATTI DEL GRUPPO VENGONO DA UNA CONFERMA. Basta che uno
+ * arrivi dal sync perché il gruppo torni alla quiete piena: dentro c'è un timbro impreciso, e
+ * misurare una distanza fra un istante vero e uno approssimato dà un numero che non vuol dire
+ * niente. *Il verso in cui si sbaglia resta aspettare troppo, mai parlare troppo presto.*
+ */
+export const QUIETE_DA_CONFERMA_MS = 30 * 1000;
+
+/**
+ * Quanto si aspetta prima di parlare, per questo gruppo di fatti.
+ *
+ * ⚠️ `origine` assente vale `sync`: una riga di cui non si sappia la provenienza tiene la
+ * quiete piena. È lo stesso verso prudente della colonna nel database.
+ */
+export function quietaDovuta(gruppo: readonly FattoInCoda[]): number {
+  const tuttiDaConferma = gruppo.length > 0 && gruppo.every((f) => f.origine === 'conferma');
+  return tuttiDaConferma ? QUIETE_DA_CONFERMA_MS : QUIETE_MS;
+}
 
 /**
  * 🚨⭐⭐ PERCHÉ LA QUIETE NON SI ABBASSA SOTTO UN GIRO DI SYNC — 22/08/2026, e il conto è
@@ -177,7 +231,10 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
     // Una data illeggibile non deve bloccare la coda per sempre: si tratta come matura.
     // ⚖️ Il verso è deliberato — il rischio è consegnare un attimo troppo presto, non
     // trattenere qualcosa all'infinito, e una riga che non esce mai è un guasto silenzioso.
-    if (Number.isFinite(visto) && adesso - visto < QUIETE_MS) continue;
+    // 🔄 VOCE 76 — l'attesa dipende da CHI ha riempito i fatti: un gruppo tutto nato da
+    // conferme porta istanti veri e si consegna col solo margine; basta un fatto dal sync
+    // perché il gruppo torni alla quiete piena.
+    if (Number.isFinite(visto) && adesso - visto < quietaDovuta(gruppo)) continue;
 
     esiti.push({
       slot: ultimo.slot,

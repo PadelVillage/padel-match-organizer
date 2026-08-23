@@ -1436,7 +1436,94 @@ no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
 
-### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — PROMOSSA da lui il 23/08
+### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — CURATA, in attesa della migrazione
+
+🔄 **23/08 sera — LE QUATTRO DOMANDE HANNO AVUTO RISPOSTA E LA CURA È SCRITTA.** Restava fuori
+solo un pezzo, ed è dichiarato in fondo: **la migrazione non è ancora applicata**, quindi la
+strada nuova non è ancora in servizio. Il codice però è stato scritto per **reggere senza** —
+vedi «la migrazione che non ferma niente», che è la parte da non perdere.
+
+📌 **Le risposte del committente**, che erano bloccanti e sono state chieste prima di scrivere:
+
+| | domanda | risposta |
+|---|---|---|
+| ① | il `da` di uno spostamento | **non serviva decidere**: l'app lo manda già |
+| ② | se la conferma arriva e il fatto non si scrive | **il sync resta rete** |
+| ③ | la quiete di 2 minuti | **sì ma più corta**, e solo dove l'istante è vero |
+| ④ | quali gesti | **`spostata` e `annullata`** |
+
+🔎 **LA ① SI È SCIOLTA GUARDANDO, non decidendo — ed è la cosa più istruttiva della giornata.**
+La scheda chiedeva *«lo porta l'app, o si ricava dalla copia locale prima di sovrascriverla?»*:
+due strade, ognuna con un costo. La misura ne ha tolta una terza da sotto il naso — **l'app lo
+manda da sempre**. Quando la segreteria sposta una partita, il corpo della richiesta porta
+`campo/data/ora` (la partenza) accanto a `move` (l'arrivo), perché al worker servono per
+ritrovare la prenotazione sul tabellone. Ad arrivare al registro era però solo `move`:
+`saveStaffEditRecord` scriveva `idReserva, move, players, note, istruttore` e **buttava le tre
+coordinate di partenza**.
+⇒ *Prima di aggiungere una fonte, guardare cosa arriva già e si sta scartando.* La domanda non
+aveva due risposte: ne aveva una che nessuna delle due nominava.
+
+⚙️ **COM'È FATTA, in cinque pezzi** — i primi due sono la strada nuova, gli altri tre la
+rendono sicura:
+
+- **Ⓐ chi dichiara** — `matchpoint-bookings-edit` e `matchpoint-bookings-cancel`, appena il
+  worker conferma, mettono il fatto in `pmo_eventi_staff` (`_shared/fatti-da-conferma.ts` per
+  le regole, `_shared/dichiara-fatti.ts` per il database). **L'ok di Matchpoint si ferma lì**:
+  al bot arriva un fatto dalla coda che legge da sempre.
+- **Ⓑ chi c'è in campo** — si legge dalla **copia locale**, non si chiede a nessuno. 🚨 E si
+  legge **PRIMA** del gesto, perché subito dopo quella copia è una tomba (l'app la seppellisce,
+  voce 73) e il roster sarebbe vuoto proprio quando serve. Si dichiara invece **DOPO** la
+  conferma, che è la regola del 22/08. *Le due metà non si possono invertire.*
+- **Ⓒ il dedup** — il sync non ridice ciò che è già stato detto. ⭐ E la finestra **non è una
+  costante**: è il confine del giro precedente (più un margine), lo stesso che la voce 73 usa
+  per le lapidi. Una finestra a tempo sarebbe stata sbagliata di **cinque ore** nel caso della
+  **pausa notturna** del sync (01:00-06:00), che nessun `N` ragionevole avrebbe coperto.
+- **Ⓓ la quiete** — 2 minuti restano dove `visto_at` è l'istante del *giro*; dove è quello
+  *vero* scendono a **30 secondi**, che è un **margine, non un'attesa**. ⛔ Basta **un** fatto
+  dal sync nel gruppo e si torna ai 2 minuti: misurare una distanza fra un istante esatto e uno
+  approssimato dà un numero che non vuol dire niente.
+- **Ⓔ lo spostamento «puro»** — se il gesto muove la partita **e** cambia i giocatori, la
+  conferma **non dichiara niente** e la cosa resta al sync. Dire `spostata` a tutti sarebbe
+  falso per chi è stato tolto, e il sync poi direbbe anche `tolto`: due messaggi che si
+  contraddicono. ⇒ *Dove la conferma non sa dire tutto, tace invece di dire metà.*
+
+🚨⭐⭐ **LA MIGRAZIONE CHE NON FERMA NIENTE — il difetto che stava per rientrare dalla finestra.**
+Scritto il codice, la colonna `origine` era chiesta in quattro punti. Tre degradano da soli; il
+quarto e il quinto **no**, e sono i due che contano:
+· il **sync** inseriva `origine: 'sync'` esplicito ⇒ colonna assente = insert rifiutato =
+  `eventi_staff_error` = **nessun avviso, a nessuno**;
+· `consumer-staff-events` la **chiedeva nella select** ⇒ colonna assente = **nessuna consegna**.
+⇒ Curati: il sync **non scrive** quella colonna (il default fa lo stesso lavoro, e senza colonna
+la riga passa uguale), e la lettura **riprova senza** se la prima fallisce.
+⚖️ È la lezione di `staff_edit`, pagata l'11/08: un `CHECK` che non ammetteva il tipo faceva
+rifiutare la scrittura dal database, e le righe sono state **zero su TEST e su PROD per mesi**
+senza che nessuno se ne accorgesse. *Una cura che pretende che una migrazione sia già passata è
+una cura che, il giorno in cui non lo è, spegne ciò che voleva accendere.*
+
+✅ **LA MIGRAZIONE È APPLICATA**, su TEST e su PROD, il 23/08 — autorizzata da lui a voce
+(*«ti do il permesso di fare la migrazione»*). Verificata dopo, non data per fatta: colonna e
+indice presenti su tutti e due i progetti, e su `qqbf…` i **100** fatti già in coda sono tutti
+`origine = 'sync'` ⇒ tengono la quiete piena, cioè il comportamento di ieri. Zero `conferma`, che
+è giusto finché il codice non è in servizio.
+
+⏳ **COSA MANCA, e non si dà per fatto**: ① il **merge delle due PR** — fino a lì la strada nuova
+non esiste e tutto passa dal sync; ② la cura **non è stata vista sul bersaglio**: va guardata su
+uno spostamento vero, misurando che il tempo gesto→messaggio scenda dai **9′03″** della prova
+della 74. Finché non lo si è visto, questa voce **non si chiude**.
+
+🚨 **E una trappola del deploy, misurata leggendo il workflow**: `deploy-edge-functions-*.yml`
+sceglie cosa pubblicare con `awk '$3 !~ /^_/'` ⇒ **le cartelle che iniziano per `_` sono
+saltate**. Toccare solo `_shared/` non manda in servizio niente. Qui il deploy parte perché nello
+stesso commit cambiano anche le edge che quel modulo lo chiamano — ma chi un domani correggesse
+`fatti-da-conferma.ts` **da solo** vedrebbe la CI verde e il difetto ancora vivo.
+
+📌 **E la 76 NON assorbe l'annullo dal bot** (domanda ④): là il gesto parte dal socio e la copia
+locale se ne va col sync, misurato 3′40″ il 22/08. Questa voce cura l'annullo fatto **dalla
+segreteria**. L'altro resta da fare, e non è la stessa cosa.
+
+---
+
+#### La scheda com'era quando è stata promossa (23/08 pomeriggio)
 
 🗣️ **Promossa dal committente il 23/08 pomeriggio** (*«mettila tra le urgenti»*), dopo che la
 prova della voce 74 gli aveva messo il ritardo davanti all'orologio: *«questi tempi sono troppo
