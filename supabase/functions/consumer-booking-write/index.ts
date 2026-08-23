@@ -510,6 +510,8 @@ Deno.serve(async (req: Request) => {
   type DayBooking = RigaSlot & {
     id: string; copiaInApp: boolean; payload: JsonMap;
     campo: number; idReserva: string; ora: string; tipo: string;
+    /** Quale PRENOTAZIONE è questa riga — vedi `identitaPrenotazione` più sotto. */
+    prenotazione: string;
   };
   const dayBookings: DayBooking[] = [];
   const occupazioni: Occupazione[] = [];
@@ -539,6 +541,19 @@ Deno.serve(async (req: Request) => {
       // qui perché a valle le righe sono già state ridotte a questo tipo.
       descrizione: clean(p.descrizione),
       idReserva: clean(p.id_reserva ?? p.idReserva),
+      // ⭐⭐ QUALE PRENOTAZIONE È QUESTA RIGA — e la chiave è `numero`, non `idReserva`.
+      //
+      // 📏 Misurato su PROD il 23/08/2026, perché la differenza non si vede leggendo: sulle
+      // **122** righe `booking` vive, `numero` c'è **122** volte e `idReserva` solo **70**.
+      // ⇒ `idReserva` sta sulla CAPOFILA; le righe degli altri giocatori ne sono prive. Contare
+      // per `idReserva` avrebbe contato le capofila, non le prenotazioni — e sulle righe senza
+      // avrebbe contato zero.
+      // ⭐ Dove ci sono entrambi non discordano **mai** (0 su 70): non è una scelta fra due
+      //   verità, è la stessa scritta in due posti, uno dei quali completo.
+      // ⚠️ Gli `staff_booking` `numero` non ce l'hanno affatto: lì la chiave resta `id_reserva`,
+      //   ed è la stessa della riga sincronizzata — la copia locale e la sua sorgente cadono nello
+      //   stesso gruppo invece di sembrare due prenotazioni.
+      prenotazione: clean(p.numero) || clean(p.id_reserva ?? p.idReserva),
       tipo: clean(p.tipo),
     });
   }
@@ -865,6 +880,31 @@ Deno.serve(async (req: Request) => {
     const esitoVerifica = rosterDelloSlot(righeVerifica, GIOCATORI_PARTITA);
     const presente = [...esitoVerifica.chiavi.keys()].some((nn) => nameVariants.has(nn));
 
+    // 🚨⭐⭐ QUANTE prenotazioni, non SE ce n'è una — la cura del 23/08/2026.
+    //
+    // Lo stesso roster, ma calcolato **una prenotazione per volta** invece che sull'intero slot.
+    // ⇒ Un socio in due prenotazioni distinte dello stesso campo alla stessa ora conta **due**,
+    // ed è il doppione: prima passava per un `si`, cioè per la frase «era andata a buon fine».
+    //
+    // ⚖️ FALLISCE VERSO L'UNO, di proposito: una riga senza identità non fa gruppo a sé (il
+    // `continue`), e se nessuna ne ha una il conteggio resta 0 e comanda `presente` come prima.
+    // Il verso sbagliato costerebbe un allarme di doppione a chi non ne ha: si può solo
+    // trasformare un `si` in un `doppione`, mai perdere un `si`.
+    // 📏 Sulla copia di PROD del 23/08 gli slot vivi con più di una prenotazione distinta erano
+    // **zero**: la cura non nasce con dei falsi allarmi già addosso.
+    const perPrenotazione = new Map<string, DayBooking[]>();
+    for (const r of righeVerifica) {
+      if (!r.prenotazione) continue;
+      const gruppo = perPrenotazione.get(r.prenotazione);
+      if (gruppo) gruppo.push(r);
+      else perPrenotazione.set(r.prenotazione, [r]);
+    }
+    let quante = 0;
+    for (const righe of perPrenotazione.values()) {
+      const roster = rosterDelloSlot(righe, GIOCATORI_PARTITA);
+      if ([...roster.chiavi.keys()].some((nn) => nameVariants.has(nn))) quante += 1;
+    }
+
     // ⭐ LA FRESCHEZZA: `synced_at` più recente fra le righe prenotazione, cioè l'ultimo giro di
     // sync ATTERRATO. Si guardano TUTTE le righe, anche le cancellate: una cancellata porta
     // l'istante in cui è stata vista l'ultima volta, che è comunque un giro atterrato.
@@ -881,12 +921,18 @@ Deno.serve(async (req: Request) => {
 
     const verdetto = verdettoScrittura({
       presente,
+      quante,
       scrittaAlle,
       copiaFrescaAl,
       giornoSlot: slot.data,
       oggi: today,
     });
-    console.log(`[booking-write] verifica ${slot.data} ${slot.ora} C${campo} per ${member.name}: ${verdetto.esito}/${verdetto.motivo} (copia al ${copiaFrescaAl ?? '—'})`);
+    // ⭐ Le PRENOTAZIONI entrano nel registro, ed è la riga che mancava il 23/08: quella di allora
+    // diceva «verifica 2026-08-31 09:30 C1 per Maurizio Aprea» — data, ora, campo, nome, e
+    // nessun modo di sapere QUALE prenotazione si stesse guardando. Chi ha dovuto capire cosa
+    // era successo ha potuto misurarlo solo dal comportamento.
+    const quali = [...perPrenotazione.keys()].join(',') || '—';
+    console.log(`[booking-write] verifica ${slot.data} ${slot.ora} C${campo} per ${member.name}: ${verdetto.esito}/${verdetto.motivo} (copia al ${copiaFrescaAl ?? '—'}, sue ${quante} di ${perPrenotazione.size} [${quali}])`);
     return ok({
       member: { id: member.id, name: member.name },
       ...verdetto,

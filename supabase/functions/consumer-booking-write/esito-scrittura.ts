@@ -53,8 +53,18 @@ export const FINESTRA_SYNC_GIORNI = 30;
 export const MARGINE_SCRITTURA_S = 150;
 
 export type Verdetto = {
-  /** `si` = c'è, `no` = non c'è (e lo sappiamo davvero), `non_ancora` = non lo sappiamo. */
-  esito: 'si' | 'no' | 'non_ancora';
+  /**
+   * `si` = c'è, `no` = non c'è (e lo sappiamo davvero), `non_ancora` = non lo sappiamo.
+   *
+   * 🚨⭐⭐ `doppione` = ce ne sono DUE, ed è il quarto esito, nato il 23/08/2026. Non è una
+   * sfumatura del `si`: è il danno che tutta la macchina dell'`esito_ignoto` esiste per
+   * evitare, e fino a oggi usciva **certificato come successo**.
+   * ⚖️ Un bot che non lo conosce lo legge come `non_ancora` (`verificaScrittura` tiene solo
+   * `si`/`no` e manda tutto il resto sul verso prudente) e dice «non riesco ad avere conferma
+   * da qui, chiedi in segreteria». ⇒ Il gestionale può andare avanti da solo: chi resta
+   * indietro perde l'utilità, non la verità — e soprattutto **smette di certificare il danno**.
+   */
+  esito: 'si' | 'no' | 'non_ancora' | 'doppione';
   /** Perché, in una parola sola: è quello che il bot traduce, e serve identico nei log. */
   motivo: string;
   /**
@@ -90,6 +100,22 @@ export function giornoPiu(giorno: string, n: number): string {
 export function verdettoScrittura(o: {
   /** Il socio risulta dentro quello slot nella copia del gestionale? */
   presente: boolean;
+  /**
+   * ⭐ Quante PRENOTAZIONI DISTINTE di quello slot contengono il socio.
+   *
+   * 🚨 È la cura del 23/08/2026, e la domanda che risolve **non è quella che sembra**. «È
+   * passata la MIA?» resta senza risposta certa e ci resterà: la `verifica` esiste solo dopo un
+   * `esito_ignoto`, cioè dopo che il worker non ha mai risposto, quindi quella prenotazione un
+   * identificativo non ce l'ha mai avuto. *La chiave con cui la si vorrebbe cercare è la cosa
+   * che l'evento da diagnosticare ha distrutto.*
+   * ⇒ La domanda che invece **ha** risposta certa è «ce ne sono DUE?», ed è l'unica delle due
+   * che protegge qualcuno: nel verso pericoloso — prima passata, socio che rifà — oggi la
+   * verifica ne trovava una, diceva «era andata a buon fine» e il doppione restava invisibile.
+   *
+   * ⚠️ Chi non sa contare passa `undefined`, e allora comanda `presente` come prima: questo
+   * campo può trasformare un `si` in un `doppione`, MAI un `si` in un `no`.
+   */
+  quante?: number;
   /** Istante in cui la scrittura è partita (ISO). Senza, un «no» non si può dire. */
   scrittaAlle: string | null;
   /** `max(synced_at)` delle righe prenotazione: l'ultimo giro di sync ATTERRATO (ISO). */
@@ -99,6 +125,11 @@ export function verdettoScrittura(o: {
   /** Oggi a Roma, `YYYY-MM-DD`. */
   oggi: string;
 }): Verdetto {
+  // 🚨 PRIMA del `si`, ed è tutta la cura: il `si` è vero anche quando ce ne sono due — dirlo
+  // per primo sarebbe rispondere alla domanda facile e tacere quella che costa.
+  // ⚖️ E non serve la freschezza: due righe distinte nella copia sono due prenotazioni vere sul
+  // Matchpoint del circolo, comunque vecchia sia la copia. Nessun sync ne inventa una.
+  if ((o.quante ?? 0) >= 2) return { esito: 'doppione', motivo: 'piu_di_una', attendere: false };
   if (o.presente) return { esito: 'si', motivo: 'trovata', attendere: false };
 
   // Fuori dalla finestra dell'export: la copia non ne saprà mai niente, e aspettare è tempo
