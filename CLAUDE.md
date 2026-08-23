@@ -484,6 +484,38 @@ parola che nessuno gli manda), poi la **migrazione** del `CHECK`, poi il **gesti
 contrario, per la finestra fra i due deploy quel fatto non lo direbbe **nessuno** — peggio di un
 messaggio sbagliato.
 
+## 🤝 COME SI PROCEDE: la delega del committente (FERMA, 23/08/2026 sera)
+
+🗣️ Sue parole, date la sera in cui la voce 77 è stata ritirata, curata e rimessa in servizio nel
+giro di due ore — prima *«Proveremo sempre come tu pensi sia corretto»*, poi corretta lui stesso
+in **larghezza**:
+
+> *«Procediamo sempre come tu pensi sia corretto per la buona riuscita del progetto.»*
+
+⇒ **Non si chiede il permesso per ogni passo.** Il metodo, l'ordine dei lavori dentro una voce, come
+si prova una cura e quando la si mette in servizio: decide chi lavora. Chiedere conferma a ogni
+gesto non è prudenza — è **scaricare la decisione su di lui** e rallentare tutto.
+
+⛔ **COSA LA DELEGA NON TOCCA, e non lo tocca perché lo ha deciso LUI, non per timidezza:**
+· 🚨 **le promozioni dalla coda alle urgenti restano sue** — è la regola in testa a questo file,
+  nata il 13/08 da una sessione che scelse da sé su cosa lavorare. Una delega sul *come* non
+  cancella una regola sul *cosa*: si propone, non si esegue;
+· ciò che è **irreversibile o si vede da fuori** (una scrittura vera sul Matchpoint del circolo, un
+  messaggio che parte verso i soci, `--allow-writes` su PROD) si **dice prima**, anche procedendo.
+
+✅ **COSA LA RENDE SICURA — tre obblighi che stanno in piedi al posto del permesso:**
+① **ogni cura si dichiara per quello che ha provato E per quello che NON ha provato.** Una guardia
+   testuale si dice testuale; un banco verde non è un messaggio arrivato a qualcuno;
+② **si misura invece di dedurre**, e quando la misura smentisce ciò che era scritto qui, si
+   **corregge la riga vecchia** invece di affiancarla;
+③ 🚨⭐⭐ **se una prova che sta per fare LUI non proverebbe niente, lo si ferma PRIMA, non dopo.**
+   È il caso da cui la delega nasce: il 23/08 alle 17:20 la cura della 77 era ancora commentata, e
+   l'annullo che stava per fare sarebbe passato **senza esercitare niente**. Fermarlo cinque minuti
+   è costato cinque minuti; scoprirlo dopo sarebbe costato la prenotazione, il gesto e la finestra.
+
+📌 *Una delega larga non è il permesso di decidere in silenzio: è l'obbligo di decidere e di
+dichiarare cosa si è deciso.*
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.
