@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **4** — 🆕 la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 4
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,89 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
+
+🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
+perché, dichiarato**: è un **«no» falso su una scrittura avvenuta**, cioè la specie di errore che
+questo progetto tratta come la più grave — e la stessa classificazione che ha sbagliato qui
+governa anche la **create**, dove «riprova» su una prenotazione riuscita vuol dire **doppia
+prenotazione**. Scavalca solo delle attese.
+
+📏 **LA CATENA, misurata al secondo e con due sonde che non si parlano** (il registro del bot e
+lo schermo di Matchpoint fotografato dal committente):
+
+| ora | cosa |
+|---|---|
+| 23:37:28 | il committente conferma l'annullo del 31/08 · 09:00 · Campo 1 **dal bot** |
+| **23:39:59** | il bot risponde: *«🔧 Non ci sono riuscito — Non voglio lasciarti nel dubbio: la tua prenotazione è rimasta com'era. Riprova fra poco»* |
+| 23:43 | su **Matchpoint** il Campo 1 alle 09:00 è **vuoto**: la partita non c'è più |
+
+🔎 **E che non l'abbia annullata nessun altro è misurato, non supposto**: in tutta la mezz'ora
+non esiste **nessun** `staff_cancel` né `staff_suppress` (l'app, annullando, li scrive sempre) e
+**nessuna ricevuta** per l'annullo in `pmo_ricevute_gesti` — c'è solo quella del «tolto Marco»
+delle 23:37:19. ⇒ L'unica mano che ha toccato quello slot è **il bot**.
+
+🚨⭐⭐ **È LA VOCE 72 AL ROVESCIO, ED È IL CASO CHE QUELLA VOCE ESISTE PER EVITARE.** La 72 aveva
+curato *«non dire riprova su un'operazione che potrebbe essere passata»* introducendo
+`esitoDellaRispostaWorker`: i codici del **fallimento certo** elencati, e **tutto il resto
+ignoto**. Qui il verdetto è stato **«certo»** su una scrittura **riuscita** ⇒ o quel codice è
+nell'elenco dei certi e non dovrebbe esserci, o il worker ha risposto un codice che significa due
+cose — che è la stessa crepa già trovata dentro `SAVE_BUTTON_NOT_FOUND` (*nessun bottone c'era*
+contro *ho premuto e non so com'è finita*), stavolta sull'**annullo** invece che sulla create.
+
+⏱️ **E il contorno che ha reso il caso possibile**: il **sync era fermo** — ultimo giro riuscito
+**23:35:27**, e alle 23:43 erano passati **8 minuti** contro una cadenza di 2. ⇒ Il worker era in
+difficoltà, l'annullo ha impiegato **2′31″** invece di ~10 secondi, e la copia locale non ha
+potuto smentire la frase perché era **più vecchia del gesto** (23:34:04, cioè prima delle 23:37).
+📌 *Una frase che afferma sul passato va verificata su un dato più fresco del gesto: qui non
+c'era, e nessuno se n'è accorto perché la frase non dichiara su cosa poggia.*
+
+🗣️⭐ **L'IPOTESI DEL COMMITTENTE, agli atti come ipotesi e non come causa**: *«secondo me il
+problema sta sull'ospite»*. ⚖️ **Cosa la sostiene**: l'annullo riuscito della voce **77**
+(18:06:50, ~pochi secondi) era su una partita col **solo** Maurizio; quello di stanotte, lento
+(2′31″) e raccontato male, era su una partita con **due «Ospite»**. E stasera i posti ospite hanno
+già rotto un'altra cosa (voce 82), per la stessa ragione di fondo — sono righe **senza una
+persona dietro**. ⚠️ **Cosa NON la prova**: due casi non sono una regola, e nella stessa mezz'ora
+il **sync era fermo** e il worker in difficoltà, che è una spiegazione alternativa completa. ⇒ Si
+decide **guardando gli `steps` del worker** su quell'annullo, non scegliendo fra due racconti:
+sono scritti, e dicono a che punto della ficha si è piantato.
+
+🔨 **Cosa guardare per primo, senza scrivere niente**: il `worker_result` dell'annullo — che
+codice ha dato — e se quel codice sta nell'elenco dei fallimenti certi di
+`matchpoint-bookings-cancel`. La 72 ha fatto lo stesso lavoro sulla **create**: là la crepa si è
+distinta con ciò che il worker **già scriveva** (`navigationAttempts`, `save_attempt`), senza
+toccarne una riga. La stessa strada va provata qui.
+⚠️ **E il verso non è simmetrico**, come sulla 72: *un «non lo so» di troppo costa un'attesa; un
+«non è passata» falso costa un campo occupato due volte.*
+
+🚨⭐⭐ **E IL DANNO NON È FINITO CON LA FRASE: alle 23:44 il bot ha scritto al socio di una
+partita CHE NON ESISTE PIÙ.** *«👋 Un giocatore è uscito — Dalla tua partita di lunedì 31 agosto
+alle 09:00, Campo 1. Ora siete in tre: Ospite e Ospite. Se non giocate più, il tempo per disdire
+scade sabato 29 agosto… il campo resta a tuo carico e si paga per intero.»* ⇒ Una **scadenza di
+pagamento** annunciata su un campo **già libero**.
+🔎 La catena è la stessa: l'annullo non è stato registrato da noi (il gestionale l'ha creduto
+fallito) e il **sync era fermo**, quindi la copia locale continua a dire che la partita c'è — e
+la macchina dei promemoria, che legge quella copia, parla. ⇒ *Un «no» falso su una scrittura non
+resta una frase: diventa lo stato del mondo per tutto ciò che legge la copia.*
+⚖️ E la stessa bolla porta anche il difetto della **79** («Ora siete in tre: Ospite e Ospite» ne
+elenca due, il terzo è chi legge): le due voci si toccano qui e vanno lette insieme.
+
+🚨⭐⭐ **E IL TERZO EFFETTO, alle 23:47, chiude il cerchio: il sync riparte, trova la partita
+sparita e la attribuisce AL CIRCOLO.** Al socio arriva *«👋 La tua partita non c'è più — Lunedì 31
+agosto alle 09:00, campo 1. **È stata annullata dal circolo.**»* — mentre l'annullo l'aveva chiesto
+**lui**, dal bot, dieci minuti prima.
+🔎 **E la protezione che doveva impedirlo esiste già e non ha potuto scattare**: è la **ricevuta**
+della voce 70 (*«questo non l'ha fatto la segreteria»*), che `consumer-booking-write` scrive **solo
+dopo una scrittura riuscita**. Classificata fallita, la ricevuta **non è stata scritta** — e senza
+ricevuta il fatto del sync non viene soppresso.
+📌 ⇒ *Una ricevuta non scritta non protegge niente*: un falso «non è passata» non produce **una**
+bugia, ne produce **tre** — la frase al socio, il promemoria su un campo già libero, e
+l'attribuzione al circolo di un gesto suo. La 70, la 79 e la 83 si toccano tutte qui.
+
+⚖️ **Il danno di STANOTTE è stato nullo** — l'annullo è andato a buon fine e il socio ha solo
+letto una frase sbagliata — ma è un caso di **fortuna**: sull'annullo il verso sbagliato è
+innocuo, sulla **create** è la doppia prenotazione.
 
 ### **69** — 🧬 Una scheda senza telefono genera un socio DOPPIO — e il bot gli dice che non ha prenotazioni
 
