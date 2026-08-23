@@ -145,5 +145,39 @@ test('un fatto VECCHIO senza tipo esce con null, non con undefined: il bot deve 
   assert.equal(r[0].tipo, null);
 });
 
+test('🔄 lo SPOSTAMENTO vince da ultimo, come «annullata» — ma in mezzo va nel verso opposto', () => {
+  // 🗣️ Voce 74, regola del committente del 23/08. `spostata` dice dov'è finita la PARTITA, non
+  // dove si trova il giocatore: da ultimo vince, come `annullata`.
+  assert.equal(statoFinale(['spostata']), 'spostata');
+  assert.equal(statoFinale(['aggiunto', 'spostata']), 'spostata');
+  assert.equal(statoFinale(['spostata', 'spostata']), 'spostata', 'due spostamenti si dicono una volta sola');
+  assert.equal(statoFinale(['spostata', 'annullata']), 'annullata', 'spostata e poi annullata: non c\'è più');
+
+  // 🚨 E QUI LE DUE PAROLE VANNO NEI VERSI OPPOSTI, che è il punto in cui è facile confonderle:
+  // un annullo IN MEZZO è un'uscita (`annullata` conta come «fuori»), uno spostamento no — chi
+  // era in campo ci resta, la partita si è solo mossa. ⇒ Non tocca il conto dentro/fuori.
+  assert.equal(statoFinale(['spostata', 'tolto']), 'tolto', 'spostata e poi tolto: è fuori');
+  assert.equal(statoFinale(['tolto', 'spostata']), 'spostata');
+  // Chi era fuori, viene messo dentro e poi la partita si sposta: la notizia utile è lo
+  // spostamento, e dice già che è dentro.
+  assert.equal(statoFinale(['aggiunto', 'spostata']), 'spostata');
+});
+
+test('🔄 il «da» sopravvive alla riduzione, e viene dall\'ULTIMO fatto', () => {
+  // ⚖️ Come il `tipo`: non si fonde e non si vota. Se una partita si sposta due volte in una
+  // raffica, la partenza che serve al socio è quella da cui l'ha vista lui — la prima — ma
+  // l'unica che questo modulo può conoscere senza tenere una storia è l'ultima. ⇒ Si dichiara.
+  const base = fatto('spostata', 0, 'Maurizio Aprea', '2026-08-31|11:30|2');
+  const con = { ...base, da: { data: '2026-08-31', ora: '09:30', campo: '1' } } as FattoInCoda;
+  const dopoLaQuiete = Date.parse(con.visto_at) + QUIETE_MS + 1000;
+  const r = riduci([con], dopoLaQuiete);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].gesto, 'spostata');
+  assert.deepEqual(r[0].da, { data: '2026-08-31', ora: '09:30', campo: '1' });
+  // ⚠️ Sugli altri gesti resta nullo: non si porta dietro una partenza che non esiste.
+  const senza = riduci([fatto('tolto', 0, 'Lidia Comes', '2026-08-31|11:30|2')], dopoLaQuiete);
+  assert.equal(senza[0].da ?? null, null);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

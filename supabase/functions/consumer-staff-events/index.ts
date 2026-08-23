@@ -129,7 +129,7 @@ Deno.serve(async (req: Request) => {
   // diventare venti esiti. Tagliare prima di ridurre spezzerebbe una raffica a metà.
   const { data: righe, error: codaErr } = await service
     .from('pmo_eventi_staff')
-    .select('id, slot, data, ora, campo, persona, gesto, visto_at, tipo')
+    .select('id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da')
     .is('consegnato_at', null)
     .order('visto_at', { ascending: true })
     .limit(1000);
@@ -338,6 +338,10 @@ Deno.serve(async (req: Request) => {
       // sarebbero due copie della stessa regola. `null` = non lo so ⇒ il bot dice «partita»,
       // che è il comportamento di prima.
       partita: { data: e.data, ora: e.ora, campo: e.campo, slot: e.slot, tipo: e.tipo ?? null },
+      // 🔄 VOCE 74 (23/08): solo su `spostata`, e dice DA DOVE. Le coordinate dentro `partita`
+      // sono quelle d'arrivo — è lì che si va a giocare — e questa è la partenza, che il socio
+      // ha in testa. ⚠️ `null` su tutto il resto: il bot regge senza, dicendo comunque dov'è.
+      da: e.da ?? null,
     });
     daChiudere.push(...e.ids);
   }
