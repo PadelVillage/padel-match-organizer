@@ -5,10 +5,20 @@
 **Apri quel file all'inizio di ogni sessione.** Contiene le tre liste — 🔴 urgenti, 📋 in coda,
 📦 chiuse — più le memorie tematiche e lo stato del sistema misurato all'ultima sessione.
 
-🚨 **Non scegliere da solo su cosa lavorare.** Le priorità stanno lì, e le **promozioni dalla coda
-alle urgenti le decide il committente**: si propongono, non si eseguono. La regola nasce dal
-13/08/2026, quando una sessione partì senza quella lista e lavorò mezza giornata su cose scelte
-da sé — utili, ma non le sue.
+🚨 **Aprire quel file PRIMA di lavorare resta un obbligo, e non è cambiato.** La regola nasce dal
+13/08/2026, quando una sessione partì senza quella lista e lavorò mezza giornata su cose scelte da
+sé — utili, ma non le sue: il difetto era **non aver guardato**, e quello vale ancora identico.
+
+🔄 **Ciò che è cambiato il 23/08/2026 sera: anche le PROMOZIONI dalla coda alle urgenti le può
+decidere chi lavora.** Fino a quel giorno qui c'era scritto *«si propongono, non si eseguono»* —
+riga **corretta, non affiancata**, perché il committente ha esteso la delega dicendolo per esteso
+(*«sì, copre anche le promozioni»*, dopo *«procediamo sempre come tu pensi sia corretto»*).
+⇒ Il permesso non si chiede più; **la dichiarazione sì**: una promozione si scrive nella lista con
+il **perché** e con **cosa scavalca**, così lui la vede fatta e può ribaltarla. Vedi la sezione
+*🤝 COME SI PROCEDE*.
+⛔ Resta fuori una cosa sola, ed è l'unica: **inventare un lavoro che nella lista non c'è**. La
+delega copre l'**ordine** delle voci, non la loro **esistenza** — una voce nuova nasce da una
+misura o da una sua parola, mai da un'idea di fine giornata.
 
 Il file si aggiorna **durante il lavoro**, come gli altri documenti: chiudendo una voce la si
 sposta, e il commit resta nella storia.
@@ -496,10 +506,17 @@ in **larghezza**:
 si prova una cura e quando la si mette in servizio: decide chi lavora. Chiedere conferma a ogni
 gesto non è prudenza — è **scaricare la decisione su di lui** e rallentare tutto.
 
-⛔ **COSA LA DELEGA NON TOCCA, e non lo tocca perché lo ha deciso LUI, non per timidezza:**
-· 🚨 **le promozioni dalla coda alle urgenti restano sue** — è la regola in testa a questo file,
-  nata il 13/08 da una sessione che scelse da sé su cosa lavorare. Una delega sul *come* non
-  cancella una regola sul *cosa*: si propone, non si esegue;
+🔄 **E COPRE ANCHE LE PROMOZIONI**, chiesto e risposto la sera stessa: qui era stato scritto che
+restavano sue — *«una delega sul come non cancella una regola sul cosa»* — e lui ha risposto
+**«sì, copre anche le promozioni»**. ⇒ La riga vecchia è stata **corretta in testa al file**, non
+lasciata accanto alla nuova.
+⚖️ **Il freno che sostituisce il permesso è la DICHIARAZIONE**: una promozione si scrive nella
+lista col **perché** e con **cosa scavalca**. Lui la trova fatta, non da approvare — e può
+ribaltarla, che è possibile solo se la trova **scritta**.
+
+⛔ **COSA LA DELEGA NON TOCCA — due cose, ed è tutto:**
+· **inventare un lavoro che nella lista non c'è**: la delega copre l'**ordine** delle voci, non la
+  loro **esistenza**. Una voce nuova nasce da una misura o da una sua parola, mai da un'idea;
 · ciò che è **irreversibile o si vede da fuori** (una scrittura vera sul Matchpoint del circolo, un
   messaggio che parte verso i soci, `--allow-writes` su PROD) si **dice prima**, anche procedendo.
 
