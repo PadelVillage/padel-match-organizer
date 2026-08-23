@@ -1174,6 +1174,57 @@ Deno.serve(async (req) => {
     }
 
     const existingRecords = await loadExistingBookingRecords(admin);
+
+    // ── 🚨⭐⭐ VOCE 77 — LA FOTOGRAFIA DI PRIMA SI PRENDE TUTTA NELLO STESSO ISTANTE ──────
+    // Questa lettura stava PIÙ IN BASSO, dentro il blocco degli eventi staff, cioè **dopo
+    // l'upsert**. Le due metà della stessa fotografia venivano quindi prese in due momenti
+    // diversi, e fra i due momenti c'è una scrittura che cambia proprio ciò che la seconda
+    // metà va a cercare.
+    //
+    // 📏 MISURATO IL 23/08 alle 14:35:59, sull'annullo delle 14:34:29 (prenotazione `9595`):
+    //   · `existingRecords` (righe VIVE) è letto QUI ⇒ lo slot annullato non c'è ⇒ 76 slot;
+    //   · l'upsert riscrive i record dell'export, e quell'export era stato scattato alle
+    //     14:34:01, cioè **28 secondi PRIMA dell'annullo** ⇒ `booking|9595` torna `deleted=false`;
+    //   · la resurrezione (voce 73) cercava i sepolti DOPO quell'upsert, con
+    //     `.eq('deleted', true)` ⇒ **non trovava più niente da resuscitare** (`risorti: 0`),
+    //     perché la riga nel frattempo era tornata viva.
+    // ⇒ prima 76, dopo 77, e ne è uscito un `aggiunto` **falso**: al socio è arrivato
+    //   «Sei in campo» per la partita che aveva appena annullato.
+    //
+    // ⚖️ NON È UN DIFETTO DELLA CURA RITIRATA, ed è il punto che conta: la stessa finestra si
+    // apre per un annullo fatto dalla SEGRETERIA (l'app seppellisce le proprie copie subito),
+    // ogni volta che cade fra lo scatto dell'export e l'upsert del giro — due minuti buoni.
+    // La cura della 77 non ha creato la corsa: l'ha solo resa facile da vedere.
+    //
+    // ⇒ La regola, in una riga: *le righe vive e le righe sepolte si leggono nello stesso
+    //   istante, o non sono la stessa fotografia.* La prova che il rimedio è quello giusto la
+    //   dà il giro delle 14:37:22, che con l'export scattato DOPO l'annullo ha resuscitato
+    //   (`righe: 1`) e non ha accodato niente.
+    //
+    // 🚨 Fallisce APERTO come il resto del blocco: se questa lettura in più non riesce si
+    // perde una resurrezione (cioè al massimo un avviso), non il calendario.
+    let confineVoce73: string | null = null;
+    let risorti: JsonMap[] = [];
+    try {
+      confineVoce73 = await ultimoGiroImportedAt(admin);
+      if (confineVoce73) {
+        const { sepolti, soppressioni } = await loadSepoltiESoppressioni(admin, confineVoce73);
+        risorti = sepoltiDaResuscitare(sepolti, soppressioni, confineVoce73) as JsonMap[];
+        if (risorti.length) {
+          console.log(JSON.stringify({
+            event: 'eventi_staff_sepolti_risorti',
+            confine: confineVoce73,
+            soppressioni: soppressioni.length,
+            righe: risorti.length,
+          }));
+        }
+      }
+    } catch (errSepolti) {
+      console.warn(JSON.stringify({
+        event: 'eventi_staff_sepolti_saltati',
+        error: String(errSepolti),
+      }));
+    }
     const existingPayloadByTypedKey = new Map<string, any>();
     for (const record of existingRecords) {
       const type = clean(record?.record_type || '');
@@ -1507,20 +1558,9 @@ Deno.serve(async (req) => {
       // ⚖️ Dentro il try che c'è già: se questa lettura in più fallisce, si perde un avviso —
       //   non il calendario. E `confine` nullo (primissimo giro) vuol dire «non so da quando
       //   guardare» ⇒ non si resuscita niente, che è il verso prudente.
-      let risorti: JsonMap[] = [];
-      const confineVoce73 = await ultimoGiroImportedAt(admin);
-      if (confineVoce73) {
-        const { sepolti, soppressioni } = await loadSepoltiESoppressioni(admin, confineVoce73);
-        risorti = sepoltiDaResuscitare(sepolti, soppressioni, confineVoce73) as JsonMap[];
-        if (risorti.length) {
-          console.log(JSON.stringify({
-            event: 'eventi_staff_sepolti_risorti',
-            confine: confineVoce73,
-            soppressioni: soppressioni.length,
-            righe: risorti.length,
-          }));
-        }
-      }
+      // 🚨 `confineVoce73` e `risorti` sono calcolati PIÙ SU, insieme a `existingRecords` e
+      // **prima dell'upsert**: il perché per esteso sta là, ed è la voce 77. Leggerli qui
+      // significherebbe cercare fra i sepolti righe che l'upsert ha appena riportato in vita.
       const primaFoto = fotografia(
         [
           ...existingRecords
