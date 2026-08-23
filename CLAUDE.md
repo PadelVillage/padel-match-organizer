@@ -455,6 +455,35 @@ Matchpoint il campo era libero e da noi risultava occupato. Gli altri gesti (ent
 togliere) **non sono stati misurati**: darli per buoni sarebbe prendere un esito visto una volta per
 una regola.
 
+### 🔔 E CHI dev'essere avvisato: TUTTI quelli in campo (FERMA, 23/08/2026)
+
+🗣️ **Regola sua**, data dopo aver visto uno spostamento arrivargli come un annullo, due volte:
+
+> *«Quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita
+> devono essere avvisate.»* · *«Gli avvisi se devono arrivare devono arrivare **corretti fino in
+> fondo**.»* · *«Logicamente questa regola vale anche per una lezione.»*
+
+⇒ **Nessuno si salta.** Fino al 23/08 il primo dell'elenco veniva escluso in quanto «organizzatore»:
+su una partita di quattro si perdeva un avviso su quattro, su una di **una persona sola** si perdeva
+l'unico — e la segreteria che prenota a un socio solo non gliel'ha **mai** annunciato.
+
+⚖️ **A non annunciare al socio ciò che ha fatto LUI pensa la RICEVUTA** (voce 70), non il salto. La
+differenza è tutta qui: il salto rispondeva a *«chi è il primo dell'elenco?»*, la ricevuta a *«chi ha
+chiesto la scrittura?»* — e le due divergono esattamente dove il salto sbagliava. 📌 *Una protezione
+che poggia su una convenzione si sostituisce con una che poggia su un fatto, non si toglie.*
+
+🚨 **«Corretti fino in fondo» vuol dire anche non dire il falso**: uno spostamento non è un annullo.
+Il gesto `spostata` esiste per questo, e porta con sé **da dove** — le coordinate del fatto sono
+quelle di **arrivo**, perché è lì che si va a giocare.
+⛔ Ma chi è stato **tolto** durante uno spostamento riceve le coordinate **vecchie** e nessun «da»:
+del posto nuovo non deve sapere niente, o lo si manda a giocare a una partita che non è più sua.
+
+🚨⭐ **L'ORDINE DI MESSA IN SERVIZIO, quando nasce un gesto nuovo** — misurato, non supposto:
+`ponte.ts` **scarta i gesti che non conosce**. ⇒ Prima il **bot** (che da solo è inerte: impara una
+parola che nessuno gli manda), poi la **migrazione** del `CHECK`, poi il **gestionale**. Al
+contrario, per la finestra fra i due deploy quel fatto non lo direbbe **nessuno** — peggio di un
+messaggio sbagliato.
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.

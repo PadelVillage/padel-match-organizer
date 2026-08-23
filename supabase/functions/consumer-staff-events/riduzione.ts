@@ -23,7 +23,9 @@ export type FattoInCoda = {
   ora: string;
   campo: string;
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata';
+  /** 🔄 Solo su `spostata`: lo slot di PARTENZA. Le altre coordinate sono quelle d'arrivo. */
+  da?: { data: string; ora: string; campo: string } | null;
   /** Quando il sync l'ha visto, in ISO. */
   visto_at: string;
   /** `lezione` o `partita` — la parola del GESTIONALE, non quella di Matchpoint (voce 74). */
@@ -38,13 +40,15 @@ export type EsitoRidotto = {
   campo: string;
   persona: string;
   /** `null` quando il netto è nullo: non c'è niente da dire, e i fatti si chiudono lo stesso. */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | null;
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | null;
   /**
    * Il tipo dello slot, dall'ULTIMO fatto della raffica — come tutto il resto qui.
    * ⚖️ Non si fonde e non si vota: una partita non diventa una lezione a metà raffica, e se
    * un giorno succedesse è comunque l'ultimo stato quello che si racconta.
    */
   tipo?: 'lezione' | 'partita' | null;
+  /** 🔄 Lo slot di partenza, dall'ULTIMO fatto della raffica — come il `tipo` qui sopra. */
+  da?: { data: string; ora: string; campo: string } | null;
   /** Gli id dei fatti che questo esito riassume: si chiudono tutti insieme, detto o no. */
   ids: string[];
 };
@@ -115,15 +119,24 @@ export function coppia(persona: string, slot: string): string {
  * | aggiunto → tolto | fuori | fuori | **niente** |
  * | aggiunto → tolto → aggiunto | fuori | dentro | **aggiunto** |
  * | qualunque cosa → annullata | — | — | **annullata** |
+ * | qualunque cosa → spostata | — | — | **spostata** |
  *
  * 🚨 `annullata` non entra in questo calcolo e vince quando è l'ULTIMO gesto: una partita che
  * non c'è più non è uno stato del giocatore, è uno stato della partita. Se invece è in mezzo
  * (annullata e poi ricreata) conta come un'uscita, e il seguito riprende da lì.
+ *
+ * 🔄⭐ E `spostata` (23/08/2026) è della STESSA FAMIGLIA: dice dov'è finita la partita, non
+ * dove si trova il giocatore. Vince da ultimo, come `annullata`.
+ * ⚖️ In MEZZO però si comporta all'opposto: un annullo è un'uscita, uno spostamento no — chi
+ * era in campo ci resta, la partita si è solo mossa. ⇒ Non tocca il conto dentro/fuori, e due
+ * spostamenti di fila si dicono una volta sola. *Le due parole si somigliano e vanno nei versi
+ * opposti proprio nel punto in cui è facile confonderle.*
  */
 export function statoFinale(gesti: Array<FattoInCoda['gesto']>): EsitoRidotto['gesto'] {
   if (!gesti.length) return null;
   const ultimo = gesti[gesti.length - 1];
   if (ultimo === 'annullata') return 'annullata';
+  if (ultimo === 'spostata') return 'spostata';
 
   // «dentro» = il giocatore è nella partita. Il primo gesto rivela da dove si partiva.
   const eraDentro = gesti[0] !== 'aggiunto';
@@ -173,6 +186,7 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       campo: ultimo.campo,
       persona: ultimo.persona,
       tipo: ultimo.tipo ?? null,
+      da: ultimo.da ?? null,
       gesto: statoFinale(gruppo.map((g) => g.gesto)),
       ids: gruppo.map((g) => g.id),
     });

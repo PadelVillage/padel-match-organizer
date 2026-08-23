@@ -59,7 +59,16 @@ create table if not exists public.pmo_eventi_staff (
 
   created_at timestamptz not null default now(),
 
-  constraint pmo_eventi_staff_gesto_check check (gesto in ('aggiunto', 'tolto', 'annullata'))
+  -- 🔄 VOCE 74 (23/08/2026) — DA DOVE si è mossa, solo su `gesto = 'spostata'`. Le colonne
+  -- data/ora/campo del fatto sono quelle di ARRIVO: è lì che si va a giocare.
+  -- ⚠️ NULL su tutti gli altri gesti, e nullo anche su uno spostamento di cui non si conoscano
+  -- le coordinate vecchie: chi scrive il messaggio deve reggere senza.
+  da jsonb,
+
+  -- 🔄 `spostata` è entrato il 23/08 con la regola del committente: «gli avvisi se devono
+  -- arrivare devono arrivare corretti fino in fondo». Prima uno spostamento usciva come
+  -- `annullata`, che è falso — chi legge «annullata» dà la partita per persa.
+  constraint pmo_eventi_staff_gesto_check check (gesto in ('aggiunto', 'tolto', 'annullata', 'spostata'))
 );
 
 -- Il ritiro chiede sempre «cosa non è ancora consegnato»: l'indice parziale tiene piccolo
