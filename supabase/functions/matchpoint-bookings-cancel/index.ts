@@ -11,6 +11,10 @@ import {
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
+// 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
+// esteso sopra `dichiaraAnnulloAlSocio`.
+import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
+import { fattiDaAnnullo } from '../_shared/fatti-da-conferma.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -273,8 +277,74 @@ async function saveStaffCancelRecord(opts: {
   if (erroreRegistro) throw new Error(`registro staff_cancel non scritto: ${erroreRegistro.message}`);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ VOCE 76 — IL GESTIONALE DICHIARA AL SOCIO L'ANNULLO CHE IL CIRCOLO HA CONFERMATO.
+//
+// 🗣️ Promossa dal committente il 23/08/2026. **L'argomento non è la velocità**: fino a oggi
+// l'unico posto che riempiva `pmo_eventi_staff` era il sync, che vive **leggendo Matchpoint**
+// ⇒ il giorno in cui Matchpoint si spegne gli avvisi ai soci non rallentano, **cessano**.
+//
+// ⭐ L'annullo è il gesto in cui il ritardo costa di più, e il perché è tutto qui: toglie il
+// campo a delle persone. Chi non lo sa in tempo **si presenta a giocare** — mentre uno
+// spostamento saputo tardi si recupera guardando il calendario.
+//
+// 🚨⭐ E QUI L'ORDINE DEI DUE PASSI È OBBLIGATO, non una preferenza di stile: il roster si
+// legge **PRIMA** del gesto, perché subito dopo la copia locale dello slot è una tomba (l'app
+// la seppellisce, voce 73) e non c'è più nessun elenco da cui ricavare chi avvisare. Si
+// dichiara invece **DOPO** la conferma, che è la regola del committente del 22/08: *«ogni
+// gesto va detto al socio solo dopo che il circolo l'ha confermato»*.
+// ⇒ Leggere dopo darebbe zero destinatari; dichiarare prima annuncerebbe un annullo che
+// Matchpoint potrebbe ancora rifiutare. Le due metà non si possono invertire.
+//
+// 🔒 L'ok di Matchpoint **si ferma qui**, nel gestionale: al bot arriva un fatto dalla coda che
+// legge da sempre, e del worker non sa niente. Il giorno dello spegnimento il bot non si tocca.
+//
+// 🚨 BEST-EFFORT E MUTA NEI GUASTI: a questo punto la partita è **già annullata sul Matchpoint
+// vero**, e un errore qui non deve poterlo far sembrare fallito.
+async function dichiaraAnnulloAlSocio(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  cancel: CancelRequest;
+  prima: SlotLocale | null;
+}): Promise<void> {
+  const { supabaseUrl, supabaseKey, prima } = opts;
+  if (!prima) return;
+  try {
+    const fatti = fattiDaAnnullo({
+      slot: prima.coordinate,
+      roster: prima.roster,
+      tipo: prima.tipo,
+    });
+    await accodaFattiDaConferma({
+      client: createClient(supabaseUrl, supabaseKey),
+      fatti,
+      azione: 'cancel',
+    });
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_annullo_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
+}
+
+/** Chi c'era in campo prima dell'annullo. Va chiamata PRIMA di toccare il circolo. */
+async function rosterPrimaDellAnnullo(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  cancel: CancelRequest;
+}): Promise<SlotLocale | null> {
+  const { supabaseUrl, supabaseKey, cancel } = opts;
+  // Senza coordinate non si sa quale slot sta sparendo ⇒ si tace, e la cosa resta al sync.
+  if (!cancel.data || !cancel.ora) return null;
+  const client = createClient(supabaseUrl, supabaseKey);
+  return await rosterDaCopiaLocale({ client, data: cancel.data, ora: cancel.ora, campo: cancel.campo });
+}
+
 // ── IL LAVORO COL NUMERO — stessa meccanica di create ed edit (promozione a righe, 6.236) ─────
 // ⚖️ Su TEST il recinto registra/spegne e risponde PRIMA: il ramo async è inerte su `cudi…`.
+// Con `async: true` l'annullo diventa un lavoro con un numero: la riga `booking_job` porta
+// l'esito, il lavoro corre qui in sottofondo, e il telefono al risveglio chiede com'è finito.
 type ScrittoreDiJob = {
   from: (tabella: string) => {
     upsert: (riga: JsonMap, opzioni?: { onConflict?: string }) => PromiseLike<unknown>;
@@ -320,12 +390,18 @@ async function runCancelJobInBackground(opts: {
     return;
   }
   try {
+    // 🆕 VOCE 76 — chi c'è in campo si legge PRIMA: subito dopo l'annullo quella copia è una
+    // tomba, e non resterebbe nessun elenco da cui ricavare chi avvisare.
+    const primaDelGesto = await rosterPrimaDellAnnullo({ supabaseUrl, supabaseKey, cancel })
+      .catch(() => null);
     const workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
     try {
       await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
     } catch (dbErr) {
       console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
     }
+    // 🆕 VOCE 76 — e si dichiara solo adesso, che il circolo ha confermato.
+    await dichiaraAnnulloAlSocio({ supabaseUrl, supabaseKey, cancel, prima: primaDelGesto });
     await writeCancelJob(client, jobId, 'done', {
       ...base,
       message: `Annullamento eseguito: ${cancel.idReserva ? `idReserva ${cancel.idReserva}` : `Campo ${cancel.campo} · ${cancel.data} · ${cancel.ora}`}`,
@@ -456,6 +532,10 @@ Deno.serve(async (req: Request) => {
     return ok({ jobId, status: 'pending', message: 'Annullamento avviato, in corso…' });
   }
 
+  // 🆕 VOCE 76 — chi c'è in campo, letto PRIMA del gesto (vedi il commento sopra la funzione).
+  const primaDelGesto = await rosterPrimaDellAnnullo({ supabaseUrl, supabaseKey, cancel })
+    .catch(() => null);
+
   // Call browser worker
   let workerResult: JsonMap;
   try {
@@ -486,6 +566,10 @@ Deno.serve(async (req: Request) => {
   } catch (dbErr) {
     console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
   }
+
+  // 🆕 VOCE 76 — il circolo ha confermato: adesso lo possono sapere quelli che ci giocavano,
+  // senza aspettare che il sync ri-scopra la sparizione rileggendo Matchpoint.
+  await dichiaraAnnulloAlSocio({ supabaseUrl, supabaseKey, cancel, prima: primaDelGesto });
 
   return ok({
     message: `Annullamento richiesto: ${cancel.idReserva ? `idReserva ${cancel.idReserva}` : `Campo ${cancel.campo} · ${cancel.data} · ${cancel.ora}`}`,

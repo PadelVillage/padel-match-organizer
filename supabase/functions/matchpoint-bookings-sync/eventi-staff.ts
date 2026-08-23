@@ -581,3 +581,93 @@ export function sepoltiDaResuscitare(
   }
   return fuori;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ VOCE 76 — NON RACCONTARE DUE VOLTE CIÒ CHE IL GESTIONALE HA GIÀ DETTO.
+//
+// 🗣️ Dalla risposta del committente del 23/08 alla domanda ② della scheda: *«il sync resta
+// rete»*. ⇒ Le due strade si sommano (paletto ⑤): la CONFERMA è quella veloce e l'unica che
+// sopravvive allo spegnimento di Matchpoint; il SYNC resta per ciò che cambia sul vecchio
+// sistema **senza passare dal gestionale** — chi prenota al banco — e come rete se una
+// dichiarazione si perde.
+//
+// ⚖️ Ma due strade che raccontano lo stesso gesto sono **due messaggi allo stesso socio**, e
+// *un avviso doppio è il difetto che questo progetto evita apposta da sempre* (voce 63). Il
+// sync, rileggendo Matchpoint minuti dopo, ri-scopre esattamente ciò che la conferma ha già
+// dichiarato: qui si toglie quel doppione.
+//
+// ⭐⭐ E LA FINESTRA NON È UNA COSTANTE, ed è la parte che vale la pena leggere. Verrebbe da
+// scrivere «le conferme degli ultimi N minuti», e sarebbe sbagliato in un caso preciso: il
+// sync **si ferma dall'01:00 alle 06:00** (Europe/Rome). Un annullo confermato alle 00:58
+// viene ri-scoperto alle 06:02 — **cinque ore dopo** — e qualunque N ragionevole l'avrebbe
+// lasciato passare come doppione.
+// ⇒ La finestra giusta è quella che il CONFRONTO copre davvero: **dal giro precedente in qua**,
+// che è lo stesso confine che la voce 73 usa già per le lapidi. Se un fatto sta per nascere da
+// questo confronto, la sua dichiarazione — se c'è — è per forza dentro quell'intervallo.
+//
+// 🚨 IL VERSO IN CUI SI SBAGLIA, dichiarato: una finestra troppo LARGA scarta un avviso vero,
+// una troppo STRETTA ne manda uno doppio. Si sceglie larga (col margine qui sotto) perché il
+// progetto ha già deciso da che parte stare — *un avviso in meno è un fastidio, un avviso
+// doppio è allarme per un fatto che non è successo*.
+// ⚖️ E il falso scarto qui **non ha quasi casi**: la chiave è (slot, persona, gesto), e i due
+// gesti che si dichiarano non si ripetono identici. Spostare e rispostare la stessa partita dà
+// due `spostata` con slot di ARRIVO diversi ⇒ due chiavi diverse; una partita annullata due
+// volte non esiste.
+
+/**
+ * Quanto si guarda indietro OLTRE il confine, cercando le dichiarazioni già fatte.
+ *
+ * 🚨 Serve perché la conferma e la sua comparsa su Matchpoint non sono lo stesso istante: il
+ * circolo dice sì, e il tabellone da cui il sync legge può esporre la modifica un momento
+ * dopo. Un fatto dichiarato poco PRIMA del giro può quindi essere ri-scoperto dal giro
+ * SUCCESSIVO, cioè oltre il confine — e senza questo margine uscirebbe come doppione.
+ */
+export const MARGINE_DEDUP_CONFERME_MS = 30 * 60 * 1000;
+
+/** Una dichiarazione già in coda, come si legge dal database. */
+export type DichiarazioneGiaFatta = {
+  slot?: string | null;
+  persona?: string | null;
+  gesto?: string | null;
+};
+
+/**
+ * Da quale istante leggere le dichiarazioni da conferma, dato il confine dell'ultimo giro.
+ *
+ * ⚠️ Confine assente (primissimo giro, o registro illeggibile) ⇒ `null`: **non si deduplica
+ * niente**. È il verso prudente al contrario del solito, e va detto — senza confine non si sa
+ * quale intervallo il confronto stia coprendo, e scartare alla cieca perderebbe avvisi veri
+ * per sempre. Meglio un doppione una volta che un silenzio che non si scopre.
+ */
+export function finestraDedup(confineIso: string | null | undefined): string | null {
+  const t = Date.parse(String(confineIso ?? ''));
+  if (!Number.isFinite(t)) return null;
+  return new Date(t - MARGINE_DEDUP_CONFERME_MS).toISOString();
+}
+
+/** La chiave con cui un fatto e la sua dichiarazione si riconoscono. */
+export function chiaveFatto(slot: unknown, persona: unknown, gesto: unknown): string {
+  return `${String(slot ?? '')} ${normNome(persona)} ${String(gesto ?? '')}`;
+}
+
+/**
+ * I fatti da accodare davvero: quelli che il gestionale non ha già dichiarato.
+ *
+ * ⭐ Torna anche gli SCARTATI, e non per simmetria: senza, il registro direbbe solo «ne ho
+ * accodati meno» e non si potrebbe distinguere *il dedup ha funzionato* da *il confronto non
+ * ha trovato niente*. Sono due cose diverse e una delle due è un guasto.
+ */
+export function togliGiaDichiarati(
+  fatti: readonly FattoStaff[],
+  gia: readonly DichiarazioneGiaFatta[],
+): { daAccodare: FattoStaff[]; scartati: FattoStaff[] } {
+  if (!gia.length) return { daAccodare: [...fatti], scartati: [] };
+  const viste = new Set(gia.map((d) => chiaveFatto(d?.slot, d?.persona, d?.gesto)));
+  const daAccodare: FattoStaff[] = [];
+  const scartati: FattoStaff[] = [];
+  for (const f of fatti) {
+    if (viste.has(chiaveFatto(f.slot, f.persona, f.gesto))) scartati.push(f);
+    else daAccodare.push(f);
+  }
+  return { daAccodare, scartati };
+}

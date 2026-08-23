@@ -12,6 +12,9 @@ import {
   tipoDelloSlot,
   sepoltiDaResuscitare,
   slotDichiaratiAnnullati,
+  finestraDedup,
+  togliGiaDichiarati,
+  MARGINE_DEDUP_CONFERME_MS,
   type SlotRoster,
 } from './eventi-staff.ts';
 
@@ -629,6 +632,76 @@ test('55. 🔎 la fotografia legge l\'identità da `numero`, non da `idReserva`'
     (d) => String(d ?? '').split('-').map((x) => x.replace(/\.$/, '').trim()).filter(Boolean),
   );
   assert.equal(g.get('2026-08-31|09:30|1')?.prenotazione, '9591');
+});
+
+// ── VOCE 76: il sync non ridice ciò che il gestionale ha già dichiarato ──────────────────
+const SPOSTATA = {
+  slot: '2026-08-31|11:00|1', data: '2026-08-31', ora: '11:00', campo: 'Campo 1',
+  persona: 'Maurizio Aprea', gesto: 'spostata' as const,
+  da: { data: '2026-08-31', ora: '09:30', campo: 'Campo 1' },
+};
+
+test('un fatto già dichiarato dalla conferma non si riaccoda', () => {
+  const { daAccodare, scartati } = togliGiaDichiarati(
+    [SPOSTATA],
+    [{ slot: '2026-08-31|11:00|1', persona: 'Maurizio Aprea', gesto: 'spostata' }],
+  );
+  assert.deepEqual(daAccodare, [], 'il socio l\'ha già saputo sei minuti fa');
+  assert.equal(scartati.length, 1, 'e lo si conta, o il dedup non è verificabile dai log');
+});
+
+test('il nome si riconosce senza badare a maiuscole e accenti', () => {
+  const { daAccodare } = togliGiaDichiarati(
+    [SPOSTATA],
+    [{ slot: '2026-08-31|11:00|1', persona: 'MAURIZIO  APREA', gesto: 'spostata' }],
+  );
+  assert.deepEqual(daAccodare, [], 'la stessa persona scritta in due modi resta una persona');
+});
+
+test('🚨 uno SPOSTAMENTO diverso non viene scartato: le chiavi d\'arrivo differiscono', () => {
+  // ⚖️ È il caso che una finestra a tempo renderebbe pericoloso e che questa chiave rende
+  // innocuo: sposta, poi risposta altrove. Il secondo gesto è una notizia vera.
+  const { daAccodare } = togliGiaDichiarati(
+    [{ ...SPOSTATA, slot: '2026-08-31|18:00|2', ora: '18:00', campo: 'Campo 2' }],
+    [{ slot: '2026-08-31|11:00|1', persona: 'Maurizio Aprea', gesto: 'spostata' }],
+  );
+  assert.equal(daAccodare.length, 1, 'la seconda destinazione va detta');
+});
+
+test('un gesto DIVERSO sullo stesso slot non viene scartato', () => {
+  const { daAccodare } = togliGiaDichiarati(
+    [{ ...SPOSTATA, gesto: 'tolto' as const }],
+    [{ slot: '2026-08-31|11:00|1', persona: 'Maurizio Aprea', gesto: 'spostata' }],
+  );
+  assert.equal(daAccodare.length, 1, '«spostata» detta non copre «sei stato tolto»');
+});
+
+test('un\'altra persona sullo stesso slot riceve comunque', () => {
+  const { daAccodare } = togliGiaDichiarati(
+    [{ ...SPOSTATA, persona: 'Lidia Comes' }],
+    [{ slot: '2026-08-31|11:00|1', persona: 'Maurizio Aprea', gesto: 'spostata' }],
+  );
+  assert.equal(daAccodare.length, 1);
+});
+
+test('senza dichiarazioni non si scarta niente', () => {
+  const { daAccodare, scartati } = togliGiaDichiarati([SPOSTATA], []);
+  assert.equal(daAccodare.length, 1);
+  assert.equal(scartati.length, 0);
+});
+
+test('⚠️ senza confine NON si deduplica: meglio un doppione che un silenzio cieco', () => {
+  assert.equal(finestraDedup(null), null);
+  assert.equal(finestraDedup(''), null);
+  assert.equal(finestraDedup('non-una-data'), null);
+});
+
+test('la finestra guarda indietro OLTRE il confine, per il margine dichiarato', () => {
+  const confine = '2026-08-23T12:34:01.000Z';
+  const da = finestraDedup(confine);
+  assert.ok(da);
+  assert.equal(Date.parse(confine) - Date.parse(da!), MARGINE_DEDUP_CONFERME_MS);
+  assert.ok(Date.parse(da!) < Date.parse(confine), 'si guarda PRIMA del giro, mai dopo');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);

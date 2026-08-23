@@ -10,6 +10,10 @@ import {
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
+// 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
+// esteso sopra `dichiaraSpostamentoAlSocio`.
+import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
+import { campoScritto, fattiDaSpostamento } from '../_shared/fatti-da-conferma.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -221,6 +225,15 @@ async function saveStaffEditRecord(opts: {
     local_key: localKey,
     payload: {
       idReserva: edit.idReserva,
+      // 🔄⭐ VOCE 76, domanda ① — DA DOVE partiva. L'app lo manda da sempre (`campo/data/ora`
+      // di primo livello, serve al worker per ricavare l'idReserva dal tabellone) e questo
+      // registro **lo buttava**: restava solo il `move`, cioè la destinazione. Per raccontare
+      // uno spostamento serve la partenza, e la scheda chiedeva se farla portare all'app o
+      // ricavarla dalla copia locale. ⇒ Non serviva nessuna delle due: **c'era già**, la si
+      // scartava. *Prima di aggiungere una fonte, guardare cosa arriva e si sta buttando.*
+      da: (edit.data || edit.ora || edit.campo !== undefined)
+        ? { data: edit.data ?? null, ora: edit.ora ?? null, campo: edit.campo ?? null }
+        : null,
       move: edit.move ?? null,
       players: edit.players ?? null,
       note: edit.note ?? null,
@@ -234,6 +247,92 @@ async function saveStaffEditRecord(opts: {
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
   if (erroreRegistro) throw new Error(`registro staff_edit non scritto: ${erroreRegistro.message}`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ VOCE 76 — IL GESTIONALE DICHIARA AL SOCIO CIÒ CHE IL CIRCOLO HA APPENA CONFERMATO.
+//
+// 🗣️ Promossa dal committente il 23/08/2026 dopo la prova della 74. **L'argomento non è la
+// velocità**: fino a oggi l'unico posto che riempiva `pmo_eventi_staff` era il sync, e il sync
+// vive **leggendo Matchpoint** ⇒ il giorno in cui Matchpoint si spegne gli avvisi ai soci non
+// rallentano, **cessano**. Qui l'avviso nasce dalla conferma che abbiamo già in mano.
+//
+// 🔒 IL DISEGNO È QUELLO DEL COMMITTENTE (22/08) E QUESTA FUNZIONE NE È IL PUNTO ESATTO:
+// l'ok di Matchpoint **si ferma qui**, nel gestionale. Non prosegue verso il bot: il bot legge
+// `pmo_eventi_staff` da `consumer-staff-events` come ha sempre fatto, e non sa che esista un
+// worker. ⇒ Il giorno dello spegnimento il bot non si tocca — la prova del futuro.
+//
+// ⭐ SI DICHIARA SOLO LO SPOSTAMENTO PURO, e il perché va tenuto: questa edge sa muovere una
+// partita **e** cambiarne i giocatori nello stesso gesto. Dire `spostata` a tutti sarebbe
+// falso per chi è stato tolto — che del posto nuovo non deve sapere niente (regola del 23/08,
+// *«corretti fino in fondo»*) — e il sync arriverebbe poi a dire anche `tolto`: due messaggi
+// che si contraddicono. ⇒ Quando il gesto tocca anche il roster **non si dichiara niente** e
+// la cosa resta al sync, cioè al comportamento di prima. Il paletto ⑤ dice che le due strade
+// si sommano: dove la conferma non sa dire tutto, tace invece di dire metà.
+//
+// 🚨 BEST-EFFORT E MUTA NEI GUASTI: a questo punto la partita è **già spostata sul Matchpoint
+// vero**. Un errore qui non deve poter far sembrare fallita una scrittura riuscita, o la
+// segreteria la rifà — la doppia prenotazione che la voce 23 evita.
+// 🚨⭐ E L'ORDINE DEI DUE PASSI NON È UN DETTAGLIO: il roster si legge **PRIMA** del gesto e si
+// dichiara **DOPO** la conferma. Sono le due metà della regola del committente del 22/08 —
+// *«ogni gesto va detto al socio SOLO DOPO che il circolo l'ha confermato»* — più il fatto
+// tecnico che uno spostamento fa seppellire all'app la copia dello slot d'origine: leggendo
+// dopo si troverebbe una tomba, e il roster sarebbe vuoto proprio quando serve.
+
+/** Chi c'era in campo prima del gesto, o `null` se non si dichiarerà niente. */
+async function rosterPrimaDelloSpostamento(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  edit: EditRequest;
+}): Promise<SlotLocale | null> {
+  const { supabaseUrl, supabaseKey, edit } = opts;
+  if (!edit.move) return null;
+  // Il gesto tocca anche i giocatori? Allora tace: vedi il commento qui sopra.
+  const toccaIlRoster = !!edit.players && (
+    !!edit.players.removeAll ||
+    (edit.players.remove?.length ?? 0) > 0 ||
+    (edit.players.add?.length ?? 0) > 0
+  );
+  if (toccaIlRoster) return null;
+  // Senza le coordinate di PARTENZA non si sa quale slot è stato mosso: l'app le manda
+  // (`campo/data/ora` di primo livello), ma non sono obbligatorie. Assenti ⇒ tace.
+  if (!edit.data || !edit.ora) return null;
+  const client = createClient(supabaseUrl, supabaseKey);
+  return await rosterDaCopiaLocale({ client, data: edit.data, ora: edit.ora, campo: edit.campo });
+}
+
+/** I fatti in coda, adesso che il circolo ha detto sì. Muta nei guasti — vedi sopra. */
+async function dichiaraSpostamentoAlSocio(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  edit: EditRequest;
+  prima: SlotLocale | null;
+}): Promise<void> {
+  const { supabaseUrl, supabaseKey, edit, prima } = opts;
+  const move = edit.move;
+  if (!move || !prima) return;
+  try {
+    const fatti = fattiDaSpostamento({
+      partenza: prima.coordinate,
+      arrivo: {
+        data: String(move.data ?? edit.data ?? '').trim(),
+        ora: String(move.oraInizio ?? '').trim(),
+        campo: campoScritto(move.campo ?? edit.campo),
+      },
+      roster: prima.roster,
+      tipo: prima.tipo,
+    });
+    await accodaFattiDaConferma({
+      client: createClient(supabaseUrl, supabaseKey),
+      fatti,
+      azione: 'edit',
+    });
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_spostamento_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
 }
 
 // ── IL LAVORO COL NUMERO — la stessa meccanica della sorella create (voce 23) ─────────────────
@@ -288,12 +387,19 @@ async function runEditJobInBackground(opts: {
     return;
   }
   try {
+    // 🆕 VOCE 76 — chi c'è in campo si legge PRIMA del gesto: subito dopo, la copia dello slot
+    // d'origine è una tomba e il roster sarebbe vuoto proprio quando serve.
+    const primaDelGesto = await rosterPrimaDelloSpostamento({ supabaseUrl, supabaseKey, edit })
+      .catch(() => null);
     const workerResult = await callWorkerEditBooking({ workerUrl, workerApiKey, edit, operatore: actor.email });
     try {
       await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
     } catch (dbErr) {
       console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
     }
+    // 🆕 VOCE 76 — e si dichiara SOLO ADESSO, che il circolo ha confermato: senza aspettare
+    // che il sync ri-scopra la stessa cosa rileggendo Matchpoint minuti dopo.
+    await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await writeEditJob(client, jobId, 'done', {
       ...base,
       message: `Modifica eseguita (idReserva ${edit.idReserva ?? '?'})`,
@@ -473,6 +579,12 @@ Deno.serve(async (req: Request) => {
     return ok({ jobId, status: 'pending', message: 'Modifica avviata, in corso…' });
   }
 
+  // 🆕 VOCE 76 — chi c'è in campo, letto PRIMA del gesto (vedi il commento sopra la funzione).
+  // ⚠️ In lettura sola non si legge niente: là non sta succedendo nulla da raccontare.
+  const primaDelGesto = readOnly
+    ? null
+    : await rosterPrimaDelloSpostamento({ supabaseUrl, supabaseKey, edit }).catch(() => null);
+
   // Call browser worker
   let workerResult: JsonMap;
   try {
@@ -505,6 +617,9 @@ Deno.serve(async (req: Request) => {
     } catch (dbErr) {
       console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
     }
+    // 🆕 VOCE 76 — anche qui, sulla strada sincrona: la conferma è in mano, e da questo punto
+    // a parlare col socio è il gestionale. ⚠️ Mai in `readOnly`: là non è successo niente.
+    await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
   }
 
   if (readOnly) {
