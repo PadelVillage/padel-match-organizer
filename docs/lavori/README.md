@@ -1501,9 +1501,35 @@ inventati»*), quindi non serve nessuna frase nuova: la riga perde il numero e r
 dato non ha. Il verso prudente è quello già scelto due volte in questo progetto — *meglio non dirlo
 che dirlo sbagliato.*
 
-⏳ **Cosa manca**: la cura sta nel repo del **bot** (`assistente-padel-agent`), che non ha deploy
-automatico. 🚨 Mandarla in servizio sul bot dei **soci** è un gesto che si vede da fuori ⇒ si dice
-prima, come vuole la delega del 23/08.
+✅ **CURATA E IN SERVIZIO dalle 20:54:25 del 23/08** (`assistente-padel-agent` PR #64, deploy
+`soci` autorizzato da lui — *«procedi adesso»*). La condizione ha ora un nome —
+`leDueLettureConcordano` — e governa **tutt'e due** le metà: a letture discordi `quantiInCampo`
+vale `null` e la riga perde il numero, restando vera.
+🧪 **Prove**: `test/posti-liberi-concordi.test.ts`, 8 casi, e le due che descrivono il difetto sono
+state **viste rosse sul codice di prima**. Dentro c'è anche la prova che misura la cura — *una
+partita davvero mezza vuota deve continuare a contare i posti*, o si è rotta la cosa giusta per
+aggiustare quella storta. Banco del bot: **1475 verdi, 0 rosse**.
+🩺 Bot vivo dopo il riavvio: `online`, `unstable restarts: 0`, `✍️ prenotazioni REALI`,
+`🤖 bot @loziocoach_bot avviato`.
+
+📏⭐⭐ **E IL «PRIMA» È CATTURATO ALLA LETTERA, nel registro del bot, senza doverlo ricostruire:**
+
+| ora (Roma) | cosa dice la riga |
+|---|---|
+| **20:02:32** | `Domani · 18:00 · Campo 3 · con Benso Marchi, Fabio Antoniazzi e Andrea Antoniazzi · 2 posti liberi` — **senza ⭐** |
+| **20:08:19** | `⭐ Maurizio Aprea · Benso Marchi · Fabio Antoniazzi · Andrea Antoniazzi · Siete al completo.` |
+
+⇒ Sei minuti dopo, **col sync atterrato**, la stessa partita si racconta giusta da sé. È la finestra,
+misurata sul messaggio invece che sul database: *il difetto non era nel dato finale, era nei minuti
+in cui le due letture non erano ancora la stessa cosa.*
+
+⏳ **NON SI CHIUDE: manca il «dopo».** Per la regola sua di stasera — *un task non è finito finché
+non lo si è provato fisicamente* — serve rivedere **quella stessa finestra** col codice nuovo: un
+giocatore aggiunto o tolto dal gestionale su una partita in cui il socio c'è, e `/prenotazioni`
+aperto entro i due-sei minuti prima che il sync atterri. ✅ Deve uscire la riga **coi nomi e senza
+numero**; ❌ se compare ancora un conteggio, la cura non è entrata in funzione.
+⚠️ Ed è una prova che **va colta al volo**: passata la finestra le due letture tornano d'accordo e
+la riga si raddrizza da sé — cioè lo stesso schermo che non prova più niente.
 
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
