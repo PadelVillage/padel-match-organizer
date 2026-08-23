@@ -1436,7 +1436,7 @@ no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
 
-### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — CURATA, in attesa della migrazione
+### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — CURATA e VISTA sul bersaglio, in servizio
 
 🔄 **23/08 sera — LE QUATTRO DOMANDE HANNO AVUTO RISPOSTA E LA CURA È SCRITTA.** Restava fuori
 solo un pezzo, ed è dichiarato in fondo: **la migrazione non è ancora applicata**, quindi la
@@ -1506,10 +1506,44 @@ indice presenti su tutti e due i progetti, e su `qqbf…` i **100** fatti già i
 `origine = 'sync'` ⇒ tengono la quiete piena, cioè il comportamento di ieri. Zero `conferma`, che
 è giusto finché il codice non è in servizio.
 
-⏳ **COSA MANCA, e non si dà per fatto**: ① il **merge delle due PR** — fino a lì la strada nuova
-non esiste e tutto passa dal sync; ② la cura **non è stata vista sul bersaglio**: va guardata su
-uno spostamento vero, misurando che il tempo gesto→messaggio scenda dai **9′03″** della prova
-della 74. Finché non lo si è visto, questa voce **non si chiude**.
+✅⭐⭐ **VISTA SUL BERSAGLIO il 23/08 alle 15:53, su un gesto vero del committente** — la stessa
+partita della prova della 74 (`9591`, 31/08), rimessa dalle 11:00 alle 09:30 sul Campo 1, con
+dentro **lui solo**: un socio solo prova tutta la catena e riceve di persona.
+
+📏 **La catena, al secondo, contro quella di stamattina:**
+
+| | prova della 74 (mattina) | prova della 76 (pomeriggio) |
+|---|---|---|
+| gesto | 12:27:43 | ~15:53:00 |
+| il fatto **esiste** | 12:34:55 (dopo il sync) | **15:53:36** |
+| consegnato al bot | 12:36:47 | **15:54:47** |
+| sul telefono | 12:36 | **15:54** |
+| **totale** | **9′03″** | **~1′30″** |
+
+⇒ I **6′18″** di attesa del sync — il 70% del ritardo — **spariti**. Dei 107 secondi rimasti, ~36
+sono il worker che scrive davvero su Matchpoint e ~71 la quiete più il giro del bot.
+
+✅ **E le quattro cose che potevano ancora rompersi, verificate una per una** (non «funziona»,
+ma *questo* funziona):
+· **la parola** — «La tua partita è stata spostata», non «annullata»;
+· **il `da`** — «Prima era alle 11:00, campo 1», cioè il dato che stamattina si buttava;
+· **l'origine** — la riga è nata `origine = 'conferma'`: quell'avviso **non è passato da
+  Matchpoint**, ed è la sostanza della voce;
+· **il dedup** — al giro delle 15:56 il sync ha visto lo spostamento (la copia locale è passata a
+  09:30) e **ha taciuto**: zero doppioni.
+
+🚨⭐⭐ **E LA PROVA DEL DEDUP HA RICHIESTO DI ASPETTARE, o sarebbe stata una finta.** Alle 15:57
+i doppioni erano **zero** — ma la copia locale segnava ancora **11:00**, cioè il sync *non aveva
+ancora visto* lo spostamento: quello zero non diceva «il dedup funziona», diceva «non ha ancora
+avuto occasione di sbagliare». La misura buona è arrivata al giro dopo, con la copia a 09:30 e i
+doppioni ancora a zero.
+⚖️ *Una guardia si prova solo dopo aver visto passare ciò che deve fermare.* È la 24ª — la sonda
+puntata troppo presto — e stavolta è stata riconosciuta prima di scriverla, non dopo.
+
+⭐ **Il dettaglio che dice meglio di ogni cifra cos'è cambiato**: alle 15:54 il socio aveva
+l'avviso in mano e il calendario del gestionale mostrava **ancora le 11:00**, perché lo specchio
+si è aggiornato alle 15:56. Prima d'oggi era **impossibile per costruzione** — l'avviso non poteva
+precedere lo specchio, visto che nasceva da lui.
 
 🚨 **E una trappola del deploy, misurata leggendo il workflow**: `deploy-edge-functions-*.yml`
 sceglie cosa pubblicare con `awk '$3 !~ /^_/'` ⇒ **le cartelle che iniziano per `_` sono
