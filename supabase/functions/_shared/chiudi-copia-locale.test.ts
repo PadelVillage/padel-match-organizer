@@ -95,5 +95,32 @@ test('l\'istante arriva da fuori: la funzione resta pura e la prova non dipende 
   assert.equal(lapide(SLOT, [], 1_700_000_000_000).payload.ts, 1_700_000_000_000);
 });
 
+// ── 🚨⭐⭐ IL CASO CHE È SFUGGITO ALLA PRIMA PROVA SUL BERSAGLIO (23/08, 16:19) ────────────
+// Il ponte compone la richiesta di annullo come
+//   `target.idReserva ? { idReserva } : { campo, data, ora }`
+// ⇒ per una prenotazione venuta dal sync manda SOLO l'id, e la cura riceveva tre campi vuoti:
+// si arrendeva, e per giunta in silenzio. Il registro uscì come `staff_cancel|||Campo |9591|…`.
+// ⚖️ La prova qui sotto fissa il contratto: con la terna vuota il modulo non deve seppellire
+// niente **alla cieca**, e chi chiama deve poter passare l'id.
+test('🚨 con la terna VUOTA non si seppellisce niente alla cieca', () => {
+  const righe = [riga('booking', '2026-08-31', '09:30', 'Campo 1', '9591')];
+  assert.deepEqual(
+    righeDelloSlot(righe, { data: '', ora: '', campo: undefined }), [],
+    'senza sapere quale slot, non si tocca nulla: il verso prudente resta questo',
+  );
+});
+
+test('⭐ risolto lo slot dall\'id, le stesse righe si riconoscono', () => {
+  // È ciò che fa `slotDaIdReserva`: dall'id alle coordinate, poi tutto procede come sempre.
+  const righe = [
+    riga('booking', '2026-08-31', '09:30', 'Campo 1', '9591'),
+    riga('booking_occupancy', '2026-08-31', '09:30', 'Campo 1', '9591'),
+    riga('staff_booking', '2026-08-31', '09:30', '1', '9591'),
+  ];
+  const risolto = { data: '2026-08-31', ora: '09:30', campo: 'Campo 1' };
+  assert.equal(righeDelloSlot(righe, risolto).length, 3, 'tutte e tre, coi due formati di campo');
+  assert.deepEqual(idsDelleRighe(righeDelloSlot(righe, risolto)), ['9591']);
+});
+
 console.log(`\n${passed} passate, ${failed} fallite`);
 if (failed > 0) process.exit(1);

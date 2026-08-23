@@ -46,6 +46,49 @@ function cifre(v: unknown): string {
 }
 
 /**
+ * DA UN `idReserva` ALLE COORDINATE DELLO SLOT, leggendo la copia locale.
+ *
+ * 🚨 Serve perché chi chiama può avere solo l'id — vedi il commento su `idReserva` in
+ * `rosterDaCopiaLocale`. Le coordinate escono **come le scrive la copia**, che è la forma che
+ * il socio legge e quella su cui le chiavi combaciano.
+ *
+ * ⚠️ Torna `null` se non trova niente, e lo **dice nel registro**: un ripiego che fallisce in
+ * silenzio è esattamente ciò che il 23/08 ha reso difficile capire perché la cura non fosse
+ * entrata in funzione. *Ogni strada che si arrende deve lasciare una riga.*
+ */
+export async function slotDaIdReserva(
+  client: ClientMinimo,
+  idReserva: string,
+): Promise<{ data: string; ora: string; campo: string } | null> {
+  const id = String(idReserva ?? '').trim();
+  if (!id) return null;
+  try {
+    const esito = await client
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'booking')
+      .eq('payload->>idReserva', id)
+      .limit(5);
+    if (esito?.error) throw esito.error;
+    for (const r of (esito?.data ?? []) as Array<{ payload?: Record<string, unknown> }>) {
+      const p = (r?.payload || {}) as Record<string, unknown>;
+      const data = String(p?.data ?? '').trim();
+      const ora = String(p?.ora ?? '').trim();
+      if (data && ora) return { data, ora, campo: String(p?.campo ?? '').trim() };
+    }
+    console.warn(JSON.stringify({ event: 'slot_da_idreserva_non_trovato', idReserva: id }));
+    return null;
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'slot_da_idreserva_illeggibile',
+      idReserva: id,
+      error: String((e as Error)?.message ?? e),
+    }));
+    return null;
+  }
+}
+
+/**
  * CHI C'È IN CAMPO, letto dalla copia locale del gestionale.
  *
  * ⭐ Si legge dalla COPIA LOCALE e non si chiede a nessuno, ed è la regola ferrea applicata
@@ -69,8 +112,28 @@ export async function rosterDaCopiaLocale(opts: {
   data: string;
   ora: string;
   campo: unknown;
+  /**
+   * 🚨⭐⭐ IL RIPIEGO CHE MANCAVA, e la prova del 23/08 l'ha pagato. Chi chiama può non avere
+   * la terna: `consumer-booking-write` compone la richiesta come
+   * `target.idReserva ? { idReserva } : { campo, data, ora }` ⇒ per una prenotazione che
+   * viene dal sync manda **solo l'id**, e qui arrivavano tre campi vuoti.
+   * ⚖️ E il codice del ponte lo aveva scritto: *«su tutti i record veri `id_reserva` è vuoto,
+   * quindi parte la terna — e un giorno in cui non fosse più così, questa è l'unica riga che
+   * lo direbbe prima e non dopo»*. Quel giorno era il 23/08, e la riga c'era: era stata letta
+   * a metà.
+   * ⇒ Con l'id lo slot si **ricava**, invece di arrendersi: il database ce l'abbiamo sotto
+   * mano. *Un dato che si può derivare non è un dato mancante.*
+   */
+  idReserva?: string;
 }): Promise<SlotLocale | null> {
-  const { client, data, ora, campo } = opts;
+  const { client, ora, campo, idReserva } = opts;
+  let { data } = opts;
+  // Senza la terna ma con l'id: si risolve lo slot e si riparte da lì.
+  if ((!data || !ora) && idReserva) {
+    const coord = await slotDaIdReserva(client, idReserva);
+    if (!coord) return null;
+    return await rosterDaCopiaLocale({ client, ...coord });
+  }
   if (!data || !ora) return null;
   try {
     // Si filtra sulla data nel database, e su ora e campo qui: così i due formati del campo
