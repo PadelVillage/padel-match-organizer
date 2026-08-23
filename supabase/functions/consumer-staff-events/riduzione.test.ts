@@ -1,7 +1,15 @@
 // Prove della riduzione della raffica (voce 68, decisione ② del committente).
 // Esegui:  node supabase/functions/consumer-staff-events/riduzione.test.ts
 import assert from 'node:assert/strict';
-import { coppia, QUIETE_MS, riduci, statoFinale, type FattoInCoda } from './riduzione.ts';
+import {
+  coppia,
+  QUIETE_DA_CONFERMA_MS,
+  QUIETE_MS,
+  quietaDovuta,
+  riduci,
+  statoFinale,
+  type FattoInCoda,
+} from './riduzione.ts';
 
 let passed = 0;
 let failed = 0;
@@ -177,6 +185,40 @@ test('🔄 il «da» sopravvive alla riduzione, e viene dall\'ULTIMO fatto', () 
   // ⚠️ Sugli altri gesti resta nullo: non si porta dietro una partenza che non esiste.
   const senza = riduci([fatto('tolto', 0, 'Lidia Comes', '2026-08-31|11:30|2')], dopoLaQuiete);
   assert.equal(senza[0].da ?? null, null);
+});
+
+// ── VOCE 76: la quiete quando l'istante è quello VERO ────────────────────────────────────
+/** Lo stesso fatto, ma dichiarato dal gestionale su una conferma in mano. */
+function daConferma(f: FattoInCoda): FattoInCoda {
+  return { ...f, origine: 'conferma' };
+}
+
+test('un fatto nato da una CONFERMA si consegna col solo margine, non coi due minuti', () => {
+  const f = [daConferma(fatto('spostata', 0, 'Maurizio Aprea'))];
+  assert.deepEqual(riduci(f, T0 + QUIETE_DA_CONFERMA_MS - 1000), [], 'il margine c\'è ed è rispettato');
+  assert.equal(riduci(f, T0 + QUIETE_DA_CONFERMA_MS).length, 1, 'scaduto il margine: si parla');
+  // 📏 Il guadagno, che è il punto della voce: un minuto e mezzo su ogni gesto confermato.
+  assert.ok(QUIETE_DA_CONFERMA_MS < QUIETE_MS);
+});
+
+test('🚨 basta UN fatto dal sync perché il gruppo torni alla quiete piena', () => {
+  // ⚖️ Il gruppo porta due timbri di natura diversa: uno esatto e uno approssimato. Misurare
+  // una distanza fra i due dà un numero che non vuol dire niente ⇒ si tiene l'attesa lunga.
+  const f = [daConferma(fatto('spostata', 0)), fatto('tolto', 0)];
+  assert.deepEqual(riduci(f, T0 + QUIETE_DA_CONFERMA_MS + 1000), [], 'il margine corto NON si applica');
+  assert.equal(riduci(f, T0 + QUIETE_MS).length, 1, 'coi due minuti pieni si consegna');
+});
+
+test('⚠️ origine assente vale sync: le righe di prima non cambiano comportamento', () => {
+  const vecchio = fatto('tolto', 0);
+  assert.equal(vecchio.origine, undefined, 'i fatti già in coda non hanno origine');
+  assert.deepEqual(riduci([vecchio], T0 + QUIETE_DA_CONFERMA_MS + 1000), [], 'quiete piena, come prima');
+});
+
+test('quietaDovuta risponde alla domanda da sola, gruppo per gruppo', () => {
+  assert.equal(quietaDovuta([daConferma(fatto('spostata', 0))]), QUIETE_DA_CONFERMA_MS);
+  assert.equal(quietaDovuta([fatto('tolto', 0)]), QUIETE_MS);
+  assert.equal(quietaDovuta([]), QUIETE_MS, 'un gruppo vuoto non è un gruppo di conferme');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

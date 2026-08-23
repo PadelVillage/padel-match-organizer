@@ -127,12 +127,31 @@ Deno.serve(async (req: Request) => {
   // ── 1. I fatti ancora in coda ────────────────────────────────────────────────────────
   // Si legge PIÙ del tetto: la riduzione fonde le raffiche, quindi mille righe possono
   // diventare venti esiti. Tagliare prima di ridurre spezzerebbe una raffica a metà.
-  const { data: righe, error: codaErr } = await service
+  // 🔄 VOCE 76 — `origine` si legge perché governa QUANTO SI ASPETTA (`quietaDovuta`), e
+  // ⛔ non esce di qui: nella risposta al bot non c'è e non ci deve andare. Al bot arrivano i
+  // gesti che già conosce — è il paletto 4, zero righe nel suo repo.
+  const COLONNE = 'id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da';
+  const leggiCoda = (colonne: string) => service
     .from('pmo_eventi_staff')
-    .select('id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da')
+    .select(colonne)
     .is('consegnato_at', null)
     .order('visto_at', { ascending: true })
     .limit(1000);
+
+  let { data: righe, error: codaErr } = await leggiCoda(`${COLONNE}, origine`);
+  if (codaErr) {
+    // 🚨⭐⭐ SI RIPROVA SENZA `origine`, e non è una gentilezza: se la migrazione della voce 76
+    // non fosse ancora applicata su questo progetto, chiedere una colonna che non esiste
+    // fermerebbe **tutti gli avvisi a tutti i soci**, in silenzio e senza che il guasto
+    // assomigli alla sua causa.
+    // ⚖️ Il ripiego non perde niente di importante: `origine` assente vale `sync`, cioè la
+    // quiete piena — si torna al comportamento di prima della voce, che è esattamente ciò che
+    // deve succedere finché la colonna non c'è.
+    // 📌 È la lezione di `staff_edit` (11/08): un tipo non ammesso dal database faceva
+    // rifiutare la scrittura, e le righe sono state zero per mesi senza che nessuno lo vedesse.
+    console.warn(`[staff-events] coda senza 'origine' (${codaErr.message}): riprovo senza — quiete piena per tutti`);
+    ({ data: righe, error: codaErr } = await leggiCoda(COLONNE));
+  }
   if (codaErr) {
     console.error('[staff-events] errore lettura coda:', codaErr.message);
     return err(500, 'DB_ERROR', 'Errore lettura della coda.');
