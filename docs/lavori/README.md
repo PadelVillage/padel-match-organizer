@@ -1594,6 +1594,81 @@ resta aperta, e il primo lavoro è recuperare quella coda.*
 nate misurando: `PLAYER_ID_NOT_LOCKED` fuori dalla lista dei fallimenti certi, e la verifica
 dell'esito che cerca per slot invece che per `idReserva`.
 
+🆕🎯 **23/08 pomeriggio (51ª) — LA CODA È STATA RECUPERATA, E SMENTISCE L'IPOTESI.**
+La scheda diceva *«il primo lavoro è recuperare quella coda»*. Recuperata dal registro del worker
+con `stato-worker.yml` (20000 righe, regex sui quattro nomi della diagnostica). Eccola intera —
+istante del worker `2026-08-22T22:14:52.551Z`, che è le **00:14:52 di Roma**:
+
+```
+player_ctrl_count:Maurizio Aprea:inputTot=1:inputVis=1:list=2:hidden=1
+player_form_settled:Maurizio Aprea
+player_option_label:Maurizio Aprea:i=0:000004-Maurizio Aprea
+player_id_check:Maurizio Aprea:attempt0:i=0:id=:hidden=[]
+player_option_not_found:Maurizio Aprea:attempt1
+player_option_not_found:Maurizio Aprea:attempt2
+```
+
+🚨⭐⭐ **`hidden=1` ⇒ LA CURA CHE LA SCHEDA TENEVA PRONTA NON HA BERSAGLIO.** L'ipotesi era: *«se
+anche del campo nascosto restassero due copie, si starebbe leggendo quella che non si riempie
+mai»* — cioè `.last()` sulla copia sbagliata. Il conteggio aggiunto apposta dalla #944 dice
+**una sola copia**, e `hidden=[]` dice che **quell'unica copia è vuota**. ⇒ Non si legge la copia
+sbagliata: la copia **giusta non si riempie**. Leggerne un'altra non curerebbe niente, perché
+un'altra non c'è.
+📌 *La diagnostica è servita esattamente a togliere una cura, non a confermarla — ed è il suo
+lavoro più utile: una cura scritta sull'ipotesi sbagliata sarebbe stata provata sul Matchpoint
+vero, perché il worker è uno solo.*
+
+📏 **Cosa dice invece, e restringe il campo a un fatto:** al **primo** tentativo la tendina
+**c'è** e l'etichetta è quella giusta (`000004-Maurizio Aprea`, il codice del socio) — si clicca,
+e l'id resta vuoto. Dal **secondo** in poi la tendina **non compare più** (`player_option_not_found`
+×2). ⇒ Non è nessuna delle due cure che la scheda teneva aperte: è un **ibrido**, e il primo
+tentativo *consuma* la tendina invece di agganciarla.
+⚠️ Il seguito — *quale* delle due `completionListElem` risponde al click, visto che `list=2` — è
+un'**ipotesi**, e va detta come tale: qui è misurato che l'id non si aggancia, non perché.
+
+📏 **E `list=2` regge, ora su tutta la storia invece che su tre casi.** Contati i
+`player_ctrl_count` di **ogni** giocatore di **ogni** scrittura riuscita in archivio (`staff_booking`
++ i `booking_job` chiusi `done`): **556 righe**, e la lista vale sempre **1, 3, 5, 7** — più due
+righe a 6 e una a 0. **`list=2` non compare NEMMENO UNA VOLTA su una scrittura riuscita**, e compare
+in **4 fallimenti su 4** di questa famiglia (16/08 18:03 · 19/08 10:32 · 19/08 10:41 · 22/08 22:14).
+
+🚨 **E la misura ha separato due famiglie che stavano in un mucchio solo.** Dei sei fallimenti
+`HiddenFieldIdPeople vuoto` in archivio, **quattro** (giugno) hanno `list=1`, **nessun**
+`player_id_check`, e — guardando *chi* cercavano — i termini erano **«Liida Comes»** (un refuso),
+**«Lidia Ma Comes»**, **«sul campo 4»**, **«Lezione»**: non sono nomi di soci, e la tendina non
+compariva perché non c'era niente da trovare. Quella è `player_option_not_found`, un altro guasto
+con un'altra cura — e sommandola a questa faceva sembrare `list=1` un valore che fallisce.
+📌 *Due guasti che escono con lo stesso messaggio non sono lo stesso guasto: il messaggio è
+quello che il codice dice, la famiglia è quella che i passi mostrano.*
+
+🚨⭐ **PERCHÉ LA CODA ERA TRONCATA — e non è il registro del bot: è che dalla strada del BOT quella
+traccia NON SI SCRIVE DA NESSUNA PARTE.** `matchpoint-bookings-create` ha due strade: quella
+**asincrona** (`body.async === true`, la usa l'app della segreteria), che l'errore intero lo
+deposita in `booking_job.payload.error` — ed è lì che stanno tutti e sei i fallimenti di prima —
+e quella **sincrona**, che è quella del bot, dove il fallimento esce come `err(502, …)` e **non
+lascia riga**. ⇒ La diagnostica della #944 ha una casa **solo su metà dei casi**, e la metà
+scoperta è proprio quella da cui il socio prenota.
+⚖️ I due tagli che si vedono sono conseguenza, non causa, e **nessuno dei due va allargato**:
+`consumer-booking-write` scrive nel proprio registro `JSON.stringify(data).slice(0, 300)`, e al bot
+arriva `dettaglioPerIlBot(...).slice(0, 200)` — che è corto **apposta**, perché quello è un
+messaggio per il socio, e per la regola ferma di `CLAUDE.md` i nomi interni al bot non devono
+arrivare affatto. La cura giusta non è dire di più al bot: è **scrivere il fatto nel gestionale**,
+che è chi deve sapere.
+📌 Finché non c'è, ogni fallimento del bot va inseguito sulla VM entro la finestra del log — che è
+un attrezzo che c'è (`stato-worker.yml`), ma è una **finestra che scorre**: un caso vecchio di
+troppo non si recupera più. Questo si è salvato per 13 ore.
+
+⚠️ **Un difetto minore della diagnostica stessa, trovato leggendola:** `hidden=[]` **non distingue**
+*«zero copie del campo»* da *«una copia, vuota»* — perché `letti.join(',')` dà stringa vuota in
+tutti e due i casi. Qui si è potuto decidere solo incrociandolo con `hidden=1` del
+`player_ctrl_count`. Un carattere di cura (stampare il conteggio, o un segnaposto per ogni copia).
+
+⇒ **Cosa resta alla voce, adesso:** il caso è **arrivato e letto**, quindi la condizione che la
+scheda si era data è soddisfatta — ma la cura **non è scritta**, e non perché manchi la misura:
+perché la misura ha **escluso** la cura pronta e ne indica una che tocca il modo in cui il worker
+clicca la tendina. Quella si prova **sul Matchpoint vero** (worker unico, condiviso), quindi è una
+decisione sua, non un seguito automatico di questa lettura.
+
 ## 📋 IN CODA — 7
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
