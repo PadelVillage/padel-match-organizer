@@ -1085,9 +1085,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** — la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**; e 🆕 la **76**, **promossa da lui il 23/08 pomeriggio** (*«mettila tra le urgenti»*): l'avviso al socio nasce dallo **specchio** e non dalla **conferma**, e il suo argomento non è la velocità — misurato che l'unico produttore dei fatti è il sync, che vive leggendo Matchpoint, **il giorno dello spegnimento gli avvisi si spengono con lui**. Nella scheda i cinque paletti nati dalla sua domanda (*«se mette in contatto Matchpoint col bot non va bene»*) e le quattro domande a cui serve una sua risposta prima del codice. 📦 **Il 23/08 se ne sono chiuse tre**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1`, e i tre tentativi dell'autocomplete resi tre — e la **74**, **promossa da lui** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*) e **provata sul bersaglio alle 14:36** su una sua partita con lui solo dentro, in 9′03″ dal gesto |
+| 🔴 **Urgenti** | **1** — la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**. 📦 **Il 23/08 se ne sono chiuse quattro**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1` —, la **74** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*), e la 🆕 **76**, promossa da lui nel pomeriggio e **chiusa la sera stessa a cura vista**: l'avviso al socio nasceva dallo **specchio** e non dalla **conferma**, e il suo argomento non era la velocità — l'unico produttore dei fatti era il sync, che vive leggendo Matchpoint, quindi **il giorno dello spegnimento gli avvisi si sarebbero spenti con lui**. Provata sul bersaglio alle 15:53: **9′03″ → ~1′30″**, e soprattutto un avviso che **non passa più da Matchpoint** |
 | 📋 **In coda** | **6** — la **68** (curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** e la **71** entrate nella notte del 21/08, la **72** del 22/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). 🔼 **La 74 è uscita di qui il 23/08** — promossa fra le urgenti e chiusa lo stesso giorno; 📦 **la 73 è stata chiusa** lo stesso pomeriggio, a cura già vista funzionare su due annulli veri |
-| 📦 **Chiuse** | **64** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
+| 📦 **Chiuse** | **65** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,217 +1435,6 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
-
-### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — CURATA e VISTA sul bersaglio, in servizio
-
-🔄 **23/08 sera — LE QUATTRO DOMANDE HANNO AVUTO RISPOSTA E LA CURA È SCRITTA.** Restava fuori
-solo un pezzo, ed è dichiarato in fondo: **la migrazione non è ancora applicata**, quindi la
-strada nuova non è ancora in servizio. Il codice però è stato scritto per **reggere senza** —
-vedi «la migrazione che non ferma niente», che è la parte da non perdere.
-
-📌 **Le risposte del committente**, che erano bloccanti e sono state chieste prima di scrivere:
-
-| | domanda | risposta |
-|---|---|---|
-| ① | il `da` di uno spostamento | **non serviva decidere**: l'app lo manda già |
-| ② | se la conferma arriva e il fatto non si scrive | **il sync resta rete** |
-| ③ | la quiete di 2 minuti | **sì ma più corta**, e solo dove l'istante è vero |
-| ④ | quali gesti | **`spostata` e `annullata`** |
-
-🔎 **LA ① SI È SCIOLTA GUARDANDO, non decidendo — ed è la cosa più istruttiva della giornata.**
-La scheda chiedeva *«lo porta l'app, o si ricava dalla copia locale prima di sovrascriverla?»*:
-due strade, ognuna con un costo. La misura ne ha tolta una terza da sotto il naso — **l'app lo
-manda da sempre**. Quando la segreteria sposta una partita, il corpo della richiesta porta
-`campo/data/ora` (la partenza) accanto a `move` (l'arrivo), perché al worker servono per
-ritrovare la prenotazione sul tabellone. Ad arrivare al registro era però solo `move`:
-`saveStaffEditRecord` scriveva `idReserva, move, players, note, istruttore` e **buttava le tre
-coordinate di partenza**.
-⇒ *Prima di aggiungere una fonte, guardare cosa arriva già e si sta scartando.* La domanda non
-aveva due risposte: ne aveva una che nessuna delle due nominava.
-
-⚙️ **COM'È FATTA, in cinque pezzi** — i primi due sono la strada nuova, gli altri tre la
-rendono sicura:
-
-- **Ⓐ chi dichiara** — `matchpoint-bookings-edit` e `matchpoint-bookings-cancel`, appena il
-  worker conferma, mettono il fatto in `pmo_eventi_staff` (`_shared/fatti-da-conferma.ts` per
-  le regole, `_shared/dichiara-fatti.ts` per il database). **L'ok di Matchpoint si ferma lì**:
-  al bot arriva un fatto dalla coda che legge da sempre.
-- **Ⓑ chi c'è in campo** — si legge dalla **copia locale**, non si chiede a nessuno. 🚨 E si
-  legge **PRIMA** del gesto, perché subito dopo quella copia è una tomba (l'app la seppellisce,
-  voce 73) e il roster sarebbe vuoto proprio quando serve. Si dichiara invece **DOPO** la
-  conferma, che è la regola del 22/08. *Le due metà non si possono invertire.*
-- **Ⓒ il dedup** — il sync non ridice ciò che è già stato detto. ⭐ E la finestra **non è una
-  costante**: è il confine del giro precedente (più un margine), lo stesso che la voce 73 usa
-  per le lapidi. Una finestra a tempo sarebbe stata sbagliata di **cinque ore** nel caso della
-  **pausa notturna** del sync (01:00-06:00), che nessun `N` ragionevole avrebbe coperto.
-- **Ⓓ la quiete** — 2 minuti restano dove `visto_at` è l'istante del *giro*; dove è quello
-  *vero* scendono a **30 secondi**, che è un **margine, non un'attesa**. ⛔ Basta **un** fatto
-  dal sync nel gruppo e si torna ai 2 minuti: misurare una distanza fra un istante esatto e uno
-  approssimato dà un numero che non vuol dire niente.
-- **Ⓔ lo spostamento «puro»** — se il gesto muove la partita **e** cambia i giocatori, la
-  conferma **non dichiara niente** e la cosa resta al sync. Dire `spostata` a tutti sarebbe
-  falso per chi è stato tolto, e il sync poi direbbe anche `tolto`: due messaggi che si
-  contraddicono. ⇒ *Dove la conferma non sa dire tutto, tace invece di dire metà.*
-
-🚨⭐⭐ **LA MIGRAZIONE CHE NON FERMA NIENTE — il difetto che stava per rientrare dalla finestra.**
-Scritto il codice, la colonna `origine` era chiesta in quattro punti. Tre degradano da soli; il
-quarto e il quinto **no**, e sono i due che contano:
-· il **sync** inseriva `origine: 'sync'` esplicito ⇒ colonna assente = insert rifiutato =
-  `eventi_staff_error` = **nessun avviso, a nessuno**;
-· `consumer-staff-events` la **chiedeva nella select** ⇒ colonna assente = **nessuna consegna**.
-⇒ Curati: il sync **non scrive** quella colonna (il default fa lo stesso lavoro, e senza colonna
-la riga passa uguale), e la lettura **riprova senza** se la prima fallisce.
-⚖️ È la lezione di `staff_edit`, pagata l'11/08: un `CHECK` che non ammetteva il tipo faceva
-rifiutare la scrittura dal database, e le righe sono state **zero su TEST e su PROD per mesi**
-senza che nessuno se ne accorgesse. *Una cura che pretende che una migrazione sia già passata è
-una cura che, il giorno in cui non lo è, spegne ciò che voleva accendere.*
-
-✅ **LA MIGRAZIONE È APPLICATA**, su TEST e su PROD, il 23/08 — autorizzata da lui a voce
-(*«ti do il permesso di fare la migrazione»*). Verificata dopo, non data per fatta: colonna e
-indice presenti su tutti e due i progetti, e su `qqbf…` i **100** fatti già in coda sono tutti
-`origine = 'sync'` ⇒ tengono la quiete piena, cioè il comportamento di ieri. Zero `conferma`, che
-è giusto finché il codice non è in servizio.
-
-✅⭐⭐ **VISTA SUL BERSAGLIO il 23/08 alle 15:53, su un gesto vero del committente** — la stessa
-partita della prova della 74 (`9591`, 31/08), rimessa dalle 11:00 alle 09:30 sul Campo 1, con
-dentro **lui solo**: un socio solo prova tutta la catena e riceve di persona.
-
-📏 **La catena, al secondo, contro quella di stamattina:**
-
-| | prova della 74 (mattina) | prova della 76 (pomeriggio) |
-|---|---|---|
-| gesto | 12:27:43 | ~15:53:00 |
-| il fatto **esiste** | 12:34:55 (dopo il sync) | **15:53:36** |
-| consegnato al bot | 12:36:47 | **15:54:47** |
-| sul telefono | 12:36 | **15:54** |
-| **totale** | **9′03″** | **~1′30″** |
-
-⇒ I **6′18″** di attesa del sync — il 70% del ritardo — **spariti**. Dei 107 secondi rimasti, ~36
-sono il worker che scrive davvero su Matchpoint e ~71 la quiete più il giro del bot.
-
-✅ **E le quattro cose che potevano ancora rompersi, verificate una per una** (non «funziona»,
-ma *questo* funziona):
-· **la parola** — «La tua partita è stata spostata», non «annullata»;
-· **il `da`** — «Prima era alle 11:00, campo 1», cioè il dato che stamattina si buttava;
-· **l'origine** — la riga è nata `origine = 'conferma'`: quell'avviso **non è passato da
-  Matchpoint**, ed è la sostanza della voce;
-· **il dedup** — al giro delle 15:56 il sync ha visto lo spostamento (la copia locale è passata a
-  09:30) e **ha taciuto**: zero doppioni.
-
-🚨⭐⭐ **E LA PROVA DEL DEDUP HA RICHIESTO DI ASPETTARE, o sarebbe stata una finta.** Alle 15:57
-i doppioni erano **zero** — ma la copia locale segnava ancora **11:00**, cioè il sync *non aveva
-ancora visto* lo spostamento: quello zero non diceva «il dedup funziona», diceva «non ha ancora
-avuto occasione di sbagliare». La misura buona è arrivata al giro dopo, con la copia a 09:30 e i
-doppioni ancora a zero.
-⚖️ *Una guardia si prova solo dopo aver visto passare ciò che deve fermare.* È la 24ª — la sonda
-puntata troppo presto — e stavolta è stata riconosciuta prima di scriverla, non dopo.
-
-⭐ **Il dettaglio che dice meglio di ogni cifra cos'è cambiato**: alle 15:54 il socio aveva
-l'avviso in mano e il calendario del gestionale mostrava **ancora le 11:00**, perché lo specchio
-si è aggiornato alle 15:56. Prima d'oggi era **impossibile per costruzione** — l'avviso non poteva
-precedere lo specchio, visto che nasceva da lui.
-
-🚨 **E una trappola del deploy, misurata leggendo il workflow**: `deploy-edge-functions-*.yml`
-sceglie cosa pubblicare con `awk '$3 !~ /^_/'` ⇒ **le cartelle che iniziano per `_` sono
-saltate**. Toccare solo `_shared/` non manda in servizio niente. Qui il deploy parte perché nello
-stesso commit cambiano anche le edge che quel modulo lo chiamano — ma chi un domani correggesse
-`fatti-da-conferma.ts` **da solo** vedrebbe la CI verde e il difetto ancora vivo.
-
-📌 **E la 76 NON assorbe l'annullo dal bot** (domanda ④): là il gesto parte dal socio e la copia
-locale se ne va col sync, misurato 3′40″ il 22/08. Questa voce cura l'annullo fatto **dalla
-segreteria**. L'altro resta da fare, e non è la stessa cosa.
-
----
-
-#### La scheda com'era quando è stata promossa (23/08 pomeriggio)
-
-🗣️ **Promossa dal committente il 23/08 pomeriggio** (*«mettila tra le urgenti»*), dopo che la
-prova della voce 74 gli aveva messo il ritardo davanti all'orologio: *«questi tempi sono troppo
-lunghi… sul gestionale lo spostamento è avvenuto entro un minuto dopo che abbiamo fatto
-l'azione»*. La sua osservazione è l'origine di questa voce; la misura è venuta dopo.
-
-🚨⭐⭐ **L'ARGOMENTO NON È LA VELOCITÀ, ED È LA COSA DA NON DIMENTICARE.** Misurato il 23/08:
-l'**unico** posto in tutto il sistema che genera i fatti per il bot è `matchpoint-bookings-sync`
-(`pmo_eventi_staff`, una sola scrittura, `index.ts:1517`; `consumer-staff-events` la legge e
-basta). E quel sync **vive leggendo Matchpoint**.
-⇒ **Il giorno in cui Matchpoint si spegne, gli avvisi ai soci si spengono con lui.** Non
-rallentano: cessano. Il gestionale continuerebbe a sapere tutto — le scritture le esegue lui —
-ma la strada per dirlo al socio passa oggi da una fonte che quel giorno non c'è più.
-⚖️ È il rovescio della regola di `CLAUDE.md`: *«il giorno in cui Matchpoint si spegne, il bot non
-si tocca»*. Vera per il **bot** (misurato il 23/08 sul repo alla revisione `f2a686a`: **zero**
-righe di codice che nominano worker/matchpoint/hetzner — l'unica occorrenza è dentro un commento
-—, richieste solo verso Telegram, e cinque edge chiamate, tutte `consumer-*` del gestionale).
-**Falsa per ciò che il gestionale ha da dirgli.**
-
-📏 **Il costo di oggi, misurato sulla prova della 74** (gesto 12:27:43 → messaggio 12:36:47):
-
-| | |
-|---|---|
-| attesa del sync | **6′18″** — il 70% |
-| lavoro del sync | 54″ |
-| quiete + giro del bot | 1′52″, e **metà è voluta** |
-
-⇒ Il gestionale ha in mano il fatto **confermato** alle 12:27:43 — `staff_edit` è scritto **dopo**
-`callWorkerEditBooking`, quindi quella riga esiste solo perché il circolo ha già detto sì — e per
-la strada dell'avviso lo **butta**, poi aspetta di ritrovarlo da fuori.
-
-🎯 **LA CURA È IL DISEGNO CHE IL COMMITTENTE HA GIÀ DATO IL 22/08**, e non ne serve uno nuovo:
-l'ok di Matchpoint torna al gestionale e **si ferma lì**; da quel punto a parlare col socio è
-**sempre e solo il gestionale**. Oggi quel disegno non è implementato: al posto dell'ok, ad
-accendere l'avviso è il sync.
-
-⛔ **I CINQUE PALETTI, che sono vincoli verificabili e non intenzioni** — nati da una sua domanda
-esplicita (*«se la C mette direttamente in contatto Matchpoint con il bot non va bene»*):
-
-1. **Il bot non acquisisce nessun secondo indirizzo.** Continua a chiedere solo al gestionale.
-2. **Nessun nome interno esce verso il bot** — né `worker`, né `matchpoint`, né i loro codici.
-   È la regola ferma, la stessa su cui hanno lavorato la 65 e la 66.
-3. **Il fatto continua a nascere in `pmo_eventi_staff`.** Non cambia chi lo **legge**: cambia chi
-   lo **riempie**.
-4. 🎯 **La C non tocca il bot: zero righe nel suo repo.** Se il disegno dovesse richiedere di
-   toccarlo, il disegno è sbagliato — è la prova del futuro applicata alla cura.
-5. **Il sync RESTA**, per ciò che cambia su Matchpoint **senza passare dal gestionale** (chi
-   prenota al banco sul vecchio sistema). Le due strade si **sommano**: questa non è una
-   semplificazione, è un'aggiunta. Il giorno dello spegnimento resta in piedi solo la prima.
-
-❓ **LE DOMANDE A CUI SERVE UNA SUA RISPOSTA PRIMA DI SCRIVERE CODICE** — sono qui perché
-rispondere da soli a queste è il modo in cui una cura elegante diventa un difetto:
-
-- **① Il `da` di uno spostamento.** Oggi il gesto `spostata` nasce dal **confronto fra due
-  fotografie** (stessa prenotazione su slot diversi) e il sync ricostruisce da sé le coordinate di
-  partenza. Da una conferma **singola** quel confronto non si legge: la dichiarazione del
-  gestionale dovrà portare **anche il `da`**. Va deciso se lo porta l'app (che lo sa, perché
-  quello slot lo stava guardando) o se lo si ricava dalla copia locale **prima** di sovrascriverla.
-- **② Che cosa succede se la conferma arriva e il fatto NON si scrive.** Oggi un buco del genere
-  lo ripara il sync al giro dopo. Con la conferma come sorgente, un fatto perso è **perso**, a
-  meno che il sync non resti anche da rete di sicurezza — e allora bisogna decidere come i due non
-  producano **due** avvisi per lo stesso gesto (la ricevuta della voce 70 è la forma già in casa).
-- **③ La quiete di 2 minuti.** Esiste perché `visto_at` è l'istante **del giro di sync**, non del
-  gesto, e serve ad assorbire la raffica. Con un fatto che nasce dalla conferma, `visto_at`
-  diventa l'istante **vero**: la quiete va **ripensata**, non semplicemente abbassata.
-- **④ I gesti coperti.** La creazione la copre già la voce 75 («stesso istante»); l'annullo dal
-  bot **no** — misurato il 22/08, la copia locale se n'è andata col sync 3′40″ dopo. Va deciso se
-  la 76 li assorbe tutti o parte da `spostata` e `annullata`, che sono i due che oggi fanno danno.
-
-🚨 **E l'ordine di messa in servizio è già scritto e non si improvvisa**: `ponte.ts` **scarta i
-gesti che non conosce** ⇒ prima il **bot** (che da solo è inerte), poi la migrazione del `CHECK`,
-poi il **gestionale**. Al contrario, per la finestra fra i due deploy quel fatto non lo direbbe
-**nessuno** — peggio di un messaggio sbagliato.
-⚖️ ⚠️ Ma attenzione: il paletto 4 dice che la C **non tocca il bot**. Se i gesti restano quelli
-che il bot già conosce (`spostata`, `annullata`, `aggiunto`, `tolto`), quell'ordine **non si
-applica** — ed è un buon segno. Se invece servisse una parola nuova, allora il bot **va toccato**,
-e i due vincoli vanno riconciliati **prima**, non durante.
-
-⏳ **Non è una riga: è lavoro di disegno**, una sessione o due. Ma la sua metà A — far dichiarare
-al gestionale ciò che ha già confermato — è la stessa forma già usata dalla **voce 73**
-(`staff_suppress`, il sync che si fida di ciò che l'app dichiara invece di aspettare di
-rivederlo). ⇒ Non si parte da zero: si porta fino in fondo una strada già aperta.
-
-📌 **Cosa NON fare, dichiarato qui perché è la scorciatoia che verrebbe in mente**: abbassare il
-cron del sync da 120 a 60 secondi. È stato misurato il 23/08 — la cadenza è **binaria**, 2 minuti
-o 4, e i giri lunghi sono l'**8,6%** — quindi curerebbe la coda e non la causa, costerebbe una
-modifica **a mano su PROD**, e fatta la 76 quel ritardo non esiste più. ⇒ Due volte la stessa
-spesa. Se la 76 dovesse slittare di settimane, si rimette sul tavolo.
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
 
@@ -3293,7 +3082,7 @@ si **sommano**, non si sostituiscono, ed è la ragione per cui questa non è una
 
 📌 **Non promossa**: sta qui perché la promozione la decide il committente.
 
-## 📦 CHIUSE — dal 13 al 23/08/2026 — 64 voci
+## 📦 CHIUSE — dal 13 al 23/08/2026 — 65 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
@@ -3302,6 +3091,7 @@ non ne apre un'altra sotto.
 
 **Le prime sette voci sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **76** | ✅ *(23/08 pomeriggio, 51ª sessione — **chiusa da LUI** a cura vista sul bersaglio: «Sì, chiudila»)* 🚨⭐⭐ **76. L'avviso al socio nasceva dallo SPECCHIO e non dalla CONFERMA — e il vero difetto non era la lentezza.** 🗣️ Promossa da lui dopo la prova della 74 (*«questi tempi sono troppo lunghi… sul gestionale lo spostamento è avvenuto entro un minuto»*), ma misurando è uscito altro: l'**unico** posto che riempiva `pmo_eventi_staff` era `matchpoint-bookings-sync`, e quel sync **vive leggendo Matchpoint** ⇒ **il giorno dello spegnimento gli avvisi ai soci non rallentavano: cessavano.** ⚖️ È il rovescio della regola *«il giorno in cui Matchpoint si spegne, il bot non si tocca»* — vera per il **bot** (misurato: zero righe che nominano worker/matchpoint), **falsa per ciò che il gestionale ha da dirgli**. 🎯 La cura è il disegno che aveva già dato LUI il 22/08: l'ok di Matchpoint torna al gestionale e **si ferma lì**. ❓ **Le quattro domande della scheda hanno avuto risposta PRIMA del codice**, ed erano bloccanti: ② il sync **resta rete** (le due strade si sommano), ③ la quiete **più corta** ma solo dove l'istante è vero, ④ **`spostata` e `annullata`**. 🔎⭐⭐ **E la ① si è sciolta GUARDANDO invece che decidendo** — chiedeva *«il `da` lo porta l'app o si ricava dalla copia locale?»*, due strade ognuna con un costo: la misura ne ha tolta una terza da sotto il naso, perché **l'app lo manda da sempre** (`campo/data/ora` accanto a `move`, servono al worker per ritrovare la prenotazione) ed era `saveStaffEditRecord` a **buttarlo**. ⇒ *Prima di aggiungere una fonte, guardare cosa arriva già e si sta scartando.* ⚙️ **Cinque pezzi**: Ⓐ `_shared/fatti-da-conferma.ts` (regole pure) + `dichiara-fatti.ts` (database), che importano `chiaveSlot` dal sync invece di copiarla — una chiave divergente non darebbe errore, **spegnerebbe dedup e raggruppamento in silenzio**; Ⓑ il roster si legge **PRIMA** del gesto (dopo è una tomba, voce 73) e si dichiara **DOPO** la conferma (regola del 22/08): le due metà non si invertono; Ⓒ il dedup, con una finestra che **non è una costante** ma il confine del giro precedente — a tempo sarebbe stata sbagliata di **cinque ore** nella pausa notturna del sync (01:00-06:00); Ⓓ la quiete a **30″** dove `visto_at` è l'istante vero, e ai 2′ pieni se nel gruppo c'è anche **un solo** fatto dal sync; Ⓔ uno spostamento che tocca **anche** i giocatori **non si dichiara** — dire «spostata» a chi è stato tolto sarebbe falso. 🚨⭐⭐ **E il difetto che stava per rientrare dalla finestra**: il codice dava per scontato che la migrazione fosse già passata ⇒ colonna assente = insert rifiutato = **nessun avviso a nessuno**, e la lettura della coda ferma. Curato (il sync non scrive `origine`, la lettura **riprova senza**): è la lezione di `staff_edit` dell'11/08, dove un `CHECK` faceva rifiutare la scrittura e le righe sono state **zero per mesi**. ✅⭐⭐ **VISTA SUL BERSAGLIO alle 15:53**, sulla `9591` rimessa dalle 11:00 alle 09:30 con dentro lui solo: fatto nato alle **15:53:36** con `origine='conferma'`, sul telefono alle **15:54** ⇒ **9′03″ → ~1′30″**, spariti i **6′18″** di attesa del sync. Verificate quattro cose e non un «funziona»: la **parola** («spostata», non «annullata»), il **`da`** («prima era alle 11:00»), l'**origine** (l'avviso **non è passato da Matchpoint** — la sostanza, non il tempo) e il **dedup** (al giro delle 15:56 il sync ha visto lo spostamento e **ha taciuto**). 🚨⭐ **La prova del dedup ha richiesto di ASPETTARE, o sarebbe stata una finta**: alle 15:57 i doppioni erano zero **ma la copia locale segnava ancora 11:00**, cioè il sync non aveva ancora avuto occasione di sbagliare — ⚖️ *una guardia si prova solo dopo aver visto passare ciò che deve fermare*, ed è la 24ª riconosciuta prima di scriverla invece che dopo. ⭐ **Il dettaglio che dice meglio di ogni cifra cos'è cambiato**: alle 15:54 il socio aveva l'avviso e il calendario mostrava **ancora le 11:00** (specchio aggiornato alle 15:56) — prima d'oggi **impossibile per costruzione**, perché l'avviso nasceva dallo specchio. ⏸️ **Non copre l'annullo dal BOT** (domanda ④): là il gesto parte dal socio, ed è il lavoro aperto subito dopo |
 | **74** | ✅ *(23/08 pomeriggio, 51ª sessione — **provata sul bersaglio dal committente**, a orologio e con tre sonde)* 🚨🔄 **74. Uno SPOSTAMENTO fatto dal gestionale mandava solo la metà cattiva.** Al socio arrivava *«La tua partita non c'è più… è stata annullata dal circolo»* — falso, perché la partita c'era eccome, spostata — e chi era **primo dell'elenco** non riceveva niente affatto: su una partita di quattro si perdeva un avviso su quattro, su una di **una persona sola** l'unico. 🗣️ **La regola che l'ha promossa è sua**, ed è ora in `CLAUDE.md`: *«Quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»* · *«Gli avvisi se devono arrivare devono arrivare **corretti fino in fondo**»*. 🩹 **Curata in due metà** (`eventi-staff.ts`): Ⓐ cade il salto del primo dell'elenco — era un surrogato di *«chi ha chiesto la scrittura?»*, domanda a cui risponde la **ricevuta** della voce 70, e la rete era già tesa; Ⓑ nasce il gesto `spostata`, che porta con sé **`da`** — le coordinate di partenza — mentre le coordinate del fatto sono quelle **di arrivo**, perché è lì che si va a giocare. ⚖️ Chi è **tolto** durante uno spostamento riceve le coordinate **vecchie** e nessun `da`: del posto nuovo non deve sapere niente, o lo si manda a una partita che non è più sua. 📏 **VISTA SUL BERSAGLIO il 23/08 alle 14:36 di Roma**, su una partita vera del committente con **lui solo dentro** — scelta apposta, perché un socio solo prova **tutte e due** le metà con un gesto unico: prima, il salto dell'organizzatore avrebbe tolto l'**unica** persona da avvisare. **La catena, al secondo:** 12:27:43 lo spostamento è confermato dal circolo e registrato (`staff_edit` sulla `9591`, 09:30 → 11:00 Campo 1) · **12:34:01** il sync atterra e se ne accorge · **12:34:55** nasce il fatto — `gesto: spostata`, `persona: Maurizio Aprea`, coordinate `31/08 11:00 Campo 1`, `da: {09:30, 31/08, Campo 1}` · **12:36:47** consegnato. **Totale 9′03″.** ⭐ **Tre sonde che non si parlano, e concordano tutte**: la riga di `pmo_eventi_staff`, il `consegnato_at`, e lo **schermo del telefono** — dove il messaggio porta le 14:36, cioè l'istante della consegna. 📱 **Il testo, verbatim**: *«🔄 La tua partita è stata spostata — Lunedì 31 agosto alle 11:00, campo 1. Prima era alle 09:30, campo 1. L'ha spostata il circolo. Se non te lo aspettavi, chiedi in segreteria»*. ⇒ I quattro controlli tornano: dice **spostata** e non annullata, porta il **da**, le coordinate sono quelle di **arrivo**, e ne è arrivato **UNO SOLO** — nel gestionale il fatto generato è uno, e uno è stato consegnato. 🚨 **E dalla prova è nato un reperto più grande della prova**, per un'osservazione del committente fatta guardando l'orologio (*«questi tempi sono troppo lunghi… sul gestionale lo spostamento è avvenuto entro un minuto»*): dei 9′03″, **6′18″ sono l'attesa del sync**, cioè il 70%. Sta fra le 🆕 nate misurando. |
 | **73** | ✅ *(23/08 pomeriggio, 51ª sessione — **chiusa da LUI**, a cura già vista funzionare su due annulli veri: «secondo quello che tu mi hai consigliato»)* 🚨🔇 **73. Un annullamento fatto DAL GESTIONALE non produceva nessun avviso — ed è il gesto che ha aperto la voce 68** — 📏 **misurato al secondo il 22/08/2026**, su una segnalazione del committente fatta dal vivo: *«da gestionale ho annullato due mie partite il trentuno agosto… e non ho ricevuto nessun avviso sul mio bot»*. **I fatti:** le due partite (31/08 · 09:30 e 11:00 · campo 1) sono state marcate cancellate alle **10:53:59** e **10:54:08** UTC; in tre ore `pmo_eventi_staff` contiene **un solo** fatto, di tutt'altra partita ⇒ dei due annullamenti, **zero**. 🔎 **LA CAUSA, e non è una svista di ieri: è una cura dell'INTERFACCIA che ne spegne un'altra.** L'app, annullando, scrive subito le lapidi (`deleted: true`) delle proprie copie `booking` dello slot — sta scritto in `index.html` con parole sue: *«v5.897 — Cura del flicker-annullo: rimuove (locale + tombstone cloud) le copie booking/booking_occupancy Matchpoint dello slot annullato»*, e serviva a togliere uno sfarfallio di qualche secondo. Ma `matchpoint-bookings-sync` costruisce la **fotografia di prima** da `existingRecords`, letto con `.eq('deleted', false)` ⇒ al giro dopo quello slot **non è nella fotografia di prima**. ⇒ *La partita non è sparita fra le due fotografie: nella prima non c'era già più.* Nessuna sparizione, nessun fatto, nessun avviso. ⚖️⭐⭐ **È il rovescio esatto del pregio della voce 68**: confrontare DATI invece di eventi regala il «toccato ≠ cambiato» e costa **i cambiamenti che qualcun altro ha già scritto nella fotografia**. La 70 era la stessa scelta che nasconde CHI; questa è la stessa scelta che nasconde CHE COSA, quando a cambiarlo è l'app stessa. 🚨 **Perché è grave e non di bordo**: è **il primo gesto che il committente ha nominato** aprendo la 68 (*«…o elimino partite»*), è quello che toglie il campo alle persone, e il socio che non lo sa **si presenta a giocare**. 🔨✅ **CURATA il 22/08 pomeriggio (PR #971/#972), e la cura è la strada ② fatta in modo che la ① non servisse.** Il sync rimette nella fotografia di prima le lapidi **solo** degli slot che l'**app dichiara** di aver seppellito lei — e la dichiarazione non è stata inventata: è `staff_suppress`, che l'app scrive già nello stesso istante e per lo stesso slot, e **che il sync non scrive mai** ⇒ le lapidi del sync non possono entrare da quella porta, che era l'obiezione contro la ②. ⭐ Così la regola che fabbrica i fatti resta in **un posto solo** (`fattiDaConfronto`): la ① avrebbe messo nell'app una seconda copia di come si legge un roster, ed è la forma in cui questo progetto ha già visto un difetto tornare. 📏 **La misura che ha reso possibile la cura senza chiedere niente a nessuno**: la lapide si porta dietro il **payload intero**, `descrizione` compresa — letta su PROD, `«-Maurizio Aprea.-Lidia Comes.»` — quindi l'elenco di chi c'era è già dentro la riga sepolta. ⏱️ La finestra è «da quando ho guardato l'ultima volta» e non «gli ultimi N minuti» — una soglia a tempo rifarebbe entrare lo stesso slot per più giri di fila: il confine è l'`importedAt` del giro precedente, che per questo entra ora nel dettaglio dell'audit. ⚠️ **Il verso in cui sbaglia, dichiarato**: istante illeggibile, confine illeggibile o soppressione **ritirata** valgono «non resuscitare»; il residuo è un possibile **doppione** quando l'annullo cade nei pochi secondi fra l'export del giro precedente e la dichiarazione dell'app, e a fonderlo c'è già la riduzione per coppia (persona, partita). ⇒ *Questa cura ripete, non tace* — il verso giusto per un avviso che, mancando, manda qualcuno al campo per niente. 🔨 8 casi nuovi e **quattro** sabotaggi; quello che serviva davvero è il confronto del campo **a cifre**: la lapide porta `campo: "Campo 1"` e la soppressione `campo: 1`, e senza quello la cura sarebbe stata **verde nelle prove e muta in produzione**. ✅⭐⭐ **VISTA FUNZIONARE lo stesso pomeriggio, su DUE annulli veri e con DUE sonde che non si parlano** — la tabella del gestionale e il telefono, e combaciano. ① **12:43:38** la segreteria annulla dal gestionale il 25/08 · 10:00 · Campo 1 ⇒ fatto `annullata` per **Maria Pia Bettiol** alle 12:46:37, **consegnato@12:47:35**: una socia vera, un annullo vero, un messaggio che la mattina stessa non sarebbe partito. ② L'annullo del committente, **la catena al secondo**: 12:45:07 l'app seppellisce e dichiara · 12:48:03 il giro di sync guarda (`visto_at`) · **12:49:28 nasce il fatto** — la lapide risorge nella fotografia di prima · **consegnato@12:51:35**, e sul telefono l'avviso porta le **14:51** di Roma. ⇒ Dal gesto al messaggio **6′28″**; lo stesso gesto, la mattina, valeva **mai**. 📌 E la prova è arrivata nel verso giusto: il primo dei due fatti è nato **prima** che qualcuno lo cercasse, cioè su un annullo che nessuno aveva preparato per la prova. 📌 Il difetto **non è della voce 70 né della 68**: esiste da quando esiste la 68, e si è visto solo perché qualcuno ha annullato dal gestionale e ha guardato il telefono. ⚠️ **E rende muta la controprova della Prova 5 del collaudo**: «togli qualcuno dal gestionale e guarda se arriva l'avviso» andava rifatta con un **togli** e non con un **annulla**: **quel vincolo cade con questa chiusura**. |
 | **66** | ✅ *(23/08 pomeriggio, 51ª sessione — **chiusa da LUI**: «seguo il tuo consiglio, procedi pure»)* 🚨 **66. `PLAYER_ID_NOT_LOCKED`: l'autocomplete di Matchpoint non aggancia l'id, e il socio paga ~52 secondi per un fallimento.** L'`HiddenFieldIdPeople` resta vuoto, il worker si rifiuta di salvare (fallisce **chiuso**, ed è giusto) e la scrittura non parte. Ha colpito Fabiola alle 22:55 e Lidia alle 00:36 della notte del 21/08 (su `edit`), «Ospite» due volte il 19/08, e il committente stesso il 22/08. 🔨 **Il primo pezzo era la diagnostica** (#944): senza, dal registro si leggeva «Autocomplete non agganciato per: X» e **nient'altro**, e i due modi di fallire — *la tendina non compare mai* contro *compare, si clicca, e il campo resta vuoto* — hanno **due cure diverse**. 📏 **Il caso è arrivato il 22/08 alle 22:14:52Z, ed è stato LETTO il 23/08**, ripescandolo dal registro del worker con `stato-worker.yml`: `player_ctrl_count:…:list=2:hidden=1` · `player_option_label:…:000004-Maurizio Aprea` · `player_id_check:…:id=:hidden=[]` · `player_option_not_found:attempt1` · `player_option_not_found:attempt2`. 🚨⭐⭐ **E `hidden=1` HA SMENTITO la cura che stava pronta**: l'ipotesi era che del campo nascosto restassero **due** copie e che `.last()` leggesse quella che non si riempie mai. La copia è **una sola**, ed è **vuota**. ⇒ Leggerne un'altra non curerebbe niente, perché un'altra non c'è. ⚖️ *La diagnostica è servita a TOGLIERE una cura, non a confermarla — ed è il suo lavoro più utile, perché quella cura si sarebbe provata sul Matchpoint vero.* 📏 **Le tre misure di contorno**: ① `list=2` non compare su **nessuna** delle **556** righe-giocatore delle scritture riuscite in archivio (i valori sono 1, 3, 5, 7, più due a 6 e una a 0) e compare in **4 fallimenti su 4** di questa famiglia; ② dei sei fallimenti `HiddenFieldIdPeople vuoto` in archivio, **quattro** (giugno) sono un'**altra famiglia** — cercavano «Liida Comes» (un refuso), «Lidia Ma Comes», «sul campo 4», «Lezione», che non sono nomi di soci: sommati a questi facevano sembrare `list=1` un valore che fallisce; ③ `hidden=[]` **non distingue** «zero copie» da «una copia vuota», e qui si è deciso solo incrociandolo col conteggio. 🩹 **LA CURA, in due metà.** Ⓐ *La traccia ha una casa anche sulla strada del BOT* (`_shared/traccia-fallimento.ts`): `booking_job.payload.error` esisteva solo sulla strada **asincrona** (l'app della segreteria), mentre quella **sincrona** — il bot — usciva con `err(502, …)` e non lasciava riga. ⇒ La diagnostica della #944 aveva una casa su **metà** dei casi, e la metà scoperta era quella da cui il socio prenota. Collegata a `create`, `edit` e `cancel`, e **senza allargare di un carattere** ciò che arriva al bot (i tagli a 300 e a 200 restano: al bot i nomi interni non devono arrivare affatto — *il gestionale SA, il bot DICE* applicato alla diagnostica). Ⓑ *I tre tentativi diventano TRE.* Il ciclo rifaceva solo `Ctrl+A · Delete · ridigita`, mentre la stabilizzazione del form girava **una volta sola prima del ciclo**: quando il primo tentativo avvelenava l'estensore, il secondo e il terzo ridigitavano in un campo morto ⇒ **un tentativo e due finte**. Ora il campo si rimette a posto fra un giro e l'altro (`stabilizzaCampo`, `player_form_resettled` negli steps). 📏 **Che una pagina rimessa a posto basti NON è un'idea, è misurato**: quel giorno il socio ha rifatto la stessa prenotazione — stesso slot, stesso campo, stesso nome — **due minuti dopo**, ed è passata: `22:14:52 KO` → `22:17:07 OK`. Il guasto è **transitorio**; a non superarlo era il ciclo, non Matchpoint. ⚖️ **Perché si è potuta scrivere senza provarla prima sul bersaglio**, che su un worker unico e condiviso è la domanda vera: il ri-stabilizzo gira **solo da `attempt > 0`**, cioè solo dopo che il primo tentativo è già fallito — un giocatore che si aggancia al primo colpo non attraversa nemmeno una riga nuova. 🔒 Le due guardie sono **sul sorgente** e tarate **sabotandole**: quello che si rompe non è il codice (è I/O e Playwright, non eseguibile qui) ma una **decisione** — che la chiamata stia dentro i tre `catch`, e che il ri-stabilizzo stia dentro il ciclo **e non al primo giro**. Il secondo è un **controllo negativo**: senza la condizione, mezzo secondo si pagherebbe su ogni giocatore di ogni prenotazione, e il rischio smetterebbe di essere confinato. ⚠️ **RESIDUI DICHIARATI, e sono due.** ① **La cura NON è stata vista sul bersaglio**, e non è una svista: questo difetto **non si provoca** — capita quando capita, e provarlo vorrebbe dire scrivere sul Matchpoint vero. Il prossimo caso lo dirà da sé, ed è per questo che `player_form_resettled` sta negli steps: senza, non si potrebbe distinguere «non è bastato» da «non c'era». ② **Non è una garanzia**: il 19/08 tre fallimenti di fila su «Ospite» dicono che a volte una pagina nuova non basta. ⇒ La cura rende i tre tentativi **tre**; non li rende infallibili. |
