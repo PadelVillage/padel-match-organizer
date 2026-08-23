@@ -73,6 +73,19 @@ cioè una **scadenza di pagamento su un campo già libero**, perché la copia lo
 📌 *Un «no» falso su una scrittura non resta una frase: diventa lo stato del mondo per tutto ciò
 che legge la copia.*
 
+### 🚨 E il terzo effetto, alle 23:47: il sync attribuisce l'annullo AL CIRCOLO
+
+Ripartito il sync, al socio arriva *«👋 La tua partita non c'è più — È stata **annullata dal
+circolo**»* — dieci minuti dopo che l'annullo l'aveva chiesto **lui**, dal bot.
+
+🔎 **La protezione esiste già e non ha potuto scattare**: è la **ricevuta** della voce 70
+(*«questo non l'ha fatto la segreteria»*), che `consumer-booking-write` scrive **solo dopo una
+scrittura riuscita**. Classificata fallita, la ricevuta **non è stata scritta**.
+
+📌 ⇒ *Una ricevuta non scritta non protegge niente*: un falso «non è passata» non produce **una**
+bugia, ne produce **tre** — la frase al socio, il promemoria su un campo già libero, e
+l'attribuzione al circolo di un gesto suo. **La 70, la 79 e la 83 si toccano qui.**
+
 ### Il contorno, che è metà della diagnosi
 
 ⏱️ **Il sync era FERMO**: ultimo giro riuscito **23:35:27**, e alle 23:43 erano passati **8 minuti**
