@@ -17,9 +17,9 @@ import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../
 import { fattiDaAnnullo } from '../_shared/fatti-da-conferma.ts';
 // 🆕 La metà «STESSO ISTANTE» della regola del 22/08, applicata all'annullo: la copia del
 // gestionale si chiude adesso, non al giro di sync. Vedi il commento in testa al modulo.
-// ⛔ Import tolto col ritiro del 23/08 (vedi il commento accanto alla chiamata): il modulo
-// resta nel repo, provato, e si rimette quando la corsa col sync sara' curata.
-// import { chiudiCopiaLocaleDelloSlot } from '../_shared/chiudi-copia-locale.ts';
+// 🔄 RIMESSA IN SERVIZIO il 23/08 sera, dopo che la corsa col sync e' stata curata alla radice:
+// la fotografia di «prima» si legge ora tutta prima dell'upsert (voce 77, index.ts del sync).
+import { chiudiCopiaLocaleDelloSlot } from '../_shared/chiudi-copia-locale.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -333,24 +333,37 @@ async function dichiaraAnnulloAlSocio(opts: {
   // 🚨 `idReserva` si passa SEMPRE, ed è la correzione della prova del 23/08: il ponte, quando
   // la prenotazione ha un id, manda **solo quello** — e senza la terna questa cura non entrava
   // nemmeno in funzione. Con l'id lo slot si ricava dalla copia locale.
-  // ⛔⛔ RITIRATA IL 23/08 ALLE 16:40, DOPO UN MESSAGGIO FALSO A UN SOCIO VERO.
+  // ⛔ RITIRATA IL 23/08 ALLE 16:40, DOPO UN MESSAGGIO FALSO A UN SOCIO VERO —
+  // 🔄 e RIMESSA la sera stessa, quando la causa e' stata trovata e curata ALTROVE.
   //
-  // 🚨 Chiudendo la copia PRIMA che il sync scriva il suo giro, un export gia' in volo
-  // (scattato quando la partita c'era ancora) fa vedere al confronto uno slot che «prima non
-  // c'era e adesso c'e'» ⇒ nasce un `aggiunto` FALSO.
-  // 📏 Annullo 14:34:29 → al giro delle 14:36 il sync accoda `aggiunto` (visto_at 14:34:01,
-  // export precedente all'annullo), consegnato 14:36:46: al committente e' arrivato «Sei in
-  // campo — ti ha messo in partita il circolo» per la partita appena annullata.
+  // 🚨 Il difetto era questo: chiudendo la copia PRIMA che il sync scriva il suo giro, un
+  // export gia' in volo (scattato quando la partita c'era ancora) faceva vedere al confronto
+  // uno slot che «prima non c'era e adesso c'e'» ⇒ nasceva un `aggiunto` FALSO. Misurato:
+  // annullo e chiusura alle 14:34:29, `aggiunto` accodato alle 14:35:59 su un export delle
+  // 14:34:01, consegnato alle 14:36:46 — «Sei in campo» per la partita appena annullata.
   //
-  // ⚖️ Si ritira invece di correggere al volo: la finestra dura 1-2 minuti su un ciclo di 2,
-  // quindi il caso non e' raro — e *un avviso falso e' peggio di un campo occupato per tre
-  // minuti*. Il difetto tolto era un'attesa, quello introdotto e' una bugia.
+  // 🔎 E LA CAUSA NON ERA QUI. La protezione esiste — la lapide `staff_suppress` fa resuscitare
+  // la riga sepolta nella fotografia di PRIMA (voce 73) — e non aveva funzionato perche' il
+  // SYNC leggeva le due meta' di quella fotografia in due momenti, con l'upsert in mezzo:
+  // l'upsert riportava la riga a `deleted = false`, e la resurrezione, che gira dopo e cerca
+  // fra i sepolti, non trovava piu' niente (`risorti: 0`). Curato in
+  // `matchpoint-bookings-sync/index.ts`: le due letture stanno ora nello stesso istante, prima
+  // dell'upsert — guardia `ordine-fotografia.test.ts`, vista farsi ROSSA sul sorgente di prima.
   //
-  // 🔎 La protezione ESISTE e non ha funzionato (voce 73: la lapide fa resuscitare la riga
-  // sepolta nella fotografia di PRIMA). Il log dice `slotPrima: 76, slotDopo: 77`. Causa non
-  // accertata; prima pista: i sepolti si cercano solo fra i `record_type = 'booking'` mentre
-  // qui se ne seppelliscono tre tipi.
-  // await chiudiCopiaLocaleDelloSlot({ … }) — vedi sopra
+  // ⚖️ E la stessa corsa esisteva gia' per un annullo della SEGRETERIA, perche' anche l'app
+  // seppellisce le proprie copie all'istante: questa cura non l'aveva creata, l'aveva resa
+  // facile da vedere — arriva sempre subito dopo la conferma, cioe' sempre dentro la finestra.
+  // 📌 *Un difetto che si presenta solo insieme a una cura nuova non e' per forza suo.*
+  await chiudiCopiaLocaleDelloSlot({
+    client,
+    slot: {
+      data: String(cancel.data ?? prima?.coordinate.data ?? ''),
+      ora: String(cancel.ora ?? prima?.coordinate.ora ?? ''),
+      campo: cancel.campo ?? prima?.coordinate.campo,
+    },
+    idReserva: cancel.idReserva,
+    adesso: Date.now(),
+  });
 
   // ── ② RISPONDERE: il fatto va in coda, e il bot lo dirà ────────────────────────────────
   if (!prima) return;
