@@ -2034,8 +2034,39 @@ qualcuno, ed è quella che si può curare.
 **smettere di rivendicare la paternità** — *«risulta registrata»* al posto di *«era andata a buon
 fine, l'ho controllata io per te»*, che è vero solo nel caso che non sappiamo distinguere.
 
-⛔ **La riga del `si` NON è ancora stata toccata**: cambia ciò che il bot dice a una persona vera, e
-quella è una decisione del committente, non una scelta di chi scrive il codice.
+🩹 **METÀ CURATA il 23/08, su sua decisione** (*«curalo così»*) — **e la metà è quella del
+gestionale**, che è dove sta la protezione. Il verdetto ha un **quarto esito**, `doppione`: la
+`verifica` non chiede più *se* il socio c'è, conta **quante prenotazioni distinte** di quello slot lo
+contengono, e due non sono più un `si`.
+
+📏 **La chiave del raggruppamento è `numero`, NON `idReserva`, ed è misurato su PROD** — la
+differenza non si vede leggendo: sulle **122** righe `booking` vive, `numero` c'è **122** volte e
+`idReserva` **70**. ⇒ `idReserva` sta sulla **capofila**; le righe degli altri giocatori ne sono
+prive, e contare per `idReserva` avrebbe contato le capofila invece delle prenotazioni.
+⭐ Dove ci sono entrambi **non discordano mai** (0 su 70): non è una scelta fra due verità, è la
+stessa scritta in due posti, uno dei quali completo.
+
+⚖️ **Fallisce verso l'UNO**, di proposito: una riga senza identità non fa gruppo a sé, e se nessuna
+ne ha una comanda `presente` come prima. ⇒ Il conteggio può trasformare un `si` in un `doppione`,
+**mai** perdere un `si` — perché il verso sbagliato spedirebbe in segreteria chi non ha nessun
+problema.
+📏 Sulla copia di PROD del 23/08 gli slot vivi con più di una prenotazione distinta erano **zero**:
+la cura non nasce con dei falsi allarmi già addosso.
+
+⭐ **E una trappola evitata guardando invece di dedurre**: nello slot dell'incidente convivono
+`9549`, `9585`, `9588` e `9591`, che a occhio sarebbero quattro doppioni. Non lo sono — gli annulli
+sono marcati `deleted`, e l'edge li filtra già. *Una misura fatta senza il filtro che usa il codice
+non descrive ciò che il codice vede.*
+
+⛔ **QUELLO CHE MANCA, e va detto perché nella scelta l'avevo dato per incluso a torto: la frase sta
+nel BOT, non qui.** *«Era andata a buon fine, l'ho controllata io per te»* vive in
+`attesa-esito.ts` (`testoEsitoAttesa`), nel repo `assistente-padel-agent`. ⇒ Finché quella riga non
+si tocca, sul caso da **una** prenotazione il bot continua a rivendicare un controllo che non ha
+fatto.
+⚖️ **Ma il danno grosso è già tolto**: un bot che non conosce `doppione` lo legge come `non_ancora`
+(`verificaScrittura` tiene solo `si`/`no` e manda tutto il resto sul verso prudente) e risponde
+«non riesco ad avere conferma da qui, chiedi in segreteria». ⇒ Chi resta indietro perde l'**utilità**,
+non la **verità** — e soprattutto **smette di certificare il doppione come successo**.
 
 📌 **Misurati e basta — non promossi.** Se li vuole in coda lo dice lui.
 
