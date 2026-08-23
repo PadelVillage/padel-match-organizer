@@ -1954,6 +1954,28 @@ vera era *«non è passata, rifalla»*.
 dai codici che nessuno ha ancora visto. Il difetto non è il default: è che un codice **conosciuto,
 documentato e con un gemello già in lista** sia rimasto fuori.
 
+🩹 **CURA SCRITTA il 23/08 (50ª sessione) — in attesa della sua prova, non chiusa.**
+`PLAYER_ID_NOT_LOCKED` è entrato in `CODICI_FALLIMENTO_CERTO`, e l'elenco impone una sola
+condizione a chi ci aggiunge un codice: *«solo se sa dire dove sta rispetto al salvataggio»*.
+📏 **Detto, misurando `server.mjs` invece di dedurlo dal nome:** il `throw` sta **prima** del click
+su «+ Aggiungere» — il primo gesto che persiste, e il worker lo dichiara da sé (*«SICUREZZA PRIMA DI
+SCRIVERE: "+ Aggiungere" persiste SUBITO su Matchpoint»*) — e nella `create`, che è **l'unica**
+strada a consultare l'elenco (`esitoDellaRispostaWorker` ha un solo chiamante), i giocatori si
+aggiungono prima di `clickFormSave`. ⇒ Fra il `throw` e il salvataggio **non c'è nessuna scrittura**.
+⭐ E la prosa dell'elenco lo diceva già: fra i casi che descrive c'è *«giocatore non agganciato»*.
+⇒ *La descrizione lo copriva e il codice no* — il genere di buco che nessuno rilegge, perché chi
+legge il commento crede di aver letto la lista.
+
+🔒 **I tre fratelli restano FUORI di proposito**, e c'è una prova che lo vieta in silenzio:
+`PLAYER_NAME_MISMATCH`, `PLAYER_CODE_MISMATCH` e `PLAYER_CLIENTCODE_MISMATCH` nascono nello stesso
+blocco del worker e per lettura del codice sarebbero certi anche loro — ma sono misurati **leggendo**,
+non su una traccia vera, e la regola dell'elenco è *«nel dubbio, non aggiungerlo»*. Chi un domani
+li promuove deve prima avere il fallimento in mano.
+
+⚖️ **A valle la frase giusta esisteva già**: il ramo `scrittura_rifiutata` del bot (voce 72, curata
+il 22/08) dice *«NON è stata registrata… puoi riprovare adesso»*. ⇒ Questa cura non ha scritto un
+messaggio nuovo — ha **smesso di mandare il socio sulla strada sbagliata**.
+
 ### ③ 🚨 La verifica dell'esito cerca per SLOT, non per `idReserva` — e ha certificato una cosa falsa
 
 Alle **00:17** il bot ha scritto: *«Ci siamo: la prenotazione di lunedì 31 agosto alle 09:30, campo 1
@@ -1977,9 +1999,43 @@ invece della **prenotazione**. Curata in un punto, viva in un altro.
 📌 *Quando un difetto si chiude, la domanda successiva non è «è curato?» ma «dove altro vive quella
 stessa chiave?».*
 
-⚠️ **Cosa NON è ancora stato letto**: il codice della `verifica` (l'azione lato ponte e
-`attesa-esito.ts` lato bot). La ③ qui sopra è misurata dal **comportamento** e dalla forma della riga
-di registro, non dalla riga che decide. Prima della cura va letta.
+🔎 **LETTA il 23/08 (50ª sessione), come la scheda chiedeva — e la lettura CONFERMA il difetto e
+SMENTISCE la cura.**
+
+📏 **La riga che decide**, `consumer-booking-write/index.ts` nell'azione `verifica`:
+```js
+const righeVerifica = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+const presente = [...esitoVerifica.chiavi.keys()].some((nn) => nameVariants.has(nn));
+```
+⇒ `presente` significa *«questo socio compare in una qualunque prenotazione di quel campo a
+quell'ora»*, non *«quella di cui dubitavo esiste»*. Il bot, dal canto suo, manda `data, ora, campo,
+scritta_alle` e **nessun `idReserva`** (`ponte.ts`, `verificaScrittura`). Il difetto è dove la
+scheda diceva.
+
+🚨⭐⭐ **MA «CERCARE PER `idReserva`» NON SI PUÒ FARE, e non è un dettaglio realizzativo: è il
+contrario.** La `verifica` esiste **solo** dopo un `esito_ignoto`, e `esito_ignoto` vuol dire *il
+worker non ha mai risposto*. ⇒ Quella prenotazione **un `idReserva` non ce l'ha mai avuto**, da
+nessuna parte: è precisamente ciò che non sappiamo di lei.
+⚖️ *La chiave che la scheda chiede di usare è la cosa che l'evento da diagnosticare ha distrutto.*
+⇒ Una cura scritta su quella riga sarebbe rimasta ferma al primo tentativo — o, peggio, avrebbe
+inventato una chiave e certificato su quella.
+
+🎯 **Quello che invece si PUÒ sapere, e sposta la domanda** (`idReserva` è su ogni riga, in
+`DayBooking`): oggi la verifica riduce a un **sì/no** una cosa che è un **conteggio**.
+| righe distinte nello slot col socio | cosa vuol dire | cosa dice oggi |
+|---|---|---|
+| **0** | non risulta niente | «non è stata registrata» ✅ |
+| **1** | c'è **una** prenotazione — di chi non è dato saperlo | «era andata a buon fine, l'ho controllata io per te» ⚠️ afferma più di quanto sappia |
+| **2+** | 🚨 **il doppione è successo** | «era andata a buon fine» — **il danno certificato come successo** |
+⇒ La domanda *«è passata la mia?»* resta senza risposta certa e lo resterà; la domanda *«ci sono
+DUE prenotazioni?»* ha risposta certa **e oggi non viene fatta**. È l'unica delle due che protegge
+qualcuno, ed è quella che si può curare.
+📌 Perciò la cura ha due metà, e la seconda è solo di parole: **contare invece di constatare**, e
+**smettere di rivendicare la paternità** — *«risulta registrata»* al posto di *«era andata a buon
+fine, l'ho controllata io per te»*, che è vero solo nel caso che non sappiamo distinguere.
+
+⛔ **La riga del `si` NON è ancora stata toccata**: cambia ciò che il bot dice a una persona vera, e
+quella è una decisione del committente, non una scelta di chi scrive il codice.
 
 📌 **Misurati e basta — non promossi.** Se li vuole in coda lo dice lui.
 
