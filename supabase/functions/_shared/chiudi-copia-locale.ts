@@ -29,6 +29,7 @@
 // invece che al giro buono.
 
 import { campoScritto } from './fatti-da-conferma.ts';
+import { slotDaIdReserva } from './dichiara-fatti.ts';
 
 // deno-lint-ignore no-explicit-any
 type ClientMinimo = { from: (tabella: string) => any };
@@ -131,13 +132,38 @@ export function lapide(slot: { data: string; ora: string; campo: unknown }, ids:
 export async function chiudiCopiaLocaleDelloSlot(opts: {
   client: ClientMinimo;
   slot: { data: string; ora: string; campo: unknown };
+  /**
+   * 🚨⭐⭐ L'id, quando la terna non c'è. Il ponte compone la richiesta di annullo come
+   * `target.idReserva ? { idReserva } : { campo, data, ora }` ⇒ per una prenotazione venuta
+   * dal sync manda **solo l'id**, e questa funzione riceveva tre campi vuoti. Misurato sulla
+   * prova del 23/08: il registro dell'annullo uscì come `staff_cancel|||Campo |9591|…`.
+   */
+  idReserva?: string;
   /** L'istante da scrivere nella lapide. */
   adesso: number;
 }): Promise<number> {
-  const { client, slot, adesso } = opts;
-  const data = String(slot.data ?? '').trim();
-  const ora = String(slot.ora ?? '').trim();
-  if (!data || !ora) return 0;
+  const { client, slot, adesso, idReserva } = opts;
+  let data = String(slot.data ?? '').trim();
+  let ora = String(slot.ora ?? '').trim();
+  let campo = slot.campo;
+  if ((!data || !ora) && idReserva) {
+    const coord = await slotDaIdReserva(client, idReserva);
+    if (coord) { data = coord.data; ora = coord.ora; campo = coord.campo; }
+  }
+  if (!data || !ora) {
+    // 🚨⭐⭐ QUESTA RIGA NON C'ERA, ed è il motivo per cui il 23/08 la cura è sembrata
+    // funzionante mentre non era nemmeno entrata in funzione: il ramo tornava `0` **in
+    // silenzio**, quindi nel registro non c'era né un successo né un errore — e il silenzio
+    // assomiglia a «non c'era niente da fare».
+    // ⚖️ *Una strada che si arrende senza lasciare una riga costringe la diagnosi a procedere
+    // per esclusione*, che è la forma più lenta e più incerta di capire.
+    console.warn(JSON.stringify({
+      event: 'copia_locale_non_chiusa_coordinate_assenti',
+      idReserva: idReserva ?? null,
+      slotRicevuto: { data: slot.data ?? null, ora: slot.ora ?? null, campo: slot.campo ?? null },
+    }));
+    return 0;
+  }
   try {
     // Si filtra sulla data nel database e su ora/campo nel codice: i due formati del campo
     // cadono così insieme. 📏 Le righe `booking` vive su PROD sono ~130 in tutto — il
@@ -149,10 +175,15 @@ export async function chiudiCopiaLocaleDelloSlot(opts: {
       .eq('deleted', false)
       .eq('payload->>data', data);
     if (esito?.error) throw esito.error;
-    const mie = righeDelloSlot((esito?.data ?? []) as RigaCopia[], { data, ora, campo: slot.campo });
+    const mie = righeDelloSlot((esito?.data ?? []) as RigaCopia[], { data, ora, campo });
     if (!mie.length) {
       // Niente da chiudere: o l'ha già fatto l'app (annullo dalla segreteria), o quella copia
-      // non c'è mai stata. Non è un caso da segnalare.
+      // non c'è mai stata. ⚠️ Si dice comunque: «zero righe» e «non sono arrivato fin qui»
+      // sono due esiti diversi, e distinguerli dal registro è ciò che il 23/08 è mancato.
+      console.log(JSON.stringify({
+        event: 'copia_locale_gia_pulita',
+        slot: `${data}|${ora}|${cifre(campo)}`,
+      }));
       return 0;
     }
 
@@ -169,7 +200,7 @@ export async function chiudiCopiaLocaleDelloSlot(opts: {
     const esitoLapide = await client
       .from('pmo_cloud_records')
       .upsert(
-        { ...lapide({ data, ora, campo: slot.campo }, idsDelleRighe(mie), adesso),
+        { ...lapide({ data, ora, campo }, idsDelleRighe(mie), adesso),
           updated_at: adessoIso, synced_at: adessoIso },
         { onConflict: 'record_type,local_key' },
       );
@@ -177,10 +208,10 @@ export async function chiudiCopiaLocaleDelloSlot(opts: {
 
     console.log(JSON.stringify({
       event: 'copia_locale_chiusa',
-      slot: `${data}|${ora}|${cifre(slot.campo)}`,
+      slot: `${data}|${ora}|${cifre(campo)}`,
       righe: mie.length,
       tipi: [...new Set(mie.map((r) => r.record_type))],
-      campoScritto: campoScritto(slot.campo),
+      campoScritto: campoScritto(campo),
     }));
     return mie.length;
   } catch (e) {
@@ -188,7 +219,7 @@ export async function chiudiCopiaLocaleDelloSlot(opts: {
     // buono il reconcile toglie comunque quelle righe. Si perde la prontezza, non la verità.
     console.warn(JSON.stringify({
       event: 'copia_locale_non_chiusa',
-      slot: `${data}|${ora}|${cifre(slot.campo)}`,
+      slot: `${data}|${ora}|${cifre(campo)}`,
       error: String((e as Error)?.message ?? e),
     }));
     return 0;
