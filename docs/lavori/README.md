@@ -1500,11 +1500,22 @@ rifiutare la scrittura dal database, e le righe sono state **zero su TEST e su P
 senza che nessuno se ne accorgesse. *Una cura che pretende che una migrazione sia già passata è
 una cura che, il giorno in cui non lo è, spegne ciò che voleva accendere.*
 
-⏳ **COSA MANCA, e non si dà per fatto**: ① la **migrazione** va applicata a mano su `cudi…`
-(TEST) e `qqbf…` (PROD) — **prima** il progetto di TEST, come sempre; ② finché non è applicata la
-strada nuova **non è in servizio** e tutto continua a passare dal sync, esattamente come ieri;
-③ la cura **non è stata vista sul bersaglio**: va guardata su uno spostamento vero, misurando che
-il tempo gesto→messaggio scenda dai 9′03″ della prova della 74.
+✅ **LA MIGRAZIONE È APPLICATA**, su TEST e su PROD, il 23/08 — autorizzata da lui a voce
+(*«ti do il permesso di fare la migrazione»*). Verificata dopo, non data per fatta: colonna e
+indice presenti su tutti e due i progetti, e su `qqbf…` i **100** fatti già in coda sono tutti
+`origine = 'sync'` ⇒ tengono la quiete piena, cioè il comportamento di ieri. Zero `conferma`, che
+è giusto finché il codice non è in servizio.
+
+⏳ **COSA MANCA, e non si dà per fatto**: ① il **merge delle due PR** — fino a lì la strada nuova
+non esiste e tutto passa dal sync; ② la cura **non è stata vista sul bersaglio**: va guardata su
+uno spostamento vero, misurando che il tempo gesto→messaggio scenda dai **9′03″** della prova
+della 74. Finché non lo si è visto, questa voce **non si chiude**.
+
+🚨 **E una trappola del deploy, misurata leggendo il workflow**: `deploy-edge-functions-*.yml`
+sceglie cosa pubblicare con `awk '$3 !~ /^_/'` ⇒ **le cartelle che iniziano per `_` sono
+saltate**. Toccare solo `_shared/` non manda in servizio niente. Qui il deploy parte perché nello
+stesso commit cambiano anche le edge che quel modulo lo chiamano — ma chi un domani correggesse
+`fatti-da-conferma.ts` **da solo** vedrebbe la CI verde e il difetto ancora vivo.
 
 📌 **E la 76 NON assorbe l'annullo dal bot** (domanda ④): là il gesto parte dal socio e la copia
 locale se ne va col sync, misurato 3′40″ il 22/08. Questa voce cura l'annullo fatto **dalla
