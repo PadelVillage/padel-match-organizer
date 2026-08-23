@@ -332,6 +332,52 @@ caso('24. 🔌 IL CABLAGGIO NELL\'EDGE: la regola non basta scriverla, bisogna c
   ];
 });
 
+caso('25. 🩹 LA VOCE 66: `PLAYER_ID_NOT_LOCKED` è un fallimento CERTO, come il suo gemello', () => {
+  // 🚨 Il difetto che questo caso protegge non era un codice sbagliato: era un codice ASSENTE.
+  // `PLAYER_ADD_INCOMPLETE` era in lista e `PLAYER_ID_NOT_LOCKED` no, pur essendo lo stesso
+  // punto del flusso — l'autocomplete che non aggancia il giocatore, col worker che si ferma
+  // prima di salvare. ⇒ Il socio riceveva «non lo so, non rifarla» su un fallimento certo, e
+  // restava fermo fino a un quarto d'ora.
+  //
+  // ⚖️ I DUE VERSI si provano insieme, perché è l'asimmetria a reggere tutto l'elenco: qui il
+  // «certo» è lecito solo perché fra il `throw` e il salvataggio non c'è nessuna scrittura.
+  return [
+    esitoDellaRispostaWorker({ error: 'PLAYER_ID_NOT_LOCKED' }) === 'certo',
+    esitoDellaRispostaWorker({ error: ' player_id_not_locked ' }) === 'certo',  // spazi e minuscole
+    CODICI_FALLIMENTO_CERTO.has('PLAYER_ID_NOT_LOCKED'),
+    // Il gemello non si è perso per strada.
+    CODICI_FALLIMENTO_CERTO.has('PLAYER_ADD_INCOMPLETE'),
+    // 🚨 CONTROLLO NEGATIVO, ed è il pezzo che tiene onesta la cura: i tre fratelli che stanno
+    // nello STESSO blocco del worker restano fuori di proposito. Sono misurati per lettura del
+    // codice, non su una traccia vera, e la regola dell'elenco è «nel dubbio, non aggiungerlo».
+    // Chi un domani li aggiunge deve prima avere il fallimento in mano — e cambiare questo caso
+    // è il gesto con cui se ne accorge.
+    esitoDellaRispostaWorker({ error: 'PLAYER_NAME_MISMATCH' }) === 'ignoto',
+    esitoDellaRispostaWorker({ error: 'PLAYER_CODE_MISMATCH' }) === 'ignoto',
+    esitoDellaRispostaWorker({ error: 'PLAYER_CLIENTCODE_MISMATCH' }) === 'ignoto',
+  ];
+});
+
+caso('26. 🔎 IL FATTO NEL WORKER su cui poggia il caso 25 — se si sposta, la cura non vale più', () => {
+  // ⚠️ Legge il SORGENTE, come il 24, e per la stessa ragione: `server.mjs` è il worker e da qui
+  // non si esegue. Ciò che prova non è che il worker funzioni — è che l'ORDINE su cui abbiamo
+  // dichiarato «certo» sia ancora quello. 🚨 Se un domani il `throw` finisse DOPO un gesto che
+  // persiste, `PLAYER_ID_NOT_LOCKED` diventerebbe un ignoto e questo caso deve cadere: un
+  // «certo» falso costa una doppia prenotazione, che è il danno che tutto l'elenco evita.
+  const w = readFileSync(join(QUI, '..', 'tools', 'matchpoint-browser-worker', 'src', 'server.mjs'), 'utf8');
+  const iThrow = w.indexOf("fail('PLAYER_ID_NOT_LOCKED'");
+  const iAggiungere = w.indexOf('player_name_precheck');
+  const iSave = w.indexOf("clickFormSave(formCtx, page, ['Salvare e chiudere', 'Salvare']");
+  return [
+    iThrow > 0,
+    // Il `throw` viene PRIMA del controllo che precede «+ Aggiungere», cioè prima del primo
+    // gesto che persiste su Matchpoint.
+    iAggiungere > iThrow,
+    // …e prima del salvataggio della CREATE, che è la strada che consulta questo elenco.
+    iSave > iThrow,
+  ];
+});
+
 let falliti = 0;
 for (const c of casi) {
   let esiti;
