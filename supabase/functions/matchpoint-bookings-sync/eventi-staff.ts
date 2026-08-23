@@ -39,6 +39,17 @@ export type SlotRoster = {
   roster: string[];
   /** `Partita` o `Lezione Libera`, come lo scrive Matchpoint. Assente = non lo so. */
   tipo?: string;
+  /**
+   * ⭐⭐ QUALE prenotazione occupa questo slot — la chiave che distingue *spostata* da
+   * *annullata + prenotata di nuovo*, e senza la quale le due sono indistinguibili.
+   *
+   * 📏 È `numero`, non `idReserva`, e la differenza è misurata su PROD il 23/08: sulle 122
+   * righe `booking` vive `numero` c'è **122** volte e `idReserva` **70** — quest'ultimo sta
+   * sulla capofila e manca sulle righe degli altri giocatori. Dove ci sono entrambi non
+   * discordano mai (0 su 70).
+   * ⚠️ Assente ⇒ di questo slot non si può dire se si è mosso, e si tratta come prima.
+   */
+  prenotazione?: string;
 };
 
 /** Cosa è successo a UNA persona in UNA partita. */
@@ -49,7 +60,7 @@ export type FattoStaff = {
   campo: string;
   /** Il nome come lo scrive il circolo: chi consegna lo risolverà a una scheda. */
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata';
   /**
    * Che cosa è lo slot, **detto con le parole del gestionale**: `'lezione'` o `'partita'`.
    *
@@ -60,6 +71,12 @@ export type FattoStaff = {
    * ⚠️ Assente = non lo so ⇒ a valle vale «partita», che è il comportamento di prima.
    */
   tipo?: TipoSlot;
+  /**
+   * 🔄 Solo su `spostata`: **da dove** si è mossa. Le coordinate principali del fatto sono
+   * quelle NUOVE — è lì che si va a giocare — e queste dicono da dove, perché il socio quella
+   * partita ce l'ha in testa com'era prima.
+   */
+  da?: { data: string; ora: string; campo: string };
 };
 
 /** Che cos'è uno slot, con le parole del gestionale. */
@@ -241,8 +258,62 @@ export function fattiDaConfronto(
 
   const fatti: FattoStaff[] = [];
 
+  // 🔄⭐⭐ DOVE È FINITA CIASCUNA PRENOTAZIONE — 23/08/2026, la metà Ⓑ della regola del
+  // committente (*«gli avvisi se devono arrivare devono arrivare corretti fino in fondo»*).
+  //
+  // 📏 Il fatto che l'ha chiesta: spostando una partita dalle 09:30 campo 1 alle 11:30 campo 2,
+  // al socio arrivava **«La tua partita non c'è più… è stata annullata dal circolo»** e
+  // nient'altro — misurato due volte, in tutt'e due i versi. La partita esisteva.
+  // 🔎 La causa è che questo confronto guarda gli **SLOT**: uno slot sparisce, un altro nasce, e
+  // da fuori è indistinguibile da un annullo più una prenotazione nuova.
+  // ⇒ Con l'identità della prenotazione le due cose si distinguono: **stessa prenotazione,
+  //   slot diverso = spostata**. È la stessa chiave che il 23/08 ha curato la verifica
+  //   dell'esito nel ponte — là serviva a contare, qui a seguire.
+  // ⚠️ Chi non ha identità non entra nell'indice, e resta trattato come prima: il verso in cui
+  //   si sbaglia è dire «annullata» di uno spostamento, che è ciò che già succede oggi.
+  const doveSonoFinite = new Map<string, SlotRoster>();
+  for (const [, v] of dopo) if (v.prenotazione) doveSonoFinite.set(v.prenotazione, v);
+  /** Gli slot NUOVI che sono già stati raccontati come spostamento: non sono partite nuove. */
+  const natiDaUnoSpostamento = new Set<string>();
+
   for (const [slot, slotPrima] of prima) {
     const slotDopo = dopo.get(slot);
+
+    // ── La prenotazione non è sparita: si è MOSSA ────────────────────────────────────
+    // 🚨 Prima del ramo «annullata», perché è il caso che quel ramo raccontava male.
+    const altrove = !slotDopo && slotPrima.prenotazione
+      ? doveSonoFinite.get(slotPrima.prenotazione)
+      : undefined;
+    if (altrove && altrove.slot !== slot) {
+      natiDaUnoSpostamento.add(altrove.slot);
+      const daDove = { data: slotPrima.data, ora: slotPrima.ora, campo: slotPrima.campo };
+      // ⚖️ Uno spostamento può portarsi dietro anche un cambio di giocatori, e le tre cose si
+      // dicono diverse: chi resta legge «spostata», chi è stato tolto legge «non sei più
+      // dentro», chi è stato messo legge «sei in campo». Dire «spostata» a chi è stato tolto
+      // lo manderebbe a giocare a un'ora nuova per una partita che non è più sua.
+      const cPrima = conteggio(slotPrima.roster);
+      const cDopo = conteggio(altrove.roster);
+      for (const n of new Set([...cPrima.keys(), ...cDopo.keys()])) {
+        const eraDentro = (cPrima.get(n)?.quante ?? 0) > 0;
+        const eDentro = (cDopo.get(n)?.quante ?? 0) > 0;
+        const comeScritto = cDopo.get(n)?.comeScritto ?? cPrima.get(n)?.comeScritto ?? '';
+        if (!puoRicevere(comeScritto)) continue;
+        const gesto = eraDentro && eDentro ? 'spostata' : (eDentro ? 'aggiunto' : 'tolto');
+        fatti.push({
+          // ⭐ Le coordinate del fatto sono quelle NUOVE — è lì che si va a giocare — tranne
+          // per chi è stato tolto, che di quel posto nuovo non deve sapere niente.
+          slot: gesto === 'tolto' ? slot : altrove.slot,
+          data: gesto === 'tolto' ? slotPrima.data : altrove.data,
+          ora: gesto === 'tolto' ? slotPrima.ora : altrove.ora,
+          campo: gesto === 'tolto' ? slotPrima.campo : altrove.campo,
+          persona: comeScritto,
+          gesto,
+          tipo: tipoDelloSlot((gesto === 'tolto' ? slotPrima : altrove).tipo),
+          ...(gesto === 'spostata' ? { da: daDove } : {}),
+        });
+      }
+      continue;
+    }
 
     // ── La partita non c'è più: annullata ─────────────────────────────────────────────
     // 🚨 Qui il destinatario NON è uno solo, e non è una deroga alla decisione ①: quella
@@ -307,14 +378,34 @@ export function fattiDaConfronto(
   // altrettanto vero, perché in campo ce li ha messi lui e loro non lo sanno.
   for (const [slot, slotDopo] of dopo) {
     if (prima.has(slot)) continue;
-    // 🗣️⭐ VOCE 74: in una LEZIONE non si salta nessuno — il perché sta per esteso accanto a
-    // `eLezione`. In breve: una lezione non ha un organizzatore fra i giocatori, e a chi ha
-    // prenotato dal bot ci pensa la RICEVUTA della voce 70, che è la risposta esatta invece
-    // del surrogato «è il primo dell'elenco».
-    let daSaltare = eLezione(slotDopo.tipo) ? 0 : 1;
+    // 🔄 Non è una partita nuova: è quella di prima, altrove — già raccontata come spostamento.
+    if (natiDaUnoSpostamento.has(slot)) continue;
+    // 🗣️🚨⭐⭐ 23/08/2026 — IL SALTO DEL PRIMO NON C'È PIÙ, PER NESSUNO. Regola del committente:
+    //
+    //   *«Quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro
+    //   la partita devono essere avvisate.»*  ·  *«Logicamente questa regola vale anche per una
+    //   lezione.»*
+    //
+    // 📏 IL DANNO MISURATO, sui suoi due spostamenti del 23/08: nascevano `annullata` per lo
+    // slot vecchio e **zero** `aggiunto` per quello nuovo. La controprova stava nella stessa
+    // tabella — su una partita di quattro nascevano tre `aggiunto` e mancava **il primo
+    // dell'elenco**. ⇒ Su una partita di più persone si perdeva un avviso su quattro; su una di
+    // **una sola** si perdeva l'unico, e non arrivava niente.
+    //
+    // ⚖️ IL SALTO ERA UN SURROGATO, ed è la ragione per cui cade senza riaprire la voce 70. La
+    // domanda vera non è «chi è il primo dell'elenco?» ma **«chi ha chiesto la scrittura?»**, e
+    // a quella risponde la RICEVUTA: le due divergono esattamente dove il surrogato sbagliava —
+    // una partita scritta dalla segreteria per un socio solo ha un primo dell'elenco che non ha
+    // chiesto niente.
+    // ⭐ E la rete era già tesa, scritta apposta per oggi: `consumer-booking-write` lascia una
+    // ricevuta anche sulla `create` dal bot, col commento *«questa ricevuta oggi non copre
+    // niente, ed è una RETE… regge il giorno in cui l'ordine cambiasse»*. Quel giorno è oggi.
+    // 📏 Finestra della ricevuta 20′ (più 3′ di tolleranza) contro un sync che vede in ~2′
+    // (massimo misurato 10′04″) ⇒ copre con margine.
+    // 🚨 E `consumer-staff-events` **fallisce chiuso**: se le ricevute non si leggono non
+    // consegna niente e riprova al giro dopo. Il verso in cui si sbaglia resta il silenzio.
     for (const g of slotDopo.roster) {
       if (!normNome(g)) continue;
-      if (daSaltare > 0) { daSaltare -= 1; continue; }   // l'organizzatore
       if (!puoRicevere(g)) continue;
       fatti.push({
         slot,
@@ -375,7 +466,11 @@ export function fotografia(
     if (!gia || nomi.length > gia.roster.length) {
       // ⚠️ Il `tipo` viaggia con la copia scelta, non si fonde: le copie sono la STESSA
       // partita e lo ripetono uguale — prenderlo da un'altra riga sarebbe una terza fonte.
-      foto.set(slot, { slot, data, ora, campo, roster: nomi, tipo: clean(p?.tipo) });
+      foto.set(slot, {
+        slot, data, ora, campo, roster: nomi, tipo: clean(p?.tipo),
+        // ⚠️ Come il `tipo`: viaggia con la copia scelta e non si fonde da più righe.
+        prenotazione: clean(p?.numero) ?? clean(p?.id_reserva) ?? clean(p?.idReserva),
+      });
     }
   }
   return foto;
