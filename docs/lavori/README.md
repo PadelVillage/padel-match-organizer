@@ -1654,9 +1654,21 @@ arriva `dettaglioPerIlBot(...).slice(0, 200)` — che è corto **apposta**, perc
 messaggio per il socio, e per la regola ferma di `CLAUDE.md` i nomi interni al bot non devono
 arrivare affatto. La cura giusta non è dire di più al bot: è **scrivere il fatto nel gestionale**,
 che è chi deve sapere.
-📌 Finché non c'è, ogni fallimento del bot va inseguito sulla VM entro la finestra del log — che è
-un attrezzo che c'è (`stato-worker.yml`), ma è una **finestra che scorre**: un caso vecchio di
-troppo non si recupera più. Questo si è salvato per 13 ore.
+📌 Senza, ogni fallimento del bot va inseguito sulla VM entro la finestra del log — che è un
+attrezzo che c'è (`stato-worker.yml`), ma è una **finestra che scorre**: un caso vecchio di troppo
+non si recupera più. Questo si è salvato per 13 ore.
+
+🩹 **CURATO lo stesso giorno** (`supabase/functions/_shared/traccia-fallimento.ts`): sulla strada
+sincrona la traccia si deposita nel gestionale con la **stessa forma** delle righe asincrone
+(`booking_job`, `payload.status` + `payload.error`), più `strada: 'sincrona'` a distinguerle — così
+una sola query trova entrambe le strade, che è esattamente ciò che ha reso possibile la misura di
+oggi. Collegata a **tutte e tre** le funzioni con una strada sincrona (`create`, `edit`, `cancel`),
+non alla sola `create`: i due fallimenti che hanno **aperto** la voce 66 erano su `/edit-booking`.
+⛔ E non allarga di un carattere ciò che arriva al bot: i tagli a 300 e a 200 restano dove sono.
+⚖️ La guardia è **sul sorgente**, non sul modulo — il modulo è I/O e nient'altro, mentre ciò che si
+rompe davvero è la **sparizione della chiamata** da uno dei tre `catch`, che non rompe niente di
+visibile: le prenotazioni continuano a funzionare, e a mancare è solo ciò che si potrà leggere il
+giorno del prossimo guasto. Tarata **sabotandola**, non guardandola verde.
 
 ⚠️ **Un difetto minore della diagnostica stessa, trovato leggendola:** `hidden=[]` **non distingue**
 *«zero copie del campo»* da *«una copia, vuota»* — perché `letti.join(',')` dà stringa vuota in
