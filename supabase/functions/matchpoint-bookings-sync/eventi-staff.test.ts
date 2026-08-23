@@ -161,19 +161,32 @@ test('un calo normale resta sotto la guardia e i fatti escono', () => {
 });
 
 // ── Le partite nuove ─────────────────────────────────────────────────────────────────────
-test('partita nuova: avvisati tutti tranne il primo, che è chi ha organizzato', () => {
+test('partita nuova: avvisati TUTTI, primo dell\'elenco compreso', () => {
+  // 🗣️🚨 23/08/2026 — qui il caso diceva «tutti TRANNE il primo». Regola del committente:
+  // *«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la
+  // partita devono essere avvisate»*, e *«logicamente vale anche per una lezione»*.
+  // ⚖️ A non annunciare al socio ciò che ha fatto lui pensa la RICEVUTA (voce 70), che risponde
+  // alla domanda giusta — «chi ha chiesto la scrittura?» — invece del surrogato «chi è il primo
+  // dell'elenco?». Le due divergono esattamente dove il surrogato sbagliava: una partita
+  // scritta dalla segreteria per un socio solo ha un primo che non ha chiesto niente.
   const prima = foto(...contorno(10));
   const dopo = foto(['2026-09-15|18:00|3', ['Maurizio Aprea', 'Lidia Comes', 'Marco Rossi']], ...contorno(10));
   const f = fattiDaConfronto(prima, dopo);
-  assert.equal(f.length, 2);
-  assert.ok(!f.some((x) => x.persona === 'Maurizio Aprea'), "l'organizzatore non si avvisa da solo");
-  assert.deepEqual(f.map((x) => x.persona).sort(), ['Lidia Comes', 'Marco Rossi']);
+  assert.equal(f.length, 3);
+  assert.deepEqual(f.map((x) => x.persona).sort(), ['Lidia Comes', 'Marco Rossi', 'Maurizio Aprea']);
 });
 
-test('partita nuova con un solo nome → nessun fatto: quella persona ha prenotato lei', () => {
+test('🚨 partita nuova con UN SOLO nome: il fatto nasce — è il caso della sua segnalazione', () => {
+  // 📏 Il difetto misurato il 23/08: la segreteria che prenota (o sposta) per un socio solo non
+  // gliela annunciava MAI, perché l'unico nome era anche «il primo». ⇒ Non arrivava niente.
+  // ⚖️ E questo è il caso in cui il salto sbagliava di più: chi è solo in campo non ha nessun
+  // compagno che possa dirglielo.
   const prima = foto(...contorno(10));
   const dopo = foto(['2026-09-15|18:00|3', ['Maurizio Aprea']], ...contorno(10));
-  assert.deepEqual(fattiDaConfronto(prima, dopo), []);
+  const f = fattiDaConfronto(prima, dopo);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].persona, 'Maurizio Aprea');
+  assert.equal(f[0].gesto, 'aggiunto');
 });
 
 // ── Il confronto dei nomi ────────────────────────────────────────────────────────────────
@@ -402,14 +415,24 @@ test('43bis. il fatto di una PARTITA porta `tipo: partita`, non il nome di Match
   assert.equal(f[0].tipo, 'partita');
 });
 
-test('43. una PARTITA nuova continua a saltare il primo — la voce 70 non si riapre', () => {
+test('43. 🔄 la voce 70 non si riapre — ma a tenerla chiusa è la RICEVUTA, non più il salto', () => {
+  // 🚨⭐⭐ Il caso c'è ancora e protegge la stessa cosa; cambia CHI la protegge, ed è la
+  // sostanza della modifica del 23/08.
+  // ⇒ Qui il fatto NASCE per tutti e due: questo modulo confronta due fotografie e non ha modo
+  //   di sapere chi ha chiesto la scrittura. A saperlo è `consumer-staff-events`, che scarta i
+  //   fatti coperti da una ricevuta e lo scrive nel registro, uno per uno.
+  // ⭐ E la rete era già tesa, scritta apposta: `consumer-booking-write` lascia una ricevuta
+  //   anche sulla `create` dal bot, col commento «questa ricevuta oggi non copre niente, ed è
+  //   una RETE… regge il giorno in cui l'ordine cambiasse». Quel giorno è oggi.
+  // 📌 *Una protezione che poggia su una convenzione (l'ordine dell'elenco) va sostituita da
+  //   una che poggia su un fatto (chi ha chiesto), non tolta.*
   const dopo = new Map([
     ...fotoT('Partita', ['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]),
     ...foto(...contorno(4)),
   ]);
   const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
-  assert.equal(f.length, 1);
-  assert.equal(f[0].persona, 'Lidia Comes', 'l\'organizzatore non si annuncia da sé');
+  assert.equal(f.length, 2);
+  assert.deepEqual(f.map((x) => x.persona).sort(), ['Lidia Comes', 'Maurizio Aprea']);
 });
 
 test('44. una LEZIONE con più giocatori li avvisa TUTTI', () => {
@@ -421,14 +444,16 @@ test('44. una LEZIONE con più giocatori li avvisa TUTTI', () => {
   assert.deepEqual(f.map((x) => x.persona).sort(), ['Carla Mattana', 'Maria Pia Bettiol']);
 });
 
-test('45. `tipo` assente vale NON lezione: il comportamento di prima non cambia', () => {
+test('45. `tipo` assente: cambia la PAROLA, non più CHI riceve', () => {
+  // ⚖️ Dal 23/08 il tipo non decide più chi viene avvisato — nessuno si salta, per nessun tipo.
+  // Decide ancora la parola che il bot userà, ed è l'unica cosa che deve continuare a fare.
   const dopo = new Map([
     ...foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]),
     ...foto(...contorno(4)),
   ]);
   const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
-  assert.equal(f.length, 1);
-  assert.equal(f[0].persona, 'Lidia Comes');
+  assert.equal(f.length, 2);
+  assert.ok(f.every((x) => x.tipo === 'partita'), 'un tipo assente vale «partita», come prima');
 });
 
 test('46. un tipo SCONOSCIUTO non è una lezione — si tace, non si avvisa', () => {
@@ -446,11 +471,19 @@ test('46. un tipo SCONOSCIUTO non è una lezione — si tace, non si avvisa', ()
   assert.equal(tipoDelloSlot('Partita'), 'partita');
   assert.equal(tipoDelloSlot('Torneo aziendale'), 'partita');
   assert.equal(tipoDelloSlot(undefined), 'partita');
+  // 🚨 23/08 — QUI IL CASO CAMBIA VERSO, e va detto perché non è un indebolimento. Prima
+  // provava che un tipo sconosciuto facesse TACERE il bot (saltando l'unico nome). Adesso il
+  // silenzio non è più il modo in cui ci si difende da un tipo sconosciuto: nessuno si salta,
+  // e chi è dentro viene avvisato comunque — che è la regola del committente.
+  // ⇒ Ciò che il tipo sconosciuto NON deve fare è farsi chiamare «lezione»: quello si difende
+  //   ancora, ed è la metà che resta.
   const dopo = new Map([
     ...fotoT('Torneo aziendale', ['2026-08-25|12:30|1', ['Maria Pia Bettiol']]),
     ...foto(...contorno(4)),
   ]);
-  assert.deepEqual(fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22'), []);
+  const f = fattiDaConfronto(foto(...contorno(4)), dopo, '2026-08-22');
+  assert.equal(f.length, 1, 'chi è dentro viene avvisato anche su un tipo che non conosciamo');
+  assert.equal(f[0].tipo, 'partita', 'un tipo sconosciuto non diventa una lezione');
 });
 
 test('47. il tipo viaggia anche sui fatti che NON nascono da uno slot nuovo', () => {
@@ -486,6 +519,116 @@ test('48. dal payload al fatto: il tipo si legge dalla riga vera, non si passa a
   assert.equal(f.length, 1);
   assert.equal(f[0].persona, 'Maria Pia Bettiol');
   assert.equal(f[0].tipo, 'lezione', 'il fatto porta la parola NOSTRA, non quella di Matchpoint');
+});
+
+
+// ══ 🔄 LO SPOSTAMENTO — 23/08/2026 ════════════════════════════════════════════════════════
+// 🗣️ Regola del committente: *«quando la segreteria fa un qualsiasi tipo di operazione, le
+// persone che sono dentro la partita devono essere avvisate»* e *«gli avvisi se devono arrivare
+// devono arrivare corretti fino in fondo»*.
+// 📏 Il fatto: spostando la sua partita dalle 09:30 campo 1 alle 11:30 campo 2, gli arrivava
+// «La tua partita non c'è più… è stata annullata dal circolo» e nient'altro — due volte.
+
+/** Come `foto`, ma ogni slot porta l'identità della sua prenotazione. */
+function fotoP(...slots: Array<[string, string[], string]>): Map<string, SlotRoster> {
+  const m = new Map<string, SlotRoster>();
+  for (const [slot, roster, prenotazione] of slots) {
+    const [data, ora, campo] = slot.split('|');
+    m.set(slot, { slot, data, ora, campo, roster, prenotazione });
+  }
+  return m;
+}
+
+test('49. 🔄 LA STESSA PRENOTAZIONE IN UNO SLOT NUOVO È «spostata», non «annullata»', () => {
+  const prima = new Map([...fotoP(['2026-08-31|09:30|1', ['Maurizio Aprea'], '9591']), ...foto(...contorno(6))]);
+  const dopo = new Map([...fotoP(['2026-08-31|11:30|2', ['Maurizio Aprea'], '9591']), ...foto(...contorno(6))]);
+  const f = fattiDaConfronto(prima, dopo, '2026-08-22');
+  assert.equal(f.length, 1, 'un fatto solo: non «annullata» + «aggiunto»');
+  assert.equal(f[0].gesto, 'spostata');
+  assert.equal(f[0].persona, 'Maurizio Aprea');
+  // ⭐ Le coordinate del fatto sono quelle NUOVE — è lì che si va a giocare…
+  assert.equal(f[0].slot, '2026-08-31|11:30|2');
+  // …e il «da» dice da dove, perché il socio quella partita ce l'ha in testa com'era prima.
+  assert.deepEqual(f[0].da, { data: '2026-08-31', ora: '09:30', campo: '1' });
+  // 🚨 I DUE CONTROLLI NEGATIVI: le parole false di prima non devono più uscire.
+  assert.ok(!f.some((x) => x.gesto === 'annullata'), 'dice ancora che è stata annullata');
+  assert.ok(!f.some((x) => x.gesto === 'aggiunto'), 'la racconta ancora come una partita nuova');
+});
+
+test('50. 🔄 uno spostamento che cambia anche i giocatori dice tre cose diverse', () => {
+  // ⚖️ Chi resta legge «spostata», chi è stato tolto «non sei più dentro», chi è messo «sei in
+  // campo». Dire «spostata» a chi è stato tolto lo manderebbe a giocare a un'ora nuova per una
+  // partita che non è più sua.
+  const prima = new Map([...fotoP(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes'], '9591']), ...foto(...contorno(6))]);
+  const dopo = new Map([...fotoP(['2026-08-31|11:30|2', ['Maurizio Aprea', 'Marco Rossi'], '9591']), ...foto(...contorno(6))]);
+  const f = fattiDaConfronto(prima, dopo, '2026-08-22');
+  const per = (n: string) => f.find((x) => x.persona === n);
+  assert.equal(per('Maurizio Aprea')?.gesto, 'spostata');
+  assert.equal(per('Lidia Comes')?.gesto, 'tolto');
+  assert.equal(per('Marco Rossi')?.gesto, 'aggiunto');
+  // 🚨 Chi è stato tolto NON deve sapere dove è finita la partita: le sue coordinate restano
+  // quelle vecchie, e non porta nessun «da».
+  assert.equal(per('Lidia Comes')?.slot, '2026-08-31|09:30|1');
+  assert.equal(per('Lidia Comes')?.da, undefined);
+  assert.equal(per('Marco Rossi')?.slot, '2026-08-31|11:30|2');
+});
+
+test('51. 🚨 senza identità NON si inventa uno spostamento: si torna al comportamento di prima', () => {
+  // ⚠️ Il verso in cui si sbaglia è quello di oggi — dire «annullata» di uno spostamento —
+  // e non il contrario, che sarebbe promettere una partita altrove senza saperlo.
+  const prima = new Map([...foto(['2026-08-31|09:30|1', ['Maurizio Aprea']]), ...foto(...contorno(6))]);
+  const dopo = new Map([...foto(['2026-08-31|11:30|2', ['Maurizio Aprea']]), ...foto(...contorno(6))]);
+  const f = fattiDaConfronto(prima, dopo, '2026-08-22');
+  assert.deepEqual(f.map((x) => x.gesto).sort(), ['aggiunto', 'annullata']);
+  assert.ok(!f.some((x) => x.gesto === 'spostata'));
+});
+
+test('52. 🔒 una prenotazione SPARITA resta «annullata» — lo spostamento non se la mangia', () => {
+  // Il caso che non deve regredire: è l'unico avviso in cui il silenzio manda qualcuno al campo
+  // per una partita che non esiste.
+  const prima = new Map([...fotoP(['2026-08-31|09:30|1', ['Maurizio Aprea'], '9591']), ...foto(...contorno(6))]);
+  const dopo = new Map([...foto(...contorno(6))]);
+  const f = fattiDaConfronto(prima, dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].gesto, 'annullata');
+  assert.equal(f[0].slot, '2026-08-31|09:30|1');
+});
+
+test('53. 🔒 stessa prenotazione, stesso slot: nessuno spostamento inventato', () => {
+  const prima = new Map([...fotoP(['2026-08-31|09:30|1', ['Maurizio Aprea'], '9591']), ...foto(...contorno(6))]);
+  const dopo = new Map([...fotoP(['2026-08-31|09:30|1', ['Maurizio Aprea'], '9591']), ...foto(...contorno(6))]);
+  assert.deepEqual(fattiDaConfronto(prima, dopo, '2026-08-22'), []);
+});
+
+test('54. 🔄 e vale anche per una LEZIONE — parole sue', () => {
+  // 🗣️ *«logicamente questa regola vale anche per una lezione»*. Ed è il caso originale della
+  // voce 74: la lezione di Maria Pia spostata dalle 10:00 alle 12:30 del 25/08.
+  const prima = new Map([...fotoP(['2026-08-25|10:00|1', ['Maria Pia Bettiol'], '9500']), ...foto(...contorno(6))]);
+  for (const v of prima.values()) if (v.prenotazione) v.tipo = 'Lezione Libera';
+  const dopo = new Map([...fotoP(['2026-08-25|12:30|1', ['Maria Pia Bettiol'], '9500']), ...foto(...contorno(6))]);
+  for (const v of dopo.values()) if (v.prenotazione) v.tipo = 'Lezione Libera';
+  const f = fattiDaConfronto(prima, dopo, '2026-08-22');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].gesto, 'spostata');
+  assert.equal(f[0].tipo, 'lezione', 'una lezione non si chiama partita');
+  assert.deepEqual(f[0].da, { data: '2026-08-25', ora: '10:00', campo: '1' });
+});
+
+test('55. 🔎 la fotografia legge l\'identità da `numero`, non da `idReserva`', () => {
+  // 📏 Misurato su PROD il 23/08: sulle 122 righe `booking` vive `numero` c'è 122 volte e
+  // `idReserva` 70 — quest'ultimo sta sulla capofila e manca sulle righe degli altri giocatori.
+  // ⇒ Leggendo `idReserva` le righe dei compagni resterebbero senza identità.
+  const f = fotografia(
+    [{ data: '2026-08-31', ora: '09:30', campo: 'Campo 1', descrizione: '-Maurizio Aprea.', numero: '9591' }],
+    (d) => String(d ?? '').split('-').map((x) => x.replace(/\.$/, '').trim()).filter(Boolean),
+  );
+  assert.equal(f.get('2026-08-31|09:30|1')?.prenotazione, '9591');
+  // ⭐ E il ripiego su `id_reserva`/`idReserva` regge dove `numero` non c'è (gli `staff_booking`).
+  const g = fotografia(
+    [{ data: '2026-08-31', ora: '09:30', campo: '1', descrizione: '-Maurizio Aprea.', id_reserva: '9591' }],
+    (d) => String(d ?? '').split('-').map((x) => x.replace(/\.$/, '').trim()).filter(Boolean),
+  );
+  assert.equal(g.get('2026-08-31|09:30|1')?.prenotazione, '9591');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
