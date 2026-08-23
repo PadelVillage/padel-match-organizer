@@ -26,6 +26,7 @@ import {
   esitoDellaRispostaWorker,
 } from './esito-prenotazione.js';
 import { siPuoScrivereSopraLapide } from './lapide-prenotazione.js';
+import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -783,6 +784,18 @@ Deno.serve(async (req: Request) => {
     // CODICE, così chi legge può distinguere «rifiutata» da «non lo so» invece di indovinare dal
     // testo del messaggio.
     const codice = codiceDiRifiuto(workerErr);
+    // 🆕 23/08 (voce 66) — LA TRACCIA SI DEPOSITA ANCHE DI QUA. Di là, sulla strada asincrona,
+    // l'errore intero finisce da sempre nella riga `booking_job`; di qua — che è la strada del
+    // BOT — non restava niente, e l'unico posto dove leggerlo era il registro del worker sulla
+    // VM, che è una finestra che scorre. ⛔ Non cambia di un carattere ciò che torna al
+    // chiamante: la diagnostica va al gestionale, non al socio.
+    await annotaFallimentoAlCircolo({
+      azione: 'create',
+      status: codice === 'WORKER_ESITO_IGNOTO' ? 'unknown' : 'error',
+      errore: errorText(workerErr),
+      richiesta: booking,
+      attore: actor.email,
+    });
     return err(502, codice, errorText(workerErr), {
       booking,
       ...(codice === 'WORKER_ESITO_IGNOTO' ? { esitoIgnoto: true } : {}),

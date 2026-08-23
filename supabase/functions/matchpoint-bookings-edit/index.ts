@@ -9,6 +9,7 @@ import {
   MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
+import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -480,6 +481,17 @@ Deno.serve(async (req: Request) => {
     // ⭐ Il terzo esito anche sulla strada SINCRONA: 502 col CODICE giusto e il marchio, che il
     // ponte dei soci legge già (consumer-booking-write).
     const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
+    // 🆕 23/08 (voce 66) — la traccia si deposita nel gestionale anche sulla strada sincrona,
+    // che è quella del bot. ⭐ E qui pesa il doppio: i due fallimenti che hanno aperto la voce 66
+    // (20/08, Fabiola e Lidia) erano proprio su `/edit-booking`, e del loro `steps=[…]` nel
+    // database non è rimasto niente.
+    await annotaFallimentoAlCircolo({
+      azione: 'edit',
+      status: ignoto ? 'unknown' : 'error',
+      errore: errorText(workerErr),
+      richiesta: edit,
+      attore: actor.email,
+    });
     return err(502, ignoto ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR', errorText(workerErr), {
       edit,
       ...(ignoto ? { esitoIgnoto: true } : {}),

@@ -10,6 +10,7 @@ import {
   MESSAGGIO_PROVA_REGISTRATA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
+import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -462,6 +463,17 @@ Deno.serve(async (req: Request) => {
   } catch (workerErr) {
     // ⭐ Il terzo esito anche sulla strada sincrona: 502 col CODICE giusto e il marchio.
     const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
+    // 🆕 23/08 (voce 66) — la traccia si deposita nel gestionale anche sulla strada sincrona.
+    // ⚖️ Qui il fallimento è meno caro che sulla `create` (disdire due volte non fa danno,
+    // prenotare due volte sì), ma la ragione della riga è la stessa: senza, un annullo che
+    // fallisce dal bot non lascia nel gestionale nulla da leggere.
+    await annotaFallimentoAlCircolo({
+      azione: 'cancel',
+      status: ignoto ? 'unknown' : 'error',
+      errore: errorText(workerErr),
+      richiesta: cancel,
+      attore: actor.email,
+    });
     return err(502, ignoto ? 'WORKER_ESITO_IGNOTO' : 'WORKER_ERROR', errorText(workerErr), {
       cancel,
       ...(ignoto ? { esitoIgnoto: true } : {}),
