@@ -533,6 +533,43 @@ ribaltarla, che è possibile solo se la trova **scritta**.
 📌 *Una delega larga non è il permesso di decidere in silenzio: è l'obbligo di decidere e di
 dichiarare cosa si è deciso.*
 
+### ✋ UN TASK NON È FINITO FINCHÉ NON LO SI È PROVATO **FISICAMENTE** (FERMA, 23/08/2026 sera)
+
+🗣️ Sue parole, la sera stessa della delega:
+
+> *«Ricordiamoci sempre che ogni volta che un task è finito bisogna provarlo fisicamente, cioè
+> praticamente o sul gestionale o sul bot.»*
+
+⇒ **«Fatto» non è uno stato del codice: è uno stato di ciò che la gente usa.** Una voce si chiude
+quando qualcuno ha visto la cosa succedere **sul gestionale** (aperto e guardato — dal Mac, o con la
+console remota `tools/verifica-browser`) o **sul bot** (un gesto vero, un messaggio vero arrivato a
+un telefono vero).
+
+⛔ **COSA NON È UNA PROVA FISICA**, per quanto verde sia:
+· il **banco** (prove unitarie, sabotaggi) — dice che il meccanismo è giusto, non che i messaggi
+  arrivano;
+· i **log puliti** e un deploy riuscito — dicono che gira, non che si vede;
+· aver **letto il sorgente in servizio** — dice che è quello nuovo, non che fa la cosa giusta;
+· 🚨 **uno zero letto troppo presto**: il 23/08 alle 15:57 i doppioni erano zero **perché il sync non
+  aveva ancora avuto occasione di sbagliare**. Quello zero non diceva «funziona».
+
+✅ **CHE FORMA HA UNA PROVA CHE VALE** — l'esempio migliore è la **voce 77**, la sera in cui la
+regola è nata: la cura è stata vista **attraversare la finestra esatta in cui prima sbagliava**
+(export scattato 48 secondi prima dell'annullo) e non sbagliare. ⇒ *Non «non è successo niente di
+male», ma «è passato di lì e non è successo niente».*
+
+⏳ **Se la prova fisica non si può fare adesso, il task resta APERTO e lo si dice.** Non si scrive
+«fatto» con una riserva in fondo: la scheda dice **cosa manca per chiuderla**, e la voce resta nella
+lista finché quella cosa non è successa. È già la forma delle voci **65** e **68**, che sono in
+servizio da giorni e restano aperte apposta.
+
+🧊 **E dove si prova, che non è ovvio**: su **TEST** il calendario è **congelato** e le scritture
+verso Matchpoint sono **simulate** ⇒ per tutto ciò che riguarda prenotazioni, avvisi e roster la
+prova fisica **è su PROD**, spesso con un gesto suo. ⇒ Chiedergli il gesto **fa parte del lavoro**,
+non è un disturbo — ma va chiesto quando la cura è **davvero in servizio**, o la prova non prova
+niente (23/08, ore 17:20: la cura della 77 era ancora commentata e il suo annullo sarebbe passato a
+vuoto).
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.

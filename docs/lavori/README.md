@@ -1453,29 +1453,57 @@ tutti nella partita»*.
 scheda elenca **tre compagni** — Benso Marchi, Fabio Antoniazzi e Andrea Antoniazzi — che col socio
 fanno **quattro**, e nella stessa riga dice **«2 posti liberi»**.
 
-🔎 **Le due cifre nascono da due posti diversi di `consumer-player-readmodel`**, e non è un dettaglio
-di scrittura: `compagni` viene da `compagniDelloSlot(liste)`, che **accumula le liste di TUTTE le
-righe** dello slot; `giocatori` viene da `ordineDelloSlot(schede)`, che ne **sceglie una**. Al
-momento della schermata le righe non erano d'accordo: una `booking_occupancy` di 9598 era ancora
-**viva** con `descrizione: -Maurizio Aprea.-Benso Marchi.` (**due** nomi) — sepolta dal sync solo
-alle 18:03:03 — accanto allo `staff_booking` scritto alle 17:57:19 coi **quattro**. ⇒ 4 − 2 = **2**.
+⛔ **LA PRIMA IPOTESI SCRITTA QUI ERA SBAGLIATA, e si corregge invece di restare accanto.** Diceva:
+*«una `booking_occupancy` stantia con due nomi era ancora viva e ha vinto sul quattro»*. Non può
+essere: `rosterOrdinatoDelloSlot` (`compagni-slot.ts:113`) fra due schede **concordi sul primo nome**
+tiene **la più lunga** — quindi una riga vecchia con due nomi non vince mai su una con quattro.
+📌 *Era plausibile, era scritta col «non accertato» davanti, ed era comunque falsa: è la stessa
+lezione della 77 di tre ore prima, dove tre piste lette nel codice erano tutte e tre sbagliate.*
 
-⚠️ **IPOTESI, NON CAUSA ACCERTATA**, e lo dico prima di toccare qualsiasi cosa: va verificato quale
-riga `ordineDelloSlot` prende davvero e con quale criterio. È la lezione della **77** di poche ore
-prima — tre piste plausibili lette nel codice, e la causa stava in una riga di registro.
+🔎⭐⭐ **LA CAUSA VERA, misurata il 23/08 sera leggendo i due repo: le due metà nascono da DUE FONTI
+CON DUE TEMPI DIVERSI — la conferma e lo specchio.**
 
-🎯 **La forma è nota, ed è la terza volta**: è quella della **70** e della **71** — *un messaggio
-costruito da due fonti che rispondono alla stessa domanda*. Ma qui c'è una differenza che la rende
-peggiore: non è un valore ambiguo letto da qualcuno più in là, sono **due letture dello stesso fatto
-messe una accanto all'altra nella stessa frase**. ⇒ La contraddizione **la vede il socio**.
+| | da dove | quando arriva |
+|---|---|---|
+| **i nomi** (`compagni`) | `liste`, che includono `staff_booking.giocatori` | **subito**: la scrive il gestionale |
+| **il conteggio** (`giocatori` → `quantiInCampo`) | `scheda`, cioè **solo** `playersFromDescrizione(descrizione)` | **al giro di sync**: la `descrizione` la scrive Matchpoint |
+
+⇒ `staff_booking` **non ha `descrizione`** ⇒ non porta nessuna scheda ⇒ finché il sync non torna, il
+conteggio vede **solo il roster vecchio**. 📏 Sulla partita vera: staff aggiornato alle **17:57:19**,
+sync atterrato alle **18:03:03** ⇒ **5 minuti e 44 secondi** in cui i nomi dicono quattro e il numero
+dice due. Il bot fa `POSTI_IN_CAMPO − quantiInCampo` (`invito-partita.ts:35`) ⇒ 4 − 2 = **2**.
+
+🚨⭐⭐ **E LA CONFERMA INDIPENDENTE STA NELLA STESSA SCHERMATA: manca la ⭐.** La stellina
+dell'organizzatore non c'è, e non è un secondo difetto — è **lo stesso**, visto da un altro punto:
+`organizzatoreDiUnaPrenotazione` calcola `compagniCompleti = compagni.length + 1 === giocatori.length`
+⇒ **3 + 1 ≠ 2** ⇒ `seiTu = null`, cioè «non lo so», e la stellina sparisce.
+⚖️ **Il codice si accorge già della contraddizione.** Quel controllo esiste **apposta** per non
+dedurre da un elenco incompleto, ha funzionato, e ha reagito bene: ha taciuto. Ma protegge **una
+metà sola** della riga — l'altra stampa il numero sbagliato **con piena sicurezza**, a due parole di
+distanza. ⇒ *Una guardia che c'è, che si accorge, e che copre metà della frase in cui sta.*
+
+🎯 **La forma è quella della 70 e della 71**, ed è la terza volta: *un messaggio costruito da due
+fonti che rispondono alla stessa domanda*. Ma è anche — e più precisamente — la **76 vista dal lato
+della lettura**: là l'avviso nasceva dallo **specchio** invece che dalla **conferma**, qui è il
+**conteggio** a nascere dallo specchio mentre i nomi nascono dalla conferma. Stessa spaccatura,
+altro pezzo del sistema.
 
 🚨 **Perché non è cosmetica**: «2 posti liberi» su una partita piena è un invito a cercare due
-persone che non servono — e chi ci prova occupa il tempo di qualcuno o si sente dire di no.
+persone che non servono — e chi ci prova occupa il tempo di qualcuno o si sente dire di no. Su una
+partita a meno di 48 ore, per giunta, quando non si può più uscire.
 
-📌 **Il sospetto da verificare per primo, perché deciderebbe la cura**: se la cifra nasce da una riga
-**stantia** che il sync non ha ancora sepolto, allora la fonte giusta è **una sola** — la più fresca,
-per `synced_at` — e non un merge. Sarebbe la stessa medicina della **73**, applicata alla **lettura**
-invece che alla scrittura.
+🔨 **LA CURA, e usa una cosa che c'è già**: quando `compagniCompleti` è **falso**, `quantiInCampo`
+deve valere **`null`** — la stessa «non lo so» che governa già la stellina. `rigaElenco` lo sa
+gestire da sé (*«se il roster non si è letto la riga dice chi c'è e basta: niente numeri
+inventati»*), quindi non serve nessuna frase nuova: la riga perde il numero e resta vera.
+⚖️ **Si sceglie il silenzio invece di un numero calcolato dai nomi** perché i nomi sono l'elenco
+**meno il socio** e non portano l'ordine: contarli darebbe il totale giusto **e** una fiducia che il
+dato non ha. Il verso prudente è quello già scelto due volte in questo progetto — *meglio non dirlo
+che dirlo sbagliato.*
+
+⏳ **Cosa manca**: la cura sta nel repo del **bot** (`assistente-padel-agent`), che non ha deploy
+automatico. 🚨 Mandarla in servizio sul bot dei **soci** è un gesto che si vede da fuori ⇒ si dice
+prima, come vuole la delega del 23/08.
 
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
