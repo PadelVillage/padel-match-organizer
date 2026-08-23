@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** — la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**. 📦 **Il 23/08 se ne sono chiuse tre**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1`, e i tre tentativi dell'autocomplete resi tre — e la **74**, **promossa da lui** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*) e **provata sul bersaglio alle 14:36** su una sua partita con lui solo dentro, in 9′03″ dal gesto |
+| 🔴 **Urgenti** | **2** — la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**; e 🆕 la **76**, **promossa da lui il 23/08 pomeriggio** (*«mettila tra le urgenti»*): l'avviso al socio nasce dallo **specchio** e non dalla **conferma**, e il suo argomento non è la velocità — misurato che l'unico produttore dei fatti è il sync, che vive leggendo Matchpoint, **il giorno dello spegnimento gli avvisi si spengono con lui**. Nella scheda i cinque paletti nati dalla sua domanda (*«se mette in contatto Matchpoint col bot non va bene»*) e le quattro domande a cui serve una sua risposta prima del codice. 📦 **Il 23/08 se ne sono chiuse tre**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1`, e i tre tentativi dell'autocomplete resi tre — e la **74**, **promossa da lui** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*) e **provata sul bersaglio alle 14:36** su una sua partita con lui solo dentro, in 9′03″ dal gesto |
 | 📋 **In coda** | **6** — la **68** (curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** e la **71** entrate nella notte del 21/08, la **72** del 22/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). 🔼 **La 74 è uscita di qui il 23/08** — promossa fra le urgenti e chiusa lo stesso giorno; 📦 **la 73 è stata chiusa** lo stesso pomeriggio, a cura già vista funzionare su due annulli veri |
 | 📦 **Chiuse** | **64** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 2
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,96 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **76** — 🚨⭐⭐ L'avviso al socio nasce dallo SPECCHIO e non dalla CONFERMA — PROMOSSA da lui il 23/08
+
+🗣️ **Promossa dal committente il 23/08 pomeriggio** (*«mettila tra le urgenti»*), dopo che la
+prova della voce 74 gli aveva messo il ritardo davanti all'orologio: *«questi tempi sono troppo
+lunghi… sul gestionale lo spostamento è avvenuto entro un minuto dopo che abbiamo fatto
+l'azione»*. La sua osservazione è l'origine di questa voce; la misura è venuta dopo.
+
+🚨⭐⭐ **L'ARGOMENTO NON È LA VELOCITÀ, ED È LA COSA DA NON DIMENTICARE.** Misurato il 23/08:
+l'**unico** posto in tutto il sistema che genera i fatti per il bot è `matchpoint-bookings-sync`
+(`pmo_eventi_staff`, una sola scrittura, `index.ts:1517`; `consumer-staff-events` la legge e
+basta). E quel sync **vive leggendo Matchpoint**.
+⇒ **Il giorno in cui Matchpoint si spegne, gli avvisi ai soci si spengono con lui.** Non
+rallentano: cessano. Il gestionale continuerebbe a sapere tutto — le scritture le esegue lui —
+ma la strada per dirlo al socio passa oggi da una fonte che quel giorno non c'è più.
+⚖️ È il rovescio della regola di `CLAUDE.md`: *«il giorno in cui Matchpoint si spegne, il bot non
+si tocca»*. Vera per il **bot** (misurato il 23/08 sul repo alla revisione `f2a686a`: **zero**
+righe di codice che nominano worker/matchpoint/hetzner — l'unica occorrenza è dentro un commento
+—, richieste solo verso Telegram, e cinque edge chiamate, tutte `consumer-*` del gestionale).
+**Falsa per ciò che il gestionale ha da dirgli.**
+
+📏 **Il costo di oggi, misurato sulla prova della 74** (gesto 12:27:43 → messaggio 12:36:47):
+
+| | |
+|---|---|
+| attesa del sync | **6′18″** — il 70% |
+| lavoro del sync | 54″ |
+| quiete + giro del bot | 1′52″, e **metà è voluta** |
+
+⇒ Il gestionale ha in mano il fatto **confermato** alle 12:27:43 — `staff_edit` è scritto **dopo**
+`callWorkerEditBooking`, quindi quella riga esiste solo perché il circolo ha già detto sì — e per
+la strada dell'avviso lo **butta**, poi aspetta di ritrovarlo da fuori.
+
+🎯 **LA CURA È IL DISEGNO CHE IL COMMITTENTE HA GIÀ DATO IL 22/08**, e non ne serve uno nuovo:
+l'ok di Matchpoint torna al gestionale e **si ferma lì**; da quel punto a parlare col socio è
+**sempre e solo il gestionale**. Oggi quel disegno non è implementato: al posto dell'ok, ad
+accendere l'avviso è il sync.
+
+⛔ **I CINQUE PALETTI, che sono vincoli verificabili e non intenzioni** — nati da una sua domanda
+esplicita (*«se la C mette direttamente in contatto Matchpoint con il bot non va bene»*):
+
+1. **Il bot non acquisisce nessun secondo indirizzo.** Continua a chiedere solo al gestionale.
+2. **Nessun nome interno esce verso il bot** — né `worker`, né `matchpoint`, né i loro codici.
+   È la regola ferma, la stessa su cui hanno lavorato la 65 e la 66.
+3. **Il fatto continua a nascere in `pmo_eventi_staff`.** Non cambia chi lo **legge**: cambia chi
+   lo **riempie**.
+4. 🎯 **La C non tocca il bot: zero righe nel suo repo.** Se il disegno dovesse richiedere di
+   toccarlo, il disegno è sbagliato — è la prova del futuro applicata alla cura.
+5. **Il sync RESTA**, per ciò che cambia su Matchpoint **senza passare dal gestionale** (chi
+   prenota al banco sul vecchio sistema). Le due strade si **sommano**: questa non è una
+   semplificazione, è un'aggiunta. Il giorno dello spegnimento resta in piedi solo la prima.
+
+❓ **LE DOMANDE A CUI SERVE UNA SUA RISPOSTA PRIMA DI SCRIVERE CODICE** — sono qui perché
+rispondere da soli a queste è il modo in cui una cura elegante diventa un difetto:
+
+- **① Il `da` di uno spostamento.** Oggi il gesto `spostata` nasce dal **confronto fra due
+  fotografie** (stessa prenotazione su slot diversi) e il sync ricostruisce da sé le coordinate di
+  partenza. Da una conferma **singola** quel confronto non si legge: la dichiarazione del
+  gestionale dovrà portare **anche il `da`**. Va deciso se lo porta l'app (che lo sa, perché
+  quello slot lo stava guardando) o se lo si ricava dalla copia locale **prima** di sovrascriverla.
+- **② Che cosa succede se la conferma arriva e il fatto NON si scrive.** Oggi un buco del genere
+  lo ripara il sync al giro dopo. Con la conferma come sorgente, un fatto perso è **perso**, a
+  meno che il sync non resti anche da rete di sicurezza — e allora bisogna decidere come i due non
+  producano **due** avvisi per lo stesso gesto (la ricevuta della voce 70 è la forma già in casa).
+- **③ La quiete di 2 minuti.** Esiste perché `visto_at` è l'istante **del giro di sync**, non del
+  gesto, e serve ad assorbire la raffica. Con un fatto che nasce dalla conferma, `visto_at`
+  diventa l'istante **vero**: la quiete va **ripensata**, non semplicemente abbassata.
+- **④ I gesti coperti.** La creazione la copre già la voce 75 («stesso istante»); l'annullo dal
+  bot **no** — misurato il 22/08, la copia locale se n'è andata col sync 3′40″ dopo. Va deciso se
+  la 76 li assorbe tutti o parte da `spostata` e `annullata`, che sono i due che oggi fanno danno.
+
+🚨 **E l'ordine di messa in servizio è già scritto e non si improvvisa**: `ponte.ts` **scarta i
+gesti che non conosce** ⇒ prima il **bot** (che da solo è inerte), poi la migrazione del `CHECK`,
+poi il **gestionale**. Al contrario, per la finestra fra i due deploy quel fatto non lo direbbe
+**nessuno** — peggio di un messaggio sbagliato.
+⚖️ ⚠️ Ma attenzione: il paletto 4 dice che la C **non tocca il bot**. Se i gesti restano quelli
+che il bot già conosce (`spostata`, `annullata`, `aggiunto`, `tolto`), quell'ordine **non si
+applica** — ed è un buon segno. Se invece servisse una parola nuova, allora il bot **va toccato**,
+e i due vincoli vanno riconciliati **prima**, non durante.
+
+⏳ **Non è una riga: è lavoro di disegno**, una sessione o due. Ma la sua metà A — far dichiarare
+al gestionale ciò che ha già confermato — è la stessa forma già usata dalla **voce 73**
+(`staff_suppress`, il sync che si fida di ciò che l'app dichiara invece di aspettare di
+rivederlo). ⇒ Non si parte da zero: si porta fino in fondo una strada già aperta.
+
+📌 **Cosa NON fare, dichiarato qui perché è la scorciatoia che verrebbe in mente**: abbassare il
+cron del sync da 120 a 60 secondi. È stato misurato il 23/08 — la cadenza è **binaria**, 2 minuti
+o 4, e i giri lunghi sono l'**8,6%** — quindi curerebbe la coda e non la causa, costerebbe una
+modifica **a mano su PROD**, e fatta la 76 quel ritardo non esiste più. ⇒ Due volte la stessa
+spesa. Se la 76 dovesse slittare di settimane, si rimette sul tavolo.
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
 
