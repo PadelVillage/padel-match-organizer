@@ -1473,6 +1473,16 @@ potuto smentire la frase perché era **più vecchia del gesto** (23:34:04, cioè
 📌 *Una frase che afferma sul passato va verificata su un dato più fresco del gesto: qui non
 c'era, e nessuno se n'è accorto perché la frase non dichiara su cosa poggia.*
 
+🗣️⭐ **L'IPOTESI DEL COMMITTENTE, agli atti come ipotesi e non come causa**: *«secondo me il
+problema sta sull'ospite»*. ⚖️ **Cosa la sostiene**: l'annullo riuscito della voce **77**
+(18:06:50, ~pochi secondi) era su una partita col **solo** Maurizio; quello di stanotte, lento
+(2′31″) e raccontato male, era su una partita con **due «Ospite»**. E stasera i posti ospite hanno
+già rotto un'altra cosa (voce 82), per la stessa ragione di fondo — sono righe **senza una
+persona dietro**. ⚠️ **Cosa NON la prova**: due casi non sono una regola, e nella stessa mezz'ora
+il **sync era fermo** e il worker in difficoltà, che è una spiegazione alternativa completa. ⇒ Si
+decide **guardando gli `steps` del worker** su quell'annullo, non scegliendo fra due racconti:
+sono scritti, e dicono a che punto della ficha si è piantato.
+
 🔨 **Cosa guardare per primo, senza scrivere niente**: il `worker_result` dell'annullo — che
 codice ha dato — e se quel codice sta nell'elenco dei fallimenti certi di
 `matchpoint-bookings-cancel`. La 72 ha fatto lo stesso lavoro sulla **create**: là la crepa si è
