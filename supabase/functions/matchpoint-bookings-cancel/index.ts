@@ -15,6 +15,9 @@ import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
 // esteso sopra `dichiaraAnnulloAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
 import { fattiDaAnnullo } from '../_shared/fatti-da-conferma.ts';
+// 🆕 La metà «STESSO ISTANTE» della regola del 22/08, applicata all'annullo: la copia del
+// gestionale si chiude adesso, non al giro di sync. Vedi il commento in testa al modulo.
+import { chiudiCopiaLocaleDelloSlot } from '../_shared/chiudi-copia-locale.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -307,7 +310,35 @@ async function dichiaraAnnulloAlSocio(opts: {
   cancel: CancelRequest;
   prima: SlotLocale | null;
 }): Promise<void> {
-  const { supabaseUrl, supabaseKey, prima } = opts;
+  const { supabaseUrl, supabaseKey, cancel, prima } = opts;
+  const client = createClient(supabaseUrl, supabaseKey);
+
+  // ── ① REGISTRARE: la copia del gestionale si chiude ADESSO ────────────────────────────
+  // 🗣️ È la metà «stesso istante» della regola del committente del 22/08 — *«ogni gesto va
+  // detto al socio solo dopo che il circolo l'ha confermato, e nello stesso istante dev'essere
+  // registrato dal gestionale»*. La voce 75 l'ha applicata alla creazione; questo è l'annullo.
+  //
+  // 📏 Perché non bastava lasciar fare al sync, misurato il 23/08: il sync delle prenotazioni
+  // future **si ferma dall'01:00 alle 06:00**, e il buco vero è di **5 ore e 4 minuti** (due
+  // notti identiche). Un annullo dopo l'una lasciava la copia occupata **fino alle sei del
+  // mattino** — e la disponibilità che il bot offre ai soci legge proprio quelle righe, quindi
+  // rispondeva «occupato» per un campo libero.
+  //
+  // 🚨 STA PRIMA della dichiarazione, e l'ordine è quello dello schema del 22/08: dalla
+  // conferma partono insieme la ① registrazione e la ② risposta, ma se una delle due deve
+  // cedere è meglio che ceda la seconda — un socio avvisato di un annullo vero è un fastidio
+  // recuperabile, un campo che risulta occupato mentre è libero lo prende qualcun altro.
+  await chiudiCopiaLocaleDelloSlot({
+    client,
+    slot: {
+      data: String(cancel.data ?? prima?.coordinate.data ?? ''),
+      ora: String(cancel.ora ?? prima?.coordinate.ora ?? ''),
+      campo: cancel.campo ?? prima?.coordinate.campo,
+    },
+    adesso: Date.now(),
+  });
+
+  // ── ② RISPONDERE: il fatto va in coda, e il bot lo dirà ────────────────────────────────
   if (!prima) return;
   try {
     const fatti = fattiDaAnnullo({
@@ -315,11 +346,7 @@ async function dichiaraAnnulloAlSocio(opts: {
       roster: prima.roster,
       tipo: prima.tipo,
     });
-    await accodaFattiDaConferma({
-      client: createClient(supabaseUrl, supabaseKey),
-      fatti,
-      azione: 'cancel',
-    });
+    await accodaFattiDaConferma({ client, fatti, azione: 'cancel' });
   } catch (e) {
     console.warn(JSON.stringify({
       event: 'dichiarazione_annullo_saltata',
