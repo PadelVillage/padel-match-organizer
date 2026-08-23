@@ -328,6 +328,9 @@ async function dichiaraAnnulloAlSocio(opts: {
   // conferma partono insieme la ① registrazione e la ② risposta, ma se una delle due deve
   // cedere è meglio che ceda la seconda — un socio avvisato di un annullo vero è un fastidio
   // recuperabile, un campo che risulta occupato mentre è libero lo prende qualcun altro.
+  // 🚨 `idReserva` si passa SEMPRE, ed è la correzione della prova del 23/08: il ponte, quando
+  // la prenotazione ha un id, manda **solo quello** — e senza la terna questa cura non entrava
+  // nemmeno in funzione. Con l'id lo slot si ricava dalla copia locale.
   await chiudiCopiaLocaleDelloSlot({
     client,
     slot: {
@@ -335,6 +338,7 @@ async function dichiaraAnnulloAlSocio(opts: {
       ora: String(cancel.ora ?? prima?.coordinate.ora ?? ''),
       campo: cancel.campo ?? prima?.coordinate.campo,
     },
+    idReserva: cancel.idReserva,
     adesso: Date.now(),
   });
 
@@ -362,10 +366,18 @@ async function rosterPrimaDellAnnullo(opts: {
   cancel: CancelRequest;
 }): Promise<SlotLocale | null> {
   const { supabaseUrl, supabaseKey, cancel } = opts;
-  // Senza coordinate non si sa quale slot sta sparendo ⇒ si tace, e la cosa resta al sync.
-  if (!cancel.data || !cancel.ora) return null;
+  // 🚨 Senza coordinate NON ci si arrende più: con l'`idReserva` lo slot si ricava dalla copia
+  // locale. Prima di questa riga, un annullo dal bot su una prenotazione venuta dal sync
+  // (che l'id ce l'ha) arrivava qui con la terna vuota e usciva `null` — misurato il 23/08.
+  if ((!cancel.data || !cancel.ora) && !cancel.idReserva) return null;
   const client = createClient(supabaseUrl, supabaseKey);
-  return await rosterDaCopiaLocale({ client, data: cancel.data, ora: cancel.ora, campo: cancel.campo });
+  return await rosterDaCopiaLocale({
+    client,
+    data: cancel.data ?? '',
+    ora: cancel.ora ?? '',
+    campo: cancel.campo,
+    idReserva: cancel.idReserva,
+  });
 }
 
 // ── IL LAVORO COL NUMERO — stessa meccanica di create ed edit (promozione a righe, 6.236) ─────
