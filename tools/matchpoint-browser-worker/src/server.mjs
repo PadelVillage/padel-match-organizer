@@ -6409,11 +6409,34 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   // precedente ha appena fatto un postback parziale: attendi che sia concluso e
   // ri-sveglia il campo (focus → blur), così l'AutoCompleteExtender è riagganciato
   // e l'autocomplete compare anche per i giocatori successivi.
-  await mpWaitAsyncPostbackIdle(page, 12000);
-  await inputEl.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  await inputEl.first().click({ timeout: 5000 }).catch(() => {});
-  await inputEl.first().blur({ timeout: 3000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  //
+  // 🚨⭐⭐ 23/08/2026, voce 66 — ORA È UNA FUNZIONE, E SI RICHIAMA FRA UN TENTATIVO E L'ALTRO.
+  // Prima girava UNA VOLTA SOLA, prima del ciclo, e il ciclo dei tre tentativi si limitava a
+  // `Ctrl+A · Delete · ridigita`. ⇒ Quando il primo tentativo avvelenava l'estensore, il
+  // secondo e il terzo ridigitavano dentro un campo morto: nella traccia del 22/08 22:14:52Z
+  // si legge esattamente questo — `attempt0` con la tendina giusta e l'id che non si aggancia,
+  // poi `player_option_not_found` a `attempt1` e `attempt2`, cioè la tendina che non torna più.
+  // Il socio pagava ~52 secondi per **un** tentativo e **due finte**.
+  //
+  // 📏 CHE UNA PAGINA RIMESSA A POSTO BASTI NON È UN'IDEA, È MISURATO: quel giorno il socio ha
+  // rifatto la stessa prenotazione (stesso slot, stesso campo, stesso nome) **due minuti dopo**
+  // ed è passata — 22:14:52 KO, 22:17:07 OK. Il guasto è transitorio; a non superarlo era il
+  // ciclo, non Matchpoint.
+  // ⚠️ Ma non è una garanzia, e va detto: il 19/08 tre fallimenti di fila su «Ospite» dicono che
+  // a volte non basta. Questa riga rende i tre tentativi **tre**, non li rende infallibili.
+  //
+  // ⚖️ Perché è a rischio basso su un worker che scrive sul Matchpoint VERO: il ri-stabilizzo
+  // gira **solo da `attempt > 0`**, cioè solo dopo che il primo tentativo è già fallito. Un
+  // giocatore che si aggancia al primo colpo — che sono tutti, tranne i casi della voce 66 —
+  // non attraversa nemmeno una riga nuova.
+  const stabilizzaCampo = async () => {
+    await mpWaitAsyncPostbackIdle(page, 12000);
+    await inputEl.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+    await inputEl.first().click({ timeout: 5000 }).catch(() => {});
+    await inputEl.first().blur({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(500);
+  };
+  await stabilizzaCampo();
   diagnostic.steps.push(`player_form_settled:${nome}`);
 
   // Preferisce codiceCliente come query di ricerca: risultato unico e immediato in Matchpoint.
@@ -6424,6 +6447,14 @@ async function searchAndAddPlayer(formCtx, page, nome, diagnostic, pfx = '#CC_Da
   let codeCheckFailed = false;
   let clientCodeChecked = false;
   outer: for (let attempt = 0; attempt < 3; attempt++) {
+    // 🆕 voce 66: dal secondo giro in poi il campo si RIMETTE A POSTO prima di ridigitare.
+    // ⛔ Non al primo: lì la stabilizzazione l'ha già fatta la riga qui sopra, e rifarla
+    // costerebbe mezzo secondo a ogni giocatore di ogni prenotazione per non dire niente di
+    // nuovo. Il passo si dichiara nella traccia, così il prossimo caso dice da sé se è servito.
+    if (attempt > 0) {
+      await stabilizzaCampo();
+      diagnostic.steps.push(`player_form_resettled:${nome}:attempt${attempt}`);
+    }
     // Pulisce campo e digita searchTerm (codiceCliente o nome) con keystroke reali
     await inputEl.first().click({ timeout: 5000 }).catch(() => {});
     await page.keyboard.press('Control+A').catch(() => {});

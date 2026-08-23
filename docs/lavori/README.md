@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 3
+## 🔴 URGENTI — 2
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1538,148 +1538,6 @@ la **classe** e non l'istanza: mettere l'ora su quella riga sola sarebbe stato u
 caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `console.*`.
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
-
-### **66** — 🔎 `PLAYER_ID_NOT_LOCKED`: diagnosi fatta, cura NON scritta — di proposito
-
-📏 L'autocomplete di Matchpoint ogni tanto non aggancia e `HiddenFieldIdPeople` resta vuoto: il
-worker si rifiuta di salvare (fallisce **chiuso**, ed è giusto) e ogni tentativo costa **~52
-secondi**. Ha colpito **Fabiola alle 22:55** e **Lidia alle 00:36** della notte del 21/08, e il
-19/08 «Ospite» due volte.
-
-🚨⭐⭐ **Il reperto che cambia il lavoro: il ramo dove il difetto colpisce era l'unico senza
-diagnostica.** I due fallimenti di quella notte sono su `/edit-booking` — e
-`createBookingWithBrowser` allega `steps=[…] url=…` ai suoi errori **da sempre**, mentre
-`editBookingWithBrowser` faceva `catch (_e) { throw _e }` e basta. ⇒ Dal registro si leggeva
-«Autocomplete non agganciato per: Lidia Comes» e **nient'altro**, quindi non si poteva distinguere
-i due modi di fallire, che hanno **due cure diverse**:
-· la tendina non compare mai → `player_option_not_found` ×3;
-· compare, si clicca, e il campo nascosto resta vuoto → `player_id_check:…:id=`.
-⇒ *Il posto dove un guasto si presenta era esattamente il posto in cui non si poteva guardare.*
-
-📏 **L'ipotesi, dai casi che gli steps ce l'hanno** — e va detta come ipotesi, perché sono **tre**:
-dove il campo nascosto resta vuoto in pagina ci sono sempre **due** liste di autocomplete
-(`list=2` — 16/08 18:04, 19/08 10:36, 19/08 10:41); dove l'id si aggancia, la lista è **una**
-(`list=1`, e allora `id=4`, `id=10`, `id=223`, `id=1034`). L'id però si legge con `.last()`: se
-anche del campo **nascosto** restassero due copie, si starebbe leggendo quella che non si riempie
-mai.
-
-🔨 **Fatto (PR #944)**: gli steps si allegano anche su `edit-booking`; `player_ctrl_count` conta
-anche le copie del campo nascosto; e sul fallimento `player_id_check` riporta **cosa c'è in tutte**.
-⛔ **La cura NON è stata scritta**, ed è una scelta: sarebbe poggiata su un'ipotesi non chiusa, e il
-worker è **uno solo, condiviso TEST+PROD** — ogni sua prova scrive sul **Matchpoint vero**.
-⇒ *Prima la misura, poi la riga.* Al prossimo fallimento vero il registro dirà quale delle due cure
-serve. **Questa voce si chiude quando quel fallimento sarà arrivato e letto**, non prima.
-
-
-🆕📏 **23/08, 00:14:52 — IL FALLIMENTO È ARRIVATO, e con la diagnostica.** La scheda diceva *«si chiude
-quando quel fallimento sarà arrivato e letto»*: è arrivato su una riprenotazione vera del committente,
-e **su `create`**, non su `edit` come i due del 20/08.
-
-```
-Worker error 500: PLAYER_ID_NOT_LOCKED
-"Autocomplete non agganciato (HiddenFieldIdPeople vuoto) per: Maurizio Aprea"
-steps=[login_page, login_submit, goto_ficha, wait_form, fill_form_partita,
-       privato_checked:CheckBoxPrivada, player_ctrl_count:Mauri…]
-```
-
-⚠️ **La riga del registro è TRONCATA** — si ferma dentro `player_ctrl_count` — quindi il conteggio dei
-controlli di autocomplete, che è **l'ipotesi da confermare o smentire** (tre casi su tre col campo
-vuoto avevano **due** liste in pagina), da qui **non si legge**. ⇒ Il caso è arrivato ma non è ancora
-**letto**: serve la diagnostica intera, dal `staff_edit`/`booking_job` o dai log del worker su
-Hetzner, non dalla riga dell'edge.
-📌 *Una traccia troncata proprio sul campo che serve è una diagnostica che c'è e non si vede: la voce
-resta aperta, e il primo lavoro è recuperare quella coda.*
-
-⭐ **E intanto lo stesso fallimento ha prodotto due reperti più grandi di lui**, che stanno fra le 🆕
-nate misurando: `PLAYER_ID_NOT_LOCKED` fuori dalla lista dei fallimenti certi, e la verifica
-dell'esito che cerca per slot invece che per `idReserva`.
-
-🆕🎯 **23/08 pomeriggio (51ª) — LA CODA È STATA RECUPERATA, E SMENTISCE L'IPOTESI.**
-La scheda diceva *«il primo lavoro è recuperare quella coda»*. Recuperata dal registro del worker
-con `stato-worker.yml` (20000 righe, regex sui quattro nomi della diagnostica). Eccola intera —
-istante del worker `2026-08-22T22:14:52.551Z`, che è le **00:14:52 di Roma**:
-
-```
-player_ctrl_count:Maurizio Aprea:inputTot=1:inputVis=1:list=2:hidden=1
-player_form_settled:Maurizio Aprea
-player_option_label:Maurizio Aprea:i=0:000004-Maurizio Aprea
-player_id_check:Maurizio Aprea:attempt0:i=0:id=:hidden=[]
-player_option_not_found:Maurizio Aprea:attempt1
-player_option_not_found:Maurizio Aprea:attempt2
-```
-
-🚨⭐⭐ **`hidden=1` ⇒ LA CURA CHE LA SCHEDA TENEVA PRONTA NON HA BERSAGLIO.** L'ipotesi era: *«se
-anche del campo nascosto restassero due copie, si starebbe leggendo quella che non si riempie
-mai»* — cioè `.last()` sulla copia sbagliata. Il conteggio aggiunto apposta dalla #944 dice
-**una sola copia**, e `hidden=[]` dice che **quell'unica copia è vuota**. ⇒ Non si legge la copia
-sbagliata: la copia **giusta non si riempie**. Leggerne un'altra non curerebbe niente, perché
-un'altra non c'è.
-📌 *La diagnostica è servita esattamente a togliere una cura, non a confermarla — ed è il suo
-lavoro più utile: una cura scritta sull'ipotesi sbagliata sarebbe stata provata sul Matchpoint
-vero, perché il worker è uno solo.*
-
-📏 **Cosa dice invece, e restringe il campo a un fatto:** al **primo** tentativo la tendina
-**c'è** e l'etichetta è quella giusta (`000004-Maurizio Aprea`, il codice del socio) — si clicca,
-e l'id resta vuoto. Dal **secondo** in poi la tendina **non compare più** (`player_option_not_found`
-×2). ⇒ Non è nessuna delle due cure che la scheda teneva aperte: è un **ibrido**, e il primo
-tentativo *consuma* la tendina invece di agganciarla.
-⚠️ Il seguito — *quale* delle due `completionListElem` risponde al click, visto che `list=2` — è
-un'**ipotesi**, e va detta come tale: qui è misurato che l'id non si aggancia, non perché.
-
-📏 **E `list=2` regge, ora su tutta la storia invece che su tre casi.** Contati i
-`player_ctrl_count` di **ogni** giocatore di **ogni** scrittura riuscita in archivio (`staff_booking`
-+ i `booking_job` chiusi `done`): **556 righe**, e la lista vale sempre **1, 3, 5, 7** — più due
-righe a 6 e una a 0. **`list=2` non compare NEMMENO UNA VOLTA su una scrittura riuscita**, e compare
-in **4 fallimenti su 4** di questa famiglia (16/08 18:03 · 19/08 10:32 · 19/08 10:41 · 22/08 22:14).
-
-🚨 **E la misura ha separato due famiglie che stavano in un mucchio solo.** Dei sei fallimenti
-`HiddenFieldIdPeople vuoto` in archivio, **quattro** (giugno) hanno `list=1`, **nessun**
-`player_id_check`, e — guardando *chi* cercavano — i termini erano **«Liida Comes»** (un refuso),
-**«Lidia Ma Comes»**, **«sul campo 4»**, **«Lezione»**: non sono nomi di soci, e la tendina non
-compariva perché non c'era niente da trovare. Quella è `player_option_not_found`, un altro guasto
-con un'altra cura — e sommandola a questa faceva sembrare `list=1` un valore che fallisce.
-📌 *Due guasti che escono con lo stesso messaggio non sono lo stesso guasto: il messaggio è
-quello che il codice dice, la famiglia è quella che i passi mostrano.*
-
-🚨⭐ **PERCHÉ LA CODA ERA TRONCATA — e non è il registro del bot: è che dalla strada del BOT quella
-traccia NON SI SCRIVE DA NESSUNA PARTE.** `matchpoint-bookings-create` ha due strade: quella
-**asincrona** (`body.async === true`, la usa l'app della segreteria), che l'errore intero lo
-deposita in `booking_job.payload.error` — ed è lì che stanno tutti e sei i fallimenti di prima —
-e quella **sincrona**, che è quella del bot, dove il fallimento esce come `err(502, …)` e **non
-lascia riga**. ⇒ La diagnostica della #944 ha una casa **solo su metà dei casi**, e la metà
-scoperta è proprio quella da cui il socio prenota.
-⚖️ I due tagli che si vedono sono conseguenza, non causa, e **nessuno dei due va allargato**:
-`consumer-booking-write` scrive nel proprio registro `JSON.stringify(data).slice(0, 300)`, e al bot
-arriva `dettaglioPerIlBot(...).slice(0, 200)` — che è corto **apposta**, perché quello è un
-messaggio per il socio, e per la regola ferma di `CLAUDE.md` i nomi interni al bot non devono
-arrivare affatto. La cura giusta non è dire di più al bot: è **scrivere il fatto nel gestionale**,
-che è chi deve sapere.
-📌 Senza, ogni fallimento del bot va inseguito sulla VM entro la finestra del log — che è un
-attrezzo che c'è (`stato-worker.yml`), ma è una **finestra che scorre**: un caso vecchio di troppo
-non si recupera più. Questo si è salvato per 13 ore.
-
-🩹 **CURATO lo stesso giorno** (`supabase/functions/_shared/traccia-fallimento.ts`): sulla strada
-sincrona la traccia si deposita nel gestionale con la **stessa forma** delle righe asincrone
-(`booking_job`, `payload.status` + `payload.error`), più `strada: 'sincrona'` a distinguerle — così
-una sola query trova entrambe le strade, che è esattamente ciò che ha reso possibile la misura di
-oggi. Collegata a **tutte e tre** le funzioni con una strada sincrona (`create`, `edit`, `cancel`),
-non alla sola `create`: i due fallimenti che hanno **aperto** la voce 66 erano su `/edit-booking`.
-⛔ E non allarga di un carattere ciò che arriva al bot: i tagli a 300 e a 200 restano dove sono.
-⚖️ La guardia è **sul sorgente**, non sul modulo — il modulo è I/O e nient'altro, mentre ciò che si
-rompe davvero è la **sparizione della chiamata** da uno dei tre `catch`, che non rompe niente di
-visibile: le prenotazioni continuano a funzionare, e a mancare è solo ciò che si potrà leggere il
-giorno del prossimo guasto. Tarata **sabotandola**, non guardandola verde.
-
-⚠️ **Un difetto minore della diagnostica stessa, trovato leggendola:** `hidden=[]` **non distingue**
-*«zero copie del campo»* da *«una copia, vuota»* — perché `letti.join(',')` dà stringa vuota in
-tutti e due i casi. Qui si è potuto decidere solo incrociandolo con `hidden=1` del
-`player_ctrl_count`. Un carattere di cura (stampare il conteggio, o un segnaposto per ogni copia).
-
-⇒ **Cosa resta alla voce, adesso:** il caso è **arrivato e letto**, quindi la condizione che la
-scheda si era data è soddisfatta — ma la cura **non è scritta**, e non perché manchi la misura:
-perché la misura ha **escluso** la cura pronta e ne indica una che tocca il modo in cui il worker
-clicca la tendina. Quella si prova **sul Matchpoint vero** (worker unico, condiviso), quindi è una
-decisione sua, non un seguito automatico di questa lettura.
 
 ## 📋 IN CODA — 7
 
@@ -3243,15 +3101,16 @@ Misurando il **15/08**, collaudando la voce 23 in produzione:
 
 ---
 
-## 📦 CHIUSE — dal 13 al 23/08/2026 — 61 voci
+## 📦 CHIUSE — dal 13 al 23/08/2026 — 62 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime quattro voci sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
+**Le prime cinque voci sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; **le sedici successive del 16/08**; **le dieci dopo ancora del 15/08** — otto chiuse e **due annullate**, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa. **Le dieci successive sono del 14/08; le otto ultime del 13/08.**
 
+| **66** | ✅ *(23/08 pomeriggio, 51ª sessione — **chiusa da LUI**: «seguo il tuo consiglio, procedi pure»)* 🚨 **66. `PLAYER_ID_NOT_LOCKED`: l'autocomplete di Matchpoint non aggancia l'id, e il socio paga ~52 secondi per un fallimento.** L'`HiddenFieldIdPeople` resta vuoto, il worker si rifiuta di salvare (fallisce **chiuso**, ed è giusto) e la scrittura non parte. Ha colpito Fabiola alle 22:55 e Lidia alle 00:36 della notte del 21/08 (su `edit`), «Ospite» due volte il 19/08, e il committente stesso il 22/08. 🔨 **Il primo pezzo era la diagnostica** (#944): senza, dal registro si leggeva «Autocomplete non agganciato per: X» e **nient'altro**, e i due modi di fallire — *la tendina non compare mai* contro *compare, si clicca, e il campo resta vuoto* — hanno **due cure diverse**. 📏 **Il caso è arrivato il 22/08 alle 22:14:52Z, ed è stato LETTO il 23/08**, ripescandolo dal registro del worker con `stato-worker.yml`: `player_ctrl_count:…:list=2:hidden=1` · `player_option_label:…:000004-Maurizio Aprea` · `player_id_check:…:id=:hidden=[]` · `player_option_not_found:attempt1` · `player_option_not_found:attempt2`. 🚨⭐⭐ **E `hidden=1` HA SMENTITO la cura che stava pronta**: l'ipotesi era che del campo nascosto restassero **due** copie e che `.last()` leggesse quella che non si riempie mai. La copia è **una sola**, ed è **vuota**. ⇒ Leggerne un'altra non curerebbe niente, perché un'altra non c'è. ⚖️ *La diagnostica è servita a TOGLIERE una cura, non a confermarla — ed è il suo lavoro più utile, perché quella cura si sarebbe provata sul Matchpoint vero.* 📏 **Le tre misure di contorno**: ① `list=2` non compare su **nessuna** delle **556** righe-giocatore delle scritture riuscite in archivio (i valori sono 1, 3, 5, 7, più due a 6 e una a 0) e compare in **4 fallimenti su 4** di questa famiglia; ② dei sei fallimenti `HiddenFieldIdPeople vuoto` in archivio, **quattro** (giugno) sono un'**altra famiglia** — cercavano «Liida Comes» (un refuso), «Lidia Ma Comes», «sul campo 4», «Lezione», che non sono nomi di soci: sommati a questi facevano sembrare `list=1` un valore che fallisce; ③ `hidden=[]` **non distingue** «zero copie» da «una copia vuota», e qui si è deciso solo incrociandolo col conteggio. 🩹 **LA CURA, in due metà.** Ⓐ *La traccia ha una casa anche sulla strada del BOT* (`_shared/traccia-fallimento.ts`): `booking_job.payload.error` esisteva solo sulla strada **asincrona** (l'app della segreteria), mentre quella **sincrona** — il bot — usciva con `err(502, …)` e non lasciava riga. ⇒ La diagnostica della #944 aveva una casa su **metà** dei casi, e la metà scoperta era quella da cui il socio prenota. Collegata a `create`, `edit` e `cancel`, e **senza allargare di un carattere** ciò che arriva al bot (i tagli a 300 e a 200 restano: al bot i nomi interni non devono arrivare affatto — *il gestionale SA, il bot DICE* applicato alla diagnostica). Ⓑ *I tre tentativi diventano TRE.* Il ciclo rifaceva solo `Ctrl+A · Delete · ridigita`, mentre la stabilizzazione del form girava **una volta sola prima del ciclo**: quando il primo tentativo avvelenava l'estensore, il secondo e il terzo ridigitavano in un campo morto ⇒ **un tentativo e due finte**. Ora il campo si rimette a posto fra un giro e l'altro (`stabilizzaCampo`, `player_form_resettled` negli steps). 📏 **Che una pagina rimessa a posto basti NON è un'idea, è misurato**: quel giorno il socio ha rifatto la stessa prenotazione — stesso slot, stesso campo, stesso nome — **due minuti dopo**, ed è passata: `22:14:52 KO` → `22:17:07 OK`. Il guasto è **transitorio**; a non superarlo era il ciclo, non Matchpoint. ⚖️ **Perché si è potuta scrivere senza provarla prima sul bersaglio**, che su un worker unico e condiviso è la domanda vera: il ri-stabilizzo gira **solo da `attempt > 0`**, cioè solo dopo che il primo tentativo è già fallito — un giocatore che si aggancia al primo colpo non attraversa nemmeno una riga nuova. 🔒 Le due guardie sono **sul sorgente** e tarate **sabotandole**: quello che si rompe non è il codice (è I/O e Playwright, non eseguibile qui) ma una **decisione** — che la chiamata stia dentro i tre `catch`, e che il ri-stabilizzo stia dentro il ciclo **e non al primo giro**. Il secondo è un **controllo negativo**: senza la condizione, mezzo secondo si pagherebbe su ogni giocatore di ogni prenotazione, e il rischio smetterebbe di essere confinato. ⚠️ **RESIDUI DICHIARATI, e sono due.** ① **La cura NON è stata vista sul bersaglio**, e non è una svista: questo difetto **non si provoca** — capita quando capita, e provarlo vorrebbe dire scrivere sul Matchpoint vero. Il prossimo caso lo dirà da sé, ed è per questo che `player_form_resettled` sta negli steps: senza, non si potrebbe distinguere «non è bastato» da «non c'era». ② **Non è una garanzia**: il 19/08 tre fallimenti di fila su «Ospite» dicono che a volte una pagina nuova non basta. ⇒ La cura rende i tre tentativi **tre**; non li rende infallibili. |
 | **63** | ✅ *(23/08 mattina, 50ª sessione — **chiusa da LUI** a cura vista sul bersaglio: «chiudi pure»)* 🚨 **63. Gli inviti restavano attaccati a una partita che non c'è più.** Visto sul vero il 20/08: la prenotazione `9535` si sposta dal 24 al 31 agosto e l'invito di Laura resta agganciato al **24**, che non esiste più — e **nessuno lo sa**: non chi ha invitato (sotto la partita nuova quell'invito non compare, e la vecchia non è più fra le sue), non chi è stata invitata, con in mano un bottone che non porta più da nessuna parte. 📏 Non era un caso di scuola: delle **4** partite che avevano mai avuto inviti, **2 non esistevano più** — **12 inviti su 17**. 🚨 E la scheda non nominava la cosa peggiore: un invito che sopravvive alla sua partita può **riagganciarsi a una partita NUOVA nello stesso slot** e far entrare in campo qualcuno che nessuno ha invitato lì. 🩹 **La cura** (bot #51): al giro degli avvisi gli inviti in sospeso il cui slot non è più fra le partite del socio si **ritirano** — ma solo alla **seconda conferma** (due giri, mezz'ora), perché sulle prenotazioni il gestionale è uno specchio con qualche minuto di ritardo e un ritiro deciso su una lettura stantia ucciderebbe l'invito di una partita **viva**. Il dubbio non ritira niente in altri due casi: l'**elenco tagliato** (`MAX_BOOKINGS` = 10, dichiarato con `bookings_truncated`) e il **campo illeggibile**. ⚖️ Il verso giusto del dubbio è lasciarli vivere: un orfano di troppo costa un bottone morto, un invito ritirato per errore costa una persona che non entra in campo e non sa perché. 📏 **VISTA SUL BERSAGLIO il 23/08**, su un invito vero a una persona vera e su una partita vera spostata dal gestionale — **e la previsione dell'orario è stata fatta PRIMA, leggendo il codice**: bot riavviato alle 11:42:19 ⇒ giri agganciati a quell'istante (`RITARDO_AVVIO_MS` 60″, poi `PERIODO_MS` 15′) ⇒ 11:57:19 · 12:12:19 · **12:27:19**. La catena: **11:52:20** invito a Lidia Comes, in sospeso · **11:55:22** lo spostamento (31/08 09:30 C1 → 11:30 C2) è registrato dalla copia locale · **12:00:08** il sync atterra e lo slot vecchio sparisce ⇒ l'invito è orfano · **12:12:19** primo giro: verificato alle 12:14:26 che `ritirato` è **ancora false** · **12:27:20** `🧹 ritirato l'invito a Lidia Comes per 2026-08-31|09:30|1: quella partita non c'è più`. **Previsto 12:27:19, successo 12:27:20.** ⭐ **La regola delle due conferme è dimostrata, non solo dichiarata**, e la dimostrazione è indiretta: il ritiro al secondo giro prova **retroattivamente** che il primo l'aveva visto e si era trattenuto, perché il codice ritira solo ciò che era già orfano al giro prima ⇒ senza quel primo avvistamento **silenzioso** il secondo non avrebbe avuto niente da ritirare. Serve saperlo perché **il primo giro non scrive nulla**: da solo, un giro muto e un giro mai passato si assomigliano. 📏 Due fonti indipendenti concordano — `telegram_inviti_partita` su `ayly…` e il registro del bot sulla VM; nessuna delle due da sola sarebbe bastata. ⛔ **Quello che la cura NON fa, e non è una svista**: distinguere due prenotazioni diverse sullo stesso slot. Il ponte identifica le partite per `data|ora|campo` e fonde di proposito `booking` e `staff_booking` sotto la stessa chiave — ed è anche il motivo per cui, nella prova, l'invito è diventato orfano **solo** all'atterraggio del sync e non allo spostamento. 🚨 **RESIDUO APERTO, dichiarato e non promosso: l'invitata non viene avvisata.** Il bottone di Lidia è morto e a lei non è partito niente — la scheda lo diceva già (*«se il socio debba anche leggere che quegli inviti non valgono più è una decisione sua»*), e quella decisione **non è ancora stata presa**. Non ne ho fatto una voce numerata: promuoverla spetta al committente. 📌 **Due cose emerse per strada, che non erano la prova**: ① il messaggio arrivato all'organizzatore alle 12:00 (*«è stata annullata dal circolo»* per uno **spostamento**) è la **voce 74**, vista qui per intero sul ramo delle **partite** — un solo fatto in coda, e la metà buona soppressa dal salto del primo dell'elenco, che su una partita di un socio solo toglie l'unica persona da avvisare; gesto → messaggio **~4′40″**. ② Il sync ha avuto un buco di **6′47″** fra le 11:52:02 e le 12:00:08, sopra la mediana misurata di ~2′: non ha rotto niente, perché la cura è paziente per costruzione. |
 | **67** | ✅ *(23/08 notte, 49ª sessione — **chiusa da LUI** a cura vista impedire il difetto: «si vai»)* 🚨 **67. Una soppressione nascondeva lo SLOT, e con lui la prenotazione NUOVA che ci arrivava sopra.** Il 21/08 alle 12:13:17 viene annullata una partita sul 22/08 · 09:00 · campo 4 ⇒ parte una soppressione di quello slot, TTL 30′. Alle 12:17:34 sullo stesso slot nasce la lezione di Lucas Vidal con due allieve (`idReserva 9556`), alle 12:18:46 il sync la porta nel gestionale **viva** — ma la soppressione nasconde **lo slot**, e per **27 minuti** il calendario dello staff mostra quel campo **libero** con una lezione vera sopra. ⚖️ Il verso che fa male non è la card che sparisce: è il campo che sembra libero, cioè quello su cui qualcuno prenota sopra. 🩹 Una guardia c'era già (v5.687) e diceva la cosa giusta **a metà**: guardava il **tipo** della riga (`staff-booking`), quindi copriva solo le riprenotazioni fatte dalla nostra app e non quelle che arrivano dal circolo — la maggioranza. ⇒ *La domanda giusta non è «che tipo di riga è questa?» ma «è la STESSA prenotazione che ho annullato?»*: la soppressione porta con sé gli `idReserva` che erano sullo slot quando è nata (`pmoSoppressioneIds`) e nasconde solo quelli (`pmoSoppressioneNasconde`), col record costruito in **un posto solo** perché i punti che sopprimono sono tre e uno che se la scrivesse da sé nascerebbe cieco. ⛔ La strada del TEMPO era stata misurata e scartata: `updated_at` delle occupazioni si rinfresca a ogni giro di sync, quindi «più recente della soppressione» sarebbe vero per tutto dopo due minuti. 📏 **Vista impedire il difetto la notte del 23/08**, su dati veri e con la finestra verificata **prima** di dare il verdetto: annullo dal gestionale alle **00:11:12** ⇒ soppressione con `ids: ["9588"]`, scadenza 00:41:12; riprenotazione dal bot alle **00:16** ⇒ `idReserva 9591`, fuori da quella lista; alle **00:20:31**, con la soppressione ancora viva per altri venti minuti, il committente guarda il calendario e **la partita nuova si vede**. ⭐ Il controllo che la soppressione fosse ancora viva è la metà che rende la prova una prova: scaduta, vedere la partita non avrebbe dimostrato niente — il verde muto della 43ª. ⚠️ **Residui dichiarati e non chiusi**: una riga **senza `idReserva`** (manutenzioni, card vecchie) resta nascosta come prima, e una soppressione **vecchia**, nata senza la lista, nasconde tutto lo slot come prima. Sono i casi che non si sanno leggere, e lì il verso prudente resta quello di sempre. |
 | **64** | ✅ *(23/08 notte, 49ª sessione — **chiusa da LUI** dopo averla vista tacere sul bersaglio: «la sessantaquattro la chiudiamo»)* 🚨 **64. Un avviso automatico partiva su una partita che stavamo cambiando noi.** La notte del 21/08: annullo toccato alle 00:12:25, «un giocatore è uscito dalla tua partita» partito alle 00:13:09 a **quattro** persone — e **tre non avevano toccato niente** — con il «Fatto, ho annullato» arrivato alle 00:14:38, un minuto e mezzo **dopo**. ⚖️ La causa non era una regola sbagliata: annullare passa dal circolo e ci mette un paio di minuti, e in quei due minuti il roster si svuota **prima** che la partita sparisca ⇒ il giro degli avvisi guardava il mondo **nel mezzo** di un'operazione e raccontava il transitorio come un fatto. 🩹 Le due domande si fanno **per PARTITA e non per persona** — ed è la differenza che conta, perché una guardia legata a chi agisce avrebbe salvato lui e lasciato gli altri tre: `gestoInVoloSullaPartita` (`in-corso.ts`) copre i minuti dell'operazione, `fattoDaChiunqueSulla` (`fatto-compiuto.ts`) i quindici in cui il circolo non l'ha ancora recepito. Si salta la voce **intera, conteggio compreso**: un numero letto a metà operazione diventerebbe al giro dopo il «prima» da cui si misura il calo. 📏 **Vista sul bersaglio la notte del 23/08**, a orologio: tocco «togli Ospite» alle **00:04:56**, giro degli avvisi alle **00:05:02** — cioè **nel mezzo** — e il registro scrive `⏸️ 2026-08-31|09:30|1: niente avvisi, c'è un gesto in volo su questa partita`; la scrittura si chiude alle 00:05:07. Nessun «un giocatore è uscito»: la non-regressione tiene. ⚠️ **Provato il ramo dei minuti, NON quello dei quindici**: `fattoDaChiunqueSulla` lo alimenta solo `segnaFatto`, chiamato nel solo flusso di uscita (`bot.ts:1564`), quindi un `togli` non lo accende — resta quello che la scheda dichiarava non provabile senza costo. 🚨 **E la prova è costata due tentativi, per un difetto della PROVA e non della cura**: al primo giro la conferma è caduta alle 23:50:03 contro un battito alle 23:50:01 — **due secondi tardi** — perché l'istruzione diceva «tocca la conferma» dove la bottoniera ha **due** tocchi, «Togli» e poi «sei sicuro?». ⇒ È la 44ª applicata a chi scriveva la prova: *il socio non chiama funzioni, tocca bottoni*, e chi progetta il tempo di un gesto deve contarli. 📌 La finestra è stretta di suo: `SCADENZA_MS` vale 3 minuti ma il posto si libera in un `finally` (`bot.ts:1625`), quindi dura **quanto la scrittura** — ~10 secondi misurati — e il giro passa ogni 15 minuti: senza puntare il battito la probabilità di beccarlo è intorno al 5%, cioè un verde muto quasi garantito. |
