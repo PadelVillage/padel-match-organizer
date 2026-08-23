@@ -171,6 +171,27 @@ export const CODICI_FALLIMENTO_CERTO = new Set([
   // Il giocatore non si è agganciato: il worker si ferma APPOSTA prima di salvare
   // («NON salvare dichiarando "creata". Fallisci esplicito → l'app SA di dover ritentare»).
   'PLAYER_ADD_INCOMPLETE',
+  // 🩹 23/08/2026 — IL GEMELLO CHE ERA RIMASTO FUORI, ed è la voce 66 vista dal lato del socio.
+  // Stessa famiglia di `PLAYER_ADD_INCOMPLETE`, stesso punto del flusso: l'autocomplete di
+  // Matchpoint non aggancia il giocatore, `HiddenFieldIdPeople` resta vuoto, e il worker si
+  // ferma. Uno era in lista e l'altro no — senza che niente li distinguesse.
+  //
+  // 📏 DOVE STA RISPETTO AL SALVATAGGIO, che è l'unica domanda che questo elenco pone (misurato
+  // il 23/08 leggendo `server.mjs`, non dedotto dal nome):
+  //   · il `throw` è a `createPlayerLock` (~6545), **prima** del click su «+ Aggiungere» — che
+  //     è il primo gesto che persiste, e il worker lo dice da sé: *«SICUREZZA PRIMA DI
+  //     SCRIVERE: "+ Aggiungere" persiste SUBITO su Matchpoint»*;
+  //   · nella CREATE — l'unica strada che consulta questo elenco (`esitoDellaRispostaWorker` è
+  //     chiamata solo da `matchpoint-bookings-create/index.ts`) — i giocatori si aggiungono
+  //     PRIMA di `clickFormSave`. ⇒ Fra il `throw` e il salvataggio non c'è nessuna scrittura.
+  // 📏 E lo conferma il bersaglio: nelle quattro tracce vere la corsa si ferma a
+  //   `player_ctrl_count`, **undici passi prima** di `form_saved`.
+  //
+  // ⚖️ Il costo di lasciarlo fuori non era teorico: cadendo nell'ignoto il socio si sentiva dire
+  // «non ho la conferma, NON rifarla» e restava fermo fino a un quarto d'ora su un fallimento
+  // certo e anteriore al salvataggio. La frase vera era «non è passata, rifalla» — e a valle
+  // esiste già, curata dalla voce 72.
+  'PLAYER_ID_NOT_LOCKED',
   // Il bottone di salvataggio non è stato trovato ⇒ non è stato premuto.
   // ⚠️ Con una riserva, che è il caso qui sotto: vale solo se non è stato nemmeno TENTATO.
   'SAVE_BUTTON_NOT_FOUND',
