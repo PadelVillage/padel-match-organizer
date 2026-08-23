@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** — la 🆕 **77**, aperta da lui il 23/08 sera (*«passa all’annullo dal bot»*): un annullo dal bot lasciava il campo occupato **da noi** mentre sul circolo era libero, e la misura del 22/08 (3′40″) nascondeva il caso vero — **5 ore e 4 minuti** nella pausa notturna del sync, con il bot che risponde «occupato» a chi cerca un campo. Curata, **non ancora vista sul bersaglio**. E la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**. 📦 **Il 23/08 se ne sono chiuse quattro**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1` —, la **74** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*), e la 🆕 **76**, promossa da lui nel pomeriggio e **chiusa la sera stessa a cura vista**: l'avviso al socio nasceva dallo **specchio** e non dalla **conferma**, e il suo argomento non era la velocità — l'unico produttore dei fatti era il sync, che vive leggendo Matchpoint, quindi **il giorno dello spegnimento gli avvisi si sarebbero spenti con lui**. Provata sul bersaglio alle 15:53: **9′03″ → ~1′30″**, e soprattutto un avviso che **non passa più da Matchpoint** |
+| 🔴 **Urgenti** | **2** — la 🆕 **77**, aperta da lui il 23/08 sera (*«passa all’annullo dal bot»*): un annullo dal bot lasciava il campo occupato **da noi** mentre sul circolo era libero, e la misura del 22/08 (3′40″) nascondeva il caso vero — **5 ore e 4 minuti** nella pausa notturna del sync, con il bot che risponde «occupato» a chi cerca un campo. 🚨 Curata, **provata, e RITIRATA la sera stessa**: il giro di sync successivo ha raccontato l'annullo come una comparsa e ha mandato al socio *«Sei in campo»* per la partita appena annullata. ⭐ La causa è misurata e **non era della cura**: l'**upsert** del sync riporta in vita (`deleted = false`) la riga che la resurrezione della voce 73 cerca fra i sepolti, perché l'export era stato scattato **prima** dell'annullo. ⇒ La stessa corsa si apre per un annullo della **segreteria**, ed è viva oggi. Il sync è **curato** (le due metà della fotografia si leggono ora nello stesso istante, prima dell'upsert, con una guardia vista farsi rossa sul sorgente di prima); resta da **rimettere in servizio la chiusura** e vederla sul bersaglio. E la **65**, curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**. 📦 **Il 23/08 se ne sono chiuse quattro**: la **63** a cura vista sul bersaglio (previsto 12:27:19 leggendo il codice, successo 12:27:20), la **66** — traccia recuperata dal worker, ipotesi smentita da `hidden=1` —, la **74** con la regola che l'accompagna (*«quando la segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*, *«corretti fino in fondo»*, *«vale anche per una lezione»*), e la 🆕 **76**, promossa da lui nel pomeriggio e **chiusa la sera stessa a cura vista**: l'avviso al socio nasceva dallo **specchio** e non dalla **conferma**, e il suo argomento non era la velocità — l'unico produttore dei fatti era il sync, che vive leggendo Matchpoint, quindi **il giorno dello spegnimento gli avvisi si sarebbero spenti con lui**. Provata sul bersaglio alle 15:53: **9′03″ → ~1′30″**, e soprattutto un avviso che **non passa più da Matchpoint** |
 | 📋 **In coda** | **6** — la **68** (curata e in servizio: resta finché il primo giorno vero non è stato guardato), la **69**, la **70** e la **71** entrate nella notte del 21/08, la **72** del 22/08, più la **60** in sezione D (due passi su quattro vivi su TEST, in attesa che parli con Wansport). 🔼 **La 74 è uscita di qui il 23/08** — promossa fra le urgenti e chiusa lo stesso giorno; 📦 **la 73 è stata chiusa** lo stesso pomeriggio, a cura già vista funzionare su due annulli veri |
 | 📦 **Chiuse** | **65** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08 |
 
@@ -1481,10 +1481,86 @@ metà: le due copie lo scrivono in due modi (`Campo 1` dal sync, `1` dall'app) e
 testo ne seppellirebbe una lasciando l'altra a occupare lo slot — *una cura che sembra fatta è
 peggio di una non fatta*.
 
-⏳ **NON È ANCORA VISTA SUL BERSAGLIO**: serve un annullo vero dal bot, guardando che il campo
-risulti libero **subito** invece che al giro di sync. Finché non si è visto, questa voce non si
-chiude. ⚠️ Ed è muta nei guasti di proposito: se la chiusura fallisce resta il comportamento di
-prima (il reconcile al giro buono) — toglie un'attesa, non sostituisce una garanzia.
+⚠️ Ed è muta nei guasti di proposito: se la chiusura fallisce resta il comportamento di prima
+(il reconcile al giro buono) — toglie un'attesa, non sostituisce una garanzia.
+
+🚨🚨 **PROVATA IL 23/08, HA MANDATO UN MESSAGGIO FALSO, ED È STATA RITIRATA LA SERA STESSA.**
+
+**La chiusura funziona: è il SYNC che non era pronto a vederla.** Due prove, in ordine:
+
+| ora (UTC) | cosa |
+|---|---|
+| **16:19** | prima prova: la cura **non entra nemmeno in funzione** — il ponte manda solo `idReserva`, e il ramo «coordinate assenti» tornava `0` **senza log**. Corretta (#1013/#1014): lo slot si ricava dall'id, e ogni strada che si arrende lascia una riga |
+| **14:34:29** | seconda prova: `copia_locale_chiusa righe:3`, tipi `booking · booking_occupancy · staff_booking`, lapide `ids:["9595"]`. Il bot risponde «fatto» **172 ms dopo**, e l'`annullata` da **conferma** parte alle 14:34:29.631, consegnata alle **14:34:46** ✅ |
+| **14:35:59** | 🚨 il giro di sync accoda un **`aggiunto` falso** (`slotPrima:76 slotDopo:77 accodati:1`), consegnato alle **14:36:46**: *«Sei in campo — Lunedì 31 agosto alle 09:30»*, per la partita appena annullata |
+| **16:46** | ritiro (#1015/#1016): la chiamata è **commentata**, il modulo resta. Deploy `matchpoint-bookings-cancel` **v38** verificato sul sorgente in servizio |
+
+🔎 **LA CAUSA — misurata il 23/08 sera, e non è nessuna delle tre piste che erano state scritte.**
+
+⭐⭐ **L'upsert del sync RIPORTA IN VITA la riga che la resurrezione va a cercare fra i sepolti.**
+
+Il giro delle 14:35:59 lavorava su un export scattato alle **14:34:01**, cioè **28 secondi prima**
+dell'annullo. Dentro un solo giro succedevano tre cose in quest'ordine:
+
+1. `loadExistingBookingRecords` legge le righe **vive** ⇒ lo slot annullato **non c'è** (76);
+2. l'**upsert** riscrive i record dell'export — che quella prenotazione ce l'aveva ancora ⇒
+   `booking|9595` torna **`deleted = false`**;
+3. la resurrezione della voce 73 cerca i sepolti con `.eq('deleted', true)` ⇒ **non trova più
+   niente**: la riga, nel frattempo, è tornata viva. `risorti: 0`.
+
+⇒ Prima 76, dopo 77, e il confronto lo racconta come *«è comparsa una partita»*.
+
+📏 **La controprova sta nel giro dopo, e non è stata costruita: è successa.** Alle **14:37:22**,
+con l'export scattato **dopo** l'annullo, la stessa lettura ha resuscitato
+(`eventi_staff_sepolti_risorti soppressioni:1 righe:1`), prima 77 e dopo 76, e il fatto
+`annullata` che ne è nato l'ha scartato il dedup della 76 (`giaDettiDallaConferma: 1`). ⇒ *La
+differenza fra i due giri è solo QUANDO l'upsert cade rispetto all'annullo.* **È una corsa, non
+una regola** — la stessa forma della 4bis.
+
+⛔ **Le tre piste scritte nel passaggio di consegne erano tutte e tre sbagliate**, e vale la pena
+dire perché, perché sembravano buone: ① *«`loadSepoltiESoppressioni` cerca solo fra i `booking`»* —
+vero, ma è **giusto così**: la fotografia di «prima» è fatta di soli `booking` (`existingRecords`
+filtrato su quel tipo), quindi resuscitare gli altri due non servirebbe a niente; ② il confine
+(`14:32:02`) e ③ `MARGINE_LAPIDI_MS` **contenevano entrambi** sia la lapide (14:34:29.613) sia la
+riga sepolta. Non mancava una finestra: mancava il **momento**.
+📌 *Tre ipotesi plausibili lette nel codice, e la causa stava in una riga di registro.*
+
+✅ **IL RIMEDIO — fatto, e provato su ciò che deve fermare.**
+
+⚙️ In `matchpoint-bookings-sync/index.ts` le due metà della fotografia si leggono ora **nello
+stesso istante**, subito dopo `loadExistingBookingRecords` e **prima dell'upsert**. Nessuna regola
+nuova, nessuna finestra allargata: solo dieci righe spostate di **320 righe più su**.
+
+🎯 **La regola che ne resta, ed è più larga del caso**: *le righe vive e le righe sepolte si
+leggono nello stesso istante, o non sono la stessa fotografia.*
+
+🚨⭐⭐ **E IL PEZZO CHE CAMBIA LA PRIORITÀ: il difetto NON era della cura ritirata — è VIVO OGGI.**
+La stessa finestra si apre per un annullo fatto dalla **segreteria** (l'app seppellisce le proprie
+copie `booking` all'istante, ed è esattamente il caso per cui la voce 73 esiste), ogni volta che
+quel gesto cade fra lo scatto dell'export e l'upsert del giro — **due minuti buoni, ogni due
+minuti**. La cura della 77 non ha creato la corsa: l'ha resa **facile da vedere**, prendendola in
+pieno perché arriva sempre subito dopo la conferma.
+⇒ *Una cura ritirata ha pagato la diagnosi di un difetto che non era suo.*
+
+🔪 **Provato con una guardia che è stata vista farsi ROSSA prima di essere creduta verde**
+(`ordine-fotografia.test.ts`, 6 prove): sul sorgente **di prima** dice *«la lettura sta alla riga
+1496 e l'upsert alla 1463»* e fallisce; su quello nuovo passa. Dentro ci sono anche il controllo
+che **non conta le parole nei commenti** (lezione ③ della voce 61 — e questo blocco le nomina
+tutte) e il sabotaggio che **non tocca niente**, che deve restare verde.
+⚠️ **Dichiarato per quello che è**: è una guardia **testuale**, misura una posizione nel sorgente.
+Prova che le due chiamate stanno nell'ordine giusto, non che facciano la cosa giusta — e serve
+proprio perché l'ordine è l'unica cosa che nessuna prova sulle funzioni pure può vedere.
+
+⏳ **COSA MANCA PERCHÉ LA VOCE SI CHIUDA.**
+
+1. **Rimettere in servizio la chiusura** (togliere il commento in `matchpoint-bookings-cancel`),
+   ora che il sync non può più raccontarla come una comparsa;
+2. 🚨 **la prova sul bersaglio, che è la stessa di prima e non è stata ancora fatta**: un annullo
+   vero dal bot, e poi il **giro di sync successivo** che **non accoda niente** — né `aggiunto` né
+   `annullata`. Finché non la si è vista, la voce non si chiude.
+   ⚖️ *Alle 15:57 di oggi i doppioni erano zero solo perché il sync non aveva ancora avuto
+   occasione di sbagliare*: uno zero letto troppo presto non dice «funziona», dice «non è ancora
+   passato niente da fermare».
 
 ### **65** — 🔒 Il nome del worker arrivava al bot dentro il «dettaglio» — CURATA, in servizio
 
