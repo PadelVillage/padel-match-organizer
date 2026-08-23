@@ -1503,6 +1503,18 @@ resta una frase: diventa lo stato del mondo per tutto ciò che legge la copia.*
 ⚖️ E la stessa bolla porta anche il difetto della **79** («Ora siete in tre: Ospite e Ospite» ne
 elenca due, il terzo è chi legge): le due voci si toccano qui e vanno lette insieme.
 
+🚨⭐⭐ **E IL TERZO EFFETTO, alle 23:47, chiude il cerchio: il sync riparte, trova la partita
+sparita e la attribuisce AL CIRCOLO.** Al socio arriva *«👋 La tua partita non c'è più — Lunedì 31
+agosto alle 09:00, campo 1. **È stata annullata dal circolo.**»* — mentre l'annullo l'aveva chiesto
+**lui**, dal bot, dieci minuti prima.
+🔎 **E la protezione che doveva impedirlo esiste già e non ha potuto scattare**: è la **ricevuta**
+della voce 70 (*«questo non l'ha fatto la segreteria»*), che `consumer-booking-write` scrive **solo
+dopo una scrittura riuscita**. Classificata fallita, la ricevuta **non è stata scritta** — e senza
+ricevuta il fatto del sync non viene soppresso.
+📌 ⇒ *Una ricevuta non scritta non protegge niente*: un falso «non è passata» non produce **una**
+bugia, ne produce **tre** — la frase al socio, il promemoria su un campo già libero, e
+l'attribuzione al circolo di un gesto suo. La 70, la 79 e la 83 si toccano tutte qui.
+
 ⚖️ **Il danno di STANOTTE è stato nullo** — l'annullo è andato a buon fine e il socio ha solo
 letto una frase sbagliata — ma è un caso di **fortuna**: sull'annullo il verso sbagliato è
 innocuo, sulla **create** è la doppia prenotazione.
