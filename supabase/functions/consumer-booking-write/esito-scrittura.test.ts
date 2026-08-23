@@ -371,5 +371,71 @@ test('21) 🔗 TUTTI i «detail» verso il bot passano dalla stessa mano', () =>
   assert.match(src, /console\.error\(`\[booking-write\] create ESITO IGNOTO/);
 });
 
+test('22) 🚨⭐⭐ IL DOPPIONE: due prenotazioni sue nello stesso slot NON sono un «si»', () => {
+  // 📏 Il fatto vero, la notte del 23/08 alle 00:17: il bot ha scritto «è registrata, era andata
+  // a buon fine, l'ho controllata io per te» — e quella prenotazione l'aveva rifatta il socio un
+  // minuto prima. La verifica ne aveva trovata UNA e non sapeva di quale stesse parlando.
+  // ⇒ Nel verso opposto — prima passata, socio che rifà — le prenotazioni sono DUE, e con la
+  //   riga di prima uscivano certificate come successo. È il danno che l'esito ignoto esiste per
+  //   evitare, prodotto dal pezzo che dovrebbe chiuderlo.
+  assert.equal(
+    v({ presente: true, quante: 2, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_PRIMA, giornoSlot: '2026-09-01', oggi: OGGI }),
+    'doppione/piu_di_una/basta',
+  );
+  // ⭐ E vale con la copia FERMA: due righe distinte sono due prenotazioni vere comunque vecchia
+  // sia la copia — nessun sync ne inventa una. Stesso ragionamento del «si», altro verso.
+  assert.equal(
+    v({ presente: true, quante: 3, scrittaAlle: null, copiaFrescaAl: null, giornoSlot: '2026-09-01', oggi: OGGI }),
+    'doppione/piu_di_una/basta',
+  );
+  // 🚨 E BATTE anche il «fuori finestra», che sta prima di tutto il resto: una prenotazione oltre
+  // i 30 giorni è comunque una prenotazione, e due sono comunque due.
+  assert.equal(
+    v({ presente: true, quante: 2, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2027-01-01', oggi: OGGI }),
+    'doppione/piu_di_una/basta',
+  );
+});
+
+test('23) ⚖️ FALLISCE VERSO L’UNO: il conteggio può fare un doppione, mai perdere un «si»', () => {
+  // Il verso sbagliato costerebbe un allarme di doppione a chi non ne ha — cioè spedirebbe in
+  // segreteria una persona che non ha nessun problema. Perciò tutto ciò che non è «almeno due»
+  // si comporta esattamente come prima.
+  const base = { scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_PRIMA, giornoSlot: '2026-09-01', oggi: OGGI };
+  assert.equal(v({ presente: true, quante: 1, ...base }), 'si/trovata/basta');
+  // Chi non sa contare non passa niente: comanda `presente`, com'era prima della cura.
+  assert.equal(v({ presente: true, ...base }), 'si/trovata/basta');
+  assert.equal(v({ presente: true, quante: 0, ...base }), 'si/trovata/basta');
+  // …e un conteggio storto non inventa un doppione.
+  assert.equal(v({ presente: true, quante: Number.NaN, ...base }), 'si/trovata/basta');
+  // 🚨 CONTROLLO NEGATIVO: sull'assenza il conteggio non tocca NIENTE — il «no» e i tre «non lo
+  // so» restano decisi dalla freschezza, che è l'unica cosa difficile di questa funzione.
+  assert.equal(v({ presente: false, quante: 0, ...base }), 'non_ancora/copia_ferma/aspetta');
+  assert.equal(
+    v({ presente: false, quante: 0, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-09-01', oggi: OGGI }),
+    'no/copia_aggiornata_dopo/basta',
+  );
+});
+
+test('24) 🔌 IL CABLAGGIO: il conteggio si fa per PRENOTAZIONE, e arriva al verdetto', () => {
+  // ⚠️ Legge il sorgente, come i casi 17-21 e per la stessa ragione: il raggruppamento vive
+  // dentro l'handler di `index.ts`, che è Deno e da qui non si esegue. Prova che il cablaggio
+  // c'è — senza, la regola più giusta del mondo resta una funzione che nessuno chiama coi dati
+  // veri, e `quante` resterebbe per sempre `undefined` con tutte le prove verdi.
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
+  assert.match(src, /quante,/, '`quante` non arriva a `verdettoScrittura`');
+  assert.match(src, /perPrenotazione\s*=\s*new Map/, 'il raggruppamento per prenotazione non c’è più');
+  // 🚨 La chiave è `numero`, non `idReserva`, ed è MISURATA: sulle 122 righe booking vive di
+  // PROD, `numero` c'è 122 volte e `idReserva` 70. Contare per `idReserva` conterebbe le
+  // capofila. Se qualcuno inverte i due, questo caso deve cadere.
+  assert.match(
+    src,
+    /prenotazione:\s*clean\(p\.numero\)\s*\|\|/,
+    'la chiave della prenotazione non parte più da `numero`: si contano le capofila, non le prenotazioni',
+  );
+  // ⭐ E il registro deve poter rifare il conto a mano: la riga del 23/08 non nominava nessuna
+  // prenotazione, ed è il motivo per cui il difetto si è potuto misurare solo dal comportamento.
+  assert.match(src, /sue \$\{quante\} di \$\{perPrenotazione\.size\}/, 'il registro non dice più quante prenotazioni ha visto');
+});
+
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed > 0) process.exitCode = 1;
