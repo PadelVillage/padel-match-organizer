@@ -1494,11 +1494,30 @@ del 16/08, presa coi due prezzi davanti. ⇒ Una bolla che promette di aggiornar
 farlo è **peggio di due messaggi**: sembra al lavoro mentre non lo è. La strada del socio non deve
 dipendere dal fatto che questo processo sia ancora vivo.
 
-⛔ **E NON si scrive «un attimo»**, che erano le sue parole: si dichiara il **tetto** (un quarto
-d'ora). 📏 Mediana ~2 minuti, ma il massimo misurato è **10′04″**. «Un attimo» sarebbe la stessa
-specie di promessa di *«entro 1 minuto»* — giusta quasi sempre e clamorosamente falsa **nella
-coda**, che è esattamente il caso in cui il socio guarda l'orologio. *Un tempo si promette sul
-peggio che può capitare, non sul caso normale.*
+⛔ **E NON si scrive NESSUN TEMPO, di nessuna specie** — ed è arrivato in due passi, tutti e due
+suoi, nel giro di pochi minuti.
+· Avevo scartato «un attimo» (sue parole) e messo il **tetto**, «entro un quarto d'ora»: mediana
+  ~2 minuti ma massimo misurato **10′04″**, e un tempo si promette sul peggio che può capitare.
+· Lui ha tolto anche quello: *«non va bene che scrivi entro un quarto d'ora»*.
+⚖️ **E va nella direzione della regola, non contro**: un tetto è più onesto di una speranza, ma
+**nessun numero** è più onesto di tutti e due — e qui non serve a niente, perché la bolla si
+aggiorna da sé e il socio non deve calcolare nulla.
+📌 *Un tempo si scrive quando al lettore serve per DECIDERE. Se non deve decidere niente, è solo un
+numero che può smentirti.*
+
+🚨⭐⭐ **E LA CHIUSA L'HA BOCCIATA IL CASO, prima che arrivasse ai soci.** Il primo tentativo era
+*«ti riscrivo qui appena è confermata»* — e il caso *«non si afferma nessun esito»* è diventato
+**rosso** su `confermata`. ⚖️ Aveva ragione: gli esiti sono **quattro** — confermata, non
+registrata, doppia, non lo so — e negli ultimi tre la bolla si aggiorna lo stesso, con una
+risposta che una conferma non è. Chi avesse letto «appena è confermata» avrebbe aspettato una cosa
+che non arriva. ⇒ La formula in servizio è **«appena il circolo mi risponde»**, che nomina la cosa
+che il socio conosce e descrive un fatto vero in tutti e quattro i casi.
+📌 *Una frase d'attesa non deve nominare l'esito che spera: deve nominare l'evento che la chiude,
+qualunque esso sia.*
+⭐ **E il caso è stato corretto, non cancellato**: la metà che vietava i tempi brevi resta e si
+allarga a **tutti** i tempi; la metà che ne pretendeva uno cade. *Una guardia che pretende una cosa
+E ne vieta un'altra è più debole di una che ne vieta una sola, se le due possono convivere* — prima
+sarebbe passata una bolla con «entro un quarto d'ora» **e** un «fra due minuti» accanto.
 
 🚨⭐⭐ **IL RAMO DEL GUASTO RISCRIVE LA STESSA BOLLA, ed è il pezzo che si dimentica.** La bolla
 dice *«ti riscrivo qui»*: se l'errore arrivasse in un messaggio a parte, quel ⏳ resterebbe in chat
@@ -1510,9 +1529,9 @@ funzionato come il 20/08: **il secondo dei due punti l'ho messo perché il numer
 perché me lo ricordassi. *Una guardia che conta è l'unica che si accorge di ciò che hai dimenticato
 invece di ciò che hai sbagliato.*
 
-✅ **Provato:** banco **1541/1541**, `tsc` pulito, **quattro sabotaggi tutti rossi** — l'id non
-passato, il guasto che torna a mandare un messaggio nuovo, la bolla che torna a raccontare un
-guasto, e «fra un attimo» al posto del tetto.
+✅ **Provato:** banco **1541/1541**, `tsc` pulito, **sei sabotaggi tutti rossi** — l'id non passato,
+il guasto che torna a mandare un messaggio nuovo, la bolla che torna a raccontare un guasto, «fra un
+attimo», il ritorno del tetto e il ritorno di «appena è confermata».
 ⏳ **RESTA APERTA per la prova fisica**, ed è sua: una prenotazione che finisce in **esito ignoto**
 — che non si può provocare a comando — guardata sul telefono. 🚨 Il banco dice che la bolla si
 riscrive, non che sullo schermo si vede bene: la cosa da guardare è se l'aggiornamento **si nota**
