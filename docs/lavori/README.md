@@ -1674,6 +1674,61 @@ Sabotato due volte, compresa una quarta porta finta in un file nuovo.
 ⏳ **Cosa manca ancora per chiuderla**: la prova fisica della ⓐ **col difetto vero davanti** — una
 consegna che passa dal **promemoria** e che l'esito raggiunge in secondi — e la ⓒ.
 
+#### 🔴 24/08 pomeriggio — la ⓐ è caduta una SECONDA volta, e la causa è la GUARDIA
+
+📏 **Collaudo con Fabiola Limuti, misurato sul registro del bot e sul database:**
+
+| ora (Roma) | cosa |
+|---|---|
+| 11:42:50 | `▸ Fabiola Limuti (chat 1110380688): /prenota → griglia` |
+| 11:42:51 | `↳ [griglia] rifiutata` — il muro, **col bottone del test** |
+| 11:44:24 | scheda consegnata al gestionale (`EB1NG2IUSAODAU`, 2,5, `consistency high`, `staff_status` vuoto) |
+| **11:52:51** | `🔔 esito del test (pass) a Fabiola Limuti` — **8′27″**, cioè il giro dei 15′ |
+
+🚨 **In tutto il registro, nessuna riga `[sorveglianza-test]`.** La sorveglianza non è mai partita.
+
+🎯 **LA CAUSA, e non è una porta dimenticata: è la GUARDIA che non poteva vederla.** Il caso
+17quater contava i **FILE** — *ogni file di `src/telegram/` che fabbrica `bottoneTestLivello` deve
+accendere la sorveglianza*. `bot.ts` conteneva già `sorvegliaEsitoDelTest(` (nel muro
+conversazionale, riga 2227) ⇒ **passava verde**. Ma dentro `bot.ts` le porte erano **due**: quel
+muro, e la **scheda della griglia** (`mandaScheda` → `conBottoneSegreteria` → `bottoneTestLivello`).
+Fabiola è passata dalla seconda.
+
+⚖️ ⭐⭐ *Una guardia che conta i FILE non vede la seconda porta dentro lo stesso file.* È la trappola
+della mattina un piano più su — e la mattina la lezione scritta era proprio *«le porte si contano,
+non si ricordano»*: **contarle era già la cura sbagliata**, e l'ha dimostrato lo stesso giorno.
+
+🔨 **CURA, in servizio dalle 11:59:19** (bot PR #71, `3746659`): l'accensione non sta più nelle
+porte, sta **a monte** — `linkDelTestConSorveglianza` in `bot.ts`, per cui passano **tutte** le
+strade della chat per costruzione. Chiedere lo stato del test conia il gettone **di quella
+persona** e si paga solo quando la risposta lo conterrà ⇒ passare di lì vuol dire *sto per
+mandarglielo*. ⛔ Non nella **fabbrica** del bottone (là si passa anche solo per *chiedere* se un
+bottone si può fare) e non nel **giro** degli avvisi (quello chiede lo stato di tutti i soci ogni
+quarto d'ora). La riga nel muro è stata **tolta**, non affiancata.
+🔒 Le guardie nuove non contano più: **17quater** pretende che in `bot.ts` `statoTestLivello(`
+compaia **esattamente due volte** (il punto a monte, e il ramo della scelta che legge la fascia e
+non manda link) — una terza chiamata è una porta che scavalca, e fa cadere il caso; **17quinquies**
+controlla che il muro e la griglia il link lo prendano proprio da lì. 🔪 Sabotate **quattro** volte,
+compresa una **quinta porta** che chiede il link per conto suo. Banco **1510 verdi**, `tsc` pulito.
+
+⏳ **LA PROVA FISICA MANCA ANCORA**, e va detto invece di dare per fatto: un banco verde e un deploy
+riuscito sono esattamente ciò che c'era stamattina quando la cura non funzionava. Serve un test
+consegnato **adesso**, con `[sorveglianza-test]` nel registro e l'esito in **secondi**.
+
+⏳ **IL RESIDUO, dichiarato**: chi tocca un bottone rimasto in chat **da giorni** non passa da
+nessuna porta, e il suo esito torna ad aspettare il quarto d'ora. Il bot **non lo può vedere**: il
+test si consegna al **gestionale**, non a lui. ⇒ La cura piena è che sia il gestionale a dire
+*«c'è un esito da annunciare»* — un giro veloce con **una domanda sola per tutti** — invece del bot
+che indovina quando vale la pena chiedere. È *il gestionale SA, il bot DICE* applicato alla fretta.
+
+#### 🔎 E la «scheda non aggiornata» non è un secondo difetto
+
+📏 `applied_at` di `EB1NG2IUSAODAU` è **null** perché il livello si applica **dopo la scelta del
+socio** (o dopo il silenzio di 24 ore), e la domanda «tengo questo / riprovo» a Fabiola è arrivata
+solo alle **11:52:51**, con l'esito. ⇒ **Un difetto solo, due sintomi**: finché l'esito tarda,
+tarda anche la scheda. La cura della ⓒ (il livello applicato **subito** dopo «mi fermo») non
+c'entra e non è stata smentita: non è ancora stata esercitata.
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
