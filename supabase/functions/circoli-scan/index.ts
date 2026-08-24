@@ -265,7 +265,18 @@ Deno.serve(async (req) => {
   if (!circolo.base_url) return ko('INDIRIZZO_NON_RILEVATO', { circolo: slug });
 
   // ④ intervallo minimo
-  if (circolo.ultimo_scan_at) {
+  // 🏠 CASA NOSTRA NON HA IL FRENO. Deciso dal committente il 24/08/2026, dopo che
+  //    la seconda prova su Padel Village aveva risposto TROPPO_PRESTO.
+  //    ⚖️ Il limite di 24 ore non è una misura tecnica: è una cortesia verso i
+  //    portali di TERZI — «la differenza fra un cliente e un molestatore», come
+  //    sta scritto sotto. Verso il portale del circolo che ci appartiene non c'è
+  //    nessun estraneo da rispettare, quindi lì il freno è solo un costo: rende il
+  //    bottone «Prova ora» inutilizzabile due volte di seguito e basta.
+  //    🚨 Il vincolo sui circoli Wansport resta INTATTO: non è stato allentato, e
+  //    non si tocca finché il committente non ha parlato con Wansport. Questa
+  //    esenzione vale per `matchpoint`, che oggi è solo Padel Village.
+  const casaNostra = circolo.piattaforma === 'matchpoint';
+  if (circolo.ultimo_scan_at && !casaNostra) {
     const passati = Date.now() - new Date(circolo.ultimo_scan_at).getTime();
     if (passati >= 0 && passati < INTERVALLO_MINIMO_MS) {
       return ko('TROPPO_PRESTO', {
