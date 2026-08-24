@@ -1889,15 +1889,52 @@ posti su nove voleva dire «il testo».
 📌 *Un filtro che decide per prefisso va provato sui dati VERI almeno una volta: la convenzione che
 presume esiste solo dove qualcuno l'ha rispettata.*
 
-⏳ **RESTA APERTA, e manca UNA cosa sola: il deploy del bot e la prova fisica.**
-🚨 Metà ① è **già viva** (la kb non ha deploy); metà ② e ③ stanno su un ramo e **il bot sulla VM
-gira ancora col prompt vecchio** — quindi oggi il modello ha la conoscenza in mano ma nessuno gli
-ha ancora detto di andarla a prendere. ⇒ Il deploy è `deploy-bot-hetzner.yml`, bersaglio **`soci`**
-(va scritta la parola `SOCI`), ed è un gesto **suo**: da qui non si fa senza dirlo.
-📌 **La prova fisica che la chiude** — cinque domande scritte a mano al bot, non toccate coi
-bottoni: *«come funziona la rubrica?»*, *«come aggiungo un amico?»*, *«come faccio ad avere un
-livello?»*, *«quanto dura un invito?»*, *«perché mi è arrivato questo messaggio?»*. Oggi le prime
-due non hanno risposta; dopo il deploy devono averla, e **senza inventare**.
+✅⭐ **IL DEPLOY C'È STATO, e stanotte è stato VERIFICATO invece che dato per fatto** *(24/08 notte,
+48ª sessione)* — perché *un deploy verde risponde a «è ripartito?», non a «gira il commit che credo?»*:
+· il bot dei soci gira su **`0830bfb`** (deploy **#90**), e in quel sorgente ci sono **tutte** le cure
+  di questa voce: `apri_rubrica`, `ETICHETTA_ELENCO`, il filtro `k.startsWith('_')` di
+  `conoscenza.ts`, i tre intenti e la descrizione nuova dello strumento;
+· **banco rieseguito su quel sha: 1561/1561 verdi** (erano 1533 quando la voce è stata scritta:
+  il numero è cresciuto, non è lo stesso conteggio);
+· **la kb di PROD è quella giusta**, riletta sul bersaglio: `rubrica`, `inviti` e `livello` ci sono
+  coi **suoi** testi, e `avvisi_dal_circolo` e `promemoria_partita` hanno `come_funziona` ⇒ il danno
+  che la cura stessa aveva fatto è **davvero** riparato, non solo dichiarato.
+· 🔎 **Un falso allarme, evitato misurando**: cercando nella kb i nomi vecchi del menu esce un colpo
+  su «Le tue partite» — ma è **prosa** dentro `lozio` (*«Quello che ti dico — le tue partite, i campi
+  liberi, il borsellino»*), non il nome di un bottone. ⇒ Non è la settima copia sopravvissuta.
+  📌 *Prima di credere a un difetto, misurare che sia un difetto* — la ① della 48ª, applicata a una
+  ricerca testuale invece che a un sabotaggio.
+
+🚨⭐⭐ **UN RISCHIO NUOVO, MISURATO E NON CURATO — il filtro `_` non arriva dove serve.** Tutti e tre
+i `come_funziona` scritti da lui cominciano con una riga rivolta **al modello**: *«Testo del
+committente (24/08/2026), da usare come RISPOSTA quando il socio chiede…»*. Quella riga **non
+comincia per `_`**, quindi il filtro delle note di servizio la lascia passare, e nel prompt non c'è
+nessuna regola che vieti di ripetere il testo che arriva dagli strumenti.
+⇒ Il socio potrebbe leggersi in faccia *«Testo del committente (24/08/2026)»*. È **la stessa
+malattia** che il filtro è nato per curare, in un punto in cui il filtro non arriva — la convenzione
+protegge chi la rispetta, e qui l'istruzione è dentro il campo che il modello deve **usare**.
+⚖️ **Non toccata di proposito**: una scrittura sulla kb è istantanea e cambierebbe la risposta che
+sta per essere provata. E la prova lo dice meglio di qualunque rilettura. Se perde, la cura è **una
+sola `update`** senza deploy: la riga si sposta in una chiave col `_` davanti e le sue parole non si
+toccano.
+
+⏳ **RESTA APERTA, e manca UNA cosa sola: LA PROVA FISICA.**
+🩹 *(24/08 notte)* Qui c'era scritto che *«il bot sulla VM gira ancora col prompt vecchio»*: riga
+**corretta, non affiancata** — il deploy c'è stato ed è quello verificato qui sopra.
+📌 **La prova fisica che la chiude** — cinque domande **scritte a mano** al bot, non toccate coi
+bottoni. E ognuna ha un «ci siamo» che si può falsificare, altrimenti è un'impressione:
+
+| | domanda | ci siamo se… | ⛔ non ci siamo se… |
+|---|---|---|---|
+| ① | *«come funziona la rubrica?»* | dice che è l'elenco delle persone con cui ti piacerebbe giocare, che **ci si entra solo con un invito** e che è privata — e **sotto compare il bottone della rubrica** | compare la riga *«Testo del committente»*, una data, o nessun bottone |
+| ② | *«come aggiungo un amico?»* | mandi il link, e se accetta te lo ritrovi in rubrica — col bottone sotto | inventa un modo per aggiungerlo a mano, o dice che lo aggiunge lui |
+| ③ | *«come faccio ad avere un livello?»* | il test, **tre prove**, il bottone che compare da sé, e un giro nuovo dopo 30 giorni | scrive **il link** del test, o promette un **tempo** |
+| ④ | *«quanto dura un invito?»* | **un'ora**; se scade di notte vale fino alle **9**, mai oltre l'inizio della partita; il posto può finire prima | dice un numero che non è quello, o non nomina la notte |
+| ⑤ | *«perché mi è arrivato questo messaggio?»* | elenca **quali** avvisi esistono e quando partono | inventa il **motivo** di una modifica della segreteria invece di mandarci |
+
+🚨 **La ① e la ② vanno guardate DUE volte**: la prima per la risposta, la seconda per la **perdita**
+— cioè il rischio misurato qui sopra. Una risposta giusta che si porta dietro la riga di servizio è
+un difetto, non una promozione.
 
 📉 **Cosa NON è stato curato, e sta scritto perché non passi per fatto:**
 · **il modello riceve la kb GREZZA.** `conoscenza` gli consegna l'oggetto intero, `_nota`/`_stato`/
