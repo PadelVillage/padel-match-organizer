@@ -496,7 +496,67 @@ const guardie = [
   ['il silenzio-assenso è ventiquattr\'ore, e sta nel modulo', ORE_SILENZIO_ASSENSO === 24],
   // ⚖️ «riprovo» non ha scadenza: se le 24 ore lo scavalcassero, la domanda sarebbe finta.
   ['«riprovo» esce PRIMA del silenzio-assenso', src.indexOf('SCELTA_RIPROVO') < src.indexOf('ORE_SILENZIO_ASSENSO * 60')],
+
+  // ── 🆕🔗 VOCE 85 (24/08/2026): il livello applicato arriva ANCHE su Matchpoint ──────────
+  //
+  // 📏 Il difetto misurato: questo file aveva ZERO riferimenti a Matchpoint, e i soli a
+  // chiamare `matchpoint-clients-update` erano quattro punti di `index.html`. ⇒ Il livello
+  // che nasce dal test si fermava in `pmo_cloud_records`: non tardava, NON PARTIVA.
+  //
+  // ⚠️ Sono guardie TESTUALI, e si dicono per quello che sono: il giro parla col database e
+  // con la rete, e da qui non si può ESEGUIRE. Provano che la spinta c'è, dov'è, e che non
+  // può far danno — non provano che Matchpoint la riceva. Quella è una prova fisica.
+  ['🔗 il livello applicato viene spinto verso il circolo',
+    /spingiIlLivelloAlCircolo\(/.test(src)],
+  // ⭐ Si passa dall'EDGE, non dal worker: la strada verso il circolo è una sola e ha dentro
+  //    il recinto di TEST. Una seconda copia di quella regola divergerebbe al primo
+  //    ripensamento — è la stessa scelta già fatta con la cura ④ (il dispatcher, non l'edge).
+  ['…chiedendolo all\'edge che ha già il recinto, non al worker',
+    /functions\/v1\/matchpoint-clients-update/.test(src)
+    && !/MATCHPOINT_BROWSER_WORKER_URL|\/update-client/.test(src)],
+  // 🚨 L'ORDINE, ed è il punto: si spinge DOPO che la scheda è marcata. Spingendo prima, un
+  //    intoppo lascerebbe il livello sul Matchpoint del circolo e non da noi — cioè la voce 85
+  //    esatta, al rovescio.
+  ['🚨 si spinge DOPO aver marcato la scheda, non prima',
+    src.indexOf("applied_at: adesso") < src.indexOf('spingiIlLivelloAlCircolo({')],
+  // 🚨 E NON PUÒ TOGLIERE NIENTE A NESSUNO: una spinta fallita non salta il socio. Il livello
+  //    resta applicato e il socio ha già avuto il suo messaggio — si perde la spinta, non il
+  //    fatto. Chi mettesse un `continue` in quel ramo lo scoprirebbe da un socio, non da qui.
+  ['🚨 una spinta fallita NON annulla l\'applicazione (nessun `continue`)',
+    /spinta\.esito === 'non_riuscita'\)\s*\{[\s\S]{0,400}?avvisi\.push/.test(src)
+    && !/spinta\.esito === 'non_riuscita'\)\s*\{[\s\S]{0,400}?continue;/.test(src)],
+  // 🧊 `simula` esiste per GUARDARE cosa succederebbe, e una scrittura sul Matchpoint del
+  //    circolo non è una cosa che si guarda.
+  ['🧊 in simulazione la spinta NON parte', /if \(!simula\) \{\s*\n\s*spinta = await spingiIlLivelloAlCircolo/.test(src)],
+  // 🔇 Su TEST il recinto risponde 503, ed è il comportamento GIUSTO: non deve finire fra gli
+  //    avvisi, o il giro di TEST urlerebbe a ogni livello applicato e si smetterebbe di leggerlo.
+  ['🔇 il rifiuto di TEST non viene scambiato per un guasto',
+    /AMBIENTE_DI_PROVA[\s\S]{0,120}ambiente_di_prova/.test(src)],
+  // 🔒 Un socio senza codice del circolo non è un guasto: si dice e si va avanti.
+  ['🔒 senza codice Matchpoint non si tenta, e non si urla', /senza_codice/.test(src)],
 ];
+
+// ── La porta di `matchpoint-clients-update`, che questa cura ha allargato ────────────────
+const srcClienti = readFileSync(
+  join(QUI, '..', 'supabase', 'functions', 'matchpoint-clients-update', 'index.ts'), 'utf8');
+
+guardie.push(
+  ['🔑 l\'edge dei clienti accetta anche una ROUTINE, oltre a una persona',
+    /routineAutorizzata\(/.test(srcClienti) && /pmo_verify_data_routine_secret/.test(srcClienti)],
+  // 🔒 FALLISCE CHIUSA: senza la chiave per verificare il segreto, la porta resta chiusa. Un
+  //    dubbio non diventa mai un sì verso il gestionale del circolo.
+  ['🔒 …e senza la chiave per verificarlo la porta resta CHIUSA',
+    /if \(!supabaseUrl \|\| !serviceKey\) return false;/.test(srcClienti)],
+  // 🚨⭐⭐ E LA ROUTINE NON SCAVALCA IL RECINTO, che è la protezione vera: deve restare DOPO
+  //    l'autenticazione, o una routine scriverebbe sul Matchpoint vero anche da TEST.
+  // 🚨⭐ E si pretende che la chiamata CI SIA prima di guardare dov'è: con un solo `indexOf`
+  //    cancellare la chiamata darebbe −1, che è minore di qualunque cosa, e la guardia
+  //    resterebbe VERDE proprio mentre la porta sparisce. Trovata sabotandola, non rileggendola.
+  ['🚨 il recinto di TEST resta DOPO la porta, anche per le routine',
+    srcClienti.includes('routineAutorizzata(req)')
+    && srcClienti.includes('scritturaAlCircoloConsentita(')
+    && srcClienti.indexOf('routineAutorizzata(req)') < srcClienti.indexOf('scritturaAlCircoloConsentita(')],
+);
 
 test('BANCO — il livello si applica da solo, ma una scheda vecchia non scavalca mai', () => {
   console.log('\nBANCO — assessment-apply-level\n');

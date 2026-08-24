@@ -287,6 +287,74 @@ function soloLaPiuRecentePerSocio(schede: any, socioPerToken: any) {
   return [...senzaSocio, ...migliore.values()];
 }
 
+/**
+ * 🆕🔗⭐⭐ VOCE 85 (24/08/2026) — IL LIVELLO APPLICATO ARRIVA ANCHE SU MATCHPOINT.
+ *
+ * 🗣️ Nato da una sua attesa che non sarebbe mai finita, la sera del collaudo di Marco Aprea:
+ * *«adesso aspetto che il gestionale sincronizzi il livello su matchpoint»*.
+ *
+ * 📏 MISURATO PRIMA DI SCRIVERE, e la misura era netta: questo file aveva ZERO riferimenti a
+ * Matchpoint, e gli unici a chiamare `matchpoint-clients-update` erano quattro punti di
+ * `index.html`. ⇒ Il livello scritto dal test si fermava in `pmo_cloud_records`: non tardava,
+ * NON PARTIVA. Aspettare non lo avrebbe portato da nessuna parte, mai.
+ * 📌 *Una funzione che sta nell'interfaccia esiste solo per chi passa dall'interfaccia.* Il
+ * test di livello, per disegno, non ci passa — parla direttamente col gestionale.
+ *
+ * ⭐ SI CHIEDE ALL'EDGE, non al worker, ed è la stessa scelta della cura ④: la strada verso il
+ * circolo è una sola e ha dentro il recinto di TEST, il contratto col worker e il ripiego per
+ * ritrovare la scheda. Una seconda copia di quella regola divergerebbe al primo ripensamento.
+ *
+ * 🚨 NON PUÒ FAR FALLIRE NIENTE, e l'ordine è deliberato: si spinge DOPO che il livello è
+ * scritto e la scheda marcata. Se la spinta non riesce, il livello resta applicato e il socio
+ * ha già avuto il suo messaggio — si perde la SPINTA, non il FATTO. L'esito finisce negli
+ * avvisi del giro, dove lo si vede, invece che in un silenzio.
+ *
+ * 🧊 IN SIMULAZIONE NON PARTE: `simula` esiste per guardare cosa succederebbe, e una scrittura
+ * sul Matchpoint del circolo non è una cosa che si guarda.
+ */
+async function spingiIlLivelloAlCircolo(opts: {
+  supabaseUrl: string;
+  segreto: string;
+  payload: any;
+}): Promise<{ esito: string; motivo: string }> {
+  const codice = clean(opts.payload?.memberId ?? '');
+  // Stessa regola dell'app: senza un codice del circolo non c'è nessuna scheda da aggiornare.
+  // Non è un guasto ed è frequente (ospiti, soci mai importati): si dice e si va avanti.
+  if (!/^\d{4,6}$/.test(codice)) return { esito: 'senza_codice', motivo: 'socio senza codice Matchpoint' };
+
+  const genere = clean(opts.payload?.gender ?? '');
+  const client = {
+    codice,
+    firstName: clean(opts.payload?.firstName ?? ''),
+    surname: clean(opts.payload?.surname ?? ''),
+    phone: clean(opts.payload?.phone ?? ''),
+    email: clean(opts.payload?.email ?? ''),
+    gender: genere === 'F' ? 'F' : (genere === 'M' ? 'M' : ''),
+    level: opts.payload?.level,
+  };
+
+  try {
+    const risposta = await fetch(`${opts.supabaseUrl}/functions/v1/matchpoint-clients-update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-pmo-routine-secret': opts.segreto },
+      body: JSON.stringify({ client }),
+    });
+    const testo = await risposta.text();
+    let dati: any = null;
+    try { dati = testo ? JSON.parse(testo) : null; } catch { dati = null; }
+    if (risposta.ok && !(dati && dati.ok === false)) return { esito: 'ok', motivo: '' };
+    const motivo = clean(dati?.message ?? dati?.error ?? `HTTP ${risposta.status}`);
+    // 🧪 Su TEST il recinto risponde così, ed è il comportamento GIUSTO: non è un guasto da
+    // segnalare come tale, o il giro di TEST urlerebbe a ogni livello applicato.
+    if (clean(dati?.error) === 'AMBIENTE_DI_PROVA' || risposta.status === 503) {
+      return { esito: 'ambiente_di_prova', motivo };
+    }
+    return { esito: 'non_riuscita', motivo };
+  } catch (e) {
+    return { esito: 'non_riuscita', motivo: clean((e as Error)?.message ?? String(e)) };
+  }
+}
+
 // Il payload nuovo del socio: si parte da quello che c'è e si toccano SOLO il
 // livello e i suoi satelliti. ⚠️ `updatedAt` in ISO con la Z: il gestionale
 // confronta quel campo come stringa, e un altro formato lo lascerebbe indietro
@@ -481,7 +549,27 @@ Deno.serve(async (req: Request) => {
     righePerId.set(socioId, { ...(riga as JsonMap), payload: nuovo, updated_at: adesso });
 
     applicate++;
-    dettaglio.push({ persona: nome, cambio: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });
+
+    // ⑥ 🆕 VOCE 85 — e ADESSO il livello va anche sul gestionale del circolo. Ultimo passo di
+    // proposito: qui il fatto è già al sicuro (livello scritto, scheda marcata), quindi
+    // qualunque cosa succeda di qui in poi non può togliere niente a nessuno.
+    let spinta: { esito: string; motivo: string } = { esito: 'simulata', motivo: '' };
+    if (!simula) {
+      spinta = await spingiIlLivelloAlCircolo({ supabaseUrl, segreto: secret, payload: nuovo });
+      if (spinta.esito === 'non_riuscita') {
+        // 🚨 NON è un `continue`: il livello RESTA applicato. Va negli avvisi perché qualcuno
+        // lo veda — un livello giusto da noi e vecchio sul Matchpoint del circolo è la voce 85
+        // in persona, e il modo di accorgersene non deve essere un socio che se ne lamenta.
+        avvisi.push(`livello applicato ma non spinto su Matchpoint per ${nome}: ${spinta.motivo}`);
+      }
+    }
+
+    dettaglio.push({
+      persona: nome,
+      cambio: esito.motivo,
+      scheda: clean(scheda.submitted_at).slice(0, 10),
+      matchpoint: spinta.esito,
+    });
   }
 
   console.log('PMO_ASSESSMENT_APPLY_LEVEL', JSON.stringify({ ambiente, simula, esaminate: schede.length, applicate, saltate: saltate.length, avvisi }));
