@@ -170,6 +170,18 @@ vm.runInContext(
 );
 const { casellaDelPromemoria, promemoriaDelLivello } = ctxProm;
 
+// ── 🆕 IL GETTONE CHE SI PUÒ RIUSARE (voce 84, 24/08/2026) ──────────────────────
+// ⭐ Si ESEGUE la regola vera del ponte, estratta dal sorgente. È deliberato: la prima
+// stesura di questa difesa sarebbe stata una guardia testuale («il ponte legge anche
+// `self_assessments`»), e una guardia che cerca una stringa non sa dire se la regola è
+// GIUSTA — sa solo dire che qualcuno l'ha scritta. Il 24/08 contare invece di pretendere
+// l'invariante è già costato due collaudi.
+const ctxGettoni = {};
+vm.createContext(ctxGettoni);
+vm.runInContext(spoglia(estraiDa(srcPonte, 'gettoneDaRiusare')), ctxGettoni);
+const { gettoneDaRiusare } = ctxGettoni;
+
+
 
 // ── Il materiale ────────────────────────────────────────────────────────────────
 const GIORNO = 24 * 60 * 60 * 1000;
@@ -474,6 +486,41 @@ caso('33. ⑥ l\'ordine delle porte: il livello vince sull\'attesa', () => {
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i modi in cui questa funzione può fare danno.
+// ── 🆕 VOCE 84: il gettone che si riusa non deve avere già una scheda ──────────────────
+
+caso('34. 🚨🚨 IL DIFETTO DI MARCO: un gettone che ha GIÀ una scheda non si riusa', () => {
+  // Il gettone diceva `status: created` e una scheda ce l'aveva dal 3 maggio. Riusandolo, la
+  // consegna (`upsert` sul gettone) le riscriveva sopra tenendo la data vecchia ⇒ il livello
+  // non si applicava mai. Qui la domanda è quella giusta: la scheda esiste?
+  return [gettoneDaRiusare(['ZK3MZY1NTIWMDQ'], ['ZK3MZY1NTIWMDQ']) === ''];
+});
+
+caso('35. un gettone senza scheda si riusa: chi tocca due volte ritrova LA SUA', () => {
+  return [gettoneDaRiusare(['NUOVO'], []) === 'NUOVO'];
+});
+
+caso('36. ⭐ se il primo è usato si guarda il SECONDO, non si fabbrica subito', () => {
+  // Fermarsi al primo vorrebbe dire perdere un gettone buono e aprirne un altro: il socio
+  // si ritroverebbe due schede aperte, che è il difetto che il riuso esiste per evitare.
+  return [gettoneDaRiusare(['USATO', 'LIBERO'], ['USATO']) === 'LIBERO'];
+});
+
+caso('37. usati TUTTI: non si riusa niente, e se ne fabbrica uno nuovo', () => {
+  return [gettoneDaRiusare(['A', 'B'], ['B', 'A']) === ''];
+});
+
+caso('38. nessun candidato: stringa vuota, non un\'esplosione', () => {
+  return [gettoneDaRiusare([], []) === '', gettoneDaRiusare(null, null) === '',
+          gettoneDaRiusare(undefined, undefined) === ''];
+});
+
+caso('39. 🔒 spazi e vuoti non fanno passare un gettone usato', () => {
+  // Il ponte pulisce con `clean` da tutt\'e due i lati, ma la regola non ci si appoggia:
+  // un confronto fra `'T '` e `'T'` che sbaglia riaprirebbe esattamente il difetto di Marco.
+  return [gettoneDaRiusare([' T '], ['T']) === '',
+          gettoneDaRiusare(['', null, 'BUONO'], []) === 'BUONO'];
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof statoDelGiro === 'function'],
   ['i numeri sono i suoi: tre prove per giro, trenta giorni', PROVE === 3 && GIORNI === 30],
@@ -535,6 +582,16 @@ const guardie = [
   ['le due copie di livello-dimostrato sono identiche BYTE PER BYTE',
     COPIE_LIVELLO.length === 2 && new Set(COPIE_LIVELLO.map((f) => readFileSync(f, 'utf8'))).size === 1],
   ['il ponte non si riscrive in casa la regola del livello', !/'0\.5'/.test(srcPonte)],
+  // 🆕 VOCE 84 — le due metà della cura, e nessuna delle due basta da sola: la regola giusta
+  //    (provata dai casi 20-25) serve a poco se il ponte non le passa il fatto vero.
+  ['il ponte CHIEDE al database quali gettoni hanno una scheda',
+    /\.from\('self_assessments'\)[\s\S]{0,120}\.in\('token', candidati\)/.test(srcPonte)],
+  ['e il riuso passa dalla regola, non più dal primo della lista',
+    /daRiusare = gettoneDaRiusare\(/.test(codicePonte) && !/esistenti\[0\]/.test(codicePonte)],
+  // 🚨 Se la lettura delle schede fallisce NON si riusa a caso: meglio una frase in meno che
+  //    una scheda sovrascritta. Chi togliesse questo `return` renderebbe il guasto silenzioso.
+  ['una lettura fallita delle schede FERMA il riuso, non lo indovina',
+    /erroreSchede\)\s*\{[\s\S]{0,160}return err\(500/.test(srcPonte)],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {
