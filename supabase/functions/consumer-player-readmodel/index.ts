@@ -8,6 +8,7 @@ import {
   rosterFromPayload,
   copiaNostra,
   ordineDelloSlot,
+  inCampoDelloSlot,
 } from './compagni-slot.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
@@ -574,7 +575,19 @@ Deno.serve(async (req: Request) => {
       // ⚠️ `giocatori` non cambia forma né significato: `ordine` si AGGIUNGE, così un bot più
       // vecchio di questa funzione continua a leggere quello che leggeva.
       const o = ordineDelloSlot(schedeByKey.get(key) ?? [], soloCopieNostreByKey.get(key) ?? false);
-      return { giocatori: o.giocatori, ordine: o.ordine };
+      // 🆕👀⭐⭐ VOCE 91 (24/08) — `in_campo`: CHI c'è, anche quando l'ORDINE non si sa.
+      // 🗣️ Suo: *«se il gestionale ha detto che è prenotata, la prenotazione già c'è: è un fatto
+      // interno nostro»*. ⇒ Nella finestra fra la conferma e il sync (misurata **2′56″** sul suo
+      // caso del 24/08) `giocatori` è vuoto perché manca la scheda del circolo — ma i nomi la
+      // copia locale ce li ha, e il bot diceva *«non riesco a leggere chi c'è in campo»* di una
+      // partita che avevamo scritto noi trenta secondi prima.
+      // ⚖️ Si AGGIUNGE e non sostituisce: `giocatori` resta l'elenco ORDINATO, che è quello da
+      // cui il bot ricava chi ha organizzato. Riempirlo con una lista senza ordine gli farebbe
+      // incoronare il primo nome che capita — vedi il commento su `inCampoDelloSlot`.
+      // ⭐ Si compone dalle liste GIÀ raccolte per i compagni (`listeByKey`), che sono le stesse
+      // di questa partita: nessuna seconda lettura, nessuna seconda regola di fusione.
+      const inCampo = inCampoDelloSlot(listeByKey.get(key) ?? [], MAX_COMPAGNI + 1);
+      return { giocatori: o.giocatori, ordine: o.ordine, in_campo: inCampo };
     })(),
     // ⏱️ Quando questo roster è stato aggiornato l'ultima volta. Serve a chi tiene una memoria
     // a tempo di ciò che ha appena fatto (il bot) per sapere se il dato che sta leggendo è più

@@ -220,6 +220,35 @@ test('quietaDovuta risponde alla domanda da sola, gruppo per gruppo', () => {
   assert.equal(quietaDovuta([fatto('tolto', 0)]), QUIETE_MS);
   assert.equal(quietaDovuta([]), QUIETE_MS, 'un gruppo vuoto non è un gruppo di conferme');
 });
+// ── ⏱️ VOCE 89 (24/08/2026): la metà del minuto che QUESTO repo possiede ───────────────────
+//
+// 🗣️ Il committente ha scritto nella kb, di sua mano, «Quando arriva: entro 1 minuto». Quella
+// frase non descrive il sistema: lo vincola. Il budget è 60 secondi in due metà da 30 —
+// la quiete qui, il ritiro nel repo del bot (`PERIODO_CIRCOLO_MS`, che ha il suo caso là).
+//
+// ⚖️ Ogni lato difende la PROPRIA metà e non conosce il numero dell'altro: una copia della
+// costante altrui resterebbe verde giurando su un valore che di là non esiste più. È la stessa
+// ragione per cui, la stessa giornata, sono state tolte sei copie del nome di una voce di menu.
+test('🚨⭐⭐ la quiete dei fatti DICHIARATI sta dentro la sua metà del minuto', () => {
+  assert.ok(
+    QUIETE_DA_CONFERMA_MS <= 30_000,
+    `la quiete dei fatti da conferma è ${QUIETE_DA_CONFERMA_MS / 1000}s, oltre i 30 che questo `
+    + 'repo si è impegnato a rispettare. La kb dice al socio «entro 1 minuto»: alzandola la '
+    + 'frase diventa falsa, e a scoprirlo sarebbe il socio che aspetta.',
+  );
+});
+
+test('⛔ e la quiete PIENA non ci entra, di proposito: quella misura un timbro approssimato', () => {
+  // 🚨 Il budget vale solo per i fatti con l'istante VERO. Un fatto venuto dal sync porta il
+  // timbro del giro, e su quello la quiete corta non fonderebbe niente (vedi il commento di
+  // `QUIETE_DA_CONFERMA_MS`). ⇒ Questo caso impedisce la scorciatoia che verrebbe in mente a
+  // chi legge il caso qui sopra: «allora abbassiamo tutte e due».
+  assert.ok(
+    QUIETE_MS > 30_000,
+    'la quiete piena è scesa dentro il budget: sui fatti dal sync sta misurando una distanza '
+    + 'fra timbri di giro, e accorciarla toglie la fusione senza dare velocità',
+  );
+});
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
