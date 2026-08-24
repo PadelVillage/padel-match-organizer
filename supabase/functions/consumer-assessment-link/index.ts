@@ -48,6 +48,32 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+/**
+ * Quanti gettoni «apparentemente liberi» si guardano prima di fabbricarne uno nuovo.
+ *
+ * ⚖️ È un tetto di PRUDENZA, non una regola: serve solo a non leggere un elenco senza fine
+ * se un socio ha accumulato gettoni mai usati. Chi lo alza o lo abbassa non cambia la
+ * difesa — quella è la domanda «esiste già una scheda per questo gettone?», che si fa su
+ * tutti quelli che si guardano. 📌 Misurato su PROD il 24/08: la media è 1,01 gettoni a socio e il record è 8.
+ */
+const CANDIDATI_DA_GUARDARE = 20;
+
+/**
+ * Fra i gettoni che SEMBRANO liberi, quale si può davvero riusare.
+ *
+ * 🚨 La regola in una riga: **un gettone che ha già una scheda è usato**, qualunque cosa dica
+ * il suo `status`. Vive qui, fuori dal gestore, per un motivo solo: così il banco la può
+ * ESEGUIRE invece di cercarla nel testo. ⚖️ Una guardia che conta le righe o i `select` non
+ * difende niente — l'ha già mostrato due volte il 24/08.
+ *
+ * Torna la stringa vuota se non ce n'è nessuno da riusare: allora se ne fabbrica uno nuovo.
+ */
+function gettoneDaRiusare(candidati: any, conScheda: any) {
+  const pulisci = (t: any) => String(t ?? '').trim();
+  const usati = new Set((conScheda || []).map(pulisci).filter((t: any) => !!t));
+  return (candidati || []).map(pulisci).find((t: any) => !!t && !usati.has(t)) ?? '';
+}
+
 const PROD_REF = 'qqbfphyslczzkxoncgex';
 const TEST_REF = 'cudiqnrrlbyqryrtaprd';
 
@@ -407,10 +433,58 @@ Deno.serve(async (req: Request) => {
     .is('completed_at', null)
     .neq('status', 'completed')
     .order('created_at', { ascending: false })
-    .limit(1);
+    .limit(CANDIDATI_DA_GUARDARE);
 
   if (erroreGettoni) {
     return err(500, 'DB_ERROR', `Lettura dei gettoni non riuscita: ${erroreGettoni.message}`);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════════════════
+     🚨🚨⭐⭐ 24/08/2026 (voce 84) — «USATO» SI CHIEDE ALLE SCHEDE, NON AL CAMPO `status`.
+
+     📏 Il collaudo di Marco Aprea, misurato: il gettone `ZK3MZY1NTIWMDQ` diceva `status:
+     'created'`, `completed_at: null` — cioè «mai usato» — e una scheda ce l'aveva **dal 3
+     maggio**. I due campi che decidevano il riuso erano rimasti indietro, e nessuno se n'era
+     accorto perché nessuno aveva mai chiesto la cosa vera.
+     ⇒ Il bot gli ha ridato quel gettone; la consegna, che è un `upsert` sul gettone, ha
+     **riscritto la scheda di maggio** invece di aprirne una nuova — e da lì il silenzio.
+
+     📌 *Un campo che descrive uno stato può restare indietro; un fatto che esiste, no.* La
+     domanda giusta non è «questo gettone risulta usato?» ma «esiste già una scheda per questo
+     gettone?», e la seconda non si può disallineare da sé stessa.
+
+     ⚖️ Perché non si è invece riparato `status`: si sarebbe curata **l'istanza** (le 23 righe
+     di oggi) e non la **classe**. Qualunque strada futura che scriva una scheda senza marcare
+     il gettone rifarebbe il danno, e questo controllo la copre già.
+
+     ⭐ Si guardano più candidati e non uno solo: prendendone uno e trovandolo usato si
+     fabbricherebbe un gettone nuovo pur avendone uno buono più indietro — cioè si perderebbe
+     la ragione per cui il riuso esiste (*chi tocca il bottone due volte ritrova LA SUA
+     scheda*). ⛔ Il numero è un tetto di prudenza, NON un invariante: la difesa è la domanda,
+     non la quantità.
+     ═══════════════════════════════════════════════════════════════════════════════════════ */
+  const candidati = (esistenti ?? [])
+    .map((r: { token?: string }) => clean(r?.token))
+    .filter((t: string) => !!t);
+
+  let daRiusare = '';
+  if (candidati.length > 0) {
+    const { data: giaConScheda, error: erroreSchede } = await db
+      .from('self_assessments')
+      .select('token')
+      .in('token', candidati);
+
+    // 🚨 Se non si riesce a sapere quali sono usati, NON si tira a indovinare riusandoli:
+    // fallire qui è una frase in meno per il socio; riusare un gettone usato è una scheda
+    // sovrascritta e un livello che non arriva mai. Fra i due, il no.
+    if (erroreSchede) {
+      return err(500, 'DB_ERROR', `Lettura delle schede non riuscita: ${erroreSchede.message}`);
+    }
+
+    daRiusare = gettoneDaRiusare(
+      candidati,
+      (giaConScheda ?? []).map((r: { token?: string }) => clean(r?.token)),
+    );
   }
 
   const separatore = base.includes('?') ? '&' : '?';
@@ -442,9 +516,8 @@ Deno.serve(async (req: Request) => {
     promemoria,
   };
 
-  if (esistenti && esistenti.length > 0 && clean(esistenti[0].token)) {
-    const token = clean(esistenti[0].token);
-    return ok({ ...conteggio, token, url: conNome(token), riusato: true });
+  if (daRiusare) {
+    return ok({ ...conteggio, token: daRiusare, url: conNome(daRiusare), riusato: true });
   }
 
   // 2) Altrimenti se ne fabbrica uno. `token` ha un vincolo di unicità (il gestionale ci fa

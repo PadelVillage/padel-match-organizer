@@ -319,6 +319,20 @@ async function gestisci(req: Request): Promise<Response> {
 
     const riga = {
       token,
+      /* 🚨🚨⭐⭐ 24/08/2026 (voce 84) — `submitted_at` SI SCRIVE, e prima non c'era.
+         Costata il collaudo di Marco Aprea, e il difetto non si vedeva rileggendo: la riga
+         qui sotto va in `upsert(... onConflict: 'token')`. Su gettone nuovo è un INSERT e la
+         data la metteva il database (`default now()`); su un gettone che aveva già una scheda
+         è un UPDATE, e `submitted_at` — non essendo nella riga — **restava quella di prima**.
+         📏 Misurato: scheda consegnata il 24/08 alle 21:18:23, salvata con la data del 3
+         MAGGIO. `assessment-apply-level` la confronta con `lastLevelUpdateAt` del socio (3
+         maggio 19:18) e la scarta, giustamente, come «vecchia» — quindi il livello non si
+         scrive MAI e il bot non ha niente da annunciare. Non un ritardo: un silenzio definitivo.
+         ⚖️ La guardia che l'ha scartata è SANA e non si tocca: *una scheda vecchia non deve
+         scavalcare un livello aggiornato dopo*. A mentire era la data, non chi la leggeva.
+         📌 *Un campo che il database riempie da sé lo riempie solo alla NASCITA: chi riscrive
+         la riga se lo deve scrivere, o eredita il passato di quella prima.* */
+      submitted_at: new Date().toISOString(),
       first_name: assessTxt(scheda.first_name) || null,
       last_name: assessTxt(scheda.last_name) || null,
       phone: assessTxt(scheda.phone) || null,

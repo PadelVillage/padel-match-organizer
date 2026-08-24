@@ -167,5 +167,25 @@ ok('…e un giro fallito non fa fallire la consegna della scheda',
 ok('🚨 si lancia DOPO che la scheda è stata scritta',
    codiceEdge.indexOf("from('self_assessments')") < codiceEdge.indexOf('pmo_dispatch_assessment_apply_level'));
 
+// ── 9. 🚨🚨 LA DATA DELLA SCHEDA LA SCRIVE CHI LA SCRIVE (voce 84, 24/08/2026) ──────────
+//
+// 📏 Il collaudo di Marco Aprea, misurato: scheda consegnata alle 21:18:23 del 24 agosto e
+// salvata con `submitted_at` del **3 maggio**. La riga va in `upsert(… onConflict: 'token')`:
+// su gettone nuovo è un INSERT e la data la metteva il database (`default now()`), ma su un
+// gettone che aveva già una scheda è un UPDATE — e un campo che non è nella riga NON si tocca.
+// ⇒ `assessment-apply-level` l'ha scartata come «più vecchia del livello del socio», che è la
+// sua guardia SANA: a mentire era la data. Livello mai scritto, bot muto, per sempre.
+//
+// ⚠️ QUESTE DUE SONO GUARDIE TESTUALI, e si dicono per quello che sono: la riga si costruisce
+// dentro il gestore HTTP e da qui non si può ESEGUIRE. Provano che la data è scritta e dov'è
+// scritta — non provano che il database la riceva. Quella è una prova fisica, e va fatta.
+ok('🚨 la scheda porta la sua data: `submitted_at` non lo lascia mettere al database',
+   /submitted_at:\s*new Date\(\)\.toISOString\(\)/.test(codiceEdge));
+// 🔒 Dev'essere DENTRO la riga, cioè prima dell'`upsert`: scritta dopo sarebbe codice morto
+// che sembra una cura — esattamente il tipo di verde che non difende niente.
+ok('…e sta DENTRO la riga che si scrive, non dopo',
+   codiceEdge.indexOf('submitted_at:') > -1
+   && codiceEdge.indexOf('submitted_at:') < codiceEdge.indexOf("upsert(riga"));
+
 console.log(ko ? `\n${ko} PROVE FALLITE` : '\n— tutte verdi —');
 process.exit(ko ? 1 : 0);
