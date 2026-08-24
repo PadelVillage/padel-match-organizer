@@ -1112,7 +1112,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **10** — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. 🩹 La scheda è stata **riscritta un'ora dopo perché era sbagliata** — il gestionale **dichiara già** l'istante vero (voce 76) e la quiete è **già** 30 secondi: avevo creduto a una nota del 22/08 superata il giorno dopo. La catena vera era **30s-2′30″** e la cura **una costante sola**, il ritiro del bot da 2 min a **20 secondi** — fatta, resta la prova col cronometro) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **11** — 🆕 la **90** del 24/08 sera (**una bolla sola che si aggiorna** invece di due messaggi che si smentiscono: idea sua, aperta e **curata la sera stessa**. Il difetto era di **forma e non di verità** — nessuno dei due messaggi mentiva, la **coppia** sì. Resta aperta per la prova fisica, che vuole un esito ignoto e non si provoca a comando) — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. 🩹 La scheda è stata **riscritta un'ora dopo perché era sbagliata** — il gestionale **dichiara già** l'istante vero (voce 76) e la quiete è **già** 30 secondi: avevo creduto a una nota del 22/08 superata il giorno dopo. La catena vera era **30s-2′30″** e la cura **una costante sola**, il ritiro del bot da 2 min a **20 secondi** — fatta, resta la prova col cronometro) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1340,7 +1340,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 10
+## 🔴 URGENTI — 11
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1462,6 +1462,61 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **90** — ⏳ Una bolla sola che si aggiorna, invece di due messaggi che si smentiscono
+
+🆕 **APERTA E CURATA il 24/08/2026 sera, su sua idea** — *«gli diciamo attendi un attimo finché
+la prenotazione non va a buon fine e lo lasciamo lì il messaggio finché non va a buon fine la
+prenotazione? Così non sembra un disservizio»* — e messa **in urgenti da lui**, *«così la provo»*.
+
+📏 **IL DIFETTO, che è di FORMA e non di verità.** Su un esito ignoto il socio riceveva **due**
+messaggi: *«non ho la conferma»* e, minuti dopo, l'esito vero. Nessuno dei due mente — la voce 53
+li ha scritti apposta perché non mentissero — ma **la coppia** si legge come un fallimento seguito
+da una smentita, **anche quando finisce bene**.
+⇒ Una bolla che si **aggiorna** si legge come una cosa **in corso**, che è quello che è.
+📌 *Due messaggi veri possono raccontare insieme una cosa falsa: il socio non legge le frasi, legge
+la sequenza.*
+
+⭐ **E la voce è piccola perché il meccanismo c'era già intero**: `riscriviOMandaNuovo` (19-20/08)
+sa riscrivere sul posto, sa spostare in fondo se nel frattempo è arrivato altro, e sa non fare
+niente se il testo è già quello. ⇒ Questa voce non lo costruisce: **gli passa l'id giusto**.
+
+| dove | cosa |
+|---|---|
+| `api.ts` | `ultimoNostroId(chatId)` — l'id dell'ultima bolla nostra. 🚨 **Si legge SUBITO dopo aver mandato**: fra un messaggio e l'altro in quella chat può esserne arrivato un altro (un avviso del circolo), e allora punta a quello |
+| `schede.ts` | la bolla parla al **presente** — *«⏳ Ci penso io: sto confermando la tua prenotazione con il circolo… ti riscrivo qui»* — invece di aprire su un guasto |
+| `bot.ts` | `avviaAttesaEsito` prende la bolla e la **riscrive**, invece di aggiungerne una seconda |
+
+🚨⭐⭐ **LE TRE COSE DEL TERZO ESITO NON SI ANNACQUANO, ed è la metà che protegge.** La bolla non
+afferma nessun esito, vieta di rifarla, e **tiene dentro di sé la via d'uscita a mano**.
+⚖️ Quest'ultima non è ridondanza: l'attesa **vive nel processo** e un riavvio la perde — scelta sua
+del 16/08, presa coi due prezzi davanti. ⇒ Una bolla che promette di aggiornarsi e non può più
+farlo è **peggio di due messaggi**: sembra al lavoro mentre non lo è. La strada del socio non deve
+dipendere dal fatto che questo processo sia ancora vivo.
+
+⛔ **E NON si scrive «un attimo»**, che erano le sue parole: si dichiara il **tetto** (un quarto
+d'ora). 📏 Mediana ~2 minuti, ma il massimo misurato è **10′04″**. «Un attimo» sarebbe la stessa
+specie di promessa di *«entro 1 minuto»* — giusta quasi sempre e clamorosamente falsa **nella
+coda**, che è esattamente il caso in cui il socio guarda l'orologio. *Un tempo si promette sul
+peggio che può capitare, non sul caso normale.*
+
+🚨⭐⭐ **IL RAMO DEL GUASTO RISCRIVE LA STESSA BOLLA, ed è il pezzo che si dimentica.** La bolla
+dice *«ti riscrivo qui»*: se l'errore arrivasse in un messaggio a parte, quel ⏳ resterebbe in chat
+a promettere un aggiornamento che non arriva — **la voce 90 rotta dal suo stesso ramo d'errore**.
+⇒ Dentro `avviaAttesaEsito` non c'è più nessun `sendMessage`, e un caso lo pretende.
+
+⚖️ **E il censimento delle schermate è salito da 7 a 9** (`schermata-gia-cosi.test.ts`). ⭐ Ha
+funzionato come il 20/08: **il secondo dei due punti l'ho messo perché il numero non tornava**, non
+perché me lo ricordassi. *Una guardia che conta è l'unica che si accorge di ciò che hai dimenticato
+invece di ciò che hai sbagliato.*
+
+✅ **Provato:** banco **1541/1541**, `tsc` pulito, **quattro sabotaggi tutti rossi** — l'id non
+passato, il guasto che torna a mandare un messaggio nuovo, la bolla che torna a raccontare un
+guasto, e «fra un attimo» al posto del tetto.
+⏳ **RESTA APERTA per la prova fisica**, ed è sua: una prenotazione che finisce in **esito ignoto**
+— che non si può provocare a comando — guardata sul telefono. 🚨 Il banco dice che la bolla si
+riscrive, non che sullo schermo si vede bene: la cosa da guardare è se l'aggiornamento **si nota**
+o se passa inosservato perché la bolla è già scorsa in alto.
 
 ### **89** — ⏱️ «Entro 1 minuto» è scritto nella kb: il ritiro del bot va portato dentro il minuto
 
