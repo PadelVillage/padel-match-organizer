@@ -10,6 +10,7 @@ import {
   copiaNostra,
   normName,
   ordineDelloSlot,
+  inCampoDelloSlot,
   rosterFromPayload,
   rosterOrdinatoDelloSlot,
 } from './compagni-slot.ts';
@@ -339,6 +340,44 @@ test('29. 🚨 un tipo di riga che non riconosciamo NON e\' nostro', () => {
   for (const t of ['', null, undefined, 'qualcosaltro', 42]) {
     assert.equal(copiaNostra(t), false, `«${String(t)}» non deve valere come copia nostra`);
   }
+});
+
+
+// ── 👀 VOCE 91 (24/08/2026): CHI c'è in campo, anche quando l'ORDINE non si sa ─────────────
+test('👀⭐⭐ dalla sola copia nostra escono comunque i nomi', () => {
+  // 📏 La forma vera di `staff_booking.giocatori` su PROD, misurata: oggetti con `nome`.
+  // (Il payload arriva già ridotto a liste di stringhe da `rosterFromPayload`.)
+  const daCopiaNostra = [['Maurizio Aprea']];
+  assert.deepEqual(inCampoDelloSlot(daCopiaNostra, 9), ['Maurizio Aprea']);
+  // 🚨 E l'ORDINE resta quello che era: non sappiamo chi ha organizzato, e non lo inventiamo.
+  const o = ordineDelloSlot([], true);
+  assert.deepEqual(o.giocatori, [], 'l\'elenco ORDINATO non deve riempirsi: il bot ci legge chi ha organizzato');
+  assert.equal(o.ordine, 'non_ancora');
+});
+
+test('🚨⭐⭐ gli «Ospite» della stessa partita non si contano due volte', () => {
+  // ⭐ È la trappola già risolta dentro `compagniDelloSlot` (il MASSIMO, non la somma), ed è la
+  // ragione per cui questa funzione la riusa invece di rifare la fusione. Due copie della
+  // stessa partita con due ospiti devono dare DUE ospiti, non quattro.
+  const dueCopie = [
+    ['Maurizio Aprea', 'Ospite', 'Ospite'],
+    ['Maurizio Aprea', 'Ospite', 'Ospite'],
+  ];
+  assert.deepEqual(inCampoDelloSlot(dueCopie, 9), ['Maurizio Aprea', 'Ospite', 'Ospite']);
+});
+
+test('⚖️ e non toglie nessuno: è l\'elenco COMPLETO, socio compreso', () => {
+  // 🚨 La differenza da `compagni`, che è lo stesso elenco MENO il socio. Se questa funzione
+  // togliesse il socio, la schermata della partita mostrerebbe tutti tranne chi la guarda —
+  // cioè il difetto opposto, e più difficile da notare perché sembra un elenco sensato.
+  const liste = [['Laura Aprea', 'Maurizio Aprea', 'Marco Aprea']];
+  assert.deepEqual(inCampoDelloSlot(liste, 9), ['Laura Aprea', 'Maurizio Aprea', 'Marco Aprea']);
+});
+
+test('⭐ quando la scheda del circolo c\'è, l\'ordinato resta quello e comanda lui', () => {
+  const o = ordineDelloSlot([['Laura Aprea', 'Maurizio Aprea']], false);
+  assert.equal(o.ordine, 'noto');
+  assert.deepEqual(o.giocatori, ['Laura Aprea', 'Maurizio Aprea']);
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
