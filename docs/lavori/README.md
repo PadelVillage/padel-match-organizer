@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **6** — 🆕 la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **7** — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 6
+## 🔴 URGENTI — 7
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,47 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **86** — 📨 Il link d'invito arriva NUDO: chi lo riceve non sa chi glielo manda né perché
+
+🆕 **APERTA il 24/08/2026, su sua parola**: *«Laura ha mandato il link di invito a Lidia e si vede
+come nell'allegato. Così non va bene: ci deve essere un messaggio che dice tipo "Laura ti ha chiesto
+di far parte del suo gruppo di giocatori", clicca il link per accettare.»*
+
+📏 **Cosa vede oggi chi lo riceve** (schermata sua, ore 10:25): una riga sola —
+`https://t.me/loziocoach_bot?start=1qAK6…` — e sotto l'anteprima che Telegram fabbrica da sé
+(«MioPadel · Assistente AI del Padel Village. Riservato ai soci del circolo. VIEW BOT»). ⇒ **Nessun
+nome di chi invita, nessun motivo, nessun invito**: solo un indirizzo da uno sconosciuto, con un
+bottone che dice *guarda il bot*. La cosa che gli si chiede di fare — **accettare** — non compare.
+
+🔎 **DA DOVE VIENE, ed è una conseguenza logica di come è fatto oggi.** `testoInvitoCreato`
+(`ingresso-testi.ts`) dà all'invitante *«Ecco il link da mandare tu alla persona»* e sotto **il solo
+link**, in blocco codice. ⇒ Il messaggio è scritto per **chi invita**, e l'unica cosa che si può
+inoltrare è l'indirizzo. Il testo per **chi riceve** non esiste da nessuna parte: non è andato perso,
+non è mai stato scritto.
+⚖️ Non è una svista di chi l'ha fatto — la scheda di quel testo dice apertamente *«questo messaggio
+lo legge lo STAFF, non l'invitato»*. È che il destinatario del giro è cambiato: quando invitava la
+segreteria, chi riceveva sapeva già cosa aspettarsi; adesso invita **un socio a un altro socio**, e
+in mezzo non c'è più nessuno che spieghi.
+
+⇒ **Cosa serve: un messaggio PRONTO DA INOLTRARE**, non un link. Col nome di chi invita — che il
+bot ha già in mano (`invitanteEtichetta`, preso dal gestionale e non dal profilo Telegram, perché è
+il nome con cui il circolo lo conosce) — e con la cosa da fare detta in chiaro.
+
+🚨 **La trappola da non ripetere, e sta scritta nel codice che si va a cambiare**: il link è in un
+blocco codice per una ragione **misurata**, non grafica — nel Markdown di Telegram il trattino basso
+apre il corsivo, e `loziocoach_bot` ne ha uno: fuori dal blocco spariva dal testo e **1 link su 4
+veniva copiato SBAGLIATO** (31/07). ⇒ Un messaggio con l'indirizzo dentro una frase deve passare da
+`proteggiIndirizzi` (`api.ts`), o la cura del testo rompe il link.
+
+🔨 **Da decidere quando la si fa** (due strade, e la scelta si vede solo provandola sul telefono):
+· **una** — l'invitante riceve il messaggio già scritto e lo inoltra intero (il bottone «copia»
+  copierebbe il testo, non solo l'indirizzo);
+· **due** — resta il link nudo, e a spiegare è il bot **quando l'invitato lo apre**. ⚠️ Più debole:
+  la spiegazione arriva **dopo** il gesto che si voleva convincere a fare.
+
+⏳ **Prova fisica**: un invito vero fra due persone vere, guardato sul telefono di **chi riceve** —
+che è l'unico punto da cui questo difetto si vede, e infatti è così che l'ha visto lui.
 
 ### **85** — 🚨 Il gestionale dice «il LIVELLO non è passato su Matchpoint», e su Matchpoint c'è
 
