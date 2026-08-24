@@ -80,6 +80,40 @@ function hasPermission(actor: StaffActor, perm: string) {
   return actor.permissions?.[perm] === true;
 }
 
+/**
+ * 🆕🔗⭐⭐ VOCE 85 (24/08/2026) — ANCHE UNA ROUTINE PUÒ CHIEDERE QUESTA SPINTA.
+ *
+ * 🗣️ Nato da una sua attesa che non sarebbe mai finita: *«adesso aspetto che il gestionale
+ * sincronizzi il livello su matchpoint»*. Non stava arrivando, e non per lentezza.
+ *
+ * 📏 Misurato quella sera: `assessment-apply-level` ha **zero** riferimenti a Matchpoint, e gli
+ * UNICI a chiamare questa edge erano quattro punti di `index.html`. ⇒ Il livello che nasce dal
+ * TEST si fermava dentro `pmo_cloud_records`, perché nessuna interfaccia lo toccava.
+ * 📌 *Una funzione che sta nell'interfaccia esiste solo per chi passa dall'interfaccia* — e il
+ * test di livello, per disegno, non ci passa: parla direttamente col gestionale.
+ *
+ * ⭐ PERCHÉ QUI E NON NEL GIRO: la strada verso il circolo è UNA SOLA, e ha dentro il recinto
+ * (`scritturaAlCircoloConsentita`), il contratto col worker e il ripiego `prev` per ritrovare
+ * la scheda. Farla percorrere al giro d'applicazione per conto suo avrebbe voluto dire una
+ * SECONDA COPIA della regola più delicata del progetto, e due copie divergono al primo
+ * ripensamento. Qui si allarga CHI PUÒ BUSSARE, non COSA SUCCEDE DOPO.
+ *
+ * 🔒 FALLISCE CHIUSA: senza `SUPABASE_SERVICE_ROLE_KEY` il segreto non si può verificare, e la
+ * porta resta chiusa. Un dubbio non diventa mai un sì verso il gestionale del circolo.
+ * 🚨 E NON SCAVALCA IL RECINTO, che sta più in basso e vale per tutti: su TEST questa chiamata
+ * torna 503 come qualunque altra. Una routine autorizzata resta dentro il suo ambiente.
+ */
+async function routineAutorizzata(req: Request): Promise<boolean> {
+  const secret = clean(req.headers.get('x-pmo-routine-secret') || '');
+  if (!secret) return false;
+  const supabaseUrl = clean(Deno.env.get('SUPABASE_URL') ?? '');
+  const serviceKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+  if (!supabaseUrl || !serviceKey) return false;
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: secret });
+  return !error && data === true;
+}
+
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -150,10 +184,16 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
-  const actor = await getActor(req).catch(() => null);
-  if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
-  if (!hasPermission(actor, 'cloud_sync')) {
-    return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per aggiornare clienti su Matchpoint.');
+  // 🔑 Due chiavi per la stessa porta: una PERSONA dello staff con `cloud_sync`, oppure una
+  // ROUTINE col segreto delle routine (voce 85). Il segreto si prova per primo perché è un
+  // confronto secco, mentre la strada della persona costa due giri di rete: chi arriva dal
+  // giro d'applicazione non li paga.
+  if (!(await routineAutorizzata(req).catch(() => false))) {
+    const actor = await getActor(req).catch(() => null);
+    if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
+    if (!hasPermission(actor, 'cloud_sync')) {
+      return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per aggiornare clienti su Matchpoint.');
+    }
   }
 
   let body: JsonMap;
