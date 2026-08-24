@@ -1112,7 +1112,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **10** — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»** e il sistema ne impiega **4-8**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. La causa non sono i tre numeri, è che il gestionale il gesto lo **scopre** dal sync invece di **dichiararlo** — la metà «stesso istante» della sua regola del 22/08, già in servizio per la creazione con la **75**) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **10** — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. 🩹 La scheda è stata **riscritta un'ora dopo perché era sbagliata** — il gestionale **dichiara già** l'istante vero (voce 76) e la quiete è **già** 30 secondi: avevo creduto a una nota del 22/08 superata il giorno dopo. La catena vera era **30s-2′30″** e la cura **una costante sola**, il ritiro del bot da 2 min a **20 secondi** — fatta, resta la prova col cronometro) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1463,64 +1463,67 @@ no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
 
-### **89** — ⏱️ «Entro 1 minuto» è scritto nella kb e il sistema ne impiega da 4 a 8
+### **89** — ⏱️ «Entro 1 minuto» è scritto nella kb: il ritiro del bot va portato dentro il minuto
 
 🆕 **APERTA il 24/08/2026 sera, su sua decisione presa a conseguenza dichiarata.** Rileggendo il
 testo degli avvisi di agosto gli ho messo davanti tre strade — scrivere un tempo vero, non
 scriverne nessuno, o scrivere il suo — con scritto cosa costava la terza. **Ha scelto la terza**:
 nella kb adesso c'è *«Quando arriva: entro 1 minuto»*.
-⇒ **Non è un errore da correggere: è un bersaglio.** La frase dice cosa il sistema deve fare, e
-questa voce esiste per farglielo fare.
-⚖️ **Il perché è in urgenti, dichiarato**: da stasera il bot può dire a un socio un'attesa **da
-quattro a otto volte più corta** di quella vera. Non fa danni ai campi né ai soldi, ma è un **«no»
-del genere sbagliato** — chi non vede arrivare niente dopo un minuto pensa che sia rotto, o
-riscrive. Scavalca **solo delle attese**: la 84 e la 85 hanno una persona ferma adesso e restano
-davanti.
+⇒ **Non è un errore da correggere: è un bersaglio.** La frase dice cosa il sistema deve fare.
 
-📏 **LA CATENA, misurata sul codice — tre pezzi da due minuti l'uno:**
+🩹🚨⭐⭐ **E QUESTA SCHEDA È STATA RISCRITTA UN'ORA DOPO AVERLA APERTA, perché era SBAGLIATA.**
+La prima versione diceva *«sono 4-8 minuti, e la causa è che il gestionale il gesto lo SCOPRE dal
+sync invece di dichiararlo»*. ⇒ **Falso in tutte e due le metà**, e la smentita è arrivata leggendo
+il codice prima di toccarlo:
+· il gestionale **dichiara già** — `_shared/dichiara-fatti.ts`, chiamato da `matchpoint-bookings-edit`
+  e `-cancel`, con `origine: 'conferma'` e `visto_at` = **l'istante vero**. È la **voce 76**;
+· la quiete per quei fatti **è già 30 secondi** — `QUIETE_DA_CONFERMA_MS`, sua parola del 23/08
+  (*«sì, ma più corta»*).
+⚖️ **Come ho sbagliato**: ho ragionato sulla nota del **22/08** in `CLAUDE.md` — *«`visto_at` è
+l'istante del giro di sync, quindi la quiete non si abbassa»* — che era vera quel giorno e **falsa
+dal giorno dopo**. Due voci l'avevano superata e nessuna delle due aveva riscritto quella riga.
+📌 *Una nota che spiega perché una cosa non si può fare va riletta quando quella cosa viene
+fatta — o resta a raccontare un vincolo che non esiste più, e chi la crede rinuncia.* È la 26ª
+(*un limite dichiarato che nessuno prova resta vero perché sembra prudente*) applicata a me stesso,
+nella stessa giornata in cui ho tolto sei copie di un nome per lo stesso motivo.
+🔨 Le righe vecchie sono state corrette **dove stavano**: in `promemoria.ts` (bot) e qui.
 
-| | quanto | dove |
+📏 **LA CATENA VERA, misurata sul codice:**
+
+| | quanto | stato |
 |---|---|---|
-| il gestionale **si accorge** del gesto | il sync gira ogni **2′** (mediana ~2′, sulla sua partita del 22/08 **3′55″**) | `matchpoint-bookings-sync` |
-| **quiete** prima di consegnare | **2′** | `QUIETE_MS`, `consumer-staff-events/riduzione.ts` |
-| il bot **ritira** | **2′** | `PERIODO_CIRCOLO_MS`, `promemoria.ts` |
+| il gestionale **dichiara** il gesto, con l'istante vero | **0** | ✅ voce 76 |
+| **quiete** sui fatti dichiarati | **30 s** | ✅ 23/08 |
+| il bot **ritira** | **2 min** | 🔴 l'unico pezzo rimasto |
 
-⇒ Minimo teorico **~4′**, nella pratica **4-8′**. ⛔ **Un minuto non si raggiunge nemmeno azzerando
-la quiete e il ritiro**: il pavimento è il sync, e il sync non si abbassa (gira già ogni 2 minuti
-sul worker condiviso con PROD).
+⇒ Oggi: **da 30 secondi a 2 minuti e mezzo**. ⇒ **La cura è UNA COSTANTE.**
 
-🔎 **LA CAUSA VERA NON SONO I TRE NUMERI: è che il gestionale il gesto lo SCOPRE, non lo
-DICHIARA.** I fatti li scrive `matchpoint-bookings-sync` (`_shared/dichiara-fatti.ts`) confrontando
-le fotografie di Matchpoint ⇒ finché il sync non passa, **il gestionale non sa** che la segreteria
-ha tolto qualcuno — pur essendo il posto da cui la segreteria ha agito.
-⭐⭐ **Ed è esattamente la metà «STESSO ISTANTE» della sua regola del 22/08**, quella già scritta in
-`CLAUDE.md`: *«ogni gesto va detto al socio solo dopo che il circolo l'ha confermato — e nello
-stesso istante dev'essere registrato dal gestionale»*. Per la **creazione** è in servizio dalla
-voce **75**; per gli altri gesti no, e lì c'è scritto che non lo è.
-⇒ **Questa voce non inventa un disegno: applica agli altri gesti quello che la 75 ha già fatto per
-uno.** Il che la rende anche più piccola di quanto sembri — la forma esiste già, c'è da estenderla.
+🩹 **CURATA la sera del 24/08: `PERIODO_CIRCOLO_MS` 2 min → 20 secondi.**
+📏 Caso peggiore **50 secondi** (30 di quiete + un giro), più i pochi della consegna.
+⭐ **Venti e non trenta, ed è una scelta con un motivo**: con un giro da 30s il caso peggiore
+sarebbe **60 tondi**, cioè la promessa mancata ogni volta che la rete se la prende comoda. *Un
+budget rispettato al pelo non è rispettato: è fortunato.*
+💰 **Costa poco, ed è per questo che si può**: a coda vuota il giro è **una sola query** su un
+indice parziale dall'altra parte del ponte — da ~720 chiamate al giorno a ~4.320, e la spesa vera
+(risolvere i nomi sull'anagrafica) il gestionale la paga **solo quando ci sono fatti**. ⛔ Lo stesso
+conto **non vale** per `PERIODO_MS`, che legge gli inviti *per ogni socio*: resta a 15 minuti, e un
+caso lo difende.
 
-🚨⭐⭐ **E LA PARTE ELEGANTE, che va vista prima di toccare le costanti: la ragione della quiete si
-SCIOGLIE da sé.** Oggi `QUIETE_MS` non si può abbassare sotto un giro di sync, e il motivo è
-misurato (22/08): `visto_at` **non è l'istante del gesto, è l'istante del GIRO** (`visto_at:
-importedAt`) — tutti i fatti di uno stesso giro portano lo stesso timbro, quindi una quiete più
-corta di un giro non fonde quasi più niente, e il caso che perderebbe è **togli-e-rimetti fatto in
-fretta**, cioè l'unico in cui il messaggio è allarme e non rumore.
-⇒ Con un fatto **dichiarato**, `visto_at` diventa l'istante **vero** del gesto — e a quel punto una
-quiete di **30 secondi fonde davvero** una raffica, cosa che oggi due minuti non fanno.
-📌 *Una costante che non si può abbassare non sempre è un compromesso: a volte è il sintomo di un
-dato che sta mentendo sotto. Curato il dato, la costante si abbassa da sé.*
+🛡️ **IL BUDGET È DIVISO IN DUE, e nessuno dei due lati conosce il numero dell'altro.** 60 secondi
+in due metà da 30: la **quiete** la difende il gestionale (`riduzione.test.ts`), il **ritiro** lo
+difende il bot (`il-minuto-degli-avvisi.test.ts`).
+⚖️ La tentazione era un caso solo che sommasse le due costanti — cioè una **copia** della costante
+altrui in un repo che non la possiede. Sarebbe stata la settima copia in una giornata passata a
+toglierne sei: il giorno che il gestionale alza la quiete, quel caso resterebbe **verde** giurando
+su un numero che di là non esiste più.
+📌 *Un invariante fra due repo non si prova copiando: si divide in due impegni, e ognuno sta dove
+può essere rotto.*
 
-🔨 **I pezzi, in quest'ordine:** ① il gestionale dichiara il fatto **quando scrive** il gesto della
-segreteria, con l'istante vero (la forma della 75); ② `QUIETE_MS` scende, ora che fondere funziona;
-③ `PERIODO_CIRCOLO_MS` scende — ⚠️ è l'unico che costa a **tutti** (una chiamata al ponte per socio
-a ogni giro), quindi va guardato per ultimo e con i numeri davanti.
-
-⏳ **Prova fisica:** un gesto vero della segreteria, cronometrato fino al messaggio sul telefono.
-🚨 **E finché non è passata, la kb dice una cosa che non è vera.** Non è una svista: è una sua
-scelta consapevole, presa dopo che la conseguenza le è stata messa davanti — ma va **riletta come
-un debito**, non come una descrizione. Se la voce dovesse restare ferma a lungo, la frase si
-cambia: una promessa che nessuno mantiene è peggio di un numero brutto.
+✅ **Provato:** banco del bot **1536/1536**, `tsc` pulito, riduzione **22/22**, e **due sabotaggi**
+— il ritiro rimesso a 2 minuti e la quiete alzata a 45 secondi — **tutti e due visti rossi**.
+⏳ **RESTA APERTA per la prova fisica**: un gesto vero della segreteria, cronometrato fino al
+messaggio sul telefono. Finché non è cronometrato, «entro 1 minuto» è **calcolato**, non misurato —
+e il calcolo non tiene conto della latenza di Telegram, che nessuno ha guardato.
 
 ### **88** — 🔓 «Partite Aperte»: una voce di menu nuova, per partecipare a partite che non sono le tue
 
