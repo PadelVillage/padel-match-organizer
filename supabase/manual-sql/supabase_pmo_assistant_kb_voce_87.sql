@@ -148,3 +148,42 @@ Non c''è un modo per aggiungerle a mano — in rubrica si entra solo con un inv
     updated_by = 'claude-code/voce-87-testi',
     updated_at = now()
 where key = 'assistant_kb';
+
+-- ── (d) SERA DEL 24/08 — anche il testo del LIVELLO è suo ───────────────────────────────
+--
+-- Stessa strada della rubrica: bozza mia dal codice, approvata da lui senza modifiche («il testo
+-- della domanda 2 va bene»). E stessa potatura: tolte a_cosa_serve / come_si_ottiene /
+-- quante_prove / chi_lo_cambia, che ridicevano le stesse cose con parole diverse.
+--
+-- ⭐ Restano TRE chiavi, e nessuna delle tre è una definizione — è la ragione per cui
+-- sopravvivono alla potatura:
+--   · `come_si_dice`   — il livello al socio si dice a PAROLE e mai a numeri (istruzione a te);
+--   · `niente_tempi`   — nessuna promessa di tempi sul livello. Sta in piedi da sé finché la
+--                        voce 84 è aperta, e regge anche dopo: un tempo promesso è un tempo da
+--                        mantenere;
+--   · `chi_non_lo_fa`  — Semi-Pro e Professionista non fanno il questionario. Fuori dal testo
+--                        principale per scelta: riguarda pochi e allunga.
+
+update pmo_ai_settings
+set value = jsonb_set(value, '{livello}',
+      ((value->'livello') - 'a_cosa_serve' - 'come_si_ottiene' - 'quante_prove' - 'chi_lo_cambia')
+      || jsonb_build_object(
+        'come_funziona', 'Testo del committente (24/08/2026), da usare come RISPOSTA quando il socio chiede come si ottiene un livello, come funziona il test, o se lo può rifare. Sono le sue parole: seguine il senso e il tono, non aggiungere regole che qui non ci sono.
+
+Il livello serve al circolo per mettere insieme partite equilibrate. Finché non ce l''hai, non puoi organizzarne una tu.
+
+Per averlo c''è un test: un questionario che si apre da un link tuo, e te lo propongo io con un bottone quando serve — non devi chiedermelo.
+
+Finito il test ti dico com''è andata e ti chiedo se vuoi tenere quel livello o riprovare. Hai tre prove; se non mi rispondi, dopo un giorno tengo l''ultima. Quando il giro è chiuso, se ne può fare un altro dopo 30 giorni.
+
+Il livello lo registra il circolo: io te lo leggo, ma non lo cambio io. Se qualcosa non ti torna, sentila con la segreteria.',
+        'chi_non_lo_fa', 'SOLO se viene fuori: chi si dichiara Semi-Pro o Professionista il questionario non lo fa. Non dirlo di tua iniziativa quando spieghi il test — riguarda pochi e allunga la risposta.'
+      )),
+    updated_by = 'claude-code/voce-87-testi',
+    updated_at = now()
+where key = 'assistant_kb';
+
+-- ⏳ NON scritto: il testo degli INVITI. La bozza gli è stata messa davanti la sera del 24/08 e
+-- la sessione si è chiusa prima della sua correzione. ⇒ `inviti` resta con le MIE parole — sono
+-- fatti giusti, letti da `invito-partita.ts`, ma non sono la sua voce. Il giorno che la vuole
+-- dare, è una `update` sola e non serve nessun deploy.

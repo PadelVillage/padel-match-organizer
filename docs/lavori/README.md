@@ -1588,6 +1588,20 @@ la nomina è la **quarta copia** che andrà a marcire. La frase adesso dice **do
   la parola: *ogni voce del menu ☰ deve avere un intento corrispondente* ⇒ vale anche per la voce
   che qualcuno aggiungerà domani. **Sabotato**: togliendo «rubrica» dagli INTENTI diventa rosso.
 
+🗣️⭐ **I TESTI LI HA SCRITTI LUI, la sera del 24/08** — *«se mi fai le domande una alla volta ti
+do le risposte da inserire»*. ⇒ `rubrica.come_funziona` e `livello.come_funziona` sono **parole
+sue**: le mie bozze le avevo scritte leggendo il codice, che dice **cos'è** una funzione e non
+**come la si racconta a un socio**. Sulla rubrica la sua definizione è un'altra cosa dalla mia —
+*«le persone con cui ti piacerebbe giocare»* invece di *«le persone che hai fatto entrare»*: la
+prima dice a cosa serve, la seconda com'è fatta, e al socio serve la prima.
+🚨 **E ogni suo testo ha portato via delle chiavi mie** — quattro sulla rubrica, quattro sul
+livello. Non erano sbagliate: **ridicevano la stessa cosa con parole diverse**, e due definizioni
+della stessa cosa in pasto allo stesso modello divergono. È il difetto del nome della voce di menu,
+curato quella mattina, che si ripresentava la sera nello stesso file — stavolta l'ho visto perché
+lo stavo cercando.
+⏳ **Manca il testo degli INVITI**: la bozza è pronta, la sessione si è chiusa prima della sua
+correzione. Lì `inviti` resta con le **mie** parole — fatti giusti, non la sua voce.
+
 ⏳ **RESTA APERTA, e manca UNA cosa sola: il deploy del bot e la prova fisica.**
 🚨 Metà ① è **già viva** (la kb non ha deploy); metà ② e ③ stanno su un ramo e **il bot sulla VM
 gira ancora col prompt vecchio** — quindi oggi il modello ha la conoscenza in mano ma nessuno gli
