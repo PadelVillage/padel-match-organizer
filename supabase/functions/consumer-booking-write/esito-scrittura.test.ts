@@ -270,8 +270,37 @@ test('16) «non lo so» si riconosce da una PROPRIETÀ, non dalle parole del mes
     'legge le parole del messaggio invece della proprietà',
   );
   assert.equal(esitoIgnotoDaRisposta({ ok: false, error: 'SAVE_BUTTON_NOT_FOUND' }), false);
-  assert.equal(esitoIgnotoDaRisposta(null), false, 'una risposta assente non è «non lo so»: è niente');
-  assert.equal(esitoIgnotoDaRisposta(undefined), false);
+});
+
+test('16bis) 🚨 VOCE 83 — il 504 del cancello è un «non lo so», e prima era un «no»', () => {
+  // 📏 IL CORPO VERO, copiato dal registro dell'edge del 23/08 alle 21:39:59. Non è un errore
+  // del worker e non è un rifiuto nostro: è la piattaforma che dopo 150 s ha ucciso
+  // l'invocazione interna mentre Playwright, di là, stava ancora lavorando — e ha finito.
+  // Quella sera il bot ha detto «non ci sono riuscito» a un annullo PASSATO.
+  const cancello = { code: 'IDLE_TIMEOUT', message: 'Request idle timeout limit (150s) reached' };
+  assert.equal(esitoIgnotoDaRisposta(cancello), true, 'il 504 della piattaforma torna a essere un «no»');
+
+  // ⭐ La regola non elenca i codici del cancello — elenca i NOSTRI. Perciò un codice nuovo
+  // della piattaforma, che nessuno ha previsto, cade dalla parte giusta da sé.
+  assert.equal(esitoIgnotoDaRisposta({ code: 'CODICE_MAI_VISTO', message: 'boh' }), true);
+  assert.equal(esitoIgnotoDaRisposta({ code: 546, message: 'WORKER_LIMIT' }), true);
+
+  // 🔄 QUI LA PROVA VECCHIA DICEVA `false`, con la motivazione «una risposta assente non è "non
+  // lo so": è niente». ⚖️ È stata CORRETTA, non affiancata: un corpo illeggibile arriva solo
+  // quando a rispondere non è stata la nostra edge — che risponde sempre in JSON — quindi
+  // «niente» è esattamente il caso in cui nessuno ha rifiutato niente.
+  assert.equal(esitoIgnotoDaRisposta(null), true, 'un corpo illeggibile non è un rifiuto: è un silenzio');
+  assert.equal(esitoIgnotoDaRisposta(undefined), true);
+  assert.equal(esitoIgnotoDaRisposta('<html>504 Gateway Timeout</html>'), true, 'nemmeno una pagina HTML è un rifiuto nostro');
+
+  // 🚨 IL VERSO CONTRARIO, ed è la guardia che tiene onesta la regola: un rifiuto NOSTRO resta
+  // certo anche se il codice non lo conosciamo. La certezza non la dà questa funzione — la dà
+  // `matchpoint-bookings-create`, che ha già consultato `CODICI_FALLIMENTO_CERTO` prima di
+  // rispondere. Trasformare ogni codice ignoto in «non lo so» qui vorrebbe dire rifare quel
+  // giudizio due volte, e disfarlo: dei «no» veri diventerebbero attese inutili.
+  assert.equal(esitoIgnotoDaRisposta({ ok: false, error: 'WORKER_ERROR', message: 'x' }), false);
+  assert.equal(esitoIgnotoDaRisposta({ ok: false, error: 'SLOT_NOT_FREE' }), false);
+  assert.equal(esitoIgnotoDaRisposta({ ok: false, error: 'UN_CODICE_NOSTRO_NUOVO' }), false);
 });
 
 test('17) 🔒 NESSUN NOME INTERNO esce dal gestionale come «reason»', () => {

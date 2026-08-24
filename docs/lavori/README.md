@@ -1461,10 +1461,11 @@ delle 23:37:19. ⇒ L'unica mano che ha toccato quello slot è **il bot**.
 🚨⭐⭐ **È LA VOCE 72 AL ROVESCIO, ED È IL CASO CHE QUELLA VOCE ESISTE PER EVITARE.** La 72 aveva
 curato *«non dire riprova su un'operazione che potrebbe essere passata»* introducendo
 `esitoDellaRispostaWorker`: i codici del **fallimento certo** elencati, e **tutto il resto
-ignoto**. Qui il verdetto è stato **«certo»** su una scrittura **riuscita** ⇒ o quel codice è
-nell'elenco dei certi e non dovrebbe esserci, o il worker ha risposto un codice che significa due
-cose — che è la stessa crepa già trovata dentro `SAVE_BUTTON_NOT_FOUND` (*nessun bottone c'era*
-contro *ho premuto e non so com'è finita*), stavolta sull'**annullo** invece che sulla create.
+ignoto**. Qui il verdetto è stato **«certo»** su una scrittura **riuscita** ⇒ Qui il verdetto è stato **«certo»** su una scrittura **riuscita**.
+🔄 **E la forcella che stava scritta qui — «o quel codice è nell'elenco dei certi, o il worker ha
+risposto un codice che ne significa due» — è stata MISURATA il 24/08 e non aveva ragione nessuno
+dei due rami: il worker non ha mai risposto, e nemmeno la nostra edge.** Vedi il riquadro qui
+sotto.
 
 ⏱️ **E il contorno che ha reso il caso possibile**: il **sync era fermo** — ultimo giro riuscito
 **23:35:27**, e alle 23:43 erano passati **8 minuti** contro una cadenza di 2. ⇒ Il worker era in
@@ -1473,23 +1474,59 @@ potuto smentire la frase perché era **più vecchia del gesto** (23:34:04, cioè
 📌 *Una frase che afferma sul passato va verificata su un dato più fresco del gesto: qui non
 c'era, e nessuno se n'è accorto perché la frase non dichiara su cosa poggia.*
 
-🗣️⭐ **L'IPOTESI DEL COMMITTENTE, agli atti come ipotesi e non come causa**: *«secondo me il
-problema sta sull'ospite»*. ⚖️ **Cosa la sostiene**: l'annullo riuscito della voce **77**
-(18:06:50, ~pochi secondi) era su una partita col **solo** Maurizio; quello di stanotte, lento
-(2′31″) e raccontato male, era su una partita con **due «Ospite»**. E stasera i posti ospite hanno
-già rotto un'altra cosa (voce 82), per la stessa ragione di fondo — sono righe **senza una
-persona dietro**. ⚠️ **Cosa NON la prova**: due casi non sono una regola, e nella stessa mezz'ora
-il **sync era fermo** e il worker in difficoltà, che è una spiegazione alternativa completa. ⇒ Si
-decide **guardando gli `steps` del worker** su quell'annullo, non scegliendo fra due racconti:
-sono scritti, e dicono a che punto della ficha si è piantato.
+🗣️⭐ **L'IPOTESI DEL COMMITTENTE — messa agli atti come ipotesi il 23/08, MISURATA E SMENTITA
+il 24/08.** Diceva: *«secondo me il problema sta sull'ospite»*, e la sosteneva un confronto vero —
+l'annullo riuscito della voce **77** (18:06:50, pochi secondi) era su una partita col **solo**
+Maurizio, questo su una con **due «Ospite»**, e la 82 quella sera si era rotta proprio sugli
+ospiti. ⚖️ **Non erano loro**: la corsa non si è piantata dentro la ficha, e infatti l'annullo è
+arrivato in fondo. Era il worker **lento** — l'altra spiegazione, quella che nella scheda stava
+scritta come alternativa — a far sfondare il tetto dei 150 secondi.
+📌 *Un'ipotesi scritta come ipotesi si può smentire in un'ora; scritta come causa avrebbe mandato
+la sessione dopo a leggere gli `steps` della ficha, dove non c'era niente da vedere.*
 
-🔨 **Cosa guardare per primo, senza scrivere niente**: il `worker_result` dell'annullo — che
-codice ha dato — e se quel codice sta nell'elenco dei fallimenti certi di
-`matchpoint-bookings-cancel`. La 72 ha fatto lo stesso lavoro sulla **create**: là la crepa si è
-distinta con ciò che il worker **già scriveva** (`navigationAttempts`, `save_attempt`), senza
-toccarne una riga. La stessa strada va provata qui.
-⚠️ **E il verso non è simmetrico**, come sulla 72: *un «non lo so» di troppo costa un'attesa; un
-«non è passata» falso costa un campo occupato due volte.*
+🎯🎯 **LA CAUSA, misurata il 24/08 nel registro dell'edge — e non è il worker.**
+
+```
+21:37:29  [booking-write] cancel diritto ORGANIZZATORE 2026-08-31 09:00 C1: Maurizio è il primo di 4
+21:39:59  [booking-write] cancel KO HTTP 504:
+          {"code":"IDLE_TIMEOUT","message":"Request idle timeout limit (150s) reached"}
+```
+
+**150 secondi esatti.** A rispondere «non è passata» non è stato il worker e non è stata la nostra
+edge: è stata **la piattaforma**, che ha ucciso l'invocazione interna di
+`matchpoint-bookings-cancel` mentre Playwright, di là, stava ancora lavorando — e ha finito. È lo
+stesso tetto strutturale che `MARGINE_SCRITTURA_S` cita da sempre, arrivato però **dal lato da cui
+nessuno lo aspettava**.
+📏 **La conferma finale c'è ed è indipendente**: il sync delle **21:44:04** ha marcato `deleted` il
+`booking|9602|2026-08-31|09:00|Campo 1`. La partita è sparita da sé, come previsto.
+
+🚨⭐⭐ **LE VIE DEL «NON LO SO» SONO TRE, E LA MACCHINA NE CONOSCEVA DUE.** La voce 23 copre *il
+worker non risponde*; la 72 *il worker rifiuta senza sapere*; questa è la terza — **nessuno dei
+due ha mai parlato, e a rispondere è stato il cancello**. Arriva come una risposta HTTP ben
+formata, ed è per questo che nessuna delle due guardie la vedeva.
+
+✅ **CURATA il 24/08, e la metà che contava non era l'annullo.** `esitoIgnotoDaRisposta` la chiama
+il ramo **`create`**: lo stesso 504 usciva come `scrittura_rifiutata` e il bot diceva *«rifalla»*
+⇒ **doppia prenotazione**, il danno esatto della voce 23, per una strada che nessuno aveva chiuso.
+⚖️ **La regola nuova non elenca i codici del cancello, elenca i NOSTRI**: le edge interne
+rifiutano per una porta sola — `err()`, che scrive sempre `error: '<CODICE>'` — ⇒ *una risposta
+senza `error` non l'ha scritta nessuno di noi, quindi nessuno ha rifiutato niente*. `IDLE_TIMEOUT`
+non compare nel codice: un codice nuovo della piattaforma, o un corpo illeggibile, cadono dalla
+parte giusta da sé. **Fallisce chiusa**, come `dettaglioPerIlBot`.
+🧪 Provata col sabotaggio: rimesso il difetto, il caso 16bis cade; tolto, 25 verdi.
+
+⏳ **PERCHÉ LA VOCE RESTA APERTA — due cose, e nessuna è un dettaglio:**
+① **la prova fisica manca e non si può provocare**: servirebbe un worker abbastanza lento da
+   sfondare i 150 s. È la stessa posizione della **65** — *si aspetta, non si provoca*. Quello che
+   si può fare è **guardare**: il prossimo `KO HTTP 504` nel registro dovrà uscire come
+   `esito_ignoto`, non come `scrittura_rifiutata`;
+② **l'annullo NON è curato**, di proposito: `cancel` non chiama ancora quella funzione, e per
+   dargliela serve prima una frase nel bot («non lo so» oggi il bot lo sa dire **solo** sulla
+   prenotazione). È un lavoro sui due repo, e con esso va la **ricevuta della 70** — che su un
+   esito ignoto non viene scritta, ed è la ragione del terzo effetto qui sotto.
+⚠️ **E un piano più su c'è lo stesso tetto, non misurato**: anche `consumer-booking-write` vive
+150 s, e quella sera ha risposto al secondo 150. Se a essere uccisa fosse **lei**, il 504 lo
+riceverebbe il **bot** — e cosa ne fa il bot non l'ha ancora guardato nessuno.
 
 🚨⭐⭐ **E IL DANNO NON È FINITO CON LA FRASE: alle 23:44 il bot ha scritto al socio di una
 partita CHE NON ESISTE PIÙ.** *«👋 Un giocatore è uscito — Dalla tua partita di lunedì 31 agosto
