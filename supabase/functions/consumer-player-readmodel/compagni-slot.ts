@@ -122,6 +122,39 @@ export function rosterOrdinatoDelloSlot(schede: string[][]): string[] {
 }
 
 /**
+ * 🆕👀⭐⭐ VOCE 91 (24/08/2026) — CHI C'È IN CAMPO, anche quando l'ORDINE non si sa.
+ *
+ * 🗣️ Ragionamento del committente: *«se il bot mi ha detto che era stata prenotata sul nostro
+ * gestionale, la prenotazione già c'è: è un fatto interno nostro, non serve passare da
+ * Matchpoint»*. ⇒ Ha ragione, e il reperto lo conferma: la copia locale (`staff_booking`) porta
+ * `giocatori` con i nomi per esteso. Il dato è in casa dall'istante zero.
+ *
+ * ⭐⭐ LA DISTINZIONE CHE SCIOGLIE IL NODO: **«chi c'è» e «in che ordine» sono due fatti
+ * diversi.** La copia locale sa il primo e non il secondo — l'ordine dice chi ha organizzato, e
+ * quello lo stabilisce la scheda del circolo. Fino a oggi i due fatti erano impastati in un
+ * unico `giocatori: []`, che voleva dire tutt'e due le cose insieme: *«non so chi c'è»* e *«non
+ * so in che ordine»*. Il socio ne pagava la peggiore — *«non riesco a leggere chi c'è in campo»*
+ * su una partita che avevamo appena scritto noi.
+ *
+ * 🚨⭐⭐ E PERCHÉ È UN CAMPO NUOVO invece di riempire `giocatori`: quello ha un significato che
+ * il bot USA per decidere chi ha organizzato — `organizzatoreDellaPartita` prende **il primo**
+ * dell'elenco e non guarda `ordine`. Riempirlo qui incoronerebbe come organizzatore il primo
+ * nome della copia locale, che per una prenotazione dal bot è il socio (per fortuna) ma per una
+ * scritta dalla segreteria è **chi capita**. ⇒ *Un campo che qualcuno usa per decidere non si
+ * riempie di un dato che dice un'altra cosa: se ne aggiunge uno.*
+ * ⚖️ Ed è la stessa regola già scritta dalla voce 71 tre righe più giù: *«`giocatori` non cambia
+ * forma né significato: `ordine` si AGGIUNGE»*. Qui si aggiunge `in_campo`.
+ *
+ * ⭐ Riusa `compagniDelloSlot` con l'insieme delle varianti VUOTO — cioè «i compagni, senza
+ * togliere nessuno» = tutti. Non è un trucco: la fusione delle liste ha già dentro la trappola
+ * risolta (il **massimo** e non la somma, o gli «Ospite» della stessa partita si conterebbero
+ * due volte), e riscriverla qui sarebbe la seconda copia di una regola difficile.
+ */
+export function inCampoDelloSlot(liste: string[][], max: number): string[] {
+  return compagniDelloSlot(liste, new Set<string>(), max);
+}
+
+/**
  * ⭐⭐ PERCHÉ L'ELENCO È VUOTO — e sono DUE cose diverse, non una (voce 71).
  *
  * 🗣️ Difetto misurato al secondo la notte del 21/08/2026: il committente prenota dal bot
