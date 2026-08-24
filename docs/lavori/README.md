@@ -1602,6 +1602,30 @@ avvenuta, qui è un «sì» falso su una scrittura che non avverrà.
 ⇒ Curata la ⓑ la promessa diventa vera; ma va deciso se il bot debba **confermare** quando è
 successo davvero, invece di annunciarlo prima.
 
+🗣️🎯 **E il 24/08 lui ha fatto LA domanda giusta: *«ma devono passare obbligatoriamente quindici
+minuti per aggiornare la scheda?»* — NO, e la risposta trasforma questa metà da «frase da
+sistemare» a «cura da fare».**
+
+📏 **Misurato**: `pmo-assessment-apply-level-prod`, schedule **`*/15 * * * *`**, attivo. Quindi
+fino a un quarto d'ora fra il tocco del socio e il livello sulla sua scheda.
+⚖️ **Ma l'attesa non serve a niente.** Nell'istante in cui il socio tocca «Tengo questo livello»
+la scelta arriva a `consumer-assessment-decision`, che **è il gestionale** e ha già tutto per
+scrivere. Oggi registra la scelta e basta: il cron se ne accorge quando passa.
+🔒 **Ed è la regola del committente del 22/08 applicata qui**: *«ogni gesto va detto al socio solo
+dopo che il circolo l'ha confermato — e nello STESSO ISTANTE dev'essere registrato dal
+gestionale»*. Il bot dice «te lo registro a breve» **prima** che sia registrato: è la metà
+«stesso istante» che manca, la stessa che la voce 75 aveva curato sulla creazione.
+
+🔨 **Come si fa, e come NON si fa.** ⛔ Il ponte **non** deve ricopiarsi la regola
+dell'applicazione — il non-scendere al ribasso, la scheda più recente dell'ultimo aggiornamento,
+il giro delle tre prove: sono tre regole delicate e due copie divergono al primo ripensamento.
+✅ Deve **chiamare** `assessment-apply-level`, che è già una funzione a sé e non vuole parametri
+obbligatori (`{}` basta; `{"simula": true}` è solo per le prove). ⇒ Il socio tocca, il ponte
+registra la scelta **e lancia il giro**: secondi invece di un quarto d'ora, e **nessuna regola
+duplicata**.
+⭐ Il cron **resta** ed è la rete: copre i due casi che non passano da un tocco — il
+**silenzio-assenso** delle 24 ore e la **terza prova**, che chiude il giro da sé.
+
 🧬 **E un reperto per la voce 69, trovato per strada**: nella copia cloud Laura ha **TRE righe**
 `member` — `email:aprea.lalla@gmail.com` (0,5), `phone:393338979606` (0,5) e una a id nudo
 `7a4186a7-…` ferma al 31/07 con livello **1**. ⚠️ **A video l'anagrafica ne mostra UNA sola**
