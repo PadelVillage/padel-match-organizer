@@ -2316,11 +2316,34 @@ confine.*
 ⚠️ **Il `deno check` non è girato in locale** — `jsr.io` è bloccato dalla rete della sessione cloud —
 e lo fa `typecheck-edge-functions.yml` in CI.
 
-🗣️ **CURA C — decisa da lui**: *«Il tempo bisogna calcolarlo da quando si inizia a fare il quiz.»*
-⭐ Il fatto **esiste già e nessuno lo scrive**: `azione: 'pesca'` in `assessment-quiz` È il momento in
-cui il quiz si apre (la pagina chiede le domande). Serve una colonna `opened_at` su
-`assessment_tokens` — **non c'è né su PROD né su TEST** ⇒ migrazione su due progetti, il campo nella
-risposta del ponte, e il bot che ci ancora la scadenza. **Non fatta.**
+🔨 **CURA C — decisa da lui e SCRITTA**: *«Il tempo bisogna calcolarlo da quando si inizia a fare il
+quiz.»*
+⭐ Il fatto **esisteva già e nessuno lo scriveva**: `azione: 'pesca'` in `assessment-quiz` È il
+momento in cui il quiz si apre (la pagina si fa dare le domande). Non serviva un segnale nuovo —
+serviva conservare quello che passava già di lì.
+
+| pezzo | dove | stato |
+|---|---|---|
+| colonna `opened_at` | `assessment_tokens`, PROD **e** TEST | ✅ **applicata e verificata** su tutt'e due |
+| l'apertura si scrive | `assessment-quiz`, ramo `pesca` | ✅ scritta |
+| il fatto esce verso il bot (`quiz_aperto_il`) | `consumer-assessment-link` | ✅ scritta |
+| il cronometro ci si ancora | bot, `sorvegliaEsitoDelTest` | ✅ scritta |
+
+⚙️ **Come funziona adesso**: finché il quiz non è aperto si chiede ogni **30 secondi** (fino a **4
+ore**); dall'apertura si passa a **5 secondi** per **20 minuti**, contati **da lì**. ⇒ Alla consegna
+la fase veloce è già in corso, e il peggio è 5 secondi più il giro al ponte.
+⚖️ **Cosa costa, dichiarato**: al massimo ~**480** domande al ponte per un socio che il test non lo
+fa mai — il doppio del vecchio caso peggiore (~240), spalmato su un tempo **dodici volte** più lungo.
+🚨 C'è un **tetto assoluto** che il socio non può spostare: l'apertura si riscrive a ogni ricarica
+della pagina, e senza quel tetto una pagina ricaricata all'infinito terrebbe viva la sorveglianza.
+⚠️ **FAIL SOFT e non closed**: un ponte più vecchio del bot non manda il campo ⇒ ci si comporta come
+prima della cura. Qui il fail-closed sarebbe sbagliato — non c'è nessun messaggio da non mandare a
+sproposito, c'è solo un'attesa da tarare.
+
+⛔ **IL BUCO CHE RESTA, e non si chiude col polling**: chi apre il quiz **oltre le 4 ore**, o dopo un
+riavvio del bot, ricasca sul giro dei 15 minuti. La cura piena è **il gestionale che CHIAMA il bot**
+quando c'è un esito — ma il bot **non ha nessuna porta in ingresso** (misurato: nessun `listen`, nessun
+server nel suo sorgente), quindi vuole una superficie HTTP sulla VM dietro Caddy. È un lavoro a sé.
 
 ⏳ **LA PROVA FISICA DELLA 84 RESTA APERTA**, e adesso servono due giri distinti: uno che eserciti la
 ⓒ («Tengo questo livello», mai toccata da nessuno) e uno che attraversi la finestra in cui A e B

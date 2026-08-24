@@ -278,6 +278,39 @@ async function gestisci(req: Request): Promise<Response> {
 
   // ── PESCA: le domande, SENZA la risposta giusta ──────────────────────────────────────
   if (azione === 'pesca') {
+    /* ═══════════════════════════════════════════════════════════════════════════════════
+       🆕⏱️⭐⭐ 24/08/2026 (voce 84, cura C) — QUI IL SOCIO COMINCIA, e da qui parte il tempo.
+
+       🗣️ Decisione sua, la sera del collaudo di Marco Aprea: *«Il tempo bisogna calcolarlo da
+       quando si inizia a fare il quiz.»*
+
+       📏 Il perché, misurato: il bot dava il link alle 20:53 e sorvegliava 20 minuti; il socio
+       ha aperto il quiz alle 21:16 — 23 minuti dopo, che è la cosa che fa una persona normale —
+       e l'ha finito in 1'34". Alla consegna non lo guardava più nessuno. ⇒ Il cronometro era
+       ancorato al momento in cui il link **si consegna**, non a quello in cui **si apre**.
+
+       ⭐⭐ E IL FATTO ESISTEVA GIÀ: `pesca` è la chiamata con cui la PAGINA si fa dare le
+       domande, cioè esattamente «adesso sto cominciando». Non serviva un segnale nuovo —
+       serviva conservare quello che passava già di qui e che nessuno scriveva.
+
+       ⏳ SI RISCRIVE A OGNI APERTURA, deliberato: chi ricarica la pagina sta ricominciando, e
+       il suo cronometro riparte. Il costo è che un socio che ricarica allunga la propria
+       finestra — che è quello che deve succedere — e il tetto assoluto della sorveglianza,
+       che vive nel bot, resta comunque a proteggere dal caso senza fine.
+
+       🚨 NON FA FALLIRE NIENTE, e l'ordine è questo apposta: prima si tenta di scrivere, poi si
+       risponde comunque con le domande. Se la scrittura non riesce, il socio fa il suo quiz e
+       l'esito gli arriva col giro dei 15 minuti — si perde la fretta, non il fatto. Al
+       contrario, un socio lasciato senza domande per un cronometro è un danno vero.
+       ═══════════════════════════════════════════════════════════════════════════════════ */
+    const { error: erroreApertura } = await db
+      .from('assessment_tokens')
+      .update({ opened_at: new Date().toISOString() })
+      .eq('token', token);
+    if (erroreApertura) {
+      console.error(`[assessment-quiz] apertura non segnata per ${token} (${erroreApertura.message}) — l'esito arriverà col giro dei 15′`);
+    }
+
     const fascia = fasciaDaLivello(corpo.livello_dichiarato);
     const regole = assessKnowledgeRegole(fascia);
     // 🚨 `opts` esce così com'è; `correct` non compare da nessuna parte in questa risposta.

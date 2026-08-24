@@ -428,7 +428,7 @@ Deno.serve(async (req: Request) => {
   // morti. Un gettone già completato invece non si riusa: quella scheda è chiusa.
   const { data: esistenti, error: erroreGettoni } = await db
     .from('assessment_tokens')
-    .select('token, status, completed_at')
+    .select('token, status, completed_at, opened_at')
     .eq('member_local_id', memberId)
     .is('completed_at', null)
     .neq('status', 'completed')
@@ -463,9 +463,15 @@ Deno.serve(async (req: Request) => {
      scheda*). ⛔ Il numero è un tetto di prudenza, NON un invariante: la difesa è la domanda,
      non la quantità.
      ═══════════════════════════════════════════════════════════════════════════════════════ */
-  const candidati = (esistenti ?? [])
-    .map((r: { token?: string }) => clean(r?.token))
+  const righeGettoni = (esistenti ?? []) as Array<{ token?: string; opened_at?: string | null }>;
+  const candidati = righeGettoni
+    .map((r) => clean(r?.token))
     .filter((t: string) => !!t);
+  // Gettone → quando il socio ha aperto il quiz. Serve al bot per far partire il cronometro
+  // da lì (voce 84 cura C): il ponte porta il FATTO, la regola di quanto aspettare sta nel bot.
+  const aperturaDi = new Map<string, string>(
+    righeGettoni.map((r) => [clean(r?.token), clean(r?.opened_at ?? '')]),
+  );
 
   let daRiusare = '';
   if (candidati.length > 0) {
@@ -517,7 +523,16 @@ Deno.serve(async (req: Request) => {
   };
 
   if (daRiusare) {
-    return ok({ ...conteggio, token: daRiusare, url: conNome(daRiusare), riusato: true });
+    return ok({
+      ...conteggio,
+      token: daRiusare,
+      url: conNome(daRiusare),
+      riusato: true,
+      // ⏱️ Voce 84 cura C: vuoto finché il socio non apre il quiz. Il bot, non trovandolo,
+      // si comporta come prima — è la stessa cautela di `promemoria`: un ponte più vecchio
+      // di un bot non lo manda, e il bot non deve rompersi per un campo che non c'è.
+      quiz_aperto_il: aperturaDi.get(daRiusare) ?? '',
+    });
   }
 
   // 2) Altrimenti se ne fabbrica uno. `token` ha un vincolo di unicità (il gestionale ci fa
@@ -536,7 +551,9 @@ Deno.serve(async (req: Request) => {
       });
 
     if (!erroreInserimento) {
-      return ok({ ...conteggio, token, url: conNome(token), riusato: false });
+      // Appena fabbricato: nessuno l'ha ancora aperto, e si dice invece di ometterlo — così
+      // la risposta si legge in un modo solo da tutt'e due le strade.
+      return ok({ ...conteggio, token, url: conNome(token), riusato: false, quiz_aperto_il: '' });
     }
     // 23505 = unique_violation: solo in quel caso ha senso ritentare.
     if (clean((erroreInserimento as { code?: string }).code) !== '23505') {
