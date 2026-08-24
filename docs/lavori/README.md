@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **5** — 🆕 la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **6** — 🆕 la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 5
+## 🔴 URGENTI — 6
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,55 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **85** — 🚨 Il gestionale dice «il LIVELLO non è passato su Matchpoint», e su Matchpoint c'è
+
+🆕 **APERTA il 24/08/2026, su sua segnalazione**: *«ho messo sul gestionale il livello a Lidia 0,5
+e mi ha detto che non l'ha variato su Matchpoint ma non è vero, guarda allegati»* — due schermate,
+la ficha di Lidia con **Padel 0,50** e il gestionale con **«⚠️ Salvato, ma il LIVELLO non è passato
+su Matchpoint»**.
+
+🚨⭐⭐ **È LA VOCE 83 RIFATTA DALL'ALTRA PARTE.** Là il bot diceva «non ci sono riuscito» a un annullo
+passato; qui il gestionale dice «non è passato» a un livello che c'è. **La stessa forma esatta**:
+*l'assenza di una conferma trasformata in una certezza di fallimento.* ⇒ Due difetti in due repo
+diversi, nati lo stesso giorno, con la stessa causa di ragionamento — che è il motivo per cui questa
+voce sta qui e non dentro la 83: la cura è in un altro posto, la lezione è la stessa.
+
+📏 **IL PERCHÉ, letto nel registro del worker** (`stato-worker.yml`, 24/08 ore 10:07:19):
+
+```
+"label":"nuovo cliente · Lidia Comes","ok":true,
+"steps":["login","resolve_codice","salva","shell_load_ficha",
+         "skip_livello:griglia_non_letta_o_riga_assente"]
+```
+
+⇒ Il worker il livello **non l'ha mai scritto E non l'ha mai letto**: non è riuscito ad aprire la
+griglia «Livelli». Di quel valore non sa niente — e il gestionale ha letto quel silenzio come un no.
+
+✅ **CURATA la FRASE (v6.240), e la differenza la scrive già il worker** — stessa strada della voce
+72 con `save_attempt`, senza toccarne una riga:
+· `livelloVerified === false` → dopo il salvataggio ha **riletto** la griglia e il valore non c'era.
+  Questo è un fallimento **visto**, e la frase di prima resta;
+· qualunque altra cosa (griglia non letta, riga assente, passo saltato) → **non ha guardato** ⇒
+  «del livello non ho la conferma: **controlla la ficha** — potrebbe essere già a posto — e
+  riscrivilo solo se manca». La frase porta l'**istruzione**, non solo la constatazione.
+
+⏳ **COSA RESTA APERTO, ed è la metà che conta:**
+① **perché la griglia dei livelli non si legge** su una scheda appena salvata. Il sospetto è una
+   corsa (la griglia arriva in AJAX e la si guarda troppo presto), ma **è un sospetto**: si decide
+   guardando `livelloRows` e gli `steps` di un caso nuovo. ⚠️ È lavoro sul **worker**, che si tocca
+   **solo da `main`** e va deployato a parte;
+② **come ha fatto il livello ad arrivare su Matchpoint** se il worker non l'ha scritto. L'ipotesi è
+   che sia entrato col salvataggio della scheda (`salva`) e non dalla griglia — **non misurato**, e
+   finché non lo è non si scrive da nessuna parte come un fatto;
+③ **la prova fisica**: una scrittura di livello vera che passa da quel punto e racconta la verità;
+④ ⚠️ **la cura è su PROD e NON su TEST**, dichiarato: l'app di `test-preview` (6.247) porta ancora la
+   frase vecchia. Non è una dimenticanza — è la regola 3 del `CLAUDE.md`, che vieta di travasare
+   `index.html` fra i rami — ma finché non si allinea, chi prova di là legge «non è passato».
+
+📌 *Il valore di questa voce non è la frase: è che due difetti identici, in due repo che non si
+parlano, sono usciti lo stesso giorno. Quando una forma d'errore si ripete in posti indipendenti
+non è una svista — è un modo di pensare, e va cercato anche dove non l'ha ancora segnalato nessuno.*
 
 ### **84** — 🚨🚨 Il test di livello: l'esito arriva DOPO 11 MINUTI, e il livello non si scrive MAI
 

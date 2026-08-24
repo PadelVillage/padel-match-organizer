@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.239';
+    const APP_VERSION = '6.240';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -27244,10 +27244,41 @@ Per confermare scrivi ELIMINA.`);
             const w = (last.data && last.data.worker) || {};
             const levelConfirmed = Array.isArray(w.updatedFields) && w.updatedFields.includes('livello');
             const levelErr = w.diagnostic && w.diagnostic.levelError;
+            // ══════════════════════════════════════════════════════════════════════════════
+            // 🚨⭐⭐ VOCE 85 (24/08/2026) — «NON HO LA CONFERMA» NON È «NON È PASSATO».
+            //
+            // 📏 Il fatto: il 24/08 alle 10:07 la segreteria mette Lidia Comes a 0,5. Il
+            // gestionale scrive «⚠️ Salvato, ma il LIVELLO non è passato su Matchpoint» —
+            // e sulla ficha di Matchpoint il livello È 0,50. Un «no» falso su una scrittura
+            // riuscita, cioè la voce 83 rifatta qui.
+            // 🔎 Il registro del worker dice cosa è successo davvero:
+            //    steps=["login","resolve_codice","salva","shell_load_ficha",
+            //           "skip_livello:griglia_non_letta_o_riga_assente"]
+            //    ⇒ il livello non l'ha mai SCRITTO **e non l'ha mai LETTO**: non è riuscito
+            //    ad aprire la griglia «Livelli», quindi di quel valore non sa niente.
+            //
+            // ⚖️ E il worker la differenza la scrive già — non serve toccarlo, è la stessa
+            // strada della voce 72 con `save_attempt`:
+            //   · `livelloVerified === false` → DOPO il salvataggio ha riletto la griglia e
+            //     il valore non c'era. Questo sì che è un fallimento **visto**;
+            //   · qualunque altra cosa (griglia non letta, riga assente, passo saltato) →
+            //     la griglia non l'ha guardata, e «non è passato» sarebbe un'affermazione su
+            //     uno stato che nessuno ha osservato.
+            //
+            // 🎯 La regola di sempre, e vale a maggior ragione qui: un «non lo so» di troppo
+            // costa una controllata sulla ficha; un «non è passato» falso manda la segreteria
+            // a riscrivere un dato che era già a posto — e intanto le fa credere che il
+            // gestionale e Matchpoint siano disallineati quando non lo sono.
+            // ══════════════════════════════════════════════════════════════════════════════
+            const levelSeenMissing = !!(w.diagnostic && w.diagnostic.livelloVerified === false);
             if (levelRequested && !levelConfirmed) {
-              console.warn('Matchpoint: livello non confermato:', levelErr || '(nessun dettaglio)', w.diagnostic || '');
-              laterAlert('⚠️ Socio salvato, ma il LIVELLO non risulta aggiornato su Matchpoint (gli altri dati sì). Verifica/riprova dal gestionale.', 'warning');
-              return { status: 'ok_level_failed', data: last.data, reason: levelErr || 'level_not_confirmed' };
+              console.warn('Matchpoint: livello ' + (levelSeenMissing ? 'NON passato (verificato)' : 'non verificato') + ':', levelErr || '(nessun dettaglio)', w.diagnostic || '');
+              if (levelSeenMissing) {
+                laterAlert('⚠️ Socio salvato, ma il LIVELLO non risulta aggiornato su Matchpoint (gli altri dati sì). Verifica/riprova dal gestionale.', 'warning');
+                return { status: 'ok_level_failed', data: last.data, reason: levelErr || 'level_not_confirmed' };
+              }
+              laterAlert('⚠️ Socio salvato. Il LIVELLO non ho potuto verificarlo su Matchpoint: controlla la ficha prima di riscriverlo.', 'warning');
+              return { status: 'ok_level_unknown', data: last.data, reason: levelErr || 'level_not_verified' };
             }
             return { status: 'ok', data: last.data };
           }
@@ -27325,6 +27356,13 @@ Per confermare scrivi ELIMINA.`);
       } else if (st === 'ok_level_failed') {
         _setSync('⚠️ Salvato, ma il LIVELLO non è passato su Matchpoint', '#b54708');
         svcAddMessage('system', '⚠️ Gli altri dati sono su Matchpoint; il <strong>livello</strong> no. Riprova dal gestionale se serve.', 'error');
+      } else if (st === 'ok_level_unknown') {
+        // 🚨 VOCE 85 — qui NON si dice «non è passato»: il worker la griglia dei livelli non è
+        // riuscito ad aprirla, quindi di quel valore non sa niente. Dire il contrario manda a
+        // riscrivere un dato che il 24/08 era già a posto. E la frase porta l'ISTRUZIONE, non
+        // solo la constatazione: guarda prima di rifare — la stessa forma di `esito_ignoto`.
+        _setSync('⚠️ Salvato: del LIVELLO non ho la conferma da Matchpoint', '#b54708');
+        svcAddMessage('system', 'ℹ️ Gli altri dati sono su Matchpoint. Del <strong>livello</strong> non ho potuto avere conferma: <strong>controlla la ficha</strong> — potrebbe essere già a posto — e riscrivilo solo se manca.', 'error');
       } else if (st === 'test_env') {
         _setSync('💾 Salvato (Matchpoint scollegato in test)', '#067647');
         _lingerScheda();
