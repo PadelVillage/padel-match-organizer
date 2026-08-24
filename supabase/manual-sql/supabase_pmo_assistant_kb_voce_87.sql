@@ -84,3 +84,27 @@ set value = jsonb_set(
   updated_by = 'claude-code/voce-87',
   updated_at = now()
 where key = 'assistant_kb';
+
+-- ── (b) SERA DEL 24/08 — la SETTIMA copia del nome della porta, tolta ────────────────────
+--
+-- Curando i residui della voce 87 il caso nuovo `seconda-porta.test.ts` («nessun testo scrive
+-- quel nome a mano») ne ha trovate SEI nel codice, non le tre contate rileggendo. La settima
+-- era qui: `rubrica.dove_si_apre` citava «La mia rubrica», e `inviti.invito_al_circolo` pure.
+-- ⚖️ Oggi quel nome è GIUSTO — non è un difetto, è una copia. E la kb è l'unico posto dove
+--    nessuna guardia arriva: le altre leggono i sorgenti, questa sta in un database.
+-- ⇒ Si toglie invece di correggerla. A portare il socio nella rubrica adesso c'è il bottone
+--   della TERZA PORTA (`apri_rubrica`), che la kb non ha bisogno di descrivere.
+
+update pmo_ai_settings
+set value = jsonb_set(value, '{rubrica,dove_si_apre}',
+      to_jsonb('Si apre dal menu ☰ del bot. Se il socio te ne parla, sotto la tua risposta gli compare da sé il bottone che ce lo porta: non serve che gli spieghi dove cercare.'::text)),
+    updated_by = 'claude-code/voce-87b',
+    updated_at = now()
+where key = 'assistant_kb';
+
+update pmo_ai_settings
+set value = jsonb_set(value, '{inviti,invito_al_circolo}',
+      to_jsonb('Un link personale che il socio manda a chi vuole far entrare. Chi lo apre entra nel bot e finisce nella rubrica di chi l''ha invitato. Si chiede dalla schermata della rubrica.'::text)),
+    updated_by = 'claude-code/voce-87b',
+    updated_at = now()
+where key = 'assistant_kb';
