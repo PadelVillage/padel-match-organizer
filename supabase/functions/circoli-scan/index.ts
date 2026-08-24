@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { sondaMatchpoint, grigliaDaSlot } from './matchpoint.ts';
 
 // circoli-scan — VOCE 60, PASSO 2. Legge i campi liberi nei circoli della zona.
 // Disegno completo: docs/circoli-esterni-disegno.md
@@ -243,13 +244,16 @@ Deno.serve(async (req) => {
   if (!circolo) return ko('CIRCOLO_SCONOSCIUTO', { circolo: slug }, 404);
 
   // ── Ciò che la tabella non autorizza, non esce di qui ──────────────────────
-  if (circolo.piattaforma === 'matchpoint') {
-    return ko('NON_SI_INTERROGA', {
-      circolo: slug,
-      dettaglio: 'Padel Village si legge dal gestionale, non da un portale esterno. Il suo tenant Wansport è morto dal 16/02/2021.',
-    });
-  }
-  if (circolo.piattaforma !== 'wansport') {
+  // 🔄 Fino al 24/08/2026 qui c'era una guardia che rifiutava `matchpoint` con
+  //    `NON_SI_INTERROGA`, e la sua ragione era buona: casa nostra si legge dal
+  //    gestionale, che è più fresco (sync ogni 2 minuti) di qualunque sonda.
+  //    Il committente ha chiesto di renderlo interrogabile **come gli altri**, e
+  //    il motivo regge: questa sezione confronta i circoli fra loro, e due fonti
+  //    diverse non si confrontano. La riga vecchia è stata CORRETTA, non
+  //    affiancata — la ragione che portava resta scritta in `matchpoint.ts`.
+  //    ⚖️ Le due strade non si escludono: per «cosa ho prenotato io» comanda
+  //    sempre il gestionale; questa sonda serve al confronto fra circoli.
+  if (circolo.piattaforma !== 'wansport' && circolo.piattaforma !== 'matchpoint') {
     return ko('PIATTAFORMA_NON_SUPPORTATA', { piattaforma: circolo.piattaforma, dettaglio: 'Playtomic è ancora da misurare (questione aperta del disegno).' });
   }
   if (!circolo.attivo || circolo.stato_utenza !== 'attiva') {
@@ -261,7 +265,18 @@ Deno.serve(async (req) => {
   if (!circolo.base_url) return ko('INDIRIZZO_NON_RILEVATO', { circolo: slug });
 
   // ④ intervallo minimo
-  if (circolo.ultimo_scan_at) {
+  // 🏠 CASA NOSTRA NON HA IL FRENO. Deciso dal committente il 24/08/2026, dopo che
+  //    la seconda prova su Padel Village aveva risposto TROPPO_PRESTO.
+  //    ⚖️ Il limite di 24 ore non è una misura tecnica: è una cortesia verso i
+  //    portali di TERZI — «la differenza fra un cliente e un molestatore», come
+  //    sta scritto sotto. Verso il portale del circolo che ci appartiene non c'è
+  //    nessun estraneo da rispettare, quindi lì il freno è solo un costo: rende il
+  //    bottone «Prova ora» inutilizzabile due volte di seguito e basta.
+  //    🚨 Il vincolo sui circoli Wansport resta INTATTO: non è stato allentato, e
+  //    non si tocca finché il committente non ha parlato con Wansport. Questa
+  //    esenzione vale per `matchpoint`, che oggi è solo Padel Village.
+  const casaNostra = circolo.piattaforma === 'matchpoint';
+  if (circolo.ultimo_scan_at && !casaNostra) {
     const passati = Date.now() - new Date(circolo.ultimo_scan_at).getTime();
     if (passati >= 0 && passati < INTERVALLO_MINIMO_MS) {
       return ko('TROPPO_PRESTO', {
@@ -271,6 +286,55 @@ Deno.serve(async (req) => {
     }
   }
 
+  const base = String(circolo.base_url).replace(/\/+$/, '') + '/';
+  const biscotti = new Biscotti();
+  const t0 = Date.now();
+  const tappe: JsonMap[] = [];
+
+  // ── RAMO MATCHPOINT ────────────────────────────────────────────────────────
+  // Sta PRIMA dei segreti Wansport perché non ne ha bisogno: la ricerca degli
+  // slot su Matchpoint è pubblica (misurato il 24/08/2026, vedi matchpoint.ts).
+  // Chiedere qui una credenziale che non serve significherebbe custodirne una in
+  // più senza guadagnarci niente.
+  if (circolo.piattaforma === 'matchpoint') {
+    // Data: quella chiesta, o OGGI a Roma. `sv-SE` dà già `YYYY-MM-DD`, e il
+    // fuso va detto: su un server UTC dopo le 22:00 «oggi» sarebbe domani.
+    const dataChiesta = clean(corpo.data) || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    try {
+      const { slot, tappe: tappeMp } = await sondaMatchpoint(
+        base, dataChiesta, async (u, o) => (await chiedi(u, o, biscotti)).res,
+      );
+      tappe.push(...tappeMp);
+      const latenza = Date.now() - t0;
+      const griglia = grigliaDaSlot(slot);
+
+      // La griglia si scrive solo se c'è: un giorno pieno non deve CANCELLARE
+      // quella rilevata ieri, perché «nessuno slot libero» non è «nessun campo».
+      await admin.from('pmo_circoli_esterni').update({
+        ultimo_scan_at: new Date().toISOString(), ultimo_esito: 'sonda ok',
+        ultima_latenza_ms: latenza, updated_at: new Date().toISOString(),
+        ...(slot.length ? { slot_minuti: griglia.slotMinuti, apertura: griglia.apertura, chiusura: griglia.chiusura, campi: griglia.campi } : {}),
+      }).eq('id', slug);
+
+      return json({
+        ok: true, circolo: slug, nome: circolo.nome, azione: 'sonda',
+        piattaforma: 'matchpoint', data: dataChiesta, latenza_ms: latenza,
+        liberi: slot.length, slot, griglia, tappe,
+      });
+    } catch (e) {
+      const esitoMp = String((e as Error).message || e);
+      const latenza = Date.now() - t0;
+      await admin.from('pmo_circoli_esterni').update({
+        ultimo_scan_at: new Date().toISOString(), ultimo_esito: esitoMp,
+        ultima_latenza_ms: latenza, updated_at: new Date().toISOString(),
+      }).eq('id', slug);
+      // 200 con ok:false, come il ramo Wansport: chi legge deve poter
+      // distinguere «non ha risposto» da «non c'è posto».
+      return json({ ok: false, error: esitoMp, circolo: slug, nome: circolo.nome, piattaforma: 'matchpoint', data: dataChiesta, latenza_ms: latenza, tappe });
+    }
+  }
+
+  // ── RAMO WANSPORT ──────────────────────────────────────────────────────────
   const utenteWansport = Deno.env.get('WANSPORT_USER') || '';
   const passwordWansport = Deno.env.get('WANSPORT_PASS') || '';
   if (!utenteWansport || !passwordWansport) {
@@ -282,10 +346,6 @@ Deno.serve(async (req) => {
     }, 503);
   }
 
-  const base = String(circolo.base_url).replace(/\/+$/, '') + '/';
-  const biscotti = new Biscotti();
-  const t0 = Date.now();
-  const tappe: JsonMap[] = [];
   let esito = 'ok';
 
   try {
