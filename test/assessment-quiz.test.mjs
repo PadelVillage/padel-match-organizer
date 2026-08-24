@@ -110,5 +110,82 @@ const doppi = [...new Set(nomi.filter((n) => nomi.filter((x) => x === n).length 
 ok(`nessuna dichiarazione doppia (${nomi.length} esportazioni)`, doppi.length === 0);
 if (doppi.length) console.log('   doppi: ' + doppi.join(', '));
 
+// ── 8. ⚡⭐⭐ IL GIRO D'APPLICAZIONE PARTE SUBITO (24/08/2026) ────────────────────
+//
+// 🗣️ Il difetto misurato su Fabiola Limuti, terza prova: *«non è arrivata nessuna notifica sul
+// bot, non gli è stato comunicato il suo livello, non è stato messo il livello dentro la
+// scheda»*. Tre sintomi, UNA causa: il bot, a test superato, tace finché il livello non è
+// scritto — e sulla TERZA prova (che non ha una scelta da fare) quella porta resta intera.
+// Il livello lo scriveva solo il cron `*/15` ⇒ fino a un quarto d'ora di silenzio totale.
+// 📏 Provato a mano lo stesso giorno: lanciando il giro, il livello è atterrato in 0,7 secondi.
+//
+// 🚨 SI GUARDA IL CODICE SENZA COMMENTI, ed è la cicatrice della mattina: la prima stesura
+// delle guardie della ⓒ cercava i nomi dentro il FILE, e i commenti che spiegano la cura li
+// contengono tutti — togliendo il lancio vero restavano verdi.
+const SORGENTE_EDGE = readFileSync(join(QUI, '..', 'supabase', 'functions', 'assessment-quiz', 'index.ts'), 'utf8');
+const codiceEdge = SORGENTE_EDGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+// 🚨⭐⭐ E PRIMA DI TUTTO: I COMMENTI A BLOCCO SI CHIUDONO DOVE CREDONO DI CHIUDERSI.
+//
+// 📏 Successo scrivendo questa cura, il 24/08: dentro un commento `/* … */` avevo scritto il
+// cron `*` `/15`, e quella sequenza CHIUDE il commento — il resto del testo italiano diventava
+// codice, e la funzione non sarebbe nemmeno partita su Deno. L'ha beccato per rimbalzo la
+// guardia sotto, che leggeva il sorgente senza commenti e ci trovava dentro delle parole.
+// ⚖️ In un repo dove i commenti sono lunghi quanto il codice e pieni di percorsi e cron, non è
+// un caso limite: è una trappola che aspetta. Qui si guarda in modo esplicito.
+{
+  let dentro = false, fuoriPosto = 0;
+  for (let i = 0; i < SORGENTE_EDGE.length - 1; i++) {
+    const due = SORGENTE_EDGE.slice(i, i + 2);
+    if (!dentro && due === '/*') { dentro = true; i++; continue; }
+    if (dentro && due === '*/') { dentro = false; i++; continue; }
+    // Un `*/` fuori da un commento: o chiude un commento già chiuso (il difetto), o vive in
+    // una stringa e allora va guardato lo stesso, perché è indistinguibile a occhio.
+    if (!dentro && due === '*/') fuoriPosto++;
+  }
+  ok('🚨 nessun `*/` fuori posto: un commento a blocco chiuso a metà non parte su Deno',
+     fuoriPosto === 0 && !dentro);
+}
+
+ok('⚡ consegnata la scheda, il giro d\'applicazione parte subito',
+   /pmo_dispatch_assessment_apply_level/.test(codiceEdge));
+// 🔒 Si passa dal DISPATCHER, che legge il vault da sé: il segreto delle routine non deve
+// avere un secondo posto da cui uscire. Chiamare l'edge dritta vorrebbe dire portarcelo.
+ok('…dal dispatcher, senza portarsi in mano il segreto delle routine',
+   !/x-pmo-routine-secret/.test(codiceEdge));
+// 🔒 La regola di QUANDO si applica (il giro delle tre prove, il ribasso, la scheda più
+// recente) vive in `assessment-apply-level`. Qui non si decide «è la terza?»: si chiama
+// sempre, e a decidere resta quella. Una seconda copia divergerebbe al primo ripensamento.
+ok('🚨 la regola del giro NON è ricopiata qui: si chiama sempre',
+   !/laProvaEsaurisceIlGiro|TENTATIVI_PER_GIRO|giro-del-test/.test(codiceEdge));
+// ⚖️ Il socio ha appena finito il quiz: la sua risposta è già vera. Se il giro non parte, il
+// livello arriva col cron — si perde la fretta, non il fatto.
+ok('…e un giro fallito non fa fallire la consegna della scheda',
+   /console\.error[\s\S]{0,160}giro d.applicazione non partito/.test(codiceEdge));
+// 🚨 L'ORDINE, e non è un dettaglio: prima la scheda è scritta, poi si lancia. Al contrario il
+// giro non troverebbe niente da applicare, e sarebbe una chiamata a vuoto che sembra una cura.
+ok('🚨 si lancia DOPO che la scheda è stata scritta',
+   codiceEdge.indexOf("from('self_assessments')") < codiceEdge.indexOf('pmo_dispatch_assessment_apply_level'));
+
+// ── 9. 🚨🚨 LA DATA DELLA SCHEDA LA SCRIVE CHI LA SCRIVE (voce 84, 24/08/2026) ──────────
+//
+// 📏 Il collaudo di Marco Aprea, misurato: scheda consegnata alle 21:18:23 del 24 agosto e
+// salvata con `submitted_at` del **3 maggio**. La riga va in `upsert(… onConflict: 'token')`:
+// su gettone nuovo è un INSERT e la data la metteva il database (`default now()`), ma su un
+// gettone che aveva già una scheda è un UPDATE — e un campo che non è nella riga NON si tocca.
+// ⇒ `assessment-apply-level` l'ha scartata come «più vecchia del livello del socio», che è la
+// sua guardia SANA: a mentire era la data. Livello mai scritto, bot muto, per sempre.
+//
+// ⚠️ QUESTE DUE SONO GUARDIE TESTUALI, e si dicono per quello che sono: la riga si costruisce
+// dentro il gestore HTTP e da qui non si può ESEGUIRE. Provano che la data è scritta e dov'è
+// scritta — non provano che il database la riceva. Quella è una prova fisica, e va fatta.
+ok('🚨 la scheda porta la sua data: `submitted_at` non lo lascia mettere al database',
+   /submitted_at:\s*new Date\(\)\.toISOString\(\)/.test(codiceEdge));
+// 🔒 Dev'essere DENTRO la riga, cioè prima dell'`upsert`: scritta dopo sarebbe codice morto
+// che sembra una cura — esattamente il tipo di verde che non difende niente.
+ok('…e sta DENTRO la riga che si scrive, non dopo',
+   codiceEdge.indexOf('submitted_at:') > -1
+   && codiceEdge.indexOf('submitted_at:') < codiceEdge.indexOf("upsert(riga"));
+
 console.log(ko ? `\n${ko} PROVE FALLITE` : '\n— tutte verdi —');
 process.exit(ko ? 1 : 0);

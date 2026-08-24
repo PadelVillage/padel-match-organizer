@@ -319,6 +319,20 @@ async function gestisci(req: Request): Promise<Response> {
 
     const riga = {
       token,
+      /* 🚨🚨⭐⭐ 24/08/2026 (voce 84) — `submitted_at` SI SCRIVE, e prima non c'era.
+         Costata il collaudo di Marco Aprea, e il difetto non si vedeva rileggendo: la riga
+         qui sotto va in `upsert(... onConflict: 'token')`. Su gettone nuovo è un INSERT e la
+         data la metteva il database (`default now()`); su un gettone che aveva già una scheda
+         è un UPDATE, e `submitted_at` — non essendo nella riga — **restava quella di prima**.
+         📏 Misurato: scheda consegnata il 24/08 alle 21:18:23, salvata con la data del 3
+         MAGGIO. `assessment-apply-level` la confronta con `lastLevelUpdateAt` del socio (3
+         maggio 19:18) e la scarta, giustamente, come «vecchia» — quindi il livello non si
+         scrive MAI e il bot non ha niente da annunciare. Non un ritardo: un silenzio definitivo.
+         ⚖️ La guardia che l'ha scartata è SANA e non si tocca: *una scheda vecchia non deve
+         scavalcare un livello aggiornato dopo*. A mentire era la data, non chi la leggeva.
+         📌 *Un campo che il database riempie da sé lo riempie solo alla NASCITA: chi riscrive
+         la riga se lo deve scrivere, o eredita il passato di quella prima.* */
+      submitted_at: new Date().toISOString(),
       first_name: assessTxt(scheda.first_name) || null,
       last_name: assessTxt(scheda.last_name) || null,
       phone: assessTxt(scheda.phone) || null,
@@ -379,6 +393,49 @@ async function gestisci(req: Request): Promise<Response> {
     await db.from('assessment_tokens')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('token', token);
+
+    /* ═══════════════════════════════════════════════════════════════════════════════════
+       🆕⚡⭐⭐ 24/08/2026 — IL GIRO D'APPLICAZIONE PARTE SUBITO, A OGNI SCHEDA CONSEGNATA.
+
+       🗣️ Il difetto misurato su Fabiola Limuti, terza prova: *«non è arrivata nessuna notifica
+       sul bot, non gli è stato comunicato il suo livello, non è stato messo il livello dentro
+       la scheda»*. **Tre sintomi, una causa sola.**
+
+       📏 La catena, al secondo: `12:48:12` la sorveglianza si accende (la cura di poche ore
+       prima funziona), `12:49:28` la scheda arriva — e per due minuti il bot **tace**, con la
+       sorveglianza che chiede ogni 15 secondi e non ha niente da dire.
+       🎯 A tacere è la porta ② di `siPuoAnnunciareIlTest` nel bot: *a test superato si aspetta
+       che il livello sia DAVVERO nella scheda*. Quella porta ha un'uscita — `puo_scegliere` —
+       che rompe lo stallo circolare per le prove **con** una scelta da fare. La TERZA prova
+       una scelta non ce l'ha (chiude il giro da sé) ⇒ per lei la porta resta **intera**, e il
+       bot non può parlare finché il livello non è scritto. Lo scriveva solo il cron dei 15 minuti.
+       ⚖️ ⇒ Sulla terza prova la lentezza del cron non era «si perde la fretta, non il fatto»:
+       era **silenzio totale**, fino a un quarto d'ora, sull'unica prova che vale da sé.
+       📌 E la lacuna era **dichiarata** in `consumer-assessment-decision` («il cron RESTA, ed è
+       la rete… e la terza prova, che chiude il giro da sé») — scritta stamattina, creduta
+       innocua perché nessuno aveva collegato che di là il bot **tace** aspettando quel livello.
+       *Un limite dichiarato in un file non è innocuo finché non lo si guarda dall'altro.*
+
+       ⭐ SI LANCIA A OGNI SCHEDA, non solo alla terza, ed è deliberato: decidere qui «è la
+       terza?» vorrebbe dire una **seconda copia della regola del giro** — che vive in
+       `giro-del-test.ts` ed è già la regola più delicata di questo lavoro. Si chiama sempre, e
+       a decidere se applicare resta `decidi` in `assessment-apply-level`: sulle prove 1 e 2
+       non applica niente (aspetta la scelta del socio o le 24 ore), quindi la chiamata in più
+       non fa danno — e costa una volta per quiz consegnato, non una per tocco.
+
+       ⭐⭐ SI CHIAMA IL DISPATCHER, NON L'EDGE, per la stessa ragione della decisione: il
+       segreto delle routine vive nel **vault**, e `pmo_dispatch_assessment_apply_level` lo
+       legge da sé (`SECURITY DEFINER`). È **la stessa identica strada del cron** ⇒ nessuna
+       chiave in più in giro, e nessun secondo modo di far partire quel giro.
+
+       🚨 NON SI ASPETTA IL SUO ESITO E NON PUÒ FAR FALLIRE NIENTE: il socio ha appena finito il
+       quiz e la sua risposta è già vera. Se il giro non parte, il livello arriva col cron come
+       prima — **si perde la fretta, non il fatto** — e l'errore resta nel registro.
+       ═══════════════════════════════════════════════════════════════════════════════════ */
+    const { error: erroreGiro } = await db.rpc('pmo_dispatch_assessment_apply_level', { p_simula: false });
+    if (erroreGiro) {
+      console.error(`[assessment-quiz] giro d'applicazione non partito (${erroreGiro.message}) — il livello arriverà col cron`);
+    }
 
     // Al telefono torna l'ESITO, non il come: né le risposte giuste né le soglie.
     return ok({

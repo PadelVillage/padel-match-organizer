@@ -2259,6 +2259,74 @@ giorno, due volte** ⇒ adesso pretende l'**invariante**: chi offre il test dice
 ⏳ **NON COPRE chi la domanda la SCRIVE** («che livello ho?»): quella strada passa ancora dal
 modello e può risbagliare. Serve una rete a parte, e non è stata fatta.
 
+---
+
+#### 🚨🚨⭐⭐ 24/08 sera — IL COLLAUDO DI MARCO: la scheda è arrivata, ed è nata VECCHIA
+
+📏 **Il primo giro intero su un socio vero**, e non è passato. Cronologia al secondo (Roma):
+
+```
+20:53:16  Marco: /prenota → il muro col bottone del test
+20:53:20  ⏱️ [sorveglianza-test] comincio        ← la cura ① ARMA in 4 secondi ✅
+21:13:22  ⏱️ tetto scaduto senza esito           ← 20 minuti, e il quiz non era ancora aperto
+21:16:49  Marco apre il quiz
+21:18:23  consegna, in 1'34"                     ← scheda BUONA: knowledge `pass`, livello 2,5
+   …      silenzio: livello mai scritto, bot muto
+```
+
+⇒ **Il quiz è durato un minuto e mezzo.** I 23 minuti stanno fra il *ricevere* il link e
+l'*aprirlo*, che è la cosa che fa una persona qualunque.
+
+#### Le tre cause, e nessuna era prevista
+
+| | dove | cosa |
+|---|---|---|
+| **A** | `consumer-assessment-link` | riusava un gettone che aveva **già** una scheda, perché guardava `status`/`completed_at` invece di chiedere se la scheda esistesse |
+| **B** | `assessment-quiz` | l'`upsert(onConflict: 'token')` non riscriveva `submitted_at` ⇒ una scheda di stasera nasceva **con la data del 3 maggio** |
+| **C** | `TETTO_SORVEGLIANZA_TEST_MS` (bot) | il cronometro parte quando il link **si consegna**, non quando il socio **apre** il quiz |
+
+⚖️ **B è quella che ha ucciso il collaudo, ed è definitiva, non lenta**: `assessment-apply-level`
+confronta la data della scheda con `lastLevelUpdateAt` del socio (3 maggio 19:18) e la scarta come
+vecchia — **giustamente**. La guardia è sana; a mentire era la data. ⇒ Livello mai scritto, quindi
+niente da annunciare, quindi silenzio per sempre — nemmeno il giro dei 15′ la salverebbe.
+
+📏 **Larghezza misurata su PROD, non stimata**: **23** gettoni «riusabili» che hanno già una scheda,
+su **22 soci**; **6** schede già in archivio con una data riscritta all'indietro.
+
+#### 🎓 La lezione, che vale più delle tre cure
+
+Il passaggio di consegne del pomeriggio dava questa **garanzia**:
+> *«le vecchie schede restano bloccate perché `lastLevelUpdateAt` è dopo l'ultima scheda. **La
+> scheda nuova sarà più recente ⇒ passa**.»*
+
+La premessa era falsa: **non è nata nessuna scheda nuova**, ne è stata riscritta una vecchia. È la
+25ª — *la premessa vera che regge una conclusione falsa* — nella forma peggiore, perché stava
+scritta come **rassicurazione**: nessuno va a controllare la riga che dice «qui siamo a posto».
+
+📌 E il gemello, sulla **C**: il codice **dichiarava** la sua ipotesi — *«chi apre il link domani non
+è un caso da coprire qui»*. La categoria «domani» sembrava rara e in realtà copre quasi tutti. ⇒ *Un
+limite dichiarato con l'esempio estremo si fa credere raro: chi lo scrive difende l'esempio, non il
+confine.*
+
+🔨 **CURE A e B — scritte, banco verde, sabotate una per una. NON ancora in servizio.**
+· A: la domanda diventa *«esiste già una scheda per questo gettone?»*, in una funzione **pura**
+  (`gettoneDaRiusare`) che il banco **esegue** invece di cercarla nel testo — 6 casi nuovi;
+· B: `submitted_at: new Date().toISOString()` dentro la riga, con due guardie **testuali** (e si
+  dicono testuali: da lì la riga non si può eseguire).
+⚠️ **Il `deno check` non è girato in locale** — `jsr.io` è bloccato dalla rete della sessione cloud —
+e lo fa `typecheck-edge-functions.yml` in CI.
+
+🗣️ **CURA C — decisa da lui**: *«Il tempo bisogna calcolarlo da quando si inizia a fare il quiz.»*
+⭐ Il fatto **esiste già e nessuno lo scrive**: `azione: 'pesca'` in `assessment-quiz` È il momento in
+cui il quiz si apre (la pagina chiede le domande). Serve una colonna `opened_at` su
+`assessment_tokens` — **non c'è né su PROD né su TEST** ⇒ migrazione su due progetti, il campo nella
+risposta del ponte, e il bot che ci ancora la scadenza. **Non fatta.**
+
+⏳ **LA PROVA FISICA DELLA 84 RESTA APERTA**, e adesso servono due giri distinti: uno che eserciti la
+ⓒ («Tengo questo livello», mai toccata da nessuno) e uno che attraversi la finestra in cui A e B
+sbagliavano. ⛔ La scheda di Marco del 24/08 **resta bloccata**: le cure valgono da lì in avanti, non
+riparano una riga già nata con la data sbagliata.
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
