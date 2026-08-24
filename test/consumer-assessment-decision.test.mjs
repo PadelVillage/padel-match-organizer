@@ -28,6 +28,8 @@ import vm from 'node:vm';
 const QUI = dirname(fileURLToPath(import.meta.url));
 const CARTELLA = join(QUI, '..', 'supabase', 'functions', 'consumer-assessment-decision');
 const src = readFileSync(join(CARTELLA, 'index.ts'), 'utf8');
+/** Il sorgente SENZA commenti: le guardie devono guardare i fatti, non le parole che li raccontano. */
+const codice = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const srcGiro = readFileSync(join(CARTELLA, 'giro-del-test.ts'), 'utf8');
 
 // Stesso estrattore degli altri banchi: salta i commenti (in italiano sono pieni di
@@ -214,6 +216,29 @@ const guardie = [
   //    caso — è la stessa difesa dell'ambiguità del readmodel e del link.
   ['sull\'ambiguo non sceglie', /AMBIGUA/.test(src)],
   ['la regola del giro arriva dal modulo, non da una copia locale', /from '\.\/giro-del-test\.ts'/.test(src) && !/function laProvaEsaurisceIlGiro/.test(src)],
+  // 🚨⭐⭐ DA QUI IN GIÙ SI GUARDA `codice`, NON `src` — e non è pignoleria: la prima stesura
+  // di queste guardie cercava i nomi dentro il FILE, e i commenti che spiegano la cura li
+  // contengono tutti. Sabotaggio fatto: tolto il lancio vero, la guardia restava verde perché
+  // il nome era ancora scritto lì sopra. ⇒ Una guardia che legge le parole invece dei fatti è
+  // esattamente l'errore da cui questo progetto si difende dappertutto, e qui difendeva niente.
+  // ⚡ VOCE 84 ⓒ (24/08/2026) — «se non lo trova variato è un disservizio» (parole sue).
+  // Il livello non aspetta più il cron dei 15 minuti: su «mi fermo» il giro parte SUBITO.
+  ['su «mi fermo» il giro d\'applicazione parte subito', /pmo_dispatch_assessment_apply_level/.test(codice)],
+  ['il giro parte SOLO su «mi fermo» (su «riprovo» non c\'è niente da applicare)',
+    /scelta === SCELTA_MI_FERMO[\s\S]{0,900}pmo_dispatch_assessment_apply_level/.test(codice)],
+  // 🔒 Non si ricopia la regola dell'applicazione: quelle vivono in `assessment-apply-level`,
+  // e una seconda copia divergerebbe al primo ripensamento.
+  // 🚨 Si guarda il CODICE, non il file: la prima stesura di questa guardia cadeva sul
+  // COMMENTO che spiega perché la regola non va ricopiata — cioè leggeva le parole invece dei
+  // fatti, che è esattamente l'errore da cui questo progetto si difende dappertutto.
+  ['la regola dell\'applicazione NON è ricopiata qui',
+    !/applied_level\s*:|applied_at\s*:|\.from\(.pmo_cloud_records.\)/.test(codice)],
+  // 🔒 Si passa dal DISPATCHER, che legge il vault da sé: il segreto delle routine non deve
+  // avere un secondo posto da cui uscire. Chiamare l'edge dritta vorrebbe dire portarcelo.
+  ['non si chiama l\'edge dritta con un segreto in mano', !/x-pmo-routine-secret/.test(codice)],
+  // ⚖️ La risposta al socio non aspetta il giro: la scelta è già scritta e vera. Se il giro
+  // non parte si perde la fretta, non il fatto — quindi l'errore si logga e non esce.
+  ['un giro fallito non fa fallire la risposta', /console\.error[\s\S]{0,140}giro d.applicazione non partito/.test(codice)],
 ];
 
 test('BANCO — la risposta del socio: «ti fermi o riprovi?»', () => {
