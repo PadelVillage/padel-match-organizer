@@ -1926,6 +1926,56 @@ griglia «Livelli». Di quel valore non sa niente — e il gestionale ha letto q
 parlano, sono usciti lo stesso giorno. Quando una forma d'errore si ripete in posti indipendenti
 non è una svista — è un modo di pensare, e va cercato anche dove non l'ha ancora segnalato nessuno.*
 
+---
+
+#### 🔗⭐⭐ 24/08 sera — E IL LIVELLO CHE NASCE DAL TEST NON PARTIVA AFFATTO
+
+🗣️ Aggiunta qui **su sua parola** (*«aggiungila alla 85 e falla subito»*), dopo un'attesa sua che
+non sarebbe mai finita: *«adesso aspetto che il gestionale sincronizzi il livello su matchpoint»*.
+
+📏 **La misura, fatta prima di rispondergli:** `assessment-apply-level` aveva **zero** riferimenti a
+Matchpoint, e gli **unici** a chiamare `matchpoint-clients-update` erano **quattro punti di
+`index.html`** — il salvataggio della scheda socio e l'assistente AI del gestionale.
+⇒ Il livello scritto dal **test** si fermava dentro `pmo_cloud_records`. **Non tardava: non partiva.**
+Aspettare non lo avrebbe portato da nessuna parte, mai.
+
+⚖️ **Non è la stessa cosa del difetto in cima alla voce**, ed è per questo che è un paragrafo e non
+una riga: là il gestionale **prova** e racconta male com'è andata; qui **non prova nemmeno**. La
+prima è una frase che mente, la seconda è un silenzio.
+
+📌 *Una funzione che sta nell'interfaccia esiste solo per chi passa dall'interfaccia.* E il test di
+livello, per disegno, non ci passa: parla direttamente col gestionale — che è la regola del 19/08,
+non un difetto. ⇒ Il buco non nasce da una svista ma dall'incontro fra due scelte giuste.
+
+🔨 **CURA (in due metà, nessuna delle quali duplica niente):**
+· `matchpoint-clients-update` accetta **anche** una routine (`x-pmo-routine-secret`), oltre a una
+  persona dello staff con `cloud_sync`. ⭐ Si allarga **chi può bussare**, non **cosa succede dopo**:
+  il recinto di TEST, il contratto col worker e il ripiego `prev` restano dove sono, in **una** copia;
+· `assessment-apply-level`, applicato il livello **e marcata la scheda**, chiede quella spinta.
+
+🚨 **L'ordine è la cura, non un dettaglio**: si spinge **per ultimo**, quando il fatto è già al
+sicuro. Una spinta fallita **non annulla niente** — finisce negli avvisi del giro, e il socio tiene
+il livello e il messaggio che ha già ricevuto. *Si perde la spinta, non il fatto.*
+🧊 **In simulazione non parte**: `simula` serve a guardare, e una scrittura sul Matchpoint del
+circolo non è una cosa che si guarda.
+🔒 **Fallisce chiusa**: senza `SUPABASE_SERVICE_ROLE_KEY` il segreto non si verifica e la porta resta
+chiusa. Un dubbio non diventa mai un sì verso il gestionale del circolo.
+
+✅ **Banco: 10 guardie nuove, 5 sabotate e viste diventare rosse.** ⚠️ Sono **testuali** e si dicono
+tali: il giro parla col database e con la rete, da lì non si esegue.
+🚨⭐ **E una guardia era DEBOLE, trovata sabotandola e non rileggendola**: quella sulla posizione del
+recinto usava un solo `indexOf`, e cancellando la chiamata avrebbe dato **−1** — minore di
+qualunque cosa — restando **verde proprio mentre la porta spariva**. Adesso pretende che la
+chiamata **ci sia** prima di guardare dov'è.
+📌 *Un `indexOf` che confronta due posizioni è una guardia che passa anche quando una delle due cose
+non esiste.*
+
+⏳ **Manca la prova fisica**: un livello applicato dal test che arriva davvero sulla ficha di
+Matchpoint. Il primo giro utile lo dirà da sé — l'esito della spinta è ora **nel `dettaglio` del
+giro** (`matchpoint: ok | non_riuscita | senza_codice | ambiente_di_prova`).
+⚠️ E resta **sotto** il difetto ① di questa voce: se la griglia dei livelli non si legge, la spinta
+può partire e non attaccare. Le due metà si sommano, non si sostituiscono.
+
 ### **84** — 🚨🚨 Il test di livello: l'esito arriva DOPO 11 MINUTI, e il livello non si scrive MAI
 
 🆕 **APERTA E MESSA IN URGENTI il 24/08/2026, su sua parola** (*«laura aprea ha fatto il test di
