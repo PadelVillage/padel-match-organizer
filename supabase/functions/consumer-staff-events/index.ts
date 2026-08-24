@@ -333,7 +333,17 @@ Deno.serve(async (req: Request) => {
 
   // ── 4. Cosa esce, e cosa si chiude ───────────────────────────────────────────────────
   const eventi: JsonMap[] = [];
+  /**
+   * 🆕🔒⭐⭐ 24/08/2026 sera — GLI ID DI OGNI EVENTO, in parallelo a `eventi`.
+   *
+   * Serve alla chiusura del passo 5: si consegna solo ciò che si è riusciti DAVVERO a
+   * prendere. Senza questa corrispondenza non si potrebbe togliere dalla risposta un fatto
+   * che nel frattempo se n'è preso un altro giro. Vedi il passo 5.
+   */
+  const idsPerEvento: string[][] = [];
   const daChiudere: string[] = [];
+  /** Quanti fatti se li è presi un altro giro mentre questo lavorava. Vedi il passo 5. */
+  let soffiati = 0;
   let nonRiconosciuti = 0;
   let troncato = false;
 
@@ -372,6 +382,7 @@ Deno.serve(async (req: Request) => {
       // ha in testa. ⚠️ `null` su tutto il resto: il bot regge senza, dicendo comunque dov'è.
       da: e.da ?? null,
     });
+    idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);
   }
 
@@ -381,16 +392,68 @@ Deno.serve(async (req: Request) => {
   // conferma del bot — regalerebbe il caso opposto, in cui una conferma persa fa mandare
   // tutto due volte. *Un avviso in meno è un fastidio; un avviso doppio è il difetto che il
   // progetto evita apposta da sempre* (voce 63, gli inviti orfani ritirati in silenzio).
+  /* ═══════════════════════════════════════════════════════════════════════════════════════
+     🚨🔒⭐⭐ 24/08/2026 sera — LA CHIUSURA SI PRENDE I FATTI, NON LI DÀ PER PRESI.
+
+     🗣️ Segnalato da lui: *«oggi mi sono arrivati 2 messaggi di seguito uguali»* — due volte
+     «🎾 Sei in campo · Domani alle 14:00, campo 2».
+
+     📏 Misurato nel registro del bot, al secondo:
+         13:13:54  🤖 bot avviato                          ← un riavvio
+         13:15:56  🔔 detto a Maurizio Aprea: aggiunto — 2026-08-25|14:00|2
+         13:15:56  🔔 fatti del circolo ACCESI: 2 ritirati ora, 1 detti   ← il giro dell'ACCENSIONE
+         13:15:57  🔔 detto a Maurizio Aprea: aggiunto — 2026-08-25|14:00|2   ← di nuovo
+         13:15:57  🔔 circolo: 2 ritirati, 1 detti, 1 scartati              ← un giro NORMALE
+     ⇒ Due giri a un secondo di distanza, e **tutt'e due hanno ritirato gli stessi 2 fatti**.
+
+     🎯 LA CAUSA, ed era qui dentro: la coda si LEGGE al passo 1 (`consegnato_at is null`) e si
+     CHIUDE qui al passo 5. In mezzo c'è tutta la funzione. Due chiamate ravvicinate leggono le
+     stesse righe **prima che una delle due le abbia chiuse**, e poi le chiudono tutt'e due —
+     ognuna convinta di essere sola.
+     📌 *Una coda si consuma prendendo, non guardando e poi prendendo: fra il guardare e il
+     prendere ci sta un altro.*
+
+     ⚖️ E qui NON c'è la rete che hanno gli altri avvisi: quelli si aggiudicano il diritto di
+     parlare con `segnaAvviso`, che è un `update … where colonna is null` — atomico, deciso dal
+     database. Questa strada si fidava della marcatura, che atomica non era.
+
+     🔨 LA CURA: si chiude pretendendo che siano ANCORA LIBERI (`.is('consegnato_at', null)`) e
+     ci si fa dire **quali si è presi davvero** (`.select('id')`). Chi arriva secondo se ne
+     prende zero, e non consegna. È lo stesso meccanismo di `segnaAvviso`, portato dove mancava.
+
+     ⚠️ E la risposta si filtra di conseguenza: un fatto che non si è riusciti a prendere NON
+     esce verso il bot. Un evento fuso da più righe si consegna solo se le si sono prese
+     **tutte** — se un'altra ne ha già una, sta parlando lei.
+     ⚖️ Si sbaglia dalla parte del silenzio, ed è la scelta già dichiarata dieci righe più su:
+     *un avviso in meno è un fastidio; un avviso doppio è il difetto che il progetto evita
+     apposta da sempre*.
+     ═══════════════════════════════════════════════════════════════════════════════════════ */
   if (!dryRun && daChiudere.length) {
-    const { error: chiudiErr } = await service
+    const { data: presiRaw, error: chiudiErr } = await service
       .from('pmo_eventi_staff')
       .update({ consegnato_at: new Date().toISOString() })
-      .in('id', daChiudere);
+      .in('id', daChiudere)
+      .is('consegnato_at', null)
+      .select('id');
     if (chiudiErr) {
       // 🚨 Non si consegna niente se non si è riusciti a chiudere: consegnare senza chiudere
       // significa rimandare gli stessi fatti al giro dopo, cioè scrivere due volte al socio.
       console.error('[staff-events] errore chiusura:', chiudiErr.message);
       return err(500, 'DB_ERROR', 'Errore nella chiusura della coda: niente consegnato.');
+    }
+    const presi = new Set((presiRaw ?? []).map((r) => clean((r as JsonMap).id)));
+    // Si scorre all'indietro: togliendo dal fondo gli indici davanti non si spostano.
+    for (let i = eventi.length - 1; i >= 0; i--) {
+      const miei = idsPerEvento[i] ?? [];
+      if (miei.length && miei.every((id) => presi.has(clean(id)))) continue;
+      eventi.splice(i, 1);
+      idsPerEvento.splice(i, 1);
+      soffiati += 1;
+    }
+    if (soffiati) {
+      // 🚨 NON è un guasto e NON si tace: è la prova che due giri si sono sovrapposti, ed è
+      // l'unico posto da cui lo si può sapere. Zero righe qui = la corsa non è più successa.
+      console.warn(`[staff-events] ${soffiati} fatti già presi da un altro giro: non li consegno.`);
     }
   }
 
@@ -446,6 +509,9 @@ Deno.serve(async (req: Request) => {
     troncato,
     non_riconosciuti: nonRiconosciuti,
     coperti_da_ricevuta: coperti.length,
+    // 🆕 Quanti fatti se li è presi un altro giro sovrapposto (vedi il passo 5). Il bot non lo
+    // usa per decidere niente — lo scrive nel registro, ed è così che la corsa si vede.
+    gia_presi_da_un_altro_giro: soffiati,
     dry_run: dryRun,
   });
 });
