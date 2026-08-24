@@ -68,8 +68,19 @@ const decodi = (s: string) =>
  */
 export function slotDaHtml(html: string): SlotLibero[] {
   const nomi = new Map<string, { campo: string; tipo: string | null }>();
-  for (const m of html.matchAll(/LabelPista_(\d+)"[^>]*>([^<]+)</gi)) {
-    const testo = decodi(m[2]).trim();                       // es. «Campo 4 (Indoor)»
+  // 🚨 Si legge TUTTO lo <span> e poi si tolgono i tag di dentro, invece di
+  //    prendere il testo subito dopo `>`. Misurato il 24/08/2026 con la prova
+  //    fisica sulla funzione deployata: lo stesso portale, alla stessa ora,
+  //    serve DUE markup diversi per la stessa etichetta —
+  //      <span id="…LabelPista_0" …>Campo 1 (Indoor)</span>          e
+  //      <span id="…LabelPista_0" …><b>Campo 1 (Indoor)</b></span>
+  //    Con la lettura ingenua la seconda variante non dava il nome, e i campi
+  //    uscivano come «risorsa 13»: leggibile da un tecnico, non da un socio.
+  //    ⚖️ Il difetto NON si vedeva dal banco né dall'HTML salvato — solo
+  //    chiamando la funzione vera. È la ragione per cui la prova fisica non è
+  //    una formalità: qui il verde di 20 prove su 20 non ha visto niente.
+  for (const m of html.matchAll(/LabelPista_(\d+)"[^>]*>([\s\S]*?)<\/span>/gi)) {
+    const testo = decodi(m[2].replace(/<[^>]*>/g, '')).trim();  // es. «Campo 4 (Indoor)»
     const pezzi = testo.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
     nomi.set(m[1], { campo: (pezzi?.[1] ?? testo).trim(), tipo: pezzi?.[2]?.trim() ?? null });
   }

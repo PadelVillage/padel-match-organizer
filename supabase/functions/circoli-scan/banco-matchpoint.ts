@@ -28,8 +28,12 @@ const prova = (nome: string, atteso: string, ottenuto: string) =>
 let modo: 'ok' | 'login' | 'manutenzione' | 'controlli-cambiati' | 'guasto' = 'ok';
 let ultimoModulo = '';
 
-const scheda = (i: number, campo: string, ora: string, fine: string, idr: string, etichetta = 'LabelPista') => `
-  <span id="ContentPlaceHolderContenido_RepeaterHorariosDisponibles_${etichetta}_${i}">${campo} (Indoor)</span>
+// 🚨 `grassetto` NON è un capriccio del banco: lo stesso portale, alla stessa
+//    ora, serve l'etichetta nei due modi — nuda o avvolta in <b>. Misurato il
+//    24/08/2026 dalla prova fisica, dopo che la variante col <b> aveva fatto
+//    uscire i campi come «risorsa 13». Il banco lo prova adesso in tutti e due.
+const scheda = (i: number, campo: string, ora: string, fine: string, idr: string, etichetta = 'LabelPista', grassetto = false) => `
+  <span id="ContentPlaceHolderContenido_RepeaterHorariosDisponibles_${etichetta}_${i}">${grassetto ? `<b>${campo} (Indoor)</b>` : `${campo} (Indoor)`}</span>
   <a id="ContentPlaceHolderContenido_RepeaterHorariosDisponibles_HyperLinkAcceder_${i}"
      href="Match.aspx?id=abc&amp;idrecurso=${idr}&amp;fecha=25-08-2026&amp;horainicio=${ora}&amp;horafin=${fine}&amp;iddeporte=2">Nuova Partita</a>`;
 
@@ -50,7 +54,7 @@ const finto = Deno.serve({ port: 8792, onListen: () => {} }, async (req) => {
   const et = modo === 'controlli-cambiati' ? 'LabelXXX' : 'LabelPista';
   return html(`<html>${viewState}
     ${scheda(0, 'Campo 1', '9:30', '11:00', '13', et)}
-    ${scheda(1, 'Campo 4', '9:30', '11:00', '16', et)}
+    ${scheda(1, 'Campo 4', '9:30', '11:00', '16', et, true)}
     ${scheda(2, 'Campo 4', '21:00', '22:30', '16', et)}</html>`);
 });
 
@@ -62,6 +66,8 @@ modo = 'ok';
 const buono = await sondaMatchpoint(BASE, '2026-08-25', chiedi);
 prova('① legge tutti gli slot', '3', String(buono.slot.length));
 prova('① il nome del campo è quello del circolo', 'Campo 4', buono.slot[1].campo);
+prova('① legge il nome anche se il portale lo mette in <b>', 'Campo 4', buono.slot[1].campo);
+prova('① e non si porta dietro i tag', 'no', /[<>]/.test(buono.slot[1].campo) ? 'sì' : 'no');
 prova('① tiene ora di inizio e fine', '9:30-11:00', `${buono.slot[1].ora}-${buono.slot[1].oraFine}`);
 prova('① la data va nel formato della tendina', 'sì', ultimoModulo.includes('25%2F08%2F2026') ? 'sì' : 'no');
 prova('① chiede tutta la giornata', 'sì', ultimoModulo.includes('CheckBoxSinHorario') ? 'sì' : 'no');
