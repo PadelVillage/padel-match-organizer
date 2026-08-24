@@ -192,6 +192,44 @@ export function verdettoScrittura(o: {
  */
 export const MOTIVO_SCRITTURA_RIFIUTATA = 'scrittura_rifiutata';
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// 🚨⭐⭐ LA TERZA VIA DEL «NON LO SO»: IL CANCELLO CHE UCCIDE LA NOSTRA EDGE — voce 83, 23/08/2026.
+//
+// 📏 IL FATTO, letto nel registro dell'edge e non supposto. La notte del 23/08 il committente
+// annulla dal bot il 31/08 · 09:00 · Campo 1:
+//
+//   21:37:29  [booking-write] cancel diritto ORGANIZZATORE … Maurizio è il primo di 4
+//   21:39:59  [booking-write] cancel KO HTTP 504:
+//             {"code":"IDLE_TIMEOUT","message":"Request idle timeout limit (150s) reached"}
+//
+// Il bot ha detto *«non ci sono riuscito, la tua prenotazione è rimasta com'era»*. **L'annullo
+// era passato**: il sync delle 21:44:04 ha marcato `deleted` il `booking|9602`, e su Matchpoint
+// alle 23:43 il Campo 1 era vuoto. Un «no» falso su una scrittura avvenuta.
+//
+// 🔎 E CHI HA RISPOSTO NON ERA NÉ IL WORKER NÉ LA NOSTRA EDGE. Sono passati **150 secondi
+// esatti**: è la piattaforma che ha ucciso l'invocazione interna di `matchpoint-bookings-cancel`
+// e ha restituito un 504 al posto suo — mentre Playwright, di là, stava ancora lavorando e ha
+// finito. È **lo stesso tetto strutturale** che `MARGINE_SCRITTURA_S` qui sopra cita già.
+//
+// ⇒ **Le vie del «non lo so» sono TRE, e la macchina ne conosceva due.** La voce 23 copre il
+// worker che non risponde, la 72 il worker che rifiuta senza sapere; questa è la terza —
+// *nessuno dei due ha mai parlato*, e a rispondere è stato il cancello. Arriva come una risposta
+// HTTP ben formata, per questo nessuna delle due guardie la vedeva.
+//
+// 🚨 E NON ERA UN PROBLEMA DEL SOLO ANNULLO. Sull'annullo il verso sbagliato è innocuo — disdire
+// due volte non fa danno — ma questa funzione la chiama il ramo **`create`**, dove lo stesso 504
+// usciva come `scrittura_rifiutata` e il bot diceva *«rifalla»*: **la doppia prenotazione**, cioè
+// il danno esatto che la voce 23 esiste per evitare, per una strada che nessuno aveva chiuso.
+//
+// ⚖️ LA REGOLA, ed è la stessa forma di `CODICI_FALLIMENTO_CERTO` un piano più in su: **si
+// riconosce il rifiuto NOSTRO, e tutto il resto è ignoto.** Le nostre edge interne rifiutano
+// per una porta sola — `err(status, code, message)`, che scrive sempre `error: '<CODICE>'` — ⇒
+// una risposta **senza `error`** non l'ha scritta nessuno di noi: nessuno ha rifiutato niente.
+// 📌 Il pregio è che non elenca i codici del cancello: `IDLE_TIMEOUT` non compare qui dentro, e
+// un codice nuovo della piattaforma — o un corpo illeggibile — cade dalla parte giusta da sé.
+// Fallisce CHIUSA, come `dettaglioPerIlBot`.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
 /**
  * La risposta di una edge di scrittura sta dicendo **«non lo so»**?
  *
@@ -214,14 +252,24 @@ export const MOTIVO_SCRITTURA_RIFIUTATA = 'scrittura_rifiutata';
  * traducono un elenco chiuso di motivi — quindi mandargli `esito_ignoto` oggi gli farebbe dire
  * una frase da prenotazione su un'uscita, o cadere nel generico.
  * ⚖️ E il danno non è simmetrico, che è la ragione per cui l'ordine è questo: **prenotare due
- * volte occupa un campo, disdire due volte no**. Il caso che fa male è coperto.
+ * volte occupa un campo, disdire due volte no**.
+ * 🔄 **Qui c'era scritto «il caso che fa male è coperto», e il 23/08 si è misurato che non lo
+ * era**: la `create` la chiamava sì, ma la funzione non conosceva la terza via del riquadro qui
+ * sopra ⇒ un 504 del cancello le usciva come «rifiutata». *Chiamare la guardia giusta non serve
+ * se la guardia non sa riconoscere quello che passa.* Dal 24/08 la conosce, e adesso la frase è
+ * vera. ⚠️ Resta vera **solo per la `create`**: gli altri quattro gesti non la chiamano ancora.
  * ⇒ Il resto è un lavoro sui DUE repo insieme (le frasi di là, il marchio di qua), non una riga
  *   da aggiungere qui: chi lo farà cominci dalle frasi, non da questa funzione.
  */
 export function esitoIgnotoDaRisposta(data: unknown): boolean {
   const d = (data ?? {}) as Record<string, unknown>;
   if (d.esitoIgnoto === true) return true;
-  return String(d.error ?? '').trim() === 'WORKER_ESITO_IGNOTO';
+  const codice = String(d.error ?? '').trim();
+  if (codice === 'WORKER_ESITO_IGNOTO') return true;
+  // ⭐⭐ LA TERZA VIA, ed è la voce 83: senza un codice NOSTRO nessuno ha rifiutato niente.
+  // Vedi il riquadro qui sopra — questa riga è tutta la differenza fra «non è passata» e «non
+  // lo so» quando a rispondere è stato il cancello invece della nostra edge.
+  return codice === '';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
