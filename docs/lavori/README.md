@@ -1609,8 +1609,28 @@ successo davvero, invece di annunciarlo prima.
 della stessa persona nella copia, ed è la famiglia della 69. ⇒ Quando il livello si applicherà,
 **su quale riga**? La domanda è della 69, ma la risposta serve qui.
 
-⏳ **Cosa manca per chiuderla**: le tre cure, e per ognuna una prova **fisica** — un test vero fatto
-da una persona vera, con l'esito che arriva in **secondi** e il livello che compare **sulla scheda**.
+🧪 **IL COLLAUDO DEL 24/08 CON LIDIA COMES — cosa ha provato e cosa ha fatto CADERE.**
+
+| | esito |
+|---|---|
+| **ⓑ il sesso** | ✅ **PROVATA**: `genere: F` **ripescato dalla scheda**, `staff_status` **vuoto** (non più `review`), quiz `pass`, livello calcolato 2,5. La strada che teneva ferma Laura è aperta |
+| **ⓐ i secondi** | ❌ **CADUTA**, e il difetto era della cura: l'esito è arrivato alle **11:00:50** contro una consegna delle **10:48:41** — **12 minuti**, cioè col giro dei 15′. La sorveglianza **non è mai partita** |
+| **ⓒ la promessa** | ⏳ non ancora osservata: dipende dalla scelta del socio, che al momento del collaudo non era ancora arrivata |
+
+🚨⭐⭐ **PERCHÉ È CADUTA, e la lezione vale più della cura**: la sorveglianza si accendeva in **un
+punto solo** — il muro «mi serve il tuo livello». Lidia il link l'ha avuto dal **promemoria
+gentile** (`10:45:50 🎾 promemoria del livello a Lidia Comes`), e da quella porta non partiva
+niente. ⇒ **Le porte sono TRE**: il muro, il promemoria, e il bottone «rifai il test» dopo una
+bocciatura.
+⚖️ **È la trappola del 23/08 in persona** — *una regola messa dove si DISEGNA e non dove si ESEGUE*
+— rifatta **tre ore dopo averla letta**, con il banco verde e il deploy riuscito. 📌 *Un banco che
+prova la macchina non prova che qualcuno la accenda.*
+✅ **Curata**, e la cura non sono le due righe: è il caso **17quater**, che le porte le **conta** —
+ogni file che fabbrica il bottone del test deve accendere la sorveglianza, altrimenti cade.
+Sabotato due volte, compresa una quarta porta finta in un file nuovo.
+
+⏳ **Cosa manca ancora per chiuderla**: la prova fisica della ⓐ **col difetto vero davanti** — una
+consegna che passa dal **promemoria** e che l'esito raggiunge in secondi — e la ⓒ.
 
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
