@@ -1512,6 +1512,23 @@ parla col database, da lì non si esegue.
 ⏳ **MANCA LA PROVA FISICA**, e ha una forma precisa: un gesto della segreteria che attraversa un
 **riavvio del bot** senza produrre il doppione. Non si provoca a comando.
 
+🚨⭐⭐ **E LA FORMA GIUSTA DI QUELLA PROVA NON È «non è arrivato un doppione»** — chiesto da lui il
+24/08 a mezzanotte (*«92 non ho capito cosa bisogna fare»*), e la risposta ha cambiato la scheda.
+Aspettare che una cosa **non** succeda è la sonda guardata troppo presto: un silenzio verde che
+vuol dire *«non è ancora capitata l'occasione di sbagliare»*, cioè lo **zero del 23/08** un'altra
+volta. ⇒ La prova è **la firma della cura**: `gia_presi_da_un_altro_giro` **maggiore di zero** nel
+registro — due giri che si sono davvero sovrapposti — e **un solo** messaggio partito.
+📌 *Una cura che impedisce una cosa si prova vedendola passare per il punto in cui prima sbagliava,
+non vedendo che non è successo niente.* È la stessa forma della voce 77.
+
+📏 **PERCHÉ NON C'È NIENTE CHE LUI DEBBA FARE, misurato in `promemoria.ts`:** i fatti si ritirano
+ogni **20 s** (`PERIODO_CIRCOLO_MS`) e il giro dell'accensione parte **60 s** dopo il riavvio
+(`RITARDO_AVVIO_MS`). ⇒ La finestra in cui un fatto è ancora libero quando un secondo giro lo legge
+è di **secondi**, e non si centra a comando: il gesto della segreteria dovrebbe cadere dentro quei
+20 secondi **e** i due giri finire a meno di un secondo l'uno dall'altro. Il bot si riavvia da sé
+**64+ volte**: l'occasione arriva, e chi la deve guardare è **la sessione nel registro**, non lui sul
+telefono.
+
 ### **93** — 📅 Le due date nel «mio livello», e la manina che sembrava un quarto giocatore
 
 🆕 **APERTE il 24/08/2026 in tarda serata, su sue due richieste**, curate insieme perché toccano la
@@ -1546,8 +1563,38 @@ restava il solo `callback_data`. ⇒ *Una difesa sola, che reggeva per caso.*
 fallo» su `✅ Ci sto`), e un caso pretende che i due restino **diversi**.
 
 ✅ **Banco: 1561 prove verdi**, 6 casi nuovi sulle date e 1 sul segno, tutti sabotati e visti cadere.
-⏳ **MANCA LA PROVA FISICA** per tutt'e due: aprire **📊 Il mio livello di gioco** e guardare la
-frase, e aprire il **«togli»** e guardare la tastiera. È lavoro di due minuti sul telefono.
+
+✅ **PROVA FISICA FATTA il 24/08 a mezzanotte, da lui sul telefono: «93 OK»** — le due date nel «mio
+livello» e il **✅** del bottone che esegue, guardati tutti e due.
+
+⏳ **E LA VOCE RESTA APERTA PER LA TERZA METÀ**, che è sua e l'ha dichiarata lui: *«il resto della
+93, cioè i giorni mancanti, la controllo domattina»*. La sua richiesta diceva anche *«ogni volta che
+richiama la sezione gli fa vedere i giorni mancanti»*, e un conto alla rovescia si prova **vedendolo
+scendere**, non vedendolo una volta.
+
+🚨⭐⭐ **E QUANDO SCENDE NON È «DOMATTINA»: È MISURATO, E DOMATTINA PRESTO DIREBBE ANCORA 30.**
+Il conto è `ceil((sblocco − adesso) / 24h)`, e lo sblocco è l'**istante** della scelta più 30 giorni
+— non la mezzanotte. ⇒ Il numero cala all'**ora del giorno** in cui è stato fatto il test, non
+all'alba:
+
+| socio | sceglie | passa a «fra 29 giorni» |
+|---|---|---|
+| **Laura Aprea** | 24/08 10:01 | **25/08 dalle 10:01** (ora di Roma) |
+| **Marco Aprea** | 24/08 22:03 | **25/08 dalle 22:03** |
+
+⇒ La prova che vale è il telefono di **Laura dopo le 10:01**: deve leggere **«fra 29 giorni»** con la
+data **invariata** (*«da mercoledì 23 settembre»*) e la prima riga **invariata** (*«Hai fatto il test
+lunedì 24 agosto»*). Un 30 letto alle 8 non sarebbe un guasto — sarebbe la sonda guardata troppo
+presto, cioè lo **zero letto prima che potesse succedere qualcosa** del 23/08.
+
+📏 **RESIDUO DICHIARATO, misurato controllando la frase e non chiesto da nessuno:** `frasePerIlTest`
+accetta `oggi` per dire *«oggi»/«domani»* al posto della data, **e nessuno dei quattro chiamanti lo
+passa** (`campiDelTest` non lo versa). ⇒ Quel ramo non lo raggiunge nessuno: la data esce **sempre**
+per esteso. Sulla riga *«Hai fatto il test…»* è la forma migliore e lui l'ha approvata così; l'unico
+punto dove si vedrebbe è l'ultimo giorno d'attesa, che direbbe la data invece di *«domani»*.
+⚖️ **Non è stato toccato di proposito**: cambiarlo cambierebbe la schermata che ha appena approvato,
+e obbligherebbe a rifare la prova. Sta scritto qui perché una difesa che nessuno può far cadere è
+esattamente ciò che questo file impara a non lasciare in silenzio.
 
 ### **90** — ⏳ Una bolla sola che si aggiorna, invece di due messaggi che si smentiscono
 
@@ -2059,6 +2106,16 @@ non esiste.*
 ⏳ **Manca la prova fisica**: un livello applicato dal test che arriva davvero sulla ficha di
 Matchpoint. Il primo giro utile lo dirà da sé — l'esito della spinta è ora **nel `dettaglio` del
 giro** (`matchpoint: ok | non_riuscita | senza_codice | ambiente_di_prova`).
+
+🚨⭐⭐ **E LE DUE APPLICAZIONI DI OGGI NON SERVONO: SONO ARRIVATE PRIMA DELLA CURA, misurato.**
+La cura è atterrata su `main` col commit `421d37c` alle **22:47:51** (ora di Roma). I due livelli
+applicati oggi dal test sono di **prima**: Laura alle **10:15:03**, Marco alle **22:03:44** —
+quarantaquattro minuti prima. ⇒ Il loro **2,5 non è mai partito** verso Matchpoint e **non partirà
+da solo**: sulle loro fiche c'è ancora il livello vecchio, e quel divario è il difetto **prima**
+della cura, non la cura fallita.
+⚖️ Detto perché la trappola è pronta: guardare quelle due fiche, vedere il livello vecchio e
+concludere *«la cura non funziona»* sarebbe l'⑧ della 48ª — **una premessa vera che regge una
+conclusione falsa**. La 85 vuole un socio che applichi un livello **dal 24/08 22:47 in avanti**.
 ⚠️ E resta **sotto** il difetto ① di questa voce: se la griglia dei livelli non si legge, la spinta
 può partire e non attaccare. Le due metà si sommano, non si sostituiscono.
 
