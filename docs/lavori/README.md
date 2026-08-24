@@ -1755,8 +1755,11 @@ legge costretto a indovinare*. E la cura è la stessa: **far uscire il fatto ins
 
 🔨 **CURA (bot PR #72)** — tre punti, non uno:
 · **dove il link ESCE** (muro, promemoria, offerta, invito, scheda): *«È la tua **seconda prova di
-  tre**, e vale l'ultima che fai»*; sull'ultima diventa *«È la tua **ultima prova delle tre**:
-  quello che esce vale»*. ⛔ Non compare in **attesa** né nelle strade della **segreteria**: dire
+  tre**, e vale l'ultima che fai»*; sull'ultima diventa
+  ***«È LA TUA ULTIMA PROVA DELLE TRE: QUELLO CHE ESCE VALE.»*** — tutta maiuscola e in
+  grassetto **su sua richiesta**, guardando il messaggio vero sul telefono. ⚖️ **Solo l'ultima**:
+  è l'unica riga che annuncia una cosa **irreversibile**, e se gridassero anche la prima e la
+  seconda non griderebbe più nessuna. Un caso lo pretende nei due versi, sabotato di là e di qua. ⛔ Non compare in **attesa** né nelle strade della **segreteria**: dire
   «è la tua seconda di tre» a chi non ne può fare nessuna è il vicolo cieco con un numero attaccato;
 · **la domanda**: *«riprovare per salire ancora»* prometteva il **migliore**. Adesso dice che vale
   l'ultima, e sull'ultima dice cosa succede dopo;
