@@ -1784,6 +1784,81 @@ Adesso passano tutti da `campiDelTest(stato)`, e un caso lo pretende.
 ⏳ **Prova fisica da fare**: le frasi vanno **lette su un telefono**. La prima occasione è la terza
 prova di Fabiola, che è anche il caso «ultima prova delle tre».
 
+#### ⚡ 24/08 — dai 15 minuti ai ~6 secondi, e il pezzo che mancava era l'INNESCO
+
+📏 **Collaudo con Fabiola, terza prova**, misurato al secondo:
+
+| ora (Roma) | cosa |
+|---|---|
+| 12:48:12 | `⏱️ [sorveglianza-test] comincio` — **la porta della griglia arma**: la cura del pomeriggio è viva |
+| 12:49:28 | scheda consegnata al gestionale |
+| — | **silenzio**: la sorveglianza chiede ogni 15″ a un gestionale che non ha niente da dire |
+| 12:53:22 | giro d'applicazione lanciato **a mano** |
+| 12:53:23 | livello **2,5** sulla scheda — **0,7 secondi** |
+| 12:53:44 | `🔔 esito del test a Fabiola · sorveglianza: smetto` |
+
+⇒ **Tre sintomi (nessuna notifica · nessun livello detto · nessun livello in scheda), UNA causa.**
+
+🎯 A tacere era la porta ② di `siPuoAnnunciareIlTest` nel bot: *a test superato si aspetta che il
+livello sia DAVVERO nella scheda*. Quella porta ha un'uscita — `puo_scegliere` — che rompe lo
+stallo circolare per le prove **con** una scelta da fare. La **terza** una scelta non ce l'ha
+(chiude il giro da sé) ⇒ per lei la porta resta **intera**, e il livello lo scriveva solo il cron.
+⚖️ Sulla terza prova la lentezza del cron non era «si perde la fretta, non il fatto»: era
+**silenzio totale**, sull'unica prova che vale da sé.
+📌 E la lacuna era **dichiarata** in `consumer-assessment-decision` la mattina stessa — *«il cron
+RESTA, ed è la rete… e la terza prova, che chiude il giro da sé»* — creduta innocua perché nessuno
+l'aveva guardata **dall'altro lato**, dove il bot tace aspettando quel livello.
+⇒ *Un limite dichiarato in un file non è innocuo finché non lo si guarda dall'altro.*
+
+🔨 **Due cure, in servizio:**
+· **gestionale** — consegnata la scheda, il giro d'applicazione parte **subito**. A **ogni** scheda,
+  non solo alla terza: decidere lì «è la terza?» sarebbe una seconda copia della regola del giro.
+  Si chiama il **dispatcher** (il segreto sta nel vault), non si aspetta l'esito, non può far
+  fallire la consegna del quiz;
+· **bot** — la sorveglianza chiede ogni **5 secondi** invece di 15. 🗣️ Sua misura: *«dobbiamo stare
+  entro i dieci secondi»*. Con 15 il peggio era fuori **per costruzione**. Costo dichiarato: chi
+  apre la porta e il test non lo fa paga il tetto intero, ~240 domande al ponte invece di ~80.
+
+⇒ La catena diventa **~6 secondi**. ⏳ Per andare **sotto il secondo** la strada è un'altra e non è
+stata fatta: **il gestionale che CHIAMA il bot** quando il livello è scritto, invece del bot che
+chiede ogni tot. È la stessa freccia di *il gestionale SA, il bot DICE*, presa dal verso di chi sa.
+
+🚨 **E una guardia nuova ha trovato un guasto nel codice della cura stessa**: un `*/` dentro un
+commento a blocco lo **chiude a metà** (avevo scritto il cron come `*` `/15`), e la funzione non
+sarebbe partita su Deno. In un repo dove i commenti sono lunghi quanto il codice e pieni di
+percorsi e cron non è un caso limite.
+
+#### 🚨 24/08 — il bot si è contraddetto in quattro minuti: `/livello` diceva il falso
+
+```
+12:53:44  esito del test a Fabiola  → «Il tuo livello è Base»
+12:57:08  /livello                  → «Il tuo livello non è ancora stato definito»
+12:58:39  [griglia] scegli_ora      → il muro NON scatta: il gestionale sa che ce l'ha
+```
+
+📏 La scheda socio diceva **2,5 dalle 12:53:23**. A sbagliare **non era il gestionale**.
+
+🎯 E si è visto **da cosa mancava**: quella risposta non portava né la riga né il bottone del test,
+che il codice attacca **sempre** quando conosce lo stato del livello — e lo conosce solo se lo
+strumento `profilo` è stato interrogato. ⇒ **Il modello ha risposto su un fatto senza chiederlo a
+chi lo sa**, ripescando una frase vecchia dal filo della conversazione.
+⚖️ È *il gestionale SA, il bot DICE* violato nella forma peggiore: non un ritardo, non una frase
+infelice — **un fatto inventato**, che contraddice quello vero di quattro minuti prima.
+
+🔨 **CURA (bot PR #75, in servizio)**: `/livello` **non passa più dal modello**, esattamente come
+`/prenota` e `/prenotazioni` — che infatti non sbagliano mai. La frase la scrive il codice sul dato
+appena letto, ed è la **stessa** della riserva (`fraseDelLivello`, estratta apposta): cambia solo la
+premessa, e la premessa non è la frase.
+🚨 I **due cancelli** come nello strumento `profilo` (`level_assessed` **e** la tabella delle fasce);
+**non riconosciuto** ⇒ non si dice né sì né no (voce 81); ⚠️ e **non si ripiega sul modello** quando
+il ponte tace, al contrario di `/prenotazioni` — il ripiego sarebbe il difetto che questa porta cura.
+🔒 Una guardia vecchia è caduta bene: contava le strade che offrono il test (*«devono essere 2»*) ed
+è caduta perché ne è nata una terza. **Contare è già stato l'errore della sorveglianza, lo stesso
+giorno, due volte** ⇒ adesso pretende l'**invariante**: chi offre il test dice a chi sta parlando.
+
+⏳ **NON COPRE chi la domanda la SCRIVE** («che livello ho?»): quella strada passa ancora dal
+modello e può risbagliare. Serve una rete a parte, e non è stata fatta.
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
