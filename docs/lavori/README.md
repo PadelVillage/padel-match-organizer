@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **7** — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **8** — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata nella kb, il resto è su un ramo e **aspetta il deploy del bot**, che è un gesto suo) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 7
+## 🔴 URGENTI — 8
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,98 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **87** — 🧠 Il bot non sa niente della RUBRICA, del TEST DEL LIVELLO e dei suoi stessi AVVISI
+
+🆕 **APERTA il 24/08/2026, su sua domanda**: *«se uno scrive al bot facendogli delle domande lui
+sa rispondere su tutto quello che abbiamo sviluppato per lui?»* — e la risposta misurata è **no**.
+⬆️ **Messa in URGENTI da lui** (*«registrala come voce e fai la cura, mettila tra le urgenti»*).
+⚖️ **Cosa scavalca, dichiarato**: nulla di sostanziale. Passa davanti alla **86** e alla **65**,
+che aspettano tutt'e due un gesto di qualcun altro; non tocca la **84** né la **85**, che hanno una
+socia vera ferma adesso. La cura è di sole parole e non ha rischiato niente di quello.
+
+📏 **LA MISURA, e non è una sfumatura: è uno ZERO.** Nel cervello dell'agente — `prompt/intenti.ts`,
+`agents/assistente-padel.ts` e i sette tool — la parola **«rubrica» compare zero volte**. Idem
+«quiz» e «autovalutazione». E nella kb la chiave `livello` era **un oggetto vuoto `{}`**.
+⇒ Tre funzioni in servizio da settimane — la **rubrica** (5/08), gli **inviti**, il **test del
+livello** (voce 61) — su cui il bot, a chi gliene chiedeva **a parole**, non aveva niente da dire.
+
+🔎 **LA CAUSA È STRUTTURALE, ed è la cosa che vale oltre questo caso.** I comandi del menu ☰ sono
+intercettati in `bot.ts` **prima** dell'agente (`/rubrica`, `/prenota`, `/prenotazioni`, `/aiuto`),
+e la ragione scritta lì è giusta: *«questa porta deve rispondere anche nei giorni in cui Gemini
+tace»*. Ma ha un prezzo che nessuno stava pagando consapevolmente:
+⇒ **ogni scorciatoia che scavalca l'agente gli sottrae un pezzo di mondo.** Chi tocca il bottone
+arriva; chi scrive la stessa cosa finisce su un modello che non sa che quella cosa esista. E più il
+menu cresce — cioè più il bot migliora — più il modello resta indietro, **senza che si veda**,
+perché dal bottone funziona tutto.
+📌 *Una porta deterministica risponde al socio e non insegna niente al modello. Chi aggiunge un
+comando deve aggiungere anche l'intento, o costruisce una funzione che metà dei soci non troverà.*
+
+⚖️ **E il ROVESCIO, misurato nello stesso giro**: sugli **avvisi** il difetto era l'opposto — il
+contenuto nella kb **c'era già** e scritto bene (`avvisi_dal_circolo` ha perfino un
+`cosa_dire_al_socio`), ma la descrizione del tool `conoscenza` annunciava *«indirizzo, dotazioni,
+come si paga, finestra, numeri»*. ⇒ **Una biblioteca con l'insegna sbagliata resta chiusa**: il
+modello sceglie se chiamare uno strumento dalla sua **descrizione**, non da cosa c'è dentro.
+
+🩹 **CURATA il 24/08, in tre pezzi — e il contenuto NON è finito nel prompt.** È *il gestionale SA,
+il bot DICE* preso alla lettera: quanto dura un invito, quante prove ha un giro del test, chi si può
+invitare sono **regole del circolo**, e nel prompt sarebbero una seconda copia da riallineare a mano.
+Nel prompt va solo la riga che manda il modello a **chiedere**, più i **divieti** — che stanno lì
+perché sono regole sul bot, non sul circolo.
+
+| | dove | cosa |
+|---|---|---|
+| ① | **kb**, PROD `qqbf…` e TEST `cudi…` | tre chiavi: `rubrica`, `inviti`, e `livello` riempita (era `{}`). Nessun redeploy: in servizio nell'istante della `update` |
+| ② | `prompt/intenti.ts` (bot) | tre voci nuove fra quelle che ESEGUE — la rubrica, il test del livello, «perché mi è arrivato questo messaggio?» |
+| ③ | `tools/conoscenza.ts` (bot) | la descrizione dichiara ciò che la kb sa davvero |
+
+🚨 **E una CORREZIONE, che è la parte che diceva il falso.** `disdetta.come_si_disdice` mandava il
+socio *«ai bottoni sotto «Le tue prossime partite»»* — voce di menu che **non esiste più**.
+⭐⭐ Il pezzo che vale: nel bot **c'è già un caso che difende esattamente da questo**
+(`test/seconda-porta.test.ts`: *«manda ancora il socio a “Le tue prossime partite”, che nel menu non
+c'è più»*) — e legge **nove file sorgente**. La kb sta in un **database**: la guardia non poteva
+vederla, ed è passata verde mentre il difetto viveva.
+📌 *Una guardia che legge i sorgenti non protegge il testo che sta nel database — e il testo nel
+database è quello che il socio legge davvero.*
+⇒ Il nome del bottone è stato **TOLTO, non sostituito**: in tre settimane quella porta ha cambiato
+nome tre volte (`Le tue prossime partite` → `Le tue partite` → `Le mie prenotazioni`), e una kb che
+la nomina è la **quarta copia** che andrà a marcire. La frase adesso dice **dove** si apre — il menu
+☰ — non come si chiama oggi.
+
+✅ **PROVATO, e detto per quello che è:**
+- ✅ **kb**: scritta prima su TEST, poi su PROD, e **riletta sul bersaglio** dopo ciascuna — tre
+  chiavi presenti, la frase vecchia sparita, e il resto della kb **intatto** (dotazioni 3, numero
+  segreteria, finestra 15) — perché un `||` su un `jsonb` è il genere di gesto che può portarsi via
+  un ramo senza dirlo;
+- ✅ **banco del bot 1514/1514**, `tsc` pulito;
+- ✅ **caso nuovo** `test/il-modello-sa-quel-che-sa-il-menu.test.ts`, che difende la **regola** e non
+  la parola: *ogni voce del menu ☰ deve avere un intento corrispondente* ⇒ vale anche per la voce
+  che qualcuno aggiungerà domani. **Sabotato**: togliendo «rubrica» dagli INTENTI diventa rosso.
+
+⏳ **RESTA APERTA, e manca UNA cosa sola: il deploy del bot e la prova fisica.**
+🚨 Metà ① è **già viva** (la kb non ha deploy); metà ② e ③ stanno su un ramo e **il bot sulla VM
+gira ancora col prompt vecchio** — quindi oggi il modello ha la conoscenza in mano ma nessuno gli
+ha ancora detto di andarla a prendere. ⇒ Il deploy è `deploy-bot-hetzner.yml`, bersaglio **`soci`**
+(va scritta la parola `SOCI`), ed è un gesto **suo**: da qui non si fa senza dirlo.
+📌 **La prova fisica che la chiude** — cinque domande scritte a mano al bot, non toccate coi
+bottoni: *«come funziona la rubrica?»*, *«come aggiungo un amico?»*, *«come faccio ad avere un
+livello?»*, *«quanto dura un invito?»*, *«perché mi è arrivato questo messaggio?»*. Oggi le prime
+due non hanno risposta; dopo il deploy devono averla, e **senza inventare**.
+
+📉 **Cosa NON è stato curato, e sta scritto perché non passi per fatto:**
+· **il modello riceve la kb GREZZA.** `conoscenza` gli consegna l'oggetto intero, `_nota`/`_stato`/
+  `_fonte` compresi — righe come *«Voce 68, in servizio dal 21/08/2026»*. `faq.ts` i campi li prende
+  a uno a uno **proprio per questo** («dentro `disdetta` convivono frasi per il socio e istruzioni
+  per il MODELLO»); da questa strada quella protezione non c'è. Non è una voce nuova: è un fatto
+  misurato, e la decisione se diventi un lavoro è sua;
+· **la rubrica resta senza BOTTONE.** Il bot adesso sa spiegarla e sa dire dove si apre, ma non ha
+  un `apri_rubrica` come ha `apri_partita`: il socio resta con delle **parole**, non con un tocco.
+  ⚖️ Non è un vicolo cieco — la strada c'è ed è vera — ma è mezzo passo indietro rispetto alla
+  regola del 7/08 (*«il bot non fa, il bot PORTA»*);
+· **«Le tue partite» vive ancora in tre punti di `schede.ts`**, e un caso del banco lo **pretende**
+  (`testoPrenotata` → `«📅 Le tue partite»`) mentre il menu dice «Le mie prenotazioni». È lo stesso
+  difetto di classe curato qui, in un altro punto: **non l'ho toccato** perché quale dei due nomi sia
+  quello giusto è una scelta sua, non una svista da correggere.
 
 ### **86** — 📨 Il link d'invito arriva NUDO: chi lo riceve non sa chi glielo manda né perché
 
