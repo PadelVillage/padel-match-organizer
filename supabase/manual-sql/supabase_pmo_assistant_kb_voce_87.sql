@@ -187,3 +187,29 @@ where key = 'assistant_kb';
 -- la sessione si è chiusa prima della sua correzione. ⇒ `inviti` resta con le MIE parole — sono
 -- fatti giusti, letti da `invito-partita.ts`, ma non sono la sua voce. Il giorno che la vuole
 -- dare, è una `update` sola e non serve nessun deploy.
+
+-- ── (e) SERA DEL 24/08 — e anche il testo degli INVITI è suo ────────────────────────────
+-- Approvato senza modifiche. Stessa potatura: via invito_al_circolo / invito_a_una_partita /
+-- quanto_dura / chi_risponde. Qui la potatura è totale — il suo testo copre tutto, e di `inviti`
+-- restano solo `_nota` e `come_funziona`.
+-- ⇒ Con questo i TRE argomenti nati con la voce 87 parlano tutti con le sue parole.
+
+update pmo_ai_settings
+set value = jsonb_set(value, '{inviti}',
+      ((value->'inviti') - 'invito_al_circolo' - 'invito_a_una_partita' - 'quanto_dura' - 'chi_risponde')
+      || jsonb_build_object(
+        'come_funziona', 'Testo del committente (24/08/2026), da usare come RISPOSTA quando il socio chiede come si invita qualcuno, quanto dura un invito, o cosa succede se chi ha invitato non risponde. Sono le sue parole: seguine il senso e il tono, non aggiungere regole che qui non ci sono.
+
+Gli inviti sono due cose diverse.
+
+Per far entrare al circolo una persona che ancora non c''è, dalla tua rubrica chiedi il link e glielo mandi tu: quando accetta, te la ritrovi in rubrica.
+
+Per chiamare qualcuno a giocare, apri la partita e scegli i nomi dalla tua rubrica: gli arriva un messaggio qui sul bot, con i bottoni per accettare o rifiutare.
+
+Un invito a una partita vale un''ora. Se scade di notte resta buono fino alle 9 del mattino, e in ogni caso non oltre l''inizio della partita. Il posto può finire anche prima, se risponde qualcun altro.
+
+Rispondere sta a loro: io non sollecito nessuno e non accetto al posto di nessuno.'
+      )),
+    updated_by = 'claude-code/voce-87-testi',
+    updated_at = now()
+where key = 'assistant_kb';

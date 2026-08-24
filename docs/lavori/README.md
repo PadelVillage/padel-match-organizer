@@ -1599,8 +1599,9 @@ livello. Non erano sbagliate: **ridicevano la stessa cosa con parole diverse**, 
 della stessa cosa in pasto allo stesso modello divergono. È il difetto del nome della voce di menu,
 curato quella mattina, che si ripresentava la sera nello stesso file — stavolta l'ho visto perché
 lo stavo cercando.
-⏳ **Manca il testo degli INVITI**: la bozza è pronta, la sessione si è chiusa prima della sua
-correzione. Lì `inviti` resta con le **mie** parole — fatti giusti, non la sua voce.
+✅ **E anche gli INVITI**, approvati senza modifiche poco dopo. ⇒ Tutti e tre gli argomenti nati
+con questa voce parlano con le sue parole; su `inviti` la potatura è totale, restano `_nota` e
+`come_funziona` e nient'altro.
 
 ⏳ **RESTA APERTA, e manca UNA cosa sola: il deploy del bot e la prova fisica.**
 🚨 Metà ① è **già viva** (la kb non ha deploy); metà ② e ③ stanno su un ramo e **il bot sulla VM
