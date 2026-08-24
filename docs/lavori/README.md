@@ -1758,6 +1758,38 @@ dal `pmoPlayerId` ⇒ due schede; il ripiego che restringe col codice socio non 
 il codice è **identico** ⇒ `member: null, reason: 'ambiguous'` ⇒ nel bot `found: false` ⇒
 `lascia-partita.ts` torna `voci: []` ⇒ **«Non hai prenotazioni»**.
 
+🔄🚨⭐⭐ **24/08/2026 — È SUCCESSO DI NUOVO, SU UN'ALTRA PERSONA E SU UN ALTRO GESTO. E stavolta
+si è misurata anche la CAUSA del doppione, che è la cosa che questa scheda non aveva.**
+
+📏 **L'effetto**, segnalato da lui con la schermata: alle **10:32** Lidia Comes tocca **«✅ Ci sto»**
+su un invito di Laura e legge *«🔧 Non ci sono riuscito — Non sono riuscito a farti entrare in
+questa partita»*. Un minuto prima, alle **10:31:53**, il registro del bot aveva già scritto:
+`problemi: socio a1ee9de5-9b89-4946-9052-bdf9ab583aba: ambiguous` — che è lei.
+⇒ Non è più solo «non hai prenotazioni»: la stessa ambiguità **impedisce anche di entrare in una
+partita**. La voce 69 non è un difetto di lettura, è un difetto che **blocca i gesti**.
+
+🎯 **E LA CAUSA DEL DOPPIONE, misurata e non più supposta: lo fabbrica il SALVATAGGIO DELLA
+SEGRETERIA.** Le due chiavi non se le inventa nessuno — sono **due produttori con due regole
+diverse** per la stessa persona:
+· l'**app dello staff** scrive `phone:<cifre>` (`pmoMemberCloudLocalKey`: se il telefono ha almeno
+  8 cifre, quella è la chiave — il telefono viene **prima di tutto**);
+· l'**`anagrafica-mirror`** (05:00) scrive `email:<indirizzo>`.
+📏 Gli istanti lo dicono senza margine: la riga `email:lidia.comes@gmail.com` porta **05:30:50**
+(il mirror di stamattina, livello **2**), la riga `phone:393385407984` porta **08:06:45** — cioè
+**il salvataggio con cui lui ha messo Lidia a 0,5**. ⇒ Due righe vive, **due livelli diversi per la
+stessa persona**, e il ponte che non sa quale prendere.
+📌 *Il doppione non nasce da un dato sporco: nasce da un gesto normale della segreteria.* È il
+motivo per cui «1 caso su 2810» non voleva dire «raro»: voleva dire *non ancora capitato a
+qualcuno che stesse usando il bot in quel momento*.
+
+🩹 **Sbloccata a mano il 24/08** marcando `deleted` la riga `email:` (quella stantia, ferma a
+livello 2): resta viva la `phone:` col dato giusto — 0,5, F, codice 001013.
+📏 **E subito dopo, il conto su tutto l'archivio: ZERO soci con più di una riga viva** — su 2813.
+⇒ Lidia era **l'unico doppione vivo**, nato tre ore prima.
+⚠️ **Non è una cura, ed è dichiarato**: il mirror gira alle 05:00 e la riga `email:` può
+**rinascere** domattina. La cura vera è mettere d'accordo le due regole di chiave — e finché non
+c'è, ogni salvataggio della segreteria su un socio con email **può rifabbricare il doppione**.
+
 ⚖️ **E le due strade riconoscevano la stessa persona in modo diverso**: `consumer-staff-events`
 risolve **per nome**, quindi l'avviso delle 22:12:43 le è arrivato benissimo. *Lo stesso bot,
 due meccanismi di riconoscimento, due risposte incompatibili sulla stessa persona.*
