@@ -139,6 +139,60 @@ async function gettoneValido(db: Db, token: string) {
   return { riga };
 }
 
+/**
+ * Il SESSO del socio, letto dalla sua scheda invece che richiesto — voce 84 ⓑ, 24/08/2026.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════
+ * 🚨⭐⭐ IL DIFETTO CHE CURA, e non si vedeva da nessuna delle due parti da sole.
+ *
+ * Il cancello qui sotto manda la scheda «in mano alla segreteria» quando il sesso è `NA`, e da
+ * lì `assessment-apply-level` la scarta PER SEMPRE (`staff_status` non vuoto ⇒ mai applicata).
+ * Ma la domanda sul sesso, nella pagina del quiz, vive dentro `assessmentPublicConfigureExternalData`
+ * e si mostra **solo per il link esterno**: sulla strada del GETTONE la funzione esce prima
+ * (`if (!isExternal) { … return }`), il campo resta vuoto, e il socio non l'ha mai saltata —
+ * non gliel'hanno mai chiesta.
+ * 📏 Misurato il 24/08 su PROD, **2 casi su 2**: Laura Aprea (24/08) e Fabiola Limuti (19/08),
+ * tutte e due `pass` al quiz, tutte e due `gender: ''`, tutte e due ferme a `review` con
+ * `applied_at` nullo. Laura ha risposto anche alla domanda del bot — e il livello non è arrivato.
+ *
+ * ⭐ E LA CURA NON È AGGIUNGERE LA DOMANDA: è non farla. Sulla scheda socio di Laura c'è scritto
+ * `gender: 'F'` — il circolo lo sa. *Il gestionale SA, il bot DICE*: un dato che il gestionale
+ * possiede non si richiede a chi l'ha già dato, o diventa un secondo posto da tenere allineato.
+ *
+ * 🔒 FALLISCE CHIUSA, e nel verso che c'era già: se la lettura non riesce, o la scheda non ha un
+ * sesso valido, torna stringa vuota ⇒ il chiamante resta a `NA` ⇒ `review`, esattamente come
+ * prima. Questa funzione può solo TOGLIERE una revisione ingiusta, mai aggiungerne una.
+ * ⚠️ Si accettano solo `M` e `F`: qualunque altra cosa scritta là dentro non è un sesso noto, e
+ * far passare il cancello su un valore che non si sa leggere sarebbe peggio di trattenerlo.
+ * ══════════════════════════════════════════════════════════════════════════════════════════
+ */
+async function genereDallaSchedaSocio(db: Db, memberLocalId: string | null | undefined): Promise<string> {
+  const id = assessTxt(memberLocalId);
+  if (!id) return '';
+  const { data, error } = await db
+    .from('pmo_cloud_records')
+    .select('payload')
+    .eq('record_type', 'member')
+    .eq('deleted', false)
+    .eq('payload->>id', id)
+    .limit(10);
+  if (error) {
+    // Il motivo vero nel registro, come per la lettura del gettone: chi diagnostica non deve
+    // ripartire da un sintomo. Al socio non cambia niente — resta il comportamento di prima.
+    console.error('assessment-quiz: lettura sesso dalla scheda fallita —', error.message, error.details ?? '');
+    return '';
+  }
+  // ⚠️ Le righe possono essere PIÙ D'UNA per la stessa persona: nella copia cloud lo stesso socio
+  // sta sotto più chiavi (`email:…`, `phone:…`, id nudo) — è la famiglia della voce 69. Si
+  // prende il primo sesso leggibile: fra copie della stessa persona quel dato non diverge, e
+  // scegliere «la riga giusta» sarebbe una regola che qui non spetta.
+  for (const r of (data ?? []) as { payload?: { gender?: unknown } | null }[]) {
+    const g = assessTxt(r?.payload?.gender).toUpperCase();
+    if (g === 'M' || g === 'F') return g;
+  }
+  return '';
+}
+
 /* 🔐 LA SECONDA PORTA: la sessione dello STAFF.
    L'anteprima del gestionale — «prova il test» — non ha un gettone di socio, ma le domande
    e la correzione le servono lo stesso. Aprirle senza gate sarebbe peggio che lasciarle in
@@ -246,7 +300,15 @@ async function gestisci(req: Request): Promise<Response> {
     const pescate = fascia ? pescaPerGettone(token, fascia) : [];
     const conoscenza = assessKnowledgeEvaluate(pescate.map((d: Domanda) => d.id), risposte, fascia);
 
-    const genere = assessTxt(scheda.gender) || 'NA';
+    // 🚨 voce 84 ⓑ — se il telefono non l'ha mandato, si CHIEDE ALLA SCHEDA prima di dire `NA`.
+    // L'ordine è questo e non l'inverso: quello che il socio ha appena dichiarato vale più di
+    // quello che c'era in archivio, e la scheda è il ripiego, non la fonte principale.
+    const genereDetto = assessTxt(scheda.gender);
+    const genereRipescato = genereDetto ? '' : await genereDallaSchedaSocio(db, g.riga?.member_local_id);
+    if (genereRipescato) {
+      console.log(`assessment-quiz: sesso ripescato dalla scheda socio (${genereRipescato}) per il gettone ${token}`);
+    }
+    const genere = genereDetto || genereRipescato || 'NA';
     const dichiarato = parseFloat(assessmentPublicParseLevel(scheda.declaredLevel));
     const pocaEsperienza = Number.isFinite(dichiarato) && dichiarato >= 3.0
       && ['Meno di 1 mese', '1-3 mesi', '3-6 mesi', '6-12 mesi']
@@ -291,6 +353,11 @@ async function gestisci(req: Request): Promise<Response> {
       staff_status: statoStaff,
       raw_response: {
         ...scheda,
+        // ⭐ Il sesso ripescato si SCRIVE, non resta solo nel cancello: una riga che dice
+        // `gender: ''` mentre la scheda socio dice `F` è un documento che mente su un dato che
+        // abbiamo. E chi rilegge la scheda (la segreteria, un domani una cura) deve trovare il
+        // valore vero, non doverlo ripescare di nuovo.
+        ...(genereRipescato ? { gender: genereRipescato } : {}),
         knowledge: conoscenza,
         experience_flag: pocaEsperienza,
         calculation_note: livCalc.note,

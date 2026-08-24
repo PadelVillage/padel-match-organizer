@@ -1085,7 +1085,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **4** — 🆕 la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **5** — 🆕 la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1313,7 +1313,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 5
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1435,6 +1435,92 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **84** — 🚨🚨 Il test di livello: l'esito arriva DOPO 11 MINUTI, e il livello non si scrive MAI
+
+🆕 **APERTA E MESSA IN URGENTI il 24/08/2026, su sua parola** (*«laura aprea ha fatto il test di
+autovalutazione ma dopo che ha finito… non ha ricevuto nessuna notifica sul bot»*, poi *«tra
+l'altro non è stato inserito il livello a laura nella sua scheda socio»*, poi — vista la misura —
+*«il primo giro funziona ma ci mette troppo a rispondere… 15 minuti non vanno bene, ci deve
+mettere alcuni secondi»*).
+⚖️ **Il perché dell'urgenza, dichiarato**: c'è **una socia vera, adesso**, che ha fatto quello che
+il bot le ha chiesto, ha risposto alla domanda — e ha ancora **livello 0,5**, cioè il muro che le
+impedisce di organizzare. È la situazione esatta per cui `assessment-apply-level` è stato scritto
+(*«la porta chiusa in faccia a chi ha fatto quello che gli avevamo chiesto»*). Scavalca **solo
+delle attese**: la 65 aspetta, la 78 aspetta un tocco, la 83 aspetta un worker lento.
+
+📏 **LA CATENA, misurata al secondo** (registro del bot in ora di Roma, database in UTC):
+
+| ora (Roma) | cosa |
+|---|---|
+| 09:47:04 | il bot: *«mi serve il tuo livello… fai il test»*, col bottone |
+| **09:48:22** | Laura consegna. Il quiz le dice **«inviato correttamente»** |
+| **09:59:11** | 🔔 il bot annuncia l'esito — **10′49″ dopo** |
+| 10:00:59 | Laura tocca **«Tengo questo livello»** |
+| 10:01:00 | il gestionale registra `member_decision: mi_fermo` |
+| — | `applied_level` **null**, e la scheda socio dice ancora **0,5** |
+
+⇒ **Sono TRE difetti distinti, non uno**, e vanno curati separatamente.
+
+#### ⓐ L'esito viaggia sull'orologio dei promemoria — fino a 15 minuti di silenzio
+
+🔎 `avvisaEsitoDelTest` gira **dentro il giro dei promemoria**, che il bot dichiara da sé nel
+registro: *«🔔 avvisi ACCESI (ogni 15 min)»*. ⇒ Chi consegna il test un secondo dopo un giro
+aspetta **quasi un quarto d'ora**, e Laura ne ha aspettati **10′49″**.
+⚖️ **La scelta di metterlo lì era motivata**, e il commento nel bot la dichiara: *«sta QUI e non in
+un secondo orologio… un secondo temporizzatore sarebbe una seconda cosa da tenere accesa»*. Il
+motivo regge; quello che non regge è la **cadenza ereditata** — un quarto d'ora è giusto per un
+promemoria, non per la risposta a una cosa appena consegnata.
+🚨 **E non si cura abbassando il giro**: quel giro fa una chiamata al ponte **per socio**, e
+portarlo a 30 secondi moltiplicherebbe per trenta il traffico di tutti — per servire un evento
+che càpita qualche volta al mese.
+⇒ **La forma giusta è la SORVEGLIANZA MIRATA**: il bot sa **esattamente** quando consegna un link
+del test, a chi, e a quale gettone. Da quel momento, e **solo per quel socio**, guarda spesso e per
+una finestra breve; smette appena ha parlato o appena la finestra scade. È la stessa macchina della
+voce 53 (`[attesa-esito] … torno a chiedere`), applicata a un'altra domanda.
+📌 La chiave `test:<gettone>` esiste già e vale per tutti e due: il giro dei 15′ e la sorveglianza
+non possono mandare due messaggi per la stessa scheda.
+
+#### ⓑ Il GENERE non arriva ⇒ la scheda resta «in mano alla segreteria» PER SEMPRE
+
+📏 **Misurato, ed è la causa del livello mancante.** `assessment-quiz` decide:
+`statoStaff = (genere === 'NA' || conoscenza.status !== 'pass' || pocaEsperienza) ? 'review' : …`.
+Laura ha passato il quiz **4/4, trabocchetto compreso** (`status: 'pass'`), l'esperienza non
+c'entra — a bocciarla è **`gender: ''`**.
+🔎 E il genere è vuoto perché la domanda **non le è mai stata fatta**: nella pagina del quiz vive
+dentro `assessmentPublicConfigureExternalData`, che la mostra **solo per il link esterno**; sulla
+strada del **gettone** esce prima (`if (!isExternal) { … return }`) senza nemmeno riempire
+`form.dataset.memberGender`.
+⛔ Da lì in poi la strada è chiusa a chiave: `assessment-apply-level` scarta ogni scheda con
+`staff_status` non vuoto — *«in mano alla segreteria (review)»* — quindi **nessun cron applicherà
+mai quel livello**, né dopo la scelta del socio, né dopo le 24 ore, né mai.
+📏 **2 su 2**: stessa sorte per **Fabiola Limuti** il 19/08 — `gender` vuoto, `review`,
+`applied_at` null da cinque giorni.
+⭐ **E la cura non è aggiungere una domanda: è non farla.** Sulla scheda socio di Laura c'è scritto
+**`gender: 'F'`**. *Il gestionale SA* — il genere lo deve leggere il **server** dal gettone
+(`assessment_tokens.member_local_id` → scheda socio), non richiederlo a chi l'ha già dato.
+Chiederlo di nuovo sarebbe un dato in più da tenere allineato, cioè un secondo posto dove diverge.
+
+#### ⓒ «Te lo registro sulla scheda a breve» — una promessa che il gestionale non mantiene
+
+🚨 Nello schermo del 24/08 il bot chiude così: *«Perfetto: tengo **Base** 👍 · Te lo registro sulla
+scheda **a breve**.»* Per via della ⓑ quel «a breve» **non arriva mai**.
+⚖️ È la **stessa forma della voce 83** vista da un altro lato: una frase che afferma qualcosa sullo
+stato del mondo senza che nessuno l'abbia verificata. Là era un «no» falso su una scrittura
+avvenuta, qui è un «sì» falso su una scrittura che non avverrà.
+📌 *Una frase che promette un fatto futuro va detta solo da chi può vedere quel fatto succedere.*
+⇒ Curata la ⓑ la promessa diventa vera; ma va deciso se il bot debba **confermare** quando è
+successo davvero, invece di annunciarlo prima.
+
+🧬 **E un reperto per la voce 69, trovato per strada**: nella copia cloud Laura ha **TRE righe**
+`member` — `email:aprea.lalla@gmail.com` (0,5), `phone:393338979606` (0,5) e una a id nudo
+`7a4186a7-…` ferma al 31/07 con livello **1**. ⚠️ **A video l'anagrafica ne mostra UNA sola**
+(ID-MP-000140, F, Principiante 0,5), quindi non sono tre schede per l'operatore: sono tre chiavi
+della stessa persona nella copia, ed è la famiglia della 69. ⇒ Quando il livello si applicherà,
+**su quale riga**? La domanda è della 69, ma la risposta serve qui.
+
+⏳ **Cosa manca per chiuderla**: le tre cure, e per ognuna una prova **fisica** — un test vero fatto
+da una persona vera, con l'esito che arriva in **secondi** e il livello che compare **sulla scheda**.
 
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
