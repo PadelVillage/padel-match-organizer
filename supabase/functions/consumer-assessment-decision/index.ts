@@ -238,14 +238,64 @@ Deno.serve(async (req: Request) => {
     return err(500, 'DB_ERROR', `Scrittura della scelta non riuscita: ${erroreScrittura.message}`);
   }
 
-  // ⚖️ Cosa NON si promette qui: quando il livello sarà scritto. Lo applica il cron di
-  // `assessment-apply-level` (ogni 15′ su PROD), e il bot lo racconta col campo
-  // `livello_applicato` del link — un «fatto» detto prima dei fatti è il difetto del
-  // 9/08 (l'email che dichiarava aggiornato un livello che non lo era).
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  // ⚡⭐⭐ IL LIVELLO SI APPLICA ADESSO, NON AL PROSSIMO CRON — voce 84 ⓒ, 24/08/2026.
+  //
+  // 🗣️ Sua domanda, ed è quella che ha trasformato una frase da sistemare in una cura:
+  // *«ma devono passare obbligatoriamente quindici minuti per aggiornare la scheda?»* — poi:
+  // *«di logica, quando sul bot viene detto che il tuo livello è stato accettato, uno va a
+  // vedere dentro al bot il suo livello»*. ⇒ Esatto: «accettato» e poi il livello che non
+  // c'è è una bugia che dura un quarto d'ora, e la scopre chi fa la cosa più naturale.
+  //
+  // 📏 MISURATO il 24/08: `pmo-assessment-apply-level-prod` ha schedule `*/15 * * * *`. ⇒ fra
+  // il tocco del socio e il livello sulla sua scheda passavano **fino a 15 minuti**, e in quel
+  // buco il bot aveva già detto «Te lo registro sulla scheda a breve».
+  //
+  // 🔒 **È LA REGOLA DEL COMMITTENTE DEL 22/08 APPLICATA QUI**: *«ogni gesto va detto al socio
+  // SOLO DOPO che il circolo l'ha confermato — e nello STESSO ISTANTE dev'essere registrato dal
+  // gestionale»*. La metà «stesso istante» qui mancava: si registrava la SCELTA, non il suo
+  // effetto. È lo stesso difetto che la voce 75 ha curato sulla creazione.
+  //
+  // ⛔ COME NON SI FA, ed è la parte che conta: qui **non si ricopia** la regola
+  // dell'applicazione — il non-scendere al ribasso, la scheda più recente dell'ultimo
+  // aggiornamento del livello, il giro delle tre prove. Sono tre regole delicate, vivono in
+  // `assessment-apply-level`, e una seconda copia divergerebbe al primo ripensamento.
+  // ✅ Si CHIAMA quella funzione, che è già a sé e non vuole parametri obbligatori.
+  //
+  // ⚖️ E NON SI ASPETTA IL SUO ESITO PER RISPONDERE AL SOCIO: la risposta al tocco è la
+  // conferma della SCELTA, che è già scritta e vera. Se il giro non parte o fallisce, il
+  // livello arriva col cron come prima — **si perde la fretta, non il fatto**. Per questo
+  // l'errore si scrive nel registro e non esce di qui.
+  // 🚨 Solo su «mi fermo»: chi ha risposto «riprovo» ha SCARTATO quella prova, e lanciare il
+  // giro per lui non applicherebbe niente — sarebbe una chiamata a vuoto a ogni tocco.
+  // ⭐ Il cron RESTA, ed è la rete: copre i due casi che non passano da un tocco — il
+  // silenzio-assenso delle 24 ore e la terza prova, che chiude il giro da sé.
+  // ══════════════════════════════════════════════════════════════════════════════════════
+  let applicazioneLanciata = false;
+  if (scelta === SCELTA_MI_FERMO) {
+    // ⭐⭐ SI CHIAMA IL DISPATCHER, NON L'EDGE DIRETTAMENTE, e la ragione è la porta:
+    // `assessment-apply-level` entra solo col segreto delle routine, che vive nel **vault** e
+    // che questa funzione non ha (né deve avere: sarebbe un secondo posto da cui può uscire).
+    // `pmo_dispatch_assessment_apply_level` il vault lo legge da sé — è `SECURITY DEFINER`, ed
+    // è **la stessa identica strada che percorre il cron**. ⇒ Nessuna chiave in più in giro, e
+    // nessun secondo modo di far partire quel giro che possa divergere dal primo.
+    const { error: erroreGiro } = await db.rpc('pmo_dispatch_assessment_apply_level', { p_simula: false });
+    if (erroreGiro) {
+      console.error(`[assessment-decision] giro d'applicazione non partito (${erroreGiro.message}) — il livello arriverà col cron`);
+    } else {
+      applicazioneLanciata = true;
+    }
+  }
+
   return ok({
     scelta,
     registrata_il: adesso,
     scelta_precedente: precedente || null,
     cambiata: precedente !== '' && precedente !== scelta,
+    // ⭐ Serve al BOT per non promettere il futuro: se il giro è partito può dire che il
+    // livello è già sulla scheda; se no, torna la frase di prima. È *il gestionale SA, il bot
+    // DICE* — la differenza fra «te lo registro a breve» e «te l'ho registrato» non la
+    // indovina il bot, gliela dice il gestionale.
+    applicazione_lanciata: applicazioneLanciata,
   });
 });
