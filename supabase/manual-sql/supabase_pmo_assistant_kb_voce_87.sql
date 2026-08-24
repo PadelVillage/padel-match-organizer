@@ -108,3 +108,43 @@ set value = jsonb_set(value, '{inviti,invito_al_circolo}',
     updated_by = 'claude-code/voce-87b',
     updated_at = now()
 where key = 'assistant_kb';
+
+-- ── (c) SERA DEL 24/08 — IL TESTO DELLA RUBRICA LO SCRIVE LUI ───────────────────────────
+--
+-- 🗣️ *«Scrivimi tu il testo qui così io poi te lo correggo»* — e l'ha corretto. Da qui in poi
+-- `rubrica.come_funziona` sono le sue parole: la mia bozza le aveva scritte leggendo il codice,
+-- che dice cos'è la rubrica ma non come la si racconta a un socio.
+-- ✏️ Toccati solo un refuso (`pacerebbe`) e una virgola, dichiarati.
+--
+-- 🚨 E TOLTE QUATTRO CHIAVI mie (`cos_e`, `come_si_riempie`, `come_si_toglie`,
+-- `serve_per_invitare`): dicevano le stesse cose con parole diverse — `cos_e` definiva la rubrica
+-- come «le persone che hai fatto entrare», lui come «le persone con cui ti piacerebbe giocare».
+-- ⇒ Non è una sfumatura: sono due definizioni della stessa cosa in pasto allo stesso modello, e
+--   due definizioni divergono. È il difetto curato stamattina sul nome della voce di menu, nella
+--   stessa giornata e nello stesso file.
+--
+-- ⚖️ Restano tre complementi, e sono complementi perché escono SOLO su domanda:
+--   · `chi_si_puo_invitare` — la seconda condizione (dev'essere cliente del circolo, 6/08). Non
+--     entra nella spiegazione generale per sua scelta: là sarebbe rumore, qui è la risposta a
+--     «perché non riesco a invitare Tizio?»;
+--   · `e_privata` — nemmeno la segreteria la vede (il suo testo dice «nessun altro socio»);
+--   · `dove_si_apre` — che dal 24/08 non nomina più la voce di menu, perché c'è il bottone.
+
+update pmo_ai_settings
+set value = jsonb_set(value, '{rubrica}',
+      ((value->'rubrica') - 'cos_e' - 'come_si_riempie' - 'come_si_toglie' - 'serve_per_invitare')
+      || jsonb_build_object(
+        'come_funziona', 'Testo del committente (24/08/2026), da usare come RISPOSTA quando il socio chiede come funziona la rubrica, a cosa serve, o come si aggiunge qualcuno. Sono le sue parole: seguine il senso e il tono, non aggiungere regole che qui non ci sono.
+
+La rubrica è l''elenco delle persone con cui ti piacerebbe giocare. Serve a quello: quando organizzi una partita e vuoi chiamare qualcuno, i nomi li scegli da lì.
+
+Non c''è un modo per aggiungerle a mano — in rubrica si entra solo con un invito. Mandi il link alla persona e, se accetta, te la ritrovi nella rubrica del bot.
+
+• La tua rubrica è solo tua, non la vede nessun altro socio.
+• Una cosa da sapere: a una partita puoi invitare solo le persone presenti nella tua rubrica.
+• Quando apri la tua rubrica da lì inviti qualcuno di nuovo, o togli chi non ti serve più.',
+        'chi_si_puo_invitare', 'SOLO se il socio chiede perché una certa persona non riesce a invitarla: oltre a stare in rubrica, la persona dev''essere già cliente del circolo. Chi non lo è ancora si vede in rubrica ma non ha il bottone per essere invitato, e per farlo giocare si passa dalla segreteria. Non dirlo di tua iniziativa quando spieghi come funziona la rubrica: è la risposta a una domanda, non parte della spiegazione.'
+      )),
+    updated_by = 'claude-code/voce-87-testi',
+    updated_at = now()
+where key = 'assistant_kb';

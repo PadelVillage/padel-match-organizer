@@ -97,6 +97,33 @@ di riga che qualcuno inverte «per pulizia» fra sei mesi.
 📌 *Una prova che confronta la strada giusta con la strada sbagliata non prova un calcolo: protegge
 una decisione, e le decisioni sono ciò che il codice dimentica per primo.*
 
+## 📌 Le decisioni prese dal committente il 24/08
+
+🔮⭐ **LE PARTITE APERTE — una direzione dichiarata, non un lavoro.** Detta mentre correggeva il
+testo della rubrica per la voce 87:
+
+> *«Al momento il socio può invitare solamente quelli che ha nella sua rubrica. Poi in un secondo
+> momento metteremo anche le partite aperte, cioè quello di poter partecipare a partite non chiuse,
+> ma che un organizzatore volutamente e spontaneamente apre ad altri giocatori.»*
+
+⚖️ **Non è una voce e non entra in nessuna lista** — non c'è niente da fare adesso, e inventare un
+lavoro da una frase sul futuro è precisamente ciò che la delega **non** copre. Sta qui perché
+cambia il modo di scrivere **oggi**: la regola *«si gioca solo con chi hai in rubrica»* è vera
+adesso ma **non è una legge del progetto**, ed è la prima volta che lo sappiamo.
+
+🚨 **La conseguenza pratica, e vale già:** quella regola non va incisa in posti da cui costa
+toglierla. ⇒ Nel testo del socio (kb, `rubrica.come_funziona`) sta bene — la kb si cambia senza
+rideployare niente, ed è esattamente il posto giusto per un fatto che ha una scadenza. In una
+**guardia**, in un nome di funzione o in un caso del banco starebbe male: il giorno delle partite
+aperte quelli andrebbero riaperti uno per uno.
+📌 *Un fatto vero che si sa già essere temporaneo va messo dove costa poco cambiarlo — sapere che
+scadrà è metà del disegno.*
+
+⚠️ **E la seconda condizione resta**, perché quella non scade con l'apertura: si può invitare solo
+chi il circolo ha già fra i **clienti** (sua decisione del 6/08). Nella kb sta in una chiave a
+parte (`rubrica.chi_si_puo_invitare`), che il bot tira fuori **solo** se il socio chiede perché una
+certa persona non riesce a invitarla — non nella spiegazione generale, dove sarebbe rumore.
+
 ## 📌 Le decisioni prese dal committente il 22/08 mattina
 
 🆕 **22/08, primo pomeriggio — la cadenza degli avvisi, e una soglia che NON si abbassa.**
