@@ -1729,6 +1729,58 @@ solo alle **11:52:51**, con l'esito. ⇒ **Un difetto solo, due sintomi**: finch
 tarda anche la scheda. La cura della ⓒ (il livello applicato **subito** dopo «mi fermo») non
 c'entra e non è stata smentita: non è ancora stata esercitata.
 
+#### 🔢 24/08 — le prove sono TRE, e il bot non l'ha mai detto a nessuno
+
+🗣️ **Sua, guardando sul telefono la risposta a «Riprovo»**: *«non diciamo mai che i test sono tre.
+E dopo il terzo si applica il livello in automatico dell'ultimo test fatto. O almeno non mi
+ricordo, forse del migliore»*. ⇒ Se il conto non se lo ricorda **chi ha disegnato la regola**, il
+socio che decide se riprovare sta decidendo alla cieca.
+
+📏 **Misurato prima di scrivere le frasi**, perché una spiegazione sbagliata è peggio del silenzio:
+
+| domanda | risposta misurata |
+|---|---|
+| l'ultimo o il migliore? | **l'ULTIMO** — `soloLaPiuRecentePerSocio`, *«una scheda sola per socio, la più recente»* |
+| dopo il terzo si applica? | la terza **non chiede più niente** (non c'è una quarta a cui rimandare) |
+| …**comunque**? | **no**: quiz non superato, `consistency low`, dichiarato e calcolato distanti più di 0,5, scheda in mano alla segreteria, o il freno del ribasso la fermano lo stesso |
+| e se le finisce tutte e tre male? | resta **senza livello e fermo 30 giorni**, e nessuno gliel'aveva detto |
+
+🚨⭐⭐ **E il difetto che nessuno aveva visto, che è peggio del buco segnalato**: *«Va bene: questa
+prova non la registro»* è **vera sul LIVELLO e falsa su ciò che conta**. `giriDelSocio` conta le
+schede con esito `pass`/`fail` e **non guarda la scelta**, se non per «mi fermo» ⇒ una prova
+rifiutata **ha consumato un tentativo**. Chi legge «non la registro» capisce «non conta», e può
+arrivare all'ultima credendo di averne ancora due — poi il giro si chiude e restano trenta giorni.
+⚖️ È la stessa forma della **71** e della **83**: *una parola che significa due cose, con chi la
+legge costretto a indovinare*. E la cura è la stessa: **far uscire il fatto insieme al dato**.
+
+🔨 **CURA (bot PR #72)** — tre punti, non uno:
+· **dove il link ESCE** (muro, promemoria, offerta, invito, scheda): *«È la tua **seconda prova di
+  tre**, e vale l'ultima che fai»*; sull'ultima diventa *«È la tua **ultima prova delle tre**:
+  quello che esce vale»*. ⛔ Non compare in **attesa** né nelle strade della **segreteria**: dire
+  «è la tua seconda di tre» a chi non ne può fare nessuna è il vicolo cieco con un numero attaccato;
+· **la domanda**: *«riprovare per salire ancora»* prometteva il **migliore**. Adesso dice che vale
+  l'ultima, e sull'ultima dice cosa succede dopo;
+· **la risposta a «Riprovo»**: *«questo **livello** non lo registro 👍 · Ti resta **una prova**.»*
+
+⭐ Il conto lo dà il **gestionale** (`tentativo`, `tentativiTotali`): il bot non impara che un giro
+sono tre prove. 🚨 **Fail closed** ovunque sul numero — senza un conto credibile la riga non esce,
+perché un numero sbagliato manderebbe qualcuno a **bruciare l'ultima prova** credendo di averne due.
+
+⚖️ **E non contraddice il taglio della mattina** — *«da adesso il giro è chiuso, potrai rifare il
+test fra trenta giorni»*, tolta su sua parola perché *«troppo una frase da tecnico»*: là arrivava a
+chi aveva **finito** e non doveva fare niente, qui arriva a chi sta per **decidere**.
+📌 *Un'informazione non è tecnica o gentile in sé: dipende da quando arriva.*
+
+🔒 **E una cura strutturale nascosta dentro questa**: i **cinque** punti che consegnano il link
+copiavano i campi dello stato **a mano, uno per uno** — la stessa forma del difetto della
+sorveglianza di poche ore prima, dove una porta nuova non armava niente. Un campo nuovo sarebbe
+arrivato dove qualcuno si ricordava di aggiungerlo e mancato altrove **senza rompere niente**.
+Adesso passano tutti da `campiDelTest(stato)`, e un caso lo pretende.
+🔪 Cinque sabotaggi visti rossi. Banco **1517 verdi**, `tsc` pulito.
+
+⏳ **Prova fisica da fare**: le frasi vanno **lette su un telefono**. La prima occasione è la terza
+prova di Fabiola, che è anche il caso «ultima prova delle tre».
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
