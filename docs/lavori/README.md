@@ -1112,7 +1112,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **8** — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 🔴 **Urgenti** | **9** — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 🆕 la **87** del 24/08 (il bot non sa niente della **rubrica**, del **test del livello** e dei suoi stessi **avvisi**: nel cervello dell'agente «rubrica» compare **zero** volte e la chiave `livello` della kb era un oggetto **vuoto** — aperta su sua domanda e messa qui da lui; curata in giornata **in tutt'e due le metà** e in servizio ai soci con due deploy — più i **tre residui** che aveva dichiarato aperti, chiusi la sera stessa su sua parola: le note di servizio della kb non arrivano più al modello, la rubrica ha un **bottone**, e il nome della voce di menu — che era scritto a mano in **sette** posti — nasce da una costante sola. ⏳ Resta aperta per la sola **prova fisica**: cinque domande scritte a mano al bot) — 🆕 la **86** del 24/08 (il link d'invito arriva **nudo**: chi lo riceve non sa chi glielo manda né cosa deve fare — aperta su sua parola) — la **85** del 24/08 (il gestionale dice «il livello non è passato su Matchpoint» e su Matchpoint c'è: la **83 rifatta dall'altra parte** — frase curata in v6.240, la causa nel worker resta aperta) — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
 | 📋 **In coda** | **8** — la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
 | 📦 **Chiuse** | **67** il 13–23/08 + ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
@@ -1340,7 +1340,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 8
+## 🔴 URGENTI — 9
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1462,6 +1462,64 @@ posto non è funziona»*. Qui il **difetto** è verificato sul bersaglio per tut
 no: gira in produzione da stamattina e nessuno l'ha ancora vista succedere.
 📌 La quarta (la **66**) non è curata di proposito: si è fermata alla diagnosi, e la ragione sta
 nella sua scheda.
+
+### **88** — 🔓 «Partite Aperte»: una voce di menu nuova, per partecipare a partite che non sono le tue
+
+🆕 **APERTA E MESSA IN URGENTI il 24/08/2026, su sua parola** — *«metti nella lista delle urgenti
+una nuova voce del menu che si chiama "Partite Aperte"»*, dopo aver dichiarato la direzione
+mentre correggeva il testo della rubrica:
+
+> *«Al momento il socio può invitare solamente quelli che ha nella sua rubrica. Poi in un secondo
+> momento metteremo anche le partite aperte, cioè quello di poter partecipare a partite non chiuse,
+> ma che un organizzatore volutamente e spontaneamente apre ad altri giocatori.»*
+
+⚖️ **Il perché della posizione, dichiarato**: l'ha messa lui fra le urgenti. Non scavalca nessuna
+delle voci che hanno una persona vera ferma adesso — la **84** e la **85** restano davanti, la
+**86** e la **83** pure. È l'unica voce di questa lista che **aggiunge** una cosa invece di
+curarne una rotta, e per questo non ha fretta rispetto a loro: ha priorità sulle attese, non sui
+guasti.
+
+📏 **COSA C'È GIÀ, misurato** — la voce non parte da zero, e sapere da dove parte cambia la stima:
+· il **roster** con i posti liberi e chi c'è dentro lo sa già leggere (`rosterFromPayload`);
+· **entrare in una partita** è un gesto che il ponte sa scrivere: `add`, uno dei cinque;
+· gli **avvisi a chi è in campo** ci sono già (voce 68 e regola del 23/08: si avvisano **tutti**);
+· la **schermata di una partita** e i suoi bottoni esistono (`disegnaGestisci`).
+⇒ Quello che manca non è il gesto: è **come si trova** una partita che non è tua, e **chi decide**
+che è aperta.
+
+🚨⭐⭐ **LA COSA DA NON SBAGLIARE, e sta scritta nel codice di oggi.** La rubrica è privata **per
+una ragione strutturale**, non per preferenza: `rubrica.ts` la chiama *«la serratura che tiene
+chiusa la porta sui ~2.800 soci del circolo»* — se un socio potesse sfogliare l'elenco degli altri,
+l'anagrafica del circolo diventerebbe una rubrica pubblica dal retro.
+⇒ Una partita aperta è **un'apertura deliberata di quella serratura**, e va disegnata come tale:
+il nome di chi ha organizzato e chi c'è dentro diventano visibili a gente che non li conosce.
+📌 **La domanda di disegno è una sola, e va posta a lui prima di scrivere una riga**: *cosa vede,
+di una partita aperta, chi non ne fa parte?* — i nomi, o solo «3 su 4, livello Intermedio»? Le due
+strade portano a due prodotti diversi, e la seconda **non apre nessuna serratura**.
+⚠️ E il gemello: chi apre la partita **sa** che la sta rendendo visibile? Deve essere un gesto
+esplicito e reversibile, non una casella che qualcuno spunta senza capire.
+
+🔨 **I pezzi, per come si vedono oggi — da confermare con lui, nessuno è deciso:**
+① **chi apre** — un bottone nella schermata della partita, che un organizzatore tocca *volutamente*
+   (sua parola). Serve anche il verso opposto: richiuderla;
+② **come si trovano** — la voce di menu «Partite Aperte»: l'elenco di quelle aperte nella finestra
+   di prenotazione, con quanto manca e che livello si gioca;
+③ **chi può entrare** — oggi la regola è **rubrica + cliente del circolo**
+   (`invitabili`, `puoEntrareInPartita`). Su una partita aperta la prima **cade per definizione**;
+   la seconda no, ed è la sua decisione del 6/08. ⇒ Il filtro va **spezzato in due**, o cadono
+   insieme senza che nessuno l'abbia deciso;
+④ **il livello** — una partita aperta a chiunque non è equilibrata. Se ci va un vincolo, è qui.
+
+🚨⭐ **UNA CONSEGUENZA MECCANICA, già in servizio da oggi e da non scoprire a lavoro fatto:** il
+caso `test/il-modello-sa-quel-che-sa-il-menu.test.ts` (voce 87) diventa **ROSSO** appena si aggiunge
+`partite_aperte` a `COMANDI` senza mettere la voce corrispondente negli `INTENTI`.
+⚖️ **Non è un ostacolo: è la guardia che fa esattamente il suo lavoro**, ed è la ragione per cui
+esiste. La voce 87 nasce da tre funzioni finite nel menu e mai insegnate al modello — questa è la
+quarta, e stavolta il banco se ne accorge prima dei soci. Chi la vede rossa **non la aggiri**:
+scrive la voce.
+
+⏳ **Prova fisica**: due soci veri, uno che apre e uno che entra da «Partite Aperte» — e il
+controllo che chi era già in campo riceva l'avviso, come vuole la regola del 23/08.
 
 ### **87** — 🧠 Il bot non sa niente della RUBRICA, del TEST DEL LIVELLO e dei suoi stessi AVVISI
 
