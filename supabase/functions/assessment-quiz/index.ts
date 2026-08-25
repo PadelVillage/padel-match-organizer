@@ -66,6 +66,7 @@ import {
   assessmentPublicScoreFromText,
   assessmentPublicTechnicalScores,
   calculateAssessmentPublicLevel,
+  certificazioneDelMaestro,
   cleanCell,
   fasciaDaLivello,
   normalizeText,
@@ -471,10 +472,24 @@ async function gestisci(req: Request): Promise<Response> {
     }
 
     // Al telefono torna l'ESITO, non il come: né le risposte giuste né le soglie.
+    // 🆕 25/08 — e, quando le risposte dicono più di quanto il test possa scrivere, la FRASE
+    // già scritta. ⭐ Non un flag da interpretare: le parole. È «il gestionale SA, il bot
+    // DICE» applicato al test — chi le mostra (la pagina oggi, il bot domani) non deve
+    // ricostruire la regola, e due ricostruzioni non possono divergere.
     return ok({
       esito: conoscenza.status,
       staff_status: statoStaff,
       livello: livCalc.calculated_level,
+      /* 🚨 SOLO SE LA SCHEDA SI APPLICHERÀ DAVVERO, e il difetto è stato trovato pensando
+         alla prova con Laura, non rileggendo il codice. La frase promette «intanto ti
+         registriamo Intermedio»: dirla a chi ha fallito il cancello — o a chi finisce in
+         segreteria per genere mancante, incoerenza, «dichiara alto e gioca da poco» —
+         sarebbe una promessa che nessuno mantiene, e la peggiore delle tre perché
+         riguarda proprio chi ha risposto MALE dichiarando ALTO.
+         ⭐ `statoStaff` vuoto è esattamente «niente la trattiene»: è la stessa condizione
+         che `assessment-apply-level` userà per scriverla. Chiedere qui la stessa cosa che
+         decide là è il modo di non avere due verità. */
+      certificazione: statoStaff === '' ? certificazioneDelMaestro(livCalc.calculated_level) : null,
     });
   }
 

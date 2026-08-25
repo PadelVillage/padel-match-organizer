@@ -59,6 +59,7 @@ ok('gettone diverso ⇒ pescata diversa',
 const versoIlTelefono = a.map((d) => ({ id: d.id, fascia: d.fascia, q: d.q, opts: d.opts }));
 const testo = JSON.stringify(versoIlTelefono);
 ok('🚨 nessun campo `correct` verso il telefono', !testo.includes('"correct"'));
+
 ok('🚨 nessun campo `trap` verso il telefono', !testo.includes('"trap"'));
 
 // ── 3. la correzione sta sugli id RIPESCATI ─────────────────────────────────────
@@ -127,6 +128,16 @@ const codiceEdge = SORGENTE_EDGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\
 
 // 🚨⭐⭐ E PRIMA DI TUTTO: I COMMENTI A BLOCCO SI CHIUDONO DOVE CREDONO DI CHIUDERSI.
 //
+// 🆕 25/08 — LA PROMESSA NON SI FA A CHI NON LA RICEVERÀ.
+// 🚨 Il difetto c'è stato: la prima stesura mandava la frase «intanto ti registriamo
+// Intermedio» a CHIUNQUE dimostrasse più di 3.5, cancello fallito compreso. Cioè proprio a
+// chi ha dichiarato alto e risposto male — la persona a cui una promessa non mantenuta fa
+// più danno. Trovato pensando alla prova con Laura, non rileggendo.
+// ⚖️ `statoStaff === ''` è la stessa condizione che `assessment-apply-level` userà per
+// scrivere il livello: chiedere qui quello che decide là è il modo di non avere due verità.
+ok('🆕 la certificazione del maestro esce SOLO se la scheda si applichera\' davvero',
+  /certificazione: statoStaff === '' \? certificazioneDelMaestro\(/.test(SORGENTE_EDGE));
+
 // 📏 Successo scrivendo questa cura, il 24/08: dentro un commento `/* … */` avevo scritto il
 // cron `*` `/15`, e quella sequenza CHIUDE il commento — il resto del testo italiano diventava
 // codice, e la funzione non sarebbe nemmeno partita su Deno. L'ha beccato per rimbalzo la

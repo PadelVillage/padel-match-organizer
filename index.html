@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.240';
+    const APP_VERSION = '6.241';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -36000,18 +36000,28 @@ Per confermare scrivi ELIMINA.`);
         return;
       }
 
+      let esitoInvio = null;
       try {
         if (isExternal && !payload.token) {
           await submitAssessmentExternalRequestToSupabase(payload);
         } else {
-          await submitAssessmentPublicResponseToSupabase(payload);
+          esitoInvio = await submitAssessmentPublicResponseToSupabase(payload);
           saveAssessmentPublicResponseLocally(payload);
           markAssessmentPublicSubmitted(payload.token);
         }
         lockAssessmentPublicSubmitButton('Autovalutazione inviata');
 
         if (successBox) {
-          successBox.textContent = isExternal ? 'Autovalutazione inviata. Lo staff verificherà il livello indicato e ti invierà una mail di conferma con il livello impostato.' : 'Autovalutazione inviata correttamente. Grazie!';
+          /* 🆕 25/08 — IL TETTO: chi dimostra più di Intermedio legge perché il livello
+             scritto è Intermedio e cosa deve fare per averne uno più alto.
+             ⭐ La frase NON si compone qui: arriva già scritta dall'edge (`certificazione`),
+             che la prende da `conoscenza.js` insieme al numero del tetto. Comporla qui
+             vorrebbe dire una seconda copia della regola dentro la pagina — ed è esattamente
+             da lì che la banca delle domande è stata tolta il 14/08. */
+          const certificazione = esitoInvio && esitoInvio.data && esitoInvio.data.certificazione;
+          successBox.textContent = certificazione && certificazione.messaggio
+            ? certificazione.messaggio
+            : (isExternal ? 'Autovalutazione inviata. Lo staff verificherà il livello indicato e ti invierà una mail di conferma con il livello impostato.' : 'Autovalutazione inviata correttamente. Grazie!');
           successBox.style.display = 'block';
           if (typeof scrollMainContentToElement === 'function') scrollMainContentToElement(successBox, { block:'center' }); else successBox.scrollIntoView({behavior:'smooth', block:'center'});
         }

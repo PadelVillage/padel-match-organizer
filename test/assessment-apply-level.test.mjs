@@ -83,6 +83,7 @@ function parola(nome, testo = srcGiro) {
 const PROVE_PER_SCENDERE = costante('PROVE_PER_SCENDERE');
 const PASSO_DISCESA = costante('PASSO_DISCESA');
 const LIVELLO_MINIMO_SCESO = costante('LIVELLO_MINIMO_SCESO');
+const TETTO_AUTOMATICO = costante('TETTO_AUTOMATICO');
 const TENTATIVI_PER_GIRO = costante('TENTATIVI_PER_GIRO', srcGiro);
 const ORE_SILENZIO_ASSENSO = costante('ORE_SILENZIO_ASSENSO', srcGiro);
 const SCELTA_MI_FERMO = parola('SCELTA_MI_FERMO');
@@ -91,18 +92,19 @@ const SCELTA_RIPROVO = parola('SCELTA_RIPROVO');
 const ctx = {
   FONTE: 'autovalutazione', PROVE_PER_SCENDERE, PASSO_DISCESA, LIVELLO_MINIMO_SCESO,
   TENTATIVI_PER_GIRO, ORE_SILENZIO_ASSENSO, SCELTA_MI_FERMO, SCELTA_RIPROVO,
+  TETTO_AUTOMATICO,
 };
 vm.createContext(ctx);
 vm.runInContext(
   spoglia([
     ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro']
       .map((n) => estrai(n, srcGiro)),
-    ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'proveConsecutiveAlRibasso', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
+    ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'definizioneLivello', 'proveConsecutiveAlRibasso', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
       .map((n) => estrai(n)),
   ].join('\n')),
   ctx
 );
-const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio, proveConsecutiveAlRibasso, laProvaEsaurisceIlGiro } = ctx;
+const { decidi, payloadAggiornato, soloLaPiuRecentePerSocio, proveConsecutiveAlRibasso, laProvaEsaurisceIlGiro, definizioneLivello } = ctx;
 
 // ── Il materiale, modellato sui dati veri di PROD ────────────────────────────────
 const scheda = (extra = {}) => ({
@@ -457,11 +459,82 @@ caso('35. il ④ non tocca il RIBASSO: una prova passata più bassa resta ferma 
   return [esito.applica === false, /non si scende/.test(esito.motivo)];
 });
 
+// ── 🆕 IL TETTO E IL TERZO ESITO (25/08/2026) ───────────────────────────────────
+// 🚨 Questi casi non provano un calcolo: proteggono una DECISIONE, e quelle sono ciò che il
+// codice dimentica per primo. In particolare il 37 gira la strada sbagliata accanto a quella
+// giusta, perché il difetto che evita è invisibile a chiunque guardi solo il risultato.
+
+caso('36. il tetto TAGLIA il livello scritto, ma non la misura: chi risponde da Agonista prende Intermedio', () => {
+  const alta = scheda({ declared_level: 5, calculated_level: 5 });
+  const esito = decidi(alta, socio());
+  return [
+    esito.applica === true,
+    esito.livello === TETTO_AUTOMATICO,
+    /Agonista/.test(esito.segnala),
+    /maestro/.test(esito.segnala),
+  ];
+});
+
+caso('37. 🚨 il taglio arriva DOPO i controlli di coerenza, o boccerebbe chi è stato coerente', () => {
+  // La strada sbagliata: tagliare a 3.5 PRIMA di confrontare col dichiarato. Chi dichiara 5 e
+  // risponde da 5 si vedrebbe confrontare 3.5 con 5 — distanza 1.5 — e verrebbe fermato per
+  // incoerenza proprio perché è stato coerente. Nessuna prova del solo risultato lo vedrebbe:
+  // in tutti e due gli ordini «il livello scritto» è 3.5.
+  const coerenteInAlto = decidi(scheda({ declared_level: 5, calculated_level: 5 }), socio());
+  const davveroIncoerente = decidi(scheda({ declared_level: 5, calculated_level: 2 }), socio());
+  return [
+    coerenteInAlto.applica === true,
+    davveroIncoerente.applica === false,
+    /distano/.test(davveroIncoerente.motivo),
+  ];
+});
+
+caso('38. sotto il tetto non cambia NIENTE: nessuna segnalazione dove non serve', () => {
+  const esito = decidi(scheda({ declared_level: 3, calculated_level: 3 }), socio());
+  return [esito.applica === true, esito.livello === 3, !esito.segnala];
+});
+
+caso('39. 🚨 la segnalazione sopravvive al livello NON scritto: chi è già a 3.5 e risponde da Agonista', () => {
+  // È il caso che si perde per primo scrivendo la cura in fretta: il livello è già quello, la
+  // regola dice «non si tocca» — ma il fatto che il maestro debba guardarlo è vero lo stesso.
+  // Tacere qui vorrebbe dire che gli unici di cui nessuno viene informato sono proprio gli
+  // Intermedi che meritano di salire.
+  const esito = decidi(scheda({ declared_level: 5, calculated_level: 5 }), socio({ level: '3.5' }));
+  return [esito.applica === false, /ha già questo livello/.test(esito.motivo), /Agonista/.test(esito.segnala)];
+});
+
+caso('40. il tetto non fa SCENDERE nessuno: un Avanzato che risponde da Agonista resta a 4', () => {
+  // 3.5 è più basso di 4 ⇒ entra la regola del ribasso, che protegge. Il tetto limita ciò che
+  // la macchina si prende la responsabilità di scrivere, non toglie quello che c'è già.
+  const esito = decidi(scheda({ declared_level: 5, calculated_level: 5 }), avanzato());
+  return [esito.applica === false, /non si scende/.test(esito.motivo), /Agonista/.test(esito.segnala)];
+});
+
+caso('41. i nomi della scala sono quelli, e il tetto si chiama Intermedio', () => {
+  return [
+    definizioneLivello(TETTO_AUTOMATICO) === 'Intermedio',
+    definizioneLivello(5) === 'Agonista',
+    definizioneLivello(4.5) === 'Avanzato',
+    definizioneLivello(1) === 'Principiante',
+    definizioneLivello('') === '',
+  ];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i tre modi in cui questa funzione può fare danno.
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof decidi === 'function' && typeof payloadAggiornato === 'function'],
+  // 🆕 IL TERZO ESITO, guardato sul sorgente: senza questa riga la cura sarebbe una parola in
+  // più in un oggetto e nessuna scheda finirebbe mai davanti a una persona.
+  ['🆕 il terzo esito esiste: `applied_review` quando c\'è da guardare, `applied` quando no',
+    /const STAFF_DA_CERTIFICARE = 'applied_review'/.test(src)
+    && /staff_status: clean\(esito\.segnala\) \? STAFF_DA_CERTIFICARE : 'applied'/.test(src)],
+  // 🚨 …e la scheda segnalata resta APPLICATA: sono `applied_at` e `applied_member_id` a dirlo
+  //    all'app, non la parola. Se un domani sparissero, `applied_review` diventerebbe un blocco.
+  ['🚨 la scheda segnalata porta comunque `applied_at` e `applied_member_id`',
+    /applied_at: adesso/.test(src) && /applied_member_id: socioId/.test(src)],
+  ['🆕 il tetto è dichiarato come costante, non sparso nel codice', /const TETTO_AUTOMATICO = 3\.5/.test(src)],
   // 🚨🚨 `pmo_upsert_records_admin` fa `payload = excluded.payload`: REPLACE TOTALE. Usarlo
   //    qui vorrebbe dire riscrivere il socio intero con quello che l'edge ha in mano.
   ['scrive con una modifica MIRATA, mai con un upsert', !/upsert\(/.test(src) && !/pmo_upsert_records_admin/.test(src)],

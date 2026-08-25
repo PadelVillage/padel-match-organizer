@@ -16,11 +16,11 @@
 // ── LA REGOLA, decisa dal committente (17-19/08/2026) ────────────────────────────────────
 // · un giro sono TRE prove (una prova = una scheda arrivata col cancello `pass` o `fail`);
 // · *«decidi tu a quale delle tre volte ti vuoi fermare»* ⇒ il giro si chiude in DUE modi:
-//   - ESAURITO: le prove sono finite — i 30 giorni partono dall'ultima prova;
-//   - CONFERMATO: il socio ha detto «mi fermo» — i 30 giorni partono dalla sua scelta;
+//   - ESAURITO: le prove sono finite — l'attesa parte dall'ultima prova;
+//   - CONFERMATO: il socio ha detto «mi fermo» — l'attesa parte dalla sua scelta;
 // · se la terza prova porta anche la conferma, il giro è ESAURITO: era finito comunque,
-//   e contare i 30 giorni dalla scelta (che arriva dopo) allungherebbe l'attesa a chi ha
-//   solo risposto a una domanda;
+//   e contare l'attesa dalla scelta (che arriva dopo) la allungherebbe a chi ha solo
+//   risposto a una domanda;
 // · `skip` non è una prova (Semi-Pro e Professionista il quiz non ce l'hanno);
 // · il SILENZIO non blocca per sempre: una prova senza risposta si applica da sé dopo
 //   `ORE_SILENZIO_ASSENSO` (regola del 19/08: *«dopo 24 ore si applica»*) — quel pezzo
@@ -36,7 +36,34 @@
 // a valutare la funzione e muore subito.
 
 export const TENTATIVI_PER_GIRO = 3;
-export const GIORNI_DI_ATTESA = 30;
+
+/* 🆕⭐⭐ 25/08/2026 — L'ATTESA È TOLTA: da 30 giorni a ZERO. Sua decisione, presa insieme al
+   tetto a Intermedio e alla banca allargata.
+   🗣️ Era partito volendola accorciare (*«ogni 24 ore puoi ripetere il test per max 3 volte
+   di seguito»*), e misurando è saltato fuori che accorciarla non bastava: con 11 domande per
+   fascia, 3 prove al giorno × 4 domande fanno 12 viste — cioè in UN GIORNO SOLO un socio
+   vedeva la banca intera, trappole comprese. ⇒ L'attesa non era una difesa: era un ritardo
+   che sembrava una difesa.
+
+   ⚖️ QUELLO CHE DIFENDE DAVVERO, e per questo l'attesa si può togliere senza scoprire niente:
+     · la BANCA GRANDE (27 normali + 9 trabocchetti per fascia, dal 25/08): in tre prove si
+       vede al massimo un terzo delle domande, quindi rifare il test non è più «ricordare»;
+     · il TETTO a Intermedio: sopra non decide il quiz ma il maestro, guardando giocare ⇒ il
+       massimo che si ottiene mentendo è Intermedio, e chi ci arriva mentendo si smaschera in
+       campo con Intermedi veri.
+   ⇒ Le due difese non dipendono dal tempo, e infatti il tempo se n'è potuto andare.
+
+   🔒 SI METTE A ZERO, NON SI CANCELLA: la macchina del giro resta intera (`statoDelGiro` la
+   legge come parametro), quindi rimetterla è cambiare un numero. Cancellarla vorrebbe dire
+   riscrivere la regola per tornare indietro — e una decisione di prodotto va tenuta
+   reversibile quanto è facile cambiarla.
+   📏 Con zero il ramo dell'attesa è irraggiungibile per costruzione: `adessoMs < chiusoIl + 0`
+   è falso appena il giro è chiuso, quindi si cade sul giro nuovo. Nessuna inversione, nessun
+   caso limite: è lo stesso codice di prima con la porta sempre aperta.
+   ⛔ Il bot non ha una riga da cambiare: lo stato `attesa` glielo diceva il ponte, e adesso
+   il ponte non lo dice più. */
+export const GIORNI_DI_ATTESA = 0;
+
 export const ORE_SILENZIO_ASSENSO = 24;
 
 // I due valori che `self_assessments.member_decision` può assumere. Sono parole del socio
