@@ -707,7 +707,432 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'A ogni cambio campo',
       'Solo all\'inizio di un nuovo set: dentro il set il lato resta quello',
       'Alla fine di ogni game',
-      'In qualunque momento, basta avvisare'], correct:1 }
+      'In qualunque momento, basta avvisare'], correct:1 },
+
+    /* 🆕📚 25/08/2026 — INTERMEDIO SI ALLARGA A 27 NORMALI + 9 TRAPPOLE.
+       ⭐ Il metro sale ancora di un gradino, e qui cambia natura: Principiante chiede «hai
+       visto una partita», Base «ci hai giocato qualche mese», Intermedio chiede **«sai dove
+       stare e cosa scegliere»** — la posizione della coppia, il senso del servizio, l'uscita
+       di parete, perché si gioca al centro.
+       🚨 È la fascia del TETTO (sua decisione del 25/08): sopra Intermedio il quiz non
+       assegna piu' niente, certifica il maestro guardando giocare. ⇒ Questa è l'ultima
+       fascia in cui una risposta giusta vale un livello, ed è anche l'ultima in cui mentire
+       alla domanda 3 rende qualcosa. Le domande di qui in su servono a MISURARE (il livello
+       che le risposte dimostrano, da portare al maestro), non ad assegnare.
+       ⚖️ Metro di sempre: una risposta discutibile boccia chi ha ragione ⇒ niente scelte
+       tattiche su cui due maestri direbbero cose diverse, solo quelle su cui non si discute.
+       ⛔ Sigle nuove, mai riciclate. La I-03, ritirata il 9/08 perché la sua risposta
+       dipendeva da quanto è veloce l'avversario, resta un buco e non si riusa. */
+
+    // ── Intermedio — posizione, scelte, uscita di parete ────────────────────────────
+    { id:'I-10', fascia:'Intermedio', trap:false, q:'Sono a fondo campo e arriva una palla profonda e veloce sui piedi. La scelta più solida?', opts:[
+      'Colpirla al volo, prima che rimbalzi',
+      'Lasciarla rimbalzare e giocarla in uscita dal vetro',
+      'Colpirla più forte possibile, per rispondere alla velocità',
+      'Provare uno smash'], correct:1 },
+    { id:'I-11', fascia:'Intermedio', trap:false, q:'Siamo a rete e gli avversari giocano un pallonetto profondo. Cosa conviene fare?', opts:[
+      'Arretrare, giocare una bandeja e restare a rete',
+      'Lasciare il pallonetto e tornare tutti e due a fondo campo',
+      'Provare uno smash a tutta forza',
+      'Scambiarsi di lato con il compagno'], correct:0 },
+    { id:'I-12', fascia:'Intermedio', trap:false, q:'Perché conviene spesso giocare la palla al centro, fra i due avversari?', opts:[
+      'Perché lì la rete è più bassa e crea indecisione fra i due',
+      'Perché la palla viaggia più veloce',
+      'Perché è l\'unica zona senza vetro alle spalle',
+      'Perché il regolamento premia i colpi al centro'], correct:0 },
+    { id:'I-13', fascia:'Intermedio', trap:false, q:'Da fondo campo, qual è l\'obiettivo principale dello scambio?', opts:[
+      'Fare punto diretto con un colpo forte',
+      'Far scendere la palla ai piedi di chi sta a rete, per riprendersi la rete',
+      'Tenere la palla alta il più a lungo possibile',
+      'Colpire sempre verso il vetro laterale'], correct:1 },
+    { id:'I-14', fascia:'Intermedio', trap:false, q:'Sono a rete e mi arriva una palla bassa, sotto il livello del nastro. Cosa conviene?', opts:[
+      'Attaccarla forte verso il basso',
+      'Giocare una volée di controllo, profonda, e restare a rete',
+      'Arretrare subito a fondo campo',
+      'Giocare un pallonetto'], correct:1 },
+    { id:'I-15', fascia:'Intermedio', trap:false, q:'Dopo aver servito, cosa fa chi ha servito?', opts:[
+      'Resta a fondo campo ad aspettare la risposta',
+      'Sale subito a rete',
+      'Aspetta il rimbalzo restando al centro',
+      'Si sposta verso il vetro laterale'], correct:1 },
+    { id:'I-16', fascia:'Intermedio', trap:false, q:'Come si dispone la coppia che sta difendendo?', opts:[
+      'Uno a rete e uno a fondo campo',
+      'Tutti e due a fondo campo, affiancati',
+      'Uno al centro e uno dietro',
+      'Non c\'è una disposizione: ognuno copre il suo lato'], correct:1 },
+    { id:'I-17', fascia:'Intermedio', trap:false, q:'Un pallonetto avversario finisce sul vetro di fondo del mio campo. Per me quella palla è:', opts:[
+      'Persa: dal vetro di fondo non si recupera',
+      'Comoda: esce dal vetro e si rigioca in uscita di parete',
+      'Un punto già assegnato agli avversari',
+      'Da colpire prima del vetro, sempre'], correct:1 },
+    { id:'I-18', fascia:'Intermedio', trap:false, q:'La palla, dopo il rimbalzo, sta uscendo dal vetro laterale. Come conviene giocarla?', opts:[
+      'Anticipandola prima che tocchi il vetro, sempre',
+      'Aspettando che esca dal vetro e accompagnandola',
+      'Colpendola con tutta la forza appena esce',
+      'Lasciandola rimbalzare una seconda volta'], correct:1 },
+    { id:'I-19', fascia:'Intermedio', trap:false, q:'In quale posizione si vince la maggior parte dei punti?', opts:[
+      'A fondo campo',
+      'A rete',
+      'Sul servizio',
+      'Sui vetri laterali'], correct:1 },
+    { id:'I-20', fascia:'Intermedio', trap:false, q:'Che effetto si dà di solito alla bandeja?', opts:[
+      'Topspin, per farla rimbalzare alta',
+      'Taglio, per tenerla bassa e controllata',
+      'Nessun effetto: è un colpo piatto',
+      'Effetto laterale, per mandarla sul vetro'], correct:1 },
+    { id:'I-21', fascia:'Intermedio', trap:false, q:'A cosa serve soprattutto il servizio nel padel?', opts:[
+      'A fare punto diretto',
+      'A prendere la rete: è un colpo di apertura, non di attacco',
+      'A mandare la palla contro il vetro avversario',
+      'A stancare chi riceve'], correct:1 },
+    { id:'I-22', fascia:'Intermedio', trap:false, q:'Il mio compagno ha rincorso una palla larga ed è fuori posizione. Io cosa faccio?', opts:[
+      'Resto fermo nella mia metà campo',
+      'Mi sposto per coprire la sua zona: la coppia si muove insieme',
+      'Salgo a rete da solo',
+      'Torno a fondo campo ad aspettarlo'], correct:1 },
+    { id:'I-23', fascia:'Intermedio', trap:false, q:'La mia palla rimbalza nel campo avversario, tocca la loro griglia e torna nel mio campo senza che nessuno la tocchi. Cosa succede?', opts:[
+      'Punto mio',
+      'Punto degli avversari',
+      'Si rigioca il punto',
+      'Il gioco continua: posso rigiocarla'], correct:0 },
+    { id:'I-24', fascia:'Intermedio', trap:false, q:'L\'ordine di servizio dentro una coppia può cambiare durante la partita?', opts:[
+      'No, mai: si stabilisce all\'inizio e resta quello',
+      'Sì, all\'inizio di ogni set',
+      'Sì, all\'inizio di ogni game',
+      'Sì, in qualunque momento'], correct:1 },
+    { id:'I-25', fascia:'Intermedio', trap:false, q:'Qual è la zona del campo in cui conviene NON farsi sorprendere?', opts:[
+      'Il fondo campo',
+      'La zona di mezzo, fra la linea di servizio e la rete',
+      'La rete',
+      'L\'angolo vicino al vetro laterale'], correct:1 },
+    { id:'I-26', fascia:'Intermedio', trap:false, q:'Cosa vuol dire «tenere la rete»?', opts:[
+      'Toccare la rete con la racchetta senza fallo',
+      'Restare nella posizione di rete senza farsi arretrare dai pallonetti',
+      'Colpire sempre in direzione della rete',
+      'Difendere solo la propria metà campo'], correct:1 },
+    { id:'I-27', fascia:'Intermedio', trap:false, q:'Gli avversari sono tutti e due a rete e io sono in difesa. La prima cosa da NON fare è:', opts:[
+      'Giocare basso, sui loro piedi',
+      'Regalare una palla alta e comoda a mezzo campo',
+      'Giocare un pallonetto profondo',
+      'Aspettare la palla lasciandola uscire dal vetro'], correct:1 },
+    { id:'I-28', fascia:'Intermedio', trap:false, q:'Durante lo scambio posso passare la racchetta da una mano all\'altra?', opts:[
+      'No, mai',
+      'Sì: nessuna regola lo vieta',
+      'Solo quando si difende',
+      'Una volta per game'], correct:1 },
+
+    // ── Intermedio · trappole ───────────────────────────────────────────────────────
+    { id:'I-T4', fascia:'Intermedio', trap:true,  q:'Cosa stabilisce la «regola del muro cieco», che vieta di giocare la palla dopo il vetro di fondo?', opts:[
+      'Vale solo nei campi al coperto',
+      'Non esiste: dopo il rimbalzo a terra la palla si gioca anche di vetro di fondo',
+      'Vale solo sul servizio',
+      'Vale quando si è sotto nel punteggio'], correct:1 },
+    { id:'I-T5', fascia:'Intermedio', trap:true,  q:'Quando è obbligatoria la «bandeja invertita» sul lato del rovescio?', opts:[
+      'Quando il pallonetto è molto profondo',
+      'Non esiste: nessun colpo è obbligatorio, la bandeja invertita non è una regola',
+      'Nei tornei federali',
+      'Quando si difende in due a fondo campo'], correct:1 },
+    { id:'I-T6', fascia:'Intermedio', trap:true,  q:'Quando vale il «punto di transizione», che assegna mezzo punto alla coppia che conquista la rete?', opts:[
+      'A ogni cambio di posizione',
+      'Non esiste: nel padel non ci sono mezzi punti',
+      'Solo nel tie-break',
+      'Solo negli allenamenti'], correct:1 },
+    { id:'I-T7', fascia:'Intermedio', trap:true,  q:'Posso mandare la palla dall\'altra parte facendola passare FUORI dai pali della rete, di lato, invece che sopra?', opts:[
+      'No: la palla deve sempre passare sopra la rete',
+      'Sì: purché atterri nel campo avversario, può passare anche fuori dai pali',
+      'Sì, ma solo quando si difende',
+      'Solo nei tornei ufficiali'], correct:1 },
+    { id:'I-T8', fascia:'Intermedio', trap:true,  q:'Quando entra in gioco la «regola dell\'ultimo vetro», che chiude il punto se la palla tocca un vetro dopo aver toccato la griglia?', opts:[
+      'Solo nel proprio campo',
+      'Non esiste: dopo il rimbalzo a terra l\'ordine di vetri e griglia non conta',
+      'Solo nel campo avversario',
+      'Solo sul servizio'], correct:1 },
+    { id:'I-T9', fascia:'Intermedio', trap:true,  q:'Cosa prevede la «regola del servizio lungo», che concede un servizio in più alla coppia che ha appena perso il game?', opts:[
+      'Vale dal secondo set in poi',
+      'Non esiste: i servizi sono sempre due',
+      'Vale solo sul punteggio di parità',
+      'La concede l\'arbitro a richiesta'], correct:1 },
+
+    /* 🆕📚 25/08/2026 — AVANZATO SI ALLARGA A 27 NORMALI + 9 TRAPPOLE.
+       ⭐ Metro: i COLPI e i loro perché. Qui non si chiede più dove stare (è Intermedio) ma
+       che cosa si gioca e con quale effetto — vibora, chiquita, bajada, uscita di parete,
+       la prima volée dopo il servizio.
+       🚨 SOPRA IL TETTO: da questa fascia in su il quiz non assegna più niente. Chi risponde
+       da Avanzato prende comunque **Intermedio**, con scritto che ha risposto da Avanzato e
+       che il maestro lo certifica vedendolo giocare (sua regola del 25/08). ⇒ Queste domande
+       servono a MISURARE, non ad assegnare — e la misura è quello che il maestro legge prima
+       di andare a guardare.
+       ⚖️ Metro di sempre: niente scelte tattiche su cui due maestri direbbero cose diverse.
+       ⛔ Sigle nuove, mai riciclate. */
+
+    // ── Avanzato — i colpi e il loro perché ─────────────────────────────────────────
+    { id:'A-09', fascia:'Avanzato', trap:false, q:'Perché la chiquita si gioca bassa e centrale?', opts:[
+      'Per fare punto diretto',
+      'Per costringere chi è a rete a una volée bassa e togliergli l\'iniziativa',
+      'Per far rimbalzare la palla sul vetro di fondo',
+      'Per guadagnare tempo e riprendere fiato'], correct:1 },
+    { id:'A-10', fascia:'Avanzato', trap:false, q:'Come si colpisce la vibora?', opts:[
+      'Piatta e a tutta forza',
+      'Con effetto tagliato e laterale, per farla rimbalzare bassa verso il vetro',
+      'Con topspin, per farla rimbalzare alta',
+      'Sempre in sospensione, saltando'], correct:1 },
+    { id:'A-11', fascia:'Avanzato', trap:false, q:'Qual è l\'errore più comune di chi sta a rete sulle palle alte?', opts:[
+      'Giocare troppe bandeje',
+      'Voler smashare ogni palla alta, perdendo la posizione di rete',
+      'Giocare troppo al centro',
+      'Restare troppo vicino alla rete'], correct:1 },
+    { id:'A-12', fascia:'Avanzato', trap:false, q:'Perché il pallonetto è il colpo più usato ad alto livello?', opts:[
+      'Perché fa punto diretto',
+      'Perché è il modo principale per togliere la rete agli avversari',
+      'Perché è il colpo più facile da eseguire',
+      'Perché stanca gli avversari'], correct:1 },
+    { id:'A-13', fascia:'Avanzato', trap:false, q:'Perché uno smash piatto e centrale è spesso poco efficace?', opts:[
+      'Perché è troppo lento',
+      'Perché la palla torna dal vetro di fondo comoda da rigiocare',
+      'Perché è vietato dal regolamento',
+      'Perché stanca troppo chi lo esegue'], correct:1 },
+    { id:'A-14', fascia:'Avanzato', trap:false, q:'Sono sotto pressione in difesa. Dove conviene mandare la palla?', opts:[
+      'Bassa e veloce al centro',
+      'Alta e profonda, per guadagnare tempo e far arretrare gli avversari',
+      'Corta, appena oltre la rete',
+      'Sempre contro il vetro laterale'], correct:1 },
+    { id:'A-15', fascia:'Avanzato', trap:false, q:'Quando si dice che una coppia ha «l\'iniziativa»?', opts:[
+      'Quando è al servizio',
+      'Quando sta a rete e costringe gli avversari a giocare dal basso',
+      'Quando è avanti nel punteggio',
+      'Quando gioca molto sui vetri'], correct:1 },
+    { id:'A-16', fascia:'Avanzato', trap:false, q:'Una palla molto veloce e alta finisce sul vetro di fondo del mio campo dopo il rimbalzo. Come si difende?', opts:[
+      'Anticipandola prima che tocchi il vetro',
+      'Aspettando l\'uscita dal vetro e giocando un pallonetto profondo',
+      'Colpendola forte al volo',
+      'Lasciandola passare e sperando che esca'], correct:1 },
+    { id:'A-17', fascia:'Avanzato', trap:false, q:'Perché la prima volée dopo il servizio è così importante?', opts:[
+      'Perché è il colpo che fa più punti',
+      'Perché decide se si riesce a tenere la rete appena conquistata',
+      'Perché è il colpo più facile del padel',
+      'Perché il regolamento obbliga a giocarla al volo'], correct:1 },
+    { id:'A-18', fascia:'Avanzato', trap:false, q:'Posso servire in modo che la palla, dopo il rimbalzo, finisca contro il vetro laterale avversario?', opts:[
+      'No: sarebbe fallo di servizio',
+      'Sì: dopo il rimbalzo nel riquadro giusto il vetro è permesso, ed è un servizio efficace',
+      'Solo sul secondo servizio',
+      'Solo nei tornei ufficiali'], correct:1 },
+    { id:'A-19', fascia:'Avanzato', trap:false, q:'Un avversario esce dalla porta per rincorrere la mia palla. Cosa devo fare io?', opts:[
+      'Considerare il punto vinto: appena la palla esce ho fatto punto',
+      'Restare pronto: il punto continua finché la palla non rientra o cade',
+      'Fermarmi e aspettare che rientri',
+      'Uscire anch\'io dal campo'], correct:1 },
+    { id:'A-20', fascia:'Avanzato', trap:false, q:'Cosa rende difficile giocare una palla in uscita di parete?', opts:[
+      'Il fatto che arrivi alta',
+      'Il taglio e la velocità: esce poco dal vetro e resta bassa',
+      'Il fatto che arrivi lenta',
+      'Il fatto che arrivi al centro'], correct:1 },
+    { id:'A-21', fascia:'Avanzato', trap:false, q:'Quando conviene giocare al volo invece di lasciar rimbalzare?', opts:[
+      'Sempre, ogni volta che si riesce',
+      'Quando si è a rete e la palla arriva sopra il livello del nastro',
+      'Solo stando a fondo campo',
+      'Mai: nel padel conviene sempre far rimbalzare'], correct:1 },
+    { id:'A-22', fascia:'Avanzato', trap:false, q:'La racchetta può superare la rete durante il colpo?', opts:[
+      'No: la racchetta non può mai oltrepassare la rete',
+      'Sì, nell\'accompagnamento: ma la palla va colpita dal proprio lato',
+      'Sì, e si può anche colpire la palla oltre la rete',
+      'Solo quando si gioca al volo'], correct:1 },
+    { id:'A-23', fascia:'Avanzato', trap:false, q:'Che cos\'è il «remate»?', opts:[
+      'Il pallonetto',
+      'Lo smash',
+      'La volée di controllo',
+      'Il servizio con effetto'], correct:1 },
+    { id:'A-24', fascia:'Avanzato', trap:false, q:'Perché le palle da padel sono meno pressurizzate di quelle da tennis?', opts:[
+      'Per costare meno',
+      'Per rimbalzare meno e rendere gli scambi più controllabili',
+      'Per durare più a lungo',
+      'Non c\'è differenza: sono le stesse palle'], correct:1 },
+    { id:'A-25', fascia:'Avanzato', trap:false, q:'Che vantaggio dà la volée profonda rispetto a quella corta?', opts:[
+      'Fa punto più facilmente',
+      'Tiene gli avversari lontani dalla rete e rende difficile il pallonetto comodo',
+      'È più facile da eseguire',
+      'Fa rimbalzare la palla sul vetro'], correct:1 },
+    { id:'A-26', fascia:'Avanzato', trap:false, q:'Sono in difesa e gioco un pallonetto corto. Cosa devo aspettarmi?', opts:[
+      'Di riprendermi la rete',
+      'Uno smash: devo prepararmi a difendere',
+      'Che gli avversari lascino passare la palla',
+      'Un punto diretto a mio favore'], correct:1 },
+    { id:'A-27', fascia:'Avanzato', trap:false, q:'Qual è il vantaggio principale di chi sta a rete?', opts:[
+      'Essere più vicino agli avversari',
+      'Poter colpire la palla dall\'alto verso il basso',
+      'Poter usare meglio i vetri',
+      'Poter servire da più vicino'], correct:1 },
+
+    // ── Avanzato · trappole ─────────────────────────────────────────────────────────
+    { id:'A-T4', fascia:'Avanzato', trap:true,  q:'Quando si esegue la «vibora rovesciata in caduta»?', opts:[
+      'Su un pallonetto molto profondo',
+      'Non esiste: non c\'è nessun colpo con questo nome',
+      'Quando si difende sul vetro laterale',
+      'Solo nei tornei al coperto'], correct:1 },
+    { id:'A-T5', fascia:'Avanzato', trap:true,  q:'Quando è consentito il «doppio smash consecutivo», cioè smashare due volte la stessa palla quando torna dal vetro?', opts:[
+      'Quando la palla torna dal vetro di fondo',
+      'Non esiste: ogni palla si colpisce una volta sola',
+      'Solo se la palla non ha ancora rimbalzato',
+      'Sul punteggio di parità'], correct:1 },
+    { id:'A-T6', fascia:'Avanzato', trap:true,  q:'Cosa prevede la «regola dell\'attacco obbligato», che impone di smashare una palla che arriva sopra il nastro?', opts:[
+      'Vale solo a rete',
+      'Non esiste: nessuna regola impone quale colpo giocare',
+      'Vale solo nei tornei federali',
+      'Vale dal secondo set in poi'], correct:1 },
+    { id:'A-T7', fascia:'Avanzato', trap:true,  q:'Che cos\'è la «cadena», il colpo che permette di legare due volée in un unico movimento?', opts:[
+      'Una volée doppia consentita a rete',
+      'Non esiste: nessun colpo permette due tocchi in un movimento',
+      'Un colpo difensivo sul vetro',
+      'Un servizio con doppio effetto'], correct:1 },
+    { id:'A-T8', fascia:'Avanzato', trap:true,  q:'Quando si applica il «recupero di rete», che consente di rigiocare un punto perso per un rimbalzo irregolare sul nastro?', opts:[
+      'Durante lo scambio, se la palla tocca il nastro',
+      'Non esiste: durante lo scambio il nastro non fa ripetere niente',
+      'Solo sul primo servizio',
+      'Una volta per set'], correct:1 },
+    { id:'A-T9', fascia:'Avanzato', trap:true,  q:'Quando è consentito battere il servizio avanzando, con un piede che supera la linea prima del colpo?', opts:[
+      'Sul secondo servizio',
+      'Mai: i piedi restano dietro la linea di servizio fino al momento del colpo',
+      'Quando si serve dal lato del rovescio',
+      'Nei tornei amatoriali'], correct:1 },
+
+    /* 🆕📚 25/08/2026 — AGONISTA SI ALLARGA A 27 NORMALI + 9 TRAPPOLE, ed è l'ULTIMA fascia.
+       ⛔ Sopra non si va: sua decisione del 25/08, *«sopra agonista niente quiz»*. Semi-Pro e
+       Professionista restano senza domande — sono 0 soci su 2.813, e per quei livelli il
+       quiz non aggiungerebbe niente che il maestro non veda meglio da solo.
+       ⭐ Metro: il gioco fuori dal campo (x3, x4, contraparete) e il REGOLAMENTO DI GARA —
+       tie-break, punto d'oro, tempi fra i punti, chi chiama i falli senza arbitro. È la
+       parte che un giocatore di 3ª/4ª conosce perché ci ha giocato dei tornei.
+       🚨 SOPRA IL TETTO come Avanzato: chi risponde da Agonista prende **Intermedio**, con
+       scritto che ha risposto da Agonista e che il maestro lo certifica vedendolo giocare.
+       ⛔ Sigle nuove, mai riciclate. */
+
+    // ── Agonista — fuori dal campo e regolamento di gara ────────────────────────────
+    { id:'AG-09', fascia:'Agonista', trap:false, q:'Che cos\'è lo smash «x3» (por tres)?', opts:[
+      'Uno smash colpito tre volte di fila',
+      'Uno smash che fa uscire la palla dal campo dallo spazio laterale',
+      'Uno smash che vale tre punti',
+      'Uno smash giocato nel terzo set'], correct:1 },
+    { id:'AG-10', fascia:'Agonista', trap:false, q:'Nel tie-break, chi serve per primo?', opts:[
+      'Chi ha servito l\'ultimo game',
+      'Chi avrebbe dovuto servire il game successivo, e serve un solo punto',
+      'Si sorteggia',
+      'Chi ha vinto l\'ultimo punto'], correct:1 },
+    { id:'AG-11', fascia:'Agonista', trap:false, q:'Nel tie-break, dopo il primo punto ogni quanti punti cambia chi serve?', opts:[
+      'A ogni punto',
+      'Ogni due punti',
+      'Ogni quattro punti',
+      'Non cambia fino alla fine'], correct:1 },
+    { id:'AG-12', fascia:'Agonista', trap:false, q:'Dopo il mio x4 un avversario esce dal campo e rimette la palla dentro, che rimbalza nel mio campo. Cosa succede?', opts:[
+      'Punto mio: la palla era già uscita',
+      'Il gioco continua: devo giocarla',
+      'Punto suo',
+      'Si rigioca il punto'], correct:1 },
+    { id:'AG-13', fascia:'Agonista', trap:false, q:'Perché il servizio «a uscire», verso il vetro laterale, è efficace?', opts:[
+      'Perché è più veloce',
+      'Perché porta il ricevente verso il vetro e apre il centro del campo',
+      'Perché è più difficile da vedere',
+      'Perché è obbligatorio in gara'], correct:1 },
+    { id:'AG-14', fascia:'Agonista', trap:false, q:'In una partita senza arbitro, chi decide se un servizio è fallo?', opts:[
+      'Chi serve',
+      'La coppia che riceve',
+      'Si rigioca sempre il punto',
+      'Il circolo che ospita'], correct:1 },
+    { id:'AG-15', fascia:'Agonista', trap:false, q:'Perché ad alto livello si difende con il pallonetto invece che con un colpo teso?', opts:[
+      'Perché il pallonetto è più facile',
+      'Perché un colpo teso a chi è a rete gli regala l\'attacco',
+      'Perché il regolamento premia i colpi alti',
+      'Perché stanca di più gli avversari'], correct:1 },
+    { id:'AG-16', fascia:'Agonista', trap:false, q:'La mia coppia ha appena perso la rete. La cosa più importante è:', opts:[
+      'Provare subito a risalire, uno alla volta',
+      'Arretrare insieme e ricostruire il punto da fondo campo',
+      'Dividersi il campo esattamente a metà',
+      'Giocare ogni palla al centro'], correct:1 },
+    { id:'AG-17', fascia:'Agonista', trap:false, q:'Un giocatore tocca la rete DOPO che il punto si è chiuso. Cosa succede?', opts:[
+      'Punto degli avversari',
+      'Niente: il punto era già finito',
+      'Si rigioca il punto',
+      'È un avvertimento formale'], correct:1 },
+    { id:'AG-18', fascia:'Agonista', trap:false, q:'Durante lo scambio la palla tocca il palo della rete e cade regolarmente nel campo avversario. Cosa succede?', opts:[
+      'Punto perso da chi ha colpito',
+      'Il gioco continua: la palla è passata regolarmente',
+      'Si rigioca il punto',
+      'Punto vinto da chi ha colpito'], correct:1 },
+    { id:'AG-19', fascia:'Agonista', trap:false, q:'Che cos\'è la «dejada» (smorzata)?', opts:[
+      'Un pallonetto molto corto',
+      'Una palla corta giocata appena oltre la rete',
+      'Uno smash controllato',
+      'Un servizio giocato lento'], correct:1 },
+    { id:'AG-20', fascia:'Agonista', trap:false, q:'Quando conviene giocare la dejada?', opts:[
+      'Quando gli avversari sono a rete',
+      'Quando gli avversari sono arretrati a fondo campo',
+      'Sempre, quando si difende',
+      'Sul servizio'], correct:1 },
+    { id:'AG-21', fascia:'Agonista', trap:false, q:'In gara, quanto tempo si ha fra la fine di un punto e il servizio successivo?', opts:[
+      '10 secondi',
+      '20 secondi',
+      '45 secondi',
+      'Non c\'è un limite'], correct:1 },
+    { id:'AG-22', fascia:'Agonista', trap:false, q:'Quanto dura la pausa al cambio campo?', opts:[
+      '30 secondi',
+      '90 secondi',
+      'Due minuti',
+      'Non c\'è un limite'], correct:1 },
+    { id:'AG-23', fascia:'Agonista', trap:false, q:'Che cos\'è il «punto d\'oro»?', opts:[
+      'Un punto che vale doppio',
+      'Sul 40-40 si gioca un punto decisivo, senza vantaggi',
+      'Il punto che chiude il set',
+      'Il primo punto del tie-break'], correct:1 },
+    { id:'AG-24', fascia:'Agonista', trap:false, q:'Di che materiale è la superficie di un campo da padel da torneo?', opts:[
+      'Cemento',
+      'Erba sintetica con sabbia',
+      'Terra rossa',
+      'Parquet'], correct:1 },
+    { id:'AG-25', fascia:'Agonista', trap:false, q:'Perché lo smash «x4» si chiama così?', opts:[
+      'Perché vale quattro punti',
+      'Perché fa uscire la palla oltre la parete di fondo, alta quattro metri',
+      'Perché si colpisce con quattro rimbalzi',
+      'Perché si usa nel quarto set'], correct:1 },
+    { id:'AG-26', fascia:'Agonista', trap:false, q:'La palla esce dal campo e nessuno la rimette dentro. Il punto è di:', opts:[
+      'Chi l\'ha colpita, se prima aveva rimbalzato nel campo avversario',
+      'Chi ha provato a rincorrerla',
+      'Nessuno: si rigioca',
+      'Chi stava difendendo, sempre'], correct:0 },
+    { id:'AG-27', fascia:'Agonista', trap:false, q:'Quante palline si usano in una partita ufficiale?', opts:[
+      'Una',
+      'Tre',
+      'Sei',
+      'Dipende dal torneo'], correct:1 },
+
+    // ── Agonista · trappole ─────────────────────────────────────────────────────────
+    { id:'AG-T4', fascia:'Agonista', trap:true,  q:'Che cos\'è la «doble pared offensiva», il colpo che obbliga la palla a toccare due pareti avversarie?', opts:[
+      'Un colpo d\'attacco sul vetro laterale',
+      'Non esiste: nessun colpo obbliga la palla a toccare un numero di pareti',
+      'Una variante della vibora',
+      'Un colpo consentito solo in difesa'], correct:1 },
+    { id:'AG-T5', fascia:'Agonista', trap:true,  q:'Cosa prevede la «regola del punto lungo», che assegna il punto dopo trenta colpi di scambio?', opts:[
+      'Vale solo nei tornei giovanili',
+      'Non esiste: uno scambio può durare quanto vuole',
+      'Vale dal terzo set',
+      'La applica l\'arbitro a sua discrezione'], correct:1 },
+    { id:'AG-T6', fascia:'Agonista', trap:true,  q:'Quando si può chiedere il «time-out tecnico di parete», per far controllare un vetro durante il punto?', opts:[
+      'Una volta per set',
+      'Non esiste: durante il punto non si chiede nessun controllo',
+      'Solo nei campi al coperto',
+      'Quando lo concede l\'avversario'], correct:1 },
+    { id:'AG-T7', fascia:'Agonista', trap:true,  q:'Quando è obbligatorio giocare la «sotana»?', opts:[
+      'Quando la palla arriva sotto il ginocchio',
+      'Mai: la sotana esiste come colpo, ma nessun colpo è obbligatorio',
+      'Nei tornei federali',
+      'Quando si difende in due a fondo campo'], correct:1 },
+    { id:'AG-T8', fascia:'Agonista', trap:true,  q:'Quando vale la «regola dei due smash», che vieta allo stesso giocatore due smash consecutivi nello stesso punto?', opts:[
+      'Solo nei tornei federali',
+      'Non esiste: si può smashare quante volte si vuole nello stesso punto',
+      'Vale dal secondo set',
+      'Vale solo nel tie-break'], correct:1 },
+    { id:'AG-T9', fascia:'Agonista', trap:true,  q:'Cosa prevede la «regola del vantaggio di servizio», che assegna il game a chi vince tre punti di fila al servizio?', opts:[
+      'Vale solo sul punteggio di parità',
+      'Non esiste: il game si vince solo arrivando a quattro punti con due di scarto',
+      'Vale nei tornei con punto d\'oro',
+      'La concede l\'arbitro'], correct:1 }
   ]
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
