@@ -1822,11 +1822,67 @@ apre il corsivo, e `loziocoach_bot` ne ha uno: fuori dal blocco spariva dal test
 veniva copiato SBAGLIATO** (31/07). ⇒ Un messaggio con l'indirizzo dentro una frase deve passare da
 `proteggiIndirizzi` (`api.ts`), o la cura del testo rompe il link.
 
-🔨 **Da decidere quando la si fa** (due strade, e la scelta si vede solo provandola sul telefono):
-· **una** — l'invitante riceve il messaggio già scritto e lo inoltra intero (il bottone «copia»
-  copierebbe il testo, non solo l'indirizzo);
-· **due** — resta il link nudo, e a spiegare è il bot **quando l'invitato lo apre**. ⚠️ Più debole:
-  la spiegazione arriva **dopo** il gesto che si voleva convincere a fare.
+🔨 **DECISA E CURATA il 25/08/2026 mattina — strada UNA**, e la decisione l'ho presa io (delega
+del 23/08). ⚖️ **Il perché, dichiarato**: la scheda stessa aveva già misurato che la **due** è più
+debole — *«la spiegazione arriva DOPO il gesto che si voleva convincere a fare»* — e a quel punto
+non era una scelta aperta, era una scelta già argomentata che nessuno aveva scritto.
+
+🚨⭐⭐ **DUE MESSAGGI, E NON UNO SOLO PIÙ RICCO — è il pezzo di disegno che vale.** La cosa che
+verrebbe da fare è arricchire il messaggio che c'è. Non si può: **un inoltro porta con sé tutto**, e
+l'avvertenza *«non aprirlo tu»* è vera per chi invita ed è **esattamente il contrario** di ciò che
+deve fare chi riceve — che il link deve proprio aprirlo. ⇒ Mescolarle in un messaggio solo vuol
+dire, **per forza**, mandarne una sbagliata a uno dei due.
+📌 *Quando i lettori sono due e le istruzioni sono opposte, il confine fra i due testi è il
+messaggio stesso.* Il taglio non è una preferenza di stile: è dove il difetto lo mette.
+⭐ **E l'ordine è parte della cura**, non una rifinitura: istruzioni **prima**, messaggio da
+inoltrare **dopo**, così ciò che si deve toccare è l'**ultima cosa in chat** e il bottone gli sta
+sotto. Invertendoli, il messaggio buono resterebbe sepolto sopra le istruzioni — cioè nel posto da
+cui non lo si inoltra. Lo sorveglia una guardia sul sorgente.
+
+| dove | cosa |
+|---|---|
+| `ingresso-testi.ts` | `testoInvitoCreato()` resta a chi invita e **perde il link**; nasce `testoInvitoDaInoltrare(nome, link)`, che è il testo che prima non esisteva |
+| `ingresso.ts` | `tastieraCopiaInvito` — il bottone copia il **messaggio**, non l'indirizzo |
+| `bot.ts` | `mandaLinkInvito` manda i due messaggi nell'ordine, col ripiego di sempre se Telegram rifiuta il bottone |
+
+🗣️ **Le parole sono le sue**: *«ti ha chiesto di far parte del suo gruppo di giocatori»*, e la cosa
+da fare — **accettare** — detta in chiaro, che è precisamente ciò che nella schermata di Lidia non
+compariva da nessuna parte.
+⭐ **Il nome è quello del GESTIONALE** (`nomeDelSocio`), non del profilo Telegram, ed è lo **stesso**
+che l'invitato rileggerà aprendo il link: si legge una volta sola apposta. Due nomi diversi — uno su
+WhatsApp e uno entrando — e non saprebbe più chi l'ha invitata. ⚠️ Se il ponte non risponde si dice
+*«un socio del circolo»*: mai un messaggio che comincia con «undefined».
+
+🚨⭐ **IL BOTTONE COPIA IL MESSAGGIO, e senza questa metà la prima non serve.** Il canale vero è
+**WhatsApp** — *«Laura ha mandato il link di invito a Lidia»* — e su WhatsApp non si inoltra, si
+**incolla**. Un bottone che copia il solo link lascerebbe la spiegazione sul telefono di chi invita
+e rimanderebbe di nuovo l'indirizzo nudo.
+📏 **E ha un tetto misurato, non sperato**: `copy_text` di Telegram accetta **256 caratteri**. Il
+messaggio vero ne sta ~200, ma il nome arriva dal gestionale e la sua lunghezza non la decidiamo
+noi. ⇒ Sopra il tetto si ripiega sul link **e l'etichetta cambia con lui** («Copia il messaggio» →
+«Copia il link»). 📌 *Un ripiego silenzioso è un bottone che mente; un ripiego che si dichiara è
+solo un bottone che fa meno.* Un caso prova anche che il caso **normale** ci sta sotto: se
+sfondasse, il ripiego sarebbe la regola e la cura sarebbe verde a banco e assente sul telefono.
+
+🚨 **La trappola del 31/07 non si è ripetuta, e la cura è stata NON ripetere niente**: il testo da
+inoltrare non ha **nessun** Markdown, apici inversi compresi. ⚖️ Esce **due volte** — una la stampa
+Telegram, l'altra finisce negli **appunti** e da lì su WhatsApp, dove asterischi e apici sono
+caratteri veri ⇒ le due copie devono essere la **stessa stringa**. Gli apici sul link li mette
+`proteggiIndirizzi` all'invio, **solo** nella copia che passa dal Markdown: è esattamente il motivo
+per cui quella rete sta in `api.ts` e non nei singoli testi. Le due prove d'integrità (500 link
+generati davvero, più i casi a 0/1/2/3 trattini bassi) sono state **spostate** sul testo nuovo, che
+è quello che adesso il link ce l'ha — *la guardia segue la cosa che sorveglia*.
+
+✅ **Provato:** banco del bot **1569/1569**, `tsc` pulito, **sei sabotaggi tutti visti rossi** — il
+link rimesso nel messaggio dell'invitante, il nome tolto, il Markdown rimesso, il bottone che torna
+a copiare il solo link, il tetto contato in unità JavaScript invece che in punti di codice, e
+l'ordine dei due invii invertito.
+⛔ **NON provato, e va detto:** che sul telefono si veda bene. Il banco dice che i due messaggi
+partono e cosa contengono, **non** che chi riceve capisca — che è l'unica cosa che questa voce
+voleva.
+⏳ **Ramo `claude/voce-86-invito-da-inoltrare`, NON ancora in servizio**: il bot si aggiorna a mano
+(`deploy-bot-hetzner.yml`, bersaglio `soci`, con la parola `SOCI`), e finché non è aggiornato la
+prova qui sotto **non proverebbe niente**.
 
 ⏳ **Prova fisica**: un invito vero fra due persone vere, guardato sul telefono di **chi riceve** —
 che è l'unico punto da cui questo difetto si vede, e infatti è così che l'ha visto lui.
