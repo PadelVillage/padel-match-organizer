@@ -191,6 +191,30 @@ export function valoreAmmesso(domanda, valore) {
   return trovata ? trovata.valore : '';
 }
 
+/**
+ * La risposta scelta per POSIZIONE, che è come arriva da un bottone di Telegram.
+ *
+ * ⭐⭐ Perché il numero e non il testo, ed è una scelta di disegno: `callback_data` ha 64 byte in
+ * tutto, e soprattutto **la corrispondenza numero → risposta la deve fare chi conosce le
+ * domande**. Se la facesse il bot, il bot terrebbe una copia dell'elenco — e due elenchi, prima
+ * o poi, divergono. Il bot manda «ha toccato il terzo bottone della domanda X»; qual è il terzo
+ * lo sa il gestionale. *Il gestionale SA, il bot DICE.*
+ * 🔒 Fuori intervallo torna vuoto, come una risposta inventata: non esiste un «terzo bottone»
+ * su una domanda che ne ha due.
+ */
+export function valoreDaIndice(domanda, indice) {
+  /* 🚨 `Number(null)` fa **0**, e `Number('')` pure: senza questa riga «non mi hai detto quale
+     bottone» diventerebbe «ha toccato il primo», cioè una risposta scelta dal codice al posto
+     del socio. Trovato dal banco, non rileggendo — è il gemello di `definizioneLivello('')`
+     che tornava Principiante, e la coppia dice che in questa catena lo zero implicito è il
+     difetto ricorrente. */
+  const grezzo = assessTxt(indice);
+  const n = Number(grezzo);
+  if (!domanda || !grezzo || !Number.isInteger(n) || n < 0) return '';
+  const opzione = (domanda.opzioni || [])[n];
+  return opzione ? opzione.valore : '';
+}
+
 /** Le sole risposte di conoscenza, nella forma che `assessKnowledgeEvaluate` si aspetta. */
 export function risposteConoscenza(risposte) {
   const out = {};

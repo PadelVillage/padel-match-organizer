@@ -161,6 +161,18 @@ prova('si accetta solo un\'opzione offerta, e torna scritta come sta nella banca
   uguale(P.valoreAmmesso(null, 'Sto poco a rete'), '', 'senza domanda');
 });
 
+prova('si può rispondere anche col NUMERO DEL BOTTONE, ed è come risponde Telegram', () => {
+  const d = P.SCHEDA_DOMANDE.find((x) => x.chiave === 'glass');
+  uguale(P.valoreDaIndice(d, 0), 'Evito quasi sempre il vetro', 'primo bottone');
+  uguale(P.valoreDaIndice(d, 4), 'Lo uso per difendere e ripartire in attacco', 'ultimo bottone');
+  uguale(P.valoreDaIndice(d, 5), '', 'un bottone che non c\'è');
+  uguale(P.valoreDaIndice(d, -1), '', 'indice negativo');
+  uguale(P.valoreDaIndice(d, '2'), 'Difendo con il vetro in modo base', 'numero arrivato come testo');
+  uguale(P.valoreDaIndice(d, 1.5), '', 'mezzo bottone non esiste');
+  uguale(P.valoreDaIndice(d, null), '', 'niente');
+  uguale(P.valoreDaIndice(null, 0), '', 'senza domanda');
+});
+
 prova('il livello si risponde col NUMERO della scala, non con la parola', () => {
   const d = P.SCHEDA_DOMANDE.find((x) => x.chiave === 'declaredLevel');
   uguale(P.valoreAmmesso(d, '5.5'), '5.5', 'numero');

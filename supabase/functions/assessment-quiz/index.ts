@@ -95,6 +95,7 @@ import {
   risposteConoscenza,
   schedaDaRisposte,
   valoreAmmesso,
+  valoreDaIndice,
 } from './passi.js';
 
 function json(body: unknown, status = 200) {
@@ -590,7 +591,15 @@ async function motoreAPassi(
       }, 409);
     }
 
-    const valore = valoreAmmesso(passo.domanda, corpo.valore);
+    /* Due modi di dire la stessa cosa, e nessuno dei due lascia decidere a chi risponde:
+       · `valore` — il testo dell'opzione, che è come risponde la pagina (un `<select>`);
+       · `indice` — la posizione del bottone toccato, che è come risponde Telegram.
+       ⭐ In tutti e due i casi a scegliere che cosa vuol dire quella risposta è QUESTO lato:
+       il testo si riporta a quello canonico della banca, il numero si risolve sull'elenco che
+       il server ha appena mandato. Chi risponde non può nominare un'opzione che non esiste. */
+    const valore = assessTxt(corpo.valore)
+      ? valoreAmmesso(passo.domanda, corpo.valore)
+      : valoreDaIndice(passo.domanda, corpo.indice);
     if (!valore) {
       return err(400, 'RISPOSTA_NON_AMMESSA', 'Questa risposta non è fra quelle possibili.');
     }
