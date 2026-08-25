@@ -1145,6 +1145,44 @@ export const ASSESS_KNOWLEDGE_BANK = {
    comunque mandato in segreteria senza che nessuno veda un errore. Trovato con una sonda che
    mandava l'etichetta invece del numero — cioè per fortuna.
    ⇒ Qui si normalizza una volta sola, e chi chiama non deve ricordarselo. */
+/* 🆕⭐⭐ 25/08/2026 — IL TETTO, e il messaggio che il socio legge quando lo supera.
+ *
+ * 🗣️ Sua decisione: *«mettergli intermedio fino a che il maestro non lo certifica»*, e sul
+ * messaggio, parole sue: *«deve dire che deve contattare la segreteria affinché il maestro lo
+ * guardi durante una partita e di far sapere il giorno in cui gioca»*.
+ *
+ * ⭐ STA QUI, in `conoscenza.js`, perché questo file è già l'unico posto dove vive «tutto ciò
+ * che decide un livello e un esito». Il messaggio nasce dove nasce il numero: se un domani il
+ * tetto si sposta, la frase si sposta con lui invece di restare indietro di una versione.
+ *
+ * 🚨 IL NUMERO ESISTE IN DUE POSTI, ed è dichiarato: qui e in `assessment-apply-level`, che è
+ * una funzione diversa e non può importare da questa cartella (i deploy scelgono le funzioni
+ * dalle cartelle toccate). ⇒ `test/autovalutazione-conoscenza.test.mjs` confronta i due e
+ * diventa rosso se uno solo cambia. È la stessa scelta — deliberata — della scala dei livelli,
+ * che di copie ne ha tre.
+ *
+ * ⚖️ E il messaggio dice DUE cose, non una, perché una sola non basterebbe a nessuno:
+ *   · che il livello scritto è Intermedio E che le sue risposte dicevano di più — o suonerebbe
+ *     come un declassamento a chi è forte davvero;
+ *   · che deve dire QUANDO GIOCA — senza il giorno il maestro non sa quando andare a guardare,
+ *     e la certificazione resterebbe una promessa che non arriva.
+ */
+export const TETTO_AUTOMATICO = 3.5;
+
+export function certificazioneDelMaestro(livelloDimostrato) {
+  const n = numero(livelloDimostrato);
+  if (n === null || !(n > TETTO_AUTOMATICO)) return null;
+  const dimostrata = pmoLivelloDefinizione(n);
+  const scritta = pmoLivelloDefinizione(TETTO_AUTOMATICO);
+  return {
+    dimostrato: n,
+    fascia_dimostrata: dimostrata,
+    livello_scritto: TETTO_AUTOMATICO,
+    fascia_scritta: scritta,
+    messaggio: `Le tue risposte dicono ${dimostrata}. Sopra ${scritta} il livello non lo decidiamo con le domande: te lo certifica il maestro guardandoti giocare. Intanto ti registriamo ${scritta}, così puoi già organizzare e giocare. Contatta la segreteria e di\' loro il giorno in cui giochi: il maestro viene a vederti durante una partita e da lì ti mettiamo il livello giusto.`,
+  };
+}
+
 export function fasciaDaLivello(level) {
   return assessKnowledgeFasciaFor(assessmentPublicParseLevel(level));
 }

@@ -338,6 +338,55 @@ prova('il blocco non tocca l\'app: gira in una scatola vuota', () => {
   uguale(solo.ok, 'Avanzato', 'esito nella scatola vuota');
 });
 
+prova('🆕 il TETTO è lo stesso numero nelle due funzioni che lo usano', () => {
+  // 🚨 Il numero vive in due posti e non può vivere in uno solo: `assessment-apply-level` è
+  // una funzione diversa e non può importare da questa cartella — i workflow di deploy
+  // scelgono le funzioni dalle cartelle toccate, e un modulo condiviso resterebbe indietro.
+  // ⇒ Le due copie si guardano qui. Se una cambia, il socio leggerebbe una promessa («ti
+  // registriamo Intermedio») e il gestionale ne scriverebbe un'altra.
+  const APPLY = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level', 'index.ts');
+  const m = readFileSync(APPLY, 'utf8').match(/const TETTO_AUTOMATICO = ([\d.]+)/);
+  if (!m) throw new Error('il tetto non si trova più in assessment-apply-level');
+  uguale(Number(m[1]), A.TETTO_AUTOMATICO, 'il tetto delle due funzioni');
+});
+
+prova('🆕 la certificazione del maestro scatta SOPRA il tetto, e non a Intermedio', () => {
+  // ⚖️ Il confine è stretto di proposito: Intermedio lo decide il quiz, sopra no. Un `>=`
+  // qui manderebbe in segreteria proprio la fascia che il test deve saper assegnare da sé —
+  // cioè il 96,7% del circolo.
+  uguale(A.certificazioneDelMaestro(3.5), null, 'a Intermedio non serve nessuno');
+  uguale(A.certificazioneDelMaestro(3), null, 'sotto nemmeno');
+  const c = A.certificazioneDelMaestro(5);
+  if (!c) throw new Error('sopra il tetto la certificazione deve esserci');
+  uguale(c.fascia_dimostrata, 'Agonista', 'la fascia dimostrata');
+  uguale(c.livello_scritto, A.TETTO_AUTOMATICO, 'il livello che si scrive');
+  uguale(c.fascia_scritta, 'Intermedio', 'la fascia che si scrive');
+});
+
+prova('🆕 il messaggio dice tutte e tre le cose, o non serve a niente', () => {
+  // Sue parole: *«deve dire che deve contattare la segreteria affinché il maestro lo guardi
+  // durante una partita e di far sapere il giorno in cui gioca»*. Più la prima metà, che è
+  // sua ed è quella che evita che suoni come un declassamento: che ha risposto più in alto.
+  const testo = A.certificazioneDelMaestro(5).messaggio;
+  const pezzi = [
+    [/Agonista/, 'che ha risposto da Agonista'],
+    [/segreteria/i, 'contattare la segreteria'],
+    [/maestro/i, 'che lo guarda il maestro'],
+    [/giorno in cui giochi/i, 'che deve dire QUANDO gioca'],
+  ];
+  for (const [re, cosa] of pezzi) {
+    if (!re.test(testo)) throw new Error(`al messaggio manca ${cosa}: «${testo}»`);
+  }
+});
+
+prova('🆕 un livello VUOTO non produce nessuna promessa', () => {
+  // La stessa trappola di `pmoLivelloFascia`: `Number('')` fa 0, e senza questa riga un
+  // livello mancante non supererebbe il tetto — giusto per caso, non per regola.
+  uguale(A.certificazioneDelMaestro(''), null, 'vuoto');
+  uguale(A.certificazioneDelMaestro(null), null, 'null');
+  uguale(A.certificazioneDelMaestro('boh'), null, 'non un numero');
+});
+
 prova('la scala dentro le DUE edge dice le stesse parole', () => {
   // L'edge non può leggere index.html: ha una copia delle 7 righe. Se qualcuno cambia
   // la tabella da una parte sola, l'email racconterebbe un livello diverso da quello

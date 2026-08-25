@@ -66,6 +66,7 @@ import {
   assessmentPublicScoreFromText,
   assessmentPublicTechnicalScores,
   calculateAssessmentPublicLevel,
+  certificazioneDelMaestro,
   cleanCell,
   fasciaDaLivello,
   normalizeText,
@@ -471,10 +472,15 @@ async function gestisci(req: Request): Promise<Response> {
     }
 
     // Al telefono torna l'ESITO, non il come: né le risposte giuste né le soglie.
+    // 🆕 25/08 — e, quando le risposte dicono più di quanto il test possa scrivere, la FRASE
+    // già scritta. ⭐ Non un flag da interpretare: le parole. È «il gestionale SA, il bot
+    // DICE» applicato al test — chi le mostra (la pagina oggi, il bot domani) non deve
+    // ricostruire la regola, e due ricostruzioni non possono divergere.
     return ok({
       esito: conoscenza.status,
       staff_status: statoStaff,
       livello: livCalc.calculated_level,
+      certificazione: certificazioneDelMaestro(livCalc.calculated_level),
     });
   }
 
