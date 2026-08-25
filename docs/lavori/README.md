@@ -1577,6 +1577,51 @@ livello lo prova **quando sarà dentro Telegram** (*«rimane il test di livello 
 strada che chiude la 94**, che è in servizio su PROD e aspetta di essere vista funzionare. Scavalca
 **solo delle attese** — la 98 e la 99 in coda, che non bloccano nessuno.
 
+🔨✅ **IN SERVIZIO LA SERA STESSA, tutt'e due le metà** — il motore su PROD alle **23:43**
+(#1085), il bot dei soci alle **23:45** (assistente-padel-agent#83), in quest'ordine perché il
+motore da solo è inerte e il bot da solo non troverebbe niente.
+
+📏 **Il motore provato END-TO-END su PROD prima di toccare il bot**, con un gettone di collaudo
+fabbricato e poi cancellato (zero residui, verificato): prima domanda con **sei bottoni e una
+sola domanda**; risposta ⇒ avanza; **ritocco del bottone di prima ⇒ `FUORI_PASSO`** con dentro la
+domanda giusta; risposta inventata ⇒ rifiutata. ⇒ La parte del gestionale non aspetta più nessuna
+prova: quella l'ha avuta.
+
+🔨 **Cosa c'è dentro, e dove sta la verità di ciascun pezzo:**
+· `passi.js` (gestionale) — le 8 domande della scheda, dove siamo arrivati, cosa è una risposta
+  ammessa. Sono **decisioni**, e stanno in un modulo che il banco **esegue**;
+· `assessment_tokens.progress` — dove è arrivato il socio, **nel gestionale e non nel bot**: un
+  deploy del bot non deve buttare per terra chi è a metà test, e a che punto è un socio è un
+  fatto del circolo. ⭐ Quella scelta si è dimostrata giusta la sera stessa: fra una correzione e
+  l'altra il bot è stato riavviato **mentre lui provava**, e non si è perso niente;
+· `test-a-passi.ts` (bot) — legge il tocco, disegna la domanda, e basta. Nel `callback_data`
+  **non c'è il gettone**: è la credenziale del socio, e di chi sia il test lo decide chi ha
+  l'anagrafica. C'è la **posizione** del bottone, e cosa sia «il terzo» lo sa il gestionale.
+
+⭐⭐ **E un residuo del 24/08 si è chiuso da sé**: la sorveglianza dell'esito ora si accende
+**quando il socio comincia**, non quando gli arriva il bottone. Era dichiarato e scoperto — *«chi
+tocca un bottone rimasto in chat da giorni non passa di qui»* — e col test dentro la chat il bot
+sa finalmente quando qualcuno comincia.
+
+🗣️ **Tre sue correzioni nella prima mezz'ora, tutte sulla stessa frase**, e messe in fila dicono
+una cosa sola:
+① *«non mettiamo mai un numero ma una parola»* ⇒ il numero del livello **non entra più nemmeno
+  nel bot** (`leggiPasso` non lo legge): *un numero che non entra non può uscire*;
+② *«bisogna specificare di quanto scende, se no così non è chiaro»* ⇒ la frase dice **di quanto**:
+  «scende di mezzo livello». Annunciare una conseguenza senza la sua misura la fa immaginare
+  peggiore di com'è;
+③ *«non mi piace e non si capisce cosa significa»* di *«mai fino a quello che dice il test»* ⇒
+  riscritta in **«non di più»**. 📌 *Una frase non può rassicurare nominando qualcosa che chi
+  legge non ha davanti* — quella coda chiedeva di immaginare il livello calcolato dal test, che
+  il socio non vede.
+
+⏳ **RESTA APERTA, e per due cose sole:** la **prova fisica** di lui (le dodici domande fino in
+fondo, dichiarando Agonista, per vedere uscire la frase del maestro) e il **terzo passo** — la
+pagina che si spegne, che si fa solo dopo.
+🔎 La cosa da guardare per prima, e che nessuno ha ancora misurato: **quanto Telegram tronchi le
+etichette lunghe** delle due domande sul livello (~45 caratteri). Le opzioni si distinguono dalla
+**prima** parola, che è il caso in cui un troncamento non fa danno — ma si vede guardando.
+
 🗣️ **L'idea è sua**, del 25/08: *«forse facendolo con una domanda alla volta potremmo anche metterlo
 dentro Telegram?»* — e la risposta è **sì**, deciso.
 
