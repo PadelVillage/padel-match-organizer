@@ -1762,13 +1762,21 @@ chiusa la porta sui ~2.800 soci del circolo»* — se un socio potesse sfogliare
 l'anagrafica del circolo diventerebbe una rubrica pubblica dal retro.
 ⇒ Una partita aperta è **un'apertura deliberata di quella serratura**, e va disegnata come tale:
 il nome di chi ha organizzato e chi c'è dentro diventano visibili a gente che non li conosce.
-📌 **La domanda di disegno è una sola, e va posta a lui prima di scrivere una riga**: *cosa vede,
-di una partita aperta, chi non ne fa parte?* — i nomi, o solo «3 su 4, livello Intermedio»? Le due
-strade portano a due prodotti diversi, e la seconda **non apre nessuna serratura**.
-⚠️ E il gemello: chi apre la partita **sa** che la sta rendendo visibile? Deve essere un gesto
-esplicito e reversibile, non una casella che qualcuno spunta senza capire.
+🔄 **LA DOMANDA DI DISEGNO È STATA POSTA E HA RISPOSTA, il 25/08/2026 mattina** — e questa riga
+diceva *«va posta a lui prima di scrivere una riga»*: **corretta, non affiancata**.
+🗣️ *Cosa vede, di una partita aperta, chi non ne fa parte?* ⇒ **SOLO I NUMERI**: «3 su 4 · lunedì
+18:30 · livello Intermedio», **nessun nome**. I nomi si vedono **da dentro**, cioè dopo esserci
+entrati.
+⭐ **È la strada che NON apre la serratura**, ed è il motivo per cui la domanda andava fatta prima:
+chi sfoglia le partite aperte **non impara chi sono gli altri soci**, quindi l'anagrafica del
+circolo resta chiusa esattamente com'è oggi. La rubrica privata non è una preferenza — `rubrica.ts`
+la chiama *«la serratura che tiene chiusa la porta sui ~2.800 soci»* — e questa risposta la lascia
+in piedi invece di doverla riprogettare.
+⚖️ **Cosa costa, dichiarato**: chi guarda decide **senza sapere con chi giocherebbe**. Il vincolo
+che sostituisce il nome è il **livello** (pezzo ④), e da qui in poi non è più un dettaglio
+facoltativo: è **l'unica cosa** che dice a chi guarda se quella partita fa per lui.
 
-🔨 **I pezzi, per come si vedono oggi — da confermare con lui, nessuno è deciso:**
+🔨 **I pezzi, per come si vedono oggi — il ③ e il ④ restano da confermare con lui:**
 ① **chi apre** — un bottone nella schermata della partita, che un organizzatore tocca *volutamente*
    (sua parola). Serve anche il verso opposto: richiuderla;
 ② **come si trovano** — la voce di menu «Partite Aperte»: l'elenco di quelle aperte nella finestra
@@ -1880,9 +1888,13 @@ l'ordine dei due invii invertito.
 ⛔ **NON provato, e va detto:** che sul telefono si veda bene. Il banco dice che i due messaggi
 partono e cosa contengono, **non** che chi riceve capisca — che è l'unica cosa che questa voce
 voleva.
-⏳ **Ramo `claude/voce-86-invito-da-inoltrare`, NON ancora in servizio**: il bot si aggiorna a mano
-(`deploy-bot-hetzner.yml`, bersaglio `soci`, con la parola `SOCI`), e finché non è aggiornato la
-prova qui sotto **non proverebbe niente**.
+✅ **IN SERVIZIO dalle 09:54 del 25/08** (PR #78 del repo del bot, `dd84fa2`, deploy **#91**), e lo
+ha deciso lui stamattina rispondendo *«sì, in servizio»*. ⚖️ Andava messa **prima** della prova, non
+dopo: il bot si aggiorna solo a mano, e un invito mandato con la versione vecchia sarebbe passato
+**senza esercitare niente** — è la trappola del 23/08 ore 17:20, che è costata un giro.
+📏 **Verificato che giri il commit giusto e non solo che sia ripartito**: il deploy ha lavorato su
+`dd84fa2`, che è la punta di `main`. *Un deploy verde risponde a «è ripartito?», non a «gira il
+commit che credo?»*
 
 ⏳ **Prova fisica**: un invito vero fra due persone vere, guardato sul telefono di **chi riceve** —
 che è l'unico punto da cui questo difetto si vede, e infatti è così che l'ha visto lui.
