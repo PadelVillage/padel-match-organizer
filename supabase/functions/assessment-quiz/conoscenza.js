@@ -564,7 +564,150 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Sì: appena la palla esce dal campo il punto è chiuso',
       'No: dove il campo lo consente posso uscire dalla porta e rimandarla dentro',
       'No, ma solo se non tocco terra fuori dal campo',
-      'Sì, tranne che nei tornei ufficiali'], correct:1 }
+      'Sì, tranne che nei tornei ufficiali'], correct:1 },
+
+    /* 🆕📚 25/08/2026 — BASE SI ALLARGA A 27 NORMALI + 9 TRAPPOLE, e SALE di livello.
+       📏 Misurato prima di scrivere, ed è il motivo per cui questo blocco non è solo «più
+       domande»: le 11 Base di oggi chiedono le stesse cose delle nuove Principiante — dove
+       rimbalza il servizio, se si può rispondere al volo, quanti rimbalzi, se si può toccare
+       la rete. ⇒ Con Principiante dotato di una banca vera, **Base e Principiante erano lo
+       stesso test**, e un cancello che non distingue due fasce non le sta misurando.
+       ⭐ Perciò qui il metro sale di un gradino: non «hai visto una partita» ma **«ci hai
+       giocato qualche mese»** — le regole che si scoprono giocando (le linee di fondo non
+       esistono, si esce dalla porta, il lato di ricezione è fisso per tutto il set) e il
+       primo gioco di posizione (rete in due, pallonetto per riprenderla, bandeja).
+       ⚖️ Resta il metro di sempre (9/08): una risposta discutibile boccia chi ha ragione ⇒
+       niente punto d'oro, niente formati di torneo, niente «dipende dal circolo».
+       ⛔ Come Principiante, sigle nuove e mai riciclate. */
+
+    // ── Base — le regole che si scoprono giocando ───────────────────────────────────
+    { id:'B-09', fascia:'Base', trap:false, q:'La mia palla passa la rete, rimbalza nel campo avversario e poi finisce sul loro vetro. Il punto è finito?', opts:[
+      'Sì, punto mio: hanno il vetro alle spalle',
+      'No: dopo il rimbalzo a terra possono giocarla di parete',
+      'Sì, ma solo se è il vetro di fondo',
+      'Si rigioca il punto'], correct:1 },
+    { id:'B-10', fascia:'Base', trap:false, q:'Batto il servizio e nel momento del colpo il mio piede tocca la linea di servizio. Cosa succede?', opts:[
+      'È valido: la linea è dentro',
+      'È fallo di servizio',
+      'Il servizio si ripete',
+      'Punto diretto degli avversari'], correct:1 },
+    { id:'B-11', fascia:'Base', trap:false, q:'Qual è la posizione da cui una coppia attacca meglio?', opts:[
+      'Uno a rete e uno a fondo campo',
+      'Tutti e due a rete, affiancati',
+      'Tutti e due a fondo campo',
+      'Uno al centro e uno appoggiato al vetro'], correct:1 },
+    { id:'B-12', fascia:'Base', trap:false, q:'A cosa serve soprattutto il pallonetto?', opts:[
+      'A fare punto diretto',
+      'A far arretrare gli avversari e riprendersi la rete',
+      'A guadagnare tempo per riprendere fiato',
+      'A far rimbalzare la palla sul vetro'], correct:1 },
+    { id:'B-13', fascia:'Base', trap:false, q:'Dopo il rimbalzo a terra la palla tocca DUE pareti del mio campo, una dopo l\'altra. Posso ancora giocarla?', opts:[
+      'No: due pareti chiudono il punto',
+      'Sì: dopo il rimbalzo a terra posso giocarla comunque',
+      'Solo se sono due vetri e non la griglia',
+      'Solo se sto difendendo'], correct:1 },
+    { id:'B-14', fascia:'Base', trap:false, q:'Sono uscito dalla porta del campo per rincorrere una palla. Posso rimandarla dentro?', opts:[
+      'No: fuori dal campo non si può più giocare',
+      'Sì, purché la palla abbia prima rimbalzato dentro il mio campo',
+      'Sì, sempre, anche se non ha rimbalzato',
+      'Solo nei tornei ufficiali'], correct:1 },
+    { id:'B-15', fascia:'Base', trap:false, q:'Che cos\'è la «bandeja»?', opts:[
+      'Uno smash colpito a tutta forza',
+      'Un colpo sopra la testa, controllato, che serve a non perdere la rete',
+      'Un pallonetto giocato in difesa',
+      'Un servizio con effetto'], correct:1 },
+    { id:'B-16', fascia:'Base', trap:false, q:'Cosa deve avere obbligatoriamente la racchetta da padel?', opts:[
+      'Niente di obbligatorio',
+      'Il cordino da polso, per non farla sfuggire di mano',
+      'Il grip di colore scuro',
+      'Un peso non superiore a 300 grammi'], correct:1 },
+    { id:'B-17', fascia:'Base', trap:false, q:'La palla che ho colpito passa la rete e colpisce direttamente la griglia avversaria, senza rimbalzare a terra. Cosa succede?', opts:[
+      'Punto mio',
+      'Punto degli avversari: doveva prima rimbalzare a terra',
+      'Il gioco continua: possono ancora giocarla',
+      'Si rigioca il punto'], correct:1 },
+    { id:'B-18', fascia:'Base', trap:false, q:'Quanti game servono per vincere un set?', opts:[
+      'Quattro',
+      'Sei, con almeno due game di scarto',
+      'Otto',
+      'Dipende da quanto tempo si è prenotato'], correct:1 },
+    { id:'B-19', fascia:'Base', trap:false, q:'Mentre la palla è in gioco la racchetta mi sfugge di mano e finisce nel campo avversario. Cosa succede?', opts:[
+      'Punto degli avversari',
+      'Il gioco continua',
+      'Si rigioca il punto',
+      'È solo un avvertimento la prima volta'], correct:0 },
+    { id:'B-20', fascia:'Base', trap:false, q:'Chi serve, batte sempre dallo stesso lato del campo?', opts:[
+      'Sì, per tutto il game',
+      'No: alterna destra e sinistra a ogni punto',
+      'Cambia lato ogni due punti',
+      'Lo sceglie chi riceve'], correct:1 },
+    { id:'B-21', fascia:'Base', trap:false, q:'Dentro una coppia, chi serve durante un game?', opts:[
+      'I due compagni si alternano punto per punto',
+      'Sempre lo stesso giocatore, per tutto il game',
+      'Chi ha vinto il punto precedente',
+      'Si decide a ogni punto'], correct:1 },
+    { id:'B-22', fascia:'Base', trap:false, q:'Com\'è l\'altezza della rete da padel?', opts:[
+      'Uguale su tutta la lunghezza',
+      'Più bassa al centro che ai lati',
+      'Più alta al centro che ai lati',
+      'Si regola prima di ogni partita'], correct:1 },
+    { id:'B-23', fascia:'Base', trap:false, q:'Ho sbagliato il primo servizio. Il secondo dove lo batto?', opts:[
+      'Dal lato opposto',
+      'Dallo stesso lato, verso lo stesso quadrato',
+      'Da dove preferisco',
+      'Verso il quadrato opposto'], correct:1 },
+    { id:'B-24', fascia:'Base', trap:false, q:'Quanto misura un campo da padel?', opts:[
+      '18 metri per 9',
+      '20 metri per 10',
+      '24 metri per 11',
+      'Come un campo da tennis'], correct:1 },
+    { id:'B-25', fascia:'Base', trap:false, q:'Gli avversari colpiscono e la palla esce dal campo senza aver mai rimbalzato dentro. Cosa succede?', opts:[
+      'Punto mio: la palla non è mai entrata',
+      'Punto loro',
+      'Si rigioca il punto',
+      'Il gioco continua fuori dal campo'], correct:0 },
+    { id:'B-26', fascia:'Base', trap:false, q:'Nel padel una palla può essere «fuori» perché rimbalza oltre la linea di fondo?', opts:[
+      'Sì, come nel tennis',
+      'No: le uniche linee che contano sono quelle del servizio',
+      'Sì, ma solo sul servizio',
+      'Sì, solo nei tornei ufficiali'], correct:1 },
+    { id:'B-27', fascia:'Base', trap:false, q:'Durante lo scambio la palla tocca il nastro della rete e passa comunque dall\'altra parte. Cosa succede?', opts:[
+      'Si rigioca il punto',
+      'Il gioco continua normalmente',
+      'Punto di chi ha colpito',
+      'Punto degli avversari'], correct:1 },
+
+    // ── Base · trappole ─────────────────────────────────────────────────────────────
+    { id:'B-T4', fascia:'Base', trap:true,  q:'Quando si applica la «regola del vetro amico», che permette di far rimbalzare la palla sul proprio vetro prima di rimandarla di là?', opts:[
+      'Solo quando si è in difesa',
+      'Non esiste: la palla deve passare la rete direttamente',
+      'Solo dopo un pallonetto avversario',
+      'Sul punteggio di 40-40'], correct:1 },
+    { id:'B-T5', fascia:'Base', trap:true,  q:'Che cos\'è la «zona morta», l\'area del campo in cui la palla non può rimbalzare?', opts:[
+      'La striscia fra la rete e la linea di servizio',
+      'Non esiste: dentro il campo la palla può rimbalzare dovunque',
+      'La fascia vicino ai vetri laterali',
+      'Esiste solo nei campi al coperto'], correct:1 },
+    { id:'B-T6', fascia:'Base', trap:true,  q:'Quando si applica il «cambio di servizio anticipato», che toglie il servizio a chi perde tre punti di fila?', opts:[
+      'Solo nei tornei federali',
+      'Non esiste: il servizio cambia soltanto alla fine del game',
+      'Solo nel primo set',
+      'Quando lo chiede chi riceve'], correct:1 },
+    { id:'B-T7', fascia:'Base', trap:true,  q:'Chi riceve il servizio dove si deve mettere?', opts:[
+      'Dietro la linea di servizio, obbligatoriamente',
+      'Dove vuole: nessuna regola fissa la posizione di chi riceve',
+      'In diagonale rispetto a chi serve, obbligatoriamente',
+      'Al centro del proprio campo'], correct:1 },
+    { id:'B-T8', fascia:'Base', trap:true,  q:'In quale caso si può chiedere la «palla di cortesia», cioè ripetere un punto perso per una distrazione?', opts:[
+      'Quando un giocatore scivola',
+      'Non esiste: un punto perso non si ripete a richiesta',
+      'Una volta per set',
+      'Quando lo concede l\'avversario'], correct:1 },
+    { id:'B-T9', fascia:'Base', trap:true,  q:'Quando i due compagni possono scambiarsi il lato di ricezione (destra e sinistra)?', opts:[
+      'A ogni cambio campo',
+      'Solo all\'inizio di un nuovo set: dentro il set il lato resta quello',
+      'Alla fine di ogni game',
+      'In qualunque momento, basta avvisare'], correct:1 }
   ]
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
