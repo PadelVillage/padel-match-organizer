@@ -583,11 +583,17 @@ async function motoreAPassi(
     if (passo.finito) {
       return err(409, 'GIRO_FINITO', 'Il test è già stato consegnato.');
     }
-    if (!chiave || chiave !== passo.domanda.chiave) {
+    /* La domanda in una variabile invece di `passo.domanda` ripetuto: `deno check` non la sa
+       restringere attraverso `passo.finito` (arriva da un modulo .js) e ogni uso risulta
+       «possibilmente null». ⭐ Il rosso l'ha trovato la CI, che è l'unico posto dove `deno
+       check` gira — da qui `jsr.io` è bloccato — ed è il genere di errore che una rilettura
+       non vede. */
+    const attuale = passo.domanda;
+    if (!attuale || !chiave || chiave !== attuale.chiave) {
       return json({
         ok: false, error: 'FUORI_PASSO',
         message: 'Quella domanda è già passata.',
-        numero: passo.numero, totale: passo.totale, domanda: passo.domanda,
+        numero: passo.numero, totale: passo.totale, domanda: attuale,
       }, 409);
     }
 
@@ -598,8 +604,8 @@ async function motoreAPassi(
        il testo si riporta a quello canonico della banca, il numero si risolve sull'elenco che
        il server ha appena mandato. Chi risponde non può nominare un'opzione che non esiste. */
     const valore = assessTxt(corpo.valore)
-      ? valoreAmmesso(passo.domanda, corpo.valore)
-      : valoreDaIndice(passo.domanda, corpo.indice);
+      ? valoreAmmesso(attuale, corpo.valore)
+      : valoreDaIndice(attuale, corpo.indice);
     if (!valore) {
       return err(400, 'RISPOSTA_NON_AMMESSA', 'Questa risposta non è fra quelle possibili.');
     }
@@ -649,8 +655,11 @@ async function motoreAPassi(
   const chi = nomeSpezzato(gettone?.member_name);
   return await consegnaScheda(
     db, token, gettone,
-    schedaDaRisposte(risposte, chi) as JsonMap,
-    risposteConoscenza(risposte),
+    // `as unknown as` e non un cast diretto: per `deno check` le due forme non si sovrappongono
+    // abbastanza (a `JsonMap` manca l'indice di stringa). Il contenuto è quello giusto — le
+    // stesse chiavi che manda la pagina — ed è ciò che il banco verifica una per una.
+    schedaDaRisposte(risposte, chi) as unknown as JsonMap,
+    risposteConoscenza(risposte) as Record<string, string>,
   );
 }
 
