@@ -192,6 +192,16 @@ const prova = (quando, esito, extra = {}) => ({ token: `T-${quando}`, submitted_
 const fermato = (quandoProva, quandoScelta) =>
   prova(quandoProva, 'pass', { member_decision: MI_FERMO, member_decision_at: quandoScelta });
 const stato = (schede, adesso = ADESSO) => statoDelGiro(schede, adesso, PROVE, GIORNI);
+// 🆕 25/08 — l'attesa è ZERO dalla decisione di stamattina (vedi la guardia in fondo), e con
+// zero il ramo dell'attesa è irraggiungibile: i casi che provano COME SI CHIUDE un giro e da
+// quando partirebbe l'attesa avrebbero smesso di misurare qualcosa.
+// ⚖️ Perciò quei casi passano un'attesa ESPLICITA invece della costante: continuano a provare
+// la macchina — che resta intera e riaccendibile con un numero — mentre i casi nuovi in fondo
+// provano la DECISIONE di oggi, cioè che con la costante vera non si blocca più nessuno.
+// 📌 È la differenza fra provare un meccanismo e provare una scelta: servono tutti e due, e
+// mescolarli è il modo di perdere il primo il giorno in cui cambia la seconda.
+const ATTESA_DI_PROVA = 30;
+const statoConAttesa = (schede, adesso = ADESSO, giorni = ATTESA_DI_PROVA) => statoDelGiro(schede, adesso, PROVE, giorni);
 
 const casi = [];
 const caso = (nome, fn) => casi.push({ nome, fn });
@@ -212,13 +222,13 @@ caso('3. due bocciature: la terza è l\'ultima, e lo dice', () => {
 });
 
 caso('4. tre bocciature: giro ESAURITO, e i 30 giorni partono dall\'ultima', () => {
-  const s = stato([prova(giorniFa(10), 'fail'), prova(giorniFa(9), 'fail'), prova(giorniFa(8), 'fail')]);
+  const s = statoConAttesa([prova(giorniFa(10), 'fail'), prova(giorniFa(9), 'fail'), prova(giorniFa(8), 'fail')]);
   return [
     s.ammesso === false,
     s.attesa?.motivo === 'esaurito',
     s.falliti === 3,
-    s.attesa?.giorni === GIORNI - 8,
-    s.attesa?.dal === new Date(Date.parse(giorniFa(8)) + GIORNI * GIORNO).toISOString(),
+    s.attesa?.giorni === ATTESA_DI_PROVA - 8,
+    s.attesa?.dal === new Date(Date.parse(giorniFa(8)) + ATTESA_DI_PROVA * GIORNO).toISOString(),
   ];
 });
 
@@ -238,12 +248,12 @@ caso('6. bocciato e poi passato: siamo alla terza, ed è l\'ultima del giro', ()
 caso('6bis. ⭐ tre prove con una PASSATA in mezzo: giro esaurito, ma le bocciature sono DUE', () => {
   // 🚨 È il caso per cui il bot non può dire «hai sbagliato tre volte»: `tentativi_falliti`
   //    vale 2, e la frase giusta parla di prove finite, non di bocciature (pezzo ⑦).
-  const s = stato([prova(giorniFa(6), 'fail'), prova(giorniFa(5), 'pass'), prova(giorniFa(4), 'fail')]);
+  const s = statoConAttesa([prova(giorniFa(6), 'fail'), prova(giorniFa(5), 'pass'), prova(giorniFa(4), 'fail')]);
   return [
     s.ammesso === false,
     s.attesa?.motivo === 'esaurito',
     s.falliti === 2,
-    s.attesa?.dal === new Date(Date.parse(giorniFa(4)) + GIORNI * GIORNO).toISOString(),
+    s.attesa?.dal === new Date(Date.parse(giorniFa(4)) + ATTESA_DI_PROVA * GIORNO).toISOString(),
   ];
 });
 
@@ -280,7 +290,7 @@ caso('10. le schede VECCHIE senza il quiz non sono prove: contano zero, come pri
 caso('11. l\'ordine dell\'elenco non conta: dal database arrivano dalla più recente', () => {
   const desc = [prova(giorniFa(8), 'fail'), prova(giorniFa(9), 'fail'), prova(giorniFa(10), 'fail')];
   const asc = [...desc].reverse();
-  const a = stato(desc), b = stato(asc);
+  const a = statoConAttesa(desc), b = statoConAttesa(asc);
   return [a.ammesso === false, b.ammesso === false, a.attesa.dal === b.attesa.dal];
 });
 
@@ -306,16 +316,16 @@ caso('14. l\'esito si legge dove sta davvero, e una scheda malformata non esplod
   ];
 });
 
-caso('15. 🚨🚨 LA REGOLA NUOVA (④): «mi fermo» CHIUDE il giro, e i 30 giorni partono dalla SCELTA', () => {
+caso('15. 🚨🚨 LA REGOLA NUOVA (④): «mi fermo» CHIUDE il giro, e l\'attesa, se c\'è, parte dalla SCELTA', () => {
   // Prima prova passata, e il socio si ferma lì: il giro è finito con due prove non usate —
   // è esattamente ciò che la sua regola concede, «decidi tu a quale delle tre volte fermarti».
   // ⚖️ L'attesa parte da quando ha SCELTO, non da quando ha fatto la prova: fra le due cose
   // possono passare ore, e far partire l'attesa dalla prova regalerebbe tempo a chi tarda.
-  const s = stato([fermato(giorniFa(10), giorniFa(9))]);
+  const s = statoConAttesa([fermato(giorniFa(10), giorniFa(9))]);
   return [
     s.ammesso === false,
     s.attesa?.motivo === 'confermato',
-    s.attesa?.dal === new Date(Date.parse(giorniFa(9)) + GIORNI * GIORNO).toISOString(),
+    s.attesa?.dal === new Date(Date.parse(giorniFa(9)) + ATTESA_DI_PROVA * GIORNO).toISOString(),
     s.falliti === 0,
   ];
 });
@@ -324,11 +334,11 @@ caso('16. 🚨 alla TERZA prova l\'esaurimento VINCE sulla conferma: l\'attesa n
   // Se contasse la conferma, chi risponde «mi fermo» dopo la terza aspetterebbe PIÙ di chi
   // non risponde affatto — cioè la cortesia costerebbe giorni. Il giro era finito comunque.
   const terza = fermato(giorniFa(10), giorniFa(3));
-  const s = stato([prova(giorniFa(12), 'fail'), prova(giorniFa(11), 'fail'), terza]);
+  const s = statoConAttesa([prova(giorniFa(12), 'fail'), prova(giorniFa(11), 'fail'), terza]);
   return [
     s.ammesso === false,
     s.attesa?.motivo === 'esaurito',
-    s.attesa?.dal === new Date(Date.parse(giorniFa(10)) + GIORNI * GIORNO).toISOString(),
+    s.attesa?.dal === new Date(Date.parse(giorniFa(10)) + ATTESA_DI_PROVA * GIORNO).toISOString(),
     s.falliti === 2,
   ];
 });
@@ -521,9 +531,42 @@ caso('39. 🔒 spazi e vuoti non fanno passare un gettone usato', () => {
           gettoneDaRiusare(['', null, 'BUONO'], []) === 'BUONO'];
 });
 
+// ── 🆕 L'ATTESA TOLTA (25/08/2026) ──────────────────────────────────────────────
+// Questi provano la DECISIONE, non la macchina: con la costante vera nessuno resta fuori.
+
+caso('40. 🆕 con l\'attesa a zero un giro ESAURITO non blocca: il giro nuovo riparte INTERO', () => {
+  const s = stato([prova(giorniFa(10), 'fail'), prova(giorniFa(9), 'fail'), prova(giorniFa(8), 'fail')]);
+  return [s.ammesso === true, s.attesa === null, s.prova === 1, s.falliti === 0];
+});
+
+caso('41. 🆕 …e nemmeno un giro CONFERMATO: è il caso di Laura, chiuso il 24/08 con «mi fermo»', () => {
+  const s = stato([fermato(giorniFa(1), giorniFa(1))]);
+  return [s.ammesso === true, s.attesa === null, s.prova === 1];
+});
+
+caso('42. 🆕 subito dopo la chiusura, non il giorno dopo: zero vuol dire zero', () => {
+  // ⚠️ Il caso limite che una prova a giorni interi non vedrebbe: un giro chiuso un minuto fa.
+  // Se `adessoMs < chiusoIl + 0` fosse un `<=`, il socio resterebbe fuori nello stesso istante
+  // in cui l'attesa è finita — e nessun caso «di ieri» se ne accorgerebbe.
+  const unMinutoFa = new Date(ADESSO - 60 * 1000).toISOString();   // ⚠️ ADESSO è già un numero
+  const s = stato([fermato(unMinutoFa, unMinutoFa)]);
+  return [s.ammesso === true, s.attesa === null];
+});
+
+caso('43. 🔒 la macchina è INTERA: rimettendo un numero, l\'attesa torna a funzionare', () => {
+  // La cura è un numero, non una riga cancellata: se domani lui rivuole l'attesa, questa è la
+  // prova che non c'è niente da riscrivere.
+  const schede = [fermato(giorniFa(10), giorniFa(9))];
+  const senza = stato(schede);
+  const con = statoConAttesa(schede);
+  return [senza.ammesso === true, con.ammesso === false, con.attesa?.motivo === 'confermato'];
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof statoDelGiro === 'function'],
-  ['i numeri sono i suoi: tre prove per giro, trenta giorni', PROVE === 3 && GIORNI === 30],
+  // 🆕 25/08: l'attesa è ZERO, sua decisione. La guardia NON e' stata tolta — e' stata
+  // cambiata: un numero che nessuno guarda piu' e' esattamente come si torna a 30 per sbaglio.
+  ['i numeri sono i suoi: tre prove per giro, nessuna attesa', PROVE === 3 && GIORNI === 0],
   ['il silenzio-assenso è ventiquattr\'ore', ORE_SILENZIO === 24],
   // ⭐⭐ Il conto vive nel ponte ed è CALCOLATO dai fatti: un contatore tenuto in una colonna
   //    andrebbe azzerato, sincronizzato, e prima o poi divergerebbe dalle schede vere.
