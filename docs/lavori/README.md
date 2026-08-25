@@ -1647,7 +1647,39 @@ in piedi invece di doverla riprogettare.
 che sostituisce il nome è il **livello** (pezzo ④), e da qui in poi non è più un dettaglio
 facoltativo: è **l'unica cosa** che dice a chi guarda se quella partita fa per lui.
 
-🔨 **I pezzi, per come si vedono oggi — il ③ e il ④ restano da confermare con lui:**
+🔄 **③ e ④ DECISI DA LUI il 25/08/2026 a mezzogiorno**, e questa riga diceva *«restano da confermare»*:
+**corretta, non affiancata**.
+
+**③ CHI PUÒ ENTRARE** — sue parole: *«per entrare in una partita aperta devi essere già nel
+gestionale»*. ⇒ Il filtro si **spezza in due** come la scheda chiedeva: la **rubrica** cade (per
+definizione: è l'apertura), il **cliente del circolo RESTA**. ⚖️ È la sua decisione del 6/08
+riconfermata dove sarebbe stato facile perderla per inerzia — *due condizioni che cadono insieme
+senza che nessuno l'abbia deciso* era il rischio scritto nella scheda, e non è successo.
+
+**④ IL LIVELLO** — sue parole: *«devi essere o pari livello dell'organizzatore oppure più o meno
+0,5 di livello»*. ⇒ Ammessi **L−0,5 · L · L+0,5**, tre gradini della scala ufficiale.
+
+📏 **MISURATO PRIMA DI SCRIVERE UNA RIGA, e per chi un livello ce l'ha la regola tiene**: dei 536
+soci con un livello vero, la banda più stretta è quella di un organizzatore a **5,5** (33 persone) e
+la più larga quella di un **2,5** (352). Distribuzione: 1,5→36 · 2,0→68 · **2,5→206** · 3,0→78 ·
+3,5→54 · 4,0→41 · 4,5→19 · 5,0→29 · 5,5→4. ⇒ Nessuno resta solo.
+
+🚨⭐⭐ **RESTA APERTO UN PUNTO SOLO, ed è il più grosso: lo 0,5.** **2.277 soci su 2.813 — l'81%** —
+hanno `0.5`, che **non è un livello basso: è «mai misurato»**. `livelli.ts` lo tratta apposta come un
+non-dato (`LIVELLO_MINIMO_IN_TABELLA`, sua decisione dell'11/08: *«≤ 0,5 ⇒ senza livello»*).
+⚖️ **Mettere lo 0,5 nell'aritmetica del ±0,5 fa due danni insieme**: l'81% del circolo resta fuori da
+ogni partita aperta di chi un livello ce l'ha, **e** una partita aperta da un socio senza livello
+risulta aperta a **2.277 persone**, cioè lì il vincolo non filtra niente. ⇒ Il vincolo protegge
+esattamente il 19% e lascia scoperto il resto.
+📌 *Un numero che significa «non lo so» non si può sommare e sottrarre: l'aritmetica su un non-dato
+produce una regola che sembra precisa e non lo è.*
+⏳ **La domanda è stata posta e non ha ancora risposta**: chi non ha un livello, cosa fa? Le tre
+strade viste sono ① **prima il test** (il bot glielo propone lì, e la partita aperta diventa il primo
+motivo vero per farlo), ② **entrano fra loro** (regola letterale, col buco qui sopra), ③ **decide chi
+apre**. ⛔ Finché non c'è risposta, il pezzo ④ **non si scrive**: sarebbe una regola che decide da sé
+la sorte dell'81% dei soci.
+
+🔨 **I pezzi che restano, e il ① e il ② si possono già costruire:**
 ① **chi apre** — un bottone nella schermata della partita, che un organizzatore tocca *volutamente*
    (sua parola). Serve anche il verso opposto: richiuderla;
 ② **come si trovano** — la voce di menu «Partite Aperte»: l'elenco di quelle aperte nella finestra
