@@ -384,7 +384,187 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Quando la palla arriva da uno smash x4',
       'Quando il campo è bagnato',
       'Solo nel padel indoor',
-      'Non esiste: il secondo rimbalzo a terra chiude sempre il punto'], correct:3 }
+      'Non esiste: il secondo rimbalzo a terra chiude sempre il punto'], correct:3 },
+
+    /* 🆕📚⭐⭐ 25/08/2026 — PRINCIPIANTE SI ALLARGA A 27 NORMALI + 9 TRAPPOLE.
+       Sua decisione di stamattina, presa insieme alle altre tre del disegno nuovo: il quiz
+       vale ANCHE per i Principianti, e la banca di ogni fascia arriva a 27+9 così che in una
+       giornata di tre prove un socio ne veda al massimo un terzo.
+       📏 Il conto che l'ha resa necessaria: 3 prove × 4 domande = 12 viste contro le 11 che
+       esistevano ⇒ in un giorno solo si vedeva la banca intera, trappole comprese.
+
+       ⛔⛔ QUESTE DOMANDE NON SONO ANCORA IN SERVIZIO, ed è deliberato: `regole_fascia`
+       dice ancora `Principiante: { cancello: false }`, quindi da questa fascia non si pesca
+       niente e la banca resta inerte. Si accende in un secondo momento, quando le domande
+       saranno state corrette da lui — accenderla prima vorrebbe dire mandare in servizio un
+       cancello che nessuno ha letto.
+
+       ⭐⭐ IL METRO, e per Principiante è DIVERSO dalle altre fasce. Sua definizione del
+       25/08: *«per me un principiante è colui veramente alle prime armi»* ⇒ qui la domanda
+       vera non è «sai la tattica», è **«hai mai visto una partita di padel?»**. Perciò le
+       trappole di questa fascia non sono (solo) regole inventate: sono i punti in cui
+       l'INTUITO DEL TENNIS porta fuori strada — il servizio dall'alto, il vetro che sembra
+       fuori, la palla che esce dal campo e si può ancora rincorrere. Chi non ha mai giocato
+       risponde col tennis, ed è esattamente ciò che va misurato.
+       ⚖️ Resta il metro di tutte le altre (9/08): **una risposta discutibile boccia chi ha
+       ragione** ⇒ qui dentro solo regole su cui non si discute, mai «dipende».
+
+       🚨 Sigle NUOVE, mai riciclate: le schede già inviate portano gli id dentro
+       `raw_response`, e riusare una sigla farebbe puntare uno storico a una domanda diversa. */
+
+    // ── Principiante — le regole che si vedono guardando una partita ────────────────
+    { id:'P-05', fascia:'Principiante', trap:false, q:'La palla ha rimbalzato a terra nel mio campo e poi è finita contro il vetro di fondo. Posso ancora giocarla?', opts:[
+      'No: appena tocca il vetro il punto è degli avversari',
+      'Sì: dopo il rimbalzo a terra posso giocarla di parete',
+      'Solo se il vetro è quello laterale, non quello di fondo',
+      'Sì, ma il punto vale la metà'], correct:1 },
+    { id:'P-06', fascia:'Principiante', trap:false, q:'Il mio compagno serve. Chi riceve può rispondere al volo, prima che la palla rimbalzi?', opts:[
+      'Sì, se è abbastanza veloce',
+      'No: la risposta al servizio si gioca sempre dopo il rimbalzo',
+      'Sì, ma solo sul secondo servizio',
+      'Solo se sta già a rete'], correct:1 },
+    { id:'P-07', fascia:'Principiante', trap:false, q:'Com\'è fatta la racchetta da padel?', opts:[
+      'Con le corde come quella da tennis, ma più piccola',
+      'Piena e forata, senza corde',
+      'Di legno pieno, senza fori',
+      'Con le corde solo nella parte alta'], correct:1 },
+    { id:'P-08', fascia:'Principiante', trap:false, q:'Quanti servizi ha a disposizione chi batte?', opts:[
+      'Uno solo',
+      'Due, come nel tennis',
+      'Tre',
+      'Illimitati, finché non entra'], correct:1 },
+    { id:'P-09', fascia:'Principiante', trap:false, q:'Dove deve rimbalzare il servizio?', opts:[
+      'In un punto qualsiasi del campo avversario',
+      'In diagonale, dentro il quadrato di servizio avversario',
+      'Dritto davanti a sé, nel quadrato avversario',
+      'Oltre la linea di fondo avversaria'], correct:1 },
+    { id:'P-10', fascia:'Principiante', trap:false, q:'Durante lo scambio la palla colpisce il mio compagno sul corpo. Cosa succede?', opts:[
+      'Punto degli avversari',
+      'Si rigioca il punto',
+      'Non succede niente, il gioco continua',
+      'Punto nostro, se non l\'ha fatto apposta'], correct:0 },
+    { id:'P-11', fascia:'Principiante', trap:false, q:'Rimando la palla e questa colpisce PRIMA il vetro del mio campo, poi passa dall\'altra parte. È valido?', opts:[
+      'Sì, se poi entra nel campo avversario',
+      'No: la palla deve passare la rete direttamente — punto degli avversari',
+      'Sì, ma solo con il vetro di fondo',
+      'Si rigioca il punto'], correct:1 },
+    { id:'P-12', fascia:'Principiante', trap:false, q:'Il servizio tocca il nastro della rete e poi rimbalza regolarmente nel quadrato giusto. Cosa succede?', opts:[
+      'È fallo: si passa al secondo servizio',
+      'Il servizio si ripete',
+      'Il gioco continua normalmente',
+      'Punto per chi serve'], correct:1 },
+    { id:'P-13', fascia:'Principiante', trap:false, q:'Come finisce una partita di padel?', opts:[
+      'A tempo: dopo 60 minuti vince chi è avanti',
+      'Al meglio dei tre set, come nel tennis',
+      'Quando una coppia arriva a 21 punti',
+      'Dopo un numero fisso di scambi'], correct:1 },
+    { id:'P-14', fascia:'Principiante', trap:false, q:'Da dove batte chi serve?', opts:[
+      'Da dietro la linea di fondo, come nel tennis',
+      'Da dietro la linea di servizio, facendo prima rimbalzare la palla a terra',
+      'Da un punto qualsiasi del proprio campo',
+      'Da vicino alla rete'], correct:1 },
+    { id:'P-15', fascia:'Principiante', trap:false, q:'Posso colpire la palla al volo, prima che rimbalzi?', opts:[
+      'No, mai: nel padel la palla deve sempre rimbalzare',
+      'Sì, sempre — tranne sulla risposta al servizio',
+      'Sì, sempre, senza nessuna eccezione',
+      'Solo se sto a rete'], correct:1 },
+    { id:'P-16', fascia:'Principiante', trap:false, q:'Da cosa è chiuso il campo da padel?', opts:[
+      'Da niente: è aperto come quello da tennis',
+      'Da pareti di vetro e reti metalliche, su tutti i lati',
+      'Solo da due pareti di fondo, i lati sono aperti',
+      'Da una recinzione bassa che non entra in gioco'], correct:1 },
+    { id:'P-17', fascia:'Principiante', trap:false, q:'Durante lo scambio tocco la rete con la racchetta. Cosa succede?', opts:[
+      'Punto degli avversari',
+      'Non succede niente, il gioco continua',
+      'Si rigioca il punto',
+      'La prima volta è solo un avvertimento'], correct:0 },
+    { id:'P-18', fascia:'Principiante', trap:false, q:'In che ordine si serve?', opts:[
+      'Serve sempre lo stesso giocatore per tutta la partita',
+      'A turno tutti e quattro, alternando le due coppie',
+      'Serve chi ha vinto il punto precedente',
+      'Si decide all\'inizio di ogni game'], correct:1 },
+    { id:'P-19', fascia:'Principiante', trap:false, q:'La palla può rimbalzare a terra due volte prima che io la colpisca?', opts:[
+      'Sì, nel padel sono concessi due rimbalzi',
+      'No: un solo rimbalzo a terra',
+      'Sì, ma solo in difesa',
+      'Sì, se il secondo rimbalzo è dietro la linea di servizio'], correct:1 },
+    { id:'P-20', fascia:'Principiante', trap:false, q:'Cosa vuol dire che una coppia «va a rete»?', opts:[
+      'Che ha toccato la rete con la racchetta',
+      'Che i due giocatori avanzano verso la rete per attaccare',
+      'Che gioca solo palle basse',
+      'Che rinuncia al servizio'], correct:1 },
+    { id:'P-21', fascia:'Principiante', trap:false, q:'Il servizio rimbalza nel quadrato giusto e poi colpisce la rete metallica (la griglia). Cosa succede?', opts:[
+      'È valido: il gioco continua',
+      'È fallo di servizio',
+      'Il servizio si ripete',
+      'Punto per chi serve'], correct:1 },
+    { id:'P-22', fascia:'Principiante', trap:false, q:'Con cosa si può colpire la palla?', opts:[
+      'Solo con il piatto forato della racchetta',
+      'Con qualunque parte della racchetta, ma mai con la mano o con il corpo',
+      'Anche con la mano libera, una volta per game',
+      'Solo con il bordo della racchetta'], correct:1 },
+    { id:'P-23', fascia:'Principiante', trap:false, q:'Quanti punti servono per vincere un game, se non si va ai vantaggi?', opts:[
+      'Tre',
+      'Quattro: 15, 30, 40 e gioco',
+      'Sei',
+      'Undici'], correct:1 },
+    { id:'P-24', fascia:'Principiante', trap:false, q:'Chi decide quale coppia serve per prima?', opts:[
+      'La coppia più forte',
+      'Un sorteggio prima della partita',
+      'Chi ha prenotato il campo',
+      'Chi ha vinto la partita precedente'], correct:1 },
+    { id:'P-25', fascia:'Principiante', trap:false, q:'La mia palla rimbalza a terra nel campo avversario e poi tocca la loro rete metallica. Cosa succede?', opts:[
+      'Punto mio: la griglia è fuori',
+      'Il gioco continua: dopo il rimbalzo a terra la palla può toccare griglia e vetri',
+      'Si rigioca il punto',
+      'Punto degli avversari'], correct:1 },
+    { id:'P-26', fascia:'Principiante', trap:false, q:'Si cambia campo durante la partita?', opts:[
+      'No, mai',
+      'Sì, alla fine dei game dispari (1°, 3°, 5°…)',
+      'Sì, alla fine di ogni game',
+      'Solo alla fine di ogni set'], correct:1 },
+    { id:'P-27', fascia:'Principiante', trap:false, q:'Io e il mio compagno colpiamo la stessa palla, uno dopo l\'altro. Cosa succede?', opts:[
+      'Punto degli avversari: la palla si colpisce una volta sola',
+      'Il gioco continua, se la palla passa la rete',
+      'Si rigioca il punto',
+      'Punto nostro'], correct:0 },
+
+    // ── Principiante · trappole — dove l'intuito del tennis porta fuori strada ──────
+    { id:'P-T3', fascia:'Principiante', trap:true,  q:'Quando si applica la «regola dei due tocchi», che permette ai due compagni di passarsi la palla prima di rimandarla?', opts:[
+      'Solo in difesa',
+      'Non esiste: la palla si colpisce una volta sola',
+      'Solo dopo un pallonetto',
+      'Nei primi due game della partita'], correct:1 },
+    { id:'P-T4', fascia:'Principiante', trap:true,  q:'Quando è concesso il servizio colpito sopra la testa, come nel tennis?', opts:[
+      'Sul secondo servizio',
+      'Mai: nel padel il servizio si colpisce sempre all\'altezza della vita o più in basso',
+      'Quando si è sotto nel punteggio',
+      'Solo nei tornei'], correct:1 },
+    { id:'P-T5', fascia:'Principiante', trap:true,  q:'Quando viene concesso il «rimbalzo di cortesia», cioè un rimbalzo in più a chi riceve?', opts:[
+      'Nel primo game della partita',
+      'Non esiste: chi riceve non ha nessun rimbalzo in più',
+      'Quando il servizio tocca il nastro',
+      'Dopo ogni cambio campo'], correct:1 },
+    { id:'P-T6', fascia:'Principiante', trap:true,  q:'Che cos\'è il «punto di vetro»?', opts:[
+      'Un punto che vale doppio se lo si chiude con un colpo di parete',
+      'Non esiste: nel padel nessun punto vale più di un altro',
+      'Il punto che chiude il set',
+      'Il punto che si rigioca quando un vetro è bagnato'], correct:1 },
+    { id:'P-T7', fascia:'Principiante', trap:true,  q:'In quale caso si può giocare la palla con la mano libera?', opts:[
+      'Una volta per game',
+      'Mai: si gioca solo con la racchetta',
+      'Solo per fermare la palla, non per rimandarla',
+      'Quando si è caduti a terra'], correct:1 },
+    { id:'P-T8', fascia:'Principiante', trap:true,  q:'Quando si applica il «cambio di coppia», la regola che a metà set fa scambiare un giocatore con un avversario?', opts:[
+      'Solo negli allenamenti',
+      'Non esiste: le coppie restano le stesse per tutta la partita',
+      'Sul 3-3',
+      'Lo decide chi ha prenotato il campo'], correct:1 },
+    { id:'P-T9', fascia:'Principiante', trap:true,  q:'Un avversario schiaccia, la palla rimbalza nel mio campo e vola fuori sopra le pareti. Il punto è finito?', opts:[
+      'Sì: appena la palla esce dal campo il punto è chiuso',
+      'No: dove il campo lo consente posso uscire dalla porta e rimandarla dentro',
+      'No, ma solo se non tocco terra fuori dal campo',
+      'Sì, tranne che nei tornei ufficiali'], correct:1 }
   ]
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
