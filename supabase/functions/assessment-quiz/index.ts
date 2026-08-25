@@ -480,7 +480,16 @@ async function gestisci(req: Request): Promise<Response> {
       esito: conoscenza.status,
       staff_status: statoStaff,
       livello: livCalc.calculated_level,
-      certificazione: certificazioneDelMaestro(livCalc.calculated_level),
+      /* 🚨 SOLO SE LA SCHEDA SI APPLICHERÀ DAVVERO, e il difetto è stato trovato pensando
+         alla prova con Laura, non rileggendo il codice. La frase promette «intanto ti
+         registriamo Intermedio»: dirla a chi ha fallito il cancello — o a chi finisce in
+         segreteria per genere mancante, incoerenza, «dichiara alto e gioca da poco» —
+         sarebbe una promessa che nessuno mantiene, e la peggiore delle tre perché
+         riguarda proprio chi ha risposto MALE dichiarando ALTO.
+         ⭐ `statoStaff` vuoto è esattamente «niente la trattiene»: è la stessa condizione
+         che `assessment-apply-level` userà per scriverla. Chiedere qui la stessa cosa che
+         decide là è il modo di non avere due verità. */
+      certificazione: statoStaff === '' ? certificazioneDelMaestro(livCalc.calculated_level) : null,
     });
   }
 
