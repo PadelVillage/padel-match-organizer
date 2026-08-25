@@ -50,13 +50,21 @@ ambiente che "punta" a due database, sono due copie dell'app.
 🔄 **Dal 17/08/2026 (voce 58) il caricatore NON scarica più l'app da `raw.githubusercontent.com`**
 — GitHub strozzava quei download anonimi (429 anti-scraping) e TEST restava a terra — ma serve
 `./app.html` dalla propria origine Pages; `raw` è solo il ripiego. Un push su `test-preview`
-arriva live **quando passa il cron** di `sync-app.yml` nel repo del caricatore — configurato ogni
-10′, ma gli schedule GitHub li esegue «quando può»: **misurati 24-48 minuti** il 18/08, e quel
-giorno il giro è passato **25 secondi prima** del merge, quindi la finestra reale può superare
-la mezz'ora. **Subito** se nel repo dell'app esiste il secret `TEST_LOADER_SYNC_TOKEN` (workflow
-`sync-test-loader.yml` → `repository_dispatch`) — è la via che rende TEST puntuale come PROD, e
-al 18/08 **manca ancora**: solo il committente può creare quel PAT. O **a mano** lanciando
-`sync-app` da Actions, che è la via giusta quando serve adesso. Quale commit è live lo dice
+arriva live **in una trentina di secondi**, perché il secret `TEST_LOADER_SYNC_TOKEN` **ORA
+C'È**: il workflow `sync-test-loader.yml` parte col push e sveglia il caricatore via
+`repository_dispatch`, senza aspettare nessuno schedule.
+🔄 **Corretto il 24/08/2026, e qui c'era scritto il contrario.** Fino a quel giorno questo
+paragrafo diceva che quel secret **mancava** e che TEST arrivava live col cron di `sync-app.yml`
+in **24-48 minuti**. 📏 Misurato due volte quella notte, su due spinte diverse: commit 22:42:06
+→ `synced_at` 22:42:39 (**33 s**), e commit 22:53:28 → `synced_at` 22:53:48 (**20 s**). Il workflow risulta
+**success** in Actions.
+⚖️ La riga vecchia non era sbagliata quando fu scritta: era vera al 18/08, e il committente ha
+creato il PAT dopo. È il caso tipico della 26ª — *un limite dichiarato che nessuno riprova resta
+vero per sempre perché sembra prudente* — e infatti per sei giorni ogni sessione ha pianificato
+attese che non servivano più. **Quale commit è live lo dice `app-meta.json`**, ed è quello che si
+guarda invece di credere a questa riga: `source_sha` e `synced_at`.
+⚠️ Il cron di `sync-app.yml` **resta come rete di sicurezza** (ogni 10′, eseguito «quando può»),
+e resta la via a mano — lanciare `sync-app` da Actions — se un giorno il dispatch non partisse. Quale commit è live lo dice
 `app-meta.json` su quel repo. `config-test.js` sta anche là perché l'app cerca la configurazione
 nella **radice del dominio da cui è servita**: senza, TEST non saprebbe a quale database collegarsi.
 
