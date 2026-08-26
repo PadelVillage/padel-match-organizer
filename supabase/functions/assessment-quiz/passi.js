@@ -181,7 +181,10 @@ export const SCHEDA_DOMANDE = [
     /* 🗣️ 27/08 notte — era «Bandeja / vibora / smash» e basta, e lui l'ha trovata sul telefono:
        *«non è chiaro cosa bisogna rispondere»*. Le altre domande della scheda fanno tutte una
        DOMANDA; questa era l'unica a essere un elenco di nomi. */
-    testo: 'I colpi alti (bandeja, vibora, smash): quanto li usi?',
+    /* 🗣️ E rifinita di nuovo su sua parola (27/08 notte, seconda passata): «quanto li usi?»
+       chiedeva una frequenza, ma le risposte parlano di padronanza — quali colpi sai fare e
+       con che sicurezza. La domanda si adegua alle risposte, non il contrario. */
+    testo: 'Come te la cavi con i colpi alti (bandeja, vibora, smash)?',
     opzioni: scelte([
       'Non li uso',
       ['Li provo ma con poca sicurezza', 'Li provo, poca sicurezza'],
