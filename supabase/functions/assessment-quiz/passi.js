@@ -40,7 +40,24 @@ import {
    ⚠️ `value: String(f.max)` non è una scelta di questo file: è la forma che il resto della
    catena già si aspetta (`declared_level`, il tetto, la coerenza). Cambiarla qui la
    cambierebbe solo per metà dei soci. */
-export function opzioniLivelli() {
+/* Da «Avanzato» a «Avanzati»: la domanda 4 parla di AVVERSARI, e «Contro Avanzato» sarebbe
+   sgrammaticato sotto gli occhi del socio. Le sette parole sono queste e non cambiano: si
+   scrive la tabella invece di inventare una regola di plurale italiana che sbaglierebbe su
+   «Semi-Pro» e «Professionista». */
+const PLURALE_LIVELLO = {
+  Principiante: 'Principianti',
+  Base: 'giocatori Base',
+  Intermedio: 'Intermedi',
+  Avanzato: 'Avanzati',
+  Agonista: 'Agonisti',
+  'Semi-Pro': 'Semi-Pro',
+  Professionista: 'Professionisti',
+};
+function etichettaPlurale(definizione) {
+  return PLURALE_LIVELLO[definizione] || definizione;
+}
+
+export function opzioniLivelli(prefisso) {
   /* 🔄🗣️⭐⭐ 26/08/2026 — VIA I COLPI DALL'ETICHETTA, e il valore non si tocca.
      🗣️ Sua decisione del pomeriggio, dopo tre schermate di prova sul telefono: le risposte
      devono stare **sui bottoni**, intere, senza elenco sopra e senza puntini. ⇒ L'unica strada
@@ -53,7 +70,14 @@ export function opzioniLivelli() {
      infatti là si accorcia con un secondo campo (vedi `scelte`).
      📌 *Prima di accorciare un testo si guarda se quel testo È il dato: qui non lo era, e la
      descrizione dei colpi stava aiutando a scegliere sul modulo, dove c'è spazio, non sul bottone.* */
-  return PMO_LIVELLI.map((f) => ({ valore: String(f.max), testo: String(f.definizione) }));
+  /* Il prefisso serve alla domanda 4, che chiede «contro CHI» e non «che cosa sei»: senza, le
+     due domande di fila avrebbero le stesse identiche sette risposte (27/08). Cambia solo il
+     `testo`; il `valore` — il numero della fascia — resta quello di sempre. */
+  const p = String(prefisso ?? '');
+  return PMO_LIVELLI.map((f) => ({
+    valore: String(f.max),
+    testo: p ? `${p}${etichettaPlurale(String(f.definizione))}` : String(f.definizione),
+  }));
 }
 
 /**
@@ -99,7 +123,26 @@ export const SCHEDA_DOMANDE = [
     opzioni: scelte(['0-1', '2-3', '4-6', '7-10', 'Più di 10']),
   },
   { chiave: 'declaredLevel', testo: 'Che livello pensi di avere?', opzioni: opzioniLivelli() },
-  { chiave: 'balancedLevel', testo: 'Con quali giocatori fai partite equilibrate?', opzioni: opzioniLivelli() },
+  /* 🔄🗣️⭐⭐ 27/08/2026 — LA QUARTA NON DEVE SEMBRARE LA TERZA. Sua segnalazione:
+     *«nel test la domanda 3 e la quattro la gente si confonde a rispondere»*.
+     📏 E il perché si vede mettendole in fila: la 3 chiede «che livello pensi di avere?» e la 4
+     «con quali giocatori fai partite equilibrate?», e tutt'e due rispondevano con le **stesse
+     sette parole** — Principiante, Base, Intermedio… Due schermate identiche di fila: chi legge
+     in fretta crede di aver sbagliato bottone, o di essere tornato indietro.
+     ⇒ La domanda cambia forma e le risposte diventano «Contro giocatori Avanzati»: **il dato non
+     si tocca**, perché il `valore` resta il numero della fascia, identico al carattere a quello
+     che la pagina manda da sempre (peso 0,25 nel calcolo).
+     ⚖️ Perché non toglierla, che era la strada più corta: è l'unico confronto fra ciò che uno
+     **dice di essere** e ciò con cui **gioca alla pari**, e da quel confronto nasce il segnale
+     di incoerenza che ferma chi si sopravvaluta. Toglierla avrebbe reso il test più corto e il
+     cancello più cieco.
+     📌 *Due domande diverse con le stesse risposte non sono due domande: sono la stessa domanda
+     fatta due volte, e chi risponde lo sente prima di saperlo spiegare.* */
+  {
+    chiave: 'balancedLevel',
+    testo: 'Con giocatori di che livello te la giochi alla pari?',
+    opzioni: opzioniLivelli('Contro '),
+  },
   {
     chiave: 'rally',
     testo: 'Riesci a mantenere lo scambio?',
