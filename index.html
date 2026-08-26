@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.244';
+    const APP_VERSION = '6.245';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -29333,10 +29333,58 @@ Per confermare scrivi ELIMINA.`);
         }
         const data = res.data || [];
         let updatedCount = 0;
+        /* 🚨⭐⭐ QUI SI PERDEVANO LE SCHEDE, ed è misurato il 26/08/2026 sulla voce 98.
+           Questo giro scriveva `assessmentTokens[key].token = item.token` e basta: un socio
+           con più gettoni (Maurizio ne ha SEDICI) teneva l'ULTIMO che passava, e l'ordine lo
+           decide `jsonb_agg` sulla tabella, cioè nessuno. Il gettone della scheda consegnata
+           spariva senza lasciare traccia — e `get_self_assessments_by_tokens` cerca **per
+           gettone**: niente gettone, niente scheda.
+           📏 La misura: 49 schede su Supabase, **30** arrivate all'app. Le 19 perdute
+           comprendevano quella del 26/08 delle 08:27, cioè esattamente il caso per cui la
+           voce 98 esiste. La lista del maestro era vuota su dati veri.
+           ⚖️ La cura non inventa niente: `previousTokens` c'è già, e lo riempiono da sempre
+           gli altri TRE punti che sostituiscono un gettone (righe ~25280, ~30985, ~35037).
+           Questo era l'unico che buttava via il vecchio. ⇒ Non è una funzione nuova: è
+           l'unico posto che non seguiva l'idioma di casa.
+           📌 *Un archivio che tre scritture su quattro riempiono non è un archivio: è una
+           cosa che qualcuno crede piena.* */
+        const perSocio = new Map();
         data.forEach(item => {
-          const key = String(item.member_local_id);
-          if (!key) return;
+          const key = String(item.member_local_id || '');
+          if (!key || key === 'null' || key === 'undefined') return;
+          if (!perSocio.has(key)) perSocio.set(key, []);
+          perSocio.get(key).push(item);
+        });
+        const quando = (item) => {
+          const t = Date.parse(String(item?.completed_at || item?.sent_at || item?.created_at || ''));
+          return Number.isFinite(t) ? t : 0;
+        };
+        perSocio.forEach((righe, key) => {
+          // Il più recente diventa quello corrente; gli altri NON si buttano.
+          righe.sort((a, b) => quando(b) - quando(a));
+          const item = righe[0];
           const prev = assessmentTokens[key] || {};
+          const archivio = Array.isArray(prev.previousTokens) ? prev.previousTokens.slice() : [];
+          const giaVisti = new Set(archivio.map(x => normalizeText(x?.token || '')).filter(Boolean));
+          giaVisti.add(normalizeText(item.token || ''));
+          const archivia = (token, extra = {}) => {
+            const chiave = normalizeText(token || '');
+            if (!chiave || giaVisti.has(chiave)) return;
+            giaVisti.add(chiave);
+            archivio.push({ token, memberId: key, archivedAt: new Date().toISOString(), ...extra });
+          };
+          // ① i gettoni più vecchi che il cloud porta insieme a questo
+          righe.slice(1).forEach(vecchio => archivia(vecchio.token, {
+            status: vecchio.status || '', createdAt: vecchio.created_at || '',
+            sentAt: vecchio.sent_at || null, completedAt: vecchio.completed_at || null,
+            reason: 'cloud_storico'
+          }));
+          // ② e quello che l'app aveva prima, se il cloud ne dichiara un altro
+          archivia(prev.token, {
+            status: prev.status || '', createdAt: prev.createdAt || '',
+            sentAt: prev.sentAt || null, completedAt: prev.completedAt || null,
+            reason: 'sostituito_dal_cloud'
+          });
           assessmentTokens[key] = {
             ...prev,
             memberId: key,
@@ -29350,9 +29398,10 @@ Per confermare scrivi ELIMINA.`);
             sentAt: item.sent_at || prev.sentAt || null,
             completedAt: item.completed_at || prev.completedAt || null,
             registeredToSupabase: !!item.registered_at || item.status !== 'created',
-            registeredAt: item.registered_at || prev.registeredAt || null
+            registeredAt: item.registered_at || prev.registeredAt || null,
+            previousTokens: archivio
           };
-          updatedCount++;
+          updatedCount += righe.length;
         });
         const cloudMemberIds = new Set(data.map(item => String(item.member_local_id)).filter(Boolean));
         let prunedCount = 0;
@@ -29387,19 +29436,44 @@ Per confermare scrivi ELIMINA.`);
       try {
         saveAssessmentSettings({ silent });
         if (options.skipCloudLogs !== true) await assessmentEmailImportCloudLogs({ silent:true });
-        const tokens = Object.values(assessmentTokens || {}).map(r => cleanCell(r.token)).filter(Boolean);
+        /* ⇒ TUTTI i gettoni del socio, non solo quello corrente: una scheda si aggancia
+           **per gettone**, e il gettone della scheda consegnata è quasi sempre uno vecchio.
+           Vedi il commento in `syncAssessmentTokensFromSupabase`, dove il vecchio veniva
+           buttato: qui si legge l'archivio che quella cura ha smesso di svuotare. */
+        const tokens = [...new Set(
+          Object.values(assessmentTokens || {}).flatMap(r => [
+            cleanCell(r?.token),
+            ...(Array.isArray(r?.previousTokens) ? r.previousTokens.map(x => cleanCell(x?.token)) : [])
+          ])
+        )].filter(Boolean);
         if (!tokens.length) {
           if (!silent) showAlert('⚠️ Nessun token locale da aggiornare. Prima genera i token.', 'warning');
           return { ok:false, reason:'no_tokens' };
         }
         if (!silent) showAlert('⏳ Aggiornamento risposte in corso...', 'info');
         const { supabaseUrl, supabaseKey } = await loadAssessmentSupabaseConfig();
+        /* 🚨⭐⭐ CON LA CHIAVE PUBBLICABILE QUESTA CHIAMATA NON POTEVA RIUSCIRE PIÙ, e non
+           per un socio o per un ruolo: **per nessuno**. Il 16/08/2026 la RPC ha preso la
+           guardia di staff (`pmo_current_staff_profile`) e con essa il grant è passato ad
+           `authenticated` soltanto; l'app però continuava a mandare la chiave pubblicabile
+           come `Authorization`, cioè a presentarsi come `anon`.
+           📏 Misurato il 26/08 sull'app viva di PROD, le due chiamate una accanto all'altra:
+           chiave pubblicabile → **401 `permission denied for function`**; gettone di sessione
+           dello staff → **200**. ⇒ Da dieci giorni nessun browser riusciva più a scaricare
+           una risposta, e il sintomo era una lista vuota — indistinguibile da «non c'è
+           nessuno che aspetta».
+           ⚖️ L'idioma di casa era già lì: `pmoCloudRpc(nome, payload, { accessToken })`, che
+           tutta l'anagrafica cloud usa da mesi. Questa era una `fetch` scritta a mano.
+           📌 *Una chiamata che si autentica da sola con la chiave pubblica non è più semplice:
+           è una chiamata che smette di funzionare il giorno in cui qualcuno mette una guardia,
+           e lo fa in silenzio.* */
+        const accessToken = await pmoGetSupabaseStaffAccessToken();
         const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_self_assessments_by_tokens`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
+            'Authorization': `Bearer ${accessToken || supabaseKey}`
           },
           body: JSON.stringify({ p_tokens: tokens })
         });
