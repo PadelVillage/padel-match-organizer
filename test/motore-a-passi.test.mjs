@@ -74,7 +74,16 @@ prova('le 8 domande della scheda dicono le stesse parole della pagina', () => {
     // Le due domande sul livello nella pagina non hanno opzioni scritte: le riempie
     // `pmoLivelliOpzioni` dalla tabella dei livelli, che è la stessa fonte usata qui.
     if (blocco.includes('data-pmo-livelli')) {
-      uguale(domanda.opzioni, P.opzioniLivelli(), `${domanda.chiave}: opzioni dai livelli`);
+      /* 🔄 27/08/2026 — anche QUI si confrontano i VALORI, per la stessa ragione scritta più
+         sotto: dal 27/08 la domanda 4 dice «Contro Avanzati» invece di «Avanzato» (sua
+         segnalazione, «la 3 e la 4 la gente si confonde a rispondere»), e le due copie hanno
+         etichette diverse **apposta** su quella domanda. Il numero della fascia, che è il dato,
+         resta identico ed è quello che questa riga sorveglia.
+         🔗 Che le parole nuove siano le stesse nelle due copie lo prova il caso dedicato più
+         sotto: qui si guarda il dato, là l'aspetto. */
+      const daiLivelli = domanda.chiave === 'balancedLevel' ? P.opzioniLivelli('Contro ') : P.opzioniLivelli();
+      uguale(domanda.opzioni.map((o) => o.valore), daiLivelli.map((o) => o.valore), `${domanda.chiave}: valori dai livelli`);
+      uguale(domanda.opzioni.map((o) => o.testo), daiLivelli.map((o) => o.testo), `${domanda.chiave}: etichette dai livelli`);
       continue;
     }
     const dallaPagina = [...blocco.matchAll(/<option(?![^>]*value="")[^>]*>([^<]+)<\/option>/g)]
@@ -341,6 +350,38 @@ prova('🚨 CABLAGGIO: l\'edge del link chiede il conto QUI, invece di ricopiarl
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').map((r) => r.replace(/(^|[^:'"`])\/\/.*$/, '$1')).join('\n');
   vero(!/domande_totali:\s*\d+/.test(senzaCommenti), 'c\'è un numero di domande scritto a mano nell\'edge');
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────────
+   ⑤ LA TERZA E LA QUARTA NON DEVONO SEMBRARE LA STESSA DOMANDA (27/08/2026)
+   🗣️ *«nel test la domanda 3 e la quattro la gente si confonde a rispondere»*.
+   🚨 Il difetto non era una parola sbagliata: era che DUE domande di fila avevano le stesse
+   identiche sette risposte. Una prova che guardasse solo la 4 non lo vedrebbe — il difetto
+   vive nella COPPIA, e si prova confrontandole fra loro.
+   ───────────────────────────────────────────────────────────────────────────────── */
+prova('🗣️ la 3 e la 4 non hanno più le stesse risposte', () => {
+  const tre = P.SCHEDA_DOMANDE.find((d) => d.chiave === 'declaredLevel');
+  const quattro = P.SCHEDA_DOMANDE.find((d) => d.chiave === 'balancedLevel');
+  vero(tre && quattro, 'le due domande sul livello non ci sono più');
+  const uguali = tre.opzioni.filter((o, i) => o.testo === quattro.opzioni[i].testo);
+  vero(uguali.length === 0, `${uguali.length} risposte su ${tre.opzioni.length} sono ancora identiche fra la 3 e la 4: «${uguali.map((o) => o.testo).join('», «')}»`);
+});
+
+prova('🚨 …e il DATO delle due resta identico: cambia solo ciò che si legge', () => {
+  const tre = P.SCHEDA_DOMANDE.find((d) => d.chiave === 'declaredLevel');
+  const quattro = P.SCHEDA_DOMANDE.find((d) => d.chiave === 'balancedLevel');
+  uguale(quattro.opzioni.map((o) => o.valore), tre.opzioni.map((o) => o.valore),
+    'i valori della 4 non sono più quelli della scala: il peso 0,25 finirebbe su numeri diversi');
+});
+
+prova('🚨 CABLAGGIO: la pagina e il bot dicono le stesse parole nuove', () => {
+  const html = readFileSync(APP, 'utf8');
+  vero(/data-pmo-livelli-prefisso="Contro "/.test(html),
+    'nella pagina la domanda 4 non ha il prefisso: le due copie tornerebbero a divergere sul testo');
+  for (const o of P.opzioniLivelli('Contro ')) {
+    vero(html.includes(`'${o.testo.replace('Contro ', '')}'`) || html.includes(o.testo.replace('Contro ', '')),
+      `la pagina non conosce il plurale «${o.testo}»`);
+  }
 });
 
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);
