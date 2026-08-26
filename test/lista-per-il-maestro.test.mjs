@@ -235,6 +235,21 @@ const guardie = [
     /<option value="daCertificare">/.test(html)],
   ['la riga compare nell\'elenco accanto a quella del doppione',
     /\$\{_dupWhy\}\$\{_maestroWhy\}/.test(html)],
+  // 🗣️ 26/08 — sua richiesta: il riquadro sta anche nel tab «Autovalutazione» della scheda
+  //    socio. Le due cose non si sostituiscono: il filtro dice CHI andare a guardare, il
+  //    riquadro dice cosa aspetta QUESTA persona. Se un domani sparisse uno dei due, questa
+  //    guardia lo direbbe invece di lasciarlo scoprire aprendo una scheda.
+  ['il riquadro sta anche nel tab «Autovalutazione» della scheda socio',
+    /🎓 Aspetta il maestro/.test(html) && /\$\{_maestroBox\}\$\{assessmentMeta\}/.test(html)],
+  // 🔒 26/08 — il livello nasce CHIUSO, ma resta cambiabile con un gesto. Le due guardie vanno
+  //    insieme: da sola, la prima permetterebbe di bloccarlo per sempre — e con lui la
+  //    certificazione del maestro, che da quel campo passa.
+  ['il campo del livello nasce chiuso (readonly)',
+    /id="cardLevel"[^>]*readonly/.test(html)],
+  ['…ma resta un gesto per aprirlo, o il maestro non potrebbe più certificare nessuno',
+    /pmoSbloccaLivello\(/.test(html) && /input\.removeAttribute\('readonly'\)/.test(html)],
+  ['il riquadro non offre nessun bottone che «certifichi»: il livello si scrive dal suo campo',
+    !/certifica[^<]*<\/button>|onclick="[^"]*certific/i.test(html.slice(html.indexOf('🎓 Aspetta il maestro'), html.indexOf('🎓 Aspetta il maestro') + 2400))],
 ];
 
 let passati = 0, falliti = 0;

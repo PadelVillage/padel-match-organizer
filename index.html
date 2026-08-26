@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.242';
+    const APP_VERSION = '6.244';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15927,7 +15927,16 @@ Grazie.`
                 <div><label>ID giocatore Padel Village</label><input value="${escapeHtml(pmoIdPadelVillage(g) || '-')}" readonly title="Il nostro identificatore. È il riferimento del gestionale e del bot, e resta valido anche senza Matchpoint."></div>
                 <div><label>ID giocatore Matchpoint</label><input value="${escapeHtml(pmoIdMatchpoint(g) || '-')}" readonly title="Il codice cliente di Matchpoint (quello della tendina «000140-Nome»). Vuoto per chi non è cliente del circolo."></div>
                 ${pmoIdInternoMatchpoint(g) ? `<div><label>ID interno Matchpoint</label><input value="${escapeHtml(pmoIdInternoMatchpoint(g))}" readonly title="Il numero con cui Matchpoint identifica il socio nelle sue pagine. È DIVERSO dal codice cliente qui sopra e non si può calcolare: se lo prende da solo quando il socio entra in una prenotazione. Serve a riconoscerlo senza passare dal nome (gli omonimi)."></div>` : ''}
-                <div><label>Livello di gioco</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}" oninput="pmoCardLevelWord()"><small class="member-level-word" id="cardLevelWord">${escapeHtml(pmoLivelloDefinizione(g.level || 3) || '')}</small></div>
+                <!-- 🔒 IL LIVELLO NASCE CHIUSO (26/08/2026, sua richiesta: «nella tab anagrafica
+                     metti il livello non editabile»).
+                     ⚖️ Chiuso, NON di sola lettura: bloccarlo e basta avrebbe tolto al maestro
+                     l'unico modo che ha di certificare chi sta sopra il tetto — cioè la cosa che
+                     la voce 98 ha appena promesso al socio. ⇒ Si apre con un gesto esplicito, e
+                     il gesto è la protezione: quello che si voleva evitare è il cambio per
+                     abitudine o per sbaglio mentre si correggeva un telefono, non il cambio.
+                     📌 Una protezione che toglie anche l'uso legittimo non è una protezione: è
+                     un pezzo di funzionalità in meno con l'aspetto di una cautela. -->
+                <div><label>Livello di gioco</label><input type="number" step="0.5" min="0" max="7" id="cardLevel" value="${escapeHtml(g.level || 3)}" oninput="pmoCardLevelWord()" readonly title="Il livello è chiuso: si apre con «Cambia livello». Sopra Intermedio lo certifica il maestro guardando giocare."><small class="member-level-word" id="cardLevelWord">${escapeHtml(pmoLivelloDefinizione(g.level || 3) || '')}</small><button type="button" class="btn-secondary small-btn" id="cardLevelUnlock" style="margin-top:6px;" onclick="pmoSbloccaLivello(this)">🔓 Cambia livello</button></div>
                 <div><label>Nome</label><input id="cardFirstName" value="${escapeHtml(g.firstName || '')}"></div>
                 <div><label>Cognome</label><input id="cardSurname" value="${escapeHtml(g.surname || '')}"></div>
                 <div><label>Sesso</label><select id="cardGender"><option value="NA" ${g.gender === 'NA' ? 'selected' : ''}>Da completare</option><option value="M" ${g.gender === 'M' ? 'selected' : ''}>M</option><option value="F" ${g.gender === 'F' ? 'selected' : ''}>F</option></select></div>
@@ -15992,7 +16001,41 @@ Grazie.`
                 </div>
                 <div style="margin-top:6px;font-size:11px;color:#6b7280;">Sottrae dal borsellino su Matchpoint (totale o parziale). Operazione reale.</div>
               </div>` : ''}` : '';
-      const _autovalBody = showSecAutoval ? `${assessmentMeta}${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}` : '';
+      /* 🎓 VOCE 98 — IL RIQUADRO DEL MAESTRO, nel tab «Autovalutazione» della scheda socio.
+         🗣️ Sua richiesta del 26/08: *«nella scheda socio c'è un tab che si chiama
+         autovalutazione, perché non la metti lì»*. Ed è il posto giusto: qui c'è la storia del
+         test di QUESTA persona, e la frase parla di lei.
+         ⚖️ Non sostituisce il filtro «Da certificare dal maestro» nell'elenco soci: sono due
+         cose diverse e servono a due momenti diversi — il filtro risponde a *«chi devo andare
+         a guardare?»* (è la lista, ed è la voce 98), il riquadro a *«questa persona che cosa
+         aspetta?»*. Chi apre una scheda per altro deve trovarcelo lo stesso.
+         ⛔ Qui NON si applica niente e non c'è nessun bottone: il livello sopra il tetto lo
+         scrive il maestro dal campo del livello, come qualunque altro. Un bottone «certifica»
+         darebbe per fatta una cosa che si fa guardando giocare. */
+      let _maestroBox = '';
+      if (showSecAutoval) {
+        const _aspetta = assessmentAspettaIlMaestro(g);
+        if (_aspetta) {
+          const _quandoP = pmoProssimaVoltaInCampo(g);
+          const _quando = pmoQuandoGiocaEtichetta(_quandoP);
+          const _dice = pmoLivelloEtichettaStaff(_aspetta.dimostrato) || String(_aspetta.dimostrato);
+          const _ora = _aspetta.inScheda === null ? 'nessun livello' : (pmoLivelloEtichettaStaff(_aspetta.inScheda) || String(_aspetta.inScheda));
+          _maestroBox = `<section class="member-panel">
+            <div class="member-panel-head">
+              <h4>🎓 Aspetta il maestro</h4>
+              <span class="badge badge-info">Da certificare</span>
+            </div>
+            <div class="member-source-lines">
+              <div class="member-source-line"><span>Il test dice</span><strong>${escapeHtml(_dice)}</strong></div>
+              <div class="member-source-line"><span>In scheda</span><strong>${escapeHtml(_ora)}</strong></div>
+              <div class="member-source-line"><span>Prossima volta in campo</span><strong>${escapeHtml(_quando || 'nessuna partita nei prossimi 30 giorni')}</strong></div>
+              ${_quandoP && _quandoP.campo ? `<div class="member-source-line"><span>Campo</span><strong>${escapeHtml(String(_quandoP.campo))}</strong></div>` : ''}
+            </div>
+            <div class="member-source-line" style="margin-top:8px;color:#666;">Sopra Intermedio il livello non lo decide il quiz: lo certifica il maestro guardandolo giocare. Quando l'ha visto, il livello si scrive dal campo «Livello di gioco».</div>
+          </section>`;
+        }
+      }
+      const _autovalBody = showSecAutoval ? `${_maestroBox}${assessmentMeta}${assessmentHistoryBox || `<details class="assessment-member-history"><summary>Storico invii, token e risposte</summary><div class="assessment-member-history-list">Nessuno storico autovalutazione disponibile.</div></details>`}` : '';
       const _attivitaBody = showSecAttivita ? `
               <div class="member-tab-subhead">Stato rapido</div>
               <div class="member-status-grid">
@@ -35781,6 +35824,32 @@ Per confermare scrivi ELIMINA.`);
     // 🚨 Sta FUORI dalle sentinelle ASSESS-KNOWLEDGE, e non è una questione di ordine: quel blocco
     // dev'essere identico a quello dell'emulatore, che di schede socio non ne ha. Ce l'avevo messa
     // dentro, e il banco della scala l'ha vista subito — fa esattamente il lavoro per cui esiste.
+    /**
+     * Apre il campo del livello, e chiede PERCHÉ.
+     *
+     * 🗣️ 26/08/2026 — sua richiesta: il livello non dev'essere editabile nella tab anagrafica.
+     * ⚖️ Ma «non editabile» e «immutabile» sono due cose diverse, e la seconda avrebbe rotto la
+     * voce 98 appena messa in servizio: sopra Intermedio il livello lo scrive il maestro, a
+     * mano, e questo campo è l'unico posto da cui può farlo. Un campo davvero bloccato avrebbe
+     * lasciato la frase «te lo certifica il maestro» senza nessuno strumento dietro.
+     * ⇒ Quello che si toglie è il cambio DISTRATTO — la cifra ritoccata mentre si correggeva un
+     * telefono — non il cambio deliberato.
+     *
+     * 🚨 Il motivo NON si salva da nessuna parte, ed è voluto: non è un registro, è un attrito.
+     * Serve a far fermare un secondo chi sta per cambiare un livello. Dichiararlo qui evita che
+     * qualcuno lo cerchi poi nei log, o peggio che ce lo aggiunga credendo di completarlo —
+     * un registro a metà è peggio di nessun registro.
+     */
+    function pmoSbloccaLivello(btn) {
+      const input = document.getElementById('cardLevel');
+      if (!input) return;
+      const attuale = pmoLivelloEtichettaStaff(input.value) || cleanCell(input.value) || 'nessuno';
+      if (!confirm(`Cambiare il livello di gioco?\n\nAdesso è ${attuale}.\n\nSopra Intermedio il livello lo certifica il maestro guardando giocare: cambialo qui solo quando l'ha visto, o per correggere un errore.`)) return;
+      input.removeAttribute('readonly');
+      input.focus();
+      try { input.select(); } catch (e) {}
+      if (btn) btn.remove();
+    }
     function pmoCardLevelWord() {
       const input = document.getElementById('cardLevel');
       const out = document.getElementById('cardLevelWord');
