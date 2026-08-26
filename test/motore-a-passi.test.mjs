@@ -252,5 +252,38 @@ prova('SABOTAGGIO: una risposta fuori elenco non entra nella scheda', () => {
   uguale(scheda.rally, '', 'la scheda ha preso una risposta mai offerta');
 });
 
+/* ─────────────────────────────────────────────────────────────────────────────────
+   ⑥ IL TRONCAMENTO DI TELEGRAM — le opzioni sono BOTTONI, e un bottone si accorcia
+   ───────────────────────────────────────────────────────────────────────────────── */
+/* 📏 MISURATO il 26/08/2026, e la scheda della 97 guardava il posto sbagliato. La paura
+   dichiarata erano le due domande sul livello (49 caratteri, le più lunghe): sono invece le
+   PIÙ AL SICURO — le sette fasce si separano al terzo carattere. Il caso stretto è `rally`,
+   dove quattro opzioni su cinque cominciano per «Tengo»/«Faccio» e servono **14 caratteri**
+   perché diventino diverse.
+   ⇒ Il taglio si dichiara a 20: sotto quella soglia nessun client di Telegram accorcia un
+   bottone a riga piena, e sopra c'è il margine per una domanda scritta domani.
+   🚨 Non prova che il testo si LEGGA per intero — quello si vede solo su un telefono, e resta
+   da guardare. Prova la cosa che conta di più: che chi legge un'etichetta accorciata non possa
+   ritrovarsi due opzioni **identiche** e scegliere a caso. */
+const TAGLIO_TELEGRAM = 20;
+prova(`le opzioni restano DISTINTE anche accorciate a ${TAGLIO_TELEGRAM} caratteri`, () => {
+  for (const d of P.SCHEDA_DOMANDE) {
+    const tagliate = d.opzioni.map((o) => o.testo.slice(0, TAGLIO_TELEGRAM));
+    vero(
+      new Set(tagliate).size === d.opzioni.length,
+      `la domanda ${d.chiave} ha due opzioni che accorciate diventano uguali: ${tagliate.join(' / ')}`,
+    );
+  }
+});
+
+prova('SABOTAGGIO: due opzioni che si separano troppo tardi verrebbero VISTE', () => {
+  const finta = { chiave: 'finta', opzioni: [
+    { valore: 'a', testo: 'Uso bandeja e smash in modo semplice' },
+    { valore: 'b', testo: 'Uso bandeja e smash in modo tattico' }, // si separano al 27°
+  ] };
+  const tagliate = finta.opzioni.map((o) => o.testo.slice(0, TAGLIO_TELEGRAM));
+  uguale(new Set(tagliate).size, 1, 'il taglio dichiarato non le fonde: la prova sopra non proverebbe niente');
+});
+
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);
 process.exit(falliti ? 1 : 0);
