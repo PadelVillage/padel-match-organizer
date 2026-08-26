@@ -97,6 +97,40 @@ di riga che qualcuno inverte «per pulizia» fra sei mesi.
 📌 *Una prova che confronta la strada giusta con la strada sbagliata non prova un calcolo: protegge
 una decisione, e le decisioni sono ciò che il codice dimentica per primo.*
 
+## 📌 Le decisioni prese dal committente il 26/08
+
+🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e
+aver proposto due alternative. Non è un non-fare: è una decisione, e le due strade scartate vanno
+scritte o tornano.
+
+> *«quando uno dichiara un livello superiore da avanzato in poi, noi gli mettiamo intermedio di
+> default […] i furbetti che magari riescono a bypassare il nostro test, gli mettiamo un livello
+> che secondo me è troppo alto. Quindi io di default metterei base.»*
+> *«oppure non gli mettiamo nessun livello e lo lasciamo in attesa di verifica»*
+> *«logicamente gli diamo la possibilità sempre di fare nuovamente il test di livello»*
+> *«In questo modo, se è uno che ci ha provato, torna indietro.»*
+
+⛔ **«Nessun livello» era la più pericolosa**, e non per opinione: chi non ha livello **non può
+invitare nessuno** (`haUnLivello`), ed è la porta chiusa in faccia da cui `assessment-apply-level`
+è nata. Sarebbe stato riaprire un difetto già pagato.
+
+🔎 **E «rifare il test» non è la via d'uscita che sembra**: vale contro la **bocciatura**, non
+contro il **tetto**. Il tetto non dipende da come rispondi — taglia il livello **dimostrato** — ⇒
+chi risponde da Avanzato prende il tetto alla prima prova come alla decima. L'unica uscita è il
+maestro, ed è per questo che la **98** è salita in urgenti lo stesso giorno.
+
+📏 **I due numeri che hanno deciso, misurati su PROD prima di rispondere** (49 schede, 365 giorni):
+**10 bocciate per incoerenza, 0 bocciate al quiz.** ⇒ Chi prende i furbetti oggi è la **coerenza**,
+non il quiz — e il tetto non li prende affatto, perché chi vuole barare dichiara **Intermedio** e
+prende Intermedio senza passarci mai. ⚖️ Il tetto colpisce chi si **dichiara alto**, cioè spesso
+chi è forte davvero.
+
+⚖️ **E abbassarlo a Base non avrebbe toccato solo loro**: il tetto taglia il dimostrato di
+**chiunque**, quindi a Base nessuno potrebbe più ottenere Intermedio dal test — nemmeno chi
+dichiara Intermedio e lo dimostra.
+
+📌 *Un filtro si giudica su chi prende davvero, non su chi sembra fatto per prendere.*
+
 ## 📌 Le decisioni prese dal committente il 24/08
 
 🔮⭐ **LE PARTITE APERTE — una direzione dichiarata, non un lavoro.** Detta mentre correggeva il
@@ -1476,96 +1510,31 @@ mentre sette deploy andavano in produzione. ⇒ *Il difetto non è che manchi un
 sessione dopo, aprendo la lista come deve, non ci avrebbe trovato niente di tutto questo.* La
 regola di casa dice che la lista si aggiorna **durante** il lavoro, non a giornata finita.
 
-### **94** — 🎓 Il test di livello RIFATTO: banca 27+9, tetto a Intermedio, DUE valori, terzo esito, attesa a zero
+### **98** — 🎓 La lista per il maestro, nel gestionale
 
-🆕 **APERTA il 25/08/2026 sera, e già in servizio su PROD dallo stesso giorno** (#1080, merge
-21:59): cinque decisioni sue, prese in conversazione e misurate prima di scrivere.
+🔼 **PROMOSSA DALLA CODA il 26/08/2026, dalla sessione** (delega del 23/08).
+⚖️ **Il perché e cosa scavalca, dichiarati come vuole la regola**: fino a stamattina era una
+mancanza *prevista*; adesso è una mancanza **misurata**, e si legge nel registro di PROD delle
+09:00 —
 
-📏 **Il conto che ha fatto partire tutto**: 3 prove × 4 domande = **12 viste** contro le **11 che
-esistevano** per fascia ⇒ in un giorno solo un socio vedeva la banca **intera**, trabocchetti
-compresi. ⇒ Banca a **27 normali + 9 trabocchetti per fascia**, misurato sul ramo in servizio:
-**180 domande, 180 sigle uniche, 36 per ciascuna delle cinque fasce**. Le cinque fasce hanno metri
-diversi e crescenti — Principiante *«hai mai visto una partita?»* · Base *«ci hai giocato qualche
-mese»* · Intermedio *«sai dove stare e cosa scegliere»* · Avanzato *«i colpi e il loro perché»* ·
-Agonista *«fuori dal campo e regolamento di gara»*. ✅ **Le ha lette e approvate tutte**: *«tutte le
-domande mi sembrano ben scritte vai avanti»*.
+> `Maurizio Aprea: ha risposto da Avanzato (4): sopra Intermedio certifica il maestro,
+> guardandolo giocare — livello non riscritto (il test dice più basso (3.5 contro 4): non si
+> scende — prova 0 di 3)`
 
-🚨⭐⭐ **IL PEZZO DA NON PERDERE, ed è una sua correzione a un mio errore: il quiz produce DUE
-valori, non uno.**
-> *«se tu sei un vero agonista, il quiz lo deve tirare fuori, poi ti blocca a intermedio e ti dice
-> che il maestro ti deve vedere, ma comunque ti dice che tu hai risposto da agonista»*
+⇒ La segnalazione **parte e funziona**, esattamente come la 94 prometteva. Ma finisce in un
+`console.log` dell'edge: **non la legge nessuno**. Il socio ha ricevuto la promessa che il maestro
+lo guarderà giocare, e dall'altra parte non esiste il posto dove quella promessa si vede.
+📌 *Una promessa fatta a qualcuno e scritta in un log è una promessa non fatta.*
+⬆️ Scavalca **la 99** (il cancello di Principiante), che resta in coda: la 99 fa entrare **più
+gente** nel test, e far entrare più gente in un imbuto che non scarica peggiora il problema invece
+di curarlo.
 
-| | tetto? |
-|---|---|
-| il livello che si **scrive** | ✅ sì, **3,5** (`TETTO_AUTOMATICO`) |
-| il livello che le risposte **dimostrano** | ❌ no — ed è quello che legge il maestro |
+🎓 **La lista per il maestro, nel gestionale** — chi è `applied_review` in attesa di certificazione, e **quando gioca**. Senza, la certificazione che la voce **94** promette al socio è una promessa che **non arriva a nessuno**: nessuno sa chi è in attesa né quando andarlo a vedere. ⭐ Il giorno il gestionale **lo sa già** (sono le prenotazioni): la lista può mostrare la **prossima partita** accanto al nome, e il socio non deve ricordarsene — la sua frase (*«di' alla segreteria il giorno in cui giochi»*) resta per chi gioca **fuori** dal circolo, che è il caso che il gestionale non vede
 
-⇒ Io avevo proposto di far fare il quiz **di Intermedio** a chi dichiara alto: avrebbe buttato via
-la seconda riga, cioè **l'unica informazione utile al maestro**. Ritirato. 📌 *Un tetto che taglia
-la misura insieme al premio non è un tetto: è una gomma.*
-
-⚖️ **Le altre tre decisioni, e nessuna è cosmetica:**
-· **IL TETTO** — sopra Intermedio il livello non lo decide il quiz: **lo certifica il maestro
-  guardando giocare una partita normale al circolo**, e non serve un test di gioco. Sopra Agonista
-  niente quiz del tutto (Semi-Pro e Professionista: **0 soci su 2.813**);
-· **IL TERZO ESITO** (`applied_review`) — livello scritto **E** segreteria avvisata. Prima non
-  esisteva una via di mezzo fra «applicata» e «ferma» ⇒ ogni sospetto diventava un **blocco**, che
-  è la ⓑ della voce **84** vista dal lato della cura. **È il prerequisito di tutto il resto**;
-· **L'ATTESA TOLTA** — da 30 giorni a **zero** (`GIORNI_DI_ATTESA = 0`): non difendeva. A difendere
-  sono la **banca grande** e il **tetto**, e nessuno dei due dipende dal tempo.
-
-⭐ **La frase del maestro non si compone nella pagina**: nasce in `conoscenza.js` accanto al numero
-del tetto, l'edge la porta **già scritta**, la pagina la mostra. È *«il gestionale SA, il bot
-DICE»* applicato al test — il giorno in cui la stessa cosa la dovrà dire il bot, le parole sono già
-lì, e il tetto che si sposta si porta dietro la frase invece di lasciarla indietro di una versione.
-🗣️ **Le tre cose che deve dire, parole sue** (*«deve dire che deve contattare la segreteria affinché
-il maestro lo guardi durante una partita e di far sapere il giorno in cui gioca»*), e nessuna è di
-troppo: ① che le sue risposte dicevano **di più** — o a chi è forte davvero suona come un
-declassamento; ② che **intanto** gli registriamo Intermedio, così gioca subito invece di restare a
-0,5; ③ **quando gioca** — senza il giorno il maestro non sa quando andare a vederlo.
-
-🔤 **E la frase delle tre prove è cambiata** (`TESTO_RIPROVE`, bot). La vecchia — *«Hai tre prove in
-tutto, e vale l'ultima che fai»* — era **falsa in tutt'e due le metà**: con l'attesa a zero il giro
-si chiude e ne ricomincia subito un altro, e «vale l'ultima» **spaventa proprio chi dovrebbe
-riprovare**, visto che dal 17/08 al ribasso non si scende. Nuova, sue parole *«SI MI PIACE»*:
-*«Puoi rifare il test quando vuoi: se va meglio il livello sale, se va peggio non scende — a meno
-che tu non vada peggio tre volte di fila.»*
-⛔ Sparito con lei **l'urlo in maiuscolo** sull'ultima prova, che era una sua richiesta esplicita del
-24/08: è sparita la sua **ragione** — annunciava trenta giorni che non arrivano più. 📌 *Un grido che
-annuncia una conseguenza che non arriva insegna a non leggere i grassetti.*
-
-🔨 **Tre difetti trovati COSTRUENDO, non rileggendo**: ① il taglio del tetto andava **dopo** i
-controlli di coerenza, o bocciava per incoerenza chi era stato coerente; ② la promessa del maestro
-usciva **anche a chi il quiz lo fallisce** — cioè a chi ha dichiarato alto e risposto male, la
-persona a cui una promessa non mantenuta fa più danno, e l'ho vista immaginando il giro di Laura,
-non rileggendo il codice; ③ `definizioneLivello('')` tornava **Principiante**, perché `Number('')`
-fa 0. Due guardie nuove **provate sabotandole**, non solo guardandole verdi.
-
-🗣️⭐⭐ **E LA PROVA FISICA HA UNA DATA CHE HA SCELTO LUI: quando il test sarà DENTRO Telegram.**
-Sue parole la sera del 25/08, dopo aver chiuso la 95 e la 96: *«rimane il test di livello che appena
-mi dici che è dentro telegram lo provo»*. ⇒ La 94 **non si prova sulla pagina**, si prova nel bot —
-e quindi **la voce 97 diventa la strada per chiudere questa**, non un lavoro che le viene dopo. Per
-questo la 97 è stata **promossa in urgenti** la sera stessa.
-⚠️ **Il costo di quell'attesa, dichiarato**: fino ad allora la 94 resta **in servizio su PROD senza
-che nessuno l'abbia vista funzionare** — la pagina del test è viva e un socio che la apre oggi
-incontra la banca nuova, il tetto e l'attesa a zero. Non è un rischio nuovo (ci è dal 25/08 sera),
-ma è un fatto che questa riga deve dire, o «aspettiamo Telegram» suonerebbe come «non è acceso».
-
-⏳ **PROVA FISICA: ANCORA DA FARE, e servono due giri distinti** (nel bot, per la sua decisione qui
-sopra)**.**
-· **Laura** — apre il bot e il test le deve comparire **disponibile** (prima diceva «fra 29
-  giorni»). Stava provando alle 21:48 e alle 21:53 del 25/08, e quei tocchi sono arrivati sul bot
-  **vecchio**: non provano niente;
-· **Maurizio (lui)** — dichiara **Agonista**, **passa** il quiz, e deve leggere la frase sul
-  maestro. 🚨 È il caso più stretto che ci sia: **è già a 3,5**, quindi il livello **non** verrà
-  riscritto («ce l'hai già») ma la **segnalazione deve partire lo stesso**.
-⛔ **Con Laura il tetto non si prova**: dovrebbe dichiarare alto e passare il quiz di quella fascia,
-e da principiante vera lo fallirebbe — e a chi fallisce la frase, per disegno, non esce.
-🌐 Le **180 domande** stanno anche in cinque pagine leggibili, una per fascia (utili se ne vuole
-correggere altre): Principiante `9df9b3c4-1245-4e9b-aaa2-bed4d5d6b822` · Base
-`d4458714-e9f3-477d-a6b8-523b802b20b2` · Intermedio `f1eb41d9-b37a-4848-ba18-172c852c262f` ·
-Avanzato `7c7cd9f8-8b4d-40da-8124-c2d552a18e80` · Agonista `6e654783-ee6c-4b29-b64f-68dfd733533a`
-(prefisso `https://claude.ai/code/artifact/`).
+🔎 **Cosa serve, misurato oggi**: la scheda che il maestro deve vedere non è `applied_review` e
+basta — su PROD quel caso arriva anche come **scheda saltata con una segnalazione**, che nel
+database non lascia `staff_status`. ⇒ La lista si costruisce sul **fatto** (una prova che ha
+dimostrato sopra il tetto e non è ancora stata certificata), non su una singola colonna di stato.
 
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 
@@ -1650,6 +1619,71 @@ il buco vero, e non lo chiude nessun cronometro — è la ragione per cui la **f
 🔒 **Il vincolo di architettura, che qui pesa più del solito**: *il gestionale SA, il bot DICE*. Le
 domande, l'ordine, il punteggio e il verdetto restano **nell'edge**; il bot mette i bottoni e
 riporta i tocchi. Se un domani il test cambiasse regole, il bot non si tocca.
+
+
+#### 🗣️ Le tre correzioni sue del 26/08, e come sono state fatte
+
+Arrivate guardando il test sul telefono, con le schermate. In servizio la mattina stessa
+(assistente-padel-agent#87 → deploy `soci` alle **10:57**, gestionale #1090 → edge PROD).
+
+**① LE ETICHETTE TAGLIATE — e la misura di ieri guardava il posto sbagliato due volte.**
+🗣️ *«Come vedi alcune domande non si leggono, sono tagliate. È possibile andare a capo?»*
+⛔ **A capo non si va**: l'etichetta di un bottone Telegram sta su una riga sola, un `\n` dentro
+non ha effetto.
+📏 E le sue schermate hanno smentito la misura fatta a banco poche ore prima: il limite è in
+**PIXEL, non in caratteri** — nella stessa schermata «Lo uso per difendere e ripartire in attacco»
+(43) si legge intera e «Lo uso con continuità anche sotto pressione» (42) no — e Telegram taglia
+**AL CENTRO**, non in fondo.
+⇒ Le opzioni si scrivono **anche nel testo del messaggio**, numerate: lì niente si taglia a
+nessuna larghezza di schermo, e il bottone porta lo stesso numero.
+⚖️ **Perché non accorciare le opzioni**, che era la strada ovvia: le parole delle risposte **sono
+il dato** (il punteggio nasce confrontandole, `assessmentPublicScoreFromText`), e le domande di
+regolamento sono **720 opzioni** che nessuno riscriverà. Questa forma copre tutto e non tocca
+nessun testo.
+📌 *Una misura giusta puntata sul soggetto sbagliato dà una risposta vera a una domanda che non
+serviva*: a banco si era misurato se due etichette accorciate diventassero **identiche** (non
+possono), che è la cosa che il socio non avrebbe mai visto; quello che vedeva erano i puntini.
+
+**② VIA LA FRASE DELLA SCADENZA — togliendo il meccanismo, non la frase.**
+🗣️ *«L'ultima frase io direi di levarla in quanto la variazione la fai immediata.»*
+🚨⭐⭐ **La sua premessa non era ancora vera**, ed è il pezzo da non perdere: l'attesa **c'era**, ed
+era di 24 ore (regola sua del 19/08). Togliere la frase e lasciare l'attesa avrebbe reso il bot
+**muto** su una cosa che succedeva lo stesso — cioè la definizione di sleale, ed è precisamente
+quello che una prova del banco difendeva apposta (il sabotaggio ⑦).
+⇒ Si è tolta **l'attesa** (`ORE_SILENZIO_ASSENSO = 0`), e la frase è sparita perché non aveva più
+niente da annunciare.
+📌 *Una frase che descrive un meccanismo si toglie togliendo il meccanismo, non la frase.*
+🔒 **Zero, non cancellata** — stessa scelta del 25/08 con `GIORNI_DI_ATTESA`: la macchina resta
+intera, rimetterla è cambiare un numero.
+
+**③ LA PAROLA DEL LIVELLO IN GRASSETTO**, in tutti e tre i posti in cui esce e non solo in quello
+che aveva sotto gli occhi: «Il mio livello», l'esito del test, e la scheda di chi il quiz non ce
+l'ha. ⚖️ Curare l'istanza avrebbe lasciato la stessa frase con due rese diverse a seconda di dove
+nasce — che è il difetto che il 20/08 è già costato una cura.
+
+**🧪 IL BANCO, e cosa ha preteso.** Ventidue casi diventati rossi in tutto, **nessuno cancellato**:
+· i tre del bot sull'etichetta e la parità numero-bottone;
+· il caso «il testo NON contiene le risposte delle ALTRE domande», che pretendeva **zero** opzioni
+  nel testo: si è tenuta la metà che regge — *le ALTRE* — rendendola esplicita invece di ottenerla
+  per contraccolpo;
+· nel gestionale il **30** passava **senza provare niente**: con l'attesa a zero
+  `oreFa(ORE - 0.02)` diventa una prova consegnata nel **futuro**. Riscritto perché il confine si
+  sposti col numero. 📌 *Un verde che sopravvive a un cambio di comportamento è un avviso.*
+· il sabotaggio ⑥ è stato **tolto** e non indebolito: con zero il ramo che tocca è irraggiungibile,
+  quindi passava verde dichiarando di difendere qualcosa. Scritto che va rimesso se l'attesa torna.
+
+**🚨 E un rosso su codice giusto, curato sulla classe.** La guardia «le ore del silenzio-assenso
+vivono nel gestionale» cercava `ORE_SILENZIO` nel file intero e l'ha trovata **nel commento** che
+spiega perché è andata a zero. ⇒ Una guardia che legge i commenti **vieta di spiegare la cosa che
+sorveglia**, e la cura non è riscrivere il commento con un sinonimo. Ora guarda il codice spogliato
+(`senzaCommenti`), come già si faceva nel gestionale.
+
+⏳ **COSA RESTA ALLA 97, dopo oggi**: solo il **terzo passo** — la pagina del quiz che si spegne,
+visto che il test si fa nel bot. ⚠️ Quel giorno va tolta anche la **prova di parità** fra `passi.js`
+e i `<select>` di `index.html`: *una prova di parità vale finché esistono due cose che devono
+restare pari*.
+🔎 E una cosa che il telefono non ha ancora detto: come si vede l'elenco numerato **sulle domande di
+regolamento**, che sono le più lunghe di tutte (fino a 62 caratteri).
 
 ### **92** — 🚨🚨 DUE messaggi identici allo stesso socio: la coda si legge e si chiude in due momenti
 
@@ -2583,7 +2617,7 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-## 📋 IN CODA — 11
+## 📋 IN CODA — 10
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2592,7 +2626,7 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 10
+### C — Cose sapute e non risolte — 9
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2606,7 +2640,6 @@ i numeri erano coerenti fra loro, ed è tutto ciò che sa confrontare.
 
 | | |
 |---|---|
-| **98** | 🎓 **La lista per il maestro, nel gestionale** — chi è `applied_review` in attesa di certificazione, e **quando gioca**. Senza, la certificazione che la voce **94** promette al socio è una promessa che **non arriva a nessuno**: nessuno sa chi è in attesa né quando andarlo a vedere. ⭐ Il giorno il gestionale **lo sa già** (sono le prenotazioni): la lista può mostrare la **prossima partita** accanto al nome, e il socio non deve ricordarsene — la sua frase (*«di' alla segreteria il giorno in cui giochi»*) resta per chi gioca **fuori** dal circolo, che è il caso che il gestionale non vede |
 | **99** | 🚪 **Il cancello di Principiante da accendere** — la banca è piena (27+9) e le domande sono approvate, ma `regole_fascia` dice ancora `Principiante: { cancello: false }` ⇒ da quella fascia non si pesca niente. 🗣️ **Decisione sua già presa**: chi non passa prende **Principiante + segnalazione allo staff**, non resta a 0,5 ⇒ serve il **terzo esito**, che dalla 94 c'è. ⚙️ E vuole la rimodulazione a **2 normali + 2 trabocchetti** per quella fascia (invece di 3+1): lì la domanda vera è *«hai mai visto una partita?»*, e a scoprirlo è il **trabocchetto**, non la domanda normale |
 | **88** | 🔓 **«Partite Aperte»: partecipare a partite che non sono le tue** — 🗣️ voce sua del 24/08 (*«quello di poter partecipare a partite non chiuse, ma che un organizzatore volutamente e spontaneamente apre ad altri giocatori»*), messa in urgenti da lui e **rimessa in coda da lui il 25/08**: *«per la 88 non fare sviluppo, metti solo in documentazione le regole»*. ⇒ Le regole ci sono, il codice no, ed è voluto. 📐 **LE QUATTRO REGOLE, tutte decise da lui:** ① **cosa vede chi non ne fa parte** → **solo i numeri** («3 su 4 · lunedì 18:30 · Intermedio»), **nessun nome** — è la strada che **non apre la serratura** sui ~2.800 soci, che `rubrica.ts` tiene chiusa per una ragione strutturale e non per preferenza; ② **chi apre** → un gesto **esplicito e reversibile** dell'organizzatore, non una casella spuntata per sbaglio; ③ **chi può entrare** → *«devi essere già nel gestionale»*: la **rubrica cade** (è l'apertura, per definizione), il **cliente del circolo RESTA** — il filtro si spezza in due invece di far cadere due condizioni insieme per inerzia, che era il rischio scritto nella scheda; ④ **il livello** → *«pari livello dell'organizzatore oppure più o meno 0,5»*, cioè **L−0,5 · L · L+0,5**. 📏 **Misurato prima di scrivere una riga**: per i **536** soci con un livello vero la ④ tiene — banda più stretta **33** persone (organizzatore a 5,5), più larga **352** (un 2,5), nessuno resta solo. Distribuzione: 1,5→36 · 2,0→68 · **2,5→206** · 3,0→78 · 3,5→54 · 4,0→41 · 4,5→19 · 5,0→29 · 5,5→4. 🚨⭐⭐ **E IL PUNTO CHE RESTA APERTO, il più grosso: lo 0,5.** Ce l'hanno **2.277 soci su 2.813 — l'81%** — e **non è un livello basso: è «mai misurato»**, tanto che `livelli.ts` lo tratta apposta come un non-dato (`LIVELLO_MINIMO_IN_TABELLA`, sua decisione dell'11/08). ⚖️ Metterlo nell'aritmetica del ±0,5 fa **due** danni insieme: l'81% del circolo resta fuori da ogni partita aperta di chi un livello ce l'ha, **e** una partita aperta da un socio senza livello risulta aperta a **2.277 persone**, cioè lì il vincolo non filtra niente. ⇒ Protegge esattamente il 19% e lascia scoperto il resto. 📌 *Un numero che significa «non lo so» non si può sommare e sottrarre: l'aritmetica su un non-dato produce una regola che sembra precisa e non lo è.* ⏳ **La domanda è posta e senza risposta** — chi non ha un livello cosa fa: ① **prima il test** (il bot glielo propone lì, e la partita aperta diventa il primo motivo vero per farlo) · ② **entrano fra loro** (regola letterale, col buco qui sopra) · ③ **decide chi apre**. ⚠️ **Da non scoprire a lavoro iniziato**: il caso `test/il-modello-sa-quel-che-sa-il-menu.test.ts` (voce 87) diventa **rosso** appena si aggiunge `partite_aperte` ai `COMANDI` senza insegnare la voce al modello. Non è un ostacolo: è la guardia che fa il suo lavoro, e chi la vede rossa **scrive la voce**, non la aggira. ⏳ **Prova fisica, quando si farà**: due soci veri, uno che apre e uno che entra — e il controllo che chi era già in campo riceva l'avviso, come vuole la regola del 23/08 |
 | **68** | 🔕 **Lo staff agisce dal gestionale e ai soci non arriva niente** — 🗣️ sua segnalazione: *«quando da gestionale faccio un'azione, cioè metto, levo giocatori o attivo partite o elimino partite, sul bot dei soci non succede niente, cioè non arriva nessun avviso»*. 📏 **MISURATO il 21/08, ed è un buco di disegno in tre punti sommati, non un guasto:** ① il bot **non ha un tipo di avviso** per «partita cambiata dallo staff» — `TipoAvviso` (`avvisi.ts:41`) elenca i nove che esistono e nessuno lo è; ② l'unico rilevatore di cambiamento è `decidiTornataIncompleta` (`avvisi.ts:398-424`), che confronta **un solo numero** (`giocatori_visti`, l'unica memoria del roster: `registro-avvisi.ts:38-40`) e scatta **solo** sul calo da 4 a meno di 4, una volta sola, prima della scadenza disdetta ⇒ **le AGGIUNTE non lo attivano** (porta 3), i cali sotto quota 4 nemmeno (porta 2), e una **sostituzione** è invisibile perché il conteggio non cambia; ③ una **partita annullata** non viene nemmeno esaminata — il giro itera `for (const b of seguite)` (`promemoria.ts:525`), cioè solo sulle partite che ci sono **adesso**, e nessuna riga confronta l'elenco di oggi con quello del giro prima. ⭐ **Il DATO arriva**: `consumer-player-readmodel` rilegge `booking`+`staff_booking` live a ogni giro, col ritardo del sync (~2′, max 10′04″). Manca **chi lo confronti e chi lo dica**. ⚖️ **Il contrasto che lo rende evidente**: la stessa azione fatta dal SOCIO dal bot avvisa gli altri subito (`bot.ts:1384`, `bot.ts:1468` iniettano `avvisa:`); fatta dallo STAFF non ha nessun equivalente. 🚪 **E la porta esiste già**: `bot-telegram-admin` è il ponte gestionale→bot, con credenziali funzionanti e deploy separato per ambiente — oggi ci passano **solo** whitelist e inviti d'accesso (tabelle `telegram_operatori` e `telegram_inviti`, nessun `sendMessage`). ⇒ Aggiungere lì la notifica sarebbe conforme alla regola ferrea — *il gestionale SA, il bot DICE* — al contrario di una diff calcolata nel bot, che sarebbe la «memoria parallela» esclusa dalla 64. ⚠️ **Il limite era già dichiarato** ma come nota a margine di altri lavori (voce 64, riga 1365: «coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui non si vede»): questa è la prima volta che ha una scheda sua. ✅ **DECISO il 21/08** (le tre risposte stanno nella tabella qui sotto): il messaggio va a **una sola persona**, quella che il gesto ha toccato; la raffica si assorbe con **2 minuti** di quiete e si manda lo **stato finale**; e **toccato ≠ cambiato**. ⇒ Il rumore — la ragione per cui il ritiro degli inviti orfani (voce 63) è **muto per scelta** — è tenuto fuori da tutte e tre insieme, non da una sola |
@@ -4206,17 +4239,18 @@ in giro come un lavoro da fare che nessuno sa più perché non si fa.*
 
 ---
 
-## 📦 CHIUSE — dal 13 al 25/08/2026 — 76 voci
+## 📦 CHIUSE — dal 13 al 26/08/2026 — 77 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime sette voci sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
+**La prima voce è del 26/08**; **le sette dopo sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
 
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
+| **94** | ✅ *(26/08 mattina, 52ª sessione — **provata da LUI sul telefono**, e nel caso più stretto che ci fosse)* 🎓 **94. Il test di livello RIFATTO: banca 27+9, tetto a Intermedio, DUE valori, terzo esito, attesa a zero.** Cinque decisioni sue del 25/08, in servizio su PROD la sera stessa. 📏 **La prova fisica è arrivata il 26/08 alle 10:27**: dodici domande fino in fondo dichiarando Avanzato, e il registro di PROD delle 09:00 UTC dice che il caso stretto ha girato giusto — `ha risposto da Avanzato (4): sopra Intermedio certifica il maestro — livello non riscritto (il test dice più basso (3.5 contro 4): non si scende — prova 0 di 3)`. ⚖️ **Il livello non si è riscritto per una ragione diversa da quella che la scheda prevedeva**: la scheda diceva «ce l'ha già», e invece lui è a **4**, quindi il tetto a 3,5 sarebbe stata una **discesa** — fermata dalla regola del ribasso. Due strade diverse, stesso esito giusto, e la segnalazione parte da tutt'e due. 📌 *Una previsione azzeccata sull'esito non è una previsione azzeccata sul meccanismo: senza guardare il registro, quel «ce l'ha già» sarebbe rimasto scritto come vero.* ⏳ **Residuo dichiarato, e ha una voce sua**: quella segnalazione non la legge nessuno — è la **98**, salita in urgenti lo stesso giorno proprio per questo. |
 | **95** | ✅ *(25/08 sera, 50ª sessione — **provata da LUI in due metà**: l'«Esci» con lo screenshot delle **22:04**, l'«Annulla» a parole poco dopo — «annulla e il menu /gruppo sono ok»)* 🔒 **95. L'organizzatore non ESCE e non ANNULLA: la regola del 26/07 senza più deroghe.** 🗣️ Due sue segnalazioni guardando il telefono: *«Laura non può avere il bottone esce dalla partita essendo l'organizzatore e avendo 2 giocatori già iscritti»*, e poi *«c'è il bottone annulla la partita e anche qui non lo può fare»*. ⇒ Organizzatore con altri in campo: **né Esci né Annulla**; organizzatore **da solo**: annulla; chi **non** ha organizzato: esce e basta; **dentro le 48h**: niente per nessuno. ⭐ Sull'«Esci» mezza regola esisteva dal 7/08 ma viveva **dentro** le 48 ore: la ragione vera non è la finestra, è che **il campo è a nome suo** — prima e dopo. 🚨 Sull'«Annulla» si **ribalta una sua decisione del 30/07** (l'eccezione *«chi ha organizzato può annullare anche con gli altri dentro»*) e torna la regola del **26/07**. 📌 **Il costo, dichiarato**: dal bot **nessuno** può più liberare un campo con altri dentro — lo fa la **segreteria**. Non è un effetto collaterale: è la regola del 26/07 che finalmente si vede. ⚠️ `ancheAnnulla` **è sempre falso** da quella sera, e i due `azione: 'nessuna'` si distinguono ora con **`dentroLaFinestra`**: dentro = *«il tempo per disdire è finito, il campo si paga»*, fuori = *«lo libera la segreteria»* — un motivo solo avrebbe detto a Laura che aveva finito il tempo con **sei giorni** davanti. 🔒 Si è spento il **valore**, non la macchina: il campo resta nel tipo e nei rami che lo leggono, così il giorno in cui la deroga tornasse non si riscrive niente. 📌 E il banco è diventato rosso in 24 casi facendo il suo mestiere: *«l'ordine dei due poteri, Esci sopra e Annulla sotto»* è stato **rovesciato** in *«i due bottoni non possono più coesistere»*, perché se un domani tornassero insieme vorrebbe dire che l'eccezione è rientrata da una porta di servizio |
 | **96** | ✅ *(25/08 sera, 50ª sessione — **provata da LUI**: «annulla e il menu /gruppo sono ok»)* 🗂️ **96. «La mia rubrica» diventa «Il mio gruppo di giocatori».** 🗣️ Sua richiesta della stessa sera. **28 stringhe visibili in 7 file**, cambiate **a mano una per una**, più la **kb di PROD e di TEST** (che si aggiorna senza deploy). Forma **lunga** nel menu — su Telegram «gruppo» da solo vuol dire *chat di gruppo* — e **corta** dentro le frasi. Il comando è ora **`/gruppo`**; **`/rubrica` resta vivo come alias**, perché vive nelle chat vecchie e nelle abitudini di chi lo usa da un mese. ⛔ **Non toccati, di proposito**: i nomi del codice (`rubrica.ts`, `apri_rubrica`, `rubrica_vuota`, la chiave json della kb) né i commenti — raccontano decisioni prese con quella parola, e riscriverli riscriverebbe la storia invece del testo. ⚠️ **Il primo tentativo è stato buttato**: un `sed` sulle stringhe ha preso anche i **commenti** e ha prodotto «sulil gruppo», «il gruppo è piena». Rifatto con coppie **esatte scritte a mano**. 📌 *Quando il testo è italiano, la sostituzione automatica sbaglia la grammatica in silenzio.* |
 | **90** | ✅ *(25/08 mezzogiorno, 49ª sessione — **chiusa da LUI**: «allora la 90 mettila tra le chiuse», e **A RESIDUO DICHIARATO**, che è la forma già usata per la 85 e per la 82)* ⏳ **90. Una bolla sola che si aggiorna, invece di due messaggi che si smentiscono.** 🗣️ Idea sua del 24/08 sera (*«gli diciamo attendi un attimo finché la prenotazione non va a buon fine… così non sembra un disservizio»*), aperta e curata la sera stessa. 📏 **Il difetto era di FORMA e non di verità**: su un esito ignoto il socio riceveva **due** messaggi, e nessuno dei due mentiva — la voce 53 li aveva scritti apposta perché non mentissero — ma **la coppia** si legge come un fallimento seguito da una smentita, anche quando finisce bene. 📌 *Due messaggi veri possono raccontare insieme una cosa falsa: il socio non legge le frasi, legge la sequenza.* ⭐ La voce è stata piccola perché il meccanismo c'era già intero (`riscriviOMandaNuovo`): non l'ha costruito, **gli ha passato l'id giusto**. 🚨 Le tre cose del terzo esito non sono state annacquate — la bolla non afferma nessun esito, vieta di rifarla, e **tiene dentro di sé la via d'uscita a mano**, perché l'attesa vive nel processo e un riavvio la perde. ⛔ Nessun tempo scritto, di nessuna specie: il tetto «entro un quarto d'ora» l'ha tolto lui (*«non va bene che scrivi entro un quarto d'ora»*). ⭐ E la chiusa l'ha bocciata **il caso**: «ti riscrivo appena è **confermata**» è diventato rosso, perché gli esiti sono quattro e negli altri tre la bolla si aggiorna lo stesso ⇒ in servizio c'è **«appena il circolo mi risponde»**. 📌 *Una frase d'attesa non deve nominare l'esito che spera: deve nominare l'evento che la chiude.* ✅ Banco **1541/1541**, `tsc` pulito, **sei sabotaggi rossi**. ⛔⭐⭐ **IL RESIDUO, ed è tutto qui: LA BOLLA NON L'HA MAI VISTA NESSUNO SU UN TELEFONO.** Serve un **esito ignoto**, e quello non si provoca: nasce **solo** da un `504 IDLE_TIMEOUT` — la piattaforma che chiude a 150 s mentre il worker sta ancora lavorando. 📏 **Misurato il 25/08 prima di chiudere**: nel registro del bot **zero** esiti ignoti da quando la cura è viva. 🚨 **E la strada per provocarlo è stata SCARTATA con la misura, non con un'impressione**: chiudere il cancello del worker (`cancello-worker.yml`) darebbe una connessione **rifiutata subito**, cioè `scrittura_rifiutata` — **l'altro ramo** — e in cambio fermerebbe il sync di PROD per tutta la durata. ⇒ Avrebbe esercitato la cosa sbagliata e fatto un danno vero. 📌 *Una prova che non può produrre il caso che deve provare non è una prova a metà: è un'altra prova.* ⏳ **Cosa resta da guardare, quando capiterà**: non che la bolla si riscriva (quello lo dice il banco), ma se l'aggiornamento **si NOTA** — o se passa inosservato perché nel frattempo la bolla è già scorsa in alto |
