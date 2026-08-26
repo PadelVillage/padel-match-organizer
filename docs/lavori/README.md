@@ -1899,6 +1899,35 @@ strada che chiude la 94**, che è in servizio su PROD e aspetta di essere vista 
 (#1085), il bot dei soci alle **23:45** (assistente-padel-agent#83), in quest'ordine perché il
 motore da solo è inerte e il bot da solo non troverebbe niente.
 
+🆕🗣️⭐⭐ **LA SUA PROVA DAL TELEFONO, 27/08 tarda sera: «va tutto bene TRANNE due cose».** Ed è la
+prima prova fisica vera di questo lavoro — il resto del test l'ha visto funzionare.
+🔨 **Curate tutt'e due nello stesso giro** (assistente-padel-agent#94, deploy dei soci confermato
+`✍️ prenotazioni REALI` sul bot vero), e **restano da provare da lui**.
+
+| lui ha segnalato | cosa si è trovato andando a misurare |
+|---|---|
+| *«ho cliccato il bottone che volevo rifarla e non mi ha fatto vedere di nuovo il test»* | 📏 **il gestionale era a posto**: il «riprovo» apre un giro nuovo subito (`GIORNI_DI_ATTESA = 0`) e il gettone c'era. Mancava **la strada** — il bot rispondeva *«chiedimi «il mio livello»»*, cioè chiedeva un **secondo gesto** per una cosa appena chiesta col primo. ⇒ Ora sotto la conferma c'è il bottone **«🔄 Sì, lo rifaccio»**, lo stesso già usato sotto una bocciatura |
+| *«c'è un testo di troppo "ti resta una prova", levalo»* | 🚨 **quella riga era già scaduta, non solo di troppo.** Nasceva il 24/08, quando il giro aveva tre prove e poi trenta giorni d'attesa; dal 25/08 l'attesa è **zero** ⇒ il conto scendeva verso **un muro che non c'è più**. È la stessa cura fatta il 27/08 sul messaggio d'esito: **qui era rimasta indietro una copia** |
+
+📌 *Una cura che toglie una cosa va cercata in tutte le sue copie: quella dimenticata non invecchia
+piano, dice il falso dal primo giorno.*
+
+🚨⭐⭐ **E LA GUARDIA 17quater HA FERMATO LA PRIMA VERSIONE DELLA CURA, prima che atterrasse.**
+Chiamava `statoTestLivello` diretto e scavalcava l'accensione della **sorveglianza dell'esito** —
+il difetto misurato su Fabiola il 24/08, che rinasceva da una porta nuova. ⇒ Passa da
+`linkDelTestConSorveglianza`: questa è la **porta ⓒ**, un messaggio che mette in mano al socio il
+modo di cominciare. ⚖️ Non basta che il ramo del test a passi accenda al tocco — fra il bottone e
+il tocco può passare un giorno.
+📌 *Una guardia che conta le porte vale quanto la prima che ne apre una senza saperlo.*
+
+🔪 **I casi nuovi sono stati visti CADERE, non solo passare** (trappola ① del 27/08): rimettendo la
+frase del conteggio → 1 rosso · togliendo il montaggio del bottone → 1 rosso · scavalcando la
+sorveglianza → 2 rossi. Ripristinato, banco **1609/1609**.
+⚠️ **Due guardie ROVESCIATE invece che cancellate**, e una **assorbita**: quella che pretendeva «Ti
+resta una prova» ora pretende che nessun conteggio esista; quella che voleva la tastiera sempre
+`undefined` ora descrive la tastiera nuova; quella del «non inventa un numero» sparisce perché il
+numero non c'è **mai**, che è il suo caso generale.
+
 📏 **Il motore provato END-TO-END su PROD prima di toccare il bot**, con un gettone di collaudo
 fabbricato e poi cancellato (zero residui, verificato): prima domanda con **sei bottoni e una
 sola domanda**; risposta ⇒ avanza; **ritocco del bottone di prima ⇒ `FUORI_PASSO`** con dentro la
