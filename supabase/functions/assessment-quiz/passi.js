@@ -178,7 +178,10 @@ export const SCHEDA_DOMANDE = [
   },
   {
     chiave: 'overhead',
-    testo: 'Bandeja / vibora / smash',
+    /* 🗣️ 27/08 notte — era «Bandeja / vibora / smash» e basta, e lui l'ha trovata sul telefono:
+       *«non è chiaro cosa bisogna rispondere»*. Le altre domande della scheda fanno tutte una
+       DOMANDA; questa era l'unica a essere un elenco di nomi. */
+    testo: 'I colpi alti (bandeja, vibora, smash): quanto li usi?',
     opzioni: scelte([
       'Non li uso',
       ['Li provo ma con poca sicurezza', 'Li provo, poca sicurezza'],

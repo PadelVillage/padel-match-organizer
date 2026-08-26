@@ -656,6 +656,15 @@ const guardie = [
      verrebbe sovrascritta dal calcolo stesso — è la stessa forma della correzione gemella su
      `livello_applicato`, che per la stessa ragione sta lì e non dentro. */
   ['sopra il tetto il ponte NEGA la scelta', /if \(ultimaScheda\.aspetta_maestro\) ultimaScheda\.puo_scegliere = false;/.test(srcPonte)],
+  /* 🚨⭐⭐ 27/08 notte — E LA SELECT DEVE PORTARE `calculated_level`, o tutto il ramo del
+     maestro è INERTE: `sopraIlTetto` legge `scheda.calculated_level`, che è una COLONNA e non
+     sta in `raw_response`. 📏 Misurato sulla seconda prova di Laura: la riga qui sopra era in
+     servizio ed era giusta, ma `aspetta_maestro` usciva sempre falso perché la select non
+     leggeva la colonna — la domanda «tieni o riprovi?» è partita lo stesso.
+     📌 *Il banco prova le funzioni su righe COMPLETE: la riga monca la fabbrica solo la select
+     vera, quindi la select si sorveglia per nome.* */
+  ['la select delle schede porta la colonna che sopraIlTetto legge',
+    /select\('token, submitted_at, raw_response, calculated_level, member_decision, member_decision_at'\)/.test(srcPonte)],
   ['e lo fa DOPO il calcolo, non dentro',
     srcPonte.indexOf('if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;')
       > srcPonte.indexOf('puo_scegliere: (() => {')],
