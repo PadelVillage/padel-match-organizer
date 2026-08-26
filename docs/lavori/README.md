@@ -1741,8 +1741,55 @@ diceva `startsWith('Avanzato')` e restava verde su `Avanzato — vibora, chi…`
 il confine di parola esiste per evitare. Resa a confronto **esatto**. *Una prova che sopravvive al
 sabotaggio non protegge la decisione: la descrive.*
 🚀 In servizio sul bot dei **soci** dalle **13:54** del 26/08 (deploy `soci` + `SOCI`, riuscito).
-⏳ E la prova fisica resta **sua**: un giro del test guardando **dalla sesta domanda in poi**, che
-sono quelle di regolamento — le più lunghe, e le uniche in cui l'elenco deve ancora comparire.
+
+🔄🚨⭐⭐ **E ALLE 16:02 LE SUE SCHERMATE HANNO DETTO CHE NON BASTAVA — la regola sopra è stata
+SOSTITUITA, non ritoccata.** Quattro fotografie del telefono, tutte con lo stesso verdetto:
+*«doppie domande e testi tagliati»*. ⇒ La regola «elenco solo dove le etichette si tagliano» era
+ancora una **mia** scelta di disegno fatta al posto suo, ed è la seconda volta in un pomeriggio.
+📌 *Quando una cosa la si sbaglia due volte di seguito indovinando, la terza non si indovina: si
+chiede.* Gli sono state messe davanti le tre strade possibili, con l'anteprima di come sarebbe
+uscita ognuna, e ha scelto lui.
+
+🗣️ **LE SUE DUE DECISIONI DELLE 16:15, e sono decisioni sue, non proposte accolte:**
+
+| | |
+|---|---|
+| ① **si accorciano i TESTI delle risposte** | non l'elenco, non i puntini: le risposte devono stare **sui bottoni, intere**. Ha scartato sia «solo bottoni e taglia Telegram» sia «elenco + bottoni col numero» |
+| ② **il conto si dice subito, senza «circa»** | *«sin dall'inizio deve dire che sono 12 domande»*. E nell'invito va scritto che sono dodici |
+
+🔨 **① FATTO dove si può fare SENZA toccare il dato, ed è la distinzione che regge tutto:**
+· le due domande sul **livello**: l'etichetta era `definizione — colpi`, fino a **49** caratteri
+  («Professionista — massima padronanza di ogni colpo»); adesso è la sola parola, **14** al
+  massimo. Qui il dato è il **numero** della fascia, non le parole ⇒ punteggio, coerenza e tetto
+  non si toccano;
+· **rally, glass, net, overhead**: `scelte` accetta ora una coppia `[valore, testoBreve]`. Il
+  `valore` resta **identico al carattere** a quello che la pagina manda da sempre — lì il
+  punteggio nasce **confrontando le parole** — e cambia solo ciò che si legge.
+📌 *Prima di accorciare un testo si guarda se quel testo **è** il dato. Sul livello non lo era;
+sulle descrittive sì, e infatti là si accorcia con un secondo campo invece che riscrivendo.*
+⛔ **Le domande di REGOLAMENTO non si toccano**: lì il testo dell'opzione **è** la risposta, e
+accorciarlo cambierebbe la domanda. ⇒ Restano l'unico posto in cui l'elenco continua a comparire,
+ed è dichiarato, non dimenticato.
+🧪 La prova di parità coi `<select>` della pagina adesso confronta i **valori** e non le etichette:
+confrontare le etichette la renderebbe rossa su una differenza **voluta**, e per farla tornare
+verde qualcuno riallineerebbe i testi — cioè disferebbe la cura. *Due copie devono raccontare lo
+stesso test, non avere lo stesso aspetto.* Più una prova nuova che pretende che **ogni** etichetta
+entri in un bottone senza puntini (≤ 24 caratteri).
+
+🔨 **② FATTO A METÀ, e la metà che manca si dice:** il «circa» è sparito dall'intestazione — si
+legge «Domanda 1 di 12» dalla prima schermata. ⚖️ La ragione del «circa» era vera (chi dichiara
+Principiante, Semi-Pro o Professionista ne fa **otto**, e prima della terza risposta non lo sa
+nessuno) ma risolveva il problema di **chi scrive**: a chi comincia diceva *«non lo sappiamo
+neanche noi»*. Se il giro cala a otto, il conto **cala** — cambia in meglio.
+⏳ **Manca la frase «Sono 12 domande» nel messaggio che INVITA**, e non è una dimenticanza: lì il
+bot il numero **non ce l'ha** (`consumer-assessment-link` non lo manda), e scriverlo a mano nel bot
+sarebbe una copia della regola del gestionale. Serve un campo in più sul ponte.
+
+🚀 Tutto in servizio il 26/08: l'edge `assessment-quiz` su PROD (verificata la riga viva, «Fatico su
+3-4 colpi» c'è) e il bot dei soci col deploy delle **16:24**.
+⏳ E la prova fisica resta **sua**: un giro del test dal telefono. Le prime otto domande devono
+uscire **senza elenco e senza puntini**; dalle domande di **regolamento** in poi l'elenco c'è
+ancora, per la ragione dichiarata sopra.
 
 🗣️ **L'idea è sua**, del 25/08: *«forse facendolo con una domanda alla volta potremmo anche metterlo
 dentro Telegram?»* — e la risposta è **sì**, deciso.
