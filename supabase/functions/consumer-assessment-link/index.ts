@@ -295,7 +295,15 @@ Deno.serve(async (req: Request) => {
   if (suoi.length) {
     const { data: schede, error: erroreSchede } = await db
       .from('self_assessments')
-      .select('token, submitted_at, raw_response, member_decision, member_decision_at')
+      /* 🚨⭐⭐ 27/08 notte — `calculated_level` QUI DEVE ESSERCI, e mancava: è la colonna da cui
+         `sopraIlTetto` legge il livello dimostrato (`livelloDimostrato(scheda)`), e senza,
+         `aspetta_maestro` usciva **sempre falso** da questa edge. 📏 Misurato sulla seconda
+         prova di Laura (23:55): la cura di `puo_scegliere` era in servizio da 12 minuti ed era
+         GIUSTA — ma inerte, perché il fatto su cui poggiava non arrivava mai. La domanda
+         «tieni o riprovi?» è partita lo stesso, e il maestro non è mai stato nominato.
+         📌 *Una funzione pura provata al banco riceve nel banco righe COMPLETE: nessuna prova
+         si accorge che la select in servizio gliene passa una monca.* */
+      .select('token, submitted_at, raw_response, calculated_level, member_decision, member_decision_at')
       .in('token', suoi)
       .order('submitted_at', { ascending: false })
       .limit(20);
