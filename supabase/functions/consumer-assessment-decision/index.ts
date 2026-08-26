@@ -95,7 +95,30 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
   const cosa = String(scelta ?? '').trim();
   if (cosa !== SCELTA_MI_FERMO && cosa !== SCELTA_RIPROVO) return 'SCELTA_SCONOSCIUTA';
   if (!scheda) return 'SCHEDA_NON_TROVATA';
-  if (esitoDellaProva(scheda) !== 'pass') return 'PROVA_NON_PASSATA';
+  /* 🔄🗣️⭐⭐ 27/08/2026 — «MI FERMO» VALE ANCHE SU UNA PROVA NON RIUSCITA. Sua segnalazione,
+     con lo schermo davanti: *«manca il bottone che mi lascia il livello come per il precedente»*.
+     🚨 Il difetto e il perché era stato fatto così: sotto una prova con l'incongruenza il bot
+     scriveva il «no» come **una riga di testo**, non come bottone, e la ragione dichiarata il
+     26/08 era buona — *«qui non è stato scritto nessun livello, quindi mi tengo quello che ho
+     non è un gesto, è l'assenza di un gesto; un bottone che non cambia niente direbbe al socio
+     che una decisione è stata registrata mentre il gestionale non ne saprebbe nulla»*.
+     ⇒ La cura non è dare un bottone finto: è **rendere vero il gesto**. Da qui in poi un «mi
+     fermo» su una prova non riuscita è un FATTO che il gestionale registra — *ho letto, mi
+     tengo il livello che ho, non richiedermelo* — con data e autore, come tutti gli altri.
+     ⚖️ E non può scrivere nessun livello, che è ciò che lo rende sicuro: `assessment-apply-level`
+     ferma le schede col quiz non superato **prima** di guardare la scelta del socio
+     (`test di conoscenza non superato`), e quelle incoerenti subito dopo. Il gesto chiude la
+     domanda, non apre una scrittura.
+     📌 *Un bottone che non ha un fatto dietro non si aggiunge: gli si dà un fatto, oppure resta
+     una riga di testo.*
+     ⛔ Il «riprovo», invece, su una prova non riuscita resta rifiutato: lì non c'è niente da
+     scartare — rifare il test è una cosa che si fa dal link, non una scelta da registrare. */
+  const esito = esitoDellaProva(scheda);
+  const provaSuperata = esito === 'pass';
+  /* ⛔ E vale sulla BOCCIATA, non su `skip`: a Semi-Pro e Professionista il quiz non viene
+     nemmeno posto, il bot non fa loro nessuna domanda e non mostra nessun bottone — accettare
+     lì un «mi fermo» vorrebbe dire registrare una risposta a una domanda mai fatta. */
+  if (!provaSuperata && !(cosa === SCELTA_MI_FERMO && esito === 'fail')) return 'PROVA_NON_PASSATA';
   if (String((scheda || {}).applied_at ?? '').trim() !== '') return 'GIA_APPLICATA';
   const quandoScheda = quandoMs((scheda || {}).submitted_at);
   const elenco = Array.isArray(schedeDelSocio) ? schedeDelSocio : [];
@@ -103,7 +126,11 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
     const e = esitoDellaProva(s);
     if ((e === 'pass' || e === 'fail') && quandoMs(s?.submitted_at) > quandoScheda) return 'SCHEDA_SUPERATA';
   }
-  if (laProvaEsaurisceIlGiro(elenco, scheda, TENTATIVI_PER_GIRO)) return 'GIRO_FINITO';
+  /* 🚨 GIRO_FINITO parla di un ESITO che si applica da sé — e su una prova non riuscita non
+     c'è nessun esito da applicare. ⇒ Il rifiuto varrebbe solo alla terza prova, e direbbe al
+     socio «non c'è niente da scegliere» esattamente mentre gli si offre di scegliere: è la
+     contraddizione che il 26/08 aveva reso il «no» una riga di testo. */
+  if (provaSuperata && laProvaEsaurisceIlGiro(elenco, scheda, TENTATIVI_PER_GIRO)) return 'GIRO_FINITO';
   return '';
 }
 
@@ -192,6 +219,11 @@ Deno.serve(async (req: Request) => {
     return err(409, 'AMBIGUA', 'Più di una scheda su questo gettone: non scelgo.');
   }
   const scheda = (schede?.[0] ?? null) as JsonMap | null;
+  /* 🆕 27/08 — la stessa domanda che si fa `motivoDelRifiuto`, e si rifà QUI invece di
+     farla tornare da là: quella funzione risponde «si può o no», e farle portare anche un
+     secondo dato la trasformerebbe in due funzioni con un nome solo. La camminata è la
+     stessa riga (`esitoDellaProva`), quindi non c'è nessuna regola in due copie. */
+  const provaSuperata = esitoDellaProva(scheda) === 'pass';
 
   // Tutte le schede del socio, per il confronto «superata?» e per il giro: la stessa
   // strada del link — i gettoni sono il filo fra la persona e le schede.
@@ -272,7 +304,9 @@ Deno.serve(async (req: Request) => {
   // silenzio-assenso delle 24 ore e la terza prova, che chiude il giro da sé.
   // ══════════════════════════════════════════════════════════════════════════════════════
   let applicazioneLanciata = false;
-  if (scelta === SCELTA_MI_FERMO) {
+  // 🚨 …e SOLO se la prova era superata: su una non riuscita il giro non applicherebbe niente
+  //    (lo ferma il quiz non superato), quindi sarebbe una chiamata a vuoto a ogni tocco.
+  if (scelta === SCELTA_MI_FERMO && provaSuperata) {
     // ⭐⭐ SI CHIAMA IL DISPATCHER, NON L'EDGE DIRETTAMENTE, e la ragione è la porta:
     // `assessment-apply-level` entra solo col segreto delle routine, che vive nel **vault** e
     // che questa funzione non ha (né deve avere: sarebbe un secondo posto da cui può uscire).
@@ -290,6 +324,11 @@ Deno.serve(async (req: Request) => {
   return ok({
     scelta,
     registrata_il: adesso,
+    /* 🆕 27/08 — LO DICE IL GESTIONALE, non lo deduce il bot: la stessa scelta significa due
+       cose diverse a seconda che la prova avesse prodotto un livello o no («tengo Avanzato» /
+       «mi tengo quello che ho in scheda»), e il bot che lo indovinasse da una lettura sua
+       potrebbe promettere una registrazione che non avverrà. *Il gestionale SA, il bot DICE.* */
+    prova_superata: provaSuperata,
     scelta_precedente: precedente || null,
     cambiata: precedente !== '' && precedente !== scelta,
     // ⭐ Serve al BOT per non promettere il futuro: se il giro è partito può dire che il
