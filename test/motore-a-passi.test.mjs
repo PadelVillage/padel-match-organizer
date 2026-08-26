@@ -80,7 +80,35 @@ prova('le 8 domande della scheda dicono le stesse parole della pagina', () => {
     const dallaPagina = [...blocco.matchAll(/<option(?![^>]*value="")[^>]*>([^<]+)<\/option>/g)]
       .map((m) => m[1].trim())
       .filter((t) => t && t !== 'Seleziona');
-    uguale(domanda.opzioni.map((o) => o.testo), dallaPagina, `${domanda.chiave}: opzioni`);
+    /* 🔄 26/08/2026 — SI CONFRONTANO I VALORI, non le etichette, e la differenza è il senso
+       stesso di questa prova. Fino a oggi le due coincidevano e il confronto poteva farsi su
+       `testo` senza accorgersi di quale delle due cose stesse guardando.
+       🗣️ Da oggi no: sul bot le etichette sono **accorciate apposta** (sua decisione, dopo tre
+       schermate di prova), mentre il `valore` — che è il dato su cui nasce il punteggio — resta
+       identico al carattere. ⇒ Confrontare le etichette renderebbe questa prova rossa su una
+       differenza VOLUTA, e per farla tornare verde qualcuno riallineerebbe i testi, cioè
+       disferebbe la cura.
+       📌 *Due copie devono raccontare lo stesso test, non avere lo stesso aspetto.* */
+    uguale(domanda.opzioni.map((o) => o.valore), dallaPagina, `${domanda.chiave}: valori`);
+  }
+});
+
+/* 🗣️⭐⭐ 26/08/2026 — LE ETICHETTE STANNO SUL BOTTONE, INTERE.
+   Sua decisione del pomeriggio, presa guardando quattro schermate del telefono: niente elenco
+   sopra le domande, niente puntini sui bottoni. ⇒ L'unica strada che dà tutt'e due le cose è
+   che le etichette siano **corte davvero**, ed è questa la prova che lo pretende.
+   ⚖️ Il numero (24) è il tetto del bot meno il «N · » davanti — `ETICHETTA_SICURA = 28` in
+   `assistente-padel-agent/src/telegram/test-a-passi.ts`, che a sua volta è una stima prudente
+   di un limite in PIXEL (il confine visto sulle sue schermate sta fra 42 e 43 caratteri).
+   🚨 Vive QUI e non solo là perché qui stanno i testi: una guardia nel bot direbbe «accorcio
+   io», che è esattamente ciò che lui non vuole più vedere. */
+prova('🗣️ ogni etichetta della scheda entra in un bottone Telegram, senza puntini', () => {
+  const TETTO = 24;
+  for (const domanda of P.SCHEDA_DOMANDE) {
+    for (const o of domanda.opzioni) {
+      vero(o.testo.length <= TETTO,
+        `${domanda.chiave}: «${o.testo}» è di ${o.testo.length} caratteri, sul bottone si taglia`);
+    }
   }
 });
 
