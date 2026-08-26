@@ -6770,7 +6770,7 @@ body.assessment-public-mode .assessment-public-only-card {
                 <div><label>Stato socio</label><select id="statusFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti gli stati</option><option value="active">Solo attivi</option><option value="inactive">Solo inattivi</option></select></div>
                 <div><label>Livello giocatore</label><select id="levelFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i livelli</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option><option>5.5</option><option>6</option><option>6.5</option><option>7</option></select></div>
                 <div><label>Sesso giocatore</label><select id="genderFilter" onchange="membersCurrentPage=1; displayMembers()"><option value="">Tutti i sessi</option><option value="M">Maschi</option><option value="F">Femmine</option><option value="NA">Sesso da completare</option></select></div>
-                <div><label>Filtra per</label><select id="attentionFilter" onchange="pmoOnAttentionFilterChange()"><option value="">Tutti</option><option value="hasWallet">Con borsellino</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option><option value="doppioni">Doppioni da rivedere</option></select></div>
+                <div><label>Filtra per</label><select id="attentionFilter" onchange="pmoOnAttentionFilterChange()"><option value="">Tutti</option><option value="hasWallet">Con borsellino</option><option value="toComplete">Da completare</option><option value="noEmail">Senza email</option><option value="noPhone">Senza telefono</option><option value="noId">Senza ID</option><option value="daCertificare">Da certificare dal maestro</option><option value="level05AfterAssessment">Livello 0.5 dopo autovalutazione</option><option value="doppioni">Doppioni da rivedere</option></select></div>
               </div>
               <div class="players-table-wrap">
                 <table class="players-table">
@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.241';
+    const APP_VERSION = '6.242';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -15301,6 +15301,8 @@ Grazie.`
       if (type === 'level05') return String(g.level ?? '') === '0.5';
       if (type === 'noId') return !g.memberId;
       if (type === 'level05AfterAssessment') return level05AfterAssessment;
+      // 🎓 Voce 98: chi il test l'ha superato sopra il tetto e in scheda ha meno.
+      if (type === 'daCertificare') return !!assessmentAspettaIlMaestro(g);
       if (type === 'hasWallet') { const w = _walletResolve(g); return !!(w && typeof w.balance_cents === 'number' && w.balance_cents > 0); }
       // Doppioni: la risposta arriva dal CLOUD (vedi pmoRicaricaDoppioni), non dall'elenco locale,
       // dove una persona con due schede compare una volta sola. Finché il controllo non è andato
@@ -15727,8 +15729,24 @@ Grazie.`
         const _dupWhy = _dup
           ? `<div class="players-dup-why" title="${escapeHtml('Righe: ' + (_dup.righe || []).join('   +   '))}">🚨 Doppione — ${escapeHtml(_dup.spiega)}</div>`
           : '';
+        // 🎓 Voce 98 — CHI ASPETTA IL MAESTRO, e si dice SEMPRE, non solo col filtro acceso:
+        // è la stessa scelta della riga qui sopra. Chi arriva su questo nome cercando altro
+        // deve vedere lo stesso che quella persona sta aspettando qualcosa da noi.
+        // ⭐ E si dice QUANDO GIOCA, perché è la mezza informazione senza cui la riga non
+        // serve: il maestro deve sapere quando andare a guardarlo, e il giorno il gestionale
+        // lo sa già — sono le prenotazioni. Chi gioca FUORI dal circolo resta il caso che
+        // nessuno può leggere da qui, ed è quello per cui esiste la frase «di' alla
+        // segreteria il giorno in cui giochi».
+        const _maestro = (typeof assessmentAspettaIlMaestro === 'function') ? assessmentAspettaIlMaestro(g) : null;
+        let _maestroWhy = '';
+        if (_maestro) {
+          const _quando = pmoQuandoGiocaEtichetta(pmoProssimaVoltaInCampo(g));
+          const _dice = pmoLivelloEtichettaStaff(_maestro.dimostrato) || String(_maestro.dimostrato);
+          const _ora = _maestro.inScheda === null ? 'nessun livello' : (pmoLivelloEtichettaStaff(_maestro.inScheda) || String(_maestro.inScheda));
+          _maestroWhy = `<div class="players-dup-why" style="color:var(--blue,#2563eb);" title="${escapeHtml('Il test ha dimostrato ' + _dice + '; in scheda ha ' + _ora + '. Sopra Intermedio il livello lo certifica il maestro guardandolo giocare.')}">🎓 Da certificare — il test dice ${escapeHtml(_dice)}, in scheda ${escapeHtml(_ora)}${_quando ? ' · gioca ' + escapeHtml(_quando) : ' · nessuna partita nei prossimi 30 giorni'}</div>`;
+        }
         return `<tr class="${isOpen ? 'selected' : ''}" onclick="openMemberCard('${escapeHtml(String(g.id))}')">
-          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div>${_dupWhy}</td>
+          <td><div class="players-name">${escapeHtml(playerFullName(g) || '-')}</div><div class="players-meta">${escapeHtml(formatMemberIdLabel(g.memberId) || 'ID mancante')}${g.age ? ' · ' + escapeHtml(String(g.age)) + ' anni' : ''}${g.email ? ' · ' + escapeHtml(g.email) : ' · email non presente'}</div>${_dupWhy}${_maestroWhy}</td>
           <td><span class="badge ${g.gender === 'NA' || !g.gender ? 'badge-warning' : 'badge-info'}">${escapeHtml(g.gender === 'NA' || !g.gender ? 'Da completare' : g.gender)}</span></td>
           <td><strong>${escapeHtml(pmoLivelloEtichettaStaff(g.level) || (g.level ?? 3))}</strong></td>
           <td>${escapeHtml(g.phone || '-')}</td>
@@ -30153,6 +30171,93 @@ Per confermare scrivi ELIMINA.`);
         .sort((a,b) => b.time - a.time);
       return rows[0] || null;
     }
+    /* ═══ 🎓 CHI ASPETTA IL MAESTRO — la voce 98 ═══════════════════════════════════════
+       🚨 IL BUCO CHE CHIUDE, ed è misurato e non previsto. Dal 25/08 il test dice al socio
+       *«sopra Intermedio il livello te lo certifica il maestro guardandoti giocare»*, e la
+       segnalazione parte davvero: il 26/08 alle 09:00 il registro di PROD portava
+       `ha risposto da Avanzato (4): sopra Intermedio certifica il maestro`. Ma finiva in un
+       `console.log` dell'edge — **non la leggeva nessuno**. ⇒ Una promessa fatta a qualcuno e
+       scritta in un log è una promessa non fatta.
+
+       🔎 CHI VA IN LISTA, e il criterio è un FATTO, non una colonna di stato. La strada facile
+       era `staff_status === 'applied_review'`: sbagliata, e si vede sul caso vero del 26/08 —
+       quella scheda è stata **saltata** (il livello non andava riscritto), quindi nel database
+       non ha lasciato nessuno stato. ⇒ Il fatto è: *il test ha dimostrato più di quello che il
+       socio ha in scheda, e il resto lo può dare solo il maestro.*
+       ⚖️ Perciò chi ha GIÀ un livello sopra il tetto non compare: per lui non c'è niente da
+       certificare, il livello è già quello. È il caso del 26/08 — dimostrato 4, in scheda 4 —
+       e la lista che lo mostrasse chiederebbe al maestro un lavoro già fatto.
+
+       ⛔ E qui NON si applica niente: questa è una lista che si guarda. Il livello sopra il
+       tetto lo scrive il maestro dalla scheda del socio, come qualunque altro livello a mano. */
+    const PMO_TETTO_MAESTRO = 3.5;
+
+    /** L'ultima scheda del socio per data di consegna, applicata o no. */
+    function assessmentUltimaScheda(member) {
+      const rows = assessmentMemberResponses(member) || [];
+      let ultima = null, quando = -Infinity;
+      rows.forEach(r => {
+        const t = Date.parse(String(r?.submitted_at || '').trim());
+        const n = Number.isFinite(t) ? t : -Infinity;
+        if (n >= quando) { quando = n; ultima = r; }
+      });
+      return ultima;
+    }
+
+    /**
+     * Il socio è FERMO AL TETTO: torna i due livelli, o `null` se non c'è niente da certificare.
+     * ⚖️ Si guarda solo l'ULTIMA scheda: una prova di aprile che diceva Agonista non tiene in
+     * lista chi a giugno ha risposto da Base — sarebbe una coda che non si svuota mai.
+     */
+    function assessmentAspettaIlMaestro(member) {
+      const scheda = assessmentUltimaScheda(member);
+      if (!scheda) return null;
+      // Il quiz dev'essere passato: a chi lo fallisce la promessa del maestro non è mai uscita.
+      const quiz = normalizeText(scheda?.raw_response?.knowledge?.status || '');
+      if (quiz && quiz !== 'pass') return null;
+      const dimostrato = parseFloat(String(scheda.calculated_level ?? '').replace(',', '.'));
+      if (!Number.isFinite(dimostrato) || !(dimostrato > PMO_TETTO_MAESTRO)) return null;
+      const inScheda = parseFloat(String(member?.level ?? '').replace(',', '.'));
+      // Chi è già sopra il tetto non aspetta nessuno: il livello ce l'ha.
+      if (Number.isFinite(inScheda) && inScheda > PMO_TETTO_MAESTRO) return null;
+      return { dimostrato, inScheda: Number.isFinite(inScheda) ? inScheda : null, scheda };
+    }
+
+    /**
+     * La prossima volta che il socio è IN CAMPO — non «che ha organizzato».
+     * 🚨 `playerFutureBookingsCount` guarda solo `p.giocatore`, cioè chi ha prenotato: al
+     * maestro serve sapere quando quella persona GIOCA, e chi è stato invitato da un altro
+     * sta solo dentro `p.giocatori`. Cercare nel posto sbagliato manderebbe il maestro a
+     * guardare una partita che non è la sua.
+     * ⚖️ Guarda 30 giorni avanti e non di più: oltre, il calendario è quasi vuoto e una data
+     * lontanissima non aiuta a organizzarsi.
+     */
+    function pmoProssimaVoltaInCampo(member) {
+      const nome = playerFullName(member);
+      if (!nome) return null;
+      const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+      const fine = addDays(oggi, 30);
+      const suo = (p) => {
+        if (samePlayerName(p?.giocatore, nome)) return true;
+        const elenco = Array.isArray(p?.giocatori) ? p.giocatori : [];
+        return elenco.some(g => samePlayerName(typeof g === 'string' ? g : (g && g.nome) || '', nome));
+      };
+      const righe = (prenotazioni || [])
+        .filter(p => isDateBetween(p?.data, oggi, fine) && suo(p))
+        .sort((a, b) => String(a.data + (a.ora || '')).localeCompare(String(b.data + (b.ora || ''))));
+      return righe[0] || null;
+    }
+
+    /** «gio 28/08 alle 19:00» — e senza data non si inventa niente: torna ''. */
+    function pmoQuandoGiocaEtichetta(prenotazione) {
+      if (!prenotazione || !prenotazione.data) return '';
+      const d = new Date(`${prenotazione.data}T00:00`);
+      if (Number.isNaN(d.getTime())) return '';
+      const giorno = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      const ora = cleanCell(prenotazione.ora || '');
+      return ora ? `${giorno} alle ${ora}` : giorno;
+    }
+
     function assessmentMemberNeedsLevelRestore(member) {
       const info = assessmentLatestAppliedLevelInfo(member);
       return !!(member && isLevelZeroPointFive(member) && info && Math.abs(info.level - 0.5) > 0.001);
