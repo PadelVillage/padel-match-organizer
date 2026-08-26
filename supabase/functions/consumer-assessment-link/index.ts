@@ -399,6 +399,25 @@ Deno.serve(async (req: Request) => {
       // «mi fermo» già lavorato dal cron): quel caso lo copre `livello_applicato`, e la
       // correzione si fa qui — dopo, perché l'oggetto serve intero per calcolarlo.
       if (ultimaScheda.livello_applicato) ultimaScheda.puo_scegliere = false;
+      /* 🚨⭐⭐ 27/08/2026 tarda sera — E MENTE ANCHE SOPRA IL TETTO, che è il caso peggiore.
+         📏 Misurato su una prova vera di Laura Aprea: in scheda **Base** (2,5), il test dice
+         **Agonista** (5) ⇒ `aspetta_maestro` vero, e il livello non si scriverà mai da sé
+         (`applied_at` è rimasto vuoto, ed è giusto: sopra Intermedio certifica il maestro).
+         Ma `puo_scegliere` era **vero**, quindi il bot le ha fatto la domanda «tieni o
+         riprovi?», lei ha risposto «tengo Agonista» e si è sentita dire *«te lo registro sulla
+         scheda a breve»*. Due minuti dopo `/livello` le diceva **Base**.
+         ⚖️ Non è il bot ad aver sbagliato la frase: è QUESTO campo ad aver dichiarato una
+         scelta che non esiste. Sopra il tetto «tengo» e «riprovo» portano allo stesso posto —
+         il livello non lo scrive il test in nessuno dei due casi — e una domanda le cui
+         risposte sono equivalenti non è una scelta: è una promessa travestita.
+         ⇒ Il fatto e la scelta si dicono **coerenti dallo stesso posto**, che è il gestionale.
+         🔒 Il bot, quando questo diventa falso, cade da sé sul messaggio del maestro
+         (`siPuoAnnunciareIlTest` lascia passare chi aspetta il maestro apposta): non serve
+         nessun campo nuovo, e un bot più vecchio di questa edge smette solo di fare una
+         domanda che non doveva fare.
+         📌 *Due campi che rispondono alla stessa domanda o sono uno solo, o divergono — ed è la
+         trappola ④ del 27/08, che stavolta è divergenza fra il gestionale e sé stesso.* */
+      if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;
     }
     elencoSchede = elenco;
   }
