@@ -338,16 +338,84 @@ prova('il blocco non tocca l\'app: gira in una scatola vuota', () => {
   uguale(solo.ok, 'Avanzato', 'esito nella scatola vuota');
 });
 
-prova('la scala dentro l\'edge dell\'email dice le stesse parole', () => {
+prova('🆕 il TETTO è lo stesso numero nelle due funzioni che lo usano', () => {
+  // 🚨 Il numero vive in due posti e non può vivere in uno solo: `assessment-apply-level` è
+  // una funzione diversa e non può importare da questa cartella — i workflow di deploy
+  // scelgono le funzioni dalle cartelle toccate, e un modulo condiviso resterebbe indietro.
+  // ⇒ Le due copie si guardano qui. Se una cambia, il socio leggerebbe una promessa («ti
+  // registriamo Intermedio») e il gestionale ne scriverebbe un'altra.
+  /* 🔄 27/08 — il tetto si è spostato da `assessment-apply-level/index.ts` a
+     `giro-del-test.ts`, il modulo che le tre edge tengono in copie identiche byte per byte
+     (con la sua guardia). Il motivo per cui non può vivere in UN posto solo regge intero — le
+     edge non si importano fra loro — ma serviva anche al ponte del link, e una terza copia
+     scritta a mano si è evitata mettendolo dove le copie sono già sorvegliate. */
+  const APPLY = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level', 'giro-del-test.ts');
+  const m = readFileSync(APPLY, 'utf8').match(/const TETTO_AUTOMATICO = ([\d.]+)/);
+  if (!m) throw new Error('il tetto non si trova più nel modulo del giro');
+  uguale(Number(m[1]), A.TETTO_AUTOMATICO, 'il tetto delle due funzioni');
+});
+
+prova('🆕 la certificazione del maestro scatta SOPRA il tetto, e non a Intermedio', () => {
+  // ⚖️ Il confine è stretto di proposito: Intermedio lo decide il quiz, sopra no. Un `>=`
+  // qui manderebbe in segreteria proprio la fascia che il test deve saper assegnare da sé —
+  // cioè il 96,7% del circolo.
+  uguale(A.certificazioneDelMaestro(3.5), null, 'a Intermedio non serve nessuno');
+  uguale(A.certificazioneDelMaestro(3), null, 'sotto nemmeno');
+  const c = A.certificazioneDelMaestro(5);
+  if (!c) throw new Error('sopra il tetto la certificazione deve esserci');
+  uguale(c.fascia_dimostrata, 'Agonista', 'la fascia dimostrata');
+  uguale(c.livello_scritto, A.TETTO_AUTOMATICO, 'il livello che si scrive');
+  uguale(c.fascia_scritta, 'Intermedio', 'la fascia che si scrive');
+});
+
+prova('🆕 il messaggio dice tutte e tre le cose, o non serve a niente', () => {
+  // Sue parole: *«deve dire che deve contattare la segreteria affinché il maestro lo guardi
+  // durante una partita e di far sapere il giorno in cui gioca»*. Più la prima metà, che è
+  // sua ed è quella che evita che suoni come un declassamento: che ha risposto più in alto.
+  const testo = A.certificazioneDelMaestro(5).messaggio;
+  const pezzi = [
+    [/Agonista/, 'che ha risposto da Agonista'],
+    [/segreteria/i, 'contattare la segreteria'],
+    [/maestro/i, 'che lo guarda il maestro'],
+    [/giorno in cui giochi/i, 'che deve dire QUANDO gioca'],
+  ];
+  for (const [re, cosa] of pezzi) {
+    if (!re.test(testo)) throw new Error(`al messaggio manca ${cosa}: «${testo}»`);
+  }
+});
+
+prova('🆕 un livello VUOTO non produce nessuna promessa', () => {
+  // La stessa trappola di `pmoLivelloFascia`: `Number('')` fa 0, e senza questa riga un
+  // livello mancante non supererebbe il tetto — giusto per caso, non per regola.
+  uguale(A.certificazioneDelMaestro(''), null, 'vuoto');
+  uguale(A.certificazioneDelMaestro(null), null, 'null');
+  uguale(A.certificazioneDelMaestro('boh'), null, 'non un numero');
+});
+
+prova('la scala dentro le DUE edge dice le stesse parole', () => {
   // L'edge non può leggere index.html: ha una copia delle 7 righe. Se qualcuno cambia
   // la tabella da una parte sola, l'email racconterebbe un livello diverso da quello
   // che il socio ha letto. Questa prova è l'unico posto dove le due si guardano.
-  const EDGE = join(QUI, '..', 'supabase', 'functions', 'assessment-notify-staff', 'index.ts');
-  const ts = readFileSync(EDGE, 'utf8');
-  const blocco = ts.slice(ts.indexOf('const LIVELLI'), ts.indexOf('function definizione'));
-  const coppie = [...blocco.matchAll(/max:\s*([\d.]+),\s*definizione:\s*'([^']+)'/g)]
-    .map(m => ({ max: Number(m[1]), definizione: m[2] }));
-  uguale(coppie, A.PMO_LIVELLI.map(f => ({ max: f.max, definizione: f.definizione })), 'scala dell\'edge');
+  // 🆕 25/08: le copie sono DUE, non una. `assessment-apply-level` ne ha presa una il giorno
+  // del tetto, per poter scrivere «ha risposto da Agonista» nella segnalazione al maestro.
+  // ⇒ Questa prova le guarda tutte e due contro l'originale: se qualcuno ne cambia una sola,
+  // il socio leggerebbe un nome e il maestro un altro — la voce 71 in un'altra stanza.
+  const atteso = A.PMO_LIVELLI.map(f => ({ max: f.max, definizione: f.definizione }));
+  // 🔄 27/08: la copia di `assessment-apply-level` si è spostata nel modulo del giro, che è
+  //    condiviso dalle tre edge — quindi guardarne una vale per tutte e tre.
+  const COPIE = [
+    ['assessment-notify-staff', 'index.ts'],
+    ['assessment-apply-level', 'giro-del-test.ts'],
+  ];
+  for (const [cartella, file] of COPIE) {
+    const ts = readFileSync(join(QUI, '..', 'supabase', 'functions', cartella, file), 'utf8');
+    const i = ts.indexOf('const LIVELLI');
+    if (i < 0) throw new Error(`${cartella}: la copia della scala non c'è più`);
+    const blocco = ts.slice(i, ts.indexOf('];', i));
+    const coppie = [...blocco.matchAll(/max:\s*([\d.]+),\s*definizione:\s*'([^']+)'/g)]
+      .map(m => ({ max: Number(m[1]), definizione: m[2] }));
+    uguale(coppie, atteso, `scala di ${cartella}`);
+  }
 });
 
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);

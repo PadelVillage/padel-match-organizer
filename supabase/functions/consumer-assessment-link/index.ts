@@ -5,11 +5,19 @@ import {
   GIORNI_DI_ATTESA,
   ORE_SILENZIO_ASSENSO,
   quandoMs,
+  definizioneLivello,
   sceltaDellaProva,
+  sopraIlTetto,
   stessaProva,
   giriDelSocio,
   statoDelGiro,
 } from './giro-del-test.ts';
+/* ⚠️ L'UNICO import che esce dalla cartella di questa funzione, e si dichiara perché è una
+   deroga a un'abitudine: il conto delle domande deve avere UNA fonte, e quella fonte è il file
+   che le domande le contiene. Copiarne il numero qui vorrebbe dire tenerne due copie in due
+   funzioni che si deployano separatamente — cioè la forma in cui in questo progetto i due lati
+   divergono sempre. La `deno-check` della CI verifica che il percorso si risolva. */
+import { domandeTotaliPreviste } from '../assessment-quiz/passi.js';
 import { livelloDimostrato } from './livello-dimostrato.ts';
 import { GIORNI_TRA_PROMEMORIA, promemoriaDelLivello } from './promemoria-livello.ts';
 
@@ -315,6 +323,37 @@ Deno.serve(async (req: Request) => {
         quando: clean(s.submitted_at),
         fascia: clean(k.fascia),
         senza_cancello: k.senza_cancello === true,
+        /* 🆕🗣️⭐⭐ 27/08/2026 — «ASPETTA IL MAESTRO», e fin qui NON USCIVA DA NESSUNA PARTE.
+           🗣️ Sua regola: *«quando un socio fa il test e risulta un livello superiore da avanzato
+           in su, gli viene detto di contattare la segreteria per farsi vedere dal maestro in una
+           partita in modo da validare il nuovo livello. Ma al momento resta invariato il suo
+           livello»*.
+           📏 Misurato prima di scrivere: la segnalazione esisteva già — `assessment-apply-level`
+           la compone dal 25/08 — ma finiva in `avvisi`, cioè in un `console.log` dell'edge.
+           **Al socio non arrivava niente**, ed è la stessa forma del difetto per cui è nata la
+           voce 98: una promessa fatta a qualcuno e scritta in un log è una promessa non fatta.
+           🚨 E per chi ha GIÀ un livello sopra il tetto era peggio del silenzio parziale: il
+           livello non si riscrive ⇒ `livello_applicato` resta falso ⇒ `siPuoAnnunciareIlTest`
+           tiene fermo tutto. Faceva il test e non riceveva **nessun messaggio**.
+           ⇒ Il fatto esce di qui, e il bot lo dice. *Il gestionale SA, il bot DICE.*
+           ⚖️ `livello_dimostrato` è la PAROLA, mai il numero (regola sua del 9/08), ed è quello
+           che il test ha **dimostrato** — non quello che gli è stato scritto in scheda, che è e
+           ⚖️ E si manda SOLO il fatto, non una seconda parola: la fascia che il socio ha
+           dichiarato è già qui sopra (`fascia`), ed è quella giusta da dirgli — *«hai risposto
+           da Avanzato»* è ciò che ha detto lui. Aggiungere il livello **dimostrato** in parole
+           vorrebbe dire portare in questo file la scala dei sette livelli, cioè la terza copia
+           che il commento qui sopra dice di non fare. */
+        aspetta_maestro: sopraIlTetto(s, payload.level),
+        /* 🚨⭐⭐ E IL LIVELLO CHE HA ADESSO IN SCHEDA, che è la cosa che il bot sbagliava.
+           📏 Misurato il 27/08: la parola che il bot annuncia («Il tuo livello è **X**») è
+           `fascia`, cioè la fascia **DICHIARATA** dal socio. Sotto il tetto le due coincidono e
+           nessuno se n'è accorto; SOPRA il tetto divergono — chi dichiara Avanzato e passa si
+           sente dire «il tuo livello è Avanzato» mentre in scheda gli è stato scritto
+           **Intermedio**. ⇒ Non era un messaggio incompleto: era un messaggio falso.
+           ⚖️ Si manda il livello dell'ANAGRAFICA, non quello calcolato: è l'unico che sia
+           vero comunque sia andata — chi è stato tagliato al tetto, chi era già più su e non
+           è stato toccato, chi non ha ancora niente. *Il gestionale SA, il bot DICE.* */
+        livello_in_scheda: definizioneLivello(payload.level),
         /**
          * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
          *
@@ -519,6 +558,15 @@ Deno.serve(async (req: Request) => {
     tentativo: giro.prova,
     tentativi_totali: TENTATIVI_PER_GIRO,
     ultimo_tentativo: giro.ultima_prova,
+    /* 🆕🗣️⭐⭐ 26/08/2026 — QUANTE DOMANDE SONO, e il bot lo deve sapere PRIMA di cominciare.
+       🗣️ Sua richiesta: *«sin dall'inizio deve dire che sono 12 domande»*. L'invito parte quando
+       di risposte non ce n'è nessuna, quindi il numero non può venire dal passo: viene da qui.
+       🔒 E non è un 12 scritto in questa funzione: si chiede a `passi.js`, che è il file che le
+       domande le ha. ⇒ Se un domani una domanda si aggiunge o si toglie, la frase dell'invito
+       cambia da sé — nessuno deve rincorrerla in tre posti. *Il gestionale SA, il bot DICE.*
+       ⚠️ È una PREVISIONE: chi dichiara Principiante, Semi-Pro o Professionista non ha il
+       cancello e ne farà otto. Il conto cala dopo la terza risposta, e cala — non cresce. */
+    domande_totali: domandeTotaliPreviste(),
     promemoria,
   };
 
