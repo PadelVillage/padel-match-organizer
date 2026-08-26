@@ -1951,8 +1951,26 @@ curato», è **scoperto da una cura che sembra esserci**.*
 ⭐ A valle non è servito **nessun campo nuovo**: il bot cade da sé sul messaggio del maestro,
 perché `siPuoAnnunciareIlTest` lascia passare apposta chi lo aspetta.
 
-⏳ **PROVA FISICA: non fatta.** Vuole un socio in scheda **sotto** Intermedio che dimostri Avanzato
-o più — cioè esattamente il giro di Laura, rifatto.
+🚨🚨⭐⭐ **E LA SECONDA PROVA DI LAURA (23:55) HA MOSTRATO CHE QUELLA CURA ERA GIUSTA E INERTE.**
+La domanda «tieni o riprovi?» è partita di nuovo, **dopo** il deploy — e andando a misurare, il
+fatto su cui tutto poggiava **non arrivava mai**: `sopraIlTetto` legge `scheda.calculated_level`,
+che è una **colonna** di `self_assessments` e non sta in `raw_response` (misurato con
+`jsonb_object_keys`), e la select di `consumer-assessment-link` **non la portava**. ⇒
+`aspetta_maestro` usciva **sempre falso** da quell'edge: mai il messaggio del maestro, `puo_scegliere`
+mai negato, e anche la rete del bot inerte — aspettava lo stesso campo.
+📌 *Una funzione pura provata al banco riceve righe COMPLETE: la riga monca la fabbrica solo la
+select vera — e nessuna prova sulla funzione se ne può accorgere.* ⇒ La select ora si sorveglia
+**per nome** nel banco (#1130 · #1131, sabotaggio visto rosso), e la cura è **letta in servizio su
+PROD** nel sorgente vivo dell'edge.
+🗣️ **E la domanda 8 è diventata una domanda** — era «Bandeja / vibora / smash» e basta, l'unica
+della scheda a non chiedere niente (*«non è chiaro cosa bisogna rispondere»*): ora «I colpi alti
+(bandeja, vibora, smash): quanto li usi?», in `passi.js` e nella pagina (PROD 6.249, TEST 6.253).
+I **valori** delle risposte non cambiano.
+
+⏳ **PROVA FISICA: non fatta.** Vuole il giro di Laura rifatto — sotto Intermedio in scheda,
+dimostra Agonista ⇒ deve arrivare *«Per adesso in scheda hai Base»* col maestro, **senza** bottoni
+tieni/riprovi. E i **bottoni vecchi** delle 23:56 restano in chat: toccarli ora deve dare la
+risposta del maestro, non la promessa.
 
 🚨⭐⭐ **E LA GUARDIA 17quater HA FERMATO LA PRIMA VERSIONE DELLA CURA, prima che atterrasse.**
 Chiamava `statoTestLivello` diretto e scavalcava l'accensione della **sorveglianza dell'esito** —
