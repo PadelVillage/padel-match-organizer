@@ -5,7 +5,9 @@ import {
   GIORNI_DI_ATTESA,
   ORE_SILENZIO_ASSENSO,
   quandoMs,
+  definizioneLivello,
   sceltaDellaProva,
+  sopraIlTetto,
   stessaProva,
   giriDelSocio,
   statoDelGiro,
@@ -321,6 +323,37 @@ Deno.serve(async (req: Request) => {
         quando: clean(s.submitted_at),
         fascia: clean(k.fascia),
         senza_cancello: k.senza_cancello === true,
+        /* 🆕🗣️⭐⭐ 27/08/2026 — «ASPETTA IL MAESTRO», e fin qui NON USCIVA DA NESSUNA PARTE.
+           🗣️ Sua regola: *«quando un socio fa il test e risulta un livello superiore da avanzato
+           in su, gli viene detto di contattare la segreteria per farsi vedere dal maestro in una
+           partita in modo da validare il nuovo livello. Ma al momento resta invariato il suo
+           livello»*.
+           📏 Misurato prima di scrivere: la segnalazione esisteva già — `assessment-apply-level`
+           la compone dal 25/08 — ma finiva in `avvisi`, cioè in un `console.log` dell'edge.
+           **Al socio non arrivava niente**, ed è la stessa forma del difetto per cui è nata la
+           voce 98: una promessa fatta a qualcuno e scritta in un log è una promessa non fatta.
+           🚨 E per chi ha GIÀ un livello sopra il tetto era peggio del silenzio parziale: il
+           livello non si riscrive ⇒ `livello_applicato` resta falso ⇒ `siPuoAnnunciareIlTest`
+           tiene fermo tutto. Faceva il test e non riceveva **nessun messaggio**.
+           ⇒ Il fatto esce di qui, e il bot lo dice. *Il gestionale SA, il bot DICE.*
+           ⚖️ `livello_dimostrato` è la PAROLA, mai il numero (regola sua del 9/08), ed è quello
+           che il test ha **dimostrato** — non quello che gli è stato scritto in scheda, che è e
+           ⚖️ E si manda SOLO il fatto, non una seconda parola: la fascia che il socio ha
+           dichiarato è già qui sopra (`fascia`), ed è quella giusta da dirgli — *«hai risposto
+           da Avanzato»* è ciò che ha detto lui. Aggiungere il livello **dimostrato** in parole
+           vorrebbe dire portare in questo file la scala dei sette livelli, cioè la terza copia
+           che il commento qui sopra dice di non fare. */
+        aspetta_maestro: sopraIlTetto(s),
+        /* 🚨⭐⭐ E IL LIVELLO CHE HA ADESSO IN SCHEDA, che è la cosa che il bot sbagliava.
+           📏 Misurato il 27/08: la parola che il bot annuncia («Il tuo livello è **X**») è
+           `fascia`, cioè la fascia **DICHIARATA** dal socio. Sotto il tetto le due coincidono e
+           nessuno se n'è accorto; SOPRA il tetto divergono — chi dichiara Avanzato e passa si
+           sente dire «il tuo livello è Avanzato» mentre in scheda gli è stato scritto
+           **Intermedio**. ⇒ Non era un messaggio incompleto: era un messaggio falso.
+           ⚖️ Si manda il livello dell'ANAGRAFICA, non quello calcolato: è l'unico che sia
+           vero comunque sia andata — chi è stato tagliato al tetto, chi era già più su e non
+           è stato toccato, chi non ha ancora niente. *Il gestionale SA, il bot DICE.* */
+        livello_in_scheda: definizioneLivello(payload.level),
         /**
          * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
          *

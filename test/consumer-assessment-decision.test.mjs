@@ -120,13 +120,49 @@ caso('2. una scheda che non c\'è (o non è sua) si rifiuta UGUALE, senza dire q
   return [motivoDelRifiuto(MI_FERMO, null, []) === 'SCHEDA_NON_TROVATA'];
 });
 
-caso('3. 🚨 su una BOCCIATURA non si sceglie: non c\'è un livello da tenere', () => {
+caso('3. 🔄🗣️ su una BOCCIATURA «mi fermo» ADESSO SI PUÒ — «riprovo» no', () => {
+  /* 🗣️ 27/08, sua segnalazione con lo schermo davanti: *«manca il bottone che mi lascia il
+     livello come per il precedente»*. Fin qui questo caso pretendeva il rifiuto su tutt'e due
+     le scelte, ed era giusto finché il «no» era una riga di testo.
+     ⇒ Adesso «mi fermo» su una bocciata è un FATTO che si registra — *ho letto, mi tengo il
+     livello che ho* — e non può scrivere nessun livello: `assessment-apply-level` ferma le
+     schede col quiz non superato PRIMA di guardare la scelta del socio.
+     ⛔ Il «riprovo» resta rifiutato: rifare il test si fa dal link, non è una scelta da
+     registrare — accettarlo qui darebbe due strade per la stessa cosa. */
   const bocciata = prova('T1', giorniFa(1), 'fail');
   const senzaCancello = { token: 'T1', submitted_at: giorniFa(1), applied_at: null, raw_response: {} };
   return [
-    motivoDelRifiuto(MI_FERMO, bocciata, [bocciata]) === 'PROVA_NON_PASSATA',
+    motivoDelRifiuto(MI_FERMO, bocciata, [bocciata]) === '',
     motivoDelRifiuto(RIPROVO, bocciata, [bocciata]) === 'PROVA_NON_PASSATA',
+    // ⛔ E `skip` resta fuori: a Semi-Pro e Professionista il quiz non viene nemmeno posto,
+    //    quindi non c'è nessuna domanda a cui questa sarebbe una risposta.
     motivoDelRifiuto(MI_FERMO, senzaCancello, [senzaCancello]) === 'PROVA_NON_PASSATA',
+  ];
+});
+
+caso('3bis. 🚨 alla TERZA prova bocciata il «mi fermo» non diventa GIRO_FINITO', () => {
+  /* GIRO_FINITO dice «l'esito si applica da solo, non c'è niente da scegliere»: su una
+     bocciata non c'è nessun esito da applicare, e quel rifiuto direbbe al socio «non c'è
+     niente da scegliere» proprio mentre gli si offre di scegliere. */
+  const una = prova('T1', giorniFa(3), 'fail');
+  const due = prova('T2', giorniFa(2), 'fail');
+  const treBocciata = prova('T3', giorniFa(1), 'fail');
+  const trePassata = prova('T3', giorniFa(1), 'pass');
+  return [
+    motivoDelRifiuto(MI_FERMO, treBocciata, [una, due, treBocciata]) === '',
+    // …mentre su una prova SUPERATA il rifiuto resta, che è il caso per cui esiste.
+    motivoDelRifiuto(MI_FERMO, trePassata, [una, due, trePassata]) === 'GIRO_FINITO',
+  ];
+});
+
+caso('3ter. 🚨 CABLAGGIO: il giro d\'applicazione NON parte su una bocciata', () => {
+  /* Il caso qui sopra prova la REGOLA; questo prova il punto di chiamata, che è dove il
+     difetto tornerebbe intero con la regola ancora perfetta: senza la guardia, ogni tocco su
+     una bocciata lancerebbe un giro che non può applicare niente. */
+  return [
+    /scelta === SCELTA_MI_FERMO && provaSuperata/.test(codice),
+    // …e che il verdetto esca verso il bot, invece di farglielo indovinare.
+    /prova_superata: provaSuperata/.test(codice),
   ];
 });
 

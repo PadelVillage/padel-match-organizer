@@ -344,9 +344,14 @@ prova('🆕 il TETTO è lo stesso numero nelle due funzioni che lo usano', () =>
   // scelgono le funzioni dalle cartelle toccate, e un modulo condiviso resterebbe indietro.
   // ⇒ Le due copie si guardano qui. Se una cambia, il socio leggerebbe una promessa («ti
   // registriamo Intermedio») e il gestionale ne scriverebbe un'altra.
-  const APPLY = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level', 'index.ts');
+  /* 🔄 27/08 — il tetto si è spostato da `assessment-apply-level/index.ts` a
+     `giro-del-test.ts`, il modulo che le tre edge tengono in copie identiche byte per byte
+     (con la sua guardia). Il motivo per cui non può vivere in UN posto solo regge intero — le
+     edge non si importano fra loro — ma serviva anche al ponte del link, e una terza copia
+     scritta a mano si è evitata mettendolo dove le copie sono già sorvegliate. */
+  const APPLY = join(QUI, '..', 'supabase', 'functions', 'assessment-apply-level', 'giro-del-test.ts');
   const m = readFileSync(APPLY, 'utf8').match(/const TETTO_AUTOMATICO = ([\d.]+)/);
-  if (!m) throw new Error('il tetto non si trova più in assessment-apply-level');
+  if (!m) throw new Error('il tetto non si trova più nel modulo del giro');
   uguale(Number(m[1]), A.TETTO_AUTOMATICO, 'il tetto delle due funzioni');
 });
 
@@ -396,9 +401,11 @@ prova('la scala dentro le DUE edge dice le stesse parole', () => {
   // ⇒ Questa prova le guarda tutte e due contro l'originale: se qualcuno ne cambia una sola,
   // il socio leggerebbe un nome e il maestro un altro — la voce 71 in un'altra stanza.
   const atteso = A.PMO_LIVELLI.map(f => ({ max: f.max, definizione: f.definizione }));
+  // 🔄 27/08: la copia di `assessment-apply-level` si è spostata nel modulo del giro, che è
+  //    condiviso dalle tre edge — quindi guardarne una vale per tutte e tre.
   const COPIE = [
     ['assessment-notify-staff', 'index.ts'],
-    ['assessment-apply-level', 'index.ts'],
+    ['assessment-apply-level', 'giro-del-test.ts'],
   ];
   for (const [cartella, file] of COPIE) {
     const ts = readFileSync(join(QUI, '..', 'supabase', 'functions', cartella, file), 'utf8');
