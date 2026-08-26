@@ -644,6 +644,21 @@ const guardie = [
   // 🆕 ④ — il bot non può fare la domanda se il gestionale non gli dice che c'è da farla:
   //    è «il gestionale SA, il bot DICE» applicato alla scelta.
   ['il ponte dice al bot se c\'è una scelta da fare', /puo_scegliere:/.test(srcPonte) && /scelta_entro:/.test(srcPonte)],
+  /* 🚨⭐⭐ 27/08 tarda sera — E SOPRA IL TETTO LA SCELTA NON C'È, o il gestionale mente a sé stesso.
+     📏 Misurato su una prova vera di Laura Aprea: in scheda Base (2,5), il test dice Agonista
+     (5) ⇒ `aspetta_maestro` vero e il livello non si scriverà mai da sé (`applied_at` vuoto,
+     ed è giusto). Ma `puo_scegliere` era VERO ⇒ il bot le ha chiesto «tieni o riprovi?», lei
+     ha risposto «tengo Agonista» e si è sentita promettere una registrazione che non poteva
+     avvenire — smentita da `/livello` due minuti dopo.
+     ⚖️ Sopra il tetto «tengo» e «riprovo» portano allo stesso posto: una domanda le cui
+     risposte sono equivalenti non è una scelta, è una promessa travestita.
+     🚨 La guardia misura l'ORDINE, non la presenza: la riga deve stare DOPO il calcolo, o
+     verrebbe sovrascritta dal calcolo stesso — è la stessa forma della correzione gemella su
+     `livello_applicato`, che per la stessa ragione sta lì e non dentro. */
+  ['sopra il tetto il ponte NEGA la scelta', /if \(ultimaScheda\.aspetta_maestro\) ultimaScheda\.puo_scegliere = false;/.test(srcPonte)],
+  ['e lo fa DOPO il calcolo, non dentro',
+    srcPonte.indexOf('if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;')
+      > srcPonte.indexOf('puo_scegliere: (() => {')],
   // ── Le TRE COPIE del modulo, che il deploy costringe a esistere ──
   // 🚨 È la stessa difesa di `scrittura-al-circolo.test.ts`: i deploy saltano `_shared/`,
   //    quindi la regola vive in copie, e la deriva fra copie è il modo in cui questi fix si
