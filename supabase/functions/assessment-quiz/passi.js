@@ -41,11 +41,40 @@ import {
    catena già si aspetta (`declared_level`, il tetto, la coerenza). Cambiarla qui la
    cambierebbe solo per metà dei soci. */
 export function opzioniLivelli() {
-  return PMO_LIVELLI.map((f) => ({ valore: String(f.max), testo: `${f.definizione} — ${f.colpi}` }));
+  /* 🔄🗣️⭐⭐ 26/08/2026 — VIA I COLPI DALL'ETICHETTA, e il valore non si tocca.
+     🗣️ Sua decisione del pomeriggio, dopo tre schermate di prova sul telefono: le risposte
+     devono stare **sui bottoni**, intere, senza elenco sopra e senza puntini. ⇒ L'unica strada
+     che dà tutt'e tre le cose è accorciare il TESTO, e qui costa zero: `${definizione} — ${colpi}`
+     arrivava a **49 caratteri** («Professionista — massima padronanza di ogni colpo») mentre la
+     parola da sola è **14** al massimo.
+     ⚖️ E si può fare **senza rischio** proprio qui, che è il punto: su questa domanda il dato è
+     `valore` (il NUMERO della fascia), non le parole — quindi accorciare l'etichetta non tocca
+     né il punteggio, né la coerenza, né il tetto. Sulle altre domande le parole sono il dato, e
+     infatti là si accorcia con un secondo campo (vedi `scelte`).
+     📌 *Prima di accorciare un testo si guarda se quel testo È il dato: qui non lo era, e la
+     descrizione dei colpi stava aiutando a scegliere sul modulo, dove c'è spazio, non sul bottone.* */
+  return PMO_LIVELLI.map((f) => ({ valore: String(f.max), testo: String(f.definizione) }));
 }
 
+/**
+ * Le opzioni di una domanda. Un elemento può essere:
+ *   · una stringa            → `valore` e `testo` coincidono (com'è sempre stato);
+ *   · `[valore, testoBreve]` → il dato resta il PRIMO, sul bottone si legge il secondo.
+ *
+ * 🚨⭐⭐ LA COPPIA ESISTE PER NON TOCCARE IL DATO, ed è la sola forma sicura di accorciamento.
+ * Su queste domande il punteggio nasce **confrontando le parole**
+ * (`assessmentPublicScoreFromText`): riscrivere «Tengo scambi regolari con continuità» in
+ * «Scambi regolari» cambierebbe il livello calcolato, in silenzio, e solo per chi risponde dal
+ * bot. ⇒ Il `valore` resta **identico al carattere** a quello che la pagina manda da sempre; il
+ * `testo` è solo ciò che si legge.
+ * ⚖️ Ed è il motivo per cui la prova di parità con i `<select>` di `index.html` confronta i
+ * **valori** e non le etichette: due copie devono raccontare lo stesso test, non avere lo
+ * stesso aspetto — e da oggi l'aspetto è diverso apposta.
+ */
 function scelte(lista) {
-  return lista.map((t) => ({ valore: t, testo: t }));
+  return lista.map((t) => (Array.isArray(t)
+    ? { valore: String(t[0]), testo: String(t[1]) }
+    : { valore: t, testo: t }));
 }
 
 /* ═══ LE OTTO DOMANDE DELLA SCHEDA ═══════════════════════════════════════════════════════
@@ -75,22 +104,22 @@ export const SCHEDA_DOMANDE = [
     chiave: 'rally',
     testo: 'Riesci a mantenere lo scambio?',
     opzioni: scelte([
-      'Faccio fatica a tenere 3-4 colpi',
-      'Tengo lo scambio solo a ritmo lento',
-      'Tengo scambi regolari con continuità',
-      'Tengo scambi anche con ritmo alto',
-      'Costruisco il punto con controllo',
+      ['Faccio fatica a tenere 3-4 colpi', 'Fatico su 3-4 colpi'],
+      ['Tengo lo scambio solo a ritmo lento', 'Solo a ritmo lento'],
+      ['Tengo scambi regolari con continuità', 'Scambi regolari'],
+      ['Tengo scambi anche con ritmo alto', 'Anche a ritmo alto'],
+      ['Costruisco il punto con controllo', 'Costruisco il punto'],
     ]),
   },
   {
     chiave: 'glass',
     testo: 'Come gestisci il vetro in difesa?',
     opzioni: scelte([
-      'Evito quasi sempre il vetro',
-      'Lo uso solo se la palla è facile',
-      'Difendo con il vetro in modo base',
-      'Lo uso con continuità anche sotto pressione',
-      'Lo uso per difendere e ripartire in attacco',
+      ['Evito quasi sempre il vetro', 'Evito il vetro'],
+      ['Lo uso solo se la palla è facile', 'Solo se è facile'],
+      ['Difendo con il vetro in modo base', 'Difesa base col vetro'],
+      ['Lo uso con continuità anche sotto pressione', 'Anche sotto pressione'],
+      ['Lo uso per difendere e ripartire in attacco', 'Difendo e riparto'],
     ]),
   },
   {
@@ -98,10 +127,10 @@ export const SCHEDA_DOMANDE = [
     testo: 'A rete come ti comporti?',
     opzioni: scelte([
       'Sto poco a rete',
-      'Vado a rete ma faccio fatica a chiudere',
+      ['Vado a rete ma faccio fatica a chiudere', 'Fatico a chiudere'],
       'Gioco volée semplici',
-      'Tengo posizione e controllo le volée',
-      'Costruisco e chiudo il punto a rete',
+      ['Tengo posizione e controllo le volée', 'Controllo le volée'],
+      ['Costruisco e chiudo il punto a rete', 'Chiudo il punto'],
     ]),
   },
   {
@@ -109,10 +138,10 @@ export const SCHEDA_DOMANDE = [
     testo: 'Bandeja / vibora / smash',
     opzioni: scelte([
       'Non li uso',
-      'Li provo ma con poca sicurezza',
-      'Uso almeno la bandeja in modo semplice',
-      'Uso bandeja e smash con controllo',
-      'Uso colpi alti in modo tattico e affidabile',
+      ['Li provo ma con poca sicurezza', 'Li provo, poca sicurezza'],
+      ['Uso almeno la bandeja in modo semplice', 'Bandeja semplice'],
+      ['Uso bandeja e smash con controllo', 'Bandeja e smash'],
+      ['Uso colpi alti in modo tattico e affidabile', 'Colpi alti, tattici'],
     ]),
   },
 ];
