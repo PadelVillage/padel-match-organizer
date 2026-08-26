@@ -33,20 +33,21 @@ import {
 // muro acceso l'avrebbe bloccata. ⇒ Si applica una scheda solo se è più recente
 // dell'ultimo aggiornamento del livello di quel socio (`applicabile`, qui sotto).
 //
-// 🚨🚨 E LA REGOLA CHE PROTEGGE IL SOCIO DAL PROPRIO TEST — sua, il 17/08/2026,
-// **allargata da lui il 27/08/2026**.
-// Fino al 17/08 la funzione applicava ogni scheda più recente **in tutti e due i
+// 🚨🚨 E LA REGOLA CHE PROTEGGE IL SOCIO DAL PROPRIO TEST — sua, il 17/08/2026:
+// *«se lo sbaglia in negativo non scende, a meno che non lo sbagli tre volte
+// consecutive»*, e *«la terza volta scende solo di 0,5»*.
+// Fino a qui la funzione applicava ogni scheda più recente **in tutti e due i
 // versi**: una brutta giornata portava da Avanzato (4) a Principiante (1) in un
 // colpo solo, e col muro del bot acceso quel socio non poteva più organizzare.
-// La prima cura fu una discesa lenta: *«se lo sbaglia in negativo non scende, a
-// meno che non lo sbagli tre volte consecutive»*, e mezzo passo alla terza.
-// 🔄 Il 27/08 l'ha tolta del tutto — *«modificherei la regola che se sbagli 3 volte
-// retrocedi di mezzo punto: la leverei del tutto»* — ⇒ **il livello non scende
-// mai da solo**. Al RIALZO si applica come sempre; al ribasso non si fa niente.
-// ⚖️ A far scendere qualcuno resta la segreteria, dal campo «Livello di gioco»:
-// un gesto di una persona che ha guardato, non l'esito di tre brutte giornate.
-// 🔒 E fallisce CHIUSA: senza storia la terza prova non risulta esaurita e si
-// ASPETTA. Il guasto di una lettura non può applicare un livello di sua iniziativa.
+// ⇒ Adesso: al RIALZO si applica come sempre; al RIBASSO non si scende, e solo
+// alla TERZA prova di fila più bassa si scende di mezzo passo — a 3,5, non a
+// quello che dice il test.
+// ⭐ Il conto NON è tenuto da nessuna parte: si CALCOLA dai fatti, come il conto
+// dei tentativi nel ponte (`consumer-assessment-link`). Non c'è niente da
+// azzerare e niente da tenere allineato: si guardano le schede del socio dalla
+// più recente all'indietro e ci si ferma alla prima che non dice meno.
+// 🔒 E fallisce CHIUSA: se la storia non si riesce a leggere il conto è 0, cioè
+// «non si scende». Il guasto di una lettura non può far scendere nessuno.
 //
 // ⚖️ Cosa NON fa, per decisione sua dell'11/08:
 //   · non manda nessuna email al socio (il cron delle email ai soci è spento);
@@ -88,86 +89,16 @@ const PROD_PROJECT_REF = 'qqbfphyslczzkxoncgex';
 const MASSIMO_PER_GIRO = 50;   // un tetto: se qualcosa impazzisce, non riscrive l'anagrafica intera
 const FONTE = 'autovalutazione';
 
-// ── 🔄🗣️⭐⭐ 27/08/2026 — IL RIBASSO NON ESISTE PIÙ. Sua decisione: *«modificherei la
-// regola che se sbagli 3 volte retrocedi di mezzo punto: la leverei del tutto, anche
-// come testo nel bot e nei docs»*.
-// Qui stavano `PROVE_PER_SCENDERE = 3`, `PASSO_DISCESA = 0.5` e il pavimento
-// `LIVELLO_MINIMO_SCESO = 1`, più la funzione `proveConsecutiveAlRibasso` che contava
-// le prove di fila più basse. Erano la sua regola del 17/08 — *«se lo sbaglia in
-// negativo non scende, a meno che non lo sbagli tre volte consecutive»* — e hanno
-// fatto il loro lavoro finché il test si faceva per email.
-//
-// ⚖️ COSA RESTA VERO, ed è la metà che conta: **al RIALZO non cambia niente**. Il test
-// serve a far salire chi è cresciuto, e continua a farlo esattamente come prima.
-// ⇒ Da oggi il livello di un socio **non scende mai da solo**: se il test dice meno di
-// quello che ha in scheda, la scheda non si tocca e basta. A far scendere qualcuno
-// resta la segreteria, dal campo «Livello di gioco», che è un gesto di una persona che
-// ha guardato — non il risultato di tre brutte giornate di fila.
-//
-// 📌 Perché la cura è TOGLIERE e non ritoccare i numeri: una discesa automatica è una
-// cosa che succede al socio senza che nessuno l'abbia decisa, e il conto «prova 2 di 3»
-// arrivava fino al bot, dove chiedeva a chi legge di tenere il conto dei propri
-// fallimenti. Una regola nata per proteggere che si racconta come una minaccia.
+// ── I numeri della regola del RIBASSO (sue, 17/08/2026) ──────────────────────
+const PROVE_PER_SCENDERE = 3;    // «a meno che non lo sbagli tre volte consecutive»
+const PASSO_DISCESA = 0.5;       // «la terza volta scende solo di 0,5»
+// 🚨 Il pavimento, e non è nella sua regola: è la conseguenza di applicarla.
+// `0.5` in questo gestionale non è un livello, è «da definire» — e chi ce l'ha
+// non può organizzare (il muro del bot). Far scendere qualcuno LÌ per tre prove
+// storte vorrebbe dire togliergli il diritto di organizzare come effetto
+// collaterale di una regola nata per PROTEGGERLO. ⇒ Si scende fino a 1, non oltre.
+const LIVELLO_MINIMO_SCESO = 1;
 const STORICO_PER_SOCIO = 20;    // quante schede si guardano indietro, come fa il ponte
-
-// ── 🆕 IL TETTO DEL TEST, e il TERZO ESITO (sue decisioni del 25/08/2026) ─────
-// 🗣️ Sue parole: *«Io direi di mettergli intermedio fino a che il maestro non lo certifica,
-// e quindi noi da gestionale dentro la sua scheda certifichiamo il livello»*, e sul perché:
-// *«questo fa sì anche che non ci sarà più gente che può barare»*.
-//
-// ⭐⭐ LA COSA CHE RENDE IL TETTO DIVERSO DA UN FILTRO, e va capita o si sbaglia il codice:
-// il quiz produce DUE valori, non uno.
-//   · il livello che si SCRIVE       → col tetto: mai sopra Intermedio;
-//   · il livello che le risposte DIMOSTRANO → senza tetto, ed è quello che legge il maestro.
-// 🚨 Sua correzione, e nasce da un mio errore: avevo proposto di far fare a chi dichiara alto
-// il quiz di Intermedio — cioè di buttare via la seconda riga. *«Se tu sei un vero agonista,
-// il quiz lo deve tirare fuori, poi ti blocca a intermedio e ti dice che il maestro ti deve
-// vedere, ma comunque ti dice che tu hai risposto da agonista.»*
-// ⇒ Perciò qui si CALCOLA sul livello dimostrato e si SCRIVE il livello tagliato: la misura
-// non si perde, si limita solo ciò che la macchina si prende la responsabilità di scrivere.
-//
-// ⚖️ PERCHÉ IL TETTO TOGLIE IL GUADAGNO DEL BARARE: l'unico modo di barare misurato era
-// alzare la dichiarazione e passare il cancello della fascia sopra. Col tetto il massimo che
-// si ottiene mentendo è Intermedio — e chi ci arriva mentendo si trova in campo con Intermedi
-// veri, cioè si smaschera giocando. Sopra, non decide più il quiz: decide il maestro.
-const TETTO_AUTOMATICO = 3.5;    // l'estremo alto di Intermedio: sopra, certifica il maestro
-
-// 🆕 IL TERZO ESITO — «livello scritto E segreteria avvisata».
-// 🚨 Fino a stamattina non esisteva una via di mezzo: `staff_status` non vuoto voleva dire
-// FERMO (vedi il controllo in `decidi`), quindi ogni sospetto diventava un blocco e la
-// segreteria si sarebbe ritrovata sommersa di schede da guardare a mano. ⇒ Senza questa
-// riga, il tetto o non serviva a niente o bloccava tutti.
-// ⭐ La parola è nuova ma NON rompe l'app: i punti che chiedono «è applicata?» guardano
-// `applied_at` e `applied_member_id`, che qui si scrivono lo stesso; i punti che chiedono
-// «va guardata?» fanno `.includes('review')`, e questa parola lo contiene.
-const STAFF_DA_CERTIFICARE = 'applied_review';
-
-// 🚨 TERZA COPIA DELLA SCALA, dichiarata: la prima sta in `conoscenza.js`, la seconda
-// nell'edge dell'email. Un livello chiamato con due nomi diversi in due messaggi è lo stesso
-// difetto della voce 71 — un dato che dice due cose a chi lo legge.
-// 🔗 `test/autovalutazione-conoscenza.test.mjs` confronta TUTTE E TRE e diventa rosso se una
-// sola cambia. La tabella sta DENTRO la funzione di proposito: il banco estrae funzioni per
-// nome, e una tabella fuori resterebbe fuori dalla prova.
-function definizioneLivello(value: any) {
-  const LIVELLI = [
-    { max: 1.5, definizione: 'Principiante' },
-    { max: 2.5, definizione: 'Base' },
-    { max: 3.5, definizione: 'Intermedio' },
-    { max: 4.5, definizione: 'Avanzato' },
-    { max: 5.5, definizione: 'Agonista' },
-    { max: 6.5, definizione: 'Semi-Pro' },
-    { max: 7.0, definizione: 'Professionista' },
-  ];
-  // 🚨 IL VUOTO NON È ZERO, e trovato dal banco (caso 41): `Number('')` fa 0, quindi un
-  // livello mancante si sarebbe chiamato «Principiante» — un nome inventato su un non-dato,
-  // scritto dentro un messaggio che va al maestro. È la stessa riga che `pmoLivelloFascia`
-  // in `conoscenza.js` ha già dovuto scrivere: senza numero non c'è fascia.
-  const raw = String(value ?? '').replace(',', '.').trim();
-  if (!raw) return '';
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return '';
-  return (LIVELLI.find((f) => n <= f.max) || LIVELLI[LIVELLI.length - 1]).definizione;
-}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -207,17 +138,43 @@ function livelloDellaScheda(scheda: any) {
   return Number.isNaN(calcolato) ? numero(scheda?.declared_level) : calcolato;
 }
 
+// ── QUANTE PROVE DI FILA DICONO MENO ─────────────────────────────────────────
+// Si scorre la storia del socio dalla PIÙ RECENTE all'indietro e ci si ferma alla
+// prima che non dice meno del livello di oggi: quello è l'inizio della discesa.
+// ⭐ È la stessa forma del conto dei tentativi nel ponte, e per la stessa ragione:
+// un conto TENUTO va azzerato, sincronizzato e prima o poi diverge dai fatti; un
+// conto CALCOLATO non può divergere da ciò da cui è calcolato.
+// ⚖️ Due tagli dichiarati, perché sono scelte e non dettagli:
+//   · una prova più VECCHIA dell'ultimo livello scritto non conta — appartiene a
+//     un'altra epoca, e il giro comincia dopo l'ultimo aggiornamento;
+//   · una scheda SENZA livello valido non è né più né meno: si salta, e non
+//     interrompe la serie (interromperla regalerebbe una discesa in meno o in più
+//     a seconda di un dato mancante, che è il peggior modo di decidere).
+function proveConsecutiveAlRibasso(storia: any, attuale: any, ultimoAggiornamento: any) {
+  if (!Array.isArray(storia) || !storia.length) return 0;
+  if (!Number.isFinite(attuale)) return 0;
+  const elenco = storia.slice().sort((a: any, b: any) => quando(b?.submitted_at) - quando(a?.submitted_at));
+  let quante = 0;
+  for (const s of elenco) {
+    if (ultimoAggiornamento && !(quando(s?.submitted_at) > ultimoAggiornamento)) break;
+    const l = livelloDellaScheda(s);
+    if (Number.isNaN(l)) continue;
+    if (l < attuale) quante++;
+    else break;
+  }
+  return quante;
+}
+
 // Torna { applica, motivo, livello }. `motivo` è sempre valorizzato — anche quando
 // si applica — perché il riepilogo del giro dev'essere leggibile senza il codice
 // accanto: è quello che finisce nella risposta e nei log.
-// ⭐ `storia` sono le schede di QUEL socio (la corrente compresa): serve al giro, e
-// chi non la passa ottiene «non si applica ancora», che è il verso sicuro. `adessoMs` è l'orologio del giro, passato da fuori:
+// ⭐ `storia` sono le schede di QUEL socio (la corrente compresa): serve al ribasso
+// e al giro, e chi non la passa ottiene «non si scende» e «non si applica ancora»,
+// che sono i versi sicuri. `adessoMs` è l'orologio del giro, passato da fuori:
 // serve alla regola del silenzio, e un orologio letto qui dentro renderebbe la
 // funzione improvabile a tavolino.
 function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
-  // ⚠️ `let` e non `const`: il tetto qui sotto lo taglia. Il valore DIMOSTRATO resta in
-  // `dimostrato`, e le due cose da lì in poi sono separate per sempre.
-  let livello = livelloDellaScheda(scheda);
+  const livello = livelloDellaScheda(scheda);
   if (Number.isNaN(livello)) return { applica: false, motivo: 'la scheda non ha un livello valido', livello: null };
 
   // Quello che la segreteria ha già in mano non si tocca: `review`, `pending`,
@@ -264,20 +221,7 @@ function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
     return { applica: false, motivo: `dichiarato e calcolato distano ${Math.abs(livello - dichiarato)}`, livello };
   }
 
-  // ── 🆕 IL TETTO, e sta QUI e non prima per una ragione precisa ────────────────
-  // 🚨 I due controlli di coerenza appena sopra confrontano il calcolato col DICHIARATO:
-  // tagliando prima, un socio che dichiara 5 e risponde da 5 si vedrebbe confrontare 3.5
-  // con 5, cioè verrebbe bocciato per incoerenza proprio perché è stato coerente.
-  // ⇒ Si controlla sul dimostrato, si taglia dopo. Da qui in giù `livello` è ciò che si
-  // scrive e `dimostrato` è ciò che si è misurato.
-  const dimostrato = livello;
-  let segnala = '';
-  if (dimostrato > TETTO_AUTOMATICO) {
-    segnala = `ha risposto da ${definizioneLivello(dimostrato)} (${dimostrato}): sopra ${definizioneLivello(TETTO_AUTOMATICO)} certifica il maestro, guardandolo giocare`;
-    livello = TETTO_AUTOMATICO;
-  }
-
-  if (!socio) return { applica: false, motivo: 'il socio non esiste più in anagrafica', livello, segnala };
+  if (!socio) return { applica: false, motivo: 'il socio non esiste più in anagrafica', livello };
 
   // 🚨🚨 IL CONTROLLO CHE IMPEDISCE IL DANNO: una scheda vecchia non deve mai
   // scavalcare un livello aggiornato dopo. Senza questa riga, una scheda di
@@ -285,32 +229,38 @@ function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
   const scritta = quando(scheda?.submitted_at);
   const ultimo = Math.max(quando(socio.lastLevelUpdateAt), quando(socio.selfAssessmentDate));
   if (ultimo && !(scritta > ultimo)) {
-    return { applica: false, motivo: 'il livello del socio è stato aggiornato dopo questa scheda', livello, segnala };
+    return { applica: false, motivo: 'il livello del socio è stato aggiornato dopo questa scheda', livello };
   }
 
   // Niente scritture a vuoto: se il livello è già quello, la riga non si tocca.
   const attuale = numero(socio.level);
-  if (attuale === livello) return { applica: false, motivo: 'il socio ha già questo livello', livello, segnala };
+  if (attuale === livello) return { applica: false, motivo: 'il socio ha già questo livello', livello };
 
-  /* 🔄🗣️⭐⭐ 27/08/2026 — IL LIVELLO NON SCENDE MAI DA SOLO, punto. Sua decisione, e la
-     regola vecchia (tre prove di fila più basse → mezzo passo giù) è stata TOLTA, non
-     ammorbidita: qui contavamo le prove e alla terza scrivevamo un livello più basso.
-     ⇒ Adesso una scheda che dice meno di quello che il socio ha in scheda non fa niente:
-     non si applica, e non si tiene nessun conto. A far scendere qualcuno resta la
-     segreteria, dal campo «Livello di gioco» — un gesto di chi ha guardato.
-     ⚖️ Al RIALZO non cambia niente: si passa oltre e si applica come sempre.
-     📌 Il motivo non nomina più nessun conto: «prova 2 di 3» arrivava fino al bot e
-     chiedeva al socio di tenere il conto dei propri fallimenti. */
+  // 🚨🚨 IL RIBASSO, ed è la regola che protegge il socio dal proprio test.
+  // Al rialzo non cambia niente: si passa oltre e si applica come sempre.
   if (!Number.isNaN(attuale) && livello < attuale) {
+    const quante = proveConsecutiveAlRibasso(storia, attuale, ultimo);
+    if (quante < PROVE_PER_SCENDERE) {
+      return {
+        applica: false,
+        motivo: `il test dice più basso (${livello} contro ${attuale}): non si scende — prova ${quante} di ${PROVE_PER_SCENDERE}`,
+        livello,
+      };
+    }
+    const sceso = Math.max(LIVELLO_MINIMO_SCESO, attuale - PASSO_DISCESA);
+    // Chi è già al pavimento non scende più: la regola non ha altro da togliere,
+    // e una scrittura che non cambia niente sarebbe solo una data mossa.
+    if (sceso === attuale) {
+      return { applica: false, motivo: `${quante} prove di fila più basse, ma ${attuale} è il minimo: non si scende oltre`, livello };
+    }
     return {
-      applica: false,
-      motivo: `il test dice più basso (${livello} contro ${attuale}): il livello non scende`,
-      livello,
-      segnala,
+      applica: true,
+      motivo: `${quante} prove di fila più basse: da ${attuale} a ${sceso} (mezzo passo, non a ${livello})`,
+      livello: sceso,
     };
   }
 
-  return { applica: true, motivo: `da ${clean(socio.level) || 'senza livello'} a ${livello}`, livello, segnala };
+  return { applica: true, motivo: `da ${clean(socio.level) || 'senza livello'} a ${livello}`, livello };
 }
 
 // ── UNA SOLA SCHEDA PER SOCIO, LA PIÙ RECENTE ────────────────────────────────
@@ -509,7 +459,7 @@ Deno.serve(async (req: Request) => {
       .select('token, member_local_id')
       .in('member_local_id', idSoci);
     if (erroreGettoni) {
-      avvisi.push(`storia non letta (gettoni): ${clean(erroreGettoni.message)} — la terza prova resta in attesa`);
+      avvisi.push(`storia non letta (gettoni): ${clean(erroreGettoni.message)} — al ribasso nessuno scende`);
     } else {
       const socioPerGettone = new Map<string, string>();
       ((gettoniRaw || []) as JsonMap[]).forEach((t) => {
@@ -526,7 +476,7 @@ Deno.serve(async (req: Request) => {
           .order('submitted_at', { ascending: false })
           .limit(idSoci.length * STORICO_PER_SOCIO);
         if (erroreStorico) {
-          avvisi.push(`storia non letta (schede): ${clean(erroreStorico.message)} — la terza prova resta in attesa`);
+          avvisi.push(`storia non letta (schede): ${clean(erroreStorico.message)} — al ribasso nessuno scende`);
         } else {
           ((storicoRaw || []) as JsonMap[]).forEach((riga) => {
             const id = socioPerGettone.get(clean(riga.token)) || '';
@@ -557,18 +507,12 @@ Deno.serve(async (req: Request) => {
     const esito = decidi(scheda, payload, socioId ? (storiaPerSocio.get(socioId) || []) : [], Date.parse(adesso));
     if (!esito.applica) {
       saltate.push({ persona: nome, motivo: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10) });
-      // 🚨 UNA SEGNALAZIONE NON SI PERDE PERCHÉ IL LIVELLO NON SI SCRIVE, e il caso non è
-      // teorico: chi è già a 3.5 e risponde da Agonista viene fermato da «ha già questo
-      // livello» — il livello è giusto, ma il fatto che il maestro deve guardarlo è vero
-      // lo stesso. Tacere lì vorrebbe dire che proprio gli Intermedi che meritano di salire
-      // sono gli unici di cui nessuno viene informato.
-      if (clean(esito.segnala)) avvisi.push(`${nome}: ${esito.segnala} — livello non riscritto (${esito.motivo})`);
       continue;
     }
 
     if (simula) {
       applicate++;
-      dettaglio.push({ persona: nome, cambio: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10), simulato: true, segnala: clean(esito.segnala) || undefined });
+      dettaglio.push({ persona: nome, cambio: esito.motivo, scheda: clean(scheda.submitted_at).slice(0, 10), simulato: true });
       continue;
     }
 
@@ -588,12 +532,7 @@ Deno.serve(async (req: Request) => {
     const { error: erroreScheda } = await admin
       .from('self_assessments')
       .update({
-        // 🆕 IL TERZO ESITO: `applied` quando non c'è niente da guardare, `applied_review`
-        // quando il livello è scritto MA una persona deve dare un'occhiata. Le due non sono
-        // «applicata» e «ferma»: sono tutte e due APPLICATE — `applied_at` e
-        // `applied_member_id` qui sotto si scrivono in tutti e due i casi, ed è da quelli che
-        // l'app capisce che il livello c'è.
-        staff_status: clean(esito.segnala) ? STAFF_DA_CERTIFICARE : 'applied',
+        staff_status: 'applied',
         applied_level: esito.livello,
         applied_at: adesso,
         applied_member_id: socioId,
@@ -625,14 +564,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (clean(esito.segnala)) avvisi.push(`${nome}: ${esito.segnala}`);
-
     dettaglio.push({
       persona: nome,
       cambio: esito.motivo,
       scheda: clean(scheda.submitted_at).slice(0, 10),
       matchpoint: spinta.esito,
-      segnala: clean(esito.segnala) || undefined,
     });
   }
 
