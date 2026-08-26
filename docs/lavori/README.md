@@ -1619,9 +1619,18 @@ archivio → cadono 3 casi; ordine invertito → 4; ritorno della chiave pubblic
 📏 **E la prova sull'app vera**: una copia dell'app curata, servita in locale e puntata al database di
 PROD, scarica **49 risposte su 49** (la più recente delle 13:25 di oggi) contro le **30** di prima.
 
-⏳ **COSA RESTA APERTO, e non è poco:**
-· la cura è stata provata su una copia servita in locale, **non ancora su `app.padelvillage.club`**:
-  il giro dal gestionale vero, dopo il deploy, è la prova che chiude la voce;
+✅⭐ **E LA PROVA SULL'APP VERA È STATA FATTA — `app.padelvillage.club`, v6.245, 26/08 pomeriggio.**
+🔄 Qui, prima del deploy, c'era scritto *«provata su una copia servita in locale, non ancora
+sull'app vera»*: la riga si **corregge**, non si affianca. Sull'app pubblicata, entrata come
+utente di sola lettura: **50 risposte su 50**, la più recente delle **13:33**; la scheda di
+Maurizio del 26/08 delle **08:27** adesso è agganciata (11 schede collegate, prima **una**); il
+filtro «Da certificare dal maestro» si apre e risponde **«Nessun socio trovato»**, che oggi è la
+risposta giusta.
+⚖️ ⇒ Del meccanismo la prova è **completa**; quello che manca è **una persona in lista**, e non
+dipende dalla cura: oggi non c'è nessuno che aspetti il maestro. Il primo che ci finirà dentro
+sarà la prova finale, e va guardata quando succede.
+
+⏳ **COSA RESTA APERTO:**
 · 📌 **oggi la lista è legittimamente vuota**, e stavolta si sa perché, socio per socio: Maurizio è
   già a 4 (niente da certificare), Carmelo a 4, Oriana a 5. **Chi ci dovrebbe stare è Santiago
   Carabajal** (dimostrato 5, in scheda 0,5) — e non compare perché la sua scheda è agganciata a un
@@ -1705,6 +1714,35 @@ dice solo un telefono, e resta da guardare.
 📌 *La misura giusta puntata sul soggetto sbagliato dà una risposta vera a una domanda che non
 serviva*: le etichette lunghe erano quelle che un troncamento non danneggia, e la domanda in
 pericolo era la più corta delle tre.
+
+🔄🚨⭐⭐ **26/08 POMERIGGIO — SUE DUE FRASI NELLO STESSO MESSAGGIO, e sembravano in contrasto:**
+
+> *«C'è un doppione nelle domande, bisogna levare quelle sopra e lasciare solamente i bottoni»*
+> *«sul cellulare diversi testi sono tagliati»*
+
+⚖️ **Non erano in contrasto: parlavano di due domande diverse.** Nella schermata che aveva davanti
+(«Meno di 1 mese», «1-3 mesi») le risposte sui bottoni **si leggono intere**, e l'elenco numerato
+sopra — messo poche ore prima proprio per curare i tagli — era la stessa cosa scritta due volte.
+Nelle domande di regolamento, invece, l'elenco è l'**unico** posto dove la risposta si legge tutta.
+🚨 ⇒ Togliere l'elenco **sempre**, come dice la prima frase presa da sola, avrebbe rimesso in piedi
+il difetto che la **seconda** segnala. ⇒ La regola adesso guarda le opzioni: **tutte corte** →
+nessun elenco e bottone con la risposta intera; **almeno una lunga** → elenco nel testo e sul
+bottone un'etichetta accorciata **da noi**, dalla coda e su un confine di parola.
+📏 **Accorciata da noi perché Telegram taglia AL CENTRO** — butta via le parole che distinguono una
+risposta dall'altra e tiene le due estremità, che fra le opzioni sono spesso uguali. Dalla coda
+restano le **prime**, che sono quelle che discriminano — ed è la stessa cosa che la misura del
+mattino aveva già trovato (`rally` si separa al 14° carattere): il taglio lascia **24** caratteri
+di risposta, sopra il **20** che quella prova pretende.
+📌 *Due richieste che sembrano contraddirsi vanno lette come due casi, non come un ripensamento:
+chi le ha dette stava descrivendo due schermate diverse.*
+🧪 Banco: due casi **riscritti** tenendo la metà che regge, più uno sull'accorciatura, e **tre
+sabotaggi** — elenco mai, elenco sempre, taglio a metà parola. 🚨 Il terzo **non cadeva**: la prova
+diceva `startsWith('Avanzato')` e restava verde su `Avanzato — vibora, chi…`, cioè sul difetto che
+il confine di parola esiste per evitare. Resa a confronto **esatto**. *Una prova che sopravvive al
+sabotaggio non protegge la decisione: la descrive.*
+🚀 In servizio sul bot dei **soci** dalle **13:54** del 26/08 (deploy `soci` + `SOCI`, riuscito).
+⏳ E la prova fisica resta **sua**: un giro del test guardando **dalla sesta domanda in poi**, che
+sono quelle di regolamento — le più lunghe, e le uniche in cui l'elenco deve ancora comparire.
 
 🗣️ **L'idea è sua**, del 25/08: *«forse facendolo con una domanda alla volta potremmo anche metterlo
 dentro Telegram?»* — e la risposta è **sì**, deciso.
