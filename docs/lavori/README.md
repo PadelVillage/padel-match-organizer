@@ -1781,9 +1781,34 @@ legge «Domanda 1 di 12» dalla prima schermata. ⚖️ La ragione del «circa»
 Principiante, Semi-Pro o Professionista ne fa **otto**, e prima della terza risposta non lo sa
 nessuno) ma risolveva il problema di **chi scrive**: a chi comincia diceva *«non lo sappiamo
 neanche noi»*. Se il giro cala a otto, il conto **cala** — cambia in meglio.
-⏳ **Manca la frase «Sono 12 domande» nel messaggio che INVITA**, e non è una dimenticanza: lì il
-bot il numero **non ce l'ha** (`consumer-assessment-link` non lo manda), e scriverlo a mano nel bot
-sarebbe una copia della regola del gestionale. Serve un campo in più sul ponte.
+🔄✅ **E LA FRASE NELL'INVITO ADESSO C'È — qui sopra c'era scritto che mancava, e la riga si
+corregge.** Qualche ora prima diceva: *«manca, e non è una dimenticanza: lì il bot il numero non
+ce l'ha, e scriverlo a mano sarebbe una copia della regola del gestionale. Serve un campo in più
+sul ponte»*. ⇒ Il campo in più è stato fatto, ed è la catena intera:
+
+```
+passi.js  domandeTotaliPreviste()      ← il file che le domande le HA
+   ↓
+consumer-assessment-link  domande_totali:  …      ← lo chiede, non lo ricopia
+   ↓
+ponte.ts  domandeTotali: Number(d.domande_totali ?? 0) || 0
+   ↓
+«Fai il test di livello di gioco, sono 12 domande, due minuti»
+```
+
+🔒 **Nel bot non c'è nessun 12**, e c'è una prova che lo pretende leggendo il sorgente spogliato
+dei commenti. Senza il campo esce la frase di ieri, **intera** — la stessa cautela di `gettone` e
+`promemoria`: un ponte più vecchio del bot torna al comportamento di ieri, non si rompe e non
+inventa.
+⚖️ **I minuti restano accanto alle domande**, e non è pigrizia: rispondono a due paure diverse —
+*«è lungo?»* e *«quanto ci metto?»*. Toglierne una per far posto all'altra sarebbe una perdita.
+📌 *Un numero che vive in un posto solo cambia da sé il giorno in cui una domanda si aggiunge: uno
+copiato diventa falso in silenzio, e solo per chi legge l'invito.*
+🧪 Sei casi nuovi in tutto (due nel gestionale, quattro nel bot), di cui **due sul CABLAGGIO** — che
+l'edge lo *chieda* invece di ricopiarlo, e che il numero attraversi il ponte **e** arrivi alla
+frase. Provati con **cinque sabotaggi**, tutti caduti.
+🚨 E il cablaggio si prova apposta: è il difetto costato un giro poche ore prima, quando l'etichetta
+del bottone esisteva e in mezzo non la usava nessuno.
 
 🚀 Tutto in servizio il 26/08: l'edge `assessment-quiz` su PROD (verificata la riga viva, «Fatico su
 3-4 colpi» c'è) e il bot dei soci col deploy delle **16:24**.
