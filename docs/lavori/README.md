@@ -1598,6 +1598,49 @@ basta — su PROD quel caso arriva anche come **scheda saltata con una segnalazi
 database non lascia `staff_status`. ⇒ La lista si costruisce sul **fatto** (una prova che ha
 dimostrato sopra il tetto e non è ancora stata certificata), non su una singola colonna di stato.
 
+🚨🚨⭐⭐ **26/08 POMERIGGIO — LA PROVA FISICA È STATA FATTA, E HA SMENTITO LA VOCE 98: la lista era
+VUOTA su dati veri.** Non per la regola, che è giusta e il banco lo prova: per **due guasti a monte**
+che nessuna rilettura del codice della 98 avrebbe potuto vedere, perché stanno in un'altra funzione.
+
+| | il guasto | la misura |
+|---|---|---|
+| ① | `syncAssessmentResponsesFromSupabase` si autenticava con la **chiave pubblicabile** | dal 16/08 la RPC ha la guardia di staff ed è concessa solo ad `authenticated` ⇒ **401 `permission denied`, per chiunque**. Misurato sull'app viva, le due chiamate una accanto all'altra: chiave pubblicabile **401**, gettone di sessione **200** |
+| ② | il sync dei gettoni teneva **UN gettone per socio** e buttava gli altri | ma una scheda si aggancia **per gettone**: 49 schede su Supabase, **30** arrivate all'app. Fra le 19 perdute, quella del **26/08 delle 08:27** — il caso per cui questa voce esiste |
+
+⚖️ **Nessuno dei due si vedeva dal sintomo**, ed è il punto: il sintomo era *una lista vuota*, che è
+identica a *non c'è nessuno che aspetta*. La 98 sarebbe rimasta «in servizio» per sempre.
+📌 *Uno zero non è un risultato: è la stessa faccia che ha «non ho potuto contare».*
+
+🔨 **CURATI in `main` (v6.244 → 6.245)**, e la cura non inventa niente: `previousTokens` esisteva già
+e lo riempiono gli altri **tre** punti che sostituiscono un gettone — questo era l'unico che non lo
+faceva. ⇒ Non una funzione nuova: l'unico posto che non seguiva l'idioma di casa.
+🧪 Banco `test/il-gettone-vecchio-non-si-butta.test.mjs`: 9 casi, provato con **tre sabotaggi** (niente
+archivio → cadono 3 casi; ordine invertito → 4; ritorno della chiave pubblicabile → la guardia 9).
+📏 **E la prova sull'app vera**: una copia dell'app curata, servita in locale e puntata al database di
+PROD, scarica **49 risposte su 49** (la più recente delle 13:25 di oggi) contro le **30** di prima.
+
+⏳ **COSA RESTA APERTO, e non è poco:**
+· la cura è stata provata su una copia servita in locale, **non ancora su `app.padelvillage.club`**:
+  il giro dal gestionale vero, dopo il deploy, è la prova che chiude la voce;
+· 📌 **oggi la lista è legittimamente vuota**, e stavolta si sa perché, socio per socio: Maurizio è
+  già a 4 (niente da certificare), Carmelo a 4, Oriana a 5. **Chi ci dovrebbe stare è Santiago
+  Carabajal** (dimostrato 5, in scheda 0,5) — e non compare perché la sua scheda è agganciata a un
+  `member_local_id` che nell'anagrafica di oggi non esiste più. È la famiglia già nota delle **schede
+  non collegate**, che ha il suo bottone («Ricollega le N schede che non si riconoscono») e il suo
+  banco: si ricollega di là, non si allarga questa voce;
+· ⚠️ **la sezione Autovalutazione dello staff è CONGELATA**, quindi il refresh automatico delle
+  risposte (`refreshAssessmentSectionDataOnEnter`) parte solo entrando in una sezione che nessuno può
+  aprire. La cura fa arrivare le risposte **quando qualcuno le chiede**; da dove parta quella
+  richiesta col tab chiuso è una domanda aperta, e va guardata prima di dire che la lista si aggiorna
+  da sé.
+
+🔧 **E un attrezzo, curato per poter fare questa diagnosi**: la console remota bloccava
+`get_self_assessments_by_tokens` e `get_assessment_tokens_admin` come «scritture», perché la sua
+regola guarda il **nome** (`^pmo_(get|can)_`) e quelle due sono nate prima della convenzione. Sono
+`select` puri — letti in `pg_proc` prima di sbloccarli, non dedotti dal nome.
+📌 *Una lettura bloccata non è un errore prudente: è una diagnosi che non si può fare, e il sintomo
+che produce — una lista vuota — è indistinguibile da quello che si sta cercando.*
+
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 
 🔼 **PROMOSSA DALLA CODA il 25/08/2026 sera, dalla sessione** (delega del 23/08), un'ora dopo esserci
