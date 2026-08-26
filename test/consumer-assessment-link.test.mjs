@@ -143,13 +143,19 @@ const ctx = {
   ORE_SILENZIO_ASSENSO: costante('ORE_SILENZIO_ASSENSO'),
   SCELTA_MI_FERMO: parola('SCELTA_MI_FERMO'),
   SCELTA_RIPROVO: parola('SCELTA_RIPROVO'),
+  // 🆕 27/08 — la soglia si LEGGE dal modulo, non si ricopia: ricopiarla lascerebbe il banco
+  //    verde anche se domani il tetto cambiasse — proverebbe la propria copia.
+  TETTO_AUTOMATICO: costante('TETTO_AUTOMATICO'),
 };
 vm.createContext(ctx);
 vm.runInContext(
-  spoglia(['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'statoDelGiro', 'laProvaEsaurisceIlGiro'].map(estrai).join('\n')),
+  spoglia(['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'statoDelGiro', 'laProvaEsaurisceIlGiro',
+    // 🆕 27/08 — la regola che decide se il socio va mandato dal maestro: vive qui dal 27/08,
+    //    e dev'essere la STESSA che fa la lista nel gestionale (voce 100).
+    'livelloDimostrato', 'sopraIlTetto'].map(estrai).join('\n')),
   ctx,
 );
-const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro } = ctx;
+const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto } = ctx;
 
 // ── 🆕 ⑥ IL PROMEMORIA GENTILE — secondo modulo, stesso trattamento ────────────
 // ⭐ Le costanti si LEGGONO dal modulo: la cadenza è una decisione del committente («un paio
@@ -560,6 +566,48 @@ caso('43. 🔒 la macchina è INTERA: rimettendo un numero, l\'attesa torna a fu
   const senza = stato(schede);
   const con = statoConAttesa(schede);
   return [senza.ammesso === true, con.ammesso === false, con.attesa?.motivo === 'confermato'];
+});
+
+// ── 🆕🗣️ 27/08: CHI VA MANDATO DAL MAESTRO — e dev'essere lo STESSO elenco della lista ──
+// 🗣️ Sua regola della sera: *«da avanzato in su gli viene detto di contattare la segreteria per
+// farsi vedere dal maestro»*, e poi **«si allarga la lista»** (voce 100).
+// 🚨⭐⭐ IL TERZO CONTROLLO È ARRIVATO DOPO, ed è quello che tiene insieme le due metà: la
+// mattina questa funzione guardava solo il tetto, mentre la lista nel gestionale usa
+// `dimostrato > inScheda`. ⇒ Chi ha 4 e dimostra 4 — il caso vero del 26/08 — si sarebbe visto
+// mandare in segreteria dal bot senza comparire in Anagrafica soci: un socio che si presenta al
+// circolo per una cosa che il circolo non gli ha chiesto.
+// 📌 *Due regole che rispondono alla stessa domanda o sono una sola, o divergono — e chi paga la
+// divergenza è chi ci cammina.*
+const provaCon = (livello, esito = 'pass') => ({
+  token: 'T-1', submitted_at: '2026-08-27T10:00:00.000Z',
+  calculated_level: String(livello),
+  raw_response: { knowledge: { status: esito } },
+});
+
+caso('M1. 🚨 in scheda 4 e dimostra 5 ⇒ va dal maestro (il caso della voce 100)', () =>
+  [sopraIlTetto(provaCon(5), '4') === true]);
+
+caso('M2. ⚖️ in scheda 4 e dimostra 4 ⇒ NON va: non è più di quello che ha', () =>
+  [sopraIlTetto(provaCon(4), '4') === false]);
+
+caso('M3. ⚖️ in scheda 5 e dimostra 4 ⇒ non va: ha dimostrato MENO', () =>
+  [sopraIlTetto(provaCon(4), '5') === false]);
+
+caso('M4. 🔒 senza livello in scheda ci va lo stesso: è chi ne ha più bisogno', () =>
+  [sopraIlTetto(provaCon(5), '') === true, sopraIlTetto(provaCon(5), null) === true]);
+
+caso('M5. sotto il tetto non ci va nessuno, per quanto sia salito', () =>
+  [sopraIlTetto(provaCon(3.5), '0.5') === false, sopraIlTetto(provaCon(3), '0.5') === false]);
+
+caso('M6. 🚨 il quiz FALLITO non manda nessuno in segreteria', () =>
+  [sopraIlTetto(provaCon(5, 'fail'), '4') === false]);
+
+caso('M7. 🚨 SABOTAGGIO: con la regola di stamattina (solo il tetto) il caso M2 tornerebbe verde', () => {
+  /* Si rifà a mano la regola incompleta — «dimostra sopra il tetto» e basta — e si pretende un
+     esito DIVERSO su M2. È l'unico posto dove ci si accorgerebbe se qualcuno la semplificasse. */
+  const vero = sopraIlTetto(provaCon(4), '4');
+  const soloIlTetto = 4 > 3.5;
+  return [vero === false, soloIlTetto === true, vero !== soloIlTetto];
 });
 
 const guardie = [

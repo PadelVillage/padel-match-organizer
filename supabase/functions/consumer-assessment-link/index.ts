@@ -343,7 +343,7 @@ Deno.serve(async (req: Request) => {
            da Avanzato»* è ciò che ha detto lui. Aggiungere il livello **dimostrato** in parole
            vorrebbe dire portare in questo file la scala dei sette livelli, cioè la terza copia
            che il commento qui sopra dice di non fare. */
-        aspetta_maestro: sopraIlTetto(s),
+        aspetta_maestro: sopraIlTetto(s, payload.level),
         /* 🚨⭐⭐ E IL LIVELLO CHE HA ADESSO IN SCHEDA, che è la cosa che il bot sbagliava.
            📏 Misurato il 27/08: la parola che il bot annuncia («Il tuo livello è **X**») è
            `fascia`, cioè la fascia **DICHIARATA** dal socio. Sotto il tetto le due coincidono e

@@ -1794,16 +1794,42 @@ cioè il maestro riceve più nomi. Non è ovvio che li voglia tutti.
 ⛔ **Non scavalca niente**: entra accanto alle altre, ed è la sorella della 98 (che resta aperta e
 aspetta la sua prova fisica). Le due si guardano insieme.
 
-🔨✅ **METÀ CURATA la sera del 27/08, e va detto quale:** il **socio** adesso lo sa. Su sua regola
+🔨✅ **CURATA INTERA la sera del 27/08 — su sua decisione: «si allarga la lista».**
+
+⇒ Il criterio non è più **dove sta** il socio (`in scheda ≤ tetto`) ma **quanto ha dimostrato in
+più** (`dimostrato > in scheda`). Chi ha **4** e dimostra **Agonista (5)** entra; **Maurizio**, che
+il 26/08 aveva dimostrato 4 avendo 4, resta fuori **per la ragione giusta** invece che per
+posizione — 4 non è più di 4.
+📌 *Una condizione scritta per escludere un caso ne esclude sempre anche un altro: la si prova sul
+caso che voleva escludere, e passa; quello che non voleva escludere non lo cerca nessuno.*
+
+🚨⭐⭐ **E LA STESSA REGOLA VALE DAI DUE LATI, che è il pezzo che si sbaglia.** La mattina del
+27/08 il ponte mandava il socio dal maestro guardando **solo il tetto**, mentre la lista usa il
+confronto col livello in scheda. ⇒ Chi ha 4 e dimostra 4 si sarebbe visto mandare in segreteria
+dal bot **senza comparire in Anagrafica soci**: un socio che si presenta al circolo per una cosa
+che il circolo non gli ha chiesto. `sopraIlTetto` ha preso il terzo controllo.
+📌 *Due regole che rispondono alla stessa domanda o sono una sola, o divergono — e chi paga la
+divergenza è chi ci cammina.*
+
+🧪 **E il banco era VERDE prima e dopo il cambio di criterio**, il che vuol dire che i suoi 14
+casi non lo coprivano. ⇒ Aggiunti quattro casi (1bis, 1ter, 2bis, 2ter) e un **sabotaggio** che
+rifà a mano la regola vecchia e pretende un esito diverso — 📏 **verificati rossi rigirandoli col
+codice di ieri**, che è l'unico modo di sapere che provano qualcosa. Sul ponte, altri sette
+(M1–M7). `APP_VERSION` 6.247 → **6.248**.
+
+⏳ **Cosa manca per chiuderla**: la **prova fisica** — un socio vero che compaia nel filtro. Oggi
+il primo candidato resta **Santiago Carabajal**, che ci finirebbe usando il bottone «Ricollega le
+N schede che non si riconoscono». ⚠️ È una scrittura sul gestionale: si dice prima.
+
+---
+
+🔨✅ **La metà del SOCIO, curata prima nella stessa sera:** il **socio** adesso lo sa. Su sua regola
 (*«gli viene detto di contattare la segreteria per farsi vedere dal maestro in una partita»*) il
 messaggio esiste, dice il livello che ha **davvero** in scheda e lo manda in segreteria — e per
 chi era già sopra il tetto è passato **dal silenzio totale a un messaggio**.
-⏳ **Quello che resta aperto è la metà del MAESTRO**, cioè quella per cui questa voce è nata: chi
-ha 4 in scheda e dimostra Agonista continua a **non comparire nella lista**, perché
-`assessmentAspettaIlMaestro` esclude chi è già sopra il tetto. ⇒ Adesso il socio si presenta in
-segreteria, e in Anagrafica soci non c'è niente che lo dica.
-⚖️ La cura è cambiare il criterio da *«in scheda ≤ tetto»* a *«dimostrato > in scheda»* — ma
-allarga la lista, e chi ci finisce dentro lo decide lui: resta la domanda scritta qui sopra.
+✅ E la metà del maestro è arrivata **poche ore dopo**, qui sopra: le due sono andate in servizio
+la stessa sera, ed è quello che le tiene coerenti — il socio che si presenta in segreteria adesso
+il circolo lo trova scritto in Anagrafica.
 
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 
