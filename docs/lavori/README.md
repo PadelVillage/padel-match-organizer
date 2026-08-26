@@ -1912,6 +1912,48 @@ prima prova fisica vera di questo lavoro — il resto del test l'ha visto funzio
 📌 *Una cura che toglie una cosa va cercata in tutte le sue copie: quella dimenticata non invecchia
 piano, dice il falso dal primo giorno.*
 
+🚨🚨⭐⭐ **E POI HA FATTO FARE IL TEST A LAURA, e sotto è uscito il difetto più grave della
+giornata — un «sì» FALSO.** *(27/08 tarda sera, misurato sulla sua prova vera.)*
+
+| | |
+|---|---|
+| Laura in scheda | **Base** (2,5) |
+| il test dice | **Agonista** (5) ⇒ `aspetta_maestro` **vero** |
+| il livello | **non si scriverà mai da sé** — `applied_at` è rimasto vuoto, ed è **giusto**: sopra Intermedio certifica il maestro |
+| il bot le ha detto | *«Perfetto: tengo **Agonista** 👍 Te lo registro sulla scheda a breve»* |
+| due minuti dopo, `/livello` | *«Il tuo livello di gioco è **Base**»* |
+
+📏 **Il gestionale aveva ragione su tutto: a mentire è stato il messaggio.** E la causa non era
+nel bot — era `puo_scegliere`, **vero** su una prova in cui non c'è niente da scegliere.
+⇒ Sopra il tetto «tengo» e «riprovo» portano **allo stesso posto**: il livello non lo scrive il
+test in nessuno dei due casi.
+📌 *Una domanda le cui risposte sono equivalenti non è una scelta: è una promessa travestita.*
+
+⚖️ **È la trappola ④ del 27/08 — *due regole che rispondono alla stessa domanda o sono una sola, o
+divergono* — nella forma peggiore: la divergenza era fra il gestionale e SÉ STESSO.**
+`aspetta_maestro` e `puo_scegliere` uscivano dalla **stessa risposta** dicendo due cose
+incompatibili, e il bot non poteva che credere a una delle due.
+
+🚨 **E il difetto era nascosto dalla cura di ieri, non malgrado**: il messaggio del maestro (⑦ del
+27/08) vive nel ramo `else`, cioè lo vede **solo chi NON può scegliere**. Chi sta sopra il tetto
+**e** può ancora scegliere prendeva la domanda, e del maestro non sentiva parlare.
+📌 *Una cura messa in un ramo copre quel ramo: il caso che prende l'altro non è «non ancora
+curato», è **scoperto da una cura che sembra esserci**.*
+
+🔨 **Curata in due punti, e nell'ordine giusto** (prima il bot, che da solo è inerte):
+· **il bot** — la RETE (assistente-padel-agent#96, in servizio alle **23:37**): sopra il tetto il
+  «tengo» non promette nessuna registrazione, dice il livello **vero** in scheda e manda in
+  segreteria. Serve perché **i bottoni di Telegram non scadono**, e quello già in chat di Laura
+  resta toccabile per sempre;
+· **il gestionale** — la CAUSA (#1126 · #1127): `if (ultimaScheda.aspetta_maestro)
+  ultimaScheda.puo_scegliere = false;`, **dopo** il calcolo come la gemella su
+  `livello_applicato`. 📏 Letta nel sorgente **in servizio su PROD**, non dedotta dal deploy verde.
+⭐ A valle non è servito **nessun campo nuovo**: il bot cade da sé sul messaggio del maestro,
+perché `siPuoAnnunciareIlTest` lascia passare apposta chi lo aspetta.
+
+⏳ **PROVA FISICA: non fatta.** Vuole un socio in scheda **sotto** Intermedio che dimostri Avanzato
+o più — cioè esattamente il giro di Laura, rifatto.
+
 🚨⭐⭐ **E LA GUARDIA 17quater HA FERMATO LA PRIMA VERSIONE DELLA CURA, prima che atterrasse.**
 Chiamava `statoTestLivello` diretto e scavalcava l'accensione della **sorveglianza dell'esito** —
 il difetto misurato su Fabiola il 24/08, che rinasceva da una porta nuova. ⇒ Passa da
