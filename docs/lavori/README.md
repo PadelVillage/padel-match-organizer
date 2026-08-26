@@ -138,6 +138,57 @@ fascia — e il test resta di **12** domande.
 ⚖️ Le due scartate erano togliere la 4 (si perdeva il confronto dichiarato↔pari, da cui nasce il
 segnale di incoerenza) e togliere la 3 (che è il perno del tetto e della regola dei furbetti).
 
+### 📌 …e le tre della sera del 27/08, dal suo telefono
+
+🗣️🔴 **«PERCHÉ MI RESTANO DUE TENTATIVI VISTO CHE NON SI ABBASSA PIÙ IL LIVELLO?»**
+⚖️ La sua premessa e la ragione vera sono due cose diverse, e vanno tenute separate: il conto
+delle prove non è mai stato legato alla discesa del livello — è la regola del **giro** (tre
+prove, poi un'attesa). A renderlo falso è un'altra misura.
+📏 **`GIORNI_DI_ATTESA = 0` dal 25/08**: finita la terza prova il giro si chiude e **ne
+ricomincia subito un altro**. Le prove non sono tre in tutto: sono tre per giro, e i giri sono
+infiniti e attaccati. Il conto scendeva verso un muro che non c'è più.
+🚨 Ed era la peggior specie di numero: **uno su cui il socio conta**. Chi legge «te ne restano
+due» rallenta o rinuncia alla terza per tenerne una da parte — decide su una scarsità inventata.
+⇒ Tolto. La stessa cura era già stata fatta il 25/08 sull'**invito**; questo era il gemello
+rimasto indietro, e a trovarlo è stato lui guardando lo schermo.
+📌 *Un numero che non limita niente non è un'informazione in più: è una scarsità inventata.*
+
+🗣️🔴 **«MANCA IL BOTTONE CHE MI LASCIA IL LIVELLO COME PER IL PRECEDENTE»**
+🚨 Il 26/08 quel «no» era stato scritto come **riga di testo**, e la ragione dichiarata era
+buona: lì non era stato scritto nessun livello, quindi «mi tengo quello che ho» non era un
+gesto — e un bottone senza un fatto dietro dice al socio che una decisione è stata registrata
+mentre il gestionale non ne sa niente.
+⇒ **La cura non è stata dare un bottone finto: è stata dare un fatto al gesto.**
+`consumer-assessment-decision` accetta «mi fermo» anche su una prova **non riuscita** e lo
+registra con data e autore. ⚖️ E non può scrivere nessun livello, che è ciò che lo rende
+sicuro: le schede col quiz non superato sono ferme **prima** che la scelta venga guardata.
+⛔ Il «riprovo» su una prova non riuscita resta rifiutato, e `skip` pure: a Semi-Pro e
+Professionista il quiz non viene nemmeno posto.
+📌 *Un bottone senza un fatto dietro non si aggiunge: gli si dà un fatto, oppure resta una riga
+di testo.*
+
+🗣️🔴🔴 **«DA AVANZATO IN SU GLI VIENE DETTO DI CONTATTARE LA SEGRETERIA PER FARSI VEDERE DAL
+MAESTRO IN UNA PARTITA. MA AL MOMENTO RESTA INVARIATO IL SUO LIVELLO.»**
+✅ **Scelta sua fra due strade**, messe davanti con l'anteprima di come sarebbe uscita ognuna:
+**il tetto resta a Intermedio** per chi sta sotto (com'era già deciso il 26/08), e chi è già
+più su non viene toccato. ⛔ Scartata l'altra — non toccare il livello a nessuno — perché chi è
+a 0,5 sarebbe rimasto a 0,5, cioè **senza poter invitare nessuno**: la porta chiusa in faccia
+che lui stesso aveva scartato il 26/08.
+🚨🚨 **E misurando prima di scrivere sono usciti DUE difetti, non uno — il secondo peggio di
+quello segnalato:**
+| | il difetto | la misura |
+|---|---|---|
+| ① | la segnalazione *«sopra Intermedio certifica il maestro»* non arrivava al socio | esisteva dal 25/08, ma finiva in `avvisi`, cioè in un **`console.log`** dell'edge. È la forma esatta della voce 98: *una promessa scritta in un log è una promessa non fatta* |
+| ② | 🚨 il bot annunciava la fascia **DICHIARATA**, non quella scritta | sotto il tetto le due coincidono e nessuno se n'era accorto; sopra divergono ⇒ chi dichiarava Avanzato e passava si sentiva dire **«il tuo livello è Avanzato»** mentre in scheda aveva **Intermedio**. ⇒ Non un messaggio incompleto: un messaggio **falso** |
+| ③ | chi era **già** sopra il tetto non riceveva **niente** | il livello non si riscrive ⇒ `livelloApplicato` resta falso ⇒ `siPuoAnnunciareIlTest` teneva fermo tutto. Faceva il test e nessun messaggio partiva |
+📌 *Due parole che coincidono in tutti i casi che qualcuno ha guardato non sono la stessa parola:
+sono due parole di cui nessuno ha ancora visto il caso che le separa.*
+🔨 E la **soglia** (3,5) e la **scala dei livelli** si sono spostate in `giro-del-test.ts`, il
+modulo che le tre edge condividono byte per byte: servivano anche al ponte del link, e sarebbero
+diventate la terza copia di un numero che decide chi sale di livello. ⚠️ Le copie che restano
+sono dichiarate: `PMO_LIVELLI` in `conoscenza.js` (serve al calcolo) e `pmoLivelloFascia` in
+`index.html` (la pagina non importa moduli dalle edge).
+
 ## 📌 Le decisioni prese dal committente il 26/08
 
 🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e
@@ -1742,6 +1793,17 @@ cioè il maestro riceve più nomi. Non è ovvio che li voglia tutti.
 
 ⛔ **Non scavalca niente**: entra accanto alle altre, ed è la sorella della 98 (che resta aperta e
 aspetta la sua prova fisica). Le due si guardano insieme.
+
+🔨✅ **METÀ CURATA la sera del 27/08, e va detto quale:** il **socio** adesso lo sa. Su sua regola
+(*«gli viene detto di contattare la segreteria per farsi vedere dal maestro in una partita»*) il
+messaggio esiste, dice il livello che ha **davvero** in scheda e lo manda in segreteria — e per
+chi era già sopra il tetto è passato **dal silenzio totale a un messaggio**.
+⏳ **Quello che resta aperto è la metà del MAESTRO**, cioè quella per cui questa voce è nata: chi
+ha 4 in scheda e dimostra Agonista continua a **non comparire nella lista**, perché
+`assessmentAspettaIlMaestro` esclude chi è già sopra il tetto. ⇒ Adesso il socio si presenta in
+segreteria, e in Anagrafica soci non c'è niente che lo dica.
+⚖️ La cura è cambiare il criterio da *«in scheda ≤ tetto»* a *«dimostrato > in scheda»* — ma
+allarga la lista, e chi ci finisce dentro lo decide lui: resta la domanda scritta qui sopra.
 
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 
