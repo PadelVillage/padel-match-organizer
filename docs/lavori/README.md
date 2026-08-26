@@ -131,6 +131,15 @@ dichiara Intermedio e lo dimostra.
 
 📌 *Un filtro si giudica su chi prende davvero, non su chi sembra fatto per prendere.*
 
+🗣️ **E due sue richieste di forma, la stessa mattina, che hanno cambiato dove le cose stanno:**
+① *«nella scheda socio c'è un tab che si chiama autovalutazione, perché non la metti lì»* ⇒ il
+   riquadro del maestro sta anche là, accanto alla storia del test di quella persona;
+② *«nella tab anagrafica metti il livello non editabile»* ⇒ il campo nasce chiuso, e si apre con
+   un gesto. ⚖️ La versione «bloccato e basta» è stata **fermata prima**, non dopo: avrebbe reso
+   la frase «te lo certifica il maestro» una promessa senza strumento, visto che quel campo è
+   l'unico posto da cui un livello sopra il tetto si può scrivere. È il terzo obbligo della
+   delega — *se una cosa che sta per fare lui non funzionerebbe, lo si ferma prima*.
+
 ## 📌 Le decisioni prese dal committente il 24/08
 
 🔮⭐ **LE PARTITE APERTE — una direzione dichiarata, non un lavoro.** Detta mentre correggeva il
@@ -1530,6 +1539,59 @@ gente** nel test, e far entrare più gente in un imbuto che non scarica peggiora
 di curarlo.
 
 🎓 **La lista per il maestro, nel gestionale** — chi è `applied_review` in attesa di certificazione, e **quando gioca**. Senza, la certificazione che la voce **94** promette al socio è una promessa che **non arriva a nessuno**: nessuno sa chi è in attesa né quando andarlo a vedere. ⭐ Il giorno il gestionale **lo sa già** (sono le prenotazioni): la lista può mostrare la **prossima partita** accanto al nome, e il socio non deve ricordarsene — la sua frase (*«di' alla segreteria il giorno in cui giochi»*) resta per chi gioca **fuori** dal circolo, che è il caso che il gestionale non vede
+
+🔨✅ **COSTRUITA E IN SERVIZIO il 26/08 mattina** (#1095 e #1096, `APP_VERSION` 6.241 → **6.244**),
+e sta in **due posti** perché rispondono a due domande diverse:
+
+| dove | risponde a |
+|---|---|
+| il filtro **«Da certificare dal maestro»** nell'anagrafica soci | *chi devo andare a guardare?* — è la lista |
+| il riquadro **«🎓 Aspetta il maestro»** nel tab Autovalutazione della scheda socio | *questa persona che cosa aspetta?* |
+
+🗣️ Il secondo l'ha chiesto lui guardando il gestionale: *«nella scheda socio c'è un tab che si
+chiama autovalutazione, perché non la metti lì»*. ⇒ Non è un doppione: la riga nell'elenco compare
+**sempre** sotto il nome, anche a filtro spento, come quella del doppione — chi arriva su un nome
+cercando altro deve vedere lo stesso che quella persona sta aspettando qualcosa da noi.
+
+🚨⭐⭐ **IL CRITERIO È UN FATTO, NON UNA COLONNA DI STATO, e la strada facile era sbagliata.**
+`staff_status === 'applied_review'` sembrava la risposta ovvia. Non lo è, e a dirlo è il caso vero
+del 26/08: quella scheda è stata **saltata** (il livello non andava riscritto), quindi nel database
+**non ha lasciato nessuno stato**. ⇒ Il fatto è *il test ha dimostrato più di quello che il socio ha
+in scheda*.
+⚖️ E chi ha **già** un livello sopra il tetto non compare: per lui non c'è niente da certificare, e
+una lista che lo mostrasse chiederebbe al maestro un lavoro già fatto — è esattamente il caso del
+committente, dimostrato 4 e in scheda 4.
+
+🔎 **E il «quando gioca» guarda nel posto giusto**: `playerFutureBookingsCount`, che c'era già,
+legge solo `p.giocatore` — cioè **chi ha prenotato**. Chi è stato invitato da un altro sta solo
+dentro `p.giocatori`, e cercare nel posto sbagliato manderebbe il maestro a guardare la partita di
+qualcun altro.
+
+🔒 **E il LIVELLO ora nasce CHIUSO** *(sua richiesta: «nella tab anagrafica metti il livello non
+editabile»)* — ma **chiuso**, non immutabile, e la differenza è tutta qui: bloccarlo e basta
+avrebbe tolto al maestro l'unico modo che ha di scrivere un livello sopra il tetto, cioè la cosa
+che questa voce ha appena promesso al socio. Si apre con «🔓 Cambia livello» e una conferma.
+📌 *Una protezione che toglie anche l'uso legittimo non è una protezione: è un pezzo di
+funzionalità in meno con l'aspetto di una cautela.*
+🚨 Il motivo del cambio **non si salva**: non è un registro, è un **attrito**. Dichiarato nel
+codice perché nessuno lo cerchi nei log o ce lo aggiunga a metà.
+
+🧪 **Il banco**: 14 casi e 9 guardie, con le funzioni **estratte** da `index.html`
+(`test/lista-per-il-maestro.test.mjs`), provato sabotando il codice vero in due punti — tolto il
+confronto con la scheda (cade il caso del 26/08), e cercando solo fra gli organizzatori (cade la
+prossima partita).
+📌 **E una lezione sul banco stesso**: cinque casi erano rossi e **uno verde per il motivo
+sbagliato** finché lo stub usava `let` invece di `var` — dentro `vm` una `let` non diventa
+proprietà del contesto, quindi i dati di prova non arrivavano affatto e la funzione tornava `null`
+per assenza di schede, non per la regola. *Un verde che nasce da una sonda rotta è indistinguibile
+da un verde vero, finché non si guarda anche il rosso accanto.*
+
+⏳ **RESTA APERTA, e per una cosa sola: la prova fisica non è ancora completa.** Il 26/08 la console
+remota su PROD (v6.242) ha visto le funzioni al loro posto, il filtro nel menu, 2814 soci e **zero
+falsi positivi** — ma `assessmentResponses` era **vuoto** per l'utente di sola lettura.
+🚨 ⇒ Quello zero **non dice «funziona»**: dice *non c'era niente da contare*. È la trappola già
+scritta il 23/08 — *uno zero letto troppo presto* — e va detto invece di essere spacciato per una
+prova. Serve un giro dal gestionale con le schede caricate: un socio in lista, visto con gli occhi.
 
 🔎 **Cosa serve, misurato oggi**: la scheda che il maestro deve vedere non è `applied_review` e
 basta — su PROD quel caso arriva anche come **scheda saltata con una segnalazione**, che nel
