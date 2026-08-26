@@ -97,6 +97,47 @@ di riga che qualcuno inverte «per pulizia» fra sei mesi.
 📌 *Una prova che confronta la strada giusta con la strada sbagliata non prova un calcolo: protegge
 una decisione, e le decisioni sono ciò che il codice dimentica per primo.*
 
+## 📌 Le decisioni prese dal committente il 27/08
+
+🗣️🔴🔴 **LA RETROCESSIONE NON ESISTE PIÙ** — *«modificherei la regola che se sbagli 3 volte
+retrocedi di mezzo punto. La leverei del tutto, anche come testo nel bot e nei docs.»*
+⇒ **Il livello di un socio non scende mai da solo.** Al rialzo non cambia niente: il test continua
+a far salire chi è cresciuto. A far scendere qualcuno resta la **segreteria**, dal campo «Livello
+di gioco» — un gesto di una persona che ha guardato, non l'esito di tre brutte giornate di fila.
+⚖️ **La sua regola del 17/08 è stata REVOCATA, non ammorbidita**, e la riga vecchia in fondo a
+questo file è stata corretta invece di lasciata accanto: una decisione revocata scritta al presente
+è una regola che qualcuno rimetterà in piedi.
+🔨 Tolti: i tre numeri (`PROVE_PER_SCENDERE`, `PASSO_DISCESA`, `LIVELLO_MINIMO_SCESO`), la funzione
+che contava le prove, la coda della frase nel bot (*«a meno che tu non vada peggio tre volte di
+fila…»*) e le due guardie che quella coda la **pretendevano** — rovesciate, perché una guardia che
+esige una frase è la cosa che la tiene in vita quando si decide di toglierla.
+📌 *Una rassicurazione con l'eccezione dentro non rassicura: chiedeva al socio di tenere il conto
+dei propri fallimenti proprio nel momento in cui gli si dice che riprovare è gratis.*
+
+🗣️🎨 **LE 720 OPZIONI SI ACCORCIANO** — *«non vanno bene le doppie risposte, devi ottimizzare le
+risposte con il bottone»*, e poi *«se non è possibile accorciare le domande puoi pensare ad
+un'altra soluzione come impostazione di lettura e clic»*.
+⇒ Scelta **sua**, davanti a tre anteprime (elenco + bottoni col numero · elenco + «Risposta N» ·
+riscrivere le opzioni corte): ha preso la **terza**, quella dichiarata più lunga e rischiosa.
+📏 **E la misura che ha cambiato la diagnosi prima di scrivere una riga**: quei puntini **non erano
+di Telegram, erano NOSTRI** — `ETICHETTA_SICURA` valeva **28**, una stima messa apposta bassissima,
+e a una risposta di 31 caratteri ne restavano 24. ⇒ Metà del difetto si è curata **alzando il
+tetto a 36** e togliendo il numero davanti (numerava un elenco che non c'è più); l'altra metà
+riscrivendo **302 opzioni su 720**.
+📌 *Prima di accorciare un testo si guarda CHI lo sta tagliando: se è il proprio codice, la cura
+non è scrivere più corto — è smettere di tagliare.*
+
+🗣️🎨 **LA DOMANDA 4 SI RIFORMULA, NON SI TOGLIE** — *«nel test la domanda 3 e la quattro la gente
+si confonde a rispondere, possiamo sostituirne una delle 2, oppure altra tua soluzione»*.
+📏 Il perché si vede mettendole in fila: la 3 («che livello pensi di avere?») e la 4 («con quali
+giocatori fai partite equilibrate?») rispondevano con le **stesse sette parole**. Due schermate
+identiche di fila.
+⇒ Sua scelta fra tre strade: la 4 diventa *«Con giocatori di che livello te la giochi alla pari?»*
+con risposte *«Contro Avanzati»*. **Il dato non si tocca** — il `valore` resta il numero della
+fascia — e il test resta di **12** domande.
+⚖️ Le due scartate erano togliere la 4 (si perdeva il confronto dichiarato↔pari, da cui nasce il
+segnale di incoerenza) e togliere la 3 (che è il perno del tetto e della regola dei furbetti).
+
 ## 📌 Le decisioni prese dal committente il 26/08
 
 🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e
@@ -564,7 +605,7 @@ atterrato** (una regex in BRE su `grep` di macOS), e il controllo «è stato app
 | 🗣️ **«parliamo della sezione dove c'è scritto il mio livello»** | ⭐ **la richiesta che ha aperto la giornata**, e il difetto lo aveva visto lui: chi il livello lo **chiedeva** leggeva «non ce l'hai» e basta. Il bottone del test nasceva solo per chi provava a **organizzare** |
 | ✅ **«sì lo vedono tutti, si può fare il test ogni 30 giorni»** | il bottone aperto anche a chi un livello ce l'ha ⇒ e da lì è nato tutto il resto, perché **rifare** il test oggi fa **scendere** |
 | ⚖️ **«si aggiungono»** | i 30 giorni **non sostituiscono** i tre tentativi: chi sbaglia affina, chi passa aspetta. La sua regola del 9/08 resta in piedi |
-| 🚨 **«se lo sbaglia in negativo non scende, a meno che non lo sbagli tre volte consecutive»**, poi **«e la terza volta scende solo di 0,5»** | ⭐⭐ **la regola che protegge il socio dal proprio test**: oggi una scheda peggiore fa scendere **subito e per intero** (da 4 a 1). Nata da una domanda mia sul rischio, e la risposta è stata più fine della domanda |
+| 🚨 ~~**«se lo sbaglia in negativo non scende, a meno che non lo sbagli tre volte consecutive»**, poi **«e la terza volta scende solo di 0,5»**~~ **— REVOCATA DA LUI il 27/08/2026** | ⭐⭐ Era **la regola che protegge il socio dal proprio test**: prima del 17/08 una scheda peggiore faceva scendere **subito e per intero** (da 4 a 1). 🔄 Il 27/08 l'ha tolta del tutto — *«modificherei la regola che se sbagli 3 volte retrocedi di mezzo punto: la leverei del tutto, anche come testo nel bot e nei docs»* — ⇒ **il livello non scende mai da solo**. ⚖️ La riga si **corregge** invece di lasciarla accanto alla nuova: qui stanno le sue decisioni, e una decisione revocata scritta al presente è una regola che qualcuno rimetterà in piedi |
 | 🗣️ **«decidi tu a quale delle tre volte ti vuoi fermare»** | ⭐⭐ **il pezzo che non avevo capito**: non è un calcolo, è una **scelta del socio**, prova per prova. ⇒ L'automatismo che oggi applica da sé deve **smettere di decidere da solo** |
 | 🔓 **«possiamo fare una cosa ancora più semplice»** (chi è invitato gioca senza livello) | ⭐⭐ **ha tolto dal tavolo il lavoro più grosso**: l'eredità dall'organizzatore, le 24 ore, la scadenza. Misurando, non era mai esistita |
 | 🔎 **«abbiamo detto che chi entra prende il livello dell'organizzatore, ti torna?»** | ⭐ **mi ha chiesto di verificare invece di confermare**: la regola c'era davvero (sua, 9/08) **e non era costruita**. Due cose vere insieme, e sarebbe stato facile darne una sola |
@@ -1383,7 +1424,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 8
+## 🔴 URGENTI — 9
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1637,11 +1678,30 @@ sarà la prova finale, e va guardata quando succede.
   `member_local_id` che nell'anagrafica di oggi non esiste più. È la famiglia già nota delle **schede
   non collegate**, che ha il suo bottone («Ricollega le N schede che non si riconoscono») e il suo
   banco: si ricollega di là, non si allarga questa voce;
-· ⚠️ **la sezione Autovalutazione dello staff è CONGELATA**, quindi il refresh automatico delle
-  risposte (`refreshAssessmentSectionDataOnEnter`) parte solo entrando in una sezione che nessuno può
-  aprire. La cura fa arrivare le risposte **quando qualcuno le chiede**; da dove parta quella
-  richiesta col tab chiuso è una domanda aperta, e va guardata prima di dire che la lista si aggiorna
-  da sé.
+· 🔨✅ **~~la sezione Autovalutazione dello staff è CONGELATA, e da dove parta il rinfresco col tab
+  chiuso è una domanda aperta~~ — CURATO il 27/08 (`APP_VERSION` 6.245 → 6.246).**
+  📏 La domanda si è chiusa **contando i punti di chiamata**, e la risposta era peggio di com'era
+  scritta qui: le porte sono **tre** ed erano chiuse **tutte e tre** —
+  ① il bottone «🔄 Sincronizza risposte da Supabase» sta dentro `#assessment`, che
+  `PMO_ASSESSMENT_PARKED` nasconde a TUTTI, owner compreso; ② `refreshAssessmentSectionDataOnEnter`
+  parte solo da `switchTab('assessment')`; ③ `assistantSyncResponses` è **viva** e il suo bottone
+  esiste nel codice, ma viene scritto dentro `#assistantPlan` — **elemento che nel DOM non c'è**
+  (`id="assistantPlan"` compare **0** volte in `index.html`): un bottone che nessuno disegna.
+  ⇒ Nell'app viva `assessmentResponses` lo riempiva **solo una console a mano**.
+  🔨 La cura aggancia il rinfresco **dove la lista vive**, non dove vive il codice che la alimenta:
+  l'ingresso in **Anagrafica soci** (freno 60 s) e la scelta del filtro «Da certificare dal maestro»
+  (`force`, perché quel filtro **è** la domanda). Gettoni **prima** delle risposte — le schede si
+  cercano *per gettone* — e **niente** auto-applicazione dei livelli: è una lista che si guarda.
+  🧪 Banco `test/la-lista-del-maestro-si-aggiorna-da-se.test.mjs` (13 casi, fra cui quello che gira
+  **tutte e due le strade** dell'ordine e mostra cosa si perde in quella sbagliata) e
+  `test/sabotaggi-lista-maestro.mjs` (10 sabotaggi, tutti visti, col controllo del metro).
+  📏 **Provato su dati veri**, copia locale dell'app contro il database di **PROD**: `0 → 50`
+  risposte, la più recente delle 13:33 del 26/08, la scheda delle 08:27 agganciata.
+  ⏳ **Quello che NON è provato, e si dichiara**: il **cablaggio** dal vivo. L'utenza `readonly`
+  della console non ha `view_members` (`pmoSectionVisibleFor('members')` → `false`), quindi da lì
+  Anagrafica soci **non si apre**: il gesto vero — entrare nella scheda e vedere la lista popolarsi —
+  aspetta un giro dal Mac o dalle sue mani. Al banco il cablaggio è provato leggendo i **punti di
+  chiamata**, non solo la funzione.
 
 🔧 **E un attrezzo, curato per poter fare questa diagnosi**: la console remota bloccava
 `get_self_assessments_by_tokens` e `get_assessment_tokens_admin` come «scritture», perché la sua
@@ -1649,6 +1709,39 @@ regola guarda il **nome** (`^pmo_(get|can)_`) e quelle due sono nate prima della
 `select` puri — letti in `pg_proc` prima di sbloccarli, non dedotti dal nome.
 📌 *Una lettura bloccata non è un errore prudente: è una diagnosi che non si può fare, e il sintomo
 che produce — una lista vuota — è indistinguibile da quello che si sta cercando.*
+
+### **100** — 🎓 Chi è sopra il tetto NON entra nella lista del maestro — e la promessa gli arriva lo stesso
+
+🆕 **NATA IL 27/08/2026 DA UNA SUA DOMANDA**, e messa in urgenti dalla sessione (delega del 23/08).
+🗣️ *«chi è come livello avanzato e facendo il test risulta agonista, come risponde il bot?»*
+
+📏 **Misurato leggendo il codice in servizio, non supposto.** Il giro è questo:
+① il socio ha **4** in scheda e dichiara Avanzato (**4,5**); ② il test calcola **5** (il calcolo è
+tagliato a `dichiarato + 0,5`, quindi 5 è il massimo possibile per lui); ③ `assessment-apply-level`
+vede `5 > TETTO_AUTOMATICO (3,5)` e scrive il segnale *«ha risposto da Agonista (5): sopra
+Intermedio certifica il maestro, guardandolo giocare»* — che è **quello che il bot gli dice**;
+④ il livello **non si riscrive**.
+🚨 ⑤ E qui il buco: `assessmentAspettaIlMaestro` esclude chi ha **già** in scheda un livello sopra
+il tetto (`inScheda > 3,5` ⇒ `null`). Il nostro socio ha 4. ⇒ **Non compare nella lista del
+maestro**, e nemmeno nel riquadro della sua scheda.
+⇒ Ha ricevuto una promessa — *«te lo certifica il maestro»* — che **non arriva a nessuno**. È
+esattamente il difetto per cui la voce 98 esiste, in una famiglia che la 98 non copre.
+
+⚖️ **Perché la regola della 98 è giusta e sbagliata insieme, e va deciso da lui.** La 98 escludeva
+chi è già sopra il tetto con una ragione vera: *per lui non c'è niente da certificare, il livello è
+già quello* — il caso del 26/08, dimostrato 4 e in scheda 4. Ma qui il dimostrato (**5**) è più
+alto dell'in-scheda (**4**): c'è eccome qualcosa da certificare. ⇒ Il criterio giusto non è
+*«in scheda ≤ tetto»* ma *«dimostrato > in scheda»* — che è la stessa frase con cui la scheda della
+98 descrive sé stessa, e che il codice non applica fino in fondo.
+🔎 📌 *Una condizione scritta per escludere un caso ne esclude sempre anche un altro: la si prova
+sul caso che voleva escludere, e passa; quello che non voleva escludere non lo cerca nessuno.*
+
+⏳ **Da decidere con lui prima di curare**, perché cambia chi vede cosa: con il criterio
+*«dimostrato > in scheda»* entrano in lista anche i soci **già alti** che il test spinge più su —
+cioè il maestro riceve più nomi. Non è ovvio che li voglia tutti.
+
+⛔ **Non scavalca niente**: entra accanto alle altre, ed è la sorella della 98 (che resta aperta e
+aspetta la sua prova fisica). Le due si guardano insieme.
 
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 
