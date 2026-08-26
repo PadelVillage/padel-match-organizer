@@ -313,5 +313,35 @@ prova('SABOTAGGIO: due opzioni che si separano troppo tardi verrebbero VISTE', (
   uguale(new Set(tagliate).size, 1, 'il taglio dichiarato non le fonde: la prova sopra non proverebbe niente');
 });
 
+/* 🗣️⭐⭐ 26/08/2026 — IL CONTO DELLE DOMANDE SI PUÒ CHIEDERE PRIMA CHE IL TEST COMINCI.
+   Sua richiesta: *«sin dall'inizio deve dire che sono 12 domande»*. L'invito parte quando di
+   risposte non ce n'è nessuna, quindi il numero non può venire dal passo: `passi.js` lo
+   espone, `consumer-assessment-link` lo legge di qui e lo manda al bot.
+   🔒 Vive in UNA fonte per una ragione precisa: il giorno in cui una domanda si aggiunge o si
+   toglie, la frase dell'invito cambia da sé. Un numero copiato nell'edge sarebbe diventato
+   falso in silenzio, e solo per chi legge l'invito. */
+prova('🗣️ il conto previsto è quello VERO, e coincide col totale del primo passo', () => {
+  uguale(P.domandeTotaliPreviste(), P.SCHEDA_DOMANDE.length + 4, 'il conto non nasce dalle domande');
+  // 🚨 La cosa che conta non è che faccia 12: è che dica lo STESSO numero del primo passo.
+  //    Se le due divergessero, il socio leggerebbe «sono 12 domande» e poi «Domanda 1 di 14».
+  const primo = P.passoCorrente('gettone-conto', {});
+  uguale(primo.totale, P.domandeTotaliPreviste(), 'l\'invito e il primo passo direbbero numeri diversi');
+  vero(primo.totale_certo === false, 'prima della fascia il totale è una previsione');
+});
+
+prova('🚨 CABLAGGIO: l\'edge del link chiede il conto QUI, invece di ricopiarlo', () => {
+  /* ⭐ Senza questo caso il numero potrebbe essere copiato nell'edge e nessuno se ne
+     accorgerebbe finché le domande non cambiano — cioè quando è troppo tardi. */
+  const edge = readFileSync(join(QUI, '..', 'supabase', 'functions', 'consumer-assessment-link', 'index.ts'), 'utf8');
+  vero(/import \{ domandeTotaliPreviste \} from '\.\.\/assessment-quiz\/passi\.js'/.test(edge),
+    'l\'edge non importa il conto da passi.js');
+  vero(/domande_totali: domandeTotaliPreviste\(\)/.test(edge),
+    'l\'edge non manda `domande_totali`, o lo calcola per conto suo');
+  const senzaCommenti = edge
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').map((r) => r.replace(/(^|[^:'"`])\/\/.*$/, '$1')).join('\n');
+  vero(!/domande_totali:\s*\d+/.test(senzaCommenti), 'c\'è un numero di domande scritto a mano nell\'edge');
+});
+
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);
 process.exit(falliti ? 1 : 0);

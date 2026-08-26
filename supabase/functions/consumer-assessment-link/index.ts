@@ -10,6 +10,12 @@ import {
   giriDelSocio,
   statoDelGiro,
 } from './giro-del-test.ts';
+/* ⚠️ L'UNICO import che esce dalla cartella di questa funzione, e si dichiara perché è una
+   deroga a un'abitudine: il conto delle domande deve avere UNA fonte, e quella fonte è il file
+   che le domande le contiene. Copiarne il numero qui vorrebbe dire tenerne due copie in due
+   funzioni che si deployano separatamente — cioè la forma in cui in questo progetto i due lati
+   divergono sempre. La `deno-check` della CI verifica che il percorso si risolva. */
+import { domandeTotaliPreviste } from '../assessment-quiz/passi.js';
 import { livelloDimostrato } from './livello-dimostrato.ts';
 import { GIORNI_TRA_PROMEMORIA, promemoriaDelLivello } from './promemoria-livello.ts';
 
@@ -519,6 +525,15 @@ Deno.serve(async (req: Request) => {
     tentativo: giro.prova,
     tentativi_totali: TENTATIVI_PER_GIRO,
     ultimo_tentativo: giro.ultima_prova,
+    /* 🆕🗣️⭐⭐ 26/08/2026 — QUANTE DOMANDE SONO, e il bot lo deve sapere PRIMA di cominciare.
+       🗣️ Sua richiesta: *«sin dall'inizio deve dire che sono 12 domande»*. L'invito parte quando
+       di risposte non ce n'è nessuna, quindi il numero non può venire dal passo: viene da qui.
+       🔒 E non è un 12 scritto in questa funzione: si chiede a `passi.js`, che è il file che le
+       domande le ha. ⇒ Se un domani una domanda si aggiunge o si toglie, la frase dell'invito
+       cambia da sé — nessuno deve rincorrerla in tre posti. *Il gestionale SA, il bot DICE.*
+       ⚠️ È una PREVISIONE: chi dichiara Principiante, Semi-Pro o Professionista non ha il
+       cancello e ne farà otto. Il conto cala dopo la terza risposta, e cala — non cresce. */
+    domande_totali: domandeTotaliPreviste(),
     promemoria,
   };
 

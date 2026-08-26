@@ -178,6 +178,23 @@ export function domandeDelGiro(token, risposte) {
   return SCHEDA_DOMANDE.concat(domandeConoscenza(token, risposte));
 }
 
+/** Quante domande sono in TUTTO, prima di sapere che fascia dichiarerà il socio.
+ *
+ * 🆕🗣️⭐⭐ 26/08/2026 — esiste perché il numero serve **prima** che il test cominci: sua
+ * richiesta, *«sin dall'inizio deve dire che sono 12 domande»*, e l'invito parte quando di
+ * risposte non ce n'è nessuna.
+ * 🔒 È una FUNZIONE ESPORTATA e non un 12 scritto da qualche parte, ed è tutto il punto: il
+ * conto lo sa questo file, che è quello che le domande le ha. `consumer-assessment-link` lo
+ * chiede qui e lo manda al bot; il bot lo ripete e basta — *il gestionale SA, il bot DICE*.
+ * ⇒ Il giorno in cui una domanda si aggiunge o si toglie, la frase dell'invito cambia da sé,
+ * e nessuno deve ricordarsi di rincorrerla in tre posti.
+ * ⚠️ È una PREVISIONE, non un fatto: chi dichiara Principiante, Semi-Pro o Professionista non
+ * ha il cancello e ne farà otto. Il conto cala dopo la terza risposta — cala, non cresce.
+ */
+export function domandeTotaliPreviste() {
+  return SCHEDA_DOMANDE.length + 4;
+}
+
 /**
  * DOVE SIAMO. Restituisce la prima domanda senza risposta, oppure `finito`.
  *
@@ -190,7 +207,7 @@ export function passoCorrente(token, risposte) {
   const date = risposte || {};
   const domande = domandeDelGiro(token, date);
   const conFascia = !!assessTxt(date.declaredLevel);
-  const totale = conFascia ? domande.length : SCHEDA_DOMANDE.length + 4;
+  const totale = conFascia ? domande.length : domandeTotaliPreviste();
 
   for (let i = 0; i < domande.length; i++) {
     const d = domande[i];
