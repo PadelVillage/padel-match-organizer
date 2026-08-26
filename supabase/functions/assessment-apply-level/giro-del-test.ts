@@ -250,15 +250,38 @@ export function livelloDimostrato(scheda: any) {
 }
 
 /**
- * «Questa prova aspetta il maestro?» — cioè: il quiz è passato E il livello dimostrato sta
- * sopra il tetto, quindi c'è qualcosa che il test non può certificare da sé.
- * 🚨 Il quiz DEVE essere passato: a chi lo fallisce la promessa del maestro non è mai uscita,
- * e dargliela qui vorrebbe dire mandare in segreteria chi ha sbagliato le domande.
+ * «Questa prova aspetta il maestro?» — cioè: il quiz è passato, il livello dimostrato sta sopra
+ * il tetto, **e il socio ha dimostrato più di quello che ha in scheda**.
+ *
+ * 🚨 Il quiz DEVE essere passato: a chi lo fallisce la promessa del maestro non è mai uscita, e
+ * dargliela qui vorrebbe dire mandare in segreteria chi ha sbagliato le domande.
+ *
+ * 🔄🗣️⭐⭐ 27/08/2026 sera — IL TERZO PEZZO È ARRIVATO DOPO, ed è quello che tiene insieme le due
+ * metà. Nato la mattina, questo controllo guardava solo il tetto; la lista del maestro nel
+ * gestionale, invece, usa `dimostrato > inScheda` (voce 100, allargata da lui la sera stessa).
+ * ⇒ Senza questa riga le due regole **direbbero cose diverse**: chi ha 4 e dimostra 4 — il caso
+ * vero del 26/08, dove non c'è niente da certificare — si sarebbe visto mandare in segreteria
+ * dal bot, e in Anagrafica soci non ci sarebbe stato. Un socio che si presenta al circolo per
+ * una cosa che il circolo non gli ha chiesto.
+ * 📌 *Due regole che rispondono alla stessa domanda non possono vivere in due posti con due
+ * forme: o è una sola, o prima o poi divergono — e chi paga la divergenza è chi ci cammina.*
+ * ⚠️ La gemella che resta è `assessmentAspettaIlMaestro` in `index.html`, e si dichiara: la
+ * pagina non importa moduli dalle edge. Le due si guardano nel banco `lista-per-il-maestro`.
+ *
+ * 🔒 Chi non ha ancora un livello (`livelloAttuale` non è un numero) entra: non ha niente da
+ * confrontare, e il tetto sopra basta da solo. È il verso sicuro — quel socio è proprio quello
+ * per cui la certificazione serve di più.
  */
-export function sopraIlTetto(scheda: any) {
+/* ⚠️ `livelloAttuale: any` e non `?: any`, e non è stile: i banchi estraggono queste funzioni
+   dal sorgente vero e le spogliano delle annotazioni con una regexp che il punto interrogativo
+   non conosce. Con `?:` la `vm` muore con `Unexpected token '?'` — misurato, non previsto. */
+export function sopraIlTetto(scheda: any, livelloAttuale: any) {
   if (esitoDellaProva(scheda) !== 'pass') return false;
   const n = livelloDimostrato(scheda);
-  return n !== null && n > TETTO_AUTOMATICO;
+  if (n === null || !(n > TETTO_AUTOMATICO)) return false;
+  const grezzo = String(livelloAttuale ?? '').trim().replace(',', '.');
+  const inScheda = grezzo ? Number(grezzo) : NaN;
+  return !Number.isFinite(inScheda) || n > inScheda;
 }
 
 // «Questa prova ha ESAURITO il suo giro?» — è la domanda di `assessment-apply-level`:

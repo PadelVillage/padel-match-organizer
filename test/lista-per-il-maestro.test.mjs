@@ -203,6 +203,41 @@ caso('12. senza data non si inventa un\'etichetta', () => {
   ];
 });
 
+// ── 🔄🗣️ 27/08: IL CRITERIO SI È ALLARGATO, e questi casi ieri sarebbero stati ROSSI ──
+// 🗣️ Sua decisione, dopo la sua domanda della sera (*«chi è come livello avanzato e facendo il
+// test risulta agonista, come risponde il bot?»*): **«si allarga la lista»**.
+// 🚨 La riga vecchia era `inScheda > TETTO → null`, e aveva una ragione vera dietro (il caso 2).
+// Ma escludeva anche chi ha 4 e dimostra 5 — che dal 27/08 riceve pure il messaggio che lo manda
+// in segreteria dal maestro: si presentava al circolo, e in Anagrafica non c'era niente.
+// ⇒ Il criterio non è più DOVE STA il socio, è QUANTO HA DIMOSTRATO IN PIÙ.
+
+caso('1bis. 🚨🔄 in scheda ha 4 e dimostra AGONISTA (5) ⇒ ADESSO aspetta il maestro', () => {
+  // Ieri questo caso tornava `null`, ed è il difetto che la voce 100 è nata per curare.
+  conSchede([scheda(5)]);
+  const r = ctx.assessmentAspettaIlMaestro(socio(4));
+  return [!!r, r && r.dimostrato === 5, r && r.inScheda === 4];
+});
+
+caso('1ter. 🔄 e anche mezzo passo conta: in scheda 4, dimostrato 4,5', () => {
+  conSchede([scheda(4.5)]);
+  const r = ctx.assessmentAspettaIlMaestro(socio(4));
+  return [!!r, r && r.dimostrato === 4.5];
+});
+
+caso('2bis. ⚖️ …ma chi ha 5 e dimostra 5 resta FUORI: non è più di quello che ha', () => {
+  // La ragione del caso 2, applicata dove prima non arrivava: sopra il tetto o sotto, il
+  // criterio è lo stesso — «più di quello che ha in scheda».
+  conSchede([scheda(5)]);
+  return [ctx.assessmentAspettaIlMaestro(socio(5)) === null];
+});
+
+caso('2ter. ⚖️ e chi ha 5 e dimostra 4 resta fuori: ha dimostrato MENO', () => {
+  // 🚨 Il verso conta: un `!==` al posto di un `>` metterebbe in lista chi è andato peggio,
+  //    mandando il maestro a certificare una discesa che nessuno gli ha chiesto.
+  conSchede([scheda(4)]);
+  return [ctx.assessmentAspettaIlMaestro(socio(5)) === null];
+});
+
 // ── SABOTAGGI: un banco che non cade quando si rompe il codice non prova niente ──
 caso('13. SABOTAGGIO: se il confronto guardasse solo il tetto, il caso 2 tornerebbe verde', () => {
   // Si rifà a mano la regola SBAGLIATA — «dimostra sopra il tetto» e basta — e si pretende
@@ -212,6 +247,18 @@ caso('13. SABOTAGGIO: se il confronto guardasse solo il tetto, il caso 2 tornere
   const vero = ctx.assessmentAspettaIlMaestro(socio(4)) !== null;
   const sbagliato = 4 > TETTO;
   return [vero === false, sbagliato === true, vero !== sbagliato];
+});
+
+caso('13bis. 🔄🚨 SABOTAGGIO: la regola VECCHIA («chi è già sopra il tetto è fuori») perderebbe il 1bis', () => {
+  /* ⭐ Questo è il sabotaggio che protegge la DECISIONE del 27/08, non un calcolo: si rifà a
+     mano la condizione di ieri e si pretende che dia un esito DIVERSO sul caso che l'ha fatta
+     cambiare. Senza, la riga si potrebbe rimettere com'era e il banco resterebbe verde — che è
+     esattamente quello che è successo fino a stasera: il criterio è cambiato e i 14 casi di
+     prima sono passati tutti, prima e dopo. */
+  conSchede([scheda(5)]);
+  const vero = ctx.assessmentAspettaIlMaestro(socio(4)) !== null;
+  const conLaRegolaVecchia = !(4 > TETTO);   // ieri: chi ha 4 (> 3,5) veniva scartato
+  return [vero === true, conLaRegolaVecchia === false, vero !== conLaRegolaVecchia];
 });
 
 caso('14. SABOTAGGIO: cercando solo in `p.giocatore` il caso 8 non troverebbe niente', () => {

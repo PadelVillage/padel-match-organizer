@@ -7904,7 +7904,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.247';
+    const APP_VERSION = '6.248';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
@@ -30409,8 +30409,32 @@ Per confermare scrivi ELIMINA.`);
       const dimostrato = parseFloat(String(scheda.calculated_level ?? '').replace(',', '.'));
       if (!Number.isFinite(dimostrato) || !(dimostrato > PMO_TETTO_MAESTRO)) return null;
       const inScheda = parseFloat(String(member?.level ?? '').replace(',', '.'));
-      // Chi è già sopra il tetto non aspetta nessuno: il livello ce l'ha.
-      if (Number.isFinite(inScheda) && inScheda > PMO_TETTO_MAESTRO) return null;
+      /* 🔄🗣️⭐⭐ 27/08/2026 — IL CRITERIO SI ALLARGA, e qui c'era scritto il contrario.
+         🗣️ Sua decisione, dopo la sua domanda della sera: *«chi è come livello avanzato e
+         facendo il test risulta agonista, come risponde il bot?»* — e poi, misura alla mano,
+         *«si allarga la lista»*.
+
+         🚨 LA RIGA VECCHIA ERA `inScheda > PMO_TETTO_MAESTRO → null`, cioè *«chi è già sopra il
+         tetto non aspetta nessuno: il livello ce l'ha»*. Aveva una ragione **vera** e un caso
+         **vero** dietro: Maurizio, il 26/08, dimostrato 4 e in scheda 4 — per lui non c'è niente
+         da certificare, e metterlo in lista avrebbe chiesto al maestro un lavoro già fatto.
+         ⚖️ Ma quella condizione, scritta per escludere QUEL caso, ne escludeva anche un altro:
+         chi ha **4** in scheda e dimostra **Agonista (5)**. Lì da certificare c'è eccome — e dal
+         27/08 quel socio riceve pure il messaggio che lo manda in segreteria dal maestro. ⇒ Si
+         presentava al circolo, e in Anagrafica soci non c'era niente che lo dicesse.
+         📌 *Una condizione scritta per escludere un caso ne esclude sempre anche un altro: la si
+         prova sul caso che voleva escludere, e passa; quello che non voleva escludere non lo
+         cerca nessuno.*
+
+         ⇒ Il criterio giusto non è **dove sta** il socio, è **quanto ha dimostrato in più**:
+         `dimostrato > inScheda`. Ed è la stessa frase con cui questa scheda descriveva sé stessa
+         fin dal 26/08 — *«il test ha dimostrato più di quello che il socio ha in scheda»* — che
+         il codice non applicava fino in fondo.
+         ⚖️ Il caso di Maurizio resta fuori **per la ragione giusta** invece che per posizione:
+         dimostrato 4, in scheda 4, e 4 non è più di 4.
+         🔒 Chi non ha ancora un livello (`inScheda` non è un numero) entra come prima: non ha
+         niente da confrontare, e il tetto sopra basta da solo. */
+      if (Number.isFinite(inScheda) && !(dimostrato > inScheda)) return null;
       return { dimostrato, inScheda: Number.isFinite(inScheda) ? inScheda : null, scheda };
     }
 
