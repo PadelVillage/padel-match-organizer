@@ -1618,9 +1618,19 @@ una cosa sola:
 ⏳ **RESTA APERTA, e per due cose sole:** la **prova fisica** di lui (le dodici domande fino in
 fondo, dichiarando Agonista, per vedere uscire la frase del maestro) e il **terzo passo** — la
 pagina che si spegne, che si fa solo dopo.
-🔎 La cosa da guardare per prima, e che nessuno ha ancora misurato: **quanto Telegram tronchi le
-etichette lunghe** delle due domande sul livello (~45 caratteri). Le opzioni si distinguono dalla
-**prima** parola, che è il caso in cui un troncamento non fa danno — ma si vede guardando.
+🔄📏 **MISURATO il 26/08, e questa riga diceva di guardare il posto sbagliato.** Qui c'era scritto
+che la cosa da temere erano **le due domande sul livello**, le più lunghe (49 caratteri): sono
+invece le **più al sicuro** — le sette fasce si separano al **terzo** carattere. Il caso stretto è
+`rally`, dove quattro opzioni su cinque cominciano per «Tengo»/«Faccio» e servono **14 caratteri**
+perché diventino diverse; poi `experience` e `glass` a 8. ⇒ Il taglio si dichiara a **20**, sotto
+il quale nessun bottone a riga piena si accorcia, e c'è **una prova che lo pretende** su tutte e
+otto le domande (`test/motore-a-passi.test.mjs`, sezione ⑥, con il suo sabotaggio).
+⚖️ **Non è la prova fisica e non la sostituisce**: dice che due etichette accorciate non possono
+diventare **identiche** — cioè che nessuno sceglie a caso. Se il testo si **legga** per intero lo
+dice solo un telefono, e resta da guardare.
+📌 *La misura giusta puntata sul soggetto sbagliato dà una risposta vera a una domanda che non
+serviva*: le etichette lunghe erano quelle che un troncamento non danneggia, e la domanda in
+pericolo era la più corta delle tre.
 
 🗣️ **L'idea è sua**, del 25/08: *«forse facendolo con una domanda alla volta potremmo anche metterlo
 dentro Telegram?»* — e la risposta è **sì**, deciso.
