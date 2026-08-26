@@ -187,6 +187,80 @@ export function statoDelGiro(schede: any, adessoMs: any, provePerGiro: any, gior
   return { ammesso: true, prova: 1, falliti: 0, ultima_prova: provePerGiro <= 1, attesa: null };
 }
 
+/* ═══ 🆕🗣️⭐⭐ 27/08/2026 — IL TETTO, e da oggi vive QUI ═══════════════════════════════
+   🗣️ Sua regola: *«quando un socio fa il test e risulta un livello superiore da avanzato in
+   su, gli viene detto di contattare la segreteria per farsi vedere dal maestro in una partita
+   in modo da validare il nuovo livello. Ma al momento resta invariato il suo livello.»*
+
+   🚨 PERCHÉ LA SOGLIA SI SPOSTA IN QUESTO MODULO invece di essere letta dove serve: fino a
+   stamattina `3.5` stava in **due** posti — `TETTO_AUTOMATICO` in `assessment-apply-level`
+   (che taglia il livello scritto) e `PMO_TETTO_MAESTRO` in `index.html` (che fa la lista del
+   maestro). Per dire al SOCIO che aspetta il maestro serviva saperlo anche nel ponte del
+   link: sarebbe stata la **terza** copia di un numero che decide chi sale di livello.
+   ⇒ Il modulo del giro è già l'unico posto che le tre edge condividono byte per byte, con una
+   guardia che lo pretende. La soglia entra lì.
+   ⚠️ La copia in `index.html` resta, e si dichiara: la pagina non importa moduli dalle edge.
+   È l'ultima gemella, ed è scritta nel commento di `PMO_TETTO_MAESTRO`.
+
+   ⚖️ E COSA NON DECIDE, che è la metà che tiene la regola onesta: `sopraIlTetto` dice solo
+   *«questa prova ha dimostrato più di quanto il test possa scrivere»*. Cosa scrivere in scheda
+   lo decide `assessment-apply-level` (Intermedio a chi sta sotto, niente a chi sta già sopra —
+   sua decisione del 26/08, ribadita il 27/08); cosa dire al socio lo decide il bot. Una
+   funzione sola per una domanda sola. */
+export const TETTO_AUTOMATICO = 3.5;
+
+/* 🔄 27/08 — LA SCALA arriva anche lei qui, e per la stessa ragione del tetto. Stava in
+   `assessment-apply-level` (`definizioneLivello`), e serviva anche al ponte del link per dire
+   al socio quale livello ha ADESSO in scheda — perché la parola che il bot annunciava era la
+   fascia **dichiarata**, non quella scritta, e sopra il tetto le due divergono.
+   ⚠️ Le altre copie restano e si dichiarano: `PMO_LIVELLI` in `conoscenza.js` (che serve al
+   calcolo, non a questa domanda) e `pmoLivelloFascia` in `index.html` (la pagina non importa
+   moduli dalle edge). Qui non se ne aggiunge una: se ne sposta una. */
+/**
+ * Da numero a PAROLA. 🚨 IL VUOTO NON È ZERO — trovato da un banco: `Number('')` fa 0, quindi
+ * un livello mancante si sarebbe chiamato «Principiante», cioè un nome inventato su un
+ * non-dato, dentro un messaggio che va a una persona. Senza numero non c'è fascia.
+ * ⚠️ La tabella sta DENTRO la funzione, e non è stile: i banchi estraggono le funzioni una per
+ * una dal sorgente vero e le eseguono in una `vm`. Una tabella fuori resterebbe indietro, e la
+ * funzione morirebbe con `LIVELLI is not defined` — misurato, non previsto.
+ */
+export function definizioneLivello(value: any) {
+  const LIVELLI = [
+    { max: 1.5, definizione: 'Principiante' },
+    { max: 2.5, definizione: 'Base' },
+    { max: 3.5, definizione: 'Intermedio' },
+    { max: 4.5, definizione: 'Avanzato' },
+    { max: 5.5, definizione: 'Agonista' },
+    { max: 6.5, definizione: 'Semi-Pro' },
+    { max: 7.0, definizione: 'Professionista' },
+  ];
+  const raw = String(value ?? '').replace(',', '.').trim();
+  if (!raw) return '';
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return '';
+  return (LIVELLI.find((f) => n <= f.max) || LIVELLI[LIVELLI.length - 1]).definizione;
+}
+
+/** Il livello che la prova ha DIMOSTRATO — numero, o `null` se non se ne ricava uno. */
+export function livelloDimostrato(scheda: any) {
+  const grezzo = String((scheda || {}).calculated_level ?? '').trim().replace(',', '.');
+  if (!grezzo) return null;
+  const n = Number(grezzo);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * «Questa prova aspetta il maestro?» — cioè: il quiz è passato E il livello dimostrato sta
+ * sopra il tetto, quindi c'è qualcosa che il test non può certificare da sé.
+ * 🚨 Il quiz DEVE essere passato: a chi lo fallisce la promessa del maestro non è mai uscita,
+ * e dargliela qui vorrebbe dire mandare in segreteria chi ha sbagliato le domande.
+ */
+export function sopraIlTetto(scheda: any) {
+  if (esitoDellaProva(scheda) !== 'pass') return false;
+  const n = livelloDimostrato(scheda);
+  return n !== null && n > TETTO_AUTOMATICO;
+}
+
 // «Questa prova ha ESAURITO il suo giro?» — è la domanda di `assessment-apply-level`:
 // alla terza prova non c'è una domanda da fare al socio (non c'è una quarta a cui
 // rimandare), quindi il suo esito si applica da solo, con le protezioni del ribasso.

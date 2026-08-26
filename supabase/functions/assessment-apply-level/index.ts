@@ -5,6 +5,8 @@ import {
   ORE_SILENZIO_ASSENSO,
   SCELTA_MI_FERMO,
   SCELTA_RIPROVO,
+  TETTO_AUTOMATICO as TETTO_DAL_MODULO,
+  definizioneLivello,
   laProvaEsaurisceIlGiro,
 } from './giro-del-test.ts';
 
@@ -130,7 +132,11 @@ const STORICO_PER_SOCIO = 20;    // quante schede si guardano indietro, come fa 
 // alzare la dichiarazione e passare il cancello della fascia sopra. Col tetto il massimo che
 // si ottiene mentendo è Intermedio — e chi ci arriva mentendo si trova in campo con Intermedi
 // veri, cioè si smaschera giocando. Sopra, non decide più il quiz: decide il maestro.
-const TETTO_AUTOMATICO = 3.5;    // l'estremo alto di Intermedio: sopra, certifica il maestro
+/* 🔄 27/08/2026 — la soglia NON si scrive più qui: vive in `giro-del-test.ts`, che è l'unico
+   file che questa edge e i due ponti condividono byte per byte (con una guardia che lo
+   pretende). Serviva anche al ponte del link, per dire al SOCIO che aspetta il maestro, e una
+   terza copia di un numero che decide chi sale di livello non si scrive. */
+const TETTO_AUTOMATICO = TETTO_DAL_MODULO;
 
 // 🆕 IL TERZO ESITO — «livello scritto E segreteria avvisata».
 // 🚨 Fino a stamattina non esisteva una via di mezzo: `staff_status` non vuoto voleva dire
@@ -148,26 +154,6 @@ const STAFF_DA_CERTIFICARE = 'applied_review';
 // 🔗 `test/autovalutazione-conoscenza.test.mjs` confronta TUTTE E TRE e diventa rosso se una
 // sola cambia. La tabella sta DENTRO la funzione di proposito: il banco estrae funzioni per
 // nome, e una tabella fuori resterebbe fuori dalla prova.
-function definizioneLivello(value: any) {
-  const LIVELLI = [
-    { max: 1.5, definizione: 'Principiante' },
-    { max: 2.5, definizione: 'Base' },
-    { max: 3.5, definizione: 'Intermedio' },
-    { max: 4.5, definizione: 'Avanzato' },
-    { max: 5.5, definizione: 'Agonista' },
-    { max: 6.5, definizione: 'Semi-Pro' },
-    { max: 7.0, definizione: 'Professionista' },
-  ];
-  // 🚨 IL VUOTO NON È ZERO, e trovato dal banco (caso 41): `Number('')` fa 0, quindi un
-  // livello mancante si sarebbe chiamato «Principiante» — un nome inventato su un non-dato,
-  // scritto dentro un messaggio che va al maestro. È la stessa riga che `pmoLivelloFascia`
-  // in `conoscenza.js` ha già dovuto scrivere: senza numero non c'è fascia.
-  const raw = String(value ?? '').replace(',', '.').trim();
-  if (!raw) return '';
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return '';
-  return (LIVELLI.find((f) => n <= f.max) || LIVELLI[LIVELLI.length - 1]).definizione;
-}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -80,7 +80,10 @@ function parola(nome, testo = srcGiro) {
   if (!m) throw new Error(`costante «${nome}» non trovata nel modulo del giro`);
   return m[1];
 }
-const TETTO_AUTOMATICO = costante('TETTO_AUTOMATICO');
+/* 🔄 27/08 — la soglia si legge dal MODULO del giro, non più dall'edge: da oggi vive lì,
+   perché serviva anche al ponte del link (per dire al socio che aspetta il maestro) e una
+   terza copia di un numero che decide chi sale di livello non si scrive. */
+const TETTO_AUTOMATICO = costante('TETTO_AUTOMATICO', srcGiro);
 const TENTATIVI_PER_GIRO = costante('TENTATIVI_PER_GIRO', srcGiro);
 const ORE_SILENZIO_ASSENSO = costante('ORE_SILENZIO_ASSENSO', srcGiro);
 const SCELTA_MI_FERMO = parola('SCELTA_MI_FERMO');
@@ -94,9 +97,11 @@ const ctx = {
 vm.createContext(ctx);
 vm.runInContext(
   spoglia([
-    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro']
+    // 🔄 27/08 — `definizioneLivello` si estrae dal MODULO: da oggi la scala vive lì, perché
+    //    serviva anche al ponte del link per dire al socio che livello ha ADESSO in scheda.
+    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro', 'definizioneLivello']
       .map((n) => estrai(n, srcGiro)),
-    ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'definizioneLivello', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
+    ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
       .map((n) => estrai(n)),
   ].join('\n')),
   ctx
@@ -548,7 +553,11 @@ const guardie = [
   //    all'app, non la parola. Se un domani sparissero, `applied_review` diventerebbe un blocco.
   ['🚨 la scheda segnalata porta comunque `applied_at` e `applied_member_id`',
     /applied_at: adesso/.test(src) && /applied_member_id: socioId/.test(src)],
-  ['🆕 il tetto è dichiarato come costante, non sparso nel codice', /const TETTO_AUTOMATICO = 3\.5/.test(src)],
+  /* 🔄 27/08 — il tetto è dichiarato come costante NEL MODULO condiviso, e questa edge lo
+     IMPORTA invece di riscriverlo. La guardia si sposta con lui: pretendere ancora la
+     dichiarazione qui vorrebbe dire pretendere la seconda copia che si è appena tolta. */
+  ['🆕 il tetto è dichiarato nel modulo del giro, non sparso nel codice', /export const TETTO_AUTOMATICO = 3\.5/.test(srcGiro)],
+  ['🚨 …e questa edge lo IMPORTA, non lo riscrive', /TETTO_AUTOMATICO as TETTO_DAL_MODULO/.test(src) && !/const TETTO_AUTOMATICO = [0-9]/.test(src)],
   // 🚨🚨 `pmo_upsert_records_admin` fa `payload = excluded.payload`: REPLACE TOTALE. Usarlo
   //    qui vorrebbe dire riscrivere il socio intero con quello che l'edge ha in mano.
   ['scrive con una modifica MIRATA, mai con un upsert', !/upsert\(/.test(src) && !/pmo_upsert_records_admin/.test(src)],
