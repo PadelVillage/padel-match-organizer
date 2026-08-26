@@ -64,7 +64,31 @@ export const TENTATIVI_PER_GIRO = 3;
    il ponte non lo dice più. */
 export const GIORNI_DI_ATTESA = 0;
 
-export const ORE_SILENZIO_ASSENSO = 24;
+/* 🆕⭐⭐ 26/08/2026 — IL SILENZIO NON SI ASPETTA PIÙ: da 24 ore a ZERO. Sua decisione, presa
+   guardando il messaggio arrivato sul telefono: *«l'ultima frase io direi di levarla in quanto
+   la variazione la fai immediata»*.
+   ⚖️ Era la riga «Se non mi dici niente entro giovedì 10:27, tengo questo livello». La sua
+   premessa non era ancora vera — l'attesa c'era, ed era di 24 ore (regola sua del 19/08) — ⇒
+   invece di togliere la frase e lasciare l'attesa (che avrebbe reso il bot **muto** su una cosa
+   che succede lo stesso: la definizione di sleale), si è tolta **l'attesa**, e la frase è
+   sparita perché non aveva più niente da annunciare.
+   📌 *Una frase che descrive un meccanismo si toglie togliendo il meccanismo, non la frase.*
+
+   ⚖️ QUELLO CHE NON CAMBIA, ed è il motivo per cui si può togliere: la scelta del socio resta.
+   «Riprovo il test» apre un giro nuovo come prima (rifarlo è libero dal 25/08, `GIORNI_DI_ATTESA
+   = 0`), e «Tengo questo livello» conferma una cosa già scritta invece di provocarla. Ciò che
+   sparisce è solo il **tempo di mezzo**, in cui il socio aveva un livello nuovo che il
+   gestionale non aveva ancora.
+
+   🔒 SI METTE A ZERO, NON SI CANCELLA — stessa scelta di `GIORNI_DI_ATTESA` qui sopra, e per
+   la stessa ragione: la macchina del silenzio-assenso resta intera in `assessment-apply-level`,
+   quindi rimetterla è cambiare un numero. Con zero il confronto `adesso >= consegna + 0` è vero
+   dal primo giro del cron: nessuna inversione, nessun caso limite, è lo stesso codice con la
+   porta sempre aperta.
+   ⏳ «Subito» vuol dire «al primo giro del cron», non «nello stesso istante»: quanto ci metta lo
+   sa il gestionale, ed è per questo che il bot continua a dire «fra poco» e non un numero di
+   minuti (lezione della voce 89). */
+export const ORE_SILENZIO_ASSENSO = 0;
 
 // I due valori che `self_assessments.member_decision` può assumere. Sono parole del socio
 // («mi fermo» / «riprovo»), scritte come le ha dette lui: chi legge il database deve capire

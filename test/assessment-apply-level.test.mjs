@@ -386,10 +386,17 @@ caso('27. il conto guarda dalla PIÙ RECENTE all\'indietro, comunque arrivi l\'e
 //    in faccia per cui questa funzione è nata — un socio a 0,5 che ignora la domanda
 //    resterebbe senza livello e senza poter organizzare.
 
-caso('28. 🚨🚨 una prova PASSATA non si applica più da sola: si aspetta la scelta del socio', () => {
+caso('28. ⭐ una prova PASSATA si applica SUBITO: non c\'è più un tempo di mezzo', () => {
+  /* 🔄 26/08 — questo caso pretendeva l'OPPOSTO («si aspetta la scelta del socio») ed è
+     diventato rosso con `ORE_SILENZIO_ASSENSO = 0`. Sua decisione, guardando il messaggio
+     sul telefono: *«la variazione la fai immediata»*.
+     ⚖️ La metà che REGGE, e resta provata qui sotto e nel 32: la scelta del socio non è
+     sparita — «riprovo» vale per sempre e non si scavalca (caso 32), «mi fermo» conferma
+     invece di provocare. Ciò che è sparito è l'intervallo in cui il socio aveva un livello
+     nuovo che il gestionale non aveva ancora. */
   const p = provaPassata('T1', oreFa(1));
   const esito = decidi(p, socio(), [provaGiro('T1', oreFa(1), 'pass')], ADESSO_MS);
-  return [esito.applica === false, /aspetta la scelta/.test(esito.motivo)];
+  return [esito.applica === true, esito.livello === 1];
 });
 
 caso('29. ⭐ il SILENZIO è assenso dopo 24 ore: nessuno resta senza livello per non aver risposto', () => {
@@ -399,12 +406,18 @@ caso('29. ⭐ il SILENZIO è assenso dopo 24 ore: nessuno resta senza livello pe
   return [esito.applica === true, esito.livello === 1];
 });
 
-caso('30. il confine delle 24 ore: un minuto prima si aspetta, all\'ora esatta si applica', () => {
-  const quasi = provaPassata('T1', oreFa(ORE_SILENZIO_ASSENSO - 0.02));
-  const esatto = provaPassata('T2', oreFa(ORE_SILENZIO_ASSENSO));
+caso('30. il confine dell\'attesa è dove dice il modulo, qualunque numero ci sia', () => {
+  /* 🔄 26/08 — con l'attesa a ZERO questo caso continuava a passare **senza provare niente**:
+     `oreFa(ORE_SILENZIO_ASSENSO - 0.02)` diventa una prova consegnata nel FUTURO, e che una
+     prova del futuro non si applichi non è la regola che questo caso deve difendere.
+     📌 *Un verde che sopravvive a un cambio di comportamento è un avviso* (il filo della 43ª):
+     riscritto in modo che il confine si sposti col numero invece di essere inchiodato a 24.
+     ⇒ Rimettendo 24 questo caso torna a misurare le 24 ore, senza toccarlo. */
+  const dentro = provaPassata('T1', oreFa(ORE_SILENZIO_ASSENSO + 0.02));   // l'attesa è passata
+  const prima = provaPassata('T2', oreFa(ORE_SILENZIO_ASSENSO - 0.02));    // manca ancora un po'
   return [
-    decidi(quasi, socio(), [provaGiro('T1', quasi.submitted_at, 'pass')], ADESSO_MS).applica === false,
-    decidi(esatto, socio(), [provaGiro('T2', esatto.submitted_at, 'pass')], ADESSO_MS).applica === true,
+    decidi(dentro, socio(), [provaGiro('T1', dentro.submitted_at, 'pass')], ADESSO_MS).applica === true,
+    decidi(prima, socio(), [provaGiro('T2', prima.submitted_at, 'pass')], ADESSO_MS).applica === false,
   ];
 });
 
@@ -439,14 +452,21 @@ caso('33. ⭐ la TERZA prova si applica da sola: non c\'è una quarta a cui rima
   return [esito.applica === true, laProvaEsaurisceIlGiro(storia, terza, TENTATIVI_PER_GIRO) === true];
 });
 
-caso('34. 🔒 FALLISCE CHIUSA sulla scelta: senza storia la terza prova non si riconosce, e si aspetta', () => {
-  // Se la lettura della storia va male (l'avviso lo dice), il verso sicuro è l'attesa: la
-  // ripesca il silenzio delle 24 ore, o il giro dopo del cron. Applicare per default
-  // vorrebbe dire che un guasto di lettura scavalca la scelta del socio.
+caso('34. 🔒 una storia illeggibile non manda il socio in nessun limbo', () => {
+  /* 🔄 26/08 — qui c'era scritto «FALLISCE CHIUSA: si aspetta», e con l'attesa a ZERO è
+     diventato rosso perché *aspettare* e *applicare* sono ormai la stessa cosa: il silenzio
+     ripescava comunque il caso dopo 24 ore, adesso lo ripesca dopo zero.
+     ⚖️ La metà che REGGE — ed è quella per cui il caso esisteva — non è «si aspetta»: è che
+     un guasto di lettura **non lasci il socio senza livello**, che era la porta chiusa in
+     faccia da cui questa funzione è nata. Con l'attesa a zero il verso sicuro è l'opposto di
+     prima, e la garanzia è la stessa.
+     🚨 Quello che un guasto di lettura non deve poter fare resta provato dal 32: scavalcare
+     un «riprovo» detto dal socio. Lì non c'è niente da dedurre dalla storia — la scelta è
+     scritta sulla prova. */
   const terza = provaPassata('T3', oreFa(0.1));
   return [
-    decidi(terza, socio(), [], ADESSO_MS).applica === false,
-    decidi(terza, socio(), null, ADESSO_MS).applica === false,
+    decidi(terza, socio(), [], ADESSO_MS).applica === true,
+    decidi(terza, socio(), null, ADESSO_MS).applica === true,
   ];
 });
 
@@ -566,7 +586,10 @@ const guardie = [
   ['la storia porta il cancello del quiz (`raw_response`), o il giro non si ricostruisce', /select\('token, submitted_at, declared_level, calculated_level, raw_response/.test(src)],
   ['`decidi` riceve l\'orologio da fuori, non lo legge da sé', /decidi\(scheda, payload, socioId \? \(storiaPerSocio\.get\(socioId\) \|\| \[\]\) : \[\], Date\.parse\(adesso\)\)/.test(src)],
   ['la regola del giro arriva dal modulo, non da una copia locale', /from '\.\/giro-del-test\.ts'/.test(src) && !/function laProvaEsaurisceIlGiro/.test(src)],
-  ['il silenzio-assenso è ventiquattr\'ore, e sta nel modulo', ORE_SILENZIO_ASSENSO === 24],
+  // 🔄 26/08 — era `=== 24`. Sua decisione: l'attesa va a ZERO, il livello si scrive subito.
+  // ⚖️ La guardia NON diventa «qualunque numero»: un valore preciso è ciò che rende visibile
+  //    un cambio fatto per sbaglio. Cambiare il numero resta un gesto che si dichiara qui.
+  ['l\'attesa del silenzio-assenso è ZERO, e il numero sta nel modulo', ORE_SILENZIO_ASSENSO === 0],
   // ⚖️ «riprovo» non ha scadenza: se le 24 ore lo scavalcassero, la domanda sarebbe finta.
   ['«riprovo» esce PRIMA del silenzio-assenso', src.indexOf('SCELTA_RIPROVO') < src.indexOf('ORE_SILENZIO_ASSENSO * 60')],
 

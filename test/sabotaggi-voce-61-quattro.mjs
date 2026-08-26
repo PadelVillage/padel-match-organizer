@@ -93,14 +93,19 @@ const SABOTAGGI = [
     a: '      if (true) {',
     banchi: ['apply'],
   },
-  {
-    nome: '⑥ la terza prova non si applica più da sola: aspetta una domanda che nessuno fa',
-    difende: 'sua risposta del 19/08: arrivare alla terza È essersi fermati alla terza',
-    file: [join(FUNZIONI, 'assessment-apply-level', 'index.ts')],
-    da: '    if (scelta !== SCELTA_MI_FERMO && !laProvaEsaurisceIlGiro(storia, scheda, TENTATIVI_PER_GIRO)) {',
-    a: '    if (scelta !== SCELTA_MI_FERMO) {',
-    banchi: ['apply'],
-  },
+  /* 🔄 26/08/2026 — QUI C'ERA IL ⑥ («la terza prova non si applica più da sola»), ed è stato
+     TOLTO perché non produce più un rosso: con `ORE_SILENZIO_ASSENSO = 0` (sua decisione, la
+     variazione è immediata) il controllo dell'età alla riga sotto è sempre soddisfatto, quindi
+     il ramo dell'attesa non si prende MAI e sabotare la condizione che ci porta non cambia
+     nessun esito.
+     ⚖️ Non è una protezione indebolita: è una porta che non esiste più. Lo stesso è già
+     successo il 25/08 a `GIORNI_DI_ATTESA`, e la scelta lì fu la stessa — mettere a zero
+     invece di cancellare, così il ramo resta e rimetterlo è cambiare un numero.
+     🚨 SE UN DOMANI L'ATTESA TORNA (`ORE_SILENZIO_ASSENSO` diverso da zero), questo sabotaggio
+     va rimesso: senza, la regola «arrivare alla terza È essersi fermati alla terza» (sua
+     risposta del 19/08) resterebbe scritta e non sorvegliata.
+     📌 Un sabotaggio che non fa più rosso non si lascia lì: passerebbe verde dichiarando di
+     difendere qualcosa, ed è peggio di non averlo. */
   {
     nome: '⑦ il bottone vecchio di Telegram torna a funzionare (scheda superata accettata)',
     difende: 'la scelta si fa sull\'ULTIMA prova: una scelta sul passato riscrive la storia del giro',
