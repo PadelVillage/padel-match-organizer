@@ -567,7 +567,10 @@ const guardie = [
   // 🆕 25/08: l'attesa è ZERO, sua decisione. La guardia NON e' stata tolta — e' stata
   // cambiata: un numero che nessuno guarda piu' e' esattamente come si torna a 30 per sbaglio.
   ['i numeri sono i suoi: tre prove per giro, nessuna attesa', PROVE === 3 && GIORNI === 0],
-  ['il silenzio-assenso è ventiquattr\'ore', ORE_SILENZIO === 24],
+  // 🔄 26/08 — era `=== 24`. Sua decisione: l'attesa va a ZERO, la variazione è immediata.
+  // ⚖️ Resta un numero PRECISO e non «qualunque numero»: è ciò che rende visibile un cambio
+  //    fatto per sbaglio, e che obbliga a dichiararlo qui chi lo cambia davvero.
+  ['l\'attesa del silenzio-assenso è ZERO', ORE_SILENZIO === 0],
   // ⭐⭐ Il conto vive nel ponte ed è CALCOLATO dai fatti: un contatore tenuto in una colonna
   //    andrebbe azzerato, sincronizzato, e prima o poi divergerebbe dalle schede vere.
   ['il conto non è TENUTO in nessuna colonna', !/tentativi_usati|attempts_used|giri_fatti/.test(src)],
