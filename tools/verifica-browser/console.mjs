@@ -40,7 +40,18 @@ const HOST_SUPABASE_NOTI = [
 ];
 
 const RPC_DI_LETTURA = /^pmo_(get|can)_/;
-const RPC_DI_LETTURA_EXTRA = new Set(['pmo_supabase_environment_check']);
+// ⚠️ La regola sul nome è una CONVENZIONE, e non tutte le letture la rispettano: le RPC
+// nate prima del prefisso `pmo_get_` finivano fra le scritture per il solo nome, e la
+// console le bloccava. Una lettura bloccata non è un errore prudente — è una diagnosi che
+// non si può fare, e il sintomo (una lista vuota) è indistinguibile da «non c'era niente».
+// 📏 26/08/2026: `get_self_assessments_by_tokens` bloccata mentre si provava la voce 98.
+// Il suo corpo è un solo `select` (SECURITY DEFINER con guardia di staff): letta in
+// `pg_proc` prima di metterla qui, non dedotta dal nome.
+const RPC_DI_LETTURA_EXTRA = new Set([
+  'pmo_supabase_environment_check',
+  'get_self_assessments_by_tokens',
+  'get_assessment_tokens_admin',
+]);
 
 // Playwright pinna un build di Chromium preciso e lo cerca lì e basta. Il
 // container però ne ha UNO solo, installato una volta per tutte in
