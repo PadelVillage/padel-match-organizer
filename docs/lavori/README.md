@@ -1637,11 +1637,30 @@ sarà la prova finale, e va guardata quando succede.
   `member_local_id` che nell'anagrafica di oggi non esiste più. È la famiglia già nota delle **schede
   non collegate**, che ha il suo bottone («Ricollega le N schede che non si riconoscono») e il suo
   banco: si ricollega di là, non si allarga questa voce;
-· ⚠️ **la sezione Autovalutazione dello staff è CONGELATA**, quindi il refresh automatico delle
-  risposte (`refreshAssessmentSectionDataOnEnter`) parte solo entrando in una sezione che nessuno può
-  aprire. La cura fa arrivare le risposte **quando qualcuno le chiede**; da dove parta quella
-  richiesta col tab chiuso è una domanda aperta, e va guardata prima di dire che la lista si aggiorna
-  da sé.
+· 🔨✅ **~~la sezione Autovalutazione dello staff è CONGELATA, e da dove parta il rinfresco col tab
+  chiuso è una domanda aperta~~ — CURATO il 27/08 (`APP_VERSION` 6.245 → 6.246).**
+  📏 La domanda si è chiusa **contando i punti di chiamata**, e la risposta era peggio di com'era
+  scritta qui: le porte sono **tre** ed erano chiuse **tutte e tre** —
+  ① il bottone «🔄 Sincronizza risposte da Supabase» sta dentro `#assessment`, che
+  `PMO_ASSESSMENT_PARKED` nasconde a TUTTI, owner compreso; ② `refreshAssessmentSectionDataOnEnter`
+  parte solo da `switchTab('assessment')`; ③ `assistantSyncResponses` è **viva** e il suo bottone
+  esiste nel codice, ma viene scritto dentro `#assistantPlan` — **elemento che nel DOM non c'è**
+  (`id="assistantPlan"` compare **0** volte in `index.html`): un bottone che nessuno disegna.
+  ⇒ Nell'app viva `assessmentResponses` lo riempiva **solo una console a mano**.
+  🔨 La cura aggancia il rinfresco **dove la lista vive**, non dove vive il codice che la alimenta:
+  l'ingresso in **Anagrafica soci** (freno 60 s) e la scelta del filtro «Da certificare dal maestro»
+  (`force`, perché quel filtro **è** la domanda). Gettoni **prima** delle risposte — le schede si
+  cercano *per gettone* — e **niente** auto-applicazione dei livelli: è una lista che si guarda.
+  🧪 Banco `test/la-lista-del-maestro-si-aggiorna-da-se.test.mjs` (13 casi, fra cui quello che gira
+  **tutte e due le strade** dell'ordine e mostra cosa si perde in quella sbagliata) e
+  `test/sabotaggi-lista-maestro.mjs` (10 sabotaggi, tutti visti, col controllo del metro).
+  📏 **Provato su dati veri**, copia locale dell'app contro il database di **PROD**: `0 → 50`
+  risposte, la più recente delle 13:33 del 26/08, la scheda delle 08:27 agganciata.
+  ⏳ **Quello che NON è provato, e si dichiara**: il **cablaggio** dal vivo. L'utenza `readonly`
+  della console non ha `view_members` (`pmoSectionVisibleFor('members')` → `false`), quindi da lì
+  Anagrafica soci **non si apre**: il gesto vero — entrare nella scheda e vedere la lista popolarsi —
+  aspetta un giro dal Mac o dalle sue mani. Al banco il cablaggio è provato leggendo i **punti di
+  chiamata**, non solo la funzione.
 
 🔧 **E un attrezzo, curato per poter fare questa diagnosi**: la console remota bloccava
 `get_self_assessments_by_tokens` e `get_assessment_tokens_admin` come «scritture», perché la sua
