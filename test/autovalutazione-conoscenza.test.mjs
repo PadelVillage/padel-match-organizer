@@ -137,14 +137,14 @@ prova('le opzioni delle domande valgono l\'estremo alto della fascia', () => {
 });
 
 // ── La pesca delle domande ────────────────────────────────────────────────────────
-// 🔄🗣️ 27/08 — da 3+1 a 2+2, sua decisione: *«soprattutto per i livelli bassi che possono
-// barare, direi di aumentare di una domanda le domande trabocchetto e levarne una normale»*.
-prova('si pescano 2 domande normali e 2 trappole, dalla fascia dichiarata', () => {
+// 🔄🗣️ 27/08, secondo giro — da 2+2 a 2+3 con soglia 4/5, su sua delega («se ne può sbagliare
+// una su cinque» + «il più difficile da azzeccare per i livelli da principiante a intermedio»).
+prova('si pescano 2 domande normali e 3 trappole, dalla fascia dichiarata', () => {
   const pescate = A.assessKnowledgePick('Intermedio');
-  uguale(pescate.length, 4, 'quante domande');
-  uguale(pescate.filter(p => p.trap).length, 2, 'quante trappole');
+  uguale(pescate.length, 5, 'quante domande');
+  uguale(pescate.filter(p => p.trap).length, 3, 'quante trappole');
   if (pescate.some(p => p.fascia !== 'Intermedio')) throw new Error('pescata una domanda di un\'altra fascia');
-  if (new Set(pescate.map(p => p.id)).size !== 4) throw new Error('la stessa domanda pescata due volte');
+  if (new Set(pescate.map(p => p.id)).size !== 5) throw new Error('la stessa domanda pescata due volte');
 });
 
 prova('chi dichiara Semi-Pro o Professionista non ha quiz: va sempre in segreteria', () => {
@@ -174,30 +174,33 @@ prova('l\'onesto che sa le cose passa', () => {
   const pescate = A.assessKnowledgePick('Intermedio');
   const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate));
   uguale(esito.status, 'pass', 'esito');
-  uguale(esito.correct, 4, 'risposte giuste');
+  uguale(esito.correct, 5, 'risposte giuste');
   uguale(esito.trap_failed, false, 'trappola');
 });
 
-prova('una sbagliata su quattro passa ancora (3/4 è la soglia)', () => {
+prova('una sbagliata su cinque passa ancora (4/5 è la soglia — regola sua del 27/08)', () => {
   const pescate = A.assessKnowledgePick('Avanzato');
-  const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 3 }));
-  uguale(esito.correct, 3, 'risposte giuste');
+  const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 4 }));
+  uguale(esito.correct, 4, 'risposte giuste');
   uguale(esito.status, 'pass', 'esito');
 });
 
 prova('il bugiardo che ne sbaglia due viene fermato', () => {
   const pescate = A.assessKnowledgePick('Avanzato');
-  const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 2 }));
-  uguale(esito.correct, 2, 'risposte giuste');
+  const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 3 }));
+  uguale(esito.correct, 3, 'risposte giuste');
   uguale(esito.status, 'fail', 'esito');
 });
 
-prova('UNA trappola sbagliata boccia DA SOLA, con le altre tre giuste', () => {
+prova('🔄 UNA trappola sbagliata NON boccia più da sola (rovesciata il 27/08, regola sua)', () => {
+  /* 🗣️ «Se ne può sbagliare una su cinque» — e UNA vale su qualunque domanda, trabocchetto
+     compresa: la regola vecchia (la trappola boccia da sola) non poteva conviverci, e si è
+     scelta la sua. Chi di trabocchetto ne sbaglia DUE resta fuori comunque (caso sotto). */
   const pescate = A.assessKnowledgePick('Agonista');
   const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { sbagliaTrappola: true }));
-  uguale(esito.correct, 3, 'risposte giuste');
-  uguale(esito.trap_failed, true, 'trappola sbagliata');
-  uguale(esito.status, 'fail', 'esito: 3 su 4 basterebbero, ma non con la trappola');
+  uguale(esito.correct, 4, 'risposte giuste');
+  uguale(esito.trap_failed, true, 'la trappola risulta sbagliata');
+  uguale(esito.status, 'pass', 'esito: 4 su 5, l\'errore concesso vale anche qui');
 });
 
 prova('chi non risponde non passa per silenzio', () => {
@@ -241,31 +244,28 @@ prova('🚨 zero domande NON vuol dire la stessa cosa per Semi-Pro', () => {
   uguale(A.assessKnowledgeEvaluate([], {}, '').status, 'skip', 'esito senza fascia');
 });
 
-prova('Base: due giuste su quattro bastano', () => {
+prova('🔄🚨 Base gioca con la regola di tutti: 4 su 5, i margini del 9/08 sono TOLTI (27/08)', () => {
+  /* 🗣️ Sua delega: «il più difficile da azzeccare per i livelli da principiante a intermedio».
+     I margini morbidi (2 giuste bastavano, la trappola non contava) proteggevano l'onesto in
+     un mondo in cui fallire costava 30 giorni; oggi rifare è GRATIS, e a passare con 2 su 4
+     era soprattutto chi tirava a indovinare. La riga si rovescia dichiarandolo. */
   const pescate = A.assessKnowledgePick('Base');
-  uguale(pescate.length, 4, 'domande pescate');
+  uguale(pescate.length, 5, 'domande pescate');
   const ids = pescate.map(p => p.id);
-  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 2 }), 'Base').status, 'pass', 'due giuste');
-  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 1 }), 'Base').status, 'fail', 'una giusta');
+  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 4 }), 'Base').status, 'pass', 'quattro giuste');
+  uguale(A.assessKnowledgeEvaluate(ids, rispondi(pescate, { giuste: 2 }), 'Base').status, 'fail', 'due giuste: ieri passava, oggi no');
 });
 
-prova('🚨 Base: la trappola sbagliata NON boccia da sola', () => {
-  // La trappola smaschera chi si sopravvaluta. Chi dichiara Base e crede a un colpo
-  // inventato sta dicendo la verità su di sé, non barando: non è quello il muro.
-  const pescate = A.assessKnowledgePick('Base');
-  const esito = A.assessKnowledgeEvaluate(
-    pescate.map(p => p.id), rispondi(pescate, { giuste: 2, sbagliaTrappola: true }), 'Base');
-  uguale(esito.trap_failed, true, 'la trappola risulta sbagliata');
-  uguale(esito.status, 'pass', 'ma non boccia');
-});
-
-prova('🚨 in alto NON è cambiato niente: la trappola boccia ancora da sola', () => {
-  const pescate = A.assessKnowledgePick('Avanzato');
-  const esito = A.assessKnowledgeEvaluate(
-    pescate.map(p => p.id), rispondi(pescate, { sbagliaTrappola: true }), 'Avanzato');
-  uguale(esito.status, 'fail', 'Avanzato con trappola sbagliata');
-  uguale(A.assessKnowledgeEvaluate(
-    pescate.map(p => p.id), rispondi(pescate, { giuste: 2 }), 'Avanzato').status, 'fail', 'Avanzato con 2/4');
+prova('🚨 due trabocchetto sbagliate bocciano, in ogni fascia: chi crede a DUE colpi inventati resta fuori', () => {
+  const perFascia = (fascia) => {
+    const pescate = A.assessKnowledgePick(fascia);
+    return A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 3, sbagliaTrappola: true }), fascia);
+  };
+  for (const fascia of ['Base', 'Intermedio', 'Avanzato', 'Agonista']) {
+    const esito = perFascia(fascia);
+    uguale(esito.correct, 3, `${fascia}: risposte giuste`);
+    uguale(esito.status, 'fail', `${fascia}: due errori devono bocciare`);
+  }
 });
 
 prova('🆕 la banca regge TRE tentativi: 8 normali + 3 trappole per fascia interrogabile', () => {
@@ -280,9 +280,27 @@ prova('🆕 la banca regge TRE tentativi: 8 normali + 3 trappole per fascia inte
     const normali = pool.filter(q => !q.trap).length;
     const trappole = pool.filter(q => q.trap).length;
     if (normali < 8) throw new Error(`${fascia}: solo ${normali} domande normali, ne servono 8`);
-    if (trappole < 3) throw new Error(`${fascia}: solo ${trappole} trappole, ne servono 3`);
+    // 🔄 27/08: con 3 trabocchetto pescate a giro servono almeno 12 in banca, o in quattro
+    //    prove uno le vede tutte.
+    if (trappole < 12) throw new Error(`${fascia}: solo ${trappole} trappole, ne servono 12`);
   }
   if (B.questions.length < 50) throw new Error(`banca scesa a ${B.questions.length}: il plafond è 50`);
+});
+
+prova('🆕🚨 il segnale «Non esiste» è ROTTO: in ogni fascia interrogabile ci sono trabocchetto alla rovescia', () => {
+  /* 📏 Il difetto misurato il 27/08: l'82% delle trabocchetto aveva come risposta giusta
+     «Non esiste…», e NESSUNA normale portava quell'opzione ⇒ una regola sola («se c'è, è
+     quella») passava il cancello senza sapere niente di padel. Le trabocchetto alla rovescia
+     sono regole VERE che sembrano inventate: «Non esiste» c'è, ed è SBAGLIATA.
+     ⇒ Questa prova pretende che restino: se un giorno qualcuno le pota, il segnale rinasce. */
+  const B = A.ASSESS_KNOWLEDGE_BANK;
+  for (const fascia of ['Base', 'Intermedio', 'Avanzato', 'Agonista']) {
+    const rovesce = B.questions.filter((q) =>
+      q.fascia === fascia && q.trap
+      && !/non esist/i.test(q.opts[q.correct])
+      && q.opts.some((o) => /non esist/i.test(o)));
+    if (rovesce.length < 3) throw new Error(`${fascia}: solo ${rovesce.length} trabocchetto alla rovescia, ne servono 3`);
+  }
 });
 
 prova('lo staff legge che il cancello non era richiesto', () => {
@@ -296,7 +314,7 @@ prova('lo staff legge il riepilogo, le schede vecchie non stampano nulla', () =>
   const pescate = A.assessKnowledgePick('Avanzato');
   const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { sbagliaTrappola: true }));
   const riga = A.assessKnowledgeRiepilogo(esito);
-  if (!riga.includes('Conoscenza 3/4')) throw new Error(`riepilogo inatteso: ${riga}`);
+  if (!riga.includes('Conoscenza 4/5')) throw new Error(`riepilogo inatteso: ${riga}`);
   if (!riga.includes('trappola sbagliata')) throw new Error(`manca la trappola: ${riga}`);
   if (!riga.includes('fascia Avanzato')) throw new Error(`manca la fascia: ${riga}`);
   uguale(A.assessKnowledgeRiepilogo(null), '', 'scheda vecchia senza conoscenza');
@@ -306,7 +324,7 @@ prova('lo staff legge il riepilogo, le schede vecchie non stampano nulla', () =>
 prova('il dettaglio salvato dice domanda, risposta e attesa: la coda deve poter controllare', () => {
   const pescate = A.assessKnowledgePick('Base');
   const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { giuste: 1 }));
-  uguale(esito.questions.length, 4, 'quante righe di dettaglio');
+  uguale(esito.questions.length, 5, 'quante righe di dettaglio');
   const riga = esito.questions[0];
   ['id', 'domanda', 'risposta', 'attesa', 'giusta', 'trap'].forEach(campo => {
     if (!(campo in riga)) throw new Error(`manca il campo «${campo}» nel dettaglio`);

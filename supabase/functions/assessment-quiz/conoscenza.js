@@ -76,18 +76,25 @@ export function pmoLivelloDefinizione(value) {
 }
 export const ASSESS_KNOWLEDGE_BANK = {
   version: 1,
-  /* 🔄🗣️ 27/08/2026 mattina — LA PESCATA PASSA DA 3+1 A 2+2, sua decisione dal telefono:
-     *«soprattutto per i livelli bassi che possono barare, direi di aumentare di una domanda
-     le domande trabocchetto e levarne una normale»*.
-     ⚖️ Le domande restano QUATTRO e la soglia resta 3 su 4: cambia solo quante delle quattro
-     sono trappole — cioè quanto costa rispondere «a orecchio» invece che per esperienza. La
-     banca ne ha 9 per fascia, quindi due pescate non esauriscono la varietà (in un giro se ne
-     vedono 2 su 9). I margini delle fasce basse decisi il 9/08 NON si toccano: Principiante
-     resta senza quiz, e per Base la trappola sbagliata continua a non bocciare da sola. */
+  /* 🔄🗣️⭐⭐ 27/08/2026, secondo giro — LA PESCATA PASSA A 2+3 E LA SOGLIA A 4 SU 5, su sua
+     delega esplicita: *«se ne può sbagliare una su cinque»*, e poi *«decidi tu, tenendo conto
+     che il test deve risultare il più difficile da ricordare e soprattutto da azzeccare per i
+     livelli da principiante a intermedio»*.
+     ⚖️ La sua regola «una sbagliata su cinque» NON conviveva con `trap_wrong_fails` (una
+     trabocchetto sbagliata bocciava da sola, quindi «una qualunque» era falsa): si è scelta la
+     SUA — l'errore concesso è UNO, e vale su qualunque domanda, trabocchetto compresa. Chi
+     crede a DUE colpi inventati resta fuori comunque.
+     🔄 E I MARGINI MORBIDI DI BASE DEL 9/08 SONO STATI TOLTI, non ammorbiditi: quella regola
+     nasceva per non punire l'ignoranza di chi si dichiara basso, ma la sua parola di oggi —
+     «il più difficile da azzeccare per i livelli da principiante a intermedio» — dice il
+     contrario, e la riga vecchia si corregge invece di conviverci. Rifare il test è gratis
+     (attesa zero): la severità costa un riprovare, non una porta chiusa.
+     ⛔ Principiante resta SENZA quiz (regola del 9/08, non toccata): chi si dichiara al minimo
+     della scala non guadagna niente mentendo. */
   pick_normal: 2,
-  pick_trap: 2,
-  pass_min_correct: 3,     // su 4 pescate
-  trap_wrong_fails: true,  // la trappola sbagliata boccia da sola, anche con le altre 3 giuste
+  pick_trap: 3,
+  pass_min_correct: 4,     // su 5 pescate: una sbagliata qualunque è concessa, la seconda boccia
+  trap_wrong_fails: false, // sostituita dalla soglia: «una su cinque» vale anche su una trabocchetto
   /* 🆕🗣️⭐⭐ 9/08/2026 — IL CANCELLO NON È UGUALE PER TUTTE LE FASCE (variante «B», sua scelta).
      Nato da una sua domanda, fatta dopo essere stato bocciato 2/4 dalla fascia più bassa:
      *«se sono un principiante è facile che io sbagli le trappole… come risolviamo in maniera
@@ -108,9 +115,11 @@ export const ASSESS_KNOWLEDGE_BANK = {
      **una distrazione sola boccia**, e la pena è 30 giorni d'attesa. */
   regole_fascia: {
     // Nessun quiz: si passa dichiarando Principiante. Il livello che se ne ricava è il minimo.
-    Principiante: { cancello: false },
-    // Un minimo di verifica resta, ma con margine e senza che la trappola sbarri da sola.
-    Base: { pass_min_correct: 2, trap_wrong_fails: false }
+    Principiante: { cancello: false }
+    /* 🔄🗣️ 27/08 — QUI C'ERA `Base: { pass_min_correct: 2, trap_wrong_fails: false }`, i
+       margini morbidi del 9/08. TOLTI su sua delega («il più difficile da azzeccare per i
+       livelli da principiante a intermedio»): Base gioca con la regola di tutti — 4 su 5,
+       una sbagliata concessa. La riga si corregge, non si affianca. */
   },
   questions: [
     // ── Principiante ────────────────────────────────────────────────────────────────
@@ -1140,7 +1149,89 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Vale solo sul punteggio di parità',
       'Non esiste: servono quattro punti',
       'Vale nei tornei con punto d\'oro',
-      'La concede l\'arbitro'], correct:1 }
+      'La concede l\'arbitro'], correct:1 },
+
+    /* ═══ 🆕🗣️⭐⭐ 27/08/2026 — LE TRABOCCHETTO ALLA ROVESCIA, 3 per fascia interrogabile ═══
+       🗣️ Delega sua: *«decidi tu, tenendo conto che il test deve risultare il più difficile da
+       ricordare e soprattutto da azzeccare per i livelli da principiante a intermedio»*.
+       📏 Il difetto misurato che curano: delle 45 trabocchetto, 37 (l'82%) avevano come
+       risposta giusta «Non esiste…», e NESSUNA delle 135 normali portava quell'opzione. Chi
+       aveva fatto il test una volta imparava una regola sola, senza sapere niente di padel:
+       *se c'è «Non esiste», è quella; se non c'è, è una domanda vera.*
+       ⇒ Queste sono il contrario: REGOLE VERE che sembrano inventate, dove «Non esiste» c'è
+       ed è SBAGLIATA. Da oggi vedere «Non esiste» non dice più da che parte sta la verità.
+       ⚖️ Il metro resta quello della vecchia I-03: regole e definizioni su cui non si discute —
+       contropared, salida, x3, punto d'oro, dormilona, gancho sono nel regolamento o nel
+       lessico consolidato, non opinioni.
+       ⛔ Principiante non ne ha: quella fascia il quiz non lo pesca (regola del 9/08, intatta). */
+
+    // ── Base, alla rovescia ─────────────────────────────────────────────────────────
+    { id:'B-T10', fascia:'Base', trap:true, q:'Si può colpire la palla contro il PROPRIO vetro per mandarla di là dalla rete?', opts:[
+      'Non esiste: vetro proprio vietato',
+      'Sì: è la contropared',
+      'Solo quando il punteggio è pari',
+      'Solo in doppio femminile'], correct:1 },
+    { id:'B-T11', fascia:'Base', trap:true, q:'La palla, dopo il rimbalzo, esce dal campo: un giocatore può uscire dalla porta e rimandarla dentro?', opts:[
+      'Non esiste: fuori campo è persa',
+      'Solo se non ha mai toccato terra',
+      'Sì: il punto continua, è regolare',
+      'Solo nei tornei federali'], correct:2 },
+    { id:'B-T12', fascia:'Base', trap:true, q:'Con lo smash la palla rimbalza nel campo avversario e poi vola FUORI dalla recinzione. Il punto?', opts:[
+      'Si rigioca',
+      'È degli avversari: palla uscita',
+      'Non esiste una regola precisa',
+      'È di chi ha smashato'], correct:3 },
+
+    // ── Intermedio, alla rovescia ───────────────────────────────────────────────────
+    { id:'I-T10', fascia:'Intermedio', trap:true, q:'La «chiquita» è un colpo vero?', opts:[
+      'Non esiste: è un nome inventato',
+      'Sì: colpo corto sui piedi, a rete',
+      'È un altro nome del pallonetto',
+      'Esiste solo tra i professionisti'], correct:1 },
+    { id:'I-T11', fascia:'Intermedio', trap:true, q:'Nel mio campo la palla rimbalza a terra e poi tocca DUE pareti. Posso ancora giocarla?', opts:[
+      'Non esiste: dopo due pareti è morta',
+      'Solo se la seconda è la griglia',
+      'Sì: conta solo il rimbalzo a terra',
+      'No: si rigioca il punto'], correct:2 },
+    { id:'I-T12', fascia:'Intermedio', trap:true, q:'Nel padel professionistico esiste il «punto d\'oro» sul 40-40?', opts:[
+      'Non esiste: sempre i vantaggi',
+      'Esiste solo nel tie-break',
+      'Esiste: un punto secco decide',
+      'Esisteva, ma è stato abolito'], correct:2 },
+
+    // ── Avanzato, alla rovescia ─────────────────────────────────────────────────────
+    { id:'A-T10', fascia:'Avanzato', trap:true, q:'Lo smash «x3» esiste?', opts:[
+      'Non esiste: si parla solo di x4',
+      'Sì: esce sopra la parete laterale',
+      'È un altro nome della vibora',
+      'Solo dal centro del campo'], correct:1 },
+    { id:'A-T11', fascia:'Avanzato', trap:true, q:'Rientrando da FUORI campo dopo una salida, la palla può passare di fianco alla rete, più bassa del nastro?', opts:[
+      'Non esiste: sempre sopra la rete',
+      'Solo se tocca il palo della rete',
+      'Solo se l\'avversario è d\'accordo',
+      'Sì: da fuori è una giocata valida'], correct:3 },
+    { id:'A-T12', fascia:'Avanzato', trap:true, q:'La «dormilona» è un colpo vero?', opts:[
+      'Non esiste: è un nome inventato',
+      'Sì: uno smash smorzato, corto',
+      'È il servizio sottomano',
+      'È una posizione, non un colpo'], correct:1 },
+
+    // ── Agonista, alla rovescia ─────────────────────────────────────────────────────
+    { id:'AG-T10', fascia:'Agonista', trap:true, q:'Il «gancho» esiste?', opts:[
+      'Non esiste: è un nome inventato',
+      'Sì: colpo alto a uncino, in salto',
+      'È il nome argentino della bandeja',
+      'È un\'infrazione di piede'], correct:1 },
+    { id:'AG-T11', fascia:'Agonista', trap:true, q:'«Vibora» e «bandeja» sono lo stesso colpo con due nomi?', opts:[
+      'Sì: due nomi dello stesso colpo',
+      'Non esistono: nomi senza colpo',
+      'No: la vibora ha più taglio',
+      'Sì, ma solo nel padel maschile'], correct:2 },
+    { id:'AG-T12', fascia:'Agonista', trap:true, q:'Il servizio si può battere anche di rovescio?', opts:[
+      'Non esiste: solo di dritto',
+      'Solo il secondo servizio',
+      'Solo avvisando l\'avversario',
+      'Sì: contano rimbalzo e cintura'], correct:3 }
   ]
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
@@ -1447,6 +1538,13 @@ export function sorteDa(s) {
   };
 }
 /** Le quattro domande di QUESTO socio per QUESTA fascia. Deterministiche. */
+/** Quante domande di conoscenza si pescano in un giro (normali + trabocchetto).
+ *  ⭐ Esportata perché il CONTO delle domande lo annuncia il bot prima che il test cominci
+ *  (`domandeTotaliPreviste` in `passi.js`): il numero vive dove vivono le domande, e il giorno
+ *  in cui la pescata cambia, l'annuncio cambia da sé — nessun 4 o 5 scritto altrove. */
+export function quantePescate() {
+  return ASSESS_KNOWLEDGE_BANK.pick_normal + ASSESS_KNOWLEDGE_BANK.pick_trap;
+}
 export function pescaPerGettone(token, fascia) {
   return assessKnowledgePick(fascia, sorteDa(seme(token, assessTxt(fascia))));
 }

@@ -17,6 +17,11 @@ import {
    funzioni che si deployano separatamente — cioè la forma in cui in questo progetto i due lati
    divergono sempre. La `deno-check` della CI verifica che il percorso si risolva. */
 import { domandeTotaliPreviste } from '../assessment-quiz/passi.js';
+// 🔄 27/08 — QUESTA RIGA È IL MOTIVO PER CUI QUESTA CARTELLA SI TOCCA INSIEME A `passi.js`:
+// l'import qui sopra entra nel bundle di QUESTA funzione al SUO deploy. Cambiare la pescata
+// (4 → 5 domande) senza rideployare il link lascerebbe l'annuncio a «12 domande» mentre il
+// test ne fa 13 — il numero giusto nel posto vecchio. I workflow scelgono le funzioni dalle
+// cartelle toccate: toccarla qui è ciò che la fa ripartire.
 import { livelloDimostrato } from './livello-dimostrato.ts';
 import { GIORNI_TRA_PROMEMORIA, promemoriaDelLivello } from './promemoria-livello.ts';
 
