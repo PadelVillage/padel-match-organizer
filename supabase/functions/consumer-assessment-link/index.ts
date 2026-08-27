@@ -4,6 +4,7 @@ import {
   TENTATIVI_PER_GIRO,
   GIORNI_DI_ATTESA,
   ORE_SILENZIO_ASSENSO,
+  TETTO_AUTOMATICO,
   quandoMs,
   definizioneLivello,
   sceltaDellaProva,
@@ -418,6 +419,28 @@ Deno.serve(async (req: Request) => {
            di Marco, stasera, alla prima prova fisica vera. Raro non vuol dire innocuo: quando
            capita, il socio legge un livello e ne riceve un altro. */
         livello_dimostrato: definizioneLivello(s.calculated_level),
+        /* 🩹🚨⭐⭐ 27/08/2026 notte — I DUE CAMPI CHE TOLGONO LA CORSA AL MESSAGGIO DEL MAESTRO
+           (sua scelta, opzione Ⓐ). 📏 Il difetto, misurato su Laura alle 22:15: il messaggio le
+           ha detto *«per adesso in scheda hai **Base**»* e **7 secondi dopo** il tetto le ha
+           scritto **Intermedio**. Il bot nominava lo stato di PRIMA della scrittura che quella
+           stessa scheda provoca — e a chi va a guardare risulta una bugia.
+           ⚖️ La cura non è aspettare la scrittura (riaprirebbe il silenzio di P0 per chi sta
+           già sopra il tetto): è **nominare un fatto che non corre**.
+             · se il tetto sta per scrivere → si nomina il **TETTO**, che è dove il socio sarà;
+             · se non scrive niente (il socio è già più su) → si nomina quello che ha **adesso**,
+               che è stabile proprio perché non cambierà.
+           ⇒ In tutti e due i casi la parola detta è vera anche un minuto dopo.
+           📌 *Contro una corsa non si aggiunge un'attesa: si sceglie una parola che non corre.* */
+        tetto: definizioneLivello(TETTO_AUTOMATICO),
+        /* ⚠️ Il confronto col tetto è UNA riga e sta anche in `decidi` — si dichiara invece di
+           nasconderlo. Non è una copia della regola di scrittura (quella ha altre otto porte):
+           è la domanda «questo socio è sotto il tetto?», che qui serve solo a scegliere QUALE
+           parola dire, e la costante arriva dallo stesso modulo per tutt'e due. */
+        tetto_da_scrivere: (() => {
+          const grezzo = String(payload.level ?? '').trim().replace(',', '.');
+          const attuale = grezzo ? Number(grezzo) : NaN;
+          return !Number.isFinite(attuale) || attuale < TETTO_AUTOMATICO;
+        })(),
         /**
          * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
          *
