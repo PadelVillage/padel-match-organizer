@@ -88,10 +88,13 @@ const TENTATIVI_PER_GIRO = costante('TENTATIVI_PER_GIRO', srcGiro);
 const ORE_SILENZIO_ASSENSO = costante('ORE_SILENZIO_ASSENSO', srcGiro);
 const SCELTA_MI_FERMO = parola('SCELTA_MI_FERMO');
 const SCELTA_RIPROVO = parola('SCELTA_RIPROVO');
+// 🆕 27/08 sera — la terza scelta: «va bene, prendo il gradino». Si legge dal modulo come
+// le altre due, o il banco proverebbe la propria copia della parola.
+const SCELTA_SCENDO = parola('SCELTA_SCENDO');
 
 const ctx = {
   FONTE: 'autovalutazione',
-  TENTATIVI_PER_GIRO, ORE_SILENZIO_ASSENSO, SCELTA_MI_FERMO, SCELTA_RIPROVO,
+  TENTATIVI_PER_GIRO, ORE_SILENZIO_ASSENSO, SCELTA_MI_FERMO, SCELTA_RIPROVO, SCELTA_SCENDO,
   TETTO_AUTOMATICO,
 };
 vm.createContext(ctx);
@@ -99,7 +102,11 @@ vm.runInContext(
   spoglia([
     // 🔄 27/08 — `definizioneLivello` si estrae dal MODULO: da oggi la scala vive lì, perché
     //    serviva anche al ponte del link per dire al socio che livello ha ADESSO in scheda.
-    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro', 'definizioneLivello']
+    // 🆕 27/08 sera — e le tre funzioni del GRADINO, che vivono anche loro nel modulo: il
+    //    ramo di `decidi` che scrive un livello più basso le chiama, e senza il banco
+    //    morirebbe con «gradinoOfferto is not defined» invece di provarlo.
+    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro', 'definizioneLivello',
+      'livelloDimostrato', 'fasciaSotto', 'livelloDellaFascia', 'gradinoOfferto']
       .map((n) => estrai(n, srcGiro)),
     ...['clean', 'numero', 'quando', 'livelloDellaScheda', 'decidi', 'soloLaPiuRecentePerSocio', 'payloadAggiornato']
       .map((n) => estrai(n)),
@@ -542,6 +549,84 @@ caso('41. i nomi della scala sono quelli, e il tetto si chiama Intermedio', () =
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i tre modi in cui questa funzione può fare danno.
+// ── 🆕 IL GRADINO: la terza scelta, quella che scrive un livello più basso (sua, 27/08 sera) ──
+// 🗣️ *«non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di scendere di un
+//    gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare il test»*.
+// 🚨 I casi 42-44 sono il ROVESCIO dei casi 19-25 qui sopra, e la differenza è UNA sola: là
+//    la discesa la propone il test, qui la chiede il socio con un tocco. Chi facesse scendere
+//    qualcuno senza `member_decision` vede rosso al 45, che è la protezione vera.
+const gradino = (extra = {}) => scheda({
+  submitted_at: '2026-08-27T16:00:00.000Z',
+  member_decision: SCELTA_SCENDO,
+  declared_level: 1.5, calculated_level: 1.5,
+  raw_response: { source: 'scheda-pubblica', knowledge: { status: 'pass', correct: 0, total: 0, senza_cancello: true } },
+  ...extra,
+});
+const base25 = (extra = {}) => socio({ level: '2.5', levelSource: 'autovalutazione', lastLevelUpdateAt: '2026-08-24T10:53:23.000Z', ...extra });
+// ⚠️ Orologio suo: queste prove sono del 27/08, cioè DOPO l'`ADESSO_MS` degli altri casi.
+// Col vecchio la scheda sarebbe nel futuro e il silenzio-assenso non sarebbe ancora scaduto —
+// il caso 43 misurerebbe l'attesa invece del ribasso.
+const ADESSO_GRADINO = Date.parse('2026-08-27T16:30:00.000Z');
+
+caso('42. ⭐ IL CASO VERO (Fabiola, 27/08): in scheda Base, il test dice Principiante, lei tocca — si scrive 1,5', () => {
+  const esito = decidi(gradino(), base25(), [], ADESSO_GRADINO);
+  return [esito.applica === true, esito.livello === 1.5, /Principiante/.test(esito.motivo)];
+});
+
+caso('43. 🚨 la stessa scheda SENZA il tocco non scrive niente: il livello non scende da sé', () => {
+  const esito = decidi(gradino({ member_decision: null }), base25(), [], ADESSO_GRADINO);
+  return [esito.applica === false, /non scende/.test(esito.motivo)];
+});
+
+caso('44. ⭐ e vale sulla BOCCIATA, che è dove serve di più: dichiara Base, sbaglia il cancello, prende Principiante', () => {
+  const bocciata = gradino({
+    declared_level: 2.5, calculated_level: 2.5,
+    raw_response: { source: 'scheda-pubblica', knowledge: { status: 'fail', correct: 1, total: 5 } },
+  });
+  // Il socio è a 0,5 — il «da definire» dell'81% dei soci: per lui il gradino è il primo
+  // livello vero, e infatti il numero SALE restando nella stessa parola.
+  const esito = decidi(bocciata, socio({ level: '0.5' }), [], ADESSO_GRADINO);
+  return [esito.applica === true, esito.livello === 1.5, /Principiante/.test(esito.motivo)];
+});
+
+caso('45. 🚨🚨 UNA BOCCIATURA NON PROMUOVE NESSUNO: chi ha Base e dichiara Agonista non prende Avanzato', () => {
+  const bocciata = gradino({
+    declared_level: 5, calculated_level: 5,
+    raw_response: { source: 'scheda-pubblica', knowledge: { status: 'fail', correct: 1, total: 5 } },
+  });
+  const esito = decidi(bocciata, base25(), [], ADESSO_GRADINO);
+  return [esito.applica === false, /gradino/.test(esito.motivo)];
+});
+
+caso('46. 🔒 il tocco non scavalca la SEGRETERIA, né una scheda già applicata', () => {
+  const conStaff = decidi(gradino({ staff_status: 'review' }), base25(), [], ADESSO_GRADINO);
+  const gia = decidi(gradino({ applied_at: '2026-08-27T16:05:00.000Z' }), base25(), [], ADESSO_GRADINO);
+  return [conStaff.applica === false, /segreteria/.test(conStaff.motivo), gia.applica === false, /già applicata/.test(gia.motivo)];
+});
+
+caso('47. 🚨 una scheda più VECCHIA dell\'ultimo aggiornamento non scende comunque', () => {
+  const vecchia = gradino({ submitted_at: '2026-08-01T10:00:00.000Z' });
+  const esito = decidi(vecchia, base25(), [], ADESSO_GRADINO);
+  return [esito.applica === false, /aggiornato dopo/.test(esito.motivo)];
+});
+
+caso('48. niente scritture a vuoto: a chi è già a 1,5 il gradino non viene nemmeno offerto', () => {
+  const esito = decidi(gradino(), socio({ level: '1.5', lastLevelUpdateAt: '2026-08-01T00:00:00.000Z' }), [], ADESSO_GRADINO);
+  return [esito.applica === false, /nessun gradino/.test(esito.motivo)];
+});
+
+caso('49. ⛔ il TETTO non taglia una discesa: chi ha Agonista e ha dimostrato Avanzato prende 4,5, non 3,5', () => {
+  const daAgonista = gradino({ declared_level: 4.5, calculated_level: 4.5,
+    raw_response: { source: 'scheda-pubblica', knowledge: { status: 'pass', correct: 5, total: 5 } } });
+  const esito = decidi(daAgonista, socio({ level: '5.5', lastLevelUpdateAt: '2026-05-01T00:00:00.000Z' }), [], ADESSO_GRADINO);
+  return [esito.applica === true, esito.livello === 4.5];
+});
+
+caso('50. 🚨 e nemmeno il tocco scrive senza un socio in anagrafica', () => {
+  const esito = decidi(gradino(), null, [], ADESSO_GRADINO);
+  return [esito.applica === false, /non esiste più/.test(esito.motivo)];
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof decidi === 'function' && typeof payloadAggiornato === 'function'],
   // 🆕 IL TERZO ESITO, guardato sul sorgente: senza questa riga la cura sarebbe una parola in
