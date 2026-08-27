@@ -81,17 +81,22 @@ function uguale(visto, atteso, che) {
 // usciva verde o rossa a seconda del sorteggio. Un banco che non torna sempre uguale non dice
 // niente su quello che sta provando.
 function rispondi(pescate, { giuste = 99, sbagliaTrappola = false } = {}) {
+  /* 🔄 27/08 — riscritto per la pescata 2+2: prima «sbagliaTrappola» sbagliava TUTTE le
+     trappole (con una sola era la stessa cosa), e il conto delle giuste poteva sbagliare solo
+     normali (con tre bastava sempre). Adesso si sbagliano prima le normali e, quando il conto
+     lo richiede — o quando lo chiede `sbagliaTrappola`, che ne sbaglia UNA — le trappole. */
   const risposte = {};
-  const normaliDaSbagliare = Math.max(0, pescate.length - giuste - (sbagliaTrappola ? 1 : 0));
-  let sbagliate = 0;
+  const daSbagliare = Math.max(0, pescate.length - Math.min(giuste, pescate.length));
+  const quanteNormali = pescate.filter(p => !p.trap).length;
+  let trappoleDaSbagliare = Math.max(sbagliaTrappola ? 1 : 0, daSbagliare - quanteNormali);
+  let normaliDaSbagliare = Math.max(0, daSbagliare - trappoleDaSbagliare);
   for (const p of pescate) {
     const q = A.ASSESS_KNOWLEDGE_BANK.questions.find(x => x.id === p.id);
     const esatta = q.opts[q.correct];
     const errata = p.opts.find(o => o !== esatta);
-    let deveSbagliare;
-    if (p.trap) deveSbagliare = sbagliaTrappola;
-    else if (sbagliate < normaliDaSbagliare) { deveSbagliare = true; sbagliate++; }
-    else deveSbagliare = false;
+    let deveSbagliare = false;
+    if (p.trap) { if (trappoleDaSbagliare > 0) { deveSbagliare = true; trappoleDaSbagliare--; } }
+    else if (normaliDaSbagliare > 0) { deveSbagliare = true; normaliDaSbagliare--; }
     risposte[p.id] = deveSbagliare ? errata : esatta;
   }
   return risposte;
@@ -132,10 +137,12 @@ prova('le opzioni delle domande valgono l\'estremo alto della fascia', () => {
 });
 
 // ── La pesca delle domande ────────────────────────────────────────────────────────
-prova('si pescano 3 domande normali e 1 trappola, dalla fascia dichiarata', () => {
+// 🔄🗣️ 27/08 — da 3+1 a 2+2, sua decisione: *«soprattutto per i livelli bassi che possono
+// barare, direi di aumentare di una domanda le domande trabocchetto e levarne una normale»*.
+prova('si pescano 2 domande normali e 2 trappole, dalla fascia dichiarata', () => {
   const pescate = A.assessKnowledgePick('Intermedio');
   uguale(pescate.length, 4, 'quante domande');
-  uguale(pescate.filter(p => p.trap).length, 1, 'quante trappole');
+  uguale(pescate.filter(p => p.trap).length, 2, 'quante trappole');
   if (pescate.some(p => p.fascia !== 'Intermedio')) throw new Error('pescata una domanda di un\'altra fascia');
   if (new Set(pescate.map(p => p.id)).size !== 4) throw new Error('la stessa domanda pescata due volte');
 });
@@ -185,7 +192,7 @@ prova('il bugiardo che ne sbaglia due viene fermato', () => {
   uguale(esito.status, 'fail', 'esito');
 });
 
-prova('la trappola sbagliata boccia DA SOLA, con le altre tre giuste', () => {
+prova('UNA trappola sbagliata boccia DA SOLA, con le altre tre giuste', () => {
   const pescate = A.assessKnowledgePick('Agonista');
   const esito = A.assessKnowledgeEvaluate(pescate.map(p => p.id), rispondi(pescate, { sbagliaTrappola: true }));
   uguale(esito.correct, 3, 'risposte giuste');
@@ -307,7 +314,7 @@ prova('il dettaglio salvato dice domanda, risposta e attesa: la coda deve poter 
 });
 
 // ── La banca in sé ────────────────────────────────────────────────────────────────
-prova('ogni fascia interrogabile ha abbastanza domande per pescarne 3+1', () => {
+prova('ogni fascia interrogabile ha abbastanza domande per la pescata dichiarata (oggi 2+2)', () => {
   const fasce = [...new Set(A.ASSESS_KNOWLEDGE_BANK.questions.map(q => q.fascia))];
   uguale(fasce.length, 5, 'quante fasce interrogabili');
   for (const f of fasce) {

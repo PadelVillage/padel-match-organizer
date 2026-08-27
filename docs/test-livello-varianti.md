@@ -1,0 +1,106 @@
+# Il test di livello — TUTTE le varianti, in una scheda sola
+
+**Nata il 27/08/2026 su ordine del committente** — *«dobbiamo fare una scheda con tutte le
+possibili varianti perché ci stiamo perdendo»* — la mattina dopo la notte delle tre cure giuste e
+inerti, davanti al caso di Maurizio (in scheda **Avanzato**, test da **Avanzato**, e il bot lo
+mandava dal maestro a certificare il livello che ha già).
+
+📌 **Questa scheda è MISURATA, non ricordata**: ogni riga viene dal codice in servizio, e i posti
+sono citati perché chi la aggiorna possa rimisurare invece di credere. Quando il codice cambia,
+**questa scheda si corregge nella riga vecchia** — non si affianca.
+
+---
+
+## I tre fatti da cui nasce ogni variante
+
+| fatto | valore | dove vive |
+|---|---|---|
+| **il tetto** | 3,5 (Intermedio) — sopra, il quiz non scrive: certifica il maestro | `TETTO_AUTOMATICO` in `giro-del-test.ts` (3 copie identiche byte per byte) |
+| **la scala** | 7 fasce; al socio si dice **sempre la parola**, mai il numero (regola del 9/08) | `definizioneLivello` (edge) · `PMO_LIVELLI`/`pmoLivelloFascia` (`index.html`) |
+| **il livello non scende mai da solo** | decisione del 27/08 — a far scendere resta la segreteria | `decidi` in `assessment-apply-level/index.ts` |
+
+E le due parole che il gestionale manda al bot, che **non sono la stessa cosa**:
+- `fascia` = quella **dichiarata** dal socio nel quiz;
+- `livello_in_scheda` = quella che ha **adesso in anagrafica**.
+Sotto il tetto quasi sempre coincidono; sopra, divergono — ed è dove si sono annidati i difetti.
+
+⏱️ **L'attesa è ZERO** (sua decisione del 26/08, `ORE_SILENZIO_ASSENSO = 0`): se il socio non
+tocca nessun bottone, l'esito si applica da sé al giro successivo del cron. I bottoni servono a
+**scegliere**, non a sbloccare.
+
+---
+
+## Le varianti a quiz SUPERATO (`pass`)
+
+`D` = livello **dimostrato** dal test (`calculated_level`) · `A` = livello **in scheda** ·
+la fascia è la parola della scala.
+
+| # | caso | cosa fa il bot | cosa si scrive in scheda | stato |
+|---|---|---|---|---|
+| **P1** | `A` assente (o 0,5) · `D` ≤ 3,5 | domanda: *«Il test dice **X**. Vuoi tenere questo livello o riprovare?»* + bottoni | `D`, al tocco su «Tengo» o da sé (attesa zero) | ✅ |
+| **P2** | `A` assente · `D` > 3,5 | messaggio del **maestro** (niente bottoni) | **Intermedio** (3,5) — il resto lo dà il maestro | ✅ |
+| **P3** | `A` < `D`, **fasce diverse**, `D` ≤ 3,5 (es. 2 → 3) | domanda + bottoni | `D` (rialzo) | ✅ |
+| **P4** | `A` < `D`, **fasce diverse**, `D` > 3,5 (es. Base 2,5 → Agonista 5 — il caso di Laura) | messaggio del **maestro** | Intermedio se `A` < 3,5; **niente** se `A` ≥ 3,5 (non si scende al tetto) | ✅ |
+| **P5** | `A` < `D` ma **STESSA fascia** (es. 4 → 4,5, tutti e due **Avanzato** — il caso di Maurizio) | ~~messaggio del maestro~~ → **domanda + bottoni** (cura del 27/08 mattina) | **niente**: la parola in scheda è già quella | 🔧 curata oggi |
+| **P6** | `A` = `D` (es. 4 → 4) | domanda + bottoni | **niente** («il socio ha già questo livello») | ✅ |
+| **P7** | `A` > `D` — **il test dice MENO** (es. Avanzato 4 → Intermedio 3) | domanda *«Il test dice **Intermedio**. Vuoi tenerlo o riprovare?»* con «✅ Tengo Intermedio» | **niente** (il livello non scende) | ⚠️ **APERTA** — vedi sotto |
+
+**P5 — perché era sbagliata, con le parole del committente** (27/08 mattina): *«quando uno fa il
+test e risulta lo stesso livello che già ha nella scheda di anagrafica, non c'è bisogno che si
+chiami il maestro. Ci deve essere il bottone: tengo il mio livello oppure rifaccio il test.»*
+Il confronto in servizio fino a stamattina era sui **numeri** (4,5 > 4 ⇒ maestro); ma il livello
+di un socio è una **parola**, e 4 e 4,5 sono la stessa parola. Il maestro certifica un livello che
+il socio **non ha**; qui il socio ce l'ha già. ⇒ `sopraIlTetto` ora esige anche **fascia dimostrata
+diversa da quella in scheda** — e la lista «Da certificare dal maestro» nel gestionale
+(`assessmentAspettaIlMaestro`) usa lo stesso criterio, quindi **Maurizio ne esce, Laura resta**.
+
+**P7 — il buco ancora aperto, trovato scrivendo questa scheda.** A chi dimostra **meno** di quello
+che ha, il bot offre «✅ Tengo Intermedio» — cioè di *tenere* un livello più basso che **non verrà
+mai scritto** (il livello non scende, sua regola del 27/08). Chi lo tocca si sente dire *«tengo
+Intermedio, te lo registro»* e `/livello` continua — giustamente — a dire **Avanzato**: una
+promessa doppia e falsa. 💡 Proposta: qui non c'è **nessuna scelta da fare** (nessuna delle due
+risposte cambia la scheda) ⇒ niente domanda; esito del tipo *«Test superato. Il tuo livello resta
+**Avanzato**»* + bottone per riprovare. **Aspetta la sua parola** — è una frase che leggeranno i
+soci.
+
+---
+
+## Le varianti a quiz NON superato e senza quiz
+
+| # | caso | cosa fa il bot | si scrive | stato |
+|---|---|---|---|---|
+| **F1** | `fail` (incongruenza fra risposte e dichiarato) | *«è rimasta un'incongruenza, il livello non l'ho registrato. Vuoi rifarlo, o ti tieni il livello che hai?»* + bottoni «🔄» e «👍 Mi tengo il mio livello» | niente (il «mi fermo» si registra come scelta, non come livello) | ✅ |
+| **S1** | `skip` con fascia (dichiara Semi-Pro/Professionista: il quiz non c'è) | *«per il livello che hai dichiarato non c'è un quiz: una scheda come la tua la guarda il maestro»* | niente | ✅ |
+| **S2** | `skip` senza fascia (guasto: il livello non si è letto) | frase neutra, **senza** nominare il maestro | niente | ✅ |
+
+---
+
+## Dopo il tocco su «✅ Tengo …» — cosa risponde il bot
+
+| variante | risposta | vera? |
+|---|---|---|
+| P1/P3 (il livello si scrive) | *«Perfetto: tengo **X** 👍 Te lo registro sulla scheda a breve.»* | ✅ |
+| P4 (bottone vecchio rimasto in chat: sopra il tetto non c'è scelta) | *«In scheda per adesso resta **X**. Sopra Intermedio… te lo certifica il maestro»* | ✅ (rete del 27/08 notte) |
+| P5/P6 (la parola è già in scheda: non si scrive niente) | oggi *«te lo registro a breve»* → 🔧 cura: *«Perfetto: tengo **X** 👍 In scheda hai già questo livello.»* | 🔧 curata oggi (bot) |
+| P7 | *«tengo Intermedio, te lo registro»* — **falso due volte** | ⚠️ aperta (vedi P7) |
+| F1, tocco su «👍 Mi tengo il mio livello» | *«il livello che hai adesso in scheda resta quello»* | ✅ |
+
+⚠️ **La cura P5/P6 del bot confronta le due PAROLE che il gestionale gli manda** (`fascia` e
+`livello_in_scheda`): quando coincidono, la frase non promette né una scrittura né la sua assenza —
+dice il fatto («in scheda hai già questo livello»), che è vero in tutti e due i sotto-casi (3 → 3,5
+scrive il numero ma la parola non cambia; 4 → 4,5 non scrive proprio). Il bot non decide niente:
+mostra due dati che ha già.
+
+---
+
+## Dove si misura, quando questa scheda sembra vecchia
+
+- la regola del maestro: `sopraIlTetto` in `supabase/functions/*/giro-del-test.ts` (3 copie) e la
+  gemella `assessmentAspettaIlMaestro` in `index.html` — banchi
+  `test/consumer-assessment-link.test.mjs` (casi M) e `test/lista-per-il-maestro.test.mjs`;
+- cosa si scrive: `decidi` in `assessment-apply-level/index.ts` — banco
+  `test/assessment-apply-level.test.mjs`;
+- cosa dice il bot: `avvisi-testi.ts` (`testoEsitoTest`), `scelta-livello.ts`
+  (`testoDomandaScelta`, `testoSceltaRegistrata`) nel repo del bot;
+- chi decide se la domanda esiste: `puo_scegliere` e `aspetta_maestro` in
+  `consumer-assessment-link/index.ts` — **è sempre il gestionale**; il bot non ha soglie.

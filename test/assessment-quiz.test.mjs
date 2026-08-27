@@ -49,8 +49,9 @@ const a = C.pescaPerGettone('tok-ABC123', 'Intermedio');
 const b = C.pescaPerGettone('tok-ABC123', 'Intermedio');
 ok('🚨 stesso gettone ⇒ stesse 4 domande', JSON.stringify(a) === JSON.stringify(b));
 ok('…e sono davvero 4', a.length === 4);
-ok('…con esattamente 1 trappola',
-   a.filter((q) => C.ASSESS_KNOWLEDGE_BANK.questions.find((x) => x.id === q.id)?.trap).length === 1);
+// 🔄 27/08 — da 1 a 2 trappole su 4, sua decisione (pescata 2+2 in `conoscenza.js`).
+ok('…con esattamente 2 trappole',
+   a.filter((q) => C.ASSESS_KNOWLEDGE_BANK.questions.find((x) => x.id === q.id)?.trap).length === 2);
 const c = C.pescaPerGettone('tok-XYZ789', 'Intermedio');
 ok('gettone diverso ⇒ pescata diversa',
    JSON.stringify(a.map((q) => q.id)) !== JSON.stringify(c.map((q) => q.id)));
