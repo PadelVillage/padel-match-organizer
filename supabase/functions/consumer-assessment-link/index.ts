@@ -308,7 +308,19 @@ Deno.serve(async (req: Request) => {
          «tieni o riprovi?» è partita lo stesso, e il maestro non è mai stato nominato.
          📌 *Una funzione pura provata al banco riceve nel banco righe COMPLETE: nessuna prova
          si accorge che la select in servizio gliene passa una monca.* */
-      .select('token, submitted_at, raw_response, calculated_level, member_decision, member_decision_at')
+      /* 🩹🚨⭐⭐ 27/08/2026 sera — `declared_level` ERA FUORI DA QUESTA SELECT, e senza di lui
+         il GRADINO su una prova BOCCIATA non usciva mai. 📏 Misurato sul test vero di Fabiola
+         delle 21:45: bocciata 3/5 dichiarando Base, con Base in scheda ⇒ il gradino doveva
+         essere «Principiante», ed è arrivato **vuoto** — perché `gradinoOfferto`, sul ramo
+         `fail`, legge `declared_level` (la fascia sotto quella DICHIARATA) e qui quel campo
+         non veniva letto dal database. Il socio ha visto i due bottoni di ieri.
+         ⚖️ È la trappola del 27/08 notte un campo più in là — *il tipo che resta indietro
+         rispetto alla select* — nella forma peggiore: `deno check` non la vede (la riga è
+         una stringa), i banchi che provano la REGOLA sono verdi (la regola è giusta), e a
+         sbagliare è **quello che le si dà in pasto**.
+         🔒 A non farla tornare c'è ora una guardia che confronta le colonne lette dal modulo
+         del giro con questa stringa (`test/consumer-assessment-link.test.mjs`). */
+      .select('token, submitted_at, raw_response, declared_level, calculated_level, member_decision, member_decision_at')
       .in('token', suoi)
       .order('submitted_at', { ascending: false })
       .limit(20);

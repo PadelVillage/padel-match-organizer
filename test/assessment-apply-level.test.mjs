@@ -599,9 +599,37 @@ caso('45. 🚨🚨 UNA BOCCIATURA NON PROMUOVE NESSUNO: chi ha Base e dichiara A
 });
 
 caso('46. 🔒 il tocco non scavalca la SEGRETERIA, né una scheda già applicata', () => {
-  const conStaff = decidi(gradino({ staff_status: 'review' }), base25(), [], ADESSO_GRADINO);
+  /* 🔄 27/08, un'ora dopo — `review` è USCITO da questa prova, e va detto perché: quel valore
+     su queste schede lo mette la macchina (`assessment-quiz` lo scrive a OGNI quiz non
+     superato — misurato: 9 bocciate su 9), non una persona. Restano gli stati che una persona
+     scrive davvero. Vedi il caso 51, che è il rovescio di questo. */
+  const conStaff = decidi(gradino({ staff_status: 'pending_attention' }), base25(), [], ADESSO_GRADINO);
   const gia = decidi(gradino({ applied_at: '2026-08-27T16:05:00.000Z' }), base25(), [], ADESSO_GRADINO);
   return [conStaff.applica === false, /segreteria/.test(conStaff.motivo), gia.applica === false, /già applicata/.test(gia.motivo)];
+});
+
+caso('51. 🩹🚨 IL CASO VERO DI FABIOLA (27/08, 21:40): una BOCCIATA è sempre in `review`, e il gradino deve passare', () => {
+  /* 📏 Il difetto che questa prova chiude, misurato eseguendo `decidi` sulla sua scheda vera:
+     tornava «in mano alla segreteria (review)» ⇒ il socio toccava «Va bene: Principiante», il
+     bot rispondeva «te l'ho registrato sulla scheda», e non si scriveva niente.
+     ⇒ E non era raro: `assessment-quiz` mette `review` a ogni scheda col quiz non superato,
+     quindi sulle bocciature il gradino non avrebbe scritto MAI — cioè era inerte proprio nel
+     caso per cui è nato (i 6 soci rimasti a 0,5). */
+  const bocciata = gradino({
+    staff_status: 'review',
+    declared_level: 2.5, calculated_level: 2.5,
+    raw_response: { source: 'bot-a-passi', knowledge: { status: 'fail', correct: 3, total: 5 } },
+  });
+  const esito = decidi(bocciata, base25(), [], ADESSO_GRADINO);
+  return [esito.applica === true, esito.livello === 1.5, /Principiante/.test(esito.motivo)];
+});
+
+caso('52. 🔒 …ma `review` resta un muro per la strada NORMALE: si apre solo al gradino', () => {
+  /* Il controllo del metro: se l'apertura sfuggisse dal ramo del gradino alla catena di
+     sempre, una scheda che la segreteria deve guardare si applicherebbe da sola. */
+  const senzaTocco = gradino({ member_decision: null, staff_status: 'review' });
+  const esito = decidi(senzaTocco, base25(), [], ADESSO_GRADINO);
+  return [esito.applica === false, /segreteria/.test(esito.motivo)];
 });
 
 caso('47. 🚨 una scheda più VECCHIA dell\'ultimo aggiornamento non scende comunque', () => {

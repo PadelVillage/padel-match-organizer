@@ -821,15 +821,19 @@ const guardie = [
      verrebbe sovrascritta dal calcolo stesso — è la stessa forma della correzione gemella su
      `livello_applicato`, che per la stessa ragione sta lì e non dentro. */
   ['sopra il tetto il ponte NEGA la scelta', /if \(ultimaScheda\.aspetta_maestro\) ultimaScheda\.puo_scegliere = false;/.test(srcPonte)],
-  /* 🚨⭐⭐ 27/08 notte — E LA SELECT DEVE PORTARE `calculated_level`, o tutto il ramo del
-     maestro è INERTE: `sopraIlTetto` legge `scheda.calculated_level`, che è una COLONNA e non
-     sta in `raw_response`. 📏 Misurato sulla seconda prova di Laura: la riga qui sopra era in
-     servizio ed era giusta, ma `aspetta_maestro` usciva sempre falso perché la select non
-     leggeva la colonna — la domanda «tieni o riprovi?» è partita lo stesso.
-     📌 *Il banco prova le funzioni su righe COMPLETE: la riga monca la fabbrica solo la select
-     vera, quindi la select si sorveglia per nome.* */
-  ['la select delle schede porta la colonna che sopraIlTetto legge',
-    /select\('token, submitted_at, raw_response, calculated_level, member_decision, member_decision_at'\)/.test(srcPonte)],
+  /* 🔄🚨⭐⭐ 27/08/2026 sera — QUESTA GUARDIA È STATA SOSTITUITA, non tolta, e il perché vale
+     più della riga. Qui c'era il confronto con la stringa ESATTA della select
+     (`/select\('token, submitted_at, raw_response, calculated_level, …'\)/`), nata la notte
+     prima quando `calculated_level` mancava e tutto il ramo del maestro era inerte.
+     🚨 Era una guardia sull'ISTANZA: congelando la stringa proteggeva quella colonna e **non
+     poteva accorgersi di una colonna nuova**. Infatti stasera non si è accorta di niente —
+     mancava `declared_level`, il gradino sulle bocciature non usciva mai, e lei era verde.
+     Poi è diventata rossa per il motivo sbagliato: perché la stringa era **cambiata**.
+     ⇒ Al suo posto c'è la guardia poco più su, che le colonne se le LEGGE dal modulo del giro
+     e le cerca in TUTTE E DUE le select. Quella di prima sapeva dire «la stringa non è più
+     quella»; questa sa dire «manca una colonna che serve», che è la domanda vera.
+     📌 *Curare l'istanza invece della classe non è una cura — ed è scritto in CLAUDE.md dal
+     15/08. Questa è la stessa lezione pagata su una guardia invece che su un documento.* */
   ['e lo fa DOPO il calcolo, non dentro',
     srcPonte.indexOf('if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;')
       > srcPonte.indexOf('puo_scegliere: (() => {')],
@@ -849,6 +853,34 @@ const guardie = [
     /gradino_offerto: gradinoOfferto\(s, payload\.level\)/.test(srcPonte)],
   ['…e il ponte non manda MAI il numero del gradino',
     !/gradino_livello|livelloDellaFascia/.test(srcPonte)],
+  /* 🩹🚨⭐⭐ 27/08/2026 sera — LA GUARDIA CHE MANCAVA, e che sarebbe costata la serata.
+     📏 Il difetto vero, misurato sul test di Fabiola delle 21:45: `gradinoOfferto` sul ramo
+     `fail` legge `declared_level`, e la `.select()` di questo ponte NON lo chiedeva ⇒ il
+     gradino usciva sempre vuoto e il socio vedeva i due bottoni di ieri. Nel ponte della
+     SCELTA mancavano DUE colonne, e lì un «scendo» sarebbe stato rifiutato anche dove il
+     bottone c'era.
+     ⚖️ Perché nessun banco l'ha visto: le prove della REGOLA le passavano tutte — la regola è
+     giusta — e a essere monco era **ciò che le si dà in pasto**. `deno check` nemmeno: una
+     select è una stringa. ⇒ La sonda giusta non prova la regola, confronta i DUE lati.
+     ⭐ E le colonne non sono un elenco scritto qui: si LEGGONO dal modulo del giro. Chi domani
+     farà leggere alla regola una colonna nuova vedrà rosso senza che nessuno si ricordi di
+     aggiornare questo banco — che è l'unico modo in cui una guardia così resta viva.
+     📌 *Una regola giusta con in pasto una riga monca è una regola che non gira.* */
+  ...(() => {
+    const colonne = [...new Set(
+      [...src.matchAll(/\(scheda \|\| \{\}\)\.([a-z_]+)|scheda\?\.([a-z_]+)/g)]
+        .map((m) => m[1] || m[2])
+        .filter((c) => c !== 'token'),   // il gettone c'è in tutte le select per costruzione
+    )];
+    const SELECT_LINK = (srcPonte.match(/\.select\('token, submitted_at[^']*'\)/) || [''])[0];
+    const srcScelta = readFileSync(join(FUNZIONI, 'consumer-assessment-decision', 'index.ts'), 'utf8');
+    const SELECT_SCELTA = (srcScelta.match(/\.select\('id, token, submitted_at[^']*'\)/) || [''])[0];
+    return [
+      [`il modulo legge ${colonne.length} colonne della scheda (${colonne.join(', ')})`, colonne.length >= 4],
+      ['la select del ponte del LINK le chiede tutte', !!SELECT_LINK && colonne.every((c) => SELECT_LINK.includes(c))],
+      ['la select del ponte della SCELTA le chiede tutte', !!SELECT_SCELTA && colonne.every((c) => SELECT_SCELTA.includes(c))],
+    ];
+  })(),
   // ── Le TRE COPIE del modulo, che il deploy costringe a esistere ──
   // 🚨 È la stessa difesa di `scrittura-al-circolo.test.ts`: i deploy saltano `_shared/`,
   //    quindi la regola vive in copie, e la deriva fra copie è il modo in cui questi fix si
