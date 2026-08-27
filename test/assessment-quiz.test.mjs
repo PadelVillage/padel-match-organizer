@@ -105,6 +105,39 @@ ok('🚨 la fascia esce sia da «4» sia da «4.0 - Avanzato»',
 ok('…e «2.0 - Base» dà Base, non vuoto', C.fasciaDaLivello('2.0 - Base') === 'Base');
 ok('…Semi-Pro non ha quiz, e non è una dimenticanza', C.fasciaDaLivello('6.0 - Semi-Pro') === '');
 
+// ── 🆕 6bis. LA SELECT DEL GETTONE E IL SUO TIPO SONO LA STESSA FORMA ────────────
+/* 🚨⭐⭐ Nato da un rosso vero, il 27/08 sera: aggiungendo `created_at` alla `.select()` e al
+   tipo locale dentro `gettoneValido`, era rimasto indietro il `type Gettone` in cima al file —
+   che è la TERZA dichiarazione della stessa forma. `deno check` l'ha visto, ma solo in CI:
+   deno non è installato nel container, e `deno.land` è bloccato dal proxy ⇒ **in locale quel
+   controllo non esiste**, e il rosso costa un giro di PR ogni volta.
+   ⇒ Qui si pinza ciò che si può pinzare da Node: le colonne chieste al database e i campi del
+   tipo devono essere lo stesso insieme. Non sostituisce `deno check`; intercetta la classe di
+   errore che ci è già costata un giro.
+   📌 *Due dichiarazioni della stessa forma si tengono insieme con una prova, non con l'attenzione.* */
+const edgeQuiz = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'functions', 'assessment-quiz', 'index.ts'), 'utf8');
+ok('🚨 la select del gettone e il `type Gettone` elencano le STESSE colonne', (() => {
+  const sel = edgeQuiz.match(/\.select\('(token, member_local_id[^']*)'\)/);
+  const tipo = edgeQuiz.match(/type Gettone = \{([\s\S]*?)\n\} \| null;/);
+  if (!sel || !tipo) { console.log('   → select o tipo non trovati: è cambiata la forma'); return false; }
+  const colonne = sel[1].split(',').map((c) => c.trim()).sort();
+  // Dal tipo si prendono i nomi di campo, saltando le righe di commento.
+  const campi = tipo[1].split('\n')
+    .filter((r) => !r.trim().startsWith('//'))
+    .join(' ')
+    // 🚨 le CIFRE servono: senza, `phone_last4` non veniva riconosciuto e la guardia dava un
+    //    falso rosso — trovato al primo giro, e un falso rosso è peggio di nessuna guardia.
+    .match(/([a-z_0-9]+)\s*:/g) || [];
+  const nomi = campi.map((c) => c.replace(':', '').trim()).sort();
+  const manca = colonne.filter((c) => !nomi.includes(c));
+  const inPiu = nomi.filter((n) => !colonne.includes(n));
+  if (manca.length || inPiu.length) {
+    console.log(`   → nel tipo manca: [${manca}] · nel tipo in più: [${inPiu}]`);
+    return false;
+  }
+  return true;
+})());
+
 // ── 7. nessun nome dichiarato due volte: è ciò che uccise la prima versione ──────
 const sorgente = readFileSync(MODULO, 'utf8');
 const nomi = [...sorgente.matchAll(/^export (?:function|const)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);

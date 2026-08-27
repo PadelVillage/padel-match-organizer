@@ -51,6 +51,11 @@ type Domanda = { id: string; fascia: string; trap: boolean; q: string; opts: str
 type Gettone = {
   token: string; member_local_id: string | null; member_name: string | null;
   phone_last4: string | null; status: string; expires_at: string | null;
+  // 🆕 27/08 sera — l'istante di nascita del gettone: è il taglio immutabile della MEMORIA
+  //    della pescata (vedi `domandeGiaViste`). ⚠️ Questo tipo e la `.select()` di
+  //    `gettoneValido` sono DUE dichiarazioni della stessa forma: si cambiano insieme, o
+  //    `deno check` cade — ed è successo, perché in locale deno non c'è e a dirlo è solo la CI.
+  created_at: string | null;
 } | null;
 
 const CORS_HEADERS = {
