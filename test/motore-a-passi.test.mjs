@@ -154,14 +154,31 @@ prova('la domanda di conoscenza non dice quale sia la trappola né la risposta g
     return primaOpzione(d);
   });
   const conoscenza = Object.keys(risposte).filter((k) => k.startsWith('k:'));
-  uguale(conoscenza.length, 4, 'domande di conoscenza fatte');
+  uguale(conoscenza.length, 5, 'domande di conoscenza fatte');   // 🔄 27/08: pescata 2+3
 });
 
-prova('il giro finisce in 12 passi, senza ripetere e senza saltare', () => {
+prova('il giro finisce in 13 passi, senza ripetere e senza saltare — e MISCHIATO (27/08)', () => {
+  /* 🔄🗣️ 27/08 — qui si pretendeva «le prime otto in ordine, le ultime quattro di conoscenza»:
+     era la forma A BLOCCO, e lui l'ha rovesciata («sei d'accordo di mischiare le domande
+     trabocchetto tra una domanda vera e un'altra?»). Ora si pretende il contrario. */
   const { visti, passi } = giroIntero('gettone-C', (d) => (d.chiave === 'declaredLevel' ? '3.5' : primaOpzione(d)));
-  uguale(passi, 12, 'passi');
-  uguale(visti.slice(0, 8), P.SCHEDA_DOMANDE.map((d) => d.chiave), 'le prime otto, in ordine');
-  vero(visti.slice(8).every((k) => k.startsWith('k:')), 'le ultime quattro sono di conoscenza');
+  uguale(passi, 13, 'passi');
+  uguale(visti.slice(0, 3), ['experience', 'frequency', 'declaredLevel'], 'le prime TRE fisse: la fascia si sceglie l\u00ec');
+  uguale(new Set(visti).size, 13, 'nessuna ripetuta');
+  uguale(visti.filter((k) => k.startsWith('k:')).length, 5, 'le cinque di conoscenza ci sono tutte');
+  // 🚨 Il MISCHIATO si pretende su più gettoni: su uno solo la mescolata potrebbe per caso
+  //    ricadere nel blocco. Con dieci gettoni, che TUTTI mettano la conoscenza in fondo è
+  //    (5!·5!/10!)^10 — se succede, non è sfortuna: è il blocco tornato.
+  const inBlocco = (gettone) => {
+    const giro = giroIntero(gettone, (d) => (d.chiave === 'declaredLevel' ? '3.5' : primaOpzione(d)));
+    return giro.visti.slice(8).every((k) => k.startsWith('k:'));
+  };
+  const gettoni = Array.from({ length: 10 }, (_, i) => `gettone-mescola-${i}`);
+  vero(!gettoni.every(inBlocco), 'la conoscenza sta sempre in fondo: il blocco \u00e8 tornato');
+  // ⭐ E lo stesso gettone d\u00e0 sempre lo stesso ordine: chi riprende un test a met\u00e0
+  //    ritrova le domande dove le aveva lasciate.
+  const ancora = giroIntero('gettone-C', (d) => (d.chiave === 'declaredLevel' ? '3.5' : primaOpzione(d)));
+  uguale(ancora.visti, visti, 'stesso gettone, stesso ordine');
 });
 
 prova('senza cancello il giro finisce a 8, e il totale si CORREGGE invece di mentire', () => {
@@ -169,7 +186,7 @@ prova('senza cancello il giro finisce a 8, e il totale si CORREGGE invece di men
   // casi le domande sono otto — ma prima della terza risposta non lo sa nessuno.
   for (const [livello, nome] of [['1.5', 'Principiante'], ['6.5', 'Semi-Pro'], ['7', 'Professionista']]) {
     const prima = P.passoCorrente('gettone-D', { experience: 'Meno di 1 mese', frequency: '0-1' });
-    uguale([prima.totale, prima.totale_certo], [12, false], 'prima della terza risposta è una previsione');
+    uguale([prima.totale, prima.totale_certo], [13, false], 'prima della terza risposta è una previsione');
     const { passi } = giroIntero('gettone-D', (d) => (d.chiave === 'declaredLevel' ? livello : primaOpzione(d)));
     uguale(passi, 8, `${nome}: passi`);
   }
@@ -251,7 +268,7 @@ prova('le risposte di conoscenza si separano dal resto, e la correzione le ricon
   const pescate = C.pescaPerGettone('gettone-G', 'Intermedio');
   uguale(Object.keys(soloQuiz).sort(), pescate.map((p) => p.id).sort(), 'gli id sono quelli pescati');
   const esito = C.assessKnowledgeEvaluate(pescate.map((p) => p.id), soloQuiz, 'Intermedio');
-  uguale(esito.total, 4, 'domande corrette dal server');
+  uguale(esito.total, 5, 'domande corrette dal server');
   vero(['pass', 'fail'].includes(esito.status), 'esito riconosciuto');
 });
 
@@ -330,9 +347,10 @@ prova('SABOTAGGIO: due opzioni che si separano troppo tardi verrebbero VISTE', (
    toglie, la frase dell'invito cambia da sé. Un numero copiato nell'edge sarebbe diventato
    falso in silenzio, e solo per chi legge l'invito. */
 prova('🗣️ il conto previsto è quello VERO, e coincide col totale del primo passo', () => {
-  uguale(P.domandeTotaliPreviste(), P.SCHEDA_DOMANDE.length + 4, 'il conto non nasce dalle domande');
-  // 🚨 La cosa che conta non è che faccia 12: è che dica lo STESSO numero del primo passo.
-  //    Se le due divergessero, il socio leggerebbe «sono 12 domande» e poi «Domanda 1 di 14».
+  // 🔄 27/08 — il conto si confronta con la PESCATA vera (2+3), non con un 4 ricopiato qui.
+  uguale(P.domandeTotaliPreviste(), P.SCHEDA_DOMANDE.length + C.quantePescate(), 'il conto non nasce dalle domande');
+  // 🚨 La cosa che conta non è che faccia 13: è che dica lo STESSO numero del primo passo.
+  //    Se le due divergessero, il socio leggerebbe «sono 13 domande» e poi «Domanda 1 di 14».
   const primo = P.passoCorrente('gettone-conto', {});
   uguale(primo.totale, P.domandeTotaliPreviste(), 'l\'invito e il primo passo direbbero numeri diversi');
   vero(primo.totale_certo === false, 'prima della fascia il totale è una previsione');

@@ -219,11 +219,41 @@ proposta; la frase la leggeranno i soci, quindi la forma la decide lui.
 
 🗣️🔴 **«SOPRATTUTTO PER I LIVELLI BASSI CHE POSSONO BARARE, AUMENTARE DI UNA DOMANDA LE
 TRABOCCHETTO E LEVARNE UNA NORMALE.»**
-🔨 **Fatta**: la pescata del cancello passa da **3+1 a 2+2** (`conoscenza.js`, un numero in un
-posto solo). Le domande restano quattro e la soglia resta 3 su 4: cambia quanto costa
-rispondere a orecchio. La banca ne ha 9 per fascia, la varietà regge. ⚖️ **I margini del 9/08
-non si toccano**: Principiante resta senza quiz, e per Base la trappola sbagliata continua a
-non bocciare da sola — lì le due trappole contano solo nel conteggio delle giuste.
+🔨 Fatta in mattinata come **2+2 con soglia 3/4**, e **superata a mezzogiorno dalla sua stessa
+delega** (righe qui sotto): la pescata in servizio a fine giornata è **2+3 con soglia 4/5**.
+Questa riga si corregge invece di raccontare un assetto vissuto tre ore.
+
+### 📌 …e la DELEGA di mezzogiorno (27/08): il cancello si rifà
+
+🗣️ Prima la regola — *«se ne può sbagliare una su cinque»* — poi la domanda sua sul mischiare,
+poi la delega intera: *«decidi tu, tenendo conto che il test deve risultare il più difficile da
+ricordare e soprattutto da azzeccare per i livelli da principiante a intermedio»*. Cinque
+decisioni, dichiarate come vuole la delega:
+
+① **Pescata 2 normali + 3 trabocchetto, soglia 4 su 5** — e l'errore concesso è UNO e vale su
+QUALUNQUE domanda, trabocchetto compresa: la sua frase non conviveva con `trap_wrong_fails`
+(una trabocchetto sbagliata bocciava da sola), e si è scelta la sua. Chi crede a **due** colpi
+inventati resta fuori comunque.
+② 🔄 **I margini morbidi di Base del 9/08 sono TOLTI** (2 giuste bastavano, la trappola non
+contava): la sua parola di oggi dice il contrario di quella, e la riga si è corretta. Rifare è
+gratis: la severità costa un riprovare, non una porta chiusa. ⛔ **Principiante resta senza
+quiz** — quella regola del 9/08 non è stata toccata.
+③ **Le domande di conoscenza si MISCHIANO fra quelle della scheda** (le prime tre restano
+fisse: la fascia si sceglie alla terza). Ordine mescolato col gettone, ripetibile: chi
+riprende un test a metà ritrova le domande dov'erano. Prima il cancello stava in blocco in
+fondo, e chi rifaceva il test sapeva quali domande contano.
+④ 🚨⭐⭐ **Il segnale «Non esiste» è stato ROTTO, ed era il buco più grosso — misurato**: delle
+45 trabocchetto, **37 (82%)** avevano come risposta giusta «Non esiste…», e **nessuna** delle
+135 normali portava quell'opzione. Una regola sola — *se c'è «Non esiste», è quella* — passava
+il cancello senza sapere niente di padel. ⇒ Nascono **12 trabocchetto ALLA ROVESCIA** (3 per
+fascia interrogabile): regole VERE che sembrano inventate — contropared, salida, x3, punto
+d'oro, dormilona, gancho, servizio di rovescio — dove «Non esiste» c'è ed è **sbagliata**.
+Una guardia nel banco pretende che restino.
+⑤ Il **conto delle domande** annunciato dal bot (ora **13**) non è scritto da nessuna parte:
+esce dalla pescata vera (`quantePescate`), e l'edge del link è stata rideployata apposta —
+il suo bundle **incorpora** `passi.js`, e senza il ritocco avrebbe annunciato 12 su un test
+da 13.
+⏳ Prova fisica: un test intero, con le conoscenza sparse e — sbagliandone due — la bocciatura.
 
 ## 📌 Le decisioni prese dal committente il 26/08
 
