@@ -299,6 +299,32 @@ export function sopraIlTetto(scheda: any, livelloAttuale: any) {
   return definizioneLivello(n) !== definizioneLivello(inScheda);
 }
 
+/**
+ * 🆕🗣️ 27/08/2026 mattina (variante P7 di `docs/test-livello-varianti.md`, approvata da lui) —
+ * «questa prova ha detto MENO di quello che il socio ha in scheda?».
+ *
+ * ⚖️ Dove è vero non c'è nessuna scelta da fare: il livello non si abbassa mai con un test
+ * (sua regola del 27/08), quindi «tieni o riprovi?» avrebbe due risposte che portano allo
+ * stesso posto — non una scelta, una promessa travestita (la stessa forma del caso di Laura
+ * sopra il tetto, un ramo più in là). Il ponte lo manda al bot (`il_test_dice_meno`), che
+ * dice il fatto — «il tuo livello resta X» — e offre il bottone per riprovare.
+ *
+ * 🚨 Il MENO si misura in PAROLE, come il «di più» di `sopraIlTetto`: 4 e 4,5 sono tutti e
+ * due «Avanzato», e quel caso resta una scelta vera (tengo = resto quello che sono). Serve
+ * quindi numero più basso E fascia diversa.
+ * 🔒 Chi non ha un livello in scheda non può «dire meno» di niente: falso.
+ */
+export function ilTestDiceMeno(scheda: any, livelloAttuale: any) {
+  if (esitoDellaProva(scheda) !== 'pass') return false;
+  const n = livelloDimostrato(scheda);
+  if (n === null) return false;
+  const grezzo = String(livelloAttuale ?? '').trim().replace(',', '.');
+  const inScheda = grezzo ? Number(grezzo) : NaN;
+  if (!Number.isFinite(inScheda)) return false;
+  if (!(n < inScheda)) return false;
+  return definizioneLivello(n) !== definizioneLivello(inScheda);
+}
+
 // «Questa prova ha ESAURITO il suo giro?» — è la domanda di `assessment-apply-level`:
 // alla terza prova non c'è una domanda da fare al socio (non c'è una quarta a cui
 // rimandare), quindi il suo esito si applica da solo, con le protezioni del ribasso.

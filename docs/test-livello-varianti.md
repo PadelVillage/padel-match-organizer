@@ -43,7 +43,7 @@ la fascia è la parola della scala.
 | **P4** | `A` < `D`, **fasce diverse**, `D` > 3,5 (es. Base 2,5 → Agonista 5 — il caso di Laura) | messaggio del **maestro** | Intermedio se `A` < 3,5; **niente** se `A` ≥ 3,5 (non si scende al tetto) | ✅ |
 | **P5** | `A` < `D` ma **STESSA fascia** (es. 4 → 4,5, tutti e due **Avanzato** — il caso di Maurizio) | ~~messaggio del maestro~~ → **domanda + bottoni** (cura del 27/08 mattina) | **niente**: la parola in scheda è già quella | 🔧 curata oggi |
 | **P6** | `A` = `D` (es. 4 → 4) | domanda + bottoni | **niente** («il socio ha già questo livello») | ✅ |
-| **P7** | `A` > `D` — **il test dice MENO** (es. Avanzato 4 → Intermedio 3) | domanda *«Il test dice **Intermedio**. Vuoi tenerlo o riprovare?»* con «✅ Tengo Intermedio» | **niente** (il livello non scende) | ⚠️ **APERTA** — vedi sotto |
+| **P7** | `A` > `D` — **il test dice MENO** (es. Avanzato 4 → Intermedio 3) | ~~domanda con «✅ Tengo Intermedio»~~ → **esito senza domanda**: *«Il tuo livello resta **Avanzato**… Vuoi rifarlo?»* + bottone riprova (sua approvazione, 27/08) | **niente** (il livello non scende) | 🔧 curata il 27/08 |
 
 **P5 — perché era sbagliata, con le parole del committente** (27/08 mattina): *«quando uno fa il
 test e risulta lo stesso livello che già ha nella scheda di anagrafica, non c'è bisogno che si
@@ -54,14 +54,16 @@ il socio **non ha**; qui il socio ce l'ha già. ⇒ `sopraIlTetto` ora esige anc
 diversa da quella in scheda** — e la lista «Da certificare dal maestro» nel gestionale
 (`assessmentAspettaIlMaestro`) usa lo stesso criterio, quindi **Maurizio ne esce, Laura resta**.
 
-**P7 — il buco ancora aperto, trovato scrivendo questa scheda.** A chi dimostra **meno** di quello
-che ha, il bot offre «✅ Tengo Intermedio» — cioè di *tenere* un livello più basso che **non verrà
-mai scritto** (il livello non scende, sua regola del 27/08). Chi lo tocca si sente dire *«tengo
-Intermedio, te lo registro»* e `/livello` continua — giustamente — a dire **Avanzato**: una
-promessa doppia e falsa. 💡 Proposta: qui non c'è **nessuna scelta da fare** (nessuna delle due
-risposte cambia la scheda) ⇒ niente domanda; esito del tipo *«Test superato. Il tuo livello resta
-**Avanzato**»* + bottone per riprovare. **Aspetta la sua parola** — è una frase che leggeranno i
-soci.
+**P7 — trovata scrivendo questa scheda, approvata da lui e CURATA lo stesso giorno.** A chi
+dimostra **meno** di quello che ha, il bot offriva «✅ Tengo Intermedio» — cioè di *tenere* un
+livello più basso che **non verrà mai scritto** (il livello non scende, sua regola del 27/08) — e
+al tocco prometteva una registrazione mai esistita. ⇒ Dove nessuna risposta cambia la scheda non
+c'è una scelta: il ponte manda il fatto (**`il_test_dice_meno`**, calcolato da `ilTestDiceMeno`
+nel modulo del giro — il «meno» si misura in **parole**, come il «di più» di `sopraIlTetto`) e
+spegne `puo_scegliere`; il bot dice l'esito e offre il bottone per riprovare. La **rete** copre i
+bottoni vecchi rimasti in chat («il tuo livello resta **Avanzato**», nessuna promessa).
+⛔ Ordine di messa in servizio rispettato: **prima il bot** (il campo che nessuno manda è inerte),
+**poi il ponte** — al contrario, la domanda spenta con un bot vecchio sarebbe stata silenzio.
 
 ---
 
@@ -82,7 +84,7 @@ soci.
 | P1/P3 (il livello si scrive) | *«Perfetto: tengo **X** 👍 Te lo registro sulla scheda a breve.»* | ✅ |
 | P4 (bottone vecchio rimasto in chat: sopra il tetto non c'è scelta) | *«In scheda per adesso resta **X**. Sopra Intermedio… te lo certifica il maestro»* | ✅ (rete del 27/08 notte) |
 | P5/P6 (la parola è già in scheda: non si scrive niente) | oggi *«te lo registro a breve»* → 🔧 cura: *«Perfetto: tengo **X** 👍 In scheda hai già questo livello.»* | 🔧 curata oggi (bot) |
-| P7 | *«tengo Intermedio, te lo registro»* — **falso due volte** | ⚠️ aperta (vedi P7) |
+| P7 (bottone vecchio in chat) | *«Il tuo livello resta **Avanzato**. Un test il livello non lo abbassa mai.»* | 🔧 curata il 27/08 (rete) |
 | F1, tocco su «👍 Mi tengo il mio livello» | *«il livello che hai adesso in scheda resta quello»* | ✅ |
 
 ⚠️ **La cura P5/P6 del bot confronta le due PAROLE che il gestionale gli manda** (`fascia` e
