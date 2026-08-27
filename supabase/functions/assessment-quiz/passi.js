@@ -258,8 +258,11 @@ export function domandeDelGiro(token, risposte, viste) {
  * chiede qui e lo manda al bot; il bot lo ripete e basta — *il gestionale SA, il bot DICE*.
  * ⇒ Il giorno in cui una domanda si aggiunge o si toglie, la frase dell'invito cambia da sé,
  * e nessuno deve ricordarsi di rincorrerla in tre posti.
- * ⚠️ È una PREVISIONE, non un fatto: chi dichiara Principiante, Semi-Pro o Professionista non
- * ha il cancello e ne farà otto. Il conto cala dopo la terza risposta — cala, non cresce.
+ * ⚠️ È una PREVISIONE, non un fatto: chi dichiara Semi-Pro o Professionista non ha il quiz e
+ * ne farà otto. Il conto cala dopo la terza risposta — cala, non cresce.
+ * 🔄 27/08 sera — e Principiante è uscito da quell'elenco: da stasera le sue domande si
+ * pescano come per tutti (sua decisione, «sblocca le domande della banca per principiante»),
+ * quindi per lui la previsione di 13 è diventata un fatto invece di un numero da correggere.
  */
 export function domandeTotaliPreviste() {
   // 🔄 27/08 — il 4 scritto a mano è diventato il conto vero della pescata (oggi 5): il
@@ -271,9 +274,10 @@ export function domandeTotaliPreviste() {
  * DOVE SIAMO. Restituisce la prima domanda senza risposta, oppure `finito`.
  *
  * ⚠️ IL TOTALE PUÒ SCENDERE, ed è voluto: finché il livello non è dichiarato non si sa se quel
- * socio avrà il cancello (Principiante non ce l'ha, Semi-Pro e Professionista nemmeno) ⇒ prima
- * della terza domanda il totale è una **previsione** (8 + 4), dopo è un fatto. Meglio un numero
- * che si corregge di uno che promette dodici passi a chi ne farà otto.
+ * socio avrà il cancello (Semi-Pro e Professionista non ce l'hanno) ⇒ prima della terza domanda
+ * il totale è una **previsione**, dopo è un fatto. Meglio un numero che si corregge di uno che
+ * promette tredici passi a chi ne farà otto.
+ * 🔄 27/08 sera — Principiante è uscito dall'elenco: le sue domande adesso si pescano.
  */
 export function passoCorrente(token, risposte, viste) {
   const date = risposte || {};

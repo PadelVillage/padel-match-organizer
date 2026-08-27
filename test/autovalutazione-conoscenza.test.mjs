@@ -286,11 +286,34 @@ prova('spazi e maiuscole non cambiano l\'esito', () => {
 });
 
 // ── 🆕 9/08: il cancello NON è uguale per tutte le fasce (variante «B», sua scelta) ────────
-prova('Principiante: nessun cancello, e si passa', () => {
-  uguale(A.assessKnowledgePick('Principiante').length, 0, 'domande pescate');
-  const esito = A.assessKnowledgeEvaluate([], {}, 'Principiante');
-  uguale(esito.status, 'pass', 'esito');
-  uguale(esito.senza_cancello, true, 'marchio «senza cancello»');
+/* 🔄🗣️⭐⭐ 27/08/2026 sera — QUESTA PROVA È STATA RIBALTATA, su sua decisione: *«direi di
+   sbloccare le domande della banca per principiante»*. Fino a stasera pretendeva ZERO domande
+   pescate; adesso pretende che le domande CI SIANO e che non boccino nessuno.
+   ⚖️ La regola che difende non è cambiata di verso — a Principiante non si sbarra la strada —
+   è cambiato il modo: prima non chiedendo niente, adesso chiedendo senza far pagare l'errore.
+   🚨 E il perché la soglia dev'essere ZERO e non «morbida», con le sue parole: *«un
+   principiante mi può sbagliare quattro risposte su cinque»*. Sotto Principiante non c'è
+   nessuna fascia (la scala parte da 0,5 e Principiante arriva a 1,5) ⇒ un bocciato lì non
+   avrebbe nessun gradino da prendere, e resterebbe senza niente. */
+prova('Principiante: le domande CI SONO, e nessuna risposta lo boccia', () => {
+  const pescate = A.assessKnowledgePick('Principiante');
+  uguale(pescate.length, A.quantePescate(), 'domande pescate: come per tutte le altre fasce');
+  // Sbagliandole TUTTE — comprese le trabocchetto — si passa lo stesso.
+  const sbagliate = {};
+  for (const q of pescate) sbagliate[q.id] = 'una risposta che non è fra le opzioni';
+  const esito = A.assessKnowledgeEvaluate(pescate.map((q) => q.id), sbagliate, 'Principiante');
+  uguale(esito.status, 'pass', 'esito con zero risposte giuste');
+  uguale(esito.correct, 0, 'giuste');
+  uguale(esito.soglia, 0, 'soglia della fascia');
+});
+
+prova('🚨 …ma il cancello non si è ammorbidito per NESSUN ALTRO: Base boccia come prima', () => {
+  // Il controllo del metro: se la soglia zero sfuggisse dalla riga di Principiante a tutta la
+  // banca, questa prova diventerebbe verde-sbagliata. Qui deve restare rossa la bocciatura.
+  const pescate = A.assessKnowledgePick('Base');
+  const sbagliate = {};
+  for (const q of pescate) sbagliate[q.id] = 'una risposta che non è fra le opzioni';
+  uguale(A.assessKnowledgeEvaluate(pescate.map((q) => q.id), sbagliate, 'Base').status, 'fail', 'esito Base');
 });
 
 prova('🚨 zero domande NON vuol dire la stessa cosa per Semi-Pro', () => {
@@ -360,8 +383,14 @@ prova('🆕🚨 il segnale «Non esiste» è ROTTO: in ogni fascia interrogabile
   }
 });
 
-prova('lo staff legge che il cancello non era richiesto', () => {
-  const riga = A.assessKnowledgeRiepilogo(A.assessKnowledgeEvaluate([], {}, 'Principiante'));
+prova('lo staff legge che il cancello non era richiesto — sulle schede VECCHIE', () => {
+  /* 🔄 27/08 sera — da stasera nessuna fascia nasce «senza cancello» (Principiante è stato
+     sbloccato), ma le schede di prima quel marchio ce l'hanno scritto dentro e vanno lette
+     ancora. ⇒ Si prova il LETTORE su una scheda com'erano fatte allora, invece di fabbricarne
+     una nuova che oggi non esisterebbe.
+     📌 Togliere questa prova insieme alla regola avrebbe reso illeggibile il passato. */
+  const schedaDiPrima = { senza_cancello: true, fascia: 'Principiante', correct: 0, total: 0, questions: [] };
+  const riga = A.assessKnowledgeRiepilogo(schedaDiPrima);
   if (!riga.includes('non richiesta')) throw new Error(`riepilogo inatteso: ${riga}`);
   if (!riga.includes('Principiante')) throw new Error(`manca la fascia: ${riga}`);
 });

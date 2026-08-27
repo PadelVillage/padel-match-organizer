@@ -181,15 +181,27 @@ prova('il giro finisce in 13 passi, senza ripetere e senza saltare — e MISCHIA
   uguale(ancora.visti, visti, 'stesso gettone, stesso ordine');
 });
 
-prova('senza cancello il giro finisce a 8, e il totale si CORREGGE invece di mentire', () => {
-  // Principiante non ha cancello; Semi-Pro e Professionista non hanno quiz. In tutti e tre i
-  // casi le domande sono otto — ma prima della terza risposta non lo sa nessuno.
-  for (const [livello, nome] of [['1.5', 'Principiante'], ['6.5', 'Semi-Pro'], ['7', 'Professionista']]) {
+prova('senza quiz il giro finisce a 8, e il totale si CORREGGE invece di mentire', () => {
+  /* 🔄 27/08 sera — PRINCIPIANTE È USCITO DA QUESTA PROVA, ed è la cosa che vale la pena
+     leggere. Fin qui erano TRE le fasce che finivano a otto: Principiante (che il cancello non
+     ce l'aveva) più Semi-Pro e Professionista (che il quiz non ce l'hanno affatto).
+     🗣️ Su sua decisione — *«sblocca le domande della banca per principiante»* — quella fascia
+     adesso le domande le fa, quindi il suo giro è di 13 come per tutti: sta nella prova qui
+     sotto. ⇒ Qui restano le DUE per cui la previsione va ancora corretta. */
+  for (const [livello, nome] of [['6.5', 'Semi-Pro'], ['7', 'Professionista']]) {
     const prima = P.passoCorrente('gettone-D', { experience: 'Meno di 1 mese', frequency: '0-1' });
     uguale([prima.totale, prima.totale_certo], [13, false], 'prima della terza risposta è una previsione');
     const { passi } = giroIntero('gettone-D', (d) => (d.chiave === 'declaredLevel' ? livello : primaOpzione(d)));
     uguale(passi, 8, `${nome}: passi`);
   }
+});
+
+prova('🆕 Principiante fa il giro INTERO, come tutte le fasce che hanno il cancello', () => {
+  /* 📏 Il fatto che questa prova fissa: la previsione annunciata (13) per Principiante adesso
+     è un FATTO, non un numero che poi cala a 8. Chi rimettesse `cancello: false` su quella
+     fascia vede rosso qui, e non solo nel banco della conoscenza. */
+  const { passi } = giroIntero('gettone-D2', (d) => (d.chiave === 'declaredLevel' ? '1.5' : primaOpzione(d)));
+  uguale(passi, P.domandeTotaliPreviste(), 'Principiante: passi');
 });
 
 prova('cambiare idea sul livello a metà giro cambia le domande, e il giro finisce lo stesso', () => {
