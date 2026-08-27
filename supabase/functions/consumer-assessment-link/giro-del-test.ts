@@ -281,7 +281,22 @@ export function sopraIlTetto(scheda: any, livelloAttuale: any) {
   if (n === null || !(n > TETTO_AUTOMATICO)) return false;
   const grezzo = String(livelloAttuale ?? '').trim().replace(',', '.');
   const inScheda = grezzo ? Number(grezzo) : NaN;
-  return !Number.isFinite(inScheda) || n > inScheda;
+  if (!Number.isFinite(inScheda)) return true;
+  if (!(n > inScheda)) return false;
+  /* 🔄🗣️⭐⭐ 27/08/2026 mattina — E SI CONFRONTANO LE PAROLE, NON SOLO I NUMERI. Sua regola,
+     data col caso di Maurizio sotto gli occhi (in scheda 4, test 4,5 — tutti e due «Avanzato»):
+     *«quando uno fa il test e risulta lo stesso livello che già ha nella scheda di anagrafica,
+     non c'è bisogno che si chiami il maestro. Ci deve essere il bottone: tengo il mio livello
+     oppure rifaccio il test.»*
+     ⚖️ Il livello di un socio è una PAROLA (regola del 9/08: il numero non gli si dice mai), e
+     il maestro certifica una parola che il socio non ha ancora. Qui la parola è già la sua:
+     mandarlo in segreteria è chiedere al maestro un lavoro già fatto — e il messaggio che ne
+     usciva diceva «in scheda hai Avanzato… le tue risposte sono da Avanzato», cioè la stessa
+     parola due volte, con in mezzo l'ordine di farla certificare.
+     ⇒ Il confronto sui numeri resta (chi dimostra MENO non è mai «sopra»); a fare la differenza
+     in più serve una FASCIA diversa. La gemella `assessmentAspettaIlMaestro` in `index.html`
+     cambia insieme, e le due si guardano nei banchi. */
+  return definizioneLivello(n) !== definizioneLivello(inScheda);
 }
 
 // «Questa prova ha ESAURITO il suo giro?» — è la domanda di `assessment-apply-level`:

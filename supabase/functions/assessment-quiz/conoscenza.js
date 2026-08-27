@@ -76,8 +76,16 @@ export function pmoLivelloDefinizione(value) {
 }
 export const ASSESS_KNOWLEDGE_BANK = {
   version: 1,
-  pick_normal: 3,
-  pick_trap: 1,
+  /* 🔄🗣️ 27/08/2026 mattina — LA PESCATA PASSA DA 3+1 A 2+2, sua decisione dal telefono:
+     *«soprattutto per i livelli bassi che possono barare, direi di aumentare di una domanda
+     le domande trabocchetto e levarne una normale»*.
+     ⚖️ Le domande restano QUATTRO e la soglia resta 3 su 4: cambia solo quante delle quattro
+     sono trappole — cioè quanto costa rispondere «a orecchio» invece che per esperienza. La
+     banca ne ha 9 per fascia, quindi due pescate non esauriscono la varietà (in un giro se ne
+     vedono 2 su 9). I margini delle fasce basse decisi il 9/08 NON si toccano: Principiante
+     resta senza quiz, e per Base la trappola sbagliata continua a non bocciare da sola. */
+  pick_normal: 2,
+  pick_trap: 2,
   pass_min_correct: 3,     // su 4 pescate
   trap_wrong_fails: true,  // la trappola sbagliata boccia da sola, anche con le altre 3 giuste
   /* 🆕🗣️⭐⭐ 9/08/2026 — IL CANCELLO NON È UGUALE PER TUTTE LE FASCE (variante «B», sua scelta).

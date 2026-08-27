@@ -152,7 +152,9 @@ vm.runInContext(
   spoglia(['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'statoDelGiro', 'laProvaEsaurisceIlGiro',
     // 🆕 27/08 — la regola che decide se il socio va mandato dal maestro: vive qui dal 27/08,
     //    e dev'essere la STESSA che fa la lista nel gestionale (voce 100).
-    'livelloDimostrato', 'sopraIlTetto'].map(estrai).join('\n')),
+    // 🆕 27/08 mattina — `definizioneLivello` entra perché `sopraIlTetto` confronta le FASCE:
+    //    senza, la funzione morirebbe in vm con «definizioneLivello is not defined».
+    'livelloDimostrato', 'definizioneLivello', 'sopraIlTetto'].map(estrai).join('\n')),
   ctx,
 );
 const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto } = ctx;
@@ -608,6 +610,23 @@ caso('M7. 🚨 SABOTAGGIO: con la regola di stamattina (solo il tetto) il caso M
   const vero = sopraIlTetto(provaCon(4), '4');
   const soloIlTetto = 4 > 3.5;
   return [vero === false, soloIlTetto === true, vero !== soloIlTetto];
+});
+
+// 🆕 27/08 mattina — LA STESSA FASCIA NON VA DAL MAESTRO (il caso di Maurizio: in scheda 4,
+// test 4,5 — tutti e due «Avanzato»). Sua regola: *«quando uno fa il test e risulta lo stesso
+// livello che già ha nella scheda di anagrafica, non c'è bisogno che si chiami il maestro»*.
+caso('M8. 🗣️ in scheda 4 e dimostra 4,5 — stessa PAROLA ⇒ non va dal maestro', () =>
+  [sopraIlTetto(provaCon(4.5), '4') === false]);
+
+caso('M9. ⚖️ in scheda 3,5 e dimostra 4,5 — Intermedio → Avanzato ⇒ va: la parola è nuova', () =>
+  [sopraIlTetto(provaCon(4.5), '3.5') === true]);
+
+caso('M10. 🚨 SABOTAGGIO: col solo confronto sui numeri il caso M8 manderebbe Maurizio in segreteria', () => {
+  /* Si rifà a mano la regola di ieri — `dimostrato > inScheda` e basta — e si pretende un esito
+     diverso su M8: è dove ci si accorge se qualcuno «semplifica» via il confronto delle fasce. */
+  const vero = sopraIlTetto(provaCon(4.5), '4');
+  const soloINumeri = 4.5 > 4;
+  return [vero === false, soloINumeri === true, vero !== soloINumeri];
 });
 
 const guardie = [

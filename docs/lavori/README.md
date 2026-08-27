@@ -189,6 +189,42 @@ diventate la terza copia di un numero che decide chi sale di livello. ⚠️ Le 
 sono dichiarate: `PMO_LIVELLI` in `conoscenza.js` (serve al calcolo) e `pmoLivelloFascia` in
 `index.html` (la pagina non importa moduli dalle edge).
 
+### 📌 …e le tre della mattina DOPO (27/08), sempre dal telefono
+
+🗣️🔴🔴 **«QUANDO UNO FA IL TEST E RISULTA LO STESSO LIVELLO CHE GIÀ HA NELLA SCHEDA, NON C'È
+BISOGNO CHE SI CHIAMI IL MAESTRO. CI DEVE ESSERE IL BOTTONE: TENGO IL MIO LIVELLO OPPURE
+RIFACCIO IL TEST.»** Data col caso di Maurizio sotto gli occhi: in scheda **4**, test **4,5** —
+tutti e due «**Avanzato**» — e il bot gli diceva *«in scheda hai Avanzato… le tue risposte sono
+da Avanzato»* e in mezzo lo mandava dal maestro a certificare il livello che ha già.
+⚖️ Il confronto in servizio era sui **numeri** (`dimostrato > inScheda`, allargato ieri sera);
+ma il livello di un socio è una **PAROLA** (il numero non gli si dice mai, regola del 9/08), e
+il maestro certifica una parola che il socio **non ha ancora**. 4 → 4,5 è la stessa parola.
+🔨 **Curata**: `sopraIlTetto` esige anche una **fascia diversa** (3 copie di `giro-del-test.ts`),
+la gemella `assessmentAspettaIlMaestro` in `index.html` cambia insieme (TEST **6.255**), e il
+caso «anche mezzo passo conta» del banco — scritto ieri sera, rovesciato da lui stamattina —
+è stato **corretto, non affiancato**. Sabotaggi M10 e 15: la regola dei soli numeri li fa cadere.
+⇒ Con `aspetta_maestro` spento torna vero `puo_scegliere`, e la domanda coi due bottoni esce
+dal flusso **già esistente**: il bot non si tocca per questa metà. ⚖️ **Maurizio esce dalla
+lista del maestro (voce 100) per la ragione giusta**; Laura (Base → Agonista) resta.
+⏳ Prova fisica: un suo test con lo stesso esito deve mostrare la domanda coi bottoni.
+
+🗣️🔴 **«DOBBIAMO FARE UNA SCHEDA CON TUTTE LE POSSIBILI VARIANTI PERCHÉ CI STIAMO PERDENDO.»**
+✅ Fatta: **`docs/test-livello-varianti.md`** — esito × dimostrato × livello in scheda, con cosa
+dice il bot, cosa si scrive davvero e lo stato di ogni variante. Misurata dal codice, non dai
+ricordi. 🔎 **E scriverla ha trovato un buco che nessuno aveva segnalato** (variante **P7**): a
+chi dimostra **meno** di quello che ha, il bot offre «✅ Tengo Intermedio» — cioè di tenere un
+livello più basso che non verrà **mai** scritto (il livello non scende) — e risponde «te lo
+registro» mentre `/livello` continua a dire Avanzato. Sta fra le **nate misurando**, con la
+proposta; la frase la leggeranno i soci, quindi la forma la decide lui.
+
+🗣️🔴 **«SOPRATTUTTO PER I LIVELLI BASSI CHE POSSONO BARARE, AUMENTARE DI UNA DOMANDA LE
+TRABOCCHETTO E LEVARNE UNA NORMALE.»**
+🔨 **Fatta**: la pescata del cancello passa da **3+1 a 2+2** (`conoscenza.js`, un numero in un
+posto solo). Le domande restano quattro e la soglia resta 3 su 4: cambia quanto costa
+rispondere a orecchio. La banca ne ha 9 per fascia, la varietà regge. ⚖️ **I margini del 9/08
+non si toccano**: Principiante resta senza quiz, e per Base la trappola sbagliata continua a
+non bocciare da sola — lì le due trappole contano solo nel conteggio delle giuste.
+
 ## 📌 Le decisioni prese dal committente il 26/08
 
 🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e
@@ -1875,6 +1911,14 @@ codice di ieri**, che è l'unico modo di sapere che provano qualcosa. Sul ponte,
 il primo candidato resta **Santiago Carabajal**, che ci finirebbe usando il bottone «Ricollega le
 N schede che non si riconoscono». ⚠️ È una scrittura sul gestionale: si dice prima.
 
+🔄 **27/08 mattina, il criterio si è STRETTO di nuovo, su sua parola** — vedi la decisione del
+giorno in testa al file: il «di più» si misura **in PAROLE**, non solo nei numeri. Maurizio
+(4 → 4,5, tutti e due «Avanzato») **non è più un candidato**: il test di stanotte lo aveva fatto
+entrare in lista per mezzo punto dentro la stessa fascia, e il bot lo mandava dal maestro a
+certificare il livello che ha già. **Laura (Base → Agonista) resta** il candidato vero, insieme a
+Santiago. Il caso del banco che affermava il contrario («anche mezzo passo conta», scritto ieri
+sera) è stato **rovesciato dichiarandolo**, non cancellato.
+
 ---
 
 🔨✅ **La metà del SOCIO, curata prima nella stessa sera:** il **socio** adesso lo sa. Su sua regola
@@ -3545,6 +3589,21 @@ che è il modo in cui un residuo diventa un mistero.
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+### 🧩 A chi dimostra MENO di quello che ha, il bot offre di «tenere» un livello che non scriverà mai (27/08, scrivendo la scheda delle varianti)
+
+📏 **Misurata sul codice, non vista da nessuno** — è la variante **P7** di
+`docs/test-livello-varianti.md`. Chi ha **Avanzato** in scheda e risponde da **Intermedio**
+supera il quiz ⇒ `puo_scegliere` è vero ⇒ il bot chiede *«Il test dice **Intermedio**. Vuoi
+tenere questo livello o riprovare?»* con il bottone «✅ Tengo Intermedio». Ma il livello **non
+scende mai da solo** (sua regola del 27/08): qualunque cosa tocchi, non si scrive niente — e al
+tocco il bot risponde *«tengo Intermedio, te lo registro sulla scheda a breve»*, mentre
+`/livello` continua a dire Avanzato. **Una promessa doppia e falsa**, della stessa famiglia di
+quella curata su Laura il 27/08 notte.
+💡 **Proposta**: dove nessuna risposta cambia la scheda non c'è una scelta da fare ⇒ niente
+domanda; un esito del tipo *«Test superato. Il tuo livello resta **Avanzato**»* + il bottone per
+riprovare. ⚖️ La frase la leggeranno i soci: **la forma la decide lui**, per questo è qui e non
+già in coda.
 
 🆕🚨⭐⭐ **Nati la notte del 23/08 (49ª sessione) da UN SOLO fallimento vero, e sono più grandi del
 fallimento.** Alle **00:14:52** una riprenotazione dal bot muore con
