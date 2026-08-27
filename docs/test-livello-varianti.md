@@ -167,11 +167,21 @@ stata fermata da *«il livello non scende»* (ha 2,5 in scheda); Fabiola 27/08 �
 quiz: accendere il cancello non lo rende più raggiungibile, e con una soglia >0 lo renderebbe
 **meno**. Sbloccarlo serve a rendere il test **vero**, non a sbloccare un livello.
 
-⚠️ **Quello che resta da fare, e va detto**: le 36 domande di Principiante **non sono ancora
-state rilette dal committente** — la nota del 25/08 le teneva spente apposta *«finché non
-saranno corrette da lui»*. Con la soglia a zero il rischio non è più un livello negato ma una
-domanda poco chiara **letta dai soci**: se una risulta ambigua si corregge, e nessuna scheda
-già consegnata cambia esito, perché nessuna può fallire.
+✅ **E le 36 domande SONO STATE RILETTE, la sera stessa** — *«vediamo le 36 domande una alla
+volta»* — una per una, con la risposta giusta sotto gli occhi. La nota del 25/08 le teneva
+spente apposta *«finché non saranno corrette da lui»*: quel debito è chiuso.
+🔧 **Una sola correzione, la P-14** (*«Da dove batte chi serve?»*): la risposta giusta diceva
+«Dietro la linea, **dopo il rimbalzo**» senza dire **quale** linea, mentre la distrattrice
+accanto diceva «da dietro la linea di **fondo**» ⇒ chi sa che si serve dietro la linea di
+**servizio** poteva leggere la giusta come vaga e la sbagliata come precisa: sbagliare per
+eccesso di conoscenza, che è il metro del 9/08 (*una risposta discutibile boccia chi ha
+ragione*) e vale anche dove non si boccia nessuno.
+📏 La coda «dopo il rimbalzo» è caduta per **misura**, non per gusto: 45 caratteri contro il
+tetto di **36** dei bottoni, e il banco l'ha fermata. Non serviva — il rimbalzo lo chiede già
+la P-02, e questa domanda chiede **dove**. Adesso le due opzioni vicine si distinguono per una
+parola sola: fondo o servizio.
+📌 *Le altre 35 sono passate senza una modifica: il valore della rilettura è stato trovarne
+una, e saperlo di tutte.*
 ---
 
 ## Le varianti a quiz NON superato e senza quiz
