@@ -398,6 +398,26 @@ Deno.serve(async (req: Request) => {
            quello che il socio ha già, o più alta (una bocciatura non promuove nessuno). Il bot
            col campo vuoto mostra i due bottoni di sempre, ed è la caduta giusta. */
         gradino_offerto: gradinoOfferto(s, payload.level),
+        /* 🩹🚨⭐⭐ 27/08/2026, 22:20 — LA PAROLA CHE IL TEST HA DAVVERO DETTO, e senza di lei il
+           bot ne annunciava un'altra.
+           📏 Misurato sul test di Marco Aprea delle 22:08:53: ha dichiarato **Base** (2,5) e il
+           test ha calcolato **3**, cioè **Intermedio**. Il bot gli ha scritto *«Il test dice
+           **Base**»* col bottone *«✅ Tengo Base»* — e nove secondi dopo, per silenzio-assenso,
+           in anagrafica gli è stato scritto **3 = Intermedio**. Non un messaggio incompleto:
+           un messaggio che nomina un livello diverso da quello che sta per scrivere.
+           ⚖️ La causa: `fascia` è la fascia del QUIZ, cioè quella **dichiarata** — ed è giusta
+           per dire «hai risposto da X», sbagliata per dire «il test dice X» e per etichettare
+           un bottone che REGISTRA. ⇒ Le due parole vanno mandate tutt'e due, e il bot sceglie
+           quella vera per ogni frase: *il gestionale SA, il bot DICE*.
+           🔄 E qui accanto c'era scritto il contrario — *«si manda SOLO il fatto, non una
+           seconda parola… aggiungere il livello dimostrato vorrebbe dire portare in questo file
+           la scala dei sette livelli»*. Quella ragione è **caduta il 27/08 mattina**, quando la
+           scala è entrata nel modulo del giro (`definizioneLivello`) e questo file ha
+           cominciato a usarla per `livello_in_scheda`. La riga si corregge, non si affianca.
+           📏 Quanto è raro: su 21 schede passate di sempre, la parola diverge in **1** — quella
+           di Marco, stasera, alla prima prova fisica vera. Raro non vuol dire innocuo: quando
+           capita, il socio legge un livello e ne riceve un altro. */
+        livello_dimostrato: definizioneLivello(s.calculated_level),
         /**
          * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
          *
