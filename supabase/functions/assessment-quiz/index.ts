@@ -51,6 +51,11 @@ type Domanda = { id: string; fascia: string; trap: boolean; q: string; opts: str
 type Gettone = {
   token: string; member_local_id: string | null; member_name: string | null;
   phone_last4: string | null; status: string; expires_at: string | null;
+  // 🆕 27/08 sera — l'istante di nascita del gettone: è il taglio immutabile della MEMORIA
+  //    della pescata (vedi `domandeGiaViste`). ⚠️ Questo tipo e la `.select()` di
+  //    `gettoneValido` sono DUE dichiarazioni della stessa forma: si cambiano insieme, o
+  //    `deno check` cade — ed è successo, perché in locale deno non c'è e a dirlo è solo la CI.
+  created_at: string | null;
 } | null;
 
 const CORS_HEADERS = {
@@ -131,7 +136,10 @@ async function gettoneValido(db: Db, token: string) {
     // `cudi…`. Le due tabelle sono divergenti, come lo erano le funzioni SQL della voce 33 —
     // solo che di questa divergenza non lo sapeva nessuno. Scrivere una query guardando un
     // solo database è scrivere metà query.
-    .select('token, member_local_id, member_name, phone_last4, status, expires_at')
+    // 🆕 27/08 sera — `created_at` serve alla MEMORIA della pescata: è l'istante che separa
+    //    «schede che questo socio aveva già consegnato» da quelle venute dopo. ✅ Verificato
+    //    presente su TUTTI E DUE i progetti prima di scriverlo, che è la trappola del 14/08.
+    .select('token, member_local_id, member_name, phone_last4, status, expires_at, created_at')
     .eq('token', token)
     .maybeSingle();
   /* 🔢 Il client non conosce lo schema, quindi PostgREST risolve la `select` a `never` e
@@ -139,7 +147,8 @@ async function gettoneValido(db: Db, token: string) {
      è la stessa lista di colonne della `select` qui sopra — se una cambia, cambiano entrambe. */
   const riga = data as
     | { token: string; member_local_id: string | null; member_name: string | null;
-        phone_last4: string | null; status: string; expires_at: string | null }
+        phone_last4: string | null; status: string; expires_at: string | null;
+        created_at: string | null }
     | null;
   if (error) {
     // Il motivo VERO nel log della funzione: al socio si dice una cosa comprensibile, ma chi
@@ -337,7 +346,8 @@ async function gestisci(req: Request): Promise<Response> {
     // 🚨 `opts` esce così com'è; `correct` non compare da nessuna parte in questa risposta.
     // È l'intero motivo per cui questa funzione esiste: la risposta giusta non attraversa
     // più la rete verso il telefono.
-    const domande = fascia ? pescaPerGettone(token, fascia).map((d: Domanda) => ({
+    const viste = fascia ? await domandeGiaViste(db, gettone) : [];
+    const domande = fascia ? pescaPerGettone(token, fascia, viste).map((d: Domanda) => ({
       id: d.id, fascia: d.fascia, q: d.q, opts: d.opts,
     })) : [];
     return ok({ fascia, cancello: !!fascia && regole.cancello, domande });
@@ -370,7 +380,7 @@ async function consegnaScheda(
   const livCalc = calculateAssessmentPublicLevel(scheda);
   const fascia = fasciaDaLivello(scheda.declaredLevel);
   // 🚨 Gli id NON arrivano dal telefono: si ripescano. Vedi il perché in testa al file.
-  const pescate = fascia ? pescaPerGettone(token, fascia) : [];
+  const pescate = fascia ? pescaPerGettone(token, fascia, await domandeGiaViste(db, gettone)) : [];
   const conoscenza = assessKnowledgeEvaluate(pescate.map((d: Domanda) => d.id), risposte, fascia);
 
   // 🚨 voce 84 ⓑ — se il telefono non l'ha mandato, si CHIEDE ALLA SCHEDA prima di dire `NA`.
@@ -568,10 +578,13 @@ async function motoreAPassi(
   const lette = await risposteDelGiro(db, token);
   if (lette.errore) return lette.errore;
   const risposte: Record<string, string> = { ...lette.risposte };
+  // 🆕 27/08 sera — una lettura sola per richiesta, passata a tutti i `passoCorrente` di qui
+  //    in giù: due letture della stessa cosa sono il posto dove nasce una corsa.
+  const viste = await domandeGiaViste(db, gettone);
 
   if (azione === 'rispondi') {
     const chiave = assessTxt(corpo.chiave);
-    const passo = passoCorrente(token, risposte);
+    const passo = passoCorrente(token, risposte, viste);
 
     /* 🚨⭐ LA RISPOSTA A UNA DOMANDA GIÀ PASSATA NON SI PRENDE, e non è pignoleria: su Telegram
        i bottoni delle domande vecchie **restano nella chat**, e toccarne uno di ieri è la cosa
@@ -642,7 +655,7 @@ async function motoreAPassi(
     }
   }
 
-  const dopo = passoCorrente(token, risposte);
+  const dopo = passoCorrente(token, risposte, viste);
   if (!dopo.finito) {
     return ok({ finito: false, numero: dopo.numero, totale: dopo.totale, totale_certo: dopo.totale_certo, domanda: dopo.domanda });
   }
@@ -665,6 +678,64 @@ async function motoreAPassi(
 
 /** Le risposte già date, lette dal gettone. Un progresso illeggibile vale come «non ha ancora
  *  risposto niente»: meglio far rifare il giro che costruire una scheda su metà dato. */
+/* ═══ 🆕🗣️⭐⭐ 27/08/2026 sera — LE DOMANDE CHE QUESTO SOCIO HA GIÀ VISTO ═══════════════════
+   🗣️ Da una segnalazione di Maurizio: *«le domande sono sempre le stesse che gli capitano»*.
+   Il perché e i numeri stanno in testa a `ordinaPerFreschezza` (`conoscenza.js`): il sorteggio
+   è sano, a ripetersi è la banca — e la nostra pescata di mezzogiorno l'aveva peggiorata.
+
+   🚨⭐⭐ IL TAGLIO È `gettone.created_at`, E NON «ADESSO»: la pescata dev'essere ripetibile,
+   perché alla consegna il server RIPESCA per correggere. Le schede consegnate **prima che
+   questo gettone nascesse** sono un fatto che non cambia più ⇒ l'elenco è identico al primo
+   passo, all'ultimo e alla consegna. Con «tutte le sue schede finora» un socio che ne
+   consegnasse un'altra a metà test si vedrebbe cambiare le domande sotto le mani.
+
+   🔒 Lo procura il SERVER, mai il telefono: è la stessa ragione per cui gli id della correzione
+   si ripescano invece di crederci — chi sceglie le proprie domande sceglie il proprio esito.
+   ⚖️ Fallisce APERTO: se la lettura non riesce si torna alla pescata di prima (memoria vuota),
+   che è il comportamento di ieri. Un socio senza domande per una query storta sarebbe un danno
+   vero; un socio che rivede una domanda è il fastidio che stiamo curando. */
+const PROVE_DA_RICORDARE = 8;
+
+async function domandeGiaViste(db: Db, gettone: Gettone): Promise<string[]> {
+  const socio = assessTxt(gettone?.member_local_id);
+  const nato = assessTxt(gettone?.created_at);
+  if (!socio || !nato) return [];
+  try {
+    const { data: gettoni, error: erroreGettoni } = await db
+      .from('assessment_tokens')
+      .select('token')
+      .eq('member_local_id', socio)
+      .limit(60);
+    if (erroreGettoni) throw new Error(erroreGettoni.message);
+    const suoi = ((gettoni ?? []) as { token: string }[]).map((r) => assessTxt(r.token)).filter(Boolean);
+    if (!suoi.length) return [];
+
+    const { data: schede, error: erroreSchede } = await db
+      .from('self_assessments')
+      .select('submitted_at, raw_response')
+      .in('token', suoi)
+      .lt('submitted_at', nato)
+      .order('submitted_at', { ascending: false })
+      .limit(PROVE_DA_RICORDARE);
+    if (erroreSchede) throw new Error(erroreSchede.message);
+
+    // ⭐ In ordine: la PIÙ RECENTE per prima. `ordinaPerFreschezza` legge l'indice come «età».
+    const viste: string[] = [];
+    for (const riga of (schede ?? []) as { raw_response: JsonMap }[]) {
+      const domande = ((riga?.raw_response as JsonMap)?.knowledge as JsonMap)?.questions;
+      if (!Array.isArray(domande)) continue;
+      for (const d of domande as JsonMap[]) {
+        const id = assessTxt(d?.id);
+        if (id && !viste.includes(id)) viste.push(id);
+      }
+    }
+    return viste;
+  } catch (e) {
+    console.error(`[assessment-quiz] memoria delle domande non letta (${(e as Error).message}) — si pesca senza`);
+    return [];
+  }
+}
+
 async function risposteDelGiro(db: Db, token: string) {
   const { data, error } = await db
     .from('assessment_tokens')

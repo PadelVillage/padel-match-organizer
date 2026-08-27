@@ -147,6 +147,63 @@ prova('si pescano 2 domande normali e 3 trappole, dalla fascia dichiarata', () =
   if (new Set(pescate.map(p => p.id)).size !== 5) throw new Error('la stessa domanda pescata due volte');
 });
 
+// ── 🆕🗣️ 27/08 sera — LA MEMORIA DELLA PESCATA ────────────────────────────────────
+// 🗣️ Segnalazione di Maurizio: «le domande sono sempre le stesse che gli capitano».
+// 📏 Il sorteggio era sano (distribuzione uniforme su 6000 pescate): a ripetersi era la banca,
+//    e la pescata di mezzogiorno (3 trabocchetto su 12) aveva portato la probabilità di
+//    rivederne una alla prova dopo dall'11% al 62%.
+
+prova('🆕 chi ha già visto delle domande NON se le rivede finché ce ne sono altre', () => {
+  const primo = A.assessKnowledgePick('Avanzato');
+  const viste = primo.map(p => p.id);
+  const secondo = A.assessKnowledgePick('Avanzato', undefined, viste);
+  const ripetute = secondo.filter(p => viste.includes(p.id));
+  uguale(ripetute.length, 0, `ripetute: ${ripetute.map(r => r.id).join(',')}`);
+  uguale(secondo.length, 5, 'quante domande');
+  uguale(secondo.filter(p => p.trap).length, 3, 'quante trappole');
+});
+
+prova('🚨 la memoria NON può svuotare il pool: vista tutta la banca, si ricomincia dalle più vecchie', () => {
+  /* ⚖️ È un ORDINAMENTO, non un filtro: chi ha visto tutto riceve comunque cinque domande.
+     Fallire qui vorrebbe dire lasciare senza test chi il test lo fa spesso — cioè punire
+     esattamente il socio che sta usando il sistema come vogliamo noi. */
+  const B = A.ASSESS_KNOWLEDGE_BANK;
+  const tutte = B.questions.filter(q => q.fascia === 'Avanzato').map(q => q.id);
+  const pescate = A.assessKnowledgePick('Avanzato', undefined, tutte);
+  uguale(pescate.length, 5, 'domande pescate con la banca esaurita');
+  uguale(pescate.filter(p => p.trap).length, 3, 'trappole');
+});
+
+prova('🚨 le PIÙ VECCHIE tornano prima delle recenti', () => {
+  // `viste[0]` è la più recente: la domanda in fondo all'elenco è quella vista più tempo fa,
+  // e dev'essere la prima a rientrare quando il pool si stringe.
+  const B = A.ASSESS_KNOWLEDGE_BANK;
+  const trap = B.questions.filter(q => q.fascia === 'Avanzato' && q.trap).map(q => q.id);
+  // Tutte viste: la più recente è trap[0], la più vecchia è l'ultima.
+  const pescate = A.assessKnowledgePick('Avanzato', undefined, trap);
+  const tornate = pescate.filter(p => p.trap).map(p => p.id);
+  const vecchie = trap.slice(-3);
+  const quanteVecchie = tornate.filter(id => vecchie.includes(id)).length;
+  uguale(quanteVecchie, 3, `sono tornate le recenti invece delle vecchie: ${tornate.join(',')}`);
+});
+
+prova('⚖️ senza memoria la pescata è ESATTAMENTE quella di prima', () => {
+  // 🔒 La cura non deve cambiare il comportamento di chi fa il test la prima volta.
+  const senza = A.pescaPerGettone('tok-MEMORIA', 'Intermedio');
+  const vuota = A.pescaPerGettone('tok-MEMORIA', 'Intermedio', []);
+  uguale(senza.map(p => p.id), vuota.map(p => p.id), 'con memoria vuota le domande cambiano');
+});
+
+prova('🚨 la pescata resta RIPETIBILE a parità di memoria (la correzione ripesca)', () => {
+  /* ⭐ È il vincolo che decide tutta la forma della cura: alla consegna il server ripesca per
+     correggere, invece di fidarsi degli id che arrivano dal telefono. Se a parità di gettone e
+     di memoria le domande cambiassero, il socio verrebbe corretto su domande mai viste. */
+  const viste = ['A-01', 'A-T2'];
+  const a = A.pescaPerGettone('tok-RIPETI', 'Avanzato', viste);
+  const b = A.pescaPerGettone('tok-RIPETI', 'Avanzato', viste);
+  uguale(a.map(p => p.id), b.map(p => p.id), 'stesso gettone e stessa memoria, domande diverse');
+});
+
 prova('chi dichiara Semi-Pro o Professionista non ha quiz: va sempre in segreteria', () => {
   uguale(A.assessKnowledgeFasciaFor(6.0), '', 'Semi-Pro');
   uguale(A.assessKnowledgeFasciaFor(7.0), '', 'Professionista');

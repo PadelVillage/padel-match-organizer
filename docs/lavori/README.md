@@ -255,6 +255,33 @@ il suo bundle **incorpora** `passi.js`, e senza il ritocco avrebbe annunciato 12
 da 13.
 ⏳ Prova fisica: un test intero, con le conoscenza sparse e — sbagliandone due — la bocciatura.
 
+🗣️🔴 **«MAURIZIO HA NOTATO CHE LE DOMANDE SONO SEMPRE LE STESSE CHE GLI CAPITANO»** *(sera)*
+📏 **Il sospetto ovvio era il sorteggio, ed era SBAGLIATO**: su 6000 pescate la distribuzione è
+uniforme (scarto 10-17%, cioè rumore). Il meccanismo è sano. A ripetersi è la **banca**, ed è
+aritmetica — probabilità di rivedere una domanda alla prova dopo:
+| assetto | normali | trabocchetto |
+|---|---|---|
+| fino a ieri (3+1) | 31% | **11%** |
+| stamattina (2+2) | 15% | 42% |
+| a mezzogiorno (2+3) | 15% | **62%** |
+⚠️ **La cura di mezzogiorno aveva TRIPLICATO la ripetizione** proprio dove lui la notava:
+pescando 3 trabocchetto su 12, la banca gira in ~12 prove invece di ~25. Le 12 domande nuove
+alla rovescia non bastavano: **quante se ne pescano conta più di quante ce ne sono.**
+🔨 **Cura: la pescata ha MEMORIA** — prima le mai viste, poi le più vecchie. 📏 Misurata: da
+9%→**0%** di ripetizioni a due prove, 17%→**0%** a tre, 29%→12% a cinque.
+🚨⭐⭐ **Il vincolo che decide la forma**, e senza il quale sarebbe stata un guasto: alla
+consegna il server **RIPESCA** per correggere, invece di fidarsi degli id che arrivano dal
+telefono — è quella rilettura a impedire che un client scelga le proprie domande. ⇒ Se le «già
+viste» cambiassero fra una risposta e la consegna, il socio verrebbe corretto su domande mai
+viste. Perciò le viste sono le schede consegnate **prima che il gettone nascesse**
+(`created_at`): il passato non cambia ⇒ insieme immutabile, **nessuna colonna nuova**, e la
+scelta della voce 27 («non si salva niente») resta intera.
+⚖️ **È un ORDINAMENTO, non un filtro**: chi ha visto tutta la banca riceve comunque cinque
+domande, dalle più lontane. Degrada, non fallisce. E con memoria vuota la pescata è **identica**
+a quella di prima — chi fa il test la prima volta non vede nessun cambiamento.
+📌 *Prima di curare una ripetizione, misurare il sorteggio: se è uniforme il difetto non è nel
+caso, è nel rapporto fra quante se ne pescano e quante ce ne sono.*
+
 ## 📌 Le decisioni prese dal committente il 26/08
 
 🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e
