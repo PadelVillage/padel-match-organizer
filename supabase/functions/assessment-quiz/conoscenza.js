@@ -510,9 +510,21 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Al meglio dei tre set',
       'Quando una coppia arriva a 21 punti',
       'Dopo un numero fisso di scambi'], correct:1 },
+    /* 🔄🗣️ 27/08/2026 sera — RIFORMULATA CON LUI, rileggendo la banca una domanda per volta.
+       Qui c'era 'Dietro la linea, dopo il rimbalzo': **quale** linea non lo diceva, e la
+       distrattrice sopra è «da dietro la linea di FONDO». ⇒ Chi sa che si serve dietro la
+       linea di **servizio** poteva leggere la giusta come vaga e la sbagliata come precisa,
+       cioè sbagliare per eccesso di conoscenza. È il metro del 9/08: *una risposta discutibile
+       boccia chi ha ragione* — e vale anche adesso che a Principiante non si boccia nessuno,
+       perché una domanda ambigua resta una domanda mal fatta sotto gli occhi del socio.
+       📏 E «dopo il rimbalzo» è caduto per MISURA, non per gusto: con quella coda l'opzione
+       faceva 45 caratteri contro il tetto di 36 dei bottoni (banco `opzioni-che-entrano-nel-
+       bottone`) — e non serviva: il rimbalzo lo chiede già la P-02. Questa domanda chiede
+       DOVE, e la risposta è un posto. Adesso le due opzioni vicine si distinguono per una
+       parola sola, che è esattamente il fatto da sapere: fondo o servizio. */
     { id:'P-14', fascia:'Principiante', trap:false, q:'Da dove batte chi serve?', opts:[
       'Da dietro la linea di fondo',
-      'Dietro la linea, dopo il rimbalzo',
+      'Dietro la linea di servizio',
       'Da un punto qualsiasi del campo',
       'Da vicino alla rete'], correct:1 },
     { id:'P-15', fascia:'Principiante', trap:false, q:'Posso colpire la palla al volo, prima che rimbalzi?', opts:[
