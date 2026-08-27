@@ -228,7 +228,29 @@ function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
      🚨 Nessun silenzio-assenso: senza il tocco questo ramo non esiste. *Un livello più basso
      non lo si dà a nessuno, glielo si può solo offrire.* */
   if (clean(scheda?.member_decision) === SCELTA_SCENDO) {
-    if (clean(scheda?.staff_status) !== '') return { applica: false, motivo: `in mano alla segreteria (${clean(scheda.staff_status)})`, livello: null };
+    /* 🩹🚨⭐⭐ 27/08/2026, un'ora dopo — `review` NON FERMA IL GRADINO, e senza questa riga la
+       cura di stasera era **inerte proprio nel caso per cui è nata**.
+       📏 Misurato eseguendo `decidi` sulla scheda VERA di Fabiola delle 21:40 (bocciata 3/5):
+       tornava *«in mano alla segreteria (review)»* ⇒ il socio avrebbe toccato «Va bene:
+       Principiante», il bot avrebbe risposto **«te l'ho registrato sulla scheda»** e non si
+       sarebbe scritto niente. Una bugia al passato, che è la specie peggiore.
+       ⇒ E non era un caso raro: `assessment-quiz` mette `review` a OGNI scheda col quiz non
+       superato (`conoscenza.status !== 'pass'`). Misurato sull'archivio: **9 bocciate su 9**
+       sono in `review`. ⇒ Sulle bocciature il gradino non avrebbe scritto **mai**.
+
+       ⚖️ PERCHÉ SI PUÒ APRIRE, e solo per `review`: quel valore su queste schede lo mette la
+       MACCHINA, non una persona — il commento della catena normale qui sotto dice «review,
+       pending, pending_attention sono decisioni di una persona», e per `review` da quiz non è
+       vero. La sua ragione è scritta accanto a dove nasce: *«senza conoscenza dimostrata la
+       scheda non si applica DA SOLA»*. Il gradino non è «da sola»: è il socio che sceglie, ed
+       è esattamente la decisione umana che quel flag aspettava.
+       🔒 E il verso è sicuro comunque: `gradinoOfferto` non può mai offrire una fascia più
+       ALTA di quella che il socio ha già ⇒ da questa strada non esce nessun livello regalato,
+       nemmeno con una scheda che la segreteria guarderà.
+       ⛔ Tutti gli altri stati continuano a fermare: `pending`, `pending_attention` e qualunque
+       cosa la segreteria scriva restano decisioni di una persona, e quelle non si scavalcano. */
+    const statoStaff = clean(scheda?.staff_status);
+    if (statoStaff !== '' && statoStaff !== 'review') return { applica: false, motivo: `in mano alla segreteria (${statoStaff})`, livello: null };
     if (clean(scheda?.applied_at) !== '') return { applica: false, motivo: 'già applicata', livello: null };
     if (clean((scheda?.raw_response || {}).source) === 'link-esterno') return { applica: false, motivo: 'arriva dal link generico: non è ancora un socio', livello: null };
     if (!socio) return { applica: false, motivo: 'il socio non esiste più in anagrafica', livello: null };

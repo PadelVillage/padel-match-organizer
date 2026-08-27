@@ -244,7 +244,13 @@ Deno.serve(async (req: Request) => {
   // difesa dell'ambiguità sul socio nel readmodel e nel link.
   const { data: schede, error: erroreScheda } = await db
     .from('self_assessments')
-    .select('id, token, submitted_at, raw_response, applied_at, member_decision, member_decision_at')
+    /* 🩹🚨⭐⭐ 27/08 sera — QUI MANCAVANO DUE COLONNE, ed è la metà peggiore dello stesso
+       difetto: senza `declared_level` e `calculated_level` la `gradinoOfferto` di questa
+       funzione tornava SEMPRE vuota ⇒ un «scendo» sarebbe stato rifiutato con
+       `NIENTE_DA_SCENDERE` **anche dove il bottone c'era davvero**. ⇒ Il gradino non era
+       lento o parziale: era inerte, e il socio che lo toccava si prendeva un errore.
+       📌 *Una regola giusta con in pasto una riga monca è una regola che non gira.* */
+    .select('id, token, submitted_at, raw_response, declared_level, calculated_level, applied_at, member_decision, member_decision_at')
     .eq('token', token)
     .order('submitted_at', { ascending: false })
     .limit(2);
