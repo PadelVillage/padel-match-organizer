@@ -121,6 +121,78 @@ mostra due dati che ha già.
 
 ---
 
+## 🔎 La rilettura del 27/08 — i difetti ancora APERTI
+
+Ordinata dal committente (*«rivedere tutte le regole una a una per capire se ci sono ancora
+difetti o mancanze»*) e fatta leggendo **tutta** la catena: quiz → calcolo → giro → tetto →
+scrittura → i due ponti → i messaggi del bot. Ogni voce qui sotto è **misurata**, non dedotta.
+⛔ Nessuna è ancora curata: la P0 qui sopra è l'unica uscita da questa rilettura ed è già in
+servizio.
+
+### 🔴 Gravi
+
+**R1 — Il ponte promette scritture che `decidi()` non farà.** `puo_scegliere` guarda l'esito del
+quiz e la scelta; ma la scrittura del livello ha **altre sette porte** che il ponte non conosce
+(`staff_status` non vuoto, `experience_flag`, `consistency_status = low`, scarto
+dichiarato/calcolato > 0,5, socio non agganciato, scheda più vecchia dell'ultimo aggiornamento).
+⇒ Il bot chiede «tieni o riprovi?», il socio dice «tengo», il bot risponde *«te lo registro sulla
+scheda a breve»* e **non succede mai niente**.
+📏 Già successo: **Laura, 26/08 21:25** (coerenza `low` + `review`). E in generale, delle **16**
+schede col quiz superato degli ultimi 120 giorni, **12 non hanno mai scritto un livello**.
+💡 La forma della cura è quella già usata due volte oggi: il gestionale dice al bot **se il livello
+cambierà**, invece di lasciarglielo supporre.
+
+**R2 — Chi dichiara Semi-Pro o Professionista viene mandato dal maestro, e in Anagrafica non
+c'è.** Per quelle due fasce il quiz non esiste ⇒ esito `skip` ⇒ il bot dice *«una scheda come la
+tua la guarda il maestro»*. Ma `assessmentAspettaIlMaestro` scarta tutto ciò che non è `pass`
+(`if (quiz && quiz !== 'pass') return null`) ⇒ **non compaiono nella lista «Da certificare»**.
+È esattamente il difetto della voce 98, in un ramo che nessuno aveva guardato.
+📏 Oggi non è ancora capitato: **zero** schede `skip` in tutta la storia. È un buco strutturale,
+non un incendio.
+
+**R3 — L'anteprima dello staff regala le risposte giuste.** `assessment-quiz`, azione
+`staff-valuta`: il **seme** lo sceglie chi chiama, e `pescaPerGettone` usa il gettone come seme
+⇒ passando il gettone di un socio si ottengono **le sue quattro domande con la risposta esatta**.
+E `staffValido` controlla solo che ci sia *un* utente Supabase dietro al JWT, non che sia staff.
+⚖️ È l'oracolo che il commento accanto dichiara di voler evitare.
+
+### 🟠 Da sistemare
+
+**R4 — Il livello applicato si DEDUCE invece di leggerlo.** Il ponte confronta due date con 60″ di
+tolleranza, mentre `applied_at` sta **nella stessa tabella** e non viene letto. È la forma esatta
+della select monca del 27/08 notte, un campo più in là.
+
+**R5 — «Riprovo» ha 15 minuti di tempo, e nessuno lo dice.** Il cron applica ogni 15′ e la
+consegna del quiz lancia un giro **subito**; dopo, la scelta cade su `GIA_APPLICATA`. 📏 I soci
+decidono in 16-56 secondi, quindi oggi passa — ma è una corsa, non una regola.
+
+**R6 — Il promemoria gentile può chiedere di rifare il test a chi l'ha appena fatto.** Esclude chi
+ha un livello e chi ha una scheda recente, ma non chi è fermo su una porta di `decidi()`: dopo 15
+giorni quel socio si sente chiedere di rifare la cosa che ha già fatto.
+
+**R7 — Due frasi gemelle del maestro, già divergenti.** Scritte a mano in `avvisi-testi.ts` e in
+`scelta-livello.ts`: la prima porta il numero della segreteria fra parentesi, la seconda no —
+mentre il commento dichiara di averle allineate «due punti compresi».
+
+**R8 — «da oggi, domani».** Con l'attesa a zero, `giorniMancanti = 0` produce ancora la parola
+«domani»: una frase che si contraddice dentro sé stessa. Ramo oggi irraggiungibile, ma vivo.
+
+### 🟡 Da sapere (nessun danno oggi)
+
+- **R9** — i giri si ricostruiscono su un elenco tagliato a **20** schede: oltre quella soglia i
+  confini dei giri slittano in silenzio. Il record attuale è 12 (Maurizio).
+- **R10** — con `GIORNI_DI_ATTESA = 0` tutto il ramo «attesa» del ponte è **irraggiungibile**:
+  `riprova_dal`, `giorni_mancanti`, `motivo_attesa`, `scelta_entro` sono campi che non escono più.
+- **R11** — **quindici colonne** di `self_assessments` restano sempre `null` (leggono chiavi che
+  nessuno manda); `phone` idem; il consenso privacy non si scrive, e nel test dentro Telegram non
+  viene mai chiesto.
+- **R12** — la domanda «quante volte giochi al mese» (`frequency`) è un **dato morto**: non pesa
+  nel calcolo, non finisce in colonna, non entra in nessuna regola.
+- **R13** — `balancedLevel` pesa 0,25 nel livello calcolato ma **non entra** nel giudizio di
+  coerenza, che è proprio la cosa per cui quella domanda esiste.
+
+---
+
 ## Dove si misura, quando questa scheda sembra vecchia
 
 - la regola del maestro: `sopraIlTetto` in `supabase/functions/*/giro-del-test.ts` (3 copie) e la
