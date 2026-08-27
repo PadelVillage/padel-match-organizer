@@ -325,6 +325,110 @@ export function ilTestDiceMeno(scheda: any, livelloAttuale: any) {
   return definizioneLivello(n) !== definizioneLivello(inScheda);
 }
 
+/* 🆕🗣️⭐⭐ 27/08/2026 sera — IL GRADINO: la terza risposta, quella che oggi non c'è.
+   🗣️ Sua regola, data guardando il messaggio arrivato a Fabiola alle 16:17: *«attenzione
+   perché non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di scendere di un
+   gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare il test»*.
+   ⇒ Tre risposte, e due esistevano già («🔄 Sì, lo rifaccio», «👍 Mi tengo il mio livello»).
+   Questa è la terza: il livello che il test ha appena dimostrato, OFFERTO — mai imposto.
+
+   ⚖️ E l'offerta è la metà che conta. Fino a oggi una prova che dice meno non produce
+   niente: `decidi` ferma le bocciate («test di conoscenza non superato») e ferma i ribassi
+   («il livello non scende»). 📏 Misurato il 27/08 su tutte le schede col cancello: 6 bocciate,
+   **zero** livelli scritti — sei soci che hanno fatto il test e sono rimasti dov'erano, cioè
+   quasi tutti a 0,5, fuori dalle partite. Il gradino apre quelle due porte, e le apre SOLO
+   col tocco del socio: col silenzio non si scende mai. *Un livello più basso non lo si dà a
+   nessuno, glielo si può solo offrire.*
+
+   ⭐ QUALE fascia si offre — una regola sola, letta in due situazioni: **la più alta che il
+   test non smentisce**.
+     · prova PASSATA che dice meno (P7) → la fascia **dimostrata**: il test l'ha detta, è un
+       dato. Offrirne una più alta vorrebbe dire scrivere una parola che il test non ha detto;
+     · prova BOCCIATA (F1) → la fascia **sotto quella dichiarata**: il cancello smentisce
+       quella dichiarata e non dice altro, quindi la prima che regge è quella sotto.
+
+   🚨 E COSA NON PUÒ MAI FARE, che è ciò che lo rende sicuro: **alzare il numero a chi un
+   livello ce l'ha**. Chi dichiara Agonista e viene bocciato non si vede offrire Avanzato.
+   L'unica eccezione è chi sta a `0.5`, che non è un livello ma il «da definire» dell'81% dei
+   soci (vedi `livello-dimostrato.ts`): per lui il gradino è semplicemente il livello che il
+   test gli dà, e sale di numero restando nella stessa parola.
+   ⇒ Per questo il bottone, nel bot, non dice mai «scendo»: dice **la parola** («Va bene:
+   Principiante»). Per chi sta a 0,5 quel gesto non è nemmeno una discesa — e scrivergli
+   «scendi» sarebbe falso proprio per i due terzi del circolo. */
+export const SCELTA_SCENDO = 'scendo';
+
+/**
+ * La fascia immediatamente SOTTO una fascia, in parole. '' se sotto non c'è niente
+ * (Principiante è il pavimento) o se la parola non è della scala.
+ * ⚠️ La tabella sta DENTRO la funzione come in `definizioneLivello`, e per la stessa ragione:
+ * i banchi estraggono queste funzioni una per una e le eseguono in una `vm`. Una tabella
+ * fuori resterebbe indietro e la funzione morirebbe con `LIVELLI is not defined`.
+ */
+export function fasciaSotto(fascia: any) {
+  const SCALA = ['Principiante', 'Base', 'Intermedio', 'Avanzato', 'Agonista', 'Semi-Pro', 'Professionista'];
+  const parola = String(fascia ?? '').trim();
+  const i = SCALA.indexOf(parola);
+  if (i <= 0) return '';
+  return SCALA[i - 1];
+}
+
+/**
+ * Il NUMERO che si scrive per una fascia: il **massimo** della fascia (Principiante → 1,5).
+ * ⚖️ Il massimo e non il calcolato, ed è una decisione: la parola è quella giusta comunque,
+ * e fra i numeri che quella parola permette si sceglie il più alto. È la stessa cura
+ * dell'orgoglio che ha dettato la regola — a parità di verità, la forma meno umiliante.
+ */
+export function livelloDellaFascia(fascia: any) {
+  const MASSIMI = [
+    { definizione: 'Principiante', max: 1.5 },
+    { definizione: 'Base', max: 2.5 },
+    { definizione: 'Intermedio', max: 3.5 },
+    { definizione: 'Avanzato', max: 4.5 },
+    { definizione: 'Agonista', max: 5.5 },
+    { definizione: 'Semi-Pro', max: 6.5 },
+    { definizione: 'Professionista', max: 7.0 },
+  ];
+  const parola = String(fascia ?? '').trim();
+  const riga = MASSIMI.find((f) => f.definizione === parola);
+  return riga ? riga.max : null;
+}
+
+/**
+ * «Che gradino si può offrire a questo socio?» — la PAROLA, o '' se non c'è niente da
+ * offrire. È il campo che il ponte manda al bot: il bot non ha soglie e non conosce la
+ * scala. *Il gestionale SA, il bot DICE.*
+ *
+ * 🔒 Torna '' — cioè niente terzo bottone — in tutti i casi in cui l'offerta sarebbe un
+ * imbroglio o un rumore: prova senza esito utile, fascia non riconosciuta, offerta uguale a
+ * quello che il socio ha già (non c'è niente da scegliere), offerta più alta di quello che
+ * ha (una bocciatura non promuove nessuno).
+ */
+export function gradinoOfferto(scheda: any, livelloAttuale: any) {
+  const esito = esitoDellaProva(scheda);
+  let offerta = '';
+  if (esito === 'pass') {
+    const n = livelloDimostrato(scheda);
+    if (n === null) return '';
+    offerta = definizioneLivello(n);
+  } else if (esito === 'fail') {
+    offerta = fasciaSotto(definizioneLivello((scheda || {}).declared_level));
+  } else {
+    return '';
+  }
+  if (!offerta) return '';
+  const numeroOfferto = livelloDellaFascia(offerta);
+  if (numeroOfferto === null) return '';
+  const grezzo = String(livelloAttuale ?? '').trim().replace(',', '.');
+  const attuale = grezzo ? Number(grezzo) : NaN;
+  /* ⚖️ `0.5` è il «da definire» delle schede nuove, non un livello (`LIVELLO_DA_DEFINIRE` in
+     `livello-dimostrato.ts`, 81,2% dei soci): chi sta lì non ha niente da difendere, e il
+     gradino gli scrive semplicemente ciò che il test dice. Per tutti gli altri l'offerta
+     deve essere STRETTAMENTE più bassa: uguale non è una scelta, più alta è un regalo. */
+  if (!Number.isFinite(attuale) || attuale === 0.5) return offerta;
+  if (!(numeroOfferto < attuale)) return '';
+  return offerta;
+}
+
 // «Questa prova ha ESAURITO il suo giro?» — è la domanda di `assessment-apply-level`:
 // alla terza prova non c'è una domanda da fare al socio (non c'è una quarta a cui
 // rimandare), quindi il suo esito si applica da solo, con le protezioni del ribasso.

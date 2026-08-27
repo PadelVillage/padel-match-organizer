@@ -282,6 +282,91 @@ a quella di prima — chi fa il test la prima volta non vede nessun cambiamento.
 📌 *Prima di curare una ripetizione, misurare il sorteggio: se è uniforme il difetto non è nel
 caso, è nel rapporto fra quante se ne pescano e quante ce ne sono.*
 
+### 📌 …e la SERA del 27/08: **IL GRADINO**, la terza risposta che mancava
+
+🗣️ Nasce da una schermata che mi ha mandato lui: l'esito arrivato a **Fabiola Limuti alle
+16:17** — *«Test di livello di gioco superato · Il tuo livello resta **Base**. Le tue risposte
+stavolta sono da **Principiante**, ma un test il livello non lo abbassa mai. Vuoi rifarlo?»* —
+con **un bottone solo** sotto: «Sì, lo rifaccio». Sua frase d'apertura: *«parliamo di questo
+test che non abbiamo gestito la variante che è capitata»*.
+
+📏 **Cosa era successo davvero, misurato sulla sua scheda prima di dire qualunque cosa:**
+
+| | |
+|---|---|
+| dichiarato nel test | **1,5 = Principiante** |
+| domande di conoscenza | **0 su 0** — `senza_cancello: true` (per la fascia più bassa il quiz non viene posto) |
+| esito registrato | `pass` |
+| in scheda | **Base (2,5)**, scritto il 24/08 quando dichiarò Base e fece **4/4** |
+
+⇒ La variante **P7** ha funzionato. Quello che non era previsto è **P7 su un test senza
+cancello**, e quello che non c'era è **una via d'uscita**: rifare il test ridichiarando
+Principiante dà lo **stesso** risultato, per sempre. L'unico bottone portava dove il socio era
+già.
+
+🗣️ **La sua correzione, che è la cosa che ha cambiato il disegno.** Gli avevo proposto di
+accendere il cancello anche a Principiante, con due varianti (severa o morbida). Lui ha
+risposto con una domanda: *«uno che fa il test per la prima volta ed è livello 0,5 e mi sbaglia
+4 risposte su cinque. Non va principiante? Io direi che principiante mi può sbagliare quattro
+risposte su cinque»*.
+⚖️ **Aveva ragione, e la scala lo dimostra**: `Principiante` va da **0,5 a 1,5** ⇒ chi sta a 0,5
+*è già* Principiante, e sotto non c'è nessun gradino dove mandarlo. Un cancello lì non può
+bocciare verso il basso — sbagliarle tutte e cinque **conferma** la fascia invece di negarla.
+📌 *La mia proposta severa è stata ritirata sulla misura, non sull'opinione: 0,5 e 1,5 sono la
+stessa PAROLA, e qui la parola è il livello.*
+
+🗣️ **E la regola che ha dato lui:**
+
+> *«attenzione perché non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di
+> scendere di un gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare
+> il test.»*
+
+📏 **Il numero che rende la cosa urgente**, misurato sulle schede col cancello di sempre:
+
+| esito del cancello | schede | livelli scritti |
+|---|---|---|
+| `pass` | 19 | 4 |
+| `fail` | **6** | **0** |
+
+⇒ Chi sbaglia il cancello oggi **non prende un livello più basso: non ne prende nessuno.** Sei
+soci hanno fatto il test e sono rimasti dov'erano — quasi tutti a **0,5**, cioè fuori dalle
+partite (2.281 soci su 2.817 stanno lì: l'**81%**).
+
+🔨 **COSA È STATO FATTO — le decisioni, dichiarate come vuole la delega:**
+
+① **Il gradino = la fascia più alta che il test non smentisce.** Una regola sola letta in due
+situazioni: su una prova **passata** che dice meno è quella **dimostrata** (il test l'ha detta);
+su una **bocciata** è quella **sotto la dichiarata** (il cancello smentisce la dichiarata e non
+dice altro). 🔄 **Qui ho cambiato idea rispetto a quello che gli avevo scritto** («si scende di
+un gradino solo»): un gradino contato dal livello **in scheda** avrebbe offerto **Semi-Pro** a
+chi ha Professionista e ha dimostrato Base — cioè una parola che il test non ha mai detto.
+② **Il numero scritto è il MASSIMO della fascia** (Principiante → 1,5). A parità di verità, la
+forma meno umiliante: è la stessa cura dell'orgoglio che ha dettato la regola.
+③ 🚨 **Una bocciatura non promuove nessuno**: se la fascia offerta non è più bassa di quella in
+scheda, il bottone **non esiste**. L'unica eccezione è chi sta a `0.5` — che non è un livello ma
+il «da definire» delle schede nuove — e per lui il numero sale restando nella stessa parola.
+④ ⛔ **Il bottone non dice mai «scendo»: dice la PAROLA** («✅ Va bene: Principiante»). Non è
+delicatezza, sarebbe **falso**: per l'81% dei soci quel bottone fa **salire** il numero.
+⑤ 🔒 **Si scende SOLO col tocco.** Nessun silenzio-assenso, nessun automatismo: le due porte di
+`decidi()` che vietavano la discesa (`test di conoscenza non superato`, `il livello non scende`)
+si aprono **solo** su `member_decision = 'scendo'`. *Un livello più basso non lo si dà a
+nessuno, glielo si può solo offrire.*
+⑥ **Il «resto com'ero» vale anche su P7**, dove prima c'era il solo «rifaccio»: in nessuna delle
+due situazioni è stato scritto un livello, e «resto com'ero» è una risposta vera in tutte e due.
+⑦ 🩹 **E «superato» non si dice più su un test senza cancello**: 0 domande su 0 non sono una
+prova passata. Si dice che il test è **arrivato**. L'estremo **alto** della scala questa frase
+ce l'ha da sempre (ramo `skip`); mancava all'estremo **basso**.
+
+⛔ **COSA NON È STATO FATTO, e resta aperto:** il **cancello per Principiante** — le 36 domande
+di quella fascia (9 trabocchetto) esistono nella banca e **non vengono pescate mai**. La sua
+frase di stasera dice che un Principiante può sbagliarne 4 su 5, quindi un cancello lì non
+boccia; se debba comunque **esistere** (per non dire «superato» su zero domande, e per lasciare
+una misura in scheda) è una decisione sua che **non è stata presa**.
+
+⏳ **E la PROVA FISICA manca**: la catena è verde sui banchi (gestionale 83+104+33 casi, bot
+1627/1627 e `tsc` pulito), ma nessuno ha ancora visto i tre bottoni su un telefono né un livello
+scendere davvero. Finché non succede, questa cura è **in servizio e non provata**.
+
 ## 📌 Le decisioni prese dal committente il 26/08
 
 🗣️⭐ **IL TETTO RESTA A INTERMEDIO** — *«lascia intermedio»*, dopo averci pensato ad alta voce e

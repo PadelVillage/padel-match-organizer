@@ -5,9 +5,12 @@ import {
   ORE_SILENZIO_ASSENSO,
   SCELTA_MI_FERMO,
   SCELTA_RIPROVO,
+  SCELTA_SCENDO,
   TETTO_AUTOMATICO as TETTO_DAL_MODULO,
   definizioneLivello,
+  gradinoOfferto,
   laProvaEsaurisceIlGiro,
+  livelloDellaFascia,
 } from './giro-del-test.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,6 +204,50 @@ function livelloDellaScheda(scheda: any) {
 // serve alla regola del silenzio, e un orologio letto qui dentro renderebbe la
 // funzione improvabile a tavolino.
 function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
+  /* 🆕🗣️⭐⭐ 27/08/2026 sera — IL GRADINO, e sta PRIMA di tutto il resto perché è un'altra
+     strada, non un'eccezione dentro questa.
+     🗣️ Sua regola: *«non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di
+     scendere di un gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di
+     rifare il test»*. ⇒ Quando il socio tocca il terzo bottone, il livello che ha chiesto si
+     scrive — ed è l'unico modo in cui, oggi, un livello può scendere senza la segreteria.
+
+     ⚖️ PERCHÉ UNA STRADA A PARTE E NON TRE `if` INFILATI QUI SOTTO. La catena che segue è
+     fatta di protezioni contro chi si SOPRAVVALUTA: il cancello non passato, l'incoerenza,
+     lo scarto fra dichiarato e calcolato, il tetto del maestro. Nessuna di quelle riguarda
+     chi chiede di **scendere** — e infilarci dentro delle deroghe vorrebbe dire indebolire
+     la salita per servire la discesa, cioè la forma in cui una protezione si perde senza che
+     nessuno l'abbia tolta. ⇒ Qui c'è la lista corta delle protezioni che valgono anche in
+     discesa, e quelle valgono TUTTE.
+
+     🔒 E resta chiuso ciò che non c'entra col verso: una scheda in mano alla segreteria, una
+     già applicata, una che arriva dal link generico, una più vecchia dell'ultimo aggiornamento
+     del livello. Sono fatti, non giudizi sul socio.
+     ⛔ Il TETTO non si applica, ed è dichiarato: tagliare a Intermedio una discesa scriverebbe
+     un livello **più basso** di quello che il socio ha chiesto. Il tetto esiste per non
+     regalare livelli alti, non per esagerare le discese.
+     🚨 Nessun silenzio-assenso: senza il tocco questo ramo non esiste. *Un livello più basso
+     non lo si dà a nessuno, glielo si può solo offrire.* */
+  if (clean(scheda?.member_decision) === SCELTA_SCENDO) {
+    if (clean(scheda?.staff_status) !== '') return { applica: false, motivo: `in mano alla segreteria (${clean(scheda.staff_status)})`, livello: null };
+    if (clean(scheda?.applied_at) !== '') return { applica: false, motivo: 'già applicata', livello: null };
+    if (clean((scheda?.raw_response || {}).source) === 'link-esterno') return { applica: false, motivo: 'arriva dal link generico: non è ancora un socio', livello: null };
+    if (!socio) return { applica: false, motivo: 'il socio non esiste più in anagrafica', livello: null };
+    // ⭐ Il gradino lo ricalcola la REGOLA, adesso, sul livello che il socio ha adesso: non si
+    // fida di quello che il bot aveva disegnato sul bottone, che può avere ore o giorni. È lo
+    // stesso motivo per cui la scelta si valida sui fatti e non sui ricordi.
+    const gradino = gradinoOfferto(scheda, socio.level);
+    if (!gradino) return { applica: false, motivo: 'su questa prova non c\'è più nessun gradino da prendere', livello: null };
+    const gradinoLivello = livelloDellaFascia(gradino);
+    if (gradinoLivello === null) return { applica: false, motivo: `fascia «${gradino}» fuori dalla scala`, livello: null };
+    const scrittaGradino = quando(scheda?.submitted_at);
+    const ultimoGradino = Math.max(quando(socio.lastLevelUpdateAt), quando(socio.selfAssessmentDate));
+    if (ultimoGradino && !(scrittaGradino > ultimoGradino)) {
+      return { applica: false, motivo: 'il livello del socio è stato aggiornato dopo questa scheda', livello: gradinoLivello };
+    }
+    if (numero(socio.level) === gradinoLivello) return { applica: false, motivo: 'il socio ha già questo livello', livello: gradinoLivello };
+    return { applica: true, motivo: `il socio ha scelto ${gradino}: da ${clean(socio.level) || 'senza livello'} a ${gradinoLivello}`, livello: gradinoLivello, segnala: '' };
+  }
+
   // ⚠️ `let` e non `const`: il tetto qui sotto lo taglia. Il valore DIMOSTRATO resta in
   // `dimostrato`, e le due cose da lì in poi sono separate per sempre.
   let livello = livelloDellaScheda(scheda);

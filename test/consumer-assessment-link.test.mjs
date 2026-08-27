@@ -154,10 +154,13 @@ vm.runInContext(
     //    e dev'essere la STESSA che fa la lista nel gestionale (voce 100).
     // 🆕 27/08 mattina — `definizioneLivello` entra perché `sopraIlTetto` confronta le FASCE:
     //    senza, la funzione morirebbe in vm con «definizioneLivello is not defined».
-    'livelloDimostrato', 'definizioneLivello', 'sopraIlTetto', 'ilTestDiceMeno'].map(estrai).join('\n')),
+    // 🆕 27/08 sera — e le tre del GRADINO, la terza risposta che il socio può dare.
+    'livelloDimostrato', 'definizioneLivello', 'sopraIlTetto', 'ilTestDiceMeno',
+    'fasciaSotto', 'livelloDellaFascia', 'gradinoOfferto'].map(estrai).join('\n')),
   ctx,
 );
-const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto, ilTestDiceMeno } = ctx;
+const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto, ilTestDiceMeno,
+  fasciaSotto, livelloDellaFascia, gradinoOfferto } = ctx;
 
 // ── 🆕 ⑥ IL PROMEMORIA GENTILE — secondo modulo, stesso trattamento ────────────
 // ⭐ Le costanti si LEGGONO dal modulo: la cadenza è una decisione del committente («un paio
@@ -694,6 +697,79 @@ caso('S3. ⚖️ le tre esclusioni di Maurizio erano tutte GIUSTE: il difetto no
   return [sopraIlTetto(ultima, '4') === false, ilTestDiceMeno(ultima, '4') === false];
 });
 
+// ── 🆕 IL GRADINO: quale fascia si può OFFRIRE (sua regola, 27/08 sera) ─────────────────
+// 🗣️ *«non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di scendere di un
+//    gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare il test»*.
+// ⭐ La regola in una riga: **la fascia più alta che il test non smentisce**. Su una prova
+//    passata è quella DIMOSTRATA (il test l'ha detta); su una bocciata è quella SOTTO la
+//    dichiarata (il cancello smentisce la dichiarata e non dice altro).
+const provaLivello = (dimostrato, esito = 'pass', dichiarato = dimostrato) => ({
+  token: 'G1', submitted_at: '2026-08-27T16:00:00.000Z',
+  declared_level: dichiarato, calculated_level: dimostrato,
+  raw_response: { knowledge: { status: esito } },
+});
+
+caso('G1. ⭐ IL CASO VERO (Fabiola, 27/08): in scheda Base, il test dice Principiante → si offre Principiante', () => {
+  return [gradinoOfferto(provaLivello(1.5), '2.5') === 'Principiante'];
+});
+
+caso('G2. ⭐ su una BOCCIATA si offre la fascia SOTTO quella dichiarata', () => {
+  // Dichiara Base e sbaglia il cancello: la prima fascia che il test non smentisce è Principiante.
+  return [gradinoOfferto(provaLivello(2.5, 'fail'), '0.5') === 'Principiante'];
+});
+
+caso('G3. 🚨🚨 UNA BOCCIATURA NON PROMUOVE NESSUNO', () => {
+  /* Chi ha Base e dichiara Agonista: la fascia sotto Agonista è Avanzato, che è PIÙ ALTA di
+     quella che ha. Offrirla vorrebbe dire regalare due livelli per aver sbagliato un quiz.
+     🚨 Chi toglie il confronto col livello in scheda vede rosso QUI. */
+  return [
+    gradinoOfferto(provaLivello(5, 'fail'), '2.5') === '',
+    gradinoOfferto(provaLivello(4, 'fail'), '2.5') === '',
+    // ⚖️ E il rovescio, che dice che la guardia non è cieca: chi ha Avanzato e dichiara
+    //    Avanzato senza passare il cancello, Intermedio se lo sente offrire — lì la fascia
+    //    sotto è davvero più bassa di quella che ha.
+    gradinoOfferto(provaLivello(4.5, 'fail'), '4') === 'Intermedio',
+  ];
+});
+
+caso('G4. ⚖️ chi sta a 0,5 non ha niente da difendere: il gradino è il suo primo livello vero', () => {
+  /* `0.5` è il «da definire» delle schede nuove — l'81,2% dei soci (`LIVELLO_DA_DEFINIRE` in
+     `livello-dimostrato.ts`), non un livello. Per lui il numero SALE restando nella stessa
+     parola, ed è esattamente ciò che il test deve poter fare. */
+  return [
+    gradinoOfferto(provaLivello(1.5), '0.5') === 'Principiante',
+    gradinoOfferto(provaLivello(2.5, 'fail'), '0.5') === 'Principiante',
+  ];
+});
+
+caso('G5. 🔒 niente da offrire dove non c\'è una scelta: stesso livello, o fascia più alta', () => {
+  return [
+    gradinoOfferto(provaLivello(1.5), '1.5') === '',        // ce l'ha già
+    gradinoOfferto(provaLivello(4), '2.5') === '',          // il test dice DI PIÙ: non è un gradino
+    gradinoOfferto(provaLivello(1.5, 'skip'), '2.5') === '', // il quiz non è stato posto
+  ];
+});
+
+caso('G6. ⭐ la scala, letta nei due versi', () => {
+  return [
+    fasciaSotto('Base') === 'Principiante',
+    fasciaSotto('Professionista') === 'Semi-Pro',
+    fasciaSotto('Principiante') === '',        // sotto non c'è niente: è il pavimento
+    fasciaSotto('Inventata') === '',
+    livelloDellaFascia('Principiante') === 1.5,
+    livelloDellaFascia('Intermedio') === 3.5,
+    livelloDellaFascia('Inventata') === null,
+  ];
+});
+
+caso('G7. ⚖️ il gradino e il maestro non possono essere veri insieme', () => {
+  /* Uno dice «hai dimostrato MENO», l'altro «hai dimostrato PIÙ del tetto»: se una prova
+     accendesse tutt'e due, il bot mostrerebbe insieme il bottone della discesa e il messaggio
+     della segreteria. È la stessa guardia già messa fra `sopraIlTetto` e `ilTestDiceMeno`. */
+  const casi = [[1.5, '2.5'], [5, '2.5'], [3, '4'], [4.5, '4'], [1.5, '0.5'], [2.5, '2.5']];
+  return casi.map(([d, a]) => !(sopraIlTetto(provaLivello(d), a) && gradinoOfferto(provaLivello(d), a)));
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof statoDelGiro === 'function'],
   // 🆕 25/08: l'attesa è ZERO, sua decisione. La guardia NON e' stata tolta — e' stata
@@ -765,6 +841,14 @@ const guardie = [
   ['e spegne la domanda, dopo il calcolo come il maestro',
     srcPonte.indexOf('if (ultimaScheda.il_test_dice_meno) ultimaScheda.puo_scegliere = false;')
       > srcPonte.indexOf('puo_scegliere: (() => {')],
+  /* 🆕 27/08 sera — IL GRADINO ESCE VERSO IL BOT, e con la PAROLA soltanto: il numero lo
+     sceglie chi scrive (`assessment-apply-level`). Se il bot ricevesse anche il numero
+     avrebbe in mano la scala, e il giorno in cui la scala cambia ci sarebbero due copie da
+     cambiare — una si dimenticherebbe. *Il gestionale SA, il bot DICE.* */
+  ['il gradino esce verso il bot, calcolato dal modulo',
+    /gradino_offerto: gradinoOfferto\(s, payload\.level\)/.test(srcPonte)],
+  ['…e il ponte non manda MAI il numero del gradino',
+    !/gradino_livello|livelloDellaFascia/.test(srcPonte)],
   // ── Le TRE COPIE del modulo, che il deploy costringe a esistere ──
   // 🚨 È la stessa difesa di `scrittura-al-circolo.test.ts`: i deploy saltano `_shared/`,
   //    quindi la regola vive in copie, e la deriva fra copie è il modo in cui questi fix si
