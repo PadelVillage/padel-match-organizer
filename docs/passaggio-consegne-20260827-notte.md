@@ -10,6 +10,35 @@ banchi.
 
 ---
 
+## 🚨 LEGGI PRIMA QUESTO: le regole del test di livello sono state RISCRITTE stanotte
+
+> ### 📕 `docs/test-livello-regole.md` è la **fonte definitiva**.
+
+**Tutto quello che riguarda il test di livello sta lì, riga per riga, aggiornato a stanotte** —
+chi può farlo, le domande, cosa si scrive in scheda, cosa dice il bot, i punti ancora aperti e
+le prove fisiche. ⇒ **Prima di toccare qualunque cosa del test — o anche solo di rispondere a
+una domanda su come funziona — si apre quel file.** Non si va a memoria e non si deduce dal
+codice: le regole sono decisioni del committente, e lì ci sono con le sue parole.
+
+📌 **Perché è cambiato molto**: stanotte sono nate **tre** regole (il **gradino** C9, la memoria
+della pescata B9, la rilettura delle domande B10 — più il «niente passati non veri» D10),
+**cinque** sono state **corrette nella riga vecchia** (B5, C2, C4, D2, D3, D5) e **due** punti
+aperti si sono **chiusi** (E4 ed E11). ⇒ Chi va a memoria su come funzionava ieri sbaglia in
+**una decina di punti**.
+
+⚖️ La regola di quel file è la stessa di sempre: **quando una regola cambia, la sua riga si
+corregge — non si affianca**. Chi lavora al test aggiorna quel documento **nello stesso giro**
+in cui cambia il codice, o il file smette di essere una fonte e diventa un archivio di versioni.
+
+🤝 **La gemella** è `docs/test-livello-varianti.md`: là le **combinazioni** caso per caso
+(P0–P7, F1, S1-S2, e la sezione nuova sul gradino). Le due si leggono insieme — le *regole* qui,
+i *casi* là — e si correggono insieme.
+
+📱 Versione da telefono, sempre aggiornata allo stesso indirizzo:
+https://claude.ai/code/artifact/1ff03857-4d66-4590-8cce-3b6b17165585
+
+---
+
 ## 1. ✅ Prima di lavorare: `docs/lavori/README.md` (obbligo invariato)
 
 ```
@@ -36,8 +65,10 @@ e `npm install` in `tools/verifica-browser` prima della console.
 
 ## 2. 📚 I TRE DOCUMENTI DEL TEST DI LIVELLO
 
-1. **`docs/test-livello-regole.md`** — le regole una per riga con lo stato, i punti aperti
-   **E1–E11** (E4 ed E11 chiusi stanotte) e le prove fisiche. ⭐ Versione da telefono, aggiornata:
+1. 📕 **`docs/test-livello-regole.md` — LE REGOLE DEFINITIVE**, una per riga con lo stato, i
+   punti aperti **E1–E11** (E4 ed E11 chiusi stanotte) e le prove fisiche. **È il documento da
+   aprire per qualunque domanda sul test**, e da correggere ogni volta che una regola cambia.
+   ⭐ Versione da telefono, stesso indirizzo di sempre:
    https://claude.ai/code/artifact/1ff03857-4d66-4590-8cce-3b6b17165585
 2. **`docs/test-livello-varianti.md`** — le combinazioni caso per caso (P0–P7, F1, S1-S2) più
    la sezione nuova **«IL GRADINO»**.
