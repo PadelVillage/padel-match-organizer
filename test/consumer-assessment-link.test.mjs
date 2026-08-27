@@ -650,6 +650,50 @@ caso('M10. 🚨 SABOTAGGIO: col solo confronto sui numeri il caso M8 manderebbe 
   return [vero === false, soloINumeri === true, vero !== soloINumeri];
 });
 
+// ══ 🔄🚨⭐⭐ 27/08 — IL SILENZIO ETERNO DELLA TERZA PROVA (il test vero di Maurizio) ══
+// 📏 Ricostruito con le sue schede vere: alle 10:12:51 del 27/08 la sua terza prova del giro
+// ha chiuso il giro ⇒ `corrente` vuoto ⇒ il vecchio `puo_scegliere` (che pretendeva il giro
+// APERTO) tornava falso; 4 in scheda e 4,5 dimostrato sono tutti e due «Avanzato» ⇒ né
+// `aspetta_maestro` né `il_test_dice_meno`; e il livello non si scrive MAI (il tetto taglia a
+// 3,5 < 4). ⇒ La porta di `siPuoAnnunciareIlTest` chiudeva tutto: «fra poco ti scrivo com'è
+// andata» e poi niente, per sempre.
+const provaDi = (tok, quando, esito, scelta) => ({
+  token: tok, submitted_at: quando, calculated_level: '4.5',
+  raw_response: { knowledge: { status: esito } }, member_decision: scelta || null,
+});
+const SCHEDE_MAURIZIO = [
+  provaDi('T8', '2026-08-27T10:12:51Z', 'pass'),
+  provaDi('T7', '2026-08-26T22:56:43Z', 'pass'),
+  provaDi('T6', '2026-08-26T22:42:21Z', 'pass'),
+  provaDi('T5', '2026-08-26T21:19:41Z', 'fail'),
+  provaDi('T4', '2026-08-26T20:50:03Z', 'pass', 'riprovo'),
+  provaDi('T3', '2026-08-26T18:58:22Z', 'fail'),
+  provaDi('T2', '2026-08-26T18:08:33Z', 'pass', 'mi_fermo'),
+  provaDi('T1', '2026-08-26T08:27:43Z', 'pass', 'mi_fermo'),
+];
+
+caso('S1. 🗣️🚨 la TERZA prova del giro chiude il giro — il fatto che faceva tacere il bot', () => {
+  const giri = giriDelSocio(SCHEDE_MAURIZIO, 3);
+  return [giri.corrente.length === 0, giri.chiusi.length === 4];
+});
+
+caso('S2. 🚨 SABOTAGGIO: la regola VECCHIA (giro aperto) lascerebbe Maurizio muto per sempre', () => {
+  /* Si rifa a mano il `puo_scegliere` di ieri e si pretende un esito DIVERSO da quello di
+     oggi: e l'unico posto dove ci si accorgerebbe se qualcuno rimettesse il vincolo del giro. */
+  const ultima = SCHEDE_MAURIZIO[0];
+  const corrente = giriDelSocio(SCHEDE_MAURIZIO, 3).corrente;
+  const vecchio = corrente.length > 0 && ctx.stessaProva(corrente[corrente.length - 1], ultima);
+  const oggi = esitoDellaProva(ultima) === 'pass' && !ctx.sceltaDellaProva(ultima);
+  return [vecchio === false, oggi === true, vecchio !== oggi];
+});
+
+caso('S3. ⚖️ le tre esclusioni di Maurizio erano tutte GIUSTE: il difetto non stava li', () => {
+  /* Le cure del 27/08 mattina (stessa fascia, e la P7) funzionavano: e proprio perche erano
+     giuste che non restava nessuna porta aperta per parlare. */
+  const ultima = SCHEDE_MAURIZIO[0];
+  return [sopraIlTetto(ultima, '4') === false, ilTestDiceMeno(ultima, '4') === false];
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof statoDelGiro === 'function'],
   // 🆕 25/08: l'attesa è ZERO, sua decisione. La guardia NON e' stata tolta — e' stata
@@ -684,6 +728,11 @@ const guardie = [
   // 🆕 ④ — il bot non può fare la domanda se il gestionale non gli dice che c'è da farla:
   //    è «il gestionale SA, il bot DICE» applicato alla scelta.
   ['il ponte dice al bot se c\'è una scelta da fare', /puo_scegliere:/.test(srcPonte) && /scelta_entro:/.test(srcPonte)],
+  /* 🔄 27/08 — e NON lo decide piu contando le prove del giro: quella riga ha prodotto il
+     silenzio eterno di Maurizio. Si sorveglia per NOME, come la select del 27/08 notte — una
+     regola tolta torna quando nessuno guarda il punto in cui stava. */
+  ['`puo_scegliere` non conta piu le prove del giro',
+    !/giriDelSocio\(elenco, TENTATIVI_PER_GIRO\)/.test(codicePonte)],
   /* 🚨⭐⭐ 27/08 tarda sera — E SOPRA IL TETTO LA SCELTA NON C'È, o il gestionale mente a sé stesso.
      📏 Misurato su una prova vera di Laura Aprea: in scheda Base (2,5), il test dice Agonista
      (5) ⇒ `aspetta_maestro` vero e il livello non si scriverà mai da sé (`applied_at` vuoto,

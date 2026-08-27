@@ -1,12 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  TENTATIVI_PER_GIRO,
   SCELTA_MI_FERMO,
   SCELTA_RIPROVO,
   esitoDellaProva,
   quandoMs,
-  laProvaEsaurisceIlGiro,
 } from './giro-del-test.ts';
 
 // consumer-assessment-decision — LA RISPOSTA DEL SOCIO alla domanda «ti fermi o riprovi?»,
@@ -126,11 +124,26 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
     const e = esitoDellaProva(s);
     if ((e === 'pass' || e === 'fail') && quandoMs(s?.submitted_at) > quandoScheda) return 'SCHEDA_SUPERATA';
   }
-  /* 🚨 GIRO_FINITO parla di un ESITO che si applica da sé — e su una prova non riuscita non
-     c'è nessun esito da applicare. ⇒ Il rifiuto varrebbe solo alla terza prova, e direbbe al
-     socio «non c'è niente da scegliere» esattamente mentre gli si offre di scegliere: è la
-     contraddizione che il 26/08 aveva reso il «no» una riga di testo. */
-  if (provaSuperata && laProvaEsaurisceIlGiro(elenco, scheda, TENTATIVI_PER_GIRO)) return 'GIRO_FINITO';
+  /* 🔄🚨⭐⭐ 27/08/2026 — VIA IL RIFIUTO `GIRO_FINITO`, gemello della riga tolta oggi in
+     `consumer-assessment-link` (il vincolo del giro su `puo_scegliere`): le due si cambiano
+     INSIEME, o il bot mostra due bottoni che questo ponte rifiuta.
+     📏 Il fatto che le smonta è misurato sul test vero di Maurizio del 27/08 alle 10:12:51:
+     alla TERZA prova del giro il gestionale non faceva la domanda e non lasciava parlare il
+     bot, e il livello non si sarebbe scritto comunque ⇒ silenzio eterno dopo «fra poco ti
+     scrivo com'è andata».
+     ⚖️ La ragione del rifiuto — «l'esito dell'ultima prova si applica da solo, non c'è niente
+     da scegliere» — poggiava su due cose che oggi non valgono più:
+       · l'attesa fra un giro e l'altro è ZERO dal 25/08 ⇒ la quarta prova esiste, quindi
+         rimandare la scelta a «dopo» ha di nuovo un dopo;
+       · il silenzio-assenso è ZERO dal 26/08 ⇒ in `assessment-apply-level` la porta che
+         aspettava la scelta non scatta MAI, e `laProvaEsaurisceIlGiro` non decide più niente
+         nemmeno là: ogni prova si applica da sé, non solo la terza.
+     ⇒ Alla terza prova la scelta è possibile come alle altre. Chi dice «riprovo» blocca
+     l'applicazione come sempre (è il primo controllo di `decidi`), chi dice «mi fermo» la
+     conferma: nessuna delle due strade cambia, si toglie solo il divieto di percorrerle.
+     🔒 Restano in piedi i rifiuti che poggiano su FATTI e non su conteggi: `SCHEDA_SUPERATA`
+     (c'è una prova più recente), `GIA_APPLICATA` (il livello è già scritto),
+     `PROVA_NON_PASSATA`. Quelli non scadono. */
   return '';
 }
 
@@ -140,6 +153,10 @@ const RIFIUTI: Record<string, { stato: number; frase: string }> = {
   PROVA_NON_PASSATA: { stato: 409, frase: 'Questa prova non ha superato il quiz: non c\'è un livello da tenere. Per riprovare si rifà il test.' },
   GIA_APPLICATA: { stato: 409, frase: 'Il livello di questa prova è già stato applicato: la scelta è arrivata dopo i fatti.' },
   SCHEDA_SUPERATA: { stato: 409, frase: 'C\'è una prova più recente: la scelta si fa sull\'ultima, non sul passato.' },
+  /* ⚠️ `GIRO_FINITO` non viene più EMESSO dal 27/08 (vedi `motivoDelRifiuto`), ma la frase
+     resta: i bottoni di Telegram non scadono, e un tocco su un messaggio vecchio potrebbe
+     ancora incontrarlo se un giorno il rifiuto tornasse. Una tabella di traduzione senza la
+     sua voce farebbe uscire il CODICE al socio. */
   GIRO_FINITO: { stato: 409, frase: 'Questa era l\'ultima prova del giro: il suo esito si applica da solo, non c\'è niente da scegliere.' },
 };
 
