@@ -114,12 +114,38 @@ export const ASSESS_KNOWLEDGE_BANK = {
      📏 E c'era un difetto di margine, misurato sul caso vero: con 4 domande e soglia 3,
      **una distrazione sola boccia**, e la pena è 30 giorni d'attesa. */
   regole_fascia: {
-    // Nessun quiz: si passa dichiarando Principiante. Il livello che se ne ricava è il minimo.
-    Principiante: { cancello: false }
-    /* 🔄🗣️ 27/08 — QUI C'ERA `Base: { pass_min_correct: 2, trap_wrong_fails: false }`, i
-       margini morbidi del 9/08. TOLTI su sua delega («il più difficile da azzeccare per i
-       livelli da principiante a intermedio»): Base gioca con la regola di tutti — 4 su 5,
-       una sbagliata concessa. La riga si corregge, non si affianca. */
+    /* 🔄🗣️⭐⭐ 27/08/2026 sera — LE DOMANDE DI PRINCIPIANTE SI SBLOCCANO. Sua decisione:
+       *«direi di sbloccare le domande della banca per principiante»*. Qui c'era
+       `Principiante: { cancello: false }`, la regola del 9/08: quella fascia il quiz non lo
+       vedeva proprio, e le sue **36 domande** (9 trabocchetto) stavano nella banca senza che
+       nessuno le pescasse mai.
+
+       🚨⭐⭐ MA IL CANCELLO NON SBARRA, e questa è la metà che tiene in piedi la sua regola —
+       sue parole di stasera: *«uno che fa il test per la prima volta ed è livello 0,5 e mi
+       sbaglia 4 risposte su cinque: non va principiante? Io direi che principiante mi può
+       sbagliare quattro risposte su cinque»*. ⇒ `pass_min_correct: 0`.
+       ⚖️ E non è una soglia timida: è l'unica **possibile**. `Principiante` va da 0,5 a 1,5
+       (`PMO_LIVELLI`) ⇒ sotto non c'è nessuna fascia dove mandare un bocciato, e il gradino
+       (`gradinoOfferto`) su una bocciatura offre proprio la fascia **sotto** la dichiarata.
+       Bocciare qui vorrebbe dire lasciare il socio **senza niente** — cioè fuori dalle
+       partite, ed è il caso dei 2.281 soci fermi a 0,5, l'81% del circolo.
+       📌 *Una domanda si può fare senza che la risposta sbagliata costi qualcosa: quello che
+       il cancello di Principiante misura è com'è andata, non chi passa.*
+
+       ⭐ COSA CAMBIA DAVVERO, e vale la pena averlo fatto: il test di quella fascia **esiste**
+       (13 domande come per tutti, non 8), l'esito che il bot annuncia torna a essere un
+       «superato» **vero** invece di una parola detta su zero domande, e la scheda porta allo
+       staff il conteggio delle risposte di chi prima non ne aveva nessuna.
+       ⚠️ `senza_cancello` resta nel codice e nei dati: le schede di prima ce l'hanno, il bot
+       lo legge, e la regola generale — una fascia può non avere cancello — non è stata tolta,
+       è solo che oggi nessuna fascia bassa la usa. Chi la togliesse renderebbe illeggibili le
+       schede vecchie.
+
+       🔄 E QUI C'ERA ANCHE `Base: { pass_min_correct: 2, trap_wrong_fails: false }`, i margini
+       morbidi del 9/08. TOLTI su sua delega («il più difficile da azzeccare per i livelli da
+       principiante a intermedio»): Base gioca con la regola di tutti — 4 su 5, una sbagliata
+       concessa. Le righe si correggono, non si affiancano. */
+    Principiante: { pass_min_correct: 0 },
   },
   questions: [
     // ── Principiante ────────────────────────────────────────────────────────────────
@@ -410,11 +436,20 @@ export const ASSESS_KNOWLEDGE_BANK = {
        📏 Il conto che l'ha resa necessaria: 3 prove × 4 domande = 12 viste contro le 11 che
        esistevano ⇒ in un giorno solo si vedeva la banca intera, trappole comprese.
 
-       ⛔⛔ QUESTE DOMANDE NON SONO ANCORA IN SERVIZIO, ed è deliberato: `regole_fascia`
-       dice ancora `Principiante: { cancello: false }`, quindi da questa fascia non si pesca
-       niente e la banca resta inerte. Si accende in un secondo momento, quando le domande
-       saranno state corrette da lui — accenderla prima vorrebbe dire mandare in servizio un
-       cancello che nessuno ha letto.
+       🔄⭐⭐ 27/08/2026 sera — QUESTE DOMANDE SONO IN SERVIZIO, e qui c'era il contrario.
+       La riga vecchia diceva: *«non sono ancora in servizio, ed è deliberato… si accende in un
+       secondo momento, quando le domande saranno state corrette da lui — accenderla prima
+       vorrebbe dire mandare in servizio un cancello che nessuno ha letto»*.
+       🗣️ Sua decisione di stasera: *«direi di sbloccare le domande della banca per
+       principiante»*.
+       ⚖️ **E la ragione della riga vecchia è caduta insieme al cancello, non nonostante lui.**
+       Quel timore era di mandare in servizio un CANCELLO non letto — cioè di far **bocciare**
+       qualcuno con una domanda sbagliata. Con `pass_min_correct: 0` non si boccia più nessuno
+       a questa fascia: una domanda storta costa una lettura, non un livello negato.
+       🚨 **Quello che resta vero, e va detto invece di essere taciuto**: le 36 domande di
+       Principiante **lui non le ha ancora rilette**, e da stasera i soci le leggono. È un
+       rischio di FORMA (una domanda poco chiara), non più di esito. Se una risulta ambigua si
+       corregge qui, e nessuna scheda già consegnata cambia esito — perché nessuna può fallire.
 
        ⭐⭐ IL METRO, e per Principiante è DIVERSO dalle altre fasce. Sua definizione del
        25/08: *«per me un principiante è colui veramente alle prime armi»* ⇒ qui la domanda

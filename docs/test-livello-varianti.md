@@ -143,14 +143,35 @@ tocca il bottone e si prende un errore.
 non sono una prova passata — si dice che il test è **arrivato**. L'estremo **alto** della scala
 questa frase ce l'ha da sempre (S1, ramo `skip`); mancava all'estremo **basso**.
 
-⏳ **APERTO, e non è un dettaglio: il cancello per Principiante non esiste.** Le **36** domande
-di quella fascia (9 trabocchetto) stanno nella banca e **non vengono pescate mai**
-(`regole_fascia: { Principiante: { cancello: false } }`, regola del 9/08). 🗣️ Sua parola del
-27/08 sera: *«un principiante mi può sbagliare quattro risposte su cinque»* ⇒ un cancello lì non
-può bocciare — `Principiante` va da 0,5 a 1,5, e sotto non c'è nessun gradino. Se debba comunque
-**esistere** (per non annunciare «superato» su zero domande, e per lasciare una misura in
-scheda) è una decisione **non ancora presa**.
+✅🗣️ **CHIUSO la sera stessa: le domande di Principiante sono state SBLOCCATE.** Sua decisione
+— *«direi di sbloccare le domande della banca per principiante»* — presa mezz'ora dopo il
+gradino. Le **36** domande di quella fascia (9 trabocchetto) erano nella banca dal 25/08 e non
+venivano pescate mai.
 
+🚨⭐⭐ **Ma il cancello di Principiante NON SBARRA** (`pass_min_correct: 0`), ed è l'unica forma
+possibile — sue parole: *«un principiante mi può sbagliare quattro risposte su cinque»*.
+⚖️ Non è una soglia timida: `Principiante` va da **0,5 a 1,5**, quindi sotto non c'è nessuna
+fascia dove mandare un bocciato, e il gradino su una bocciatura offre proprio *la fascia sotto
+la dichiarata*. Bocciare lì lascerebbe il socio **senza niente** — cioè fuori dalle partite, ed
+è il caso dei 2.281 fermi a 0,5.
+⇒ **Cosa cambia davvero**: il test di quella fascia esiste (13 domande, non 8), «superato»
+torna a essere una parola vera invece che detta su zero domande, e allo staff arriva un
+conteggio dove prima non c'era niente.
+
+📏 **E una premessa da correggere, misurata prima di rispondergli.** Lui l'ha chiesto perché
+*«senò nessuno può prenderlo»*, il livello Principiante. In effetti delle **3** schede senza
+cancello di sempre **zero** hanno scritto un livello — ma la causa non era il cancello mancante:
+Fabiola 19/08 era ferma in `review` dalla segreteria; Laura 26/08 aveva detto «mi fermo» ed è
+stata fermata da *«il livello non scende»* (ha 2,5 in scheda); Fabiola 27/08 è il caso che il
+**gradino** ha appena aperto. ⇒ Per chi sta a 0,5 il Principiante **si prendeva già** senza
+quiz: accendere il cancello non lo rende più raggiungibile, e con una soglia >0 lo renderebbe
+**meno**. Sbloccarlo serve a rendere il test **vero**, non a sbloccare un livello.
+
+⚠️ **Quello che resta da fare, e va detto**: le 36 domande di Principiante **non sono ancora
+state rilette dal committente** — la nota del 25/08 le teneva spente apposta *«finché non
+saranno corrette da lui»*. Con la soglia a zero il rischio non è più un livello negato ma una
+domanda poco chiara **letta dai soci**: se una risulta ambigua si corregge, e nessuna scheda
+già consegnata cambia esito, perché nessuna può fallire.
 ---
 
 ## Le varianti a quiz NON superato e senza quiz
