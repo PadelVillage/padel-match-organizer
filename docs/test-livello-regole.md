@@ -17,7 +17,7 @@ corregge**, non si affianca.
 |---|---|---|---|
 | A1 | Il test si fa **dentro Telegram**, una domanda alla volta; il link web resta come ripiego | `passi.js` (motore), bot `test-a-passi.ts` | ✅ |
 | A2 | Chiunque può cominciare, **sempre**: giri da 3 prove, attesa fra i giri **zero** (25/08) e silenzio-assenso **zero** (26/08) | `giro-del-test.ts`: `GIORNI_DI_ATTESA=0`, `ORE_SILENZIO_ASSENSO=0` | ✅ |
-| A3 | Il gettone si **riusa** finché non è consumato; stesso gettone ⇒ stesse domande, stesso ordine | `consumer-assessment-link` + `pescaPerGettone` | ✅ |
+| A3 | Il gettone si **riusa** finché non è consumato; stesso gettone ⇒ stesse domande, stesso ordine — **ed è un requisito di sicurezza**: alla consegna il server ripesca per correggere invece di fidarsi degli id del telefono | `consumer-assessment-link` + `pescaPerGettone` | ✅ |
 | A4 | Il conto delle domande annunciato (**13**) esce dalla pescata vera, non da un numero scritto | `quantePescate` in `conoscenza.js` | 🔵 |
 | A5 | A chi non ha livello, un **promemoria gentile** ogni 15 giorni | `promemoria-livello.ts` | ✅ |
 | A6 | ⚠️ Il promemoria **non sa** di chi aspetta il maestro o è fermo per coerenza bassa: dopo 15 giorni chiederebbe di rifare il test a chi l'ha appena passato | `promemoria-livello.ts` (esclude solo `skip`) | ⚠️ da curare |
@@ -34,6 +34,7 @@ corregge**, non si affianca.
 | B6 | Il segnale «Non esiste» è **rotto**: 12 trabocchetto **alla rovescia** (regole vere che sembrano inventate) — vedere «Non esiste» non dice più dove sta la verità | banca in `conoscenza.js`, guardia nel banco | 🔵 |
 | B7 | La risposta giusta e il marchio `trap` **non escono mai** verso il telefono; si corregge sul server ripescando col gettone | `assessment-quiz` | ✅ |
 | B8 | Banca: 27 normali + 12 trabocchetto per fascia; in un giro se ne vedono 5 ⇒ memorizzarla vuole molti giri | banca | ✅ |
+| B9 | 🆕 **La pescata ha MEMORIA**: non ripropone le domande già viste nelle ultime 8 prove, finché ce n'è altro da dare. Le «già viste» sono quelle delle schede consegnate **prima che il gettone nascesse** — un fatto immutabile, così la pescata resta ripetibile (vedi A3). Con la banca esaurita ricomincia dalle **più vecchie**: degrada, non fallisce | `ordinaPerFreschezza` in `conoscenza.js` + `domandeGiaViste` in `assessment-quiz/index.ts` | 🔵 prova fisica |
 
 ## C. Cosa si scrive in scheda (il gestionale)
 
@@ -85,6 +86,8 @@ Trovati misurando, **nessuno ancora deciso**. Ordinati per quanto costano se res
 
 ## F. Le prove fisiche che mancano (in ordine)
 
+0. 🆕 **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
+   secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
 1. **Un test intero col cancello nuovo**: 13 domande, conoscenza sparse, 2+3, e — sbagliandone due — la bocciatura (B2, B3, B6).
 2. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro (D6).
 3. **P7 dal vivo**: dichiarare una fascia più bassa di quella in scheda e passare — «il tuo livello resta X» (C4).

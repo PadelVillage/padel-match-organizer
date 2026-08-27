@@ -1313,7 +1313,62 @@ export function assessKnowledgeRegole(fascia) {
     trap_wrong_fails: propria.trap_wrong_fails != null ? propria.trap_wrong_fails : B.trap_wrong_fails
   };
 }
-export function assessKnowledgePick(fascia, rnd) {
+/* ═══ 🆕🗣️⭐⭐ 27/08/2026 sera — LA PESCATA HA MEMORIA ═══════════════════════════════════
+   🗣️ Segnalazione di Maurizio, riportata da lui: *«facendo il test di livello le domande sono
+   sempre le stesse che gli capitano»*.
+
+   📏 MISURATO prima di toccare, perché il sospetto ovvio era il sorteggio ed era SBAGLIATO: su
+   6000 pescate la distribuzione è uniforme (scarto 10-17%, cioè rumore). Il meccanismo è sano.
+   La causa è un'altra, ed è aritmetica — la probabilità di RIVEDERE una domanda alla prova dopo:
+
+     fino al 27/08 (3 normali + 1 trappola)   normali 31%   trabocchetto 11%
+     dal mattino   (2 normali + 2 trappole)   normali 15%   trabocchetto 42%
+     da mezzogiorno(2 normali + 3 trappole)   normali 15%   trabocchetto 62%   ⇐ peggiorata da noi
+
+   ⚖️ Alzando le trabocchetto a 3 abbiamo **triplicato** la ripetizione proprio dove lui la
+   notava: pescandone 3 su 12, la banca gira in ~12 prove invece di ~25. Le 12 domande nuove
+   alla rovescia non bastavano a compensare: il numero di pescate per giro conta più della
+   dimensione della banca.
+
+   ⇒ La cura non è allargare ancora la banca (rincorsa senza fine): è **non ripescare ciò che
+   il socio ha già visto**, finché c'è altro da dargli.
+
+   🚨⭐⭐ IL VINCOLO CHE DECIDE LA FORMA, e senza il quale questa cura sarebbe un guasto: la
+   pescata dev'essere **RIPETIBILE**, perché alla consegna il server RIPESCA per correggere
+   (`index.ts`, azione `consegna`) invece di fidarsi degli id che arrivano dal telefono — è
+   quella rilettura a impedire che un client scelga le proprie domande. ⇒ Se l'elenco delle
+   «già viste» cambiasse fra una risposta e la consegna, il socio verrebbe corretto su domande
+   che non ha mai visto.
+   ⭐ Perciò le viste NON sono «le sue schede di adesso», ma **le schede consegnate PRIMA che
+   questo gettone nascesse** (`assessment_tokens.created_at`): il passato non cambia, quindi
+   l'insieme è immutabile per costruzione — nessuna colonna nuova, nessuno stato da tenere
+   pulito, e la ragione della voce 27 («non si salva niente») resta intera.
+
+   ⚖️ E NON è un filtro che può svuotare il pool: è un ORDINAMENTO per freschezza. Prima le mai
+   viste, poi le più vecchie, mescolate dentro ogni gruppo. Quando il socio ha visto tutto,
+   ricomincia dalle più lontane invece di non ricevere niente — degrada, non fallisce. */
+export function ordinaPerFreschezza(lista, viste, rnd) {
+  const elenco = Array.isArray(lista) ? lista : [];
+  // ⚠️ `viste[0]` è la PIÙ RECENTE: l'indice piccolo vuol dire «vista da poco».
+  const recenti = Array.isArray(viste) ? viste.map((v) => assessTxt(v)) : [];
+  if (!recenti.length) return assessKnowledgeShuffle(elenco, rnd);
+  const gruppi = new Map();
+  for (const q of elenco) {
+    const i = recenti.indexOf(assessTxt(q && q.id));
+    const eta = i < 0 ? Infinity : i;
+    if (!gruppi.has(eta)) gruppi.set(eta, []);
+    gruppi.get(eta).push(q);
+  }
+  // Dal più lontano al più recente: `Infinity` (mai vista) per prima, poi gli indici alti.
+  const chiavi = Array.from(gruppi.keys()).sort((a, b) => b - a);
+  const out = [];
+  for (const k of chiavi) {
+    for (const q of assessKnowledgeShuffle(gruppi.get(k), rnd)) out.push(q);
+  }
+  return out;
+}
+
+export function assessKnowledgePick(fascia, rnd, viste) {
   const cleanFascia = assessTxt(fascia);
   if (!cleanFascia) return [];
   // 🆕 9/08: la fascia più bassa non ha cancello ⇒ non si pesca niente e non si disegna
@@ -1321,8 +1376,10 @@ export function assessKnowledgePick(fascia, rnd) {
   if (!assessKnowledgeRegole(cleanFascia).cancello) return [];
   const pool = ASSESS_KNOWLEDGE_BANK.questions.filter(q => q.fascia === cleanFascia);
   if (!pool.length) return [];
-  const normali = assessKnowledgeShuffle(pool.filter(q => !q.trap), rnd).slice(0, ASSESS_KNOWLEDGE_BANK.pick_normal);
-  const trappole = assessKnowledgeShuffle(pool.filter(q => q.trap), rnd).slice(0, ASSESS_KNOWLEDGE_BANK.pick_trap);
+  // 🆕 27/08 sera — l'ordine è per FRESCHEZZA, non a caso puro: le mai viste per prime.
+  //    Con `viste` vuoto è esattamente la mescolata di prima (vedi `ordinaPerFreschezza`).
+  const normali = ordinaPerFreschezza(pool.filter(q => !q.trap), viste, rnd).slice(0, ASSESS_KNOWLEDGE_BANK.pick_normal);
+  const trappole = ordinaPerFreschezza(pool.filter(q => q.trap), viste, rnd).slice(0, ASSESS_KNOWLEDGE_BANK.pick_trap);
   return assessKnowledgeShuffle(normali.concat(trappole), rnd).map(q => ({
     id: q.id,
     fascia: q.fascia,
@@ -1545,7 +1602,7 @@ export function sorteDa(s) {
 export function quantePescate() {
   return ASSESS_KNOWLEDGE_BANK.pick_normal + ASSESS_KNOWLEDGE_BANK.pick_trap;
 }
-export function pescaPerGettone(token, fascia) {
-  return assessKnowledgePick(fascia, sorteDa(seme(token, assessTxt(fascia))));
+export function pescaPerGettone(token, fascia, viste) {
+  return assessKnowledgePick(fascia, sorteDa(seme(token, assessTxt(fascia))), viste);
 }
 
