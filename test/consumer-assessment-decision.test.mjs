@@ -76,8 +76,10 @@ function parola(nome) {
 const TENTATIVI_PER_GIRO = costante('TENTATIVI_PER_GIRO');
 const MI_FERMO = parola('SCELTA_MI_FERMO');
 const RIPROVO = parola('SCELTA_RIPROVO');
+// 🆕 27/08 sera — la terza: «va bene, prendo il gradino». Letta dal modulo come le altre due.
+const SCENDO = parola('SCELTA_SCENDO');
 
-const ctx = { TENTATIVI_PER_GIRO, SCELTA_MI_FERMO: MI_FERMO, SCELTA_RIPROVO: RIPROVO };
+const ctx = { TENTATIVI_PER_GIRO, SCELTA_MI_FERMO: MI_FERMO, SCELTA_RIPROVO: RIPROVO, SCELTA_SCENDO: SCENDO };
 vm.createContext(ctx);
 vm.runInContext(
   spoglia([
@@ -255,6 +257,60 @@ caso('10. l\'ordine dell\'elenco non conta, e un elenco assente non fa esplodere
   ];
 });
 
+// ── 🆕 LA TERZA SCELTA: «va bene, prendo il gradino» (sua, 27/08 sera) ──────────────────
+// 🗣️ *«non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di scendere di un
+//    gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare il test»*.
+// ⚖️ Qui si prova SOLO che la scelta sia ammissibile: quale gradino sia, e se scriverlo, lo
+//    decide `assessment-apply-level` (banco suo). Questa funzione riceve il gradino già
+//    calcolato — è ciò che la tiene una regola pura, senza letture.
+
+caso('9. ⭐ «scendo» passa su una prova SUPERATA, se un gradino c\'è', () => {
+  const p = prova('T1', giorniFa(1), 'pass');
+  return [
+    motivoDelRifiuto(SCENDO, p, [p], 'Principiante') === '',
+    motivoDelRifiuto(SCENDO, p, [p], '') === 'NIENTE_DA_SCENDERE',
+    motivoDelRifiuto(SCENDO, p, [p], null) === 'NIENTE_DA_SCENDERE',
+  ];
+});
+
+caso('10. ⭐⭐ e passa anche sulla BOCCIATA, che è dove serve di più', () => {
+  /* 📏 Misurato il 27/08 su tutte le schede col cancello: 6 bocciate, ZERO livelli scritti.
+     Sei soci che hanno fatto il test e sono rimasti dov'erano — quasi tutti a 0,5, cioè
+     fuori dalle partite. Il gradino è la strada che a quei sei mancava.
+     ⛔ Il «riprovo» resta fuori anche adesso: rifare il test si fa dal link. */
+  const bocciata = prova('T1', giorniFa(1), 'fail');
+  return [
+    motivoDelRifiuto(SCENDO, bocciata, [bocciata], 'Principiante') === '',
+    motivoDelRifiuto(RIPROVO, bocciata, [bocciata], 'Principiante') === 'PROVA_NON_PASSATA',
+  ];
+});
+
+caso('11. 🚨 il gradino non scavalca i FATTI: applicata, superata, non è sua', () => {
+  const applicata = prova('T1', giorniFa(1), 'pass', { applied_at: giorniFa(0) });
+  const vecchia = prova('T1', giorniFa(3), 'pass');
+  const recente = prova('T2', giorniFa(1), 'pass');
+  return [
+    motivoDelRifiuto(SCENDO, applicata, [applicata], 'Principiante') === 'GIA_APPLICATA',
+    motivoDelRifiuto(SCENDO, vecchia, [vecchia, recente], 'Principiante') === 'SCHEDA_SUPERATA',
+    motivoDelRifiuto(SCENDO, null, [], 'Principiante') === 'SCHEDA_NON_TROVATA',
+  ];
+});
+
+caso('12. ⛔ su una `skip` non si scende: a Semi-Pro e Professionista il quiz non viene posto', () => {
+  // Nessuna domanda fatta ⇒ nessun bottone mostrato ⇒ un «scendo» qui è un tocco che non
+  // risponde a niente. Stessa ragione per cui `mi_fermo` vale sulla bocciata e non sullo `skip`.
+  const saltata = prova('T1', giorniFa(1), 'skip');
+  return [motivoDelRifiuto(SCENDO, saltata, [saltata], 'Avanzato') === 'PROVA_NON_PASSATA'];
+});
+
+caso('13. 🔒 e una scelta inventata resta inventata: solo le tre parole del modulo passano', () => {
+  const p = prova('T1', giorniFa(1), 'pass');
+  return [
+    motivoDelRifiuto('scendi', p, [p], 'Principiante') === 'SCELTA_SCONOSCIUTA',
+    motivoDelRifiuto('SCENDO', p, [p], 'Principiante') === 'SCELTA_SCONOSCIUTA',
+  ];
+});
+
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i modi in cui questa funzione può fare danno.
@@ -265,14 +321,28 @@ const guardie = [
   // 🚨 IL CABLAGGIO: la regola è pura, e una regola che nessuno chiama resta verde senza
   //    difendere niente. Qui si misura che l'edge la CHIAMI, e che il rifiuto FERMI la
   //    scrittura invece di limitarsi a comparire nella risposta.
-  ['l\'edge CHIAMA la regola', /const rifiuto = motivoDelRifiuto\(scelta, scheda, elencoSchede\)/.test(src)],
+  ['l\'edge CHIAMA la regola', /const rifiuto = motivoDelRifiuto\(scelta, scheda, elencoSchede, gradino\)/.test(src)],
   ['il rifiuto FERMA la scrittura', src.indexOf('if (rifiuto)') < src.indexOf(".update({ member_decision: scelta")],
   // 🚨 Il gettone da solo non basta: una scelta scritta su fede del solo gettone
   //    permetterebbe a un client confuso di decidere per la persona sbagliata.
   ['il gettone deve essere del socio che chiede', /member_local_id\) !== memberId/.test(src)],
   // ⚖️ Questa funzione scrive DUE colonne e nient'altro: il livello lo scrive il cron, e
   //    una scrittura sull'anagrafica da qui salterebbe tutte le protezioni del ③.
-  ['scrive solo la scelta, mai il livello del socio', !/pmo_cloud_records/.test(src) && !/levelSource/.test(src)],
+  /* 🔄🚨⭐⭐ 27/08/2026 sera — LA SONDA È CAMBIATA, LA PROPRIETÀ NO, e la differenza va detta.
+     Qui c'era `!/pmo_cloud_records/`: una sonda che vietava di NOMINARE l'anagrafica. Dal
+     gradino questa funzione l'anagrafica la LEGGE — le serve il livello che il socio ha
+     adesso per sapere se «scendo» ha ancora senso — e la vecchia sonda sarebbe diventata
+     rossa su codice giusto, cioè la specie di guardia che si finisce per spegnere.
+     ⚖️ Quello che difendeva resta intero ed è questo: da qui l'anagrafica non si SCRIVE mai.
+     ⇒ La sonda ora guarda il verbo, non il nome della tabella: l'unica scrittura ammessa è
+     quella su `self_assessments`, e sull'anagrafica si può solo `select`.
+     📌 *Quando una sonda diventa rossa su codice giusto non si allarga: si chiede cosa
+     doveva misurare, e la si riscrive su quello.* */
+  ['scrive solo la scelta, mai il livello del socio',
+    !/levelSource/.test(src)
+    && !/pmo_cloud_records.\)[\s\S]{0,400}\.(update|insert|upsert|delete)\(/.test(codice)
+    && (codice.match(/\.update\(/g) || []).length === 1
+    && /from\('self_assessments'\)[\s\S]{0,200}\.update\(\{ member_decision/.test(codice)],
   ['non promette quando il livello sarà scritto', !/livello_applicato: true/.test(src)],
   // 🚨 Due schede sullo stesso gettone non dovrebbero esistere: se succede non si sceglie a
   //    caso — è la stessa difesa dell'ambiguità del readmodel e del link.
@@ -286,15 +356,25 @@ const guardie = [
   // ⚡ VOCE 84 ⓒ (24/08/2026) — «se non lo trova variato è un disservizio» (parole sue).
   // Il livello non aspetta più il cron dei 15 minuti: su «mi fermo» il giro parte SUBITO.
   ['su «mi fermo» il giro d\'applicazione parte subito', /pmo_dispatch_assessment_apply_level/.test(codice)],
-  ['il giro parte SOLO su «mi fermo» (su «riprovo» non c\'è niente da applicare)',
-    /scelta === SCELTA_MI_FERMO[\s\S]{0,900}pmo_dispatch_assessment_apply_level/.test(codice)],
+  /* 🔄 27/08 sera — e parte anche su «scendo», che è la scelta che scrive DAVVERO un livello:
+     farla aspettare il cron direbbe al socio «va bene, Principiante» lasciandogli Base in
+     scheda per un quarto d'ora. ⛔ Su «riprovo» continua a non partire: non c'è niente da
+     applicare, e sarebbe una chiamata a vuoto a ogni tocco. */
+  ['il giro parte su «mi fermo» e su «scendo», mai su «riprovo»',
+    /scelta === SCELTA_MI_FERMO[\s\S]{0,200}scelta === SCELTA_SCENDO[\s\S]{0,900}pmo_dispatch_assessment_apply_level/.test(codice)
+    && !/scelta === SCELTA_RIPROVO[\s\S]{0,200}pmo_dispatch/.test(codice)],
   // 🔒 Non si ricopia la regola dell'applicazione: quelle vivono in `assessment-apply-level`,
   // e una seconda copia divergerebbe al primo ripensamento.
   // 🚨 Si guarda il CODICE, non il file: la prima stesura di questa guardia cadeva sul
   // COMMENTO che spiega perché la regola non va ricopiata — cioè leggeva le parole invece dei
   // fatti, che è esattamente l'errore da cui questo progetto si difende dappertutto.
+  /* 🔄 27/08 sera — via il divieto di LEGGERE `pmo_cloud_records` (vedi la guardia sopra):
+     quello che non si deve ricopiare qui è la regola che sceglie il NUMERO da scrivere, e
+     quella si riconosce dai suoi pezzi — `applied_level`, `applied_at`, e la funzione che
+     traduce una fascia in un numero (`livelloDellaFascia`), che vive nel ramo del gradino di
+     `assessment-apply-level` e lì deve restare. Questa funzione manda la PAROLA e basta. */
   ['la regola dell\'applicazione NON è ricopiata qui',
-    !/applied_level\s*:|applied_at\s*:|\.from\(.pmo_cloud_records.\)/.test(codice)],
+    !/applied_level\s*:|applied_at\s*:|livelloDellaFascia\(/.test(codice)],
   // 🔒 Si passa dal DISPATCHER, che legge il vault da sé: il segreto delle routine non deve
   // avere un secondo posto da cui uscire. Chiamare l'edge dritta vorrebbe dire portarcelo.
   ['non si chiama l\'edge dritta con un segreto in mano', !/x-pmo-routine-secret/.test(codice)],

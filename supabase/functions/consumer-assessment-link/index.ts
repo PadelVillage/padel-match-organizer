@@ -8,6 +8,7 @@ import {
   definizioneLivello,
   sceltaDellaProva,
   sopraIlTetto,
+  gradinoOfferto,
   ilTestDiceMeno,
   statoDelGiro,
 } from './giro-del-test.ts';
@@ -372,6 +373,19 @@ Deno.serve(async (req: Request) => {
            vero comunque sia andata — chi è stato tagliato al tetto, chi era già più su e non
            è stato toccato, chi non ha ancora niente. *Il gestionale SA, il bot DICE.* */
         livello_in_scheda: definizioneLivello(payload.level),
+        /* 🆕🗣️⭐⭐ 27/08/2026 sera — IL GRADINO CHE SI PUÒ OFFRIRE, e nasce da una sua regola:
+           *«non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di scendere di un
+           gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare il
+           test»*. ⇒ Delle tre risposte due esistevano già; questa è la terza, ed è l'unica
+           che scrive qualcosa.
+           ⚖️ Esce di qui la PAROLA e nient'altro: il numero lo sceglie chi scrive
+           (`assessment-apply-level`, il massimo della fascia), e il bot non conosce la scala
+           — se la conoscesse, il giorno in cui la scala cambia ci sarebbero due copie da
+           cambiare e una si dimenticherebbe. *Il gestionale SA, il bot DICE.*
+           🔒 Vuoto quando non c'è niente da offrire: prova senza esito utile, offerta uguale a
+           quello che il socio ha già, o più alta (una bocciatura non promuove nessuno). Il bot
+           col campo vuoto mostra i due bottoni di sempre, ed è la caduta giusta. */
+        gradino_offerto: gradinoOfferto(s, payload.level),
         /**
          * 🚨⭐⭐ IL LIVELLO C'È DAVVERO? — e non è una sfumatura.
          *

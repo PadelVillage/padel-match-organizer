@@ -3,7 +3,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   SCELTA_MI_FERMO,
   SCELTA_RIPROVO,
+  SCELTA_SCENDO,
   esitoDellaProva,
+  gradinoOfferto,
   quandoMs,
 } from './giro-del-test.ts';
 
@@ -89,10 +91,21 @@ function safeEqual(a: string, b: string): boolean {
 // `schedeDelSocio` sono le schede di QUEL socio (questa compresa), la stessa lettura che
 // fa il ponte del link: il giro è lo stesso fatto guardato da tre funzioni, e la camminata
 // sta in `giro-del-test.ts`, in copia identica qui accanto.
-function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
+function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any, gradino: any) {
   const cosa = String(scelta ?? '').trim();
-  if (cosa !== SCELTA_MI_FERMO && cosa !== SCELTA_RIPROVO) return 'SCELTA_SCONOSCIUTA';
+  if (cosa !== SCELTA_MI_FERMO && cosa !== SCELTA_RIPROVO && cosa !== SCELTA_SCENDO) return 'SCELTA_SCONOSCIUTA';
   if (!scheda) return 'SCHEDA_NON_TROVATA';
+  /* 🆕🗣️⭐⭐ 27/08/2026 sera — LA TERZA SCELTA: «va bene, prendo il gradino». Sua regola —
+     *«non dobbiamo ferire l'orgoglio del giocatore: possiamo proporgli di scendere di un
+     gradino, o di rimanere al livello dell'ultimo test fatto, oppure di rifare il test»*.
+     ⚖️ È l'unica delle tre che SCRIVE un livello, e l'unica che può scriverne uno più basso:
+     per questo il gradino non lo decide questa funzione né il bot, lo calcola il modulo del
+     giro (`gradinoOfferto`) dalla prova e dal livello che il socio ha in anagrafica. Qui si
+     controlla soltanto che ci sia — un «scendo» su una prova che non offre niente è un
+     bottone vecchio schiacciato tardi, e va rifiutato come tutti gli altri.
+     🔒 Il gradino arriva già calcolato da chi chiama: questa funzione resta una REGOLA PURA,
+     senza letture, ed è ciò che permette al banco di provarla senza database. */
+  if (cosa === SCELTA_SCENDO && !String(gradino ?? '').trim()) return 'NIENTE_DA_SCENDERE';
   /* 🔄🗣️⭐⭐ 27/08/2026 — «MI FERMO» VALE ANCHE SU UNA PROVA NON RIUSCITA. Sua segnalazione,
      con lo schermo davanti: *«manca il bottone che mi lascia il livello come per il precedente»*.
      🚨 Il difetto e il perché era stato fatto così: sotto una prova con l'incongruenza il bot
@@ -116,7 +129,12 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
   /* ⛔ E vale sulla BOCCIATA, non su `skip`: a Semi-Pro e Professionista il quiz non viene
      nemmeno posto, il bot non fa loro nessuna domanda e non mostra nessun bottone — accettare
      lì un «mi fermo» vorrebbe dire registrare una risposta a una domanda mai fatta. */
-  if (!provaSuperata && !(cosa === SCELTA_MI_FERMO && esito === 'fail')) return 'PROVA_NON_PASSATA';
+  /* 🔄 27/08 sera — e sulla BOCCIATA passa anche «scendo»: è proprio lì che serve di più.
+     📏 Misurato quel giorno: delle 6 prove bocciate di sempre, ZERO hanno prodotto un livello
+     — sei soci rimasti dov'erano, quasi tutti a 0,5. Il gradino è la strada che a quei sei
+     mancava. ⛔ Il «riprovo» resta fuori come prima: rifare il test si fa dal link, non
+     registrando una scelta. */
+  if (!provaSuperata && !((cosa === SCELTA_MI_FERMO || cosa === SCELTA_SCENDO) && esito === 'fail')) return 'PROVA_NON_PASSATA';
   if (String((scheda || {}).applied_at ?? '').trim() !== '') return 'GIA_APPLICATA';
   const quandoScheda = quandoMs((scheda || {}).submitted_at);
   const elenco = Array.isArray(schedeDelSocio) ? schedeDelSocio : [];
@@ -148,7 +166,8 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any) {
 }
 
 const RIFIUTI: Record<string, { stato: number; frase: string }> = {
-  SCELTA_SCONOSCIUTA: { stato: 400, frase: 'La scelta può essere solo «mi_fermo» o «riprovo».' },
+  SCELTA_SCONOSCIUTA: { stato: 400, frase: 'La scelta può essere solo «mi_fermo», «riprovo» o «scendo».' },
+  NIENTE_DA_SCENDERE: { stato: 409, frase: 'Su questa prova non c\'è nessun livello da prendere: il gradino non è più offerto.' },
   SCHEDA_NON_TROVATA: { stato: 404, frase: 'Nessuna scheda di questo socio con questo gettone.' },
   PROVA_NON_PASSATA: { stato: 409, frase: 'Questa prova non ha superato il quiz: non c\'è un livello da tenere. Per riprovare si rifà il test.' },
   GIA_APPLICATA: { stato: 409, frase: 'Il livello di questa prova è già stato applicato: la scelta è arrivata dopo i fatti.' },
@@ -271,7 +290,38 @@ Deno.serve(async (req: Request) => {
     elencoSchede = (tutte ?? []) as JsonMap[];
   }
 
-  const rifiuto = motivoDelRifiuto(scelta, scheda, elencoSchede);
+  /* 🆕 27/08 sera — IL LIVELLO CHE IL SOCIO HA IN ANAGRAFICA, e serve solo al gradino: senza
+     di quello «scendo» non si può nemmeno validare — la stessa fascia dimostrata è un gradino
+     per chi sta più in alto e un livello nuovo per chi non ce l'ha. È la stessa lettura che fa
+     il ponte del link (`pmo_cloud_records`, record `member`, `payload->>id`), e si fa QUI e non
+     là perché una scelta si valida sui fatti di adesso, non su quelli di quando il bot ha
+     disegnato il bottone.
+     ⚖️ Un guasto in questa lettura NON fa cadere le altre due scelte: `mi_fermo` e `riprovo`
+     non guardano il livello, e farle morire per un campo che non le riguarda sarebbe togliere
+     due strade sane per una terza. Il gradino, senza il livello, resta semplicemente vuoto —
+     e un «scendo» senza gradino è già un rifiuto pulito. */
+  let gradino = '';
+  if (scelta === SCELTA_SCENDO) {
+    const { data: soci, error: erroreSocio } = await db
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .not('deleted', 'is', true)
+      .eq('payload->>id', memberId)
+      .limit(2);
+    if (erroreSocio) {
+      return err(500, 'DB_ERROR', `Lettura del socio non riuscita: ${erroreSocio.message}`);
+    }
+    // ⚠️ Due soci con lo stesso id non dovrebbero esistere: se succede non si sceglie a caso,
+    // stessa difesa dell'ambiguità sulla scheda qui sopra.
+    if ((soci?.length ?? 0) > 1) {
+      return err(409, 'AMBIGUA', 'Più di un socio con questo id: non scelgo.');
+    }
+    const socio = (soci?.[0] as JsonMap | undefined)?.payload as JsonMap | undefined;
+    gradino = gradinoOfferto(scheda, clean(socio?.level));
+  }
+
+  const rifiuto = motivoDelRifiuto(scelta, scheda, elencoSchede, gradino);
   if (rifiuto) {
     const r = RIFIUTI[rifiuto] ?? { stato: 400, frase: rifiuto };
     return err(r.stato, rifiuto, r.frase);
@@ -323,7 +373,14 @@ Deno.serve(async (req: Request) => {
   let applicazioneLanciata = false;
   // 🚨 …e SOLO se la prova era superata: su una non riuscita il giro non applicherebbe niente
   //    (lo ferma il quiz non superato), quindi sarebbe una chiamata a vuoto a ogni tocco.
-  if (scelta === SCELTA_MI_FERMO && provaSuperata) {
+  /* 🔄 27/08 sera — e si lancia anche su «scendo», che è la scelta che scrive DAVVERO un
+     livello: farla aspettare il cron vorrebbe dire dire al socio «va bene, Principiante» e
+     lasciarlo con Base in scheda fino a un quarto d'ora dopo. È la regola sua del 22/08 —
+     *«nello stesso istante dev'essere registrato dal gestionale»* — applicata alla terza
+     scelta come già alla prima.
+     ⚠️ E QUI la prova superata non è una condizione: il gradino nasce apposta anche sulle
+     bocciate, ed è lì che il giro ha più da fare. */
+  if ((scelta === SCELTA_MI_FERMO && provaSuperata) || scelta === SCELTA_SCENDO) {
     // ⭐⭐ SI CHIAMA IL DISPATCHER, NON L'EDGE DIRETTAMENTE, e la ragione è la porta:
     // `assessment-apply-level` entra solo col segreto delle routine, che vive nel **vault** e
     // che questa funzione non ha (né deve avere: sarebbe un secondo posto da cui può uscire).
@@ -346,6 +403,11 @@ Deno.serve(async (req: Request) => {
        «mi tengo quello che ho in scheda»), e il bot che lo indovinasse da una lettura sua
        potrebbe promettere una registrazione che non avverrà. *Il gestionale SA, il bot DICE.* */
     prova_superata: provaSuperata,
+    /* ⭐ La PAROLA del gradino torna insieme alla scrittura, e non è un di più: è la stessa
+       chiamata che l'ha registrata, quindi non può parlare di una prova diversa. Il bot la
+       usa per rispondere («Va bene: Principiante») senza rileggere niente — e una seconda
+       lettura, fra il tocco e la risposta, ci starebbe una corsa. */
+    gradino: gradino || null,
     scelta_precedente: precedente || null,
     cambiata: precedente !== '' && precedente !== scelta,
     // ⭐ Serve al BOT per non promettere il futuro: se il giro è partito può dire che il

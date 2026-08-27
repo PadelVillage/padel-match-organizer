@@ -17,7 +17,7 @@ sono citati perché chi la aggiorna possa rimisurare invece di credere. Quando i
 |---|---|---|
 | **il tetto** | 3,5 (Intermedio) — sopra, il quiz non scrive: certifica il maestro | `TETTO_AUTOMATICO` in `giro-del-test.ts` (3 copie identiche byte per byte) |
 | **la scala** | 7 fasce; al socio si dice **sempre la parola**, mai il numero (regola del 9/08) | `definizioneLivello` (edge) · `PMO_LIVELLI`/`pmoLivelloFascia` (`index.html`) |
-| **il livello non scende mai da solo** | decisione del 27/08 — a far scendere resta la segreteria | `decidi` in `assessment-apply-level/index.ts` |
+| **il livello non scende mai DA SOLO** | decisione del 27/08. 🔄 Dalla sera del 27/08 c'è **una** strada in più, e passa dal socio: il **gradino** (sotto), che scende solo col suo tocco. A far scendere qualcuno senza che l'abbia chiesto resta la **segreteria** | `decidi` in `assessment-apply-level/index.ts` |
 
 E le due parole che il gestionale manda al bot, che **non sono la stessa cosa**:
 - `fascia` = quella **dichiarata** dal socio nel quiz;
@@ -43,7 +43,7 @@ la fascia è la parola della scala.
 | **P4** | `A` < `D`, **fasce diverse**, `D` > 3,5 (es. Base 2,5 → Agonista 5 — il caso di Laura) | messaggio del **maestro** | Intermedio se `A` < 3,5; **niente** se `A` ≥ 3,5 (non si scende al tetto) | ✅ |
 | **P5** | `A` < `D` ma **STESSA fascia** (es. 4 → 4,5, tutti e due **Avanzato** — il caso di Maurizio) | ~~messaggio del maestro~~ → **domanda + bottoni** (cura del 27/08 mattina) | **niente**: la parola in scheda è già quella | 🔧 curata oggi |
 | **P6** | `A` = `D` (es. 4 → 4) | domanda + bottoni | **niente** («il socio ha già questo livello») | ✅ |
-| **P7** | `A` > `D` — **il test dice MENO** (es. Avanzato 4 → Intermedio 3) | ~~domanda con «✅ Tengo Intermedio»~~ → **esito senza domanda**: *«Il tuo livello resta **Avanzato**… Vuoi rifarlo?»* + bottone riprova (sua approvazione, 27/08) | **niente** (il livello non scende) | 🔧 curata il 27/08 |
+| **P7** | `A` > `D` — **il test dice MENO** (es. Avanzato 4 → Intermedio 3) | esito senza domanda (*«Il tuo livello resta **Avanzato**»*) e ~~un bottone solo: riprova~~ → **TRE bottoni**: il gradino, «mi tengo il mio», «lo rifaccio» (sua regola del 27/08 sera) | **niente**, a meno che il socio tocchi il gradino: allora si scrive la fascia dimostrata | 🔧 curata il 27/08, allargata la sera |
 
 **P5 — perché era sbagliata, con le parole del committente** (27/08 mattina): *«quando uno fa il
 test e risulta lo stesso livello che già ha nella scheda di anagrafica, non c'è bisogno che si
@@ -91,13 +91,73 @@ prova esiste. È la stessa scadenza già riconosciuta due volte (il conteggio de
 🔒 Restano in piedi i rifiuti che poggiano su un **fatto**: `SCHEDA_SUPERATA`, `GIA_APPLICATA`,
 `PROVA_NON_PASSATA`. Quelli non scadono.
 
+### ⭐⭐ IL GRADINO — la terza risposta (sua regola, 27/08 sera)
+
+🗣️ *«attenzione perché non dobbiamo ferire l'orgoglio del giocatore. Possiamo proporgli di
+scendere di un gradino o se no di rimanere a livello dell'ultimo test fatto, oppure di rifare
+il test.»*
+
+📏 **Il caso da cui nasce** (Fabiola Limuti, 27/08 ore 16:17, misurato sulla sua scheda): in
+scheda **Base**, dichiara **Principiante**, quiz **senza cancello** (0 domande su 0), esito
+`pass` ⇒ **P7**. Sotto l'esito c'era **un bottone solo** — «Sì, lo rifaccio» — e rifarlo
+ridichiarando Principiante avrebbe dato lo stesso risultato per sempre. *L'unica uscita portava
+dove il socio era già.*
+
+⭐ **La regola, in una riga: il gradino è la fascia più alta che il test non smentisce.**
+
+| la prova | il gradino offerto | perché |
+|---|---|---|
+| **passata**, ma dice meno (P7) | la fascia **dimostrata** | il test l'ha detta: è un dato, non una deduzione |
+| **bocciata** (F1) | la fascia **sotto quella dichiarata** | il cancello smentisce la dichiarata e non dice altro |
+
+🔒 **Quando NON si offre niente** (`gradinoOfferto` torna `''` e restano i due bottoni di
+sempre): la fascia offerta è uguale a quella in scheda (non c'è una scelta), o è **più alta**
+(una bocciatura non promuove nessuno), o la prova è uno `skip`.
+⚖️ **L'unica eccezione al «mai più alta» è `0.5`**, che non è un livello ma il «da definire»
+delle schede nuove — **2.281 soci su 2.817, l'81%**. Per loro il gradino è il primo livello
+vero: il numero sale (0,5 → 1,5) restando nella **stessa parola**.
+⇒ **Ed è per questo che il bottone non dice mai «scendo»**: dice la parola («✅ Va bene:
+Principiante»). Scrivere «scendi» sarebbe **falso** per i due terzi del circolo.
+
+📏 **Il numero che rende la cosa urgente**, misurato il 27/08 su tutte le schede col cancello:
+`pass` **19 → 4 livelli scritti**; `fail` **6 → ZERO**. Chi sbaglia il cancello non prende un
+livello più basso: **non ne prende nessuno**, e resta a 0,5, cioè fuori dalle partite.
+
+🚨 **Cosa si apre e cosa resta chiuso.** In `decidi()` (`assessment-apply-level`) il gradino è
+una **strada a parte**, non tre `if` dentro quella di sempre: la catena normale è fatta di
+protezioni contro chi si **sopravvaluta** (cancello, coerenza, scarto dichiarato/calcolato,
+tetto), e nessuna riguarda chi chiede di **scendere**. Infilarci deroghe avrebbe indebolito la
+salita per servire la discesa.
+· **restano chiuse**: scheda in mano alla segreteria, già applicata, dal link generico, socio
+  inesistente, scheda più vecchia dell'ultimo aggiornamento del livello, livello già uguale;
+· **non si applica il TETTO**: tagliare a Intermedio una discesa scriverebbe un livello **più
+  basso** di quello che il socio ha chiesto;
+· 🔒 **nessun silenzio-assenso**: senza il tocco questo ramo non esiste.
+
+⛔ **Ordine di messa in servizio** (l'opposto di P7, e va saputo): qui il bot **manda** una
+parola nuova al gestionale, non la riceve. `consumer-assessment-decision` rifiuta con **400**
+qualunque scelta che non conosce ⇒ **prima il gestionale, poi il bot**. Al contrario il socio
+tocca il bottone e si prende un errore.
+
+🩹 **E nello stesso giro: «superato» non si dice più su un test senza cancello.** 0 domande su 0
+non sono una prova passata — si dice che il test è **arrivato**. L'estremo **alto** della scala
+questa frase ce l'ha da sempre (S1, ramo `skip`); mancava all'estremo **basso**.
+
+⏳ **APERTO, e non è un dettaglio: il cancello per Principiante non esiste.** Le **36** domande
+di quella fascia (9 trabocchetto) stanno nella banca e **non vengono pescate mai**
+(`regole_fascia: { Principiante: { cancello: false } }`, regola del 9/08). 🗣️ Sua parola del
+27/08 sera: *«un principiante mi può sbagliare quattro risposte su cinque»* ⇒ un cancello lì non
+può bocciare — `Principiante` va da 0,5 a 1,5, e sotto non c'è nessun gradino. Se debba comunque
+**esistere** (per non annunciare «superato» su zero domande, e per lasciare una misura in
+scheda) è una decisione **non ancora presa**.
+
 ---
 
 ## Le varianti a quiz NON superato e senza quiz
 
 | # | caso | cosa fa il bot | si scrive | stato |
 |---|---|---|---|---|
-| **F1** | `fail` (incongruenza fra risposte e dichiarato) | *«è rimasta un'incongruenza, il livello non l'ho registrato. Vuoi rifarlo, o ti tieni il livello che hai?»* + bottoni «🔄» e «👍 Mi tengo il mio livello» | niente (il «mi fermo» si registra come scelta, non come livello) | ✅ |
+| **F1** | `fail` (incongruenza fra risposte e dichiarato) | *«è rimasta un'incongruenza, il livello non l'ho registrato»* + **TRE bottoni** (il gradino, «👍 Mi tengo il mio livello», «🔄») | niente, a meno che tocchi il gradino: allora si scrive la **fascia sotto quella dichiarata** | 🔧 allargata il 27/08 sera |
 | **S1** | `skip` con fascia (dichiara Semi-Pro/Professionista: il quiz non c'è) | *«per il livello che hai dichiarato non c'è un quiz: una scheda come la tua la guarda il maestro»* | niente | ✅ |
 | **S2** | `skip` senza fascia (guasto: il livello non si è letto) | frase neutra, **senza** nominare il maestro | niente | ✅ |
 
@@ -111,6 +171,7 @@ prova esiste. È la stessa scadenza già riconosciuta due volte (il conteggio de
 | P4 (bottone vecchio rimasto in chat: sopra il tetto non c'è scelta) | *«In scheda per adesso resta **X**. Sopra Intermedio… te lo certifica il maestro»* | ✅ (rete del 27/08 notte) |
 | P5/P6 (la parola è già in scheda: non si scrive niente) | oggi *«te lo registro a breve»* → 🔧 cura: *«Perfetto: tengo **X** 👍 In scheda hai già questo livello.»* | 🔧 curata oggi (bot) |
 | P7 (bottone vecchio in chat) | *«Il tuo livello resta **Avanzato**. Un test il livello non lo abbassa mai.»* | 🔧 curata il 27/08 (rete) |
+| **il GRADINO** (`scendo`, da P7 o da F1) | *«Va bene 👍 Il tuo livello adesso è **Principiante**. Te l'ho registrato sulla scheda.»* | ✅ 27/08 sera — «l'ho registrato» e non «lo registro»: il ponte lancia il giro nello stesso istante |
 | F1, tocco su «👍 Mi tengo il mio livello» | *«il livello che hai adesso in scheda resta quello»* | ✅ |
 
 ⚠️ **La cura P5/P6 del bot confronta le due PAROLE che il gestionale gli manda** (`fascia` e
@@ -203,4 +264,8 @@ mentre il commento dichiara di averle allineate «due punti compresi».
 - cosa dice il bot: `avvisi-testi.ts` (`testoEsitoTest`), `scelta-livello.ts`
   (`testoDomandaScelta`, `testoSceltaRegistrata`) nel repo del bot;
 - chi decide se la domanda esiste: `puo_scegliere` e `aspetta_maestro` in
-  `consumer-assessment-link/index.ts` — **è sempre il gestionale**; il bot non ha soglie.
+  `consumer-assessment-link/index.ts` — **è sempre il gestionale**; il bot non ha soglie;
+- il **gradino**: `gradinoOfferto` (con `fasciaSotto` e `livelloDellaFascia`) in
+  `giro-del-test.ts` — banchi `test/consumer-assessment-link.test.mjs` (casi G) e
+  `test/assessment-apply-level.test.mjs` (casi 42-50); il bottone e le frasi in
+  `scelta-livello.ts` / `avvisi-testi.ts` del repo del bot, banco `test/scelta-livello.test.ts`.
