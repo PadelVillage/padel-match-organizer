@@ -33,6 +33,9 @@ import {
   assessTxt,
   fasciaDaLivello,
   pescaPerGettone,
+  quantePescate,
+  seme,
+  sorteDa,
 } from './conoscenza.js';
 
 /* Le opzioni delle due domande sul livello: le stesse che la pagina disegna da `PMO_LIVELLI`
@@ -222,9 +225,27 @@ function domandeConoscenza(token, risposte) {
   }));
 }
 
-/** Tutte le domande del giro, nell'ordine in cui si fanno: prima la scheda, poi il cancello. */
+/* 🔄🗣️⭐⭐ 27/08/2026 — LE DOMANDE DI CONOSCENZA SI MISCHIANO FRA QUELLE DELLA SCHEDA, su sua
+   richiesta (*«sei d'accordo di mischiare le domande trabocchetto tra una domanda vera e
+   un'altra?»*) e delega. Fino a oggi il cancello stava in blocco in fondo: chi rifaceva il
+   test sapeva che le prime otto non bocciano e si concentrava sulla coda.
+   ⚖️ Le PRIME TRE restano fisse e per una ragione di meccanica, non di stile: la fascia da cui
+   pescare si sa solo DOPO «Che livello pensi di avere?» (la terza). Da lì in poi l'ordine è
+   una mescolata COL GETTONE — stesso gettone, stesso ordine, così chi riprende un test a metà
+   ritrova le domande dove le aveva lasciate (è la stessa ripetibilità della pescata).
+   🚨 Il sale è DIVERSO da quello della pescata («ordine-del-giro»): con lo stesso rnd l'ordine
+   direbbe qualcosa su quali domande sono uscite. */
 export function domandeDelGiro(token, risposte) {
-  return SCHEDA_DOMANDE.concat(domandeConoscenza(token, risposte));
+  const conoscenza = domandeConoscenza(token, risposte);
+  if (!conoscenza.length) return SCHEDA_DOMANDE;
+  const testa = SCHEDA_DOMANDE.slice(0, 3);
+  const coda = SCHEDA_DOMANDE.slice(3).concat(conoscenza);
+  const rnd = sorteDa(seme(assessTxt(token), 'ordine-del-giro'));
+  for (let i = coda.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [coda[i], coda[j]] = [coda[j], coda[i]];
+  }
+  return testa.concat(coda);
 }
 
 /** Quante domande sono in TUTTO, prima di sapere che fascia dichiarerà il socio.
@@ -241,7 +262,9 @@ export function domandeDelGiro(token, risposte) {
  * ha il cancello e ne farà otto. Il conto cala dopo la terza risposta — cala, non cresce.
  */
 export function domandeTotaliPreviste() {
-  return SCHEDA_DOMANDE.length + 4;
+  // 🔄 27/08 — il 4 scritto a mano è diventato il conto vero della pescata (oggi 5): il
+  // numero che il bot annuncia vive dove vivono le domande.
+  return SCHEDA_DOMANDE.length + quantePescate();
 }
 
 /**

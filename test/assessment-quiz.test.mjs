@@ -47,11 +47,11 @@ ok('il modulo si carica (dichiarazioni doppie e sintassi storta cadono qui)', ty
 // ── 1. ripetibilità ─────────────────────────────────────────────────────────────
 const a = C.pescaPerGettone('tok-ABC123', 'Intermedio');
 const b = C.pescaPerGettone('tok-ABC123', 'Intermedio');
-ok('🚨 stesso gettone ⇒ stesse 4 domande', JSON.stringify(a) === JSON.stringify(b));
-ok('…e sono davvero 4', a.length === 4);
-// 🔄 27/08 — da 1 a 2 trappole su 4, sua decisione (pescata 2+2 in `conoscenza.js`).
-ok('…con esattamente 2 trappole',
-   a.filter((q) => C.ASSESS_KNOWLEDGE_BANK.questions.find((x) => x.id === q.id)?.trap).length === 2);
+ok('🚨 stesso gettone ⇒ stesse domande', JSON.stringify(a) === JSON.stringify(b));
+ok('…e sono davvero 5', a.length === 5);   // 🔄 27/08: pescata 2+3
+// 🔄 27/08, secondo giro — 3 trappole su 5, sua delega (pescata 2+3, soglia 4/5 in `conoscenza.js`).
+ok('…con esattamente 3 trappole',
+   a.filter((q) => C.ASSESS_KNOWLEDGE_BANK.questions.find((x) => x.id === q.id)?.trap).length === 3);
 const c = C.pescaPerGettone('tok-XYZ789', 'Intermedio');
 ok('gettone diverso ⇒ pescata diversa',
    JSON.stringify(a.map((q) => q.id)) !== JSON.stringify(c.map((q) => q.id)));

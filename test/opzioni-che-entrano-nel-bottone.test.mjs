@@ -62,9 +62,9 @@ const domande = [...BANCA.slice(BANCA.indexOf('questions: [')).matchAll(
 }));
 
 caso('0. la banca si legge, ed è tutta lì', () => {
-  esigi(domande.length === 180, `domande lette: ${domande.length}, attese 180`);
+  esigi(domande.length === 192, `domande lette: ${domande.length}, attese 192`);   // 🔄 27/08: +12 trabocchetto alla rovescia
   const opzioni = domande.reduce((n, d) => n + d.opzioni.length, 0);
-  esigi(opzioni === 720, `opzioni lette: ${opzioni}, attese 720`);
+  esigi(opzioni === 768, `opzioni lette: ${opzioni}, attese 720`);
 });
 
 caso('1. 🚨 OGNI opzione entra in un bottone, intera', () => {
@@ -115,7 +115,12 @@ caso('6. 🚨 le TRAPPOLE non perdono la loro negazione accorciando', () => {
      conto, perché un conto si può abbassare solo per sbaglio.* */
   const NEGA = /non esiste|mai(:| )|nessun/i;
   const trappole = domande.filter((d) => d.trap);
-  esigi(trappole.length === 45, `trappole: ${trappole.length}, attese 45`);
+  /* 🔄 27/08 — le eccezioni legittime sono salite da 3 a 15: le 12 trabocchetto ALLA ROVESCIA
+     (B/I/A/AG-T10..T12) negano di proposito nell'opzione SBAGLIATA — sono regole vere che
+     sembrano inventate, nate per rompere il segnale \u00abse c'\u00e8 Non esiste, \u00e8 quella\u00bb. Il conto
+     delle neganti resta \u2265 42: sono le stesse di prima, e se un'accorciatura ne mangia una il
+     numero scende lo stesso. */
+  esigi(trappole.length === 57, `trappole: ${trappole.length}, attese 57`);
   const conNegazione = trappole.filter((d) => NEGA.test(d.opzioni[d.corretta]));
   esigi(conNegazione.length >= 42,
     `solo ${conNegazione.length} trappole su ${trappole.length} negano ancora: qualcuna ha perso la negazione accorciando —\n     ` +
