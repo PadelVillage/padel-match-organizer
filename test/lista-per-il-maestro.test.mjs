@@ -58,6 +58,18 @@ function estrai(nome) {
 const TETTO = Number((html.match(/const PMO_TETTO_MAESTRO = ([0-9.]+);/) || [])[1]);
 if (!Number.isFinite(TETTO)) throw new Error('PMO_TETTO_MAESTRO non trovato in index.html');
 
+// 🆕 27/08 mattina — la SCALA si estrae anche lei: `assessmentAspettaIlMaestro` ora confronta
+//    le FASCE (stessa parola ⇒ niente da certificare — il caso di Maurizio, 4 → 4,5), e le
+//    parole le dà `pmoLivelloFascia`, che legge `PMO_LIVELLI`. Ricopiare la tabella qui
+//    proverebbe la copia, non l'app.
+function estraiConst(nome) {
+  const inizio = html.indexOf(`const ${nome} = [`);
+  if (inizio < 0) throw new Error(`costante «${nome}» non trovata in index.html`);
+  const fine = html.indexOf('];', inizio);
+  if (fine < 0) throw new Error(`costante «${nome}» senza chiusura in index.html`);
+  return html.slice(inizio, fine + 2);
+}
+
 // Le poche cose dell'app che le due funzioni usano. Sono pezzi banali e si dichiarano tali:
 // il loro comportamento vero è provato altrove, qui servono solo a far girare la regola.
 const base = `
@@ -87,6 +99,10 @@ vm.createContext(ctx);
 vm.runInContext([
   base,
   `const PMO_TETTO_MAESTRO = ${TETTO};`,
+  estraiConst('PMO_LIVELLI'),
+  estrai('assessTxt'),
+  estrai('pmoLivelloFascia'),
+  estrai('pmoLivelloDefinizione'),
   estrai('assessmentUltimaScheda'),
   estrai('assessmentAspettaIlMaestro'),
   estrai('pmoProssimaVoltaInCampo'),
@@ -158,6 +174,23 @@ caso('7. chi non ha ancora nessun livello e dimostra sopra il tetto ci va lo ste
   return [!!r, r && r.inScheda === null];
 });
 
+// 🆕 27/08 mattina — LA STESSA FASCIA NON VA IN LISTA (il rovescio è documentato nel caso
+// 1ter, che affermava il contrario ed è stato rovesciato su sua parola).
+caso('14. ⚖️ in scheda 3,5 e dimostra 4,5 — la parola è nuova ⇒ resta in lista', () => {
+  conSchede([scheda(4.5)]);
+  const r = ctx.assessmentAspettaIlMaestro(socio(3.5));
+  return [!!r, r && r.dimostrato === 4.5, r && r.inScheda === 3.5];
+});
+
+caso('15. 🚨 SABOTAGGIO: col solo confronto sui numeri il caso 13 metterebbe Maurizio in lista', () => {
+  // Si rifà a mano la regola di ieri — `dimostrato > inScheda` e basta — e si pretende un
+  // esito diverso: è dove ci si accorge se qualcuno «semplifica» via il confronto delle fasce.
+  conSchede([scheda(4.5)]);
+  const vero = ctx.assessmentAspettaIlMaestro(socio(4));
+  const soloINumeri = 4.5 > 4;
+  return [vero === null, soloINumeri === true];
+});
+
 // ── QUANDO ANDARLO A GUARDARE ────────────────────────────────────────────────
 caso('8. 🚨 la prossima volta IN CAMPO vale anche se l\'ha prenotata QUALCUN ALTRO', () => {
   // È il difetto che `playerFutureBookingsCount` avrebbe portato dentro: guarda solo
@@ -218,10 +251,16 @@ caso('1bis. 🚨🔄 in scheda ha 4 e dimostra AGONISTA (5) ⇒ ADESSO aspetta i
   return [!!r, r && r.dimostrato === 5, r && r.inScheda === 4];
 });
 
-caso('1ter. 🔄 e anche mezzo passo conta: in scheda 4, dimostrato 4,5', () => {
+caso('1ter. 🔄🔄 il mezzo passo NON conta più: in scheda 4, dimostrato 4,5 ⇒ fuori (27/08 mattina)', () => {
+  /* 🗣️ ROVESCIATO su sua parola il 27/08 mattina, meno di dodici ore dopo essere stato scritto
+     («e anche mezzo passo conta»): Maurizio ha fatto il test — in scheda 4, dimostrato 4,5,
+     tutti e due «Avanzato» — e il bot lo mandava dal maestro a certificare il livello che ha
+     già. *«Quando uno fa il test e risulta lo stesso livello che già ha nella scheda di
+     anagrafica, non c'è bisogno che si chiami il maestro.»*
+     ⚖️ Il criterio del 27/08 sera resta intero («quanto ha dimostrato in più», caso 1bis): si
+     aggiunge che il DI PIÙ si misura in PAROLE, perché è la parola il livello del socio. */
   conSchede([scheda(4.5)]);
-  const r = ctx.assessmentAspettaIlMaestro(socio(4));
-  return [!!r, r && r.dimostrato === 4.5];
+  return [ctx.assessmentAspettaIlMaestro(socio(4)) === null];
 });
 
 caso('2bis. ⚖️ …ma chi ha 5 e dimostra 5 resta FUORI: non è più di quello che ha', () => {
