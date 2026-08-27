@@ -154,10 +154,10 @@ vm.runInContext(
     //    e dev'essere la STESSA che fa la lista nel gestionale (voce 100).
     // 🆕 27/08 mattina — `definizioneLivello` entra perché `sopraIlTetto` confronta le FASCE:
     //    senza, la funzione morirebbe in vm con «definizioneLivello is not defined».
-    'livelloDimostrato', 'definizioneLivello', 'sopraIlTetto'].map(estrai).join('\n')),
+    'livelloDimostrato', 'definizioneLivello', 'sopraIlTetto', 'ilTestDiceMeno'].map(estrai).join('\n')),
   ctx,
 );
-const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto } = ctx;
+const { statoDelGiro, esitoDellaProva, giriDelSocio, laProvaEsaurisceIlGiro, sopraIlTetto, ilTestDiceMeno } = ctx;
 
 // ── 🆕 ⑥ IL PROMEMORIA GENTILE — secondo modulo, stesso trattamento ────────────
 // ⭐ Le costanti si LEGGONO dal modulo: la cadenza è una decisione del committente («un paio
@@ -621,6 +621,27 @@ caso('M8. 🗣️ in scheda 4 e dimostra 4,5 — stessa PAROLA ⇒ non va dal ma
 caso('M9. ⚖️ in scheda 3,5 e dimostra 4,5 — Intermedio → Avanzato ⇒ va: la parola è nuova', () =>
   [sopraIlTetto(provaCon(4.5), '3.5') === true]);
 
+// 🆕 27/08 mattina — LA GEMELLA DEL MENO (variante P7, approvata da lui): dove il test dice
+// meno di quello che il socio ha in scheda non c'è nessuna scelta da fare — il livello non
+// si abbassa mai con un test — e il ponte lo dichiara al bot (`il_test_dice_meno`).
+caso('T1. 🗣️ in scheda 4 e dimostra 3 — Intermedio sotto Avanzato ⇒ il test dice meno', () =>
+  [ilTestDiceMeno(provaCon(3), '4') === true]);
+
+caso('T2. ⚖️ in scheda 4,5 e dimostra 4 — stessa PAROLA ⇒ non è «meno»: resta la domanda', () =>
+  [ilTestDiceMeno(provaCon(4), '4.5') === false]);
+
+caso('T3. ⚖️ chi dimostra di PIÙ non dice meno, e chi non ha livello non può dirlo', () =>
+  [ilTestDiceMeno(provaCon(5), '4') === false,
+   ilTestDiceMeno(provaCon(3), '') === false, ilTestDiceMeno(provaCon(3), null) === false]);
+
+caso('T4. 🚨 il quiz FALLITO non \xabdice\xbb niente: l\u00ec c\u2019\u00e8 gi\u00e0 la sua strada', () =>
+  [ilTestDiceMeno(provaCon(3, 'fail'), '4') === false]);
+
+caso('T5. 🚨 le due gemelle non possono essere vere insieme: o piu, o meno, mai insieme', () => {
+  const casi = [[3, '4'], [4, '4.5'], [4.5, '4'], [5, '2.5'], [3.5, '3.5']];
+  return casi.map(([d, a]) => !(sopraIlTetto(provaCon(d), a) && ilTestDiceMeno(provaCon(d), a)));
+});
+
 caso('M10. 🚨 SABOTAGGIO: col solo confronto sui numeri il caso M8 manderebbe Maurizio in segreteria', () => {
   /* Si rifà a mano la regola di ieri — `dimostrato > inScheda` e basta — e si pretende un esito
      diverso su M8: è dove ci si accorge se qualcuno «semplifica» via il confronto delle fasce. */
@@ -686,6 +707,14 @@ const guardie = [
     /select\('token, submitted_at, raw_response, calculated_level, member_decision, member_decision_at'\)/.test(srcPonte)],
   ['e lo fa DOPO il calcolo, non dentro',
     srcPonte.indexOf('if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;')
+      > srcPonte.indexOf('puo_scegliere: (() => {')],
+  // 🆕 27/08 mattina (P7) — le due metà: il fatto ESCE verso il bot, e la domanda si SPEGNE.
+  //    Senza la prima il bot non sa cosa dire; senza la seconda continua a chiedere «tieni o
+  //    riprovi?» su una prova dove nessuna risposta cambia la scheda.
+  ['il «dice meno» esce verso il bot',
+    /il_test_dice_meno: ilTestDiceMeno\(s, payload\.level\)/.test(srcPonte)],
+  ['e spegne la domanda, dopo il calcolo come il maestro',
+    srcPonte.indexOf('if (ultimaScheda.il_test_dice_meno) ultimaScheda.puo_scegliere = false;')
       > srcPonte.indexOf('puo_scegliere: (() => {')],
   // ── Le TRE COPIE del modulo, che il deploy costringe a esistere ──
   // 🚨 È la stessa difesa di `scrittura-al-circolo.test.ts`: i deploy saltano `_shared/`,

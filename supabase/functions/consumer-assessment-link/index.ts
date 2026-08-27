@@ -8,6 +8,7 @@ import {
   definizioneLivello,
   sceltaDellaProva,
   sopraIlTetto,
+  ilTestDiceMeno,
   stessaProva,
   giriDelSocio,
   statoDelGiro,
@@ -352,6 +353,12 @@ Deno.serve(async (req: Request) => {
            vorrebbe dire portare in questo file la scala dei sette livelli, cioè la terza copia
            che il commento qui sopra dice di non fare. */
         aspetta_maestro: sopraIlTetto(s, payload.level),
+        /* 🆕🗣️ 27/08 mattina (variante P7, approvata da lui) — IL TEST DICE MENO di quello che
+           ha in scheda: il livello non si abbassa mai con un test, quindi non c'è nessuna
+           scelta da fare. Il bot, con questo fatto in mano, non fa la domanda: dice «il tuo
+           livello resta X» e offre il bottone per riprovare. La regola vive nel modulo del
+           giro, accanto alla gemella `sopraIlTetto`: il MENO si misura in PAROLE. */
+        il_test_dice_meno: ilTestDiceMeno(s, payload.level),
         /* 🚨⭐⭐ E IL LIVELLO CHE HA ADESSO IN SCHEDA, che è la cosa che il bot sbagliava.
            📏 Misurato il 27/08: la parola che il bot annuncia («Il tuo livello è **X**») è
            `fascia`, cioè la fascia **DICHIARATA** dal socio. Sotto il tetto le due coincidono e
@@ -426,6 +433,15 @@ Deno.serve(async (req: Request) => {
          📌 *Due campi che rispondono alla stessa domanda o sono uno solo, o divergono — ed è la
          trappola ④ del 27/08, che stavolta è divergenza fra il gestionale e sé stesso.* */
       if (ultimaScheda.aspetta_maestro) ultimaScheda.puo_scegliere = false;
+      /* 🆕 27/08 mattina (P7) — e mente anche quando il test dice MENO: «tieni o riprovi?» con
+         «Tengo Intermedio» a chi ha Avanzato offre di tenere un livello che non verrà mai
+         scritto (il livello non scende). Stessa forma del caso del maestro: una domanda le cui
+         risposte portano allo stesso posto non è una scelta. Il bot, senza la domanda, cade
+         sull'esito «il tuo livello resta X» — il campo qui sopra glielo dice.
+         ⛔ ORDINE DI MESSA IN SERVIZIO rispettato: il bot che legge `il_test_dice_meno` è in
+         servizio PRIMA di questa riga — spegnere la domanda con un bot che non conosce il
+         campo avrebbe prodotto il silenzio totale, che è peggio della domanda sbagliata. */
+      if (ultimaScheda.il_test_dice_meno) ultimaScheda.puo_scegliere = false;
     }
     elencoSchede = elenco;
   }

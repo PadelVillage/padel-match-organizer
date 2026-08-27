@@ -3590,7 +3590,7 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
-### 🧩 A chi dimostra MENO di quello che ha, il bot offre di «tenere» un livello che non scriverà mai (27/08, scrivendo la scheda delle varianti)
+### 🧩 A chi dimostra MENO di quello che ha, il bot offriva di «tenere» un livello che non avrebbe mai scritto — 🔧 CURATA il 27/08 stesso, su sua approvazione («OK»)
 
 📏 **Misurata sul codice, non vista da nessuno** — è la variante **P7** di
 `docs/test-livello-varianti.md`. Chi ha **Avanzato** in scheda e risponde da **Intermedio**
@@ -3600,10 +3600,14 @@ scende mai da solo** (sua regola del 27/08): qualunque cosa tocchi, non si scriv
 tocco il bot risponde *«tengo Intermedio, te lo registro sulla scheda a breve»*, mentre
 `/livello` continua a dire Avanzato. **Una promessa doppia e falsa**, della stessa famiglia di
 quella curata su Laura il 27/08 notte.
-💡 **Proposta**: dove nessuna risposta cambia la scheda non c'è una scelta da fare ⇒ niente
-domanda; un esito del tipo *«Test superato. Il tuo livello resta **Avanzato**»* + il bottone per
-riprovare. ⚖️ La frase la leggeranno i soci: **la forma la decide lui**, per questo è qui e non
-già in coda.
+🔧 **CURATA come proposto, dopo il suo «OK»**: dove nessuna risposta cambia la scheda non c'è una
+scelta ⇒ il ponte manda il fatto (**`il_test_dice_meno`**, gemella-del-meno di `sopraIlTetto` nel
+modulo del giro: il confronto è in **parole**) e spegne `puo_scegliere`; il bot dice *«Il tuo
+livello resta **Avanzato**… Vuoi rifarlo?»* col bottone del rifare, e la **rete** copre i bottoni
+vecchi in chat. ⛔ Ordine di messa in servizio rispettato: prima il bot (campo inerte), poi il
+ponte — al contrario sarebbe stato silenzio totale, peggio della domanda sbagliata.
+⏳ Prova fisica: un socio con un livello alto in scheda che dichiara e dimostra una fascia più
+bassa — non ancora vista succedere.
 
 🆕🚨⭐⭐ **Nati la notte del 23/08 (49ª sessione) da UN SOLO fallimento vero, e sono più grandi del
 fallimento.** Alle **00:14:52** una riprenotazione dal bot muore con
