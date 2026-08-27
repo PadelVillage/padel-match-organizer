@@ -1967,10 +1967,47 @@ della scheda a non chiedere niente (*«non è chiaro cosa bisogna rispondere»*)
 (bandeja, vibora, smash): quanto li usi?», in `passi.js` e nella pagina (PROD 6.249, TEST 6.253).
 I **valori** delle risposte non cambiano.
 
-⏳ **PROVA FISICA: non fatta.** Vuole il giro di Laura rifatto — sotto Intermedio in scheda,
-dimostra Agonista ⇒ deve arrivare *«Per adesso in scheda hai Base»* col maestro, **senza** bottoni
-tieni/riprovi. E i **bottoni vecchi** delle 23:56 restano in chat: toccarli ora deve dare la
-risposta del maestro, non la promessa.
+✅⭐⭐ **PROVA FISICA FATTA, ed è passata: la 00:22 di Laura.** Sua conferma con lo schermo davanti
+(*«per quanto riguarda il finale del risultato, ora funziona bene»*): in scheda **Base**, test
+**Agonista** ⇒ *«Per adesso in scheda hai Base»*, il livello **dichiarato** detto per quello che è
+(«hai risposto da Agonista»), la segreteria col numero — e **nessun bottone tieni/riprovi**.
+⇒ È la prova che la catena regge dai due lati: il gestionale nega la scelta, il bot dice il fatto.
+
+🗣️ **Due rifiniture sue nello stesso giro, sulla stessa frase due volte:**
+· la **domanda 8** era «Bandeja / vibora / smash», poi «quanto li usi?» — e la seconda volta ha
+  detto il perché che mancava: *«le risposte così scritte non sono coerenti con quanto tu
+  domandi»*. 📏 Vero: «quanto li usi» chiede una **frequenza**, le risposte parlano di
+  **padronanza** ⇒ **«Come te la cavi con i colpi alti (bandeja, vibora, smash)?»** (PROD 6.250 ·
+  TEST 6.254). 📌 *La domanda si adegua alle risposte, non il contrario.*
+· la **frase del maestro**: da «Hai risposto da Agonista: da lì in su…» a *«Le tue risposte sono da
+  **Agonista**, ma un livello così alto non lo decide il test: te lo certifica il maestro
+  guardandoti giocare»* — e la coda è ora **identica** alla gemella di `scelta-livello.ts`, due
+  punti compresi (assistente-padel-agent#97).
+
+🚨🚨⭐⭐ **E L'ULTIMO RITROVAMENTO DELLA NOTTE — «alla fine del test non ha mandato nessun
+messaggio», misurato nel registro del bot e NON era il test.**
+
+| ora | fatto |
+|---|---|
+| 00:39:40 | sorveglianza dell'esito **armata** (ha aperto il quiz) |
+| 00:40:52 | **il bot si riavvia** — è il deploy della frase del maestro, fatto da noi in quel minuto |
+| 00:42:24 | test consegnato ⇒ **silenzio**: la sorveglianza vive in memoria ed era morta col riavvio |
+| 00:52:24 | l'esito arriva col **giro dei 15 minuti**, che è la rete di riserva |
+
+📏 La causa: l'armatura stava dietro `tst.tipo === 'vai'` ⇒ solo il tocco che **apre** il test
+riarmava, e i tocchi delle **risposte** no. ⇒ Ora riarma **ogni** tocco: è gratis, perché
+`sorvegliaEsitoDelTest` è idempotente (il set `sorvegliati`), e lavora solo quando il bot è rinato
+a metà test (assistente-padel-agent#98, guardia **17sexies**, vista cadere rimettendo la
+condizione vecchia).
+📌 *Uno stato che vive in memoria va riarmato a ogni occasione, non solo alla prima: la prima è
+l'unica che un riavvio può aver mangiato.*
+⚖️ **E la rete di riserva ha funzionato**: l'esito è arrivato, con dieci minuti di ritardo. Senza
+il giro dei 15′ quel test sarebbe rimasto muto per sempre — è il motivo per cui quel giro esiste,
+visto lavorare per la prima volta.
+
+⏳ **Cosa resta da provare**: un test **intero** senza deploy in mezzo (l'esito in pochi secondi), e
+i **bottoni vecchi** rimasti nelle chat — toccare «Tengo Agonista» su un messaggio di ieri deve
+dare la risposta del maestro, non la promessa.
 
 🚨⭐⭐ **E LA GUARDIA 17quater HA FERMATO LA PRIMA VERSIONE DELLA CURA, prima che atterrasse.**
 Chiamava `statoTestLivello` diretto e scavalcava l'accensione della **sorveglianza dell'esito** —
