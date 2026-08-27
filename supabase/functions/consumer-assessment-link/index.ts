@@ -9,8 +9,6 @@ import {
   sceltaDellaProva,
   sopraIlTetto,
   ilTestDiceMeno,
-  stessaProva,
-  giriDelSocio,
   statoDelGiro,
 } from './giro-del-test.ts';
 /* ⚠️ L'UNICO import che esce dalla cartella di questa funzione, e si dichiara perché è una
@@ -393,18 +391,37 @@ Deno.serve(async (req: Request) => {
         livello: clean(payload.level),
         // 🆕 ④ (19/08/2026) — la SCELTA del socio su questa prova, e se può ancora farla.
         // È il gestionale che SA: il bot legge questi tre campi e fa la domanda «ti fermi
-        // o riprovi?» solo dove la domanda esiste davvero. `puo_scegliere` è vero solo se
-        // la prova ha passato il cancello, nessuna scelta è già registrata, il livello non
-        // è già stato applicato e il giro è ancora APERTO su questa prova (alla terza non
-        // c'è niente da chiedere: si applica da sola). `scelta_entro` è il momento in cui
-        // il silenzio diventa assenso (`ORE_SILENZIO_ASSENSO`) — il bot può dire «hai
-        // tempo fino a…» senza tenere il numero in casa.
+        // o riprovi?» solo dove la domanda esiste davvero. `puo_scegliere` è vero se la prova
+        // ha passato il cancello, nessuna scelta è già registrata e il livello non è già
+        // stato applicato. `scelta_entro` è il momento in cui il silenzio diventa assenso
+        // (`ORE_SILENZIO_ASSENSO`) — il bot può dire «hai tempo fino a…» senza tenere il
+        // numero in casa.
         scelta: sceltaDellaProva(s),
+        /* 🔄🚨⭐⭐ 27/08/2026 — VIA IL VINCOLO DEL GIRO, e qui c'era il contrario: «il giro è
+           ancora APERTO su questa prova (alla terza non c'è niente da chiedere: si applica da
+           sola)». Quella riga ha prodotto un SILENZIO ETERNO, misurato sul test vero di
+           Maurizio delle 10:12:51 del 27/08 e riprodotto eseguendo questo stesso modulo sulle
+           sue schede vere.
+           📏 I fatti: era la sua TERZA prova del giro ⇒ `corrente` vuoto ⇒ `puo_scegliere`
+           falso; in scheda 4 e dimostrato 4,5 sono tutti e due «Avanzato» ⇒ né
+           `aspetta_maestro` né `il_test_dice_meno`; e il livello non si scriverà MAI (il tetto
+           taglia 4,5 a 3,5, che è meno di 4, e il livello non scende) ⇒ `livello_applicato`
+           resta falso per sempre. ⇒ `siPuoAnnunciareIlTest` chiude tutte le porte: il socio ha
+           letto «Lo sto registrando: fra poco ti scrivo com'è andata» e non riceverà mai altro.
+           ⚖️ E LA RAGIONE DELLA RIGA VECCHIA ERA SCADUTA, non sbagliata quando fu scritta:
+           «alla terza non c'è una quarta a cui rimandare» era vero col giro seguito da
+           trenta giorni d'attesa. Dal 25/08 `GIORNI_DI_ATTESA = 0` ⇒ il giro dopo nasce
+           **subito**, la quarta prova esiste, e insieme all'attesa se n'è andata la ragione.
+           È la stessa scadenza già riconosciuta due volte — il conteggio delle prove tolto il
+           27/08 e la frase «ti resta una prova» — arrivata al terzo posto in cui viveva.
+           🔒 Quello che TIENE ancora: una scelta già registrata non si rifà, e un livello già
+           scritto non si sceglie più. Sono fatti, non conteggi.
+           ⚠️ La metà gemella sta in `consumer-assessment-decision` (il rifiuto `GIRO_FINITO`):
+           si cambiano INSIEME, o il bot mostra due bottoni che il ponte rifiuta. */
         puo_scegliere: (() => {
           if (esito !== 'pass') return false;
           if (sceltaDellaProva(s)) return false;
-          const corrente = giriDelSocio(elenco, TENTATIVI_PER_GIRO).corrente;
-          return corrente.length > 0 && stessaProva(corrente[corrente.length - 1], s);
+          return true;
         })(),
         scelta_entro: quandoMs(s.submitted_at)
           ? new Date(quandoMs(s.submitted_at) + ORE_SILENZIO_ASSENSO * 60 * 60 * 1000).toISOString()

@@ -65,6 +65,32 @@ bottoni vecchi rimasti in chat («il tuo livello resta **Avanzato**», nessuna p
 ⛔ Ordine di messa in servizio rispettato: **prima il bot** (il campo che nessuno manda è inerte),
 **poi il ponte** — al contrario, la domanda spenta con un bot vecchio sarebbe stata silenzio.
 
+### 🚨 P0 — «Lo sto registrando: fra poco ti scrivo com'è andata», e poi PIÙ NIENTE
+
+**Il difetto che ha attraversato tutte le varianti**, visto dal committente il 27/08 sul test di
+Maurizio delle **10:12:51** e riprodotto **eseguendo il modulo del giro sulle sue schede vere**.
+
+📏 I quattro fatti, tutti veri insieme: era la sua **terza prova del giro** ⇒ il giro si chiude ⇒
+`puo_scegliere` **falso** (la regola vecchia pretendeva il giro *aperto*); in scheda **4** e
+dimostrato **4,5** sono tutti e due «Avanzato» ⇒ né `aspetta_maestro` né `il_test_dice_meno`; e il
+livello **non si scriverà mai** (il tetto taglia 4,5 a 3,5, che è meno di 4, e il livello non
+scende) ⇒ `livello_applicato` resta falso **per sempre**.
+⇒ `siPuoAnnunciareIlTest` chiude ogni porta: il socio legge *«fra poco ti scrivo com'è andata»* e
+non riceve mai altro. **Non un messaggio monco: un silenzio eterno.**
+
+⚖️ **Le tre cure del 27/08 mattina erano GIUSTE** — è proprio perché lo erano che non restava
+nessuna porta aperta: ognuna spegneva correttamente il proprio caso, e nessuna accendeva il
+messaggio che restava da dire.
+🔨 **Cura**: `puo_scegliere` non conta più le prove del giro (e `consumer-assessment-decision`
+smette di rifiutare `GIRO_FINITO` — *le due metà si cambiano insieme, o il bot mostra bottoni che
+il ponte rifiuta*). La ragione della regola vecchia — *«alla terza non c'è una quarta a cui
+rimandare»* — era **scaduta** dal 25/08, quando l'attesa fra i giri è andata a **zero**: la quarta
+prova esiste. È la stessa scadenza già riconosciuta due volte (il conteggio delle prove, la frase
+«ti resta una prova»), al terzo posto in cui viveva.
+📌 *Una regola che protegge da una conseguenza che non esiste più non protegge: vieta.*
+🔒 Restano in piedi i rifiuti che poggiano su un **fatto**: `SCHEDA_SUPERATA`, `GIA_APPLICATA`,
+`PROVA_NON_PASSATA`. Quelli non scadono.
+
 ---
 
 ## Le varianti a quiz NON superato e senza quiz

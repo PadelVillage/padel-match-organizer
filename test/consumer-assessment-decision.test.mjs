@@ -150,8 +150,10 @@ caso('3bis. 🚨 alla TERZA prova bocciata il «mi fermo» non diventa GIRO_FINI
   const trePassata = prova('T3', giorniFa(1), 'pass');
   return [
     motivoDelRifiuto(MI_FERMO, treBocciata, [una, due, treBocciata]) === '',
-    // …mentre su una prova SUPERATA il rifiuto resta, che è il caso per cui esiste.
-    motivoDelRifiuto(MI_FERMO, trePassata, [una, due, trePassata]) === 'GIRO_FINITO',
+    /* 🔄 27/08: e nemmeno sulla PASSATA, dove fino a stamattina il rifiuto restava. La riga
+       vecchia diceva «…mentre su una prova SUPERATA il rifiuto resta, che è il caso per cui
+       esiste»: è stata rovesciata, non affiancata. Vedi il caso 6. */
+    motivoDelRifiuto(MI_FERMO, trePassata, [una, due, trePassata]) === '',
   ];
 });
 
@@ -183,15 +185,39 @@ caso('5. 🚨🚨 IL BOTTONE VECCHIO: una prova SUPERATA da una più recente non
   ];
 });
 
-caso('6. 🚨 sulla TERZA prova non c\'è niente da scegliere: si applica da sola', () => {
-  // ⚖️ E il rifiuto qui PROTEGGE: senza, un «riprovo» sulla terza fermerebbe per sempre un
-  //    esito che la sua regola vuole applicato — il socio si troverebbe il giro finito e il
-  //    livello mai scritto.
+caso('6. 🔄🚨⭐⭐ sulla TERZA prova ADESSO SI SCEGLIE — e qui c\'era il contrario', () => {
+  /* 🔄 ROVESCIATO il 27/08 su un difetto VISTO, non su un'idea. Questo caso pretendeva
+     `GIRO_FINITO` su tutt'e due le scelte, e la sua nota diceva «il rifiuto qui PROTEGGE».
+     📏 Il fatto che lo smonta: il test vero di Maurizio del 27/08 alle 10:12:51 era la sua
+     terza prova ⇒ nessuna domanda dal ponte del link, e in scheda 4 contro 4,5 dimostrato
+     (tutti e due «Avanzato») ⇒ né maestro né «dice meno» ⇒ e il livello non si sarebbe
+     scritto mai (il tetto taglia a 3,5, che è meno di 4). Il bot ha detto «fra poco ti scrivo
+     com'è andata» e poi è rimasto muto PER SEMPRE.
+     ⚖️ La protezione che questa riga dichiarava — «un riprovo fermerebbe per sempre un esito
+     che la sua regola vuole applicato» — poggiava sull'attesa di trenta giorni: allora dopo la
+     terza non c'era un dopo. Dal 25/08 l'attesa è ZERO ⇒ il giro nuovo nasce subito e chi dice
+     «riprovo» rifà il test all'istante. Non si ferma più niente per sempre.
+     📌 Una regola che protegge da una conseguenza che non esiste più non protegge: vieta. */
   const terza = prova('T3', giorniFa(1), 'pass');
   const giro = [prova('T1', giorniFa(5), 'fail'), prova('T2', giorniFa(3), 'fail'), terza];
   return [
-    motivoDelRifiuto(MI_FERMO, terza, giro) === 'GIRO_FINITO',
-    motivoDelRifiuto(RIPROVO, terza, giro) === 'GIRO_FINITO',
+    motivoDelRifiuto(MI_FERMO, terza, giro) === '',
+    motivoDelRifiuto(RIPROVO, terza, giro) === '',
+  ];
+});
+
+caso('6bis. 🔒 ma i rifiuti che poggiano su un FATTO reggono tutti', () => {
+  /* La cura toglie un divieto che contava le prove; non tocca i tre che guardano cosa è
+     successo davvero. È la riga che distingue questa cura da un indebolimento. */
+  const terza = prova('T3', giorniFa(1), 'pass');
+  const giro = [prova('T1', giorniFa(5), 'fail'), prova('T2', giorniFa(3), 'fail'), terza];
+  const applicata = prova('T3', giorniFa(1), 'pass', { applied_at: giorniFa(1) });
+  const bocciata = prova('T3', giorniFa(1), 'fail');
+  const piuRecente = prova('T4', giorniFa(0), 'pass');
+  return [
+    motivoDelRifiuto(MI_FERMO, applicata, [applicata]) === 'GIA_APPLICATA',
+    motivoDelRifiuto(MI_FERMO, terza, [...giro, piuRecente]) === 'SCHEDA_SUPERATA',
+    motivoDelRifiuto(RIPROVO, bocciata, [bocciata]) === 'PROVA_NON_PASSATA',
   ];
 });
 
