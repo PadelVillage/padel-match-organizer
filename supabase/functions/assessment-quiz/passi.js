@@ -214,10 +214,10 @@ export function idDaChiaveConoscenza(chiave) {
    torna utile una seconda volta — chi cambia idea sul livello a metà giro si ritrova domande
    diverse, ed è giusto così: sta rispondendo a un'altra fascia).
    ⛔ `trap` NON esce: dire quale delle quattro è la trappola è mezza risposta regalata. */
-function domandeConoscenza(token, risposte) {
+function domandeConoscenza(token, risposte, viste) {
   const fascia = fasciaDaLivello((risposte || {}).declaredLevel);
   if (!fascia) return [];
-  return pescaPerGettone(assessTxt(token), fascia).map((d) => ({
+  return pescaPerGettone(assessTxt(token), fascia, viste).map((d) => ({
     chiave: chiaveConoscenza(d.id),
     testo: d.q,
     opzioni: scelte(d.opts),
@@ -235,8 +235,8 @@ function domandeConoscenza(token, risposte) {
    ritrova le domande dove le aveva lasciate (è la stessa ripetibilità della pescata).
    🚨 Il sale è DIVERSO da quello della pescata («ordine-del-giro»): con lo stesso rnd l'ordine
    direbbe qualcosa su quali domande sono uscite. */
-export function domandeDelGiro(token, risposte) {
-  const conoscenza = domandeConoscenza(token, risposte);
+export function domandeDelGiro(token, risposte, viste) {
+  const conoscenza = domandeConoscenza(token, risposte, viste);
   if (!conoscenza.length) return SCHEDA_DOMANDE;
   const testa = SCHEDA_DOMANDE.slice(0, 3);
   const coda = SCHEDA_DOMANDE.slice(3).concat(conoscenza);
@@ -275,9 +275,9 @@ export function domandeTotaliPreviste() {
  * della terza domanda il totale è una **previsione** (8 + 4), dopo è un fatto. Meglio un numero
  * che si corregge di uno che promette dodici passi a chi ne farà otto.
  */
-export function passoCorrente(token, risposte) {
+export function passoCorrente(token, risposte, viste) {
   const date = risposte || {};
-  const domande = domandeDelGiro(token, date);
+  const domande = domandeDelGiro(token, date, viste);
   const conFascia = !!assessTxt(date.declaredLevel);
   const totale = conFascia ? domande.length : domandeTotaliPreviste();
 
