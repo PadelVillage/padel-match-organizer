@@ -3570,6 +3570,45 @@ che è il modo in cui un residuo diventa un mistero.
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+### 🚨 Un cambio di livello A MANO è INVISIBILE alla guardia che dovrebbe proteggerlo — misurato il 28/08 notte
+
+📏 **Era il punto D del passaggio di consegne**, annotato così: *«non misurato quanto sia
+raggiungibile»*. Misurato adesso, ed è raggiungibile **da solo, senza che nessuno tocchi niente**.
+
+🔎 **Il fatto strutturale, letto nel codice e certo**: `lastLevelUpdateAt` lo scrivono **due punti
+soli** di `index.html` (righe 30549 e 35534), e stanno **tutt'e due nel giro dell'autovalutazione**.
+Il salvataggio della **scheda socio** — che è dove la segreteria cambia il livello a mano — compone
+`nextEditable` col campo `level` e **non tocca** né `lastLevelUpdateAt` né `selfAssessmentDate`.
+⚖️ ⇒ La protezione di `assessment-apply-level`, che nel suo stesso commento si presenta come *«IL
+CONTROLLO CHE IMPEDISCE IL DANNO: una scheda vecchia non deve mai scavalcare un livello aggiornato
+dopo»*, guarda `max(lastLevelUpdateAt, selfAssessmentDate)` — cioè **è cieca esattamente al tipo di
+aggiornamento che nomina**.
+
+🚨 **E non serve nessuno che sbagli un gesto**: le schede in attesa le applica un **cron ogni 15
+minuti** (`pmo-assessment-apply-level-prod`), senza nessuno che guardi. La sequenza che fa il danno
+è ordinaria: una scheda resta in attesa, la segreteria nel frattempo cambia il livello a mano, poi
+la scheda diventa applicabile e **riscrive il livello della segreteria** — senza traccia, perché di
+quel cambio a mano non resta nessuna data.
+
+📏 **Misurato su PROD**: **23** schede in attesa e applicabili (`staff_status` vuoto, `applied_at`
+nullo), la più vecchia del **30 aprile**; di quelle, **20** si risolvono a un socio vivo e **12**
+oggi **passerebbero la guardia della data**.
+⛔ **Cosa questo NON dice, e va detto**: che passino la guardia della data non vuol dire che si
+applicherebbero — davanti ci sono gli altri cancelli (`experience_flag`, il gradino, il tetto, «ha
+già questo livello»), che **non ho misurato**. Il 12 misura l'ampiezza della cecità, non il numero
+di danni in arrivo.
+🩹 **E la sonda ha sbagliato due volte prima di dire il vero**, con lo stesso zero rassicurante: il
+telefono della scheda ha **10** cifre e quello del socio **12** (col prefisso) ⇒ la giuntura sul
+telefono trovava **0 soci su 23**, e la seconda, normalizzata alle ultime 10, pure — perché le 23
+schede in attesa il telefono **non ce l'hanno affatto**: il socio si trova dal **gettone**. 📌 *Uno
+zero che conferma quel che speri va sempre guardato una volta di più.*
+
+⚠️ **PERCHÉ NON È UNA RIGA SOLA, ed è la ragione per cui resta qui e non la si improvvisa**: il
+livello lo scrive anche l'**import da Matchpoint** (`index.html:11830`). Marcare la data a ogni
+scrittura del campo **bloccherebbe per sempre ogni scheda**, perché il sync passa di lì
+continuamente. ⇒ La cura deve distinguere **la mano della segreteria** dall'**import di massa**, e
+marcare **solo quando il livello cambia davvero**. È un bivio di disegno, non una svista.
+
 ### 🧩 A chi dimostra MENO di quello che ha, il bot offriva di «tenere» un livello che non avrebbe mai scritto — 🔧 CURATA il 27/08 stesso, su sua approvazione («OK»)
 
 📏 **Misurata sul codice, non vista da nessuno** — è la variante **P7** di
