@@ -55,7 +55,8 @@ from self_assessments where submitted_at > '2026-08-28 09:20:00Z' order by submi
 ⇒ Si riparte da una situazione pulita: nessun merge in sospeso, nessun drift, nessuna guardia rossa.
 I rami di lavoro rimasti li cancella `cleanup-claude-branches.yml` stanotte.
 
-**Lista dei lavori**: 🔴 urgenti **8** · 📋 in coda **10** · 📦 chiuse **81**.
+**Lista dei lavori**: 🔴 urgenti **9** · 📋 in coda **10** · 📦 chiuse **81**.
+🆕 La nona urgente è la **104**, aperta a mezzogiorno su sua parola e **promossa da lui** — vedi § 4bis.
 
 ---
 
@@ -114,13 +115,17 @@ Sono **6**, e stanno in `docs/test-livello-regole.md` § F. In ordine di conveni
 
 ---
 
-## 4bis. 🆕🗣️ LAVORO NUOVO, chiesto da lui il 28/08 a mezzogiorno — **le opzioni in ordine casuale**
+## 4bis. 🆕🗣️ VOCE **104** — le opzioni in ordine casuale *(fra le URGENTI, promossa da lui)*
 
 🗣️ Sue parole, con lo screenshot della domanda «Come gestisci il vetro in difesa?» davanti:
 
 > *«Diverse domande sono in ordine crescente di livello: quella più in alto è il livello più basso,
 > quella in fondo è il più alto. Io questa cosa vorrei cambiarla. Dovrebbe essere un ordine random,
 > se no dopo un po' la gente capisce questo sistema.»*
+
+🔼 **È la voce 104, e sta fra le URGENTI perché ce l'ha messa lui**: l'avevo aperta in coda
+dichiarando che non bloccava niente, e pochi minuti dopo l'ha spostata di sopra — *«mettila nella
+lista dei task che stiamo facendo adesso»*. ⇒ **È il lavoro da cui ripartire.**
 
 ⇒ **È un difetto del cancello, non di stile**: chi rifà il test qualche volta impara che *l'ultima
 opzione è sempre la più alta*, e da lì pilota il livello senza saper giocare. La banca delle domande
@@ -178,7 +183,9 @@ serve: quelle opzioni non sono in ordine di livello, quindi non c'è niente da i
 - che `motore-a-passi` resti **verde**, cioè che la fonte non sia stata toccata.
 
 ⏳ **Non è ancora stato scritto niente**: è un lavoro dichiarato, non fatto. E vuole il deploy del
-bot più una prova fisica (aprire il test e vedere le opzioni in ordine diverso da un giro all'altro).
+bot più una prova fisica (aprire il test due volte e vedere le opzioni in ordine diverso).
+
+📄 La scheda completa sta in `docs/lavori/README.md`, voce **104**, fra le urgenti.
 
 ---
 
@@ -391,8 +398,10 @@ fa lui, sempre.
 > Poi la prova più vicina è la **2** del punto F: Marco rifà il test dichiarando **Base** con le
 > risposte di profilo a metà, e stavolta deve prendere **almeno 4 su 5** al quiz — oggi si è fermato
 > a 3. Le domande saranno diverse, perché la pescata ha memoria.
-> E c'è il lavoro nuovo che mi hai chiesto — le **opzioni in ordine casuale** (§ 4bis): è pronto
-> per essere fatto, ma prima ho una domanda per te, su **quali** delle otto domande mescolare.
+> Poi c'è la **voce 104**, che hai messo tu fra i task di adesso: le **opzioni in ordine casuale**
+> (§ 4bis). È pronta per essere scritta — i due vincoli tecnici sono già misurati — ma prima ho una
+> domanda per te: **quali** delle otto domande mescolare. La mia proposta è **solo le quattro
+> tecniche**, e nel § 4bis c'è il perché.
 > Infine, una cosa da decidere: la prova **2bis** (il messaggio del maestro senza corsa)
 > potrebbe essere **già fatta** — Marco alle 10:58 ha letto la frase giusta e il tetto è stato
 > scritto otto secondi dopo. Se sei d'accordo la chiudo.
