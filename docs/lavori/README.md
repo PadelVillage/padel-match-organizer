@@ -1827,24 +1827,61 @@ commento di `domandeDelGiro`: con lo stesso `rnd` un ordine direbbe qualcosa sul
 mescolarle vorrebbe dire applicare **la stessa** mescolata anche in correzione, o si corregge la
 risposta sbagliata. E non serve: quelle non sono in ordine di livello.
 
-⏳ **DA CHIEDERGLI PRIMA DI SCRIVERE CODICE: quali delle otto mescolare.** Non sono tutte uguali —
+🗣️⭐ **DECISO DA LUI il 28/08 pomeriggio: «mescola solo le 4 tecniche».** Gli avevo messo davanti
+la domanda con la mia proposta, e ha scelto quella —
 
-| domanda | opzioni | mescolarle? |
+| domanda | opzioni | esito |
 |---|---|---|
-| scambio · vetro · rete · colpi alti | descrizioni di bravura | ✅ **sì**: sono quelle che ha visto lui, e la posizione è la scala |
-| «Da quanto giochi» · «Quante volte al mese» | scale **numeriche** | ⚠️ mescolarle fatica la lettura senza togliere un vantaggio: nessuno guadagna a dichiarare di giocare da più tempo |
-| «Che livello pensi di avere» · «alla pari con» | i **sette livelli** in scala | 🚨 mescolarle confonde chi risponde onesto, e il nome del livello è **scritto sul bottone**: l'ordine non aggiunge informazione |
+| scambio · vetro · rete · colpi alti | descrizioni di bravura | ✅ **mescolate** — sono quelle che ha visto lui, e la posizione **è** la scala |
+| «Da quanto giochi» · «Quante volte al mese» | scale **numeriche** | ⛔ ferme: mescolarle fatica la lettura senza togliere nessun vantaggio |
+| «Che livello pensi» · «alla pari con» | i **sette livelli** in scala | ⛔ ferme: il nome della fascia è **scritto sul bottone**, l'ordine non aggiunge informazione |
 
-📌 **Proposta da mettergli davanti**: mescolare **solo le quattro tecniche**, l'unico posto dove la
-posizione dice qualcosa che il testo non dice già.
+📌 *Si mescola dove la POSIZIONE dice qualcosa che il testo non dice già: altrove è rumore addosso
+a chi risponde onesto.* ⚠️ Le quattro ferme **non sono un lavoro a metà** da completare un domani:
+è una decisione, e sta scritta in una prova che diventa rossa se qualcuno le mescola.
 
-🧪 **Le prove da scrivere con la cura**: stesso gettone ⇒ **stesso** ordine (A3); gettoni diversi ⇒
-ordini **diversi** (o la cura non cura); **stesse risposte ⇒ stesso livello calcolato**, che è la
-prova che il dato viaggia con l'opzione; e `motore-a-passi` che resta **verde**, cioè la fonte non
-toccata.
+🔨 **CURATA il 28/08 pomeriggio** — `supabase/functions/assessment-quiz/passi.js`:
+`conOpzioniMescolate` mescola le opzioni **al momento di presentarle**, dentro `domandeDelGiro`,
+su tutt'e due le uscite della funzione. `SCHEDA_DOMANDE` resta la sorgente **canonica ordinata** e
+non viene toccata: è ciò che tiene verde la parità con i `<select>` di `index.html`.
+🔒 Il seme è `seme(gettone, 'ordine-delle-opzioni', chiave)` — **solo gettone e chiave**, né le
+risposte né le domande già viste.
+⭐⭐ **E il perché di quel «solo», che è la ragione vera della ripetibilità e non la A3**: il bot
+risponde con la **posizione** del bottone (`valoreDaIndice`). Il server disegna la tastiera con lo
+stato di *prima* e risolve il tocco ricalcolando il passo — se fra le due cose l'ordine si
+spostasse, al socio verrebbe registrata **una risposta che non ha toccato**, in silenzio e senza
+che nessun errore lo dica. ⇒ La ripetibilità qui non è una comodità per chi riprende a metà: è
+l'unica cosa che tiene la risposta attaccata al dito che l'ha premuta.
 
-⏳ **Non è ancora stato scritto niente.** Vuole il deploy del bot e una prova fisica: aprire il test
-due volte e vedere le opzioni in ordine diverso.
+🧪 **Sette prove nuove nel banco `test/motore-a-passi.test.mjs`**, e **61 file di prove verdi** in
+tutto il repo. **Sette sabotaggi, sette rossi** — ma non al primo giro, ed è il pezzo che vale:
+
+🩹⭐⭐ **DUE SABOTAGGI SONO SOPRAVVISSUTI ALLA PRIMA STESURA, e li ha trovati il sabotaggio, non la
+rilettura.**
+① **La prova del punteggio era TAUTOLOGICA**: confrontava il livello calcolato con sé stesso —
+   stesse risposte da tutt'e due le parti — quindi era vera per costruzione. Staccando `valore` da
+   `testo` (il difetto peggiore possibile qui: il socio legge un'etichetta e ne fa registrare
+   un'altra) il banco restava **tutto verde**, perché ogni valore spostato è ancora una frase vera
+   della banca e vale ancora un punteggio. ⇒ Rifatta sulla **coppia** valore↔etichetta, che è la
+   cosa che deve reggere, invece che sul punteggio, che regge da solo.
+   📌 *Una prova che confronta un valore con sé stesso è verde per sempre e non protegge niente:
+   il confronto deve andare a prendere la verità da un'altra parte.*
+② **Il sale unico nascondeva un buco vero.** Con un sale solo per le quattro domande il banco
+   restava verde — eppure la cura era **dimezzata**: le quattro uscivano con la **stessa**
+   permutazione, e chi impara «la più alta è il quarto bottone» su una domanda l'ha imparata su
+   tutte e quattro. Da 120 ordini da capire si torna a **uno**, che è quasi il difetto che questa
+   voce esiste per chiudere. ⇒ C'è una prova che pretende che le quattro **non** condividano la
+   mescolata.
+   📌 *Una mescolata sola su quattro domande non è quattro mescolate: è una scorciatoia più lunga
+   da imparare, non una tolta.*
+
+⏳ **RESTA APERTA, e cosa manca per chiuderla:**
+· il **deploy** — la cura vive in un'edge (`assessment-quiz`), quindi va su PROD col rispecchio su
+  `main`; il **bot non si tocca** (le opzioni gliele manda il gestionale: *il gestionale SA, il bot
+  DICE*, e infatti questa voce non apre nemmeno l'altro repo);
+· la **prova fisica**: aprire il test **due volte con due gettoni diversi** e vedere le quattro
+  tecniche con le opzioni in ordine diverso — e le altre quattro **ferme**, che è la metà della
+  decisione che una prova distratta non guarderebbe.
 
 
 ### **101** — 🔄 Il riallineo `test-preview` ← `main` della catena `assessment-*`
