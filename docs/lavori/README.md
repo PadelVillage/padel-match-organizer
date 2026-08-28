@@ -1858,8 +1858,34 @@ rimesso sopra la chiave viva, id interno promosso sopra il telefono, chiave vuot
 buona, `delete` tolta, idratazione che non porta più la chiave. 🩹 Un settimo sabotaggio è
 passato **verde** ed era il sabotaggio a essere sbagliato: avevo riscritto la stessa regola in
 un altro ordine, cioè un **refactor** e non un attacco.
-✅⭐⭐ **PROVA FISICA FATTA la sera del 28/08, sull'app VIVA di TEST (v6.258) con la console
-remota** — e non su un caso costruito: sui **2817 soci veri**. 📏 Gli **esposti** (riga non-`phone:`
+🩹🚨⭐⭐ **QUELLA PROVA NON VALEVA, E LA CURA ERA INERTE — smentita da un gesto vero alle
+20:54.** Qui c'era scritto «prova fisica fatta»: **falso**, e va corretto e non affiancato.
+📏 Il fatto: con la v6.254 in servizio su PROD **da otto minuti**, una modifica di livello a
+**Fabiola Limuti** l'ha sdoppiata **lo stesso** (nata `phone:393338465970` accanto alla `email:`
+ancora viva).
+🔎 **Perché**: `pmoLoadAllMembersFromCloud` metteva `cloudLocalKey` sui soci **scaricati**, ma
+quel valore non arrivava **mai** al socio che poi viene scritto — la fusione
+(`pmoMemberFieldsFromCloud`) copia solo i campi di `PMO_MEMBER_CLOUD_FIELDS`, e la chiave non è
+fra quelli. Per ogni socio già in `localStorage` — cioè praticamente tutti — restava assente.
+⚖️ **E la prova con la console era verde per la ragione sbagliata**: girava su
+`pmoLoadAllMembersFromCloud`, cioè il **produttore**, e in un browser che parte **pulito**, dove
+tutti i soci arrivano nuovi dal cloud. Il difetto viveva esattamente nel caso opposto.
+📌 *Una cura che produce un valore che nessuno riceve è verde in ogni banco che guardi il
+produttore invece del destinatario.*
+🔨 **Ricurata (v6.259 su `test-preview`)**: la chiave si scrive nell'idratazione, **prima e fuori**
+dal confronto sulla freschezza — non basta aggiungerla a `PMO_MEMBER_CLOUD_FIELDS`, perché quella
+copia scatta solo se la riga del cloud è più fresca, e **una chiave non è un dato che compete
+sulla freschezza: è l'indirizzo della riga**. Due casi nuovi al banco e due sabotaggi (riga tolta,
+riga messa dentro l'`if`) tutt'e due rossi.
+⏳ **PROVA FISICA: DA RIFARE, e la console NON basta** — parte da un browser pulito, e il difetto
+nasce dallo stato accumulato in quello dell'operatore. Serve un gesto suo (cambiare il livello a
+uno dei soci a chiave `email:` e contare le righe), oppure `--storage-in` con un export del suo
+browser.
+🚨 **PROD è ferma alla v6.254, cioè alla cura INERTE**: il difetto è ancora vivo là, e i doppioni
+di Maurizio e Fabiola sono stati archiviati **a mano**.
+
+~~✅ PROVA FISICA FATTA la sera del 28/08, sull'app VIVA di TEST (v6.258) con la console
+remota~~ — e non su un caso costruito: sui **2817 soci veri**. 📏 Gli **esposti** (riga non-`phone:`
 con un telefono in scheda) sono **28**; **tutti e 28 scrivono ora sulla propria riga**, e **tutti e
 28 prima avrebbero scritto altrove** ⇒ la finestra è stata **attraversata**, non evitata. I **2785**
 già su `phone:` sono rimasti **fermi tutti**, che è la metà della cura che una prova distratta non
