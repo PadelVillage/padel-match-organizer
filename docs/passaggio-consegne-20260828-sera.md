@@ -154,10 +154,15 @@ dalle date invece che da `applied_at`; **E3** i giri ricostruiti sulle ultime 20
 
 **C. 🔎 Due fatti annotati e NON promossi a voce** — se diventano lavori lo decide lui:
 
-1. **perché il 9 agosto la rete `eChiaveVecchiaDellaStessaScheda` non archiviò la riga vecchia.**
-   Pretende lo **stesso telefono** su candidato e sopravvissuto, e oggi il telefono c'è su
-   tutt'e due le righe ⇒ *avrebbe dovuto* scattare. La cura della 69 non dipende da quella
-   risposta (chiude la porta prima), ma il buco nella rete resta;
+1. ~~perché il 9 agosto la rete `eChiaveVecchiaDellaStessaScheda` non archiviò la riga
+   vecchia~~ — 🩹 **DOMANDA MAL POSTA, corretta la sera del 28/08 misurando** (voce **105**).
+   Cercava il colpevole nel **sync**; il doppione lo fa una **scrittura singola del
+   gestionale**. 📏 Le righe `member` toccate per minuto quella sera: `17:31 → 1096` (giro di
+   massa = il sync) contro `20:08 → 1`, `20:17 → 1`, `20:21 → 1` — i due gesti della
+   segreteria e un'archiviazione a mano. ⇒ La causa è `pmoMemberCloudLocalKey` in
+   `index.html`, che **calcola** la chiave dal telefono e scrive su una riga che non è quella
+   viva (a Maurizio ne ha **rianimata una archiviata dal 19 luglio**). La rete del sync non
+   c'entra: **non era il suo turno**;
 2. i **70 secondi** del § 4 ②.
 
 **D. 🚨 DA GUARDARE DOMATTINA, dopo il sync delle 05:00.** **Maurizio Aprea** e **Fabiola Limuti**
@@ -169,7 +174,14 @@ riga vecchia non viene archiviata, nasce un doppione nell'altro verso. La sonda 
 select payload->>'id', count(*) from pmo_cloud_records
 where record_type='member' and deleted is not true group by 1 having count(*) > 1;
 ```
-Deve tornare **vuoto**. Se torna qualcosa, è il punto **C①** che si è manifestato.
+Deve tornare **vuoto**. ~~Se torna qualcosa, è il punto **C①** che si è manifestato.~~
+
+🚨🩹 **ED È SUCCESSO LA SERA STESSA, prima del sync delle 05:00 e per un'altra causa.** Alle
+**22:17** una modifica di livello dalla segreteria ha sdoppiato **Maurizio**, e il bot gliel'ha
+detto due minuti dopo rifiutandosi di scegliere. ⇒ Il rischio previsto qui era **giusto**, la
+causa **no**: non serve un export che porti il telefono, basta **un gesto della segreteria** —
+vedi la voce **105**. La riga `email:` è stata archiviata a mano (doppioni tornati a **0**), ma
+il rattoppo non impedisce il prossimo: sono **25 soci** nella stessa condizione.
 
 ---
 
