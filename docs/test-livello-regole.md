@@ -106,6 +106,10 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   Ha attraversato la catena intera — bottone → ponte → `decidi` → scheda. *(C9)*
 - ✅ **Il cancello di Principiante che non boccia** (Fabiola, 22:05). *(B5)*
 - ✅ **Il messaggio del maestro** su un caso vero (Laura, 22:15). *(D3)*
+- ✅ 🆕 **Laura nel filtro «Da certificare dal maestro»** del gestionale — 📏 misurato il 28/08 sulla
+  PROD viva (v6.253) con la console remota: nel filtro c'è **esattamente una riga**, ed è la sua,
+  con la spiegazione accanto — *«il test dice Avanzato (4), in scheda Intermedio (3.5) · nessuna
+  partita nei prossimi 30 giorni»*. ⇒ **voce 100 chiusa.**
 
 **⏳ RESTANO:**
 
@@ -120,10 +124,9 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
    invece del livello di prima *(E11 curata)*.
 3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
 4. **«Tengo» a parola uguale**: «è già il livello che hai in scheda» *(D4)*.
-5. La **voce 100**: Laura nel filtro «Da certificare dal maestro» del gestionale.
-6. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+5. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
-7. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+6. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
    mette l'esito ad arrivare *(D9)*.
 
 ---
