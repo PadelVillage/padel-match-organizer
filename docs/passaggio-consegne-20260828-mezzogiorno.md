@@ -46,11 +46,19 @@ from self_assessments where submitted_at > '2026-08-28 09:20:00Z' order by submi
 
 | | |
 |---|---|
-| `padel-match-organizer` · `main` | **`cdd35d0`** |
-| `padel-match-organizer` · `test-preview` | **`9a77905`** |
-| parità sui percorsi sorvegliati | ✅ **allineati** (`docs/`, workflow, `CLAUDE.md`, `server.mjs`) |
 | PR aperte | **nessuna**, su nessuno dei due repo |
-| `assistente-padel-agent` · `main` | **`fb2cfec`**, ed è **anche ciò che gira sul bot dei soci** |
+| parità sui percorsi sorvegliati | ✅ **allineati** (`docs/`, workflow, `CLAUDE.md`, `server.mjs`) |
+| bot dei soci | gira **la testa di `main`** del repo del bot: tutto ciò che è fuso là è anche in servizio |
+
+⚠️ **Qui gli sha NON sono scritti, ed è deliberato**: `CLAUDE.md` lo vieta — *«un file che cita il
+proprio sha è vecchio nell'istante in cui lo si salva»*. Quello che resta vero è la **forma** dello
+stato, e si misura in dieci secondi:
+
+```bash
+git fetch origin main test-preview
+git diff --stat origin/main origin/test-preview -- docs/ .github/workflows/ CLAUDE.md \
+  tools/matchpoint-browser-worker/src/server.mjs      # vuoto = allineati
+```
 
 ⇒ Si riparte da una situazione pulita: nessun merge in sospeso, nessun drift, nessuna guardia rossa.
 I rami di lavoro rimasti li cancella `cleanup-claude-branches.yml` stanotte.
