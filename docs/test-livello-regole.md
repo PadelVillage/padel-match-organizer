@@ -45,7 +45,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | C1 | Il livello lo scrive **il gestionale**, mai il test da solo sopra il tetto: **3,5 (Intermedio) è il massimo automatico** — sopra certifica il **maestro** guardando giocare | `TETTO_AUTOMATICO`, `decidi` | ✅ |
 | C2 | 🔄 **Il livello non scende mai DA SOLO** (27/08). Dalla sera del 27/08 c'è **una** strada in più e passa dal socio: il **gradino** (C9), che scende solo col suo tocco. Col silenzio non si scende mai, e a far scendere qualcuno senza che l'abbia chiesto resta la segreteria | `decidi` | ✅ |
 | C3 | Dal maestro si va solo per una **PAROLA nuova**: stessa fascia (4 → 4,5, tutti e due «Avanzato») = niente da certificare, bottoni «Tengo / Riprovo» | `sopraIlTetto` + gemella `assessmentAspettaIlMaestro` | ✅ provata (Maurizio, 12:26) |
-| C4 | 🔄 Chi dimostra **meno** di ciò che ha: niente domanda — «il tuo livello resta X» — e **TRE** bottoni (il gradino, «mi tengo il mio», «lo rifaccio»). Fino al 27/08 sera il bottone era **uno solo**, e rifare il test dava lo stesso risultato **per sempre**: l'unica uscita portava dove il socio era già | `ilTestDiceMeno`, P7 | 🔵 il ramo P7 coi tre bottoni non è ancora stato visto dal vivo |
+| C4 | 🔄 Chi dimostra **meno** di ciò che ha: niente domanda — «il tuo livello resta X» — e **TRE** bottoni (il gradino, «mi tengo il mio», «lo rifaccio»). Fino al 27/08 sera il bottone era **uno solo**, e rifare il test dava lo stesso risultato **per sempre**: l'unica uscita portava dove il socio era già | `ilTestDiceMeno`, P7 | ✅ **provata dal vivo** (Maurizio, 28/08 10:11: dichiarato Base con Avanzato in scheda, i tre bottoni sono usciti) |
 | C5 | Coerenza: dichiarato e calcolato oltre **0,5** di distanza ⇒ scheda ferma (`review` per lo staff); risposte incoerenti ⇒ `consistency low`, non si applica | `decidi` | ✅ |
 | C6 | Una scheda **vecchia** non scavalca un livello aggiornato dopo; una scheda **in mano allo staff** non si tocca; **una scheda sola per socio**, la più recente | `decidi` | ✅ |
 | C7 | 🔄 Chi sta **sotto** il tetto e dimostra **almeno Avanzato**: si scrive **Intermedio** intanto, il resto lo dà il maestro (sua scelta 26-27/08, soglia precisata da lui la notte del 27). Sotto quella soglia il tetto non si tocca. ⚠️ **Da misurare** che il codice si comporti così: se bastasse un mezzo passo sopra Intermedio, la regola scritta e quella in servizio direbbero due cose diverse | `decidi` | ✅ |
@@ -59,7 +59,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | D1 | 🔄 A ogni esito **un messaggio esce sempre**: nessun test finisce nel silenzio (P0). *(Corretta con lui: il riferimento alla «terza prova» viene da una regola che non c'è più — vedi A2.)* | `siPuoAnnunciareIlTest` | ✅ provata (12:26) |
 | D2 | 🔄 `pass` normale: domanda **«tieni o riprovi?»** coi due bottoni. La parola nella domanda e sul bottone è quella **DIMOSTRATA**, cioè quella che verrà scritta — non la dichiarata. 📏 Curato il 27/08 sera sul caso di Marco: dichiarato **Base**, calcolato **Intermedio**, il bot chiedeva «Tengo Base» e in scheda finiva **Intermedio** | `testoDomandaScelta` + `livello_dimostrato` dal ponte | 🔵 curato, non ancora rivisto dal vivo |
 | D3 | `pass` sopra il tetto con parola nuova: messaggio del **maestro** («in scheda hai X… ti certifica il maestro, passa dalla segreteria») — la parola detta è quella dell'**anagrafica**, mai la dichiarata | `testoEsitoTest` | ✅ provata (Laura) |
-| D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | 🔵 |
+| D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | ✅ **provata dal vivo** (Maurizio, 27/08 21:52, letta sullo schermo il 28/08) |
 | D5 | 🔄 `fail`: «è rimasta un'incongruenza» + **TRE** bottoni quando un gradino c'è (il gradino, «Mi tengo il mio livello», «Rifaccio»); due quando non c'è | `testoEsitoTest` + decision | ✅ provata (Fabiola e Laura, 27/08 sera) |
 | D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` | 🔵 (B della lista) |
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
@@ -111,22 +111,43 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   con la spiegazione accanto — *«il test dice Avanzato (4), in scheda Intermedio (3.5) · nessuna
   partita nei prossimi 30 giorni»*. ⇒ **voce 100 chiusa.**
 
+- ✅ 🆕 **«Tengo» a parola uguale — 📏 misurata il 28/08 sullo SCHERMO del committente.** Il caso
+  è il suo: in scheda **4** («Avanzato»), test dichiarato 4,5 e calcolato **4,5** («Avanzato») ⇒
+  stessa parola. Al tocco su «Tengo questo livello» delle **21:52** del 27/08 il bot ha risposto
+  *«Perfetto: tengo **Avanzato** 👍 — È già il livello che hai in scheda: resta tutto com'è.»* ⇒ la
+  frase del ramo D4, parola per parola, e **senza** «Te lo registro sulla scheda a breve», che è
+  la promessa vuota che la cura esiste per togliere. 📏 Concorda col database: `applied_level` e
+  `applied_at` di quella scheda sono **vuoti** — non c'era niente da scrivere e infatti non si è
+  scritto niente. ⚖️ **E la cura era davvero in servizio in quel momento**, non dedotto: il bot dei
+  soci si è riavviato alle **21:03:48** col deploy #114, **49 minuti prima** del tocco. *(D4)*
+
+- ✅ 🆕 **P7 coi TRE bottoni, su una prova SUPERATA — 📏 misurata il 28/08 alle 10:11 sul suo
+  telefono, su PROD.** Dichiarato **Base** (2,5) con le risposte di profilo coerenti, calcolato
+  **2,5**, coerenza `high`, in scheda **Avanzato** (4). Il bot ha scritto *«🎯 Test di livello di
+  gioco superato — Il tuo livello resta **Avanzato**. Le tue risposte stavolta sono da **Base**, e
+  se è il livello in cui ti riconosci, posso registrartelo io. Comunque il test puoi rifarlo quando
+  vuoi.»* con **tre bottoni**: `✅ Va bene: Base` · `👍 Mi tengo il mio livello` · `🔄 Sì, lo
+  rifaccio`. ⇒ Il gradino era provato solo su una **bocciatura**: adesso lo è anche su una prova
+  **passata**, ed è sparita la domanda «tieni o riprovi?», che lì era finta. 📏 Il database concorda:
+  `applied_level` e `applied_at` vuoti, livello in anagrafica **4** invariato.
+  ⚠️ **Cosa NON prova, e va detto**: dichiarata e dimostrata qui **coincidono** (Base e Base) ⇒ che
+  il bottone porti la parola **dimostrata** e non la **dichiarata** questa prova non lo distingue.
+  È il caso che il codice stesso segnala — *due parole che coincidono nel caso che hai davanti sono
+  due parole, non una* — e lo prova solo il caso di Marco, che resta aperto. *(C4, P7)*
+
 **⏳ RESTANO:**
 
-0. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
+1. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
    secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
-1. **P7 coi TRE bottoni**: dichiarare una fascia più bassa di quella in scheda e **passare**.
-   ⚠️ Il gradino è provato su una **bocciatura**, non ancora su una prova passata *(C4)*.
 2. **La parola dimostrata nella domanda**: rivedere il caso di Marco (dichiarato Base,
    calcolato Intermedio) e leggere ora «Il test dice **Intermedio**» *(D2)*.
 2bis. **Il messaggio del maestro senza corsa**: rifare il caso di Laura (sotto il tetto) e
    leggere «Il test da solo arriva fino a **Intermedio**, e te lo sto scrivendo adesso»
    invece del livello di prima *(E11 curata)*.
 3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
-4. **«Tengo» a parola uguale**: «è già il livello che hai in scheda» *(D4)*.
-5. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+4. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
-6. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+5. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
    mette l'esito ad arrivare *(D9)*.
 
 ---
