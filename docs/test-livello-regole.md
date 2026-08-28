@@ -62,7 +62,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | D3 | `pass` sopra il tetto con parola nuova: messaggio del **maestro** («in scheda hai X… ti certifica il maestro, passa dalla segreteria») — la parola detta è quella dell'**anagrafica**, mai la dichiarata | `testoEsitoTest` | 🩹 **CURATA il 28/08, e il difetto era vivo**: la parola detta era quella **DICHIARATA**, non la dimostrata. 📏 Marco alle 10:58 — dichiarato Intermedio, dimostrato Avanzato — ha letto *«le tue risposte sono da Intermedio, ma un livello così alto non lo decide il test»* mentre la riga sopra annunciava di star scrivendo proprio Intermedio: due affermazioni opposte sulla stessa parola. È la E4 sopravvissuta in un altro ramo (curata la domanda, non l'esito). In servizio dalle 11:08 · ✅ **riprovata dal vivo** (Marco, 28/08 11:12: dichiarato Intermedio, dimostrato Avanzato, e il messaggio dice ora «le tue risposte sono da **Avanzato**»). ⚖️ La prova vecchia (Laura) valeva per il **ramo**, non per la **parola** |
 | D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | ✅ **provata dal vivo** (Maurizio, 27/08 21:52, letta sullo schermo il 28/08) |
 | D5 | 🔄 `fail`: «è rimasta un'incongruenza» + **TRE** bottoni quando un gradino c'è (il gradino, «Mi tengo il mio livello», «Rifaccio»); due quando non c'è | `testoEsitoTest` + decision | ✅ provata (Fabiola e Laura, 27/08 sera) |
-| D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` | 🔵 (B della lista) |
+| D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` + `testoSceltaRifiutata` | ✅ **provata sul registro del bot** (Marco, 27/08 22:09:16: bottone vecchio toccato **due ore** dopo che il livello era stato scritto ⇒ `GIA_APPLICATA`, e il bot risponde *«Quel livello è già stato registrato sulla tua scheda 👍»*). ⚠️ La rete del **maestro** resta **non provata e oggi irraggiungibile**: due cancelli a monte prendono tutto prima. 🚨 **E UN BOTTONE SI CONSUMA AL PRIMO TOCCO, anche se la scelta viene RIFIUTATA** — `riscriviOMandaNuovo` sta **fuori** dal `try/catch`, quindi il messaggio si riscrive senza tastiera in tutti e due i casi. ⇒ Il commento *«i bottoni di Telegram non scadono, e il socio può schiacciare quello di tre settimane fa»* è vero a metà: **non scadono, ma sopravvivono a UN SOLO tocco** |
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
 | D8 | Mai un vicolo cieco: ogni messaggio ha un bottone o la via a parole | promemoria.ts | ✅ |
 | D9 | 🔄 L'esito arriva in **secondi**: sorveglianza ogni **5″ da quando il socio apre il quiz** (ogni 30″ prima, fino a 4 ore), riarmata a ogni tocco; rete dei 15′. 🆕 **Sua decisione: portare i 5″ a 2″** — toglie ~1,5″ dei 4 misurati; costa ~600 domande al ponte invece di ~240 nel caso peggiore, e si sorveglia **una persona per volta**. ⏳ Vuole modifica al bot, deploy sulla VM e la prova col cronometro | bot `promemoria.ts` (`INTERVALLO_SORVEGLIANZA_TEST_MS`) | ✅ misurata (4″ il 27/08) · ⚠️ **i 2″ da fare** |
@@ -196,12 +196,33 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   gettoni: succede **una volta su cinque**, ed è ciò che una mescolata uniforme deve fare.
   ⇒ **voce 104 chiusa.** *(B11)*
 
+- ✅ 🆕 **UN BOTTONE VECCHIO NON PROMETTE IL FALSO — 📏 misurata il 28/08 nel REGISTRO DEL BOT,
+  su un evento del 27/08 che nessuno aveva guardato.** La riga, letta con la sonda di sola
+  lettura (`stato-bot.yml`):
+  `2026-08-27 · 22:09:16 ⚠️ scelta livello non registrata per Marco Aprea: GIA_APPLICATA`
+  📏 Combacia col database: la scheda delle **20:08:53** aveva `applied_at` alle **20:09:02**
+  (livello 3 scritto) ⇒ **due ore dopo** Marco ha toccato quel bottone e il gestionale l'ha
+  rifiutato. Il bot ha risposto *«Quel livello è già stato registrato sulla tua scheda 👍 Chiedimi
+  «il mio livello» per vederlo»* — nessuna promessa, nessuna scrittura.
+
+  ⚠️ **La rete che è scattata è `GIA_APPLICATA`, non quella del MAESTRO** che la scheda nominava, e
+  la differenza si dichiara invece di tacerla. 📏 Il caso del maestro **oggi non è raggiungibile da
+  nessuno**: le uniche due schede che ci arriverebbero (Santiago Carabajal, Oriana Canzian) sono del
+  **1° maggio**, cioè del vecchio modulo web, e non hanno nessun bottone in nessuna chat. Tutte
+  quelle della famiglia Aprea sono prese prima da `GIA_APPLICATA` o `SCHEDA_SUPERATA`.
+  ⛔ **E il caso «Tengo Agonista» che questa prova nominava NON È MAI ESISTITO**: la cura
+  «sopra il tetto niente scelta» (`puo_scegliere` falso) è atterrata il **26/08 alle 23:41**, e la
+  scheda di Laura con calcolato **5 = Agonista** è del **27/08 alle 19:34** — venti ore dopo ⇒ per
+  quella scheda il bot non ha disegnato nessun bottone. La prova era scritta su una **previsione**
+  di com'era il bottone, non su un bottone visto.
+  📌 *Una prova che nomina un oggetto preciso va riletta prima di andarlo a cercare: se l'oggetto
+  è nato da una previsione, la ricerca fallisce e sembra un guasto.* *(D6)*
+
 **⏳ RESTANO:**
 
-1. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
-2. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+1. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
-3. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+2. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
    mette l'esito ad arrivare *(D9)*.
 
 ---
