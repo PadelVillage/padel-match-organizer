@@ -1900,8 +1900,11 @@ un verde di cui non si sa la ragione — che è precisamente l'errore costato la
 è **un altro** `phone:`. Stessa classe di difetto, e la cura lo copre — la chiave viva vince su
 **tutto**, non solo sulle chiavi non-`phone`. ⇒ *Contare gli esposti guardando la forma della
 chiave ne perde una parte: il criterio vero è «la chiave calcolata coincide con quella viva?».*
-✅ **PROMOSSA A PROD (v6.255) la notte stessa**, e la riga che diceva *«PROD è ferma alla v6.254,
-cioè alla cura INERTE»* **non vale più**: PROD ha la cura che funziona. I doppioni di Maurizio e
+✅⭐⭐ **PROMOSSA A PROD (v6.255) la notte stessa, E RIMISURATA LÀ** — la riga che diceva *«PROD è
+ferma alla v6.254, cioè alla cura INERTE»* **non vale più**. 📏 La prova che conta è questa, perché
+è **prima e dopo sullo stesso ambiente, con la stessa sonda, a mezz'ora di distanza**:
+PROD 6.254 → **0 corretti su 24**, e **1** già-`phone:` fuori bersaglio; PROD 6.255 → **24 su 24**,
+e quel **1 diventa 0** ⇒ anche il 25° esposto è coperto, come previsto e non solo sperato. I doppioni di Maurizio e
 Fabiola restano quelli archiviati **a mano** — il rattoppo non è la cura, e la sonda dei doppioni
 va riletta (deve tornare **vuota**).
 
