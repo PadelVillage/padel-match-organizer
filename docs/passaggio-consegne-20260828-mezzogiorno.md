@@ -234,13 +234,25 @@ applica e **il bot resta muto** dopo «Lo sto registrando: fra poco ti scrivo co
 
 ### Le due ricette già calcolate, con la loro robustezza
 
+🚨⭐⭐ **DAL 28/08 POMERIGGIO UNA RICETTA SI DÀ PER PAROLE, MAI PER POSIZIONE** — e le righe qui
+sotto sono state **corrette**, non affiancate. La voce 104 è in servizio su PROD dalle **10:06**
+(`assessment-quiz` v19, letto nel sorgente servito): le opzioni delle quattro domande tecniche
+escono in **ordine casuale**, diverso a ogni gettone. ⇒ «il quarto» e «l'ultimo» — che è come
+questo paragrafo le scriveva un'ora fa — adesso indicano **una risposta a caso**, e una prova
+pilotata così non esce dove ci si aspetta.
+⚖️ Non è un difetto della 104: è una ricetta che poggiava su una cosa che la 104 ha tolto apposta.
+📌 *Una cura che toglie una regolarità rende false tutte le istruzioni che su quella regolarità si
+appoggiavano — e vanno cercate, perché nessuna di loro diventa rossa da sola.*
+
 **Ⓐ Per far uscire «dichiarato Intermedio → dimostrato Avanzato»** (regge 17 deviazioni su 20):
 
 - livello dichiarato: **Intermedio** · alla pari: **contro Avanzati**
-- scambio: **«Tengo scambi anche con ritmo alto»** ← il **quarto**, non l'ultimo
-- vetro / rete / colpi alti: **l'ultimo** di ognuna
-- 🚨 le tre cose che la rompono: alla pari «Principianti» o «Base», e lo scambio all'ultima opzione
-  (la media tecnica salirebbe a 4,63 ⇒ scarto > 1 ⇒ `low`)
+- scambio: **«Tengo scambi anche con ritmo alto»** — 🚨 **non** «Costruisco il punto con controllo»
+- vetro: **«Lo uso per difendere e ripartire in attacco»**
+- rete: **«Costruisco e chiudo il punto a rete»**
+- colpi alti: **«Uso colpi alti in modo tattico e affidabile»**
+- 🚨 le tre cose che la rompono: alla pari «Principianti» o «Base», e lo scambio su «Costruisco il
+  punto con controllo» (la media tecnica salirebbe a 4,63 ⇒ scarto > 1 ⇒ `low`)
 
 **Ⓑ Per far uscire «dichiarato Base → dimostrato Intermedio»** — è il caso della prova **2**
 (1543 combinazioni valide, quindi molto perdonante):
@@ -251,6 +263,10 @@ applica e **il bot resta muto** dopo «Lo sto registrando: fra poco ti scrivo co
 - ⇒ calcolato **3,0 = Intermedio**, coerenza **high**
 - 🚨 **non gonfiare**: salendo di un solo gradino su tutte e quattro la media arriva a 3,63 ⇒ `low`
 - ⚠️ **e poi bisogna PASSARE il quiz**: almeno **4 su 5**. È qui che Marco si è fermato oggi (3/5)
+- ✅ **Riverificata il 28/08 pomeriggio eseguendo il codice vero** (non ricontrollata a mente):
+  calcolato **3**, fascia **Intermedio**, coerenza **high**, punteggi tecnici 3 · 2,5 · 2,5 · 2,5
+  (media 2,625). Regge anche con «alla pari **Avanzati**», e «da quanto giochi» / «quante volte al
+  mese» **non entrano nel calcolo** — provati ai due estremi, stesso esito.
 
 ### Lo script che ha prodotto queste ricette — si ricrea in due minuti
 
