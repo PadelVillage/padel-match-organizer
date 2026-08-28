@@ -28,14 +28,14 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | # | regola | dove vive | stato |
 |---|---|---|---|
 | B1 | **8 domande di scheda** (le prime 3 fisse: esperienza, frequenza, livello dichiarato — la fascia si sceglie alla terza) | `SCHEDA_DOMANDE` in `passi.js` | ✅ |
-| B2 | **5 di conoscenza: 2 normali + 3 trabocchetto**, pescate dalla fascia dichiarata, **mischiate** fra le domande 4-13 con ordine ripetibile per gettone | `conoscenza.js` + `domandeDelGiro` | 🔵 prova fisica |
+| B2 | **5 di conoscenza: 2 normali + 3 trabocchetto**, pescate dalla fascia dichiarata, **mischiate** fra le domande 4-13 con ordine ripetibile per gettone | `conoscenza.js` + `domandeDelGiro` | ✅ **provata sui dati veri** (Marco, 28/08: tutt'e cinque le pescate della giornata sono 3 trabocchetto + 2 normali) · 🔵 il *mischiate* resta da vedere su uno schermo |
 | B3 | Soglia **4 su 5**: UNA sbagliata concessa, **qualunque** — trabocchetto compresa (sua regola «una su cinque»). Due trabocchetto sbagliate bocciano | `pass_min_correct=4`, `trap_wrong_fails=false` | 🔵 prova fisica |
 | B4 | **Base gioca con la regola di tutti** — i margini del 9/08 sono tolti (sua delega: «il più difficile da azzeccare in basso») | `regole_fascia` | 🔵 |
 | B5 | 🔄 **Principiante HA il quiz, ma non boccia** (sua decisione 27/08 sera: *«sblocca le domande della banca per principiante»*, soglia **0** perché *«un principiante mi può sbagliare 4 su 5»*). Qui c'era «Principiante non ha quiz», regola del 9/08: **corretta**. ⚖️ La soglia zero è l'unica possibile — la fascia va da 0,5 a 1,5, sotto non c'è nessun gradino dove mandare un bocciato. Semi-Pro e Professionista il quiz non ce l'hanno affatto: `skip`, e la scheda va in segreteria | `regole_fascia`, `fasciaDaLivello` | ✅ provata (Fabiola, 22:05) |
 | B6 | Il segnale «Non esiste» è **rotto**: 12 trabocchetto **alla rovescia** (regole vere che sembrano inventate) — vedere «Non esiste» non dice più dove sta la verità | banca in `conoscenza.js`, guardia nel banco | 🔵 |
 | B7 | La risposta giusta e il marchio `trap` **non escono mai** verso il telefono; si corregge sul server ripescando col gettone | `assessment-quiz` | ✅ |
 | B8 | Banca: 27 normali + 12 trabocchetto per fascia; in un giro se ne vedono 5 ⇒ memorizzarla vuole molti giri | banca | ✅ |
-| B9 | 🆕 **La pescata ha MEMORIA**: non ripropone le domande già viste nelle ultime 8 prove, finché ce n'è altro da dare. Le «già viste» sono quelle delle schede consegnate **prima che il gettone nascesse** — un fatto immutabile, così la pescata resta ripetibile (vedi A3). Con la banca esaurita ricomincia dalle **più vecchie**: degrada, non fallisce | `ordinaPerFreschezza` in `conoscenza.js` + `domandeGiaViste` in `assessment-quiz/index.ts` | 🔵 prova fisica |
+| B9 | 🆕 **La pescata ha MEMORIA**: non ripropone le domande già viste nelle ultime 8 prove, finché ce n'è altro da dare. Le «già viste» sono quelle delle schede consegnate **prima che il gettone nascesse** — un fatto immutabile, così la pescata resta ripetibile (vedi A3). Con la banca esaurita ricomincia dalle **più vecchie**: degrada, non fallisce | `ordinaPerFreschezza` in `conoscenza.js` + `domandeGiaViste` in `assessment-quiz/index.ts` | ✅ **provata sui dati veri** (Marco, 28/08: **tre** prove di fila sulla fascia Base, **15 domande distinte su 15**, zero ripetute — più due su Intermedio, 10 su 10) |
 | B10 | 🆕 Le **36 domande di Principiante** (27 normali + 9 trabocchetto) sono state **rilette una per una col committente** il 27/08 sera: una sola correzione, la **P-14** («Dietro la linea di **servizio**», che prima non diceva quale linea) | banca in `conoscenza.js` | ✅ · 🆕 **28/08: passata di ITALIANO su tutte e 192**, su sua richiesta (*«bisognerebbe fare un'analisi grammaticale di tutti i testi»*, errori visti scorrendo e non ricostruibili a memoria). Nessun errore di accento o apostrofo — **sette** correzioni più fini: la concordanza di **P-20** («che salgono» → «che sale», con soggetto singolare), lo spagnolo di **B-T10** (`contropared` → **controparete**, come già in AG-02), il pronome senza antecedente di **A-15**, la ripetizione di **I-15**, la preposizione fuori squadra di **P-14**, e la forma di **B-22** e **B-26**. ⛔ **Nessun `correct:` toccato e nessun significato cambiato**: solo testo, e il banco dei 36 caratteri gira verde |
 | B11 | 🆕🗣️ **Le opzioni delle 4 domande TECNICHE escono in ordine casuale** (voce 104, sua richiesta del 28/08: *«dovrebbe essere un ordine random, se no dopo un po' la gente capisce questo sistema»*). Le altre **quattro restano in ordine** — sua decisione: *«mescola solo le 4 tecniche»* — perché lì la posizione non dice niente che il testo non dica già (le scale numeriche, e il nome della fascia scritto sul bottone). ⚖️ Si mescola **al momento di presentarle**, non nella fonte: `SCHEDA_DOMANDE` resta canonica e ordinata, o la parità con `index.html` diventerebbe rossa. 🔒 Ripetibile col gettone e **indipendente dallo stato del giro** — il bot risponde con la POSIZIONE del bottone, quindi un ordine che si spostasse fra la tastiera e il tocco registrerebbe una risposta mai data. 🎲 E le quattro non condividono la mescolata: un sale solo le renderebbe una scorciatoia sola da imparare 🗣️⭐ **E la mescolata resta UNIFORME, sua decisione del 28/08 su una misura** (*«teniamo la a»*): la più alta finisce ultima **una volta su cinque** — misurato su 20.000 gettoni, tutte e 120 le permutazioni, ordine di partenza allo 0,88% contro lo 0,83% atteso. ⛔ **Scartato** il vincolo «la più alta mai ultima»: sembra più mescolato ed è più debole, perché insegna *«l'ultima non è la più alta»* — un candidato eliminato a ogni domanda invece che mai. 🔒 Protetta da una prova che diventa rossa se qualcuno lo aggiunge | `conOpzioniMescolate` in `passi.js` | 🔵 **provata a METÀ dal vivo** (Marco, 28/08 12:10: opzioni del vetro mescolate sullo schermo) · ⏳ manca che le altre quattro si vedano **ferme** |
 
@@ -58,7 +58,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | # | regola | dove vive | stato |
 |---|---|---|---|
 | D1 | 🔄 A ogni esito **un messaggio esce sempre**: nessun test finisce nel silenzio (P0). *(Corretta con lui: il riferimento alla «terza prova» viene da una regola che non c'è più — vedi A2.)* | `siPuoAnnunciareIlTest` | ✅ provata (12:26) |
-| D2 | 🔄 `pass` normale: domanda **«tieni o riprovi?»** coi due bottoni. La parola nella domanda e sul bottone è quella **DIMOSTRATA**, cioè quella che verrà scritta — non la dichiarata. 📏 Curato il 27/08 sera sul caso di Marco: dichiarato **Base**, calcolato **Intermedio**, il bot chiedeva «Tengo Base» e in scheda finiva **Intermedio** | `testoDomandaScelta` + `livello_dimostrato` dal ponte | 🔵 curato, non ancora rivisto dal vivo |
+| D2 | 🔄 `pass` normale: domanda **«tieni o riprovi?»** coi due bottoni. La parola nella domanda e sul bottone è quella **DIMOSTRATA**, cioè quella che verrà scritta — non la dichiarata. 📏 Curato il 27/08 sera sul caso di Marco: dichiarato **Base**, calcolato **Intermedio**, il bot chiedeva «Tengo Base» e in scheda finiva **Intermedio** | `testoDomandaScelta` + `livello_dimostrato` dal ponte | ✅ **provata dal vivo** (Marco, 28/08 13:56: dichiarato **Base**, calcolato **3 = Intermedio**, e il bot dice *«Il test dice **Intermedio**»* col bottone «Tengo Intermedio»). ⚖️ Qui le due parole **divergono davvero** — a differenza della prova delle 10:11, che non distingueva niente |
 | D3 | `pass` sopra il tetto con parola nuova: messaggio del **maestro** («in scheda hai X… ti certifica il maestro, passa dalla segreteria») — la parola detta è quella dell'**anagrafica**, mai la dichiarata | `testoEsitoTest` | 🩹 **CURATA il 28/08, e il difetto era vivo**: la parola detta era quella **DICHIARATA**, non la dimostrata. 📏 Marco alle 10:58 — dichiarato Intermedio, dimostrato Avanzato — ha letto *«le tue risposte sono da Intermedio, ma un livello così alto non lo decide il test»* mentre la riga sopra annunciava di star scrivendo proprio Intermedio: due affermazioni opposte sulla stessa parola. È la E4 sopravvissuta in un altro ramo (curata la domanda, non l'esito). In servizio dalle 11:08 · ✅ **riprovata dal vivo** (Marco, 28/08 11:12: dichiarato Intermedio, dimostrato Avanzato, e il messaggio dice ora «le tue risposte sono da **Avanzato**»). ⚖️ La prova vecchia (Laura) valeva per il **ramo**, non per la **parola** |
 | D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | ✅ **provata dal vivo** (Maurizio, 27/08 21:52, letta sullo schermo il 28/08) |
 | D5 | 🔄 `fail`: «è rimasta un'incongruenza» + **TRE** bottoni quando un gradino c'è (il gradino, «Mi tengo il mio livello», «Rifaccio»); due quando non c'è | `testoEsitoTest` + decision | ✅ provata (Fabiola e Laura, 27/08 sera) |
@@ -149,22 +149,51 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   È il caso che il codice stesso segnala — *due parole che coincidono nel caso che hai davanti sono
   due parole, non una* — e lo prova solo il caso di Marco, che resta aperto. *(C4, P7)*
 
+- ✅ 🆕 **LA PAROLA DIMOSTRATA NELLA DOMANDA — 📏 misurata il 28/08 alle 13:56 sul telefono di
+  Marco, su PROD.** Dichiarato **Base** (2,5), alla pari «Contro Intermedi» (3,5), media tecnica
+  **2,63**, calcolato **3 = Intermedio**, coerenza `high`. Il bot ha scritto *«Test di livello di
+  gioco superato 👍 — Il test dice **Intermedio**. Vuoi tenere questo livello o riprovare? Decidi
+  tu.»* col bottone **«✅ Tengo Intermedio»**.
+  ⇒ La parola è quella **DIMOSTRATA**, non la **dichiarata**: è il difetto del 27/08 sera
+  (*«Il test dice Base»* col bottone *«Tengo Base»*, e nove secondi dopo in scheda **Intermedio**)
+  visto non succedere nella finestra esatta in cui succedeva.
+  ⚖️ **E stavolta le due parole DIVERGONO davvero**, che è ciò che rende questa prova diversa da
+  quella delle 10:11: là dichiarata e dimostrata coincidevano (Base e Base) e la prova non
+  distingueva niente — lo diceva la scheda stessa. 📌 *Due parole che coincidono nel caso che hai
+  davanti sono due parole, non una.*
+  🩹 **Ed è costato DUE giri, con una diagnosi in mezzo.** Il tentativo delle 12:13 è uscito
+  **Base**: misurando la scheda, delle sei risposte che contano **una sola** era fuori posto —
+  «alla pari» a *Base* (2,5) invece di *Contro Intermedi* (3,5), e quella riga pesa 0,25, da sola
+  la differenza fra 2,54 e 2,79. Le quattro tecniche erano giuste **al centesimo** (2,63).
+  ⇒ *Una ricetta sbagliata di una riga non fallisce a metà: esce un risultato pulito e diverso, e
+  senza misurare la scheda sembra che sia rotta la cura.* *(D2)*
+
+- ✅ 🆕 **LA MEMORIA DELLA PESCATA — 📏 misurata il 28/08 sui CINQUE test veri che Marco ha fatto
+  nella giornata, su PROD.** Le domande estratte, lette in `raw_response`:
+
+  | fascia | ore | domande |
+  |---|---|---|
+  | Intermedio | 10:58 · 11:12 | `I-27 I-T5 I-T12 I-T10 I-10` · `I-T8 I-17 I-T4 I-T3 I-23` |
+  | Base | 11:26 · 12:13 · 13:56 | `B-T11 B-T4 B-19 B-17 B-T3` · `B-T5 B-T7 B-05 B-15 B-T8` · `B-T2 B-27 B-09 B-T12 B-T1` |
+
+  ⇒ **Zero ripetizioni**: 10 domande distinte su 10 per Intermedio, **15 su 15** per Base — e
+  quest'ultimo è **tre** prove di fila sulla stessa fascia, una in più di quanto la scheda
+  chiedesse. 📌 La misura non è stata provocata: era già nei dati, e bastava andarla a leggere.
+  ⭐ **E conferma anche la B2 di rimbalzo**: tutt'e cinque le pescate sono **3 trabocchetto + 2
+  normali**, che è la composizione decisa il 27/08. *(B9, e B2 per giunta)*
+
 **⏳ RESTANO:**
 
 0. 🆕 **Le opzioni in ordine casuale** *(B11, voce 104 — curata il 28/08 pomeriggio)*: aprire il
    test con **due gettoni diversi** e vedere le quattro tecniche con le opzioni in ordine diverso,
    **e le altre quattro ferme**. ⚠️ La seconda metà è quella che una prova distratta salta, ed è
-   metà della decisione che ha preso lui.
+   metà della decisione che ha preso lui. ✅ **La prima metà è FATTA** (Marco, 12:10: le opzioni
+   del vetro mescolate sullo schermo).
 
-1. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
-   secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
-2. **La parola dimostrata nella domanda**: rivedere il caso di Marco (dichiarato Base,
-   calcolato Intermedio) e leggere ora «Il test dice **Intermedio**» *(D2)*.
-
-3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
-4. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+1. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
+2. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
-5. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+3. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
    mette l'esito ad arrivare *(D9)*.
 
 ---
