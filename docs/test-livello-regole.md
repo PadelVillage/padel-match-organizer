@@ -6,8 +6,9 @@ test di livello, così analizziamo tutti i casi uno per uno e li validiamo»*. �
 vive e con lo stato. Si legge dall'alto e si valida riga per riga: ✅ = in servizio e vista
 funzionare · 🔵 = in servizio, prova fisica non ancora fatta · ⚠️ = **da decidere con lui**.
 
-📌 Misurata sul codice in servizio il 27/08 sera. Quando una regola cambia, la sua riga **si
-corregge**, non si affianca.
+📌 Misurata sul codice in servizio il 27/08 sera, poi **passata riga per riga col committente** la
+notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti della sezione E sono
+**tutti decisi**. Quando una regola cambia, la sua riga **si corregge**, non si affianca.
 
 ---
 
@@ -15,12 +16,12 @@ corregge**, non si affianca.
 
 | # | regola | dove vive | stato |
 |---|---|---|---|
-| A1 | Il test si fa **dentro Telegram**, una domanda alla volta; il link web resta come ripiego | `passi.js` (motore), bot `test-a-passi.ts` | ✅ |
-| A2 | Chiunque può cominciare, **sempre**: giri da 3 prove, attesa fra i giri **zero** (25/08) e silenzio-assenso **zero** (26/08) | `giro-del-test.ts`: `GIORNI_DI_ATTESA=0`, `ORE_SILENZIO_ASSENSO=0` | ✅ |
-| A3 | Il gettone si **riusa** finché non è consumato; stesso gettone ⇒ stesse domande, stesso ordine — **ed è un requisito di sicurezza**: alla consegna il server ripesca per correggere invece di fidarsi degli id del telefono | `consumer-assessment-link` + `pescaPerGettone` | ✅ |
+| A1 | 🔄 Il test si fa **dentro Telegram**, una domanda alla volta. *(Corretta con lui: «il link web non serve più» — il ripiego esce dalla regola.)* | `passi.js` (motore), bot `test-a-passi.ts` | ✅ |
+| A2 | 🔄 Chiunque può cominciare, **sempre**: **nessun limite di prove** (sua parola: *«il test non ha limiti di prove»*), nessuna attesa fra un test e l'altro, silenzio-assenso zero. ⚖️ Il vocabolario dei «giri da 3 prove» esce da qui: la regola che lo reggeva non c'è più | `giro-del-test.ts`: `GIORNI_DI_ATTESA=0`, `ORE_SILENZIO_ASSENSO=0` | ✅ |
+| A3 | 🔄 **Ogni test è una pescata nuova**: domande diverse e ordine diverso a ogni prova (è la memoria della B9). Un test lasciato a metà però **riprende dov'era**, con le stesse domande — il gettone si riusa finché non è consumato, **ed è un requisito di sicurezza**: alla consegna il server ripesca per correggere invece di fidarsi degli id del telefono | `consumer-assessment-link` + `pescaPerGettone` | ✅ |
 | A4 | Il conto delle domande annunciato (**13**) esce dalla pescata vera, non da un numero scritto | `quantePescate` in `conoscenza.js` | 🔵 |
 | A5 | A chi non ha livello, un **promemoria gentile** ogni 15 giorni | `promemoria-livello.ts` | ✅ |
-| A6 | ⚠️ Il promemoria **non sa** di chi aspetta il maestro o è fermo per coerenza bassa: dopo 15 giorni chiederebbe di rifare il test a chi l'ha appena passato | `promemoria-livello.ts` (esclude solo `skip`) | ⚠️ da curare |
+| A6 | 🔄 **Chi aspetta il maestro non riceve il promemoria**: l'avviso va alla **segreteria**, non al socio (sua regola, e vale *solo* per chi aspetta il maestro — il promemoria normale ai soci senza livello resta, A5). Oggi il codice esclude solo `skip`, quindi a chi ha appena passato il test chiederebbe di rifarlo | `promemoria-livello.ts` | ⚠️ **da fare** |
 
 ## B. Le domande
 
@@ -47,7 +48,7 @@ corregge**, non si affianca.
 | C4 | 🔄 Chi dimostra **meno** di ciò che ha: niente domanda — «il tuo livello resta X» — e **TRE** bottoni (il gradino, «mi tengo il mio», «lo rifaccio»). Fino al 27/08 sera il bottone era **uno solo**, e rifare il test dava lo stesso risultato **per sempre**: l'unica uscita portava dove il socio era già | `ilTestDiceMeno`, P7 | 🔵 il ramo P7 coi tre bottoni non è ancora stato visto dal vivo |
 | C5 | Coerenza: dichiarato e calcolato oltre **0,5** di distanza ⇒ scheda ferma (`review` per lo staff); risposte incoerenti ⇒ `consistency low`, non si applica | `decidi` | ✅ |
 | C6 | Una scheda **vecchia** non scavalca un livello aggiornato dopo; una scheda **in mano allo staff** non si tocca; **una scheda sola per socio**, la più recente | `decidi` | ✅ |
-| C7 | Chi sta **sotto** il tetto e dimostra sopra: si scrive **Intermedio** intanto, il resto lo dà il maestro (sua scelta 26-27/08) | `decidi` | ✅ |
+| C7 | 🔄 Chi sta **sotto** il tetto e dimostra **almeno Avanzato**: si scrive **Intermedio** intanto, il resto lo dà il maestro (sua scelta 26-27/08, soglia precisata da lui la notte del 27). Sotto quella soglia il tetto non si tocca. ⚠️ **Da misurare** che il codice si comporti così: se bastasse un mezzo passo sopra Intermedio, la regola scritta e quella in servizio direbbero due cose diverse | `decidi` | ✅ |
 | C8 | L'applicazione parte **al tocco** su «Tengo» e col cron dei 15′ come rete | `consumer-assessment-decision` + cron | ✅ |
 | C9 | 🆕⭐ **IL GRADINO** — sua regola del 27/08 sera: *«non dobbiamo ferire l'orgoglio del giocatore: possiamo proporgli di scendere di un gradino, o di rimanere al livello dell'ultimo test, oppure di rifare il test»*. Si offre **la fascia più alta che il test non smentisce** (la **dimostrata** su una prova passata, quella **sotto la dichiarata** su una bocciata) e si scrive il **massimo** di quella fascia. 🔒 Solo col tocco, mai col silenzio; **mai una fascia più alta** di quella che il socio ha già (una bocciatura non promuove nessuno); l'unica eccezione è chi sta a `0.5`, che non è un livello ma il «da definire» dell'81% dei soci. ⛔ Il bottone **non dice mai «scendo»**: dice la parola | `gradinoOfferto` + ramo `SCELTA_SCENDO` di `decidi` | ✅ **provata dal vivo** (Fabiola 27/08: tocco 22:06:12 → livello 1,5 in anagrafica 22:07:21) |
 
@@ -55,7 +56,7 @@ corregge**, non si affianca.
 
 | # | regola | dove vive | stato |
 |---|---|---|---|
-| D1 | A ogni esito **un messaggio esce sempre** — il silenzio eterno della terza prova è curato (P0) | `siPuoAnnunciareIlTest` | ✅ provata (12:26) |
+| D1 | 🔄 A ogni esito **un messaggio esce sempre**: nessun test finisce nel silenzio (P0). *(Corretta con lui: il riferimento alla «terza prova» viene da una regola che non c'è più — vedi A2.)* | `siPuoAnnunciareIlTest` | ✅ provata (12:26) |
 | D2 | 🔄 `pass` normale: domanda **«tieni o riprovi?»** coi due bottoni. La parola nella domanda e sul bottone è quella **DIMOSTRATA**, cioè quella che verrà scritta — non la dichiarata. 📏 Curato il 27/08 sera sul caso di Marco: dichiarato **Base**, calcolato **Intermedio**, il bot chiedeva «Tengo Base» e in scheda finiva **Intermedio** | `testoDomandaScelta` + `livello_dimostrato` dal ponte | 🔵 curato, non ancora rivisto dal vivo |
 | D3 | `pass` sopra il tetto con parola nuova: messaggio del **maestro** («in scheda hai X… ti certifica il maestro, passa dalla segreteria») — la parola detta è quella dell'**anagrafica**, mai la dichiarata | `testoEsitoTest` | ✅ provata (Laura) |
 | D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | 🔵 |
@@ -63,26 +64,29 @@ corregge**, non si affianca.
 | D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` | 🔵 (B della lista) |
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
 | D8 | Mai un vicolo cieco: ogni messaggio ha un bottone o la via a parole | promemoria.ts | ✅ |
-| D9 | L'esito arriva in **secondi** (sorveglianza ogni 5″, riarmata a ogni tocco; rete dei 15′) | bot promemoria.ts | ✅ misurata (4″ il 27/08) |
-| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «il mio livello»»* — non «te l'ho registrato». 📏 Misurato su Fabiola: fra il tocco e il livello in anagrafica passano **69 secondi**, e lei è andata a guardare **prima** | `testoSceltaRegistrata` | 🔵 curato stasera |
+| D9 | 🔄 L'esito arriva in **secondi**: sorveglianza ogni **5″ da quando il socio apre il quiz** (ogni 30″ prima, fino a 4 ore), riarmata a ogni tocco; rete dei 15′. 🆕 **Sua decisione: portare i 5″ a 2″** — toglie ~1,5″ dei 4 misurati; costa ~600 domande al ponte invece di ~240 nel caso peggiore, e si sorveglia **una persona per volta**. ⏳ Vuole modifica al bot, deploy sulla VM e la prova col cronometro | bot `promemoria.ts` (`INTERVALLO_SORVEGLIANZA_TEST_MS`) | ✅ misurata (4″ il 27/08) · ⚠️ **i 2″ da fare** |
+| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «il mio livello»»* — non «te l'ho registrato». 🎯 **E l'obiettivo, deciso con lui**: un tocco sul gradino deve portare il livello in scheda negli stessi **~4 secondi** di «mi fermo». Se ne mette 70, è un difetto. 📏 Le quattro applicazioni vere che esistono: **4″** col giro veloce (24/08), **11′27″** e **14′03″** col solo cron (prima di quella cura), **70″** sul gradino di Fabiola. 🚨 E i 66 secondi in più **non hanno ancora una spiegazione**: la riga che lancia il giro su `scendo` c'è dal commit `3eb8026` (15:29 UTC), cinque ore prima del suo tocco, e il registro dei dispatch non conserva nessuna riga per quel giro. ⏳ **Primo passo: un gradino vero cronometrato** | `testoSceltaRegistrata` + `consumer-assessment-decision` | 🔵 curato · ⚠️ **i 70″ da capire** |
+| D11 | 🆕 **«Test superato» non si dice su una scheda senza cancello**: zero domande su zero non sono una prova passata — si dice che il test è **arrivato**. *(Cura della notte del 27/08, validata con lui.)* | `testoEsitoTest` | 🔵 |
 
 ---
 
-## E. ⚠️ DA VALIDARE UNO PER UNO — i punti aperti della rilettura del 27/08
+## E. ✅ VALIDATI UNO PER UNO — i punti della rilettura del 27/08
 
-Trovati misurando, **nessuno ancora deciso**. Ordinati per quanto costano se restano.
+Trovati misurando, e **passati uno per uno con lui** la notte del 27/08: **tutti e nove approvati,
+nessuno scartato**, e su tre ha scelto lui la forma (E3, E5, E8). Ordinati per quanto costano se
+restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruito.
 
 | # | il punto | perché conta | proposta |
 |---|---|---|---|
-| E1 | **Il ponte che REGISTRA la scelta non ha le protezioni del ponte che PARLA**: `consumer-assessment-decision` non sa di maestro/stessa-fascia/dice-meno — un bot vecchio o un bottone di settimane fa può ancora registrare scelte senza effetto | è la strada da cui il caso Laura può rinascere | portare i tre fatti anche lì, o accettarlo dichiarandolo (le reti del bot già coprono chi è aggiornato) |
-| E2 | **`livello_applicato` è DEDOTTO dalle date** (`selfAssessmentDate` vs `submitted_at`, ±60″) mentre `applied_at` sta nella stessa tabella e non è nella select | stessa forma della select monca già pagata; una scheda applicata dopo rende «applicate» anche le precedenti | aggiungere `applied_at` alla select e leggerlo |
-| E3 | **I giri si ricostruiscono su 20 schede** (le ultime): oltre 20 prove i confini dei giri slittano in silenzio | Maurizio è già a quota 10+ | alzare il limite o leggere in ordine crescente completo |
-| E5 | **Il NUMERO del livello esce verso il bot** (`livello`), contro la regola «mai il numero» | oggi il bot non lo mostra, ma il campo invita | toglierlo o rinominarlo a uso diagnostico |
-| E6 | **`applicazione_lanciata` può dire il vero a vuoto** (il dispatcher è «spara e dimentica») — oggi il bot **non lo legge**: campo morto | un campo morto è la prossima promessa falsa | toglierlo, o renderlo vero prima di usarlo |
-| E7 | **Codici di rifiuto fuori contratto**: `AMBIGUA`, `SCHEDA_NON_TROVATA` non hanno frase nel bot → uscirebbe il ripiego generico | raro ma possibile coi bottoni vecchi | aggiungere le due frasi |
-| E8 | **Campi inerti**: `scelta_entro` (attesa zero), ramo `attesa` del link (giri infiniti), `senza_cancello` (doppione di `skip`) | documentare o potare | dichiararli reversibili dov'è già scritto, potare il resto |
-| E9 | **A6 qui sopra**: il promemoria a chi aspetta il maestro | messaggio irritante a chi ha appena fatto il test | escludere chi ha una scheda `pass` recente sopra il tetto |
-| E10 | **`nome` ripiega su «Socio»** nell'URL del quiz per anagrafiche incomplete | scheda che nasce anonima | rifiutare o chiedere il nome |
+| E1 | **Il ponte che REGISTRA la scelta non ha le protezioni del ponte che PARLA**: `consumer-assessment-decision` non sa di maestro/stessa-fascia/dice-meno — un bot vecchio o un bottone di settimane fa può ancora registrare scelte senza effetto | è la strada da cui il caso Laura può rinascere | ✅ **APPROVATA**: portare i tre fatti (maestro, stessa fascia, dice meno) anche nel ponte che registra |
+| E2 | **`livello_applicato` è DEDOTTO dalle date** (`selfAssessmentDate` vs `submitted_at`, ±60″) mentre `applied_at` sta nella stessa tabella e non è nella select | stessa forma della select monca già pagata; una scheda applicata dopo rende «applicate» anche le precedenti | ✅ **APPROVATA**: leggere `applied_at` invece di dedurlo dalle date |
+| E3 | **I giri si ricostruiscono su 20 schede** (le ultime): oltre 20 prove i confini dei giri slittano in silenzio | Maurizio è già a quota 10+ | ✅ **APPROVATA, e la forma l'ha scelta lui**: **leggere tutta la storia**, non alzare il limite — senza limite di prove (A2) un numero più grande rimanda soltanto lo stesso difetto a chi prova di più |
+| E5 | **Il NUMERO del livello esce verso il bot** (`livello`), contro la regola «mai il numero» | oggi il bot non lo mostra, ma il campo invita | ✅ **APPROVATA, forma sua**: **toglierlo**, non rinominarlo — il bot la parola ce l'ha già dal gestionale, e un campo che non serve è la prossima occasione di sbagliare |
+| E6 | **`applicazione_lanciata` può dire il vero a vuoto** (il dispatcher è «spara e dimentica») — oggi il bot **non lo legge**: campo morto | un campo morto è la prossima promessa falsa | ✅ **APPROVATA**: toglierlo per adesso. Se un domani serve dire «te l'ho registrato» con certezza, il campo giusto non è questo — è uno che dica **scritto**, e nascerà col lavoro dei 4 secondi (D10) |
+| E7 | **Codici di rifiuto fuori contratto**: `AMBIGUA`, `SCHEDA_NON_TROVATA` non hanno frase nel bot → uscirebbe il ripiego generico | raro ma possibile coi bottoni vecchi | ✅ **APPROVATA**: scrivere le due frasi, così al posto del ripiego generico il socio legge cos'è successo |
+| E8 | **Campi inerti**: `scelta_entro` (attesa zero), ramo `attesa` del link (giri infiniti), `senza_cancello` (doppione di `skip`) | documentare o potare | ✅ **APPROVATA, e la forma l'ha precisata lui**: potare **solo i campi morti**. Gli **interruttori a zero** (attesa fra i giri, silenzio-assenso) restano: sono un'impostazione, e rimetterli non dev'essere un lavoro |
+| E9 | **A6 qui sopra**: il promemoria a chi aspetta il maestro | messaggio irritante a chi ha appena fatto il test | ✅ **DECISA**: a chi aspetta il maestro il promemoria non arriva — l'avviso va alla **segreteria** (è la A6) |
+| E10 | **`nome` ripiega su «Socio»** nell'URL del quiz per anagrafiche incomplete | scheda che nasce anonima | ✅ **APPROVATA**: fermarla e chiedere il nome, invece di lasciar nascere una scheda anonima |
 | ~~E11~~ | ✅ **CURATO il 27/08 notte, opzione Ⓐ scelta da lui.** 📏 Il difetto: a Laura alle 22:15 il messaggio del maestro ha detto *«per adesso in scheda hai **Base**»* e **7 secondi dopo** il tetto le ha scritto **Intermedio** — il bot nominava lo stato di PRIMA della scrittura che quella stessa scheda provoca. ⇒ Adesso si nomina **una parola che non corre**: il **tetto** se sta per essere scritto (*«Il test da solo arriva fino a Intermedio, e te lo sto scrivendo adesso»*), quello che ha **adesso** se non cambia niente (*«In scheda ti resta Avanzato»*). ⛔ Scartata la Ⓑ (aspettare la scrittura): riaprirebbe il silenzio di P0 per chi sta già sopra il tetto. 📌 *Contro una corsa non si aggiunge un'attesa: si sceglie una parola che non corre* | — | ✅ chiuso |
 | ~~E4~~ | ✅ **CURATO il 27/08 sera** — e non era teorico: è capitato a **Marco Aprea alle 22:08:53** (dichiarato Base, calcolato Intermedio, bottone «Tengo Base», in scheda **Intermedio** nove secondi dopo). Il ponte manda `livello_dimostrato` e il bot usa quella nella domanda, sul bottone e nella conferma | — | ✅ chiuso |
 
@@ -102,6 +106,10 @@ Trovati misurando, **nessuno ancora deciso**. Ordinati per quanto costano se res
   Ha attraversato la catena intera — bottone → ponte → `decidi` → scheda. *(C9)*
 - ✅ **Il cancello di Principiante che non boccia** (Fabiola, 22:05). *(B5)*
 - ✅ **Il messaggio del maestro** su un caso vero (Laura, 22:15). *(D3)*
+- ✅ 🆕 **Laura nel filtro «Da certificare dal maestro»** del gestionale — 📏 misurato il 28/08 sulla
+  PROD viva (v6.253) con la console remota: nel filtro c'è **esattamente una riga**, ed è la sua,
+  con la spiegazione accanto — *«il test dice Avanzato (4), in scheda Intermedio (3.5) · nessuna
+  partita nei prossimi 30 giorni»*. ⇒ **voce 100 chiusa.**
 
 **⏳ RESTANO:**
 
@@ -116,7 +124,10 @@ Trovati misurando, **nessuno ancora deciso**. Ordinati per quanto costano se res
    invece del livello di prima *(E11 curata)*.
 3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
 4. **«Tengo» a parola uguale**: «è già il livello che hai in scheda» *(D4)*.
-5. La **voce 100**: Laura nel filtro «Da certificare dal maestro» del gestionale.
+5. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+   come su «mi fermo», non in 70 *(D10)*.
+6. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+   mette l'esito ad arrivare *(D9)*.
 
 ---
 
