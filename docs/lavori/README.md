@@ -1839,10 +1839,36 @@ scartano — quindi la cura tocca **il caricamento e i 7 punti di scrittura**, n
 ⛔ **Non si inverte l'ordine dentro `pmoMemberCloudLocalKey`**: cambierebbe la chiave a tutti e **2788**
 i soci già su `phone:`, che è il danno grande al posto del danno piccolo.
 
-🖥️ **PERCHÉ NON È STATA FATTA LA SERA STESSA, dichiarato**: è il **percorso di scrittura
-dell'anagrafica** su PROD — quello che, sbagliato, crea o perde soci — e la sua prova fisica vuole il
-gestionale **aperto in un browser** con un socio a chiave `email:`. È un lavoro **dal Mac**, non dal
-cloud, per la regola del 17/08.
+🩹🚨⭐⭐ **E QUESTA RIGA ERA SBAGLIATA, corretta la sera stessa da una sua domanda.** Diceva che
+la cura era un lavoro **dal Mac** perché la prova fisica vuole un browser. 🗣️ Lui: *«perché non
+possiamo fare questa correzione sul gestionale di TEST? Poi se funziona la portiamo in prod»*.
+📏 Aveva ragione, e le tre cose che lo dimostrano **si misurano in un minuto**: su `cudi…` ci sono
+**24 soci a chiave `email:` col telefono** (più dei 21 di PROD ⇒ il caso da provare è già lì);
+`test/id-interno-matchpoint.test.mjs` **estraeva e provava già** `pmoMemberCloudLocalKey`; e
+l'anagrafica di TEST è **viva** (`anagrafica-mirror`, 05:00) — il congelamento riguarda il
+**calendario**. ⇒ È la **26ª** un'altra volta: *un limite dichiarato che nessuno prova resta vero
+per sempre perché sembra prudente*.
+🔨 **CURATA la sera stessa su `test-preview` (v6.258)**, in tre righe più il banco:
+① `pmoLoadAllMembersFromCloud` porta `cloudLocalKey` dalla riga; ② `pmoMemberCloudLocalKey` la
+**preferisce a tutto**; ③ `pmoBuildMemberCloudRecord` la **toglie dal payload** — serve a decidere
+dove scrivere, non è un dato del socio.
+✅ **Banco nuovo `test/chiave-di-scrittura-del-socio.test.mjs`**: 7 casi che **eseguono** le
+funzioni estratte da `index.html`, e **6 sabotaggi visti rossi** — cura spenta, telefono
+rimesso sopra la chiave viva, id interno promosso sopra il telefono, chiave vuota presa per
+buona, `delete` tolta, idratazione che non porta più la chiave. 🩹 Un settimo sabotaggio è
+passato **verde** ed era il sabotaggio a essere sbagliato: avevo riscritto la stessa regola in
+un altro ordine, cioè un **refactor** e non un attacco.
+⏳ **PROVA FISICA: MANCA.** In servizio su TEST, non su PROD.
+⏳ **E COSA LA CURA NON COPRE, dichiarato**: una chiave **stantia** — il sync ri-chiava quel socio
+e archivia la riga vecchia dopo l'ultima idratazione (finestra: i 10 minuti di throttle) — fa
+scrivere di nuovo sulla riga sbagliata. La cura definitiva è più in là, in
+`pmo_upsert_records_admin`: ritrovare la riga per `payload.id` invece di fidarsi della
+`local_key` che arriva.
+
+🖥️ ~~**PERCHÉ NON È STATA FATTA LA SERA STESSA**: è il percorso di scrittura
+dell'anagrafica su PROD — quello che, sbagliato, crea o perde soci — e la sua prova fisica vuole il
+gestionale aperto in un browser con un socio a chiave `email:`. È un lavoro dal Mac, non dal
+cloud, per la regola del 17/08.~~ ⇒ Vero della **promozione a PROD**, falso della **cura**.
 
 🩹 **Rattoppo già applicato la sera stessa**, e non è la cura: la riga `email:aprea.maurizio@gmail.com`
 è stata **archiviata a mano** (`deleted = true`, un solo `update`, autorizzato da lui). Dopo:
