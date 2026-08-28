@@ -524,7 +524,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
        parola sola, che è esattamente il fatto da sapere: fondo o servizio. */
     { id:'P-14', fascia:'Principiante', trap:false, q:'Da dove batte chi serve?', opts:[
       'Da dietro la linea di fondo',
-      'Dietro la linea di servizio',
+      'Da dietro la linea di servizio',
       'Da un punto qualsiasi del campo',
       'Da vicino alla rete'], correct:1 },
     { id:'P-15', fascia:'Principiante', trap:false, q:'Posso colpire la palla al volo, prima che rimbalzi?', opts:[
@@ -554,7 +554,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Sì, se il secondo è dietro la linea'], correct:1 },
     { id:'P-20', fascia:'Principiante', trap:false, q:'Cosa vuol dire che una coppia «va a rete»?', opts:[
       'Che ha toccato la rete',
-      'Che salgono a rete per attaccare',
+      'Che sale a rete per attaccare',
       'Che gioca solo palle basse',
       'Che rinuncia al servizio'], correct:1 },
     { id:'P-21', fascia:'Principiante', trap:false, q:'Il servizio rimbalza nel quadrato giusto e poi colpisce la rete metallica (la griglia). Cosa succede?', opts:[
@@ -710,7 +710,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Sempre lo stesso, per il game',
       'Chi ha vinto il punto precedente',
       'Si decide a ogni punto'], correct:1 },
-    { id:'B-22', fascia:'Base', trap:false, q:'Com\'è l\'altezza della rete da padel?', opts:[
+    { id:'B-22', fascia:'Base', trap:false, q:'Come varia l\'altezza della rete da padel?', opts:[
       'Uguale su tutta la lunghezza',
       'Più bassa al centro che ai lati',
       'Più alta al centro che ai lati',
@@ -732,7 +732,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Il gioco continua fuori dal campo'], correct:0 },
     { id:'B-26', fascia:'Base', trap:false, q:'Nel padel una palla può essere «fuori» perché rimbalza oltre la linea di fondo?', opts:[
       'Sì, come nel tennis',
-      'No: contano solo quelle del servizio',
+      'No: solo le linee del servizio',
       'Sì, ma solo sul servizio',
       'Sì, solo nei tornei ufficiali'], correct:1 },
     { id:'B-27', fascia:'Base', trap:false, q:'Durante lo scambio la palla tocca il nastro della rete e passa comunque dall\'altra parte. Cosa succede?', opts:[
@@ -814,7 +814,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Volée profonda, e restare a rete',
       'Arretrare subito a fondo campo',
       'Giocare un pallonetto'], correct:1 },
-    { id:'I-15', fascia:'Intermedio', trap:false, q:'Dopo aver servito, cosa fa chi ha servito?', opts:[
+    { id:'I-15', fascia:'Intermedio', trap:false, q:'Dopo il servizio, cosa fa chi ha servito?', opts:[
       'Resta a fondo campo',
       'Sale subito a rete',
       'Aspetta il rimbalzo al centro',
@@ -960,7 +960,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Alta e profonda, per far arretrare',
       'Corta, appena oltre la rete',
       'Sempre contro il vetro laterale'], correct:1 },
-    { id:'A-15', fascia:'Avanzato', trap:false, q:'Quando si dice che una coppia ha «l\'iniziativa»?', opts:[
+    { id:'A-15', fascia:'Avanzato', trap:false, q:'Quando si dice che una coppia ha «l\'iniziativa» sugli avversari?', opts:[
       'Quando è al servizio',
       'Quando sta a rete e li tiene bassi',
       'Quando è avanti nel punteggio',
@@ -1215,7 +1215,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
     // ── Base, alla rovescia ─────────────────────────────────────────────────────────
     { id:'B-T10', fascia:'Base', trap:true, q:'Si può colpire la palla contro il PROPRIO vetro per mandarla di là dalla rete?', opts:[
       'Non esiste: vetro proprio vietato',
-      'Sì: è la contropared',
+      'Sì: è la controparete',
       'Solo quando il punteggio è pari',
       'Solo in doppio femminile'], correct:1 },
     { id:'B-T11', fascia:'Base', trap:true, q:'La palla, dopo il rimbalzo, esce dal campo: un giocatore può uscire dalla porta e rimandarla dentro?', opts:[
