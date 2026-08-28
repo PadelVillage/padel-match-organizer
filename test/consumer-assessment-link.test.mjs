@@ -170,7 +170,11 @@ const GIORNI_PROM = costanteDa(srcProm, 'GIORNI_TRA_PROMEMORIA');
 const EPOCA = parolaDa(srcProm, 'EPOCA_PROMEMORIA');
 const MOTIVI = Object.fromEntries(
   ['MOTIVO_HA_LIVELLO', 'MOTIVO_IN_ATTESA', 'MOTIVO_SCHEDA_RECENTE', 'MOTIVO_DA_PERSONA',
-   'MOTIVO_DATA_ILLEGGIBILE', 'MOTIVO_OROLOGIO', 'MOTIVO_DOVUTO']
+   'MOTIVO_DATA_ILLEGGIBILE', 'MOTIVO_OROLOGIO', 'MOTIVO_DOVUTO',
+   // 🆕 28/08 (E9/A6). ⚠️ Questo elenco è a mano: un motivo nuovo nel modulo che nessuno
+   //    aggiunge qui non diventa rosso, arriva `undefined` alla prima prova che lo usa — ed è
+   //    esattamente com'è andata scrivendo questo, in un rosso che sembrava un difetto della cura.
+   'MOTIVO_ASPETTA_MAESTRO']
     .map((n) => [n, parolaDa(srcProm, n)]),
 );
 const ctxProm = { EPOCA_PROMEMORIA: EPOCA, ...MOTIVI };
@@ -428,6 +432,31 @@ caso('23. ⑥ chi il livello ce l\'ha già non lo riceve', () => {
 caso('24. ⑥ chi è in ATTESA non lo riceve: sarebbe mandarlo contro una porta chiusa', () => {
   const r = promProva({ ...SENZA_NULLA, ammesso: false });
   return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_IN_ATTESA];
+});
+
+caso('E9-a. 🚨 CHI ASPETTA IL MAESTRO NON RICEVE IL PROMEMORIA (A6)', () => {
+  /* 🗣️ Regola sua. 📏 Il difetto che cura: qui si escludeva solo `skip`, quindi a chi aveva
+     appena PASSATO il test con un livello sopra il tetto si chiedeva di RIFARLO — a uno che ha
+     fatto tutto giusto e sta aspettando che qualcun altro faccia la sua parte.
+     ⭐ La scheda è VECCHIA apposta (fuori dalla casella): senza questa porta il promemoria
+     sarebbe dovuto, quindi il caso esercita davvero la riga nuova invece di appoggiarsi a
+     `MOTIVO_SCHEDA_RECENTE`, che l'avrebbe reso verde per la ragione sbagliata. */
+  const c = casella(ADESSO);
+  const r = promProva({ ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs - 1, aspettaIlMaestro: true });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_ASPETTA_MAESTRO];
+});
+
+caso('E9-b. 🚨 e il promemoria NORMALE resta (A5): la regola vale SOLO per chi aspetta il maestro', () => {
+  /* ⛔ La larghezza si guadagna: una porta nuova toglie un messaggio a qualcuno, e va provato
+     che non lo tolga a chi deve riceverlo. Sono i tre modi in cui il fatto può NON esserci —
+     falso, assente, e un valore che non è `true` — e nessuno dei tre deve zittire il A5. */
+  const c = casella(ADESSO);
+  const base = { ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs - 1 };
+  return [
+    promProva({ ...base, aspettaIlMaestro: false }).dovuto === true,
+    promProva(base).dovuto === true,
+    promProva({ ...base, aspettaIlMaestro: 'sì' }).dovuto === true,
+  ];
 });
 
 caso('25. ⑥ una scheda arrivata DENTRO la casella tace; una PRIMA della casella no', () => {
@@ -896,6 +925,24 @@ const guardie = [
   ['e le passa il livello VERO, non una costante', /haIlLivello: livelloDimostrato\(payload\.level, payload\.levelSource\)/.test(srcPonte)],
   ['e l\'ammissione VERA del giro, non una costante', /ammesso: giro\.ammesso/.test(srcPonte)],
   ['e la data VERA dell\'ultima scheda', /ultimaSchedaMs: ultimaScheda \? Date\.parse/.test(srcPonte)],
+  /* 🆕 28/08 (E9/A6) — e il fatto VERO del maestro. 📏 Questa guardia è nata da un sabotaggio
+     SFUGGITO: sostituendo l'argomento con `false` la cura diventava inerte e il banco restava
+     tutto verde, esattamente il difetto che il commento qui sopra dichiara di voler fermare —
+     dichiarato per tre argomenti e non applicato al quarto.
+     ⭐ Si misura anche che NON si ricalcoli qui: il fatto arriva dall'ultima scheda, e una
+     seconda lettura della stessa cosa diverge al primo ripensamento. */
+  ['e il fatto VERO del maestro, non una costante',
+    /aspettaIlMaestro: ultimaScheda \? ultimaScheda\.aspetta_maestro === true : false/.test(srcPonte)],
+  ['e il maestro NON si ricalcola nel chiamante',
+    !/aspettaIlMaestro: sopraIlTetto\(/.test(srcPonte)],
+
+  /* ── 🆕 28/08/2026 (E10): UNA SCHEDA NON NASCE ANONIMA ────────────────────────────────
+     ⚠️ Guardia TESTUALE: il ripiego stava nel corpo dell'handler, che il banco non esegue.
+     🚨 Le due metà sono una sola difesa e vanno insieme: la positiva da sola resterebbe verde
+     con il `|| 'Socio'` lasciato accanto (il `return` non lo raggiungerebbe mai), e la
+     negativa da sola sarebbe verde anche cancellando il nome del tutto. */
+  ['E10 · il ripiego «Socio» non battezza più nessuno', !/\|\| 'Socio';/.test(srcPonte)],
+  ['E10 · e senza nome la scheda si FERMA', /if \(!nome\) \{[\s\S]{0,200}MEMBER_SENZA_NOME/.test(srcPonte)],
   // ⚖️ Il promemoria esce da TUTTE E DUE le strade della risposta — quella dell'attesa e
   //    quella del link — o il bot leggerebbe la risposta in due modi a seconda della strada.
   ['il promemoria esce dalle DUE strade della risposta', (srcPonte.match(/^\s+promemoria,$/gm) || []).length === 2],

@@ -56,6 +56,10 @@ export const MOTIVO_DA_PERSONA = 'scheda_da_persona';
 export const MOTIVO_DATA_ILLEGGIBILE = 'data_scheda_illeggibile';
 export const MOTIVO_OROLOGIO = 'orologio_illeggibile';
 export const MOTIVO_DOVUTO = 'senza_livello';
+/* 🆕 28/08/2026 (E9 / A6) — chi aspetta il maestro non è «senza livello per pigrizia»: ha
+   già fatto il test, l'ha passato, e sta fermo per una ragione che non dipende da lui.
+   Ricordarglielo sarebbe chiedergli di rifare una cosa **appena fatta e riuscita**. */
+export const MOTIVO_ASPETTA_MAESTRO = 'aspetta_il_maestro';
 
 /**
  * La casella di calendario in cui cade questo istante.
@@ -121,6 +125,21 @@ export function promemoriaDelLivello(d: any) {
   if (dati.ammesso !== true) return { dovuto: false, motivo: MOTIVO_IN_ATTESA, ...comune };
   if (String(dati.ultimoEsito ?? '').trim() === 'skip') {
     return { dovuto: false, motivo: MOTIVO_DA_PERSONA, ...comune };
+  }
+  /* 🆕🚨⭐⭐ 28/08/2026 — E9 / A6: CHI ASPETTA IL MAESTRO NON RICEVE IL PROMEMORIA.
+     🗣️ Regola sua, e vale **solo** per chi aspetta il maestro: il promemoria normale ai soci
+     senza livello resta (A5), non si tocca.
+     📏 Il difetto: qui si escludeva solo `skip`, quindi a chi aveva appena **passato** il test
+     con un livello sopra il tetto il bot chiedeva di **rifarlo** — a uno che ha fatto tutto
+     giusto e sta aspettando che qualcun altro faccia la sua parte. È la stessa forma di P0: un
+     silenzio (o qui un rumore) che nasce dal guardare il livello invece del **perché** manca.
+     ⚖️ E l'altra metà della A6 — *«l'avviso va alla segreteria»* — è già viva e sta altrove:
+     `assessment-apply-level` mette `staff_status: applied_review` e scrive in `segnala`
+     *«sopra Intermedio certifica il maestro, guardandolo giocare»*. ⇒ Qui non si aggiunge un
+     secondo canale verso la segreteria: si toglie il messaggio sbagliato al socio.
+     📌 *Chi aspetta qualcun altro non va sollecitato: va sollecitato l'altro.* */
+  if (dati.aspettaIlMaestro === true) {
+    return { dovuto: false, motivo: MOTIVO_ASPETTA_MAESTRO, ...comune };
   }
   // 🚨 Chi chiama passa 0 quando di schede non ce n'è NESSUNA, e un valore non leggibile
   // quando ce n'è una la cui data non si legge. I due casi hanno risposte opposte, e

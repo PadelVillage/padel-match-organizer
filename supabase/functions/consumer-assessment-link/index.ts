@@ -233,9 +233,28 @@ Deno.serve(async (req: Request) => {
   }
 
   const payload = (righe[0]?.payload ?? {}) as JsonMap;
+  /* 🔄🚨⭐⭐ 28/08/2026 (E10) — VIA IL RIPIEGO «Socio»: una scheda non nasce più ANONIMA.
+     📏 Il difetto: qui c'era `|| 'Socio'`, e quel nome finiva in `member_name` sulla riga del
+     gettone **e** nell'URL del quiz. ⇒ Una scheda che arriva in gestionale intestata a
+     «Socio», indistinguibile da quella di chiunque altro nella stessa condizione: il
+     segnaposto non era un ripiego, era un **battesimo**.
+     ⚖️ La forma l'ha scelta lui: **fermarla e chiedere il nome**. Un nome che manca è un
+     difetto dell'anagrafica, e va curato là — inventarne uno lo nasconde, e lo nasconde
+     proprio a chi potrebbe ripararlo.
+     📏 MISURATO PRIMA DI METTERE IL MURO, perché un muro che blocca qualcuno di vero è una
+     cura peggiore del difetto: su PROD, **0 soci senza nome su 2817**. ⇒ Oggi questo `return`
+     non lo incontra nessuno; scatta solo su un'anagrafica davvero rotta. ⚠️ È un censimento di
+     **adesso**, non una garanzia: se un domani un import ne producesse uno, quel socio si
+     ferma qui — ed è voluto, ma va saputo.
+     ⏳ QUELLO CHE ANCORA MANCA, dichiarato invece che taciuto: verso il SOCIO questa è oggi
+     una **porta muta**. Il bot, davanti a un errore qualunque di questa edge, cade su
+     `TEST_LIVELLO_MUTO` e non spiega niente. La metà «chiedere il nome» — una frase che mandi
+     in segreteria — è nel bot e NON è costruita. Riguarda zero persone, ma resta aperta. */
   const nome = clean(payload.name)
-    || [clean(payload.firstName), clean(payload.surname)].filter(Boolean).join(' ').trim()
-    || 'Socio';
+    || [clean(payload.firstName), clean(payload.surname)].filter(Boolean).join(' ').trim();
+  if (!nome) {
+    return err(409, 'MEMBER_SENZA_NOME', 'Questo socio non ha un nome in anagrafica: la scheda nascerebbe anonima. Va completata l\'anagrafica prima del test.');
+  }
   const ultime4 = clean(payload.phone).replace(/\D/g, '').slice(-4);
 
   /* ═══════════════════════════════════════════════════════════════════════════════════════
@@ -593,6 +612,11 @@ Deno.serve(async (req: Request) => {
     // e il modulo li tiene distinti apposta.
     ultimaSchedaMs: ultimaScheda ? Date.parse(clean(ultimaScheda.quando)) : 0,
     ultimoEsito: ultimaScheda ? clean(ultimaScheda.esito) : '',
+    /* 🆕 28/08 (E9/A6) — il fatto arriva già calcolato dall'ultima scheda (`sopraIlTetto`),
+       non si ricalcola qui: due letture della stessa cosa divergono al primo ripensamento, ed
+       è la trappola ④ del 27/08. ⚖️ Nessuna scheda ⇒ `false`, che è giusto: chi non ha mai
+       fatto il test non aspetta nessun maestro, e il promemoria della A5 gli spetta. */
+    aspettaIlMaestro: ultimaScheda ? ultimaScheda.aspetta_maestro === true : false,
   });
 
   if (!giro.ammesso && giro.attesa) {
