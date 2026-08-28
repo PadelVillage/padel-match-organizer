@@ -321,10 +321,19 @@ Deno.serve(async (req: Request) => {
          sbagliare è **quello che le si dà in pasto**.
          🔒 A non farla tornare c'è ora una guardia che confronta le colonne lette dal modulo
          del giro con questa stringa (`test/consumer-assessment-link.test.mjs`). */
-      .select('token, submitted_at, raw_response, declared_level, calculated_level, member_decision, member_decision_at')
+      .select('token, submitted_at, raw_response, declared_level, calculated_level, applied_at, member_decision, member_decision_at')
       .in('token', suoi)
-      .order('submitted_at', { ascending: false })
-      .limit(20);
+      /* 🔄🚨⭐⭐ 28/08/2026 (E3) — VIA IL `.limit(20)`, e la forma l'ha scelta LUI: **leggere
+         tutta la storia**, non alzare il numero. 📏 Il difetto: i giri si ricostruiscono su
+         questo elenco, quindi oltre la ventesima prova i CONFINI DEI GIRI slittano in
+         silenzio — la prova più vecchia esce dalla finestra e il giro che la conteneva si
+         accorcia da sé, senza che niente diventi rosso. Maurizio è già a quota 10+.
+         ⚖️ Perché non «limit(100)»: senza limite di prove (A2) un numero più grande rimanda
+         soltanto lo stesso difetto a chi prova di più. Un tetto che nessuno ha misurato è una
+         scadenza nascosta, e questa era nascosta bene: il codice era GIUSTO, a mentire era
+         quello che gli si dava in pasto. 📌 *Un limite messo per prudenza è una regola che
+         nessuno ha deciso.* */
+      .order('submitted_at', { ascending: false });
 
     if (erroreSchede) {
       return err(500, 'DB_ERROR', `Lettura delle schede non riuscita: ${erroreSchede.message}`);
@@ -455,14 +464,27 @@ Deno.serve(async (req: Request) => {
          * ⏭️ Quando l'applicazione passerà su un'edge con cron (voce A4ter), il ritardo si
          * accorcia da solo e qui non cambia niente.
          */
-        livello_applicato: (() => {
-          const quandoScheda = Date.parse(clean(s.submitted_at));
-          const quandoLivello = Date.parse(clean(payload.selfAssessmentDate));
-          if (!Number.isFinite(quandoScheda) || !Number.isFinite(quandoLivello)) return false;
-          // Tolleranza di un minuto: le due date le scrivono due macchine diverse.
-          return quandoLivello >= quandoScheda - 60_000;
-        })(),
-        livello: clean(payload.level),
+        /* 🩹🚨⭐⭐ 28/08/2026 (E2) — SI LEGGE `applied_at`, NON SI DEDUCE PIÙ DALLE DATE.
+           Qui c'era un confronto fra `submitted_at` della scheda e `selfAssessmentDate` del
+           socio, con sessanta secondi di tolleranza — cioè *«il livello del socio è stato
+           toccato dopo questa prova, quindi sarà stata lei»*. Una deduzione, non un fatto.
+           📏 Sbagliava nei DUE versi, e `applied_at` stava nella stessa tabella:
+           · **falso positivo** — la segreteria cambia il livello a mano dopo il test, e la
+             prova si dichiara «applicata» pur non avendo scritto niente;
+           · **falso positivo all'indietro** — è il caso della scheda: applicata una prova
+             recente, la data del socio supera anche le prove PRECEDENTI, che si dichiarano
+             applicate tutte quante.
+           ⚖️ È la stessa forma già pagata due volte in questa funzione — *la select monca*:
+           il campo giusto esisteva, nessuno lo chiedeva al database, e a valle si ricostruiva
+           per indizi ciò che si poteva semplicemente leggere. Ora è nella `.select()` qui
+           sopra. 📌 *Un fatto che il database sa non si deduce da due orologi.* */
+        livello_applicato: clean(s.applied_at) !== '',
+        /* 🔄 28/08/2026 (E5) — TOLTO il campo `livello`, che portava al bot il NUMERO.
+           🗣️ Regola sua: al socio si dice la **parola**, mai il numero. Il bot oggi non lo
+           mostrava, quindi non si rompe niente (misurato: `leggiUltimaScheda` in `ponte.ts`
+           non lo legge affatto) — ma un campo che non serve è la prossima occasione di
+           sbagliare, e la forma l'ha scelta lui: **toglierlo, non rinominarlo**. La parola il
+           bot ce l'ha già da `fascia`, `livello_in_scheda` e `tetto`. */
         // 🆕 ④ (19/08/2026) — la SCELTA del socio su questa prova, e se può ancora farla.
         // È il gestionale che SA: il bot legge questi tre campi e fa la domanda «ti fermi
         // o riprovi?» solo dove la domanda esiste davvero. `puo_scegliere` è vero se la prova

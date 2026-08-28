@@ -376,7 +376,17 @@ Deno.serve(async (req: Request) => {
   // ⭐ Il cron RESTA, ed è la rete: copre i due casi che non passano da un tocco — il
   // silenzio-assenso delle 24 ore e la terza prova, che chiude il giro da sé.
   // ══════════════════════════════════════════════════════════════════════════════════════
-  let applicazioneLanciata = false;
+  /* 🔄🚨⭐ 28/08/2026 (E6) — VIA `applicazione_lanciata` dalla risposta, e con lui la
+     variabile che lo teneva. 📏 Due misure indipendenti, e bastava la seconda:
+     ① il campo poteva **dire il vero a vuoto**: il dispatcher è «spara e dimentica», quindi
+        `rpc` senza errore vuol dire *la richiesta è partita*, non *il livello è scritto*. Un
+        bot che ne avesse tratto «te l'ho registrato» avrebbe promesso una cosa non ancora
+        successa — il difetto del 9/08 nell'email alla segreteria, un piano più in là;
+     ② il bot **non lo leggeva**: zero occorrenze in tutto `src/` del repo del bot.
+     ⇒ Era un campo morto che prometteva di poter mentire. La forma l'ha scelta lui: toglierlo
+     adesso; se un domani servirà dire «te l'ho registrato» con certezza, il campo giusto non è
+     questo — è uno che dica **scritto**, e nascerà col lavoro dei 4 secondi (D10).
+     📌 *Un campo che nessuno legge non è innocuo: è la prossima promessa falsa.* */
   // 🚨 …e SOLO se la prova era superata: su una non riuscita il giro non applicherebbe niente
   //    (lo ferma il quiz non superato), quindi sarebbe una chiamata a vuoto a ogni tocco.
   /* 🔄 27/08 sera — e si lancia anche su «scendo», che è la scelta che scrive DAVVERO un
@@ -396,8 +406,6 @@ Deno.serve(async (req: Request) => {
     const { error: erroreGiro } = await db.rpc('pmo_dispatch_assessment_apply_level', { p_simula: false });
     if (erroreGiro) {
       console.error(`[assessment-decision] giro d'applicazione non partito (${erroreGiro.message}) — il livello arriverà col cron`);
-    } else {
-      applicazioneLanciata = true;
     }
   }
 
@@ -416,10 +424,5 @@ Deno.serve(async (req: Request) => {
     gradino: gradino || null,
     scelta_precedente: precedente || null,
     cambiata: precedente !== '' && precedente !== scelta,
-    // ⭐ Serve al BOT per non promettere il futuro: se il giro è partito può dire che il
-    // livello è già sulla scheda; se no, torna la frase di prima. È *il gestionale SA, il bot
-    // DICE* — la differenza fra «te lo registro a breve» e «te l'ho registrato» non la
-    // indovina il bot, gliela dice il gestionale.
-    applicazione_lanciata: applicazioneLanciata,
   });
 });

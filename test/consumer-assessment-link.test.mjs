@@ -923,6 +923,65 @@ const guardie = [
   //    una scheda sovrascritta. Chi togliesse questo `return` renderebbe il guasto silenzioso.
   ['una lettura fallita delle schede FERMA il riuso, non lo indovina',
     /erroreSchede\)\s*\{[\s\S]{0,160}return err\(500/.test(srcPonte)],
+
+  /* ══════════════════════════════════════════════════════════════════════════════════════
+     🆕 28/08/2026 — LE GUARDIE DI E2, E3, E5 (approvate da lui la notte del 27/08).
+
+     ⚠️ SONO GUARDIE TESTUALI, e va detto: `livello_applicato`, la `.select()` e il tetto delle
+     schede vivono dentro il corpo dell'handler, non in un modulo puro, quindi il banco non li
+     può ESEGUIRE — può solo leggere il sorgente. ⇒ Dicono «il codice è quello giusto», non
+     «il comportamento è quello giusto». La prova del comportamento è fisica, sul gestionale.
+     ⭐ Sono nate da un SABOTAGGIO, non da una rilettura: prima di scriverle ho rimesso i due
+     difetti (`livello_applicato: true` e il `.limit(20)`) e **il banco è restato tutto verde**.
+     ⇒ Un banco che sopravvive al difetto che dovrebbe fermare non protegge niente. */
+
+  // ── E2: il fatto si LEGGE, non si deduce da due orologi ──
+  // 🚨 Le due metà servono tutt'e due: la positiva da sola sarebbe verde anche con la vecchia
+  //    deduzione lasciata accanto, e la negativa da sola sarebbe verde su un campo cancellato.
+  ['E2 · `livello_applicato` si legge da `applied_at`',
+    /livello_applicato: clean\(s\.applied_at\) !== ''/.test(srcPonte)],
+  ['E2 · e NON si deduce più dalle date del socio',
+    !/Date\.parse\(clean\(payload\.selfAssessmentDate\)\)/.test(srcPonte)],
+  // ⭐ La terza metà, ed è quella che il 27/08 è già costata due volte: la regola giusta con in
+  //    pasto una riga MONCA è una regola che non gira. `applied_at` dev'essere nella select.
+  ['E2 · e la select lo CHIEDE al database',
+    /\.select\('token, submitted_at[^']*applied_at[^']*'\)/.test(srcPonte)],
+
+  // ── E3: tutta la storia, non le ultime 20 ──
+  // 🚨 Si misura sull'INTERA catena della query, non sul file: un `.limit()` altrove (i
+  //    gettoni, i soci) è legittimo, e una guardia che lo vietasse ovunque sarebbe rossa a
+  //    torto — cioè una guardia che si smette di leggere.
+  // 🩹 La prima stesura di questa guardia contava 1400 caratteri a occhio dopo `.in()` e
+  //    pescava il `.limit()` di UN'ALTRA query: rossa su codice giusto. ⇒ Si delimita la
+  //    QUERY (dal `.select` al `;` che la chiude), non una finestra a naso.
+  /* 🩹🚨⭐⭐ E QUI IL DIFETTO È SCATTATO UNA TERZA VOLTA NELLA STESSA SERA, ed è la ragione
+     per cui `senzaCommenti` esiste invece di una regex più furba: la guardia cercava
+     `.limit(` e lo trovava **dentro il commento che spiega perché l'ho tolto** («VIA IL
+     `.limit(20)`»). Rossa su codice giusto, per la terza volta, sempre nello stesso modo:
+     *la prova legge la PROSA e la scambia per il FATTO*.
+     ⇒ Una guardia sul codice deve guardare il **codice**. I commenti si tolgono prima. */
+  ...(() => {
+    const senzaCommenti = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const QUERY_SCHEDE = senzaCommenti(
+      (srcPonte.match(/\.select\('token, submitted_at[\s\S]*?;/) || [''])[0],
+    );
+    return [
+      ['E3 · la query delle schede si trova', /\.select\('token, submitted_at/.test(QUERY_SCHEDE)],
+      ['E3 · e non ha nessun tetto', /\.select\('token, submitted_at/.test(QUERY_SCHEDE) && !/\.limit\(/.test(QUERY_SCHEDE)],
+    ];
+  })(),
+
+  // ── E5/E6: i due campi morti che potevano mentire ──
+  // ⚖️ Misurato nel repo del bot il 28/08 prima di toglierli: `leggiUltimaScheda` in `ponte.ts`
+  //    non legge `livello`, e `applicazione_lanciata` ha ZERO occorrenze in tutto `src/`.
+  ['E5 · il NUMERO del livello non esce più verso il bot',
+    !/^\s*livello: clean\(payload\.level\),/m.test(srcPonte)],
+  // 🩹🚨 Qui la prima stesura cercava la PAROLA e la trovava... nel commento che spiega perché
+  //    il campo è stato tolto: rossa su codice giusto. È la gemella esatta della trappola ①
+  //    del 28/08 — *il difetto sta nella prova che ho appena scritto io*. ⇒ Si guarda il campo
+  //    EMESSO (`^ applicazione_lanciata:`), che è il fatto, non la sua menzione.
+  ['E6 · `applicazione_lanciata` non esce più dal ponte della SCELTA',
+    !/^\s*applicazione_lanciata:/m.test(readFileSync(join(FUNZIONI, 'consumer-assessment-decision', 'index.ts'), 'utf8'))],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {

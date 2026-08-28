@@ -114,19 +114,26 @@ const SABOTAGGI = [
     a: "    if (false) return 'SCHEDA_SUPERATA';",
     banchi: ['decision'],
   },
-  {
-    nome: '⑧ si può scegliere anche sulla terza prova RIUSCITA (e bloccarne l\'esito con «riprovo»)',
-    difende: 'un «riprovo» sulla terza passata fermerebbe per sempre un livello che deve essere scritto',
-    file: [join(FUNZIONI, 'consumer-assessment-decision', 'index.ts')],
-    da: "  if (provaSuperata && laProvaEsaurisceIlGiro(elenco, scheda, TENTATIVI_PER_GIRO)) return 'GIRO_FINITO';",
-    a: "  if (false) return 'GIRO_FINITO';",
-    banchi: ['decision'],
-  },
+  /* 🗑️ 28/08/2026 — VIA IL CASO ⑧, e non è una rinuncia: la protezione che sabotava **non
+     esiste più di proposito**. Il 27/08 «VIA IL VINCOLO DEL GIRO» ha tolto il rifiuto
+     `GIRO_FINITO` da `motivoDelRifiuto` — misurato sul silenzio eterno di Maurizio delle
+     10:12:51 — e la sua ragione («alla terza non c'è una quarta a cui rimandare») era scaduta
+     con `GIORNI_DI_ATTESA = 0`. ⇒ Un sabotaggio di una difesa cancellata non può atterrare, e
+     restava rosso per sempre dicendo «il codice è sbagliato» quando il codice era voluto.
+     ⚖️ Perché si CANCELLA invece di riscriverlo su un'altra riga: qui non c'è più niente da
+     difendere. Quel che TIENE ancora — una scelta già registrata non si rifà, un livello già
+     scritto non si sceglie più — ce l'hanno già i casi che sabotano `GIA_APPLICATA` e la
+     scelta precedente. 📌 *Un sabotaggio senza bersaglio non è una guardia in meno: è una
+     guardia che dice il falso, e una guardia che ha torto si smette di leggere.* */
   {
     nome: '⑨ su una prova non riuscita passa QUALUNQUE scelta, non solo il «mi fermo»',
     difende: 'su una bocciatura l\'unica scelta che ha un fatto dietro è tenersi il livello di adesso: ogni altra scriverebbe qualcosa che il test non ha dimostrato',
     file: [join(FUNZIONI, 'consumer-assessment-decision', 'index.ts')],
-    da: "  if (!provaSuperata && !(cosa === SCELTA_MI_FERMO && esito === 'fail')) return 'PROVA_NON_PASSATA';",
+    /* 🩹 28/08/2026 — ANCORA RIALLINEATA. La difesa è viva; era il testo cercato a essere
+       vecchio di un giorno: il 27/08 sera `SCELTA_SCENDO` è entrato in questa riga (il gradino
+       nasce apposta anche sulle bocciate). ⇒ Il sabotaggio non atterrava e usciva rosso su
+       codice giusto — indistinguibile, a colpo d'occhio, da una protezione caduta. */
+    da: "  if (!provaSuperata && !((cosa === SCELTA_MI_FERMO || cosa === SCELTA_SCENDO) && esito === 'fail')) return 'PROVA_NON_PASSATA';",
     a: "  if (false) return 'PROVA_NON_PASSATA';",
     banchi: ['decision'],
   },
