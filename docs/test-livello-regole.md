@@ -99,12 +99,12 @@ costruendo — stanno qui perché la tabella da sola non le dice:
 
 | # | il punto | perché conta | proposta |
 |---|---|---|---|
-| E1 | **Il ponte che REGISTRA la scelta non ha le protezioni del ponte che PARLA**: `consumer-assessment-decision` non sa di maestro/stessa-fascia/dice-meno — un bot vecchio o un bottone di settimane fa può ancora registrare scelte senza effetto | è la strada da cui il caso Laura può rinascere | ✅ **APPROVATA**: portare i tre fatti (maestro, stessa fascia, dice meno) anche nel ponte che registra — 🔨 **COSTRUITA 28/08** in `motivoDelRifiuto` — vale su `mi_fermo`/`riprovo`, **non** su `scendo`; livello sconosciuto (lettura fallita) **non** rifiuta, livello vuoto sì. 7 casi che ESEGUONO la regola, 4 sabotaggi presi. ⏳ prova fisica: manca |
+| E1 | **Il ponte che REGISTRA la scelta non ha le protezioni del ponte che PARLA**: `consumer-assessment-decision` non sa di maestro/stessa-fascia/dice-meno — un bot vecchio o un bottone di settimane fa può ancora registrare scelte senza effetto | è la strada da cui il caso Laura può rinascere | ✅ **APPROVATA**: portare i tre fatti (maestro, stessa fascia, dice meno) anche nel ponte che registra — 🔨 **COSTRUITA 28/08** in `motivoDelRifiuto` — vale su `mi_fermo`/`riprovo`, **non** su `scendo`; livello sconosciuto (lettura fallita) **non** rifiuta, livello vuoto sì. 7 casi che ESEGUONO la regola, 4 sabotaggi presi. ✅ **PROVATA SUL TELEFONO il 28/08 sera** (Marco, `IL_TEST_DICE_MENO`, vedi F) — ⏳ il ramo `ASPETTA_IL_MAESTRO` **no** |
 | E2 | **`livello_applicato` è DEDOTTO dalle date** (`selfAssessmentDate` vs `submitted_at`, ±60″) mentre `applied_at` sta nella stessa tabella e non è nella select | stessa forma della select monca già pagata; una scheda applicata dopo rende «applicate» anche le precedenti | ✅ **APPROVATA**: leggere `applied_at` invece di dedurlo dalle date — 🔨 **COSTRUITA 28/08**: `applied_at` nella `.select()` e letto, niente più deduzione dalle date. ⏳ prova fisica: manca |
 | E3 | **I giri si ricostruiscono su 20 schede** (le ultime): oltre 20 prove i confini dei giri slittano in silenzio | Maurizio è già a quota 10+ | ✅ **APPROVATA, e la forma l'ha scelta lui**: **leggere tutta la storia**, non alzare il limite — senza limite di prove (A2) un numero più grande rimanda soltanto lo stesso difetto a chi prova di più — 🔨 **COSTRUITA 28/08**: via il `.limit(20)`, tutta la storia. ⏳ prova fisica: manca |
 | E5 | **Il NUMERO del livello esce verso il bot** (`livello`), contro la regola «mai il numero» | oggi il bot non lo mostra, ma il campo invita | ✅ **APPROVATA, forma sua**: **toglierlo**, non rinominarlo — il bot la parola ce l'ha già dal gestionale, e un campo che non serve è la prossima occasione di sbagliare — 🔨 **COSTRUITA 28/08**: campo `livello` tolto (misurato prima: il bot non lo leggeva). ⏳ prova fisica: manca |
 | E6 | **`applicazione_lanciata` può dire il vero a vuoto** (il dispatcher è «spara e dimentica») — oggi il bot **non lo legge**: campo morto | un campo morto è la prossima promessa falsa | ✅ **APPROVATA**: toglierlo per adesso. Se un domani serve dire «te l'ho registrato» con certezza, il campo giusto non è questo — è uno che dica **scritto**, e nascerà col lavoro dei 4 secondi (D10) — 🔨 **COSTRUITA 28/08**: `applicazione_lanciata` tolto (misurato: zero occorrenze nel bot). ⏳ prova fisica: manca |
-| E7 | **Codici di rifiuto fuori contratto**: `AMBIGUA`, `SCHEDA_NON_TROVATA` non hanno frase nel bot → uscirebbe il ripiego generico | raro ma possibile coi bottoni vecchi | ✅ **APPROVATA**: scrivere le due frasi, così al posto del ripiego generico il socio legge cos'è successo — 🔨 **COSTRUITA 28/08** nel bot (PR #108), e **più larga di così**: oltre ai due nominati anche `NIENTE_DA_SCENDERE` e `SCELTA_SCONOSCIUTA`, che stavano nello stesso buco. Da 4 codici a 10. ⏳ prova fisica: manca |
+| E7 | **Codici di rifiuto fuori contratto**: `AMBIGUA`, `SCHEDA_NON_TROVATA` non hanno frase nel bot → uscirebbe il ripiego generico | raro ma possibile coi bottoni vecchi | ✅ **APPROVATA**: scrivere le due frasi, così al posto del ripiego generico il socio legge cos'è successo — 🔨 **COSTRUITA 28/08** nel bot (PR #108), e **più larga di così**: oltre ai due nominati anche `NIENTE_DA_SCENDERE` e `SCELTA_SCONOSCIUTA`, che stavano nello stesso buco. Da 4 codici a 10. ✅ **PROVATA il 28/08 sera**: la frase di `IL_TEST_DICE_MENO` è arrivata al socio al posto del ripiego (vedi F) |
 | E8 | **Campi inerti**: `scelta_entro` (attesa zero), ramo `attesa` del link (giri infiniti), `senza_cancello` (doppione di `skip`) | documentare o potare | ✅ **APPROVATA, e la forma l'ha precisata lui**: potare **solo i campi morti**. Gli **interruttori a zero** (attesa fra i giri, silenzio-assenso) restano: sono un'impostazione, e rimetterli non dev'essere un lavoro — ⚖️ **SI SVUOTA** applicando la sua forma: non c'era **nessun** campo morto da potare (vedi la testata). ⇒ Resta **documentare**, e questa riga è la documentazione |
 | E9 | **A6 qui sopra**: il promemoria a chi aspetta il maestro | messaggio irritante a chi ha appena fatto il test | ✅ **DECISA**: a chi aspetta il maestro il promemoria non arriva — l'avviso va alla **segreteria** (è la A6) — 🔨 **COSTRUITA 28/08**: `MOTIVO_ASPETTA_MAESTRO`. La metà «avviso alla segreteria» era già viva in `assessment-apply-level` e **non** è stata duplicata. ⏳ prova fisica: manca |
 | E10 | **`nome` ripiega su «Socio»** nell'URL del quiz per anagrafiche incomplete | scheda che nasce anonima | ✅ **APPROVATA**: fermarla e chiedere il nome, invece di lasciar nascere una scheda anonima — 🔨 **COSTRUITA 28/08**: `MEMBER_SENZA_NOME`, via il ripiego «Socio». 📏 Misurato prima del muro: **0 soci senza nome su 2817**. ⏳ **Aperta a metà, dichiarata**: verso il socio è una porta MUTA (il bot cade su `TEST_LIVELLO_MUTO`) — la frase che manda in segreteria NON è costruita |
@@ -114,6 +114,46 @@ costruendo — stanno qui perché la tabella da sola non le dice:
 ---
 
 ## F. Le prove fisiche che mancano (in ordine)
+
+### ✅⭐⭐ 28/08 sera — E1 ed E7 PROVATE SUL TELEFONO, dentro la finestra esatta
+
+📏 Marco Aprea, su **PROD**, con la catena intera: bottone → ponte → regola → frase.
+
+| | |
+|---|---|
+| **22:02:40** | scheda `9ZUPU7PX8YUEFL`, quiz **passato**, `calculated_level` **3,5** (Intermedio) |
+| | `applied_at` **vuoto** — il gestionale non applica: quel livello Marco ce l'aveva già |
+| **~22:04** | la segreteria porta Marco da **3,5** a **4** (Avanzato) |
+| **22:05:29** | Marco tocca il bottone **già disegnato** «Tengo Intermedio» |
+| **22:05:31** | registro del bot: `⚠️ scelta livello non registrata per Marco Aprea: IL_TEST_DICE_MENO` |
+| dopo | `member_decision` in `self_assessments`: **null** |
+
+⇒ **La prova non è «non è successo niente di male»: è passata di lì e non ha sbagliato.** È la
+forma della voce 77 — la cura vista attraversare la finestra in cui prima sbagliava. Prima, quel
+tocco avrebbe **registrato** la scelta e il bot avrebbe detto *«te lo registro sulla scheda a
+breve»*, senza che nessun livello venisse mai scritto: è la frase falsa che Laura si è sentita
+dire il 27/08.
+
+⭐ **E prova E7 sullo stesso tocco**: il socio ha letto *«Quella prova dice meno di quello che hai
+già in scheda, e il livello non scende da solo…»* e **non** il ripiego generico. `IL_TEST_DICE_MENO`
+è un codice nato stasera: senza le frasi arrivate sulla VM alle 21:42 sarebbe uscito *«Non sono
+riuscito a registrare la tua scelta»*.
+
+⛔ **COSA QUESTA PROVA NON HA PROVATO, e va detto perché è la tentazione di contarla due volte:**
+· **E2 no.** Il cambio di livello a mano ha lasciato `selfAssessmentDate` a **19:56:47**, cioè
+  *prima* della scheda ⇒ anche la **vecchia** deduzione avrebbe risposto «non applicato». La
+  finestra in cui E2 cambia qualcosa non è stata attraversata;
+· **`ASPETTA_IL_MAESTRO` no.** È l'altro ramo di E1, con la sua frase, e non è mai stato eseguito;
+· **E3, E5, E6, E9, E10** no: nessuna di quelle cinque è stata vista dal vivo.
+
+🩹 **E una ricetta sbagliata, fermata prima e non dopo.** La prima versione diceva a Marco di
+toccare i bottoni delle 21:57 — ma quella scheda era stata **applicata 33 secondi dopo**
+(`applied_at 21:57:20`), quindi il ponte avrebbe risposto `GIA_APPLICATA`, che è un rifiuto
+**vecchio** e sta **prima** dei due nuovi. ⇒ Il tocco sarebbe passato senza esercitare niente,
+e sullo schermo la prova sarebbe sembrata fatta. 📌 *Una prova va guardata nei dati PRIMA di
+chiedere il gesto: uno schermo non dice quale ramo l'ha prodotto.*
+
+---
 
 📏 **Aggiornate la sera del 27/08, dopo la sessione di prove vere sul telefono** — quattro soci
 (Fabiola, Marco, Laura, Maurizio), otto schede, tre livelli cambiati davvero.
