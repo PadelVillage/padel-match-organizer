@@ -1858,7 +1858,15 @@ rimesso sopra la chiave viva, id interno promosso sopra il telefono, chiave vuot
 buona, `delete` tolta, idratazione che non porta più la chiave. 🩹 Un settimo sabotaggio è
 passato **verde** ed era il sabotaggio a essere sbagliato: avevo riscritto la stessa regola in
 un altro ordine, cioè un **refactor** e non un attacco.
-⏳ **PROVA FISICA: MANCA.** In servizio su TEST, non su PROD.
+✅⭐⭐ **PROVA FISICA FATTA la sera del 28/08, sull'app VIVA di TEST (v6.258) con la console
+remota** — e non su un caso costruito: sui **2817 soci veri**. 📏 Gli **esposti** (riga non-`phone:`
+con un telefono in scheda) sono **28**; **tutti e 28 scrivono ora sulla propria riga**, e **tutti e
+28 prima avrebbero scritto altrove** ⇒ la finestra è stata **attraversata**, non evitata. I **2785**
+già su `phone:` sono rimasti **fermi tutti**, che è la metà della cura che una prova distratta non
+guarda. E `cloudLocalKey` non entra nel payload.
+⚖️ È la forma della voce 77: *non «non è successo niente di male», ma «è passata di lì e non ha
+sbagliato»*. ⭐ E la console remota ha fatto quello per cui esiste: nessuna richiesta a lui, nessun
+DevTools, nessuno schermo fotografato.
 ⏳ **E COSA LA CURA NON COPRE, dichiarato**: una chiave **stantia** — il sync ri-chiava quel socio
 e archivia la riga vecchia dopo l'ultima idratazione (finestra: i 10 minuti di throttle) — fa
 scrivere di nuovo sulla riga sbagliata. La cura definitiva è più in là, in
