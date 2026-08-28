@@ -414,5 +414,190 @@ prova('🚨 CABLAGGIO: la pagina e il bot dicono le stesse parole nuove', () => 
   }
 });
 
+/* ─────────────────────────────────────────────────────────────────────────────────
+   ⑦ LE OPZIONI IN ORDINE CASUALE — voce 104, 28/08/2026
+
+   🗣️ Sua richiesta: *«se no dopo un po' la gente capisce questo sistema»*. Il difetto è del
+   CANCELLO: finché l'ultima opzione è sempre la più alta, chi rifà il test pilota il livello
+   senza saper giocare.
+   🗣️⭐ E QUALI mescolare l'ha deciso lui: **solo le quattro tecniche**. Le due scale numeriche e
+   le due sui livelli restano in ordine — lì la posizione non dice niente che il testo non dica
+   già, e mescolarle sarebbe rumore addosso a chi risponde onesto.
+   ───────────────────────────────────────────────────────────────────────────────── */
+
+/** Le opzioni di UNA domanda così come il socio se le vede, cioè uscite dal motore. */
+function opzioniViste(gettone, chiave, risposte = {}, viste = undefined) {
+  const d = P.domandeDelGiro(gettone, risposte, viste).find((x) => x.chiave === chiave);
+  vero(!!d, `la domanda ${chiave} non esce più dal motore`);
+  return d.opzioni.map((o) => o.valore);
+}
+const DICHIARA_INTERMEDIO = { experience: 'Più di 1 anno', frequency: '4-6', declaredLevel: '3.5' };
+
+prova('🔒 stesso gettone ⇒ STESSO ordine delle opzioni (A3: chi riprende a metà ritrova tutto)', () => {
+  for (const chiave of ['rally', 'glass', 'net', 'overhead']) {
+    uguale(opzioniViste('gettone-104-A', chiave, DICHIARA_INTERMEDIO),
+      opzioniViste('gettone-104-A', chiave, DICHIARA_INTERMEDIO), `${chiave}: due letture, due ordini`);
+  }
+});
+
+prova('🚨 …e NON dipende da quante risposte ha già dato, né dalle domande già viste', () => {
+  /* ⭐⭐ È LA PROVA CHE VALE PIÙ DI TUTTE, e non è la ripetibilità: il bot risponde con la
+     POSIZIONE del bottone (`valoreDaIndice`). Il server disegna la tastiera con le risposte di
+     PRIMA e risolve il tocco ricalcolando il passo — se fra le due cose l'ordine si spostasse,
+     al socio verrebbe registrata **una risposta che non ha toccato**, in silenzio e senza che
+     nessun errore lo dica. ⇒ Il seme deve guardare solo il gettone e la chiave. */
+  for (const chiave of ['rally', 'glass', 'net', 'overhead']) {
+    const nudo = opzioniViste('gettone-104-B', chiave, DICHIARA_INTERMEDIO, []);
+    const carico = opzioniViste('gettone-104-B', chiave,
+      { ...DICHIARA_INTERMEDIO, balancedLevel: '3.5', net: 'Sto poco a rete' }, ['q1', 'q2', 'q3']);
+    uguale(nudo, carico, `${chiave}: l'ordine si è spostato mentre il socio rispondeva`);
+    /* 🚨 E IL CASO CHE CAMBIA DAVVERO LA FORMA DEL GIRO, che è quello che una prova più comoda
+       non coprirebbe: chi si dichiara Semi-Pro il quiz non ce l'ha ⇒ il giro passa da 13
+       domande a 8, e `domandeDelGiro` esce dall'altro ramo. Se il seme guardasse la LUNGHEZZA
+       — o qualunque altra cosa del giro invece del solo gettone — le opzioni si
+       rimescolerebbero sotto le mani di chi torna indietro a cambiare il livello dichiarato.
+       📌 Trovato sabotando: la versione prima di questa riga restava verde con quel difetto. */
+    uguale(nudo, opzioniViste('gettone-104-B', chiave, { ...DICHIARA_INTERMEDIO, declaredLevel: '6.5' }),
+      `${chiave}: cambiare fascia rimescola le opzioni`);
+    uguale(nudo, opzioniViste('gettone-104-B', chiave, {}),
+      `${chiave}: prima di dichiarare il livello l'ordine è un altro`);
+  }
+});
+
+prova('🎲 gettoni diversi ⇒ ordini DIVERSI (o la cura non cura)', () => {
+  /* Su un gettone solo la mescolata può ricadere per caso nell'ordine di partenza (1 su 120).
+     Con dieci, che TUTTI escano in scala è (1/120)^10: se succede non è sfortuna, è la
+     mescolata che non è mai partita. */
+  const gettoni = Array.from({ length: 10 }, (_, i) => `gettone-104-mescola-${i}`);
+  for (const chiave of ['rally', 'glass', 'net', 'overhead']) {
+    const canonico = P.SCHEDA_DOMANDE.find((d) => d.chiave === chiave).opzioni.map((o) => o.valore);
+    const ordini = gettoni.map((g) => JSON.stringify(opzioniViste(g, chiave, DICHIARA_INTERMEDIO)));
+    vero(!ordini.every((o) => o === JSON.stringify(canonico)),
+      `${chiave}: dieci gettoni e sempre l'ordine di partenza — la mescolata non è partita`);
+    vero(new Set(ordini).size > 1, `${chiave}: dieci gettoni e un ordine solo`);
+  }
+});
+
+prova('🎲 …e le QUATTRO non escono tutte con la STESSA mescolata', () => {
+  /* 📏 TROVATO SABOTANDO, e non rileggendo: dando alle quattro domande un sale unico (invece
+     di uno per chiave) il banco restava **tutto verde** — eppure la cura era dimezzata.
+     ⇒ Se le quattro condividono la permutazione, chi impara «la più alta è il quarto bottone»
+     su una domanda l'ha imparata su tutte e quattro: da 120 ordini da capire si torna a UNO,
+     che è quasi il difetto che questa voce esiste per chiudere.
+     📌 *Una mescolata sola su quattro domande non è quattro mescolate: è una scorciatoia più
+     lunga da imparare, non una tolta.* */
+  const gettoni = Array.from({ length: 10 }, (_, i) => `gettone-104-sale-${i}`);
+  const tutteUguali = (g) => {
+    const ordini = ['rally', 'glass', 'net', 'overhead'].map((chiave) => {
+      const canonico = P.SCHEDA_DOMANDE.find((d) => d.chiave === chiave).opzioni.map((o) => o.valore);
+      // La PERMUTAZIONE, non i valori: le quattro domande hanno parole diverse ma 5 opzioni
+      // ciascuna, quindi si confrontano le posizioni di partenza.
+      return JSON.stringify(opzioniViste(g, chiave, DICHIARA_INTERMEDIO).map((v) => canonico.indexOf(v)));
+    });
+    return new Set(ordini).size === 1;
+  };
+  vero(!gettoni.every(tutteUguali),
+    'su dieci gettoni le quattro tecniche escono sempre con la stessa permutazione: il sale non separa le domande');
+});
+
+prova('🗣️ le altre QUATTRO restano in ordine, com\'è stato deciso', () => {
+  /* 📌 Non è una dimenticanza da «completare» un domani: le scale numeriche e i sette livelli
+     sono scale VERE, dove la posizione non aggiunge niente al testo — il nome della fascia è
+     scritto sul bottone. Chi le mescolasse renderebbe il test più faticoso senza chiudere
+     nessuna scorciatoia. */
+  for (const chiave of ['experience', 'frequency', 'declaredLevel', 'balancedLevel']) {
+    const canonico = P.SCHEDA_DOMANDE.find((d) => d.chiave === chiave).opzioni.map((o) => o.valore);
+    for (const g of ['gettone-104-C', 'gettone-104-D', 'gettone-104-E']) {
+      uguale(opzioniViste(g, chiave, DICHIARA_INTERMEDIO), canonico, `${chiave}: mescolata su ${g}`);
+    }
+  }
+});
+
+prova('🚨 il DATO VIAGGIA CON L\'OPZIONE: ogni coppia valore↔etichetta resta quella della banca', () => {
+  /* ⭐⭐ È LA PROVA CHE RENDE LA CURA SICURA, e la prima versione che avevo scritto NON la
+     faceva: confrontava il livello calcolato con sé stesso — stesse risposte da tutt'e due le
+     parti — quindi era vera per costruzione. 📏 L'ha trovata il SABOTAGGIO: staccando `valore`
+     da `testo` (rotazione dei soli valori) il banco restava **tutto verde**, perché ogni valore
+     ruotato è ancora una frase vera della banca e vale ancora un punteggio.
+     ⇒ Il difetto vero di questa cura non è un punteggio che sparisce: è il socio che legge
+     un'etichetta e ne fa registrare un'altra. Si prova sulla COPPIA, non sul punteggio.
+     📌 *Una prova che confronta un valore con sé stesso è verde per sempre e non protegge
+     niente: il confronto deve andare a prendere la verità da un'altra parte.* */
+  for (const chiave of ['rally', 'glass', 'net', 'overhead']) {
+    const canoniche = P.SCHEDA_DOMANDE.find((d) => d.chiave === chiave).opzioni
+      .map((o) => `${o.valore}␟${o.testo}`);
+    for (const g of Array.from({ length: 10 }, (_, i) => `gettone-104-coppie-${i}`)) {
+      const d = P.domandeDelGiro(g, DICHIARA_INTERMEDIO).find((x) => x.chiave === chiave);
+      const viste = d.opzioni.map((o) => `${o.valore}␟${o.testo}`);
+      uguale([...viste].sort(), [...canoniche].sort(),
+        `${g} · ${chiave}: le coppie consegnate non sono più quelle della banca`);
+    }
+  }
+});
+
+prova('🚨 …e il LIVELLO calcolato non dipende da dove l\'opzione è finita', () => {
+  /* Le stesse quattro risposte — nominate per PAROLA, cioè quello che il socio legge — devono
+     dare lo stesso livello su dieci ordini diversi. Qui il confronto va a prendere la verità
+     fuori: il livello di riferimento nasce dalle risposte canoniche, non dalle mescolate. */
+  const base = { experience: 'Più di 1 anno', frequency: '4-6', declaredLevel: '3.5', balancedLevel: '3.5' };
+  const scelte = {
+    rally: 'Tengo scambi regolari con continuità', glass: 'Difendo con il vetro in modo base',
+    net: 'Gioco volée semplici', overhead: 'Uso almeno la bandeja in modo semplice',
+  };
+  const atteso = C.calculateAssessmentPublicLevel({ ...base, ...scelte });
+  let ordiniDiversi = 0;
+  for (const g of Array.from({ length: 10 }, (_, i) => `gettone-104-punteggio-${i}`)) {
+    const risposte = { ...base };
+    for (const [chiave, parola] of Object.entries(scelte)) {
+      const d = P.domandeDelGiro(g, base).find((x) => x.chiave === chiave);
+      const posizione = d.opzioni.findIndex((o) => o.valore === parola);
+      vero(posizione >= 0, `${g} · ${chiave}: «${parola}» non è più fra le opzioni consegnate`);
+      const canonica = P.SCHEDA_DOMANDE.find((x) => x.chiave === chiave).opzioni
+        .findIndex((o) => o.valore === parola);
+      if (posizione !== canonica) ordiniDiversi++;
+      // Si risponde come risponde Telegram: «ho toccato il bottone numero N».
+      risposte[chiave] = P.valoreDaIndice(d, posizione);
+    }
+    uguale(risposte.rally, scelte.rally, `${g}: il bottone toccato ha registrato un'altra parola`);
+    const esito = C.calculateAssessmentPublicLevel(risposte);
+    uguale([esito.calculated_level, esito.coherence], [atteso.calculated_level, atteso.coherence],
+      `${g}: la posizione ha cambiato l'esito`);
+  }
+  vero(ordiniDiversi > 0, 'in dieci gettoni nessuna opzione si è spostata: la prova non ha esercitato niente');
+});
+
+prova('SABOTAGGIO: la FONTE non è stata toccata (è ciò che tiene verde la parità con la pagina)', () => {
+  /* 🚨 La trappola di questa cura era mescolare dentro `SCHEDA_DOMANDE`: la parità con i
+     `<select>` di `index.html` sarebbe diventata rossa, e qualcuno l'avrebbe «riallineata»
+     disfacendo la cura. Qui si pretende che la sorgente resti ordinata DOPO che il motore ha
+     girato — cioè che `conOpzioniMescolate` copi invece di rimescolare in casa d'altri. */
+  const primaDi = P.SCHEDA_DOMANDE.map((d) => d.opzioni.map((o) => o.valore));
+  for (const g of ['gettone-104-F', 'gettone-104-G', 'gettone-104-H']) {
+    P.domandeDelGiro(g, DICHIARA_INTERMEDIO);
+    P.passoCorrente(g, DICHIARA_INTERMEDIO);
+  }
+  uguale(P.SCHEDA_DOMANDE.map((d) => d.opzioni.map((o) => o.valore)), primaDi,
+    'la sorgente canonica è stata mescolata: la parità con la pagina diventerebbe rossa');
+});
+
+prova('SABOTAGGIO: il tocco del bottone si risolve sull\'elenco MESCOLATO, non su quello canonico', () => {
+  /* Il difetto che questo caso trasforma in rosso: qualcuno risolve l'indice su
+     `SCHEDA_DOMANDE` invece che sulla domanda appena consegnata. Il giro resterebbe verde —
+     una risposta ammessa esce lo stesso — e il socio si vedrebbe registrata un'altra opzione.
+     ⇒ Si cerca un gettone in cui i due elenchi differiscono davvero, e si pretende che il
+     valore preso per posizione sia quello dell'elenco che il socio ha visto. */
+  const canonico = P.SCHEDA_DOMANDE.find((d) => d.chiave === 'glass');
+  let visto = null;
+  for (let i = 0; i < 20 && !visto; i++) {
+    const g = `gettone-104-tocco-${i}`;
+    const d = P.domandeDelGiro(g, DICHIARA_INTERMEDIO).find((x) => x.chiave === 'glass');
+    if (P.valoreDaIndice(d, 4) !== P.valoreDaIndice(canonico, 4)) visto = d;
+  }
+  vero(!!visto, 'in venti gettoni nessun ordine diverso da quello canonico: la mescolata non è partita');
+  uguale(P.valoreDaIndice(visto, 4), visto.opzioni[4].valore, 'l\'ultimo bottone non è l\'ultima opzione consegnata');
+  uguale(P.valoreAmmesso(visto, visto.opzioni[0].valore), visto.opzioni[0].valore,
+    'un\'opzione consegnata non viene più riconosciuta');
+});
+
 console.log(`\n— ${falliti ? `${falliti} prove ROSSE` : 'tutte le prove verdi'} —\n`);
 process.exit(falliti ? 1 : 0);

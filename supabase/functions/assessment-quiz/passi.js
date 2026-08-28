@@ -198,6 +198,67 @@ export const SCHEDA_DOMANDE = [
   },
 ];
 
+/* ═══ LE OPZIONI IN ORDINE CASUALE (voce 104, 28/08/2026) ════════════════════════════════
+   🗣️ Sua richiesta, con lo screenshot della domanda sul vetro davanti: *«Diverse domande sono
+   in ordine crescente di livello: quella più in alto è il livello più basso, quella in fondo è
+   il più alto. Dovrebbe essere un ordine random, se no dopo un po' la gente capisce questo
+   sistema.»*
+
+   ⇒ È un difetto del CANCELLO, non di stile: chi rifà il test qualche volta impara che
+   *l'ultima opzione è sempre la più alta*, e da lì pilota il livello senza saper giocare.
+
+   🗣️⭐ QUALI, deciso da lui il 28/08: **solo le quattro tecniche**. Le altre quattro restano in
+   ordine e non è una dimenticanza —
+   · `experience` e `frequency` sono scale NUMERICHE (1 mese → 3 anni · 0-1 → più di 10):
+     mescolarle fatica la lettura e non toglie nessun vantaggio, perché nessuno guadagna a
+     dichiarare di giocare da più tempo;
+   · `declaredLevel` e `balancedLevel` sono i SETTE LIVELLI in scala, e il nome della fascia è
+     scritto sul bottone ⇒ l'ordine non aggiunge nessuna informazione che il testo non dia già,
+     mentre mescolarlo confonde chi risponde onesto.
+   📌 *Si mescola dove la POSIZIONE dice qualcosa che il testo non dice: altrove è solo rumore.*
+
+   ✅ MESCOLARE È SICURO PER IL PUNTEGGIO, ed è misurato: il punteggio tecnico nasce
+   **confrontando le parole** (`assessmentPublicScoreFromText`), non l'indice, e `scelte()` tiene
+   il dato (`valore`) attaccato all'etichetta (`testo`) ⇒ spostare un'opzione si porta dietro il
+   suo punteggio. La stessa risposta dà lo stesso livello, in qualunque posizione esca. */
+const OPZIONI_DA_MESCOLARE = new Set(['rally', 'glass', 'net', 'overhead']);
+
+/* 🔒 RIPETIBILE COL GETTONE, come l'ordine delle domande: chi lascia il test a metà deve
+   ritrovare le opzioni dove le aveva lasciate (regola A3) — e, cosa che conta di più, il bot
+   risponde con la POSIZIONE del bottone (`valoreDaIndice`): se fra il disegno della tastiera e
+   il tocco l'ordine cambiasse, il socio si vedrebbe registrata **una risposta che non ha dato**.
+   ⇒ Il seme non guarda né le risposte né le domande già viste: solo il gettone e la chiave.
+
+   🚨 IL SALE È DIVERSO da quello della pescata e da «ordine-del-giro», per la stessa ragione
+   scritta nel commento di `domandeDelGiro`: con lo stesso `rnd` un ordine direbbe qualcosa
+   sull'altro. ⭐ Ed è per CHIAVE, non un solo `rnd` consumato in fila sulle quattro: così la
+   mescolata di una domanda non dipende da dove quella domanda è finita nell'ordine del giro —
+   due mescolate indipendenti non devono farsi da seme l'una all'altra. */
+function opzioniMescolate(chiave, opzioni, gettone) {
+  const rnd = sorteDa(seme(gettone, 'ordine-delle-opzioni', String(chiave)));
+  const out = opzioni.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/* 🚨 SI MESCOLA AL MOMENTO DI PRESENTARLE, NON DENTRO `SCHEDA_DOMANDE`, ed è la trappola di
+   questa cura. `test/motore-a-passi.test.mjs` confronta quelle otto domande con i `<select>`
+   veri di `index.html` **opzione per opzione e nell'ordine**: mescolare alla fonte fa diventare
+   rossa quella parità, che esiste per una ragione buona — finché la pagina è viva, le domande
+   stanno in DUE posti e devono raccontare lo stesso test.
+   ⇒ `SCHEDA_DOMANDE` resta la sorgente canonica ORDINATA; qui se ne fa una copia. Nessun
+   oggetto della sorgente viene toccato: chi la legge dopo la trova come l'ha sempre trovata. */
+function conOpzioniMescolate(domande, token) {
+  const g = assessTxt(token);
+  if (!g) return domande;
+  return domande.map((d) => (OPZIONI_DA_MESCOLARE.has(d.chiave)
+    ? { ...d, opzioni: opzioniMescolate(d.chiave, d.opzioni, g) }
+    : d));
+}
+
 /** La chiave con cui una domanda di conoscenza vive dentro le risposte. Il prefisso serve a
  *  tenerle separate dai campi della scheda senza doverne tenere l'elenco da nessuna parte. */
 export function chiaveConoscenza(id) {
@@ -237,7 +298,11 @@ function domandeConoscenza(token, risposte, viste) {
    direbbe qualcosa su quali domande sono uscite. */
 export function domandeDelGiro(token, risposte, viste) {
   const conoscenza = domandeConoscenza(token, risposte, viste);
-  if (!conoscenza.length) return SCHEDA_DOMANDE;
+  /* 🔄 28/08 (voce 104) — anche l'uscita corta passa da `conOpzioniMescolate`. Da qui non si
+     vede nessuna domanda tecnica (prima della terza risposta il passo corrente è una delle tre
+     fisse), ma le due uscite devono dire la STESSA cosa: una funzione che mescola solo su un
+     ramo è il posto dove nasce un ordine che cambia sotto le mani di chi risponde. */
+  if (!conoscenza.length) return conOpzioniMescolate(SCHEDA_DOMANDE, token);
   const testa = SCHEDA_DOMANDE.slice(0, 3);
   const coda = SCHEDA_DOMANDE.slice(3).concat(conoscenza);
   const rnd = sorteDa(seme(assessTxt(token), 'ordine-del-giro'));
@@ -245,7 +310,7 @@ export function domandeDelGiro(token, risposte, viste) {
     const j = Math.floor(rnd() * (i + 1));
     [coda[i], coda[j]] = [coda[j], coda[i]];
   }
-  return testa.concat(coda);
+  return conOpzioniMescolate(testa.concat(coda), token);
 }
 
 /** Quante domande sono in TUTTO, prima di sapere che fascia dichiarerà il socio.

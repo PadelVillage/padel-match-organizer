@@ -37,6 +37,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | B8 | Banca: 27 normali + 12 trabocchetto per fascia; in un giro se ne vedono 5 ⇒ memorizzarla vuole molti giri | banca | ✅ |
 | B9 | 🆕 **La pescata ha MEMORIA**: non ripropone le domande già viste nelle ultime 8 prove, finché ce n'è altro da dare. Le «già viste» sono quelle delle schede consegnate **prima che il gettone nascesse** — un fatto immutabile, così la pescata resta ripetibile (vedi A3). Con la banca esaurita ricomincia dalle **più vecchie**: degrada, non fallisce | `ordinaPerFreschezza` in `conoscenza.js` + `domandeGiaViste` in `assessment-quiz/index.ts` | 🔵 prova fisica |
 | B10 | 🆕 Le **36 domande di Principiante** (27 normali + 9 trabocchetto) sono state **rilette una per una col committente** il 27/08 sera: una sola correzione, la **P-14** («Dietro la linea di **servizio**», che prima non diceva quale linea) | banca in `conoscenza.js` | ✅ · 🆕 **28/08: passata di ITALIANO su tutte e 192**, su sua richiesta (*«bisognerebbe fare un'analisi grammaticale di tutti i testi»*, errori visti scorrendo e non ricostruibili a memoria). Nessun errore di accento o apostrofo — **sette** correzioni più fini: la concordanza di **P-20** («che salgono» → «che sale», con soggetto singolare), lo spagnolo di **B-T10** (`contropared` → **controparete**, come già in AG-02), il pronome senza antecedente di **A-15**, la ripetizione di **I-15**, la preposizione fuori squadra di **P-14**, e la forma di **B-22** e **B-26**. ⛔ **Nessun `correct:` toccato e nessun significato cambiato**: solo testo, e il banco dei 36 caratteri gira verde |
+| B11 | 🆕🗣️ **Le opzioni delle 4 domande TECNICHE escono in ordine casuale** (voce 104, sua richiesta del 28/08: *«dovrebbe essere un ordine random, se no dopo un po' la gente capisce questo sistema»*). Le altre **quattro restano in ordine** — sua decisione: *«mescola solo le 4 tecniche»* — perché lì la posizione non dice niente che il testo non dica già (le scale numeriche, e il nome della fascia scritto sul bottone). ⚖️ Si mescola **al momento di presentarle**, non nella fonte: `SCHEDA_DOMANDE` resta canonica e ordinata, o la parità con `index.html` diventerebbe rossa. 🔒 Ripetibile col gettone e **indipendente dallo stato del giro** — il bot risponde con la POSIZIONE del bottone, quindi un ordine che si spostasse fra la tastiera e il tocco registrerebbe una risposta mai data. 🎲 E le quattro non condividono la mescolata: un sale solo le renderebbe una scorciatoia sola da imparare | `conOpzioniMescolate` in `passi.js` | 🔵 **curata, prova fisica da fare**: due gettoni, opzioni tecniche in ordine diverso e le altre quattro ferme |
 
 ## C. Cosa si scrive in scheda (il gestionale)
 
@@ -136,6 +137,11 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   due parole, non una* — e lo prova solo il caso di Marco, che resta aperto. *(C4, P7)*
 
 **⏳ RESTANO:**
+
+0. 🆕 **Le opzioni in ordine casuale** *(B11, voce 104 — curata il 28/08 pomeriggio)*: aprire il
+   test con **due gettoni diversi** e vedere le quattro tecniche con le opzioni in ordine diverso,
+   **e le altre quattro ferme**. ⚠️ La seconda metà è quella che una prova distratta salta, ed è
+   metà della decisione che ha preso lui.
 
 1. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
    secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
