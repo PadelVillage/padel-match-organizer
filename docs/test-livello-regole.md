@@ -59,7 +59,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | D1 | 🔄 A ogni esito **un messaggio esce sempre**: nessun test finisce nel silenzio (P0). *(Corretta con lui: il riferimento alla «terza prova» viene da una regola che non c'è più — vedi A2.)* | `siPuoAnnunciareIlTest` | ✅ provata (12:26) |
 | D2 | 🔄 `pass` normale: domanda **«tieni o riprovi?»** coi due bottoni. La parola nella domanda e sul bottone è quella **DIMOSTRATA**, cioè quella che verrà scritta — non la dichiarata. 📏 Curato il 27/08 sera sul caso di Marco: dichiarato **Base**, calcolato **Intermedio**, il bot chiedeva «Tengo Base» e in scheda finiva **Intermedio** | `testoDomandaScelta` + `livello_dimostrato` dal ponte | 🔵 curato, non ancora rivisto dal vivo |
 | D3 | `pass` sopra il tetto con parola nuova: messaggio del **maestro** («in scheda hai X… ti certifica il maestro, passa dalla segreteria») — la parola detta è quella dell'**anagrafica**, mai la dichiarata | `testoEsitoTest` | ✅ provata (Laura) |
-| D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | 🔵 |
+| D4 | «Tengo» quando la parola è già in scheda: **niente promessa di registrazione** — «è già il livello che hai in scheda» | `testoSceltaRegistrata` | ✅ **provata dal vivo** (Maurizio, 27/08 21:52, letta sullo schermo il 28/08) |
 | D5 | 🔄 `fail`: «è rimasta un'incongruenza» + **TRE** bottoni quando un gradino c'è (il gradino, «Mi tengo il mio livello», «Rifaccio»); due quando non c'è | `testoEsitoTest` + decision | ✅ provata (Fabiola e Laura, 27/08 sera) |
 | D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` | 🔵 (B della lista) |
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
@@ -111,6 +111,16 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   con la spiegazione accanto — *«il test dice Avanzato (4), in scheda Intermedio (3.5) · nessuna
   partita nei prossimi 30 giorni»*. ⇒ **voce 100 chiusa.**
 
+- ✅ 🆕 **«Tengo» a parola uguale — 📏 misurata il 28/08 sullo SCHERMO del committente.** Il caso
+  è il suo: in scheda **4** («Avanzato»), test dichiarato 4,5 e calcolato **4,5** («Avanzato») ⇒
+  stessa parola. Al tocco su «Tengo questo livello» delle **21:52** del 27/08 il bot ha risposto
+  *«Perfetto: tengo **Avanzato** 👍 — È già il livello che hai in scheda: resta tutto com'è.»* ⇒ la
+  frase del ramo D4, parola per parola, e **senza** «Te lo registro sulla scheda a breve», che è
+  la promessa vuota che la cura esiste per togliere. 📏 Concorda col database: `applied_level` e
+  `applied_at` di quella scheda sono **vuoti** — non c'era niente da scrivere e infatti non si è
+  scritto niente. ⚖️ **E la cura era davvero in servizio in quel momento**, non dedotto: il bot dei
+  soci si è riavviato alle **21:03:48** col deploy #114, **49 minuti prima** del tocco. *(D4)*
+
 **⏳ RESTANO:**
 
 0. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
@@ -123,10 +133,9 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
    leggere «Il test da solo arriva fino a **Intermedio**, e te lo sto scrivendo adesso»
    invece del livello di prima *(E11 curata)*.
 3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
-4. **«Tengo» a parola uguale**: «è già il livello che hai in scheda» *(D4)*.
-5. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
+4. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
-6. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
+5. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
    mette l'esito ad arrivare *(D9)*.
 
 ---
