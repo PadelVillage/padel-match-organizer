@@ -6,7 +6,9 @@ import {
   SCELTA_SCENDO,
   esitoDellaProva,
   gradinoOfferto,
+  ilTestDiceMeno,
   quandoMs,
+  sopraIlTetto,
 } from './giro-del-test.ts';
 
 // consumer-assessment-decision — LA RISPOSTA DEL SOCIO alla domanda «ti fermi o riprovi?»,
@@ -91,7 +93,7 @@ function safeEqual(a: string, b: string): boolean {
 // `schedeDelSocio` sono le schede di QUEL socio (questa compresa), la stessa lettura che
 // fa il ponte del link: il giro è lo stesso fatto guardato da tre funzioni, e la camminata
 // sta in `giro-del-test.ts`, in copia identica qui accanto.
-function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any, gradino: any) {
+function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any, gradino: any, livelloSocio: any) {
   const cosa = String(scelta ?? '').trim();
   if (cosa !== SCELTA_MI_FERMO && cosa !== SCELTA_RIPROVO && cosa !== SCELTA_SCENDO) return 'SCELTA_SCONOSCIUTA';
   if (!scheda) return 'SCHEDA_NON_TROVATA';
@@ -162,6 +164,48 @@ function motivoDelRifiuto(scelta: any, scheda: any, schedeDelSocio: any, gradino
      🔒 Restano in piedi i rifiuti che poggiano su FATTI e non su conteggi: `SCHEDA_SUPERATA`
      (c'è una prova più recente), `GIA_APPLICATA` (il livello è già scritto),
      `PROVA_NON_PASSATA`. Quelli non scadono. */
+
+  /* ═══════════════════════════════════════════════════════════════════════════════════════
+     🆕🚨⭐⭐ 28/08/2026 — E1: LE PROTEZIONI DEL PONTE CHE *PARLA*, PORTATE IN QUELLO CHE
+     *REGISTRA*. Approvata da lui il 27/08 notte.
+
+     📏 IL DIFETTO, misurato incrociando i due lati: `consumer-assessment-link` spegne
+     `puo_scegliere` su due fatti — `aspetta_maestro` e `il_test_dice_meno` — cioè NON fa la
+     domanda quando le due risposte porterebbero allo stesso posto. Questo ponte non ne sapeva
+     niente: un bottone di tre settimane fa, o un bot più vecchio della riga che l'ha spenta,
+     registrava lo stesso una scelta **senza effetto**, e il socio si sentiva rispondere «te lo
+     registro». È la strada da cui il caso Laura del 27/08 può rinascere — *«tengo Agonista»*,
+     e due minuti dopo `/livello` diceva **Base**.
+
+     ⚖️⭐⭐ E TRE COSE CHE UNA LETTURA FRETTOLOSA DI E1 SBAGLIEREBBE, tutte misurate:
+
+     ① **NON vale per `scendo`.** Quella scelta ha già il suo cancello (`NIENTE_DA_SCENDERE`
+        qui sopra), e `gradinoOfferto` pretende un'offerta **strettamente più bassa** del
+        livello in anagrafica. Un «scendo» sopra il tetto o su un test che dice meno è
+        esattamente il gesto che il 27/08 sera è stato messo in servizio apposta: è l'unica
+        delle tre che scrive davvero, e scrive **in giù**. Rifiutarlo qui vorrebbe dire
+        spegnere il gradino il giorno dopo averlo acceso.
+
+     ② **NON è «stessa fascia».** E1 nomina tre fatti — maestro, stessa fascia, dice meno — ma
+        i primi due non sono due: `sopraIlTetto` e `ilTestDiceMeno` finiscono TUTTE E DUE con
+        `definizioneLivello(n) !== definizioneLivello(inScheda)`, cioè la stessa fascia è già
+        **esclusa** da dentro. Ed è giusto che lo sia: è la sua regola del 27/08 mattina —
+        *«quando uno fa il test e risulta lo stesso livello che già ha, non c'è bisogno che si
+        chiami il maestro. Ci deve essere il bottone»*. Chi aggiungesse qui un rifiuto sulla
+        stessa fascia romperebbe quella regola il giorno dopo averla scritta.
+
+     ③ **Livello sconosciuto ⇒ NON si rifiuta.** Vedi il commento alla lettura del socio più
+        sotto: qui `null` vuol dire *non lo so*, e da un non-so non nasce un rifiuto.
+
+     🔒 La funzione resta una REGOLA PURA: il livello arriva già letto da chi chiama, come il
+     gradino. È ciò che permette al banco di provarla senza database. */
+  if (cosa === SCELTA_MI_FERMO || cosa === SCELTA_RIPROVO) {
+    const livello = livelloSocio === null || livelloSocio === undefined ? null : String(livelloSocio).trim();
+    if (livello !== null) {
+      if (sopraIlTetto(scheda, livello)) return 'ASPETTA_IL_MAESTRO';
+      if (ilTestDiceMeno(scheda, livello)) return 'IL_TEST_DICE_MENO';
+    }
+  }
   return '';
 }
 
@@ -177,6 +221,12 @@ const RIFIUTI: Record<string, { stato: number; frase: string }> = {
      ancora incontrarlo se un giorno il rifiuto tornasse. Una tabella di traduzione senza la
      sua voce farebbe uscire il CODICE al socio. */
   GIRO_FINITO: { stato: 409, frase: 'Questa era l\'ultima prova del giro: il suo esito si applica da solo, non c\'è niente da scegliere.' },
+  /* 🆕 28/08/2026 (E1) — le due frasi dei fatti nuovi. ⚖️ Sono le frasi del GESTIONALE, quelle
+     che legge chi guarda i log: al socio parla il bot, che dal 28/08 ha le sue (`ASPETTA_IL_MAESTRO`
+     e `IL_TEST_DICE_MENO` in `testoSceltaRifiutata`) — ed e' per questo che quel deploy va
+     PRIMA di questo, o il socio leggerebbe il ripiego generico proprio dove la cura serve. */
+  ASPETTA_IL_MAESTRO: { stato: 409, frase: 'Questa prova va oltre il livello che il test scrive da sé: sopra il tetto certifica il maestro, e non c\'è niente da scegliere.' },
+  IL_TEST_DICE_MENO: { stato: 409, frase: 'Questa prova dice meno di quello che il socio ha in scheda, e il livello non scende da sé: non c\'è niente da tenere.' },
 };
 
 Deno.serve(async (req: Request) => {
@@ -306,8 +356,29 @@ Deno.serve(async (req: Request) => {
      non guardano il livello, e farle morire per un campo che non le riguarda sarebbe togliere
      due strade sane per una terza. Il gradino, senza il livello, resta semplicemente vuoto —
      e un «scendo» senza gradino è già un rifiuto pulito. */
+  /* 🔄🚨⭐⭐ 28/08/2026 (E1) — LA LETTURA DEL SOCIO SERVE ORA A TUTTE E TRE LE SCELTE, e qui
+     c'era scritto il contrario: si leggeva **solo** per `scendo`, con questa ragione —
+     *«un guasto in questa lettura NON fa cadere le altre due: `mi_fermo` e `riprovo` non
+     guardano il livello, e farle morire per un campo che non le riguarda sarebbe togliere due
+     strade sane per una terza»*.
+     ⚖️ Quella ragione è **metà scaduta**: da oggi il livello le riguarda (`sopraIlTetto` e
+     `ilTestDiceMeno` lo pretendono). Ma la metà che NON è scaduta è quella che conta, e si
+     tiene per intero: un guasto di lettura non deve uccidere due strade sane.
+     ⇒ Si legge per tutti, e il fallimento si divide in due:
+       · **`scendo` cede CHIUSO** come sempre (500): senza il livello il gradino non si può
+         nemmeno calcolare, e un gradino indovinato scriverebbe un livello sbagliato;
+       · **`mi_fermo` e `riprovo` cedono APERTO**: `livelloSocio` resta `null`, i due controlli
+         nuovi si saltano, e la scelta passa come passava ieri.
+     🔒 Perché aperto e non chiuso, che è il contrario dell'abitudine di casa: questi due
+     controlli sono la **seconda** linea, non la prima — la prima è `puo_scegliere` nel ponte
+     che parla, e il bot la rispetta. Il caso che curano è un bottone vecchio; farlo coincidere
+     con un guasto del database è raro al quadrato. Cedere chiuso, invece, rifiuterebbe una
+     scelta **legittima** ogni volta che il database ha un singhiozzo — un danno certo per
+     coprire un danno improbabile. 📌 *Una difesa di riserva che rompe la strada principale
+     quando inciampa non è una difesa: è il difetto che doveva prevenire, con un altro nome.* */
   let gradino = '';
-  if (scelta === SCELTA_SCENDO) {
+  let livelloSocio: string | null = null;
+  {
     const { data: soci, error: erroreSocio } = await db
       .from('pmo_cloud_records')
       .select('payload')
@@ -316,18 +387,24 @@ Deno.serve(async (req: Request) => {
       .eq('payload->>id', memberId)
       .limit(2);
     if (erroreSocio) {
-      return err(500, 'DB_ERROR', `Lettura del socio non riuscita: ${erroreSocio.message}`);
-    }
-    // ⚠️ Due soci con lo stesso id non dovrebbero esistere: se succede non si sceglie a caso,
-    // stessa difesa dell'ambiguità sulla scheda qui sopra.
-    if ((soci?.length ?? 0) > 1) {
+      if (scelta === SCELTA_SCENDO) {
+        return err(500, 'DB_ERROR', `Lettura del socio non riuscita: ${erroreSocio.message}`);
+      }
+      console.error(`[assessment-decision] livello del socio non letto (${erroreSocio.message}) — «${String(scelta)}» prosegue senza i controlli di E1`);
+    } else if ((soci?.length ?? 0) > 1) {
+      // ⚠️ Due soci con lo stesso id non dovrebbero esistere: se succede non si sceglie a caso,
+      // stessa difesa dell'ambiguità sulla scheda qui sopra. ⛔ E QUESTO cede chiuso per tutte
+      // e tre: non è un guasto passeggero, è un dato che dice due cose — e su due verità non
+      // si tira a indovinare nemmeno per una strada sana.
       return err(409, 'AMBIGUA', 'Più di un socio con questo id: non scelgo.');
+    } else {
+      const socio = (soci?.[0] as JsonMap | undefined)?.payload as JsonMap | undefined;
+      livelloSocio = clean(socio?.level);
+      if (scelta === SCELTA_SCENDO) gradino = gradinoOfferto(scheda, livelloSocio);
     }
-    const socio = (soci?.[0] as JsonMap | undefined)?.payload as JsonMap | undefined;
-    gradino = gradinoOfferto(scheda, clean(socio?.level));
   }
 
-  const rifiuto = motivoDelRifiuto(scelta, scheda, elencoSchede, gradino);
+  const rifiuto = motivoDelRifiuto(scelta, scheda, elencoSchede, gradino, livelloSocio);
   if (rifiuto) {
     const r = RIFIUTI[rifiuto] ?? { stato: 400, frase: rifiuto };
     return err(r.stato, rifiuto, r.frase);
@@ -376,7 +453,17 @@ Deno.serve(async (req: Request) => {
   // ⭐ Il cron RESTA, ed è la rete: copre i due casi che non passano da un tocco — il
   // silenzio-assenso delle 24 ore e la terza prova, che chiude il giro da sé.
   // ══════════════════════════════════════════════════════════════════════════════════════
-  let applicazioneLanciata = false;
+  /* 🔄🚨⭐ 28/08/2026 (E6) — VIA `applicazione_lanciata` dalla risposta, e con lui la
+     variabile che lo teneva. 📏 Due misure indipendenti, e bastava la seconda:
+     ① il campo poteva **dire il vero a vuoto**: il dispatcher è «spara e dimentica», quindi
+        `rpc` senza errore vuol dire *la richiesta è partita*, non *il livello è scritto*. Un
+        bot che ne avesse tratto «te l'ho registrato» avrebbe promesso una cosa non ancora
+        successa — il difetto del 9/08 nell'email alla segreteria, un piano più in là;
+     ② il bot **non lo leggeva**: zero occorrenze in tutto `src/` del repo del bot.
+     ⇒ Era un campo morto che prometteva di poter mentire. La forma l'ha scelta lui: toglierlo
+     adesso; se un domani servirà dire «te l'ho registrato» con certezza, il campo giusto non è
+     questo — è uno che dica **scritto**, e nascerà col lavoro dei 4 secondi (D10).
+     📌 *Un campo che nessuno legge non è innocuo: è la prossima promessa falsa.* */
   // 🚨 …e SOLO se la prova era superata: su una non riuscita il giro non applicherebbe niente
   //    (lo ferma il quiz non superato), quindi sarebbe una chiamata a vuoto a ogni tocco.
   /* 🔄 27/08 sera — e si lancia anche su «scendo», che è la scelta che scrive DAVVERO un
@@ -396,8 +483,6 @@ Deno.serve(async (req: Request) => {
     const { error: erroreGiro } = await db.rpc('pmo_dispatch_assessment_apply_level', { p_simula: false });
     if (erroreGiro) {
       console.error(`[assessment-decision] giro d'applicazione non partito (${erroreGiro.message}) — il livello arriverà col cron`);
-    } else {
-      applicazioneLanciata = true;
     }
   }
 
@@ -416,10 +501,5 @@ Deno.serve(async (req: Request) => {
     gradino: gradino || null,
     scelta_precedente: precedente || null,
     cambiata: precedente !== '' && precedente !== scelta,
-    // ⭐ Serve al BOT per non promettere il futuro: se il giro è partito può dire che il
-    // livello è già sulla scheda; se no, torna la frase di prima. È *il gestionale SA, il bot
-    // DICE* — la differenza fra «te lo registro a breve» e «te l'ho registrato» non la
-    // indovina il bot, gliela dice il gestionale.
-    applicazione_lanciata: applicazioneLanciata,
   });
 });
