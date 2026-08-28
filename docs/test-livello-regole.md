@@ -122,6 +122,19 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   scritto niente. ⚖️ **E la cura era davvero in servizio in quel momento**, non dedotto: il bot dei
   soci si è riavviato alle **21:03:48** col deploy #114, **49 minuti prima** del tocco. *(D4)*
 
+- ✅ 🆕 **IL MESSAGGIO DEL MAESTRO SENZA CORSA — 📏 misurata il 28/08 alle 10:58 sul telefono di
+  Marco, e CHIUSA da lui il 28/08 pomeriggio** (*«si chiudi la 2bis»*). Marco ha letto *«Il test
+  da solo arriva fino a **Intermedio**, e te lo sto scrivendo adesso»* e il tetto è stato scritto
+  in scheda **8 secondi dopo** (10:58:59) ⇒ il bot ha nominato una parola che **non corre**: il
+  tetto in arrivo, non il livello di prima. È esattamente il difetto che la E11 cura, visto non
+  succedere nella finestra in cui prima succedeva.
+  ⚖️ **La scheda chiedeva il caso di LAURA, e questo è quello di Marco**: la sostituzione è
+  dichiarata, non taciuta. Regge perché i due casi hanno la **stessa forma** — un socio sotto il
+  tetto, per cui la scrittura parte *mentre* il messaggio si compone — e la corsa che il difetto
+  esibiva è quella, non l'identità della persona. 📌 *Una prova vale sul caso che ha la forma del
+  difetto, non sul nome che stava scritto nella scheda; ma la sostituzione si dichiara, o la
+  prossima volta nessuno sa più cosa è stato provato davvero.* *(E11)*
+
 - ✅ 🆕 **P7 coi TRE bottoni, su una prova SUPERATA — 📏 misurata il 28/08 alle 10:11 sul suo
   telefono, su PROD.** Dichiarato **Base** (2,5) con le risposte di profilo coerenti, calcolato
   **2,5**, coerenza `high`, in scheda **Avanzato** (4). Il bot ha scritto *«🎯 Test di livello di
@@ -147,9 +160,7 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
    secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
 2. **La parola dimostrata nella domanda**: rivedere il caso di Marco (dichiarato Base,
    calcolato Intermedio) e leggere ora «Il test dice **Intermedio**» *(D2)*.
-2bis. **Il messaggio del maestro senza corsa**: rifare il caso di Laura (sotto il tetto) e
-   leggere «Il test da solo arriva fino a **Intermedio**, e te lo sto scrivendo adesso»
-   invece del livello di prima *(E11 curata)*.
+
 3. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
 4. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
    come su «mi fermo», non in 70 *(D10)*.
