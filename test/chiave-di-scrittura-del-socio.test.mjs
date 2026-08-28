@@ -54,6 +54,17 @@ function estrai(nome) {
   return html.slice(inizio, i);
 }
 
+// Le costanti (array/oggetti) non sono funzioni: si estraggono con la loro parentesi quadra.
+function estraiCost(nome) {
+  const i = html.indexOf(`const ${nome} =`);
+  if (i < 0) throw new Error(`costante «${nome}» non trovata in index.html`);
+  const fine = html.indexOf('];', i);
+  // 🚨 Si toglie il `const`: dentro `vm.runInContext` una dichiarazione `const` resta nello
+  //    scope dello script e NON compare sul contesto — il banco leggerebbe `undefined` e
+  //    fallirebbe su codice giusto. Senza `const` diventa un'assegnazione globale.
+  return html.slice(i, fine + 2).replace(/^const\s+/, '');
+}
+
 const ctx = { pmoShortHash: () => 'HASH' };
 vm.createContext(ctx);
 vm.runInContext(
@@ -129,6 +140,46 @@ test('⑥ 🚨 anche l\'ARCHIVIAZIONE segue la riga viva, o archivierebbe la rig
 // 🚨 IL CABLAGGIO: le prove qui sopra girano sulla funzione, e resterebbero verdi se nessuno
 // le passasse mai la chiave. Qui si misura che l'IDRATAZIONE la porti davvero — e che la porti
 // dalla riga, non da una costante.
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   🩹🚨⭐⭐ 28/08 tarda sera — I CASI CHE MANCAVANO, E CHE SONO COSTATI UN SOCIO SDOPPIATO.
+   La prima stesura di questo banco provava il PRODUTTORE (`pmoLoadAllMembersFromCloud` mette
+   `cloudLocalKey`) e la funzione in isolamento. Era tutto verde, e la cura era **inerte**:
+   il valore non arrivava MAI al socio che poi viene scritto, perché la fusione copia solo i
+   campi di `PMO_MEMBER_CLOUD_FIELDS`. 📏 Misurato pagando: Fabiola Limuti si è sdoppiata lo
+   stesso alle 20:54:23, con la cura in servizio su PROD da otto minuti.
+   📌 *Una cura che produce un valore che nessuno riceve è verde in ogni banco che guardi il
+   produttore invece del destinatario.* ═══════════════════════════════════════════════════ */
+
+test('⑧ 🚨 LA FUSIONE DEI CAMPI NON PORTA LA CHIAVE — ed è il motivo per cui serve la riga esplicita', () => {
+  // Non è un difetto di `pmoMemberFieldsFromCloud`: è il suo mestiere, copia una lista chiusa.
+  // Questo caso esiste per fissare il FATTO, così chi domani togliesse la riga esplicita
+  // pensando «tanto la fusione la porta» vede subito che non è vero.
+  const ctx2 = { };
+  vm.createContext(ctx2);
+  vm.runInContext([estrai('cleanCell'), estrai('pmoCloudTsMs'), estraiCost('PMO_MEMBER_CLOUD_FIELDS'),
+                   estrai('pmoMemberFieldsFromCloud')].join('\n'), ctx2);
+  assert.equal(ctx2.PMO_MEMBER_CLOUD_FIELDS.includes('cloudLocalKey'), false,
+    'se un giorno ci entrasse, questo caso va riscritto — non cancellato');
+  const locale = { id: 'X', name: 'Tizio', level: '1.5', updatedAt: '2026-01-01T00:00:00Z' };
+  const cloud = { id: 'X', name: 'Tizio', level: '2', cloudLocalKey: 'email:tizio@x.it' };
+  const esito = ctx2.pmoMemberFieldsFromCloud(locale, cloud, '2026-08-28T00:00:00Z');
+  assert.equal(esito.changed, true, 'il livello è cambiato: la fusione deve scattare');
+  assert.equal(esito.next.cloudLocalKey, undefined, 'la fusione NON porta la chiave: serve la riga esplicita');
+});
+
+test('⑨ 🚨 …quindi l\'idratazione la scrive DA SÉ, e FUORI dal confronto sulla freschezza', () => {
+  /* 🚨 Le due metà si misurano separate perché falliscono in modi diversi:
+     · la riga può mancare del tutto (è com'era stasera: cura inerte);
+     · la riga può esserci ma DENTRO `if (esito.changed)` — e allora un socio la cui copia
+       locale è già aggiornata non riceverebbe mai la chiave, che è il caso più comune. */
+  const fn = html.slice(html.indexOf('async function pmoEnsureCloudMembersHydrated'));
+  const giro = fn.slice(fn.indexOf('giocatori.forEach((g, i) =>'), fn.indexOf('PMO_CLOUD_MEMBERS_REFRESHED'));
+  assert.match(giro, /g\.cloudLocalKey = chiaveViva/,
+    'l\'idratazione non scrive la chiave sul socio: la cura è inerte');
+  assert.ok(giro.indexOf('g.cloudLocalKey = chiaveViva') < giro.indexOf('if (esito.changed)'),
+    'la chiave si scrive PRIMA e FUORI dal confronto sulla freschezza: non è un dato, è l\'indirizzo della riga');
+});
+
 test('⑦ 🚨 l\'idratazione porta la chiave della riga, e la prende da `row.local_key`', () => {
   const carica = html.slice(html.indexOf('async function pmoLoadAllMembersFromCloud'));
   const corpo = carica.slice(0, carica.indexOf('const retired = new Set();'));
