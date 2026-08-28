@@ -45,7 +45,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | C1 | Il livello lo scrive **il gestionale**, mai il test da solo sopra il tetto: **3,5 (Intermedio) è il massimo automatico** — sopra certifica il **maestro** guardando giocare | `TETTO_AUTOMATICO`, `decidi` | ✅ |
 | C2 | 🔄 **Il livello non scende mai DA SOLO** (27/08). Dalla sera del 27/08 c'è **una** strada in più e passa dal socio: il **gradino** (C9), che scende solo col suo tocco. Col silenzio non si scende mai, e a far scendere qualcuno senza che l'abbia chiesto resta la segreteria | `decidi` | ✅ |
 | C3 | Dal maestro si va solo per una **PAROLA nuova**: stessa fascia (4 → 4,5, tutti e due «Avanzato») = niente da certificare, bottoni «Tengo / Riprovo» | `sopraIlTetto` + gemella `assessmentAspettaIlMaestro` | ✅ provata (Maurizio, 12:26) |
-| C4 | 🔄 Chi dimostra **meno** di ciò che ha: niente domanda — «il tuo livello resta X» — e **TRE** bottoni (il gradino, «mi tengo il mio», «lo rifaccio»). Fino al 27/08 sera il bottone era **uno solo**, e rifare il test dava lo stesso risultato **per sempre**: l'unica uscita portava dove il socio era già | `ilTestDiceMeno`, P7 | 🔵 il ramo P7 coi tre bottoni non è ancora stato visto dal vivo |
+| C4 | 🔄 Chi dimostra **meno** di ciò che ha: niente domanda — «il tuo livello resta X» — e **TRE** bottoni (il gradino, «mi tengo il mio», «lo rifaccio»). Fino al 27/08 sera il bottone era **uno solo**, e rifare il test dava lo stesso risultato **per sempre**: l'unica uscita portava dove il socio era già | `ilTestDiceMeno`, P7 | ✅ **provata dal vivo** (Maurizio, 28/08 10:11: dichiarato Base con Avanzato in scheda, i tre bottoni sono usciti) |
 | C5 | Coerenza: dichiarato e calcolato oltre **0,5** di distanza ⇒ scheda ferma (`review` per lo staff); risposte incoerenti ⇒ `consistency low`, non si applica | `decidi` | ✅ |
 | C6 | Una scheda **vecchia** non scavalca un livello aggiornato dopo; una scheda **in mano allo staff** non si tocca; **una scheda sola per socio**, la più recente | `decidi` | ✅ |
 | C7 | 🔄 Chi sta **sotto** il tetto e dimostra **almeno Avanzato**: si scrive **Intermedio** intanto, il resto lo dà il maestro (sua scelta 26-27/08, soglia precisata da lui la notte del 27). Sotto quella soglia il tetto non si tocca. ⚠️ **Da misurare** che il codice si comporti così: se bastasse un mezzo passo sopra Intermedio, la regola scritta e quella in servizio direbbero due cose diverse | `decidi` | ✅ |
@@ -121,12 +121,24 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   scritto niente. ⚖️ **E la cura era davvero in servizio in quel momento**, non dedotto: il bot dei
   soci si è riavviato alle **21:03:48** col deploy #114, **49 minuti prima** del tocco. *(D4)*
 
+- ✅ 🆕 **P7 coi TRE bottoni, su una prova SUPERATA — 📏 misurata il 28/08 alle 10:11 sul suo
+  telefono, su PROD.** Dichiarato **Base** (2,5) con le risposte di profilo coerenti, calcolato
+  **2,5**, coerenza `high`, in scheda **Avanzato** (4). Il bot ha scritto *«🎯 Test di livello di
+  gioco superato — Il tuo livello resta **Avanzato**. Le tue risposte stavolta sono da **Base**, e
+  se è il livello in cui ti riconosci, posso registrartelo io. Comunque il test puoi rifarlo quando
+  vuoi.»* con **tre bottoni**: `✅ Va bene: Base` · `👍 Mi tengo il mio livello` · `🔄 Sì, lo
+  rifaccio`. ⇒ Il gradino era provato solo su una **bocciatura**: adesso lo è anche su una prova
+  **passata**, ed è sparita la domanda «tieni o riprovi?», che lì era finta. 📏 Il database concorda:
+  `applied_level` e `applied_at` vuoti, livello in anagrafica **4** invariato.
+  ⚠️ **Cosa NON prova, e va detto**: dichiarata e dimostrata qui **coincidono** (Base e Base) ⇒ che
+  il bottone porti la parola **dimostrata** e non la **dichiarata** questa prova non lo distingue.
+  È il caso che il codice stesso segnala — *due parole che coincidono nel caso che hai davanti sono
+  due parole, non una* — e lo prova solo il caso di Marco, che resta aperto. *(C4, P7)*
+
 **⏳ RESTANO:**
 
-0. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
+1. **Due test di fila con lo stesso socio**: nessuna domanda ripetuta fra il primo e il
    secondo (la memoria, B9). Misurato al banco: 0% di ripetizioni fino a 3 prove.
-1. **P7 coi TRE bottoni**: dichiarare una fascia più bassa di quella in scheda e **passare**.
-   ⚠️ Il gradino è provato su una **bocciatura**, non ancora su una prova passata *(C4)*.
 2. **La parola dimostrata nella domanda**: rivedere il caso di Marco (dichiarato Base,
    calcolato Intermedio) e leggere ora «Il test dice **Intermedio**» *(D2)*.
 2bis. **Il messaggio del maestro senza corsa**: rifare il caso di Laura (sotto il tetto) e
