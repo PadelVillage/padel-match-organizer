@@ -1877,12 +1877,36 @@ dal confronto sulla freschezza — non basta aggiungerla a `PMO_MEMBER_CLOUD_FIE
 copia scatta solo se la riga del cloud è più fresca, e **una chiave non è un dato che compete
 sulla freschezza: è l'indirizzo della riga**. Due casi nuovi al banco e due sabotaggi (riga tolta,
 riga messa dentro l'`if`) tutt'e due rossi.
-⏳ **PROVA FISICA: DA RIFARE, e la console NON basta** — parte da un browser pulito, e il difetto
-nasce dallo stato accumulato in quello dell'operatore. Serve un gesto suo (cambiare il livello a
-uno dei soci a chiave `email:` e contare le righe), oppure `--storage-in` con un export del suo
-browser.
-🚨 **PROD è ferma alla v6.254, cioè alla cura INERTE**: il difetto è ancora vivo là, e i doppioni
-di Maurizio e Fabiola sono stati archiviati **a mano**.
+✅⭐⭐ **PROVA FISICA FATTA la notte del 28/08, e stavolta sul DESTINATARIO** — e la riga qui sopra,
+che diceva *«da rifare, e la console NON basta, serve un gesto suo»*, **era vera a metà e si
+corregge**. Vero: la console parte da un browser pulito, ed è esattamente il caso in cui questo
+difetto **non si vede**. Falso: che perciò non decida. 📌 *Uno stato che non si eredita si
+**costruisce** — la prova non chiede da dove venga lo stato, chiede che sia quello giusto.*
+🔨 **Come**: tolto `cloudLocalKey` ai soci **in memoria** (che è com'è un socio letto da un
+`localStorage` scritto prima della cura), misurato dove scriverebbero, fatta girare
+`pmoEnsureCloudMembersHydrated({force:true})` — l'idratazione **vera**, non una funzione estratta —
+e rimisurato.
+📏 **Su TEST (v6.259), sui 2815 soci veri**: esposti **28**; **PRIMA tutti e 28 avrebbero scritto
+ALTROVE** (`phone:` al posto della riga viva); **DOPO tutti e 28 scrivono sulla riga viva**, 0 fuori
+bersaglio. I **2784** già su `phone:` **fermi tutti**, che è la metà che una prova distratta non
+guarda. `local_key` = riga viva, e `cloudLocalKey` non entra nel payload.
+⚖️⭐⭐ **E IL CONTROLLO CHE RENDE ONESTO IL VERDE, che è la parte da non saltare**: la **stessa
+identica procedura** girata su **PROD con la v6.254 in servizio** dà **0 corretti su 24** e 24
+ancora fuori bersaglio. ⇒ La sonda **vede** il difetto. Senza quel giro il 28 su 28 sarebbe stato
+un verde di cui non si sa la ragione — che è precisamente l'errore costato la 6.254 (la trappola
+④ della sera: *una prova può essere verde per la ragione sbagliata*).
+🆕📏 **E ha trovato un 25° esposto che la definizione non vedeva**: su PROD c'è una riga viva
+`phone:` a **12 cifre** (col prefisso) il cui telefono in scheda ne ha **10** ⇒ la chiave calcolata
+è **un altro** `phone:`. Stessa classe di difetto, e la cura lo copre — la chiave viva vince su
+**tutto**, non solo sulle chiavi non-`phone`. ⇒ *Contare gli esposti guardando la forma della
+chiave ne perde una parte: il criterio vero è «la chiave calcolata coincide con quella viva?».*
+✅⭐⭐ **PROMOSSA A PROD (v6.255) la notte stessa, E RIMISURATA LÀ** — la riga che diceva *«PROD è
+ferma alla v6.254, cioè alla cura INERTE»* **non vale più**. 📏 La prova che conta è questa, perché
+è **prima e dopo sullo stesso ambiente, con la stessa sonda, a mezz'ora di distanza**:
+PROD 6.254 → **0 corretti su 24**, e **1** già-`phone:` fuori bersaglio; PROD 6.255 → **24 su 24**,
+e quel **1 diventa 0** ⇒ anche il 25° esposto è coperto, come previsto e non solo sperato. I doppioni di Maurizio e
+Fabiola restano quelli archiviati **a mano** — il rattoppo non è la cura, e la sonda dei doppioni
+va riletta (deve tornare **vuota**).
 
 ~~✅ PROVA FISICA FATTA la sera del 28/08, sull'app VIVA di TEST (v6.258) con la console
 remota~~ — e non su un caso costruito: sui **2817 soci veri**. 📏 Gli **esposti** (riga non-`phone:`
