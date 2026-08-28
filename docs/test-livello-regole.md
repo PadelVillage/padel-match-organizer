@@ -37,7 +37,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | B8 | Banca: 27 normali + 12 trabocchetto per fascia; in un giro se ne vedono 5 ⇒ memorizzarla vuole molti giri | banca | ✅ |
 | B9 | 🆕 **La pescata ha MEMORIA**: non ripropone le domande già viste nelle ultime 8 prove, finché ce n'è altro da dare. Le «già viste» sono quelle delle schede consegnate **prima che il gettone nascesse** — un fatto immutabile, così la pescata resta ripetibile (vedi A3). Con la banca esaurita ricomincia dalle **più vecchie**: degrada, non fallisce | `ordinaPerFreschezza` in `conoscenza.js` + `domandeGiaViste` in `assessment-quiz/index.ts` | ✅ **provata sui dati veri** (Marco, 28/08: **tre** prove di fila sulla fascia Base, **15 domande distinte su 15**, zero ripetute — più due su Intermedio, 10 su 10) |
 | B10 | 🆕 Le **36 domande di Principiante** (27 normali + 9 trabocchetto) sono state **rilette una per una col committente** il 27/08 sera: una sola correzione, la **P-14** («Dietro la linea di **servizio**», che prima non diceva quale linea) | banca in `conoscenza.js` | ✅ · 🆕 **28/08: passata di ITALIANO su tutte e 192**, su sua richiesta (*«bisognerebbe fare un'analisi grammaticale di tutti i testi»*, errori visti scorrendo e non ricostruibili a memoria). Nessun errore di accento o apostrofo — **sette** correzioni più fini: la concordanza di **P-20** («che salgono» → «che sale», con soggetto singolare), lo spagnolo di **B-T10** (`contropared` → **controparete**, come già in AG-02), il pronome senza antecedente di **A-15**, la ripetizione di **I-15**, la preposizione fuori squadra di **P-14**, e la forma di **B-22** e **B-26**. ⛔ **Nessun `correct:` toccato e nessun significato cambiato**: solo testo, e il banco dei 36 caratteri gira verde |
-| B11 | 🆕🗣️ **Le opzioni delle 4 domande TECNICHE escono in ordine casuale** (voce 104, sua richiesta del 28/08: *«dovrebbe essere un ordine random, se no dopo un po' la gente capisce questo sistema»*). Le altre **quattro restano in ordine** — sua decisione: *«mescola solo le 4 tecniche»* — perché lì la posizione non dice niente che il testo non dica già (le scale numeriche, e il nome della fascia scritto sul bottone). ⚖️ Si mescola **al momento di presentarle**, non nella fonte: `SCHEDA_DOMANDE` resta canonica e ordinata, o la parità con `index.html` diventerebbe rossa. 🔒 Ripetibile col gettone e **indipendente dallo stato del giro** — il bot risponde con la POSIZIONE del bottone, quindi un ordine che si spostasse fra la tastiera e il tocco registrerebbe una risposta mai data. 🎲 E le quattro non condividono la mescolata: un sale solo le renderebbe una scorciatoia sola da imparare 🗣️⭐ **E la mescolata resta UNIFORME, sua decisione del 28/08 su una misura** (*«teniamo la a»*): la più alta finisce ultima **una volta su cinque** — misurato su 20.000 gettoni, tutte e 120 le permutazioni, ordine di partenza allo 0,88% contro lo 0,83% atteso. ⛔ **Scartato** il vincolo «la più alta mai ultima»: sembra più mescolato ed è più debole, perché insegna *«l'ultima non è la più alta»* — un candidato eliminato a ogni domanda invece che mai. 🔒 Protetta da una prova che diventa rossa se qualcuno lo aggiunge | `conOpzioniMescolate` in `passi.js` | 🔵 **provata a METÀ dal vivo** (Marco, 28/08 12:10: opzioni del vetro mescolate sullo schermo) · ⏳ manca che le altre quattro si vedano **ferme** |
+| B11 | 🆕🗣️ **Le opzioni delle 4 domande TECNICHE escono in ordine casuale** (voce 104, sua richiesta del 28/08: *«dovrebbe essere un ordine random, se no dopo un po' la gente capisce questo sistema»*). Le altre **quattro restano in ordine** — sua decisione: *«mescola solo le 4 tecniche»* — perché lì la posizione non dice niente che il testo non dica già (le scale numeriche, e il nome della fascia scritto sul bottone). ⚖️ Si mescola **al momento di presentarle**, non nella fonte: `SCHEDA_DOMANDE` resta canonica e ordinata, o la parità con `index.html` diventerebbe rossa. 🔒 Ripetibile col gettone e **indipendente dallo stato del giro** — il bot risponde con la POSIZIONE del bottone, quindi un ordine che si spostasse fra la tastiera e il tocco registrerebbe una risposta mai data. 🎲 E le quattro non condividono la mescolata: un sale solo le renderebbe una scorciatoia sola da imparare 🗣️⭐ **E la mescolata resta UNIFORME, sua decisione del 28/08 su una misura** (*«teniamo la a»*): la più alta finisce ultima **una volta su cinque** — misurato su 20.000 gettoni, tutte e 120 le permutazioni, ordine di partenza allo 0,88% contro lo 0,83% atteso. ⛔ **Scartato** il vincolo «la più alta mai ultima»: sembra più mescolato ed è più debole, perché insegna *«l'ultima non è la più alta»* — un candidato eliminato a ogni domanda invece che mai. 🔒 Protetta da una prova che diventa rossa se qualcuno lo aggiunge | `conOpzioniMescolate` in `passi.js` | ✅ **provata dal vivo, in tutt'e due le metà** (Marco, 28/08: alle 12:10 le opzioni del vetro **mescolate**, alle 14:02 i sette livelli **in ordine**) |
 
 ## C. Cosa si scrive in scheda (il gestionale)
 
@@ -182,13 +182,21 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   ⭐ **E conferma anche la B2 di rimbalzo**: tutt'e cinque le pescate sono **3 trabocchetto + 2
   normali**, che è la composizione decisa il 27/08. *(B9, e B2 per giunta)*
 
-**⏳ RESTANO:**
+- ✅ 🆕 **LE OPZIONI IN ORDINE CASUALE — 📏 misurata il 28/08 sul telefono di Marco, in DUE metà,
+  e la seconda è quella che conta.** ① Alle **12:10** (domanda 6 di 13) *«Come gestisci il vetro in
+  difesa?»* con le opzioni **mescolate** — «Evito il vetro» da 1ª a **4ª**. ② Alle **14:02**
+  (domanda 3 di 13) *«Che livello pensi di avere?»* coi sette livelli **in ordine**: Principiante,
+  Base, Intermedio, Avanzato, Agonista, Semi-Pro, Professionista.
+  ⚖️ **La seconda metà è quella che una prova distratta avrebbe saltato**, ed è metà della
+  decisione: una cura che mescolasse *tutto* sarebbe passata per «funziona» guardando solo il
+  primo screenshot. 📌 *Quando una decisione dice «questo sì e quello no», provare solo il «sì»
+  prova metà cura e nessuna decisione.*
+  🩹 **E nel mezzo una sua domanda che è diventata una misura**: nello screenshot ① la più alta
+  era rimasta **ultima**, e a occhio sembrava che la cura non fosse partita. Misurato su 20.000
+  gettoni: succede **una volta su cinque**, ed è ciò che una mescolata uniforme deve fare.
+  ⇒ **voce 104 chiusa.** *(B11)*
 
-0. 🆕 **Le opzioni in ordine casuale** *(B11, voce 104 — curata il 28/08 pomeriggio)*: aprire il
-   test con **due gettoni diversi** e vedere le quattro tecniche con le opzioni in ordine diverso,
-   **e le altre quattro ferme**. ⚠️ La seconda metà è quella che una prova distratta salta, ed è
-   metà della decisione che ha preso lui. ✅ **La prima metà è FATTA** (Marco, 12:10: le opzioni
-   del vetro mescolate sullo schermo).
+**⏳ RESTANO:**
 
 1. **Bottone vecchio** «✅ Tengo Agonista» di ieri: deve rispondere il maestro *(D6)*.
 2. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
