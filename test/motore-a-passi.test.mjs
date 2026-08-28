@@ -500,6 +500,41 @@ prova('🎲 …e le QUATTRO non escono tutte con la STESSA mescolata', () => {
     'su dieci gettoni le quattro tecniche escono sempre con la stessa permutazione: il sale non separa le domande');
 });
 
+prova('🗣️⭐⭐ la mescolata è UNIFORME: la più alta finisce ULTIMA una volta su cinque', () => {
+  /* 🗣️ SUA DECISIONE del 28/08 pomeriggio, presa su una misura e non su un'impressione:
+     *«teniamo la a»* — cioè la mescolata uniforme, senza vincoli.
+
+     📏 DA DOVE VIENE. Guardando il test sul telefono ha visto la domanda sul vetro uscire così:
+     «Solo se è facile · Difesa base col vetro · Anche sotto pressione · Evito il vetro ·
+     Difendo e riparto» — l'ordine ERA cambiato («Evito il vetro» da 1ª a 4ª), ma **la più alta
+     era rimasta l'ultima**, e a occhio sembrava che la cura non fosse partita.
+     ⇒ Misurato su 20.000 gettoni: la più alta finisce in ognuna delle cinque posizioni al
+     ~20%, escono tutte e 120 le permutazioni, e l'ordine di partenza esce allo 0,88% contro lo
+     0,83% atteso. Non è un pezzo che non parte: è **una volta su cinque**.
+
+     ⚖️ LA STRADA SCARTATA, e va scritta perché è quella che verrebbe in mente per prima:
+     vietare che la più alta finisca ultima. Sembra più mescolato ed è **più debole** — toglie
+     il pattern «l'ultima è la più alta» e ne mette uno nuovo, «l'ultima NON è mai la più
+     alta», che elimina un candidato su cinque a OGNI domanda invece che mai.
+     📌 *Un vincolo messo per far sembrare più casuale una mescolata la rende meno casuale: la
+     posizione torna a dire qualcosa, solo al contrario.*
+
+     🚨 QUESTA PROVA DIVENTA ROSSA se qualcuno aggiunge quel vincolo — ed è tutto il suo scopo.
+     Non protegge un calcolo: protegge una decisione, che è ciò che il codice dimentica per
+     primo. Chi la vede rossa non la aggiusti: vada a rileggere questo commento e chieda a lui. */
+  const gettoni = Array.from({ length: 200 }, (_, i) => `gettone-104-uniforme-${i}`);
+  for (const chiave of ['rally', 'glass', 'net', 'overhead']) {
+    const canonico = P.SCHEDA_DOMANDE.find((d) => d.chiave === chiave).opzioni.map((o) => o.valore);
+    const piuAlta = canonico[canonico.length - 1];
+    const dove = [0, 0, 0, 0, 0];
+    for (const g of gettoni) dove[opzioniViste(g, chiave, DICHIARA_INTERMEDIO).indexOf(piuAlta)]++;
+    vero(dove[4] > 0,
+      `${chiave}: in 200 gettoni la più alta non finisce MAI ultima — qualcuno ha messo un vincolo, e un vincolo insegna «l'ultima non è la più alta»`);
+    vero(dove.every((n) => n > 0),
+      `${chiave}: la più alta non passa da tutte e cinque le posizioni (${dove.join('/')}) — la mescolata non è uniforme`);
+  }
+});
+
 prova('🗣️ le altre QUATTRO restano in ordine, com\'è stato deciso', () => {
   /* 📌 Non è una dimenticanza da «completare» un domani: le scale numeriche e i sette livelli
      sono scale VERE, dove la posizione non aggiunge niente al testo — il nome della fascia è

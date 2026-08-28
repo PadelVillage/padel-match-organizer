@@ -1875,6 +1875,29 @@ rilettura.**
    📌 *Una mescolata sola su quattro domande non è quattro mescolate: è una scorciatoia più lunga
    da imparare, non una tolta.*
 
+🗣️⭐⭐ **DECISIONE DEL 28/08 pomeriggio, presa su una MISURA: la mescolata resta UNIFORME**
+(*«teniamo la a»*). 📏 Guardando il test sul telefono ha visto la domanda sul vetro uscire
+*«Solo se è facile · Difesa base col vetro · Anche sotto pressione · Evito il vetro · Difendo e
+riparto»*: l'ordine **era** cambiato («Evito il vetro» da 1ª a 4ª) ma **la più alta era rimasta
+ultima**, e a occhio sembrava che la cura non fosse partita.
+📏 Misurato su **20.000 gettoni** invece di rispondere a impressione: la più alta finisce in
+ognuna delle cinque posizioni al **~20%**, escono **tutte e 120** le permutazioni, l'ordine di
+partenza esce allo **0,88%** contro lo 0,83% atteso. ⇒ Non è un pezzo che non parte: **è una
+volta su cinque**.
+⚖️ **La strada scartata, e va scritta perché è la prima che viene in mente**: vietare che la più
+alta finisca ultima. Sembra più mescolato ed è **più debole** — toglie il pattern *«l'ultima è la
+più alta»* e ne mette uno nuovo, *«l'ultima NON è mai la più alta»*, che elimina un candidato su
+cinque a **ogni** domanda invece che mai.
+📌 *Un vincolo messo per far sembrare più casuale una mescolata la rende meno casuale: la
+posizione torna a dire qualcosa, solo al contrario.*
+🔒 **La decisione è protetta da una prova** che diventa rossa se qualcuno aggiunge quel vincolo —
+provato sabotando. Non protegge un calcolo: protegge una **decisione**, che è ciò che il codice
+dimentica per primo.
+
+✅ **PROVATA A METÀ DAL VIVO il 28/08 alle 12:10** (schermo di Marco, domanda 6 di 13): le opzioni
+del vetro **erano mescolate**. ⏳ Manca la seconda metà — che *«Che livello pensi di avere»* sia
+**ferma** — e la scheda resta aperta per quella.
+
 ⏳ **RESTA APERTA, e cosa manca per chiuderla:**
 · il **deploy** — la cura vive in un'edge (`assessment-quiz`), quindi va su PROD col rispecchio su
   `main`; il **bot non si tocca** (le opzioni gliele manda il gestionale: *il gestionale SA, il bot
