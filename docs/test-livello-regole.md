@@ -65,8 +65,8 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | D6 | I **bottoni vecchi** rimasti in chat non promettono mai il falso: reti su maestro, stessa-parola, dice-meno | `testoSceltaRegistrata` + `testoSceltaRifiutata` | ✅ **provata sul registro del bot** (Marco, 27/08 22:09:16: bottone vecchio toccato **due ore** dopo che il livello era stato scritto ⇒ `GIA_APPLICATA`, e il bot risponde *«Quel livello è già stato registrato sulla tua scheda 👍»*). ⚠️ La rete del **maestro** resta **non provata e oggi irraggiungibile**: due cancelli a monte prendono tutto prima. 🚨 **E UN BOTTONE SI CONSUMA AL PRIMO TOCCO, anche se la scelta viene RIFIUTATA** — `riscriviOMandaNuovo` sta **fuori** dal `try/catch`, quindi il messaggio si riscrive senza tastiera in tutti e due i casi. ⇒ Il commento *«i bottoni di Telegram non scadono, e il socio può schiacciare quello di tre settimane fa»* è vero a metà: **non scadono, ma sopravvivono a UN SOLO tocco** |
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
 | D8 | Mai un vicolo cieco: ogni messaggio ha un bottone o la via a parole | promemoria.ts | ✅ |
-| D9 | 🔄 L'esito arriva in **secondi**: sorveglianza ogni **5″ da quando il socio apre il quiz** (ogni 30″ prima, fino a 4 ore), riarmata a ogni tocco; rete dei 15′. 🆕 **Sua decisione: portare i 5″ a 2″** — toglie ~1,5″ dei 4 misurati; costa ~600 domande al ponte invece di ~240 nel caso peggiore, e si sorveglia **una persona per volta**. ⏳ Vuole modifica al bot, deploy sulla VM e la prova col cronometro | bot `promemoria.ts` (`INTERVALLO_SORVEGLIANZA_TEST_MS`) | ✅ misurata (4″ il 27/08) · ⚠️ **i 2″ da fare** |
-| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «il mio livello»»* — non «te l'ho registrato». 🎯 **E l'obiettivo, deciso con lui**: un tocco sul gradino deve portare il livello in scheda negli stessi **~4 secondi** di «mi fermo». Se ne mette 70, è un difetto. 📏 Le quattro applicazioni vere che esistono: **4″** col giro veloce (24/08), **11′27″** e **14′03″** col solo cron (prima di quella cura), **70″** sul gradino di Fabiola. 🚨 E i 66 secondi in più **non hanno ancora una spiegazione**: la riga che lancia il giro su `scendo` c'è dal commit `3eb8026` (15:29 UTC), cinque ore prima del suo tocco, e il registro dei dispatch non conserva nessuna riga per quel giro. ⏳ **Primo passo: un gradino vero cronometrato** | `testoSceltaRegistrata` + `consumer-assessment-decision` | 🔵 curato · ⚠️ **i 70″ da capire** |
+| D9 | 🔄 L'esito arriva in **secondi**: sorveglianza ogni **2″ da quando il socio apre il quiz** (30″ prima, fino a 4 ore), riarmata a ogni tocco; rete dei 15′ | bot `promemoria.ts` (`INTERVALLO_SORVEGLIANZA_TEST_MS`) | ✅ **i 2″ sono in servizio** dal 28/08 e **misurati dal vivo** (intervalli di 2-3 s nel registro) · 🚨 **ma la consegna NON è più veloce**: 4,7 s su Laura contro i 4 del 27/08, perché il giro a +2 s viene **rimandato** da `aspettaIlSuoTurno` ⇒ il collo di bottiglia è la **finestra «sto rispondendo»**, non il ritmo |
+| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «il mio livello»»* — non «te l'ho registrato». 🎯 E il bersaglio: un tocco sul gradino porta il livello in scheda negli stessi **~4 secondi** di «mi fermo» | `testoSceltaRegistrata` + `consumer-assessment-decision` | ✅ **provata col cronometro** (Laura, 28/08: tocco 13:59:37,417 → `applied_at` 13:59:39,632 = **2,2 s**, meglio del bersaglio; anagrafica scritta nello stesso istante) · ⚠️ **i 70 s di Fabiola restano senza spiegazione**: misurato che non si ripetono, non perché successero |
 | D11 | 🆕 **«Test superato» non si dice su una scheda senza cancello**: zero domande su zero non sono una prova passata — si dice che il test è **arrivato**. *(Cura della notte del 27/08, validata con lui.)* | `testoEsitoTest` | 🔵 |
 
 ---
@@ -218,12 +218,56 @@ restano. ⏳ Approvato non vuol dire fatto: nessuno di questi è ancora costruit
   📌 *Una prova che nomina un oggetto preciso va riletta prima di andarlo a cercare: se l'oggetto
   è nato da una previsione, la ricerca fallisce e sembra un guasto.* *(D6)*
 
-**⏳ RESTANO:**
+- ✅ 🆕 **IL GRADINO CRONOMETRATO — 📏 misurato il 28/08 su Laura Aprea, PROD.** Tocco su
+  «✅ Va bene: Intermedio» alle **13:59:37,417**, livello in scheda alle **13:59:39,632** ⇒
+  **2,215 secondi**, contro un bersaglio di ~4. E in anagrafica la riga `phone:393338979606`
+  porta 3,5 con lo **stesso istante** di `applied_at`: scheda e anagrafica scritte insieme.
+  Laura è passata da **4 a 3,5**, come previsto prima del gesto.
+  ⚠️ **I 70 secondi di Fabiola del 27/08 NON sono spiegati**: è misurato che oggi non si
+  ripetono, non che si sappia perché quella volta successe. L'anomalia resta senza causa. *(D10)*
 
-1. 🆕 **Il gradino cronometrato**: un tocco vero, e `applied_at` deve arrivare in **~4 secondi**
-   come su «mi fermo», non in 70 *(D10)*.
-2. 🆕 **La consegna cronometrata**, dopo il passaggio della sorveglianza da 5″ a 2″: quanto ci
-   mette l'esito ad arrivare *(D9)*.
+- ✅ 🆕 **LA CONSEGNA CRONOMETRATA — 📏 misurata il 28/08 su Laura, e il risultato SMENTISCE la
+  previsione con cui la cura era stata scritta.**
+
+  | istante | cosa |
+  |---|---|
+  | 15:55:26 | Laura tocca l'ultima risposta |
+  | 15:55:27,3 | scheda consegnata (`submitted_at`) |
+  | 15:55:29 | il giro di sorveglianza passa → **rimandato** |
+  | 15:55:32 | 🔔 esito consegnato |
+
+  ⇒ **~4,7 secondi**. Il 27/08, con l'intervallo a 5″, erano **4**: non è migliorato.
+  🚨⭐⭐ **E il perché è strutturale, non sfortuna.** Il giro **c'è stato a +2 secondi** (i 2″
+  girano: gli intervalli nel registro sono di 2-3 s contro i 5 di prima) ma è stato **rimandato**
+  da `aspettaIlSuoTurno` — la cura del 21/08 per cui *un avviso non si mette in fila davanti a
+  una risposta che il socio sta aspettando*. ⇒ **Il collo di bottiglia della D9 non è
+  l'intervallo di sorveglianza: è la finestra «sto rispondendo».** In questo giro, con 5 secondi
+  l'esito sarebbe arrivato **allo stesso istante**.
+  📌 *La previsione dei «~1,5 s guadagnati» era stata scritta assumendo che il giro trovasse la
+  strada libera, e quel presupposto non era stato verificato prima di scrivere la cura: una
+  stima si dichiara, ma finché non la si misura resta una previsione — e questa era sbagliata.*
+  ⚠️ **Una misura sola non dice che i 2″ siano inutili sempre**: dice che qui non hanno agito.
+  ⛔ Ma dice anche che **abbassare ancora l'intervallo non guadagnerebbe niente**, e che la
+  strada per accorciare la consegna passa dalla finestra, non dal ritmo. *(D9)*
+
+🎉 **NON RESTA NIENTE: il punto F è chiuso.** *(28/08/2026, pomeriggio)*
+
+Le ultime quattro sono cadute in un pomeriggio — la **2bis** su sua parola, la **2** al secondo
+tentativo dopo una diagnosi, la **1** trovata **già fatta** nel registro del bot senza che nessuno
+l'avesse guardata, e le due **cronometrate** su Laura.
+
+📌 **Due lezioni che il punto F lascia, e non sono sui numeri:**
+· una prova può essere **già passata senza traccia** dove la si cercava — il rifiuto della D6 non
+  scrive `member_decision`, quindi in `self_assessments` non c'è; vive solo nel registro del bot.
+  *Prima di rifare una prova, si guarda se è già successa in un posto che non si era pensato;*
+· una prova può nominare **un oggetto che non è mai esistito** (il bottone «Tengo Agonista»), e
+  allora la ricerca fallisce e sembra un guasto. *Una scheda scritta su una previsione va riletta
+  prima di andare a cercare quello che promette.*
+
+⚠️ **Chiuso non vuol dire finito**: la **D9** è misurata e il suo risultato **smentisce** la
+previsione con cui la cura era stata scritta (vedi sopra), e i **70 secondi** della D10 restano
+senza spiegazione. Sono fatti scritti, non lavori aperti — se un domani diventano lavori, lo
+decide chi legge questa riga.
 
 ---
 
