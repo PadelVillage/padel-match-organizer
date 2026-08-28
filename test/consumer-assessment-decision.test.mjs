@@ -79,11 +79,20 @@ const RIPROVO = parola('SCELTA_RIPROVO');
 // 🆕 27/08 sera — la terza: «va bene, prendo il gradino». Letta dal modulo come le altre due.
 const SCENDO = parola('SCELTA_SCENDO');
 
-const ctx = { TENTATIVI_PER_GIRO, SCELTA_MI_FERMO: MI_FERMO, SCELTA_RIPROVO: RIPROVO, SCELTA_SCENDO: SCENDO };
+// 🆕 28/08/2026 (E1) — il tetto si LEGGE dal modulo come gli altri numeri: scriverlo qui
+// vorrebbe dire un banco verde anche il giorno in cui il tetto cambia.
+const TETTO_AUTOMATICO = costante('TETTO_AUTOMATICO');
+
+const ctx = { TENTATIVI_PER_GIRO, TETTO_AUTOMATICO, SCELTA_MI_FERMO: MI_FERMO, SCELTA_RIPROVO: RIPROVO, SCELTA_SCENDO: SCENDO };
 vm.createContext(ctx);
 vm.runInContext(
   spoglia([
-    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro']
+    // 🆕 28/08 (E1): `sopraIlTetto` e `ilTestDiceMeno` entrano nel banco perché la regola del
+    // rifiuto ora li CHIAMA — con le due su cui poggiano (`definizioneLivello`,
+    // `livelloDimostrato`). Senza, la regola esploderebbe alla prima chiamata invece di
+    // rispondere, ed è il genere di rosso che si scambia per un difetto della cura.
+    ...['esitoDellaProva', 'quandoMs', 'sceltaDellaProva', 'stessaProva', 'giriDelSocio', 'laProvaEsaurisceIlGiro',
+      'definizioneLivello', 'livelloDimostrato', 'sopraIlTetto', 'ilTestDiceMeno']
       .map((n) => estrai(n, srcGiro)),
     estrai('motivoDelRifiuto', src),
   ].join('\n')),
@@ -314,6 +323,98 @@ caso('13. 🔒 e una scelta inventata resta inventata: solo le tre parole del mo
 // ── GUARDIE SULLA BASE ──────────────────────────────────────────────────────────
 // 🚨 Un banco che misura ZERO resta verde: queste guardano il sorgente dell'edge, non la
 //    regola, e fermano i modi in cui questa funzione può fare danno.
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   🆕🚨⭐⭐ 28/08/2026 — E1: LE PROTEZIONI DEL PONTE CHE PARLA, ORA ANCHE QUI.
+   Il ponte del link spegne `puo_scegliere` su due fatti; questo ponte non li conosceva, e un
+   bottone vecchio registrava una scelta SENZA EFFETTO. I casi qui sotto eseguono la regola
+   vera — non sono guardie testuali.
+   ⚖️ E i tre casi che NON devono rifiutare valgono quanto i due che devono: sono le tre
+   letture sbagliate di E1 che avrebbero rotto qualcosa di vivo. ═════════════════════════ */
+
+// Prova superata con un livello dimostrato: `calculated_level` è ciò che la regola legge.
+const passata = (livelloDimostrato, extra = {}) =>
+  prova('T-E1', giorniFa(1), 'pass', { calculated_level: String(livelloDimostrato), ...extra });
+
+caso('E1-a. sopra il tetto «mi fermo» e «riprovo» si RIFIUTANO: le due risposte portavano allo stesso posto', () => {
+  // Il caso Laura del 27/08: in scheda Base (2,5), il test dice Agonista (5) — sopra il tetto
+  // (3,5) il livello non lo scrive il test in nessuno dei due casi.
+  const p = passata(5);
+  return [
+    motivoDelRifiuto(MI_FERMO, p, [p], '', '2.5') === 'ASPETTA_IL_MAESTRO',
+    motivoDelRifiuto(RIPROVO, p, [p], '', '2.5') === 'ASPETTA_IL_MAESTRO',
+  ];
+});
+
+caso('E1-b. quando il test dice MENO si rifiutano uguale: non c\'era niente da tenere', () => {
+  // In scheda Avanzato (4), il test dice Intermedio (3): il livello non scende da sé.
+  const p = passata(3);
+  return [
+    motivoDelRifiuto(MI_FERMO, p, [p], '', '4') === 'IL_TEST_DICE_MENO',
+    motivoDelRifiuto(RIPROVO, p, [p], '', '4') === 'IL_TEST_DICE_MENO',
+  ];
+});
+
+caso('E1-c. 🚨 «SCENDO» NON SI TOCCA: ha già il suo cancello, ed è l\'unica che scrive davvero', () => {
+  /* ⛔ La lettura sbagliata ① di E1. Il gradino è stato messo in servizio il 27/08 sera apposta
+     per questi casi: rifiutarlo qui vorrebbe dire spegnerlo il giorno dopo averlo acceso.
+     Chi ha il gradino (`gradino` non vuoto) passa, sopra il tetto o sotto che sia. */
+  const sopra = passata(5);
+  const meno = passata(3);
+  return [
+    motivoDelRifiuto(SCENDO, sopra, [sopra], 'Intermedio', '2.5') === '',
+    motivoDelRifiuto(SCENDO, meno, [meno], 'Intermedio', '4') === '',
+  ];
+});
+
+caso('E1-d. 🚨 LA STESSA FASCIA PASSA — è la sua regola del 27/08, non un buco', () => {
+  /* ⛔ La lettura sbagliata ② di E1, che nomina «stessa fascia» fra i tre fatti. Sue parole:
+     *«quando uno fa il test e risulta lo stesso livello che già ha nella scheda, non c'è
+     bisogno che si chiami il maestro. Ci deve essere il bottone»*. Il caso di Maurizio: in
+     scheda 4, test 4,5 — due numeri diversi, la STESSA parola («Avanzato»). */
+  const p = passata(4.5);
+  return [
+    motivoDelRifiuto(MI_FERMO, p, [p], '', '4') === '',
+    motivoDelRifiuto(RIPROVO, p, [p], '', '4') === '',
+  ];
+});
+
+caso('E1-e. 🚨 LIVELLO SCONOSCIUTO NON RIFIUTA: da un non-so non nasce un rifiuto', () => {
+  /* ⛔ La lettura sbagliata ③. Quando la lettura del socio fallisce, l'edge passa `null` e
+     `mi_fermo`/`riprovo` proseguono come ieri. Cedere chiuso rifiuterebbe una scelta
+     LEGITTIMA a ogni singhiozzo del database — un danno certo per coprirne uno improbabile. */
+  const p = passata(5);   // sopra il tetto: rifiuterebbe, se sapesse il livello
+  return [
+    motivoDelRifiuto(MI_FERMO, p, [p], '', null) === '',
+    motivoDelRifiuto(RIPROVO, p, [p], '', undefined) === '',
+  ];
+});
+
+caso('E1-g. 🚨 «NON HO IL LIVELLO» NON È «NON SO IL LIVELLO», e il banco me l\'ha insegnato', () => {
+  /* 🩹 Questo caso è nato da un mio ERRORE, e resta a segnarlo: avevo scritto che anche la
+     stringa vuota doveva passare, mettendola nello stesso sacco di `null`. Il banco è
+     diventato rosso, ed è la cura ad avere ragione — le due cose sono diverse:
+       · `null`  = **non lo so**, la lettura del socio è fallita ⇒ non si rifiuta;
+       · `''`    = **lo so, e non ce l'ha**, il socio non ha ancora un livello in scheda ⇒ è un
+                   fatto come un altro, e `sopraIlTetto` risponde `true` apposta (chi non ha
+                   niente e dimostra Agonista il maestro lo deve vedere davvero).
+     ⚖️ La prova che conta è che questo combacia col ponte che PARLA: là `aspetta_maestro` su un
+     socio senza livello è vero identico, e `puo_scegliere` si spegne. Due ponti che rispondono
+     diverso sulla stessa persona sarebbero il difetto che E1 esiste per chiudere.
+     📌 *Un valore mancante e un valore sconosciuto si somigliano solo a chi non deve deciderci
+     niente sopra.* */
+  const p = passata(5);
+  return [motivoDelRifiuto(MI_FERMO, p, [p], '', '') === 'ASPETTA_IL_MAESTRO'];
+});
+
+caso('E1-f. i fatti PIÙ FORTI vengono prima: una scheda già applicata non diventa «aspetta il maestro»', () => {
+  /* ⚖️ L'ordine dei rifiuti è una decisione, non un caso: `GIA_APPLICATA` dice «è già scritto»
+     ed è più vero di «non si potrà scrivere». Chi spostasse i due controlli nuovi più in alto
+     direbbe al socio la ragione sbagliata su una cosa già successa. */
+  const p = passata(5, { applied_at: giorniFa(0) });
+  return [motivoDelRifiuto(MI_FERMO, p, [p], '', '2.5') === 'GIA_APPLICATA'];
+});
+
 const guardie = [
   ['la regola esiste ed è quella estratta', typeof motivoDelRifiuto === 'function'],
   ['il ponte resta disarmato senza segreto', /CONSUMER_BRIDGE_SECRET/.test(src) && /BRIDGE_DISARMED/.test(src)],
@@ -321,7 +422,12 @@ const guardie = [
   // 🚨 IL CABLAGGIO: la regola è pura, e una regola che nessuno chiama resta verde senza
   //    difendere niente. Qui si misura che l'edge la CHIAMI, e che il rifiuto FERMI la
   //    scrittura invece di limitarsi a comparire nella risposta.
-  ['l\'edge CHIAMA la regola', /const rifiuto = motivoDelRifiuto\(scelta, scheda, elencoSchede, gradino\)/.test(src)],
+  /* 🔄 28/08/2026 (E1) — la regola ha un quinto argomento: il livello che il socio ha ADESSO.
+     ⭐ Non basta che ci sia: si misura che le arrivi il valore VERO. Chi domani ci passasse
+        una costante avrebbe una regola inerte e un banco verde — è la lezione del 19/08 (④),
+        che è già costata un sabotaggio passato verde. */
+  ['l\'edge CHIAMA la regola', /const rifiuto = motivoDelRifiuto\(scelta, scheda, elencoSchede, gradino, livelloSocio\)/.test(src)],
+  ['e le passa il livello VERO, non una costante', /livelloSocio = clean\(socio\?\.level\)/.test(src)],
   ['il rifiuto FERMA la scrittura', src.indexOf('if (rifiuto)') < src.indexOf(".update({ member_decision: scelta")],
   // 🚨 Il gettone da solo non basta: una scelta scritta su fede del solo gettone
   //    permetterebbe a un client confuso di decidere per la persona sbagliata.

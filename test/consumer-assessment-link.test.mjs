@@ -170,7 +170,11 @@ const GIORNI_PROM = costanteDa(srcProm, 'GIORNI_TRA_PROMEMORIA');
 const EPOCA = parolaDa(srcProm, 'EPOCA_PROMEMORIA');
 const MOTIVI = Object.fromEntries(
   ['MOTIVO_HA_LIVELLO', 'MOTIVO_IN_ATTESA', 'MOTIVO_SCHEDA_RECENTE', 'MOTIVO_DA_PERSONA',
-   'MOTIVO_DATA_ILLEGGIBILE', 'MOTIVO_OROLOGIO', 'MOTIVO_DOVUTO']
+   'MOTIVO_DATA_ILLEGGIBILE', 'MOTIVO_OROLOGIO', 'MOTIVO_DOVUTO',
+   // 🆕 28/08 (E9/A6). ⚠️ Questo elenco è a mano: un motivo nuovo nel modulo che nessuno
+   //    aggiunge qui non diventa rosso, arriva `undefined` alla prima prova che lo usa — ed è
+   //    esattamente com'è andata scrivendo questo, in un rosso che sembrava un difetto della cura.
+   'MOTIVO_ASPETTA_MAESTRO']
     .map((n) => [n, parolaDa(srcProm, n)]),
 );
 const ctxProm = { EPOCA_PROMEMORIA: EPOCA, ...MOTIVI };
@@ -428,6 +432,31 @@ caso('23. ⑥ chi il livello ce l\'ha già non lo riceve', () => {
 caso('24. ⑥ chi è in ATTESA non lo riceve: sarebbe mandarlo contro una porta chiusa', () => {
   const r = promProva({ ...SENZA_NULLA, ammesso: false });
   return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_IN_ATTESA];
+});
+
+caso('E9-a. 🚨 CHI ASPETTA IL MAESTRO NON RICEVE IL PROMEMORIA (A6)', () => {
+  /* 🗣️ Regola sua. 📏 Il difetto che cura: qui si escludeva solo `skip`, quindi a chi aveva
+     appena PASSATO il test con un livello sopra il tetto si chiedeva di RIFARLO — a uno che ha
+     fatto tutto giusto e sta aspettando che qualcun altro faccia la sua parte.
+     ⭐ La scheda è VECCHIA apposta (fuori dalla casella): senza questa porta il promemoria
+     sarebbe dovuto, quindi il caso esercita davvero la riga nuova invece di appoggiarsi a
+     `MOTIVO_SCHEDA_RECENTE`, che l'avrebbe reso verde per la ragione sbagliata. */
+  const c = casella(ADESSO);
+  const r = promProva({ ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs - 1, aspettaIlMaestro: true });
+  return [r.dovuto === false, r.motivo === MOTIVI.MOTIVO_ASPETTA_MAESTRO];
+});
+
+caso('E9-b. 🚨 e il promemoria NORMALE resta (A5): la regola vale SOLO per chi aspetta il maestro', () => {
+  /* ⛔ La larghezza si guadagna: una porta nuova toglie un messaggio a qualcuno, e va provato
+     che non lo tolga a chi deve riceverlo. Sono i tre modi in cui il fatto può NON esserci —
+     falso, assente, e un valore che non è `true` — e nessuno dei tre deve zittire il A5. */
+  const c = casella(ADESSO);
+  const base = { ...SENZA_NULLA, ultimaSchedaMs: c.inizioMs - 1 };
+  return [
+    promProva({ ...base, aspettaIlMaestro: false }).dovuto === true,
+    promProva(base).dovuto === true,
+    promProva({ ...base, aspettaIlMaestro: 'sì' }).dovuto === true,
+  ];
 });
 
 caso('25. ⑥ una scheda arrivata DENTRO la casella tace; una PRIMA della casella no', () => {
@@ -896,6 +925,24 @@ const guardie = [
   ['e le passa il livello VERO, non una costante', /haIlLivello: livelloDimostrato\(payload\.level, payload\.levelSource\)/.test(srcPonte)],
   ['e l\'ammissione VERA del giro, non una costante', /ammesso: giro\.ammesso/.test(srcPonte)],
   ['e la data VERA dell\'ultima scheda', /ultimaSchedaMs: ultimaScheda \? Date\.parse/.test(srcPonte)],
+  /* 🆕 28/08 (E9/A6) — e il fatto VERO del maestro. 📏 Questa guardia è nata da un sabotaggio
+     SFUGGITO: sostituendo l'argomento con `false` la cura diventava inerte e il banco restava
+     tutto verde, esattamente il difetto che il commento qui sopra dichiara di voler fermare —
+     dichiarato per tre argomenti e non applicato al quarto.
+     ⭐ Si misura anche che NON si ricalcoli qui: il fatto arriva dall'ultima scheda, e una
+     seconda lettura della stessa cosa diverge al primo ripensamento. */
+  ['e il fatto VERO del maestro, non una costante',
+    /aspettaIlMaestro: ultimaScheda \? ultimaScheda\.aspetta_maestro === true : false/.test(srcPonte)],
+  ['e il maestro NON si ricalcola nel chiamante',
+    !/aspettaIlMaestro: sopraIlTetto\(/.test(srcPonte)],
+
+  /* ── 🆕 28/08/2026 (E10): UNA SCHEDA NON NASCE ANONIMA ────────────────────────────────
+     ⚠️ Guardia TESTUALE: il ripiego stava nel corpo dell'handler, che il banco non esegue.
+     🚨 Le due metà sono una sola difesa e vanno insieme: la positiva da sola resterebbe verde
+     con il `|| 'Socio'` lasciato accanto (il `return` non lo raggiungerebbe mai), e la
+     negativa da sola sarebbe verde anche cancellando il nome del tutto. */
+  ['E10 · il ripiego «Socio» non battezza più nessuno', !/\|\| 'Socio';/.test(srcPonte)],
+  ['E10 · e senza nome la scheda si FERMA', /if \(!nome\) \{[\s\S]{0,200}MEMBER_SENZA_NOME/.test(srcPonte)],
   // ⚖️ Il promemoria esce da TUTTE E DUE le strade della risposta — quella dell'attesa e
   //    quella del link — o il bot leggerebbe la risposta in due modi a seconda della strada.
   ['il promemoria esce dalle DUE strade della risposta', (srcPonte.match(/^\s+promemoria,$/gm) || []).length === 2],
@@ -923,6 +970,65 @@ const guardie = [
   //    una scheda sovrascritta. Chi togliesse questo `return` renderebbe il guasto silenzioso.
   ['una lettura fallita delle schede FERMA il riuso, non lo indovina',
     /erroreSchede\)\s*\{[\s\S]{0,160}return err\(500/.test(srcPonte)],
+
+  /* ══════════════════════════════════════════════════════════════════════════════════════
+     🆕 28/08/2026 — LE GUARDIE DI E2, E3, E5 (approvate da lui la notte del 27/08).
+
+     ⚠️ SONO GUARDIE TESTUALI, e va detto: `livello_applicato`, la `.select()` e il tetto delle
+     schede vivono dentro il corpo dell'handler, non in un modulo puro, quindi il banco non li
+     può ESEGUIRE — può solo leggere il sorgente. ⇒ Dicono «il codice è quello giusto», non
+     «il comportamento è quello giusto». La prova del comportamento è fisica, sul gestionale.
+     ⭐ Sono nate da un SABOTAGGIO, non da una rilettura: prima di scriverle ho rimesso i due
+     difetti (`livello_applicato: true` e il `.limit(20)`) e **il banco è restato tutto verde**.
+     ⇒ Un banco che sopravvive al difetto che dovrebbe fermare non protegge niente. */
+
+  // ── E2: il fatto si LEGGE, non si deduce da due orologi ──
+  // 🚨 Le due metà servono tutt'e due: la positiva da sola sarebbe verde anche con la vecchia
+  //    deduzione lasciata accanto, e la negativa da sola sarebbe verde su un campo cancellato.
+  ['E2 · `livello_applicato` si legge da `applied_at`',
+    /livello_applicato: clean\(s\.applied_at\) !== ''/.test(srcPonte)],
+  ['E2 · e NON si deduce più dalle date del socio',
+    !/Date\.parse\(clean\(payload\.selfAssessmentDate\)\)/.test(srcPonte)],
+  // ⭐ La terza metà, ed è quella che il 27/08 è già costata due volte: la regola giusta con in
+  //    pasto una riga MONCA è una regola che non gira. `applied_at` dev'essere nella select.
+  ['E2 · e la select lo CHIEDE al database',
+    /\.select\('token, submitted_at[^']*applied_at[^']*'\)/.test(srcPonte)],
+
+  // ── E3: tutta la storia, non le ultime 20 ──
+  // 🚨 Si misura sull'INTERA catena della query, non sul file: un `.limit()` altrove (i
+  //    gettoni, i soci) è legittimo, e una guardia che lo vietasse ovunque sarebbe rossa a
+  //    torto — cioè una guardia che si smette di leggere.
+  // 🩹 La prima stesura di questa guardia contava 1400 caratteri a occhio dopo `.in()` e
+  //    pescava il `.limit()` di UN'ALTRA query: rossa su codice giusto. ⇒ Si delimita la
+  //    QUERY (dal `.select` al `;` che la chiude), non una finestra a naso.
+  /* 🩹🚨⭐⭐ E QUI IL DIFETTO È SCATTATO UNA TERZA VOLTA NELLA STESSA SERA, ed è la ragione
+     per cui `senzaCommenti` esiste invece di una regex più furba: la guardia cercava
+     `.limit(` e lo trovava **dentro il commento che spiega perché l'ho tolto** («VIA IL
+     `.limit(20)`»). Rossa su codice giusto, per la terza volta, sempre nello stesso modo:
+     *la prova legge la PROSA e la scambia per il FATTO*.
+     ⇒ Una guardia sul codice deve guardare il **codice**. I commenti si tolgono prima. */
+  ...(() => {
+    const senzaCommenti = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const QUERY_SCHEDE = senzaCommenti(
+      (srcPonte.match(/\.select\('token, submitted_at[\s\S]*?;/) || [''])[0],
+    );
+    return [
+      ['E3 · la query delle schede si trova', /\.select\('token, submitted_at/.test(QUERY_SCHEDE)],
+      ['E3 · e non ha nessun tetto', /\.select\('token, submitted_at/.test(QUERY_SCHEDE) && !/\.limit\(/.test(QUERY_SCHEDE)],
+    ];
+  })(),
+
+  // ── E5/E6: i due campi morti che potevano mentire ──
+  // ⚖️ Misurato nel repo del bot il 28/08 prima di toglierli: `leggiUltimaScheda` in `ponte.ts`
+  //    non legge `livello`, e `applicazione_lanciata` ha ZERO occorrenze in tutto `src/`.
+  ['E5 · il NUMERO del livello non esce più verso il bot',
+    !/^\s*livello: clean\(payload\.level\),/m.test(srcPonte)],
+  // 🩹🚨 Qui la prima stesura cercava la PAROLA e la trovava... nel commento che spiega perché
+  //    il campo è stato tolto: rossa su codice giusto. È la gemella esatta della trappola ①
+  //    del 28/08 — *il difetto sta nella prova che ho appena scritto io*. ⇒ Si guarda il campo
+  //    EMESSO (`^ applicazione_lanciata:`), che è il fatto, non la sua menzione.
+  ['E6 · `applicazione_lanciata` non esce più dal ponte della SCELTA',
+    !/^\s*applicazione_lanciata:/m.test(readFileSync(join(FUNZIONI, 'consumer-assessment-decision', 'index.ts'), 'utf8'))],
 ];
 
 test('BANCO — finito il giro, 30 giorni', () => {
