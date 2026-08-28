@@ -24,6 +24,7 @@ import {
   MATCHPOINT_INACTIVE_REASON,
 } from './stale-guard.ts';
 import { eChiaveVecchiaDellaStessaScheda } from './chiave-vecchia-guard.ts';
+import { chiaveDaScrivere } from './chiave-canonica.ts';
 
 type JsonMap = Record<string, any>;
 
@@ -2053,9 +2054,17 @@ Deno.serve(async (req) => {
       const candidates = collectExistingMemberCandidates(existing, member, importAmbiguousNameKeys);
       const match = chooseExistingMemberRecord(candidates, member);
       const canonicalKey = memberCloudKey(member);
+      /* 🧬⭐⭐ 28/08/2026 (voce 69) — LA CHIAVE NON RETROCEDE. Qui c'era `canonicalKey` nudo, e
+         siccome `shouldNormalizeMemberLocalKey` è vera per ogni riga `matchpoint_auto` — cioè
+         per quasi tutto il circolo — un export SENZA TELEFONO spostava la chiave da `phone:…`
+         a `email:…`: riga nuova, vecchia viva, e il ponte che trova due soci con lo stesso id
+         e risponde `AMBIGUOUS`. 📏 Laura e Marco Aprea, doppioni nati il 09/08 alle 16:30:38.
+         ⚖️ `chiaveDaScrivere` normalizza verso l'alto o alla pari e mai verso il basso: la
+         normalizzazione resta (legacy → `phone:`, `email:` → `phone:`), la discesa no.
+         🔒 Decide sotto CHE chiave si scrive, mai SE si scrive: non cancella nessuno. */
       const localKey = clean((match && !shouldNormalizeMemberLocalKey(match) && match.local_key)
         ? match.local_key
-        : (canonicalKey || match?.local_key || `member:${member.id}`));
+        : (chiaveDaScrivere(match?.local_key, canonicalKey) || `member:${member.id}`));
       let payload: JsonMap;
       let memberChangedForBroadcast = false;
       if (match) {
