@@ -50,16 +50,27 @@ Vuoto = allineati. **Verificato a fine sessione.**
 🆕 Servono anche: `PadelVillage/assistente-padel-agent` (→ `add_repo`, clone, **`npm install`**)
 e `npm install` in `tools/verifica-browser` prima della console.
 
-### 🟢 Cosa gira, misurato a fine sessione
+### 🟢 Cosa gira
 
-| dove | stato |
+🚨 **Questo documento è la fotografia della sessione del 27/08 notte, e il repo È ANDATO AVANTI
+dopo di lei** — altre sessioni hanno lavorato sullo stesso test (PR fino alla **#1166** sul
+gestionale e alla **#107** sul bot: le opzioni delle domande tecniche in ordine casuale, la 104
+chiusa, la sorveglianza da 5 secondi a 2, e due delle prove fisiche qui sotto **già fatte**).
+⇒ **Le righe qui sotto si rimisurano all'inizio della chat nuova**, non si credono: sono l'ultimo
+stato che questa sessione ha visto, non lo stato di adesso.
+
+| dove | ultimo stato visto da questa sessione |
 |---|---|
 | **gestionale `main`** | `3b0f8d0` — edge `consumer-assessment-link` **v24**, `consumer-assessment-decision` **v11**, `assessment-quiz` **v17** |
-| **`test-preview`** | `6db69ca` — APP_VERSION **6.257** (non toccata stanotte: nessun cambio a `index.html`) |
+| **`test-preview`** | `6db69ca` — APP_VERSION **6.257** |
 | **bot dei soci** (VM) | `86bb745` — dichiara `qqbf… (PROD)` · `✍️ prenotazioni REALI` |
 | banco bot | **1629/1629** · `tsc` pulito |
 | banco gestionale | tutto verde sui due rami |
 | guardie (`worker-sync`, `docs-truth`) | 🟢 su ogni push |
+
+```
+git fetch origin main test-preview      # e si rileggono i due sha
+```
 
 ---
 
@@ -157,7 +168,10 @@ campo «Livello di gioco»:
 
 ## 5. ⏳ COSA RESTA
 
-**A. 🔴 LE PROVE FISICHE che mancano** (sezione F del doc delle regole):
+**A. 🔴 LE PROVE FISICHE che mancano** (sezione F del doc delle regole).
+⚠️ **Almeno due sono già state fatte** dalle sessioni successive a questa (la parola dimostrata e
+la memoria della pescata): **l'elenco vero è nel doc delle regole**, questo è quello che mancava
+alla fine del 27/08.
 
 1. **il gradino su una prova PASSATA** — è provato su una bocciatura, non ancora su chi passa
    dimostrando meno di quello che ha (P7 coi tre bottoni);
@@ -175,7 +189,14 @@ campo «Livello di gioco»:
 dedotto dalle date invece che da `applied_at` — ⚠️ **è la stessa forma dei difetti pagati due
 volte stanotte**; **E3** i giri ricostruiti sulle ultime 20 schede.
 
-**C.** Le altre urgenti della lista: **98, 100, 97, 92, 84, 83, 69, 78, 65**.
+**C.** Le altre urgenti della lista: **97, 92, 84, 83, 78, 65**.
+📦 **La 69 è CHIUSA** (parola sua) — il socio doppio generato da una scheda senza telefono, e il
+«Non hai prenotazioni» detto a chi in campo c'era. ⚠️ Al momento in cui questo documento è stato
+scritto la riga era **ancora fra le urgenti** in `docs/lavori/README.md`: **la prima cosa da fare
+nella chat nuova è spostarla fra le chiuse**, aggiornando i due conteggi — `guard-docs-truth` li
+confronta con le voci contate, quindi o si spostano insieme o la guardia diventa rossa.
+📦 Chiuse anche la **98**, la **100** e la **104** da sessioni successive a questa: la lista
+canonica è `docs/lavori/README.md`, non questo elenco.
 
 ---
 
