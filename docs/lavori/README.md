@@ -2030,10 +2030,51 @@ non c'è*: è la stessa ragione per cui `guard-worker-sync` è stata resa pazien
   finte: dimostra 5 con 4 in scheda **entra**, dimostra 4 con 4 in scheda (il caso di Maurizio)
   **resta fuori**, dimostra 5 senza livello **entra**. Archivio ripristinato a fine prova.
 
-⏳ **PERCHÉ RESTA APERTA, e non è una riserva in fondo a un «fatto»**: nessuno ha ancora visto
-quella lista **popolarsi con soci veri**. L'utenza `readonly` della console non ha `view_members`,
-quindi da lì Anagrafica soci non si apre — è lo stesso residuo del punto **D** del passaggio del
-27/08, e si chiude nello stesso gesto: un giro dal Mac, o dalle sue mani.
+🔄🚨⭐⭐ **29/08 — LA RIGA QUI SOTTO ERA FALSA, e si corregge invece di restare accanto.**
+Diceva: *«l'utenza `readonly` della console non ha `view_members`, quindi da lì Anagrafica soci non
+si apre»*. 📏 Misurato: l'app viva di TEST carica **2815 soci** con quell'utenza. Il blocco non era
+un permesso, era **la guardia dell'attrezzo**: le RPC `get_assessment_tokens_admin` e
+`get_self_assessments_by_tokens` sono **letture** che viaggiano in **POST** (come tutte le RPC di
+PostgREST) e la guardia di sola lettura le fermava come scritture.
+🚨 **E il sintomo era muto**: la pagina si apriva, i soci c'erano, e `assessmentResponses` restava a
+**0** ⇒ la lista del maestro usciva **vuota senza un errore**. 📌 *Un limite attribuito al bersaglio
+quando stava nell'attrezzo si autoconferma a ogni prova: la sonda dice «vuoto» e chi legge capisce
+«non c'è niente».* Curato in `tools/verifica-browser/console.mjs`, con le due RPC **nominate** (non
+allargando la regex a `^get_`, che sarebbe una regola sul nome) e il permesso dato dopo aver letto
+`prosrc` in `pg_proc` sui **due** progetti: nessuna scrittura dentro. La `upsert_*` resta fuori.
+
+✅⭐⭐ **E CON L'ATTREZZO CURATO, LA MISURA CHE MANCAVA — sui dati veri di PROD, 29/08.**
+📏 **I quattro cancelli esercitati su 24 soci veri** con una scheda (83 schede caricate, tetto
+**3,5**), e ognuno scarta per la ragione giusta:
+
+| socio | dimostrato | in scheda | perché è fuori |
+|---|---|---|---|
+| Oriana Canzian | 5 | 5 | *non più di quel che ha in scheda* ← **regola nuova del 27/08** |
+| Carmelo Scafidi | 4 | 4 | idem |
+| **Maurizio Aprea** | **4,5** | **4** | ***stessa parola: Avanzato*** ← **la seconda regola del 27/08** |
+| Marco Aprea · Alessandro Biscaro | 3,5 | 3,5 | non **supera** il tetto (serve `>`, non `>=`) |
+| Lidia Comes · Fabiola Limuti | 3 · 2,5 | 2,5 · 1,5 | quiz `fail` |
+| altri 17 | ≤ 3 | — | non superano il tetto |
+
+⚖️ **È più forte di «una riga in lista»**: là si vedeva un verde, qui si vede **perché ciascuno è
+fuori** — comprese le due regole nate il 27/08, che fino a oggi erano state esercitate solo su
+**schede finte**.
+
+🔎⭐⭐ **E LA LISTA SI È SVUOTATA PER LA RAGIONE GIUSTA, col «prima» e il «dopo» datati.** La voce
+100, il 28/08 mattina, dichiarava *«esattamente una riga, quella di Laura»*. Oggi è **zero**, e non
+è una regressione: 📏 Laura ha **due** schede — **27/08 22:14:58** con `calculated_level` **4**
+(contro 3,5 in scheda ⇒ entrava) e **28/08 15:55:27** con **3** (⇒ non supera il tetto). Vince
+l'ultima, ed è la regola dichiarata in `assessmentUltimaScheda`: *«una prova di aprile che diceva
+Agonista non tiene in lista chi a giugno ha risposto da Base — sarebbe una coda che non si svuota
+mai»*. ⇒ **La coda si svuota**, ed è stato visto succedere.
+
+⏳ **PERCHÉ RESTA APERTA, e adesso il residuo è UN GESTO SOLO.** Manca ancora di vedere quella lista
+**con dentro qualcuno**, e oggi non dipende dal codice ma dai **dati**: nessun socio vero, in questo
+momento, dimostra più della propria parola.
+🎯 **Il gesto che la chiude, e ne chiude due**: **Maurizio rifà il test dichiarando Agonista** — è a
+**4** in scheda, quindi 5 è *più* e soprattutto è *un'altra parola* ⇒ deve comparire in «Da
+certificare dal maestro». È **la stessa ricetta** di `ASPETTA_IL_MAESTRO`, l'unico ramo di E1 mai
+provato. 📌 *Un residuo misurato fino in fondo smette di essere un'attesa e diventa un gesto.*
 
 ### **97** — 🧩 Il test una domanda alla volta, e poi DENTRO Telegram
 

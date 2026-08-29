@@ -40,17 +40,23 @@ const HOST_SUPABASE_NOTI = [
 ];
 
 const RPC_DI_LETTURA = /^pmo_(get|can)_/;
-// ⚠️ La regola sul nome è una CONVENZIONE, e non tutte le letture la rispettano: le RPC
-// nate prima del prefisso `pmo_get_` finivano fra le scritture per il solo nome, e la
-// console le bloccava. Una lettura bloccata non è un errore prudente — è una diagnosi che
-// non si può fare, e il sintomo (una lista vuota) è indistinguibile da «non c'era niente».
-// 📏 26/08/2026: `get_self_assessments_by_tokens` bloccata mentre si provava la voce 98.
-// Il suo corpo è un solo `select` (SECURITY DEFINER con guardia di staff): letta in
-// `pg_proc` prima di metterla qui, non dedotta dal nome.
+// 🚨⭐⭐ 29/08/2026 — LE DUE LETTURE DEL TEST DI LIVELLO, e la lezione che portano con sé.
+// La regex qui sopra pretende il prefisso `pmo_`, e le RPC della catena `assessment-*` non ce
+// l'hanno: `get_assessment_tokens_admin` e `get_self_assessments_by_tokens` sono **letture**
+// che viaggiano in POST (come tutte le RPC di PostgREST) e finivano bloccate come scritture.
+// 📏 Il sintomo era muto e credibile: la pagina si apriva, i 2815 soci si caricavano, e
+// `assessmentResponses` restava a **0** — cioè la lista del maestro usciva **vuota senza un
+// errore**, che è il modo peggiore in cui un attrezzo può sbagliare. Per un giorno intero la
+// voce 101 ha dichiarato che il blocco era un permesso mancante (`view_members`) dell'utenza
+// `readonly`: era la **guardia dell'attrezzo**, e l'anagrafica si vedeva benissimo.
+// ⚖️ Si aggiungono NOMINATE e non allargando la regex a `^get_`: quella sarebbe una regola sul
+// **nome**, e un domani un `get_and_lock_…` passerebbe da sola. 📏 E il permesso di entrare non
+// l'ha dato il nome nemmeno oggi: letto `prosrc` in `pg_proc` sui due progetti — nessuna
+// insert/update/delete dentro. `upsert_assessment_tokens_admin`, che invece ne ha, resta fuori.
 const RPC_DI_LETTURA_EXTRA = new Set([
   'pmo_supabase_environment_check',
-  'get_self_assessments_by_tokens',
   'get_assessment_tokens_admin',
+  'get_self_assessments_by_tokens',
 ]);
 
 // Playwright pinna un build di Chromium preciso e lo cerca lì e basta. Il
