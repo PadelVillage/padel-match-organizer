@@ -1888,18 +1888,27 @@ avrebbe dato *«Avanzato»* prima e dopo, e la prova sarebbe stata verde mostran
 è stato scelto **perché scavalca una fascia**.
 📌 *Una prova su un valore tradotto va disegnata sulla traduzione, non sul valore.*
 
+✅⭐ **PROMOSSA A PROD (v6.257) la sera stessa, su sua parola** — promozione **per righe** (regola 3):
+`git show 3ad6a18 -- index.html | git apply --3way`, conflitto **solo** su `APP_VERSION`, 134
+inserimenti e 5 rimozioni identici al commit di TEST, **zero** codice gated `PMO_IS_TEST_ENV`.
+📏 **Verificata sull'app viva di PROD, non solo deployata**: `6.257` servita, le quattro funzioni
+della traccia su `window`, il controllo sul conteggio e la spinta prima di `closeMemberCard()`
+presenti nel sorgente *servito*, e la traccia **esercitata dentro la pagina** — 0 → 1 → l'avviso
+dice 1 → tolta, 0.
+
 ⏳ **QUELLO CHE RESTA, dichiarato per quello che è:**
 · **non si sa perché le sue due spinte del 29/08 non siano partite**, e non si saprà: le 67 spinte a
   vuoto lasciano la loro riga di audit, quelle due nemmeno quella. ⇒ La cura non lo spiega
   all'indietro — fa in modo che la **prossima volta** lo si sappia, ed è tutto ciò che si poteva fare;
 · **i due livelli che ha cambiato quella sera sono persi**: su PROD il socio è a **4** con
   `lastLevelUpdateAt` fermo al 2 maggio. Se il livello giusto è un altro, va rimesso a mano;
-· **non si sa ancora perché** le sue due spinte non siano partite. La cura fa in modo che la
-  **prossima volta** lo si sappia — non lo spiega retroattivamente;
-· i **due livelli che ha cambiato sono persi**: nel cloud Maurizio Aprea è a **4** con
-  `lastLevelUpdateAt` fermo al **2 maggio**. Se il livello giusto è un altro, va rimesso.
+· 🔓 **PERCHÉ LA VOCE RESTA APERTA pur essendo curata, in servizio e promossa**: il gesto vero — la
+  segreteria che salva, e la traccia che nasce e sparisce — è stato fatto su **TEST**. Su PROD la
+  cura è **servita ed esercitata**, ma nessun salvataggio vero ci è ancora passato. È la stessa
+  forma della **65**: *curata e in servizio, si aspetta il caso.* Si chiude al primo salvataggio di
+  scheda socio su PROD che non lasci nessun avviso — e quello arriva da sé, senza provocarlo.
 
-🔗 **E rende inerte il PUNTO D finché non è curata**: la cura del 29/08 marca `lastLevelUpdateAt`
+🔗 **RENDEVA inerte il PUNTO D, e da stasera non più** (v6.257 in servizio): la cura del 29/08 marca `lastLevelUpdateAt`
 **in locale**, e `assessment-apply-level` legge quel campo **dal cloud**. Se il salvataggio non
 sale, la marca non esiste per chi deve leggerla. ⚖️ Ieri era stato verificato il **produttore**
 (`pmoMarcaLivelloCambiato` su `window`, esercitata dentro la pagina); il **destinatario** no. È la
