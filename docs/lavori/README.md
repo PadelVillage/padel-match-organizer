@@ -1843,11 +1843,26 @@ viste rosse con un sabotaggio** (conteggio tolto → 2 rosse; spinta rimessa in 
 per spiegare da dove sono stati spostati. ⇒ Il banco stava misurando la prosa di chi l'aveva
 scritto. 📌 *Un banco che legge il sorgente deve leggere il CODICE.*
 
-⏳ **NON È FINITA, e si dice invece di scriverlo in fondo a un «fatto»:**
-· manca la **prova fisica** — la cura è su `test-preview` e **non è in PROD**, quindi oggi non
-  protegge nessuno. Su TEST le scritture socio verso Matchpoint sono scollegate ma la spinta a
-  Supabase è vera: la prova si può fare lì, salvando una scheda e guardando che la traccia nasca
-  e sparisca;
+✅⭐⭐ **METÀ DELLA PROVA FISICA È FATTA, sull'app viva di TEST (v6.261 servita, `source_sha`
+`3ad6a181`, sincronizzata 22 secondi dopo la spinta) — e senza NESSUNO STUB.** L'utenza della
+console remota è `readonly`, quindi non ha `cloud_sync`: chiamando `pmoQueueImmediateMemberCloudSync`
+sull'app viva la spinta **fallisce per davvero**, rifiutata da `pmoRequireStaffPermission` — è la
+catena esatta che il 29/08 ha perso i due salvataggi, percorsa fino in fondo.
+📏 Misurato dentro la pagina: tracce all'inizio **0** → dopo la chiamata **1** → **dopo il
+fallimento 1** (è il punto che conta: prima qui non restava niente) → l'avviso dice **1** → tolta,
+**0** → e con zero tracce l'avviso **tace**. Nel sorgente *servito* ci sono anche il controllo sul
+conteggio e la spinta prima di `closeMemberCard()`.
+
+⏳ **QUELLO CHE MANCA, dichiarato per quello che è:**
+· **la metà del SUCCESSO non è provata**, e da qui non si può provare: la traccia si cancella su
+  una spinta **riuscita**, e per riuscire serve `cloud_sync` — cioè una sessione della segreteria,
+  non la console. ⚠️ Se quel `.then` non scattasse, ogni salvataggio lascerebbe una traccia e
+  l'avviso comparirebbe **a torto** a ogni apertura: è il difetto che questa casa teme di più
+  (*una guardia che ha torto ogni tanto si smette di leggere*). Il banco lo copre, l'app viva no.
+  ⇒ **Basta un salvataggio suo**: salvare una scheda socio qualunque, riaprire il gestionale, e non
+  vedere nessun avviso giallo. Un minuto;
+· **finché non è promossa, PROD continua a perdere**: la cura è su `test-preview` e non protegge
+  nessuno. La promozione è tenuta ferma di proposito, in attesa di quel salvataggio;
 · **non si sa ancora perché** le sue due spinte non siano partite. La cura fa in modo che la
   **prossima volta** lo si sappia — non lo spiega retroattivamente;
 · i **due livelli che ha cambiato sono persi**: nel cloud Maurizio Aprea è a **4** con
