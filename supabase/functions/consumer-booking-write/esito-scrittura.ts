@@ -192,6 +192,19 @@ export function verdettoScrittura(o: {
  */
 export const MOTIVO_SCRITTURA_RIFIUTATA = 'scrittura_rifiutata';
 
+/**
+ * Il motivo che il gestionale dà al bot quando **non sa** com'è andata.
+ *
+ * ⭐ Sta accanto alla gemella dal 29/08/2026 (voce 106) e per la stessa ragione: da quel giorno
+ * i punti che la scrivono sono **cinque** invece di uno, e cinque copie di una parola divergono
+ * al primo ripensamento. Il bot ha la sua costante speculare (`MOTIVO_ESITO_IGNOTO` in
+ * `ponte.ts`): sono due lati dello stesso contratto, e vanno cambiati insieme.
+ *
+ * ⚠️ Vuol dire l'OPPOSTO di `MOTIVO_SCRITTURA_RIFIUTATA`: là «non è passata» e al socio si può
+ * dire «riprova»; qui «non si sa», e «riprova» sarebbe un'affermazione sul passato.
+ */
+export const MOTIVO_ESITO_IGNOTO = 'esito_ignoto';
+
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // 🚨⭐⭐ LA TERZA VIA DEL «NON LO SO»: IL CANCELLO CHE UCCIDE LA NOSTRA EDGE — voce 83, 23/08/2026.
 //
@@ -244,22 +257,32 @@ export const MOTIVO_SCRITTURA_RIFIUTATA = 'scrittura_rifiutata';
  * un domani uno dei due cambiasse forma, l'altro regge — e il verso in cui si sbaglia resta
  * quello sicuro, cioè «non lo so» invece di «no».
  *
- * 🚧 **DOVE ANCORA NON SI USA, e non è una dimenticanza — dichiarato il 19/08.** Oggi la chiama
- * solo il ramo `create`. Gli altri quattro (`leave`, `remove`, `add`, `cancel`) continuano a
- * dire «rifiutata» anche quando l'esito è ignoto, ed è una scelta con un motivo misurato: il bot
- * sa dire «non lo so» **soltanto** sulla prenotazione (`testoRifiuto`, `case 'esito_ignoto'`).
- * Per uscita, togli, aggiungi e annulla non esiste nessuna frase del genere — quelle schede
- * traducono un elenco chiuso di motivi — quindi mandargli `esito_ignoto` oggi gli farebbe dire
- * una frase da prenotazione su un'uscita, o cadere nel generico.
- * ⚖️ E il danno non è simmetrico, che è la ragione per cui l'ordine è questo: **prenotare due
- * volte occupa un campo, disdire due volte no**.
- * 🔄 **Qui c'era scritto «il caso che fa male è coperto», e il 23/08 si è misurato che non lo
- * era**: la `create` la chiamava sì, ma la funzione non conosceva la terza via del riquadro qui
- * sopra ⇒ un 504 del cancello le usciva come «rifiutata». *Chiamare la guardia giusta non serve
- * se la guardia non sa riconoscere quello che passa.* Dal 24/08 la conosce, e adesso la frase è
- * vera. ⚠️ Resta vera **solo per la `create`**: gli altri quattro gesti non la chiamano ancora.
- * ⇒ Il resto è un lavoro sui DUE repo insieme (le frasi di là, il marchio di qua), non una riga
- *   da aggiungere qui: chi lo farà cominci dalle frasi, non da questa funzione.
+ * ✅ **LA CHIAMANO TUTTI E CINQUE — dal 29/08/2026, voce 106.** ⚠️ Fino a quel giorno qui c'era
+ * scritto il contrario, e la riga era vera: *«oggi la chiama solo il ramo `create`»*. Si
+ * **corregge**, non si affianca.
+ *
+ * 📏 IL FATTO CHE HA CHIUSO L'ATTESA, visto succedere e non cercato: il 29/08 alle 15:28:58 il
+ * bot ha detto *«Fabiola Limuti: non ci sono riuscito»* su una rimozione di cui **nessuno**
+ * sapeva l'esito — sotto c'era un `locator.click: Timeout 8000ms`, e un timeout non dice se la
+ * scrittura è arrivata. Quella volta il rifiuto era vero (il click non era mai passato), ma
+ * **era vero per fortuna, non perché il gestionale lo sapesse**.
+ *
+ * ⚖️ **L'ORDINE È STATO RISPETTATO, ed era la parte che contava.** La riga vecchia chiudeva con
+ * *«chi lo farà cominci dalle frasi, non da questa funzione»*, e così è andata: prima il bot ha
+ * imparato le quattro frasi «non lo so» (esci, annulla, togli, aggiungi) ed è stato messo in
+ * servizio sulla VM; **solo dopo** questa funzione ha smesso di essere chiamata da un ramo solo.
+ * Al contrario, per la finestra fra i due deploy, il bot avrebbe ricevuto una parola che non sa
+ * tradurre — cioè il difetto da curare, in una forma nuova.
+ *
+ * ⛔ **COSA NON SI MANDA sui quattro, e non è una dimenticanza**: `scritta_alle` e `slot`. Su
+ * `create` servono al bot per **tornare a chiedere** (voce 53, `verificaScrittura`); per gli
+ * altri quattro quel ciclo non esiste, e le frasi nuove infatti non lo promettono — dicono di
+ * guardare `/prenotazioni` fra qualche minuto. Mandarli sarebbe dato che nessuno legge, e
+ * peggio: suggerirebbe una capacità che non c'è.
+ *
+ * 🚨 Resta vero il resto del riquadro: il danno **non è simmetrico** — prenotare due volte occupa
+ * un campo, disdire due volte no — ed è la ragione per cui la `create` è stata curata per prima,
+ * il 19/08. Questa è la coda di quel lavoro, non un suo ripensamento.
  */
 export function esitoIgnotoDaRisposta(data: unknown): boolean {
   const d = (data ?? {}) as Record<string, unknown>;
