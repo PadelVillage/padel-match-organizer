@@ -1917,11 +1917,52 @@ guarda. E `cloudLocalKey` non entra nel payload.
 ⚖️ È la forma della voce 77: *non «non è successo niente di male», ma «è passata di lì e non ha
 sbagliato»*. ⭐ E la console remota ha fatto quello per cui esiste: nessuna richiesta a lui, nessun
 DevTools, nessuno schermo fotografato.
-⏳ **E COSA LA CURA NON COPRE, dichiarato**: una chiave **stantia** — il sync ri-chiava quel socio
-e archivia la riga vecchia dopo l'ultima idratazione (finestra: i 10 minuti di throttle) — fa
-scrivere di nuovo sulla riga sbagliata. La cura definitiva è più in là, in
-`pmo_upsert_records_admin`: ritrovare la riga per `payload.id` invece di fidarsi della
-`local_key` che arriva.
+✅⭐⭐ **E IL RESIDUO È CURATO — la cura definitiva è in servizio su TEST dal 29/08.** Qui c'era
+scritto che restava scoperta la chiave **stantia** (il sync ri-chiava il socio e archivia la riga
+vecchia dopo l'ultima idratazione, finestra: i 10 minuti di throttle) e che *«la cura definitiva è
+più in là»*. È stata fatta: `pmo_upsert_records_admin` **non si fida più della `local_key` che
+arriva** — per i soli `member`, se esiste **UNA SOLA** riga viva con lo stesso `payload->>'id'`
+scrive su quella (migrazione `20260829000000_voce105_si_scrive_sulla_riga_viva.sql`).
+⚖️ **Le due cure non si sostituiscono, si sommano**: quella dell'app (v6.255) insegna al browser a
+portare la chiave giusta; questa **gli toglie il potere di sbagliarla**. La seconda copre il caso
+che la prima dichiarava di non coprire.
+⛔ **Cosa NON fa, di proposito** — ① **solo `member`**: gli altri quattordici tipi passano identici,
+perché il difetto è misurato lì e altrove `payload.id` non è detto sia un'identità; ② **davanti a
+un id ambiguo non devia**, e non è un caso di scuola — su TEST c'è (`matchpoint_1at99i`, due righe
+`phone:` vive). 📌 *Una cura che sceglie a caso fra due identità fa il danno che vuole evitare.*
+🚨 **E la trappola che la cura stessa crea, trovata scrivendola**: deviando, due record che prima
+finivano su chiavi diverse possono ora puntare allo **stesso** posto — è il browser che porta la
+riga viva `email:` e la gemella `phone:` nata per sbaglio. Senza dedup, `on conflict do update`
+esplode e fallisce l'**intero lotto** ⇒ la cura avrebbe trasformato un doppione silenzioso in un
+**salvataggio perduto**. Perciò c'è un `distinct on` che vale **solo** per i `member`, e vince
+l'ultimo del lotto.
+✅ **PROVA FISICA su TEST, sullo scenario esatto di Maurizio** — quel socio là esiste davvero:
+`matchpoint_1jnj82q` ha la riga `email:` **viva** e la `phone:` **archiviata**. La stessa scrittura,
+sugli stessi dati, nello stesso istante, in due transazioni che si annullano da sé:
+· **con la cura** → righe vive **1 → 1**, l'archiviata **resta archiviata**, la riga viva **toccata**;
+· **senza la cura** → righe vive **1 → 2**, e l'archiviata **resuscitata** (`deleted` da `t` a `f`).
+⇒ Non «non è successo niente di male», ma **«è passata di lì e non ha sbagliato»**, col danno
+riprodotto accanto per far vedere che la sonda lo vede.
+🧪 **Quattro sabotaggi, quattro esiti diversi**: tolto l'`having count(*) = 1` l'id ambiguo viene
+deviato; tolta la guardia sul tipo, si devia anche una `booking`; tolto il `distinct on`, due righe
+sullo stesso bersaglio; e — il più istruttivo — **includendo le righe archiviate la cura diventa
+INERTE**, cioè lo stesso modo in cui era morta la prima stesura del 28/08.
+✅ **Sicura verso il sync, misurato prima di scriverla**: questa RPC la chiama **solo l'app**; le
+edge — `anagrafica-mirror` compresa, che è l'unica che ri-chiava i soci per mestiere — scrivono
+dritte sulla tabella col ruolo di servizio e non passano di qui. ⇒ Un rinomino legittimo non viene
+toccato.
+✅⭐⭐ **IN SERVIZIO ANCHE SU PROD dal 29/08, e riprovata là** — stesso probe, su un socio vero che
+ha la riga viva `phone:` e una archiviata sotto la vecchia chiave: **vive 1 → 1**, **archiviata
+resta archiviata**, **riga viva toccata**, transazione annullata. Payload **identico** di proposito:
+così anche nell'ipotesi assurda che non si annullasse, non cambierebbe un dato.
+📏 **E la misura che dice quanto vale su PROD: 991.** Tanti sono i soci che hanno **una riga
+archiviata sotto un'altra chiave**, cioè quanti una scrittura mal indirizzata potrebbe **resuscitare
+in doppione**. ⇒ Il numero da tenere a mente non è 25 (quelli che il browser *oggi* sbaglierebbe) ma
+**991** (quelli su cui l'errore, se capita, fa il danno grosso invece di una riga in più).
+⏳ **COSA RESTA NON PROVATO, detto invece che dato per fatto**: il giro **intero dall'app** — la
+segreteria che salva dalla scheda socio e la riga che atterra. Quello che è provato è che il
+**database** rifiuta di sbagliare indirizzo, sui dati veri e col danno riprodotto accanto. Il resto
+è un tuo gesto, ed è lo stesso già chiesto per questa voce.
 
 🖥️ ~~**PERCHÉ NON È STATA FATTA LA SERA STESSA**: è il percorso di scrittura
 dell'anagrafica su PROD — quello che, sbagliato, crea o perde soci — e la sua prova fisica vuole il
