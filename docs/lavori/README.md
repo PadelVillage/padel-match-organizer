@@ -1853,16 +1853,47 @@ fallimento 1** (è il punto che conta: prima qui non restava niente) → l'avvis
 **0** → e con zero tracce l'avviso **tace**. Nel sorgente *servito* ci sono anche il controllo sul
 conteggio e la spinta prima di `closeMemberCard()`.
 
-⏳ **QUELLO CHE MANCA, dichiarato per quello che è:**
-· **la metà del SUCCESSO non è provata**, e da qui non si può provare: la traccia si cancella su
-  una spinta **riuscita**, e per riuscire serve `cloud_sync` — cioè una sessione della segreteria,
-  non la console. ⚠️ Se quel `.then` non scattasse, ogni salvataggio lascerebbe una traccia e
-  l'avviso comparirebbe **a torto** a ogni apertura: è il difetto che questa casa teme di più
-  (*una guardia che ha torto ogni tanto si smette di leggere*). Il banco lo copre, l'app viva no.
-  ⇒ **Basta un salvataggio suo**: salvare una scheda socio qualunque, riaprire il gestionale, e non
-  vedere nessun avviso giallo. Un minuto;
-· **finché non è promossa, PROD continua a perdere**: la cura è su `test-preview` e non protegge
-  nessuno. La promozione è tenuta ferma di proposito, in attesa di quel salvataggio;
+✅⭐⭐ **E LA SECONDA METÀ È ARRIVATA LA SERA STESSA, dal suo gesto — la prova è COMPLETA.**
+Ha cambiato il proprio livello sul gestionale di TEST da **4 a 5** e ha chiesto al bot di prova
+*«il mio livello»* prima e dopo. ⇒ Il fallimento tiene il segno **e** il successo lo toglie: sono
+le due metà, e nessuna delle due è dedotta.
+
+⏱️ **LA CATENA INTERA, CRONOMETRATA — e il «prima» c'è, senza il quale il «dopo» non prova niente:**
+
+| istante (Roma) | fatto | letto dove |
+|---|---|---|
+| **21:00:31** | il bot: *«Sei un livello **Avanzato**»* | registro del bot di prova |
+| **21:01:17,511** | la segreteria salva **5** | `payload.updatedAt` |
+| **21:01:18,095** | la riga atterra nel cloud — **584 ms** | `synced_at` + audit `count: 1` |
+| **21:01:49** | il bot: *«Sei un livello **Agonista**»* | registro del bot di prova |
+| poi | ricaricato il gestionale: **nessun avviso giallo** | il suo schermo |
+
+📌 Dei 32 secondi fra il salvataggio e la frase al socio, la scrittura ne ha presi **0,6**: il resto
+è il tempo che lui ha messo a riscrivere al bot. Fra gestionale e bot non c'è nessun sync e nessun
+cron — il ponte legge `pmo_cloud_records` diretto, e il bot tiene la scheda **8 secondi**.
+
+🎯 **E LA STESSA PROVA HA DATO AL PUNTO D IL SUO PRIMO GIRO VERO**: `lastLevelUpdateAt` è passato da
+**2 maggio** a **2026-08-29T19:01:17.511Z**. È la prima volta che una mano della segreteria sul
+livello lascia la sua data — la cura del 29/08 che gira su un gesto vero e non su un banco.
+⚖️ Su TEST il socio ha una scheda in attesa del **12 maggio** che fino a quel momento **passava il
+cancello della data** (la marca era ferma al 2): adesso non passa più. ⛔ Non la si conta come prova
+del punto D, perché a fermarla basterebbe comunque *il livello non scende mai da solo* (calcolato 1
+contro 5) — è di nuovo *una protezione che regge grazie a un'altra*. Si conta come il cancello che
+si è finalmente chiuso per la ragione sua.
+
+🚨 **UN DISEGNO SBAGLIATO DELLA PROVA L'AVREBBE FATTA RIUSCIRE SENZA MOSTRARE NIENTE**, e va detto
+perché è il genere di errore che non lascia traccia: il bot **non dice il numero, dice la PAROLA**
+della tabella ufficiale (`≤3,5 Intermedio · ≤4,5 Avanzato · ≤5,5 Agonista`). ⇒ Cambiare **4 → 4,5**
+avrebbe dato *«Avanzato»* prima e dopo, e la prova sarebbe stata verde mostrando il nulla. Il cambio
+è stato scelto **perché scavalca una fascia**.
+📌 *Una prova su un valore tradotto va disegnata sulla traduzione, non sul valore.*
+
+⏳ **QUELLO CHE RESTA, dichiarato per quello che è:**
+· **non si sa perché le sue due spinte del 29/08 non siano partite**, e non si saprà: le 67 spinte a
+  vuoto lasciano la loro riga di audit, quelle due nemmeno quella. ⇒ La cura non lo spiega
+  all'indietro — fa in modo che la **prossima volta** lo si sappia, ed è tutto ciò che si poteva fare;
+· **i due livelli che ha cambiato quella sera sono persi**: su PROD il socio è a **4** con
+  `lastLevelUpdateAt` fermo al 2 maggio. Se il livello giusto è un altro, va rimesso a mano;
 · **non si sa ancora perché** le sue due spinte non siano partite. La cura fa in modo che la
   **prossima volta** lo si sappia — non lo spiega retroattivamente;
 · i **due livelli che ha cambiato sono persi**: nel cloud Maurizio Aprea è a **4** con
