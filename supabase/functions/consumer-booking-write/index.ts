@@ -29,7 +29,7 @@ import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
 // questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
 import {
-  dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
+  dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_ESITO_IGNOTO, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
@@ -811,7 +811,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         created: false,
-        reason: 'esito_ignoto',
+        reason: MOTIVO_ESITO_IGNOTO,
         detail: dettaglioPerIlBot(`Nessuna risposta dal gestionale: ${testo}`),
         // Con che cosa richiedere, e quando: senza questi due il bot non ha modo di formulare
         // la domanda a cui `verifica` risponde, e il controllo resterebbe al socio.
@@ -831,7 +831,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         created: false,
-        reason: ignoto ? 'esito_ignoto' : MOTIVO_SCRITTURA_RIFIUTATA,
+        reason: ignoto ? MOTIVO_ESITO_IGNOTO : MOTIVO_SCRITTURA_RIFIUTATA,
         detail: dettaglioPerIlBot(data?.message ?? data?.error ?? `HTTP ${res.status}`),
         // ⚖️ Solo sull'ignoto: su una scrittura rifiutata la prenotazione NON c'è, e dare al bot gli
         // attrezzi per «andare a controllare» lo inviterebbe a controllare un fatto già noto.
@@ -1095,11 +1095,16 @@ Deno.serve(async (req: Request) => {
     });
     const dataLeave = await resLeave.json().catch(() => null) as JsonMap | null;
     if (!resLeave.ok || !dataLeave?.ok) {
-      console.error(`[booking-write] leave KO HTTP ${resLeave.status}:`, JSON.stringify(dataLeave).slice(0, 300));
+      // 🆕🚨⭐⭐ 29/08/2026 (voce 106) — LA GUARDIA DELL'ESITO IGNOTO, anche qui.
+      // Fino a oggi questo ramo diceva «rifiutata» comunque, e su un timeout quella è
+      // un'affermazione sul passato che da qui non si può fare. Il bot ora ha la frase per
+      // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
+      const ignotoLeave = esitoIgnotoDaRisposta(dataLeave);
+      console.error(`[booking-write] leave KO HTTP ${resLeave.status}${ignotoLeave ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataLeave).slice(0, 300));
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
-        reason: MOTIVO_SCRITTURA_RIFIUTATA,
+        reason: ignotoLeave ? MOTIVO_ESITO_IGNOTO : MOTIVO_SCRITTURA_RIFIUTATA,
         detail: dettaglioPerIlBot(dataLeave?.message ?? dataLeave?.error ?? `HTTP ${resLeave.status}`),
       });
     }
@@ -1316,11 +1321,16 @@ Deno.serve(async (req: Request) => {
     });
     const dataRemove = await resRemove.json().catch(() => null) as JsonMap | null;
     if (!resRemove.ok || !dataRemove?.ok) {
-      console.error(`[booking-write] remove KO HTTP ${resRemove.status}:`, JSON.stringify(dataRemove).slice(0, 300));
+      // 🆕🚨⭐⭐ 29/08/2026 (voce 106) — LA GUARDIA DELL'ESITO IGNOTO, anche qui.
+      // Fino a oggi questo ramo diceva «rifiutata» comunque, e su un timeout quella è
+      // un'affermazione sul passato che da qui non si può fare. Il bot ora ha la frase per
+      // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
+      const ignotoRemove = esitoIgnotoDaRisposta(dataRemove);
+      console.error(`[booking-write] remove KO HTTP ${resRemove.status}${ignotoRemove ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataRemove).slice(0, 300));
       return ok({
         member: { id: member.id, name: member.name },
         removed: false,
-        reason: MOTIVO_SCRITTURA_RIFIUTATA,
+        reason: ignotoRemove ? MOTIVO_ESITO_IGNOTO : MOTIVO_SCRITTURA_RIFIUTATA,
         detail: dettaglioPerIlBot(dataRemove?.message ?? dataRemove?.error ?? `HTTP ${resRemove.status}`),
       });
     }
@@ -1610,7 +1620,7 @@ Deno.serve(async (req: Request) => {
       return ok({
         member: { id: member.id, name: member.name },
         added: false,
-        reason: 'esito_ignoto',
+        reason: MOTIVO_ESITO_IGNOTO,
         detail: dettaglioPerIlBot(`Nessuna risposta dal gestionale: ${testo}`),
         scritta_alle: scrittaAddAlle,
         slot: { data: slot.data, ora: slot.ora, campo },
@@ -1618,11 +1628,16 @@ Deno.serve(async (req: Request) => {
     }
     const dataAdd = await resAdd.json().catch(() => null) as JsonMap | null;
     if (!resAdd.ok || !dataAdd?.ok) {
-      console.error(`[booking-write] add KO HTTP ${resAdd.status}:`, JSON.stringify(dataAdd).slice(0, 300));
+      // 🆕🚨⭐⭐ 29/08/2026 (voce 106) — LA GUARDIA DELL'ESITO IGNOTO, anche qui.
+      // Fino a oggi questo ramo diceva «rifiutata» comunque, e su un timeout quella è
+      // un'affermazione sul passato che da qui non si può fare. Il bot ora ha la frase per
+      // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
+      const ignotoAdd = esitoIgnotoDaRisposta(dataAdd);
+      console.error(`[booking-write] add KO HTTP ${resAdd.status}${ignotoAdd ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataAdd).slice(0, 300));
       return ok({
         member: { id: member.id, name: member.name },
         added: false,
-        reason: MOTIVO_SCRITTURA_RIFIUTATA,
+        reason: ignotoAdd ? MOTIVO_ESITO_IGNOTO : MOTIVO_SCRITTURA_RIFIUTATA,
         detail: dettaglioPerIlBot(dataAdd?.message ?? dataAdd?.error ?? `HTTP ${resAdd.status}`),
       });
     }
@@ -1900,11 +1915,19 @@ Deno.serve(async (req: Request) => {
   });
   const data = await res.json().catch(() => null) as JsonMap | null;
   if (!res.ok || !data?.ok) {
-    console.error(`[booking-write] cancel KO HTTP ${res.status}:`, JSON.stringify(data).slice(0, 300));
+    // 🆕🚨⭐⭐ 29/08/2026 (voce 106) — LA GUARDIA DELL'ESITO IGNOTO, anche qui.
+    // ⭐ E su `cancel` è il ramo che la voce 83 aveva già misurato: la notte del 23/08 un
+    // `KO HTTP 504 (IDLE_TIMEOUT)` del cancello della piattaforma è uscito da qui come
+    // «rifiutata», il bot ha detto *«non ci sono riuscito, la tua prenotazione è rimasta
+    // com'era»* — e l'annullo **era passato** (sync delle 21:44:04, `booking|9602` marcato
+    // deleted). Quel 504 non ha né `error` né `esitoIgnoto` ⇒ da oggi cade nell'ignoto, che è
+    // la sola cosa vera che se ne potesse dire.
+    const ignotoCancel = esitoIgnotoDaRisposta(data);
+    console.error(`[booking-write] cancel KO HTTP ${res.status}${ignotoCancel ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(data).slice(0, 300));
     return ok({
       member: { id: member.id, name: member.name },
       cancelled: false,
-      reason: MOTIVO_SCRITTURA_RIFIUTATA,
+      reason: ignotoCancel ? MOTIVO_ESITO_IGNOTO : MOTIVO_SCRITTURA_RIFIUTATA,
       detail: dettaglioPerIlBot(data?.message ?? data?.error ?? `HTTP ${res.status}`),
     });
   }
