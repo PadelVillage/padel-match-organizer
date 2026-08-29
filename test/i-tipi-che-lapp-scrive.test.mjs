@@ -107,3 +107,43 @@ test('📌 le due liste NON devono essere uguali, e questo banco non lo pretende
   assert.ok(soloTabella.every(t => !tipiApp.has(t)),
     'un tipo che sta solo nella tabella è anche spinto dall’app: è di nuovo la fessura della voce 109');
 });
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   🆕 29/08/2026 (voce 108, seguito) — LA DIAGNOSTICA DELLE SPINTE A VUOTO.
+
+   ⚠️ QUESTE TRE PROVE SONO TESTUALI, e va detto: leggono il SORGENTE della migrazione,
+      non interrogano nessun database. Dicono «la diagnostica è scritta», non «la
+      diagnostica funziona» — quello è stato provato ESEGUENDO la RPC su TEST (i tre casi
+      di scarto hanno lasciato la loro riga, la spinta buona ha lasciato `{count:1}` nudo).
+      Servono a un'altra cosa: che nessuno la faccia sparire rigenerando la funzione.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+const rpcSrc = ultimaChe(/(create or replace function public\.pmo_upsert_records_admin[\s\S]*)/i);
+
+test('🔒 la RPC annota COSA portava un lotto che non ha scritto niente', () => {
+  assert.ok(rpcSrc, 'nessuna migrazione definisce pmo_upsert_records_admin');
+  for (const campo of ['ricevuti', 'senza_tipo', 'senza_chiave', 'tipi']) {
+    assert.ok(rpcSrc.blocco.includes(`'${campo}'`),
+      `manca «${campo}» nella diagnostica di ${rpcSrc.file}: una spinta a vuoto tornerebbe muta`);
+  }
+});
+
+test('🔒 le tre regole di scarto sono contate una per una, non in blocco', () => {
+  // Un solo numero («scartati: 3») non chiuderebbe la diagnosi: le regole sono tre e
+  // sapere QUALE è scattata è tutto il punto. È la trappola ③ del 29/08.
+  assert.ok(/senza_tipo[\s\S]{0,200}tipo is null/.test(rpcSrc.blocco),
+    'senza_tipo non conta i record senza record_type');
+  assert.ok(/senza_chiave[\s\S]{0,200}chiave is null/.test(rpcSrc.blocco),
+    'senza_chiave non conta i record senza local_key');
+});
+
+test('🚨 la diagnostica scatta SOLO a zero, e non porta payload nel registro', () => {
+  assert.ok(/if v_count = 0 then/.test(rpcSrc.blocco),
+    'la diagnostica non è più condizionata allo zero: il registro si gonfierebbe a ogni spinta');
+  // ⛔ Nel registro entrano NOMI DI TIPO e CONTEGGI. Un payload lì dentro sarebbe un dato di
+  //    un socio scritto in un posto che nessuno tratta come anagrafica.
+  const blocco = rpcSrc.blocco.slice(rpcSrc.blocco.indexOf('if v_count = 0 then'));
+  const fino = blocco.slice(0, blocco.indexOf('insert into public.pmo_audit_log'));
+  assert.ok(!/e->'payload'|->>'payload'|e\.payload/.test(fino),
+    'la diagnostica legge il payload: nel registro non ci deve finire nessun dato di nessuno');
+});
