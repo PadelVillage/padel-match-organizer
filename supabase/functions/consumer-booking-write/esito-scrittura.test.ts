@@ -15,6 +15,7 @@ import {
   esitoIgnotoDaRisposta,
   FINESTRA_SYNC_GIORNI,
   MARGINE_SCRITTURA_S,
+  MOTIVO_ESITO_IGNOTO,
   MOTIVO_SCRITTURA_RIFIUTATA,
   giornoPiu,
   verdettoScrittura,
@@ -170,7 +171,11 @@ test('13) IL COLLEGAMENTO: anche la fetch di «add» dice «non lo so» invece d
   const blocco = src.slice(src.indexOf('let resAdd: Response;'), src.indexOf('const dataAdd'));
   assert.ok(blocco.length > 0, 'non trovo più il punto in cui `add` chiama il gestionale');
   assert.match(blocco, /try \{/, 'la fetch di `add` non è protetta');
-  assert.match(blocco, /reason: 'esito_ignoto'/, '`add` non risponde `esito_ignoto` quando non sa');
+  // 🩹 29/08 (voce 106): la parola non è più un letterale ma la costante `MOTIVO_ESITO_IGNOTO`
+  // — era scritta a mano in tre punti, e i punti che la producono sono diventati sette.
+  // ⚠️ Questo caso cercava la GRAFIA vecchia ed è caduto al primo refactor: giusto così, ha
+  // fatto il suo mestiere. Ora cerca il nome, che è quello che il codice usa davvero.
+  assert.match(blocco, /reason: MOTIVO_ESITO_IGNOTO/, '`add` non risponde `esito_ignoto` quando non sa');
 });
 
 test('15) IL GIRO SI CHIUDE: chi dice «non lo so» consegna anche CON CHE COSA richiedere', () => {
@@ -193,12 +198,42 @@ test('15) IL GIRO SI CHIUDE: chi dice «non lo so» consegna anche CON CHE COSA 
   // in forma condizionale (`reason: ignoto ? …`). Contava una GRAFIA, non i punti. Ed è la
   // stessa trappola due volte: `scritta_alle: scritta` ne trovava 4, perché uno è l'eco dentro
   // `verifica`. ⇒ Si cercano i **siti di risposta**, e si guarda cosa c'è dentro ciascuno.
-  const siti = [...src.matchAll(/reason: (?:'esito_ignoto'|ignoto \? 'esito_ignoto')/g)].map((m) => m.index!);
-  assert.equal(siti.length, 3, `i punti che rispondono «non lo so» sono ${siti.length}, attesi 3 (create ×2, add)`);
-  for (const i of siti) {
-    const risposta = src.slice(i, src.indexOf('});', i));
-    assert.match(risposta, /scritta_alle:/, `un «non lo so» non consegna l’istante (offset ${i})`);
-    assert.match(risposta, /slot: \{ data: slot\.data/, `un «non lo so» non consegna lo slot (offset ${i})`);
+  // 🔄🚨⭐⭐ RISCRITTO IL 29/08 (voce 106), e la regola è CAMBIATA — non è un adeguamento per
+  // far tornare il verde, è la cosa che questa voce ha deciso.
+  //
+  // Fino a oggi i punti che dicevano «non lo so» erano TRE, e tutti e tre promettevano al bot
+  // di poter tornare a chiedere ⇒ «chi dice non lo so consegna l'istante» era una regola senza
+  // eccezioni. Da oggi sono SETTE: i quattro nuovi sono i rami KO di `leave`, `remove`, `add` e
+  // `cancel`, e quelli **non devono** consegnare niente.
+  //
+  // ⚖️ IL PERCHÉ, ed è la metà che conta: il ciclo di verifica (`verificaScrittura`, voce 53)
+  // esiste **solo per la prenotazione**. Per gli altri quattro gesti il bot non ha nessun modo
+  // di tornare a chiedere, e infatti le sue frasi nuove non lo promettono — dicono di guardare
+  // `/prenotazioni` fra qualche minuto. ⇒ Mandare `scritta_alle` là sarebbe dato che nessuno
+  // legge, e peggio: **suggerirebbe una capacità che non c'è**, cioè la forma di bugia che
+  // tutta questa famiglia di casi esiste per impedire.
+  //
+  // 📌 Perciò la regola non è più «tutti consegnano», è: **chi promette di richiamare consegna,
+  //   chi non promette non consegna**. Le due metà si sorvegliano a vicenda — la seconda serve
+  //   a fermare chi un domani aggiungesse l'istante «per simmetria» sui quattro.
+  const siti = [...src.matchAll(/reason: (?:MOTIVO_ESITO_IGNOTO|ignoto\w* \? MOTIVO_ESITO_IGNOTO)/g)]
+    .map((m) => m.index!);
+  assert.equal(siti.length, 7,
+    `i punti che rispondono «non lo so» sono ${siti.length}, attesi 7 (create ×2, add ×2, leave, remove, cancel)`);
+
+  const risposte = siti.map((i) => src.slice(i, src.indexOf('});', i)));
+  const conIstante = risposte.filter((r) => /scritta_alle:/.test(r));
+  const senzaIstante = risposte.filter((r) => !/scritta_alle:/.test(r));
+
+  assert.equal(conIstante.length, 3,
+    `i «non lo so» che consegnano l'istante sono ${conIstante.length}, attesi 3 (create ×2, add senza risposta)`);
+  assert.equal(senzaIstante.length, 4,
+    `i «non lo so» SENZA istante sono ${senzaIstante.length}, attesi 4 (i rami KO di leave/remove/add/cancel)`);
+
+  // ⭐ Chi consegna l'istante consegna anche lo slot: senza, il bot avrebbe il quando ma non il
+  // cosa, e `verifica` non saprebbe su quale partita guardare.
+  for (const r of conIstante) {
+    assert.match(r, /slot: \{ data: slot\.data/, 'un «non lo so» consegna l’istante ma non lo slot');
   }
 });
 
@@ -323,9 +358,14 @@ test('17) 🔒 NESSUN NOME INTERNO esce dal gestionale come «reason»', () => {
     'il rifiuto non è più fra i «reason» visti dalla guardia: è cambiata la forma, e la guardia sta guardando altrove',
   );
   assert.ok(
-    testi.includes("'esito_ignoto'"),
+    testi.includes('MOTIVO_ESITO_IGNOTO'),
     'l’esito ignoto non è più fra i «reason» visti dalla guardia',
   );
+  // 🆕 29/08 (voce 106) — e la parola NON deve tornare scritta a mano: la costante esiste
+  // perché sette copie di una stringa divergono al primo ripensamento, e qui il ripensamento
+  // cambierebbe cosa legge un socio.
+  assert.ok(!/'esito_ignoto'/.test(src),
+    'la parola «esito_ignoto» è tornata un letterale invece di venire dalla costante');
   const vietati = reasons.filter((r) => /worker|matchpoint|hetzner|browser|playwright|caddy/i.test(r));
   assert.deepEqual(vietati, [], `un pezzo interno esce col suo nome verso il bot: ${vietati.join(' | ')}`);
   // E il nome vecchio non deve tornare nemmeno di straforo, fuori da un `reason:`.
