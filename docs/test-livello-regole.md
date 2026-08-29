@@ -66,7 +66,7 @@ notte stessa: le righe segnate 🔄 sono quelle che ha corretto lui, e i punti d
 | D7 | Mai un numero al socio: **sempre la parola** | ovunque | ✅ |
 | D8 | Mai un vicolo cieco: ogni messaggio ha un bottone o la via a parole | promemoria.ts | ✅ |
 | D9 | 🔄 L'esito arriva in **secondi**: sorveglianza ogni **2″ da quando il socio apre il quiz** (30″ prima, fino a 4 ore), riarmata a ogni tocco; rete dei 15′ | bot `promemoria.ts` (`INTERVALLO_SORVEGLIANZA_TEST_MS`) | ✅ **i 2″ sono in servizio** dal 28/08 e **misurati dal vivo** (intervalli di 2-3 s nel registro) · 🚨 **ma la consegna NON è più veloce**: 4,7 s su Laura contro i 4 del 27/08, perché il giro a +2 s viene **rimandato** da `aspettaIlSuoTurno` ⇒ il collo di bottiglia è la **finestra «sto rispondendo»**, non il ritmo |
-| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «il mio livello»»* — non «te l'ho registrato». 🎯 E il bersaglio: un tocco sul gradino porta il livello in scheda negli stessi **~4 secondi** di «mi fermo» | `testoSceltaRegistrata` + `consumer-assessment-decision` | ✅ **provata col cronometro** (Laura, 28/08: tocco 13:59:37,417 → `applied_at` 13:59:39,632 = **2,2 s**, meglio del bersaglio; anagrafica scritta nello stesso istante) · ⚠️ **i 70 s di Fabiola restano senza spiegazione**: misurato che non si ripetono, non perché successero |
+| D10 | 🆕 **Niente passati che non sono ancora veri.** Al tocco sul gradino il bot dice *«Prendo X. Lo sto registrando: fra poco lo trovi in «📊 Test Livello di Gioco»»* — non «te l'ho registrato». 🔄 **Il nome della porta è cambiato il 29/08** (sua decisione: era «Il mio livello di gioco»), e le frasi lo prendono da `RIMANDO_LIVELLO` invece di scriverlo — quindi questa riga cita il nome di oggi e le citazioni **storiche** più sotto tengono il nome che la porta aveva allora. 🎯 E il bersaglio: un tocco sul gradino porta il livello in scheda negli stessi **~4 secondi** di «mi fermo» | `testoSceltaRegistrata` + `consumer-assessment-decision` | ✅ **provata col cronometro** (Laura, 28/08: tocco 13:59:37,417 → `applied_at` 13:59:39,632 = **2,2 s**, meglio del bersaglio; anagrafica scritta nello stesso istante) · ⚠️ **i 70 s di Fabiola restano senza spiegazione**: misurato che non si ripetono, non perché successero |
 | D11 | 🆕 **«Test superato» non si dice su una scheda senza cancello**: zero domande su zero non sono una prova passata — si dice che il test è **arrivato**. *(Cura della notte del 27/08, validata con lui.)* | `testoEsitoTest` | 🔵 |
 
 ---
@@ -263,7 +263,8 @@ chiedere il gesto: uno schermo non dice quale ramo l'ha prodotto.*
   📏 Combacia col database: la scheda delle **20:08:53** aveva `applied_at` alle **20:09:02**
   (livello 3 scritto) ⇒ **due ore dopo** Marco ha toccato quel bottone e il gestionale l'ha
   rifiutato. Il bot ha risposto *«Quel livello è già stato registrato sulla tua scheda 👍 Chiedimi
-  «il mio livello» per vederlo»* — nessuna promessa, nessuna scrittura.
+  «il mio livello» per vederlo»* — nessuna promessa, nessuna scrittura. *(La porta si chiamava
+  così quel giorno: dal 29/08 è «📊 Test Livello di Gioco». La citazione resta com'era detta.)*
 
   ⚠️ **La rete che è scattata è `GIA_APPLICATA`, non quella del MAESTRO** che la scheda nominava, e
   la differenza si dichiara invece di tacerla. 📏 Il caso del maestro **oggi non è raggiungibile da
