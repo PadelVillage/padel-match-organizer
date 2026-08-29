@@ -1951,6 +1951,18 @@ INERTE**, cioè lo stesso modo in cui era morta la prima stesura del 28/08.
 edge — `anagrafica-mirror` compresa, che è l'unica che ri-chiava i soci per mestiere — scrivono
 dritte sulla tabella col ruolo di servizio e non passano di qui. ⇒ Un rinomino legittimo non viene
 toccato.
+✅⭐⭐ **IN SERVIZIO ANCHE SU PROD dal 29/08, e riprovata là** — stesso probe, su un socio vero che
+ha la riga viva `phone:` e una archiviata sotto la vecchia chiave: **vive 1 → 1**, **archiviata
+resta archiviata**, **riga viva toccata**, transazione annullata. Payload **identico** di proposito:
+così anche nell'ipotesi assurda che non si annullasse, non cambierebbe un dato.
+📏 **E la misura che dice quanto vale su PROD: 991.** Tanti sono i soci che hanno **una riga
+archiviata sotto un'altra chiave**, cioè quanti una scrittura mal indirizzata potrebbe **resuscitare
+in doppione**. ⇒ Il numero da tenere a mente non è 25 (quelli che il browser *oggi* sbaglierebbe) ma
+**991** (quelli su cui l'errore, se capita, fa il danno grosso invece di una riga in più).
+⏳ **COSA RESTA NON PROVATO, detto invece che dato per fatto**: il giro **intero dall'app** — la
+segreteria che salva dalla scheda socio e la riga che atterra. Quello che è provato è che il
+**database** rifiuta di sbagliare indirizzo, sui dati veri e col danno riprodotto accanto. Il resto
+è un tuo gesto, ed è lo stesso già chiesto per questa voce.
 
 🖥️ ~~**PERCHÉ NON È STATA FATTA LA SERA STESSA**: è il percorso di scrittura
 dell'anagrafica su PROD — quello che, sbagliato, crea o perde soci — e la sua prova fisica vuole il
