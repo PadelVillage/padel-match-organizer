@@ -110,6 +110,74 @@ produzione senza che nessuno la riveda.
 
 ---
 
+## 🗂️ Le MIGRAZIONI: i rami divergono, ma il registro diverge di più — misurato il 30/08/2026
+
+Il passaggio di consegne portava da giorni una riga sola: *«`supabase/migrations/` diverge fra i
+rami: **8 file**, nessuna guardia. ⛔ Non è una voce: se la si vuole, la prima cosa è misurarla»*.
+Misurata. **L'8 è vero e non è il problema.**
+
+### ① La divergenza fra i rami: 8 file, e nessuno diverso nel CONTENUTO
+
+| | |
+|---|---|
+| solo su `main` | `voce47_revoca_get_assessment_token_da_anon` · `voce47_revoca_famiglia_pin_da_anon` |
+| solo su `test-preview` | `pmo_get_records_admin_page_stable_order` · `togli_le_tre_policy_decorative_anon` · `chiudi_policy_anonime_feedback_post_partita_test` · `voce60_circoli_esterni_tabella` · `voce60_alias_max_padel` · `voce60_marco_polo_fuori` |
+| file presenti su entrambi ma **diversi dentro** | **nessuno** |
+
+⇒ È presenza/assenza, non drift di contenuto. `guard-worker-sync` non le guarda, e questo pezzo da
+solo non giustificherebbe una guardia.
+
+### ② 🚨 IL REGISTRO E LA CARTELLA SONO DUE LISTE DIVERSE, ed è la misura vera
+
+| | file in git | applicate sul database | in comune (per nome) |
+|---|---|---|---|
+| `main` → PROD `qqbf…` | **49** | **46** | **30** |
+| `test-preview` → TEST `cudi…` | **53** | **49** | — |
+
+Su `main` ci sono **19** nomi che nel registro di PROD non compaiono, e **16** migrazioni applicate
+a PROD **senza un file** che le porti. Buona parte è storia — il registro di PROD comincia il
+7/05/2026 e prima si passava dall'editor SQL o da `supabase/manual-sql/` — ma il punto resta: *la
+cartella non è l'elenco di ciò che è stato applicato, e non lo è mai stata.*
+
+🚨⭐⭐ **E LA SONDA OVVIA MENTE, in tutt'e due i versi.** Chiedendo al registro le **versioni** dei due
+file `voce47_*` la risposta è **«nessuna applicata su PROD»**; chiedendo gli stessi due per **nome**
+la risposta è **«applicate tutte e due»** — versioni `20260816111339` e `20260816112912`, mentre i
+file si chiamano `…113000` e `…115500`. ⇒ Applicando via MCP la versione **nasce nell'istante
+dell'applicazione**, non dal nome del file, ed è lo stesso fatto già pagato dalla voce 109 (*la data
+del commit non è la data dell'applicazione*) visto dall'altro lato. 📌 *Un confronto fra cartella e
+registro si fa sui NOMI; le versioni non sono la stessa grandezza sulle due liste.*
+⚠️ E nemmeno i nomi bastano da soli: sul ramo c'è `ai_propose_lexicon_cron`, nel registro
+`ai_propose_lexicon_dispatcher` — stessa cosa, due nomi. Una guardia meccanica qui sarebbe rumorosa,
+ed è la ragione per cui **non** se ne propone una.
+
+### ③ ✅ La domanda che conta — «c'è un buco?» — e la risposta è NO, misurata
+
+Le due migrazioni che stanno **solo** su `main` sono **revoche di sicurezza** (`REVOKE EXECUTE …
+FROM anon, PUBLIC` sulla famiglia col PIN e su `get_assessment_token`). Sembrava che TEST — che ha
+gli **stessi soci veri** — ne fosse scoperto. Non lo è:
+
+· su TEST le firme col PIN risultano **già revocate** ad `anon` (`has_function_privilege` = `false`),
+  identiche a PROD, benché **nessuna** delle 49 migrazioni di TEST lo faccia;
+· `get_assessment_token(text)` su TEST **non esiste proprio** ⇒ non c'è niente da revocare, e
+  l'assenza di quella migrazione da `test-preview` è **giusta**, non una dimenticanza;
+· le firme **senza** PIN restano eseguibili da `anon` su entrambi, ed è voluto: si chiudono dentro,
+  su `pmo_current_staff_profile()`.
+
+⚠️ **Una differenza vera c'è, ed è latente**: PROD concede ad `anon` **più permessi di tabella** di
+TEST — `SELECT`+`INSERT`+`UPDATE` su `self_assessments` e su `assessment_tokens`, contro il solo
+`SELECT` (su `assessment_tokens`) e nessun `SELECT` (su `self_assessments`) di TEST.
+✅ **Ma la porta è chiusa lo stesso, e non è dedotto**: RLS è **accesa** su entrambe le tabelle con
+**zero policy**, e la prova è stata fatta col ruolo `anon` vero, dall'esterno —
+`GET /rest/v1/self_assessments` e `/assessment_tokens` su PROD tornano **HTTP 200 con `[]`**.
+🚨 ⇒ Quei permessi sono **una chiave per una porta chiusa a chiave**: oggi non aprono niente, e il
+giorno in cui qualcuno scrivesse una `create policy … using (true)` aprirebbero **PROD e non TEST**.
+È il motivo per cui vanno scritti qui invece che archiviati come «tutto a posto».
+
+📌 **Verdetto: non è una voce.** È disallineamento di contabilità, non di comportamento: i due
+database fanno la stessa cosa dove conta, e l'unico residuo è una concessione inerte su PROD.
+
+---
+
 ## Come si rifà la misura
 
 ```sql
