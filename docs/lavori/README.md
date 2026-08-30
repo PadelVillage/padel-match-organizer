@@ -2051,6 +2051,37 @@ dice 1 → tolta, 0.
   forma della **65**: *curata e in servizio, si aspetta il caso.* Si chiude al primo salvataggio di
   scheda socio su PROD che non lasci nessun avviso — e quello arriva da sé, senza provocarlo.
 
+🆕📏 **64ª sessione (30/08 sera) — IL CASO CHE CHIUDE LA VOCE POTREBBE ESSERE GIÀ PASSATO, E
+NESSUNO HA GUARDATO LO SCHERMO.**
+
+📏 **Misurato su PROD, dal deploy della v6.257** (#1186, fuso il 29/08 alle 21:09; conteggio da
+21:15 per lasciare fuori la finestra del deploy):
+
+| | |
+|---|---|
+| spinte `cloud_records_upsert` | **12** |
+| di cui **a vuoto** (`count: 0`) | **0** |
+| salvataggi veri di scheda socio (`payload.updatedAt` di mano umana) | **1** |
+
+⇒ Il salvataggio è quello del socio `d7c6d389-…` — **la stessa riga viva della prova della voce
+105** — spinto due volte di fila (audit `13:49:34` e `13:50:03`, **`count: 1` tutt'e due**), con la
+riga atterrata nel cloud **1,7 secondi** dopo il gesto.
+🎯 **Cioè: un gesto vero della segreteria, sull'app vera di PROD, con la cura in servizio, è già
+passato — e ha scritto.** Quello che manca alla chiusura non è più il **caso**: è l'unica metà che
+dal cloud non si vede, cioè **se il suo schermo ha mostrato o no l'avviso giallo**. La traccia vive
+nel `localStorage` di *quel* browser, e la console remota parte sempre pulita (limite già dichiarato
+in `CLAUDE.md`).
+⇒ 🗣️ **Serve una domanda a lui, ed è di dieci secondi**: *riaprendo il gestionale su PROD, compare
+un avviso di salvataggi non saliti?* **No** ⇒ la voce si chiude a prova fisica. **Sì** ⇒ non è la
+chiusura, è un difetto nuovo, e va guardato subito.
+⏳ Finché quella risposta non c'è, la voce **resta aperta**.
+
+⚖️ **E il «0 su 12» NON assolve le 67 spinte a vuoto** — il passaggio della 63ª lo diceva su 11 e
+regge identico su 12: col ritmo di prima (**una su sei**), dodici spinte di fila senza zeri capitano
+per caso circa **una volta su nove** (`(5/6)¹² ≈ 0,11`). ⇒ Campione corto, non assoluzione. E il 30/08
+è **domenica**: cinque spinte in tutta la giornata, l'ultima alle 16:36 — il campione cresce piano
+perché è la segreteria a farlo crescere, non noi.
+
 🆕🔎 **60ª sessione — LE DUE PISTE SULLE 67 SPINTE A VUOTO SONO CADUTE TUTTE E DUE, e al loro posto
 c'è una diagnostica.**
 
@@ -2197,6 +2228,43 @@ ogni **20 s** (`PERIODO_CIRCOLO_MS`) e il giro dell'accensione parte **60 s** do
 20 secondi **e** i due giri finire a meno di un secondo l'uno dall'altro. Il bot si riavvia da sé
 **64+ volte**: l'occasione arriva, e chi la deve guardare è **la sessione nel registro**, non lui sul
 telefono.
+
+🆕📏 **64ª sessione (30/08 sera) — la finestra del riavvio delle 17:01 è stata GUARDATA, ed era
+VUOTA.** Il passaggio della 63ª la segnalava come occasione non controllata; controllata adesso, col
+registro del bot dei soci (`stato-bot.yml`, sola lettura, 4000 righe):
+
+```
+30/08 17:01:12  🤖 bot @loziocoach_bot avviato
+30/08 17:01:33  🔔 fatti del circolo ACCESI (ogni 20 s): 0 ritirati ora, 0 detti
+```
+
+⇒ Il giro dell'accensione **non ha ritirato niente**, quindi non c'era niente da sdoppiare: la
+finestra si è aperta e chiusa a vuoto. Stesso esito sui due riavvii precedenti (29/08 16:09 e
+22:58, **entrambi `0 ritirati ora, 0 detti`**), e in tutto il registro **zero** righe
+`gia_presi_da_un_altro_giro`.
+⚖️ **Quello zero NON è un passo avanti, ed è la scheda stessa a dirlo**: è il silenzio verde che
+vuol dire *«non è ancora capitata l'occasione di sbagliare»*. La voce resta **aperta e invariata**.
+📌 Si scrive lo stesso, perché *una finestra guardata e trovata vuota è un dato; una finestra non
+guardata è un buco* — e la 63ª aveva lasciato un buco, non un dato.
+
+🩹⚠️ **E UN 502 SU `consumer-staff-events` NON È QUESTA VOCE — misurato, perché la prossima sessione
+lo leggerà come tale.** Nel registro del bot, `30/08 10:48:32 🔔 circolo: 0 ritirati … problemi:
+eventi staff: Risposta non JSON da consumer-staff-events (HTTP 502)`.
+📏 **Cos'era, letto nei log della piattaforma su PROD** (`function_edge_logs`, finestra 24 h):
+**1 sola** risposta 502 su **4125** chiamate (0,02 %), alle 08:48:32.231 UTC — e la riga che la
+spiega è il tempo: **6 ms**, contro i 130-400 ms di tutte le altre. A 08:48:32.020, cioè **211 ms
+prima**, l'isolate della funzione aveva scritto `shutdown` senza un `booted` dopo.
+⇒ La richiesta è atterrata su un isolate che si stava spegnendo: **la funzione non è mai partita** —
+nessuna riga `eventi_staff` per quel giro — quindi **non ha letto e non ha chiuso nessun fatto**. Il
+bot ha registrato `0 ritirati` e ha ribussato 20 secondi dopo.
+⚖️ È il rovescio esatto della 92: quella è una coda **letta due volte**, questo è un giro **mai
+cominciato**. Fallisce **chiuso**, non perde niente, e non ha bisogno di cura.
+🚨 **Il tranello da cui è passata questa misura**, e vale più del 502: nelle stesse 24 ore ci sono
+**altri 9** 502 su PROD (`matchpoint-bookings-edit` ×6, `matchpoint-payments-sync` ×3), tutti
+concentrati fra le **21:39 e le 21:49 del 29/08** — che non è un guasto, è la **prova provocata
+della voce 106**, le quattro chiusure del cancello del worker. Contarli insieme al 502 delle 10:48
+avrebbe dato *«dieci 502 in un giorno»*, cioè un allarme costruito sommando un incidente vero e un
+esperimento nostro. 📌 *Prima di contare degli errori si guarda se qualcuno li ha causati apposta.*
 
 ### **84** — 🚨🚨 Il test di livello: l'esito arriva DOPO 11 MINUTI, e il livello non si scrive MAI
 
