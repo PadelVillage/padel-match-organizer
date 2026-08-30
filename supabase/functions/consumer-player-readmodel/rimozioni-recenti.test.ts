@@ -134,3 +134,36 @@ test('🚨⭐⭐ IL CASO DELLA 80: l\'ospite tolto sparisce PRIMA che passi il s
     'corregge un dato che il circolo ha già aggiornato',
   );
 });
+
+// ── ⑥ L'OROLOGIO GIUSTO — il difetto che solo la prova fisica ha visto ────────────────
+
+import { istanteDelCircolo } from './rimozioni-recenti.ts';
+import { copiaNostra } from './compagni-slot.ts';
+
+test('🚨⭐⭐ IL CASO VERO DEL 30/08: la copia NOSTRA non fa da orologio del circolo', () => {
+  // 📏 Le tre righe come stavano davvero quando la prova è fallita. La copia nostra è scritta
+  // dalla STESSA operazione che produce la rimozione, sempre un istante dopo ⇒ usando il
+  // massimo di tutte le righe la cura non avrebbe morso MAI.
+  const righe = [
+    { record_type: 'booking',       synced_at: '2026-08-30T21:10:04.952Z' },
+    { record_type: 'staff_booking', synced_at: '2026-08-30T21:12:14.778Z' },
+  ];
+  const rimozione = '2026-08-30T21:12:12.831Z';
+
+  const circolo = istanteDelCircolo(righe, copiaNostra);
+  assert.equal(circolo, '2026-08-30T21:10:04.952Z', 'ha preso l\'istante della copia nostra');
+  assert.ok(rimozione > (circolo as string), 'la rimozione deve risultare PIÙ RECENTE del circolo');
+
+  // ⚖️ E il controllo del metro: col massimo di TUTTE le righe il caso torna a fallire.
+  const tutte = righe.map((r) => r.synced_at).sort().at(-1) as string;
+  assert.ok(rimozione < tutte, 'il metro sbagliato non produce più il difetto: il caso non prova niente');
+});
+
+test('senza nessuna riga del circolo l\'istante è null — e allora non si toglie nessuno', () => {
+  const soloNostre = [{ record_type: 'staff_booking', synced_at: '2026-08-30T21:12:14.778Z' }];
+  assert.equal(istanteDelCircolo(soloNostre, copiaNostra), null);
+  // ⇒ `rimossiDopoIlSync` con null torna [], che è il fallire chiuso già provato sopra.
+  assert.deepEqual(rimossiDopoIlSync(
+    [{ slot: SLOT, nome: 'Ospite', quando: DOPO }], SLOT, istanteDelCircolo(soloNostre, copiaNostra),
+  ), []);
+});
