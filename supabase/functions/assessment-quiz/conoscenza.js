@@ -1322,7 +1322,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Qualunque parte, anche il bordo',
       'Solo la parte piatta, mai i bordi',
       'Serve il centro, o è fallo',
-      'La parte piatta e il manico'], correct:0 },
+      'Solo la parte piatta e il manico'], correct:0 },
     { id:'P-T13', fascia:'Principiante', trap:true, verso:'afferma', q:'È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?', opts:[
       'Sì: 88 al centro, 92 ai pali',
       'No: è alta uguale dappertutto',
