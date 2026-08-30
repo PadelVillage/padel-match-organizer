@@ -52,19 +52,20 @@ function esigi(condizione, messaggio) { if (!condizione) throw new Error(messagg
 
 // Le domande, lette dal sorgente vero — non da una copia.
 const domande = [...BANCA.slice(BANCA.indexOf('questions: [')).matchAll(
-  /\{ id:'([^']+)'.*?trap:(true|false),\s*q:'((?:[^'\\]|\\.)*)',\s*opts:\s*\[(.*?)\],\s*correct:\s*(\d+)\s*\}/gs
+  /\{ id:'([^']+)'.*?trap:(true|false),(?:\s*verso:'([a-z]+)',)?\s*q:'((?:[^'\\]|\\.)*)',\s*opts:\s*\[(.*?)\],\s*correct:\s*(\d+)\s*\}/gs
 )].map((m) => ({
   id: m[1],
   trap: m[2] === 'true',
-  domanda: m[3].replace(/\\'/g, "'"),
-  opzioni: [...m[4].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map((o) => o[1].replace(/\\'/g, "'")),
-  corretta: Number(m[5]),
+  verso: m[3] || '',
+  domanda: m[4].replace(/\\'/g, "'"),
+  opzioni: [...m[5].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map((o) => o[1].replace(/\\'/g, "'")),
+  corretta: Number(m[6]),
 }));
 
 caso('0. la banca si legge, ed è tutta lì', () => {
-  esigi(domande.length === 192, `domande lette: ${domande.length}, attese 192`);   // 🔄 27/08: +12 trabocchetto alla rovescia
+  esigi(domande.length === 219, `domande lette: ${domande.length}, attese 219`);   // 🔄 30/08: +27 trabocchetto che AFFERMANO (bilanciamento della banca)
   const opzioni = domande.reduce((n, d) => n + d.opzioni.length, 0);
-  esigi(opzioni === 768, `opzioni lette: ${opzioni}, attese 720`);
+  esigi(opzioni === 876, `opzioni lette: ${opzioni}, attese 876`);
 });
 
 caso('1. 🚨 OGNI opzione entra in un bottone, intera', () => {
@@ -100,31 +101,38 @@ caso('5. 🚨 nessuna opzione è rimasta vuota o ridotta a un moncone', () => {
   esigi(corte.length === 0, corte.join(', '));
 });
 
-caso('6. 🚨 le TRAPPOLE non perdono la loro negazione accorciando', () => {
-  /* Il cancello sta in piedi su questo: la trappola descrive una regola inventata, e la
-     risposta giusta è quella che la nega. Accorciando, la negazione è la prima cosa che si
-     perde — resterebbe una domanda a quattro risposte plausibili, cioè un tiro di dado.
-     ⚠️ E questa guardia NON pretende che ogni trappola dica «non esiste», perché **tre non lo
-     dicono e vanno bene così**: P-T9 e I-T7 contraddicono con «No:» / «Sì,», B-T9 con una
-     restrizione («Solo a inizio set»). Pretenderlo le boccerebbe tutte e tre, e chi le facesse
-     tornare verdi riscriverebbe risposte giuste per compiacere una prova.
-     ⇒ Si pinza il CONTO: 42 su 45. Se un'accorciatura ne fa sparire una, il conto scende e
-     questa riga diventa rossa nominando la domanda. Se un domani se ne aggiunge una senza
-     negazione, il numero si alza **a mano** — cioè qualcuno ci guarda.
-     📌 *Una proprietà che ha eccezioni legittime non si prova con un obbligo: si prova con un
-     conto, perché un conto si può abbassare solo per sbaglio.* */
-  const NEGA = /non esiste|mai(:| )|nessun/i;
+caso('6. 🚨⭐⭐ ogni TRAPPOLA dichiara il suo verso, e la risposta giusta ha quella forma', () => {
+  /* 🔄 30/08/2026 — QUESTA GUARDIA HA SOSTITUITO UN CONTEGGIO, e la riga vecchia si corregge
+     invece di affiancarsi. Prima diceva: «almeno 42 trappole su 57 negano ancora», con quindici
+     eccezioni legittime che nessuno poteva distinguere dagli errori. Era un conto, e un conto
+     dice solo che il totale torna.
+
+     ⚖️ Adesso ogni trappola DICHIARA il suo verso (`nega` / `afferma`) e la guardia controlla
+     che la forma della risposta giusta corrisponda alla dichiarazione. È più forte in tutte e
+     due le direzioni: prende la trappola che perde la negazione accorciando (era il difetto
+     originale) E la trappola marcata male, che il conteggio non poteva vedere.
+
+     🚨 PERCHÉ IL VERSO ESISTE: dei 57 trabocchetto di prima, 44 si passavano NEGANDO — chi
+     rispondeva «non esiste» a tutti e tre e sapeva le due domande normali passava il quiz nel
+     76-96% dei casi secondo la fascia, contro il 50% di chi tirava a caso. La cura è il
+     bilanciamento della banca, e senza un campo esplicito il bilanciamento non è controllabile:
+     lo si dovrebbe dedurre dal testo a ogni giro, cioè indovinare.
+
+     📌 *Una proprietà che si deduce dal testo si può solo stimare; una dichiarata si può
+     verificare — e una dichiarazione che nessuno verifica è una promessa.* */
+  const NEGA = /(^|[^a-zà-ù])(non|no|mai|nessun\w*)([^a-zà-ù]|$)/i;
   const trappole = domande.filter((d) => d.trap);
-  /* 🔄 27/08 — le eccezioni legittime sono salite da 3 a 15: le 12 trabocchetto ALLA ROVESCIA
-     (B/I/A/AG-T10..T12) negano di proposito nell'opzione SBAGLIATA — sono regole vere che
-     sembrano inventate, nate per rompere il segnale \u00abse c'\u00e8 Non esiste, \u00e8 quella\u00bb. Il conto
-     delle neganti resta \u2265 42: sono le stesse di prima, e se un'accorciatura ne mangia una il
-     numero scende lo stesso. */
-  esigi(trappole.length === 57, `trappole: ${trappole.length}, attese 57`);
-  const conNegazione = trappole.filter((d) => NEGA.test(d.opzioni[d.corretta]));
-  esigi(conNegazione.length >= 42,
-    `solo ${conNegazione.length} trappole su ${trappole.length} negano ancora: qualcuna ha perso la negazione accorciando —\n     ` +
-    trappole.filter((d) => !NEGA.test(d.opzioni[d.corretta])).map((d) => `${d.id}: «${d.opzioni[d.corretta]}»`).join('\n     '));
+  esigi(trappole.length === 84, `trappole: ${trappole.length}, attese 84`);
+
+  const senzaVerso = trappole.filter((d) => d.verso !== 'nega' && d.verso !== 'afferma');
+  esigi(senzaVerso.length === 0,
+    `trappole senza un verso valido: ${senzaVerso.map((d) => `${d.id} («${d.verso}»)`).join(', ')}`);
+
+  const storte = trappole.filter((d) => NEGA.test(d.opzioni[d.corretta]) !== (d.verso === 'nega'));
+  esigi(storte.length === 0,
+    `${storte.length} trappole in cui il verso dichiarato e la forma della risposta giusta non ` +
+    `combaciano — o la negazione si è persa accorciando, o il verso è marcato male:\n     ` +
+    storte.map((d) => `${d.id} [${d.verso}]: «${d.opzioni[d.corretta]}»`).join('\n     '));
 });
 
 caso('7. 🚨 CABLAGGIO: anche le OTTO domande della scheda entrano nel bottone', () => {

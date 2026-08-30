@@ -169,12 +169,12 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'A tempo: vince chi è avanti',
       'A punti fino a 21',
       'Come nel tennis: 15, 30, 40, gioco'], correct:3 },
-    { id:'P-T1', fascia:'Principiante', trap:true,  q:'Quando si applica la regola del «doppio rimbalzo difensivo», che concede due rimbalzi a terra a chi difende?', opts:[
+    { id:'P-T1', fascia:'Principiante', trap:true, verso:'nega',  q:'Quando si applica la regola del «doppio rimbalzo difensivo», che concede due rimbalzi a terra a chi difende?', opts:[
       'Solo sul punteggio di 40-40',
       'Non esiste: un solo rimbalzo',
       'Se si è sotto di due giochi',
       'Solo sulla risposta al servizio'], correct:1 },
-    { id:'P-T2', fascia:'Principiante', trap:true,  q:'In quale situazione l\'arbitro fischia il «fallo di vetro incrociato»?', opts:[
+    { id:'P-T2', fascia:'Principiante', trap:true, verso:'nega',  q:'In quale situazione l\'arbitro fischia il «fallo di vetro incrociato»?', opts:[
       'Se tocca due vetri di seguito',
       'Se torna nel campo di chi ha colpito',
       'Non esiste un fallo con questo nome',
@@ -201,12 +201,12 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Due, come nel tennis',
       'Tre',
       'Due, ma solo nel primo gioco'], correct:1 },
-    { id:'B-T1', fascia:'Base', trap:true,  q:'Quando è consentito il «servizio a cucchiaio doppio», che permette di far rimbalzare la palla due volte prima di batterla?', opts:[
+    { id:'B-T1', fascia:'Base', trap:true, verso:'nega',  q:'Quando è consentito il «servizio a cucchiaio doppio», che permette di far rimbalzare la palla due volte prima di batterla?', opts:[
       'Solo in doppio misto',
       'Dopo un primo servizio fallito',
       'Mai: non esiste questo servizio',
       'Nei tornei, se sono d\'accordo'], correct:2 },
-    { id:'B-T2', fascia:'Base', trap:true,  q:'Dopo aver vinto un punto con lo smash, la coppia deve cambiare lato di ricezione. Quando vale questa regola?', opts:[
+    { id:'B-T2', fascia:'Base', trap:true, verso:'nega',  q:'Dopo aver vinto un punto con lo smash, la coppia deve cambiare lato di ricezione. Quando vale questa regola?', opts:[
       'Sempre, in ogni categoria',
       'Solo nei tornei federali',
       'Solo nel set decisivo',
@@ -233,12 +233,12 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Uno alla volta, l\'altro copre',
       'Solo dopo aver vinto lo scambio',
       'Insieme, dopo un colpo che dà tempo'], correct:3 },
-    { id:'I-T1', fascia:'Intermedio', trap:true,  q:'A cosa serve la «vibora a doppio taglio inverso»?', opts:[
+    { id:'I-T1', fascia:'Intermedio', trap:true, verso:'nega',  q:'A cosa serve la «vibora a doppio taglio inverso»?', opts:[
       'A far tornare la palla indietro',
       'A servire con effetto contrario',
       'Non esiste un colpo con questo nome',
       'A difendere sul vetro laterale'], correct:2 },
-    { id:'I-T2', fascia:'Intermedio', trap:true,  q:'Cosa stabilisce la «regola dei tre vetri», sul numero di pareti che la palla può toccare nel proprio campo?', opts:[
+    { id:'I-T2', fascia:'Intermedio', trap:true, verso:'nega',  q:'Cosa stabilisce la «regola dei tre vetri», sul numero di pareti che la palla può toccare nel proprio campo?', opts:[
       'Che se ne toccano al massimo tre',
       'Che dopo tre vetri si rigioca',
       'Che valgono solo nei campi coperti',
@@ -265,12 +265,12 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Rimbalzare e ripartire da fondo',
       'Cambiare lato a ogni pallonetto',
       'Alternare bandeja e vibora'], correct:3 },
-    { id:'A-T1', fascia:'Avanzato', trap:true,  q:'In quale situazione si usa il «cambio de pared australiano»?', opts:[
+    { id:'A-T1', fascia:'Avanzato', trap:true, verso:'nega',  q:'In quale situazione si usa il «cambio de pared australiano»?', opts:[
       'Quando si difende sul vetro laterale',
       'Non esiste un colpo con questo nome',
       'Quando si risponde a una vibora',
       'Quando si attacca sul doppio vetro'], correct:1 },
-    { id:'A-T2', fascia:'Avanzato', trap:true,  q:'Come si esegue la «sotana in sospensione»?', opts:[
+    { id:'A-T2', fascia:'Avanzato', trap:true, verso:'nega',  q:'Come si esegue la «sotana in sospensione»?', opts:[
       'Saltando e colpendo sotto la vita',
       'Dopo due rimbalzi sul vetro',
       'Con la racchetta rovesciata',
@@ -297,12 +297,12 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'È fallo di servizio',
       'Punto diretto di chi serve',
       'Si ripete, come il nastro a tennis'], correct:1 },
-    { id:'AG-T1', fascia:'Agonista', trap:true,  q:'Quando si parla di smash «x5»?', opts:[
+    { id:'AG-T1', fascia:'Agonista', trap:true, verso:'nega',  q:'Quando si parla di smash «x5»?', opts:[
       'Se la palla esce oltre la tribuna',
       'Se rimbalza cinque metri fuori',
       'Non esiste: si parla di x3 e x4',
       'Se chiude il punto al quinto colpo'], correct:2 },
-    { id:'AG-T2', fascia:'Agonista', trap:true,  q:'Cosa prevede la regola del «punto d\'oro obbligatorio dopo tre vantaggi»?', opts:[
+    { id:'AG-T2', fascia:'Agonista', trap:true, verso:'nega',  q:'Cosa prevede la regola del «punto d\'oro obbligatorio dopo tre vantaggi»?', opts:[
       'Il gioco va a chi serve',
       'Si gioca un punto secco',
       'Che vale solo nei tornei federali',
@@ -342,7 +342,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Due',
       'Nessuna: va giocata al volo',
       'Due, se la seconda è dopo il vetro'], correct:0 },
-    { id:'B-T3', fascia:'Base', trap:true,  q:'Quando è obbligatorio il «doppio servizio incrociato»?', opts:[
+    { id:'B-T3', fascia:'Base', trap:true, verso:'nega',  q:'Quando è obbligatorio il «doppio servizio incrociato»?', opts:[
       'Nel primo game di ogni set',
       'Quando si gioca il punto d\'oro',
       'Non esiste questo servizio',
@@ -369,7 +369,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Sì, se non rimbalza due volte',
       'Solo se la tocca sopra la metà',
       'Sì, ma vale mezzo punto'], correct:1 },
-    { id:'I-T3', fascia:'Intermedio', trap:true,  q:'Quando si usa il «rimbalzo assistito di parete»?', opts:[
+    { id:'I-T3', fascia:'Intermedio', trap:true, verso:'nega',  q:'Quando si usa il «rimbalzo assistito di parete»?', opts:[
       'Per difendere gli smash profondi',
       'Se la palla resta incastrata',
       'Non esiste questa regola',
@@ -396,7 +396,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Punto loro: doveva rimbalzare',
       'Punto mio, se è il vetro di fondo',
       'Si rigioca il punto'], correct:1 },
-    { id:'A-T3', fascia:'Avanzato', trap:true,  q:'In quale situazione si concede il «recupero di parete doppia»?', opts:[
+    { id:'A-T3', fascia:'Avanzato', trap:true, verso:'nega',  q:'In quale situazione si concede il «recupero di parete doppia»?', opts:[
       'Se tocca due pareti prima del suolo',
       'Se il campo ha tre lati in vetro',
       'Solo in difesa, dopo uno smash x4',
@@ -423,7 +423,7 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Ogni 6 punti',
       'Solo a metà, sul 6-6',
       'Non si cambia campo nel tie-break'], correct:1 },
-    { id:'AG-T3', fascia:'Agonista', trap:true,  q:'Quando si applica la «regola del doppio rimbalzo consentito in difesa»?', opts:[
+    { id:'AG-T3', fascia:'Agonista', trap:true, verso:'nega',  q:'Quando si applica la «regola del doppio rimbalzo consentito in difesa»?', opts:[
       'Se la palla arriva da uno smash x4',
       'Quando il campo è bagnato',
       'Solo nel padel indoor',
@@ -594,37 +594,37 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Punto nostro'], correct:0 },
 
     // ── Principiante · trappole — dove l'intuito del tennis porta fuori strada ──────
-    { id:'P-T3', fascia:'Principiante', trap:true,  q:'Quando si applica la «regola dei due tocchi», che permette ai due compagni di passarsi la palla prima di rimandarla?', opts:[
+    { id:'P-T3', fascia:'Principiante', trap:true, verso:'nega',  q:'Quando si applica la «regola dei due tocchi», che permette ai due compagni di passarsi la palla prima di rimandarla?', opts:[
       'Solo in difesa',
       'Non esiste: un solo tocco',
       'Solo dopo un pallonetto',
       'Nei primi due game della partita'], correct:1 },
-    { id:'P-T4', fascia:'Principiante', trap:true,  q:'Quando è concesso il servizio colpito sopra la testa, come nel tennis?', opts:[
+    { id:'P-T4', fascia:'Principiante', trap:true, verso:'nega',  q:'Quando è concesso il servizio colpito sopra la testa, come nel tennis?', opts:[
       'Sul secondo servizio',
       'Mai: si serve sotto la vita',
       'Quando si è sotto nel punteggio',
       'Solo nei tornei'], correct:1 },
-    { id:'P-T5', fascia:'Principiante', trap:true,  q:'Quando viene concesso il «rimbalzo di cortesia», cioè un rimbalzo in più a chi riceve?', opts:[
+    { id:'P-T5', fascia:'Principiante', trap:true, verso:'nega',  q:'Quando viene concesso il «rimbalzo di cortesia», cioè un rimbalzo in più a chi riceve?', opts:[
       'Nel primo game della partita',
       'Non esiste: nessun rimbalzo in più',
       'Quando il servizio tocca il nastro',
       'Dopo ogni cambio campo'], correct:1 },
-    { id:'P-T6', fascia:'Principiante', trap:true,  q:'Che cos\'è il «punto di vetro»?', opts:[
+    { id:'P-T6', fascia:'Principiante', trap:true, verso:'nega',  q:'Che cos\'è il «punto di vetro»?', opts:[
       'Un punto che vale doppio',
       'Non esiste: valgono tutti uguale',
       'Il punto che chiude il set',
       'Il punto rigiocato col vetro bagnato'], correct:1 },
-    { id:'P-T7', fascia:'Principiante', trap:true,  q:'In quale caso si può giocare la palla con la mano libera?', opts:[
+    { id:'P-T7', fascia:'Principiante', trap:true, verso:'nega',  q:'In quale caso si può giocare la palla con la mano libera?', opts:[
       'Una volta per game',
       'Mai: si gioca solo con la racchetta',
       'Solo per fermare la palla',
       'Quando si è caduti a terra'], correct:1 },
-    { id:'P-T8', fascia:'Principiante', trap:true,  q:'Quando si applica il «cambio di coppia», la regola che a metà set fa scambiare un giocatore con un avversario?', opts:[
+    { id:'P-T8', fascia:'Principiante', trap:true, verso:'nega',  q:'Quando si applica il «cambio di coppia», la regola che a metà set fa scambiare un giocatore con un avversario?', opts:[
       'Solo negli allenamenti',
       'Non esiste: le coppie non cambiano',
       'Sul 3-3',
       'Lo decide chi ha prenotato il campo'], correct:1 },
-    { id:'P-T9', fascia:'Principiante', trap:true,  q:'Un avversario schiaccia, la palla rimbalza nel mio campo e vola fuori sopra le pareti. Il punto è finito?', opts:[
+    { id:'P-T9', fascia:'Principiante', trap:true, verso:'nega',  q:'Un avversario schiaccia, la palla rimbalza nel mio campo e vola fuori sopra le pareti. Il punto è finito?', opts:[
       'Sì: appena esce il punto è chiuso',
       'No: si può uscire e rimandarla',
       'No, se non tocco terra fuori',
@@ -742,32 +742,32 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Punto degli avversari'], correct:1 },
 
     // ── Base · trappole ─────────────────────────────────────────────────────────────
-    { id:'B-T4', fascia:'Base', trap:true,  q:'Quando si applica la «regola del vetro amico», che permette di far rimbalzare la palla sul proprio vetro prima di rimandarla di là?', opts:[
+    { id:'B-T4', fascia:'Base', trap:true, verso:'nega',  q:'Quando si applica la «regola del vetro amico», che permette di far rimbalzare la palla sul proprio vetro prima di rimandarla di là?', opts:[
       'Solo quando si è in difesa',
       'Non esiste: deve passare la rete',
       'Solo dopo un pallonetto avversario',
       'Sul punteggio di 40-40'], correct:1 },
-    { id:'B-T5', fascia:'Base', trap:true,  q:'Che cos\'è la «zona morta», l\'area del campo in cui la palla non può rimbalzare?', opts:[
+    { id:'B-T5', fascia:'Base', trap:true, verso:'nega',  q:'Che cos\'è la «zona morta», l\'area del campo in cui la palla non può rimbalzare?', opts:[
       'Fra la rete e la linea di servizio',
       'Non esiste: si rimbalza dovunque',
       'La fascia vicino ai vetri laterali',
       'Esiste solo nei campi al coperto'], correct:1 },
-    { id:'B-T6', fascia:'Base', trap:true,  q:'Quando si applica il «cambio di servizio anticipato», che toglie il servizio a chi perde tre punti di fila?', opts:[
+    { id:'B-T6', fascia:'Base', trap:true, verso:'nega',  q:'Quando si applica il «cambio di servizio anticipato», che toglie il servizio a chi perde tre punti di fila?', opts:[
       'Solo nei tornei federali',
       'Non esiste: cambia a fine game',
       'Solo nel primo set',
       'Quando lo chiede chi riceve'], correct:1 },
-    { id:'B-T7', fascia:'Base', trap:true,  q:'Chi riceve il servizio dove si deve mettere?', opts:[
+    { id:'B-T7', fascia:'Base', trap:true, verso:'nega',  q:'Chi riceve il servizio dove si deve mettere?', opts:[
       'Dietro la linea, obbligatorio',
       'Dove vuole: nessuna regola',
       'In diagonale, obbligatorio',
       'Al centro del proprio campo'], correct:1 },
-    { id:'B-T8', fascia:'Base', trap:true,  q:'In quale caso si può chiedere la «palla di cortesia», cioè ripetere un punto perso per una distrazione?', opts:[
+    { id:'B-T8', fascia:'Base', trap:true, verso:'nega',  q:'In quale caso si può chiedere la «palla di cortesia», cioè ripetere un punto perso per una distrazione?', opts:[
       'Quando un giocatore scivola',
       'Non esiste: non si ripete',
       'Una volta per set',
       'Quando lo concede l\'avversario'], correct:1 },
-    { id:'B-T9', fascia:'Base', trap:true,  q:'Quando i due compagni possono scambiarsi il lato di ricezione (destra e sinistra)?', opts:[
+    { id:'B-T9', fascia:'Base', trap:true, verso:'afferma',  q:'Quando i due compagni possono scambiarsi il lato di ricezione (destra e sinistra)?', opts:[
       'A ogni cambio campo',
       'Solo a inizio set',
       'Alla fine di ogni game',
@@ -886,32 +886,32 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Una volta per game'], correct:1 },
 
     // ── Intermedio · trappole ───────────────────────────────────────────────────────
-    { id:'I-T4', fascia:'Intermedio', trap:true,  q:'Cosa stabilisce la «regola del muro cieco», che vieta di giocare la palla dopo il vetro di fondo?', opts:[
+    { id:'I-T4', fascia:'Intermedio', trap:true, verso:'nega',  q:'Cosa stabilisce la «regola del muro cieco», che vieta di giocare la palla dopo il vetro di fondo?', opts:[
       'Vale solo nei campi al coperto',
       'Non esiste: il vetro di fondo vale',
       'Vale solo sul servizio',
       'Vale quando si è sotto nel punteggio'], correct:1 },
-    { id:'I-T5', fascia:'Intermedio', trap:true,  q:'Quando è obbligatoria la «bandeja invertita» sul lato del rovescio?', opts:[
+    { id:'I-T5', fascia:'Intermedio', trap:true, verso:'nega',  q:'Quando è obbligatoria la «bandeja invertita» sul lato del rovescio?', opts:[
       'Su un pallonetto molto profondo',
       'Non esiste: nessun colpo è obbligato',
       'Nei tornei federali',
       'Difendendo in due al fondo'], correct:1 },
-    { id:'I-T6', fascia:'Intermedio', trap:true,  q:'Quando vale il «punto di transizione», che assegna mezzo punto alla coppia che conquista la rete?', opts:[
+    { id:'I-T6', fascia:'Intermedio', trap:true, verso:'nega',  q:'Quando vale il «punto di transizione», che assegna mezzo punto alla coppia che conquista la rete?', opts:[
       'A ogni cambio di posizione',
       'Non esiste: niente mezzi punti',
       'Solo nel tie-break',
       'Solo negli allenamenti'], correct:1 },
-    { id:'I-T7', fascia:'Intermedio', trap:true,  q:'Posso mandare la palla dall\'altra parte facendola passare FUORI dai pali della rete, di lato, invece che sopra?', opts:[
+    { id:'I-T7', fascia:'Intermedio', trap:true, verso:'afferma',  q:'Posso mandare la palla dall\'altra parte facendola passare FUORI dai pali della rete, di lato, invece che sopra?', opts:[
       'No: deve passare sopra la rete',
       'Sì, se atterra nel campo giusto',
       'Sì, ma solo quando si difende',
       'Solo nei tornei ufficiali'], correct:1 },
-    { id:'I-T8', fascia:'Intermedio', trap:true,  q:'Quando entra in gioco la «regola dell\'ultimo vetro», che chiude il punto se la palla tocca un vetro dopo aver toccato la griglia?', opts:[
+    { id:'I-T8', fascia:'Intermedio', trap:true, verso:'nega',  q:'Quando entra in gioco la «regola dell\'ultimo vetro», che chiude il punto se la palla tocca un vetro dopo aver toccato la griglia?', opts:[
       'Solo nel proprio campo',
       'Non esiste: l\'ordine non conta',
       'Solo nel campo avversario',
       'Solo sul servizio'], correct:1 },
-    { id:'I-T9', fascia:'Intermedio', trap:true,  q:'Cosa prevede la «regola del servizio lungo», che concede un servizio in più alla coppia che ha appena perso il game?', opts:[
+    { id:'I-T9', fascia:'Intermedio', trap:true, verso:'nega',  q:'Cosa prevede la «regola del servizio lungo», che concede un servizio in più alla coppia che ha appena perso il game?', opts:[
       'Vale dal secondo set in poi',
       'Non esiste: i servizi sono due',
       'Vale solo sul punteggio di parità',
@@ -1027,32 +1027,32 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Poter servire da più vicino'], correct:1 },
 
     // ── Avanzato · trappole ─────────────────────────────────────────────────────────
-    { id:'A-T4', fascia:'Avanzato', trap:true,  q:'Quando si esegue la «vibora rovesciata in caduta»?', opts:[
+    { id:'A-T4', fascia:'Avanzato', trap:true, verso:'nega',  q:'Quando si esegue la «vibora rovesciata in caduta»?', opts:[
       'Su un pallonetto molto profondo',
       'Non esiste questo colpo',
       'Quando si difende sul vetro laterale',
       'Solo nei tornei al coperto'], correct:1 },
-    { id:'A-T5', fascia:'Avanzato', trap:true,  q:'Quando è consentito il «doppio smash consecutivo», cioè smashare due volte la stessa palla quando torna dal vetro?', opts:[
+    { id:'A-T5', fascia:'Avanzato', trap:true, verso:'nega',  q:'Quando è consentito il «doppio smash consecutivo», cioè smashare due volte la stessa palla quando torna dal vetro?', opts:[
       'Se torna dal vetro di fondo',
       'Non esiste: un solo tocco',
       'Se non ha ancora rimbalzato',
       'Sul punteggio di parità'], correct:1 },
-    { id:'A-T6', fascia:'Avanzato', trap:true,  q:'Cosa prevede la «regola dell\'attacco obbligato», che impone di smashare una palla che arriva sopra il nastro?', opts:[
+    { id:'A-T6', fascia:'Avanzato', trap:true, verso:'nega',  q:'Cosa prevede la «regola dell\'attacco obbligato», che impone di smashare una palla che arriva sopra il nastro?', opts:[
       'Vale solo a rete',
       'Non esiste: nessun obbligo',
       'Vale solo nei tornei federali',
       'Vale dal secondo set in poi'], correct:1 },
-    { id:'A-T7', fascia:'Avanzato', trap:true,  q:'Che cos\'è la «cadena», il colpo che permette di legare due volée in un unico movimento?', opts:[
+    { id:'A-T7', fascia:'Avanzato', trap:true, verso:'nega',  q:'Che cos\'è la «cadena», il colpo che permette di legare due volée in un unico movimento?', opts:[
       'Una volée doppia a rete',
       'Non esiste: mai due tocchi',
       'Un colpo difensivo sul vetro',
       'Un servizio con doppio effetto'], correct:1 },
-    { id:'A-T8', fascia:'Avanzato', trap:true,  q:'Quando si applica il «recupero di rete», che consente di rigiocare un punto perso per un rimbalzo irregolare sul nastro?', opts:[
+    { id:'A-T8', fascia:'Avanzato', trap:true, verso:'nega',  q:'Quando si applica il «recupero di rete», che consente di rigiocare un punto perso per un rimbalzo irregolare sul nastro?', opts:[
       'Se la palla tocca il nastro',
       'Non esiste: il nastro non conta',
       'Solo sul primo servizio',
       'Una volta per set'], correct:1 },
-    { id:'A-T9', fascia:'Avanzato', trap:true,  q:'Quando è consentito battere il servizio avanzando, con un piede che supera la linea prima del colpo?', opts:[
+    { id:'A-T9', fascia:'Avanzato', trap:true, verso:'nega',  q:'Quando è consentito battere il servizio avanzando, con un piede che supera la linea prima del colpo?', opts:[
       'Sul secondo servizio',
       'Mai: i piedi restano dietro',
       'Servendo dal lato del rovescio',
@@ -1167,32 +1167,32 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Dipende dal torneo'], correct:1 },
 
     // ── Agonista · trappole ─────────────────────────────────────────────────────────
-    { id:'AG-T4', fascia:'Agonista', trap:true,  q:'Che cos\'è la «doble pared offensiva», il colpo che obbliga la palla a toccare due pareti avversarie?', opts:[
+    { id:'AG-T4', fascia:'Agonista', trap:true, verso:'nega',  q:'Che cos\'è la «doble pared offensiva», il colpo che obbliga la palla a toccare due pareti avversarie?', opts:[
       'Colpo d\'attacco sul vetro laterale',
       'Non esiste: nessun obbligo di pareti',
       'Una variante della vibora',
       'Un colpo consentito solo in difesa'], correct:1 },
-    { id:'AG-T5', fascia:'Agonista', trap:true,  q:'Cosa prevede la «regola del punto lungo», che assegna il punto dopo trenta colpi di scambio?', opts:[
+    { id:'AG-T5', fascia:'Agonista', trap:true, verso:'nega',  q:'Cosa prevede la «regola del punto lungo», che assegna il punto dopo trenta colpi di scambio?', opts:[
       'Vale solo nei tornei giovanili',
       'Non esiste: nessun limite di durata',
       'Vale dal terzo set',
       'La applica l\'arbitro'], correct:1 },
-    { id:'AG-T6', fascia:'Agonista', trap:true,  q:'Quando si può chiedere il «time-out tecnico di parete», per far controllare un vetro durante il punto?', opts:[
+    { id:'AG-T6', fascia:'Agonista', trap:true, verso:'nega',  q:'Quando si può chiedere il «time-out tecnico di parete», per far controllare un vetro durante il punto?', opts:[
       'Una volta per set',
       'Non esiste: nessun controllo',
       'Solo nei campi al coperto',
       'Quando lo concede l\'avversario'], correct:1 },
-    { id:'AG-T7', fascia:'Agonista', trap:true,  q:'Quando è obbligatorio giocare la «sotana»?', opts:[
+    { id:'AG-T7', fascia:'Agonista', trap:true, verso:'nega',  q:'Quando è obbligatorio giocare la «sotana»?', opts:[
       'Se arriva sotto il ginocchio',
       'Mai: nessun colpo è obbligatorio',
       'Nei tornei federali',
       'Difendendo in due al fondo'], correct:1 },
-    { id:'AG-T8', fascia:'Agonista', trap:true,  q:'Quando vale la «regola dei due smash», che vieta allo stesso giocatore due smash consecutivi nello stesso punto?', opts:[
+    { id:'AG-T8', fascia:'Agonista', trap:true, verso:'nega',  q:'Quando vale la «regola dei due smash», che vieta allo stesso giocatore due smash consecutivi nello stesso punto?', opts:[
       'Solo nei tornei federali',
       'Non esiste: nessun limite',
       'Vale dal secondo set',
       'Vale solo nel tie-break'], correct:1 },
-    { id:'AG-T9', fascia:'Agonista', trap:true,  q:'Cosa prevede la «regola del vantaggio di servizio», che assegna il game a chi vince tre punti di fila al servizio?', opts:[
+    { id:'AG-T9', fascia:'Agonista', trap:true, verso:'nega',  q:'Cosa prevede la «regola del vantaggio di servizio», che assegna il game a chi vince tre punti di fila al servizio?', opts:[
       'Vale solo sul punteggio di parità',
       'Non esiste: servono quattro punti',
       'Vale nei tornei con punto d\'oro',
@@ -1213,72 +1213,244 @@ export const ASSESS_KNOWLEDGE_BANK = {
        ⛔ Principiante non ne ha: quella fascia il quiz non lo pesca (regola del 9/08, intatta). */
 
     // ── Base, alla rovescia ─────────────────────────────────────────────────────────
-    { id:'B-T10', fascia:'Base', trap:true, q:'Si può colpire la palla contro il PROPRIO vetro per mandarla di là dalla rete?', opts:[
+    { id:'B-T10', fascia:'Base', trap:true, verso:'afferma', q:'Si può colpire la palla contro il PROPRIO vetro per mandarla di là dalla rete?', opts:[
       'Non esiste: vetro proprio vietato',
       'Sì: è la controparete',
       'Solo quando il punteggio è pari',
       'Solo in doppio femminile'], correct:1 },
-    { id:'B-T11', fascia:'Base', trap:true, q:'La palla, dopo il rimbalzo, esce dal campo: un giocatore può uscire dalla porta e rimandarla dentro?', opts:[
+    { id:'B-T11', fascia:'Base', trap:true, verso:'afferma', q:'La palla, dopo il rimbalzo, esce dal campo: un giocatore può uscire dalla porta e rimandarla dentro?', opts:[
       'Non esiste: fuori campo è persa',
       'Solo se non ha mai toccato terra',
       'Sì: il punto continua, è regolare',
       'Solo nei tornei federali'], correct:2 },
-    { id:'B-T12', fascia:'Base', trap:true, q:'Con lo smash la palla rimbalza nel campo avversario e poi vola FUORI dalla recinzione. Il punto?', opts:[
+    { id:'B-T12', fascia:'Base', trap:true, verso:'afferma', q:'Con lo smash la palla rimbalza nel campo avversario e poi vola FUORI dalla recinzione. Il punto?', opts:[
       'Si rigioca',
       'È degli avversari: palla uscita',
       'Non esiste una regola precisa',
       'È di chi ha smashato'], correct:3 },
 
     // ── Intermedio, alla rovescia ───────────────────────────────────────────────────
-    { id:'I-T10', fascia:'Intermedio', trap:true, q:'La «chiquita» è un colpo vero?', opts:[
+    { id:'I-T10', fascia:'Intermedio', trap:true, verso:'afferma', q:'La «chiquita» è un colpo vero?', opts:[
       'Non esiste: è un nome inventato',
       'Sì: colpo corto sui piedi, a rete',
       'È un altro nome del pallonetto',
       'Esiste solo tra i professionisti'], correct:1 },
-    { id:'I-T11', fascia:'Intermedio', trap:true, q:'Nel mio campo la palla rimbalza a terra e poi tocca DUE pareti. Posso ancora giocarla?', opts:[
+    { id:'I-T11', fascia:'Intermedio', trap:true, verso:'afferma', q:'Nel mio campo la palla rimbalza a terra e poi tocca DUE pareti. Posso ancora giocarla?', opts:[
       'Non esiste: dopo due pareti è morta',
       'Solo se la seconda è la griglia',
       'Sì: conta solo il rimbalzo a terra',
       'No: si rigioca il punto'], correct:2 },
-    { id:'I-T12', fascia:'Intermedio', trap:true, q:'Nel padel professionistico esiste il «punto d\'oro» sul 40-40?', opts:[
+    { id:'I-T12', fascia:'Intermedio', trap:true, verso:'afferma', q:'Nel padel professionistico esiste il «punto d\'oro» sul 40-40?', opts:[
       'Non esiste: sempre i vantaggi',
       'Esiste solo nel tie-break',
       'Esiste: un punto secco decide',
       'Esisteva, ma è stato abolito'], correct:2 },
 
     // ── Avanzato, alla rovescia ─────────────────────────────────────────────────────
-    { id:'A-T10', fascia:'Avanzato', trap:true, q:'Lo smash «x3» esiste?', opts:[
+    { id:'A-T10', fascia:'Avanzato', trap:true, verso:'afferma', q:'Lo smash «x3» esiste?', opts:[
       'Non esiste: si parla solo di x4',
       'Sì: esce sopra la parete laterale',
       'È un altro nome della vibora',
       'Solo dal centro del campo'], correct:1 },
-    { id:'A-T11', fascia:'Avanzato', trap:true, q:'Rientrando da FUORI campo dopo una salida, la palla può passare di fianco alla rete, più bassa del nastro?', opts:[
+    { id:'A-T11', fascia:'Avanzato', trap:true, verso:'afferma', q:'Rientrando da FUORI campo dopo una salida, la palla può passare di fianco alla rete, più bassa del nastro?', opts:[
       'Non esiste: sempre sopra la rete',
       'Solo se tocca il palo della rete',
       'Solo se l\'avversario è d\'accordo',
       'Sì: da fuori è una giocata valida'], correct:3 },
-    { id:'A-T12', fascia:'Avanzato', trap:true, q:'La «dormilona» è un colpo vero?', opts:[
+    { id:'A-T12', fascia:'Avanzato', trap:true, verso:'afferma', q:'La «dormilona» è un colpo vero?', opts:[
       'Non esiste: è un nome inventato',
       'Sì: uno smash smorzato, corto',
       'È il servizio sottomano',
       'È una posizione, non un colpo'], correct:1 },
 
     // ── Agonista, alla rovescia ─────────────────────────────────────────────────────
-    { id:'AG-T10', fascia:'Agonista', trap:true, q:'Il «gancho» esiste?', opts:[
+    { id:'AG-T10', fascia:'Agonista', trap:true, verso:'afferma', q:'Il «gancho» esiste?', opts:[
       'Non esiste: è un nome inventato',
       'Sì: colpo alto a uncino, in salto',
       'È il nome argentino della bandeja',
       'È un\'infrazione di piede'], correct:1 },
-    { id:'AG-T11', fascia:'Agonista', trap:true, q:'«Vibora» e «bandeja» sono lo stesso colpo con due nomi?', opts:[
+    { id:'AG-T11', fascia:'Agonista', trap:true, verso:'nega', q:'«Vibora» e «bandeja» sono lo stesso colpo con due nomi?', opts:[
       'Sì: due nomi dello stesso colpo',
       'Non esistono: nomi senza colpo',
       'No: la vibora ha più taglio',
       'Sì, ma solo nel padel maschile'], correct:2 },
-    { id:'AG-T12', fascia:'Agonista', trap:true, q:'Il servizio si può battere anche di rovescio?', opts:[
+    { id:'AG-T12', fascia:'Agonista', trap:true, verso:'afferma', q:'Il servizio si può battere anche di rovescio?', opts:[
       'Non esiste: solo di dritto',
       'Solo il secondo servizio',
       'Solo avvisando l\'avversario',
-      'Sì: contano rimbalzo e cintura'], correct:3 }
+      'Sì: contano rimbalzo e cintura'], correct:3 },
+
+    /* ═══ 🆕 27 TRABOCCHETTO CHE AFFERMANO (30/08/2026) ══════════════════════════════════
+       🚨 PERCHÉ ESISTONO, ed è una misura, non un'impressione: dei 57 trabocchetto di prima,
+       **44 si passavano NEGANDO**. ⇒ Chi rispondeva «non esiste» a tutti e tre i trabocchetto
+       del giro e sapeva le due domande normali passava il quiz nel **76%** dei casi su Base e
+       Intermedio, **87%** su Avanzato, **96%** su Agonista — contro il **50%** di chi i
+       trabocchetto non li sa e tira a caso. *La scorciatoia rendeva più del sapere.*
+
+       ⚖️ E LA CURA NON È BILANCIARE LA PESCATA, che è la strada che viene in mente per prima e
+       che è sbagliata: imporre «2 inventati + 1 vero» a ogni giro crea subito la scorciatoia
+       specchio («confermo sempre»), perché con soglia 4/5 e le due normali sapute bastano 2
+       trabocchetto su 3. ⇒ Si bilancia la BANCA, e la composizione del singolo giro resta
+       casuale: solo così nessuna risposta automatica paga più del sapere.
+       📌 *Contro una scorciatoia non si mette una regola fissa: una regola fissa è la prossima
+       scorciatoia. Si toglie l'informazione che la rendeva conveniente.*
+
+       🔒 Il campo `verso` dice quale delle due specie è ogni trabocchetto, e non è una promessa:
+       `test/trabocchetto-bilanciato.test.mjs` controlla che la FORMA della risposta giusta
+       corrisponda al verso dichiarato, e che il rapporto per fascia resti fra 40% e 60%.
+
+       ⏳ DICHIARATO: queste 27 domande NON sono ancora state rilette dal committente né dal
+       maestro. Le 36 di Principiante furono lette una per una con lui il 27/08 (regola B10);
+       queste no. Finché quella rilettura non c'è, la voce resta APERTA — una risposta segnata
+       giusta e sbagliata boccia un socio onesto, ed è il danno peggiore di tutto il test.
+       ⚠️ Le più esposte sono le misure del regolamento (racchetta, pareti, palla): sono vere a
+       mia conoscenza, ma sono esattamente il genere di dato che cambia con l'edizione delle
+       regole FIP. Si controllano sul regolamento, non a memoria. ══════════════════════════ */
+
+    // ── Principiante ────────────────────────────────────────────────────────────────
+    { id:'P-T10', fascia:'Principiante', trap:true, verso:'afferma', q:'Prima di servire si può far rimbalzare la palla più volte a terra?', opts:[
+      'Sì: conta solo l\'ultimo rimbalzo',
+      'No: un rimbalzo solo, poi il colpo',
+      'Non esiste: la palla non si rimbalza',
+      'Solo al secondo servizio'], correct:0 },
+    { id:'P-T11', fascia:'Principiante', trap:true, verso:'afferma', q:'Il servizio tocca il nastro e poi cade nel quadrato giusto. Che succede?', opts:[
+      'Si ripete: è il «let»',
+      'Fallo: il nastro non si tocca',
+      'Punto di chi ha servito',
+      'Si continua a giocare'], correct:0 },
+    { id:'P-T12', fascia:'Principiante', trap:true, verso:'afferma', q:'Con quale parte della racchetta si può colpire la palla?', opts:[
+      'Qualunque parte, anche il bordo',
+      'Solo il piatto centrale',
+      'Solo piatto e cornice',
+      'Il piatto, mai il manico'], correct:0 },
+    { id:'P-T13', fascia:'Principiante', trap:true, verso:'afferma', q:'È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?', opts:[
+      'Sì: 88 al centro, 92 ai pali',
+      'No: è alta uguale dappertutto',
+      'No: è più alta al centro',
+      'Non esiste una misura fissa'], correct:0 },
+    { id:'P-T14', fascia:'Principiante', trap:true, verso:'afferma', q:'Esiste il padel giocato in singolo, uno contro uno?', opts:[
+      'Sì: su un campo più stretto',
+      'Non esiste: solo in coppia',
+      'Solo in allenamento, mai in gara',
+      'Sì, sullo stesso campo del doppio'], correct:0 },
+    { id:'P-T15', fascia:'Principiante', trap:true, verso:'afferma', q:'Durante il punto si può passare la racchetta all\'altra mano?', opts:[
+      'Sì: è consentito',
+      'Mai: si perde il punto',
+      'Solo fra un punto e l\'altro',
+      'Non esiste: la mano si dichiara'], correct:0 },
+    { id:'P-T16', fascia:'Principiante', trap:true, verso:'afferma', q:'La palla rimbalza a terra nel mio campo e poi tocca la MIA rete metallica. Posso giocarla?', opts:[
+      'Sì: dopo il rimbalzo vale tutto',
+      'No: la griglia ferma il punto',
+      'Solo se prima tocca il vetro',
+      'Non esiste: la griglia è fuori'], correct:0 },
+
+    // ── Base ────────────────────────────────────────────────────────────────────────
+    { id:'B-T13', fascia:'Base', trap:true, verso:'afferma', q:'È vero che il servizio è fallo se, dopo il rimbalzo nel quadrato, la palla tocca la rete metallica?', opts:[
+      'Sì: sul vetro invece è valido',
+      'No: vale come sul vetro',
+      'Non esiste questa distinzione',
+      'Solo sul primo servizio'], correct:0 },
+    { id:'B-T14', fascia:'Base', trap:true, verso:'afferma', q:'La «bajada» è un colpo vero del padel?', opts:[
+      'Sì: si gioca dopo il vetro',
+      'Non esiste: è il nome di un torneo',
+      'Sì: è il servizio dal basso',
+      'Non esiste un colpo così'], correct:0 },
+    { id:'B-T15', fascia:'Base', trap:true, verso:'afferma', q:'Nel padel «globo» è il nome di un colpo?', opts:[
+      'Sì: è il pallonetto',
+      'Non esiste: si dice solo lob',
+      'Sì: è lo smash alto',
+      'Non esiste con questo nome'], correct:0 },
+    { id:'B-T16', fascia:'Base', trap:true, verso:'afferma', q:'Fuori dal servizio, i due compagni possono stare tutti e due dallo stesso lato?', opts:[
+      'Sì: si sta dove si vuole',
+      'Mai: uno a destra e uno a sinistra',
+      'Solo quando si difende',
+      'Non esiste: le posizioni sono fisse'], correct:0 },
+
+    // ── Intermedio ──────────────────────────────────────────────────────────────────
+    { id:'I-T13', fascia:'Intermedio', trap:true, verso:'afferma', q:'La «salida de pared», l\'uscita dalla parete, è un fondamentale con un nome suo?', opts:[
+      'Sì: è un colpo codificato',
+      'Non esiste: è un modo di dire',
+      'Sì: è un tipo di servizio',
+      'Non esiste con questo nome'], correct:0 },
+    { id:'I-T14', fascia:'Intermedio', trap:true, verso:'afferma', q:'È vero che si cambia campo ogni numero dispari di giochi?', opts:[
+      'Sì: al primo, al terzo, al quinto',
+      'No: si cambia a fine set',
+      'Non esiste: non si cambia mai',
+      'Sì, ma solo nel tie-break'], correct:0 },
+    { id:'I-T15', fascia:'Intermedio', trap:true, verso:'afferma', q:'È vero che la bandeja serve soprattutto a tenere la rete, non ad attaccare?', opts:[
+      'Sì: è un colpo di controllo',
+      'No: è il colpo più aggressivo',
+      'Non esiste: è lo smash',
+      'Sì, ma si gioca da fondo campo'], correct:0 },
+    { id:'I-T16', fascia:'Intermedio', trap:true, verso:'afferma', q:'A ogni set la coppia può cambiare chi serve per primo?', opts:[
+      'Sì: si decide a ogni set',
+      'Mai: l\'ordine è fisso',
+      'Non esiste: serve sempre lo stesso',
+      'Solo se si è vinto il set'], correct:0 },
+
+    // ── Avanzato ────────────────────────────────────────────────────────────────────
+    { id:'A-T13', fascia:'Avanzato', trap:true, verso:'afferma', q:'Lo smash «x4», por cuatro, esiste?', opts:[
+      'Sì: la palla esce oltre il fondo',
+      'Non esiste: si arriva all\'x3',
+      'Sì: è un servizio potente',
+      'Non esiste con questo nome'], correct:0 },
+    { id:'A-T14', fascia:'Avanzato', trap:true, verso:'afferma', q:'La «chiquita» e la «bajada» sono due colpi diversi?', opts:[
+      'Sì: sono due colpi distinti',
+      'No: due nomi dello stesso colpo',
+      'Non esiste la bajada',
+      'Non esiste la chiquita'], correct:0 },
+    { id:'A-T15', fascia:'Avanzato', trap:true, verso:'afferma', q:'In gara il cordino della racchetta al polso è obbligatorio?', opts:[
+      'Sì: è obbligatorio',
+      'Non esiste questo obbligo',
+      'Solo per i professionisti',
+      'Solo nei tornei al coperto'], correct:0 },
+    { id:'A-T16', fascia:'Avanzato', trap:true, verso:'afferma', q:'Colpire la palla due volte nello stesso movimento fa perdere il punto?', opts:[
+      'Sì: il doppio tocco è fallo',
+      'Non esiste: è ammesso',
+      'Solo se lo vede l\'arbitro',
+      'Si rigioca il punto'], correct:0 },
+    { id:'A-T17', fascia:'Avanzato', trap:true, verso:'afferma', q:'È vero che il campo da padel misura 20 metri per 10?', opts:[
+      'Sì: 20 per 10',
+      'No: 24 per 11, come il tennis',
+      'Non esiste una misura fissa',
+      'Sì: 18 per 9'], correct:0 },
+
+    // ── Agonista ────────────────────────────────────────────────────────────────────
+    { id:'AG-T13', fascia:'Agonista', trap:true, verso:'afferma', q:'Nel tie-break si cambia campo ogni 6 punti?', opts:[
+      'Sì: ogni sei punti',
+      'Non esiste: si cambia alla fine',
+      'Sì: ogni quattro punti',
+      'Solo nel set decisivo'], correct:0 },
+    { id:'AG-T14', fascia:'Agonista', trap:true, verso:'afferma', q:'Si può toccare la rete DOPO che il punto è finito?', opts:[
+      'Sì: il punto è già chiuso',
+      'Mai: la rete non si tocca',
+      'Solo con la racchetta',
+      'Non esiste: è sempre fallo'], correct:0 },
+    { id:'AG-T15', fascia:'Agonista', trap:true, verso:'afferma', q:'La palla da padel ha una pressione più bassa di quella da tennis?', opts:[
+      'Sì: è leggermente più bassa',
+      'No: è la stessa palla',
+      'Non esiste una regola così',
+      'No: la pressione è più alta'], correct:0 },
+    { id:'AG-T16', fascia:'Agonista', trap:true, verso:'afferma', q:'La palla supera la rete e torna indietro da sola per l\'effetto: si può colpire oltre la rete?', opts:[
+      'Sì: senza toccare rete o campo',
+      'Mai: si perde il punto',
+      'Non esiste questa situazione',
+      'Solo se rimbalza prima'], correct:0 },
+    { id:'AG-T17', fascia:'Agonista', trap:true, verso:'afferma', q:'Il regolamento fissa una misura massima per la racchetta?', opts:[
+      'Sì: 45,5 cm e 38 mm di spessore',
+      'Non esiste un limite',
+      'Solo il peso è regolato',
+      'Sì: 50 cm e 45 mm'], correct:0 },
+    { id:'AG-T18', fascia:'Agonista', trap:true, verso:'afferma', q:'Le pareti di fondo sono 3 metri di vetro più 1 di rete metallica?', opts:[
+      'Sì: 3 di vetro e 1 di metallo',
+      'No: 4 metri tutti di vetro',
+      'Non esiste una misura fissa',
+      'Sì: 2 di vetro e 2 di metallo'], correct:0 },
+    { id:'AG-T19', fascia:'Agonista', trap:true, verso:'afferma', q:'Il regolamento fissa anche il diametro dei fori della racchetta?', opts:[
+      'Sì: fra 9 e 13 millimetri',
+      'Non esiste una regola sui fori',
+      'Solo il numero dei fori è fissato',
+      'Sì: fra 3 e 5 millimetri'], correct:0 }
   ]
 };
 // Fascia da interrogare, dal livello dichiarato. Semi-Pro e Professionista non hanno domande:
@@ -1519,6 +1691,37 @@ export function assessmentPublicScoreFromText(value, map) {
   return null;
 }
 
+/* ═══ 🔄⭐⭐ 30/08/2026 — LE QUATTRO SCALE TECNICHE SONO STATE RITARATE ══════════════════
+   🗣️ Sua parola sulla proposta ③: *«VAi procedi e fai il lavoro»*.
+
+   📏 IL DIFETTO, misurato e non intuito: le quattro scale avevano corse DIVERSE — lo scambio
+   da 1,0 a 5,0 (4 punti), il vetro da 1,0 a 4,5 (3,5), la rete e i colpi alti da 1,5 a 4,5 (3)
+   — ma venivano mediate come se fossero la stessa cosa. ⇒ Due conseguenze:
+     ① la media tecnica poteva vivere **solo fra 1,25 e 4,625** (verificato nei dati veri:
+        minimo 1,25, massimo 4,63 su 44 schede) — chi risponde al massimo su tutt'e quattro
+        non arrivava mai alla parola «Agonista» dalla parte tecnica;
+     ② lo scambio, avendo una corsa più lunga, **pesava un terzo in più** della rete e dei
+        colpi alti, pur essendo mediato alla pari. Un peso che nessuno aveva deciso.
+
+   ⭐ LA REGOLA NUOVA, ed è una sola riga: **ogni risposta vale il MINIMO della fascia che
+   descrive.** Principiante 1 · Base 2 · Intermedio 3 · Avanzato 4 · Agonista 5. Le quattro
+   scale diventano lo stesso metro, e il metro è la scala dei livelli — non un punteggio a sé.
+   📌 La terza opzione dei colpi alti è letteralmente *«uso almeno la bandeja in modo
+   semplice»*, e «bandeja base» è la definizione di **Intermedio** in `PMO_LIVELLI`: valeva 2,5,
+   cioè Base. La scala vecchia non era neutra, sottostimava.
+
+   📏 EFFETTO MISURATO sulle 44 schede vere, insieme ai pesi nuovi qui sotto: il numero cambia
+   in **15** casi (4 salgono, 11 scendono), la **parola** in 6 — 3 Base→Intermedio (chi risponde
+   al centro e prima veniva tenuto giù), 1 Intermedio→Avanzato, e due DISCESE che sono il caso
+   per cui il test esiste: un Agonista→Avanzato e un Base→Principiante, tutt'e due di chi
+   dichiarava più di quanto rispondesse.
+   🔒 La simulazione è stata validata prima di crederle: rifacendo il calcolo VECCHIO riproduce
+   `calculated_level` su **44 schede su 44**.
+
+   ⚠️ Nessun livello già scritto cambia da sé: questa taratura vale per le schede nuove.
+   ⛔ I TESTI NON SI TOCCANO, solo i numeri: le parole sono il dato con cui la correzione
+   confronta (`assessmentPublicScoreFromText`), e sono anche le stesse otto domande che
+   `test/motore-a-passi.test.mjs` confronta con i `<select>` di `index.html`. ═══════════════ */
 export function assessmentPublicTechnicalScores(data) {
   const rally = assessmentPublicScoreFromText(data?.rally, [
     ['Faccio fatica a tenere 3-4 colpi', 1.0],
@@ -1530,23 +1733,23 @@ export function assessmentPublicTechnicalScores(data) {
   const glass = assessmentPublicScoreFromText(data?.glass, [
     ['Evito quasi sempre il vetro', 1.0],
     ['Lo uso solo se la palla è facile', 2.0],
-    ['Difendo con il vetro in modo base', 2.5],
-    ['Lo uso con continuità anche sotto pressione', 3.5],
-    ['Lo uso per difendere e ripartire in attacco', 4.5]
+    ['Difendo con il vetro in modo base', 3.0],
+    ['Lo uso con continuità anche sotto pressione', 4.0],
+    ['Lo uso per difendere e ripartire in attacco', 5.0]
   ]);
   const net = assessmentPublicScoreFromText(data?.net, [
-    ['Sto poco a rete', 1.5],
+    ['Sto poco a rete', 1.0],
     ['Vado a rete ma faccio fatica a chiudere', 2.0],
-    ['Gioco volée semplici', 2.5],
-    ['Tengo posizione e controllo le volée', 3.5],
-    ['Costruisco e chiudo il punto a rete', 4.5]
+    ['Gioco volée semplici', 3.0],
+    ['Tengo posizione e controllo le volée', 4.0],
+    ['Costruisco e chiudo il punto a rete', 5.0]
   ]);
   const overhead = assessmentPublicScoreFromText(data?.overhead, [
-    ['Non li uso', 1.5],
+    ['Non li uso', 1.0],
     ['Li provo ma con poca sicurezza', 2.0],
-    ['Uso almeno la bandeja in modo semplice', 2.5],
-    ['Uso bandeja e smash con controllo', 3.5],
-    ['Uso colpi alti in modo tattico e affidabile', 4.5]
+    ['Uso almeno la bandeja in modo semplice', 3.0],
+    ['Uso bandeja e smash con controllo', 4.0],
+    ['Uso colpi alti in modo tattico e affidabile', 5.0]
   ]);
   const values = [rally, glass, net, overhead].filter(v => typeof v === 'number' && Number.isFinite(v));
   const average = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
@@ -1561,10 +1764,28 @@ export function calculateAssessmentPublicLevel(data) {
   const declared = parseFloat(assessmentPublicParseLevel(data?.declaredLevel));
   const balanced = parseFloat(assessmentPublicParseLevel(data?.balancedLevel));
   const technical = assessmentPublicTechnicalScores(data);
+  /* ═══ 🔄⭐⭐ 30/08/2026 — I PESI: il test misura le RISPOSTE, non la dichiarazione ═══════
+     🗣️ Sua parola sulla proposta ②: *«VAi procedi e fai il lavoro»*.
+
+     📏 IL FATTO DA CUI NASCE: col 0,40 sul dichiarato e il 0,25 sull'«alla pari», il **65%** del
+     punteggio veniva da due domande in cui il socio dice di sé. Il test misurava in buona parte
+     l'opinione che uno ha di sé — e su un livello che serve a comporre partite equilibrate,
+     quell'opinione è precisamente ciò che va verificato.
+
+     ⚖️ E LA MISURA HA SPOSTATO L'ARGOMENTO, perché la prima ipotesi era sbagliata: sui soci che
+     rispondono COERENTI il peso non cambia quasi niente (la fascia si muove in 3 schede su 44).
+     Dove cambia è **dove il socio non concorda con sé stesso**: sulle 19 schede con più di 0,5
+     di scarto fra dichiarato e tecnica, il numero si muove in 10, sempre verso il basso.
+     ⇒ Ribilanciare non tocca chi risponde onesto: morde chi si sopravvaluta, che è il caso per
+     cui il cancello esiste.
+
+     🔒 La domanda sul livello dichiarato RESTA, e non è un residuo: sceglie la fascia da cui si
+     pescano le domande di conoscenza ed è metà del segnale di coerenza. Cambia solo quanto pesa
+     nel numero. */
   const parts = [];
-  if (Number.isFinite(declared)) parts.push({ value: declared, weight: 0.40 });
+  if (Number.isFinite(declared)) parts.push({ value: declared, weight: 0.20 });
   if (Number.isFinite(balanced)) parts.push({ value: balanced, weight: 0.25 });
-  if (Number.isFinite(technical.average)) parts.push({ value: technical.average, weight: 0.35 });
+  if (Number.isFinite(technical.average)) parts.push({ value: technical.average, weight: 0.55 });
 
   if (!parts.length) {
     return {
@@ -1584,10 +1805,21 @@ export function calculateAssessmentPublicLevel(data) {
   const rawScore = parts.reduce((sum, p) => sum + p.value * p.weight, 0) / weightSum;
   let calculated = parseFloat(roundAssessmentToHalf(rawScore));
 
-  // Regole prudenziali: non facciamo salti eccessivi senza verifica.
+  /* Il freno verso l'ALTO resta, ed è il tetto anti-sopravvalutazione: nessuno esce dal test
+     con più di mezzo passo sopra quello che ha dichiarato.
+
+     🔄 IL FRENO VERSO IL BASSO È STATO TOLTO (30/08/2026). Diceva: il calcolato non scende sotto
+     il dichiarato meno 1,0 — cioè **rialzava** verso la dichiarazione il risultato di chi
+     rispondeva molto più basso di come si era descritto. Era la stessa forza contro cui i pesi
+     nuovi lavorano, applicata una seconda volta.
+     ⚖️ E toglierlo non apre niente, perché quel caso lo prendono già due protezioni più forti:
+     chi ha più di 1,0 di scarto finisce in **coerenza bassa** (scheda alla segreteria), e un
+     livello più basso di quello che il socio ha in scheda **non si scrive comunque** — il
+     livello non scende mai da solo. ⇒ Il freno basso non proteggeva: gonfiava.
+     📏 Misurato prima di toglierlo: su 44 schede vere nessuno dei due freni aveva **mai** morso
+     una volta. Non era l'ancoraggio a incollare il risultato alla dichiarazione — erano i pesi. */
   if (Number.isFinite(declared)) {
     if (calculated > declared + 0.5) calculated = declared + 0.5;
-    if (calculated < declared - 1.0) calculated = declared - 1.0;
     calculated = Math.max(0.5, Math.min(7, Math.round(calculated * 2) / 2));
   }
 

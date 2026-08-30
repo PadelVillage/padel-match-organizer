@@ -190,6 +190,17 @@ caso('7. «dichiara alto ma gioca da poco» resta alla segreteria', () => {
   return [esito.applica === false];
 });
 
+caso('7bis. 🆕 «dichiara alto ma gioca una volta al mese» resta alla segreteria', () => {
+  /* 🆕 30/08/2026 (proposta ④) — la gemella del caso 7. Nasce da un dato raccolto e buttato:
+     la risposta alla domanda 2 non pesava nel calcolo e non finiva nemmeno dove qualcuno la
+     potesse leggere (colonna vuota su 44 schede su 44). ⇒ O le si dà un lavoro, o la domanda
+     si toglie. Il lavoro è questo, e non boccia: manda in segreteria.
+     ⏳ Sulle 44 schede vere questa bandiera si accende ZERO volte — il caso non si è ancora
+     presentato, e la protezione nasce dichiaratamente non provata su un caso vivo. */
+  const esito = decidi(scheda({ raw_response: { source: 'scheda-pubblica', frequency_flag: true } }), socio());
+  return [esito.applica === false, /una volta al mese/.test(esito.motivo)];
+});
+
 caso('8. il test di conoscenza: fallito no; passato SOLO col ④; ASSENTE sì (le schede vecchie)', () => {
   // 🔁 19/08/2026: il «passato sì» di prima è diventato «passato quando il socio ha detto
   //    la sua» — vedi i casi 28-34. Qui resta la parte che il ④ non tocca: la bocciatura
