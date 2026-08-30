@@ -131,12 +131,20 @@ ha già chiuse 21. Restano due bersagli precisi:
 ZERO**. Se l'export non porta le righe a 0 €, l'assenza direbbe *«non lo so»*, non *«non è passato»*.
 ✅ Con un **sì**, la sonda qui sotto diventa conclusiva **in tutt'e due i versi** e la 109 si chiude
 **dal cloud**, senza altro disturbo. Da lanciare **dal 31/08 in poi**:
+🩹🚨 **QUESTA QUERY ERA SBAGLIATA, ed è corretta qui sotto** *(30/08 sera, 64ª)*. Guardava
+`payload->>'data'`, che è il giorno del **PAGAMENTO**; il giorno della **partita** è `booking_data`.
+L'omaggio è stato segnato il 29/08 per una partita del 31/08 ⇒ la versione vecchia non l'avrebbe
+vista mai, e — con la sua risposta che rende l'assenza conclusiva — avrebbe detto **«non è passato»**
+di una cosa passata. Non è una riga invecchiata: era sbagliata quando è stata scritta.
+📄 Il ragionamento intero sta nella scheda della **109** in `docs/lavori/README.md`.
+
 ```sql
-select payload->>'data', payload->>'campo', payload->>'ora',
-       payload->>'player_name', payload->>'amount_cents', payload->>'method'
+select payload->>'booking_data' as giorno_partita, payload->>'data' as giorno_pagamento,
+       payload->>'campo', payload->>'ora', payload->>'player_name',
+       payload->>'amount_cents', payload->>'method'
 from pmo_cloud_records
 where record_type='payment' and payload->>'source'='matchpoint'
-  and payload->>'data'='2026-08-31' and payload->>'ora'='13:00';
+  and payload->>'booking_data'='2026-08-31' and payload->>'ora'='13:00';
 ```
 ⏱️ *Trenta secondi suoi. Il resto lo fa la sessione nuova.*
 
