@@ -3333,11 +3333,36 @@ speculari, e la taratura — che **non era protetta da niente**: delle 65 prove 
 teneva fermi i pesi né i punteggi.
 
 ⏳ **PERCHÉ RESTA APERTA, e sono due cose distinte:**
-· 🚨 **le 27 domande nuove non le ha rilette nessuno che giochi a padel.** Le 36 di Principiante
-  furono lette una per una con lui il 27/08 (regola B10). Una risposta segnata giusta e sbagliata
-  **boccia un socio onesto**, ed è il danno peggiore di tutto il test. Le più esposte sono quelle
-  che citano misure di regolamento (racchetta, rete, pareti, pressione della palla): vanno
-  controllate sul regolamento FIP, non a memoria;
+· 🔄🩹 **le 27 domande nuove sono state controllate SUL REGOLAMENTO il 30/08 sera, e TRE erano da
+  correggere** — questa riga diceva *«non le ha rilette nessuno»*, e per la parte regolamento non
+  è più vero. **Una era una risposta segnata giusta che giusta non era**, ed è il danno che questa
+  riga temeva: **P-T15** dichiarava che durante il punto si può passare la racchetta all'altra
+  mano, mentre il **cordino al polso è obbligatorio per tutta la durata del punto** (FIP/FEP/FIT;
+  l'eccezione è **argentina**). ⚖️ E sbagliava nel verso peggiore: **contraddiceva A-T15 della
+  stessa banca**, che il cordino lo dichiara obbligatorio ⇒ un socio che sapeva la regola sbagliava
+  **proprio perché la sapeva**. Le altre due avevano **due opzioni difendibili**: **AG-T16**
+  descriveva il caso *tennistico* (la palla passa di là e torna per l'effetto) mentre nel padel
+  l'invasione è ammessa **dopo il rimbalzo nel proprio campo** — l'opzione scartata «Solo se
+  rimbalza prima» era più giusta della giusta; **P-T12** metteva «Solo piatto e **cornice**»
+  accanto a «Qualunque parte, anche il **bordo**», che è quasi la stessa cosa. Tutt'e tre corrette
+  in `conoscenza.js` e nel documento della banca, **verso `afferma` mantenuto** perché Principiante
+  è a 9/16 negano (56%) e un verso in più avrebbe sfondato il 60% della guardia di bilanciamento.
+  🚨⭐ **Due guardie hanno morso durante la correzione**, ed è il motivo per cui la prima stesura
+  non è quella spinta: la prima riscrittura di P-T15 aveva la risposta giusta *«Sì: il cordino non
+  si toglie mai»* — **41-45 caratteri** su un tetto di 36 (l'elenco sarebbe tornato sopra i
+  bottoni) **e** con una negazione dentro la risposta di una trappola dichiarata `afferma`. ⇒ *Una
+  cura scritta bene sul merito può essere sbagliata sul contenitore, e a dirlo non è la rilettura:
+  è il banco.*
+  ⛔ **COSA QUESTO CONTROLLO NON HA PROVATO**, e tiene aperta la riga: dal cloud **il PDF del
+  regolamento non si apre** — `padelfip.com`, `fitp.it`, `knltb.nl`, `isfsports.org` e perfino
+  Wikipedia rispondono `403 CONNECT tunnel failed`, l'egress del container li blocca tutti ⇒ il
+  controllo è passato dal **motore di ricerca** ed è **di seconda mano**: basta a smontare una
+  risposta sbagliata, non a certificare le altre 24. **Resta da fare la rilettura di chi gioca a
+  padel**, con due bersagli precisi invece che 27: **P-T12**, l'unica la cui risposta poggia
+  sull'**assenza di un divieto** e non su un articolo (nessuna fonte dice quale parte della
+  racchetta sia ammessa), e le **5 di terminologia** — B-T14 · B-T15 · I-T13 · I-T15 · A-T14 —
+  che non sono regolamento e vogliono l'orecchio di un maestro. 📄 Testo pronto:
+  `docs/test-autovalutazione-banca-domande.md`;
 · **nessuna delle quattro cure è stata vista succedere su un telefono.** Il banco è verde e i
   sabotaggi passano, ma è il banco: la prova fisica è un test vero fatto dal bot, con le domande
   nuove sullo schermo e il livello che ne esce.

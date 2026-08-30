@@ -1320,9 +1320,9 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Si continua a giocare'], correct:0 },
     { id:'P-T12', fascia:'Principiante', trap:true, verso:'afferma', q:'Con quale parte della racchetta si può colpire la palla?', opts:[
       'Qualunque parte, anche il bordo',
-      'Solo il piatto centrale',
-      'Solo piatto e cornice',
-      'Il piatto, mai il manico'], correct:0 },
+      'Solo la parte piatta, mai i bordi',
+      'Serve il centro, o è fallo',
+      'La parte piatta e il manico'], correct:0 },
     { id:'P-T13', fascia:'Principiante', trap:true, verso:'afferma', q:'È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?', opts:[
       'Sì: 88 al centro, 92 ai pali',
       'No: è alta uguale dappertutto',
@@ -1333,11 +1333,11 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'Non esiste: solo in coppia',
       'Solo in allenamento, mai in gara',
       'Sì, sullo stesso campo del doppio'], correct:0 },
-    { id:'P-T15', fascia:'Principiante', trap:true, verso:'afferma', q:'Durante il punto si può passare la racchetta all\'altra mano?', opts:[
-      'Sì: è consentito',
-      'Mai: si perde il punto',
-      'Solo fra un punto e l\'altro',
-      'Non esiste: la mano si dichiara'], correct:0 },
+    { id:'P-T15', fascia:'Principiante', trap:true, verso:'afferma', q:'È vero che il cordino al polso vieta di cambiare mano durante il punto?', opts:[
+      'Sì: la mano resta quella',
+      'No: la racchetta si passa',
+      'Solo i mancini possono farlo',
+      'Il cordino riguarda altro'], correct:0 },
     { id:'P-T16', fascia:'Principiante', trap:true, verso:'afferma', q:'La palla rimbalza a terra nel mio campo e poi tocca la MIA rete metallica. Posso giocarla?', opts:[
       'Sì: dopo il rimbalzo vale tutto',
       'No: la griglia ferma il punto',
@@ -1431,11 +1431,11 @@ export const ASSESS_KNOWLEDGE_BANK = {
       'No: è la stessa palla',
       'Non esiste una regola così',
       'No: la pressione è più alta'], correct:0 },
-    { id:'AG-T16', fascia:'Agonista', trap:true, verso:'afferma', q:'La palla supera la rete e torna indietro da sola per l\'effetto: si può colpire oltre la rete?', opts:[
+    { id:'AG-T16', fascia:'Agonista', trap:true, verso:'afferma', q:'La palla rimbalza nel mio campo, esce dal vetro di fondo e torna oltre la rete da sola: posso colpirla nel campo avversario?', opts:[
       'Sì: senza toccare rete o campo',
       'Mai: si perde il punto',
       'Non esiste questa situazione',
-      'Solo se rimbalza prima'], correct:0 },
+      'Solo se rimbalza una seconda volta'], correct:0 },
     { id:'AG-T17', fascia:'Agonista', trap:true, verso:'afferma', q:'Il regolamento fissa una misura massima per la racchetta?', opts:[
       'Sì: 45,5 cm e 38 mm di spessore',
       'Non esiste un limite',
