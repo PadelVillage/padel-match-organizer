@@ -1,22 +1,33 @@
 # Allegato — la banca completa delle domande di conoscenza
 
-Accompagna `test-autovalutazione-testo-per-revisione.md`. Sono **tutte e 192** le domande di
+Accompagna `test-autovalutazione-testo-per-revisione.md`. Sono **tutte e 219** le domande di
 conoscenza del test di autovalutazione, raggruppate per fascia e per tipo, con la risposta giusta
-segnata **[GIUSTA]**.
+segnata **[GIUSTA]**. Aggiornato al **30/08/2026**.
 
 ⚠️ **Contiene le risposte**: serve a chi deve giudicare la qualità delle domande, non va mostrato
 ai soci. In un test vero la risposta giusta non lascia mai il server.
 
 Come si usa in un giro reale: da questa banca si pescano **5 domande della sola fascia dichiarata
-dal socio** — 2 normali + 3 trabocchetto — con le opzioni in ordine casuale, e si passa con
-almeno 4 risposte giuste su 5 (Principiante: nessuna soglia; Semi-Pro e Professionista non hanno
-domande e vanno in segreteria).
+dal socio** — 2 normali + 3 trabocchetto, senza guardare il verso — con le opzioni in ordine
+casuale, e si passa con almeno 4 risposte giuste su 5 (Principiante: nessuna soglia; Semi-Pro e
+Professionista non hanno domande e vanno in segreteria).
 
-Cosa cerchiamo, in ordine di importanza: **risposte segnate giuste che non lo sono**, domande con
-**due opzioni difendibili**, domande che dipendono da un regolamento non universale, e domande
-incomprensibili per la fascia a cui sono rivolte.
+**I trabocchetto sono di due specie, in parti quasi uguali per fascia**: quelli che **negano**
+(descrivono una regola o un colpo inventati, e la risposta giusta smentisce) e quelli che
+**affermano** (descrivono regole o colpi veri che suonano inventati, e la risposta giusta
+conferma). L'equilibrio è deliberato e misurato: con una banca sbilanciata, rispondere sempre
+«non esiste» pagherebbe più del sapere davvero.
 
-## Fascia Principiante — 36 domande (27 normali + 9 trabocchetto)
+🔎 **Cosa cerchiamo, in ordine di importanza**: **risposte segnate giuste che non lo sono**,
+domande con **due opzioni difendibili**, domande che dipendono da un regolamento non universale, e
+domande incomprensibili per la fascia a cui sono rivolte.
+
+⏳ **Le 27 domande aggiunte il 30/08/2026 non sono ancora state rilette da nessuno** — sono quelle
+con gli id più alti di ogni fascia: P-T10…P-T16, B-T13…B-T16, I-T13…I-T16, A-T13…A-T17,
+AG-T13…AG-T19. Le più esposte sono quelle che citano misure di regolamento (racchetta, rete,
+pareti, pressione della palla): vanno controllate sul regolamento, non a memoria.
+
+## Fascia Principiante — 43 domande (27 normali + 16 trabocchetto: 9 negano, 7 affermano)
 
 ### Domande normali
 
@@ -182,7 +193,7 @@ incomprensibili per la fascia a cui sono rivolte.
 - Si rigioca il punto
 - Punto nostro
 
-### Domande trabocchetto
+### Trabocchetto che NEGANO — la risposta giusta smentisce ciò che la domanda propone
 
 **P-T1** — Quando si applica la regola del «doppio rimbalzo difensivo», che concede due rimbalzi a terra a chi difende?
 - Solo sul punteggio di 40-40
@@ -238,8 +249,52 @@ incomprensibili per la fascia a cui sono rivolte.
 - No, se non tocco terra fuori
 - Sì, tranne che nei tornei ufficiali
 
+### Trabocchetto che AFFERMANO — la risposta giusta conferma una regola o un colpo veri
 
-## Fascia Base — 39 domande (27 normali + 12 trabocchetto)
+**P-T10** — Prima di servire si può far rimbalzare la palla più volte a terra?
+- **[GIUSTA]** Sì: conta solo l'ultimo rimbalzo
+- No: un rimbalzo solo, poi il colpo
+- Non esiste: la palla non si rimbalza
+- Solo al secondo servizio
+
+**P-T11** — Il servizio tocca il nastro e poi cade nel quadrato giusto. Che succede?
+- **[GIUSTA]** Si ripete: è il «let»
+- Fallo: il nastro non si tocca
+- Punto di chi ha servito
+- Si continua a giocare
+
+**P-T12** — Con quale parte della racchetta si può colpire la palla?
+- **[GIUSTA]** Qualunque parte, anche il bordo
+- Solo il piatto centrale
+- Solo piatto e cornice
+- Il piatto, mai il manico
+
+**P-T13** — È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?
+- **[GIUSTA]** Sì: 88 al centro, 92 ai pali
+- No: è alta uguale dappertutto
+- No: è più alta al centro
+- Non esiste una misura fissa
+
+**P-T14** — Esiste il padel giocato in singolo, uno contro uno?
+- **[GIUSTA]** Sì: su un campo più stretto
+- Non esiste: solo in coppia
+- Solo in allenamento, mai in gara
+- Sì, sullo stesso campo del doppio
+
+**P-T15** — Durante il punto si può passare la racchetta all'altra mano?
+- **[GIUSTA]** Sì: è consentito
+- Mai: si perde il punto
+- Solo fra un punto e l'altro
+- Non esiste: la mano si dichiara
+
+**P-T16** — La palla rimbalza a terra nel mio campo e poi tocca la MIA rete metallica. Posso giocarla?
+- **[GIUSTA]** Sì: dopo il rimbalzo vale tutto
+- No: la griglia ferma il punto
+- Solo se prima tocca il vetro
+- Non esiste: la griglia è fuori
+
+
+## Fascia Base — 43 domande (27 normali + 16 trabocchetto: 8 negano, 8 affermano)
 
 ### Domande normali
 
@@ -405,7 +460,7 @@ incomprensibili per la fascia a cui sono rivolte.
 - Punto di chi ha colpito
 - Punto degli avversari
 
-### Domande trabocchetto
+### Trabocchetto che NEGANO — la risposta giusta smentisce ciò che la domanda propone
 
 **B-T1** — Quando è consentito il «servizio a cucchiaio doppio», che permette di far rimbalzare la palla due volte prima di batterla?
 - Solo in doppio misto
@@ -455,6 +510,8 @@ incomprensibili per la fascia a cui sono rivolte.
 - Una volta per set
 - Quando lo concede l'avversario
 
+### Trabocchetto che AFFERMANO — la risposta giusta conferma una regola o un colpo veri
+
 **B-T9** — Quando i due compagni possono scambiarsi il lato di ricezione (destra e sinistra)?
 - A ogni cambio campo
 - **[GIUSTA]** Solo a inizio set
@@ -479,8 +536,32 @@ incomprensibili per la fascia a cui sono rivolte.
 - Non esiste una regola precisa
 - **[GIUSTA]** È di chi ha smashato
 
+**B-T13** — È vero che il servizio è fallo se, dopo il rimbalzo nel quadrato, la palla tocca la rete metallica?
+- **[GIUSTA]** Sì: sul vetro invece è valido
+- No: vale come sul vetro
+- Non esiste questa distinzione
+- Solo sul primo servizio
 
-## Fascia Intermedio — 39 domande (27 normali + 12 trabocchetto)
+**B-T14** — La «bajada» è un colpo vero del padel?
+- **[GIUSTA]** Sì: si gioca dopo il vetro
+- Non esiste: è il nome di un torneo
+- Sì: è il servizio dal basso
+- Non esiste un colpo così
+
+**B-T15** — Nel padel «globo» è il nome di un colpo?
+- **[GIUSTA]** Sì: è il pallonetto
+- Non esiste: si dice solo lob
+- Sì: è lo smash alto
+- Non esiste con questo nome
+
+**B-T16** — Fuori dal servizio, i due compagni possono stare tutti e due dallo stesso lato?
+- **[GIUSTA]** Sì: si sta dove si vuole
+- Mai: uno a destra e uno a sinistra
+- Solo quando si difende
+- Non esiste: le posizioni sono fisse
+
+
+## Fascia Intermedio — 43 domande (27 normali + 16 trabocchetto: 8 negano, 8 affermano)
 
 ### Domande normali
 
@@ -646,7 +727,7 @@ incomprensibili per la fascia a cui sono rivolte.
 - Solo quando si difende
 - Una volta per game
 
-### Domande trabocchetto
+### Trabocchetto che NEGANO — la risposta giusta smentisce ciò che la domanda propone
 
 **I-T1** — A cosa serve la «vibora a doppio taglio inverso»?
 - A far tornare la palla indietro
@@ -684,12 +765,6 @@ incomprensibili per la fascia a cui sono rivolte.
 - Solo nel tie-break
 - Solo negli allenamenti
 
-**I-T7** — Posso mandare la palla dall'altra parte facendola passare FUORI dai pali della rete, di lato, invece che sopra?
-- No: deve passare sopra la rete
-- **[GIUSTA]** Sì, se atterra nel campo giusto
-- Sì, ma solo quando si difende
-- Solo nei tornei ufficiali
-
 **I-T8** — Quando entra in gioco la «regola dell'ultimo vetro», che chiude il punto se la palla tocca un vetro dopo aver toccato la griglia?
 - Solo nel proprio campo
 - **[GIUSTA]** Non esiste: l'ordine non conta
@@ -701,6 +776,14 @@ incomprensibili per la fascia a cui sono rivolte.
 - **[GIUSTA]** Non esiste: i servizi sono due
 - Vale solo sul punteggio di parità
 - La concede l'arbitro a richiesta
+
+### Trabocchetto che AFFERMANO — la risposta giusta conferma una regola o un colpo veri
+
+**I-T7** — Posso mandare la palla dall'altra parte facendola passare FUORI dai pali della rete, di lato, invece che sopra?
+- No: deve passare sopra la rete
+- **[GIUSTA]** Sì, se atterra nel campo giusto
+- Sì, ma solo quando si difende
+- Solo nei tornei ufficiali
 
 **I-T10** — La «chiquita» è un colpo vero?
 - Non esiste: è un nome inventato
@@ -720,8 +803,32 @@ incomprensibili per la fascia a cui sono rivolte.
 - **[GIUSTA]** Esiste: un punto secco decide
 - Esisteva, ma è stato abolito
 
+**I-T13** — La «salida de pared», l'uscita dalla parete, è un fondamentale con un nome suo?
+- **[GIUSTA]** Sì: è un colpo codificato
+- Non esiste: è un modo di dire
+- Sì: è un tipo di servizio
+- Non esiste con questo nome
 
-## Fascia Avanzato — 39 domande (27 normali + 12 trabocchetto)
+**I-T14** — È vero che si cambia campo ogni numero dispari di giochi?
+- **[GIUSTA]** Sì: al primo, al terzo, al quinto
+- No: si cambia a fine set
+- Non esiste: non si cambia mai
+- Sì, ma solo nel tie-break
+
+**I-T15** — È vero che la bandeja serve soprattutto a tenere la rete, non ad attaccare?
+- **[GIUSTA]** Sì: è un colpo di controllo
+- No: è il colpo più aggressivo
+- Non esiste: è lo smash
+- Sì, ma si gioca da fondo campo
+
+**I-T16** — A ogni set la coppia può cambiare chi serve per primo?
+- **[GIUSTA]** Sì: si decide a ogni set
+- Mai: l'ordine è fisso
+- Non esiste: serve sempre lo stesso
+- Solo se si è vinto il set
+
+
+## Fascia Avanzato — 44 domande (27 normali + 17 trabocchetto: 9 negano, 8 affermano)
 
 ### Domande normali
 
@@ -887,7 +994,7 @@ incomprensibili per la fascia a cui sono rivolte.
 - Poter usare meglio i vetri
 - Poter servire da più vicino
 
-### Domande trabocchetto
+### Trabocchetto che NEGANO — la risposta giusta smentisce ciò che la domanda propone
 
 **A-T1** — In quale situazione si usa il «cambio de pared australiano»?
 - Quando si difende sul vetro laterale
@@ -943,6 +1050,8 @@ incomprensibili per la fascia a cui sono rivolte.
 - Servendo dal lato del rovescio
 - Nei tornei amatoriali
 
+### Trabocchetto che AFFERMANO — la risposta giusta conferma una regola o un colpo veri
+
 **A-T10** — Lo smash «x3» esiste?
 - Non esiste: si parla solo di x4
 - **[GIUSTA]** Sì: esce sopra la parete laterale
@@ -961,8 +1070,38 @@ incomprensibili per la fascia a cui sono rivolte.
 - È il servizio sottomano
 - È una posizione, non un colpo
 
+**A-T13** — Lo smash «x4», por cuatro, esiste?
+- **[GIUSTA]** Sì: la palla esce oltre il fondo
+- Non esiste: si arriva all'x3
+- Sì: è un servizio potente
+- Non esiste con questo nome
 
-## Fascia Agonista — 39 domande (27 normali + 12 trabocchetto)
+**A-T14** — La «chiquita» e la «bajada» sono due colpi diversi?
+- **[GIUSTA]** Sì: sono due colpi distinti
+- No: due nomi dello stesso colpo
+- Non esiste la bajada
+- Non esiste la chiquita
+
+**A-T15** — In gara il cordino della racchetta al polso è obbligatorio?
+- **[GIUSTA]** Sì: è obbligatorio
+- Non esiste questo obbligo
+- Solo per i professionisti
+- Solo nei tornei al coperto
+
+**A-T16** — Colpire la palla due volte nello stesso movimento fa perdere il punto?
+- **[GIUSTA]** Sì: il doppio tocco è fallo
+- Non esiste: è ammesso
+- Solo se lo vede l'arbitro
+- Si rigioca il punto
+
+**A-T17** — È vero che il campo da padel misura 20 metri per 10?
+- **[GIUSTA]** Sì: 20 per 10
+- No: 24 per 11, come il tennis
+- Non esiste una misura fissa
+- Sì: 18 per 9
+
+
+## Fascia Agonista — 46 domande (27 normali + 19 trabocchetto: 10 negano, 9 affermano)
 
 ### Domande normali
 
@@ -1128,7 +1267,7 @@ incomprensibili per la fascia a cui sono rivolte.
 - Sei
 - Dipende dal torneo
 
-### Domande trabocchetto
+### Trabocchetto che NEGANO — la risposta giusta smentisce ciò che la domanda propone
 
 **AG-T1** — Quando si parla di smash «x5»?
 - Se la palla esce oltre la tribuna
@@ -1184,21 +1323,65 @@ incomprensibili per la fascia a cui sono rivolte.
 - Vale nei tornei con punto d'oro
 - La concede l'arbitro
 
-**AG-T10** — Il «gancho» esiste?
-- Non esiste: è un nome inventato
-- **[GIUSTA]** Sì: colpo alto a uncino, in salto
-- È il nome argentino della bandeja
-- È un'infrazione di piede
-
 **AG-T11** — «Vibora» e «bandeja» sono lo stesso colpo con due nomi?
 - Sì: due nomi dello stesso colpo
 - Non esistono: nomi senza colpo
 - **[GIUSTA]** No: la vibora ha più taglio
 - Sì, ma solo nel padel maschile
 
+### Trabocchetto che AFFERMANO — la risposta giusta conferma una regola o un colpo veri
+
+**AG-T10** — Il «gancho» esiste?
+- Non esiste: è un nome inventato
+- **[GIUSTA]** Sì: colpo alto a uncino, in salto
+- È il nome argentino della bandeja
+- È un'infrazione di piede
+
 **AG-T12** — Il servizio si può battere anche di rovescio?
 - Non esiste: solo di dritto
 - Solo il secondo servizio
 - Solo avvisando l'avversario
 - **[GIUSTA]** Sì: contano rimbalzo e cintura
+
+**AG-T13** — Nel tie-break si cambia campo ogni 6 punti?
+- **[GIUSTA]** Sì: ogni sei punti
+- Non esiste: si cambia alla fine
+- Sì: ogni quattro punti
+- Solo nel set decisivo
+
+**AG-T14** — Si può toccare la rete DOPO che il punto è finito?
+- **[GIUSTA]** Sì: il punto è già chiuso
+- Mai: la rete non si tocca
+- Solo con la racchetta
+- Non esiste: è sempre fallo
+
+**AG-T15** — La palla da padel ha una pressione più bassa di quella da tennis?
+- **[GIUSTA]** Sì: è leggermente più bassa
+- No: è la stessa palla
+- Non esiste una regola così
+- No: la pressione è più alta
+
+**AG-T16** — La palla supera la rete e torna indietro da sola per l'effetto: si può colpire oltre la rete?
+- **[GIUSTA]** Sì: senza toccare rete o campo
+- Mai: si perde il punto
+- Non esiste questa situazione
+- Solo se rimbalza prima
+
+**AG-T17** — Il regolamento fissa una misura massima per la racchetta?
+- **[GIUSTA]** Sì: 45,5 cm e 38 mm di spessore
+- Non esiste un limite
+- Solo il peso è regolato
+- Sì: 50 cm e 45 mm
+
+**AG-T18** — Le pareti di fondo sono 3 metri di vetro più 1 di rete metallica?
+- **[GIUSTA]** Sì: 3 di vetro e 1 di metallo
+- No: 4 metri tutti di vetro
+- Non esiste una misura fissa
+- Sì: 2 di vetro e 2 di metallo
+
+**AG-T19** — Il regolamento fissa anche il diametro dei fori della racchetta?
+- **[GIUSTA]** Sì: fra 9 e 13 millimetri
+- Non esiste una regola sui fori
+- Solo il numero dei fori è fissato
+- Sì: fra 3 e 5 millimetri
 

@@ -6,8 +6,13 @@
 > un'intelligenza artificiale) e farsi dire **se il test è fatto bene**. Non presuppone di
 > conoscere il nostro codice: tutto ciò che serve per giudicare sta qui dentro.
 >
-> L'**allegato** `test-autovalutazione-banca-domande.md` contiene tutte e 192 le domande di
+> L'**allegato** `test-autovalutazione-banca-domande.md` contiene tutte e 219 le domande di
 > conoscenza con la risposta giusta segnata: serve solo al revisore, non va mostrato ai soci.
+>
+> **Descrive il test com'è al 30/08/2026.** Quel giorno sono stati cambiati quattro punti,
+> segnalati nel testo con 🔄: la banca dei trabocchetto è stata bilanciata, i pesi del calcolo
+> ribilanciati, le quattro scale tecniche ritarate, e la domanda sulla frequenza ha smesso di
+> essere raccolta e buttata. Le versioni precedenti sono citate dove serve a capire perché.
 
 ---
 
@@ -89,7 +94,7 @@ Regole di presentazione:
 
 ## 4. Le 8 domande di profilo, con i punteggi
 
-### 4.1 Domande raccolte ma non pesate nel calcolo
+### 4.1 Domande raccolte ma non pesate nel calcolo (usate come bandiere)
 
 **D1 — Da quanto giochi a padel?**
 Meno di 1 mese · 1-3 mesi · 3-6 mesi · 6-12 mesi · Più di 1 anno · Più di 3 anni
@@ -97,12 +102,13 @@ Meno di 1 mese · 1-3 mesi · 3-6 mesi · 6-12 mesi · Più di 1 anno · Più di
 **D2 — Quante volte giochi mediamente al mese?**
 0-1 · 2-3 · 4-6 · 7-10 · Più di 10
 
-Nessuna delle due entra nel calcolo del livello. D1 viene usata **solo** come segnale d'allarme
-(§ 6.3); D2 non viene usata affatto per il livello.
+Nessuna delle due entra nel calcolo del livello: tutt'e due servono **solo** come segnali
+d'allarme (§ 6.3). 🔄 Fino al 30/08/2026 D2 non serviva a niente — non pesava e non veniva
+nemmeno mostrata a nessuno.
 
 ### 4.2 Le due domande sul livello (peso complessivo 65%)
 
-**D3 — Che livello pensi di avere?** *(peso 0,40)*
+**D3 — Che livello pensi di avere?** *(peso 0,20 — 🔄 era 0,40 fino al 30/08/2026)*
 Principiante (1,5) · Base (2,5) · Intermedio (3,5) · Avanzato (4,5) · Agonista (5,5) ·
 Semi-Pro (6,5) · Professionista (7,0)
 
@@ -115,7 +121,11 @@ D3 e D4 avevano in origine le stesse sette parole e i soci si confondevano crede
 tornati indietro: da qui la forma «Contro …». D4 è tenuta perché è l'unico confronto fra ciò che
 uno **dice di essere** e ciò con cui **gioca alla pari**.
 
-### 4.3 Le quattro domande tecniche (peso complessivo 35%, come media semplice)
+### 4.3 Le quattro domande tecniche (peso complessivo 55%, come media semplice)
+
+🔄 **Ritarate il 30/08/2026.** Ogni risposta vale il **minimo della fascia che descrive**:
+Principiante 1 · Base 2 · Intermedio 3 · Avanzato 4 · Agonista 5. Prima le quattro scale avevano
+corse diverse (1-5 lo scambio, 1,5-4,5 la rete e i colpi alti) pur essendo mediate alla pari.
 
 **D5 — Riesci a mantenere lo scambio?**
 
@@ -133,33 +143,33 @@ uno **dice di essere** e ciò con cui **gioca alla pari**.
 |---|---|
 | Evito quasi sempre il vetro | 1,0 |
 | Lo uso solo se la palla è facile | 2,0 |
-| Difendo con il vetro in modo base | 2,5 |
-| Lo uso con continuità anche sotto pressione | 3,5 |
-| Lo uso per difendere e ripartire in attacco | 4,5 |
+| Difendo con il vetro in modo base | 3,0 |
+| Lo uso con continuità anche sotto pressione | 4,0 |
+| Lo uso per difendere e ripartire in attacco | 5,0 |
 
 **D7 — A rete come ti comporti?**
 
 | risposta | punti |
 |---|---|
-| Sto poco a rete | 1,5 |
+| Sto poco a rete | 1,0 |
 | Vado a rete ma faccio fatica a chiudere | 2,0 |
-| Gioco volée semplici | 2,5 |
-| Tengo posizione e controllo le volée | 3,5 |
-| Costruisco e chiudo il punto a rete | 4,5 |
+| Gioco volée semplici | 3,0 |
+| Tengo posizione e controllo le volée | 4,0 |
+| Costruisco e chiudo il punto a rete | 5,0 |
 
 **D8 — Come te la cavi con i colpi alti (bandeja, vibora, smash)?**
 
 | risposta | punti |
 |---|---|
-| Non li uso | 1,5 |
+| Non li uso | 1,0 |
 | Li provo ma con poca sicurezza | 2,0 |
-| Uso almeno la bandeja in modo semplice | 2,5 |
-| Uso bandeja e smash con controllo | 3,5 |
-| Uso colpi alti in modo tattico e affidabile | 4,5 |
+| Uso almeno la bandeja in modo semplice | 3,0 |
+| Uso bandeja e smash con controllo | 4,0 |
+| Uso colpi alti in modo tattico e affidabile | 5,0 |
 
-Nota: le quattro scale tecniche **non hanno lo stesso intervallo** (D5 va da 1 a 5, le altre da
-1/1,5 a 4,5) e non sono equispaziate. La **media tecnica** è la media aritmetica semplice delle
-risposte date; se una risposta manca, si media su quelle presenti.
+La **media tecnica** è la media aritmetica semplice delle risposte date; se una risposta manca,
+si media su quelle presenti. Le quattro scale hanno la stessa corsa (1-5), quindi pesano uguale e
+la media può dire tutta la scala, da Principiante ad Agonista.
 
 ---
 
@@ -168,10 +178,15 @@ risposte date; se una risposta manca, si media su quelle presenti.
 ### 5.1 La media pesata
 
 ```
-punteggio_grezzo = (0,40 × livello_dichiarato
+punteggio_grezzo = (0,20 × livello_dichiarato
                   + 0,25 × livello_alla_pari
-                  + 0,35 × media_tecnica)  /  somma dei pesi presenti
+                  + 0,55 × media_tecnica)  /  somma dei pesi presenti
 ```
+
+🔄 **Ribilanciati il 30/08/2026** (prima: 0,40 · 0,25 · 0,35). Col vecchio assetto il **65%** del
+punteggio veniva da due domande in cui il socio dice di sé; oggi è il **45%**, e la maggioranza
+sta nelle risposte. La domanda sul livello dichiarato resta perché sceglie la fascia da cui si
+pescano le domande di conoscenza ed è metà del segnale di coerenza.
 
 I pesi delle componenti mancanti si escludono e il divisore si riduce (quindi le proporzioni fra
 le componenti presenti restano invariate). Se manca tutto, la scheda va in revisione manuale.
@@ -179,9 +194,16 @@ le componenti presenti restano invariate). Se manca tutto, la scheda va in revis
 ### 5.2 Arrotondamento e freni
 
 1. **Arrotondamento al mezzo punto** più vicino (2,79 → 3,0; 2,74 → 2,5).
-2. **Freno verso l'alto**: il calcolato non può superare il **dichiarato + 0,5**.
-3. **Freno verso il basso**: il calcolato non può scendere sotto il **dichiarato − 1,0**.
-4. Il risultato è comunque contenuto fra **0,5 e 7**.
+2. **Freno verso l'alto**: il calcolato non può superare il **dichiarato + 0,5**. È il tetto
+   anti-sopravvalutazione: nessuno esce dal test con più di mezzo passo sopra ciò che ha dichiarato.
+3. Il risultato è comunque contenuto fra **0,5 e 7**.
+
+🔄 **Il freno verso il basso è stato tolto il 30/08/2026.** Diceva: il calcolato non scende sotto
+il dichiarato − 1,0, cioè **rialzava verso la dichiarazione** chi rispondeva molto più basso di
+come si era descritto. Quel caso lo prendono già due protezioni più forti — la coerenza bassa
+(§ 5.3) e la regola per cui un livello più basso non si scrive comunque (§ 7.2) — quindi il freno
+non proteggeva: gonfiava. Misurato prima di toglierlo: su 44 schede reali nessuno dei due freni
+aveva **mai** morso.
 
 ### 5.3 Il segnale di coerenza
 
@@ -197,15 +219,20 @@ calcolato — nel qual caso lo scarto è per costruzione piccolo.)
 
 ### 5.4 Tre esempi completi
 
-| | dichiarato | alla pari | media tecnica | grezzo | dopo i freni | coerenza | esito |
+| | dichiarato | alla pari | media tecnica | grezzo | dopo il freno | coerenza | esito |
 |---|---|---|---|---|---|---|---|
-| **A** | 2,5 (Base) | 3,5 | 2,63 | 2,796 | **3,0** (freno alto = 3,0) | alta | scrive Intermedio |
-| **B** | 4,5 (Avanzato) | 4,5 | 4,5 | 4,5 | 4,5 | alta | sopra il tetto: scrive 3,5 e manda dal maestro |
-| **C** | 3,5 (Intermedio) | 2,5 | 1,5 | 2,55 → 2,5 | 2,5 (freno basso = 2,5) | **bassa** (scarto 2,0) | non si applica: va alla segreteria |
+| **A** | 2,5 (Base) | 3,5 | 3,0 (tutte le terze opzioni) | 3,025 | **3,0** (freno alto = 3,0) | alta | scrive Intermedio |
+| **B** | 4,5 (Avanzato) | 4,5 | 5,0 (tutte le quinte) | 4,775 | **5,0** | alta | sopra il tetto: scrive 3,5 e manda dal maestro |
+| **C** | 3,5 (Intermedio) | 2,5 | 1,0 (tutte le prime) | 1,875 | **2,0** | **bassa** (scarto 2,5) | non si applica: va alla segreteria |
 
-Il caso A è reale ed è la forma tipica: chi si dichiara Base ma gioca alla pari con Intermedi e
-risponde tecnicamente da 2,63 esce **Intermedio**, cioè mezzo passo sopra quello che ha dichiarato
-— il massimo che i freni consentano.
+Il caso A è la forma tipica: chi si dichiara Base ma gioca alla pari con Intermedi e risponde «in
+modo base / semplice» su tutte e quattro le tecniche esce **Intermedio**, cioè mezzo passo sopra
+quello che ha dichiarato — il massimo che il freno consenta.
+
+Il caso C mostra cosa è cambiato togliendo il freno basso: prima usciva 2,5 (rialzato di mezzo
+punto verso la dichiarazione), oggi esce 2,0. In tutt'e due i casi la scheda si ferma comunque in
+segreteria per coerenza bassa, quindi il numero non viene scritto: cambia cosa la segreteria si
+trova davanti.
 
 ---
 
@@ -213,34 +240,46 @@ risponde tecnicamente da 2,63 esce **Intermedio**, cioè mezzo passo sopra quell
 
 ### 6.1 La banca
 
-192 domande in tutto, divise per fascia e per tipo:
+219 domande in tutto, divise per fascia e per tipo. 🔄 **27 trabocchetto sono stati aggiunti il
+30/08/2026** per bilanciare la banca (sotto il perché):
 
-| fascia | normali | trabocchetto | totale |
-|---|---|---|---|
-| Principiante | 27 | 9 | 36 |
-| Base | 27 | 12 | 39 |
-| Intermedio | 27 | 12 | 39 |
-| Avanzato | 27 | 12 | 39 |
-| Agonista | 27 | 12 | 39 |
-| Semi-Pro | — | — | **nessuna** |
-| Professionista | — | — | **nessuna** |
+| fascia | normali | trabocchetto | di cui negano | di cui affermano | totale |
+|---|---|---|---|---|---|
+| Principiante | 27 | 16 | 9 | 7 | 43 |
+| Base | 27 | 16 | 8 | 8 | 43 |
+| Intermedio | 27 | 16 | 8 | 8 | 43 |
+| Avanzato | 27 | 17 | 9 | 8 | 44 |
+| Agonista | 27 | 19 | 10 | 9 | 46 |
+| Semi-Pro | — | — | — | — | **nessuna** |
+| Professionista | — | — | — | — | **nessuna** |
 
 Le **domande normali** verificano regole e nomenclatura reali della fascia.
 
-I **trabocchetto** (57 in tutto) sono la parte antifrode e sono di due specie deliberatamente
-mescolate:
-- **44** hanno come risposta giusta una **negazione**: descrivono una regola o un colpo inventati
-  con un nome plausibile («fallo di vetro incrociato», «doppio rimbalzo difensivo») e la risposta
-  giusta nega, nelle tre forme «Non esiste», «Mai: …», «No: …»;
-- **13 sono «alla rovescia»**: descrivono regole o colpi **veri** che suonano inventati
-  («la chiquita è un colpo vero?», «si può colpire il proprio vetro per mandare la palla di là?»)
-  e la risposta giusta è quella che **conferma**.
+I **trabocchetto** (84 in tutto) sono la parte antifrode e sono di due specie deliberatamente
+mescolate, in parti quasi uguali:
+- **44 negano**: descrivono una regola o un colpo inventati con un nome plausibile («fallo di
+  vetro incrociato», «doppio rimbalzo difensivo») e la risposta giusta nega, nelle tre forme
+  «Non esiste», «Mai: …», «No: …»;
+- **40 affermano**: descrivono regole o colpi **veri** che suonano inventati («la chiquita è un
+  colpo vero?», «si può colpire il proprio vetro per mandare la palla di là?», «la rete è più
+  bassa al centro?») e la risposta giusta **conferma**.
 
-Lo squilibrio è misurato ed è la debolezza nota di questa banca: siccome 44 trabocchetto su 57
-si passano negando, chi risponde «non esiste» a tutti e tre i trabocchetto del giro e sa le due
-domande normali passa il quiz nel **76% dei casi (fasce Base e Intermedio), 87% (Avanzato), 96%
-(Agonista)** — contro il **50%** di chi i trabocchetto non li sa e risponde a caso. La scorciatoia
-oggi rende più del sapere.
+🔄 **Perché il bilanciamento, ed è una misura.** Fino al 30/08/2026 i trabocchetto erano 57, di
+cui **44 si passavano negando**: chi rispondeva «non esiste» a tutti e tre i trabocchetto del giro
+e sapeva le due domande normali passava il quiz nel **76%** dei casi (Base e Intermedio), **87%**
+(Avanzato), **96%** (Agonista) — contro il **50%** di chi i trabocchetto non li sa e risponde a
+caso. *La scorciatoia rendeva più del sapere.* Con la banca a metà, «nego sempre» paga oggi fra il
+50% e il 60% e «confermo sempre» fra il 40% e il 50%: nessuna risposta automatica batte il caso.
+
+⚠️ **La composizione del singolo giro resta casuale, ed è deliberato.** Imporre alla pescata una
+composizione fissa (per esempio «2 che negano + 1 che afferma») creerebbe subito la scorciatoia
+specchio, perché con soglia 4/5 e le due normali sapute bastano 2 trabocchetto su 3. Si bilancia
+la banca, non il giro.
+
+⏳ **Le 27 domande nuove non sono ancora state rilette da una persona che gioca a padel.** Le 36
+di Principiante furono lette una per una col committente il 27/08. Una risposta segnata giusta e
+sbagliata boccia un socio onesto: è il difetto più costoso di tutto il test, e per queste 27 non
+è ancora escluso.
 
 La seconda specie esiste perché la prima, da sola, insegnava una scorciatoia: *quando vedi
 «Non esiste», è quella la risposta giusta*. Con le due mescolate, quel segnale non dice più dove
@@ -249,7 +288,8 @@ sta la verità.
 ### 6.2 La pescata e la soglia
 
 - Si pescano **5 domande: 2 normali + 3 trabocchetto**, tutte della fascia **dichiarata** dal
-  socio alla domanda 3.
+  socio alla domanda 3. La pescata non guarda il verso dei trabocchetto: li tratta come un
+  gruppo solo.
 - **La pescata ha memoria**: non ripropone le domande già viste nelle **ultime 8 prove** del
   socio, finché nella banca c'è altro da dare. Esaurita la banca, ricomincia dalle più vecchie
   (degrada, non fallisce). L'insieme delle «già viste» è congelato al momento in cui il test
@@ -272,7 +312,14 @@ Anche con il quiz superato, la scheda **non si applica da sola** e finisce in re
 1. la **coerenza è bassa** (§ 5.3);
 2. `dichiarato ≥ 3,0` **e** l'esperienza dichiarata è **sotto i 12 mesi** («dichiara un livello
    medio-alto ma gioca da poco»);
-3. manca il **sesso** del socio in anagrafica (serve alla composizione delle partite).
+3. 🔄 `dichiarato ≥ 3,0` **e** la frequenza dichiarata è **0-1 volte al mese** («dichiara un
+   livello medio-alto ma gioca di rado»). Aggiunta il 30/08/2026, ed è dichiaratamente **non
+   ancora provata su un caso vero**: sulle 44 schede esistenti non si accende mai, perché chi
+   risponde «0-1» dichiara sempre meno di Intermedio;
+4. manca il **sesso** del socio in anagrafica (serve alla composizione delle partite).
+
+Nessuna delle quattro boccia: mandano la scheda alla segreteria, che vede il dato su cui la
+bandiera si è alzata e decide.
 
 E in ogni caso: se `| calcolato − dichiarato | > 0,5`, la scheda non si applica.
 
@@ -355,7 +402,7 @@ Elencato apposta, perché un revisore lo conti fra i limiti noti e non fra le sv
 - non misura la prestazione in campo: misura ciò che il socio **dichiara** più ciò che **sa**;
 - non certifica nulla sopra Intermedio: quello resta un giudizio umano;
 - non abbassa un livello senza il consenso del socio o della segreteria;
-- non usa la frequenza di gioco (D2) nel calcolo;
+- non usa l'esperienza (D1) né la frequenza (D2) nel calcolo: solo come bandiere;
 - non ha un cronometro: la difesa contro la ricerca delle risposte è la consegna a una domanda
   per volta, non il tempo;
 - non impedisce che due soci facciano il test insieme, o che uno lo faccia per un altro.
@@ -364,14 +411,15 @@ Elencato apposta, perché un revisore lo conti fra i limiti noti e non fra le sv
 
 ## 9. Le domande a cui vorremmo che il revisore rispondesse
 
-1. **Il peso dell'autodichiarazione.** Il 65% del punteggio viene da due domande in cui il socio
-   dice di sé (livello dichiarato 40%, livello alla pari 25%), e i freni ancorano comunque il
-   risultato al dichiarato (±0,5 sopra, −1,0 sotto). Il test misura il giocatore o misura la sua
-   opinione di sé? La struttura è difendibile per lo scopo dichiarato (comporre partite
-   equilibrate) o va ribilanciata?
-2. **Le scale tecniche.** Le quattro domande tecniche hanno intervalli diversi (1-5, 1-4,5,
-   1,5-4,5) e passi non uniformi, e vengono mediate come se fossero commensurabili. È un problema
-   reale sui risultati o è ininfluente in pratica?
+1. **Il peso dell'autodichiarazione.** Il 45% del punteggio viene ancora da due domande in cui il
+   socio dice di sé (livello dichiarato 20%, livello alla pari 25%), e il freno superiore ancora
+   comunque il risultato al dichiarato (+0,5 al massimo). È l'equilibrio giusto per lo scopo —
+   comporre partite equilibrate — o il dichiarato andrebbe tolto del tutto dal punteggio e
+   lasciato solo al segnale di coerenza?
+2. **Le quattro scale tecniche.** Ogni risposta vale il minimo della fascia che descrive
+   (1 · 2 · 3 · 4 · 5). La mappa fra le parole e i livelli è quella giusta? In particolare: chi
+   risponde «in modo base / semplice» su tutte e quattro è davvero un Intermedio, o quella
+   taratura è generosa di mezzo passo?
 3. **La formulazione delle risposte tecniche.** Sono descrizioni di sé («Costruisco il punto con
    controllo»): quanto sono vulnerabili all'effetto di desiderabilità sociale, e ci sono
    formulazioni migliori a parità di lunghezza (devono stare su un bottone di Telegram)?
@@ -380,8 +428,8 @@ Elencato apposta, perché un revisore lo conti fra i limiti noti e non fra le sv
    regole viene punito ingiustamente? Il tasso di falsi bocciati atteso è accettabile?
 5. **La composizione 2 normali + 3 trabocchetto.** Ha senso che i trabocchetto siano la
    maggioranza? Con soglia 4/5, quanto è probabile che un socio onesto e competente sbagli due
-   trabocchetto? E quale composizione della banca (oggi 44 negazioni contro 13 conferme) rende la
-   scorciatoia «nego sempre» non più conveniente del sapere davvero?
+   trabocchetto? E il quiz così composto misura la conoscenza del gioco o la resistenza a una
+   trappola — cioè due cose diverse?
 6. **L'asimmetria Principiante.** Soglia 0 per la fascia più bassa, 4/5 per tutte le altre: la
    discontinuità fra Principiante e Base è giustificata o crea un incentivo a dichiararsi
    Principiante?
@@ -391,15 +439,22 @@ Elencato apposta, perché un revisore lo conti fra i limiti noti e non fra le sv
    basta a togliere il vantaggio di chi ha capito lo schema?
 8. **Le soglie di coerenza.** 0,5 e 1,0 di scarto fra dichiarato e media tecnica: sono tarate
    bene? Quante schede oneste finiscono in revisione manuale per niente?
-9. **La bandiera esperienza.** «Dichiara ≥ 3,0 e gioca da meno di 12 mesi» ferma la scheda: è un
-   criterio ragionevole o penalizza chi arriva da un altro sport di racchetta?
+9. **Le bandiere.** «Dichiara ≥ 3,0 e gioca da meno di 12 mesi» e «dichiara ≥ 3,0 e gioca 0-1
+   volte al mese» fermano la scheda: sono criteri ragionevoli, o penalizzano chi arriva da un
+   altro sport di racchetta e chi gioca poco ma da anni?
 10. **Il risultato per chi sta a 0,5.** L'obiettivo dichiarato è far uscire dal limbo l'81% dei
     soci senza livello. Questo test, com'è costruito, ci riesce? Dove perde per strada le persone?
 11. **La lingua e la chiarezza.** Le domande sono comprensibili a chi gioca da un mese? Ce ne
     sono di ambigue, o con due opzioni difendibili come giuste?
 12. **La banca di domande** (allegato): ci sono risposte **sbagliate**, ambigue, o dipendenti da
     un regolamento non universale? È la verifica che ci interessa di più, perché una domanda
-    sbagliata boccia un socio onesto.
+    sbagliata boccia un socio onesto. ⚠️ Le **27 domande aggiunte il 30/08** non sono ancora state
+    rilette da nessuno: sono quelle con gli id più alti di ogni fascia (P-T10…P-T16, B-T13…B-T16,
+    I-T13…I-T16, A-T13…A-T17, AG-T13…AG-T19), e fra queste le più esposte sono quelle che citano
+    misure di regolamento — racchetta, rete, pareti, pressione della palla.
+13. **I trabocchetto delle fasce alte** hanno preso una piega da quiz di regolamento (misure,
+    procedure, nomi di colpi) più che da conoscenza del gioco. È il modo giusto di distinguere un
+    Agonista da un Avanzato, o quella distinzione un quiz non la può fare per niente?
 
 ---
 
