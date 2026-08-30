@@ -1794,7 +1794,27 @@ regola di casa dice che la lista si aggiorna **durante** il lavoro, non a giorna
 🆕📏 **30/08 mattina — IL PRIMO OMAGGIO VERO È PASSATO, e nessuno l'aveva guardato.**
 La sonda che questa scheda lascia (*«omaggi scritti dall'app: oggi 0, il giorno del primo omaggio vero deve diventare 1»*) è a **1**: record `paygift|2026-08-31|4|13:00|maurizio aprea`, `amount_cents: 0`, `method: gift`, scritto il **29/08 alle 21:18:34** — e l'audit porta un `cloud_records_upsert {count: 1}` allo **stesso microsecondo**, quindi la spinta ha scritto.
 🔒 **E la cura era già in servizio quando è successo**, misurato invece che dedotto: la migrazione `voce109_la_rpc_conosce_i_pagamenti` risulta applicata al database con versione **20260829193605** (19:36), cioè **un'ora e quaranta prima** dell'omaggio — mentre il commit che la porta su `main` è delle 21:40. ⇒ *La data del commit non è la data dell'applicazione: chiederlo a `supabase_migrations.schema_migrations` costa una query e toglie una deduzione.*
-⏳ **Resta l'altra metà, e la scheda la chiede**: che quell'omaggio **si sia segnato su Matchpoint**. Da qui non si vede — vuole il worker o l'occhio della segreteria sul gestionale del circolo.
+⏳ **Resta l'altra metà, e la scheda la chiede**: che quell'omaggio **si sia segnato su Matchpoint**.
+
+🔄🩹 **«Da qui non si vede» era troppo largo, e la misura del 30/08 lo restringe.** Qui c'era scritto *«vuole il worker o l'occhio della segreteria»*: è vero **oggi**, ma non perché manchi una strada — perché la strada esiste e **non è ancora arrivata la sua ora**. 📏 I fatti, misurati sul database di PROD:
+· i pagamenti **tornano da Matchpoint** e il loro sync è **vivo**: l'ultimo record porta `synced_at 2026-08-30T10:40:28Z`, cioè venti minuti prima della misura;
+· ma i pagamenti da Matchpoint hanno `data` massima **29/08**: l'export porta i giorni **già arrivati**, mai quelli futuri. L'omaggio è per il **31/08** ⇒ non può esserci ancora;
+· la **prenotazione** invece c'è ed è vera su Matchpoint (`idReserva 9649`, 31/08 13:00 Campo 4, `-Maurizio Aprea.-Lidia Comes.`) ⇒ lo slot esiste, non è una copia locale;
+· né `booking` né `booking_history` portano **un solo campo** che parli di pagamento o di omaggio ⇒ da quella parte la risposta non arriverà mai, ed è inutile cercarla lì.
+
+🎯 **LA SONDA, con la sua data: dal 31/08 in poi**, quando i pagamenti di quel giorno saranno esportati.
+```sql
+select payload->>'data', payload->>'campo', payload->>'ora',
+       payload->>'player_name', payload->>'amount_cents', payload->>'method'
+from pmo_cloud_records
+where record_type='payment' and payload->>'source'='matchpoint'
+  and payload->>'data'='2026-08-31' and payload->>'ora'='13:00';
+```
+Se la riga compare ⇒ **l'omaggio è arrivato su Matchpoint** e questa metà si chiude **dal cloud**, senza disturbare nessuno.
+
+🚨⭐ **E se NON compare, quello NON è un «no» — ed è il pezzo che va saputo prima di guardare.** Dei **3032** pagamenti mai tornati da Matchpoint, quelli con `amount_cents = 0` sono **ZERO**. ⇒ Non sappiamo se l'export porti le righe a 0 €: un omaggio potrebbe essere invisibile **per costruzione**, e un'assenza direbbe *«non lo so»*, non *«non è passato»*. È la stessa forma del *«il no si dice solo con la freschezza certificata»* — **l'assenza dalla copia non prova l'assenza dal circolo**.
+
+❓ **Quello che serve alla segreteria è UNA domanda sola**, non un'ispezione: *«quando fate un omaggio a mano su Matchpoint, compare come pagamento a 0 €?»*. Con un sì la sonda qui sopra diventa conclusiva in tutt'e due i versi; con un no questa metà si chiude **solo** guardando la partita sul gestionale del circolo. 📌 *Prima di chiedere a una persona di andare a guardare, si misura cosa saprebbe rispondere una sonda — e le si chiede la sola cosa che la sonda non può sapere.*
 
 🔎 **Trovata tirando il filo della 108** — cercando *perché* una spinta scrive zero record.
 🩹🚨⭐⭐ **E QUI SOTTO, PER UN'ORA, C'ERA SCRITTO CHE ERA «LA CAUSA DELLE 67 SPINTE A VUOTO».
