@@ -1691,6 +1691,37 @@ export function assessmentPublicScoreFromText(value, map) {
   return null;
 }
 
+/* ═══ 🔄⭐⭐ 30/08/2026 — LE QUATTRO SCALE TECNICHE SONO STATE RITARATE ══════════════════
+   🗣️ Sua parola sulla proposta ③: *«VAi procedi e fai il lavoro»*.
+
+   📏 IL DIFETTO, misurato e non intuito: le quattro scale avevano corse DIVERSE — lo scambio
+   da 1,0 a 5,0 (4 punti), il vetro da 1,0 a 4,5 (3,5), la rete e i colpi alti da 1,5 a 4,5 (3)
+   — ma venivano mediate come se fossero la stessa cosa. ⇒ Due conseguenze:
+     ① la media tecnica poteva vivere **solo fra 1,25 e 4,625** (verificato nei dati veri:
+        minimo 1,25, massimo 4,63 su 44 schede) — chi risponde al massimo su tutt'e quattro
+        non arrivava mai alla parola «Agonista» dalla parte tecnica;
+     ② lo scambio, avendo una corsa più lunga, **pesava un terzo in più** della rete e dei
+        colpi alti, pur essendo mediato alla pari. Un peso che nessuno aveva deciso.
+
+   ⭐ LA REGOLA NUOVA, ed è una sola riga: **ogni risposta vale il MINIMO della fascia che
+   descrive.** Principiante 1 · Base 2 · Intermedio 3 · Avanzato 4 · Agonista 5. Le quattro
+   scale diventano lo stesso metro, e il metro è la scala dei livelli — non un punteggio a sé.
+   📌 La terza opzione dei colpi alti è letteralmente *«uso almeno la bandeja in modo
+   semplice»*, e «bandeja base» è la definizione di **Intermedio** in `PMO_LIVELLI`: valeva 2,5,
+   cioè Base. La scala vecchia non era neutra, sottostimava.
+
+   📏 EFFETTO MISURATO sulle 44 schede vere, insieme ai pesi nuovi qui sotto: il numero cambia
+   in **15** casi (4 salgono, 11 scendono), la **parola** in 6 — 3 Base→Intermedio (chi risponde
+   al centro e prima veniva tenuto giù), 1 Intermedio→Avanzato, e due DISCESE che sono il caso
+   per cui il test esiste: un Agonista→Avanzato e un Base→Principiante, tutt'e due di chi
+   dichiarava più di quanto rispondesse.
+   🔒 La simulazione è stata validata prima di crederle: rifacendo il calcolo VECCHIO riproduce
+   `calculated_level` su **44 schede su 44**.
+
+   ⚠️ Nessun livello già scritto cambia da sé: questa taratura vale per le schede nuove.
+   ⛔ I TESTI NON SI TOCCANO, solo i numeri: le parole sono il dato con cui la correzione
+   confronta (`assessmentPublicScoreFromText`), e sono anche le stesse otto domande che
+   `test/motore-a-passi.test.mjs` confronta con i `<select>` di `index.html`. ═══════════════ */
 export function assessmentPublicTechnicalScores(data) {
   const rally = assessmentPublicScoreFromText(data?.rally, [
     ['Faccio fatica a tenere 3-4 colpi', 1.0],
@@ -1702,23 +1733,23 @@ export function assessmentPublicTechnicalScores(data) {
   const glass = assessmentPublicScoreFromText(data?.glass, [
     ['Evito quasi sempre il vetro', 1.0],
     ['Lo uso solo se la palla è facile', 2.0],
-    ['Difendo con il vetro in modo base', 2.5],
-    ['Lo uso con continuità anche sotto pressione', 3.5],
-    ['Lo uso per difendere e ripartire in attacco', 4.5]
+    ['Difendo con il vetro in modo base', 3.0],
+    ['Lo uso con continuità anche sotto pressione', 4.0],
+    ['Lo uso per difendere e ripartire in attacco', 5.0]
   ]);
   const net = assessmentPublicScoreFromText(data?.net, [
-    ['Sto poco a rete', 1.5],
+    ['Sto poco a rete', 1.0],
     ['Vado a rete ma faccio fatica a chiudere', 2.0],
-    ['Gioco volée semplici', 2.5],
-    ['Tengo posizione e controllo le volée', 3.5],
-    ['Costruisco e chiudo il punto a rete', 4.5]
+    ['Gioco volée semplici', 3.0],
+    ['Tengo posizione e controllo le volée', 4.0],
+    ['Costruisco e chiudo il punto a rete', 5.0]
   ]);
   const overhead = assessmentPublicScoreFromText(data?.overhead, [
-    ['Non li uso', 1.5],
+    ['Non li uso', 1.0],
     ['Li provo ma con poca sicurezza', 2.0],
-    ['Uso almeno la bandeja in modo semplice', 2.5],
-    ['Uso bandeja e smash con controllo', 3.5],
-    ['Uso colpi alti in modo tattico e affidabile', 4.5]
+    ['Uso almeno la bandeja in modo semplice', 3.0],
+    ['Uso bandeja e smash con controllo', 4.0],
+    ['Uso colpi alti in modo tattico e affidabile', 5.0]
   ]);
   const values = [rally, glass, net, overhead].filter(v => typeof v === 'number' && Number.isFinite(v));
   const average = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
@@ -1733,10 +1764,28 @@ export function calculateAssessmentPublicLevel(data) {
   const declared = parseFloat(assessmentPublicParseLevel(data?.declaredLevel));
   const balanced = parseFloat(assessmentPublicParseLevel(data?.balancedLevel));
   const technical = assessmentPublicTechnicalScores(data);
+  /* ═══ 🔄⭐⭐ 30/08/2026 — I PESI: il test misura le RISPOSTE, non la dichiarazione ═══════
+     🗣️ Sua parola sulla proposta ②: *«VAi procedi e fai il lavoro»*.
+
+     📏 IL FATTO DA CUI NASCE: col 0,40 sul dichiarato e il 0,25 sull'«alla pari», il **65%** del
+     punteggio veniva da due domande in cui il socio dice di sé. Il test misurava in buona parte
+     l'opinione che uno ha di sé — e su un livello che serve a comporre partite equilibrate,
+     quell'opinione è precisamente ciò che va verificato.
+
+     ⚖️ E LA MISURA HA SPOSTATO L'ARGOMENTO, perché la prima ipotesi era sbagliata: sui soci che
+     rispondono COERENTI il peso non cambia quasi niente (la fascia si muove in 3 schede su 44).
+     Dove cambia è **dove il socio non concorda con sé stesso**: sulle 19 schede con più di 0,5
+     di scarto fra dichiarato e tecnica, il numero si muove in 10, sempre verso il basso.
+     ⇒ Ribilanciare non tocca chi risponde onesto: morde chi si sopravvaluta, che è il caso per
+     cui il cancello esiste.
+
+     🔒 La domanda sul livello dichiarato RESTA, e non è un residuo: sceglie la fascia da cui si
+     pescano le domande di conoscenza ed è metà del segnale di coerenza. Cambia solo quanto pesa
+     nel numero. */
   const parts = [];
-  if (Number.isFinite(declared)) parts.push({ value: declared, weight: 0.40 });
+  if (Number.isFinite(declared)) parts.push({ value: declared, weight: 0.20 });
   if (Number.isFinite(balanced)) parts.push({ value: balanced, weight: 0.25 });
-  if (Number.isFinite(technical.average)) parts.push({ value: technical.average, weight: 0.35 });
+  if (Number.isFinite(technical.average)) parts.push({ value: technical.average, weight: 0.55 });
 
   if (!parts.length) {
     return {
@@ -1756,10 +1805,21 @@ export function calculateAssessmentPublicLevel(data) {
   const rawScore = parts.reduce((sum, p) => sum + p.value * p.weight, 0) / weightSum;
   let calculated = parseFloat(roundAssessmentToHalf(rawScore));
 
-  // Regole prudenziali: non facciamo salti eccessivi senza verifica.
+  /* Il freno verso l'ALTO resta, ed è il tetto anti-sopravvalutazione: nessuno esce dal test
+     con più di mezzo passo sopra quello che ha dichiarato.
+
+     🔄 IL FRENO VERSO IL BASSO È STATO TOLTO (30/08/2026). Diceva: il calcolato non scende sotto
+     il dichiarato meno 1,0 — cioè **rialzava** verso la dichiarazione il risultato di chi
+     rispondeva molto più basso di come si era descritto. Era la stessa forza contro cui i pesi
+     nuovi lavorano, applicata una seconda volta.
+     ⚖️ E toglierlo non apre niente, perché quel caso lo prendono già due protezioni più forti:
+     chi ha più di 1,0 di scarto finisce in **coerenza bassa** (scheda alla segreteria), e un
+     livello più basso di quello che il socio ha in scheda **non si scrive comunque** — il
+     livello non scende mai da solo. ⇒ Il freno basso non proteggeva: gonfiava.
+     📏 Misurato prima di toglierlo: su 44 schede vere nessuno dei due freni aveva **mai** morso
+     una volta. Non era l'ancoraggio a incollare il risultato alla dichiarazione — erano i pesi. */
   if (Number.isFinite(declared)) {
     if (calculated > declared + 0.5) calculated = declared + 0.5;
-    if (calculated < declared - 1.0) calculated = declared - 1.0;
     calculated = Math.max(0.5, Math.min(7, Math.round(calculated * 2) / 2));
   }
 
