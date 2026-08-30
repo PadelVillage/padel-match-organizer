@@ -2560,6 +2560,38 @@ non pubblica). ⇒ Le due cose che devono restare pari ci sono ancora — non pi
 ma **quello che lo staff crede che il socio veda**. Costa zero tenerla, e toglierla lascerebbe
 l'anteprima libera di invecchiare, che è il difetto che quella card è nata per non fare.
 
+✅⭐⭐ **IL PASSO ① È FATTO E IN SERVIZIO SUL BOT DEI SOCI — 30/08, 17:01** (`assistente-padel-agent`
+PR #111, deploy run #126, sha `80abc4e`). Autorizzato da lui: *«procedi tu adesso»*.
+🔨 **Il cambio, in un punto solo**: `frasePerIlTest` (`src/telegram/bottone.ts`) era **l'unico**
+posto del repo che scriveva quell'indirizzo — `offertaDelTest`, `testoNonPuoiInvitare`,
+`messaggioPromemoriaLivello` e `schedaDaMandare` passano tutte di lì. Le quattro strade:
+
+| strada | prima | adesso |
+|---|---|---|
+| attesa | il quando + la segreteria | invariata |
+| gettone + bottone | «lo apri col bottone qui sotto» | invariata |
+| **gettone, niente tastiera** | **l'indirizzo scritto nel testo** | **«apri «📊 Test Livello di Gioco»»** |
+| niente gettone | la segreteria | invariata |
+
+⚖️ **E NON è diventato «chiedi in segreteria»**: chi ha un gettone il test lo può fare **lì**, e
+mandarlo in segreteria sarebbe stato un vicolo cieco nuovo al posto di uno vecchio. 🔒 Il nome della
+porta non è scritto a mano: è `RIMANDO_LIVELLO`, lo stesso che il socio legge nel menu.
+📏 **E la misura che ha cambiato cosa proteggono le prove**: `consumer-assessment-link` risponde
+`url` e `token` **sempre insieme** (due soli rami, tutt'e due `conNome(token)`) ⇒ lo stato
+*«indirizzo senza gettone»* che **cinque** prove costruivano **non lo produce nessuno**. Le sette
+prove sono state **riscritte, nessuna cancellata**: la metà che regge — *mai un vicolo cieco* — è
+rimasta, ed è cambiata quella che non regge più.
+🧪 **Banco 1652 su 1652**, `tsc --noEmit` pulito, e **due sabotaggi visti rossi**: rimesso il ramo
+che scrive l'indirizzo → **5 rosse**; il nome della porta scritto a mano invece che con la costante
+→ **3 rosse**.
+✅ **Dove punta il bot, chiesto e non dedotto** (`stato-bot.yml`, sola lettura): `online`, uptime
+**32 s**, `⚙️ ponti edge: qqbf… (PROD)`, `✍️ prenotazioni REALI`. Il `.env` non l'ha toccato nessuno.
+⛔ **Cosa NON prova**: che la frase nuova si legga bene **su un telefono**. Il banco misura i
+vincoli, non la lettura — e la strada ② (gettone senza tastiera) è un angolo che non si provoca a
+comando. ⇒ Si vedrà al primo messaggio vero che ci passa.
+🔓 ⇒ **Il passo ② è sbloccato**: adesso la pagina si può chiudere senza che nessuno riceva un
+indirizzo morto.
+
 ⏳ **COSA RESTA ALLA 97, dopo oggi**: solo il **terzo passo** — la pagina del quiz che si spegne,
 visto che il test si fa nel bot. ⚠️ Quel giorno va tolta anche la **prova di parità** fra `passi.js`
 e i `<select>` di `index.html`: *una prova di parità vale finché esistono due cose che devono
