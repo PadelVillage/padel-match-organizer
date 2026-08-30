@@ -22,10 +22,28 @@ conferma). L'equilibrio è deliberato e misurato: con una banca sbilanciata, ris
 domande con **due opzioni difendibili**, domande che dipendono da un regolamento non universale, e
 domande incomprensibili per la fascia a cui sono rivolte.
 
-⏳ **Le 27 domande aggiunte il 30/08/2026 non sono ancora state rilette da nessuno** — sono quelle
-con gli id più alti di ogni fascia: P-T10…P-T16, B-T13…B-T16, I-T13…I-T16, A-T13…A-T17,
-AG-T13…AG-T19. Le più esposte sono quelle che citano misure di regolamento (racchetta, rete,
-pareti, pressione della palla): vanno controllate sul regolamento, non a memoria.
+🔄 **Le 27 domande aggiunte il 30/08/2026 sono state controllate SUL REGOLAMENTO il 30/08 sera**
+— sono quelle con gli id più alti di ogni fascia: P-T10…P-T16, B-T13…B-T16, I-T13…I-T16,
+A-T13…A-T17, AG-T13…AG-T19. **Tre sono state corrette**, e una era una risposta segnata giusta che
+giusta non era:
+
+| | difetto misurato | cura |
+|---|---|---|
+| **P-T15** | 🔴 **risposta SBAGLIATA**: diceva che durante il punto si può passare la racchetta all'altra mano. Il **cordino al polso è obbligatorio per tutta la durata del punto** (FIP/FEP/FIT) ⇒ non si può; toglierlo fa perdere il punto. L'eccezione è **argentina**, non nostra. E contraddiceva **A-T15** della stessa banca, che il cordino lo dichiara obbligatorio ⇒ chi sapeva la regola sbagliava **proprio perché la sapeva** | domanda riscritta sul cordino, verso `afferma` mantenuto |
+| **AG-T16** | 🔴 **due opzioni difendibili**: il testo descriveva il caso *tennistico* (la palla passa di là e torna per l'effetto), mentre nel padel l'invasione è ammessa quando la palla **ha già rimbalzato nel proprio campo** ed è tornata di là dopo il vetro. ⇒ l'opzione scartata «Solo se rimbalza prima» era **più giusta della giusta** | il rimbalzo è entrato nel **testo** della domanda, così non compete più come opzione |
+| **P-T12** | ⚠️ **due opzioni quasi identiche**: «Solo piatto e **cornice**» — e la cornice *è* il bordo — diceva quasi la stessa cosa della giusta «Qualunque parte, anche il bordo» | sostituita l'opzione che collideva |
+
+⛔ **Cosa questo controllo NON ha provato**, e va detto: dal cloud **il PDF del regolamento FIP non si
+apre** (`padelfip.com`, `fitp.it`, `knltb.nl`, `isfsports.org` e perfino Wikipedia rispondono `403
+CONNECT tunnel failed`: l'egress del container li blocca tutti). Il controllo è passato dal **motore
+di ricerca**, quindi è **di seconda mano** — buono per smontare una risposta sbagliata, non per
+certificare le altre 24. ⇒ **La rilettura di chi gioca a padel resta da fare**, e ha due bersagli
+precisi:
+· **P-T12**, l'unica delle 27 la cui risposta poggia sull'**assenza di un divieto** e non su un
+  articolo: nessuna fonte dice quale parte della racchetta sia ammessa;
+· le **5 domande di terminologia** — B-T14 (bajada), B-T15 (globo), I-T13 (salida de pared),
+  I-T15 (bandeja), A-T14 (chiquita ≠ bajada) — che non sono regolamento e vogliono l'orecchio di un
+  maestro, non una fonte.
 
 ## Fascia Principiante — 43 domande (27 normali + 16 trabocchetto: 9 negano, 7 affermano)
 
@@ -265,9 +283,9 @@ pareti, pressione della palla): vanno controllate sul regolamento, non a memoria
 
 **P-T12** — Con quale parte della racchetta si può colpire la palla?
 - **[GIUSTA]** Qualunque parte, anche il bordo
-- Solo il piatto centrale
-- Solo piatto e cornice
-- Il piatto, mai il manico
+- Solo la parte piatta, mai i bordi
+- Serve il centro, o è fallo
+- La parte piatta e il manico
 
 **P-T13** — È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?
 - **[GIUSTA]** Sì: 88 al centro, 92 ai pali
@@ -281,11 +299,11 @@ pareti, pressione della palla): vanno controllate sul regolamento, non a memoria
 - Solo in allenamento, mai in gara
 - Sì, sullo stesso campo del doppio
 
-**P-T15** — Durante il punto si può passare la racchetta all'altra mano?
-- **[GIUSTA]** Sì: è consentito
-- Mai: si perde il punto
-- Solo fra un punto e l'altro
-- Non esiste: la mano si dichiara
+**P-T15** — È vero che il cordino al polso vieta di cambiare mano durante il punto?
+- **[GIUSTA]** Sì: la mano resta quella
+- No: la racchetta si passa
+- Solo i mancini possono farlo
+- Il cordino riguarda altro
 
 **P-T16** — La palla rimbalza a terra nel mio campo e poi tocca la MIA rete metallica. Posso giocarla?
 - **[GIUSTA]** Sì: dopo il rimbalzo vale tutto
@@ -1361,11 +1379,11 @@ pareti, pressione della palla): vanno controllate sul regolamento, non a memoria
 - Non esiste una regola così
 - No: la pressione è più alta
 
-**AG-T16** — La palla supera la rete e torna indietro da sola per l'effetto: si può colpire oltre la rete?
+**AG-T16** — La palla rimbalza nel mio campo, esce dal vetro di fondo e torna oltre la rete da sola: posso colpirla nel campo avversario?
 - **[GIUSTA]** Sì: senza toccare rete o campo
 - Mai: si perde il punto
 - Non esiste questa situazione
-- Solo se rimbalza prima
+- Solo se rimbalza una seconda volta
 
 **AG-T17** — Il regolamento fissa una misura massima per la racchetta?
 - **[GIUSTA]** Sì: 45,5 cm e 38 mm di spessore
