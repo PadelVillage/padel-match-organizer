@@ -13,7 +13,7 @@ import {
 // 🆕 VOCE 80 (30/08) — chi la segreteria ha appena tolto non deve restare in campo per due
 // minuti. Il fatto non si deduce dalle liste: lo dice il gestionale (`staff_edit`).
 import {
-  mappaIdReserva, rimozioniDaStaffEdit, rimossiDopoIlSync, togliRimossi,
+  mappaIdReserva, rimozioniDaStaffEdit, rimossiDopoIlSync, togliRimossi, istanteDelCircolo,
 } from './rimozioni-recenti.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
@@ -519,6 +519,25 @@ Deno.serve(async (req: Request) => {
    * toccato l'ultima volta», ed è ciò che il bot deve confrontare col proprio ricordo.
    */
   const frescoByKey = new Map<string, string>();
+  /**
+   * 🚨⭐⭐ VOCE 80 — QUANDO HA PARLATO **IL CIRCOLO**, che NON è `frescoByKey`.
+   *
+   * 📏 Trovato dalla prova fisica del 30/08 e non dal banco, perché il banco non poteva
+   * vederlo: al modulo puro il `sincronizzatoAl` glielo passavo io. Sul caso vero —
+   * `booking` 21:10:04 · `staff_edit {remove:[Ospite]}` 21:12:12 · `staff_booking` **21:12:14**
+   * — la rimozione risultava PIÙ VECCHIA della freschezza dello slot, e la cura non mordeva.
+   * ⚖️ E non era sfortuna: quella copia la scrive **la stessa operazione** che produce la
+   * rimozione, sempre un istante dopo ⇒ la cura non avrebbe morso **mai**. Strutturale.
+   * 📌 `frescoByKey` si chiama «fresco» e si documenta come *«l'ultima volta che il circolo mi
+   * ha raccontato questa partita»*, ma contiene anche le copie NOSTRE: risponde a *«quando
+   * questo dato è stato toccato»*, che è un'altra domanda. È la trappola del campo letto per
+   * come si chiama, e mi ci sono fidato.
+   * ⇒ Qui entrano SOLO le righe sincronizzate, ed è l'orologio giusto per decidere se una
+   * rimozione il circolo l'ha già recepita.
+   * ⚠️ Resta separata da `frescoByKey`, che esce nella risposta come `aggiornato_al` e serve a
+   * un'altra cosa (il ricordo del bot): fonderle romperebbe quella.
+   */
+  const circoloByKey = new Map<string, string>();
   // Le liste della SOLA scheda del circolo, separate dalle altre: sono l'unica fonte
   // ORDINATA, e l'ordine è ciò che dice chi ha organizzato (il primo dell'elenco).
   const schedeByKey = new Map<string, string[][]>();
@@ -580,6 +599,13 @@ Deno.serve(async (req: Request) => {
     if (fresco) {
       const finora = frescoByKey.get(key);
       if (!finora || fresco > finora) frescoByKey.set(key, fresco);
+      // 🆕 VOCE 80 — e a parte, l'istante delle sole righe VENUTE DAL CIRCOLO. La regola sta
+      // in `istanteDelCircolo` (modulo provato); qui si accumula riga per riga con la stessa
+      // condizione, perché il ciclo passa una volta sola su ogni riga.
+      if (!copiaNostra(row.record_type)) {
+        const soloCircolo = circoloByKey.get(key);
+        if (!soloCircolo || fresco > soloCircolo) circoloByKey.set(key, fresco);
+      }
     }
 
     if (byKey.has(key)) continue;
@@ -607,7 +633,7 @@ Deno.serve(async (req: Request) => {
   const rimozioni = rimozioniDaStaffEdit(staffEditRows ?? [], perIdReserva);
   if (rimozioni.length) {
     for (const key of order) {
-      const rimossi = rimossiDopoIlSync(rimozioni, key, frescoByKey.get(key) ?? null);
+      const rimossi = rimossiDopoIlSync(rimozioni, key, circoloByKey.get(key) ?? null);
       if (!rimossi.length) continue;
       const liste = listeByKey.get(key);
       if (liste) listeByKey.set(key, liste.map((l) => togliRimossi(l, rimossi, normName)));

@@ -149,3 +149,37 @@ export function togliRimossi(
   }
   return out;
 }
+
+/**
+ * 🚨⭐⭐ QUANDO HA PARLATO **IL CIRCOLO** su questo slot — e non «quando il dato è stato
+ * toccato», che è un'altra domanda e ha un'altra risposta.
+ *
+ * 📏 Questa funzione esiste per un difetto trovato dalla PROVA FISICA del 30/08, che il banco
+ * non poteva vedere perché il `sincronizzatoAl` glielo passava il caso. Sul caso vero:
+ *
+ *   21:10:04.952  booking       «-Maurizio Aprea.-Ospite.»   ← il circolo
+ *   21:12:12.831  staff_edit    {remove:["Ospite"]}          ← la rimozione
+ *   21:12:14.778  staff_booking (la copia NOSTRA)            ← scritta 2 s dopo
+ *
+ * Confrontando la rimozione col massimo di TUTTE le righe (21:12:14) risultava già recepita,
+ * e la correzione non usciva. ⚖️ E non era sfortuna: la copia nostra la scrive **la stessa
+ * operazione** che produce la rimozione, sempre un istante dopo ⇒ la cura non avrebbe morso
+ * **MAI**. Un difetto strutturale, non un caso raro.
+ *
+ * 📌 *Un campo si legge per quello che MISURA, non per come si chiama*: `synced_at` sulle copie
+ * nostre è «quando l'abbiamo scritta noi», ed è giusto che ci sia — ma sommarlo al resto
+ * risponde a «quando questo dato è stato toccato», mentre qui serve «quando il circolo ha
+ * parlato». Due domande, un nome solo.
+ */
+export function istanteDelCircolo(
+  righe: Array<{ record_type?: unknown; synced_at?: unknown }>,
+  eCopiaNostra: (t: unknown) => boolean,
+): string | null {
+  let out = '';
+  for (const r of righe ?? []) {
+    if (eCopiaNostra(r?.record_type)) continue;
+    const q = clean(r?.synced_at);
+    if (q && q > out) out = q;
+  }
+  return out || null;
+}
