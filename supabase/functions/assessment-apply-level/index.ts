@@ -283,6 +283,9 @@ function decidi(scheda: any, socio: any, storia: any, adessoMs: any) {
   const raw = (scheda?.raw_response || {});
   if (clean(raw.source) === 'link-esterno') return { applica: false, motivo: 'arriva dal link generico: non è ancora un socio', livello };
   if (raw.experience_flag) return { applica: false, motivo: 'dichiara un livello medio-alto ma gioca da poco', livello };
+  // 🆕 30/08 — la gemella della riga sopra: dichiara Intermedio o più e gioca 0-1 volte al mese.
+  // Non boccia: manda in segreteria, come tutte le bandiere di questa famiglia.
+  if (raw.frequency_flag) return { applica: false, motivo: 'dichiara un livello medio-alto ma gioca una volta al mese', livello };
 
   // Il test di conoscenza vale solo dove c'è: le schede vecchie non ce l'hanno e
   // restano applicabili come sempre — è la stessa tolleranza del gestionale.
