@@ -5182,6 +5182,44 @@ molto probabile che non ce ne siano.*
 
 ---
 
+### ⑥ 🎂 «ETÀ 0» NON È DATO SPORCO: è «data di nascita che Matchpoint non ha» — misurato il 30/08
+
+🩹 **Questa misura CORREGGE la riga che il passaggio portava**, e la correzione conta più del numero.
+Là stava scritto: *«i 20 record a età 0 in anagrafica: dato sporco che fa sembrare minorenne chi
+magari non lo è. **Mezz'ora**, toglie rumore da ogni misura futura»*. ⇒ Sono **22**, non sono
+sporchi, e **quella mezz'ora non avrebbe pulito niente**.
+
+📏 **I fatti sull'anagrafica di PROD (2817 schede vive):**
+· le schede con `age = 0` sono **22**, e stanno **tutte** nella popolazione Matchpoint — nei 1736
+  contatti `rubrica-google` non ce n'è **nessuna** (là il campo `age` manca del tutto: 1708 su 1736);
+· 🎯 **tutte e 22 hanno `birthDate` = stringa VUOTA.** La data di nascita **non c'è alla fonte** ⇒
+  lo zero non è un errore di calcolo, è la **conseguenza onesta** di un dato che Matchpoint non ha;
+· 🔒 e il calcolo dell'età è **sano**, misurato invece che supposto: fra chi una `birthDate` ce l'ha,
+  le schede in cui l'età non combacia con la data (oltre un anno di scarto) sono **ZERO** su ~1080.
+
+⚖️ ⇒ **Non c'è niente da ripulire**, e il lavoro proposto era rivolto a un difetto che non esiste. Il
+difetto vero è un altro e più familiare: **`0` significa due cose** — *ha zero anni* e *non lo so* —
+e chi legge deve indovinare quale.
+
+🚨⭐⭐ **È LO STESSO IDENTICO CASO DELLO `0,5` DEL LIVELLO, in un altro campo.** `CLAUDE.md` lo dice
+già per il livello (`LIVELLO_MINIMO_IN_TABELLA`, decisione sua dell'11/08): *un numero che significa
+«non lo so» non si può sommare e sottrarre*. Qui non è mai stato detto, e il campo è l'**età**, cioè
+quello su cui poggerebbe un cancello. 📌 *Quando un progetto ha già deciso come trattare un non-dato
+in un campo, la stessa decisione va cercata in tutti gli altri campi prima di scoprirla di nuovo.*
+
+🔗 **Serve direttamente alla voce 111** (la regola sull'età, ferma a una sua decisione): quei 22
+**non sono minorenni** — sono ignoti. Una soglia scritta come `age < 14` li tratterebbe da bambini
+tutti e 22; una scritta come `age >= 14` li farebbe passare tutti. ⇒ Qualunque cancello sull'età deve
+avere **tre** esiti, non due, e il terzo è *«non lo so»*. ⛔ Per i 1736 contatti della rubrica la fonte
+dell'età **non esiste proprio**, quindi lì il terzo esito non è un caso di bordo: è la regola.
+
+⏳ **Cosa NON è stato fatto, ed è deliberato**: nessuna scrittura sull'anagrafica di PROD. Non c'è un
+valore giusto da metterci — la data di nascita non ce l'ha nessuno — e distinguere *«0 anni»* da
+*«non lo so»* è una scelta di rappresentazione (un `null`, un campo a parte, una funzione che lo
+traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pulizia.
+
+---
+
 ## 📦 CHIUSE — dal 13 al 29/08/2026 — 87 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
