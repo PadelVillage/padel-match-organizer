@@ -10,6 +10,11 @@ import {
   ordineDelloSlot,
   inCampoDelloSlot,
 } from './compagni-slot.ts';
+// 🆕 VOCE 80 (30/08) — chi la segreteria ha appena tolto non deve restare in campo per due
+// minuti. Il fatto non si deduce dalle liste: lo dice il gestionale (`staff_edit`).
+import {
+  mappaIdReserva, rimozioniDaStaffEdit, rimossiDopoIlSync, togliRimossi,
+} from './rimozioni-recenti.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
 
@@ -52,6 +57,13 @@ const CORS_HEADERS = {
 const MAX_BOOKINGS = 10;
 // Un campo da padel ospita 4 giocatori: 8 è già il doppio del necessario e
 // tiene corto il payload che finisce nel prompt del modello.
+/* 🆕 VOCE 80 — quanto indietro si guardano le operazioni della segreteria.
+ * ⭐ 15 minuti: il ritardo del sync ha mediana ~2′ e massimo MISURATO 10′04″ (voce 53), e
+ * questo numero deve stargli SOPRA con margine, o la correzione scade prima del dato che
+ * deve correggere. Non di più: oltre, il circolo ha parlato e la verità è la sua.
+ * ⚖️ Non è una soglia inventata — è la stessa misura su cui poggia `roster-di-recente.ts`
+ * nel bot, che tiene il ricordo per quindici minuti per la stessa ragione. */
+const RIMOZIONI_FINESTRA_MIN = 15;
 const MAX_COMPAGNI = 8;
 
 // Base di conoscenza (azione 'kb').
@@ -456,6 +468,29 @@ Deno.serve(async (req: Request) => {
     return err(500, 'DB_ERROR', 'Errore lettura prenotazioni.');
   }
 
+  /* 🆕⭐⭐ VOCE 80 — LE OPERAZIONI DELLA SEGRETERIA, in una query SUA e non nella precedente.
+   *
+   * ⚠️ Non si potevano aggiungere alla `.in(...)` qui sopra, e la ragione è un dato: quella
+   * query filtra `.gte('payload->>data', today)`, e uno `staff_edit` **non ha `data` di primo
+   * livello** — la sua sta dentro `da: {data, ora, campo}`, e solo nel 37% dei casi. Infilarlo
+   * là avrebbe tolto di mezzo proprio le righe che servono, in silenzio.
+   * ⭐ La finestra è corta di proposito (`RIMOZIONI_FINESTRA_MIN`): serve a coprire il ritardo
+   * del sync (mediana ~2′, massimo misurato 10′04″), non a tenere una memoria. Passata quella,
+   * il dato del circolo è arrivato ed è lui la verità.
+   * ⛔ Un errore qui NON fa fallire la risposta: si perde la correzione, non le prenotazioni.
+   *   È il verso giusto — senza questa lettura si torna al comportamento di prima. */
+  const dallaFinestra = new Date(Date.now() - RIMOZIONI_FINESTRA_MIN * 60_000).toISOString();
+  const { data: staffEditRows, error: staffEditErr } = await admin
+    .from('pmo_cloud_records')
+    .select('record_type, payload, synced_at')
+    .eq('record_type', 'staff_edit')
+    .not('deleted', 'is', true)
+    .gte('synced_at', dallaFinestra)
+    .limit(200);
+  if (staffEditErr) {
+    console.error('[readmodel] staff_edit non letti (voce 80):', staffEditErr.message);
+  }
+
   // Varianti del nome socio accettate nel roster (nome cognome / cognome nome).
   const nameVariants = new Set(
     [
@@ -556,6 +591,30 @@ Deno.serve(async (req: Request) => {
       tipo: clean(p.tipo),
     });
     order.push(key);
+  }
+
+  /* 🆕⭐⭐ VOCE 80 — LA SOTTRAZIONE, in UN SOLO PUNTO e prima della composizione.
+   *
+   * ⭐ Sta qui e non dentro le tre funzioni che compongono la risposta, ed è la decisione che
+   * conta: `compagni`, `giocatori` e `in_campo` nascono tutt'e tre da `listeByKey` e
+   * `schedeByKey`. Correggendo le LISTE una volta, si correggono tutt'e tre insieme — e con
+   * loro il bottone «Togli un giocatore», che smette di offrire una persona già uscita perché
+   * quella persona non arriva più. Curare le tre uscite una per una vorrebbe dire tre regole
+   * che divergono al primo che ne tocca una.
+   * ⛔ Se non c'è niente da togliere, `togliRimossi` torna la lista IDENTICA (per riferimento):
+   * a rimozioni zero questa cura non esiste. */
+  const perIdReserva = mappaIdReserva(bookingRows ?? []);
+  const rimozioni = rimozioniDaStaffEdit(staffEditRows ?? [], perIdReserva);
+  if (rimozioni.length) {
+    for (const key of order) {
+      const rimossi = rimossiDopoIlSync(rimozioni, key, frescoByKey.get(key) ?? null);
+      if (!rimossi.length) continue;
+      const liste = listeByKey.get(key);
+      if (liste) listeByKey.set(key, liste.map((l) => togliRimossi(l, rimossi, normName)));
+      const schede = schedeByKey.get(key);
+      if (schede) schedeByKey.set(key, schede.map((l) => togliRimossi(l, rimossi, normName)));
+      console.log(`[readmodel] voce80: tolti ${rimossi.length} da ${key} (non ancora nel sync)`);
+    }
   }
 
   const bookings: JsonMap[] = order.map((key) => ({
