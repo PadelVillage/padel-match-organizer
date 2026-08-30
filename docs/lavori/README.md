@@ -2159,6 +2159,21 @@ prima prova fisica vera di questo lavoro — il resto del test l'ha visto funzio
 📌 *Una cura che toglie una cosa va cercata in tutte le sue copie: quella dimenticata non invecchia
 piano, dice il falso dal primo giorno.*
 
+✅⭐⭐ **UNA DELLE DUE CURE È STATA VISTA SUL TELEFONO — 30/08 pomeriggio**, dentro il giro del test
+che il committente ha fatto per la 110.
+📏 **Provata**: la riga *«ti resta una prova»* **non c'è più**. Al suo posto la frase giusta —
+*«Puoi rifare il test quando vuoi: se va meglio il livello sale, se va peggio non scende»* — che
+descrive il mondo com'è dal 25/08 (attesa **zero**) invece di contare verso un muro tolto.
+🎯 **E si è visto anche il seguito, che questa scheda non chiedeva ma è il suo difetto più grave
+curato**: alla conferma il bot ha risposto *«Perfetto: tengo **Avanzato** 👍 È già il livello che hai
+in scheda: resta tutto com'è»*. ⇒ **Quel che dice e quel che succede coincidono**, misurato:
+`member_decision` **`mi_fermo`** alle **16:18:47**, `applied_level` e `applied_at` **null**, livello in
+scheda **4** invariato. È esattamente il *«Te lo registro sulla scheda a breve»* detto a Laura il
+27/08 — un «sì» falso — che oggi **non esce più**.
+⏳ **RESTA da vedere il bottone «🔄 Sì, lo rifaccio»**, e non per distrazione: compare solo prendendo
+la strada del **riprovo**, e il committente ha scelto *«Tengo Avanzato»*. ⇒ Un giro in più, quando
+capita.
+
 🚨🚨⭐⭐ **E POI HA FATTO FARE IL TEST A LAURA, e sotto è uscito il difetto più grave della
 giornata — un «sì» FALSO.** *(27/08 tarda sera, misurato sulla sua prova vera.)*
 
@@ -3253,7 +3268,32 @@ teneva fermi i pesi né i punteggi.
   racchetta sia ammessa), e le **5 di terminologia** — B-T14 · B-T15 · I-T13 · I-T15 · A-T14 —
   che non sono regolamento e vogliono l'orecchio di un maestro. 📄 Testo pronto:
   `docs/test-autovalutazione-banca-domande.md`;
-· **nessuna delle quattro cure è stata vista succedere su un telefono.** Il banco è verde e i
+· 🔄✅⭐⭐ **LA PROVA SUL TELEFONO È ARRIVATA — 30/08 pomeriggio, 63ª sessione**, e questa riga
+  diceva *«nessuna delle quattro cure è stata vista succedere su un telefono»*: per tre delle quattro
+  **non è più vero**, e si corregge invece di affiancarla.
+  📏 **Il giro vero**: test consegnato alle **16:03:58** dal committente sul bot dei soci — dichiarato
+  **4,5**, «alla pari» 4,5, media tecnica **4,75**, `raw_score` **4,638**, calcolato **4,5 · Avanzato**,
+  coerenza **alta**. Le domande nuove le ha viste passare (*«le domande nuove c'erano»*), e le tre
+  corrette erano quelle in servizio, verificate sulla **sorgente servita** e non dedotte dal deploy.
+  ⭐ **E il conto è stato rifatto a mano dalla formula in servizio**: 0,20 × 4,5 + 0,25 × 4,5 +
+  0,55 × 4,75 = **4,6375**, contro il **4,638** registrato. Coincide alla terza cifra ⇒ i pesi nuovi
+  non sono «deployati», sono **stati usati**.
+  ⭐⭐ **IL CONTROLLO CHE RENDE ONESTO IL VERDE, ed è la stessa persona a un giorno di distanza**: la
+  scheda del **29/08** porta `raw_score` **5,106**, che è il conto coi pesi **VECCHI** (0,40 × 5,5 +
+  0,25 × 5,5 + 0,35 × 4,38 = 5,108); quella del 30/08 porta il conto coi pesi **NUOVI**. Due righe
+  della stessa mano, due formule diverse, e la seconda è quella dichiarata.
+  ⛔ **COSA QUESTO NON PROVA, e va detto perché è la metà che una lettura distratta si prende**: coi
+  pesi vecchi oggi sarebbe uscito **4,5 lo stesso** (4,5875). Non è una smentita — è precisamente ciò
+  che la misura prevedeva: *ribilanciare non tocca chi risponde coerente, morde chi si sopravvaluta*.
+  Ieri era il caso incoerente (scarto 1,12 ⇒ coerenza bassa), oggi il coerente. ⇒ È provato che il
+  metro nuovo **gira**; il suo potere di discriminare no, e per vederlo serve una scheda incoerente.
+  ⚠️ **E la ④ resta non provata su un caso vivo**, come già dichiarato sotto: alla frequenza ha
+  risposto «Più di 10», quindi la bandiera non si è accesa. Il campo però **è arrivato compilato**
+  (`monthly_frequency: 'Più di 10'`), mentre nella scheda del 29/08 era **vuoto** ⇒ smettere di
+  buttarlo si vede nel dato, accendersi no.
+· ⏳ **RESTA APERTA PER UNA COSA SOLA: la rilettura delle 6 domande** — **P-T12** e le **5 di
+  terminologia** (B-T14 · B-T15 · I-T13 · I-T15 · A-T14). Il resto del controllo sul regolamento è
+  chiuso, e la prova sul telefono pure. Il banco è verde e i
   sabotaggi passano, ma è il banco: la prova fisica è un test vero fatto dal bot, con le domande
   nuove sullo schermo e il livello che ne esce.
 ⚠️ E la ④ ha un residuo suo: sulle 44 schede la bandiera della frequenza si accende **zero** volte
