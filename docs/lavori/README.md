@@ -2516,6 +2516,82 @@ spiega perché è andata a zero. ⇒ Una guardia che legge i commenti **vieta di
 sorveglia**, e la cura non è riscrivere il commento con un sinonimo. Ora guarda il codice spogliato
 (`senzaCommenti`), come già si faceva nel gestionale.
 
+🔎⭐⭐ **IL TERZO PASSO MISURATO — 30/08 pomeriggio: NON è «spegnere una pagina», è un lavoro su
+DUE REPO CON UN ORDINE.** Qui sotto stava scritto *«solo il terzo passo — la pagina del quiz che si
+spegne»*, come se fosse una riga da togliere. La misura dice altro, e la riga si corregge.
+
+📏 **PRIMA COSA MISURATA: la pagina è morta da sola, e non serve rompere niente per chiuderla.**
+· le schede per sorgente: `scheda-pubblica` (la pagina web) **17**, dal 22/05 al **23/06** — poi
+  **mai più**; `bot-a-passi` **38**, dal 26/08 a oggi. ⇒ **68 giorni** senza una scheda dalla pagina;
+· i gettoni con `status: sent` sono **133**, ma **132 non hanno un indirizzo email** e **nessuno dei
+  133 è mai stato aperto**: quel «sent» è una routine che ha marcato le righe alle 04:00, una ogni
+  dieci secondi, in ordine alfabetico — **non** un socio che ha ricevuto un link.
+  🗣️ E il committente lo conferma: *«Non abbiamo mai mandato quel link in giro ai soci del circolo…
+  abbiamo fatto delle prove mandando dei messaggi con il link di WhatsApp, ma ad oggi non è mai
+  stato fatto di concreto nulla»*. ⇒ **Si parte da zero**, e il test parte dal bot.
+🩹 **E due letture sbagliate lungo la strada, tutt'e due dello stesso genere**: avevo dichiarato
+«tutti i gettoni sono scaduti» (`expires_at` è **null su tutti e 1409**: non scade **nessuno**) e
+stavo per dichiarare «132 link vivi in giro» su un campo che si chiama `sent`. 📌 *Un campo letto per
+come si chiama risponde a una domanda che non è quella fatta* — è la stessa forma di `ok` invece di
+`count` (voce 108) e di `created_at` invece di `synced_at`.
+
+🚨⭐⭐ **SECONDA COSA MISURATA, ed è quella che ferma la mano: IL BOT SCRIVE ANCORA QUEL LINK.**
+`consumer-assessment-link` continua a produrre l'indirizzo (`url`, verso `autovalutazione.html`, che
+è un rimando a `index.html?t=…`), il ponte lo porta dentro `statoTestLivello`, e in
+`frasePerIlTest` (`src/telegram/bottone.ts`) c'è un **ripiego vivo**:
+```
+if (opts.bottone && bottoneTestLivello({gettone})) → «lo apri col bottone qui sotto»   (callback: il test in Telegram)
+if (dove)                                          → «Fai il test…: <indirizzo della pagina>»
+```
+⇒ Dove il bottone non si può attaccare, il bot **scrive l'indirizzo**. Chiudere la pagina prima di
+togliere quel ripiego consegna a un socio **un link a una porta chiusa**, e non lo direbbe nessun
+banco: lo direbbe il socio.
+⚖️ ⇒ **L'ordine è obbligato — ① il BOT smette di offrire il link (il ripiego diventa la segreteria),
+② POI si chiude la pagina.** È la regola dell'*ordine di messa in servizio* già scritta in
+`CLAUDE.md` per i gesti nuovi, applicata a una **rimozione** invece che a un'aggiunta: al contrario,
+fra i due deploy c'è una finestra in cui il bot manda un indirizzo morto.
+⚠️ **E costa un deploy del bot dei SOCI** (`deploy-bot-hetzner.yml`, bersaglio `soci`, con la parola
+`SOCI` scritta a mano): non è un lavoro di soli documenti, e va fatto quando qualcuno può guardarlo.
+
+🔄🩹 **E la prova di parità NON si toglie più insieme alla pagina** — qui sotto stava scritto che
+andava tolta con lei. 📏 Il motivo per cui vale **sopravvive alla chiusura**: nel gestionale
+`#anchor-assessment-scheda` resta come **anteprima per lo staff** (campi disabilitati, in modalità
+non pubblica). ⇒ Le due cose che devono restare pari ci sono ancora — non più il **dato** del socio,
+ma **quello che lo staff crede che il socio veda**. Costa zero tenerla, e toglierla lascerebbe
+l'anteprima libera di invecchiare, che è il difetto che quella card è nata per non fare.
+
+✅⭐⭐ **IL PASSO ① È FATTO E IN SERVIZIO SUL BOT DEI SOCI — 30/08, 17:01** (`assistente-padel-agent`
+PR #111, deploy run #126, sha `80abc4e`). Autorizzato da lui: *«procedi tu adesso»*.
+🔨 **Il cambio, in un punto solo**: `frasePerIlTest` (`src/telegram/bottone.ts`) era **l'unico**
+posto del repo che scriveva quell'indirizzo — `offertaDelTest`, `testoNonPuoiInvitare`,
+`messaggioPromemoriaLivello` e `schedaDaMandare` passano tutte di lì. Le quattro strade:
+
+| strada | prima | adesso |
+|---|---|---|
+| attesa | il quando + la segreteria | invariata |
+| gettone + bottone | «lo apri col bottone qui sotto» | invariata |
+| **gettone, niente tastiera** | **l'indirizzo scritto nel testo** | **«apri «📊 Test Livello di Gioco»»** |
+| niente gettone | la segreteria | invariata |
+
+⚖️ **E NON è diventato «chiedi in segreteria»**: chi ha un gettone il test lo può fare **lì**, e
+mandarlo in segreteria sarebbe stato un vicolo cieco nuovo al posto di uno vecchio. 🔒 Il nome della
+porta non è scritto a mano: è `RIMANDO_LIVELLO`, lo stesso che il socio legge nel menu.
+📏 **E la misura che ha cambiato cosa proteggono le prove**: `consumer-assessment-link` risponde
+`url` e `token` **sempre insieme** (due soli rami, tutt'e due `conNome(token)`) ⇒ lo stato
+*«indirizzo senza gettone»* che **cinque** prove costruivano **non lo produce nessuno**. Le sette
+prove sono state **riscritte, nessuna cancellata**: la metà che regge — *mai un vicolo cieco* — è
+rimasta, ed è cambiata quella che non regge più.
+🧪 **Banco 1652 su 1652**, `tsc --noEmit` pulito, e **due sabotaggi visti rossi**: rimesso il ramo
+che scrive l'indirizzo → **5 rosse**; il nome della porta scritto a mano invece che con la costante
+→ **3 rosse**.
+✅ **Dove punta il bot, chiesto e non dedotto** (`stato-bot.yml`, sola lettura): `online`, uptime
+**32 s**, `⚙️ ponti edge: qqbf… (PROD)`, `✍️ prenotazioni REALI`. Il `.env` non l'ha toccato nessuno.
+⛔ **Cosa NON prova**: che la frase nuova si legga bene **su un telefono**. Il banco misura i
+vincoli, non la lettura — e la strada ② (gettone senza tastiera) è un angolo che non si provoca a
+comando. ⇒ Si vedrà al primo messaggio vero che ci passa.
+🔓 ⇒ **Il passo ② è sbloccato**: adesso la pagina si può chiudere senza che nessuno riceva un
+indirizzo morto.
+
 ⏳ **COSA RESTA ALLA 97, dopo oggi**: solo il **terzo passo** — la pagina del quiz che si spegne,
 visto che il test si fa nel bot. ⚠️ Quel giorno va tolta anche la **prova di parità** fra `passi.js`
 e i `<select>` di `index.html`: *una prova di parità vale finché esistono due cose che devono
