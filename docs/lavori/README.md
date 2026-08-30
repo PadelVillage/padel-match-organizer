@@ -2,6 +2,31 @@
 
 **Fotografia del 21/08/2026, a fine 46ª sessione.** Misurata, non ricordata.
 
+## ✋ DA PROVARE INSIEME — in ordine *(aggiornato il 30/08 pomeriggio, fine 62ª)*
+
+🚨 **Delle 9 urgenti non ne è chiusa nessuna, e non per pigrizia**: è fatto tutto ciò che si poteva
+fare **da soli**. Quello che resta vuole le sue mani, e da una sessione cloud non ci si passa.
+L'ordine è per **quanto costa non farlo** contro **quanto poco costa a lui**.
+
+| | cosa | quanto | sblocca |
+|---|---|---|---|
+| **1️⃣** | **rileggere 6 domande del test** — **P-T12** (l'unica la cui risposta poggia sull'assenza di un divieto) e le 5 di terminologia **B-T14 · B-T15 · I-T13 · I-T15 · A-T14**. 📄 `docs/test-autovalutazione-banca-domande.md`. ⚠️ Non tutte e 27: il controllo sul regolamento del 30/08 ne ha chiuse 21 | ~10 min | **110** ① — *«una domanda sbagliata boccia un socio vero»* |
+| **2️⃣** | **una domanda alla segreteria**: *«un omaggio fatto a mano su Matchpoint compare come pagamento a 0 €?»* — dei 3032 pagamenti tornati da Matchpoint quelli a 0 centesimi sono **zero**, quindi senza questa risposta un'assenza direbbe *«non lo so»*, non *«non è passato»* | ~30 s | **109**, che poi si chiude **dal cloud** dal 31/08 |
+| **3️⃣** | **un giro del test dal telefono** — guardando le domande nuove sullo schermo **e il livello che ne esce** (la taratura cambia in 15 casi su 44, la parola in 6) | ~5 min | **110** ② **e 97** insieme |
+| **4️⃣** | **un salvataggio di scheda socio su PROD** dalla segreteria: la riga atterra, e non ne nasce una seconda | ~2 min | **105 e 108** insieme |
+| **5️⃣** | **la 84 col difetto vero davanti** — vuole il difetto *in atto*, non ricostruito: si fa quando capita | — | **84** |
+
+⏳ **Si aspettano e basta**: **92** (un gesto che attraversa un riavvio del bot) · **83** (un worker
+oltre i 150 s) · **65** (curata e in servizio). 🚨 La **83** si potrebbe **provocare** col cancello
+del worker come fu fatto per la 106 — ⚠️ ma il danno **non è simmetrico**: una prenotazione doppia
+occupa un campo vero, quindi va disegnata su uno slot lontano e col cancello verificato chiuso.
+
+📌 **E due DECISIONI, che non sono prove**: la **111** (la regola sull'età — 🆕 adesso si sa che un
+cancello sull'età vuole **tre** esiti e non due) e la **112** (se i 1736 contatti della rubrica
+debbano stare nell'anagrafica dei soci).
+
+📄 Il passaggio completo: `docs/passaggio-consegne-20260830-pomeriggio.md`.
+
 ## 🔎 Il filo del 22/08 sera: **una via d'uscita si può dare solo dove si sa dove porta**
 
 La voce 72 chiedeva una **frase**: un rifiuto che invece di lasciare il socio fermo gli dica di
