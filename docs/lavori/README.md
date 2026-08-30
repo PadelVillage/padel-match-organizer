@@ -3342,8 +3342,17 @@ teneva fermi i pesi né i punteggi.
 📌 **Non scavalca niente**: entra in fondo alle urgenti. È lavoro curato che aspetta una prova,
 come la 65 e la 84 — non un guasto che sta perdendo dati adesso.
 
-⛔ **E non è in servizio da nessuna parte**: sta sul ramo di lavoro. Va promossa a `test-preview`
-e poi a `main` come qualunque altra cura, con l'ordine del punto 4bis.
+✅ **IN SERVIZIO dal 30/08 mattina**, su sua parola (*«Procedi come hai scritto»*): TEST **6.262**
+e PROD **6.258**, promossa con l'ordine del 4bis — di là i sette commit riportati uno per uno e non
+con un merge, perché i due `index.html` differiscono di 1246 righe e un merge avrebbe portato su
+`test-preview` 50 commit di `main` che non c'entrano.
+📏 **Verificata VIVA, non dedotta dal log del deploy**: la console remota legge **6.262** su
+`test.padelvillage.club` e **6.258** su `app.padelvillage.club`, con la funzione nuova presente su
+tutt'e due; e la sorgente in servizio su Supabase PROD porta **44 trabocchetto che negano e 40 che
+affermano**, i pesi 0,20/0,55, nessun freno basso e la bandiera della frequenza.
+⚖️ **Ma in servizio c'è il MECCANISMO**: le due cose che tengono aperta questa voce — le 27 domande
+non rilette e la prova su un telefono — il deploy non le ha spostate di un centimetro. 🚨 E adesso
+contano di più, non di meno: da stamattina una domanda sbagliata può bocciare un socio vero.
 
 ## 📋 IN CODA — 10
 
