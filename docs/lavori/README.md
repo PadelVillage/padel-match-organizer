@@ -1905,6 +1905,14 @@ sola altra spiegazione — un export che scarta le righe a 0 € — e si distin
 di quella partita. Non è la stessa cosa di prima, dove le spiegazioni erano due e nessuna eliminabile.
 ⏳ **La voce resta aperta fino al 31/08**, e da lì è una query.
 
+🚨🚨⭐⭐ **30/08 a tarda notte — LA PARTITA DELL'OMAGGIO È STATA ANNULLATA, E LA SONDA DI DOMANI DIREBBE UN «NO» FALSO.**
+📏 Trovato per caso, controllando che il committente avesse davvero disdetto la **sua** partita di prova: la partita del **31/08 · 13:00 · Campo 4** — quella dell'omaggio, `idReserva 9649` — risulta **`deleted: true` dal 30/08 alle 16:36:02**, su tutte e quattro le righe (`booking` ×2, `booking_occupancy`, `staff_booking`).
+⇒ **La sonda non troverà mai quella riga**, e non perché l'omaggio non sia arrivato su Matchpoint: perché **la partita non esiste più**. Un pagamento non viene esportato per una prenotazione annullata.
+🚨 **E l'assenza era stata appena resa CONCLUSIVA** dalla sua risposta (*«l'omaggio ha come prezzo zero»*) ⇒ chi legge quello zero domani direbbe **«non è passato»**. Sarebbe la **terza** volta in un giorno che questa voce rischia di affermare una cosa non vera: prima il campo sbagliato (`data` invece di `booking_data`), poi la finestra dell'export, adesso il bersaglio sparito.
+📌 *Rendere conclusiva una sonda la rende anche pericolosa: da quel momento ogni suo silenzio è un'affermazione, e va ricontrollato che il bersaglio esista ancora prima di leggerla.*
+⇒ **COSA FARE DOMANI, e NON è lanciare la query**: ① lanciarla lo stesso, ma sapendo che lo zero **non significa niente**; ② per chiudere la voce serve **un omaggio nuovo su una partita viva** — cioè un gesto della segreteria, e poi la sonda su quello slot. ⛔ Chiudere sull'assenza attuale sarebbe un «no» costruito su un bersaglio che non c'è.
+🔎 **E un reperto di passaggio, misurato ma NON interpretato**: i record `pmo_gift` su PROD sono **due**, non uno — `paygift|2026-08-31|4|13:00|maurizio aprea` (29/08 21:18) e `paygift|2026-09-07|1|14:00|maurizio aprea` (**30/08 23:02**, nato mentre il committente aggiungeva un Ospite per la prova della voce 80). ⚠️ Che il percorso omaggi scatti aggiungendo un **Ospite** è un'ipotesi, non una misura: se fosse vero cambierebbe la premessa di questa scheda (*«un omaggio non l'ha mai fatto nessuno»*), che avrebbe un produttore di routine. **Da misurare, non da dedurre.** 🧹 Entrambi sono oggi **orfani**: le due partite sono annullate.
+
 🔎 **Trovata tirando il filo della 108** — cercando *perché* una spinta scrive zero record.
 🩹🚨⭐⭐ **E QUI SOTTO, PER UN'ORA, C'ERA SCRITTO CHE ERA «LA CAUSA DELLE 67 SPINTE A VUOTO».
 È FALSO, e la riga si corregge invece di affiancarla.** Non l'ho mai verificato: ho trovato un
