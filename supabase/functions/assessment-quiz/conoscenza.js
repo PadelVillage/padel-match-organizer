@@ -89,8 +89,15 @@ export const ASSESS_KNOWLEDGE_BANK = {
      «il più difficile da azzeccare per i livelli da principiante a intermedio» — dice il
      contrario, e la riga vecchia si corregge invece di conviverci. Rifare il test è gratis
      (attesa zero): la severità costa un riprovare, non una porta chiusa.
-     ⛔ Principiante resta SENZA quiz (regola del 9/08, non toccata): chi si dichiara al minimo
-     della scala non guadagna niente mentendo. */
+     🩹🚨 30/08/2026 — QUI C'ERA SCRITTO «⛔ Principiante resta SENZA quiz (regola del 9/08,
+     non toccata)», E DAL 27/08 SERA È FALSO. La riga si corregge, non si affianca: stava in
+     testa alle costanti della pescata, cioè il primo posto che legge chi tocca questo file, e
+     avrebbe fatto decidere sulla base di una fascia che si credeva muta.
+     ⭐ Oggi `regole_fascia` dice `Principiante: { pass_min_correct: 0 }` — le domande **si
+     pescano** (`assessKnowledgeRegole` torna `cancello: propria.cancello !== false`, e quella
+     chiave non c'è più) e semplicemente **non bocciano nessuno**. La ragione del 9/08 regge
+     intera nel merito: chi si dichiara al minimo della scala non guadagna niente mentendo ⇒
+     non si sbarra, si misura. È cambiato COME, non PERCHÉ. */
   pick_normal: 2,
   pick_trap: 3,
   pass_min_correct: 4,     // su 5 pescate: una sbagliata qualunque è concessa, la seconda boccia
