@@ -443,6 +443,23 @@ Deno.serve(async (req: Request) => {
       }
     : null;
 
+  /* 🆕⚡ VOCE 80 (30/08, dopo la prova) — LA QUERY PARTE PRIMA E SI ASPETTA DOPO.
+   * 📏 Misurato su PROD appena la cura è andata in servizio, perché il committente ha notato
+   * che «ci mette un po' più di tempo»: media **400 → 536 ms**, cioè **+136 ms** su ogni
+   * apertura di `/prenotazioni`. Non era un'impressione.
+   * ⭐ E si toglie quasi tutto senza rinunciare a niente: questa lettura **non dipende** da
+   * quella delle prenotazioni — le due domande sono indipendenti, era solo il codice a metterle
+   * in fila. Partendo insieme, il costo è il massimo delle due invece della somma.
+   * 📌 *Prima di pagare un dato con del tempo, guardare se quel tempo è davvero necessario o
+   * solo l'ordine in cui è stato scritto.* */
+  const staffEditP = service
+    .from('pmo_cloud_records')
+    .select('record_type, payload, synced_at')
+    .eq('record_type', 'staff_edit')
+    .not('deleted', 'is', true)
+    .gte('synced_at', new Date(Date.now() - RIMOZIONI_FINESTRA_MIN * 60_000).toISOString())
+    .limit(200);
+
   // ── 3. Prenotazioni future: name-match sul roster ───────────────────────
   const { data: bookingRows, error: bookingErr } = await service
     .from('pmo_cloud_records')
@@ -479,14 +496,7 @@ Deno.serve(async (req: Request) => {
    * il dato del circolo è arrivato ed è lui la verità.
    * ⛔ Un errore qui NON fa fallire la risposta: si perde la correzione, non le prenotazioni.
    *   È il verso giusto — senza questa lettura si torna al comportamento di prima. */
-  const dallaFinestra = new Date(Date.now() - RIMOZIONI_FINESTRA_MIN * 60_000).toISOString();
-  const { data: staffEditRows, error: staffEditErr } = await service
-    .from('pmo_cloud_records')
-    .select('record_type, payload, synced_at')
-    .eq('record_type', 'staff_edit')
-    .not('deleted', 'is', true)
-    .gte('synced_at', dallaFinestra)
-    .limit(200);
+  const { data: staffEditRows, error: staffEditErr } = await staffEditP;
   if (staffEditErr) {
     console.error('[readmodel] staff_edit non letti (voce 80):', staffEditErr.message);
   }
