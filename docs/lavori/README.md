@@ -5141,7 +5141,7 @@ in giro come un lavoro da fare che nessuno sa più perché non si fa.*
 
 ---
 
-### ⑤ 🗝️ LE 12 FUNZIONI COL PIN sono peso morto, non un buco — e togliersi si possono, misurato il 30/08
+### ⑤ ✅ LE 12 FUNZIONI COL PIN erano peso morto, non un buco — TOLTE il 30/08, con prova fisica
 
 Il passaggio le portava da giorni come una riga sola: *«`pmo_upsert_records_admin(text, jsonb)`, la
 vecchia firma col PIN, viva e inutilizzata»*. Misurata **tutta la famiglia**, non quella funzione
@@ -5169,16 +5169,41 @@ sola, e su tutt'e due i progetti.
   vive in **due depositi diversi** — `admin_settings` e `assessment_admin_config`, **una riga
   ciascuno**, misurate il 30/08.
 
-🔨 **La cura, che è un `drop` di 12 righe e NON è stata fatta.** Non per prudenza generica, ma perché
-un `drop` su PROD è la metà irreversibile e **c'è una verifica che da qui non si chiude**: i chiamanti
-li ho contati **in questo repo**. Il bot sta in un repo che questa sessione non ha clonato — e per la
-regola ferma di `CLAUDE.md` parla **solo** con le quattro edge `consumer-*`, che stanno qui e nelle
-quali `p_admin_pin` non compare. ⇒ La catena regge, ma l'ultimo anello è **dedotto da una regola
-dichiarata**, non contato. 📌 *Un `drop` si fa quando i chiamanti sono stati contati, non quando è
-molto probabile che non ce ne siano.*
+✅🔨 **FATTO il 30/08 sera, su TEST e su PROD** — migrazione `togli_le_dodici_firme_col_pin`
+(`supabase/migrations/20260830111500_…`). Qui sotto stava scritto *«NON è stata fatta, perché i
+chiamanti li ho contati in un repo solo»*: quel conteggio **è stato chiuso**, e la riga si corregge
+invece di restare accanto alla nuova.
 
-⏳ **Cosa serve per chiuderla**: o una sua parola, o un `grep p_admin_pin` su `assistente-padel-agent`
-— trenta secondi da chi ha quel repo sotto mano.
+📏 **I CINQUE FRONTI, tutti contati e nessuno dedotto** — ed è la condizione che ha reso lecito il
+`drop`, non un di più:
+· ① `padel-match-organizer`: zero `p_admin_pin`, e ogni chiamata vera passa dal gemello **senza** pin;
+· ② `assistente-padel-agent` — **clonato apposta**, perché la riga vecchia ammetteva che quell'anello
+  era *dedotto da una regola dichiarata*: **177 file `.ts`, 52.382 righe**, e **zero** occorrenze sia
+  di `p_admin_pin` sia dei 12 nomi. 🚨 E lo zero è stato **provato di non essere uno zero da cassetto
+  vuoto**: la stessa sonda trova le cinque edge `consumer-*` che il bot chiama davvero;
+· ③ `cron.job`: nessun job li nomina;
+· ④ dentro il database: le uniche funzioni la cui definizione contiene `p_admin_pin` erano **le 12
+  stesse**;
+· ⑤ `pmo_admin_pin_ok` era nominata **solo** dalle altre firme col PIN ⇒ **gruppo chiuso in sé**,
+  nessun riferimento penzolante. ⛔ Niente `CASCADE`, di proposito: se qualcosa avesse dipeso davvero
+  da una di queste, lo script doveva **fallire e dirlo**.
+
+✋ **E la PROVA FISICA c'è, su tutt'e due gli ambienti** — non un banco verde, l'app vera aperta col
+suo login (`tools/verifica-browser`):
+· **TEST** dopo il drop: `login: ok`, `pmo_get_records_admin` → **2943 righe**;
+· **PROD** dopo il drop: `appVersion 6.258`, `login: ok`, → **5760** righe `member` e **4604**
+  `booking`.
+📌 Le firme col PIN rimaste sono **0** su entrambi, e tutti i gemelli senza PIN sono al loro posto
+(8 su PROD, verificati per firma).
+
+🔙 **Come si torna indietro**, se un domani servisse: le definizioni stanno in git —
+`supabase/manual-sql/supabase_pmo_cloud_schema.sql`, `…_staff_admin_schema.sql`,
+`supabase_schema.sql`. 📌 *Un `drop` si fa quando i chiamanti sono stati **contati** e il sorgente è
+**recuperabile**: se manca una delle due, rimandarlo non è prudenza — è l'unica cosa che si può fare.*
+
+⚖️ **Cosa NON ha curato, e resta scritto**: l'incoerenza dei **due depositi del PIN** su PROD
+(`admin_settings` e `assessment_admin_config`, una riga ciascuno) — le funzioni che li leggevano non
+ci sono più, quindi oggi sono due tabelle inerti, ma nessuno le ha toccate ed è una decisione sua.
 
 ---
 
