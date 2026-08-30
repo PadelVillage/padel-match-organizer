@@ -18,6 +18,21 @@ credere che il grosso sia fatto. **Non lo è.** È fatto tutto ciò che si potev
 
 ---
 
+## 0. 📦 Stato alla consegna — niente in sospeso
+
+| | |
+|---|---|
+| PR aperte | **nessuna** — le sette della 62ª (#1200 → #1206) sono tutte **fuse** |
+| lavoro non committato | **nessuno** |
+| rami | `main` e `test-preview` **allineati** (verificato sui quattro percorsi sorvegliati) |
+| migrazioni applicate oggi | `togli_le_dodici_firme_col_pin` su **TEST e PROD** — già in servizio, il file sorgente è in git |
+| deploy partiti | edge PROD `assessment-quiz` **v21** (10:35:59Z) · edge TEST col push su `test-preview` |
+
+⇒ **La sessione nuova parte da un albero pulito**: non deve finire niente di lasciato a metà, e non
+c'è nessuna PR da sorvegliare. Tutto ciò che resta è al § 3.
+
+---
+
 ## 1. ✅ Prima di lavorare
 
 ```
