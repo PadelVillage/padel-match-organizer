@@ -1830,14 +1830,62 @@ La sonda che questa scheda lascia (*«omaggi scritti dall'app: oggi 0, il giorno
 · la **prenotazione** invece c'è ed è vera su Matchpoint (`idReserva 9649`, 31/08 13:00 Campo 4, `-Maurizio Aprea.-Lidia Comes.`) ⇒ lo slot esiste, non è una copia locale;
 · né `booking` né `booking_history` portano **un solo campo** che parli di pagamento o di omaggio ⇒ da quella parte la risposta non arriverà mai, ed è inutile cercarla lì.
 
-🎯 **LA SONDA, con la sua data: dal 31/08 in poi**, quando i pagamenti di quel giorno saranno esportati.
+🚨🚨⭐⭐ **30/08 SERA — LA SONDA GUARDAVA IL CAMPO SBAGLIATO, e con la risposta del committente in
+mano avrebbe detto un «NO» FALSO.** Qui sotto c'era scritta una query su `payload->>'data'`. 📏 Letto
+nel sorgente (`matchpoint-payments-sync/index.ts`, e il commento lo dice da sé):
+
+```
+data: row.payDateIso,          // data del PAGAMENTO (per aggregare gli Incassi)
+booking_data: row.bookDayIso,  // data della prenotazione
+```
+
+⇒ **`data` è il giorno in cui si PAGA; il giorno della PARTITA è `booking_data`.** L'omaggio è stato
+segnato il **29/08 alle 21:18**, per una partita del **31/08** ⇒ la riga nascerebbe con
+`data = 2026-08-29` e `booking_data = 2026-08-31`, e la sonda vecchia **non l'avrebbe vista mai**,
+nemmeno a omaggio arrivato.
+⚖️ **E il danno lo ha creato la cura precedente**: finché l'assenza voleva dire *«non lo so»*, una
+sonda storta costava una mezza risposta. Da quando la sua parola (*«l'omaggio ha come prezzo zero»*)
+ha reso l'assenza **conclusiva**, la stessa sonda storta avrebbe detto **«non è passato»** di una cosa
+passata — un «no» falso, che qui dentro è la specie di errore più grave.
+📌 *Rendere conclusiva una sonda ne raddoppia il costo se guarda il campo sbagliato: prima sbagliava
+a metà, adesso affermerebbe.* 🚨 Ed è la **trappola ① della 63ª** — *un campo letto per come si chiama
+risponde a una domanda diversa da quella fatta* — commessa su `data`, che è il nome più innocente di
+tutti.
+
+🎯 **LA SONDA, corretta. Si legge DURANTE il 31/08**, non il giorno dopo.
 ```sql
-select payload->>'data', payload->>'campo', payload->>'ora',
-       payload->>'player_name', payload->>'amount_cents', payload->>'method'
+select payload->>'booking_data' as giorno_partita, payload->>'data' as giorno_pagamento,
+       payload->>'campo', payload->>'ora', payload->>'player_name',
+       payload->>'amount_cents', payload->>'method'
 from pmo_cloud_records
 where record_type='payment' and payload->>'source'='matchpoint'
-  and payload->>'data'='2026-08-31' and payload->>'ora'='13:00';
+  and payload->>'booking_data'='2026-08-31' and payload->>'ora'='13:00';
 ```
+📏 **Perché «durante» e non «dopo», misurato su `booking_data` e non più a occhio**: su **9 partite su
+9** (22-30/08) la prima riga di pagamento di una partita **nasce il giorno stesso della partita** —
+`created_at` fra le **02:23** e le **15:55**, mai il giorno dopo. E la conferma indipendente sta nella
+**finestra dell'export**, che è una finestra di **PRENOTAZIONE** e non di pagamento: l'ultimo giro
+(30/08 21:16) porta `reconcileWindow {from: 2026-08-29, to: 2026-08-30}` ⇒ il 31/08 **non c'è ancora**,
+e ci entra domani.
+🩹 **La prima versione di questa misura era sul campo sbagliato** — raggruppava per `data`, cioè per
+giorno di pagamento, dove *«la prima riga di un giorno nasce quel giorno»* è vero per costruzione e non
+dice niente. Rifatta su `booking_data`. ⇒ La stessa trappola due volte nella stessa ora, la seconda
+mentre la si stava scrivendo.
+
+✅ **E DUE SPIEGAZIONI CANDIDATE SONO CADUTE, guardando il NOSTRO lettore prima del loro export:**
+· **non scartiamo gli zeri**: `mpMoneyToCents` torna `null` — e quindi fa saltare la riga — **solo su
+  una cella senza nessuna cifra**; `"0,00"` vale 0 e passa. Lo scarto è per le righe *totali/vuote*,
+  non per gli importi nulli;
+· **non scartiamo il metodo sconosciuto**: `other` è un secchio vivo, non un filtro — il `byMethod`
+  dell'ultimo giro riporta `{card, cash, wallet, other: 0}`, cioè viene contato e scritto. Che nel
+  cloud non ce ne sia **nessuno** in tre mesi è un **non uso**, non una perdita.
+⭐ **E il normalizzatore nomina «Regalare» fra i metodi che finiscono in `other`** ⇒ Matchpoint quel
+metodo ce l'ha, e un omaggio potrebbe arrivare proprio con quello. La sonda corretta **non filtra il
+metodo**, apposta: lo prenderebbe comunque.
+⇒ **Se domani la riga manca, non è il nostro lettore ad averla persa**, e l'unica spiegazione residua
+resta quella già dichiarata — un export che non porta affatto le righe a 0 €.
+📌 *Prima di dire che il dato non è arrivato si guarda chi lo legge, non solo chi lo manda.*
+
 Se la riga compare ⇒ **l'omaggio è arrivato su Matchpoint** e questa metà si chiude **dal cloud**, senza disturbare nessuno.
 
 🚨⭐ **E se NON compare, quello NON è un «no» — ed è il pezzo che va saputo prima di guardare.** Dei **3032** pagamenti mai tornati da Matchpoint, quelli con `amount_cents = 0` sono **ZERO**. ⇒ Non sappiamo se l'export porti le righe a 0 €: un omaggio potrebbe essere invisibile **per costruzione**, e un'assenza direbbe *«non lo so»*, non *«non è passato»*. È la stessa forma del *«il no si dice solo con la freschezza certificata»* — **l'assenza dalla copia non prova l'assenza dal circolo**.
