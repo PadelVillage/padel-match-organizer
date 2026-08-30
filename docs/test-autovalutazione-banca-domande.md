@@ -32,6 +32,7 @@ giusta non era:
 | **P-T15** | 🔴 **risposta SBAGLIATA**: diceva che durante il punto si può passare la racchetta all'altra mano. Il **cordino al polso è obbligatorio per tutta la durata del punto** (FIP/FEP/FIT) ⇒ non si può; toglierlo fa perdere il punto. L'eccezione è **argentina**, non nostra. E contraddiceva **A-T15** della stessa banca, che il cordino lo dichiara obbligatorio ⇒ chi sapeva la regola sbagliava **proprio perché la sapeva** | domanda riscritta sul cordino, verso `afferma` mantenuto |
 | **AG-T16** | 🔴 **due opzioni difendibili**: il testo descriveva il caso *tennistico* (la palla passa di là e torna per l'effetto), mentre nel padel l'invasione è ammessa quando la palla **ha già rimbalzato nel proprio campo** ed è tornata di là dopo il vetro. ⇒ l'opzione scartata «Solo se rimbalza prima» era **più giusta della giusta** | il rimbalzo è entrato nel **testo** della domanda, così non compete più come opzione |
 | **P-T12** | ⚠️ **due opzioni quasi identiche**: «Solo piatto e **cornice**» — e la cornice *è* il bordo — diceva quasi la stessa cosa della giusta «Qualunque parte, anche il bordo» | sostituita l'opzione che collideva |
+| **P-T12** *(2ª volta, 30/08 pomeriggio)* | 🗣️ **rilettura del committente**: *«la P-T12 me la devi specificare meglio perché così non si capisce qual è la risposta giusta»*. 📏 Il difetto isolato: dei tre distrattori **due dicevano «solo»** e il quarto no — «La parte piatta e il manico» si leggeva come **un'altra risposta vera**, non come un'alternativa esclusa. ⇒ La giusta non era ambigua per il testo suo, ma perché **il concorrente non si dichiarava concorrente** | aggiunto «Solo» al quarto distrattore: «Solo la parte piatta e il manico». 🔒 La **giusta non si è toccata** — *«a me piace come risposta»* — e il verso `afferma` resta |
 
 ⛔ **Cosa questo controllo NON ha provato**, e va detto: dal cloud **il PDF del regolamento FIP non si
 apre** (`padelfip.com`, `fitp.it`, `knltb.nl`, `isfsports.org` e perfino Wikipedia rispondono `403
@@ -285,7 +286,7 @@ precisi:
 - **[GIUSTA]** Qualunque parte, anche il bordo
 - Solo la parte piatta, mai i bordi
 - Serve il centro, o è fallo
-- La parte piatta e il manico
+- Solo la parte piatta e il manico
 
 **P-T13** — È vero che la rete è più bassa al centro (88 cm) che ai pali (92 cm)?
 - **[GIUSTA]** Sì: 88 al centro, 92 ai pali
