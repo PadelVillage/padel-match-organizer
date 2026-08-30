@@ -5141,6 +5141,47 @@ in giro come un lavoro da fare che nessuno sa più perché non si fa.*
 
 ---
 
+### ⑤ 🗝️ LE 12 FUNZIONI COL PIN sono peso morto, non un buco — e togliersi si possono, misurato il 30/08
+
+Il passaggio le portava da giorni come una riga sola: *«`pmo_upsert_records_admin(text, jsonb)`, la
+vecchia firma col PIN, viva e inutilizzata»*. Misurata **tutta la famiglia**, non quella funzione
+sola, e su tutt'e due i progetti.
+
+📏 **I fatti**, identici su PROD e TEST:
+· sono **12**, e ognuna ha un gemello **senza PIN** che è quello vivo;
+· `anon` **no**, `authenticated` **no**, `service_role` **sì** — cioè le può chiamare **solo la chiave
+  segreta**, che scavalca tutto comunque ⇒ **non concedono niente che non ci fosse già**;
+· nel repo i chiamanti sono **zero**: `p_admin_pin` non compare in nessun `.ts`/`.js`/`.mjs`/`.html`,
+  e ognuno dei punti di chiamata veri passa `p_records` o `p_record_types` **col token di staff**,
+  cioè il sovraccarico senza PIN;
+· le loro definizioni **stanno in git** (`supabase/manual-sql/supabase_pmo_cloud_schema.sql`,
+  `…_staff_admin_schema.sql`, `supabase_schema.sql`) ⇒ toglierle è **recuperabile**, e questa è la
+  cosa che andava verificata **prima** di proporre un `drop`.
+
+⚖️ **Quindi non sono un pericolo, ed è giusto ridimensionarle**: la voce 47 aveva già tolto `anon` e
+`PUBLIC` il 16/08. Restano per due ragioni più piccole, ma vere:
+· sono **`SECURITY DEFINER`** che non serve a nessuno — superficie che si porta dietro un rischio solo
+  il giorno in cui qualcuno riconcede un `EXECUTE` per sbaglio;
+· ⚠️ **il sovraccarico è un piede di porco**: `pmo_upsert_records_admin` esiste in `(jsonb)` e in
+  `(text, jsonb)`, e una chiamata futura che mandasse per caso una chiave `p_admin_pin` finirebbe
+  **in silenzio** sulla strada vecchia;
+· 🔴 e dietro ci sta l'incoerenza che `docs/divergenze-sql-test-prod.md` segnala già: su PROD il PIN
+  vive in **due depositi diversi** — `admin_settings` e `assessment_admin_config`, **una riga
+  ciascuno**, misurate il 30/08.
+
+🔨 **La cura, che è un `drop` di 12 righe e NON è stata fatta.** Non per prudenza generica, ma perché
+un `drop` su PROD è la metà irreversibile e **c'è una verifica che da qui non si chiude**: i chiamanti
+li ho contati **in questo repo**. Il bot sta in un repo che questa sessione non ha clonato — e per la
+regola ferma di `CLAUDE.md` parla **solo** con le quattro edge `consumer-*`, che stanno qui e nelle
+quali `p_admin_pin` non compare. ⇒ La catena regge, ma l'ultimo anello è **dedotto da una regola
+dichiarata**, non contato. 📌 *Un `drop` si fa quando i chiamanti sono stati contati, non quando è
+molto probabile che non ce ne siano.*
+
+⏳ **Cosa serve per chiuderla**: o una sua parola, o un `grep p_admin_pin` su `assistente-padel-agent`
+— trenta secondi da chi ha quel repo sotto mano.
+
+---
+
 ## 📦 CHIUSE — dal 13 al 29/08/2026 — 87 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
