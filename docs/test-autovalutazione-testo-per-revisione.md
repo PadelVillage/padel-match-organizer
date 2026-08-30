@@ -229,11 +229,18 @@ Le **domande normali** verificano regole e nomenclatura reali della fascia.
 
 I **trabocchetto** (57 in tutto) sono la parte antifrode e sono di due specie deliberatamente
 mescolate:
-- **~39** descrivono una regola o un colpo **inventati** con un nome plausibile («fallo di vetro
-  incrociato», «doppio rimbalzo difensivo»): la risposta giusta è quella che nega l'esistenza;
-- **~18 sono «alla rovescia»**: descrivono regole o colpi **veri** che suonano inventati
+- **44** hanno come risposta giusta una **negazione**: descrivono una regola o un colpo inventati
+  con un nome plausibile («fallo di vetro incrociato», «doppio rimbalzo difensivo») e la risposta
+  giusta nega, nelle tre forme «Non esiste», «Mai: …», «No: …»;
+- **13 sono «alla rovescia»**: descrivono regole o colpi **veri** che suonano inventati
   («la chiquita è un colpo vero?», «si può colpire il proprio vetro per mandare la palla di là?»)
   e la risposta giusta è quella che **conferma**.
+
+Lo squilibrio è misurato ed è la debolezza nota di questa banca: siccome 44 trabocchetto su 57
+si passano negando, chi risponde «non esiste» a tutti e tre i trabocchetto del giro e sa le due
+domande normali passa il quiz nel **76% dei casi (fasce Base e Intermedio), 87% (Avanzato), 96%
+(Agonista)** — contro il **50%** di chi i trabocchetto non li sa e risponde a caso. La scorciatoia
+oggi rende più del sapere.
 
 La seconda specie esiste perché la prima, da sola, insegnava una scorciatoia: *quando vedi
 «Non esiste», è quella la risposta giusta*. Con le due mescolate, quel segnale non dice più dove
@@ -373,7 +380,8 @@ Elencato apposta, perché un revisore lo conti fra i limiti noti e non fra le sv
    regole viene punito ingiustamente? Il tasso di falsi bocciati atteso è accettabile?
 5. **La composizione 2 normali + 3 trabocchetto.** Ha senso che i trabocchetto siano la
    maggioranza? Con soglia 4/5, quanto è probabile che un socio onesto e competente sbagli due
-   trabocchetto?
+   trabocchetto? E quale composizione della banca (oggi 44 negazioni contro 13 conferme) rende la
+   scorciatoia «nego sempre» non più conveniente del sapere davvero?
 6. **L'asimmetria Principiante.** Soglia 0 per la fascia più bassa, 4/5 per tutte le altre: la
    discontinuità fra Principiante e Base è giustificata o crea un incentivo a dichiararsi
    Principiante?
