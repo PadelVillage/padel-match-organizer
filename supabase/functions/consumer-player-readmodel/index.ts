@@ -480,7 +480,7 @@ Deno.serve(async (req: Request) => {
    * ⛔ Un errore qui NON fa fallire la risposta: si perde la correzione, non le prenotazioni.
    *   È il verso giusto — senza questa lettura si torna al comportamento di prima. */
   const dallaFinestra = new Date(Date.now() - RIMOZIONI_FINESTRA_MIN * 60_000).toISOString();
-  const { data: staffEditRows, error: staffEditErr } = await admin
+  const { data: staffEditRows, error: staffEditErr } = await service
     .from('pmo_cloud_records')
     .select('record_type, payload, synced_at')
     .eq('record_type', 'staff_edit')
