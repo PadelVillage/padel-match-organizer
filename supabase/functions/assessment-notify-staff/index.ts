@@ -145,6 +145,7 @@ function corpoEmail(riga: JsonMap, ambiente: string, prova = false) {
   if (coerenza === 'low') motivi.push('le risposte tecniche non tornano con il livello dichiarato');
   if (coerenza === 'medium') motivi.push('mezzo punto di differenza fra dichiarato e risposte tecniche');
   if (raw.experience_flag) motivi.push('dichiara un livello medio-alto ma gioca da poco');
+  if (raw.frequency_flag) motivi.push('dichiara un livello medio-alto ma gioca 0-1 volte al mese');
 
   const titolo = `${nome} — ${conoscenzaFatta ? (conoscenzaPassata ? 'test superato' : 'test NON superato') : 'autovalutazione ricevuta'}`;
 

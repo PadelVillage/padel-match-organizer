@@ -396,8 +396,28 @@ async function consegnaScheda(
   const pocaEsperienza = Number.isFinite(dichiarato) && dichiarato >= 3.0
     && ['Meno di 1 mese', '1-3 mesi', '3-6 mesi', '6-12 mesi']
       .some((v) => assessKey(v) === assessKey(scheda.experience));
+  /* 🆕🗣️⭐ 30/08/2026 — LA SECONDA BANDIERA: dichiara alto e gioca una volta al mese.
+     🗣️ Sua parola sulla proposta ④: *«VAi procedi e fai il lavoro»*.
+
+     📏 IL FATTO CHE L'HA APERTA: la domanda 2 («quante volte giochi al mese?») era **raccolta e
+     buttata**. Non pesava nel calcolo — quello si sapeva — ma nemmeno finiva dove qualcuno la
+     potesse leggere: la colonna `monthly_frequency` era vuota su **44 schede su 44**, perché
+     questa riga cercava `scheda.monthly_frequency` mentre il test manda `frequency`, e nel
+     gestionale non c'era nessun punto che la mostrasse. ⇒ Un passo chiesto a ogni socio, per
+     niente.
+     ⇒ O le si dà un lavoro, o la domanda si toglie. Il lavoro naturale è questo, ed è la gemella
+     esatta della bandiera dell'esperienza: chi dichiara Intermedio o più e gioca **0-1 volte al
+     mese** non viene bocciato — la scheda passa dalla segreteria.
+
+     ⏳ DICHIARATO: sulle 44 schede col quiz questa bandiera si accende **zero** volte (le tre
+     schede con «0-1» dichiarano tutte meno di Intermedio) ⇒ non toglie niente a nessuno oggi, e
+     **non è provata su un caso vero**, perché il caso non si è ancora presentato. È una
+     protezione preventiva, e va detto: la gemella dell'esperienza, in confronto, si è accesa 2
+     volte su 44. */
+  const pocaFrequenza = Number.isFinite(dichiarato) && dichiarato >= 3.0
+    && assessKey('0-1') === assessKey(scheda.frequency);
   // Il cancello: senza conoscenza dimostrata la scheda non si applica da sola.
-  const statoStaff = (genere === 'NA' || conoscenza.status !== 'pass' || pocaEsperienza)
+  const statoStaff = (genere === 'NA' || conoscenza.status !== 'pass' || pocaEsperienza || pocaFrequenza)
     ? 'review' : livCalc.staff_status;
 
   const riga = {
@@ -425,7 +445,14 @@ async function consegnaScheda(
     // `consistency_score`, `inconsistency_reasons` e `review_note`: non le scriviamo, e su
     // TEST non esistono. La riga è l'INTERSEZIONE dei due schemi, per costruzione.
     experience: assessTxt(scheda.experience) || null,
-    monthly_frequency: assessTxt(scheda.monthly_frequency) || null,
+    /* 🩹 30/08 — `scheda.frequency` PRIMA di `scheda.monthly_frequency`, e senza questa riga la
+       risposta alla domanda 2 non arrivava mai in colonna: il modulo e il bot mandano
+       `frequency` (è il `name` del campo e la `chiave` in `passi.js`), qui si cercava un nome
+       che nessuno manda. 📏 Misurato: colonna vuota su 44 schede su 44, mentre dentro
+       `raw_response` la risposta c'era tutte e 44 le volte.
+       📌 *Un campo che si scrive da una chiave che nessuno manda non è un dato mancante: è un
+       dato che c'è e non si trova.* */
+    monthly_frequency: assessTxt(scheda.frequency) || assessTxt(scheda.monthly_frequency) || null,
     basic_strokes: assessTxt(scheda.basic_strokes) || null,
     glass_usage: assessTxt(scheda.glass_usage) || null,
     net_play: assessTxt(scheda.net_play) || null,
@@ -457,6 +484,7 @@ async function consegnaScheda(
       ...(genereRipescato ? { gender: genereRipescato } : {}),
       knowledge: conoscenza,
       experience_flag: pocaEsperienza,
+      frequency_flag: pocaFrequenza,
       calculation_note: livCalc.note,
       technical_scores: livCalc.technical_scores,
       corretta_dal_server: true,
