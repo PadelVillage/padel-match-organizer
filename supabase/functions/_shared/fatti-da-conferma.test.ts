@@ -1,8 +1,8 @@
 // Prove del modulo che traduce una CONFERMA del circolo in fatti per il socio (voce 76).
 // Esegui:  node supabase/functions/_shared/fatti-da-conferma.test.ts
 import assert from 'node:assert/strict';
-import { campoScritto, destinatari, fattiDaAnnullo, fattiDaSpostamento } from './fatti-da-conferma.ts';
-import { chiaveSlot } from '../matchpoint-bookings-sync/eventi-staff.ts';
+import { campoScritto, destinatari, fattiDaAnnullo, fattiDaCambioRoster, fattiDaSpostamento, oggiRoma } from './fatti-da-conferma.ts';
+import { chiaveSlot, fattiDaConfronto } from '../matchpoint-bookings-sync/eventi-staff.ts';
 
 const test = (nome: string, fn: () => void) => {
   try {
@@ -124,3 +124,84 @@ test('senza data non si dichiara un annullo', () => {
 });
 
 console.log('\n✅ fatti-da-conferma: tutte le prove passate');
+
+// ── 👥 IL CAMBIO DI GIOCATORI DICHIARATO DALLA CONFERMA (31/08/2026) ─────────────────────
+//
+// 🗣️ Nasce da una sua frase davanti al primo avviso della voce 79: *«ha funzionato però ci ha
+// messo parecchio tempo»*. La strada veloce esisteva (voce 76) ma copriva solo annullo e
+// spostamento; il cambio di giocatori — il gesto più frequente — aspettava il sync.
+
+const SLOT = { data: '2026-09-07', ora: '11:00', campo: 'Campo 3' };
+const OGGI = '2026-09-01';
+
+test('👥 chi entra, chi esce e chi resta: gli stessi tre fatti che direbbe il sync', () => {
+  const fatti = fattiDaCambioRoster({
+    slot: SLOT,
+    prima: ['Maurizio Aprea', 'Marco Rossi'],
+    dopo: ['Maurizio Aprea', 'Lidia Comes'],
+    tipo: 'Partita',
+    oggi: OGGI,
+  });
+  assert.deepEqual(
+    fatti.map((f) => `${f.gesto}:${f.persona}`).sort(),
+    ['aggiunto:Lidia Comes', 'formazione:Maurizio Aprea', 'tolto:Marco Rossi'],
+  );
+  const resta = fatti.find((f) => f.gesto === 'formazione')!;
+  assert.deepEqual(resta.entrati, ['Lidia Comes']);
+  assert.deepEqual(resta.usciti, ['Marco Rossi']);
+  assert.equal(resta.tipo, 'partita');
+});
+
+test('👥⭐ NON è una seconda copia della regola: è la stessa funzione del sync', () => {
+  // 📌 La sonda che protegge la scelta, non il risultato: se un domani qualcuno riscrivesse
+  // qui la regola «a mano», questo caso resterebbe verde ma le due verità comincerebbero a
+  // divergere. ⇒ Si confronta con `fattiDaConfronto` chiamata direttamente sulle stesse due
+  // fotografie: devono dare la STESSA cosa, non una cosa equivalente.
+  const uno = (roster: string[]) => new Map([[
+    chiaveSlot(SLOT.data, SLOT.ora, SLOT.campo),
+    { slot: chiaveSlot(SLOT.data, SLOT.ora, SLOT.campo), ...SLOT, roster, tipo: 'Partita' },
+  ]]);
+  const daConferma = fattiDaCambioRoster({
+    slot: SLOT, prima: ['Maurizio Aprea', 'Ospite'], dopo: ['Maurizio Aprea', 'Ospite', 'Ospite'],
+    tipo: 'Partita', oggi: OGGI,
+  });
+  const dalSync = fattiDaConfronto(uno(['Maurizio Aprea', 'Ospite']), uno(['Maurizio Aprea', 'Ospite', 'Ospite']), OGGI);
+  assert.deepEqual(daConferma, dalSync);
+});
+
+test('👥 l\'ospite aggiunto: un fatto solo, per chi resta — il caso della voce 79', () => {
+  const fatti = fattiDaCambioRoster({
+    slot: SLOT, prima: ['Maurizio Aprea'], dopo: ['Maurizio Aprea', 'Ospite'], tipo: 'Partita', oggi: OGGI,
+  });
+  assert.equal(fatti.length, 1);
+  assert.equal(fatti[0].gesto, 'formazione');
+  assert.equal(fatti[0].persona, 'Maurizio Aprea');
+  assert.deepEqual(fatti[0].entrati, ['Ospite']);
+});
+
+test('🚨 un «dopo» VUOTO non svuota la partita: è una lettura mozza, non un annullo', () => {
+  // ⚖️ Il sync ha `confrontoAttendibile` contro il crollo; qui la stessa prudenza costa una
+  // riga. Senza, un worker che risponde monco manderebbe «non sei più nella partita» a tutti.
+  assert.deepEqual(
+    fattiDaCambioRoster({ slot: SLOT, prima: ['Maurizio Aprea', 'Lidia Comes'], dopo: [], oggi: OGGI }),
+    [],
+  );
+  assert.deepEqual(
+    fattiDaCambioRoster({ slot: SLOT, prima: [], dopo: ['Maurizio Aprea'], oggi: OGGI }),
+    [],
+  );
+});
+
+test('🚨 e una partita GIÀ GIOCATA non produce niente: la finestra è quella del sync', () => {
+  assert.deepEqual(
+    fattiDaCambioRoster({
+      slot: { data: '2026-08-01', ora: '11:00', campo: 'Campo 3' },
+      prima: ['Maurizio Aprea', 'Lidia Comes'], dopo: ['Maurizio Aprea'], oggi: OGGI,
+    }),
+    [],
+  );
+});
+
+test('⏱️ `oggiRoma` dà una data leggibile e non l\'orologio di chi la chiama', () => {
+  assert.match(oggiRoma(), /^\d{4}-\d{2}-\d{2}$/);
+});

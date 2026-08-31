@@ -1577,7 +1577,10 @@ Deno.serve(async (req) => {
         try {
           const { data: gia, error: giaErr } = await admin
             .from('pmo_eventi_staff')
-            .select('slot, persona, gesto')
+            // 👥 VOCE 79 — `entrati, usciti` servono al dedup che SOTTRAE invece di scartare:
+            // su `formazione` la chiave dice a CHI, non COSA, e senza gli elenchi due cambi
+            // diversi sullo stesso slot collasserebbero in uno. Vedi `togliGiaDichiarati`.
+            .select('slot, persona, gesto, entrati, usciti')
             .eq('origine', 'conferma')
             .gte('visto_at', daQuandoConferme);
           if (giaErr) throw giaErr;
