@@ -12,6 +12,7 @@ import {
   normName,
   type SchedaPerOmonimia,
   listeDaPayload,
+  mioNomeNelRoster,
   nomiDellaRiga,
   restanoSoloOspiti,
   rosterDelloSlot,
@@ -828,6 +829,15 @@ Deno.serve(async (req: Request) => {
       // riusavano: non potevano.
       const ignoto = esitoIgnotoDaRisposta(data);
       console.error(`[booking-write] create KO HTTP ${res.status}${ignoto ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(data).slice(0, 300));
+      // 🧾🚨 31/08/2026 (voce 83) — LA RICEVUTA SI LASCIA ANCHE QUI. Se la prenotazione è
+      // passata lo stesso, il sync la troverà e senza ricevuta il circolo annuncerebbe al socio
+      // un ingresso che ha chiesto lui. La regola stretta — sull'ignoto si copre SOLO chi ha
+      // chiesto — e il suo costo stanno in `ricevuta.ts`; qui chi chiede è anche chi entra.
+      if (ignoto) {
+        await lasciaRicevuta('create-ignoto', { data: slot.data, ora: slot.ora, campo }, [
+          { persona: member.name, gesto: 'aggiunto' },
+        ]);
+      }
       return ok({
         member: { id: member.id, name: member.name },
         created: false,
@@ -995,7 +1005,7 @@ Deno.serve(async (req: Request) => {
     }
     // Il nome da togliere è quello COME LO SCRIVE il gestionale, non `member.name`: a valle
     // il confronto è per nome, e le due forme possono differire.
-    const mioNome = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    const mioNome = mioNomeNelRoster(esito.chiavi, nameVariants);
     if (!mioNome) {
       // ⭐ Due «non ci sei» molto diversi. Se il socio risulta nella nostra copia ma la scheda
       // del circolo non lo elenca, è stato SOSTITUITO: la partita la vede ancora nel proprio
@@ -1101,6 +1111,14 @@ Deno.serve(async (req: Request) => {
       // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
       const ignotoLeave = esitoIgnotoDaRisposta(dataLeave);
       console.error(`[booking-write] leave KO HTTP ${resLeave.status}${ignotoLeave ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataLeave).slice(0, 300));
+      // 🧾🚨 31/08/2026 (voce 83) — come nella `create`: chi chiede è chi esce, quindi la
+      // ricevuta è per lui. ⭐ `mioNome` e non `member.name`: il confronto a valle è per nome,
+      // e qui vale quello che scrive il gestionale. Vedi `ricevuta.ts`.
+      if (ignotoLeave) {
+        await lasciaRicevuta('leave-ignoto', { data: slot.data, ora: slot.ora, campo }, [
+          { persona: mioNome, gesto: 'tolto' },
+        ]);
+      }
       return ok({
         member: { id: member.id, name: member.name },
         left: false,
@@ -1207,7 +1225,7 @@ Deno.serve(async (req: Request) => {
     }
     // Proprietà, prima di ogni altra cosa: di una partita che non è sua al socio non si dice
     // niente — nemmeno che tipo di prenotazione sia. Stessa scelta di `cancel`.
-    const mioNome = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    const mioNome = mioNomeNelRoster(esito.chiavi, nameVariants);
     if (!mioNome) {
       if (sostituito(esito, nameVariants)) {
         return ok({ member: { id: member.id, name: member.name }, removed: false, reason: 'non_piu_in_partita', ...prova });
@@ -1327,6 +1345,11 @@ Deno.serve(async (req: Request) => {
       // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
       const ignotoRemove = esitoIgnotoDaRisposta(dataRemove);
       console.error(`[booking-write] remove KO HTTP ${resRemove.status}${ignotoRemove ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataRemove).slice(0, 300));
+      // 🧾⛔ 31/08/2026 (voce 83) — QUI LA RICEVUTA NON SI SCRIVE, ed è una scelta, non una
+      // dimenticanza. Il fatto che nascerebbe riguarda **chi viene tolto**, che non è chi ha
+      // chiesto: sull'ignoto il bot non gli ha detto niente (`testoSeiStatoTolto` parte solo
+      // dopo una rimozione riuscita), quindi coprirlo lo lascerebbe fuori dal campo **senza che
+      // nessuno glielo dica**. Meglio un avviso attribuito al circolo che un silenzio.
       return ok({
         member: { id: member.id, name: member.name },
         removed: false,
@@ -1494,7 +1517,7 @@ Deno.serve(async (req: Request) => {
 
     // Proprietà prima di ogni altra cosa, come in `remove`: di una partita che non è sua al
     // socio non si dice niente, nemmeno che tipo di prenotazione sia.
-    const mioNomeAdd = [...esito.chiavi.entries()].find(([nn]) => nameVariants.has(nn))?.[1];
+    const mioNomeAdd = mioNomeNelRoster(esito.chiavi, nameVariants);
     if (!mioNomeAdd) {
       if (sostituito(esito, nameVariants)) {
         return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_piu_in_partita', ...prova });
@@ -1634,6 +1657,10 @@ Deno.serve(async (req: Request) => {
       // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
       const ignotoAdd = esitoIgnotoDaRisposta(dataAdd);
       console.error(`[booking-write] add KO HTTP ${resAdd.status}${ignotoAdd ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataAdd).slice(0, 300));
+      // 🧾⛔ 31/08/2026 (voce 83) — nessuna ricevuta, per la stessa ragione del `remove` e con
+      // la misura della voce 70 dietro: nell'`add` **chi chiede è l'ORGANIZZATORE**, non chi
+      // entra (`mioNomeAdd` esige che il richiedente sia già nel roster). Coprire l'ingresso
+      // significherebbe zittire l'unica notizia che arriverebbe a chi è entrato.
       return ok({
         member: { id: member.id, name: member.name },
         added: false,
@@ -1924,6 +1951,26 @@ Deno.serve(async (req: Request) => {
     // la sola cosa vera che se ne potesse dire.
     const ignotoCancel = esitoIgnotoDaRisposta(data);
     console.error(`[booking-write] cancel KO HTTP ${res.status}${ignotoCancel ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(data).slice(0, 300));
+    // 🧾🚨⭐⭐ 31/08/2026 (voce 83) — È IL CASO ESATTO DEL 23/08, ed è anche quello in cui la
+    // cura ovvia sarebbe stata peggiore del difetto.
+    // ⇒ La ricevuta si scrive **solo per chi ha chiesto l'annullo**, mai per i compagni:
+    //   · per LUI copre l'avviso *«è stata annullata dal circolo»* su un gesto suo — la bugia
+    //     che il socio ha letto quella notte;
+    //   · per LORO non si scrive niente, perché sull'ignoto il bot non li ha avvisati (non ha
+    //     ricevuto nessun `compagni`) ⇒ l'avviso del circolo è l'unico che avranno, e toglierlo
+    //     li lascerebbe senza campo e senza notizia. Il ragionamento intero sta in `ricevuta.ts`.
+    // ⚠️ Se il richiedente nel roster non si riconosce non si scrive nulla: una ricevuta col
+    // nome sbagliato non copre il fatto giusto e può coprirne un altro.
+    if (ignotoCancel) {
+      const ioNelRoster = mioNomeNelRoster(esitoCancel.chiavi, nameVariants);
+      if (ioNelRoster) {
+        await lasciaRicevuta('cancel-ignoto', { data: slot.data, ora: slot.ora, campo }, [
+          { persona: ioNelRoster, gesto: 'annullata' },
+        ]);
+      } else {
+        console.error(`[booking-write] cancel-ignoto ${slot.data} ${slot.ora} C${campo}: richiedente non riconosciuto nel roster, nessuna ricevuta`);
+      }
+    }
     return ok({
       member: { id: member.id, name: member.name },
       cancelled: false,

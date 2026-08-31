@@ -262,6 +262,24 @@ export function compagniDaAvvisare(roster: string[], varianti: Set<string>): str
   return compagni;
 }
 
+/**
+ * Il nome del SOCIO che chiede, **come lo scrive il gestionale** — o `undefined` se in quel
+ * roster non c'è.
+ *
+ * 🚨 Serve perché a valle il confronto è per NOME, e `member.name` (la nostra anagrafica) e il
+ * nome sulla scheda del circolo possono differire. Chiedere la ricevuta o l'edit col nome
+ * sbagliato farebbe cadere l'accoppiamento **in silenzio**, che è il modo peggiore di
+ * sbagliare: nessun errore da nessuna parte, e la cura che non morde.
+ *
+ * ⭐ Sta qui dal 31/08/2026 (voce 83) perché i punti che fanno questa domanda sono diventati
+ * QUATTRO — `leave`, `remove`, `add` e ora `cancel`. Erano tre copie della stessa riga, e la
+ * regola di casa è che due copie divergono al primo ripensamento: la quarta l'avrebbe resa
+ * una consuetudine invece di una regola.
+ */
+export function mioNomeNelRoster(chiavi: Map<string, string>, varianti: Set<string>): string | undefined {
+  return [...chiavi.entries()].find(([nn]) => varianti.has(nn))?.[1];
+}
+
 /** L'elenco senza UNA occorrenza del nome dato: chi esce toglie sé stesso, non tutti gli omonimi. */
 export function senzaDiMe(roster: string[], mioNome: string): string[] {
   const io = normName(mioNome);
