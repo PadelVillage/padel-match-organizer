@@ -45,9 +45,11 @@
 
 import {
   chiaveSlot,
+  fattiDaConfronto,
   type FattoStaff,
   normNome,
   puoRicevere,
+  type SlotRoster,
   tipoDelloSlot,
 } from '../matchpoint-bookings-sync/eventi-staff.ts';
 
@@ -171,6 +173,78 @@ export function fattiDaAnnullo(opts: {
     gesto: 'annullata' as const,
     tipo: tipoDetto,
   }));
+}
+
+/**
+ * 👥 UN CAMBIO DI GIOCATORI CONFERMATO DAL CIRCOLO — 31/08/2026, il seguito della voce 79.
+ *
+ * 🗣️ Il committente, appena visto arrivare il primo avviso `formazione`: *«ha funzionato però
+ * ci ha messo parecchio tempo ad arrivare la notifica»*. 📏 Misurato sul caso vero: 131,6
+ * secondi dal timbro del sync alla consegna, più 0-120 di attesa del giro — perché il fatto
+ * nasceva `origine: sync`, e la strada veloce della voce 76 copriva solo annullo e spostamento.
+ *
+ * ⭐⭐ E QUI NON SI RISCRIVE LA REGOLA: si chiama `fattiDaConfronto`, la stessa che il sync usa
+ * per le sue due fotografie, con due fotografie di un solo slot. Chi entra riceve `aggiunto`,
+ * chi esce `tolto`, chi resta `formazione` con dentro gli elenchi — identico a quello che il
+ * sync direbbe due minuti dopo, perché **è** quello che il sync direbbe.
+ * 📌 *Una seconda copia della regola non darebbe un errore: darebbe due verità che divergono
+ * il giorno in cui qualcuno ne corregge una sola.*
+ *
+ * ⚠️ SOLO SUL CAMBIO PURO, e chi chiama lo decide: se il gesto muove ANCHE la partita, questo
+ * modulo tace e la cosa resta al sync — è la stessa ragione scritta sopra `fattiDaSpostamento`,
+ * cioè che dove la conferma non sa dire tutto è meglio non dire metà.
+ * ⚠️ Roster «dopo» vuoto o illeggibile ⇒ `[]`: non si dichiara un annullo di massa da una
+ * lettura che potrebbe essere mozza. Il sync arriverà a dire la verità, in ritardo.
+ */
+export function fattiDaCambioRoster(opts: {
+  slot: CoordinateSlot;
+  /** Chi c'era, dalla copia locale letta PRIMA del gesto. */
+  prima: readonly unknown[];
+  /** Chi c'è adesso, dai partecipanti che il circolo ha confermato. */
+  dopo: readonly unknown[];
+  tipo?: unknown;
+  /** Oggi a Roma: sotto questa data uno slot è passato e non produce fatti. */
+  oggi: string;
+}): FattoStaff[] {
+  const { slot, prima, dopo, tipo, oggi } = opts;
+  if (!slot.data) return [];
+  const nomi = (r: readonly unknown[]) =>
+    r.map((x) => String(x ?? '').trim()).filter(Boolean);
+  const rosterPrima = nomi(prima);
+  const rosterDopo = nomi(dopo);
+  // 🚨 Un «dopo» vuoto non è una partita svuotata: è una lettura che non ha funzionato. Il
+  // sync ha la sua guardia contro il crollo (`confrontoAttendibile`); qui la stessa prudenza
+  // costa una riga, e senza di essa un worker che risponde monco produrrebbe un `tolto` a
+  // tutti quelli in campo.
+  if (!rosterPrima.length || !rosterDopo.length) return [];
+  const uno = (roster: string[]): Map<string, SlotRoster> => new Map([[
+    chiave(slot),
+    { slot: chiave(slot), data: slot.data, ora: slot.ora, campo: slot.campo, roster, tipo: tipoGrezzo(tipo) },
+  ]]);
+  return fattiDaConfronto(uno(rosterPrima), uno(rosterDopo), oggi);
+}
+
+/**
+ * Oggi a Roma, `YYYY-MM-DD`.
+ *
+ * ⚠️ Sta QUI e non nell'edge che la usa perché di questa funzione nel repo ce ne sono già
+ * **due** copie identiche (`matchpoint-bookings-sync`, `matchpoint-history-sync`): una terza
+ * non si aggiunge. Le due vecchie restano dove sono — spostarle è un lavoro loro, non di
+ * questa voce — ma da qui in avanti chi ne ha bisogno importa questa.
+ */
+export function oggiRoma(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/** Il tipo com'era, per farlo tradurre a `fattiDaConfronto` invece che qui. */
+function tipoGrezzo(tipo: unknown): string | undefined {
+  const t = String(tipo ?? '').trim();
+  return t || undefined;
 }
 
 /**

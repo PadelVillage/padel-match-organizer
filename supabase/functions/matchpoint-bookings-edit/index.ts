@@ -13,7 +13,7 @@ import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
 // 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
 // esteso sopra `dichiaraSpostamentoAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
-import { campoScritto, fattiDaSpostamento } from '../_shared/fatti-da-conferma.ts';
+import { campoScritto, fattiDaCambioRoster, fattiDaSpostamento, oggiRoma } from '../_shared/fatti-da-conferma.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -279,6 +279,15 @@ async function saveStaffEditRecord(opts: {
 // tecnico che uno spostamento fa seppellire all'app la copia dello slot d'origine: leggendo
 // dopo si troverebbe una tomba, e il roster sarebbe vuoto proprio quando serve.
 
+/** Il gesto tocca i giocatori? (aggiunte, rimozioni, o lo svuotamento) */
+function toccaIlRoster(edit: EditRequest): boolean {
+  return !!edit.players && (
+    !!edit.players.removeAll ||
+    (edit.players.remove?.length ?? 0) > 0 ||
+    (edit.players.add?.length ?? 0) > 0
+  );
+}
+
 /** Chi c'era in campo prima del gesto, o `null` se non si dichiarerà niente. */
 async function rosterPrimaDelloSpostamento(opts: {
   supabaseUrl: string;
@@ -286,14 +295,14 @@ async function rosterPrimaDelloSpostamento(opts: {
   edit: EditRequest;
 }): Promise<SlotLocale | null> {
   const { supabaseUrl, supabaseKey, edit } = opts;
-  if (!edit.move) return null;
-  // Il gesto tocca anche i giocatori? Allora tace: vedi il commento qui sopra.
-  const toccaIlRoster = !!edit.players && (
-    !!edit.players.removeAll ||
-    (edit.players.remove?.length ?? 0) > 0 ||
-    (edit.players.add?.length ?? 0) > 0
-  );
-  if (toccaIlRoster) return null;
+  // 👥 31/08 — SI LEGGE ANCHE PER IL CAMBIO PURO DI GIOCATORI, che fino a oggi non aveva
+  // nessuna strada veloce e aspettava il sync (misurato: 2-4 minuti sul telefono del socio).
+  // ⚖️ Il roster «prima» serve a tutte e due le dichiarazioni; a decidere QUALE si fa sono le
+  // due funzioni qui sotto, non questa — che si limita a leggere.
+  if (!edit.move && !toccaIlRoster(edit)) return null;
+  // 🚨 Move + giocatori nello stesso gesto: nessuna delle due strade sa dire tutto ⇒ tacciono
+  // tutt'e due e la cosa resta al sync. Vedi il commento qui sopra.
+  if (edit.move && toccaIlRoster(edit)) return null;
   // Senza le coordinate di PARTENZA non si sa quale slot è stato mosso: l'app le manda
   // (`campo/data/ora` di primo livello), ma non sono obbligatorie. Assenti ⇒ tace.
   if (!edit.data || !edit.ora) return null;
@@ -330,6 +339,66 @@ async function dichiaraSpostamentoAlSocio(opts: {
   } catch (e) {
     console.warn(JSON.stringify({
       event: 'dichiarazione_spostamento_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
+}
+
+/**
+ * 👥 IL CAMBIO DI GIOCATORI, dichiarato appena il circolo l'ha confermato — 31/08/2026.
+ *
+ * 🗣️ Nasce dalla sua frase davanti al primo avviso della voce 79: *«ha funzionato però ci ha
+ * messo parecchio tempo ad arrivare la notifica»*. 📏 Misurato: il fatto nasceva `origine:
+ * sync`, quindi 0-120 secondi di attesa del giro **più** i 120 della quiete piena, invece dei
+ * 30 che spettano ai fatti con l'istante vero.
+ *
+ * ⭐ Chi c'è ADESSO lo dice il worker (`partecipantiFinali`), che è la conferma del circolo —
+ * e si legge qui, non si deduce da `edit.players`: la richiesta dice cosa si è **chiesto**, la
+ * risposta cosa è **successo**, e la regola del 22/08 vuole la seconda.
+ * 🔒 L'ok di Matchpoint **si ferma qui**, nel gestionale: quello che prosegue verso il bot è un
+ * fatto in `pmo_eventi_staff`, come sempre. Il giorno dello spegnimento il bot non si tocca.
+ *
+ * 🚨 BEST-EFFORT E MUTA NEI GUASTI, come la gemella dello spostamento: a questo punto i
+ * giocatori sono **già cambiati sul Matchpoint vero**, e un errore qui non deve poter far
+ * sembrare fallita una scrittura riuscita.
+ * ⚠️ E se tace, non si perde niente: il sync ri-scopre lo stesso cambiamento e lo racconta in
+ * ritardo. Le due strade si sommano — è il paletto ⑤.
+ */
+async function dichiaraCambioRosterAlSocio(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  edit: EditRequest;
+  prima: SlotLocale | null;
+  workerResult: JsonMap;
+}): Promise<void> {
+  const { supabaseUrl, supabaseKey, edit, prima, workerResult } = opts;
+  if (!prima || edit.move || !toccaIlRoster(edit)) return;
+  try {
+    const finali = Array.isArray((workerResult as { partecipantiFinali?: unknown[] })?.partecipantiFinali)
+      ? (workerResult as { partecipantiFinali: Array<{ nome?: unknown }> }).partecipantiFinali
+      : [];
+    const fatti = fattiDaCambioRoster({
+      slot: prima.coordinate,
+      prima: prima.roster,
+      // ⚠️ L'Ospite arriva dal worker col NOME VUOTO (non ha una scheda): si tiene il posto
+      // scrivendolo «Ospite», che è la parola del circolo — se no il conteggio si perde e un
+      // ospite aggiunto tornerebbe invisibile, cioè il difetto da cui la voce 79 nasce.
+      dopo: finali.map((p) => {
+        const n = String(p?.nome ?? '').trim();
+        return n || 'Ospite';
+      }),
+      tipo: prima.tipo,
+      oggi: oggiRoma(),
+    });
+    if (!fatti.length) return;
+    await accodaFattiDaConferma({
+      client: createClient(supabaseUrl, supabaseKey),
+      fatti,
+      azione: 'edit_roster',
+    });
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_cambio_roster_saltata',
       error: String((e as Error)?.message ?? e),
     }));
   }
@@ -400,6 +469,7 @@ async function runEditJobInBackground(opts: {
     // 🆕 VOCE 76 — e si dichiara SOLO ADESSO, che il circolo ha confermato: senza aspettare
     // che il sync ri-scopra la stessa cosa rileggendo Matchpoint minuti dopo.
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
+    await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
     await writeEditJob(client, jobId, 'done', {
       ...base,
       message: `Modifica eseguita (idReserva ${edit.idReserva ?? '?'})`,
@@ -620,6 +690,7 @@ Deno.serve(async (req: Request) => {
     // 🆕 VOCE 76 — anche qui, sulla strada sincrona: la conferma è in mano, e da questo punto
     // a parlare col socio è il gestionale. ⚠️ Mai in `readOnly`: là non è successo niente.
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
+    await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
   }
 
   if (readOnly) {
