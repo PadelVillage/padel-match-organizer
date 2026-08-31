@@ -2307,7 +2307,11 @@ scritta come **rassicurazione**: nessuno va a controllare la riga che dice «qui
 limite dichiarato con l'esempio estremo si fa credere raro: chi lo scrive difende l'esempio, non il
 confine.*
 
-🔨 **CURE A e B — scritte, banco verde, sabotate una per una. NON ancora in servizio.**
+🔨 **CURE A e B — scritte, banco verde, sabotate una per una.**
+🔄 **E qui c'era scritto «NON ancora in servizio»: non è più vero.** 📏 Misurato il 31/08 su
+`origin/main` — `gettoneDaRiusare` c'è in `consumer-assessment-link`, e `submitted_at: new
+Date().toISOString()` c'è in `assessment-quiz` — e le edge **si deployano col push** ⇒ sono in
+servizio su PROD **dal 28/08**. La riga vecchia è stata corretta, non affiancata.
 · A: la domanda diventa *«esiste già una scheda per questo gettone?»*, in una funzione **pura**
   (`gettoneDaRiusare`) che il banco **esegue** invece di cercarla nel testo — 6 casi nuovi;
 · B: `submitted_at: new Date().toISOString()` dentro la riga, con due guardie **testuali** (e si
@@ -2434,18 +2438,80 @@ non compare nel codice: un codice nuovo della piattaforma, o un corpo illeggibil
 parte giusta da sé. **Fallisce chiusa**, come `dettaglioPerIlBot`.
 🧪 Provata col sabotaggio: rimesso il difetto, il caso 16bis cade; tolto, 25 verdi.
 
-⏳ **PERCHÉ LA VOCE RESTA APERTA — due cose, e nessuna è un dettaglio:**
-① **la prova fisica manca e non si può provocare**: servirebbe un worker abbastanza lento da
-   sfondare i 150 s. È la stessa posizione della **65** — *si aspetta, non si provoca*. Quello che
-   si può fare è **guardare**: il prossimo `KO HTTP 504` nel registro dovrà uscire come
-   `esito_ignoto`, non come `scrittura_rifiutata`;
-② **l'annullo NON è curato**, di proposito: `cancel` non chiama ancora quella funzione, e per
-   dargliela serve prima una frase nel bot («non lo so» oggi il bot lo sa dire **solo** sulla
-   prenotazione). È un lavoro sui due repo, e con esso va la **ricevuta della 70** — che su un
-   esito ignoto non viene scritta, ed è la ragione del terzo effetto qui sotto.
-⚠️ **E un piano più su c'è lo stesso tetto, non misurato**: anche `consumer-booking-write` vive
-150 s, e quella sera ha risposto al secondo 150. Se a essere uccisa fosse **lei**, il 504 lo
-riceverebbe il **bot** — e cosa ne fa il bot non l'ha ancora guardato nessuno.
+⏳ **PERCHÉ LA VOCE RESTA APERTA:** **la prova fisica manca e non si può provocare** — servirebbe
+un worker abbastanza lento da sfondare i 150 s. È la stessa posizione della **65** — *si aspetta,
+non si provoca*. Quello che si può fare è **guardare**: il prossimo `KO HTTP 504` nel registro
+dovrà uscire come `esito_ignoto`, non come `scrittura_rifiutata`.
+
+🔄 **E QUI C'ERA SCRITTO CHE L'ANNULLO NON ERA CURATO — non è più vero dal 29/08.** La riga diceva
+*«② l'annullo NON è curato, di proposito: `cancel` non chiama ancora quella funzione»*, e la
+**voce 106** l'ha smentita: `esitoIgnotoDaRisposta` la chiamano ora **tutti e cinque** i rami di
+`consumer-booking-write` (`create`, `leave`, `remove`, `add`, `cancel`), e il bot sa tradurre
+`esito_ignoto` su tutti e quattro i gesti. 📏 Misurato il 31/08 leggendo `origin/main`, non
+ricordato. ⇒ La riga vecchia è stata **corretta**, non affiancata: due affermazioni opposte nello
+stesso file lo trasformano in un archivio di versioni.
+
+#### 🚨⭐⭐ 31/08/2026 — LA DOMANDA CHE QUESTA SCHEDA DICHIARAVA MAI GUARDATA, guardata
+
+La riga era questa, e stava qui da una settimana:
+> *«E un piano più su c'è lo stesso tetto, non misurato: anche `consumer-booking-write` vive 150 s…
+> Se a essere uccisa fosse **lei**, il 504 lo riceverebbe il **bot** — e cosa ne fa il bot non
+> l'ha ancora guardato nessuno.»*
+
+📏 **Guardato, e il bot ne faceva la cosa peggiore.** Quando a non rispondere è il **gestionale**
+(504 al suo tetto, corpo non-JSON, socket caduto), dal ponte non esce un verdetto: esce
+un'**eccezione** (`BridgeError`). E ogni eccezione finiva nel `guasto`:
+
+| gesto | dove finiva | cosa leggeva il socio |
+|---|---|---|
+| `esci` / `annulla` | `fase:'guasto'` → `testoGuasto` | **«Non ci sono riuscito — la tua prenotazione è rimasta com'era. Riprova fra poco»** |
+| `togli` | `fase:'guasto'` | *«Non sono riuscito a togliere quel giocatore»* |
+| `create` | `motivoDaErrore` → `errore_tecnico:<codice>`, **senza spiegazione** | il modello libero di affermare *«non sono riuscito a prenotare»* |
+
+⇒ La prima riga è **parola per parola** la frase della notte del 23/08 da cui questa voce nasce.
+⚖️ **La cura del 106 non la copriva, e non era un buco di quella cura**: il 106 ha insegnato al
+gestionale a **dire** «non lo so». Qui il gestionale non dice niente — e *un silenzio non è un
+«no»*. Chi lo legge come rifiuto afferma sul passato una cosa che nessuno gli ha detto.
+🚨 Sull'annullo il verso sbagliato è innocuo; sulla **create** è la **doppia prenotazione**.
+
+🔨 **CURA (bot, ramo `voce-83-un-silenzio-non-e-un-no`)** — quattro pezzi:
+· `laScritturaPuoEsserePassata` (`mastra/lib/ponte.ts`): si elencano i **fallimenti certi** —
+  quelli nati **prima** che qualcosa partisse (`CONFIG`, i 400 della validazione, il 401, il 405,
+  i tre cancelli a 503) — e **tutto il resto è ignoto**. ⭐ È la forma di `esitoDellaRispostaWorker`,
+  un piano più su, e la lista è **al rovescio di proposito**: un elenco degli *ignoti* metterebbe
+  il codice nuovo — quello che nessuno ha previsto — dalla parte in cui si mente;
+· i **quattro punti che scrivono** (uscita/annullo, togli, invito, create) escono con
+  `esito_ignoto` invece che col guasto. Le frasi oneste **esistevano già** dalla voce 106: non se
+  n'è scritta nessuna nuova, si sono agganciate;
+· 🚨 **l'invito con esito ignoto NON si riapre e i bottoni non tornano.** È il punto in cui la cura
+  si sarebbe rovesciata contro sé stessa: rimettere «Ci sto» è dire **«riprova» coi bottoni**
+  invece che con le parole, ed è vietato dalla voce 72 nella stessa misura. Se la scrittura era
+  passata, il secondo tocco fa entrare **due volte** la stessa persona;
+· l'istruzione al modello per l'esito ignoto sta in **una funzione sola**, ora che i punti che la
+  usano sono due.
+
+⚖️ **PERCHÉ NON VIOLA *il gestionale SA, il bot DICE*** — la domanda va fatta, perché sembra che il
+bot si metta a classificare. Non classifica **com'è andata la scrittura**: quella resta del
+gestionale. Riconosce che **una risposta non è arrivata**, che è l'unica cosa osservabile da questo
+lato — e ne trae l'unica frase vera: *non lo so*. 🎯 E supera la prova del futuro: il giorno in cui
+Matchpoint si spegne, nessuna di queste righe cambia.
+
+✅ **Banco: 1685 verdi** (erano 1673), **12 casi nuovi**, **5 sabotaggi visti diventare rossi** —
+`BAD_RESPONSE` dichiarato certo, `CONFIG` tolto dai certi, l'errore non-del-ponte letto come «no»,
+l'invito che torna a riaprirsi, un `catch` che torna al guasto.
+⚠️ **E si dichiara cosa NON prova**: le guardie sui **quattro cablaggi** sono **TESTUALI**, perché
+quei `catch` si raggiungono solo con una scrittura vera e `chiamataAlPonteConsentita` — giustamente
+— non lascia scrivere da un banco. Sono eseguite invece la **decisione** (codice per codice), la
+**catena decisione → frase**, e la **strada dell'invito per intero**.
+
+⏳ **COSA MANCA PER CHIUDERE LA VOCE**, e non si scrive «fatto» con una riserva in fondo:
+① **la prova fisica** — un `KO HTTP 504` vero, che nel registro esca come esito ignoto e non come
+   rifiuto. Non si provoca: si aspetta e si guarda;
+② **il terzo effetto resta scoperto**, ed è il residuo onesto di questa cura: su un `esito_ignoto`
+   il gestionale **non scrive la ricevuta** della voce 70 (la scrive solo dopo una scrittura
+   riuscita) ⇒ se la scrittura *era* passata, il sync la ritrova e la attribuisce **al circolo**.
+   Il socio riceverebbe *«è stata annullata dal circolo»* per un gesto suo. È un lavoro sul
+   gestionale, non sul bot, e non è stato fatto qui.
 
 🚨⭐⭐ **E IL DANNO NON È FINITO CON LA FRASE: alle 23:44 il bot ha scritto al socio di una
 partita CHE NON ESISTE PIÙ.** *«👋 Un giocatore è uscito — Dalla tua partita di lunedì 31 agosto
