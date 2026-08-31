@@ -135,6 +135,10 @@ Deno.serve(async (req: Request) => {
   // garantisce più il compilatore — lo garantisce `COLONNE`, che è l'unica fonte dei nomi.
   // Chi tocca questa stringa deve guardare `FattoInCoda`.
   const COLONNE = 'id, slot, data, ora, campo, persona, gesto, visto_at, tipo, da';
+  // 👥 VOCE 79 — `entrati` e `usciti` si chiedono a parte, per lo stesso motivo di `origine`:
+  // fino a che la loro migrazione non è applicata su QUESTO progetto, chiederle fermerebbe
+  // tutti gli avvisi a tutti i soci. Vedi il ripiego qui sotto.
+  const COLONNE_79 = 'entrati, usciti';
   const leggiCoda = async (colonne: string) => {
     const esito = await service
       .from('pmo_eventi_staff')
@@ -148,7 +152,14 @@ Deno.serve(async (req: Request) => {
     };
   };
 
-  let { righe, errore } = await leggiCoda(`${COLONNE}, origine`);
+  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}`);
+  if (errore) {
+    // 👥 VOCE 79 — primo ripiego: senza gli elenchi della formazione. Non si perde niente di
+    // quello che c'era prima — i quattro gesti vecchi non li usano — e un gestionale non
+    // ancora migrato continua a consegnare tutto il resto.
+    console.warn(`[staff-events] coda senza 'entrati/usciti' (${errore.message}): riprovo senza`);
+    ({ righe, errore } = await leggiCoda(`${COLONNE}, origine`));
+  }
   if (errore) {
     // 🚨⭐⭐ SI RIPROVA SENZA `origine`, e non è una gentilezza: se la migrazione della voce 76
     // non fosse ancora applicata su questo progetto, chiedere una colonna che non esiste
@@ -381,6 +392,12 @@ Deno.serve(async (req: Request) => {
       // sono quelle d'arrivo — è lì che si va a giocare — e questa è la partenza, che il socio
       // ha in testa. ⚠️ `null` su tutto il resto: il bot regge senza, dicendo comunque dov'è.
       da: e.da ?? null,
+      // 👥 VOCE 79 (31/08): solo su `formazione`, e dicono chi è entrato e chi è uscito. Sono
+      // il contenuto del messaggio, non un contorno: un avviso di cambio formazione senza i
+      // nomi non direbbe niente. ⚠️ Sempre presenti (vuoti sugli altri gesti), così chi legge
+      // non deve difendersi da un campo che a volte c'è.
+      entrati: e.entrati ?? [],
+      usciti: e.usciti ?? [],
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);

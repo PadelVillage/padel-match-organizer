@@ -70,34 +70,55 @@ function contorno(quanti: number): Array<[string, string[]]> {
 }
 
 // ── Il caso vero che ha aperto la voce ───────────────────────────────────────────────────
-test('lo staff toglie un giocatore da una partita esistente → un fatto, per lui solo', () => {
+test('lo staff toglie un giocatore → un fatto per lui, e uno per chi RESTA (voce 79)', () => {
   const prima = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']], ...contorno(4));
   const dopo = foto(['2026-08-31|09:30|1', ['Maurizio Aprea']], ...contorno(4));
   const f = fattiDaConfronto(prima, dopo);
-  assert.equal(f.length, 1);
-  assert.equal(f[0].persona, 'Lidia Comes');
-  assert.equal(f[0].gesto, 'tolto');
-  assert.equal(f[0].data, '2026-08-31');
+  assert.deepEqual(
+    f.map((x) => `${x.gesto}:${x.persona}`).sort(),
+    ['formazione:Maurizio Aprea', 'tolto:Lidia Comes'],
+  );
+  const tolto = f.find((x) => x.gesto === 'tolto')!;
+  assert.equal(tolto.data, '2026-08-31');
+  // 👥 A chi resta si dice CHI se n'è andato: è tutto il contenuto del suo messaggio.
+  const resta = f.find((x) => x.gesto === 'formazione')!;
+  assert.deepEqual(resta.usciti, ['Lidia Comes']);
+  assert.deepEqual(resta.entrati, []);
 });
 
-test('lo staff aggiunge un giocatore → un fatto, e NON lo ricevono gli altri in campo (decisione ①)', () => {
+test('lo staff aggiunge un giocatore → lo sanno LUI e chi era già in campo (voce 79)', () => {
+  // 🔄 Fino al 31/08 questo caso difendeva la decisione ① del 21/08 (*«un solo destinatario
+  // per gesto»*), che la regola del 23/08 ha superato: *«le persone che sono dentro la
+  // partita devono essere avvisate»*. Il caso si CORREGGE, non si affianca.
   const prima = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Marco Rossi']], ...contorno(4));
   const dopo = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Marco Rossi', 'Lidia Comes']], ...contorno(4));
   const f = fattiDaConfronto(prima, dopo);
-  assert.equal(f.length, 1, 'un solo destinatario: chi il gesto ha toccato');
-  assert.equal(f[0].persona, 'Lidia Comes');
-  assert.equal(f[0].gesto, 'aggiunto');
+  assert.deepEqual(
+    f.map((x) => `${x.gesto}:${x.persona}`).sort(),
+    ['aggiunto:Lidia Comes', 'formazione:Marco Rossi', 'formazione:Maurizio Aprea'],
+  );
+  // 🚨 A chi entra NON si dice «è cambiata la formazione»: lui riceve «sei in campo», che è
+  // la notizia. Due messaggi per lo stesso gesto sarebbero rumore.
+  assert.equal(f.filter((x) => x.persona === 'Lidia Comes').length, 1);
+  for (const x of f.filter((x) => x.gesto === 'formazione')) {
+    assert.deepEqual(x.entrati, ['Lidia Comes']);
+    assert.deepEqual(x.usciti, []);
+  }
 });
 
-test('una SOSTITUZIONE è due fatti — il conteggio non cambia, ma le persone sì', () => {
+test('una SOSTITUZIONE: due fatti per chi si muove, uno per chi resta a guardare', () => {
   const prima = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Marco Rossi']], ...contorno(4));
   const dopo = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']], ...contorno(4));
   const f = fattiDaConfronto(prima, dopo);
-  assert.equal(f.length, 2);
   assert.deepEqual(
     f.map((x) => `${x.gesto}:${x.persona}`).sort(),
-    ['aggiunto:Lidia Comes', 'tolto:Marco Rossi'],
+    ['aggiunto:Lidia Comes', 'formazione:Maurizio Aprea', 'tolto:Marco Rossi'],
   );
+  // ⭐ E il suo messaggio porta tutte e due le metà: «entra Lidia, esce Marco». Un netto
+  // avrebbe detto zero — il conteggio non è cambiato — cioè non avrebbe detto niente.
+  const resta = f.find((x) => x.gesto === 'formazione')!;
+  assert.deepEqual(resta.entrati, ['Lidia Comes']);
+  assert.deepEqual(resta.usciti, ['Marco Rossi']);
 });
 
 // ── La decisione ③: toccato ≠ cambiato ───────────────────────────────────────────────────
@@ -123,19 +144,68 @@ test('partita annullata → lo sanno TUTTI quelli che ci giocavano', () => {
 });
 
 // ── Gli «Ospite»: si contano, non si avvisano ────────────────────────────────────────────
-test('un «Ospite» tolto non produce nessun fatto: non ha una scheda a cui scrivere', () => {
+test('🗣️⭐⭐ VOCE 79: un «Ospite» tolto NON è più un silenzio — è il caso da cui la voce nasce', () => {
+  // 🗣️ Parole sue, 23/08, guardando il proprio telefono: *«a Maurizio sul bot non è arrivato
+  // nessun messaggio che si è aggiunto un ospite o si era levato un ospite»*.
+  // 📏 E il perché era proprio qui: l'ospite non ha una scheda ⇒ nessun destinatario ⇒
+  // nessun fatto ⇒ **silenzio totale**. L'ospite resta senza messaggio (giusto: non ce l'ha
+  // un telefono), ma Maurizio, che è in campo, adesso lo sa.
   const prima = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Ospite', 'Ospite']], ...contorno(4));
   const dopo = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Ospite']], ...contorno(4));
-  assert.deepEqual(fattiDaConfronto(prima, dopo), []);
+  const f = fattiDaConfronto(prima, dopo);
+  assert.equal(f.length, 1, 'un fatto solo: all\'ospite non si scrive');
+  assert.equal(f[0].persona, 'Maurizio Aprea');
+  assert.equal(f[0].gesto, 'formazione');
+  assert.deepEqual(f[0].usciti, ['Ospite']);
 });
 
-test('tre «Ospite» accanto a una persona vera: il fatto esce solo per la persona', () => {
+test('👥 l\'ospite si NOMINA anche se non si può AVVISARE: sono due domande diverse', () => {
+  // 🚨 `puoRicevere` decide chi riceve un messaggio, non chi si può nominare dentro a un
+  // messaggio. Averle confuse è ciò che rendeva invisibile l'ospite aggiunto.
   const prima = foto(['2026-08-31|09:30|1', ['Sergio Dal Bianco', 'Ospite', 'Ospite', 'Ospite']], ...contorno(4));
   const dopo = foto(['2026-08-31|09:30|1', ['Sergio Dal Bianco', 'Ospite', 'Ospite', 'Lidia Comes']], ...contorno(4));
   const f = fattiDaConfronto(prima, dopo);
+  assert.deepEqual(
+    f.map((x) => `${x.gesto}:${x.persona}`).sort(),
+    ['aggiunto:Lidia Comes', 'formazione:Sergio Dal Bianco'],
+  );
+  const resta = f.find((x) => x.gesto === 'formazione')!;
+  assert.deepEqual(resta.entrati, ['Lidia Comes']);
+  assert.deepEqual(resta.usciti, ['Ospite']);
+});
+
+test('👥 tre ospiti entrati sono TRE posti presi, non uno: le ripetizioni contano', () => {
+  // 🚨 Un elenco che fondesse i nomi uguali direbbe che togliendone due su tre non è
+  // cambiato niente — è la stessa ragione per cui `conteggio()` esiste in questo file.
+  const prima = foto(['2026-08-31|09:30|1', ['Maurizio Aprea']], ...contorno(4));
+  const dopo = foto(['2026-08-31|09:30|1', ['Maurizio Aprea', 'Ospite', 'Ospite', 'Ospite']], ...contorno(4));
+  const f = fattiDaConfronto(prima, dopo);
   assert.equal(f.length, 1);
-  assert.equal(f[0].persona, 'Lidia Comes');
-  assert.equal(f[0].gesto, 'aggiunto');
+  assert.deepEqual(f[0].entrati, ['Ospite', 'Ospite', 'Ospite']);
+});
+
+test('👥 se non cambia NIENTE non nasce nessun fatto di formazione (decisione ③)', () => {
+  const uguale: Array<[string, string[]]> = [['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']]];
+  assert.deepEqual(fattiDaConfronto(foto(...uguale, ...contorno(4)), foto(...uguale, ...contorno(4))), []);
+});
+
+test('👥 e chi resta NON riceve niente sugli slot che non lo riguardano', () => {
+  // ⚠️ La sonda che protegge dall'errore opposto a quello curato: un fatto `formazione` che
+  // uscisse per tutti invece che per i compagni di QUELLA partita sarebbe un messaggio a
+  // gente che non c'entra — e in questo progetto è il danno peggiore di un silenzio.
+  const prima = foto(
+    ['2026-08-31|09:30|1', ['Maurizio Aprea', 'Lidia Comes']],
+    ['2026-08-31|11:00|2', ['Laura Aprea', 'Marco Rossi']],
+    ...contorno(4),
+  );
+  const dopo = foto(
+    ['2026-08-31|09:30|1', ['Maurizio Aprea']],
+    ['2026-08-31|11:00|2', ['Laura Aprea', 'Marco Rossi']],
+    ...contorno(4),
+  );
+  const f = fattiDaConfronto(prima, dopo);
+  assert.equal(f.filter((x) => x.persona === 'Laura Aprea').length, 0);
+  assert.equal(f.filter((x) => x.persona === 'Marco Rossi').length, 0);
 });
 
 // ── La guardia del crollo: la protezione che vale più di tutte ───────────────────────────
@@ -239,9 +309,17 @@ test('🔗 dal payload al fatto, senza scorciatoie: il caso vero del 21/08', () 
   ], roster);
   // Un solo slot per parte: la guardia del crollo direbbe di no (1 → 1 va bene, 1 → 0 no).
   const f = fattiDaConfronto(prima, dopo);
-  assert.equal(f.length, 1);
-  assert.equal(f[0].persona, 'Fabiola Limuti');
-  assert.equal(f[0].gesto, 'tolto');
+  // 👥 VOCE 79 — dallo stesso payload adesso escono TRE fatti: uno per chi è stato tolto, e
+  // uno per ciascuno dei due che restano in campo. Prima ne usciva uno solo, e Maurizio e
+  // Lidia non sapevano di essere rimasti in due.
+  assert.deepEqual(
+    f.map((x) => `${x.gesto}:${x.persona}`).sort(),
+    ['formazione:Lidia Comes', 'formazione:Maurizio Aprea', 'tolto:Fabiola Limuti'],
+  );
+  for (const x of f.filter((x) => x.gesto === 'formazione')) {
+    assert.deepEqual(x.usciti, ['Fabiola Limuti']);
+    assert.deepEqual(x.entrati, []);
+  }
 });
 
 
@@ -500,9 +578,14 @@ test('47. il tipo viaggia anche sui fatti che NON nascono da uno slot nuovo', ()
     new Map([...fotoT('Lezione Libera', ['2026-08-25|10:00|1', ['Maria Pia Bettiol']]), ...foto(...contorno(4))]),
     '2026-08-22',
   );
-  assert.equal(tolto.length, 1);
-  assert.equal(tolto[0].gesto, 'tolto');
-  assert.equal(tolto[0].tipo, 'lezione');
+  // 👥 VOCE 79: due fatti — chi è stato tolto, e Maria Pia che resta. `tipo` va su tutti e
+  // due, e il quinto gesto non fa eccezione: a una lezione si dice «lezione» sempre.
+  assert.equal(tolto.length, 2);
+  assert.deepEqual(
+    tolto.map((x) => `${x.gesto}:${x.persona}`).sort(),
+    ['formazione:Maria Pia Bettiol', 'tolto:Carla Mattana'],
+  );
+  assert.ok(tolto.every((x) => x.tipo === 'lezione'), 'il tipo viaggia anche su `formazione`');
 
   const annullata = fattiDaConfronto(prima, foto(...contorno(4)), '2026-08-22');
   assert.equal(annullata.length, 2);

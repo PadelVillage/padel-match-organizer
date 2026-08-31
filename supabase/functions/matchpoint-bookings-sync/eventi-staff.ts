@@ -22,6 +22,14 @@
 // ── LE TRE DECISIONI DEL COMMITTENTE (21/08/2026), e dove vivono ────────────────────────────
 // ① **un solo destinatario per gesto**: chi il gesto ha toccato. Sta QUI — ogni fatto nasce già
 //    con una persona sola dentro, e non esiste un campo «e avvisa anche…».
+//    🔄🚨⭐⭐ SUPERATA il 23/08/2026, e la riga si CORREGGE invece di affiancarla: *«quando la
+//    segreteria fa un qualsiasi tipo di operazione, le persone che sono dentro la partita
+//    devono essere avvisate»*. La forma resta — un fatto porta ancora **una persona sola** —
+//    ma di fatti ne nascono **di più**: uno per ciascuno di quelli in campo. La ① era stata
+//    superata per l'annullo (voce 74) e per lo spostamento (voce 76), e restava applicata
+//    all'entrata e all'uscita di un giocatore fino al **31/08** (voce 79), cioè nel caso più
+//    frequente di tutti: la segreteria che compone una partita.
+//    ⇒ Chi resta in campo riceve il gesto `formazione`, che nasce QUI come tutti gli altri.
 // ② **due minuti di quiete, poi lo stato finale**: NON sta qui. Questo modulo dichiara ogni
 //    passaggio; a fondere la raffica è chi consegna (`consumer-staff-events`), che vede i fatti
 //    accumulati e li riduce al netto. Qui non si può: una funzione che guarda due fotografie
@@ -60,7 +68,12 @@ export type FattoStaff = {
   campo: string;
   /** Il nome come lo scrive il circolo: chi consegna lo risolverà a una scheda. */
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata';
+  /**
+   * 👥 `formazione` è il QUINTO gesto, dal 31/08/2026 (voce 79): la partita è la stessa e
+   * questa persona ci resta dentro — a cambiare sono i **compagni**. È l'unico gesto il cui
+   * destinatario non è chi si è mosso, ed è nato proprio per quello.
+   */
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione';
   /**
    * Che cosa è lo slot, **detto con le parole del gestionale**: `'lezione'` o `'partita'`.
    *
@@ -77,6 +90,17 @@ export type FattoStaff = {
    * partita ce l'ha in testa com'era prima.
    */
   da?: { data: string; ora: string; campo: string };
+  /**
+   * 👥 Solo su `formazione`: chi è entrato e chi è uscito da questa partita, coi nomi come
+   * li scrive il circolo — **«Ospite» compreso**.
+   *
+   * 🚨 E l'ospite ci sta di proposito: `puoRicevere` decide chi RICEVE un messaggio, non chi
+   * si può NOMINARE dentro a un messaggio. Sono due domande diverse, e averle confuse è ciò
+   * che rendeva invisibile l'ospite aggiunto — il caso esatto da cui la voce 79 nasce.
+   * ⚠️ Le ripetizioni contano: tre «Ospite» entrati sono tre posti presi, non uno.
+   */
+  entrati?: string[];
+  usciti?: string[];
 };
 
 /** Che cos'è uno slot, con le parole del gestionale. */
@@ -342,13 +366,29 @@ export function fattiDaConfronto(
     const cDopo = conteggio(slotDopo.roster);
     const nomi = new Set([...cPrima.keys(), ...cDopo.keys()]);
 
+    // 👥 VOCE 79 — CHI È ENTRATO E CHI È USCITO, tenuti da parte per chi RESTA. Gli
+    // «Ospite» ci sono: non ricevono niente, ma un posto preso da un ospite è un compagno
+    // in meno, ed è esattamente il caso da cui la voce nasce.
+    const entrati: string[] = [];
+    const usciti: string[] = [];
+    /** Chi era dentro prima ed è dentro adesso, senza che il suo conto sia cambiato. */
+    const restati: string[] = [];
+
     for (const n of nomi) {
       const a = cPrima.get(n);
       const b = cDopo.get(n);
       const quantePrima = a?.quante ?? 0;
       const quanteDopo = b?.quante ?? 0;
-      if (quantePrima === quanteDopo) continue;
       const comeScritto = b?.comeScritto ?? a?.comeScritto ?? '';
+      if (quantePrima === quanteDopo) {
+        if (quanteDopo > 0 && puoRicevere(comeScritto)) restati.push(comeScritto);
+        continue;
+      }
+      // ⚖️ Gli elenchi si riempiono PRIMA del filtro dei destinatari: `puoRicevere` decide
+      // chi riceve un messaggio, non chi si può NOMINARE dentro a un messaggio. Sono due
+      // domande diverse, e confonderle è ciò che rendeva invisibile l'ospite aggiunto.
+      const quanti = Math.abs(quanteDopo - quantePrima);
+      for (let i = 0; i < quanti; i += 1) (quanteDopo > quantePrima ? entrati : usciti).push(comeScritto);
       if (!puoRicevere(comeScritto)) continue;
 
       // Una persona vera compare una volta sola: la differenza di conteggio la riguarda
@@ -363,6 +403,46 @@ export function fattiDaConfronto(
         gesto: quanteDopo > quantePrima ? 'aggiunto' : 'tolto',
         tipo: tipoDelloSlot(slotDopo.tipo),
       });
+    }
+
+    // 🗣️🚨⭐⭐ VOCE 79, 31/08/2026 — E ADESSO ANCHE CHI RESTA IN CAMPO. Regola del
+    // committente del 23/08: *«quando la segreteria fa un qualsiasi tipo di operazione, le
+    // persone che sono dentro la partita devono essere avvisate»*.
+    //
+    // 📏 Il difetto, segnalato da lui guardando il proprio telefono il 23/08 (*«a Maurizio
+    // non è arrivato nessun messaggio che si è aggiunto un ospite o si era levato un
+    // ospite»*) e rimisurato la notte stessa su tre gesti in un colpo: fuori Lidia, fuori
+    // Fabiola, dentro Marco ⇒ tre fatti, intestati **a loro tre**. A Maurizio e a Laura, che
+    // erano e restano in campo: **zero**.
+    //
+    // ⚖️ È la decisione ① del 21/08 (*«un solo destinatario per gesto: chi il gesto ha
+    // toccato»*, scritta in testa a questo file) che la regola del 23/08 ha superato. Era
+    // già stata superata per l'annullo (voce 74) e per lo spostamento (voce 76) — questo è
+    // il terzo caso, ed è **il più frequente di tutti**: la segreteria che compone una
+    // partita. ⇒ La riga ① in testa al file è stata corretta, non affiancata.
+    //
+    // 🚨 IL FATTO NASCE DA UN GESTO, NON DA UN CONTEGGIO, ed è l'altra metà della voce. La
+    // macchina dei promemoria del bot raccontava il **netto** (`giocatori_visti`, prima e
+    // dopo) come se fosse un evento: due uscite e un ingresso caduti nella stessa finestra
+    // si annullavano fino a «un giocatore è uscito». Qui il conto non c'entra: si dice chi è
+    // entrato e chi è uscito perché lo si è appena confrontato nome per nome.
+    //
+    // ⚠️ Solo se qualcosa è cambiato davvero: due roster identici non producono niente, come
+    // per tutto il resto di questo modulo (la decisione ③, «toccato ≠ cambiato»).
+    if (entrati.length || usciti.length) {
+      for (const persona of restati) {
+        fatti.push({
+          slot,
+          data: slotDopo.data,
+          ora: slotDopo.ora,
+          campo: slotDopo.campo,
+          persona,
+          gesto: 'formazione',
+          tipo: tipoDelloSlot(slotDopo.tipo),
+          entrati: [...entrati],
+          usciti: [...usciti],
+        });
+      }
     }
   }
 

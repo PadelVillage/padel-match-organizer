@@ -1611,7 +1611,23 @@ Deno.serve(async (req) => {
       }
 
       if (daAccodare.length) {
-        const { error: codaError } = await admin
+        // 👥🚨⭐⭐ VOCE 79 — IL RIPIEGO CHE SALVA GLI ALTRI QUATTRO GESTI. Il gesto
+        // `formazione` e le colonne `entrati`/`usciti` vogliono una migrazione: finché non è
+        // applicata su QUESTO progetto, il `CHECK` rifiuta la riga e l'insert è un'unica
+        // operazione ⇒ **cade tutto il blocco**, annullamenti compresi, e nessun socio riceve
+        // niente. È il danno peggiore che questo modulo possa fare, e la testata qui sotto lo
+        // dice già per `origine`.
+        // ⚖️ ⇒ Al primo errore si riprova UNA volta con i fatti di prima della voce 79: i
+        // quattro gesti vecchi passano comunque, e si perde solo la novità. *Il verso in cui
+        // si sbaglia è dire meno, mai tacere del tutto.*
+        // 📌 Non sostituisce l'ordine di messa in servizio (bot → migrazione → gestionale):
+        // lo rende **non fatale** se qualcuno lo sbaglia, che è un'altra cosa.
+        const senzaVoce79 = (righe: typeof daAccodare) =>
+          righe.filter((f) => f.gesto !== 'formazione').map((f) => {
+            const { entrati: _e, usciti: _u, ...resto } = f;
+            return resto;
+          });
+        const accoda = async (righe: Array<Record<string, unknown>>) => await admin
           .from('pmo_eventi_staff')
           // 🚨⭐⭐ `origine` NON si scrive qui, ed è una scelta contro l'istinto. Scriverlo
           // esplicito sarebbe più chiaro da leggere, ma legherebbe **il calendario di 2800
@@ -1623,9 +1639,24 @@ Deno.serve(async (req) => {
           // 📌 È la lezione di `staff_edit`, pagata l'11/08: un CHECK che non ammetteva il tipo
           // faceva rifiutare il registro dal database, e per mesi le righe sono state **zero**
           // su TEST e su PROD senza che nessuno se ne accorgesse.
-          .insert(daAccodare.map((f) => ({ ...f, visto_at: importedAt })));
+          .insert(righe.map((f) => ({ ...f, visto_at: importedAt })));
+
+        let { error: codaError } = await accoda(daAccodare);
+        if (codaError) {
+          const ripiego = senzaVoce79(daAccodare);
+          console.warn(JSON.stringify({
+            event: 'eventi_staff_senza_voce79',
+            error: String(codaError.message ?? codaError),
+            scartati: daAccodare.length - ripiego.length,
+            nota: 'migrazione voce 79 non applicata? riprovo senza formazione/entrati/usciti',
+          }));
+          if (!ripiego.length) codaError = null;
+          else ({ error: codaError } = await accoda(ripiego));
+          if (!codaError) eventiStaffAccodati = ripiego.length;
+        } else {
+          eventiStaffAccodati = daAccodare.length;
+        }
         if (codaError) throw codaError;
-        eventiStaffAccodati = daAccodare.length;
       }
       console.log(JSON.stringify({
         event: 'eventi_staff',

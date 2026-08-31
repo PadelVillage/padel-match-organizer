@@ -23,9 +23,17 @@ export type FattoInCoda = {
   ora: string;
   campo: string;
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione';
   /** 🔄 Solo su `spostata`: lo slot di PARTENZA. Le altre coordinate sono quelle d'arrivo. */
   da?: { data: string; ora: string; campo: string } | null;
+  /**
+   * 👥 Solo su `formazione` (voce 79): chi è entrato e chi è uscito da questa partita, coi
+   * nomi come li scrive il circolo, «Ospite» compreso e con le ripetizioni.
+   * ⚠️ Assenti ⇒ elenco vuoto: un fatto vecchio o una riga di un database non ancora
+   * migrato non deve far saltare la riduzione.
+   */
+  entrati?: string[] | null;
+  usciti?: string[] | null;
   /**
    * Quando il fatto è stato visto, in ISO.
    *
@@ -56,7 +64,7 @@ export type EsitoRidotto = {
   campo: string;
   persona: string;
   /** `null` quando il netto è nullo: non c'è niente da dire, e i fatti si chiudono lo stesso. */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | null;
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | null;
   /**
    * Il tipo dello slot, dall'ULTIMO fatto della raffica — come tutto il resto qui.
    * ⚖️ Non si fonde e non si vota: una partita non diventa una lezione a metà raffica, e se
@@ -65,6 +73,19 @@ export type EsitoRidotto = {
   tipo?: 'lezione' | 'partita' | null;
   /** 🔄 Lo slot di partenza, dall'ULTIMO fatto della raffica — come il `tipo` qui sopra. */
   da?: { data: string; ora: string; campo: string } | null;
+  /**
+   * 👥 Chi è entrato e chi è uscito, **al netto di tutta la raffica** — e qui NON si prende
+   * l'ultimo fatto, al contrario di `tipo` e `da`.
+   *
+   * ⚖️ La ragione è la stessa che regge tutto questo modulo: *si confronta com'era all'inizio
+   * con com'è alla fine*. Se in un giro entra Marco e in quello dopo esce Marco, l'ultimo
+   * fatto direbbe «esce Marco» — e chi legge non l'aveva mai visto entrare. I due si
+   * annullano, come `tolto → aggiunto` si annulla per la persona che legge.
+   * 🚨 E si conta per RIPETIZIONI, non per presenza: tre «Ospite» entrati e uno uscito fanno
+   * due ospiti entrati, non «entrati e usciti».
+   */
+  entrati?: string[];
+  usciti?: string[];
   /** Gli id dei fatti che questo esito riassume: si chiudono tutti insieme, detto o no. */
   ids: string[];
 };
@@ -185,18 +206,87 @@ export function coppia(persona: string, slot: string): string {
  * era in campo ci resta, la partita si è solo mossa. ⇒ Non tocca il conto dentro/fuori, e due
  * spostamenti di fila si dicono una volta sola. *Le due parole si somigliano e vanno nei versi
  * opposti proprio nel punto in cui è facile confonderle.*
+ *
+ * 👥⭐⭐ E `formazione` (voce 79, 31/08/2026) è di una TERZA specie, ed è la ragione per cui
+ * non entra nel conto dentro/fuori: non dice niente di chi legge — chi legge è rimasto dov'era.
+ * Dice che sono cambiati **gli altri**.
+ *
+ * | la raffica | si dice |
+ * |---|---|
+ * | formazione | **formazione** |
+ * | formazione → tolto | **tolto** ⭐ |
+ * | formazione → aggiunto | **aggiunto** |
+ * | tolto → aggiunto → formazione | **formazione** ⭐ |
+ * | qualunque cosa → annullata / spostata | come prima |
+ *
+ * 🚨 Le due righe ⭐ sono il senso della regola. *A chi è stato tolto non si dice come si è
+ * composta una partita che non è più sua* — sarebbe l'errore gemello di quello che la voce 76
+ * ha curato sugli spostamenti, dove a chi era stato tolto arrivavano le coordinate NUOVE.
+ * E chi è stato tolto e rimesso non ha niente da sapere su di sé, ma i compagni gli sono
+ * cambiati lo stesso: lì `formazione` è l'unica cosa vera rimasta da dire.
+ * ⇒ *Un gesto che parla degli altri si toglie dal conto, non ci si somma.*
  */
 export function statoFinale(gesti: Array<FattoInCoda['gesto']>): EsitoRidotto['gesto'] {
   if (!gesti.length) return null;
-  const ultimo = gesti[gesti.length - 1];
+
+  // 👥 `formazione` esce dal conto dentro/fuori: non è uno stato del giocatore. Ciò che resta
+  // decide, e questo torna in ballo solo se al giocatore non è successo niente.
+  const suoi = gesti.filter((g) => g !== 'formazione');
+  const cambiataLaFormazione = suoi.length !== gesti.length;
+  if (!suoi.length) return 'formazione';
+
+  // ⚠️ L'ultimo dei gesti SUOI, non l'ultimo in assoluto: un `formazione` arrivato dopo uno
+  // spostamento non deve trasformare quello spostamento in un'uscita.
+  const ultimo = suoi[suoi.length - 1];
   if (ultimo === 'annullata') return 'annullata';
   if (ultimo === 'spostata') return 'spostata';
 
   // «dentro» = il giocatore è nella partita. Il primo gesto rivela da dove si partiva.
-  const eraDentro = gesti[0] !== 'aggiunto';
+  const eraDentro = suoi[0] !== 'aggiunto';
   const eDentro = ultimo === 'aggiunto';
-  if (eraDentro === eDentro) return null;
+  if (eraDentro === eDentro) return cambiataLaFormazione ? 'formazione' : null;
   return eDentro ? 'aggiunto' : 'tolto';
+}
+
+/**
+ * 👥 Chi è entrato e chi è uscito al netto di TUTTA la raffica (voce 79).
+ *
+ * ⭐ Stessa regola del resto del modulo — *com'era all'inizio contro com'è alla fine* — ma
+ * applicata ai compagni invece che a chi legge. Un nome entrato in un giro e uscito in quello
+ * dopo si annulla: raccontarlo sarebbe far sapere di un'uscita che chi legge non ha mai visto
+ * arrivare, cioè lo stesso allarme inutile del *tolto e rimesso*.
+ *
+ * 🚨 Si conta per RIPETIZIONI: gli «Ospite» sono più persone con lo stesso nome, e fonderli
+ * direbbe che togliendone due su tre non è cambiato niente. È la stessa ragione per cui
+ * `conteggio()` esiste dall'altra parte, in `eventi-staff.ts`.
+ */
+export function fondiFormazione(
+  gruppo: readonly FattoInCoda[],
+): { entrati: string[]; usciti: string[] } {
+  /** nome normalizzato → { saldo, comeScritto } — positivo entrato, negativo uscito. */
+  const saldi = new Map<string, { saldo: number; comeScritto: string }>();
+  const conta = (nomi: readonly string[] | null | undefined, segno: 1 | -1) => {
+    for (const grezzo of nomi ?? []) {
+      const nome = String(grezzo ?? '').trim();
+      if (!nome) continue;
+      const k = nome.toLowerCase();
+      const gia = saldi.get(k);
+      if (gia) gia.saldo += segno;
+      else saldi.set(k, { saldo: segno, comeScritto: nome });
+    }
+  };
+  for (const f of gruppo) {
+    if (f.gesto !== 'formazione') continue;
+    conta(f.entrati, 1);
+    conta(f.usciti, -1);
+  }
+  const entrati: string[] = [];
+  const usciti: string[] = [];
+  for (const { saldo, comeScritto } of saldi.values()) {
+    const dove = saldo > 0 ? entrati : usciti;
+    for (let i = 0; i < Math.abs(saldo); i += 1) dove.push(comeScritto);
+  }
+  return { entrati, usciti };
 }
 
 /**
@@ -236,6 +326,16 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
     // perché il gruppo torni alla quiete piena.
     if (Number.isFinite(visto) && adesso - visto < quietaDovuta(gruppo)) continue;
 
+    let gesto = statoFinale(gruppo.map((g) => g.gesto));
+    const { entrati, usciti } = fondiFormazione(gruppo);
+    // 👥 Un cambio di formazione che si annulla da sé non è una notizia: è il *tolto e
+    // rimesso* visto dalla parte dei compagni — entra Marco in un giro, esce nel giro dopo,
+    // e chi legge non l'ha mai visto arrivare. ⇒ Niente da dire, e le righe si chiudono lo
+    // stesso (l'esito esce con `gesto: null`, che è la forma già prevista per questo caso).
+    // ⚠️ Vale SOLO quando il gesto è `formazione`: un `tolto` non si annulla perché i
+    // compagni sono tornati come prima.
+    if (gesto === 'formazione' && !entrati.length && !usciti.length) gesto = null;
+
     esiti.push({
       slot: ultimo.slot,
       data: ultimo.data,
@@ -244,7 +344,10 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       persona: ultimo.persona,
       tipo: ultimo.tipo ?? null,
       da: ultimo.da ?? null,
-      gesto: statoFinale(gruppo.map((g) => g.gesto)),
+      gesto,
+      // ⭐ Escono solo su `formazione`: sugli altri gesti non significano niente, e un campo
+      // pieno dove non serve è il modo di far credere a chi legge che serva.
+      ...(gesto === 'formazione' ? { entrati, usciti } : {}),
       ids: gruppo.map((g) => g.id),
     });
   }
