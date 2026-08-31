@@ -741,6 +741,89 @@ test('il nome si riconosce senza badare a maiuscole e accenti', () => {
   assert.deepEqual(daAccodare, [], 'la stessa persona scritta in due modi resta una persona');
 });
 
+// ── 👥 VOCE 79 — IL DEDUP SUL QUINTO GESTO: si SOTTRAE, non si scarta in blocco ──────────
+//
+// 🚨⭐⭐ Questi casi nascono da una sonda scritta PRIMA di dichiarare `formazione` dalla
+// conferma, non da un danno visto dopo — è la domanda che il committente ha posto per primo
+// («controlla prima il doppione»), e la risposta è stata: il doppione no, ma il dedup com'era
+// mangiava un cambiamento vero.
+//
+// 📏 La ragione è strutturale: su `aggiunto`/`tolto` la chiave `(slot, persona, gesto)` dice
+// **cosa** è successo, perché `persona` è chi si è MOSSO. Su `formazione` `persona` è chi
+// **riceve** ⇒ due cambi diversi sullo stesso slot hanno la STESSA chiave.
+
+const SLOT79 = '2026-09-07|11:00|3';
+const formazione = (persona: string, entrati: string[], usciti: string[]) => ({
+  slot: SLOT79, data: '2026-09-07', ora: '11:00', campo: 'Campo 3',
+  persona, gesto: 'formazione' as const, tipo: 'partita' as const, entrati, usciti,
+});
+
+test('👥 il DOPPIONE si scarta: la conferma ha già detto esattamente quello', () => {
+  const gia = [{ slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: ['Ospite'], usciti: [] }];
+  const { daAccodare, scartati } = togliGiaDichiarati([formazione('Maurizio Aprea', ['Ospite'], [])], gia);
+  assert.equal(daAccodare.length, 0);
+  assert.equal(scartati.length, 1);
+});
+
+test('👥⭐⭐ ma un cambiamento che NESSUNO ha dichiarato sopravvive — il difetto trovato dalla sonda', () => {
+  // 📏 Il caso concreto, e non è teorico: la segreteria aggiunge un ospite DAL GESTIONALE
+  // (⇒ dichiarato dalla conferma) e poi ne mette un altro DA MATCHPOINT (⇒ nessuna
+  // dichiarazione). Il sync li vede tutti e due. Scartando per chiave, il socio saprebbe del
+  // primo e non del secondo.
+  const gia = [{ slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: ['Ospite'], usciti: [] }];
+  const { daAccodare } = togliGiaDichiarati([formazione('Maurizio Aprea', ['Ospite', 'Marco Aprea'], [])], gia);
+  assert.equal(daAccodare.length, 1, 'il cambiamento non dichiarato è stato mangiato dal dedup');
+  assert.deepEqual(daAccodare[0].entrati, ['Marco Aprea'], 'resta SOLO quello che nessuno aveva detto');
+  assert.deepEqual(daAccodare[0].usciti, []);
+});
+
+test('👥 la sottrazione conta le RIPETIZIONI: tre ospiti meno uno fanno due', () => {
+  const gia = [{ slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: ['Ospite'], usciti: [] }];
+  const { daAccodare } = togliGiaDichiarati([formazione('Maurizio Aprea', ['Ospite', 'Ospite', 'Ospite'], [])], gia);
+  assert.deepEqual(daAccodare[0].entrati, ['Ospite', 'Ospite']);
+});
+
+test('👥 più dichiarazioni nella stessa finestra si sommano prima di sottrarre', () => {
+  // La segreteria può aver fatto due gesti dal gestionale nello stesso intervallo: ognuno ha
+  // lasciato la sua dichiarazione, e il sync ne vede il cumulativo.
+  const gia = [
+    { slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: ['Ospite'], usciti: [] },
+    { slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: [], usciti: ['Lidia Comes'] },
+  ];
+  const { daAccodare, scartati } = togliGiaDichiarati(
+    [formazione('Maurizio Aprea', ['Ospite'], ['Lidia Comes'])], gia,
+  );
+  assert.equal(daAccodare.length, 0, 'era tutto già detto');
+  assert.equal(scartati.length, 1);
+});
+
+test('👥 e i nomi si confrontano senza badare a maiuscole e accenti, come dappertutto', () => {
+  const gia = [{ slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione', entrati: ['gianluca spinazze'], usciti: [] }];
+  const { daAccodare } = togliGiaDichiarati([formazione('Maurizio Aprea', ['Gianluca Spinazzè'], [])], gia);
+  assert.equal(daAccodare.length, 0);
+});
+
+test('⚠️ una dichiarazione SENZA elenchi non sottrae niente: il verso è il doppione, non il silenzio', () => {
+  // Un fatto vecchio, o un gestionale che non li manda ancora. ⚖️ È la stessa scelta di
+  // `finestraDedup`: *meglio un doppione una volta che un silenzio che non si scopre* — e qui
+  // il doppione non è nemmeno una bugia, è la stessa cosa vera detta due volte.
+  const gia = [{ slot: SLOT79, persona: 'Maurizio Aprea', gesto: 'formazione' }];
+  const { daAccodare } = togliGiaDichiarati([formazione('Maurizio Aprea', ['Ospite'], [])], gia);
+  assert.equal(daAccodare.length, 1);
+});
+
+test('👥 sugli altri quattro gesti NON cambia niente: si scarta per chiave, come prima', () => {
+  // ⭐ La controprova che tiene onesta la cura: la sottrazione è un ramo del solo `formazione`,
+  // e il comportamento degli altri quattro dev'essere identico a ieri.
+  const g = (persona: string, gesto: 'aggiunto' | 'tolto') => ({
+    slot: SLOT79, data: '2026-09-07', ora: '11:00', campo: 'Campo 3', persona, gesto, tipo: 'partita' as const,
+  });
+  const gia = [{ slot: SLOT79, persona: 'Lidia Comes', gesto: 'tolto' }];
+  const { daAccodare, scartati } = togliGiaDichiarati([g('Lidia Comes', 'tolto'), g('Fabiola Limuti', 'tolto')], gia);
+  assert.equal(scartati.length, 1);
+  assert.deepEqual(daAccodare.map((x) => x.persona), ['Fabiola Limuti']);
+});
+
 test('🚨 uno SPOSTAMENTO diverso non viene scartato: le chiavi d\'arrivo differiscono', () => {
   // ⚖️ È il caso che una finestra a tempo renderebbe pericoloso e che questa chiave rende
   // innocuo: sposta, poi risposta altrove. Il secondo gesto è una notizia vera.

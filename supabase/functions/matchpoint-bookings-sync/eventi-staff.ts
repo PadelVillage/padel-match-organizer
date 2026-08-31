@@ -709,6 +709,12 @@ export type DichiarazioneGiaFatta = {
   slot?: string | null;
   persona?: string | null;
   gesto?: string | null;
+  /**
+   * 👥 Su `formazione`: **cosa** era già stato detto. Sugli altri quattro gesti non serve — lì
+   * la chiave basta — e chi non li manda torna al comportamento di prima.
+   */
+  entrati?: string[] | null;
+  usciti?: string[] | null;
 };
 
 /**
@@ -731,23 +737,76 @@ export function chiaveFatto(slot: unknown, persona: unknown, gesto: unknown): st
 }
 
 /**
+ * 👥 Quello che resta di un elenco dopo aver tolto ciò che è già stato detto, **contando le
+ * ripetizioni**: tre «Ospite» meno uno fanno due, non zero.
+ */
+function meno(elenco: readonly string[], gia: readonly string[]): string[] {
+  const restano = [...elenco];
+  for (const g of gia) {
+    const i = restano.findIndex((x) => normNome(x) === normNome(g));
+    if (i >= 0) restano.splice(i, 1);
+  }
+  return restano;
+}
+
+/**
  * I fatti da accodare davvero: quelli che il gestionale non ha già dichiarato.
  *
  * ⭐ Torna anche gli SCARTATI, e non per simmetria: senza, il registro direbbe solo «ne ho
  * accodati meno» e non si potrebbe distinguere *il dedup ha funzionato* da *il confronto non
  * ha trovato niente*. Sono due cose diverse e una delle due è un guasto.
+ *
+ * 🚨⭐⭐ E SU `formazione` NON SI SCARTA IN BLOCCO, SI **SOTTRAE** — 31/08/2026, e questa
+ * distinzione è nata da una sonda scritta apposta prima di dichiarare il quinto gesto dalla
+ * conferma, non da un danno visto dopo.
+ *
+ * 📏 Il difetto che la sonda ha trovato: su `aggiunto`/`tolto` la chiave `(slot, persona,
+ * gesto)` dice **cosa** è successo, perché `persona` è chi si è **mosso** — due cambi diversi
+ * hanno chiavi diverse e non si toccano. Su `formazione` `persona` è chi **riceve** ⇒ due
+ * cambi diversi sullo stesso slot producono la **stessa chiave**, e il dedup butterebbe via
+ * anche quello che nessuno aveva dichiarato.
+ *
+ * ⇒ Il caso concreto, e non è teorico: la segreteria aggiunge un ospite **dal gestionale**
+ * (⇒ dichiarato dalla conferma) e poi ne mette un altro **da Matchpoint** (⇒ nessuna
+ * dichiarazione). Il sync li vede tutti e due, trova la chiave già usata, e il socio saprebbe
+ * del primo e non del secondo.
+ *
+ * ⚖️ La sottrazione è la stessa regola che la riduzione applica già a valle — *com'era
+ * all'inizio contro com'è alla fine* — portata a monte: si toglie ciò che è già stato detto e
+ * si accoda solo se resta qualcosa. Vuoto ⇒ è un vero doppione ⇒ si scarta.
+ * ⚠️ Una dichiarazione senza elenchi (un fatto vecchio, o un gestionale che non li manda) vale
+ * **elenco vuoto**: non sottrae niente, e il fatto passa. Il verso in cui si sbaglia torna a
+ * essere il doppione, mai il silenzio.
  */
 export function togliGiaDichiarati(
   fatti: readonly FattoStaff[],
   gia: readonly DichiarazioneGiaFatta[],
 ): { daAccodare: FattoStaff[]; scartati: FattoStaff[] } {
   if (!gia.length) return { daAccodare: [...fatti], scartati: [] };
-  const viste = new Set(gia.map((d) => chiaveFatto(d?.slot, d?.persona, d?.gesto)));
+  const perChiave = new Map<string, DichiarazioneGiaFatta[]>();
+  for (const d of gia) {
+    const k = chiaveFatto(d?.slot, d?.persona, d?.gesto);
+    const lista = perChiave.get(k);
+    if (lista) lista.push(d);
+    else perChiave.set(k, [d]);
+  }
   const daAccodare: FattoStaff[] = [];
   const scartati: FattoStaff[] = [];
   for (const f of fatti) {
-    if (viste.has(chiaveFatto(f.slot, f.persona, f.gesto))) scartati.push(f);
-    else daAccodare.push(f);
+    const gia = perChiave.get(chiaveFatto(f.slot, f.persona, f.gesto));
+    if (!gia) { daAccodare.push(f); continue; }
+
+    if (f.gesto !== 'formazione') { scartati.push(f); continue; }
+
+    // 👥 Tutto ciò che è già stato dichiarato per questa coppia, messo insieme: la segreteria
+    // può aver fatto più gesti dal gestionale nella stessa finestra, e ognuno ha lasciato la
+    // sua dichiarazione.
+    const dettiEntrati = gia.flatMap((d) => d?.entrati ?? []);
+    const dettiUsciti = gia.flatMap((d) => d?.usciti ?? []);
+    const entrati = meno(f.entrati ?? [], dettiEntrati);
+    const usciti = meno(f.usciti ?? [], dettiUsciti);
+    if (!entrati.length && !usciti.length) { scartati.push(f); continue; }
+    daAccodare.push({ ...f, entrati, usciti });
   }
   return { daAccodare, scartati };
 }
