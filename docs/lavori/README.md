@@ -2504,14 +2504,58 @@ quei `catch` si raggiungono solo con una scrittura vera e `chiamataAlPonteConsen
 — non lascia scrivere da un banco. Sono eseguite invece la **decisione** (codice per codice), la
 **catena decisione → frase**, e la **strada dell'invito per intero**.
 
-⏳ **COSA MANCA PER CHIUDERE LA VOCE**, e non si scrive «fatto» con una riserva in fondo:
-① **la prova fisica** — un `KO HTTP 504` vero, che nel registro esca come esito ignoto e non come
-   rifiuto. Non si provoca: si aspetta e si guarda;
-② **il terzo effetto resta scoperto**, ed è il residuo onesto di questa cura: su un `esito_ignoto`
-   il gestionale **non scrive la ricevuta** della voce 70 (la scrive solo dopo una scrittura
-   riuscita) ⇒ se la scrittura *era* passata, il sync la ritrova e la attribuisce **al circolo**.
-   Il socio riceverebbe *«è stata annullata dal circolo»* per un gesto suo. È un lavoro sul
-   gestionale, non sul bot, e non è stato fatto qui.
+#### 🧾 31/08 sera — IL TERZO EFFETTO, curato: la ricevuta si lascia anche sull'ignoto
+
+📏 **Il difetto**: alle 23:47 di quella notte il sync ha trovato la partita sparita e l'ha
+attribuita **al circolo** — *«👋 La tua partita non c'è più — È stata annullata dal circolo»*, dieci
+minuti dopo che l'aveva annullata **lui** dal bot. La protezione esisteva già ed è la **ricevuta**
+della voce 70, che `consumer-booking-write` scrive **solo dopo una scrittura riuscita**:
+classificato fallito, non è stata scritta. 📌 *Una ricevuta non scritta non protegge niente.*
+
+🚨⭐⭐ **E LA CURA OVVIA È SBAGLIATA — è il pezzo che vale più della cura.** «Scrivi la ricevuta
+anche sull'ignoto, per tutti» è la mossa che viene in mente, e produce un **silenzio**:
+
+| | su una scrittura RIUSCITA | su un ESITO IGNOTO |
+|---|---|---|
+| chi avvisa le persone toccate | **il bot** (`compagni`, `testoPartitaAnnullata`) | **nessuno**: il bot non sa |
+| cosa fa la ricevuta | toglie il **doppione** ✅ | toglierebbe **l'unica notizia** ⛔ |
+
+⇒ Con la ricevuta per tutto il roster, tre persone resterebbero senza campo e **senza che nessuno
+glielo dica**. È la regola del 23/08 rovesciata — *tutti quelli in campo devono essere avvisati*.
+
+🔨 **CURA — sull'ignoto la ricevuta copre SOLO CHI HA CHIESTO**, mai un terzo:
+
+| gesto | chi chiede | ricevuta sull'ignoto |
+|---|---|---|
+| `create` | chi entra | ✅ per lui |
+| `leave` | chi esce | ✅ per lui |
+| `cancel` | l'organizzatore | ✅ **solo per lui** — i compagni la notizia devono averla |
+| `remove` | **non** chi viene tolto | ⛔ nessuna |
+| `add` | **non** chi entra (è l'organizzatore, misura della voce 70) | ⛔ nessuna |
+
+⚖️ **Il costo, dichiarato invece che taciuto**: se la scrittura NON era passata e la segreteria
+rifà lo **stesso** gesto sulla **stessa** persona entro la finestra, quel socio perde **un** avviso
+— uno solo, perché la ricevuta si consuma, e solo lui. Contro un avviso falso nell'attribuzione
+mandato a chi il gesto l'ha fatto, è il verso giusto in cui sbagliare.
+
+📏 **Misurato prima di scrivere, non supposto**: `pmo_ricevute_gesti` ha il `CHECK` **solo** su
+`gesto` (`aggiunto|tolto|annullata`), su tutt'e due i progetti ⇒ i nomi nuovi dell'`azione`
+(`create-ignoto`, `leave-ignoto`, `cancel-ignoto`) entrano senza **nessuna migrazione**.
+🧹 E le tre copie della riga che trova il nome del socio nel roster sono diventate una
+(`mioNomeNelRoster`): la quarta l'avrebbe resa una consuetudine invece di una regola.
+
+✅ **Banco: 72 verdi** (erano 71), 11 casi nuovi, **4 sabotaggi visti diventare rossi** — l'annullo
+che copre tutto il roster, il `remove` che copre chi è stato tolto, l'annullo che smette di
+lasciarla, il nome preso dalla chiave invece che dal gestionale.
+⭐ **Fra i casi ce n'è uno che esegue la CURA SBAGLIATA** e mostra cosa perde: *una prova che
+confronta la strada giusta con quella sbagliata non prova un calcolo, protegge una decisione.*
+⚠️ Il cablaggio nei cinque rami è **testuale** e si dice testuale; è eseguita la semantica —
+chi viene coperto e chi no — sulla `copertura` vera.
+⚠️ Il `deno check` **non gira in locale** (`jsr.io` è bloccato da questa rete): lo fa la CI.
+
+⏳ **COSA MANCA PER CHIUDERE LA VOCE**: **la prova fisica** — un `KO HTTP 504` vero, che nel
+registro esca come esito ignoto e non come rifiuto, e la ricevuta accanto. Non si provoca: si
+aspetta e si guarda.
 
 🚨⭐⭐ **E IL DANNO NON È FINITO CON LA FRASE: alle 23:44 il bot ha scritto al socio di una
 partita CHE NON ESISTE PIÙ.** *«👋 Un giocatore è uscito — Dalla tua partita di lunedì 31 agosto

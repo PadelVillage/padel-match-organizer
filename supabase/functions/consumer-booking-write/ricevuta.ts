@@ -15,6 +15,40 @@
 // e al consumo. Le due metà si provano separate, e nessuna delle due può cambiare l'altra di
 // nascosto.
 
+// 🚨⭐⭐ E LA RICEVUTA DELL'ESITO IGNOTO — voce 83, 31/08/2026. Regola stretta, e il perché
+// vale più della regola.
+//
+// 📏 IL DIFETTO, misurato la notte del 23/08. L'annullo del socio è passato su Matchpoint, il
+// gestionale l'ha classificato fallito, quindi **nessuna ricevuta è stata scritta**. Alle 23:47
+// il sync ha trovato la partita sparita e l'ha attribuita al circolo: al socio è arrivato
+// *«👋 La tua partita non c'è più — È stata annullata dal circolo»*, dieci minuti dopo che
+// l'aveva annullata lui dal bot. ⇒ *Una ricevuta non scritta non protegge niente.*
+//
+// ⛔ E LA CURA OVVIA — «scrivi la ricevuta anche sull'ignoto, per tutti» — È SBAGLIATA, e va
+// detto perché è quella che viene in mente. Su una scrittura RIUSCITA il bot avvisa lui le
+// persone toccate (`compagni`, `testoPartitaAnnullata`, `testoSeiStatoTolto`), e la ricevuta
+// serve a non dire la stessa cosa due volte. Sull'IGNOTO il bot **non avvisa nessuno**, perché
+// non sa. ⇒ Una ricevuta per tutti produrrebbe un **silenzio**: né il bot né il circolo, e tre
+// persone che scoprono da sole di non avere più il campo. È la regola del 23/08 rovesciata —
+// *tutti quelli in campo devono essere avvisati*.
+//
+// ⇒ SULL'IGNOTO LA RICEVUTA COPRE **SOLO CHI HA CHIESTO**, mai un terzo. Gesto per gesto:
+//
+//   create  → chi chiede è chi entra          ⇒ ricevuta per lui
+//   leave   → chi chiede è chi esce           ⇒ ricevuta per lui
+//   cancel  → chi chiede è l'organizzatore    ⇒ ricevuta SOLO per lui; i compagni la notizia
+//             devono averla, e l'unico che può dargliela è il circolo
+//   remove  → chi chiede NON è chi viene tolto  ⇒ nessuna ricevuta
+//   add     → chi chiede NON è chi entra        ⇒ nessuna ricevuta
+//
+// ⚖️ IL COSTO, dichiarato invece che taciuto: se la scrittura NON era passata e la segreteria
+// rifà lo stesso gesto sulla stessa persona entro la finestra, quel socio perde **un** avviso
+// — uno solo, perché la ricevuta si consuma, e solo lui. Contro un avviso falso nell'attribuzione
+// mandato a chi il gesto l'ha fatto, è il verso giusto in cui sbagliare.
+//
+// 📌 *Una protezione che nasce da «il bot l'ha già detto» non si estende al caso in cui il bot
+//    non ha detto niente: lì copre un silenzio invece di un doppione.*
+
 /** Un gesto che la scrittura ha prodotto su UNA persona. */
 export type GestoScritto = {
   /** Il nome come finisce SULLA SCHEDA DEL CIRCOLO: è quello che il sync rileggerà. */
