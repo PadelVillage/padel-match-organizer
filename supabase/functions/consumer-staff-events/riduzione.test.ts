@@ -6,6 +6,7 @@ import {
   QUIETE_DA_CONFERMA_MS,
   QUIETE_MS,
   quietaDovuta,
+  fondiFormazione,
   riduci,
   statoFinale,
   type FattoInCoda,
@@ -40,6 +41,17 @@ function fatto(
     slot, data, ora, campo, persona, gesto,
     visto_at: new Date(T0 + offsetSec * 1000).toISOString(),
   };
+}
+
+/** 👥 Un fatto `formazione` con i suoi elenchi (voce 79). */
+function formazione(
+  offsetSec: number,
+  entrati: string[],
+  usciti: string[],
+  persona = 'Maurizio Aprea',
+  slot = '2026-08-31|09:30|1',
+): FattoInCoda {
+  return { ...fatto('formazione', offsetSec, persona, slot), entrati, usciti };
 }
 
 // ── Lo stato finale, la regola in sé ─────────────────────────────────────────────────────
@@ -248,6 +260,90 @@ test('⛔ e la quiete PIENA non ci entra, di proposito: quella misura un timbro 
     'la quiete piena è scesa dentro il budget: sui fatti dal sync sta misurando una distanza '
     + 'fra timbri di giro, e accorciarla toglie la fusione senza dare velocità',
   );
+});
+
+// ── 👥 VOCE 79: il quinto gesto nella riduzione ──────────────────────────────────────────
+//
+// ⚖️ `formazione` è di una terza specie: `aggiunto`/`tolto` dicono dov'è chi legge,
+// `annullata`/`spostata` dicono dov'è la partita, e questo dice **chi sono gli altri**. Perciò
+// esce dal conto dentro/fuori invece di sommarcisi.
+
+test('👥 la tabella del quinto gesto, riga per riga', () => {
+  assert.equal(statoFinale(['formazione']), 'formazione');
+  assert.equal(statoFinale(['formazione', 'formazione']), 'formazione', 'due passaggi, una cosa sola');
+  // ⭐ A chi è stato TOLTO non si racconta come si è composta una partita che non è più sua:
+  // è l'errore gemello di quello che la voce 76 ha curato sugli spostamenti.
+  assert.equal(statoFinale(['formazione', 'tolto']), 'tolto');
+  assert.equal(statoFinale(['tolto', 'formazione']), 'tolto');
+  // ⭐ E a chi ENTRA si dice «sei in campo», che è la notizia — non «è cambiata la formazione».
+  assert.equal(statoFinale(['formazione', 'aggiunto']), 'aggiunto');
+  assert.equal(statoFinale(['aggiunto', 'formazione']), 'aggiunto');
+  // ⭐ Tolto e rimesso: su di lui non c'è niente da dire, ma i compagni gli sono cambiati.
+  assert.equal(statoFinale(['tolto', 'aggiunto', 'formazione']), 'formazione');
+  assert.equal(statoFinale(['aggiunto', 'tolto', 'formazione']), 'formazione');
+});
+
+test('👥 annullata e spostata restano più forti, e un `formazione` dopo non le ribalta', () => {
+  // 🚨 Il caso che si sbaglia scrivendo la regola: filtrando `formazione` e poi guardando
+  // «l'ultimo in assoluto», uno `spostata` seguito da un `formazione` diventerebbe un `tolto`
+  // — cioè si direbbe a qualcuno che è stato buttato fuori da una partita che ha solo
+  // cambiato ora.
+  assert.equal(statoFinale(['spostata', 'formazione']), 'spostata');
+  assert.equal(statoFinale(['annullata', 'formazione']), 'annullata');
+  assert.equal(statoFinale(['formazione', 'spostata']), 'spostata');
+  assert.equal(statoFinale(['formazione', 'annullata']), 'annullata');
+});
+
+test('👥 gli elenchi si fondono AL NETTO della raffica, non si accodano', () => {
+  // ⭐ Stessa regola del resto del modulo — com'era all'inizio contro com'è alla fine — ma
+  // applicata ai compagni. Entra Marco in un giro ed esce in quello dopo: chi legge non l'ha
+  // mai visto arrivare, e raccontarglielo sarebbe l'allarme inutile del «tolto e rimesso».
+  const { entrati, usciti } = fondiFormazione([
+    formazione(0, ['Marco Rossi'], ['Lidia Comes']),
+    formazione(30, [], ['Marco Rossi']),
+  ]);
+  assert.deepEqual(entrati, []);
+  assert.deepEqual(usciti.sort(), ['Lidia Comes']);
+});
+
+test('👥 e si contano le RIPETIZIONI: tre ospiti entrati meno uno uscito fanno due entrati', () => {
+  const { entrati, usciti } = fondiFormazione([
+    formazione(0, ['Ospite', 'Ospite', 'Ospite'], []),
+    formazione(30, [], ['Ospite']),
+  ]);
+  assert.deepEqual(entrati, ['Ospite', 'Ospite']);
+  assert.deepEqual(usciti, []);
+});
+
+test('👥 un cambio di formazione che si ANNULLA non produce nessun messaggio', () => {
+  // 🚨 Ed è la metà che si dimentica: lo stato finale direbbe `formazione`, ma non c'è niente
+  // da raccontare. Le righe si chiudono lo stesso (`gesto: null` porta gli `ids`), o
+  // resterebbero in coda a farsi riesaminare per sempre.
+  const esiti = riduci([
+    formazione(0, ['Marco Rossi'], []),
+    formazione(30, [], ['Marco Rossi']),
+  ], ADESSO);
+  assert.equal(esiti.length, 1);
+  assert.equal(esiti[0].gesto, null);
+  assert.equal(esiti[0].ids.length, 2, 'le righe si chiudono comunque');
+});
+
+test('👥 il giro intero: chi resta riceve UN esito, con dentro chi è entrato e chi è uscito', () => {
+  const esiti = riduci([
+    fatto('tolto', 0, 'Lidia Comes'),
+    formazione(0, [], ['Lidia Comes']),
+    formazione(40, ['Marco Rossi'], []),
+  ], ADESSO);
+  const perChi = new Map(esiti.map((e) => [e.persona, e]));
+  assert.equal(perChi.get('Lidia Comes')?.gesto, 'tolto');
+  const resta = perChi.get('Maurizio Aprea')!;
+  assert.equal(resta.gesto, 'formazione');
+  assert.deepEqual(resta.entrati, ['Marco Rossi']);
+  assert.deepEqual(resta.usciti, ['Lidia Comes']);
+  assert.equal(resta.ids.length, 2, 'i due passaggi si chiudono insieme');
+  // ⚠️ Gli elenchi NON escono sugli altri gesti: un campo pieno dove non serve fa credere a
+  // chi legge che serva.
+  assert.equal(perChi.get('Lidia Comes')?.entrati, undefined);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
