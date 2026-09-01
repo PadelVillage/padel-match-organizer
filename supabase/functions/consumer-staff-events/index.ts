@@ -156,7 +156,16 @@ Deno.serve(async (req: Request) => {
     };
   };
 
-  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}`);
+  /* 🆕🗣️ VOCE 79 (01/09) — `chiesto_da` è il ripiego PIÙ ESTERNO, cioè il primo a cadere:
+   * è la colonna più nuova, quindi la più probabile a mancare su un progetto non ancora
+   * migrato. ⚖️ E perdendola non si perde un avviso: si perde l'**attribuzione**, e le frasi
+   * tornano quelle del circolo — che è esattamente il comportamento di ieri. La scala dei
+   * ripieghi è ordinata dal meno grave al più grave, e questo è il meno grave di tutti. */
+  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da`);
+  if (errore) {
+    console.warn(`[staff-events] coda senza 'chiesto_da' (${errore.message}): riprovo senza — l'attribuzione resta al circolo`);
+    ({ righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}`));
+  }
   if (errore) {
     // 👥 VOCE 79 — primo ripiego: senza gli elenchi della formazione. Non si perde niente di
     // quello che c'era prima — i quattro gesti vecchi non li usano — e un gestionale non
@@ -410,6 +419,14 @@ Deno.serve(async (req: Request) => {
       // sono quelle d'arrivo — è lì che si va a giocare — e questa è la partenza, che il socio
       // ha in testa. ⚠️ `null` su tutto il resto: il bot regge senza, dicendo comunque dov'è.
       da: e.da ?? null,
+      /* 🆕🗣️ VOCE 79 (01/09) — CHI ha chiesto il gesto, quando non è la segreteria.
+       * 📏 Il campo nasce da una prova fisica: alle 20:01 tre soci hanno letto «L'ha cambiata
+       * il circolo» di un ingresso chiesto da una socia, col numero della segreteria in fondo.
+       * ⛔ E `origine` NON esce di qui, né allora né adesso: governa quanto si aspetta, non
+       * cosa si dice. Le due colonne rispondono a due domande diverse — *come è arrivato* e
+       * *chi l'ha voluto* — e solo la seconda è affare del socio.
+       * ⚠️ `null` ⇒ il bot dice le frasi del circolo, parola per parola come prima. */
+      chiesto_da: e.chiestoDa ?? null,
       // 👥 VOCE 79 (31/08): solo su `formazione`, e dicono chi è entrato e chi è uscito. Sono
       // il contenuto del messaggio, non un contorno: un avviso di cambio formazione senza i
       // nomi non direbbe niente. ⚠️ Sempre presenti (vuoti sugli altri gesti), così chi legge
@@ -419,7 +436,7 @@ Deno.serve(async (req: Request) => {
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);
-    segnaEsito(e.ids, ESITO.CONSEGNATO);
+    segnaEsito(e.ids, ESITO.PASSATO_AL_BOT);
   }
 
   // ── 5. La chiusura ───────────────────────────────────────────────────────────────────

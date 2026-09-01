@@ -3056,10 +3056,36 @@ difetto esatto che la colonna esiste per togliere.
 📌 È la stessa forma della voce 71 (`ordine` accanto a `giocatori`) e della 70 (la ricevuta accanto
 al fatto): **far uscire il perché insieme al dato.**
 
-· **6 casi nuovi** (`esito-avviso.test.ts`), banco del gestionale a **76 verdi / 0 rossi**;
-· **4 sabotaggi rossi**, e uno di essi è la guardia sulla chiusura atomica: togliendo il
-  `.is('consegnato_at', null)` del 24/08 il caso 4 diventa rosso **e** cadono 2 casi di
-  `chiusura-atomica.test.ts`. La cura nuova sorveglia anche quella vecchia;
+🚨⭐⭐ **E POCHE ORE DOPO LA PRIMA MISURA VERA HA SMONTATO IL NOME.** *(01/09, sera — è il
+difetto che questa cura esisteva per togliere, riprodotto da chi lo stava togliendo.)*
+📏 Alle **18:22:07** il gestionale ha scritto `esito = 'consegnato'` su due righe (Oriana
+Canzian e Valeria Moschet, aggiunte al 07/09 19:30). Nello stesso istante il registro del bot:
+`🔔 circolo: 2 ritirati, 0 detti, 2 scartati` ⇒ **zero detti**. Il bot le ha **scartate**:
+quelle due persone il bot non ce l'hanno, e la whitelist Telegram tiene i soci iscritti, non
+i 2.800 del circolo.
+⚖️ Il valore si chiamava «consegnato» e la sua funzione `eArrivatoAlSocio` era documentata come
+*«l'unico che vuol dire: il socio lo saprà»*. ⇒ **La stessa bugia di `consegnato_at`, spostata
+di un passo**: il gestionale consegna **al bot**, e cosa il bot ne faccia vive di là.
+📌 *Rinominare una colonna che mente non basta se il nome nuovo promette la stessa cosa: la
+domanda non è come si chiama il valore, è **chi è in grado di rispondere**.*
+🔨 **Curato la sera stessa**: il valore è **`passato_al_bot`**, `eArrivatoAlSocio` **non esiste
+più** (al suo posto `ePassatoAlBot`, che non promette niente su chi legge), e un caso nuovo —
+il **2bis** — vieta il **vocabolario** dell'arrivo invece di un valore in particolare: chi
+domani riaggiungesse «consegnato» o una funzione che dichiara di sapere lo trova rosso.
+⚠️ **Le due righe già scritte sono state aggiornate**, e non è riscrivere la storia: il codice
+ha sempre marcato *«uscito verso il bot»* — era il **nome** a essere sbagliato, non il fatto
+osservato. Le righe a `NULL` restano a `NULL`.
+⏳ **Cosa resta aperto, dichiarato**: il gestionale **continua a non sapere** se il socio è
+stato avvisato. Per saperlo il bot dovrebbe riferire indietro — tocca la regola ferrea del
+19/08, e va **deciso**, non fatto di scivolo.
+
+· **7 casi** (`esito-avviso.test.ts`), banco del gestionale a **76 verdi / 0 rossi**;
+· **6 sabotaggi rossi**, e due meritano una riga: ① togliendo alla chiusura atomica del 24/08
+  il suo `.is('consegnato_at', null)` diventa rosso il caso 4 **e** cadono 2 casi di
+  `chiusura-atomica.test.ts` — la cura nuova sorveglia anche quella vecchia; ② riaggiungendo
+  una funzione «il socio lo sa?» accanto a quella onesta, il 2bis morde. ⚠️ E un sabotaggio
+  **non ha stampato niente** perché il banco non partiva proprio (import rotto): rifatto nella
+  forma realistica — nessuno *rinomina* una funzione, semmai ne *aggiunge* una comoda;
 · ⚠️ **provato: la decisione e il cablaggio. NON provato: che la colonna si riempia davvero** —
   quello vuole un giro vero contro il database, ed è la riga 1 qui sopra.
 

@@ -52,6 +52,16 @@ export type FattoInCoda = {
    * ⛔ NON esce verso il bot: governa quanto si aspetta, non cosa si dice.
    */
   origine?: 'sync' | 'conferma' | null;
+  /**
+   * 🆕🗣️ VOCE 79 (01/09) — CHI HA CHIESTO il gesto, quando non è stata la segreteria.
+   *
+   * 🚨 Da non confondere con `origine`, che è la coppia sbagliata più a portata di mano:
+   * `origine` dice **come** il fatto è arrivato in coda (conferma o specchio), questo dice
+   * **chi** l'ha voluto. Un annullo della segreteria fatto dall'app è `conferma` e non ha un
+   * attore; un ingresso di un socio è `conferma` e ce l'ha. ⇒ Dall'una non si deduce l'altro.
+   * ⚠️ Assente ⇒ il circolo, che è il comportamento di sempre.
+   */
+  chiesto_da?: string | null;
   /** `lezione` o `partita` — la parola del GESTIONALE, non quella di Matchpoint (voce 74). */
   tipo?: 'lezione' | 'partita' | null;
 };
@@ -73,6 +83,15 @@ export type EsitoRidotto = {
   tipo?: 'lezione' | 'partita' | null;
   /** 🔄 Lo slot di partenza, dall'ULTIMO fatto della raffica — come il `tipo` qui sopra. */
   da?: { data: string; ora: string; campo: string } | null;
+  /**
+   * 🆕🗣️ Chi ha chiesto il gesto, dall'ULTIMO fatto della raffica — come `tipo` e `da`.
+   *
+   * ⚖️ Non si fonde e non si vota, ed è il verso giusto: una raffica che mescola un gesto della
+   * segreteria e uno di un socio finisce raccontata **come l'ha lasciata l'ultimo**, che è la
+   * stessa regola con cui questo modulo tratta tutto il resto. Fondere due attori vorrebbe dire
+   * inventarne un terzo.
+   */
+  chiestoDa?: string | null;
   /**
    * 👥 Chi è entrato e chi è uscito, **al netto di tutta la raffica** — e qui NON si prende
    * l'ultimo fatto, al contrario di `tipo` e `da`.
@@ -344,6 +363,7 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       persona: ultimo.persona,
       tipo: ultimo.tipo ?? null,
       da: ultimo.da ?? null,
+      chiestoDa: String(ultimo.chiesto_da ?? '').trim() || null,
       gesto,
       // ⭐ Escono solo su `formazione`: sugli altri gesti non significano niente, e un campo
       // pieno dove non serve è il modo di far credere a chi legge che serva.

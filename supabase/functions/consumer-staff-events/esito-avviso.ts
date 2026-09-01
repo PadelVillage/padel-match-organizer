@@ -25,10 +25,35 @@
 // vivono in tre — il codice che chiude, la migrazione che documenta la colonna, e chi un
 // domani andrà a interrogarla. Tre stringhe scritte a mano in tre posti divergono.
 
-/** I quattro modi in cui una riga della coda finisce. */
+/**
+ * I quattro modi in cui una riga della coda finisce.
+ *
+ * 🚨⭐⭐ IL PRIMO SI CHIAMAVA `consegnato`, E MENTIVA — corretto il 01/09/2026, poche ore dopo
+ * averlo scritto, dalla PRIMA misura vera. Vale la pena leggerlo tutto, perché è il difetto
+ * che questo file esisteva per togliere, riprodotto da chi lo stava togliendo.
+ *
+ * 📏 Alle **18:22:07** il gestionale ha scritto `consegnato` su due righe (Oriana Canzian e
+ * Valeria Moschet, aggiunte al 07/09 19:30). Nello stesso istante il registro del bot dice:
+ *     `🔔 circolo: 2 ritirati, 0 detti, 2 scartati`
+ * ⇒ **zero detti.** Il bot le ha SCARTATE — quelle due persone il bot non ce l'hanno, e la
+ * whitelist Telegram tiene i soci iscritti, non i 2.800 del circolo.
+ *
+ * ⚖️ La colonna diceva «consegnato» e la sua funzione di lettura prometteva *«il socio lo
+ * saprà»*: la stessa bugia di `consegnato_at`, **spostata di un passo**. Il gestionale
+ * consegna **al bot**; se poi il bot lo dica a qualcuno è un fatto che vive di là, e da qui
+ * non si può sapere.
+ * 📌 *Rinominare una colonna che mente non basta se il nome nuovo promette la stessa cosa: la
+ * domanda non è come si chiama il valore, è chi è in grado di rispondere.*
+ */
 export const ESITO = {
-  /** L'evento è uscito verso il bot. È l'unico che vuol dire «il socio lo saprà». */
-  CONSEGNATO: 'consegnato',
+  /**
+   * L'evento è uscito **verso il bot** — e non un passo più in là.
+   *
+   * ⛔ NON vuol dire «il socio lo saprà»: il bot ha un suo filtro e scarta chi non è nella
+   * whitelist Telegram, che è **il caso frequente**. Chi ha detto davvero qualcosa a qualcuno
+   * lo sa solo il registro del bot (`🔔 detto a …`).
+   */
+  PASSATO_AL_BOT: 'passato_al_bot',
   /**
    * Il nome non è di UNA persona viva in anagrafica.
    * ⚖️ Si chiude lo stesso, ed è giusto: o è qualcuno che il circolo non ha in anagrafica, o
@@ -55,13 +80,21 @@ export type Esito = typeof ESITO[keyof typeof ESITO];
 export const ESITI: readonly string[] = Object.values(ESITO);
 
 /**
- * Vero se questo esito vuol dire che **il socio lo saprà**.
+ * Vero se questa riga è stata **passata al bot**.
  *
- * ⭐ Esiste perché la domanda si farà, e va fatta in un posto solo: «quanti avvisi sono
- * davvero partiti?» non è «quante righe sono chiuse», ed è precisamente la confusione da cui
- * questa colonna nasce. ⚠️ Un esito ASSENTE (le righe chiuse prima del 01/09) è `false`, e va
- * letto come **non misurato** — non come «non consegnato».
+ * 🚨⭐⭐ SI CHIAMAVA `eArrivatoAlSocio`, E QUELLA È LA DOMANDA CHE DA QUI NON SI PUÒ FARE.
+ * Il gestionale sa di aver consegnato al bot; cosa il bot ne abbia fatto lo sa il bot — e il
+ * 01/09 la differenza era **2 passati, 0 detti**. Una funzione che prometteva la seconda
+ * rispondendo con la prima è esattamente ciò che rende una colonna inaffidabile: non il dato,
+ * la promessa scritta sopra.
+ *
+ * ⇒ Chi vuole sapere **quanti avvisi sono arrivati a qualcuno** non lo chiede a questa
+ * colonna: lo chiede al registro del bot (`stato-bot.yml`, regex `detto a`). Da questa parte
+ * quella riga non esiste, e adesso nessuna funzione finge il contrario.
+ *
+ * ⚠️ Un esito ASSENTE (le righe chiuse prima del 01/09) è `false`, e va letto come **non
+ * misurato** — non come «non passato».
  */
-export function eArrivatoAlSocio(esito: unknown): boolean {
-  return String(esito ?? '') === ESITO.CONSEGNATO;
+export function ePassatoAlBot(esito: unknown): boolean {
+  return String(esito ?? '') === ESITO.PASSATO_AL_BOT;
 }
