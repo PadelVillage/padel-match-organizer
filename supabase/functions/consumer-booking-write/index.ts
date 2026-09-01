@@ -34,6 +34,12 @@ import {
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
+/* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte». Stanno in un modulo perché le
+ * usano in due: qui, che AMMETTE, e `consumer-player-readmodel`, che ELENCA. Se le due
+ * divergessero, il bot mostrerebbe una partita in cui poi il gestionale non fa entrare. */
+import {
+  TIPO_RECORD_APERTURA, chiaveApertura, decidiIngresso, puoAprire, MOTIVI as MOTIVI_APERTA,
+} from './partita-aperta.ts';
 // ⛔ E chi OCCUPA un campo sta in un modulo ANCORA diverso, con un tipo che non è assegnabile a
 // `RigaSlot`: una manutenzione occupa il campo e non ha giocatori, una lezione ha partecipanti
 // che non sono un roster da cui si esce. Le due domande — «il campo è libero?» e «chi gioca?» —
@@ -214,7 +220,10 @@ const minToTime = minutiInOra;
 // `pmoPlayerId` = «ID giocatore Padel Village» (PMO-000000), il nostro. Qui serve a
 // confermare in-code il match quando il socio arriva per quella via; le risposte
 // operative continuano a portare id+nome, e l'identità completa la dà il readmodel.
-type MemberHit = { id: string; memberId: string; pmoPlayerId: string; name: string; firstName: string; surname: string };
+/* 🆕🔓 VOCE 88 — `level` e `levelSource` viaggiano con la scheda perché la regola ④ e la
+ * decisione ① si decidono su di loro. Non escono MAI verso il bot da questa azione: qui
+ * servono a rispondere sì/no, e il numero resta di qua (regola del 2/08). */
+type MemberHit = { id: string; memberId: string; pmoPlayerId: string; name: string; firstName: string; surname: string; level: string; levelSource: string };
 
 /**
  * 👥 Quanto largo è il filtro grossolano con cui si cercano gli omonimi in anagrafica.
@@ -241,7 +250,11 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return err(400, 'BAD_JSON', 'Body non è JSON valido.'); }
 
   const action = clean(body.action);
-  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add', 'verifica'].includes(action)) {
+  /* 🆕🔓 VOCE 88 — `apri` e `chiudi` sono la regola ②, `entra` è la porta della ③+④.
+   * ⚖️ Le prime due NON scrivono su Matchpoint e non chiamano il worker: aprire una partita è
+   * un fatto NOSTRO, che al circolo non risulta e non deve risultare. È la regola ferrea del
+   * 19/08 letta al contrario — *il gestionale SA* vale anche per ciò che Matchpoint non sa. */
+  if (!['availability', 'availability_day', 'create', 'cancel', 'leave', 'remove', 'add', 'verifica', 'apri', 'chiudi', 'entra'].includes(action)) {
     return err(400, 'INVALID_ACTION', `Azione non ammessa: ${action || '(vuota)'}`);
   }
 
@@ -372,6 +385,8 @@ Deno.serve(async (req: Request) => {
       name: clean(p.name),
       firstName: clean(p.firstName),
       surname: clean(p.surname),
+      level: clean(p.level),
+      levelSource: clean(p.levelSource),
     });
   }
   if (hits.length === 0) return ok({ member: null, reason: 'not_found' });
@@ -1425,8 +1440,44 @@ Deno.serve(async (req: Request) => {
   // ⚖️ E la differenza con `remove`, che è il motivo per cui non si è potuto riusare il suo
   // corpo: là il bersaglio è una persona GIÀ nel roster e si ritrova per nome; qui è una
   // persona che nel roster non c'è, e l'unica domanda è se **ci sta**.
-  if (action === 'add') {
+  if (action === 'add' || action === 'entra') {
     const prova = dryRun ? { dry_run: true } : {};
+
+    /* 🆕🔓 VOCE 88 — `entra` È `add` CON UN'ALTRA SERRATURA, e passa per la stessa strada di
+     * proposito. Sotto la porta c'è tutto ciò che `add` ha imparato in un mese: il posto
+     * riletto adesso, il codice cliente contro l'id interno, il terzo esito sul timeout, il
+     * roster riletto DOPO per vedere se il giocatore si è agganciato davvero.
+     * ⛔ Riscrivere quella strada per l'ingresso nuovo avrebbe voluto dire ricominciare da
+     * capo a sbagliarci, e la seconda copia avrebbe smesso di imparare insieme alla prima.
+     * ⇒ Cambiano DUE cose sole: chi entra (sé stesso, non un invitato) e chi decide se può.
+     *
+     * 🚨⭐⭐ E L'APERTURA SI GUARDA PER PRIMA, prima ancora di sapere chi è chi. Di una
+     * partita che non è aperta al socio non si dice NIENTE — nemmeno che è piena, nemmeno di
+     * che livello è. È la regola ① («solo i numeri, e solo delle partite aperte») applicata al
+     * caso in cui i numeri non si devono vedere affatto, ed è anche la stessa regola con cui
+     * `remove` e `cancel` tacciono su una partita che non è tua. */
+    let apertura: JsonMap | null = null;
+    if (action === 'entra') {
+      const chiave = chiaveApertura(slot.data, slot.ora, campo);
+      const { data: righeAperta, error: apertaErr } = await service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', TIPO_RECORD_APERTURA)
+        .eq('local_key', chiave)
+        .not('deleted', 'is', true)
+        .limit(1);
+      if (apertaErr) {
+        console.error('[booking-write] entra: errore lettura aperture:', apertaErr.message);
+        return err(500, 'DB_ERROR', 'Errore lettura partite aperte.');
+      }
+      apertura = (righeAperta?.[0]?.payload ?? null) as JsonMap | null;
+      if (!apertura) {
+        return ok({
+          member: { id: member.id, name: member.name },
+          added: false, reason: MOTIVI_APERTA.NON_APERTA, ...prova,
+        });
+      }
+    }
 
     // 🚨⭐⭐ CHI ENTRA ARRIVA COME NUMERO DI SCHEDA DELLA NOSTRA APP, e qui lo si risolve
     // sull'anagrafica NOSTRA. Direttiva ferma del committente (26/07/2026): il bot parla con
@@ -1434,7 +1485,10 @@ Deno.serve(async (req: Request) => {
     // scrive la scheda del circolo né il codice cliente. Quelle due cose vivono di qua.
     // ⭐ È anche più solido: un nome mandato dal bot dovrebbe combaciare con la grafia della
     // scheda, e le due divergono («Nome Cognome» / «Cognome Nome»).
-    const idDaAggiungere = clean(body.giocatore_id);
+    /* 🆕🔓 VOCE 88 — in `entra` chi entra è CHI CHIEDE, e non c'è modo di dire altrimenti:
+     * `giocatore_id` non si legge nemmeno. ⚖️ Non è una scorciatoia — è la differenza fra una
+     * partita aperta e una lista di persone che si possono infilare in campo da un bot. */
+    const idDaAggiungere = action === 'entra' ? member.id : clean(body.giocatore_id);
     if (!idDaAggiungere) {
       return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'giocatore_mancante', ...prova });
     }
@@ -1515,25 +1569,80 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Proprietà prima di ogni altra cosa, come in `remove`: di una partita che non è sua al
-    // socio non si dice niente, nemmeno che tipo di prenotazione sia.
-    const mioNomeAdd = mioNomeNelRoster(esito.chiavi, nameVariants);
-    if (!mioNomeAdd) {
-      if (sostituito(esito, nameVariants)) {
-        return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_piu_in_partita', ...prova });
+    /* 🚨⭐⭐ LA SERRATURA, ed è l'UNICA cosa che distingue i due ingressi.
+     *
+     * · `add`   → **proprietà**: si fa entrare qualcuno in una partita che è TUA. Di una
+     *            partita che non è sua al socio non si dice niente, nemmeno che tipo di
+     *            prenotazione sia (stessa regola di `remove`).
+     * · `entra` → **apertura**: la partita non è tua, e proprio per questo la porta è più
+     *            stretta — la regola ③ (cliente del circolo, già passata qui sopra) più la ④
+     *            (livello a un passo), più la decisione ① sul non-livello.
+     *
+     * ⚖️ Le due non si sommano e non si sostituiscono a vicenda: sono due modi diversi di
+     * avere il diritto, e la seconda non è un'attenuazione della prima. Chi entra da una
+     * partita aperta non acquista NESSUN diritto sulla partita — non può a sua volta far
+     * entrare altri, perché quella strada è ancora `add` e `add` chiede la proprietà. */
+    let organizzatoreDelGesto: string | null = null;
+    if (action === 'entra') {
+      /* La scheda di chi ha aperto, riletta ADESSO. ⚠️ NON si crede al livello scritto
+       * nell'apertura: fra allora e adesso la segreteria può aver rimesso quella scheda a
+       * «da definire», e la banda del ±0,5 si calcolerebbe attorno a un non-dato. */
+      const idOrganizzatore = clean(apertura?.aperta_da_member_local_id);
+      const { data: righeOrg, error: orgErr } = await service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'member')
+        .not('deleted', 'is', true)
+        .eq('payload->>id', idOrganizzatore)
+        .limit(2);
+      if (orgErr) {
+        console.error('[booking-write] entra: errore lettura scheda di chi ha aperto:', orgErr.message);
+        return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
       }
-      return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
-    }
-
-    const esitoOmonimiAdd = await omonimiDelSocio('add', 'non aggiungo nessuno');
-    if (!esitoOmonimiAdd.ok) return esitoOmonimiAdd.risposta;
-    const dirittoAdd = dirittoDiAnnullare(righe, nameVariants, esitoOmonimiAdd.omonimi.length > 0);
-    if (!dirittoAdd.permesso) {
-      console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: in ${esito.roster.length}, ${dirittoAdd.motivo}`);
-      return ok({
-        member: { id: member.id, name: member.name },
-        added: false, reason: dirittoAdd.motivo, giocatori: esito.roster.length, ...prova,
+      /* 🚨 Zero o più di una ⇒ la banda non ha un centro leggibile, e si tace. FAIL CLOSED
+       * come dappertutto: un «non lo so» che apre è un estraneo in campo, e il bot sa
+       * aggiungere ma non sa rimediare. */
+      const schedaOrg = (righeOrg?.length === 1 ? righeOrg[0].payload : null) as JsonMap | null;
+      const decisione = decidiIngresso({
+        aperta: !!schedaOrg,
+        organizzatore: { level: schedaOrg?.level, levelSource: schedaOrg?.levelSource },
+        candidato: { level: member.level, levelSource: member.levelSource, memberId: member.memberId },
+        giocatoriInCampo: esito.roster.length,
+        giaInPartita: !!mioNomeNelRoster(esito.chiavi, nameVariants),
+        // Già deciso qui sopra da `codiceDaAggiungere`, che per `entra` è il codice di chi
+        // chiede: arrivare fin qui vuol dire che quella porta è passata.
+        clienteDelCircolo: true,
       });
+      if (!decisione.ok) {
+        console.log(`[booking-write] entra rifiutato ${slot.data} ${slot.ora} C${campo}: ${decisione.motivo} (in ${esito.roster.length})`);
+        return ok({
+          member: { id: member.id, name: member.name },
+          added: false, reason: decisione.motivo, giocatori: esito.roster.length, ...prova,
+        });
+      }
+      organizzatoreDelGesto = clean(apertura?.organizzatore) || null;
+    } else {
+      // Proprietà prima di ogni altra cosa, come in `remove`: di una partita che non è sua al
+      // socio non si dice niente, nemmeno che tipo di prenotazione sia.
+      const mioNomeAdd = mioNomeNelRoster(esito.chiavi, nameVariants);
+      if (!mioNomeAdd) {
+        if (sostituito(esito, nameVariants)) {
+          return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'non_piu_in_partita', ...prova });
+        }
+        return ok({ member: { id: member.id, name: member.name }, added: false, reason: 'booking_not_found', ...prova });
+      }
+
+      const esitoOmonimiAdd = await omonimiDelSocio('add', 'non aggiungo nessuno');
+      if (!esitoOmonimiAdd.ok) return esitoOmonimiAdd.risposta;
+      const dirittoAdd = dirittoDiAnnullare(righe, nameVariants, esitoOmonimiAdd.omonimi.length > 0);
+      if (!dirittoAdd.permesso) {
+        console.log(`[booking-write] add rifiutato ${slot.data} ${slot.ora} C${campo}: in ${esito.roster.length}, ${dirittoAdd.motivo}`);
+        return ok({
+          member: { id: member.id, name: member.name },
+          added: false, reason: dirittoAdd.motivo, giocatori: esito.roster.length, ...prova,
+        });
+      }
+      organizzatoreDelGesto = dirittoAdd.organizzatore;
     }
 
     // 🚨⭐⭐ IL POSTO C'È? È la domanda che le altre azioni non si pongono, ed è l'unica
@@ -1593,7 +1702,7 @@ Deno.serve(async (req: Request) => {
           fonte: esito.fonte,
           sommando_le_righe: esito.unione.size,
           id_reserva: righe[0]?.idReserva || null,
-          organizzatore: dirittoAdd.organizzatore,
+          organizzatore: organizzatoreDelGesto,
           copia_in_app: {
             ...aggiuntaCopia.conteggi,
             righe_dettaglio: aggiuntaCopia.righe.map((r) => ({
@@ -1657,10 +1766,27 @@ Deno.serve(async (req: Request) => {
       // «non lo so» (deploy sulla VM del 29/08, 22:58): la parola non cade più nel generico.
       const ignotoAdd = esitoIgnotoDaRisposta(dataAdd);
       console.error(`[booking-write] add KO HTTP ${resAdd.status}${ignotoAdd ? ' (ESITO IGNOTO)' : ''}:`, JSON.stringify(dataAdd).slice(0, 300));
-      // 🧾⛔ 31/08/2026 (voce 83) — nessuna ricevuta, per la stessa ragione del `remove` e con
-      // la misura della voce 70 dietro: nell'`add` **chi chiede è l'ORGANIZZATORE**, non chi
-      // entra (`mioNomeAdd` esige che il richiedente sia già nel roster). Coprire l'ingresso
-      // significherebbe zittire l'unica notizia che arriverebbe a chi è entrato.
+      // 🧾⛔ 31/08/2026 (voce 83) — nessuna ricevuta sull'`add`, per la stessa ragione del
+      // `remove` e con la misura della voce 70 dietro: lì **chi chiede è l'ORGANIZZATORE**,
+      // non chi entra (`mioNomeAdd` esige che il richiedente sia già nel roster). Coprire
+      // l'ingresso significherebbe zittire l'unica notizia che arriverebbe a chi è entrato.
+      //
+      // 🧾🆕🔓 01/09/2026, VOCE 88 — E SU `entra` LA RISPOSTA SI ROVESCIA, perché si rovescia
+      // il fatto: lì chi chiede **è** chi viene toccato. ⇒ Ricade nella metà buona della
+      // regola della voce 83 («sull'ignoto la ricevuta copre SOLO CHI HA CHIESTO»), insieme a
+      // `create` e a `leave`, e la si lascia.
+      // ⚖️ Perché conta: se la scrittura era passata, il sync fra 4 e 19 minuti vedrà un
+      // giocatore comparire e lo annuncerà **come gesto del circolo** a chi l'ha appena fatto
+      // da sé. Senza la ricevuta il socio legge «non lo so ancora» dal bot e poi «il circolo
+      // ti ha aggiunto» — due messaggi che insieme non dicono nessuna verità.
+      // 🚨 E il costo è dichiarato, com'è per gli altri: se la scrittura NON era passata e la
+      // segreteria fa lo stesso gesto sulla stessa persona dentro la finestra, quel socio
+      // perde **un** avviso. Uno, perché la ricevuta si consuma, e solo lui.
+      if (action === 'entra' && ignotoAdd) {
+        await lasciaRicevuta('entra-ignoto', { data: slot.data, ora: slot.ora, campo }, [
+          { persona: nomeSullaScheda, gesto: 'aggiunto' },
+        ]);
+      }
       return ok({
         member: { id: member.id, name: member.name },
         added: false,
@@ -1739,7 +1865,10 @@ Deno.serve(async (req: Request) => {
     // dice «✅ Sei in campo», e il circolo glielo ripete. ⚠️ Si scrive `nomeSullaScheda` e non
     // il nome della persona: è quello che il sync rileggerà dalla scheda del circolo, quindi è
     // l'unico su cui il fatto e la ricevuta possono riconoscersi.
-    await lasciaRicevuta('add', { data: slot.data, ora: slot.ora, campo }, [
+    // ⭐ L'azione porta il PROPRIO nome (`add` o `entra`): la ricevuta è anche il registro di
+    // chi ha fatto cosa, e due gesti diversi che si firmano uguale rendono illeggibile la
+    // colonna il giorno in cui la si va a guardare per capire un avviso di troppo.
+    await lasciaRicevuta(action, { data: slot.data, ora: slot.ora, campo }, [
       { persona: nomeSullaScheda, gesto: 'aggiunto' },
     ]);
     return ok({
@@ -1760,6 +1889,135 @@ Deno.serve(async (req: Request) => {
       // a non fare.
       giocatori_dopo: finali ? finali.length : esito.roster.length + 1,
       copia_in_app: copiaEsitoAdd,
+    });
+  }
+
+  // ── 🔓 apri / chiudi — la regola ② delle Partite Aperte (voce 88) ──────────
+  //
+  // 🚨⭐⭐ QUESTE DUE AZIONI NON TOCCANO MATCHPOINT, e non è una semplificazione: è la forma
+  // giusta. «Questa partita è aperta ad altri» è un fatto NOSTRO — al circolo non risulta,
+  // non gli serve, e il giorno in cui Matchpoint si spegne queste due righe non cambiano di
+  // una virgola. È la prova del futuro applicata a un gesto nuovo: *se una modifica dovesse
+  // toccarlo quel giorno, è già sbagliata adesso.*
+  // ⇒ Niente worker, niente `matchpoint-bookings-edit`, niente esito ignoto: la scrittura è
+  // locale e o riesce o fallisce, e lo sappiamo subito. Il terzo esito qui non esiste perché
+  // non c'è nessun intermediario che possa smettere di rispondere.
+  //
+  // ⚖️ E il gesto è REVERSIBILE per decisione sua: si apre e si richiude. `chiudi` non toglie
+  // nessuno dal campo — chi è già entrato ci resta, perché è entrato quando la porta era
+  // aperta. Chiudere una porta non è mandare via chi è già in casa.
+  if (action === 'apri' || action === 'chiudi') {
+    const righeAp = dayBookings.filter((b) => b.campo === campo && b.ora === slot.ora);
+    if (!righeAp.length) {
+      return ok({ member: { id: member.id, name: member.name }, aperta: false, reason: 'booking_not_found' });
+    }
+    // Gemello dei cancelli di `add`, `leave` e `cancel`: una LEZIONE non si apre a nessuno —
+    // i posti li decide il maestro. Il bot già non mostrerà il bottone; qui ci si difende dal
+    // bot sbagliato, che è il motivo per cui la guardia sta nell'edge.
+    if (righeAp.some((b) => /lezione/i.test(b.tipo))) {
+      return ok({ member: { id: member.id, name: member.name }, aperta: false, reason: 'non_e_una_partita' });
+    }
+
+    const esitoAp = rosterDelloSlot(righeAp, GIOCATORI_PARTITA);
+    if (esitoAp.incoerente) {
+      console.error(`[booking-write] ${action} roster INCOERENTE ${slot.data} ${slot.ora} C${campo}: ${esitoAp.unione.size} nomi su ${righeAp.length} righe`);
+      return ok({ member: { id: member.id, name: member.name }, aperta: false, reason: 'roster_incoerente' });
+    }
+    // Proprietà prima di tutto, come altrove: di una partita che non è sua non si dice niente.
+    if (!mioNomeNelRoster(esitoAp.chiavi, nameVariants)) {
+      return ok({ member: { id: member.id, name: member.name }, aperta: false, reason: 'booking_not_found' });
+    }
+    // ⭐ Il diritto è lo STESSO di chi può annullare — l'organizzatore, cioè il primo
+    // dell'elenco ordinato della scheda del circolo. Non se ne inventa un secondo: due
+    // definizioni di «di chi è questa partita» divergono, e la divergenza si vedrebbe solo il
+    // giorno in cui una delle due lascia aprire la partita di un altro.
+    const esitoOmonimiAp = await omonimiDelSocio(action, action === 'apri' ? 'non apro niente' : 'non chiudo niente');
+    if (!esitoOmonimiAp.ok) return esitoOmonimiAp.risposta;
+    const dirittoAp = dirittoDiAnnullare(righeAp, nameVariants, esitoOmonimiAp.omonimi.length > 0);
+    if (!dirittoAp.permesso) {
+      console.log(`[booking-write] ${action} rifiutato ${slot.data} ${slot.ora} C${campo}: ${dirittoAp.motivo}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        aperta: false, reason: dirittoAp.motivo, giocatori: esitoAp.roster.length,
+      });
+    }
+
+    const chiave = chiaveApertura(slot.data, slot.ora, campo);
+    if (!chiave) return err(400, 'INVALID_CAMPO', 'Slot non identificabile.');
+
+    if (action === 'chiudi') {
+      const { error: chiudiErr } = await service
+        .from('pmo_cloud_records')
+        .update({ deleted: true, updated_at: new Date().toISOString() })
+        .eq('record_type', TIPO_RECORD_APERTURA)
+        .eq('local_key', chiave);
+      if (chiudiErr) {
+        console.error(`[booking-write] chiudi KO ${chiave}:`, chiudiErr.message);
+        return err(500, 'DB_ERROR', 'Errore chiusura della partita aperta.');
+      }
+      console.log(`[booking-write] chiudi OK ${chiave}: ${member.name}`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        aperta: false, chiusa: true, slot: { data: slot.data, ora: slot.ora, campo },
+      });
+    }
+
+    /* 🚨⭐⭐ LA DECISIONE ① SUL LATO CHE NON VIENE IN MENTE: senza un livello DIMOSTRATO non
+     * si può APRIRE. È la metà della regola che non si chiude impedendo di entrare, e senza
+     * la quale l'altra non serve: la banda del ±0,5 attorno a «da definire» conterrebbe tutti
+     * i 2.283 soci che stanno lì, cioè un filtro che non filtra nessuno.
+     * ⭐ Ed è la stessa regola per cui già oggi «senza livello non si organizza»: qui non se
+     * ne aggiunge una nuova, si applica quella che c'è a una porta nuova. */
+    if (!puoAprire({ level: member.level, levelSource: member.levelSource })) {
+      console.log(`[booking-write] apri rifiutato ${chiave}: ${member.name} non ha un livello dimostrato`);
+      return ok({
+        member: { id: member.id, name: member.name },
+        aperta: false, reason: MOTIVI_APERTA.SERVE_IL_TEST,
+      });
+    }
+    // 🚨 Al completo non si apre: una partita aperta di cui non si può entrare è una vetrina
+    // che promette un posto che non c'è. ⭐ Si conta ADESSO, non su ciò che il bot ricordava.
+    if (esitoAp.roster.length >= GIOCATORI_PARTITA) {
+      return ok({
+        member: { id: member.id, name: member.name },
+        aperta: false, reason: MOTIVI_APERTA.AL_COMPLETO, giocatori: esitoAp.roster.length,
+      });
+    }
+
+    /* ⛔ NEL PAYLOAD NON C'È IL LIVELLO, ed è deliberato. Sarebbe comodo — chi elenca lo
+     * troverebbe già lì — e sarebbe una FOTOGRAFIA: il giorno in cui la segreteria corregge
+     * quel livello, l'apertura continuerebbe a filtrare col numero vecchio, e nessuno se ne
+     * accorgerebbe perché il filtro funzionerebbe benissimo, solo attorno al centro sbagliato.
+     * ⇒ Si tiene solo CHI ha aperto; il livello lo si rilegge dalla sua scheda ogni volta.
+     * 📌 *Un dato copiato accanto alla sua fonte è una seconda verità che aspetta di divergere.* */
+    const oraIso = new Date().toISOString();
+    const { error: apriErr } = await service
+      .from('pmo_cloud_records')
+      .upsert({
+        record_type: TIPO_RECORD_APERTURA,
+        local_key: chiave,
+        payload: {
+          data: slot.data,
+          ora: slot.ora,
+          campo,
+          aperta_da_member_local_id: member.id,
+          organizzatore: member.name,
+          aperta_il: oraIso,
+        },
+        deleted: false,
+        updated_at: oraIso,
+        synced_at: oraIso,
+      }, { onConflict: 'record_type,local_key' });
+    if (apriErr) {
+      console.error(`[booking-write] apri KO ${chiave}:`, apriErr.message);
+      return err(500, 'DB_ERROR', "Errore apertura della partita.");
+    }
+    console.log(`[booking-write] apri OK ${chiave}: ${member.name} (in ${esitoAp.roster.length})`);
+    return ok({
+      member: { id: member.id, name: member.name },
+      aperta: true,
+      slot: { data: slot.data, ora: slot.ora, campo },
+      posti_liberi: GIOCATORI_PARTITA - esitoAp.roster.length,
     });
   }
 
