@@ -31,13 +31,19 @@
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * La finestra che l'export copre a OGNI giro: `oggi … oggi+30`.
- * 🚨 Copiata da `DEFAULT_FUTURE_DAYS` di `matchpoint-bookings-sync/index.ts` (le cartelle
+ * La finestra che l'export copre a OGNI giro: `oggi … oggi+60`.
+ * 🚨 Copiata da `EXPORT_FUTURE_DAYS` di `matchpoint-bookings-sync/index.ts` (le cartelle
  * `_shared/` non si deployano, stessa ragione di `playersFromDescrizione`): se cambia là,
  * cambia qui. Oltre questa soglia la copia **non saprà mai** della prenotazione — misurato:
  * `idReserva 9434`, creata per 121 giorni avanti, non è mai comparsa.
+ *
+ * 🔄 **Era 30, ed è passata a 60 il 01/09/2026** insieme alla scissione della costante
+ * di là. ⚠️ Va seguita `EXPORT_FUTURE_DAYS` e **non** `TABELLONE_FULL_DAYS`, che resta 30:
+ * la domanda a cui questo numero risponde è *«fin dove l'export porta le prenotazioni?»*, non
+ * *«fin dove il tabellone porta la manutenzione?»*. A tenerle legate è il caso 12 del banco —
+ * che è anche ciò che ha fatto scoprire questo punto, invece di lasciarlo indietro.
  */
-export const FINESTRA_SYNC_GIORNI = 30;
+export const FINESTRA_SYNC_GIORNI = 60;
 
 /**
  * Quanto si concede alla scrittura per atterrare DOPO che il bot ha perso il contatto.

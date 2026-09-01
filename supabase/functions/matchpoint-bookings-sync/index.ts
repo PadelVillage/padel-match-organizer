@@ -56,7 +56,56 @@ const CORS_HEADERS = {
 
 const REQUIRED_BOOKING_COLUMNS = ['Nome', 'Numero', 'Giorno', 'Ora', 'Ore', 'Spazio'];
 const DEFAULT_BASE_URL = 'https://app-padelvillage-it.matchpoint.com.es';
-const DEFAULT_FUTURE_DAYS = 30;
+/**
+ * 🆕🗣️⭐⭐ LA FINESTRA DELL'EXPORT — 60 giorni dal 01/09/2026, sua richiesta.
+ *
+ * 🚨 QUESTA COSTANTE ERA UNA SOLA E GOVERNAVA DUE COSE CHE NON SCALANO ALLO STESSO MODO, ed è
+ * la ragione per cui è stata divisa invece che alzata:
+ *   · **l'export delle prenotazioni** (qui sotto) è **UN** report Matchpoint con «Dal / Al
+ *     Giorno». Il costo è quasi tutto FISSO — avvio del browser, login, navigazione — e la
+ *     parte che scala sono le RIGHE, non i giorni;
+ *   · **il tabellone del tick pieno** (`TABELLONE_FULL_DAYS`) è **UNA PAGINA PER GIORNO**.
+ *     Quello scala per davvero, ed è da lì che sono nati i tre tipi di tick: a 31 giorni il
+ *     giro arrivava già a 80-150 s contro il tetto di 150 s dell'edge.
+ * ⇒ Alzare la costante UNICA a 60 avrebbe portato il tabellone a 61 pagine, cioè **504
+ *   sistematico** — e un 504 fa fallire il giro INTERO, export compreso. Si sarebbe perso il
+ *   sync per allargare il calendario.
+ *
+ * 📏 E IL COSTO È STATO MISURATO PRIMA DI TOCCARLA, non stimato. Sui log delle edge il 01/09
+ * il tick ha mediana **78,4 s**, p90 **102,5 s**, e **7 giri su 524** in 24 ore sbattono già
+ * sul tetto; l'export gira su OGNI tick (~720 al giorno) ⇒ ogni secondo in più li paga tutti.
+ * La misura dell'export si prende **dalla VM** con `.github/workflows/misura-export-matchpoint.yml`,
+ * che esiste per questo — ed è il TEMPO NETTO, letto dai timbri che il worker mette dopo la
+ * coda, perché il worker è condiviso e il cronometro di fuori conta anche l'attesa.
+ *
+ * ⭐⭐ **Due coppie indipendenti, 01/09 sera:**
+ *   30 giorni → **19,772 s** e **19,693 s**, xlsx **29.830 byte**
+ *   60 giorni → **19,982 s** e **19,782 s**, xlsx **31.442 byte**
+ * ⇒ **+0,15 s e +5,4% di file.** I pesi coincidono byte per byte fra i due giri: l'export è
+ * riproducibile, non è rumore.
+ * ⚖️ Il perché è strutturale e va saputo, perché è ciò che rende sicuro il 60: l'export è **UN
+ * SOLO report** e il tempo se ne va quasi tutto in cose che coi giorni non c'entrano — avviare
+ * Chromium, fare login, navigare. Le righe in più sono poche perché i giorni 31-60 sono quasi
+ * vuoti: 📏 la coda della finestra sta a ~6,8 prenotazioni al giorno contro le 40 di oggi.
+ * ⇒ 0,15 s su un margine di 150 s è lo **0,1%**.
+ *
+ * 🚨 E LA MISURA CHE SI SAREBBE LETTA COL CRONOMETRO SBAGLIATO: nella coppia di conferma il
+ * giro a 60 ha aspettato **15,0 s in coda** e il totale diceva **34,8 s**. Da lì si sarebbe
+ * concluso che 60 giorni costano il 75% in più — e la costante sarebbe rimasta a 30 per un
+ * numero che misurava la congestione di quel minuto.
+ */
+const EXPORT_FUTURE_DAYS = 60;
+
+/**
+ * 🆕 La finestra del TABELLONE nel tick pieno: **resta 30**, e non è una dimenticanza.
+ *
+ * ⚖️ Qui si paga una pagina per giorno, e il tabellone serve alla MANUTENZIONE (gli slot
+ * occupati senza giocatori, che l'export non porta). Allargarlo non aggiunge prenotazioni:
+ * aggiunge solo secondi a un giro che è già il più lungo che facciamo.
+ * 🚨 Chi un domani volesse allargare anche questo deve prima rifare la misura del tick pieno,
+ * non questa: sono due costi diversi, ed è tutto il senso di averle separate.
+ */
+const TABELLONE_FULL_DAYS = 30;
 const PAGE_SIZE = 1000;
 
 function json(body: unknown, status = 200) {
@@ -666,14 +715,14 @@ async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport>
 
   const baseUrl = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const fromDate = todayIsoRome();
-  const toDate = addDaysIso(fromDate, DEFAULT_FUTURE_DAYS);
+  const toDate = addDaysIso(fromDate, EXPORT_FUTURE_DAYS);
   const endpoint = workerBookingExportUrl(workerUrl);
   const healthEndpoint = workerHealthUrl(workerUrl);
   const requestBody = JSON.stringify({
     username,
     password,
     baseUrl,
-    days: DEFAULT_FUTURE_DAYS,
+    days: EXPORT_FUTURE_DAYS,
     fromDate,
     toDate,
     credentialSource: 'supabase_secret',
@@ -740,7 +789,7 @@ async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport>
     contentType: clean(payload.contentType) || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     finalUrl: clean(payload.diagnostic?.historyResultsUrl || payload.diagnostic?.downloadUrl || endpoint),
     mode: 'browser_worker_headless',
-    range: payload.range || { fromDate, toDate, days: DEFAULT_FUTURE_DAYS },
+    range: payload.range || { fromDate, toDate, days: EXPORT_FUTURE_DAYS },
     diagnostic: {
       mode: 'browser_worker_headless',
       worker: payload.diagnostic || null,
@@ -1164,7 +1213,7 @@ Deno.serve(async (req) => {
           // Near: finestra 7gg + manutenzione di quei giorni, settle corto come il light.
           // Full: finestra piena 31gg + manutenzione, settle moderato (sotto i 150s edge).
           {
-            windowDays: isFullTick ? DEFAULT_FUTURE_DAYS : (tickDecision.kind === 'near' ? NEAR_WINDOW_DAYS : null),
+            windowDays: isFullTick ? TABELLONE_FULL_DAYS : (tickDecision.kind === 'near' ? NEAR_WINDOW_DAYS : null),
             settleMaxMs: isFullTick ? 5000 : 3500,
           },
         );
