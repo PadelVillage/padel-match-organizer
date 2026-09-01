@@ -46,10 +46,14 @@ const srcPonte = readFileSync(PONTE, 'utf8');
 // ponte solo): il perché sta nella sua intestazione.
 const MODULO_PROM = join(FUNZIONI, 'consumer-assessment-link', 'promemoria-livello.ts');
 const srcProm = readFileSync(MODULO_PROM, 'utf8');
-// 🆕 ⑥ — e le DUE copie di `livello-dimostrato.ts`: da qui il ponte decide chi il livello
+// 🆕 ⑥ — e le copie di `livello-dimostrato.ts`: da qui il ponte decide chi il livello
 // ce l'ha, e dal readmodel si decide chi può organizzare. Due letture diverse della stessa
 // domanda sbaglierebbero persona in tutti e due i versi.
-const COPIE_LIVELLO = ['consumer-player-readmodel', 'consumer-assessment-link']
+// 🔄 01/09/2026, VOCE 88 — le copie diventano TRE: `consumer-booking-write` porta le regole
+// delle Partite Aperte, e la prima di quelle regole è «chi non ha un livello DIMOSTRATO non
+// entra e non apre». Se quella copia divergesse, chi elenca e chi ammette direbbero cose
+// diverse — cioè il bot mostrerebbe una partita in cui poi il gestionale non fa entrare.
+const COPIE_LIVELLO = ['consumer-player-readmodel', 'consumer-assessment-link', 'consumer-booking-write']
   .map((fn) => join(FUNZIONI, fn, 'livello-dimostrato.ts'));
 
 // Stesso estrattore degli altri banchi: salta i commenti (in italiano sono pieni di
@@ -957,8 +961,8 @@ const guardie = [
   ['il periodo non è TENUTO da nessuna parte', !/\bfrom\(|\.insert\(|\.update\(|\.upsert\(/.test(srcProm)],
   // 🚨 La regola di «avere il livello» è quella del readmodel, byte per byte: due letture
   //    diverse vorrebbero dire ricordare il test a chi ce l'ha, o tacere con chi non ce l'ha.
-  ['le due copie di livello-dimostrato sono identiche BYTE PER BYTE',
-    COPIE_LIVELLO.length === 2 && new Set(COPIE_LIVELLO.map((f) => readFileSync(f, 'utf8'))).size === 1],
+  ['le TRE copie di livello-dimostrato sono identiche BYTE PER BYTE',
+    COPIE_LIVELLO.length === 3 && new Set(COPIE_LIVELLO.map((f) => readFileSync(f, 'utf8'))).size === 1],
   ['il ponte non si riscrive in casa la regola del livello', !/'0\.5'/.test(srcPonte)],
   // 🆕 VOCE 84 — le due metà della cura, e nessuna delle due basta da sola: la regola giusta
   //    (provata dai casi 20-25) serve a poco se il ponte non le passa il fatto vero.

@@ -819,7 +819,13 @@ test('45) IL COLLEGAMENTO di «add»: l\'Ospite lo mette la SEGRETERIA, non il b
   // contorno: è il caso frequente, ed è per questo che sparisce con una prova sopra.
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
   assert.ok(src.length > 10000, 'sorgente dell\'edge non letto: questa prova non direbbe niente');
-  const ramo = src.match(/if \(action === 'add'\) \{[\s\S]*?\n  \/\/ ── cancel ──/);
+  // 🔄 01/09/2026, VOCE 88 — l'ancora è cambiata, e va detto perché non è un ritocco: il ramo
+  // adesso serve DUE azioni (`add` e `entra`, che è `add` con un'altra serratura) e non è più
+  // l'ultimo prima di `cancel` — in mezzo ci stanno `apri`/`chiudi`. ⇒ La fetta si chiude sul
+  // marchio del blocco nuovo. ⚠️ L'isolamento resta il punto: la guardia sulla LEZIONE e le
+  // altre esistono identiche in `leave`, quindi cercarle nel sorgente intero le troverebbe
+  // anche se da qui fossero sparite — un controllo che trova sé stesso altrove.
+  const ramo = src.match(/if \(action === 'add' \|\| action === 'entra'\) \{[\s\S]*?\n  \/\/ ── 🔓 apri \/ chiudi/);
   assert.ok(ramo && ramo[0].length > 2000, 'ramo «add» non isolato: la prova sarebbe cieca');
 
   // ① Il rifiuto ESISTE e ha un motivo suo, distinto dagli altri: chi legge deve poter dire
