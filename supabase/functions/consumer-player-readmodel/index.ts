@@ -17,6 +17,13 @@ import {
 } from './rimozioni-recenti.ts';
 import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
+/* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte», nello STESSO modulo che usa
+ * `consumer-booking-write` per ammettere. Se le due copie divergessero, questa vetrina
+ * mostrerebbe partite in cui poi il gestionale non fa entrare — e il socio non leggerebbe
+ * «non puoi», leggerebbe «non ha funzionato». */
+import {
+  TIPO_RECORD_APERTURA, chiaveApertura, decidiIngresso, GIOCATORI_PARTITA, MOTIVI as MOTIVI_APERTA,
+} from './partita-aperta.ts';
 
 // consumer-player-readmodel — ponte dati READ-ONLY per gli assistenti dei SOCI
 // (WhatsApp consumer F2.0 "chat giocatori" e, dal 24/07, il bot Telegram).
@@ -180,8 +187,8 @@ Deno.serve(async (req: Request) => {
 
   // action assente = 'player': i chiamanti storici non mandano il campo.
   const action = clean(body.action).toLowerCase() || 'player';
-  if (action !== 'player' && action !== 'kb' && action !== 'people') {
-    return err(400, 'BAD_ACTION', "action ammesse: 'player' (default), 'kb' o 'people'.");
+  if (action !== 'player' && action !== 'kb' && action !== 'people' && action !== 'aperte') {
+    return err(400, 'BAD_ACTION', "action ammesse: 'player' (default), 'kb', 'people' o 'aperte'.");
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -423,6 +430,158 @@ Deno.serve(async (req: Request) => {
     return ok({ member: null, reason: 'ambiguous' });
   }
   const member = hits[0];
+
+  /* ── 🔓 Azione 'aperte': LA VETRINA delle Partite Aperte (voce 88) ────────────────────────
+   *
+   * 🚨⭐⭐ ESISTE PER MOSTRARE POCO, esattamente come 'people' — e qui la posta è più alta.
+   * Regola ① del committente: chi non fa parte di una partita ne vede **solo i numeri**
+   * («3 su 4 · lunedì 18:30 · Intermedio») e **mai un nome**. Non è pudore: la serratura sui
+   * ~2.800 soci che `rubrica.ts` tiene chiusa la si scardina benissimo da una vetrina, un
+   * roster per volta, senza che nessuno se ne accorga.
+   * ⇒ Da qui non esce NESSUN nome — né dei giocatori, né di chi ha aperto. Escono un
+   * conteggio, un quando, un dove e un livello. Chi un domani ci aggiungesse un campo deve
+   * chiedersi non «serve?» ma «serve a disegnare la riga di una partita che non è sua?».
+   *
+   * ⭐ E il LIVELLO esce come NUMERO, che è giusto e va detto perché sembra il contrario: al
+   * socio il livello non si dice a numeri (regola ferma del progetto), ma questo è il confine
+   * fra due macchine — la parola la mette il bot con `parolaDelLivello`, che quella tabella
+   * ce l'ha già. Mandare la parola da qui vorrebbe dire una QUARTA copia della scala.
+   *
+   * ⚖️ Si elenca SOLO ciò in cui questo socio può davvero entrare, e la decisione è la stessa
+   * funzione che poi lo ammette (`decidiIngresso`, dal modulo condiviso). Mostrare una partita
+   * per poi rifiutarla al tocco sarebbe un bottone che non può funzionare — e il socio non
+   * legge «non puoi», legge «non ha funzionato».
+   */
+  if (action === 'aperte') {
+    const { data: aperteRows, error: aperteErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', TIPO_RECORD_APERTURA)
+      .not('deleted', 'is', true)
+      .gte('payload->>data', today)
+      .limit(200);
+    if (aperteErr) {
+      console.error('[readmodel] errore query aperture:', aperteErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura partite aperte.');
+    }
+    const aperture = (aperteRows ?? []).map((r) => (r.payload ?? {}) as JsonMap)
+      // Oggi ma già passata → fuori, stessa regola delle prenotazioni qui sotto.
+      .filter((a) => {
+        const d = clean(a.data); const o = clean(a.ora);
+        return d && o && !(d === today && o < nowTime);
+      });
+    if (!aperture.length) {
+      return ok({ aperte: [], quante: 0, serve_il_test: false });
+    }
+
+    /* Le schede di CHI HA APERTO, rilette adesso: nell'apertura il livello non è scritto, di
+     * proposito. Una fotografia del livello continuerebbe a filtrare col numero vecchio il
+     * giorno in cui la segreteria lo corregge — e funzionerebbe benissimo, solo attorno al
+     * centro sbagliato. */
+    const idsOrg = [...new Set(aperture.map((a) => clean(a.aperta_da_member_local_id)).filter(Boolean))];
+    const { data: orgRows, error: orgErr } = await service
+      .from('pmo_cloud_records')
+      .select('payload')
+      .eq('record_type', 'member')
+      .not('deleted', 'is', true)
+      .in('payload->>id', idsOrg)
+      .limit(200);
+    if (orgErr) {
+      console.error('[readmodel] errore query schede di chi ha aperto:', orgErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura anagrafica.');
+    }
+    /* 🚨 FAIL CLOSED sugli omonimi d'archivio: un id che risolve a più di una scheda non ha
+     * un livello leggibile, e una banda senza centro non si mostra a nessuno. */
+    const schedePerId = new Map<string, JsonMap | null>();
+    for (const row of orgRows ?? []) {
+      const p = (row.payload ?? {}) as JsonMap;
+      const id = clean(p.id);
+      if (!id) continue;
+      schedePerId.set(id, schedePerId.has(id) ? null : p);
+    }
+
+    // I roster degli slot interessati, per contare i posti. Si contano ADESSO: quello che il
+    // bot ricordava può avere giorni.
+    const dateInGioco = [...new Set(aperture.map((a) => clean(a.data)).filter(Boolean))];
+    const { data: righeSlot, error: slotErr } = await service
+      .from('pmo_cloud_records')
+      .select('record_type, payload')
+      .in('record_type', ['booking', 'staff_booking'])
+      .not('deleted', 'is', true)
+      .in('payload->>data', dateInGioco)
+      .limit(1000);
+    if (slotErr) {
+      console.error('[readmodel] errore query slot delle aperture:', slotErr.message);
+      return err(500, 'DB_ERROR', 'Errore lettura prenotazioni.');
+    }
+    const listePerChiave = new Map<string, string[][]>();
+    for (const row of righeSlot ?? []) {
+      const p = (row.payload ?? {}) as JsonMap;
+      const chiave = chiaveApertura(p.data, p.ora, p.campo);
+      if (!chiave) continue;
+      const roster = rosterFromPayload(clean(row.record_type), p);
+      const liste = listePerChiave.get(chiave);
+      if (liste) liste.push(...roster.liste);
+      else listePerChiave.set(chiave, [...roster.liste]);
+    }
+
+    const mieVarianti = new Set(
+      [member.name, `${member.firstName} ${member.surname}`, `${member.surname} ${member.firstName}`]
+        .map(normName).filter(Boolean),
+    );
+
+    const visibili: JsonMap[] = [];
+    let conPosto = 0;
+    let serveIlTest = false;
+    for (const a of aperture) {
+      const chiave = chiaveApertura(a.data, a.ora, a.campo);
+      const liste = listePerChiave.get(chiave);
+      // ⛔ Un'apertura la cui partita non esiste più (annullata, spostata) NON si mostra: il
+      // posto libero di una partita che non c'è è la promessa peggiore che si possa fare.
+      if (!chiave || !liste) continue;
+      const inCampo = inCampoDelloSlot(liste, GIOCATORI_PARTITA);
+      const schedaOrg = schedePerId.get(clean(a.aperta_da_member_local_id)) ?? null;
+      const decisione = decidiIngresso({
+        aperta: !!schedaOrg,
+        organizzatore: { level: schedaOrg?.level, levelSource: schedaOrg?.levelSource },
+        candidato: { level: member.level, levelSource: member.levelSource, memberId: member.memberId },
+        giocatoriInCampo: inCampo.length,
+        giaInPartita: inCampo.some((n) => mieVarianti.has(normName(n))),
+        clienteDelCircolo: clienteDelCircolo(member.memberId),
+      });
+      if (inCampo.length < GIOCATORI_PARTITA) conPosto += 1;
+      /* ⭐⭐ `serve_il_test` NON è un rifiuto come gli altri, ed è la ragione per cui la
+       * decisione ① è stata scelta fra le tre: è l'unico che ha una STRADA in fondo. Il bot lo
+       * traduce in «ce ne sono, e il test dura cinque minuti» — cioè la partita aperta diventa
+       * il primo motivo vero per fare il test, che è quello che si voleva. */
+      if (!decisione.ok) {
+        if (decisione.motivo === MOTIVI_APERTA.SERVE_IL_TEST) serveIlTest = true;
+        continue;
+      }
+      visibili.push({
+        data: clean(a.data),
+        ora: clean(a.ora),
+        campo: Number(String(a.campo ?? '').replace(/\D/g, '')) || null,
+        giocatori: inCampo.length,
+        posti_liberi: GIOCATORI_PARTITA - inCampo.length,
+        posti_totali: GIOCATORI_PARTITA,
+        // ⭐ Il livello di chi ha aperto: è il centro della banda, e la parola la mette il bot.
+        livello: clean(schedaOrg?.level) || null,
+      });
+    }
+    // In ordine di quando si gioca: una vetrina disordinata la si legge una volta sola.
+    visibili.sort((x, y) => `${x.data}|${x.ora}`.localeCompare(`${y.data}|${y.ora}`));
+
+    console.log(`[readmodel] aperte per ${etichetta}: ${aperture.length} vive, ${visibili.length} visibili, serve_il_test=${serveIlTest}`);
+    return ok({
+      aperte: visibili,
+      /* ⚖️ Un CONTEGGIO e nient'altro, e solo quando la vetrina è vuota per il livello: è la
+       * frase «ce ne sono, ma ti serve il livello» resa possibile senza dire di CHI né QUANDO.
+       * Un numero non è un nome, e senza di lui l'invito al test sarebbe una supposizione. */
+      quante: conPosto,
+      serve_il_test: serveIlTest && !visibili.length,
+    });
+  }
 
   // ── 2. Borsellino: wallet_balance via member_local_id (= member.id) ─────
   const { data: walletRows, error: walletErr } = await service

@@ -138,7 +138,13 @@ test('9) giornoPiu non slitta sui cambi di mese né sull’ora legale', () => {
 
 test('10) IL COLLEGAMENTO: l’edge dichiara l’azione «verifica» e chiama QUESTA funzione', () => {
   const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
-  assert.match(src, /'verifica'\]\.includes\(action\)/, "l'azione «verifica» non è fra quelle ammesse");
+  // 🔄 01/09/2026, VOCE 88 — «verifica» non è più l'ULTIMA della lista (dopo di lei sono
+  // entrate `apri`, `chiudi` ed `entra`), e la guardia ci si era appoggiata senza volerlo.
+  // ⇒ Adesso chiede ciò che intendeva chiedere — *«verifica» è fra le azioni ammesse* — e non
+  // *«è l'ultima»*, che era vero per caso. 📌 Una guardia ancorata a una posizione diventa
+  // rossa alla prima aggiunta innocua, e il rosso di una guardia che ha torto insegna a non
+  // leggerla più.
+  assert.match(src, /'verifica'[^\]]*\]\.includes\(action\)/, "l'azione «verifica» non è fra quelle ammesse");
   assert.match(src, /if \(action === 'verifica'\)/, "manca il ramo dell'azione «verifica»");
   assert.match(src, /verdettoScrittura\(\{/, "l'edge non chiama verdettoScrittura: sta decidendo per conto suo");
   assert.match(src, /from '\.\/esito-scrittura\.ts'/, 'manca l’import del modulo');
