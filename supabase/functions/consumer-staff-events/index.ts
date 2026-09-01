@@ -419,7 +419,7 @@ Deno.serve(async (req: Request) => {
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);
-    segnaEsito(e.ids, ESITO.CONSEGNATO);
+    segnaEsito(e.ids, ESITO.PASSATO_AL_BOT);
   }
 
   // ── 5. La chiusura ───────────────────────────────────────────────────────────────────

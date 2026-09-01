@@ -6,7 +6,7 @@
 // né viceversa. È l'intera ragione per cui la colonna esiste.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ESITO, ESITI, eArrivatoAlSocio } from './esito-avviso.ts';
+import { ESITO, ESITI, ePassatoAlBot } from './esito-avviso.ts';
 
 let passed = 0;
 let failed = 0;
@@ -21,19 +21,36 @@ test('1. i quattro esiti sono quattro, distinti, e in minuscolo', () => {
   for (const e of ESITI) assert.match(e, /^[a-z_]+$/);
 });
 
-test('2. solo «consegnato» vuol dire che il socio lo saprà', () => {
-  assert.equal(eArrivatoAlSocio(ESITO.CONSEGNATO), true);
+test('2. solo «passato_al_bot» dice che la riga è uscita di qui', () => {
+  assert.equal(ePassatoAlBot(ESITO.PASSATO_AL_BOT), true);
   for (const e of [ESITO.NON_RICONOSCIUTO, ESITO.NETTO_NULLO, ESITO.CORSA_PERSA]) {
-    assert.equal(eArrivatoAlSocio(e), false, `«${e}» non è un avviso arrivato`);
+    assert.equal(ePassatoAlBot(e), false, `«${e}» non è uscito verso il bot`);
   }
 });
 
-test('3. ⚠️ un esito ASSENTE è «non misurato», e vale falso — non «consegnato»', () => {
-  // 🚨 Le 605 righe chiuse prima del 01/09 hanno `esito` a NULL. Farle valere «consegnato»
+test('2bis. 🚨⭐⭐ e NESSUN valore promette che il socio lo sappia', () => {
+  /* 📏 Il difetto, misurato il 01/09 poche ore dopo aver scritto questa colonna: alle
+   * 18:22:07 il gestionale ha scritto `consegnato` su due righe e il registro del bot diceva
+   * **«2 ritirati, 0 detti, 2 scartati»**. Quelle due persone il bot non ce l'hanno.
+   * ⇒ Il nome e la funzione promettevano una cosa che da questa parte NON si può sapere: la
+   * stessa bugia di `consegnato_at`, spostata di un passo.
+   * 🚨 Questo caso è la guardia di quella lezione: vieta il vocabolario dell'arrivo, non un
+   * valore in particolare. Chi domani volesse riaggiungere «consegnato» lo trova rosso qui. */
+  for (const v of ESITI) {
+    assert.doesNotMatch(v, /consegnat|arrivat|ricevut|letto/i,
+      `«${v}» promette che il socio lo sappia: è un fatto che vive nel BOT, non qui`);
+  }
+  const src = readFileSync(new URL('./esito-avviso.ts', import.meta.url), 'utf8');
+  assert.ok(!/export function eArrivatoAlSocio/.test(src),
+    'è tornata una funzione che dichiara di sapere se il socio lo sa');
+});
+
+test('3. ⚠️ un esito ASSENTE è «non misurato», e vale falso — non «passato»', () => {
+  // 🚨 Le 605 righe chiuse prima del 01/09 hanno `esito` a NULL. Farle valere per «passato»
   // sarebbe inventare un esito che nessuno ha osservato: esattamente il difetto che questa
   // colonna esiste per togliere.
   for (const niente of [null, undefined, '', '   ', 'boh']) {
-    assert.equal(eArrivatoAlSocio(niente), false, `«${String(niente)}»`);
+    assert.equal(ePassatoAlBot(niente), false, `«${String(niente)}»`);
   }
 });
 
