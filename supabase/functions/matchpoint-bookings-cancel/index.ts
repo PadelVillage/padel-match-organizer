@@ -35,6 +35,12 @@ type CancelRequest = {
   campo?: number;
   data?: string;
   ora?: string;
+  /**
+   * 🆕🗣️ CHI ha chiesto l'annullo, quando non è la segreteria — 01/09/2026, voce 79.
+   * Gemello di quello in `matchpoint-bookings-edit`: lo manda `consumer-booking-write`, l'app
+   * della segreteria no, e **assente vale «il circolo»** — le frasi di sempre.
+   */
+  chiestoDa?: string;
 };
 
 const CORS_HEADERS = {
@@ -309,7 +315,7 @@ async function dichiaraAnnulloAlSocio(opts: {
       roster: prima.roster,
       tipo: prima.tipo,
     });
-    await accodaFattiDaConferma({ client, fatti, azione: 'cancel' });
+    await accodaFattiDaConferma({ client, fatti, azione: 'cancel', chiestoDa: cancel.chiestoDa });
   } catch (e) {
     console.warn(JSON.stringify({
       event: 'dichiarazione_annullo_saltata',
@@ -463,7 +469,7 @@ Deno.serve(async (req: Request) => {
     return err(400, 'PARAMS_MANCANTI', 'Serve idReserva oppure la terna campo+data+ora.');
   }
 
-  const cancel: CancelRequest = { idReserva: idReserva || undefined, campo, data, ora };
+  const cancel: CancelRequest = { idReserva: idReserva || undefined, campo, data, ora, chiestoDa: String((body as JsonMap)?.chiestoDa ?? '').trim() || undefined };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));

@@ -1116,6 +1116,11 @@ Deno.serve(async (req: Request) => {
         data: slot.data,
         ora: slot.ora,
         players: { remove: [mioNome] },
+        // 🆕🗣️ 01/09 (voce 79) — CHI CHIEDE, perché il fatto che ne nasce lo dirà agli
+        // altri. Senza, l'avviso attribuisce al circolo un gesto che il circolo non ha fatto:
+        // misurato alle 20:01 su tre telefoni veri. `member.name` e non il nome nel roster —
+        // qui il nome non si confronta con niente, si LEGGE, e la scheda è la stessa fonte.
+        chiestoDa: member.name,
       }),
     });
     const dataLeave = await resLeave.json().catch(() => null) as JsonMap | null;
@@ -1350,6 +1355,11 @@ Deno.serve(async (req: Request) => {
         data: slot.data,
         ora: slot.ora,
         players: { remove: [bersaglio.nome] },
+        // 🆕🗣️ 01/09 (voce 79) — CHI CHIEDE, perché il fatto che ne nasce lo dirà agli
+        // altri. Senza, l'avviso attribuisce al circolo un gesto che il circolo non ha fatto:
+        // misurato alle 20:01 su tre telefoni veri. `member.name` e non il nome nel roster —
+        // qui il nome non si confronta con niente, si LEGGE, e la scheda è la stessa fonte.
+        chiestoDa: member.name,
       }),
     });
     const dataRemove = await resRemove.json().catch(() => null) as JsonMap | null;
@@ -1744,6 +1754,11 @@ Deno.serve(async (req: Request) => {
               idInterno: schedaDaAggiungere.matchpointIdInterno,
             })],
           },
+          // 🆕🗣️ 01/09 (voce 79) — CHI CHIEDE. ⭐ Su `add` è l'ORGANIZZATORE e su `entra`
+          // è chi entra: sono due persone diverse, ed è giusto così — la domanda a cui questo
+          // campo risponde è *«chi l'ha chiesto?»*, non *«chi si è mosso?»*. È la stessa
+          // distinzione su cui poggia la ricevuta della voce 70.
+          chiestoDa: member.name,
         }),
       });
     } catch (netErr) {
@@ -2149,9 +2164,18 @@ Deno.serve(async (req: Request) => {
   // ⭐ Come in `create`: la richiesta si compone UNA volta sola e serve a tutt'e due le
   // strade. Se la prova a vuoto ne stampasse una copia scritta accanto, mostrerebbe una
   // richiesta che non è quella che parte — ed è proprio quella divergenza che nessuno vedrebbe.
-  const cancelPayload: JsonMap = target.idReserva
-    ? { idReserva: target.idReserva }
-    : { campo, data: slot.data, ora: slot.ora };
+  const cancelPayload: JsonMap = {
+    ...(target.idReserva
+      ? { idReserva: target.idReserva }
+      : { campo, data: slot.data, ora: slot.ora }),
+    /* 🆕🗣️ 01/09 (voce 79) — CHI CHIEDE l'annullo.
+     * ⚖️ Oggi qui non cambia nessun messaggio, e va detto invece di far credere il contrario:
+     * sull'annullo la ricevuta copre **tutto il roster** (voce 83), quindi l'avviso «annullata
+     * dal circolo» ai compagni non parte proprio. Si manda lo stesso perché il giorno in cui
+     * una ricevuta non copre qualcuno — una corsa persa, un nome non riconosciuto — quello che
+     * gli arriva dev'essere **vero**, non solo raro. */
+    chiestoDa: member.name,
+  };
 
   // 🧪 Qui finisce la prova a vuoto: tutto ciò che sta SOPRA è già stato eseguito per
   // davvero — identità, proprietà della prenotazione, roster ricomposto su tutte le righe
