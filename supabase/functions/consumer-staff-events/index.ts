@@ -9,6 +9,10 @@ import {
   TOLLERANZA_ANTICIPO_MS,
   type Ricevuta,
 } from './ricevute.ts';
+/* 🆕🔎 VOCE 68 (01/09/2026) — i quattro modi in cui una riga della coda finisce. Stanno in
+   un modulo perché vivono in tre posti (qui, la migrazione, e chi un domani interrogherà la
+   colonna), e tre stringhe scritte a mano in tre posti divergono. */
+import { ESITO } from './esito-avviso.ts';
 
 // consumer-staff-events — il gestionale CONSEGNA al bot i fatti della segreteria (voce 68).
 //
@@ -353,6 +357,19 @@ Deno.serve(async (req: Request) => {
    */
   const idsPerEvento: string[][] = [];
   const daChiudere: string[] = [];
+  /* 🆕🔎 VOCE 68 (01/09/2026) — PERCHÉ ogni riga viene chiusa.
+   *
+   * 🚨 `consegnato_at` risponde a *«questa riga è chiusa?»*, e su quella poggia tutta la
+   * protezione contro il doppio invio. Ma chi la guardava per sapere *«è arrivato?»* otteneva
+   * **sì** anche per un messaggio mai partito — un nome non riconosciuto, un netto nullo, una
+   * corsa persa. 📏 Su PROD: 605 righe chiuse, 22 messaggi davvero usciti nel tratto di
+   * registro letto. ⇒ Il perché esce accanto al dato, invece di lasciarlo dedurre.
+   * ⚖️ Si AGGIUNGE e non rinomina niente: cambiare il significato di `consegnato_at`
+   * vorrebbe dire toccare la chiusura atomica del 24/08, che è la cosa che funziona. */
+  const esitoPerId = new Map<string, string>();
+  const segnaEsito = (ids: string[], esito: string) => {
+    for (const id of ids) esitoPerId.set(clean(id), esito);
+  };
   /** Quanti fatti se li è presi un altro giro mentre questo lavorava. Vedi il passo 5. */
   let soffiati = 0;
   let nonRiconosciuti = 0;
@@ -360,7 +377,7 @@ Deno.serve(async (req: Request) => {
 
   for (const e of ridotti) {
     // Netto nullo: niente da dire, ma le righe si chiudono — se no si riesaminano per sempre.
-    if (e.gesto === null) { daChiudere.push(...e.ids); continue; }
+    if (e.gesto === null) { daChiudere.push(...e.ids); segnaEsito(e.ids, ESITO.NETTO_NULLO); continue; }
 
     if (eventi.length >= MAX_ESITI) { troncato = true; continue; }
 
@@ -374,6 +391,7 @@ Deno.serve(async (req: Request) => {
       // le riconosce e consegna. Il 21/08 la regola secca «più di una scheda ⇒ nessuno»
       // avrebbe tolto per sempre gli avvisi a una socia vera, in silenzio.
       daChiudere.push(...e.ids);
+      segnaEsito(e.ids, ESITO.NON_RICONOSCIUTO);
       nonRiconosciuti += 1;
       continue;
     }
@@ -401,6 +419,7 @@ Deno.serve(async (req: Request) => {
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);
+    segnaEsito(e.ids, ESITO.CONSEGNATO);
   }
 
   // ── 5. La chiusura ───────────────────────────────────────────────────────────────────
@@ -458,15 +477,47 @@ Deno.serve(async (req: Request) => {
       console.error('[staff-events] errore chiusura:', chiudiErr.message);
       return err(500, 'DB_ERROR', 'Errore nella chiusura della coda: niente consegnato.');
     }
-    const presi = new Set((presiRaw ?? []).map((r) => clean((r as JsonMap).id)));
+    // 🔤 Il tipo si dichiara invece di lasciarlo dedurre: senza, l'elemento è `unknown` e la
+    // mappa degli esiti (voce 68) non lo sa più cercare. Stessa riga, stesso valore.
+    const presi = new Set<string>((presiRaw ?? []).map((r) => clean((r as JsonMap).id)));
     // Si scorre all'indietro: togliendo dal fondo gli indici davanti non si spostano.
     for (let i = eventi.length - 1; i >= 0; i--) {
       const miei = idsPerEvento[i] ?? [];
       if (miei.length && miei.every((id) => presi.has(clean(id)))) continue;
+      /* 🆕🔎 VOCE 68 — le righe di QUESTO evento che questo giro si è preso non usciranno
+       * mai: l'evento è stato tolto dalla risposta perché una riga sorella se l'è presa un
+       * altro giro. Sono nostre e chiuse, ma non consegnate — ed è il caso in cui
+       * `consegnato_at` mentiva in modo più insidioso, perché qui il nome era riconosciuto e
+       * il messaggio sarebbe partito. */
+      segnaEsito(miei, ESITO.CORSA_PERSA);
       eventi.splice(i, 1);
       idsPerEvento.splice(i, 1);
       soffiati += 1;
     }
+    /* 🆕🔎 VOCE 68 — il perché si scrive DOPO la presa, su righe che sono già nostre: qui non
+     * c'è nessuna corsa da vincere, e infatti non si pretende `consegnato_at is null` (lo
+     * abbiamo appena messo noi). ⛔ E un errore qui NON tocca la consegna: è diagnostica, e
+     * far cadere un avviso vero per una riga di contabilità sarebbe il verso sbagliato — lo
+     * stesso già scelto per la ricevuta della voce 70. */
+    const perEsito = new Map<string, string[]>();
+    for (const id of presi) {
+      const esito = esitoPerId.get(id);
+      if (!esito) continue;
+      const gruppo = perEsito.get(esito);
+      if (gruppo) gruppo.push(id); else perEsito.set(esito, [id]);
+    }
+    for (const [esito, ids] of perEsito) {
+      const { error: esitoErr } = await service
+        .from('pmo_eventi_staff')
+        .update({ esito })
+        .in('id', ids);
+      if (esitoErr) {
+        console.error(`[staff-events] esito «${esito}» non scritto su ${ids.length} righe: ${esitoErr.message} — la colonna resta muta, gli avvisi no`);
+      }
+    }
+    console.log(
+      `[staff-events] esiti: ${[...perEsito].map(([k, v]) => `${k}=${v.length}`).join(' · ') || 'nessuno'}`,
+    );
     if (soffiati) {
       // 🚨 NON è un guasto e NON si tace: è la prova che due giri si sono sovrapposti, ed è
       // l'unico posto da cui lo si può sapere. Zero righe qui = la corsa non è più successa.
