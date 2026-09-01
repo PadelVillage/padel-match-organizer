@@ -737,7 +737,26 @@ Deno.serve(async (req: Request) => {
       || (!!member.memberId && roster.codes.includes(member.memberId));
     if (!isMine) continue;
 
-    const key = `${data}|${ora}|${clean(p.campo).replace(/\D/g, '')}`;
+    /* 🔄🔓 01/09/2026, VOCE 88 — la chiave si compone col MODULO, non più a mano qui.
+     * ⚖️ La riga a mano era identica (`data|ora|cifre-del-campo`), e proprio per questo andava
+     * tolta: da oggi la stessa chiave la usa `partita-aperta.ts` per riconoscere un'apertura,
+     * e due composizioni gemelle scritte in posti lontani si accorgono di essere diverse il
+     * giorno in cui una delle due cambia — cioè quando un'apertura smette di riconoscersi e
+     * il bottone «Chiudi» sparisce senza che nessuno capisca perché.
+     *
+     * ⚠️ E UNA DIFFERENZA C'È, dichiarata: la riga a mano su una prenotazione senza campo
+     * produceva `data|ora|` — una chiave degenere ma DIVERSA per ogni slot; il modulo torna
+     * stringa vuota, e due chiavi vuote si fonderebbero in un roster solo. ⇒ Qui si SALTA la
+     * riga invece di fonderla: un roster di due partite mescolate è peggio di una partita che
+     * non compare, perché il socio non ha modo di accorgersene.
+     * 📏 Misurato su PROD il 01/09 prima di scriverlo: su **526** righe vive `booking` +
+     * `staff_booking`, quelle senza data, senza ora o senza cifre nel campo sono **zero**. Il
+     * ramo esiste per il giorno in cui non lo saranno, e lo scrive nel registro. */
+    const key = chiaveApertura(data, ora, p.campo);
+    if (!key) {
+      console.error(`[readmodel] riga senza slot leggibile, saltata: data="${data}" ora="${ora}" campo="${clean(p.campo)}"`);
+      continue;
+    }
 
     // Compagni = SOLO nome e cognome degli altri giocatori (brief §7.2): niente
     // codici, niente telefoni, niente email. Il socio stesso non è un compagno.
@@ -812,6 +831,27 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  /* 🆕🔓 VOCE 88 — QUALI DELLE SUE PARTITE SONO APERTE ad altri.
+   *
+   * ⭐ Il fatto lo dice il GESTIONALE, come tutto il resto: senza, il bot dovrebbe ricordarsi
+   * da sé di aver aperto — cioè tenere una memoria parallela, che è esattamente la cosa
+   * esclusa dalla regola ferrea del 19/08. Con questo campo il bottone giusto («Apri» o
+   * «Chiudi») lo disegna il bot senza sapere niente che non gli sia stato detto.
+   * ⛔ Un errore qui NON fa fallire la risposta: si perde un bottone, non le prenotazioni.
+   *   È il verso giusto — senza questa lettura si torna al comportamento di prima. */
+  const aperteMie = new Set<string>();
+  if (order.length) {
+    const { data: apertureRows, error: apertureErr } = await service
+      .from('pmo_cloud_records')
+      .select('local_key')
+      .eq('record_type', TIPO_RECORD_APERTURA)
+      .not('deleted', 'is', true)
+      .in('local_key', order)
+      .limit(200);
+    if (apertureErr) console.error('[readmodel] aperture non lette (voce 88):', apertureErr.message);
+    for (const row of apertureRows ?? []) aperteMie.add(clean(row.local_key));
+  }
+
   const bookings: JsonMap[] = order.map((key) => ({
     ...(byKey.get(key) as JsonMap),
     compagni: compagniDelloSlot(listeByKey.get(key) ?? [], nameVariants, MAX_COMPAGNI),
@@ -850,6 +890,10 @@ Deno.serve(async (req: Request) => {
     // e tenersi il ricordo, che è il verso prudente (nasconde per qualche minuto in più,
     // invece di mostrare qualcuno che è stato tolto davvero).
     aggiornato_al: frescoByKey.get(key) ?? null,
+    /* 🆕🔓 VOCE 88 — vero se questa partita è aperta ad altri giocatori.
+     * ⚠️ Si AGGIUNGE e non cambia niente di quello che c'era: un bot più vecchio di questa
+     * funzione continua a leggere esattamente ciò che leggeva. */
+    aperta: aperteMie.has(key),
   }));
   bookings.sort((a, b) =>
     `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));

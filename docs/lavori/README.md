@@ -2986,15 +2986,79 @@ le due schede come una persona sola e l'avviso parte lo stesso.
 ~~1. eseguire il SQL~~ · ~~2. mergiare~~ · ~~3. aggiornare il bot~~ · ~~4. collaudare~~ —
 **tutti e quattro fatti la sera del 21/08**, in quest'ordine, ed è la tabella qui sopra.
 
-⛔ **Resta invece:**
-1. **guardare il PRIMO GIORNO vero**: finora l'unico fatto consegnato è quello di prova. Il primo
-   gesto vero della segreteria è la misura che manca, e va guardata nel registro del bot
-   (`stato-bot.yml`, regex `detto a|staff`);
-2. **decidere sulla cura strutturale del doppione** (sopra): far cercare al sync anche per
-   `payload.id`, così una scheda senza telefono non genera una riga nuova;
-3. **le prove delle edge non girano in CI su questo repo** — c'è solo `typecheck-edge-functions`.
-   È lo stesso difetto curato il 21/08 nel repo del bot con `prove.yml`: qui i 42 casi della voce
-   68 si lanciano solo a mano, e **nessuno se ne accorgerebbe se un domani diventassero rossi**.
+🔄🚨⭐⭐ **01/09/2026 — QUEI TRE PUNTI SONO ANDATI A GUARDARLI, E DUE ERANO GIÀ FALSI DA
+DIECI GIORNI.** Non «invecchiati»: falsi, e la scheda continuava a chiederli. ⇒ Le tre righe si
+**correggono in testa**, non si affiancano.
+
+⚠️ *(La prima colonna usa ①②③ e non `**1**`: una riga di tabella che comincia con un numero fra
+asterischi è la forma con cui `guard-docs-truth` conta le VOCI in coda, e questa non è una voce.)*
+
+| | diceva | verità misurata il 01/09 |
+|---|---|---|
+| **①** | *«finora l'unico fatto consegnato è quello di prova»* | ✅ **CHIUSO.** Il registro del bot dei soci porta **22 avvisi veri** fra il 29/08 e il 01/09, a **tre persone diverse** (Maurizio Aprea, Lidia Comes, Marco Aprea) e su **tre gesti** — `aggiunto`, `annullata`, `formazione`. L'ultimo è di **oggi, 14:08:09**. |
+| **②** | *«decidere sulla cura strutturale del doppione: far cercare al sync anche per `payload.id`»* | ❌ **FALSO dal 28/08**, e per giunta era la cura **sbagliata**: `chiave-canonica.ts` (voce 69) lo dice per esteso — *«non avrebbe curato niente, perché il match c'è già»*. Il difetto non era trovare la riga, era **riscriverla sotto un'altra chiave**. |
+| **③** | *«le prove delle edge non girano in CI: c'è solo `typecheck-edge-functions`»* | ❌ **FALSO dal 21/08**, cioè dallo stesso giorno in cui la riga è stata scritta: `prove.yml` gira **a ogni spinta** e su ogni PR. |
+
+📏 **Come è stato misurato il punto ①**, senza entrare sulla VM: `stato-bot.yml`
+(`workflow_dispatch`, sola lettura) su `soci`, 400 righe di coda, regex `detto a|staff|circolo ha`.
+🔎 E nello stesso registro c'è **un guasto vero**, che nessuno avrebbe visto: il 30/08 alle
+10:48:32 il giro ha scritto *«0 ritirati, 0 detti, 0 scartati · problemi: eventi staff: Risposta
+non JSON da consumer-staff-events (HTTP 502)»*. ⚖️ **Non ha perso niente**, ed è il disegno che
+regge: se il freno morde non si chiude niente e il giro dopo riprova — infatti la coda oggi ha
+**605 righe, 605 chiuse, 0 aperte**.
+
+📏 **Come è stato misurato il punto ②**: sui doppioni vivi di PROD. Le persone con più di una
+scheda sono **13**, e **nessuna** è il doppione della voce 69 (una riga `phone:` più una
+`email:`): sono tutte coppie con **due telefoni diversi** — omonimi veri o due numeri — più una
+coppia «Ospite». La più recente è del **05/08**, la più recente `matchpoint_auto` del **10/07**:
+tutte **prima** della cura del 28/08.
+⚠️ **E il limite di questa misura si dichiara**: oggi **1.105** schede sono state riscritte, ma
+**non ho verificato che fra quelle ci fosse un import senza telefono** — cioè il caso che il
+difetto richiede. ⇒ Lo zero è **compatibile** con la cura che funziona, non è la prova che sia
+stata esercitata. È la trappola ⑤ del 23/08, *«uno zero letto troppo presto»*, e qui si evita
+dicendolo invece di contarlo come una vittoria.
+
+⛔ **Resta invece — e adesso è UNA cosa sola:**
+
+1. ✋ **la prova fisica della cura di oggi** (sotto). Il resto della voce è in servizio e
+   misurato; questa colonna si riempie al primo giro del bot dopo il deploy su PROD.
+
+### 🔎 E la cosa che era DICHIARATA e non curata: `consegnato_at` diceva il falso
+
+⚠️ Stava scritto qui sopra dal 21/08 — *«`consegnato_at` viene scritto **anche** quando il
+destinatario non si riconosce ⇒ la colonna dice «fatto» su un messaggio mai partito»* — con la
+nota *«oggi è deliberato»*. 📌 *Una riga che dichiara un difetto e lo chiama deliberato resta un
+difetto: la deliberazione riguarda il non averlo curato, non il fatto che non ci sia.*
+
+📏 **La cifra che lo rende concreto, misurata il 01/09**: la coda ha **605** righe, **605** con
+`consegnato_at`, **0** aperte — e nello stesso registro del bot i messaggi davvero partiti sono
+**22**, contro **274** righe chiuse negli ultimi quattro giorni. ⇒ La stragrande maggioranza di
+quei «fatto» riguarda gente che il bot non ce l'ha: giusto, ma **non è «consegnato»**.
+
+🔨 **CURA (01/09) — e NON rinomina niente**, che è la decisione: `consegnato_at` continua a voler
+dire *«questa riga è chiusa, non riesaminarla»*, perché su quel fatto poggia la **chiusura
+atomica del 24/08**, cioè l'intera protezione contro il doppio invio. Si aggiunge il **perché**
+accanto (`esito`, `supabase/functions/consumer-staff-events/esito-avviso.ts`), con quattro valori:
+`consegnato` · `non_riconosciuto` · `netto_nullo` · **`corsa_persa`**.
+⭐ Il quarto è quello che non era stato notato da nessuno, ed è il caso in cui la colonna mentiva
+**peggio**: questo giro si prende la riga, una sua sorella se l'è presa un altro giro, l'evento non
+esce — e lì il nome era riconosciuto, quindi la riga è **indistinguibile** da una consegnata
+davvero.
+⚖️ L'esito si scrive **dopo** la presa, su righe già nostre, e un suo errore **non tocca la
+consegna**: è diagnostica, e far cadere un avviso vero per una riga di contabilità sarebbe il verso
+sbagliato — lo stesso già scelto per la ricevuta della voce 70.
+⚠️ **Le 605 righe di prima restano a `NULL`**, e va letto come *non misurato*, non come
+«consegnato». Riempirle a posteriori sarebbe inventare un esito che nessuno ha osservato — il
+difetto esatto che la colonna esiste per togliere.
+📌 È la stessa forma della voce 71 (`ordine` accanto a `giocatori`) e della 70 (la ricevuta accanto
+al fatto): **far uscire il perché insieme al dato.**
+
+· **6 casi nuovi** (`esito-avviso.test.ts`), banco del gestionale a **76 verdi / 0 rossi**;
+· **4 sabotaggi rossi**, e uno di essi è la guardia sulla chiusura atomica: togliendo il
+  `.is('consegnato_at', null)` del 24/08 il caso 4 diventa rosso **e** cadono 2 casi di
+  `chiusura-atomica.test.ts`. La cura nuova sorveglia anche quella vecchia;
+· ⚠️ **provato: la decisione e il cablaggio. NON provato: che la colonna si riempia davvero** —
+  quello vuole un giro vero contro il database, ed è la riga 1 qui sopra.
 
 ⚖️ **L'ordine è consigliato, non obbligatorio, e vale la pena sapere perché**: se il deploy
 arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel registro e
