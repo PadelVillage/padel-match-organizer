@@ -100,10 +100,16 @@ jobs:
             # Il peso dell'xlsx e' l'altra meta' della misura: dice quante righe in piu' porta la
             # finestra larga, che e' la sola parte che scala coi giorni. Il resto (avvio del browser,
             # login, navigazione) e' fisso.
-            BYTE=$(grep -o '"byteLength":[0-9]*' "$RISPOSTA" | head -1 | cut -d: -f2)
-            OK=$(grep -o '"ok":true' "$RISPOSTA" | head -1)
+            # 🚨 La risposta del worker è INDENTATA (`JSON.stringify(body, null, 2)`), quindi
+            # dopo i due punti c'è uno spazio: cercando la grafia compatta questi due grep non
+            # trovavano niente e la sonda scriveva «NON riuscito» su un HTTP 200 riuscito.
+            # 📏 Preso al primo giro vero (30 giorni, 01/09): tempi giusti, due colonne false.
+            # ⚖️ *Una sonda che sbaglia una colonna la si corregge prima di leggerne un'altra*:
+            # se no si impara a ignorarla, ed è così che una misura smette di essere una misura.
+            BYTE=$(grep -oE '"byteLength": *[0-9]+' "$RISPOSTA" | head -1 | grep -oE '[0-9]+')
+            OK=$(grep -oE '"ok": *true' "$RISPOSTA" | head -1)
             printf 'misura %d/%s: HTTP %s | %d.%03d s | %s | xlsx %s byte\n' \
-              "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" "${OK:-NON riuscito}" "${BYTE:-?}"
+              "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" "${OK:+riuscito}${OK:-NON riuscito}" "${BYTE:-?}"
             if [ "$CODICE" != "200" ]; then
               echo "  risposta (troncata, senza segreti):"
               head -c 400 "$RISPOSTA" | tr -d '\n' | sed 's/"password":"[^"]*"/"password":"***"/g'
