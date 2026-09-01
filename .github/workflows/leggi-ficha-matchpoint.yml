@@ -72,7 +72,35 @@ jobs:
           MP_BASE="$(leggi MATCHPOINT_BASE_URL)"
           MP_USER="$(leggi MATCHPOINT_USERNAME)"
           MP_PASS="$(leggi MATCHPOINT_PASSWORD)"
-          [ -n "$MP_USER" ] && [ -n "$MP_PASS" ] && [ -n "$MP_BASE" ] || { echo "::error::credenziali Matchpoint non trovate in $CARTELLA/.env"; exit 1; }
+
+          # 🩹⭐ IL `.env` NON BASTA, misurato al primo giro (run #1, 01/09 21:13): quelle tre
+          #    variabili lì dentro non ci sono. La sonda del tabellone trovava la sua chiave
+          #    perché QUELLA c'è — e da quel successo ne avevo dedotto un altro. La fonte di
+          #    ciò che il processo ha davvero in mano è **pm2**, non un file.
+          # ⛔ E non si stampa: si estrae in una variabile e basta. `pm2 jlist` porta l'env
+          #    completo del worker — la stessa ragione per cui `stato-worker.yml` filtra a
+          #    lista bianca invece di stampare `pm2 describe`.
+          if [ -z "$MP_USER" ] || [ -z "$MP_PASS" ] || [ -z "$MP_BASE" ]; then
+            JL="$(mktemp)"
+            pm2 jlist > "$JL" 2>/dev/null || true
+            daPm2 () { python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(next((((p.get('pm2_env') or {}).get(sys.argv[2]) or '') for p in d if p.get('name')=='matchpoint-worker'),''),end='')" "$JL" "$1" 2>/dev/null; }
+            [ -n "$MP_BASE" ] || MP_BASE="$(daPm2 MATCHPOINT_BASE_URL)"
+            [ -n "$MP_USER" ] || MP_USER="$(daPm2 MATCHPOINT_USERNAME)"
+            [ -n "$MP_PASS" ] || MP_PASS="$(daPm2 MATCHPOINT_PASSWORD)"
+            rm -f "$JL"
+          fi
+
+          if [ -z "$MP_USER" ] || [ -z "$MP_PASS" ] || [ -z "$MP_BASE" ]; then
+            # ⭐ Il referto dice QUALI mancano — mai i valori — e i NOMI delle chiavi che il
+            #    .env ha davvero: senza, «non trovate» è un muro e la caccia riparte da zero.
+            echo "::error::credenziali Matchpoint non trovate (ne' in $CARTELLA/.env ne' in pm2)."
+            echo "  base=$([ -n "$MP_BASE" ] && echo si || echo NO) utente=$([ -n "$MP_USER" ] && echo si || echo NO) password=$([ -n "$MP_PASS" ] && echo si || echo NO)"
+            echo "  chiavi presenti nel .env (solo i NOMI, mai i valori):"
+            cut -d= -f1 ./.env 2>/dev/null | grep -E '^[A-Z]' | sed 's/^/    /' || echo "    (.env assente o illeggibile)"
+            echo "  nomi di processo noti a pm2:"
+            pm2 jlist 2>/dev/null | python3 -c "import json,sys;print('    '+', '.join(p.get('name','?') for p in json.load(sys.stdin)))" 2>/dev/null || echo "    (pm2 non risponde)"
+            exit 1
+          fi
 
           SCRIPT="$(mktemp --suffix=.mjs "$CARTELLA/sonda-ficha-XXXXXX")"
           trap 'rm -f "$SCRIPT"' EXIT
