@@ -34,6 +34,7 @@ import {
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
+import { registraConRitenta } from './registra-copia.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte». Stanno in un modulo perché le
  * usano in due: qui, che AMMETTE, e `consumer-player-readmodel`, che ELENCA. Se le due
  * divergessero, il bot mostrerebbe una partita in cui poi il gestionale non fa entrare. */
@@ -1386,27 +1387,55 @@ Deno.serve(async (req: Request) => {
     // sommano le due copie e rimettono in campo chi è stato tolto. ⭐ Best effort col verso
     // giusto: qui la rimozione È GIÀ RIUSCITA, quindi si torna `removed: true` anche se questo
     // passo fallisce — dire «non l'ho tolto» a chi l'ha tolto lo manderebbe a rifarlo.
+    // 🕰️⭐⭐ VOCE 121 — SI REGISTRA PRIMA DI PARLARE, e prima di stasera non era così.
+    // 🗣️ Regola del committente (01/09): *«Quando togli un giocatore dal bot devi aspettare la
+    // conferma del gestionale che questo è avvenuto prima di mostrarlo sul bot.»*
+    // 📏 Qui c'era una scrittura **best effort**, con un commento che lo dichiarava — «si torna
+    // `removed: true` anche se questo passo fallisce» — quindi il socio poteva leggere «tolto»
+    // mentre il gestionale non ne sapeva niente. È la voce 75 su un altro gesto.
+    // ⚖️ E la difesa scritta in quel commento era VERA, quindi la cura non è rovesciare il
+    // `true` in `false`: la rimozione su Matchpoint **è** avvenuta, e dire «non l'ho tolto» a
+    // chi l'ha tolto lo manderebbe a rifarlo. A mancare è la NOSTRA registrazione ⇒ si ritenta,
+    // e se non ce la si fa la risposta onesta è «non lo so ancora».
     const copiaEsito: JsonMap = { ...allineamento.conteggi };
-    if (allineamento.daScrivere.length) {
-      try {
+    const copiaRemove = await registraConRitenta(
+      allineamento.daScrivere.length,
+      async () => {
+        // ⚠️ Si tocca `payload` e `updated_at`, nient'altro: `synced_at` dice quando il sync ha
+        // visto la riga l'ultima volta, e riscriverlo racconterebbe una bugia. Alzare
+        // `updated_at` mette per un po' la riga fra le «fresche» per il reconcile del sync —
+        // cioè al riparo dalla cancellazione, che è il verso sicuro.
         const adesso = new Date().toISOString();
-        const esiti = await Promise.all(allineamento.daScrivere.map((r) =>
+        return await Promise.all(allineamento.daScrivere.map((r) =>
           service.from('pmo_cloud_records')
             .update({ payload: r.payload, updated_at: adesso })
             .eq('id', r.id)));
-        const rotte = esiti.filter((e) => e.error);
-        if (rotte.length) {
-          copiaEsito.errore = clean(rotte[0].error?.message ?? 'UPDATE fallito').slice(0, 200);
-          copiaEsito.scritte = allineamento.daScrivere.length - rotte.length;
-          console.error(`[booking-write] remove copia in app KO ${slot.data} ${slot.ora} C${campo}: ${rotte.length} righe su ${allineamento.daScrivere.length} non riscritte → ${copiaEsito.errore}`);
-        } else {
-          console.log(`[booking-write] remove copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${allineamento.daScrivere.length} righe, tolto ${bersaglio.nome}`);
-        }
-      } catch (e) {
-        copiaEsito.errore = clean((e as Error)?.message ?? 'errore').slice(0, 200);
-        console.error(`[booking-write] remove copia in app KO ${slot.data} ${slot.ora} C${campo}:`, copiaEsito.errore);
-      }
+      },
+    );
+    copiaEsito.tentativi = copiaRemove.tentativi;
+    if (!copiaRemove.registrata) {
+      copiaEsito.errore = clean(copiaRemove.errore ?? 'UPDATE fallito').slice(0, 200);
+      copiaEsito.scritte = copiaRemove.scritte;
+      console.error(`[booking-write] remove NON REGISTRATA ${slot.data} ${slot.ora} C${campo}: ${copiaRemove.scritte} righe su ${copiaRemove.totali} dopo ${copiaRemove.tentativi} tentativi → ${copiaEsito.errore}`);
+      // 🧾⛔ LA RICEVUTA QUI NON SI SCRIVE, ed è la metà che protegge chi non ha chiesto niente.
+      // La persona è stata tolta **davvero** dal campo del circolo; lasciando la ricevuta,
+      // l'avviso che nascerà dal sync verrebbe soppresso e lei resterebbe fuori **senza che
+      // nessuno glielo dica**. È la regola di `ricevuta-ignoto.test.ts`: sull'ignoto si copre
+      // solo chi ha chiesto, e qui chi ha chiesto non è chi subisce.
+      return ok({
+        member: { id: member.id, name: member.name },
+        removed: false,
+        reason: MOTIVO_ESITO_IGNOTO,
+        detail: dettaglioPerIlBot(
+          `Il circolo ha eseguito la rimozione ma non sono riuscito a registrarla: ${copiaEsito.errore}`,
+        ),
+      });
+    }
+    if (allineamento.daScrivere.length) {
+      console.log(`[booking-write] remove copia in app allineata ${slot.data} ${slot.ora} C${campo}: ${allineamento.daScrivere.length} righe in ${copiaRemove.tentativi} tentativi, tolto ${bersaglio.nome}`);
     } else if (allineamento.conteggi.non_svuotate) {
+      // Non è un guasto: è la regola «mai svuotare la copia». Va detto lo stesso, perché da qui
+      // in poi quello slot resta discorde e nessuno lo saprebbe.
       console.warn(`[booking-write] remove copia in app NON svuotata ${slot.data} ${slot.ora} C${campo}: ${allineamento.conteggi.non_svuotate} righe resterebbero senza nessuno`);
     }
 

@@ -242,10 +242,22 @@ test('15) IL GIRO SI CHIUDE: chi dice «non lo so» consegna anche CON CHE COSA 
   // 📌 Perciò la regola non è più «tutti consegnano», è: **chi promette di richiamare consegna,
   //   chi non promette non consegna**. Le due metà si sorvegliano a vicenda — la seconda serve
   //   a fermare chi un domani aggiungesse l'istante «per simmetria» sui quattro.
+  //
+  // 🔄 01/09/2026 (voce 121): i punti passano da SETTE a OTTO, e il numero si alza SOLO perché
+  // il sito nuovo obbedisce alla regola — non per far tornare il verde. L'ottavo è il ramo
+  // `remove` in cui Matchpoint ha eseguito ma la NOSTRA registrazione non è riuscita nemmeno
+  // dopo i ritentativi (`registraConRitenta`): il gesto è avvenuto, il gestionale non lo sa,
+  // e l'unica risposta vera è «non lo so ancora».
+  // ⚖️ E NON consegna l'istante, che è la metà che questo caso sorveglia: la frase del bot per
+  // il togli dice *«fra qualche minuto riapri /prenotazioni»*, non promette di richiamare ⇒
+  // mandare `scritta_alle` suggerirebbe una capacità che non c'è.
+  // 🚨 Se un domani questo caso torna rosso perché i siti sono NOVE, la domanda da farsi non è
+  // «quale numero ci va»: è *il sito nuovo promette di richiamare?* — e da lì scende in quale
+  // delle due colonne va contato.
   const siti = [...src.matchAll(/reason: (?:MOTIVO_ESITO_IGNOTO|ignoto\w* \? MOTIVO_ESITO_IGNOTO)/g)]
     .map((m) => m.index!);
-  assert.equal(siti.length, 7,
-    `i punti che rispondono «non lo so» sono ${siti.length}, attesi 7 (create ×2, add ×2, leave, remove, cancel)`);
+  assert.equal(siti.length, 8,
+    `i punti che rispondono «non lo so» sono ${siti.length}, attesi 8 (create ×2, add ×2, leave, remove KO, remove non registrata, cancel)`);
 
   const risposte = siti.map((i) => src.slice(i, src.indexOf('});', i)));
   const conIstante = risposte.filter((r) => /scritta_alle:/.test(r));
@@ -253,8 +265,8 @@ test('15) IL GIRO SI CHIUDE: chi dice «non lo so» consegna anche CON CHE COSA 
 
   assert.equal(conIstante.length, 3,
     `i «non lo so» che consegnano l'istante sono ${conIstante.length}, attesi 3 (create ×2, add senza risposta)`);
-  assert.equal(senzaIstante.length, 4,
-    `i «non lo so» SENZA istante sono ${senzaIstante.length}, attesi 4 (i rami KO di leave/remove/add/cancel)`);
+  assert.equal(senzaIstante.length, 5,
+    `i «non lo so» SENZA istante sono ${senzaIstante.length}, attesi 5 (i rami KO di leave/remove/add/cancel, più la remove non registrata della voce 121)`);
 
   // ⭐ Chi consegna l'istante consegna anche lo slot: senza, il bot avrebbe il quando ma non il
   // cosa, e `verifica` non saprebbe su quale partita guardare.
