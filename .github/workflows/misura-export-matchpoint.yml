@@ -34,9 +34,9 @@ on:
         required: true
         default: '60'
       ripetizioni:
-        description: 'Quante misure (una sola non distingue il caso dalla regola)'
+        description: 'Quante misure (una sola non distingue il caso dalla regola; 3-4 per vedere la dispersione)'
         required: false
-        default: '2'
+        default: '4'
 
 jobs:
   misura:
@@ -71,7 +71,7 @@ jobs:
           # Il worker taglia da se' `days` a 1..120 (`resolveHistoryRange`): chiedere di piu' non
           # misurerebbe quello che si crede. Meglio fermarsi che leggere un numero falso.
           [ "$GIORNI" -ge 1 ] && [ "$GIORNI" -le 120 ] || { echo "::error::giorni fuori da 1..120"; exit 1; }
-          [ "$RIPETIZIONI" -ge 1 ] && [ "$RIPETIZIONI" -le 5 ] || { echo "::error::ripetizioni fuori da 1..5"; exit 1; }
+          [ "$RIPETIZIONI" -ge 1 ] && [ "$RIPETIZIONI" -le 8 ] || { echo "::error::ripetizioni fuori da 1..8"; exit 1; }
 
           # La chiave si legge dal .env del worker e NON viene mai stampata.
           CHIAVE="$(grep -m1 '^MATCHPOINT_WORKER_API_KEY=' "$CARTELLA/.env" 2>/dev/null | cut -d= -f2- | tr -d '\"'\''\r')"
@@ -100,10 +100,37 @@ jobs:
             # Il peso dell'xlsx e' l'altra meta' della misura: dice quante righe in piu' porta la
             # finestra larga, che e' la sola parte che scala coi giorni. Il resto (avvio del browser,
             # login, navigazione) e' fisso.
-            BYTE=$(grep -o '"byteLength":[0-9]*' "$RISPOSTA" | head -1 | cut -d: -f2)
-            OK=$(grep -o '"ok":true' "$RISPOSTA" | head -1)
-            printf 'misura %d/%s: HTTP %s | %d.%03d s | %s | xlsx %s byte\n' \
-              "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" "${OK:-NON riuscito}" "${BYTE:-?}"
+            # 🚨 La risposta del worker è INDENTATA (`JSON.stringify(body, null, 2)`), quindi
+            # dopo i due punti c'è uno spazio: cercando la grafia compatta questi grep non
+            # trovavano niente e la sonda scriveva «NON riuscito» su un HTTP 200 riuscito.
+            # ⚖️ *Una sonda che sbaglia una colonna la si corregge prima di leggerne un'altra*:
+            # se no si impara a ignorarla, ed è così che una misura smette di essere una misura.
+            BYTE=$(grep -oE '"byteLength": *[0-9]+' "$RISPOSTA" | head -1 | grep -oE '[0-9]+')
+            OK=$(grep -oE '"ok": *true' "$RISPOSTA" | head -1)
+            # 🚨⭐⭐ IL TEMPO CHE CONTA È IL NETTO, e il primo giro l'ha dimostrato: a 60 giorni
+            # due misure identiche hanno dato 19,9 s e 31,0 s — **11 secondi di scarto**. Non era
+            # rumore: il worker è CONDIVISO col sync e `mpQueueRun` serializza, quindi il
+            # cronometro di fuori conta anche l'attesa in coda dietro a un tick.
+            # ⇒ `startedAt` lo timbra il worker DOPO la coda, `downloadedAt` a scaricamento
+            # finito: la loro differenza è l'export e basta. Il totale resta stampato accanto,
+            # perché la differenza fra i due È la congestione — che è un dato, non un disturbo.
+            INIZ=$(grep -oE '"startedAt": *"[^"]+"' "$RISPOSTA" | head -1 | grep -oE '[0-9T:.-]+Z')
+            SCAR=$(grep -oE '"downloadedAt": *"[^"]+"' "$RISPOSTA" | head -1 | grep -oE '[0-9T:.-]+Z')
+            NETTO='?'
+            if [ -n "$INIZ" ] && [ -n "$SCAR" ]; then
+              A=$(date -d "$INIZ" +%s%3N 2>/dev/null); B=$(date -d "$SCAR" +%s%3N 2>/dev/null)
+              if [ -n "$A" ] && [ -n "$B" ]; then NETTO=$(( B - A )); fi
+            fi
+            if [ "$NETTO" != '?' ]; then
+              printf 'misura %d/%s: HTTP %s | NETTO %d.%03d s | totale %d.%03d s (coda %d.%03d s) | %s | xlsx %s byte\n' \
+                "$i" "$RIPETIZIONI" "$CODICE" "$((NETTO/1000))" "$((NETTO%1000))" \
+                "$((MS/1000))" "$((MS%1000))" "$(((MS-NETTO)/1000))" "$(((MS-NETTO)%1000))" \
+                "${OK:+riuscito}${OK:-NON riuscito}" "${BYTE:-?}"
+            else
+              printf 'misura %d/%s: HTTP %s | NETTO non leggibile | totale %d.%03d s | %s | xlsx %s byte\n' \
+                "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" \
+                "${OK:+riuscito}${OK:-NON riuscito}" "${BYTE:-?}"
+            fi
             if [ "$CODICE" != "200" ]; then
               echo "  risposta (troncata, senza segreti):"
               head -c 400 "$RISPOSTA" | tr -d '\n' | sed 's/"password":"[^"]*"/"password":"***"/g'
