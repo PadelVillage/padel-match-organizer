@@ -6367,7 +6367,23 @@ async function eliminaPartecipante(page, selettore, diagnostic, etichetta) {
   const conModale = /confirmarEliminar/i.test(info.onclick);
 
   if (conModale && bersaglio) {
-    const esito = await page.evaluate(({ target, comportamento, idConf, idComp }) => {
+    // 🩹⭐⭐ IL POSTBACK NON SI CHIAMA DA `page.evaluate`, e la prima stesura ci provava.
+    // 📏 Misurato su PROD il 01/09 alle 23:55, al primo togli vero dopo il deploy:
+    //     page.evaluate: TypeError: 'caller', 'callee', and 'arguments' properties may not be
+    //     accessed on strict mode functions …  at Sys.WebForms.PageRequestManager._doPostBack
+    // ⇒ `_doPostBack` di ASP.NET fruga negli `arguments` di CHI LO CHIAMA, e Playwright esegue
+    // `evaluate` in **strict mode**, dove quell'accesso è vietato. Non è un difetto nostro né
+    // loro: sono due mondi che non si possono toccare da quel verso.
+    // ⚖️ E la misura ha confermato il resto della cura mentre bocciava questo pezzo: il modale
+    // **non si è aperto** e `elimina:marco aprea` compare UNA volta sola invece di due.
+    // ⇒ La strada giusta è più semplice e più fedele a ciò che fa una persona: si scrivono i
+    // due campi che il modale scriverebbe, si TOGLIE l'`onclick` (così `confirmar` non parte e
+    // il modale non nasce) e si clicca il link per davvero. Il `javascript:__doPostBack(…)`
+    // dell'`href` gira allora nel contesto della PAGINA, che è non-strict, e nessuno fruga in
+    // argomenti proibiti.
+    // 📌 Niente `new Function` per fabbricare un chiamante non-strict: funzionerebbe, ma
+    // dipende da una sottigliezza di ES e da una CSP che non controlliamo. Un click vero no.
+    const esito = await page.evaluate(({ selettore, comportamento, idConf, idComp }) => {
       const scrivi = (id, v) => {
         const el = document.getElementById(id);
         if (!el) return false;
@@ -6377,25 +6393,27 @@ async function eliminaPartecipante(page, selettore, diagnostic, etichetta) {
       const conf = scrivi(idConf, 'True');
       const comp = scrivi(idComp, comportamento);
       if (!conf || !comp) return { ok: false, conf, comp };
-      if (typeof window.__doPostBack !== 'function') return { ok: false, senzaPostBack: true };
-      window.__doPostBack(target, '');
+      const a = document.querySelector(selettore);
+      if (!a) return { ok: false, senzaLink: true };
+      a.removeAttribute('onclick');
       return { ok: true };
     }, {
-      target: bersaglio,
+      selettore,
       comportamento: COMPORTAMENTO_DEVOLUCION,
       idConf: CONFERMA_ELIMINA_ID,
       idComp: COMPORTAMENTO_DEVOLUCION_ID,
     });
     if (!esito || !esito.ok) {
-      // ⚠️ Si FALLISCE invece di ripiegare sul click: il click, su una ficha col modale, è la
-      // strada che NON funziona — ripiegarci sopra vorrebbe dire tornare al difetto del 01/09
-      // con un nome diverso. Meglio un errore che dice cosa manca.
+      // ⚠️ Si FALLISCE invece di cliccare lo stesso: cliccare con l'`onclick` ancora attaccato
+      // è la strada che NON funziona — ripiegarci sopra vorrebbe dire tornare al difetto del
+      // 01/09 con un nome diverso. Meglio un errore che dice cosa manca.
       throw fail('REMOVE_CONFIRM_FIELDS_MISSING',
-        `Matchpoint chiede conferma per togliere ${etichetta}, ma i campi della conferma non ci sono `
-        + `(conferma=${esito?.conf} comportamento=${esito?.comp} postback=${!esito?.senzaPostBack}).`,
+        `Matchpoint chiede conferma per togliere ${etichetta}, ma non ho potuto prepararla `
+        + `(conferma=${esito?.conf} comportamento=${esito?.comp} link=${!esito?.senzaLink}).`,
         diagnostic);
     }
-    diagnostic.steps.push(`elimina_postback:${etichetta}`);
+    await link.click({ timeout: 8000 });
+    diagnostic.steps.push(`elimina_diretto:${etichetta}`);
   } else {
     // Ficha senza modale (le lezioni, e le partite fino al 29/08): la strada vecchia, con in
     // più la chiusura di un eventuale swal — il 29/08 a intercettare fu un `fancybox` di
