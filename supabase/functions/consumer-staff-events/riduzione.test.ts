@@ -346,5 +346,42 @@ test('👥 il giro intero: chi resta riceve UN esito, con dentro chi è entrato 
   assert.equal(perChi.get('Lidia Comes')?.entrati, undefined);
 });
 
+// ── 🆕🗣️ VOCE 79 (01/09) — CHI HA CHIESTO il gesto attraversa la riduzione ──────────────
+//
+// 📏 Nati da una prova fisica: alle 20:01 una socia è entrata da sé in una partita aperta e
+// agli altri tre in campo il bot ha detto «L'ha cambiata il circolo», col numero della
+// segreteria in fondo. Il campo esiste per non far più dire quella frase quando è falsa — e la
+// riduzione è il punto in cui si perderebbe senza che nessun banco se ne accorga.
+
+test('🆕 l\'attore sopravvive alla riduzione: è lì che si perderebbe in silenzio', () => {
+  const f = { ...fatto('formazione', 0), entrati: ['Laura Aprea'], usciti: [], chiesto_da: 'Laura Aprea' };
+  const [e] = riduci([f], ADESSO);
+  assert.equal(e.chiestoDa, 'Laura Aprea');
+});
+
+test('🆕 assente o vuoto ⇒ null, cioè «il circolo»: è il comportamento di sempre', () => {
+  // ⚖️ Il caso che rende la metà del gestionale sicura da mettere in servizio: finché la
+  // colonna non c'è (o è vuota) non cambia una virgola di quello che il socio legge.
+  for (const niente of [undefined, null, '', '   ']) {
+    const [e] = riduci([{ ...fatto('formazione', 0), chiesto_da: niente } as FattoInCoda], ADESSO);
+    assert.equal(e.chiestoDa, null, `«${String(niente)}» non è caduto sul ramo del circolo`);
+  }
+});
+
+test('🆕 in una raffica mista vince l\'ULTIMO, e non si fondono due attori', () => {
+  // 🚨 Il verso sbagliato sarebbe inventare un terzo attore fondendo i due, o tenere il primo:
+  // la raffica si racconta com'è finita, che è la regola con cui `tipo` e `da` sono già trattati.
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: ['Laura Aprea'], usciti: [], chiesto_da: 'Laura Aprea' },
+    { ...fatto('formazione', 40), entrati: ['Marco Rossi'], usciti: [], chiesto_da: null },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDa, null, 'un gesto della segreteria in coda alla raffica resta della segreteria');
+  const rovescio = riduci([
+    { ...fatto('formazione', 0), entrati: ['Marco Rossi'], usciti: [], chiesto_da: null },
+    { ...fatto('formazione', 40), entrati: ['Laura Aprea'], usciti: [], chiesto_da: 'Laura Aprea' },
+  ], ADESSO);
+  assert.equal(rovescio[0].chiestoDa, 'Laura Aprea');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

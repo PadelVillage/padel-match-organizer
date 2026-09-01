@@ -56,6 +56,13 @@ type EditRequest = {
   descrizione?: string;     // SOLO manutenzione: descrizione (TextBox2, testo del tabellone). '' = azzera; assente = non toccare.
   istruttore?: string;      // SOLO lezione: maestro (dropdown "Monitor"). Stringa non vuota = cambia; assente/'' = non toccare.
   read?: boolean;           // lettura sola: restituisce i partecipanti attuali senza modificare
+  /**
+   * 🆕🗣️ CHI ha chiesto la modifica, quando non è la segreteria — 01/09/2026, voce 79.
+   * Lo manda `consumer-booking-write` (l'unica porta dei soci); l'app della segreteria non lo
+   * manda, e **assente vale «il circolo»**, cioè le frasi di sempre. Il perché sta per esteso
+   * su `accodaFattiDaConferma`.
+   */
+  chiestoDa?: string;
 };
 
 // `EdgeRuntime.waitUntil` esiste nel runtime Supabase ma la d.ts risolta dal gate non ne
@@ -335,6 +342,7 @@ async function dichiaraSpostamentoAlSocio(opts: {
       client: createClient(supabaseUrl, supabaseKey),
       fatti,
       azione: 'edit',
+      chiestoDa: edit.chiestoDa,
     });
   } catch (e) {
     console.warn(JSON.stringify({
@@ -395,6 +403,7 @@ async function dichiaraCambioRosterAlSocio(opts: {
       client: createClient(supabaseUrl, supabaseKey),
       fatti,
       azione: 'edit_roster',
+      chiestoDa: edit.chiestoDa,
     });
   } catch (e) {
     console.warn(JSON.stringify({
@@ -593,7 +602,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, read: readOnly };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, read: readOnly, chiestoDa: String((body as JsonMap)?.chiestoDa ?? '').trim() || undefined };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));

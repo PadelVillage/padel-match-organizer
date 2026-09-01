@@ -196,14 +196,38 @@ export async function accodaFattiDaConferma(opts: {
   fatti: FattoStaff[];
   /** Per il registro: che gesto stava facendo chi chiama. */
   azione: string;
+  /**
+   * 🆕🗣️⭐⭐ CHI HA CHIESTO il gesto, quando **non** è stata la segreteria — 01/09/2026.
+   *
+   * 📏 Nato da una prova fisica: alle 20:01 una socia è entrata da sé in una partita aperta
+   * (voce 88) e agli altri tre in campo il bot ha detto **«L'ha cambiata il circolo»**, con in
+   * fondo il numero della segreteria. Il circolo non aveva fatto niente, e la segreteria di
+   * quel gesto non sapeva nulla: falso nell'**attribuzione** e vicolo cieco nella **strada**.
+   *
+   * 🚨⭐⭐ E PERCHÉ NON BASTAVA `origine`, che è la deduzione che viene in mente per prima:
+   * `'conferma'` vuol dire *«registrato nell'istante in cui il circolo ha detto sì»* — e ci
+   * passa **anche la segreteria che lavora dall'app**. 📏 Misurato sul database il 01/09: delle
+   * **16** righe `annullata` con `origine = 'conferma'` non si può dire chi le abbia chieste.
+   * ⇒ Non è che il bot non lo sapesse: **non lo sapeva nemmeno il gestionale**. Un dato che non
+   * è stato scritto non si recupera guardandone un altro con più attenzione.
+   *
+   * ⚠️ **Assente ⇒ la colonna resta nulla**, che vale «la segreteria»: è il comportamento di
+   * sempre, e il bot senza questo campo dice le frasi di prima parola per parola. Le due metà
+   * si possono quindi mettere in servizio in due momenti — ed è obbligatorio farlo in
+   * quest'ordine, prima il bot.
+   */
+  chiestoDa?: string | null;
 }): Promise<number> {
   const { client, fatti, azione } = opts;
   if (!fatti.length) return 0;
   const adesso = new Date().toISOString();
+  // ⚠️ Vuoto vale ASSENTE: una stringa di spazi scritta in colonna farebbe dire al bot
+  // «L'ha chiesto .» — cioè una frase rotta al posto di quella giusta di prima.
+  const chiestoDa = String(opts.chiestoDa ?? '').trim() || null;
   try {
     const esito = await client
       .from('pmo_eventi_staff')
-      .insert(fatti.map((f) => ({ ...f, visto_at: adesso, origine: 'conferma' })));
+      .insert(fatti.map((f) => ({ ...f, visto_at: adesso, origine: 'conferma', chiesto_da: chiestoDa })));
     if (esito?.error) throw new Error(esito.error.message ?? String(esito.error));
     console.log(JSON.stringify({
       event: 'fatti_da_conferma_accodati',
