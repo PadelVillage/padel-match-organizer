@@ -30,10 +30,16 @@ quindi va disegnata su uno slot lontano e col cancello verificato chiuso.
 **tre** esiti e non due) e la **112** (se i 1736 contatti della rubrica debbano stare nell'anagrafica
 dei soci).
 
-⚖️ **Cosa dice questa lista, adesso che è corta**: delle 5 urgenti che restano, **quattro aspettano un
-caso che non si può provocare** e una aspetta il calendario. Non è una lista di lavoro fermo — è la
-forma che prende un progetto in cui le cure vengono messe in servizio **prima** di essere state viste
-sbagliare.
+⚖️ **Cosa dice questa lista, adesso che è corta**: delle **4** urgenti che restano, **tutte e quattro
+aspettano un caso che non si può provocare**. Non è una lista di lavoro fermo — è la forma che prende
+un progetto in cui le cure vengono messe in servizio **prima** di essere state viste sbagliare.
+🩹 **Corretta il 01/09**: qui c'era scritto «delle **5** urgenti… e una aspetta il calendario», vero
+il 30/08 sera e falso il 31/08 mattina, quando la **109** si è chiusa — per il **codice** invece che
+per la sonda, cioè proprio senza aspettare il calendario. ⇒ La riga sopravviveva **dentro il blocco
+riscritto per non mentire**, a nove righe dal suo stesso 🩹 *«una richiesta che resta scritta dopo
+essere stata esaudita non è vecchia, mente»*. 📌 *Riscrivere un blocco non lo rende vero una volta
+per tutte: la frase di riepilogo in fondo è quella che nessuno rilegge, perché sembra un commento e
+invece è un conteggio.*
 
 ## 🔎 Il filo del 22/08 sera: **una via d'uscita si può dare solo dove si sa dove porta**
 
@@ -2652,7 +2658,7 @@ i numeri erano coerenti fra loro, ed è tutto ciò che sa confrontare.
 
 | | |
 |---|---|
-| **88** | 🔓 **«Partite Aperte»: partecipare a partite che non sono le tue** — 🗣️ voce sua del 24/08 (*«quello di poter partecipare a partite non chiuse, ma che un organizzatore volutamente e spontaneamente apre ad altri giocatori»*), messa in urgenti da lui e **rimessa in coda da lui il 25/08**: *«per la 88 non fare sviluppo, metti solo in documentazione le regole»*. ⇒ Le regole ci sono, il codice no, ed è voluto. 📐 **LE QUATTRO REGOLE, tutte decise da lui:** ① **cosa vede chi non ne fa parte** → **solo i numeri** («3 su 4 · lunedì 18:30 · Intermedio»), **nessun nome** — è la strada che **non apre la serratura** sui ~2.800 soci, che `rubrica.ts` tiene chiusa per una ragione strutturale e non per preferenza; ② **chi apre** → un gesto **esplicito e reversibile** dell'organizzatore, non una casella spuntata per sbaglio; ③ **chi può entrare** → *«devi essere già nel gestionale»*: la **rubrica cade** (è l'apertura, per definizione), il **cliente del circolo RESTA** — il filtro si spezza in due invece di far cadere due condizioni insieme per inerzia, che era il rischio scritto nella scheda; ④ **il livello** → *«pari livello dell'organizzatore oppure più o meno 0,5»*, cioè **L−0,5 · L · L+0,5**. 📏 **Misurato prima di scrivere una riga**: per i **536** soci con un livello vero la ④ tiene — banda più stretta **33** persone (organizzatore a 5,5), più larga **352** (un 2,5), nessuno resta solo. Distribuzione: 1,5→36 · 2,0→68 · **2,5→206** · 3,0→78 · 3,5→54 · 4,0→41 · 4,5→19 · 5,0→29 · 5,5→4. 🚨⭐⭐ **E IL PUNTO CHE RESTA APERTO, il più grosso: lo 0,5.** Ce l'hanno **2.277 soci su 2.813 — l'81%** — e **non è un livello basso: è «mai misurato»**, tanto che `livelli.ts` lo tratta apposta come un non-dato (`LIVELLO_MINIMO_IN_TABELLA`, sua decisione dell'11/08). ⚖️ Metterlo nell'aritmetica del ±0,5 fa **due** danni insieme: l'81% del circolo resta fuori da ogni partita aperta di chi un livello ce l'ha, **e** una partita aperta da un socio senza livello risulta aperta a **2.277 persone**, cioè lì il vincolo non filtra niente. ⇒ Protegge esattamente il 19% e lascia scoperto il resto. 📌 *Un numero che significa «non lo so» non si può sommare e sottrarre: l'aritmetica su un non-dato produce una regola che sembra precisa e non lo è.* ⏳ **La domanda è posta e senza risposta** — chi non ha un livello cosa fa: ① **prima il test** (il bot glielo propone lì, e la partita aperta diventa il primo motivo vero per farlo) · ② **entrano fra loro** (regola letterale, col buco qui sopra) · ③ **decide chi apre**. ⚠️ **Da non scoprire a lavoro iniziato**: il caso `test/il-modello-sa-quel-che-sa-il-menu.test.ts` (voce 87) diventa **rosso** appena si aggiunge `partite_aperte` ai `COMANDI` senza insegnare la voce al modello. Non è un ostacolo: è la guardia che fa il suo lavoro, e chi la vede rossa **scrive la voce**, non la aggira. ⏳ **Prova fisica, quando si farà**: due soci veri, uno che apre e uno che entra — e il controllo che chi era già in campo riceva l'avviso, come vuole la regola del 23/08 |
+| **88** | 🔓 **«Partite Aperte»: partecipare a partite che non sono le tue** — 🔨 **FASE 1 IN SERVIZIO su TEST dal 01/09** (il gestionale SA: `apri`/`chiudi`/`entra` + l'elenco); manca la fase 2, il bot. 📄 Scheda a parte sotto la coda. — 🗣️ voce sua del 24/08 (*«quello di poter partecipare a partite non chiuse, ma che un organizzatore volutamente e spontaneamente apre ad altri giocatori»*), messa in urgenti da lui e **rimessa in coda da lui il 25/08**: *«per la 88 non fare sviluppo, metti solo in documentazione le regole»*. ⇒ Le regole ci sono, il codice no, ed è voluto. 📐 **LE QUATTRO REGOLE, tutte decise da lui:** ① **cosa vede chi non ne fa parte** → **solo i numeri** («3 su 4 · lunedì 18:30 · Intermedio»), **nessun nome** — è la strada che **non apre la serratura** sui ~2.800 soci, che `rubrica.ts` tiene chiusa per una ragione strutturale e non per preferenza; ② **chi apre** → un gesto **esplicito e reversibile** dell'organizzatore, non una casella spuntata per sbaglio; ③ **chi può entrare** → *«devi essere già nel gestionale»*: la **rubrica cade** (è l'apertura, per definizione), il **cliente del circolo RESTA** — il filtro si spezza in due invece di far cadere due condizioni insieme per inerzia, che era il rischio scritto nella scheda; ④ **il livello** → *«pari livello dell'organizzatore oppure più o meno 0,5»*, cioè **L−0,5 · L · L+0,5**. 📏 **Misurato prima di scrivere una riga**: per i **536** soci con un livello vero la ④ tiene — banda più stretta **33** persone (organizzatore a 5,5), più larga **352** (un 2,5), nessuno resta solo. Distribuzione: 1,5→36 · 2,0→68 · **2,5→206** · 3,0→78 · 3,5→54 · 4,0→41 · 4,5→19 · 5,0→29 · 5,5→4. 🚨⭐⭐ **E IL PUNTO CHE RESTA APERTO, il più grosso: lo 0,5.** Ce l'hanno **2.283 soci su 2.821 — l'81%** (rimisurato il 01/09; il 24/08 erano 2.277 su 2.813 — la proporzione non si muove) — e **non è un livello basso: è «mai misurato»**, tanto che `livelli.ts` lo tratta apposta come un non-dato (`LIVELLO_MINIMO_IN_TABELLA`, sua decisione dell'11/08). ⚖️ Metterlo nell'aritmetica del ±0,5 fa **due** danni insieme: l'81% del circolo resta fuori da ogni partita aperta di chi un livello ce l'ha, **e** una partita aperta da un socio senza livello risulta aperta a **2.277 persone**, cioè lì il vincolo non filtra niente. ⇒ Protegge esattamente il 19% e lascia scoperto il resto. 📌 *Un numero che significa «non lo so» non si può sommare e sottrarre: l'aritmetica su un non-dato produce una regola che sembra precisa e non lo è.* ✅🗣️ **RISPOSTA DATA IL 01/09/2026: la ①, «prima il test».** Chi non ha un livello **non entra**, e il bot gli propone il test lì — la partita aperta diventa il primo motivo vero per farlo. Le altre due erano ② *entrano fra loro* (regola letterale, col buco qui sopra) e ③ *decide chi apre*. 🚨⭐⭐ **E la ① ha una METÀ CHE NON VIENE IN MENTE, applicata insieme all'altra**: chi non ha un livello **non APRE**. Senza quella, la sua partita risulterebbe aperta ai 2.283 soci a «da definire» — cioè il secondo dei due buchi resterebbe intero, dentro una regola che sembra un filtro. ⭐ **Costo dichiarato**: alla partenza la funzione serve **536 soci su 2.821**, ed è il costo che si voleva. ⏳ **Cosa NON è ancora scritto** — se il bot debba proporre il test **lì**, nel momento in cui il socio chiede le partite aperte: il ponte lo dice già (`serve_il_test` + il conteggio), la frase e il bottone sono lavoro della fase 2 (sotto). ⚠️ **Da non scoprire a lavoro iniziato**: il caso `test/il-modello-sa-quel-che-sa-il-menu.test.ts` (voce 87) diventa **rosso** appena si aggiunge `partite_aperte` ai `COMANDI` senza insegnare la voce al modello. Non è un ostacolo: è la guardia che fa il suo lavoro, e chi la vede rossa **scrive la voce**, non la aggira. ⏳ **Prova fisica, quando si farà**: due soci veri, uno che apre e uno che entra — e il controllo che chi era già in campo riceva l'avviso, come vuole la regola del 23/08 |
 | **68** | 🔕 **Lo staff agisce dal gestionale e ai soci non arriva niente** — 🗣️ sua segnalazione: *«quando da gestionale faccio un'azione, cioè metto, levo giocatori o attivo partite o elimino partite, sul bot dei soci non succede niente, cioè non arriva nessun avviso»*. 📏 **MISURATO il 21/08, ed è un buco di disegno in tre punti sommati, non un guasto:** ① il bot **non ha un tipo di avviso** per «partita cambiata dallo staff» — `TipoAvviso` (`avvisi.ts:41`) elenca i nove che esistono e nessuno lo è; ② l'unico rilevatore di cambiamento è `decidiTornataIncompleta` (`avvisi.ts:398-424`), che confronta **un solo numero** (`giocatori_visti`, l'unica memoria del roster: `registro-avvisi.ts:38-40`) e scatta **solo** sul calo da 4 a meno di 4, una volta sola, prima della scadenza disdetta ⇒ **le AGGIUNTE non lo attivano** (porta 3), i cali sotto quota 4 nemmeno (porta 2), e una **sostituzione** è invisibile perché il conteggio non cambia; ③ una **partita annullata** non viene nemmeno esaminata — il giro itera `for (const b of seguite)` (`promemoria.ts:525`), cioè solo sulle partite che ci sono **adesso**, e nessuna riga confronta l'elenco di oggi con quello del giro prima. ⭐ **Il DATO arriva**: `consumer-player-readmodel` rilegge `booking`+`staff_booking` live a ogni giro, col ritardo del sync (~2′, max 10′04″). Manca **chi lo confronti e chi lo dica**. ⚖️ **Il contrasto che lo rende evidente**: la stessa azione fatta dal SOCIO dal bot avvisa gli altri subito (`bot.ts:1384`, `bot.ts:1468` iniettano `avvisa:`); fatta dallo STAFF non ha nessun equivalente. 🚪 **E la porta esiste già**: `bot-telegram-admin` è il ponte gestionale→bot, con credenziali funzionanti e deploy separato per ambiente — oggi ci passano **solo** whitelist e inviti d'accesso (tabelle `telegram_operatori` e `telegram_inviti`, nessun `sendMessage`). ⇒ Aggiungere lì la notifica sarebbe conforme alla regola ferrea — *il gestionale SA, il bot DICE* — al contrario di una diff calcolata nel bot, che sarebbe la «memoria parallela» esclusa dalla 64. ⚠️ **Il limite era già dichiarato** ma come nota a margine di altri lavori (voce 64, riga 1365: «coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui non si vede»): questa è la prima volta che ha una scheda sua. ✅ **DECISO il 21/08** (le tre risposte stanno nella tabella qui sotto): il messaggio va a **una sola persona**, quella che il gesto ha toccato; la raffica si assorbe con **2 minuti** di quiete e si manda lo **stato finale**; e **toccato ≠ cambiato**. ⇒ Il rumore — la ragione per cui il ritiro degli inviti orfani (voce 63) è **muto per scelta** — è tenuto fuori da tutte e tre insieme, non da una sola |
 | **70** | ✅ 🔁 **Il circolo annuncia al socio una cosa che ha appena fatto LUI — CURATA il 22/08, in servizio** — 📏 **misurato dal vivo la notte del 21/08**, durante il collaudo, con la previsione scritta **prima** e confermata riga per riga. **I fatti, al secondo:** Maurizio invita Lidia dal bot; Lidia tocca «Ci sto» e il bot le dice **«✅ Sei in campo»**; alle **21:38:03** il sync rilegge lo slot e la `descrizione` passa da `-Maurizio Aprea.` a `-Maurizio Aprea.-Lidia Comes.`; alle **21:39:54** `eventi-staff` emette il fatto `Lidia Comes · aggiunto · 31/08 11:00 Campo 1`. ⇒ Fra 4 e 19 minuti **dopo il proprio gesto**, a Lidia arriva un avviso **dal circolo** che le annuncia quello che ha fatto lei. 🔎 **La causa è strutturale, non una svista**: `eventi-staff.ts` confronta **DATI**, non eventi — vede *cosa* è cambiato e **non può sapere CHI** l'ha cambiato. ⚖️⭐⭐ **Ed è il rovescio esatto del pregio dichiarato nella sua stessa intestazione**: *«il ③ toccato ≠ cambiato non costa una riga: qui si confrontano DATI, non eventi. Un rilevatore costruito sugli eventi avrebbe dovuto difendersi da quel caso; uno costruito sui dati non lo incontra proprio»*. La **stessa** scelta che regala il ③ rende impossibile distinguere il gesto della segreteria da quello del socio. ⇒ *Un pregio dichiarato descrive metà di una scelta: l'altra metà è il difetto gemello, e sta nella stessa riga.* 🚨 **Perché non è un caso di bordo**: la **voce 64** (chiusa) aveva tolto dal **bot** l'avviso a chi il gesto l'aveva fatto; la **68** lo rimette **dal gestionale**, da una porta che la 64 non sorvegliava. In servizio da ieri sera ⇒ **ogni socio che entra in una partita dal bot** — accettando un invito, o prenotando — riceve pochi minuti dopo un avviso del circolo su ciò che ha appena fatto, subito dopo che il bot gliel'ha già detto. 📏 Con **5 soci** non si vede; con 2810 è il primo motivo per cui uno spegne le notifiche. ⚠️ **Il codice dichiara un caso VICINO e lo giudica accettabile** (*«se un socio prenota dal bot per sé e tre amici, quei tre ricevono lo stesso avviso — che è altrettanto vero»*): per **loro** è vero, non lo sanno; per **chi si aggiunge da sé** è falso. ⇒ La riga da cambiare non è quella delle partite nuove, è il ramo dello slot **che esisteva già**. 🔨 **Cura proposta, da decidere e NON fatta** — conforme a *il gestionale SA, il bot DICE*: l'informazione che manca **il gestionale ce l'ha già**, perché la scrittura l'ha eseguita lui (`consumer-booking-write`). Lasciare lì una **ricevuta** (slot · persona · gesto · istante), e far scartare a chi consegna (`consumer-staff-events`, che la quiete dei 2′ la fa già) il fatto che combacia con una ricevuta recente. Finestra **≥15′**, perché il fatto nasce col ritardo del sync (mediana ~2′, massimo misurato **10′04″**). ⛔ **Non** farlo confrontare al bot con un proprio ricordo: sarebbe la memoria parallela esclusa dalla 64, e la 68 è nata apposta per non averla. 📌 L'origine è scritta anche nella chiave locale della prenotazione (`…\|consumer-assistente-soci`), ma è **per prenotazione**, non per persona: dice chi ha creato lo slot, non chi è entrato dopo ⇒ da sola non basta. 🔌 **Nel frattempo c'è l'interruttore** (kb `avvisi_dal_circolo.attivi`), che spegne **solo** questi avvisi. ⚠️⭐ **ONESTÀ SULLA MISURA: quell'avviso a Lidia NON è mai arrivato**, e non perché il difetto non ci sia — il fatto è stato emesso e chiuso regolarmente — ma perché **un secondo difetto, indipendente**, lo ha fermato un passo dopo: il ponte leggeva solo le prime 1000 schede su 2810 e Lidia sta in posizione 2721 (misurato e **curato** la notte stessa, vedi la voce 68). ⇒ Quello che si è visto è la **catena fino alla coda**, non fino al telefono. 🚨 E cambia la fretta: finché il ponte era cieco sui due terzi dei soci questo difetto era **quasi invisibile**; curata quella cecità, diventa visibile a **tutti** — cioè la 70 è più urgente di prima, non meno. 🔨 **CURATA il 22/08/2026, ed è la cura proposta qui sopra senza scostamenti**: `consumer-booking-write` lascia una **ricevuta** (`pmo_ricevute_gesti`: partita · persona · gesto · istante) dopo ognuna delle cinque scritture che sa fare, e `consumer-staff-events` scarta il fatto che ne combacia una. ⭐⭐ **La riga che decide se cura o rompe: si scarta PRIMA della riduzione, non dopo.** Un socio che entra dal bot e che poi la **segreteria** toglie produce due fatti — `aggiunto` (suo) e `tolto` (del circolo): scartando prima resta il `tolto` e lui lo sente; scartando dopo i due si sarebbero già fusi in un netto nullo e **non avrebbe saputo di essere stato tolto**. ⇒ *La riduzione risponde a «cosa è successo in tutto», la ricevuta a «chi l'ha fatto»: la seconda domanda va posta finché i singoli gesti esistono ancora.* È provata girando le due strade e mostrando cosa si perde in quella sbagliata. ⚖️ **La regola di scarto è più larga di «chi ha toccato il bottone», e la misura lo impone**: chi chiede l'`add` è l'**organizzatore**, non chi entra — Lidia accetta e a chiedere è Maurizio. Una regola *persona = attore* non avrebbe coperto proprio il caso da cui la voce nasce. ⇒ Una ricevuta dice *«questo non l'ha fatto la segreteria»*, e un avviso **dal circolo** su un gesto che il circolo non ha fatto è falso nell'attribuzione **per chiunque** lo riceva. 📏 E i conti tornano su tutti e cinque i gesti: su `add`, `remove` e `cancel` il bot parla già (`testoSeiEntrato`, `testoSeiStatoTolto`, `testoPartitaAnnullata`) ⇒ sarebbe un doppione; su `leave` il bot non avvisa nessuno per decisione del committente, ma il fatto riguarda chi è uscito **da sé**; su `create` dal bot nasce una partita col **solo organizzatore** (`giocatori: [{ nome: member.name }]`), che `eventi-staff` salta già — la ricevuta si scrive lo stesso ed è una **rete**, perché quel salto poggia sull'ORDINE dell'elenco del circolo, che è una convenzione di Matchpoint e non una promessa. 🧾 **Una ricevuta, un fatto**: si consuma. Se la segreteria ripete lo stesso gesto sulla stessa persona nella stessa mezz'ora, il secondo passa — ed è giusto, perché quello è suo. ⏱️ Finestra **20′** (il massimo di sync misurato è 10′04″, raddoppiato) più **3′ di tolleranza all'indietro**, perché la ricevuta si scrive **dopo** che il worker ha risposto e un giro di sync può vedere il cambiamento prima. 🚨 **E se le ricevute non si riescono a leggere, il giro si FERMA**: tirare dritto rimanderebbe in circolo esattamente gli avvisi falsi che questa voce cura, e li manderebbe davvero. I fatti restano in coda. 🔎 **Diagnostica**: ogni soppressione si scrive nel registro nome per nome, e la ricevuta consumata porta `usata_da` = l'id del fatto ⇒ *un avviso soppresso è distinguibile da un fatto che non è successo*, che è esattamente ciò che `consegnato_at` da solo non sa dire. ⏸️ **Resta aperta**: nessuno l'ha ancora vista succedere sul bersaglio — la conferma è un socio che entra dal bot e **non** riceve l'avviso del circolo qualche minuto dopo |
 | **72** | 🙁 **Una prenotazione che non riesce lascia il socio senza una strada** — 🗣️ segnalata dal committente il 22/08/2026, dal vivo durante il collaudo: *«ho ricevuto un messaggio dopo aver provato la prima prenotazione che non è andata a buon fine che diceva che la segreteria non ha dato la spiegazione. Il messaggio potrebbe essere ancora più carino verso il socio che prova a prenotare e la prenotazione per un motivo XYZ non è riuscita, quello di riprovare»*. 🎯⭐⭐ **L'EVENTO È MISURATO — 22/08 sera, sul registro del worker.** Non più «la frase combacia con una stringa sola»: c'è la riga, con l'ora e il nome. `22/08 10:56:51 UTC · POST /create-booking · SAVE_BUTTON_NOT_FOUND · Maurizio Aprea · partita 31/08 14:00-15:30`, con gli step che finiscono in `osservazioni_tab_click → osservazioni_textarea_absent → save_button_not_found`. ⇒ È **tre minuti dopo** i due annulli delle 10:53:59 e 10:54:08 della voce 73: stesso collaudo, stessa mano. 🔎 **E il perché della frase si legge nel messaggio**: contiene `url=https://app-padelvillage-it.matchpoint.com.es/…`, cioè **due** parole vietate (`matchpoint` e `https://`) ⇒ `dettaglioPerIlBot` lo sostituisce con `DETTAGLIO_SENZA_SPIEGAZIONE`. La catena è chiusa dal guasto alla frase, senza un anello supposto. ✅ **E la cura di stasera è verificata SU QUESTO caso, non su uno inventato**: negli step non c'è nessun `save_attempt` ⇒ `esitoDellaRispostaWorker` lo classifica **fallimento certo** ⇒ il socio legge «riprova», che è la risposta giusta. Se fosse stato l'altro sotto-caso — click partito e non concluso — la stessa regola direbbe «non lo so», che è la risposta giusta all'altro fatto. 📌 Trovato **senza cercarlo**, guardando la saturazione del worker: la sonda di sola lettura tiene i guasti dal 21/05, e il difetto del giorno stesso era lì dentro. *La schermata era persa; la riga no.* 🔎⭐⭐ **LA FRASE È IDENTIFICATA — 22/08 pomeriggio, ed è NOSTRA.** La schermata non c'è più (*«non te lo riesco a fare lo screenshot perché è stata annullata dalla stessa chat»*), ma il committente ha ridetto il senso — *«diceva che la prenotazione non era stata effettuata, e che la segreteria non ha dato spiegazioni»* — e quel senso combacia con **una stringa sola** in tutto il progetto: `DETTAGLIO_SENZA_SPIEGAZIONE` = *«il circolo non ha dato un motivo comprensibile»*, in `consumer-booking-write/esito-scrittura.ts`. ⚖️ **Ed è arrivata lì per una nostra cura**: il 21/08 (#943/#944) il dettaglio grezzo del worker è stato ripulito perché non uscisse il nome di un pezzo interno, e quando non resta niente di raccontabile esce quel ripiego. La cura ha tolto la fuga di notizie e **ha lasciato in piedi il vicolo cieco**: un «no» senza motivo e senza uscita. 📏 La strada, misurata nel codice: `prenotazione.ts` chiude i rifiuti che non sono `esito_ignoto` con `spiegazione: r.dettaglio` e nient'altro ⇒ il modello riceve solo quel ripiego e scrive al socio esattamente ciò che lui ha letto. 🚨 **Il confronto che rende il difetto evidente sta nella stessa funzione, due `return` più su**: il ramo `esito_ignoto` ha un'istruzione scritta con cura — non affermare, non far rifare, **dare l'uscita** — mentre questo ramo non ha niente. *Due rifiuti nella stessa funzione, uno con la strada e uno senza.* 📌 Resta non catturato solo il testo **come l'ha riformulato il modello**, che cambia ogni volta: il difetto non è in quelle parole, è nel fatto che al modello non arriva nessuna via d'uscita da riformulare. 🔎 **Le due piste di partenza, e la ① è ora confermata come ORIGINE e non come sospetto**: ① il `MOTIVO_SCRITTURA_RIFIUTATA` del ponte, il cui `detail` arriva dal worker e può portare parole che il socio non deve leggere — è la violazione viva già dichiarata in `CLAUDE.md` (`worker_error` arrivato fino al bot il 19/08); ② un rifiuto che **manda in segreteria** invece di dire «riprova»: se la prenotazione è fallita per una corsa sullo slot o per un guasto momentaneo, riprovare **funziona**, e mandare una persona a telefonare è un vicolo cieco. 🔨 **Cura, nella forma che il progetto ha già**: un rifiuto deve chiudersi con **una strada percorribile da soli** quando esiste — è la stessa regola scritta in `invito-partita-testi.ts` (*«su questo bot non si fa mai un vicolo cieco»*) e la stessa di `esito_ignoto`, che dice «non lo so ancora» invece di mentire. ✅⭐⭐ **CURATA il 22/08 sera — e la cura è il DOPPIO di quella che la scheda descriveva.** 🚨 **Il reperto che l'ha cambiata, trovato andando a verificare l'unica cosa che rendeva lecito dire «riprova»** — *`scrittura_rifiutata` vuol dire davvero che non è passata?* — **e la risposta era NO.** La coda del worker ha concorrenza 1 e un timeout di 180 s sulle interattive; quando scatta, `Promise.race` **smette di aspettare ma non interrompe Playwright** (lo dice il commento del worker stesso: *«l'operazione NON è stata interrotta… zombie»*) e il browser viene chiuso sotto. Quel timeout usciva come un errore qualunque ⇒ **non** veniva marchiato ignoto ⇒ arrivava al bot come **«non è passata»**. ⚖️ ⇒ Scrivere «riprova» sopra quella parola **avrebbe fabbricato la doppia prenotazione**, cioè il danno che tutto l'impianto della voce 23 esiste per evitare: *la frase chiesta dal committente non si poteva scrivere finché la parola su cui poggia non era vera.* 🔨 **Metà A — la parola.** `esitoDellaRispostaWorker` (`matchpoint-bookings-create/esito-prenotazione.js`, il modulo puro dei tre esiti): si elencano i codici del **fallimento CERTO** — quelli che il worker lancia **prima** del click su «Salvare», più quelli che al browser non arrivano — e **tutto il resto cade nell'ignoto**, codici futuri compresi. ⭐ Fallisce **chiusa**, come `dettaglioPerIlBot`, e il verso non è simmetrico: *un «non lo so» di troppo costa un'attesa, un «non è passata» falso costa un campo occupato due volte.* 🔎⭐ **E dentro l'elenco c'è una crepa, che si vede solo leggendo il worker**: `SAVE_BUTTON_NOT_FOUND` racconta **due fatti opposti** — *nessun bottone c'era* e *ho premuto e non so com'è finita*. `clickFormSave` prova i selettori in fila e mette da parte l'errore di un click **già partito** (l'elemento si stacca perché la pagina sta navigando, cioè **proprio quando il salvataggio è riuscito**), poi finisce con «non trovato». ⇒ Si distinguono con ciò che il worker **già scrive** in `navigationAttempts` (`action: 'save_attempt'`): **nessuna riga del worker toccata**. 🔨 **Metà B — la frase**, nelle **due** strade del socio: `prenotazione.ts` (il modello) e `telegram/schede.ts` (i bottoni), che è la lezione già pagata dalla voce 53 — *toccandone una si guarda sempre anche l'altra*. Le due frasi del rifiuto sono ora **opposte per costruzione**: sul certo *«puoi riprovare adesso, quella di prima non è passata»*, sull'ignoto *«non rifarla»*. Un caso apposta pretende che restino opposte. 🔒 La parola `scrittura_rifiutata` vive in **un posto solo** nel bot (`ponte.ts`), letta dalle due strade. 🩹 E in `ponte.ts` è stata **corretta una riga vecchia che mentiva**: dichiarava «VIOLAZIONE VIVA: arriva ancora `reason: 'worker_error'`», curata il 19/08 e mai riscritta. 🧪 **Banco**: 6 casi nuovi in `test/tre-esiti-prenotazione.test.mjs` (24 verdi), 2 nel bot (`schede.test.ts`), e **5 sabotaggi** in `test/sabotaggi-voce-72.mjs` — il difetto rimesso, l'elenco rovesciato, la crepa richiusa, il cablaggio staccato, più il controllo del metro — **tutti visti come rossi**. ⏳ **Resta aperta**: la cura non l'ha ancora vista succedere nessuno su una persona vera, ed è la regola della giornata — *il banco dice che il meccanismo è giusto, non che i messaggi arrivano.* |
@@ -2726,6 +2732,90 @@ Resta conforme a *il gestionale SA, il bot DICE*: il gestionale dice **cosa è s
 **a chi scrivere**.
 
 ---
+
+## 🔓 VOCE 88 — LA FASE 1 È IN SERVIZIO (01/09/2026), e cosa manca
+
+⭐ **Il gestionale SA; il bot ancora non DICE.** Quello che è stato scritto è per intero dalla
+parte del gestionale, ed è voluto: la regola ferrea del 19/08 vuole che sia lui a sapere, e il
+bot a tradurre. ⇒ Da solo questo pezzo è **inerte** — nessuno chiama ancora quelle azioni.
+
+| dove | cosa | prove |
+|---|---|---|
+| `consumer-booking-write/partita-aperta.ts` | **le regole**: la banda ±0,5, chi apre, chi entra, l'ordine dei rifiuti | **24** verdi |
+| `consumer-player-readmodel/partita-aperta.ts` | la **copia** identica, per chi elenca | (le stesse 24) |
+| `test/partite-aperte-copie.test.mjs` | la guardia che le tiene uguali e sorveglia l'ordine | **11** verdi |
+| `consumer-booking-write/index.ts` | azioni `apri` · `chiudi` · `entra` | — |
+| `consumer-player-readmodel/index.ts` | azione `aperte` — **la vetrina** | — |
+| `supabase/migrations/20260901120000_…` | il `CHECK` allargato a `partita_aperta` | applicata su **cudi** |
+
+### 🚨⭐⭐ Le tre decisioni di disegno che valgono più del codice
+
+**① `entra` È `add` CON UN'ALTRA SERRATURA — stessa strada, non una seconda.** Sotto quella
+porta c'è tutto ciò che `add` ha imparato in un mese: il posto riletto adesso, il codice
+cliente contro l'id interno (#624), il terzo esito sul timeout, il roster riletto **dopo** per
+vedere se il giocatore si è agganciato davvero. ⇒ Scriverne una copia avrebbe voluto dire
+ricominciare da capo a sbagliarci, e la copia avrebbe smesso di imparare insieme all'originale.
+Cambiano **due** cose sole: chi entra (sé stesso, e `giocatore_id` non si legge nemmeno) e chi
+decide se può.
+
+**② IL LIVELLO NON SI SCRIVE NELL'APERTURA.** Sarebbe stato comodo — chi elenca lo troverebbe
+lì — e sarebbe stato una **fotografia**: il giorno in cui la segreteria corregge quel livello,
+l'apertura continuerebbe a filtrare col numero vecchio, **e funzionerebbe benissimo**, solo
+attorno al centro sbagliato. ⇒ Si tiene solo *chi* ha aperto, e il livello si rilegge ogni
+volta dalla sua scheda — in `entra` **e** nell'elenco.
+📌 *Un dato copiato accanto alla sua fonte è una seconda verità che aspetta di divergere.*
+
+**③ `apri` E `chiudi` NON TOCCANO MATCHPOINT.** «Questa partita è aperta ad altri» è un fatto
+**nostro**: al circolo non risulta e non deve risultare. Niente worker, niente
+`matchpoint-bookings-edit`, e **niente esito ignoto** — il terzo esito qui non esiste perché
+non c'è nessun intermediario che possa smettere di rispondere. 🎯 È la prova del futuro
+applicata a un gesto nato oggi: *il giorno in cui Matchpoint si spegne, queste due azioni non
+si toccano.*
+
+### 🧾 E una riga della voce 83 si ROVESCIA, per un fatto e non per un'opinione
+
+Sull'esito ignoto l'`add` **non lascia** ricevuta, ed è giusto: lì chi chiede è
+l'**organizzatore**, non chi entra, e coprire l'ingresso zittirebbe l'unica notizia che
+arriverebbe a chi è entrato. ⇒ Su **`entra` la risposta si rovescia**, perché si rovescia il
+fatto: **chi chiede È chi viene toccato**. Ricade nella metà buona della regola della 83
+(*«sull'ignoto la ricevuta copre solo chi ha chiesto»*), insieme a `create` e a `leave`, e la
+ricevuta si lascia.
+⚖️ Senza, il socio leggerebbe «non lo so ancora» dal bot e poi, fra 4 e 19 minuti, *«il circolo
+ti ha aggiunto»* — due messaggi che insieme non dicono nessuna verità.
+
+### ✅ Cosa è stato provato, e cosa NO
+
+· **75 verdi / 0 rossi** sul banco del gestionale (erano 72): +24 sul modulo, +11 sulla guardia
+  delle copie. **Tre sabotaggi rossi**, e uno di essi ha trovato un difetto **nella prova**;
+· ⭐⭐ **il caso 13 alla prima stesura non provava quello che diceva**: aveva due persone a 0,5,
+  e a fermare l'ingresso era `serve_il_test` sul candidato — sabotando `puoAprire` restava
+  **verde**. Riscritto con un candidato a 1,0 (livello dimostrato, cliente, dentro la banda),
+  adesso l'unica cosa che lo può fermare è la riga che deve sorvegliare.
+  📌 *Un caso che passa da due cancelli misura il primo, non quello che voleva* — ed è la
+  stessa forma del verde «fortunato» della voce 68, un piano più in là;
+· ⚠️ **`tsc --strict` pulito sui due `index.ts`**, e va detto per quello che è: dice che i tipi
+  tornano, **non** che le due azioni funzionano. `deno check` da questa rete non gira (jsr
+  bloccato), lo fa la CI;
+· ⛔ **NIENTE è stato provato contro il database vero**: nessuna partita è stata aperta,
+  nessuno è entrato. Le azioni sono scritte e deployate, mai **esercitate**.
+
+### ⛔ COSA MANCA, in ordine
+
+1. 🤖 **LA FASE 2, il bot** — ed è metà del lavoro, non una rifinitura: la voce di menu
+   `partite_aperte`, i testi, i bottoni «Apri» / «Chiudi» / «Ci sto», e la frase che propone il
+   **test** a chi non ha il livello (il ponte gliela prepara già: `serve_il_test` più il
+   conteggio). ⚠️ **Da non scoprire a lavoro iniziato**: il caso
+   `test/il-modello-sa-quel-che-sa-il-menu.test.ts` (voce 87) diventa **rosso** appena si
+   aggiunge `partite_aperte` ai `COMANDI` senza insegnare la voce al modello. Non è un
+   ostacolo: è la guardia che fa il suo lavoro, e chi la vede rossa **scrive la voce**;
+2. 🗄️ **la migrazione su PROD** (`qqbf`), che va **prima** del merge su `main` — un push là è
+   un deploy delle edge, e senza il `CHECK` largo l'apertura prende un 500;
+3. ✋ **la prova fisica**, che è quella che chiude la voce: due soci veri, uno che apre e uno
+   che entra, **e il controllo che chi era già in campo riceva l'avviso** come vuole la regola
+   del 23/08. ⚠️ Non si può fare su TEST — là il calendario è **congelato** e le scritture sono
+   simulate: serve una partita vera su PROD.
+
+⏳ **Finché la 3 non è successa la voce resta APERTA**, ed è la forma delle voci 65 e 68.
 
 ## 🔨 VOCE 68 — COSA È GIÀ SCRITTO (21/08/2026 sera), e cosa manca
 
@@ -2896,15 +2986,79 @@ le due schede come una persona sola e l'avviso parte lo stesso.
 ~~1. eseguire il SQL~~ · ~~2. mergiare~~ · ~~3. aggiornare il bot~~ · ~~4. collaudare~~ —
 **tutti e quattro fatti la sera del 21/08**, in quest'ordine, ed è la tabella qui sopra.
 
-⛔ **Resta invece:**
-1. **guardare il PRIMO GIORNO vero**: finora l'unico fatto consegnato è quello di prova. Il primo
-   gesto vero della segreteria è la misura che manca, e va guardata nel registro del bot
-   (`stato-bot.yml`, regex `detto a|staff`);
-2. **decidere sulla cura strutturale del doppione** (sopra): far cercare al sync anche per
-   `payload.id`, così una scheda senza telefono non genera una riga nuova;
-3. **le prove delle edge non girano in CI su questo repo** — c'è solo `typecheck-edge-functions`.
-   È lo stesso difetto curato il 21/08 nel repo del bot con `prove.yml`: qui i 42 casi della voce
-   68 si lanciano solo a mano, e **nessuno se ne accorgerebbe se un domani diventassero rossi**.
+🔄🚨⭐⭐ **01/09/2026 — QUEI TRE PUNTI SONO ANDATI A GUARDARLI, E DUE ERANO GIÀ FALSI DA
+DIECI GIORNI.** Non «invecchiati»: falsi, e la scheda continuava a chiederli. ⇒ Le tre righe si
+**correggono in testa**, non si affiancano.
+
+⚠️ *(La prima colonna usa ①②③ e non `**1**`: una riga di tabella che comincia con un numero fra
+asterischi è la forma con cui `guard-docs-truth` conta le VOCI in coda, e questa non è una voce.)*
+
+| | diceva | verità misurata il 01/09 |
+|---|---|---|
+| **①** | *«finora l'unico fatto consegnato è quello di prova»* | ✅ **CHIUSO.** Il registro del bot dei soci porta **22 avvisi veri** fra il 29/08 e il 01/09, a **tre persone diverse** (Maurizio Aprea, Lidia Comes, Marco Aprea) e su **tre gesti** — `aggiunto`, `annullata`, `formazione`. L'ultimo è di **oggi, 14:08:09**. |
+| **②** | *«decidere sulla cura strutturale del doppione: far cercare al sync anche per `payload.id`»* | ❌ **FALSO dal 28/08**, e per giunta era la cura **sbagliata**: `chiave-canonica.ts` (voce 69) lo dice per esteso — *«non avrebbe curato niente, perché il match c'è già»*. Il difetto non era trovare la riga, era **riscriverla sotto un'altra chiave**. |
+| **③** | *«le prove delle edge non girano in CI: c'è solo `typecheck-edge-functions`»* | ❌ **FALSO dal 21/08**, cioè dallo stesso giorno in cui la riga è stata scritta: `prove.yml` gira **a ogni spinta** e su ogni PR. |
+
+📏 **Come è stato misurato il punto ①**, senza entrare sulla VM: `stato-bot.yml`
+(`workflow_dispatch`, sola lettura) su `soci`, 400 righe di coda, regex `detto a|staff|circolo ha`.
+🔎 E nello stesso registro c'è **un guasto vero**, che nessuno avrebbe visto: il 30/08 alle
+10:48:32 il giro ha scritto *«0 ritirati, 0 detti, 0 scartati · problemi: eventi staff: Risposta
+non JSON da consumer-staff-events (HTTP 502)»*. ⚖️ **Non ha perso niente**, ed è il disegno che
+regge: se il freno morde non si chiude niente e il giro dopo riprova — infatti la coda oggi ha
+**605 righe, 605 chiuse, 0 aperte**.
+
+📏 **Come è stato misurato il punto ②**: sui doppioni vivi di PROD. Le persone con più di una
+scheda sono **13**, e **nessuna** è il doppione della voce 69 (una riga `phone:` più una
+`email:`): sono tutte coppie con **due telefoni diversi** — omonimi veri o due numeri — più una
+coppia «Ospite». La più recente è del **05/08**, la più recente `matchpoint_auto` del **10/07**:
+tutte **prima** della cura del 28/08.
+⚠️ **E il limite di questa misura si dichiara**: oggi **1.105** schede sono state riscritte, ma
+**non ho verificato che fra quelle ci fosse un import senza telefono** — cioè il caso che il
+difetto richiede. ⇒ Lo zero è **compatibile** con la cura che funziona, non è la prova che sia
+stata esercitata. È la trappola ⑤ del 23/08, *«uno zero letto troppo presto»*, e qui si evita
+dicendolo invece di contarlo come una vittoria.
+
+⛔ **Resta invece — e adesso è UNA cosa sola:**
+
+1. ✋ **la prova fisica della cura di oggi** (sotto). Il resto della voce è in servizio e
+   misurato; questa colonna si riempie al primo giro del bot dopo il deploy su PROD.
+
+### 🔎 E la cosa che era DICHIARATA e non curata: `consegnato_at` diceva il falso
+
+⚠️ Stava scritto qui sopra dal 21/08 — *«`consegnato_at` viene scritto **anche** quando il
+destinatario non si riconosce ⇒ la colonna dice «fatto» su un messaggio mai partito»* — con la
+nota *«oggi è deliberato»*. 📌 *Una riga che dichiara un difetto e lo chiama deliberato resta un
+difetto: la deliberazione riguarda il non averlo curato, non il fatto che non ci sia.*
+
+📏 **La cifra che lo rende concreto, misurata il 01/09**: la coda ha **605** righe, **605** con
+`consegnato_at`, **0** aperte — e nello stesso registro del bot i messaggi davvero partiti sono
+**22**, contro **274** righe chiuse negli ultimi quattro giorni. ⇒ La stragrande maggioranza di
+quei «fatto» riguarda gente che il bot non ce l'ha: giusto, ma **non è «consegnato»**.
+
+🔨 **CURA (01/09) — e NON rinomina niente**, che è la decisione: `consegnato_at` continua a voler
+dire *«questa riga è chiusa, non riesaminarla»*, perché su quel fatto poggia la **chiusura
+atomica del 24/08**, cioè l'intera protezione contro il doppio invio. Si aggiunge il **perché**
+accanto (`esito`, `supabase/functions/consumer-staff-events/esito-avviso.ts`), con quattro valori:
+`consegnato` · `non_riconosciuto` · `netto_nullo` · **`corsa_persa`**.
+⭐ Il quarto è quello che non era stato notato da nessuno, ed è il caso in cui la colonna mentiva
+**peggio**: questo giro si prende la riga, una sua sorella se l'è presa un altro giro, l'evento non
+esce — e lì il nome era riconosciuto, quindi la riga è **indistinguibile** da una consegnata
+davvero.
+⚖️ L'esito si scrive **dopo** la presa, su righe già nostre, e un suo errore **non tocca la
+consegna**: è diagnostica, e far cadere un avviso vero per una riga di contabilità sarebbe il verso
+sbagliato — lo stesso già scelto per la ricevuta della voce 70.
+⚠️ **Le 605 righe di prima restano a `NULL`**, e va letto come *non misurato*, non come
+«consegnato». Riempirle a posteriori sarebbe inventare un esito che nessuno ha osservato — il
+difetto esatto che la colonna esiste per togliere.
+📌 È la stessa forma della voce 71 (`ordine` accanto a `giocatori`) e della 70 (la ricevuta accanto
+al fatto): **far uscire il perché insieme al dato.**
+
+· **6 casi nuovi** (`esito-avviso.test.ts`), banco del gestionale a **76 verdi / 0 rossi**;
+· **4 sabotaggi rossi**, e uno di essi è la guardia sulla chiusura atomica: togliendo il
+  `.is('consegnato_at', null)` del 24/08 il caso 4 diventa rosso **e** cadono 2 casi di
+  `chiusura-atomica.test.ts`. La cura nuova sorveglia anche quella vecchia;
+· ⚠️ **provato: la decisione e il cablaggio. NON provato: che la colonna si riempia davvero** —
+  quello vuole un giro vero contro il database, ed è la riga 1 qui sopra.
 
 ⚖️ **L'ordine è consigliato, non obbligatorio, e vale la pena sapere perché**: se il deploy
 arrivasse prima della tabella, il sync scriverebbe una riga di `warn` nel registro e
