@@ -1,0 +1,113 @@
+name: Cosa dice il TABELLONE Matchpoint su un giorno (sola lettura)
+
+# ⭐ PERCHÉ ESISTE — 01/09/2026, sera, e nasce da una sua osservazione davanti allo schermo:
+# *«I campi prenotati dovrebbero essere quattro, non tre»* — calendario staff sul **3 ottobre**,
+# cioè uno dei giorni entrati con la finestra nuova a 60 giorni.
+#
+# 📏 Misurato subito sul gestionale: nella copia ci sono **tre** righe (Campo 1, 2, 3), nessuna
+# cancellata ⇒ **l'app non sta mentendo**, mostra quello che ha. Il quarto non è mai arrivato.
+# ⇒ Resta una domanda sola, e da qui non si può rispondere guardando la copia: **Matchpoint,
+# quel giorno, ce l'ha il quarto campo?** Se sì lo perdiamo noi; se no, non c'è.
+#
+# ⛔ SOLA LETTURA: `/read-tabellone` apre la pagina del tabellone e legge gli slot. Non scrive.
+# ⚠️ Occupa la coda del worker CONDIVISO per la durata della lettura: un tick del sync può
+# slittare, e si recupera al giro dopo.
+#
+# ⚖️ E perché il tabellone e non l'export: sono **due fonti diverse**, ed è esattamente ciò che
+# serve distinguere. L'export è quello da cui la copia nasce; il tabellone è quello che la
+# segreteria VEDE. Se le due non concordano, il difetto ha un nome e un posto.
+
+on:
+  workflow_dispatch:
+    inputs:
+      giorno:
+        description: 'Il giorno da leggere (YYYY-MM-DD)'
+        required: true
+      grezzo:
+        description: 'Stampa la risposta intera invece del riassunto (si/no)'
+        required: false
+        default: 'no'
+
+jobs:
+  leggi:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/matchpoint-worker' }}
+      GIORNO: ${{ inputs.giorno }}
+      GREZZO: ${{ inputs.grezzo }}
+    steps:
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Leggi il tabellone, dalla VM
+        run: |
+          set -euo pipefail
+          # 🚨 Gli input passano come ARGOMENTI, non interpolati nel testo dello script remoto.
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            'bash -s' -- "$DEPLOY_PATH" "$GIORNO" "$GREZZO" <<'REMOTO'
+          set -uo pipefail
+          CARTELLA="$1"; GIORNO="$2"; GREZZO="$3"
+
+          echo "$GIORNO" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "::error::giorno non e' YYYY-MM-DD"; exit 1; }
+
+          CHIAVE="$(grep -m1 '^MATCHPOINT_WORKER_API_KEY=' "$CARTELLA/.env" 2>/dev/null | cut -d= -f2- | tr -d '\"'\''\r')"
+          [ -n "$CHIAVE" ] || { echo "::error::MATCHPOINT_WORKER_API_KEY non trovata in $CARTELLA/.env"; exit 1; }
+
+          RISPOSTA="$(mktemp)"
+          CODICE=$(curl -s -o "$RISPOSTA" -w '%{http_code}' --max-time 300 \
+            -X POST "http://127.0.0.1:8787/read-tabellone" \
+            -H "Authorization: Bearer $CHIAVE" \
+            -H 'Content-Type: application/json' \
+            -d "{\"date\":\"$GIORNO\"}")
+
+          echo "== Tabellone Matchpoint del $GIORNO — HTTP $CODICE =="
+          if [ "$CODICE" != "200" ]; then
+            echo "risposta (troncata, senza segreti):"
+            head -c 600 "$RISPOSTA" | tr -d '\n' | sed 's/"password":"[^"]*"/"password":"***"/g'; echo
+            rm -f "$RISPOSTA"; exit 1
+          fi
+
+          # Il riassunto che serve alla domanda: quanti SLOT OCCUPATI, e su quali campi.
+          echo "slot occupati letti dal tabellone:"
+          python3 - "$RISPOSTA" <<'PY'
+          import json, sys, collections
+          d = json.load(open(sys.argv[1]))
+          def scendi(x, prof=0):
+              if isinstance(x, dict):
+                  for k, v in x.items():
+                      yield from scendi(v, prof+1)
+              elif isinstance(x, list):
+                  for v in x:
+                      if isinstance(v, dict): yield v
+                      else: yield from scendi(v, prof+1)
+          righe = [r for r in scendi(d) if isinstance(r, dict) and ('campo' in r or 'court' in r or 'spazio' in r)]
+          if not righe:
+              print("  (nessuna riga con un campo riconoscibile — stampa la risposta col grezzo)")
+              print("  chiavi di primo livello:", list(d)[:12])
+          else:
+              per = collections.defaultdict(list)
+              for r in righe:
+                  c = r.get('campo') or r.get('court') or r.get('spazio')
+                  per[str(c)].append(r)
+              for c in sorted(per):
+                  for r in per[c]:
+                      ora = r.get('ora') or r.get('hora') or r.get('inizio') or '?'
+                      nome = r.get('nome') or r.get('descrizione') or r.get('titolo') or ''
+                      libero = r.get('libero') if 'libero' in r else r.get('free')
+                      print(f"  campo {c} | ora {ora} | libero={libero} | {str(nome)[:50]}")
+              print(f"  --- campi distinti: {len(per)} ---")
+          PY
+
+          if [ "$GREZZO" = "si" ]; then
+            echo; echo "== risposta grezza (prime 4000 lettere) =="
+            head -c 4000 "$RISPOSTA"; echo
+          fi
+          rm -f "$RISPOSTA"
+          REMOTO
