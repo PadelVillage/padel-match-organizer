@@ -168,6 +168,17 @@ jobs:
                 const f = window.confirmarEliminarParticipanteConDevolucion;
                 if (typeof f === 'function') out.funzione = f.toString().slice(0, 3000);
               } catch (e) { out.funzione = 'errore: ' + e.message; }
+              // ⭐ E il MOTORE del modale, che è la cosa che serve davvero: `confirmar` dice
+              //    quali OPZIONI offre, non quali VALORI scrive nei campi nascosti né come
+              //    fa partire il postback. Senza questo, la cura del worker sarebbe una
+              //    supposizione su due campi che governano dei RIMBORSI.
+              out.motore = {};
+              try {
+                const M = window.MPModalDevolucion;
+                if (M) for (const k of Object.keys(M)) {
+                  if (typeof M[k] === 'function') out.motore[k] = M[k].toString().slice(0, 4000);
+                }
+              } catch (e) { out.motore = { errore: e.message }; }
               return out;
             });
 
@@ -192,6 +203,15 @@ jobs:
             console.log('');
             console.log('-- confirmarEliminarParticipanteConDevolucion --');
             console.log(referto.funzione || '  (non definita su window)');
+            console.log('');
+            console.log('-- MPModalDevolucion: cosa scrive e come fa partire il postback --');
+            const chiavi = Object.keys(referto.motore || {});
+            if (!chiavi.length) console.log('  (MPModalDevolucion non è su window)');
+            for (const k of chiavi) {
+              console.log('  · ' + k + ':');
+              console.log(referto.motore[k]);
+              console.log('');
+            }
           } finally {
             await browser.close().catch(() => {});
           }
