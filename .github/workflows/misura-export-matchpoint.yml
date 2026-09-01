@@ -106,7 +106,11 @@ jobs:
             # ⚖️ *Una sonda che sbaglia una colonna la si corregge prima di leggerne un'altra*:
             # se no si impara a ignorarla, ed è così che una misura smette di essere una misura.
             BYTE=$(grep -oE '"byteLength": *[0-9]+' "$RISPOSTA" | head -1 | grep -oE '[0-9]+')
-            OK=$(grep -oE '"ok": *true' "$RISPOSTA" | head -1)
+            # ⚠️ Un FLAG, non la stringa trovata: tenendo `"ok": true` dentro la variabile la
+            # riga usciva «riuscito"ok": true». Cosmetico, ma una sonda che si legge male si
+            # legge di meno — ed è lo stesso motivo per cui le altre due colonne sono state
+            # corrette invece di essere spiegate a voce.
+            if grep -qE '"ok": *true' "$RISPOSTA"; then ESITO='riuscito'; else ESITO='NON riuscito'; fi
             # 🚨⭐⭐ IL TEMPO CHE CONTA È IL NETTO, e il primo giro l'ha dimostrato: a 60 giorni
             # due misure identiche hanno dato 19,9 s e 31,0 s — **11 secondi di scarto**. Non era
             # rumore: il worker è CONDIVISO col sync e `mpQueueRun` serializza, quindi il
@@ -125,11 +129,11 @@ jobs:
               printf 'misura %d/%s: HTTP %s | NETTO %d.%03d s | totale %d.%03d s (coda %d.%03d s) | %s | xlsx %s byte\n' \
                 "$i" "$RIPETIZIONI" "$CODICE" "$((NETTO/1000))" "$((NETTO%1000))" \
                 "$((MS/1000))" "$((MS%1000))" "$(((MS-NETTO)/1000))" "$(((MS-NETTO)%1000))" \
-                "${OK:+riuscito}${OK:-NON riuscito}" "${BYTE:-?}"
+                "$ESITO" "${BYTE:-?}"
             else
               printf 'misura %d/%s: HTTP %s | NETTO non leggibile | totale %d.%03d s | %s | xlsx %s byte\n' \
                 "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" \
-                "${OK:+riuscito}${OK:-NON riuscito}" "${BYTE:-?}"
+                "$ESITO" "${BYTE:-?}"
             fi
             if [ "$CODICE" != "200" ]; then
               echo "  risposta (troncata, senza segreti):"
