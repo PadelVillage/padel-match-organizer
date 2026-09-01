@@ -1,0 +1,119 @@
+name: Quanto ci mette l'export prenotazioni (sola lettura)
+
+# ⭐⭐ PERCHÉ ESISTE — 01/09/2026, la domanda dei 60 giorni.
+#
+# 🗣️ Sua richiesta: portare l'orizzonte da 30 a 60 giorni. La strada è scindere la costante —
+# `EXPORT_FUTURE_DAYS` (le prenotazioni vere) da `TABELLONE_FULL_DAYS` (una pagina per giorno,
+# che a 60 farebbe 504 sistematico) — ma prima serve un NUMERO che nessuno ha: **quanto ci mette
+# il report Matchpoint a 60 giorni invece che a 30.**
+#
+# 🚨 E il margine è più stretto di quanto sembri, misurato sui log delle edge il 01/09: il tick
+# del sync ha mediana **78 s**, p90 **102 s**, e **7 giri su 524** in 24 ore sbattono già sul
+# tetto dei **150 s**. L'export gira su OGNI tick (~720 al giorno), non ogni 15 minuti ⇒ ogni
+# secondo in più li paga tutti. *Una costante si cambia con una misura, non con una stima.*
+#
+# ⚖️ PERCHÉ UN WORKFLOW E NON UN `curl` DA QUALUNQUE PARTE: la chiave del worker e le credenziali
+# Matchpoint vivono nel `.env` sulla VM e **non escono di lì**. Dalla shell di una sessione cloud
+# la VM non si raggiunge (esce solo la 443), ma **Actions ci entra in SSH** — è la stessa strada
+# del deploy qui accanto. ⇒ La misura si prende DALLA VM, contro `localhost`, senza che nessun
+# segreto attraversi la rete né questo repo.
+#
+# ⛔ COSA NON FA: nessuna scrittura. `/export-booking-history` è una **lettura** — apre il report
+# e scarica l'xlsx, esattamente come fa il sync ogni due minuti. Non crea e non annulla niente.
+# ⚠️ COSA COSTA, dichiarato: occupa la **coda del worker condiviso** per la durata della misura,
+# quindi un tick del sync può slittare. Si recupera al giro dopo.
+# ⭐ Per questo `giorni` accetta anche **30**: si misura il caso noto per primo, e il confronto è
+# fra due numeri presi nello stesso momento sullo stesso worker — non fra una misura di oggi e
+# una scritta in un documento la settimana scorsa.
+
+on:
+  workflow_dispatch:
+    inputs:
+      giorni:
+        description: 'Quanti giorni avanti chiedere (30 = il caso di oggi, 60 = quello da decidere)'
+        required: true
+        default: '60'
+      ripetizioni:
+        description: 'Quante misure (una sola non distingue il caso dalla regola)'
+        required: false
+        default: '2'
+
+jobs:
+  misura:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+      DEPLOY_PATH: ${{ vars.HETZNER_WORKER_PATH || '/opt/matchpoint-worker' }}
+      GIORNI: ${{ inputs.giorni }}
+      RIPETIZIONI: ${{ inputs.ripetizioni }}
+    steps:
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Misura, dalla VM, contro localhost
+        run: |
+          set -euo pipefail
+          # 🚨 I valori si passano come ARGOMENTI dello script remoto, non interpolati nel testo:
+          # un input di workflow dentro un heredoc è codice scritto da chi lancia.
+          ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            'bash -s' -- "$DEPLOY_PATH" "$GIORNI" "$RIPETIZIONI" <<'REMOTO'
+          set -uo pipefail
+          CARTELLA="$1"; GIORNI="$2"; RIPETIZIONI="$3"
+
+          case "$GIORNI" in ''|*[!0-9]*) echo "::error::giorni non e' un numero"; exit 1;; esac
+          case "$RIPETIZIONI" in ''|*[!0-9]*) echo "::error::ripetizioni non e' un numero"; exit 1;; esac
+          # Il worker taglia da se' `days` a 1..120 (`resolveHistoryRange`): chiedere di piu' non
+          # misurerebbe quello che si crede. Meglio fermarsi che leggere un numero falso.
+          [ "$GIORNI" -ge 1 ] && [ "$GIORNI" -le 120 ] || { echo "::error::giorni fuori da 1..120"; exit 1; }
+          [ "$RIPETIZIONI" -ge 1 ] && [ "$RIPETIZIONI" -le 5 ] || { echo "::error::ripetizioni fuori da 1..5"; exit 1; }
+
+          # La chiave si legge dal .env del worker e NON viene mai stampata.
+          CHIAVE="$(grep -m1 '^MATCHPOINT_WORKER_API_KEY=' "$CARTELLA/.env" 2>/dev/null | cut -d= -f2- | tr -d '\"'\''\r')"
+          if [ -z "$CHIAVE" ]; then
+            echo "::error::MATCHPOINT_WORKER_API_KEY non trovata in $CARTELLA/.env"
+            exit 1
+          fi
+
+          DA="$(date +%F)"
+          A="$(date -d "+$GIORNI days" +%F)"
+          echo "== Export prenotazioni: $DA -> $A ($GIORNI giorni), $RIPETIZIONI misure =="
+          echo
+
+          for i in $(seq 1 "$RIPETIZIONI"); do
+            RISPOSTA="$(mktemp)"
+            INIZIO=$(date +%s%3N)
+            # `credentialSource` assente => il worker usa le proprie credenziali dal .env: nessun
+            # segreto passa da qui. Corpo identico a quello che manda il sync.
+            CODICE=$(curl -s -o "$RISPOSTA" -w '%{http_code}' --max-time 300 \
+              -X POST "http://127.0.0.1:8787/export-booking-history" \
+              -H "Authorization: Bearer $CHIAVE" \
+              -H 'Content-Type: application/json' \
+              -d "{\"days\":$GIORNI,\"fromDate\":\"$DA\",\"toDate\":\"$A\"}")
+            FINE=$(date +%s%3N)
+            MS=$(( FINE - INIZIO ))
+            # Il peso dell'xlsx e' l'altra meta' della misura: dice quante righe in piu' porta la
+            # finestra larga, che e' la sola parte che scala coi giorni. Il resto (avvio del browser,
+            # login, navigazione) e' fisso.
+            BYTE=$(grep -o '"byteLength":[0-9]*' "$RISPOSTA" | head -1 | cut -d: -f2)
+            OK=$(grep -o '"ok":true' "$RISPOSTA" | head -1)
+            printf 'misura %d/%s: HTTP %s | %d.%03d s | %s | xlsx %s byte\n' \
+              "$i" "$RIPETIZIONI" "$CODICE" "$((MS/1000))" "$((MS%1000))" "${OK:-NON riuscito}" "${BYTE:-?}"
+            if [ "$CODICE" != "200" ]; then
+              echo "  risposta (troncata, senza segreti):"
+              head -c 400 "$RISPOSTA" | tr -d '\n' | sed 's/"password":"[^"]*"/"password":"***"/g'
+              echo
+            fi
+            rm -f "$RISPOSTA"
+            # Fra una misura e l'altra si lascia respirare la coda: il worker e' CONDIVISO col sync, e
+            # incollare le misure vorrebbe dire misurare anche la propria congestione.
+            if [ "$i" -lt "$RIPETIZIONI" ]; then sleep 20; fi
+          done
+          echo
+          echo "== fine =="
+          REMOTO
