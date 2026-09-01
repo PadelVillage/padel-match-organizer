@@ -91,13 +91,25 @@ test('5) OLTRE LA FINESTRA: non è «aspetta», è «qui non si saprà mai»', (
   // provare**. Allargando la finestra a 60 si spostava anche il caso, e restava VERDE —
   // scoperto sabotando, non rileggendo. Un caso che deriva il proprio ingresso da ciò che
   // controlla non controlla niente.
+  //
+  // 🔄 **LE DATE SONO STATE SPOSTATE IL 01/09/2026**, quando la finestra è passata da 30 a 60
+  // giorni (`EXPORT_FUTURE_DAYS`). ⭐⭐ E questo caso è diventato ROSSO da sé nel giro in cui la
+  // costante è cambiata: è il motivo per cui i giorni stanno scritti a mano, ed è la nota qui
+  // sopra che si avvera. *Una guardia che si sposta insieme a ciò che sorveglia non sorveglia.*
+  // ⇒ 15/08 + 61 = 15/10, primo giorno FUORI.
   assert.equal(
-    v({ presente: false, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-09-15', oggi: OGGI }),
+    v({ presente: false, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-10-15', oggi: OGGI }),
     'non_ancora/fuori_finestra/basta',
   );
-  // L'ultimo giorno dentro la finestra si comporta invece da giorno normale: 15/08 + 30 = 14/09.
+  // L'ultimo giorno dentro la finestra si comporta invece da giorno normale: 15/08 + 60 = 14/10.
   assert.equal(
-    v({ presente: false, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-09-14', oggi: OGGI }),
+    v({ presente: false, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-10-14', oggi: OGGI }),
+    'no/copia_aggiornata_dopo/basta',
+  );
+  // 🚨 E il giorno che PRIMA era fuori adesso è DENTRO: è la prova che la finestra si è davvero
+  // allargata, e non che il caso è stato solo spostato più in là per farlo tacere.
+  assert.equal(
+    v({ presente: false, scrittaAlle: SCRITTA, copiaFrescaAl: SYNC_DOPO, giornoSlot: '2026-09-15', oggi: OGGI }),
     'no/copia_aggiornata_dopo/basta',
   );
 });
@@ -165,8 +177,16 @@ test('12) IL COLLEGAMENTO: la finestra è la STESSA che usa il sync per l’expo
   // confrontano: una finestra più larga di quella vera farebbe aspettare un dato che non
   // arriverà, una più stretta direbbe «mai» a una prenotazione che invece si vedrà.
   const sync = readFileSync(join(cartella, '..', 'matchpoint-bookings-sync', 'index.ts'), 'utf8');
-  const m = sync.match(/const DEFAULT_FUTURE_DAYS = (\d+);/);
-  assert.ok(m, 'DEFAULT_FUTURE_DAYS non trovato nel sync: è cambiata la forma?');
+  // 🔄 01/09/2026 — la costante del sync si è SDOPPIATA: `EXPORT_FUTURE_DAYS` (le
+  // prenotazioni, 60) e `TABELLONE_FULL_DAYS` (la manutenzione, 30). Questo numero deve
+  // seguire la PRIMA: la domanda è «fin dove l'export porta le prenotazioni».
+  const m = sync.match(/const EXPORT_FUTURE_DAYS = (\d+);/);
+  assert.ok(m, 'EXPORT_FUTURE_DAYS non trovato nel sync: è cambiata la forma?');
+  // 🚨 E la gemella del tabellone NON deve essere finita a 60 per inerzia: se qualcuno
+  // le riallineasse «per coerenza», il tick pieno tornerebbe a 61 pagine e al 504 sistematico.
+  const t = sync.match(/const TABELLONE_FULL_DAYS = (\d+);/);
+  assert.ok(t, 'TABELLONE_FULL_DAYS non trovato: la scissione è stata disfatta?');
+  assert.equal(Number(t![1]), 30, 'il tabellone del tick pieno non è più a 30: torna il 504');
   assert.equal(Number(m![1]), FINESTRA_SYNC_GIORNI, 'la finestra qui e quella del sync sono DIVERSE');
 });
 
