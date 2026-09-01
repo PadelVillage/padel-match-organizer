@@ -6306,6 +6306,116 @@ async function clickSaveActualizar(page, diagnostic, tag = 'salva') {
     diagnostic);
 }
 
+// ── Come si toglie un partecipante, dal 01/09/2026 ───────────────────────────
+// 🚨⭐⭐ NON SI CLICCA PIÙ IL LINK, e non è una preferenza di stile: cliccandolo, il
+// gesto NON PASSA. Misurato su PROD il 01/09 (voce 117), due fallimenti veri alle 22:22:08
+// e alle 22:27:23, stesso call log:
+//
+//     <div id="mpModalDevolucionCapa">…</div> intercepts pointer events
+//
+// Fra il 29/08 e il 01/09 Matchpoint ha aggiunto al link
+// `onclick="return confirmarEliminarParticipanteConDevolucion(this)"`: il PRIMO click apre
+// un modale che chiede cosa fare dei pagamenti e restituisce `false` ⇒ il postback non parte.
+// Il codice di prima non lo sapeva: aspettava 1,2 s, ri-scansionava, trovava la persona
+// ancora in elenco e RI-CLICCAVA — e il secondo click cadeva sul modale ormai aperto,
+// consumando gli 8 s di attesa. ⇒ «un solo tentativo, 8 s, nessun retry» era il SINTOMO:
+// un timeout più lungo avrebbe fallito identico, perché il link non torna cliccabile MAI
+// finché il modale è aperto.
+// 📌 I `steps` lo dicevano già senza il call log: `elimina:laura aprea` compariva DUE volte
+// nella stessa operazione.
+//
+// ⭐ Il meccanismo del modale è stato LETTO dalla ficha viva (sonda `leggi-ficha-matchpoint.yml`,
+// sola lettura, zero click) invece che indovinato — `MPModalDevolucion.confirmar`:
+//
+//     if (elemento[MARCA_CONFIRMADO]) { elemento[MARCA_CONFIRMADO] = false; return true; }
+//     fijarValor(idCampoConfirmacion, 'False');
+//     abrir(opciones, function (elegido) {
+//         fijarValor(idCampoConfirmacion,   'True');
+//         fijarValor(idCampoComportamiento, elegido);
+//         relanzar(elemento);
+//     });
+//     return false;
+//
+// ⇒ Il modale non serve APRIRLO: basta scrivere i due campi nascosti che lui scriverebbe e
+// chiamare il `__doPostBack` che sta già nell'`href` del link. Così l'`onclick` non entra
+// nemmeno in gioco, e non c'è nessuna sovrapposizione da schivare.
+const CONFERMA_ELIMINA_ID = 'CC_Datos_HiddenFieldConfirmaBorrarParticipante';
+const COMPORTAMENTO_DEVOLUCION_ID = 'CC_Datos_HiddenFieldComportamientoDevolucionParticipante';
+
+// 🚨⭐⭐ QUESTA COSTANTE È UNA DECISIONE DEL COMMITTENTE, non una scelta tecnica: il campo
+// governa il RIMBORSO al socio che viene tolto. Le tre risposte che Matchpoint offre sono
+// `devolverSaldoACobrados` («Rimborsare importi pagati»), `nada` («Niente») e `defecto`
+// («Assegnato dal sistema»).
+// 🗣️ Scelta sua il 01/09/2026: **`defecto`**. ⚖️ Ed è anche il `valorPorDefecto` di Matchpoint,
+// cioè esattamente quello che ottiene la segreteria premendo «Confermare» senza toccare
+// niente ⇒ il bot e l'app non introducono nessuna politica che il circolo non abbia già.
+// ⛔ Cambiare questo valore NON è una modifica di codice: è cambiare cosa succede ai soldi di
+// qualcuno. Si tocca solo su sua parola, e la si scrive qui accanto con la data.
+const COMPORTAMENTO_DEVOLUCION = 'defecto';
+
+async function eliminaPartecipante(page, selettore, diagnostic, etichetta) {
+  const link = page.locator(selettore).first();
+  const info = await link.evaluate((a) => ({
+    href: a.getAttribute('href') || '',
+    onclick: a.getAttribute('onclick') || '',
+  })).catch(() => null);
+  if (!info) {
+    throw fail('REMOVE_LINK_MISSING',
+      `Il link «Eliminare» di ${etichetta} non è leggibile nella scheda.`, diagnostic);
+  }
+  const bersaglio = (/__doPostBack\('([^']+)'/.exec(info.href) || [])[1] || '';
+  const conModale = /confirmarEliminar/i.test(info.onclick);
+
+  if (conModale && bersaglio) {
+    const esito = await page.evaluate(({ target, comportamento, idConf, idComp }) => {
+      const scrivi = (id, v) => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        el.value = v;
+        return true;
+      };
+      const conf = scrivi(idConf, 'True');
+      const comp = scrivi(idComp, comportamento);
+      if (!conf || !comp) return { ok: false, conf, comp };
+      if (typeof window.__doPostBack !== 'function') return { ok: false, senzaPostBack: true };
+      window.__doPostBack(target, '');
+      return { ok: true };
+    }, {
+      target: bersaglio,
+      comportamento: COMPORTAMENTO_DEVOLUCION,
+      idConf: CONFERMA_ELIMINA_ID,
+      idComp: COMPORTAMENTO_DEVOLUCION_ID,
+    });
+    if (!esito || !esito.ok) {
+      // ⚠️ Si FALLISCE invece di ripiegare sul click: il click, su una ficha col modale, è la
+      // strada che NON funziona — ripiegarci sopra vorrebbe dire tornare al difetto del 01/09
+      // con un nome diverso. Meglio un errore che dice cosa manca.
+      throw fail('REMOVE_CONFIRM_FIELDS_MISSING',
+        `Matchpoint chiede conferma per togliere ${etichetta}, ma i campi della conferma non ci sono `
+        + `(conferma=${esito?.conf} comportamento=${esito?.comp} postback=${!esito?.senzaPostBack}).`,
+        diagnostic);
+    }
+    diagnostic.steps.push(`elimina_postback:${etichetta}`);
+  } else {
+    // Ficha senza modale (le lezioni, e le partite fino al 29/08): la strada vecchia, con in
+    // più la chiusura di un eventuale swal — il 29/08 a intercettare fu un `fancybox` di
+    // `Compartir.aspx` rimasto aperto sopra la scheda, che è la stessa malattia.
+    await dismissSwalOk(page, diagnostic, `elimina_${etichetta}`);
+    await link.click({ timeout: 8000 });
+    diagnostic.steps.push(`elimina_click:${etichetta}`);
+  }
+
+  // Il postback è asincrono: si aspetta che FINISCA, non un tempo a caso. Il vecchio
+  // `waitForTimeout(1200)` era una scommessa, e la ri-scansione che ne seguiva è ciò che
+  // faceva partire il secondo click.
+  // ⚠️ Il `waitForTimeout` resta come PAVIMENTO, e non è ridondanza: `mpWaitAsyncPostbackIdle`
+  // torna SUBITO quando la pagina non ha un `PageRequestManager` in volo — compreso il caso in
+  // cui il postback non è ancora partito. Togliendolo, l'attesa nuova potrebbe risultare più
+  // corta di quella vecchia, e una cura non deve poter essere più fragile di ciò che sostituisce.
+  await mpWaitAsyncPostbackIdle(page, 12000);
+  await page.waitForTimeout(1200);
+}
+
 // ── Helper: cerca una riga partecipante già presente (per nome o per id) ──────
 // Scansiona TUTTI gli input "TextBoxNombreValor" (qualunque repeater: partita
 // WUCUsuarioPartida o lezione WUCUsuarioClase_Listado) e ricava l'id cliente
@@ -7879,9 +7989,19 @@ async function editBookingWithBrowser(input = {}) {
           return n;
         };
         const guestBefore = await _countGuestRows();
+        // 🛡️ TETTO AI GIRI, e non è prudenza generica: prima di oggi, se una rimozione non
+        // andava a segno, questo ciclo ri-trovava la stessa persona e la ri-tentava senza
+        // limite — il modo esatto in cui il 01/09 si è arrivati al secondo click. Il tetto è
+        // il numero di righe presenti più due: più rimozioni di così non possono servire.
+        const TETTO_GIRI = (await _countAllRows()) + 2;
+        let giri = 0;
         let keepRemoving = true;
         while (keepRemoving) {
           keepRemoving = false;
+          if (giri >= TETTO_GIRI) {
+            throw fail('REMOVE_TROPPI_GIRI',
+              `Rimozione non conclusa dopo ${giri} tentativi sulla scheda.`, diagnostic);
+          }
           let idx = 0;
           while (true) {
             const nomeInput = page.locator(
@@ -7897,12 +8017,35 @@ async function editBookingWithBrowser(input = {}) {
             const guestHit = !removeAll && !nameHit && isGuestRow && guestToRemove > 0;
             const doRemove = removeAll || nameHit || guestHit;
             if (doRemove) {
-              diagnostic.steps.push(`elimina:${nomeVal || '(ospite)'}${isGuestRow ? '#1' : ''}`);
-              const elimBtn = page.locator(
+              const etichetta = nomeVal || '(ospite)';
+              diagnostic.steps.push(`elimina:${etichetta}${isGuestRow ? '#1' : ''}`);
+              const righePrima = await _countAllRows();
+              await eliminaPartecipante(
+                page,
                 `#CC_Datos_FormViewFicha_RepeaterParticipantes_${RP}_Listado_${idx}_LinkButtonEliminar_${idx}`,
+                diagnostic,
+                etichetta,
               );
-              await elimBtn.first().click({ timeout: 8000 });
-              await page.waitForTimeout(1200);
+              // ⭐⭐ L'INVARIANTE CHE MANCAVA: una rimozione riuscita fa sparire UNA riga. Senza
+              // questo controllo, un gesto che non arriva a Matchpoint è indistinguibile da uno
+              // riuscito, e il ciclo si limita a riprovare — che è come il 01/09 un timeout di
+              // Playwright è finito a valle come «non ci sono riuscito» invece che come un
+              // motivo leggibile. Qui il «non è passata» è un FATTO letto sulla scheda.
+              // ⏳ E si RI-GUARDA per qualche secondo prima di dichiararlo: leggere una volta
+              // sola trasformerebbe una scheda lenta in un falso «non tolto» — cioè un «no»
+              // falso, la specie di errore più cara qui dentro. Si aspetta il fatto, non lo si
+              // pretende al primo colpo d'occhio.
+              let righeDopo = await _countAllRows();
+              for (let attesa = 0; attesa < 10 && righeDopo >= righePrima; attesa++) {
+                await page.waitForTimeout(600);
+                righeDopo = await _countAllRows();
+              }
+              if (righeDopo >= righePrima) {
+                throw fail('REMOVE_NON_APPLICATA',
+                  `Matchpoint non ha tolto ${etichetta}: le righe restano ${righeDopo}.`, diagnostic);
+              }
+              diagnostic.steps.push(`elimina_ok:${etichetta}:${righePrima}->${righeDopo}`);
+              giri++;
               if (guestHit) guestToRemove--;
               keepRemoving = true;
               break; // ri-scan dall'inizio dopo il postback
