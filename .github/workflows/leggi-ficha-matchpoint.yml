@@ -70,6 +70,11 @@ jobs:
           #    .env intero sarebbe più corto ma esegue quel file: qui si legge, non si esegue.
           leggi () { grep -m1 "^$1=" ./.env 2>/dev/null | cut -d= -f2- | tr -d '"'"'"'\r'; }
           MP_BASE="$(leggi MATCHPOINT_BASE_URL)"
+          # 🩹 `MATCHPOINT_BASE_URL` NON sta nel .env e non sta in pm2 — misurato al giro #2,
+          #    ed è normale: il worker ce l'ha come DEFAULT nel codice (`DEFAULT_BASE_URL`,
+          #    server.mjs riga 18) e nessuno ha mai avuto bisogno di scriverlo. Chiederlo come
+          #    obbligatorio faceva fallire la sonda su una cosa che non manca.
+          MP_BASE_DEFAULT='https://app-padelvillage-it.matchpoint.com.es'
           MP_USER="$(leggi MATCHPOINT_USERNAME)"
           MP_PASS="$(leggi MATCHPOINT_PASSWORD)"
 
@@ -90,11 +95,15 @@ jobs:
             rm -f "$JL"
           fi
 
-          if [ -z "$MP_USER" ] || [ -z "$MP_PASS" ] || [ -z "$MP_BASE" ]; then
+          # ⇒ L'indirizzo ripiega sul default del worker; utente e password no: quelle o ci
+          #    sono o la sonda non ha niente con cui entrare.
+          [ -n "$MP_BASE" ] || MP_BASE="$MP_BASE_DEFAULT"
+
+          if [ -z "$MP_USER" ] || [ -z "$MP_PASS" ]; then
             # ⭐ Il referto dice QUALI mancano — mai i valori — e i NOMI delle chiavi che il
             #    .env ha davvero: senza, «non trovate» è un muro e la caccia riparte da zero.
-            echo "::error::credenziali Matchpoint non trovate (ne' in $CARTELLA/.env ne' in pm2)."
-            echo "  base=$([ -n "$MP_BASE" ] && echo si || echo NO) utente=$([ -n "$MP_USER" ] && echo si || echo NO) password=$([ -n "$MP_PASS" ] && echo si || echo NO)"
+            echo "::error::utente/password Matchpoint non trovati (ne' in $CARTELLA/.env ne' in pm2)."
+            echo "  utente=$([ -n "$MP_USER" ] && echo si || echo NO) password=$([ -n "$MP_PASS" ] && echo si || echo NO)"
             echo "  chiavi presenti nel .env (solo i NOMI, mai i valori):"
             cut -d= -f1 ./.env 2>/dev/null | grep -E '^[A-Z]' | sed 's/^/    /' || echo "    (.env assente o illeggibile)"
             echo "  nomi di processo noti a pm2:"
