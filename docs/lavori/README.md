@@ -2551,6 +2551,56 @@ gettone vivo. ⇒ È un gesto suo, su PROD.
 ⛔ **E le altre metà della 84 restano dove stanno**: la ⓐ (il buco oltre le 4 ore e dopo un riavvio
 del bot) e il residuo della ⓒ non sono state toccate oggi.
 
+#### 🔨 02/09 pomeriggio — IL MOTIVO SI PERDEVA NEL **TRAVASO**, non nella RPC (PROD 6.264 · TEST 6.268)
+
+🚨⭐⭐ **La cura di stamattina era a metà, e il sintomo somigliava a una riuscita.** La scheda qui
+sopra chiedeva al committente una prova fisica a un click. 📏 **Quella prova non avrebbe provato
+niente**, ed è stato misurato **prima** di fargliela fare — sull'app **viva** di PROD 6.263, con la
+console remota, aprendo la scheda di un socio vero:
+
+| gradino | esito |
+|---|---|
+| colonna in archivio | ✅ `review_reason = 'quiz_non_superato'` |
+| RPC `get_self_assessments_by_tokens` | ✅ **16** colonne, la porta |
+| **app: `importAssessmentResponses`** | ❌ **ne teneva 15** — elenco dei campi **fisso** |
+| dizionario `ASSESSMENT_REVIEW_REASON_LABELS` | ✅ 6 codici, `quiz_non_superato` incluso |
+| riquadro nella scheda socio | ⛔ legge `response.review_reason`, che nell'oggetto **non esiste** |
+
+⇒ Sarebbe comparso il riquadro **«Autovalutazione da validare»** (la cura del gettone vuoto morde
+davvero) **senza** la riga «Perché è da controllare». E siccome l'istruzione diceva *«se vedi ancora
+Applicata, non ha morso»*, lui avrebbe visto una cosa **diversa da Applicata** e l'avrebbe letta
+come riuscita: una prova che **certifica il contrario di quello che misura**.
+
+⚖️ **È lo stesso difetto della riga qui sopra** — *«la RPC ha un elenco di colonne fisso»* — **due
+funzioni più in là**. La cura di stamattina aveva allargato l'imbuto che aveva trovato e non si era
+chiesta se ce ne fosse un altro dietro.
+📌 *Fra il dato e chi lo legge non c'è UN trasporto: ce ne sono **in fila**, e allargarne uno non
+dice niente degli altri. «Un dato scritto non è un dato arrivato» non si applica una volta sola —
+si riapplica a ogni giuntura, finché non si arriva agli occhi.*
+
+🔪 **E la guardia nuova, sabotata, al primo colpo è passata lo stesso**: cercava `/review_reason:/`
+e trovava la parola dentro il **commento** che avevo appena scritto sopra il campo. Stretta
+sull'assegnazione (`review_reason: cleanCell(firstAvailable(`), risabotata, **ora è rossa**.
+📌 *Una guardia che legge la spiegazione invece del codice certifica che qualcuno ha scritto la
+cura, non che la cura c'è.* Banco **80 verdi** su `test-preview`, **78** su `main`.
+
+🩹 **E una riga delle consegne era falsa, corretta misurando**: *«l'utenza di sola lettura non
+carica l'anagrafica, `giocatori` resta 0»*. 📏 `giocatori` è un `let`, quindi **non è una proprietà
+di `window`**: chi aveva misurato aveva letto `window.giocatori`. Dalla console remota si vedono
+**2822 soci**. Il limite **vero** è un altro e va scritto al suo posto: quell'utenza non ha i
+permessi delle **sotto-sezioni** della scheda socio ⇒ la scheda si apre e dice *«Nessuna sezione
+visibile per il tuo profilo»*. ⇒ Da lì si leggono i **dati**, non il **riquadro disegnato**.
+
+🚨 **Dichiarato e NON curato, misurato oggi**: `applied_member_id`, che `assessmentMemberResponses`
+interroga per accoppiare una scheda a un socio, **la RPC non lo manda affatto** (non è fra le 16
+colonne) ⇒ quel confronto è **cieco per ogni riga arrivata dal cloud**. Vuole una colonna in più
+nella RPC, cioè una migrazione: non appartiene a questa voce.
+
+⏳ **LA METÀ ⓑ RESTA APERTA, e adesso manca una cosa sola**: il pannello **guardato con gli occhi**
+su PROD ≥ 6.264. La catena dei dati è verificata gradino per gradino fino all'oggetto che l'app
+tiene; l'ultimo pezzo — che quella riga si **veda** — nessuna prova fatta qui lo copre, e le tre
+guardie sono **testuali**.
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
