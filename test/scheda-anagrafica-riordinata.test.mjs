@@ -8,6 +8,17 @@
  * Più due proposte misurate e approvate («si procedi»): il riassunto della piega dice se dentro
  * c'è qualcosa, e i tre codici tecnici scendono anche loro sotto una piega.
  *
+ * 🔪🚨 COME SI SABOTANO, e va letto prima di farlo: DUE VOLTE il 02/09 un sabotaggio è passato
+ *   verde non perché la guardia fosse debole, ma perché il colpo era andato **altrove** —
+ *   `@media (max-width: 760px)` compare 9 volte nel file, e la riga
+ *   `g.active !== false ? 'Attivo' : 'Inattivo'` compare 2 volte (la lista soci e la scheda).
+ *   Una sostituzione «la prima occorrenza» colpiva un'altra regola, e la guardia restava
+ *   inesercitata mentre sembrava esercitata.
+ *   ⇒ Si sabota ANCORANDO il punto (cercare prima `<div class="member-card-badges">`, poi
+ *   sostituire da lì), e si conta quante volte esiste la stringa PRIMA di toccarla.
+ *   📌 *Un sabotaggio che non fallisce va sospettato prima della guardia: può essere la guardia
+ *   debole, o il colpo andato altrove — e le due si distinguono solo contando.*
+ *
  * ⚠️ GUARDIE TESTUALI, E SI DICE: leggono `index.html` come TESTO. Dicono che il codice è nel
  * posto giusto, NON che la scheda si veda — la sezione si è già rotta una volta con guardie
  * verdi (voce 84 ⓑ, «la stanza murata»). La prova che vale è aprirla.
