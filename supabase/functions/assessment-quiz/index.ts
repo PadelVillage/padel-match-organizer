@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { motivoDelReview } from './motivo-review.ts';
 
 // assessment-quiz — IL CANCELLO DI CONOSCENZA, spostato dal telefono al server.
 //
@@ -419,6 +420,23 @@ async function consegnaScheda(
   // Il cancello: senza conoscenza dimostrata la scheda non si applica da sola.
   const statoStaff = (genere === 'NA' || conoscenza.status !== 'pass' || pocaEsperienza || pocaFrequenza)
     ? 'review' : livCalc.staff_status;
+  /* 🆕🚨⭐⭐ VOCE 84 ⓑ (02/09/2026) — IL PERCHÉ ACCANTO AL DATO, e la riga sopra NON si tocca.
+     📏 Misurato su PROD facendo girare `assessment-apply-level` in simulazione: 63 schede
+     esaminate, **0** applicate, e la causa più numerosa è una sola — «in mano alla segreteria
+     (review)», **9 soci**, fermi da 5 a **125 giorni**.
+     🎯 Non applicarle è GIUSTO: senza conoscenza dimostrata la scheda non si applica da sola.
+     Il difetto è che si chiamano «in mano alla segreteria» e in mano a nessuno ci sono mai
+     state — la segreteria non le distingue da quelle che ha messo lì lei.
+     ⇒ Si scrive il MOTIVO accanto, e la decisione resta identica. Il ragionamento intero, e
+     il perché rinominare `review` sarebbe stato il difetto, stanno in `motivo-review.ts`. */
+  const motivoReview = motivoDelReview({
+    genere,
+    conoscenzaStatus: conoscenza.status,
+    pocaEsperienza,
+    pocaFrequenza,
+    calcoloStaffStatus: livCalc.staff_status,
+    calcoloCoerenza: livCalc.coherence,
+  });
 
   const riga = {
     token,
@@ -475,6 +493,12 @@ async function consegnaScheda(
     raw_score: numero(livCalc.raw_score),
     consistency_status: livCalc.coherence,
     staff_status: statoStaff,
+    /* 🆕 VOCE 84 ⓑ — vuoto quando lo stato non è `review`, e l'invariante lo prova
+       (`motivo-review.test.ts`, caso 1: c'è un motivo se e solo se lo stato è `review`).
+       ⚠️ La colonna è stata aggiunta a PROD **e** a TEST prima di questa riga: la regola
+       scritta poche righe più giù — *la riga è l'INTERSEZIONE dei due schemi* — vale ancora,
+       e vale perché i due schemi sono stati allineati, non perché questa riga la scavalchi. */
+    review_reason: motivoReview || null,
     raw_response: {
       ...scheda,
       // ⭐ Il sesso ripescato si SCRIVE, non resta solo nel cancello: una riga che dice
@@ -556,6 +580,10 @@ async function consegnaScheda(
   return ok({
     esito: conoscenza.status,
     staff_status: statoStaff,
+    /* 🆕 VOCE 84 ⓑ — e il motivo esce insieme allo stato, per la stessa ragione della
+       `certificazione` qui sotto: chi mostra la scheda non deve ricostruire la regola, o le
+       ricostruzioni diventano due e divergono. `''` quando non c'è niente da spiegare. */
+    review_reason: motivoReview,
     livello: livCalc.calculated_level,
     /* 🚨 SOLO SE LA SCHEDA SI APPLICHERÀ DAVVERO, e il difetto è stato trovato pensando
        alla prova con Laura, non rileggendo il codice. La frase promette «intanto ti
