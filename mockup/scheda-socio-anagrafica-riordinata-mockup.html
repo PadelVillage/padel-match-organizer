@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Mockup della voce «scheda anagrafica» — 02/09/2026.
+     Chiesto dal committente: preferenze operative richiudibili, e Disattiva/Cancella socio
+     spostati nel tab Anagrafica. Il template PR di casa vuole il mockup PRIMA dello sviluppo.
+     Pubblicato anche come artifact: https://claude.ai/code/artifact/4604e73f-7da6-4f84-9d0e-a7fe75bdb787 -->
+<title>Scheda socio riordinata</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Mockup a tema unico e dichiarato: rispecchia l'app, che è solo chiara.
+     Ogni colore è dipinto esplicitamente, così la pagina tiene su qualunque fondo. */
+  :root {
+    --primary: #1F4788;      /* --primary di index.html */
+    --success: #4CAF50;
+    --danger:  #f44336;
+    --warning: #ff9800;
+    --text:    #333333;
+    --border:  #dddddd;
+    --app-bg:  #f8f9fb;
+
+    --chrome-bg:    #eceff4;
+    --chrome-ink:   #2b3240;
+    --chrome-muted: #5d6675;
+    --rule:         #d3d9e2;
+    --nota:         #7a5a00;
+    --nota-bg:      #fff8e6;
+    --nota-bordo:   #e8c96a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--chrome-bg);
+    color: var(--chrome-ink);
+    font-family: "Source Sans 3", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  .foglio {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px 20px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header.intestazione { display: flex; flex-direction: column; gap: 6px; border-bottom: 2px solid var(--primary); padding-bottom: 14px; }
+  .occhiello {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--primary); font-weight: 500;
+  }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; color: var(--chrome-ink); text-wrap: balance; }
+  .sottotitolo { margin: 0; color: var(--chrome-muted); max-width: 62ch; font-size: 16px; }
+
+  .avvertenza {
+    background: var(--nota-bg); border: 1px solid var(--nota-bordo); border-left-width: 4px;
+    border-radius: 4px; padding: 12px 14px; color: var(--nota); font-size: 14.5px;
+  }
+  .avvertenza strong { color: #5c4300; }
+
+  h2.sezione {
+    font-size: 13px; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--chrome-muted);
+    margin: 0 0 -10px; font-weight: 500;
+  }
+
+  /* ───────────────  LA SCHEDA FINTA — da qui in giù si imita l'app  ─────────────── */
+  .schermo {
+    background: var(--app-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 18px;
+    overflow-x: auto;
+  }
+  .member-card {
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+    background: #ffffff;
+    border: 1px solid #e6eaf0;
+    border-radius: 10px;
+    min-width: 620px;
+  }
+  .member-card-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border-bottom: 1px solid #edf1f7; }
+  .avatar {
+    width: 52px; height: 52px; flex: 0 0 52px; border-radius: 50%;
+    background: var(--primary); color: #fff; font-weight: 700; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .identita { flex: 1; min-width: 0; }
+  .identita h3 { margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #1b2534; }
+  .badge-riga { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { font-size: 12.5px; padding: 4px 10px; border-radius: 5px; background: #eef1f6; color: #46516a; }
+  .badge.ok { background: #e6f5ea; color: #256b38; }
+  .badge.liv { background: #eee9fb; color: #5b3fae; }
+  .badge.att { background: #fdefd7; color: #8a5a00; }
+  .testa-azioni { display: flex; gap: 8px; }
+
+  .btn { font-family: inherit; font-size: 13.5px; border: 0; border-radius: 5px; padding: 8px 14px; color: #fff; cursor: pointer; }
+  .btn:focus-visible { outline: 3px solid #1F478855; outline-offset: 2px; }
+  .btn-grigio { background: #6b7280; }
+  .btn-blu { background: var(--primary); }
+  .btn-verde { background: var(--success); }
+  .btn-arancio { background: var(--warning); }
+  .btn-rosso { background: var(--danger); }
+
+  .borsellino {
+    margin: 16px 20px; padding: 14px 16px; border: 1px solid #e7edf6; border-radius: 8px; background: #fafcff;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .borsellino .etichetta { font-size: 12.5px; color: #6b7688; }
+  .borsellino .cifra { font-size: 22px; font-weight: 700; color: #1b2534; }
+
+  .member-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #edf1f7; }
+  .member-tab {
+    font-family: inherit; font-size: 14px; font-weight: 700; color: #6b7688;
+    background: transparent; border: 0; border-bottom: 3px solid transparent;
+    padding: 12px 14px; cursor: pointer;
+  }
+  .member-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: #f3f7fc; }
+
+  .member-tab-panel { padding: 18px 20px 22px; }
+  .member-tab-subhead { color: var(--primary); font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+  .member-tab-subhead.has-divider { margin-top: 20px; padding-top: 18px; border-top: 1px solid #edf1f7; }
+
+  .member-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px; }
+  .member-form-grid .full { grid-column: 1 / -1; }
+  .member-form-grid label { display: block; font-size: 12px; color: #6b7688; margin-bottom: 3px; }
+  .member-form-grid input {
+    font-family: inherit; font-size: 13.5px; width: 100%; padding: 7px 9px;
+    border: 1px solid #cfd9e7; border-radius: 6px; background: #fff; color: var(--text);
+  }
+  .member-form-grid input[readonly] { background: #f4f6fa; color: #55607a; }
+
+  /* la freccetta: il cuore della richiesta */
+  details.piega { margin-top: 20px; padding-top: 18px; border-top: 1px solid #edf1f7; }
+  details.piega > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    color: var(--primary); font-size: 14px; font-weight: 700; padding: 2px 0;
+  }
+  details.piega > summary::-webkit-details-marker { display: none; }
+  details.piega > summary:focus-visible { outline: 3px solid #1F478855; outline-offset: 3px; border-radius: 3px; }
+  .freccia { transition: transform .18s ease; color: #7a869c; font-size: 12px; }
+  details.piega[open] .freccia { transform: rotate(90deg); }
+  .conteggio { font-weight: 400; font-size: 12.5px; color: #8a93a5; }
+  details.piega .member-form-grid { margin-top: 14px; }
+  @media (prefers-reduced-motion: reduce) { .freccia { transition: none; } }
+
+  .member-card-action-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .piede {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 14px 20px; border-top: 1px solid #edf1f7; background: #fbfcfe; border-radius: 0 0 10px 10px;
+  }
+  .piede .nota { font-size: 12.5px; color: #7a869c; }
+
+  /* ───────────────  annotazioni  ─────────────── */
+  .marcatore {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500; flex: 0 0 20px;
+  }
+  ol.legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  ol.legenda li { display: flex; gap: 12px; align-items: flex-start; }
+  ol.legenda p { margin: 0; font-size: 15px; max-width: 74ch; }
+  ol.legenda code {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    background: #dfe4ec; padding: 1px 5px; border-radius: 3px;
+  }
+
+  table.permessi { border-collapse: collapse; font-size: 14.5px; min-width: 460px; }
+  .tabella-scorre { overflow-x: auto; }
+  table.permessi th, table.permessi td { text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); }
+  table.permessi th { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--chrome-muted); font-weight: 500; }
+  table.permessi td.num { font-variant-numeric: tabular-nums; }
+  tr.evidenza td { background: #fff4d6; font-weight: 600; }
+</style>
+
+</head>
+<body>
+<div class="foglio">
+
+  <header class="intestazione">
+    <span class="occhiello">Mockup · scheda socio · 2 settembre 2026</span>
+    <h1>Il tab Anagrafica riordinato</h1>
+    <p class="sottotitolo">
+      Due modifiche chieste da Maurizio: le <strong>Preferenze operative</strong> partono chiuse e si
+      aprono con la freccetta, e <strong>Disattiva</strong> e <strong>Cancella socio</strong> si
+      spostano qui dal tab Attività.
+    </p>
+  </header>
+
+  <div class="avvertenza">
+    <strong>Questa non è l'app.</strong> È un disegno: i bottoni non fanno niente, tranne la freccetta,
+    che si apre e si chiude davvero — è la cosa da provare. I dati sono quelli veri della scheda di
+    Maurizio, così si vede a grandezza giusta.
+  </div>
+
+  <h2 class="sezione">Come diventa</h2>
+
+  <div class="schermo">
+    <div class="member-card">
+
+      <div class="member-card-head">
+        <div class="avatar">MA</div>
+        <div class="identita">
+          <h3>Maurizio Aprea</h3>
+          <div class="badge-riga">
+            <span class="badge">ID ID-MP-000004</span>
+            <span class="badge ok">Attivo</span>
+            <span class="badge liv">Livello Avanzato (4)</span>
+            <span class="badge att">Conferma email da inviare</span>
+          </div>
+        </div>
+        <div class="testa-azioni">
+          <button class="btn btn-grigio" type="button">Chiudi</button>
+          <button class="btn btn-blu" type="button">Salva</button>
+        </div>
+      </div>
+
+      <div class="borsellino">
+        <div>
+          <div class="etichetta">Borsellino</div>
+          <div class="cifra">0,00 €</div>
+        </div>
+        <button class="btn btn-verde" type="button">WhatsApp</button>
+      </div>
+
+      <div class="member-tabs">
+        <button class="member-tab active" type="button">Anagrafica</button>
+        <button class="member-tab" type="button">Borsellino</button>
+        <button class="member-tab" type="button">Autovalutazione</button>
+        <button class="member-tab" type="button">Attività</button>
+      </div>
+
+      <div class="member-tab-panel">
+
+        <div class="member-tab-subhead">Dati socio</div>
+        <div class="member-form-grid">
+          <div><label>ID giocatore Padel Village</label><input value="ID-MP-000004" readonly></div>
+          <div><label>ID giocatore Matchpoint</label><input value="000004" readonly></div>
+          <div><label>Livello di gioco</label><input value="Avanzato (4)" readonly></div>
+          <div><label>Nome</label><input value="Maurizio"></div>
+          <div><label>Cognome</label><input value="Aprea"></div>
+          <div><label>Sesso</label><input value="M"></div>
+          <div><label>Telefono</label><input value="+39 ··· ··· ····"></div>
+          <div><label>Email</label><input value="padelvillage.club@gmail.com"></div>
+        </div>
+
+        <details class="piega">
+          <summary>
+            <span class="freccia" aria-hidden="true">▶</span>
+            Preferenze operative
+            <span class="conteggio">— 7 campi</span>
+          </summary>
+          <div class="member-form-grid">
+            <div><label>Giorni preferiti</label><input value=""></div>
+            <div><label>Orari preferiti</label><input value=""></div>
+            <div><label>Disponibilità giorni</label><input value=""></div>
+            <div><label>Disponibilità fascia</label><input value=""></div>
+            <div><label>Frequenza desiderata</label><input value=""></div>
+            <div><label>Preavviso minimo</label><input value=""></div>
+            <div class="full"><label>Tipo partita preferita</label><input value=""></div>
+          </div>
+        </details>
+
+        <div class="member-tab-subhead has-divider">Azioni sul socio</div>
+        <div class="member-card-action-row">
+          <button class="btn btn-arancio" type="button">Disattiva</button>
+          <button class="btn btn-rosso" type="button">Cancella socio</button>
+        </div>
+
+      </div>
+
+      <div class="piede">
+        <span class="nota">Scheda ottimizzata: dati operativi visibili, dettagli tecnici richiudibili.</span>
+        <div class="testa-azioni">
+          <button class="btn btn-grigio" type="button">Annulla</button>
+          <button class="btn btn-blu" type="button">Salva scheda</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <h2 class="sezione">Cosa cambia, punto per punto</h2>
+
+  <ol class="legenda">
+    <li>
+      <span class="marcatore">1</span>
+      <p><strong>Le Preferenze operative partono chiuse.</strong> Sette campi che oggi sono sempre
+      aperti e quasi sempre vuoti. Diventano una riga con la freccetta, e il numero di campi si legge
+      senza aprirla. Restano nello stesso posto e si salvano allo stesso modo: cambia solo che non
+      occupano più lo schermo prima di essere chieste.</p>
+    </li>
+    <li>
+      <span class="marcatore">2</span>
+      <p><strong>Disattiva e Cancella socio arrivano qui</strong>, in fondo, sotto una riga di
+      separazione. Sono le due azioni che riguardano <em>il socio</em>, quindi stanno nella scheda del
+      socio. Nel tab Attività restano <code>WhatsApp</code> e <code>Nuova autovalutazione</code>, che
+      riguardano il contatto e non l'anagrafica.</p>
+    </li>
+    <li>
+      <span class="marcatore">3</span>
+      <p><strong>Il titoletto dice «Azioni sul socio», non «Azioni operative».</strong> Il nome vecchio
+      copriva quattro bottoni che facevano cose diverse; qui ne restano due, e fanno la stessa cosa —
+      cambiano lo stato di questa persona.</p>
+    </li>
+  </ol>
+
+  <h2 class="sezione">La cosa da decidere — chi può cancellare</h2>
+
+  <div class="avvertenza">
+    <strong>Spostare un bottone sposta anche il permesso che lo nasconde.</strong> Oggi
+    <em>Cancella socio</em> vive nel tab Attività, quindi lo vede chi ha il permesso
+    <code>view_members_attivita</code>. Messo in Anagrafica, lo vedrebbe chi ha
+    <code>view_members_anagrafica</code> — e sono due insiemi diversi.
+  </div>
+
+  <div class="tabella-scorre">
+    <table class="permessi">
+      <thead>
+        <tr><th>Profilo</th><th>Anagrafica</th><th>Attività</th><th>Quanti</th><th>Oggi può cancellare?</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>owner</td><td>vede tutto</td><td>vede tutto</td><td class="num">1</td><td>sì</td></tr>
+        <tr><td>readonly</td><td>no</td><td>no</td><td class="num">1</td><td>no</td></tr>
+        <tr><td>staff</td><td>no</td><td>no</td><td class="num">1</td><td>no</td></tr>
+        <tr class="evidenza"><td>staff</td><td>sì</td><td>no</td><td class="num">1</td><td>no → diventerebbe sì</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ol class="legenda">
+    <li>
+      <span class="marcatore">→</span>
+      <p><strong>Nel mockup ho scelto di non cambiare niente:</strong> i due bottoni si vedono in
+      Anagrafica, ma restano legati al permesso <code>view_members_attivita</code>. La posizione
+      cambia, chi può cancellare no. Così la modifica resta quella che hai chiesto — un riordino — e
+      non ne porta dentro un'altra di nascosto.</p>
+    </li>
+    <li>
+      <span class="marcatore">→</span>
+      <p><strong>Se invece vuoi che quel profilo possa cancellare</strong>, è una riga e si fa: ma
+      cancellare un socio non si disfa, quindi dev'essere una tua decisione dichiarata, non un effetto
+      collaterale di uno spostamento grafico.</p>
+    </li>
+  </ol>
+
+</div>
+</body>
+</html>
