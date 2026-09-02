@@ -94,6 +94,7 @@ Lo snippet è un **corpo di funzione async**: usa `return` e può usare `await`.
 | `--storage-in` / `--storage-out` | carica o salva il `localStorage` (vedi limiti) |
 | `--url <url>` | punta a una copia locale dell'app; **non** disattiva il controllo di ambiente |
 | `--allow-writes` | disarma la guardia delle scritture. Da usare consapevolmente |
+| `--viewport <L>x<A>` | dimensioni della finestra (predefinito `1440x900`). Serve per le pieghe: questa app ne ha a **1024** e a **760px**, e senza questa opzione «l'ho guardata» vuol dire «su un solo schermo». Un valore storpiato fa fallire il lancio invece di ripiegare in silenzio |
 
 ## Le tre guardie
 

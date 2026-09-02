@@ -195,27 +195,87 @@ test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro',
     'la fascia non è più condizionata al borsellino: senza quel permesso si disegna una cornice vuota');
 });
 
-test('11. le sette caselle di «Dati socio» stanno su righe fisse, non a caso', () => {
-  /* 🗣️ Sua richiesta: nome, cognome e sesso sulla stessa riga; telefono ed email insieme; bot
-     Telegram e livello insieme. ⚖️ La classe è SUA e non tocca `.member-form-grid`, che serve
-     anche alle pieghe e ad altre sezioni: cambiarla lì avrebbe riordinato schermate che nessuno
-     ha chiesto di toccare. */
+test('11. le sette caselle di «Dati socio» stanno su DUE righe che tornano esatte', () => {
+  /* 🗣️ Sua richiesta del 03/09: *«Io metterei nome, cognome, sesso e livello di gioco tutto su
+     una riga. E poi telefono, email, bot Telegram anche quello tutto su una riga. Lo spazio c'è.»*
+
+     🔄 GUARDIA RISCRITTA, e il come conta più del cosa. Prima cercava le stringhe esatte
+     `class="c2"` / `class="c3"` campo per campo: era una guardia sulla FORMA DI IERI, che sarebbe
+     diventata rossa per una rinomina innocua e verde su una riga che non torna. Adesso legge
+     dal CSS quante colonne vale ogni classe e verifica il FATTO: **quali campi, in che ordine, e
+     che ogni riga faccia esattamente una riga piena**.
+     📌 *Una guardia scritta sui nomi difende i nomi; scritta sulle somme difende la riga.* */
   const corpo = corpoAnagrafica();
   assert.match(corpo, /<div class="member-form-grid member-griglia-fissa">/,
     'la griglia di «Dati socio» non ha più le righe fisse: i campi tornano a disporsi da soli');
-  for (const [et, cls] of [['Nome','c2'], ['Cognome','c2'], ['Sesso','c2'],
-                           ['Telefono','c3'], ['Email','c3'], ['Livello di gioco','c3']]) {
-    assert.ok(corpo.includes(`<div class="${cls}"><label>${et}</label>`),
-      `il campo «${et}» non occupa più ${cls === 'c2' ? 'un terzo' : 'metà'} riga: le righe si scompongono`);
+
+  // ── quante colonne ha la griglia, e quante ne vale ogni classe: LETTE, non ricordate ──
+  const mCols = app.match(/\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:repeat\((\d+), 1fr\); \}/);
+  assert.ok(mCols, 'la griglia non dichiara più un numero fisso di colonne: le righe non possono più tornare esatte');
+  const COLONNE = Number(mCols[1]);
+
+  /* 🔪🚨 SI LEGGONO SOLO LE LARGHEZZE DI BASE, non quelle dentro i `@media`, e questa riga è
+     costata un rosso meritato: la prima versione le prendeva tutte, e le regole del gradino di
+     mezzo (`span 6`) sovrascrivevano quelle vere. Risultato: la guardia calcolava righe da due
+     campi e accusava il codice, che era giusto.
+     📌 *Una guardia che legge più CSS di quello che si applica misura una pagina che non
+     esiste — e accusa il codice invece di sé stessa.* */
+  const cssBase = app.slice(
+    app.indexOf('.member-form-grid.member-griglia-fissa {'),
+    app.indexOf('@media', app.indexOf('.member-form-grid.member-griglia-fissa {')),
+  );
+  assert.ok(cssBase.length > 40 && cssBase.length < 600,
+    'non si isola più il CSS di base della griglia: la prova leggerebbe anche le regole dei telefoni');
+  const span = {};
+  for (const m of cssBase.matchAll(/\.member-griglia-fissa > \.([a-z-]+) +\{ grid-column:span (\d+); \}/g)) {
+    span[m[1]] = Number(m[2]);
   }
-  /* 🔄 02/09 sera — cercava `class="c3" … hidden`, la forma di prima: da quando la cella tiene
-     il suo posto mentre aspetta il ponte (`member-cella-in-attesa`, `visibility:hidden`) quel
-     testo non c'è più. Il FATTO da proteggere resta lo stesso — sta a MEZZA riga accanto al
-     livello, cioè `c3` — e va scritto senza legarsi al modo in cui è nascosta. */
-  assert.match(corpo, /<div class="c3[^"]*" id="cardBotTelegramRow"/,
-    'la riga del bot Telegram non sta più a metà riga accanto al livello');
-  assert.match(app, /\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:repeat\(6, 1fr\); \}/,
-    'le sei colonne non ci sono più: 3+3 e 2+2 non tornerebbero esatte');
+  assert.ok(Object.keys(span).length >= 2,
+    'non si leggono più le larghezze delle classi: questa prova non saprebbe più sommare niente');
+
+  // ── i campi della griglia, nell'ordine in cui li incontra chi legge la scheda ──
+  const blocco = corpo.slice(corpo.indexOf('<div class="member-form-grid member-griglia-fissa">'));
+  const campi = [...blocco.matchAll(/<div class="([a-z-]+)(?: [^"]*)?"[^>]*><label>([^<]+)<\/label>/g)]
+    .map((m) => ({ classe: m[1], etichetta: m[2] }))
+    .filter((c) => span[c.classe] != null);
+
+  assert.deepEqual(campi.map((c) => c.etichetta),
+    ['Nome', 'Cognome', 'Sesso', 'Livello di gioco', 'Telefono', 'Email', 'Bot Telegram'],
+    'l\'ordine dei campi di «Dati socio» non è più quello che ha chiesto lui');
+
+  /* 🚨⭐ LA PROVA VERA: si sommano le larghezze e si taglia a ogni riga piena. Se una riga
+     sborda o resta corta, un campo va a capo da solo — ed è esattamente il difetto che
+     rileggendo il codice non si vede, perché ogni singola classe sembra giusta. */
+  const righe = [];
+  let corrente = [];
+  let somma = 0;
+  for (const c of campi) {
+    somma += span[c.classe];
+    corrente.push(c.etichetta);
+    assert.ok(somma <= COLONNE,
+      `la riga «${corrente.join(' · ')}» sborda: ${somma} colonne su ${COLONNE} ⇒ l'ultimo campo va a capo da solo`);
+    if (somma === COLONNE) { righe.push(corrente); corrente = []; somma = 0; }
+  }
+  assert.deepEqual(corrente, [],
+    `restano campi che non completano una riga (${corrente.join(' · ')}): la griglia finisce a metà`);
+  assert.deepEqual(righe,
+    [['Nome', 'Cognome', 'Sesso', 'Livello di gioco'], ['Telefono', 'Email', 'Bot Telegram']],
+    'le due righe di «Dati socio» non sono più quelle che ha chiesto lui (4 + 3)');
+
+  /* 🔄 02/09 sera — la riga del bot cercava `class="c3" … hidden`, la forma di prima: da quando
+     la cella tiene il suo posto mentre aspetta il ponte (`member-cella-in-attesa`,
+     `visibility:hidden`) quel testo non c'è più. Il FATTO da proteggere è che tenga il posto, e
+     va scritto senza legarsi né al modo in cui è nascosta né alla larghezza che ha oggi. */
+  assert.match(corpo, /<div class="[a-z-]+ member-cella-in-attesa" id="cardBotTelegramRow"/,
+    'la cella del bot Telegram non riserva più il suo posto mentre aspetta la risposta del ponte');
+
+  // 📱 I gradini: due campi per riga sul mezzo, una colonna sola sul telefono.
+  /* 🩹 Scritta per un numero QUALUNQUE di classi, non per due: la prima versione ne cablava
+     esattamente due ed è diventata rossa appena il Sesso ha preso una larghezza sua — accusando
+     una modifica giusta. 📌 *Una guardia che conta gli elementi di un elenco che cresce è una
+     guardia che va riscritta a ogni crescita: meglio contarne «almeno due».* */
+  assert.match(app, /@media \(max-width: 1024px\) \{\s*(?:\.member-griglia-fissa > \.[a-z-]+,\s*)+\.member-griglia-fissa > \.[a-z-]+ \{ grid-column:span 6; \}/,
+    'tolto il gradino di mezzo: fra 761 e 1024px un quarto di scheda sta sotto i 190px e il campo del livello si sfilaccia');
   assert.match(app, /@media \(max-width: 760px\) \{\s*\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:1fr; \}/,
     'tolto il ritorno a una colonna sotto i 760px: su un telefono i campi diventano illeggibili');
 });
@@ -559,7 +619,7 @@ test('23. 🚨⭐⭐ la cella che aspetta un dato TIENE il suo posto (il livello
      distingue «non c'è» da «non c'è ancora», e intanto tutto il resto gli balla sotto gli occhi.* */
   assert.match(app, /\.member-cella-in-attesa \{ visibility:hidden; \}/,
     'la cella in attesa torna a `display:none`: lo spazio si libera e il livello riprende a saltare');
-  assert.match(app, /<div class="c3 member-cella-in-attesa" id="cardBotTelegramRow">/,
+  assert.match(app, /<div class="[a-z-]+ member-cella-in-attesa" id="cardBotTelegramRow">/,
     'la riga Bot Telegram è tornata `hidden` alla nascita: non occuperebbe spazio fino alla risposta del ponte');
   assert.ok(!/id="cardBotTelegramRow" hidden/.test(app),
     'la riga Bot Telegram nasce di nuovo con `hidden`');
