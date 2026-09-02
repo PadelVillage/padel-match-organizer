@@ -2330,7 +2330,22 @@ andare a capo»***.
 bottoni nella scheda della partita, dove la colonna è stretta. ⇒ Non è una scelta di stile da
 discutere: è un requisito di layout con un effetto visibile.
 📏 Da misurare quando si fa: `Contanti`+`Carta`+`Borsellino` = 24 caratteri contro `Cash`+`Card`+`Wallet` = 14.
-⚖️ Nella **scheda della partita** i tre bottoni si chiamano **già** Cash/Card/Wallet: è tutto il
+🚨⭐ **E la SUA schermata delle 23:33 mostra il difetto nella forma peggiore: le due metà dello stesso
+pannello parlano due lingue.** Nella scheda della partita, il giocatore che **deve ancora pagare** ha
+i bottoni **`Cash` · `Card` · `Wallet`**; i giocatori che **hanno già pagato**, tre righe più sotto,
+portano le pastiglie **`Contanti`**, **`Carta`**, **`Borsellino`**. Stessa colonna, stessa scheda,
+stesso metodo di pagamento, due nomi.
+🗣️ Sue parole: *«guarda le diciture di come hanno pagato già i giocatori. Sono in italiano, non vanno
+bene… utilizziamo solamente i tre termini che abbiamo definito, sia quando devono pagare sia quando
+hanno già pagato, e utilizzali anche all'interno della scheda di anagrafica nelle varie tab.»*
+📌 *Il difetto non è che una parola sia italiana: è che la stessa cosa cambia nome fra il prima e il
+dopo, dentro lo stesso riquadro. Chi legge non sa se sono due cose diverse.*
+⇒ **Tre posti, non uno**: ① i bottoni (già a posto), ② le **pastiglie di chi ha già pagato**
+(`_PAY_METHOD_LABEL`, dove `borsellino: 'Borsellino'` è **valore** e la chiave resta), ③ la **scheda
+anagrafica**, in tutte le tab — la colonna «come» della sezione Pagamenti scrive oggi
+`contanti`/`carta`/`borsellino` in minuscolo.
+
+⚖️ Nella **scheda della partita** i bottoni si chiamano **già** Cash/Card/Wallet: è tutto il
 resto che parla italiano — la sezione Pagamenti della scheda socio (`contanti`/`carta`/`borsellino`),
 la sezione **Incassi**, le finestre di conferma («Incassare 10,00 € in **Contanti**?»), la fascia,
 la colonna dell'elenco soci. ⇒ Oggi la stessa cosa ha **due nomi in due schermate**, che è il difetto
