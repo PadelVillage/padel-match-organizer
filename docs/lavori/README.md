@@ -2376,6 +2376,90 @@ mezzo la metà che nessun cron avrebbe mai sbloccato.
 sbagliavano. ⛔ La scheda di Marco del 24/08 **resta bloccata**: le cure valgono da lì in avanti, non
 riparano una riga già nata con la data sbagliata.
 
+#### 🔎 02/09/2026 — LA MISURA CHE HA RIFATTO LA DIAGNOSI: «review» significava DUE COSE
+
+📏 **Chiesto alla funzione invece di ricostruirlo**: `assessment-apply-level` fatta girare in
+**simulazione** su PROD (`pmo_dispatch_assessment_apply_level(true)`, nessuna scrittura), e letti
+i motivi che dà lei.
+
+```
+esaminate 63 · applicate 0 · saltate 19
+```
+
+| motivo dello scarto | quanti |
+|---|---|
+| **in mano alla segreteria (`review`)** | **9** |
+| in mano alla segreteria (`pending` / `pending_attention`) | 5 |
+| il socio non esiste più in anagrafica | 3 |
+| il livello non scende · il socio ha già questo livello | 2 |
+
+🩹 **E DUE RIGHE DELLA SCHEDA SI ROVESCIANO, per una misura e non per un'opinione:**
+· *«la ⓑ ha una cura, e sta nella voce 94… un sospetto non è più un blocco»* — **falso**.
+  `applied_review` è lo stato che si **scrive** quando il tetto morde; il `review` in **ingresso**
+  è stato aperto **solo** nel ramo del gradino (`scendo`), mai nella catena normale. Nove soci
+  fermi lì lo dimostrano, da 5 a **125 giorni** — Lidia, Fabiola e Laura dal 27 agosto;
+  Alessandra Macchitella, Alberto Chiesurin e Adriano Dalle Crode dal 25 maggio;
+· *«servono due giri: uno che eserciti la ⓒ («Tengo questo livello», mai toccata da nessuno)»* —
+  **falso**: `mi_fermo` è stato toccato **16** volte dal 24/08, e `scendo` due. 📏 Il gradino
+  funziona e si misura: **2,2 s** (Laura, 28/08) e **69 s** (Fabiola, 27/08).
+
+⭐⭐ **E LA CAUSA NON È PIÙ QUELLA DELLA SCHEDA.** La ⓑ nasceva dal **genere mancante**: quella
+metà è curata davvero, le schede recenti portano M/F. Il `review` di oggi viene dal **quiz non
+superato** — e lì *non applicare è **giusto***, è la protezione che il progetto ha voluto.
+⇒ Il difetto è un altro, ed è una forma che questa casa conosce a memoria: **`review` significa
+due cose** — *una PERSONA ha deciso di guardarla* (`pending`, `pending_attention`, e il `review`
+che scrive l'app) e *la MACCHINA non se la prende* (quiz, sesso, le due bandiere, coerenza bassa,
+dati insufficienti) — con chi legge costretto a indovinare. È la **71**, la **83** e la **68**.
+📌 Nove schede si chiamavano «in mano alla segreteria» e **in mano a nessuno ci sono mai state**.
+
+🗣️ **Scelta sua, messa davanti alle due strade**: *«fai la 2»* — le schede della macchina
+**restano** nella lista della segreteria, ma **distinte**. (La ① era farle sparire.)
+
+#### 🔨 02/09 — LA CURA, e perché NON si è rinominato `review`
+
+🚨⭐⭐ **Rinominare sarebbe stato il difetto, e si è misurato prima di scegliere**: **sei** punti
+fra `index.html`, le edge e una funzione SQL confrontano quel valore **per uguaglianza** —
+`staff === 'review'`, `statoStaff !== 'review'`, `in ('da_controllare','review','attention')`. Un
+valore nuovo li avrebbe attraversati tutti **in silenzio**, fra cui il ramo del **gradino**, che
+`review` lo apre apposta e che avrebbe smesso di far scendere chi lo chiede.
+📌 *Una parola che significa due cose non si spacca: le si mette accanto quale delle due.*
+
+⇒ Si fa uscire il **perché accanto al dato**, e l'espressione che decide resta **identica**:
+
+· `assessment-quiz/motivo-review.ts` — modulo **puro**: quale cancello ha fermato la scheda.
+  ⭐ L'ordine dei sei motivi è la **copia** della condizione vera, non una equivalente: raccontare
+  il quarto cancello quando ha fermato il primo è una spiegazione sbagliata, che è peggio del
+  silenzio;
+· colonna `review_reason` — migrazione applicata a **PROD e TEST**, e non è gentilezza:
+  `assessment-quiz` compone la riga come **intersezione dei due schemi**, quindi una colonna su un
+  progetto solo farebbe **fallire la scrittura** sull'altro, cioè perderebbe la scheda di un socio;
+· 🚨⭐ la RPC `get_self_assessments_by_tokens` — **la metà che si sarebbe dimenticata**. L'app non
+  legge la tabella: passa da lì, e quella ha un elenco di colonne **fisso**. Il motivo sarebbe
+  rimasto scritto in un posto che nessuno guarda. 📌 *Un dato scritto non è un dato arrivato.*
+  ⚖️ Compatibile nei due versi (app vecchia ⇒ ignora il campo; app nuova ⇒ etichetta assente), e i
+  **grant** rimessi a mano: un `drop` se li porta via **in silenzio**, e la prova sarebbe stata un
+  `permission denied` alla segreteria, dopo;
+· `index.html` **6.265** — accanto al «da controllare con attenzione» compare il perché. Vuoto ⇒
+  **niente**: non si scrive «motivo sconosciuto» a una scheda che una persona ha messo lì apposta.
+
+🔒 **Le PAROLE stanno nell'app, i CODICI nel gestionale** — devono, perché il modulo gira su Deno e
+l'app nel browser — **e una guardia pretende che i due vocabolari coincidano**, invece della buona
+volontà. 🔪 **Due sabotaggi visti rossi**: una frase tolta dall'app, e un motivo nuovo nella regola
+che l'elenco non conosce. Più l'**invariante** provato su tutte le 216 combinazioni: *c'è un motivo
+se e solo se lo stato è `review`*. Banco **80 verdi / 0 rossi**.
+
+⚠️ **Le righe di prima restano a NULL, e va letto «non misurato»** — non «l'ha messa lì una
+persona». Le due non si distinguono a posteriori: è la scelta della voce 68 con `esito`.
+
+⏳ **COSA MANCA PER CHIUDERE QUESTA METÀ, dichiarato**: la **prova fisica**. Nessuno ha ancora
+visto l'etichetta nel pannello, e non la si vede finché **una scheda nuova non passa** dal quiz
+curato — le nove ferme hanno `review_reason` vuoto per costruzione. ⇒ Serve un test consegnato
+**dopo** la promozione a PROD, e poi il pannello **guardato con gli occhi**.
+🧊 Su TEST non si prova: il calendario è congelato e i soci sono gli stessi, ma il quiz vuole un
+gettone vivo. ⇒ È un gesto suo, su PROD.
+⛔ **E le altre metà della 84 restano dove stanno**: la ⓐ (il buco oltre le 4 ore e dopo un riavvio
+del bot) e il residuo della ⓒ non sono state toccate oggi.
+
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
 🔼 **APERTA E MESSA IN URGENTI la notte del 23/08, dalla sessione** (delega del 23/08). ⚖️ **Il
