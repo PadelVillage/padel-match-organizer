@@ -89,9 +89,14 @@ test('5. 🚨⭐⭐ le due azioni si vedono in Anagrafica ma restano legate al p
      📌 Un riordino grafico non deve allargare un permesso di passaggio. */
   assert.match(app, /const _azioniSulSocio = showSecAttivita \? `/,
     'le azioni sul socio non sono più legate a showSecAttivita: un profilo che oggi non può cancellare un socio comincerebbe a poterlo');
-  const corpo = corpoAnagrafica();
-  assert.match(corpo, /\$\{_azioniSulSocio\}/,
-    'le azioni non compaiono più nel tab Anagrafica: la richiesta è annullata');
+  /* 🔄 02/09 pomeriggio — le azioni sono salite nell'INTESTAZIONE (sua richiesta: «li metterei
+     tutti in alto a seguire di attivo livello avanzato»). Il permesso non si è mosso: è la
+     riga sopra a garantirlo, e resta la parte che conta. */
+  const testa = app.slice(app.indexOf('<div class="member-card-head">'), app.indexOf('<div class="member-card-body'));
+  assert.match(testa, /\$\{_azioniSulSocio\}/,
+    'le azioni non compaiono più nell\'intestazione: la richiesta è annullata');
+  assert.ok(!/\$\{_azioniSulSocio\}/.test(corpoAnagrafica()),
+    'le azioni sono rimaste ANCHE nel corpo del tab: due porte per lo stesso gesto');
   assert.match(app, /_azioniSulSocio = showSecAttivita \? `[\s\S]*?deleteMemberCard\(/,
     'il bottone «Cancella socio» non è più dentro il blocco protetto');
 });
@@ -149,10 +154,104 @@ test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro',
      niente — una cornice attorno al nulla, che sembra un guasto.
      📌 *Togliere un elemento non è solo togliere lui: è chiedersi cosa reggeva il contenitore
      che lo teneva.* */
-  assert.ok(!/<div class="member-hero-actions">/.test(app),
-    'la riga delle azioni della fascia è tornata: era il solo motivo per cui la fascia aveva due colonne');
+  /* 🔄 02/09 pomeriggio — la riga delle azioni è TORNATA, ma con dentro qualcosa: «↻ Aggiorna»
+     e «＋ Ricarica». Quello che la guardia vieta non è il contenitore, è il contenitore VUOTO —
+     e vietare il contenitore era una scorciatoia che ha smesso di dire la verità appena la
+     fascia ha avuto di nuovo un motivo per esistere.
+     📌 *Una guardia scritta sulla forma di oggi diventa un ostacolo il giorno dopo: si scrive
+     su cosa NON deve succedere.* */
+  const fascia = app.match(/<div class="member-hero">[\s\S]*?<\/div>` : ''\}/);
+  assert.ok(fascia, 'la fascia del borsellino non si trova: questa prova non guarda più niente');
+  assert.ok(!/<div class="member-hero-actions"><\/div>/.test(app),
+    'la riga delle azioni è di nuovo VUOTA: la fascia torna a essere una cornice attorno al nulla');
+  assert.match(fascia[0], /pmoVaiARicarica\(\)/,
+    'sparito «＋ Ricarica» dalla fascia: era la ragione per cui la fascia occupa spazio');
   assert.match(app, /\$\{\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\) \? `<div class="member-hero">/,
     'la fascia non è più condizionata al borsellino: senza quel permesso si disegna una cornice vuota');
+});
+
+test('11. le sette caselle di «Dati socio» stanno su righe fisse, non a caso', () => {
+  /* 🗣️ Sua richiesta: nome, cognome e sesso sulla stessa riga; telefono ed email insieme; bot
+     Telegram e livello insieme. ⚖️ La classe è SUA e non tocca `.member-form-grid`, che serve
+     anche alle pieghe e ad altre sezioni: cambiarla lì avrebbe riordinato schermate che nessuno
+     ha chiesto di toccare. */
+  const corpo = corpoAnagrafica();
+  assert.match(corpo, /<div class="member-form-grid member-griglia-fissa">/,
+    'la griglia di «Dati socio» non ha più le righe fisse: i campi tornano a disporsi da soli');
+  for (const [et, cls] of [['Nome','c2'], ['Cognome','c2'], ['Sesso','c2'],
+                           ['Telefono','c3'], ['Email','c3'], ['Livello di gioco','c3']]) {
+    assert.ok(corpo.includes(`<div class="${cls}"><label>${et}</label>`),
+      `il campo «${et}» non occupa più ${cls === 'c2' ? 'un terzo' : 'metà'} riga: le righe si scompongono`);
+  }
+  assert.match(corpo, /<div class="c3" id="cardBotTelegramRow" hidden>/,
+    'la riga del bot Telegram non sta più a metà riga accanto al livello');
+  assert.match(app, /\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:repeat\(6, 1fr\); \}/,
+    'le sei colonne non ci sono più: 3+3 e 2+2 non tornerebbero esatte');
+  assert.match(app, /@media \(max-width: 760px\) \{\s*\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:1fr; \}/,
+    'tolto il ritorno a una colonna sotto i 760px: su un telefono i campi diventano illeggibili');
+});
+
+test('12. i bottoni in fondo non tornano: erano gli STESSI di quelli in alto', () => {
+  /* 📏 Misurato prima di toglierli: «Annulla» chiamava closeMemberCard() e «Salva scheda»
+     saveMemberCard(id) — le stesse identiche funzioni di «Chiudi» e «Salva». Una coppia sola
+     scritta due volte con due nomi diversi, e due nomi per lo stesso gesto fanno credere che i
+     gesti siano due. */
+  const i = app.indexOf('<div class="member-card-footer">');
+  const j = app.indexOf('</div>`;', i);
+  assert.ok(i > 0 && j > i, 'il piede della scheda non si trova: questa prova non guarda più niente');
+  const piede = app.slice(i, j);
+  assert.ok(!/>Salva scheda</.test(piede), 'è tornato «Salva scheda»: fa esattamente quello che fa «Salva» in alto');
+  assert.ok(!/>Annulla</.test(piede), 'è tornato «Annulla»: fa esattamente quello che fa «Chiudi» in alto');
+  /* 🔒 E che i due in alto ci siano ancora: toglierne uno per sbaglio lascerebbe la scheda
+     senza modo di salvare, che è il difetto peggiore di tutti. */
+  const testa = app.slice(app.indexOf('<div class="member-card-head">'), app.indexOf('<div class="member-card-body'));
+  assert.match(testa, /onclick="closeMemberCard\(\)">Chiudi</, 'sparito «Chiudi» dall\'intestazione');
+  assert.match(testa, /saveMemberCard\('\$\{escapeHtml\(String\(g\.id\)\)\}'\)">Salva</, 'sparito «Salva» dall\'intestazione: la scheda non si salverebbe più');
+});
+
+test('13. 🔒 «Disattiva» chiede conferma — e solo quando disattiva', () => {
+  /* 📏 Prima dello spostamento `toggleMemberActive` agiva al PRIMO click, e stava in fondo a un
+     tab: la distanza era la sua unica protezione. Salito accanto a «Salva», che è il bottone più
+     premuto della scheda, quella protezione non c\'è più.
+     ⚖️ Solo per disattivare: riattivare non toglie niente a nessuno, e una conferma su un gesto
+     innocuo è la strada per farle ignorare tutte. */
+  assert.match(app, /const staDisattivando = giocatori\[idx\]\.active !== false;/,
+    'sparita la distinzione fra disattivare e riattivare: la conferma finirebbe anche su un gesto innocuo');
+  assert.match(app, /if \(staDisattivando && !confirm\(/,
+    'tolta la conferma su «Disattiva»: il bottone è accanto a «Salva» e agirebbe al primo click');
+  assert.match(app, /function deleteMemberCard[\s\S]{0,400}?if \(!confirm\(/,
+    'sparita la conferma di «Cancella socio»: è il gesto che non si disfa');
+});
+
+test('14. 🚨⭐ «＋ Ricarica» in cima NON scrive: porta al riquadro dove si digita la cifra', () => {
+  /* 📏 Misurato prima di disegnarlo: la ricarica vera (`_pmoRechargeWallet` → edge
+     `matchpoint-wallet-correct`) scrive DAVVERO sul Matchpoint del circolo e NON chiede nessuna
+     conferma. Oggi la protegge solo il fatto che devi aprire apposta il tab Borsellino.
+     ⇒ Il bottone in cima apre quel riquadro e mette il cursore nell'importo.
+     📌 *Avvicinare un gesto senza conferma al posto più battuto equivale a togliergliela.* */
+  const fascia = app.match(/<div class="member-hero">[\s\S]*?<\/div>` : ''\}/);
+  assert.ok(fascia, 'la fascia non si trova');
+  assert.ok(!/pmoWalletRechargeClick\(/.test(fascia[0]),
+    'la SCRITTURA della ricarica è finita nella fascia in cima: è una scrittura reale su Matchpoint e non chiede conferma');
+  assert.ok(!/pmoWalletRechargeAmt/.test(fascia[0]),
+    'il campo dell\'importo è finito in cima: la cifra si digita dove si conferma il gesto, non in testa a ogni scheda');
+  assert.match(app, /function pmoVaiARicarica\(\) \{[\s\S]*?pmoMemberTab\('borsellino'\)/,
+    'il salto al tab Borsellino non c\'è più: il bottone in cima non porterebbe da nessuna parte');
+  assert.match(app, /if \(!campo\) \{[\s\S]*?showAlert\(/,
+    'se il riquadro non esiste il bottone tace: un bottone che tace è indistinguibile da uno rotto');
+});
+
+test('15. il livello sta su UNA riga, così non lascia il buco accanto al bot Telegram', () => {
+  /* 🗣️ Sua richiesta: «sistema anche lo spazio del bot Telegram».
+     📌 Uno spazio vuoto in una griglia non è quasi mai colpa della casella vuota: è l'altezza
+     della sua vicina. Qui la vicina era il livello, con cifra, parola e lucchetto IMPILATI. */
+  const corpo = corpoAnagrafica();
+  assert.match(corpo, /<div class="member-livello-riga"><input type="number"/,
+    'il livello è tornato impilato: la sua casella ricresce e il buco sotto «Bot Telegram» torna');
+  assert.ok(!/id="cardLevelUnlock" style="margin-top:6px;"/.test(corpo),
+    'il lucchetto è tornato sotto invece che in linea');
+  assert.match(app, /\.member-livello-riga \{ display:flex; align-items:center;/,
+    'tolta la regola che mette cifra, parola e lucchetto in linea');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
