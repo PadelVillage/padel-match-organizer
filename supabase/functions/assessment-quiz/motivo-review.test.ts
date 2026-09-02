@@ -192,5 +192,31 @@ test('8. 🚨⭐⭐ la scheda si cerca sul SOCIO, non sul gettone corrente (che 
     "l'«applicata» si giudica di nuovo su `rec` invece che sulla scheda mostrata: due gettoni diversi");
 });
 
+test('9. 🚨⭐⭐ il motivo SOPRAVVIVE al travaso: l\'app tiene il campo, non solo la RPC', () => {
+  /* 📏 Misurato il 02/09 sull'app VIVA di PROD (6.263) con la console remota, aprendo la
+     scheda di un socio vero: la RPC `get_self_assessments_by_tokens` torna **16** colonne e
+     porta `review_reason: 'quiz_non_superato'`, ma l'oggetto riposto in `assessmentResponses`
+     ne aveva **15** — `importAssessmentResponses` costruisce `normalized` con un elenco di
+     campi FISSO, e quello non c'era.
+     ⇒ Il riquadro «da validare» compariva (la cura del gettone vuoto morde) e la riga «Perché
+     è da controllare» no: il sintomo somigliava a una cura riuscita.
+     ⚖️ È lo stesso difetto della migrazione `20260902123000`, che aveva allargato l'imbuto
+     della RPC. *Fra il dato e chi lo legge i trasporti sono in fila: allargarne uno non dice
+     niente degli altri.*
+     ⚠️ GUARDIA TESTUALE, e si dice: legge il sorgente, non apre nessuna pagina. */
+  const app = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
+  const blocco = app.match(/function importAssessmentResponses\(rows[\s\S]*?\n        \};/);
+  assert.ok(blocco, 'importAssessmentResponses non si trova: questa prova non guarda più niente');
+  // ⚠️ Il confronto è sull'ASSEGNAZIONE, non sulla parola: cercare `/review_reason:/` faceva
+  // passare la guardia leggendo il COMMENTO scritto due righe sopra il campo — sabotata il
+  // 02/09 e trovata finta al primo colpo. 📌 *Una guardia che legge la spiegazione invece del
+  // codice certifica che qualcuno ha scritto la cura, non che la cura c'è.*
+  assert.match(blocco![0], /\n\s*review_reason: cleanCell\(firstAvailable\(/,
+    "l'app torna a buttare `review_reason` nel travaso: la riga «Perché è da controllare» sparisce di nuovo");
+  // 🔒 E il campo dev'essere quello che il pannello legge davvero, cioè `response.review_reason`.
+  assert.match(app, /const codice = cleanCell\(\(response && response\.review_reason\) \|\| ''\)/,
+    'la funzione che traduce non legge più `response.review_reason`: il travaso curato non basterebbe');
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
