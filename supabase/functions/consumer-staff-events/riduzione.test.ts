@@ -383,5 +383,48 @@ test('🆕 in una raffica mista vince l\'ULTIMO, e non si fondono due attori', (
   assert.equal(rovescio[0].chiestoDa, 'Laura Aprea');
 });
 
+test('🆕 VOCE 123 — una raffica tutta chiesta dalla stessa persona è unanime', () => {
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: [], usciti: ['Marco Aprea'], chiesto_da: 'Maurizio Aprea' },
+    { ...fatto('formazione', 40), entrati: [], usciti: ['Laura Aprea'], chiesto_da: 'Maurizio Aprea' },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDaUnanime, true);
+  assert.equal(esiti[0].chiestoDa, 'Maurizio Aprea');
+});
+
+test('🆕 VOCE 123 — basta UN fatto della segreteria e l\'unanimità cade', () => {
+  // 🚨 È la guardia che impedisce allo scarto di zittire una notizia che nessun altro darà:
+  // qui l'ultimo gesto è suo, quindi `chiestoDa` lo indica — ma in mezzo c'è la segreteria.
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: ['Ospite'], usciti: [], chiesto_da: null },
+    { ...fatto('formazione', 40), entrati: [], usciti: ['Marco Aprea'], chiesto_da: 'Maurizio Aprea' },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDa, 'Maurizio Aprea', 'l\'ultimo resta l\'ultimo');
+  assert.equal(esiti[0].chiestoDaUnanime, false, 'ma la raffica NON è tutta sua');
+});
+
+test('🆕 VOCE 123 — due richiedenti diversi non sono unanimi', () => {
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: ['Laura Aprea'], usciti: [], chiesto_da: 'Laura Aprea' },
+    { ...fatto('formazione', 40), entrati: [], usciti: ['Marco Aprea'], chiesto_da: 'Maurizio Aprea' },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDaUnanime, false);
+});
+
+test('🆕 VOCE 123 — una raffica tutta della segreteria non è unanime (non c\'è un attore)', () => {
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: [], usciti: ['Marco Aprea'], chiesto_da: null },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDaUnanime, false, 'senza richiedente non si scarta niente');
+});
+
+test('🆕 VOCE 123 — la grafia non rompe l\'unanimità (stesso nome, accenti e spazi diversi)', () => {
+  const esiti = riduci([
+    { ...fatto('formazione', 0), entrati: [], usciti: ['Marco Aprea'], chiesto_da: 'Niccolò  Rossi' },
+    { ...fatto('formazione', 40), entrati: [], usciti: ['Laura Aprea'], chiesto_da: 'niccolo rossi' },
+  ], ADESSO);
+  assert.equal(esiti[0].chiestoDaUnanime, true);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

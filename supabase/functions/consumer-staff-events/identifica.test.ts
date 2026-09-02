@@ -1,7 +1,7 @@
 // Prove della risoluzione nome → persona (voce 68).
 // Esegui:  node supabase/functions/consumer-staff-events/identifica.test.ts
 import assert from 'node:assert/strict';
-import { destinatarioPerNome, impronta, normNome, type SchedaMinima } from './identifica.ts';
+import { destinatarioPerNome, impronta, normNome, stessaPersona, type SchedaMinima } from './identifica.ts';
 
 let passed = 0;
 let failed = 0;
@@ -92,6 +92,37 @@ test('l\'impronta guarda i due identificativi insieme', () => {
 test('normNome', () => {
   assert.equal(normNome('  Maurizio   Aprea '), 'maurizio aprea');
   assert.equal(normNome(''), '');
+});
+
+// ── 🆕 VOCE 123: due nomi, la stessa persona? ─────────────────────────────────────────────
+test('🆕 VOCE 123 — due schede DUPLICATE della stessa persona sono la stessa persona', () => {
+  // ⭐ È il caso vero di «Lidia Comes» (PROD, 21/08): due `id` diversi, un essere umano solo.
+  // Un confronto sull\'`id` direbbe di no, ed è la ragione per cui si guarda l\'impronta.
+  const a = destinatarioPerNome('Lidia Comes', [scheda('a', 'Lidia Comes', 'PMO-000583', '001013')]);
+  const b = destinatarioPerNome('lidia  comes', [scheda('b', 'Lidia Comes', 'PMO-000583', '001013')]);
+  assert.equal(stessaPersona(a, b), true);
+});
+
+test('🆕 VOCE 123 — due persone diverse non lo sono', () => {
+  const a = destinatarioPerNome('Maurizio Aprea', [scheda('a', 'Maurizio Aprea', 'PMO-000001', '001')]);
+  const b = destinatarioPerNome('Marco Aprea', [scheda('b', 'Marco Aprea', 'PMO-000002', '002')]);
+  assert.equal(stessaPersona(a, b), false);
+});
+
+test('🆕 VOCE 123 — senza impronta si ripiega sull\'id, che è più stretto', () => {
+  const a = destinatarioPerNome('Tizio Senza Codici', [scheda('a', 'Tizio Senza Codici')]);
+  const b = destinatarioPerNome('Tizio Senza Codici', [scheda('a', 'Tizio Senza Codici')]);
+  assert.equal(stessaPersona(a, b), true, 'stesso id ⇒ stessa persona');
+  const c = destinatarioPerNome('Tizio Senza Codici', [scheda('z', 'Tizio Senza Codici')]);
+  assert.equal(stessaPersona(a, c), false, 'id diversi e nessuna impronta ⇒ non si afferma niente');
+});
+
+test('🆕 VOCE 123 — un nome che non si risolve non è nessuno ⇒ non si scarta', () => {
+  // 🚨 Il verso prudente: `null` da una delle due parti vuol dire CONSEGNA, cioè il
+  // comportamento di prima della voce. Un `true` qui sarebbe un silenzio inventato.
+  const a = destinatarioPerNome('Maurizio Aprea', [scheda('a', 'Maurizio Aprea', 'PMO-000001')]);
+  assert.equal(stessaPersona(a, null), false);
+  assert.equal(stessaPersona(null, null), false);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
