@@ -142,5 +142,18 @@ test('9. i riferimenti tecnici sono sotto la piega, e il conto dei codici si cal
     'è sparita la riga in fondo alla scheda che PROMETTE i dettagli tecnici richiudibili: è la ragione di questa piega');
 });
 
+test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro', () => {
+  /* 🚨 Conseguenza del togliere il WhatsApp, e il mockup non poteva mostrarla: la fascia era
+     «borsellino a sinistra, azioni a destra», e per chi NON ha il permesso Borsellino il lato
+     sinistro era già un div vuoto. Tolto il bottone restava una scatola bordata con dentro
+     niente — una cornice attorno al nulla, che sembra un guasto.
+     📌 *Togliere un elemento non è solo togliere lui: è chiedersi cosa reggeva il contenitore
+     che lo teneva.* */
+  assert.ok(!/<div class="member-hero-actions">/.test(app),
+    'la riga delle azioni della fascia è tornata: era il solo motivo per cui la fascia aveva due colonne');
+  assert.match(app, /\$\{\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\) \? `<div class="member-hero">/,
+    'la fascia non è più condizionata al borsellino: senza quel permesso si disegna una cornice vuota');
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
