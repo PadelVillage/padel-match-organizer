@@ -196,7 +196,7 @@ test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro',
 });
 
 test('11. le sette caselle di «Dati socio» stanno su DUE righe che tornano esatte', () => {
-  /* 🗣️ Sua richiesta del 03/09: *«Io metterei nome, cognome, sesso e livello di gioco tutto su
+  /* 🗣️ Sua richiesta del 02/09 sera: *«Io metterei nome, cognome, sesso e livello di gioco tutto su
      una riga. E poi telefono, email, bot Telegram anche quello tutto su una riga. Lo spazio c'è.»*
 
      🔄 GUARDIA RISCRITTA, e il come conta più del cosa. Prima cercava le stringhe esatte

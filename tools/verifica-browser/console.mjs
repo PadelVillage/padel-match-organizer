@@ -120,7 +120,7 @@ function leggiArgomenti(argv) {
   const a = { env: null, url: null, eval: null, file: null, shot: null, out: null,
               storageIn: null, storageOut: null, login: true,
               allowWrites: false, attesa: 8000, timeout: 90000,
-              // 🆕 03/09/2026 — la finestra era CABLATA a 1440×900, e per un lavoro di layout
+              // 🆕 02/09/2026 — la finestra era CABLATA a 1440×900, e per un lavoro di layout
               // quella è una misura sola. Le pieghe di questa app stanno a 1024 e a 760px: senza
               // poterci arrivare, «l'ho guardata» vuol dire «l'ho guardata su UNO schermo».
               // 📌 Un attrezzo di diagnosi che sa fare una sola domanda fa credere che ci sia una

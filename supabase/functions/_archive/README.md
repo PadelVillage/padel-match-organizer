@@ -10,7 +10,7 @@ Serve a un caso preciso: una funzione **viva su Supabase il cui sorgente non sta
 Lasciarla fuori dal repo significa che la pipeline non è in grado di riprodurla; portarla
 dentro `supabase/functions/` la deploierebbe. Qui sta tracciata senza essere deployata.
 
-## 📭 Stato al 03/09/2026: la cartella è VUOTA, e non è un errore
+## 📭 Stato al 02/09/2026: la cartella è VUOTA, e non è un errore
 
 Le uniche due funzioni che ci hanno abitato — `matchpoint-payment-write` (incasso) e
 `matchpoint-payment-void` (storno di un pagamento) — **sono uscite tutt'e due**, a un giorno di
@@ -20,7 +20,7 @@ sorgente in git senza deployarlo, si mette qui.
 | quando | cosa | dove è andata |
 |---|---|---|
 | 02/09/2026 | `matchpoint-payment-void` | riscritta da zero in `supabase/functions/matchpoint-payment-void/`, **v1 ACTIVE su PROD** |
-| 03/09/2026 | `matchpoint-payment-write` | portata in `supabase/functions/matchpoint-payment-write/`, dentro il recinto |
+| 02/09/2026 | `matchpoint-payment-write` | portata in `supabase/functions/matchpoint-payment-write/`, dentro il recinto |
 
 ## 🚨⭐⭐ Cosa ha insegnato questa cartella, ed è la parte che conta
 

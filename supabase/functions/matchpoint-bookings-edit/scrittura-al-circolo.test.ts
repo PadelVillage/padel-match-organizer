@@ -102,7 +102,7 @@ const GEMELLI = [
      🚨 Sta nel recinto per la stessa ragione delle altre otto: il worker è **uno solo e condiviso**
      fra TEST e PROD, quindi uno storno «di prova» annullerebbe un incasso **vero** del circolo. */
   'matchpoint-payment-void/scrittura-al-circolo.ts',
-  /* 🆕💶 03/09/2026 — l'INCASSO (`matchpoint-payment-write`). Decima copia, e non nasce con la
+  /* 🆕💶 02/09/2026 — l'INCASSO (`matchpoint-payment-write`). Decima copia, e non nasce con la
      funzione: la funzione esisteva **dal giugno 2026**, in `_archive/`, dove lui l'aveva mandata il
      9/08 proprio perché era una scrittura di denaro **fuori dal recinto**. ⇒ Torna viva adesso
      perché adesso il recinto ce l'ha: è la condizione a cui torna, non un dettaglio del ritorno.
@@ -142,7 +142,7 @@ const PUNTI_DI_NON_RITORNO: Record<string, RegExp[]> = {
   // 💰 Il borsellino: `/correct-wallet` muove denaro vero in tutte e due le direzioni (storno e
   // ricarica). Una strada sola, e il recinto le sta davanti.
   'matchpoint-wallet-correct/index.ts': [/await callWorkerCorrect\(/],
-  /* 🧾💶 03/09/2026 — LE DUE FUNZIONI DEI PAGAMENTI, e la prima delle due è un buco che era già
+  /* 🧾💶 02/09/2026 — LE DUE FUNZIONI DEI PAGAMENTI, e la prima delle due è un buco che era già
      aperto: `matchpoint-payment-void` era entrata nelle COPIE ieri (caso 8) ma **non qui**, dove si
      controlla che il recinto stia davvero sulla strada. ⇒ Il caso 8 certificava che il file era
      identico agli altri nove; nessuno certificava che qualcuno lo chiamasse prima di scrivere.
