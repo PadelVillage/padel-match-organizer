@@ -250,8 +250,15 @@ test('14. 🚨⭐ «＋ Ricarica» apre la FINESTRA, e la finestra è la conferm
     'il bottone in cima non apre più la finestra della ricarica');
   assert.match(app, /const okGo = \(opts\.giaConfermato === true\) \? true : await _pmoConfirmRecharge/,
     'la finestra non sostituisce più la conferma dell\'Assistente AI: due domande per un gesto solo, e la seconda invisibile');
-  assert.match(app, /\.then\(chiudiSeVa\);/,
-    'la finestra non si chiude dopo una ricarica riuscita: resta aperta sopra un gesto già fatto');
+  /* 🔄 02/09 sera — questa riga cercava `.then(chiudiSeVa)`, che era la forma di poche ore fa.
+     La chiusura ora vive dentro `_pmoFinestraEsito`, condiviso con lo storno. ⇒ La guardia è stata
+     CORRETTA, non tolta: controlla la stessa cosa (si chiude solo se è andata) nel punto in cui
+     quella cosa adesso succede. 📌 *Una guardia scritta sulla forma di oggi diventa un ostacolo
+     domani: si riscrive sul fatto, non sulla riga.* */
+  assert.match(app, /_pmoFinestraEsito\(btn, '<span class="pmo-spin">↻<\/span> Ricarica in corso…', function \(\) \{\s*return _pmoRechargeWallet\(\{ giaConfermato: true/,
+    'la ricarica non passa più dalla finestra: il suo esito tornerebbe solo nel pannello dell\'Assistente AI');
+  assert.match(app, /if \(esito && esito\.ok\) \{ pmoChiudiRicarica\(\); return esito; \}/,
+    'la finestra si chiude anche quando il gesto NON è riuscito, oppure non si chiude mai');
   assert.strictEqual((app.match(/id="pmoWalletRechargeAmt"/g) || []).length, 1,
     'la casella dell\'importo esiste in due posti: la finestra leggerebbe quella sbagliata');
 });
@@ -296,5 +303,37 @@ test('16. 🚨⭐ le tre etichette in cima sono via — ma «Inattivo» resta, e
     'lo stato del socio non si vede più in entrambi i casi: una scheda disattivata diventa indistinguibile da una viva');
 });
 
-console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
+
+test('17. 🚨⭐ «↩︎ Storna» chiede conferma nella SUA finestra, e conferma la cifra che ha mostrato', () => {
+  /* 🗣️ Sua domanda del 02/09 sera: «se sbaglio a fare una ricarica come la correggo?». Lo
+     strumento c'era già — lo storno nel tab Borsellino — ma con **lo stesso difetto** appena curato
+     sulla ricarica: `_pmoConfirmVoidWallet` fa la domanda con `svcAddMessage`, cioè nel pannello
+     dell'Assistente AI, lontano dal bottone premuto. Si premeva «Storna» e nella scheda non
+     succedeva niente.
+     🔪 SABOTAGGI, contando prima (trappola del 02/09 mattina): `giaConfermato` compare 4 volte nel
+     sorgente e `_pmoStornoInCorso` 6 — ancorare al nome della funzione, non alla prima occorrenza. */
+  assert.match(app, /const okGo = \(opts\.giaConfermato === true\) \? true : await _pmoConfirmVoidWallet/,
+    'la finestra non sostituisce la conferma dell\'Assistente AI: sarebbero due domande per un gesto solo, e la seconda invisibile');
+  assert.match(app, /function pmoWalletVoidClick[\s\S]{0,1400}?return pmoApriStorno\(/,
+    'il bottone «Storna» non apre più la finestra: la domanda tornerebbe nel pannello AI');
+  assert.ok(!/function pmoWalletVoidClick[\s\S]{0,1400}?return _pmoVoidWallet\(/.test(app),
+    'il bottone «Storna» scrive DIRETTAMENTE su Matchpoint saltando la finestra');
+  // ③ l'importo confermato è quello congelato all'apertura, non riletto dalla casella dietro.
+  assert.match(app, /function pmoConfermaStorno[\s\S]{0,1200}?subtractCents: inCorso\.subtractCents/,
+    'lo storno rilegge l\'importo al momento del sì: si confermerebbe una cifra e se ne stornerebbe un\'altra');
+  assert.ok(!/function pmoConfermaStorno[\s\S]{0,1200}?pmoWalletVoidAmt/.test(app),
+    'la conferma torna a leggere la casella viva dietro la finestra');
+  assert.match(app, /function pmoConfermaStorno[\s\S]{0,1200}?inCorso\.memberId !== String\(memberId\)/,
+    'sparito il controllo che la finestra stia confermando il socio che ha mostrato');
+  // La finestra muore con lo storno congelato, da QUALUNQUE porta (compreso il click sullo sfondo).
+  assert.match(app, /function pmoChiudiRicarica\(\)[\s\S]{0,600}?_pmoStornoInCorso = null;/,
+    'chiudendo dallo sfondo lo storno congelato sopravvive alla finestra che lo ha mostrato');
+  // Una sola casella dell'importo: due con lo stesso id a schermo è il guasto già pagato.
+  assert.strictEqual((app.match(/id="pmoWalletVoidAmt"/g) || []).length, 1,
+    'la casella dell\'importo dello storno esiste in due posti: si leggerebbe quella sbagliata');
+  assert.match(app, /_pmoFinestraEsito\(btn, '<span class="pmo-spin">↻<\/span> Storno in corso…', function \(\) \{\s*return _pmoVoidWallet\(\{ giaConfermato: true/,
+    'lo storno non passa dall\'helper dell\'esito: errore e attesa tornerebbero solo nel pannello AI');
+});
+
+console.log(`\n${passed} verdi · ${failed} rossi`);
