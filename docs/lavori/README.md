@@ -2137,6 +2137,28 @@ test si consegna al **gestionale**, non a lui. ⇒ La cura piena è che sia il g
 *«c'è un esito da annunciare»* — un giro veloce con **una domanda sola per tutti** — invece del bot
 che indovina quando vale la pena chiedere. È *il gestionale SA, il bot DICE* applicato alla fretta.
 
+#### 🩹 02/09 — «INCONGRUENZA» NEL BOT È GIUSTA, e chi la rileggerà penserà di no
+
+📏 **Segnalata come difetto e poi smentita andando a leggere**, la stessa mattina. Il bot, su una
+prova bocciata, dice *«Nel test di livello di gioco è rimasta un'**incongruenza**, quindi il
+livello non l'ho registrato»* — e sulla scheda vera del 02/09 la coerenza era **high** (dichiarato
+4,5, calcolato 4,5): a fermarla era il **quiz, 0/5**. Sembra il motivo sbagliato. **Non lo è.**
+
+⭐⭐ La parola è **sua**, scelta il 9/08, e il perché sta scritto sopra la funzione
+(`avvisi-testi.ts`): *«al socio non si dice mai COSA ha sbagliato — un test che lo spiega è un
+oracolo, e si indovina a tentativi»*. ⇒ «Incongruenza» **non nomina** `consistency_status`: dice
+*qualcosa non torna* senza dire cosa, ed è vaga **apposta**.
+
+⚖️ **L'errore di lettura, che è la cosa da ricordare**: ho giudicato una parola del **bot** col
+vocabolario del **gestionale**, dove «incongruenza» è un campo preciso. Sono due lingue diverse
+che condividono una parola. 📌 *Prima di chiamare falsa una frase, si va a leggere in quale
+vocabolario è stata scritta* — e lì accanto, di solito, c'è già il perché.
+
+🔒 **E il disegno regge anche dopo la cura di stamattina**: `review_reason` è nato per la
+**segreteria**, non per il socio. Che al socio il motivo non arrivi non è una dimenticanza da
+sanare: è la regola del 9/08 che continua a valere. ⛔ Chi un domani volesse «far dire al bot il
+motivo vero, adesso che c'è» starebbe togliendo una protezione, non aggiungendo una gentilezza.
+
 #### 🔎 E la «scheda non aggiornata» non è un secondo difetto
 
 📏 `applied_at` di `EB1NG2IUSAODAU` è **null** perché il livello si applica **dopo la scelta del
