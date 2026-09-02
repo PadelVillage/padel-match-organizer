@@ -2137,6 +2137,47 @@ test si consegna al **gestionale**, non a lui. ⇒ La cura piena è che sia il g
 *«c'è un esito da annunciare»* — un giro veloce con **una domanda sola per tutti** — invece del bot
 che indovina quando vale la pena chiedere. È *il gestionale SA, il bot DICE* applicato alla fretta.
 
+#### 🚨🚨⭐⭐ 02/09 — E SOTTO LA STANZA MURATA C'ERA LA VERA CAUSA: **il gettone corrente è sempre quello VUOTO**
+
+📏 **Misurato al millesimo sui gettoni veri di PROD**, dopo il secondo *«non lo vedo»*:
+
+```
+08:18:22.105   ZOGPGGF0AR7B9J   completed   ← la scheda consegnata dal bot
+08:18:22.754   C8RA8CRXJZ3WXI   created     ← il gettone SUCCESSIVO, vuoto: 649 ms dopo
+```
+
+`syncAssessmentTokensFromSupabase` ordina i gettoni di un socio per
+`completed_at || sent_at || created_at` e tiene il **primo**. ⇒ Vince **sempre** quello appena
+coniato, che una scheda non ce l'ha. Poi `assessmentRecordFor` chiede
+`getAssessmentResponseByToken(rec.token)` e riceve **niente**: il pannello «Autovalutazione da
+validare» **non si disegna**, e la scheda socio mostra l'ultimo livello applicato come se non
+fosse arrivato nulla.
+
+🚨 **E non è il caso di Maurizio: è ogni scheda che passa dal bot, cioè TUTTE** — il canale
+email è dismesso dal 13/08 e la sezione Autovalutazione è congelata dal 13/06. ⇒ Da settimane la
+segreteria, aprendo una scheda socio, **non poteva vedere nessuna autovalutazione nuova**, e il
+sintomo era una scheda che diceva «Applicata» con la data vecchia — indistinguibile da «non è
+arrivato niente».
+
+⚖️ **Perché non si tocca l'ordinamento**: per il pannello «da inviare» il gettone nuovo **è**
+quello giusto — è lì che si guarda se un invito è partito. A essere sbagliata è la **domanda**:
+*«qual è la sua scheda?»* posta al **gettone** invece che al **socio**.
+🔨 ⇒ Se il gettone corrente non ha una scheda, si prende **la più recente del socio**
+(`assessmentMemberResponses`, che legge già anche l'archivio dei gettoni). E l'«applicata» si
+giudica sulla scheda che si **mostra**, non su `rec`: col ripiego possono essere gettoni diversi,
+e confrontare quello sbagliato direbbe «da validare» su una scheda già applicata.
+🔒 Guardia (caso 8), sabotata e vista rossa. ⚠️ Testuale.
+
+⛔ **COSA RESTA DA MISURARE, dichiarato**: questa correzione cambia cosa `assessmentRecordFor`
+torna per i soci che hanno una scheda non applicata ⇒ **i contatori** che ne dipendono possono
+salire. Non è stato misurato di quanto, e non si finge che non succeda.
+
+📌 **La catena di stamattina, tutta intera, è una lezione sola in tre gradini**: *un dato
+**scritto** non è un dato **arrivato** · un dato arrivato non è un dato **visto** · un dato visto
+non è ancora un dato **TROVATO*** — e l'ultimo gradino era una chiave che puntava a **mezzo
+secondo** di distanza. A trovarli tutti e tre è stato lui che apriva l'app; nessuna delle mie
+prove verdi ne ha visto uno.
+
 #### 🚨⭐⭐ 02/09 — LA CURA ERA IN UNA STANZA MURATA, e l'ha detto lui guardando
 
 📏 **«Negativo.»** Prima versione della cura: il motivo compariva **solo** nel pannello della

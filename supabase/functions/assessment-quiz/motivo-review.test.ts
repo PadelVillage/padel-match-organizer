@@ -175,5 +175,22 @@ test('7. 🚨⭐⭐ il motivo si vede in un pannello RAGGIUNGIBILE, non solo in 
     'la sezione Autovalutazione non è più congelata: rileggi il perché di questa prova');
 });
 
+test('8. 🚨⭐⭐ la scheda si cerca sul SOCIO, non sul gettone corrente (che è sempre vuoto)', () => {
+  /* 📏 Misurato sui gettoni veri di PROD, al millesimo: scheda consegnata alle 08:18:22.105,
+     gettone successivo (vuoto) coniato alle 08:18:22.754 — 649 ms dopo. L'app ordina per
+     `completed_at || sent_at || created_at` e prende il primo ⇒ vince SEMPRE quello nuovo,
+     che una scheda non ce l'ha. ⇒ Il pannello «da validare» non si disegnava MAI per una
+     scheda arrivata dal bot, cioè per tutte.
+     🔒 Questa guardia pretende il ripiego e il confronto giusto sull'«applicata».
+     ⚠️ Testuale, e si dice: legge il sorgente, non apre una pagina. */
+  const app = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
+  const blocco = app.match(/function assessmentRecordFor\(member\)[\s\S]*?\n    \}/);
+  assert.ok(blocco, 'assessmentRecordFor non si trova: questa prova non guarda più niente');
+  assert.match(blocco![0], /assessmentMemberResponses\(member\)\[0\]/,
+    'tolto il ripiego sulla scheda più recente del socio: torna il pannello che non si disegna mai');
+  assert.match(blocco![0], /normalizeText\(response\?\.token \|\| ''\)/,
+    "l'«applicata» si giudica di nuovo su `rec` invece che sulla scheda mostrata: due gettoni diversi");
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
