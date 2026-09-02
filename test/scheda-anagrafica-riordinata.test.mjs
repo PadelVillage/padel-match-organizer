@@ -118,13 +118,21 @@ test('5. 🚨⭐⭐ le due azioni si vedono in Anagrafica ma restano legate al p
     'il bottone «Cancella socio» non è più dentro il blocco protetto');
 });
 
-test('6. il tab Attività non tiene più le azioni sul socio', () => {
-  const i = app.indexOf('const _attivitaBody');
-  const j = app.indexOf('const memberTabs = [');
-  assert.ok(i > 0 && j > i, 'il corpo del tab Attività non si trova: questa prova non guarda più niente');
-  const attivita = app.slice(i, j);
-  assert.ok(!/deleteMemberCard\(/.test(attivita), '«Cancella socio» è tornato anche in Attività: due porte per lo stesso gesto');
-  assert.ok(!/toggleMemberActive\(/.test(attivita), '«Disattiva» è tornato anche in Attività');
+test('6. 🔄 le azioni sul socio stanno in UN posto solo (il tab Attività non esiste più)', () => {
+  /* 🔄 02/09 sera — la guardia diceva «il tab Attività non tiene più le azioni sul socio», e il
+     tab Attività da questo giro NON C'È: al suo posto c'è «Pagamenti». Se restasse com'era
+     leggerebbe una fetta vuota e passerebbe verde per sempre — la forma peggiore di guardia.
+     ⇒ Riscritta sul FATTO che proteggeva, che il tab non lo nominava nemmeno: «Disattiva» e
+     «Cancella socio» esistono in UN posto solo, cioè `_azioniSulSocio`.
+     📌 *Una guardia scritta sul contenitore muore col contenitore; scritta sul fatto, sopravvive
+     al trasloco.* */
+  assert.ok(!/const _attivitaBody/.test(app), 'il tab Attività è tornato');
+  assert.strictEqual((app.match(/deleteMemberCard\('/g) || []).length, 1,
+    '«Cancella socio» è chiamato da più di un posto: due porte per il gesto che non si disfa');
+  assert.strictEqual((app.match(/toggleMemberActive\('/g) || []).length, 1,
+    '«Disattiva» è chiamato da più di un posto');
+  assert.match(app, /const _azioniSulSocio = showSecAttivita \? `/,
+    'le due azioni non sono più legate al permesso ATTIVITÀ: il profilo staff guadagnerebbe la cancellazione di un socio');
 });
 
 test('7. WhatsApp non è più cliccabile da nessun punto della scheda socio', () => {
@@ -367,6 +375,77 @@ test('18. 🗑️ il tab «Borsellino» è sparito, e NIENTE di ciò che contene
     'la fascia non è più condizionata al permesso Borsellino: eliminando il tab il saldo si mostrerebbe a chi non lo vedeva');
   assert.match(app, /const showSecBorsellino = _canMemberSec\('view_members_borsellino'\)/,
     'sparito il permesso view_members_borsellino: era gated il tab E la fascia');
+});
+
+test('19. 💳 la sezione «Pagamenti» ha preso il posto di «Attività», e i due tipi restano separati', () => {
+  /* 🗣️ *«devi crearmi la sezione pagamenti… sia le ricariche che i pagamenti delle partite e i
+     rimborsi»* + *«mettiamolo al posto di attività che non serve più»*.
+     📏 **Controllato prima di eliminare Attività**: feedback post-partita = **0 soci su 2823**;
+     «Ultimo messaggio inviato» scritto fisso a `-`; i contatori messaggi vivono in localStorage.
+     🚨 L'unica cosa viva era «Nuova autovalutazione» ⇒ traslocata, non persa. */
+  assert.match(app, /\{ key:'pagamenti', label:'Pagamenti', visible:\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\)/,
+    'la sezione Pagamenti non è nella barra dei tab, o non è più legata al permesso Borsellino');
+  assert.match(app, /const _nuovaAutovalBtn = showSecAttivita \? `/,
+    'perso «Nuova autovalutazione»: era l\'unico posto da cui si lancia, e il permesso che la governa è quello di ATTIVITÀ');
+  /* ⚠️ `[^`]*` qui NON funziona: il corpo del tab contiene template annidati, quindi la classe
+     negata si ferma al primo apice inverso interno e la guardia accusava il codice invece di sé
+     stessa. 📌 *Quando una guardia nuova è rossa su codice appena scritto, si sospetta prima la
+     guardia.* */
+  assert.match(app, /_autovalBody = showSecAutoval \? `[\s\S]{0,600}?\$\{_nuovaAutovalBtn\}` : '';/,
+    '«Nuova autovalutazione» è dichiarata ma NON agganciata al tab Autovalutazione: una dichiarazione non è un uso');
+});
+
+test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli storni si leggono', () => {
+  /* 🚨 **La scelta ovvia era sbagliata.** Una ricarica è un movimento di denaro, quindi verrebbe
+     da scriverla come `payment` — ma la sezione **Incassi** somma TUTTI i `payment`, e il circolo
+     incassa quando il credito viene **speso**, non quando viene caricato: quella riga esiste già
+     (`method: 'wallet'`). ⇒ Contarla due volte avrebbe gonfiato i totali del circolo di ogni euro
+     ricaricato. Va in `wallet_txn`, che era già fra i tipi ammessi dal CHECK e aveva zero righe.
+     📌 *Il tipo giusto per un dato non è quello che gli somiglia: è quello che non rompe i conti
+     di chi legge gli altri.*
+     🚨 E gli **storni** su PROD sono marcati `deleted: true` (20 righe): la lettura ovvia — quella
+     che salta i deleted, come fa `_incassiFetch` — li farebbe sparire proprio dall'elenco che
+     deve mostrarli. 📌 *Un rimborso cancellato dalla vista è un rimborso che il socio non può
+     verificare.* */
+  const edge = readFileSync(new URL('../supabase/functions/matchpoint-wallet-correct/index.ts', import.meta.url), 'utf8');
+  assert.match(edge, /record_type: 'wallet_txn'/,
+    'la traccia della ricarica non è più un wallet_txn');
+  assert.ok(!/record_type: 'payment'/.test(edge),
+    'la ricarica è tornata a scriversi come `payment`: la sezione Incassi la conterebbe, e i totali del circolo si gonfierebbero di ogni euro ricaricato');
+  assert.match(edge, /const traccia = await scriviTraccia\(\{/,
+    'la traccia è dichiarata e non chiamata: le ricariche tornerebbero a non esistere');
+  assert.match(edge, /if \(error\) return \{ stato: 'non_scritta', motivo: error\.message \}/,
+    'l\'esito della scrittura non si guarda: supabase-js RESTITUISCE l\'errore invece di lanciarlo, e la traccia mancherebbe in silenzio');
+  assert.match(edge, /traccia: traccia\.stato/,
+    'la risposta non dice più se la traccia è stata scritta: resterebbe un buco che nessuno sa spiegare');
+  // Il segno è la direzione, così l'elenco si somma senza conoscere `op`.
+  assert.match(edge, /opts\.op === 'recharge' \? Math\.abs\(opts\.amountCents\) : -Math\.abs\(opts\.amountCents\)/,
+    'perso il segno del movimento: una ricarica e uno storno diventerebbero indistinguibili nella somma');
+  // Lato app: i due tipi si chiedono insieme, e gli storni NON si saltano.
+  assert.match(app, /p_record_types: \['payment', 'wallet_txn'\]/,
+    'la sezione Pagamenti non chiede più i due tipi insieme');
+  /* 🔄 02/09 sera — la guardia chiedeva `r.deleted || pl.voided_at`. La distinzione è giusta ma
+     **PREVENTIVA**: 📏 misurato, le righe `deleted` senza `voided_at` sono **zero** su entrambi gli
+     ambienti, e i «3.001 € di rimborsi» che avevo preso per un difetto sono storni **veri**
+     (`status: voided`, `source: matchpoint`). Avevo spiegato quel numero — «saranno le simulazioni
+     ripulite» — invece di misurarlo, e l'avevo già scritto in un commit.
+     📌 *Una spiegazione plausibile trovata subito è il modo più rapido per smettere di cercare
+     quella vera.* ⇒ La guardia resta perché il giorno in cui una riga verrà cancellata per altri
+     motivi non diventi un rimborso: protegge un caso che oggi non esiste, e lo dice. */
+  assert.match(app, /const stornato = !!\(pl\.voided_at \|\| \(pl\.status && pl\.status !== 'paid'\)\);/,
+    'lo storno è tornato a riconoscersi dal flag `deleted`: le righe semplicemente cancellate diventerebbero rimborsi mai avvenuti');
+  assert.match(app, /if \(r\.deleted && !stornato\) continue;/,
+    'i record cancellati (non stornati) rientrano nell\'elenco: sono righe tolte dai conti, non movimenti');
+  // Un elenco senza tetto: «Ospite» ha 689 pagamenti su PROD, 1326 su TEST.
+  assert.match(app, /const visibili = tutte \? righe : righe\.slice\(0, TETTO\);/,
+    'tolto il tetto all\'elenco: la scheda del cliente generico disegnerebbe centinaia di righe');
+  assert.match(app, /Mostrati i \$\{visibili\.length\} più recenti su \$\{righe\.length\}/,
+    'il tetto non dice più quante righe nasconde: nascondere senza dirlo è peggio che mostrare tutto');
+  // Il ciclo: un errore si RICORDA, o il ridisegno rilancia il caricamento all'infinito.
+  assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
+    'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
+  assert.match(app, /Le ricariche si registrano dal 2 settembre 2026/,
+    'tolto l\'avviso sulle ricariche mancanti: un elenco che tace su un pezzo è peggio di uno che dice cosa non sa');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
