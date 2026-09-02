@@ -1,10 +1,10 @@
-/* 🚪 «Codice che chiama una porta che non c'è» — banco del 03/09/2026.
+/* 🚪 «Codice che chiama una porta che non c'è» — banco del 02/09/2026.
  *
  * 🚨⭐⭐ IL FATTO CHE LO FA NASCERE, e sono DUE volte in due giorni:
  *   · 02/09 — `_pmoVoidPayment` chiamava `/functions/v1/matchpoint-payment-void` da mesi. Quella
  *     funzione non era né in git né su Supabase. Nessuno se n'era accorto perché il flag spento
  *     impediva al bottone di comparire, quindi il 404 non è mai arrivato a nessuno.
- *   · 03/09 — stessa identica cosa su `matchpoint-payment-write` (l'incasso): il sorgente stava in
+ *   · 02/09 — stessa identica cosa su `matchpoint-payment-write` (l'incasso): il sorgente stava in
  *     `supabase/functions/_archive/`, che i deploy **saltano di proposito**, e su PROD la funzione
  *     non era mai esistita. Accendere il flag avrebbe messo in segreteria tre bottoni che
  *     rispondevano 404 a ogni click.
@@ -63,7 +63,7 @@ test('3. 🗄️ nessuna porta chiamata dall\'app vive in _archive/ (i deploy la
   /* 🚨 Questo caso è SEPARATO dal 2 di proposito, e non è pedanteria: un sorgente in `_archive/`
      esiste in git, si legge, si apre, e in un `grep` compare — sembra a tutti gli effetti che la
      funzione ci sia. Ma i due workflow filtrano le cartelle che iniziano per `_`, quindi su
-     Supabase non arriva **mai**. È esattamente la forma in cui il difetto del 03/09 si è nascosto.
+     Supabase non arriva **mai**. È esattamente la forma in cui il difetto del 02/09 si è nascosto.
      📌 *Un file che c'è e un servizio che risponde sono due fatti diversi: il primo si vede
      leggendo, il secondo solo deployando.* */
   const archivio = join(FUNZIONI, '_archive');
@@ -77,7 +77,7 @@ test('3. 🗄️ nessuna porta chiamata dall\'app vive in _archive/ (i deploy la
 });
 
 test('4. 💶 l\'INCASSO e lo STORNO di riga sono due interruttori diversi', () => {
-  /* 🗣️ Sua scelta del 03/09: acceso l'incasso nella scheda partita, lo storno resta nella scheda
+  /* 🗣️ Sua scelta del 02/09: acceso l'incasso nella scheda partita, lo storno resta nella scheda
      socio. ⚖️ La guardia è scritta sul FATTO (due nomi diversi che comandano due cose diverse) e
      non sul valore `true`/`false`, che un domani può cambiare senza che il difetto torni. */
   assert.match(APP, /const PMO_PAYMENTS_COLLECT_ENABLED = /,

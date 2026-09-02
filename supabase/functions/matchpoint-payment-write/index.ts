@@ -10,7 +10,7 @@ import {
 // worker `/collect-payment`. ⚠️ DENARO REALE: crea un cobro vero su MP. NON-IDEMPOTENTE →
 // nessun retry.
 //
-// 🗓️ 03/09/2026 — FUORI DALL'ARCHIVIO, per sua richiesta: *«puoi procedere con l'accensione
+// 🗓️ 02/09/2026 — FUORI DALL'ARCHIVIO, per sua richiesta: *«puoi procedere con l'accensione
 // dei soldi nella scheda partita»*, e messo davanti alle tre strade ha scelto **solo l'incasso**
 // (lo storno resta dov'è, nella scheda socio → tab Pagamenti).
 //
