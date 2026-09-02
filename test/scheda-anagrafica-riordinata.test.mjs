@@ -8,6 +8,17 @@
  * Più due proposte misurate e approvate («si procedi»): il riassunto della piega dice se dentro
  * c'è qualcosa, e i tre codici tecnici scendono anche loro sotto una piega.
  *
+ * 🔪🚨 COME SI SABOTANO, e va letto prima di farlo: DUE VOLTE il 02/09 un sabotaggio è passato
+ *   verde non perché la guardia fosse debole, ma perché il colpo era andato **altrove** —
+ *   `@media (max-width: 760px)` compare 9 volte nel file, e la riga
+ *   `g.active !== false ? 'Attivo' : 'Inattivo'` compare 2 volte (la lista soci e la scheda).
+ *   Una sostituzione «la prima occorrenza» colpiva un'altra regola, e la guardia restava
+ *   inesercitata mentre sembrava esercitata.
+ *   ⇒ Si sabota ANCORANDO il punto (cercare prima `<div class="member-card-badges">`, poi
+ *   sostituire da lì), e si conta quante volte esiste la stringa PRIMA di toccarla.
+ *   📌 *Un sabotaggio che non fallisce va sospettato prima della guardia: può essere la guardia
+ *   debole, o il colpo andato altrove — e le due si distinguono solo contando.*
+ *
  * ⚠️ GUARDIE TESTUALI, E SI DICE: leggono `index.html` come TESTO. Dicono che il codice è nel
  * posto giusto, NON che la scheda si veda — la sezione si è già rotta una volta con guardie
  * verdi (voce 84 ⓑ, «la stanza murata»). La prova che vale è aprirla.
@@ -252,6 +263,33 @@ test('15. il livello sta su UNA riga, così non lascia il buco accanto al bot Te
     'il lucchetto è tornato sotto invece che in linea');
   assert.match(app, /\.member-livello-riga \{ display:flex; align-items:center;/,
     'tolta la regola che mette cifra, parola e lucchetto in linea');
+});
+
+test('16. 🚨⭐ le tre etichette in cima sono via — ma «Inattivo» resta, e solo quando lo è', () => {
+  /* 🗣️ Sua richiesta: «ci sono queste 3 label che non servono a nulla, levale».
+     ⚖️ Due erano DOPPIONI: l'ID sta nei «Riferimenti tecnici», il livello nel campo «Livello di
+     gioco» — e da questo giro si leggono nella stessa schermata, quindi ripeterli in cima non
+     aggiungeva niente.
+     🚨 La terza no: «Attivo/Inattivo» era l'unico posto che diceva se il socio è disattivato.
+     📏 Su 5766 schede di PROD 2001 sono disattivate (35%) ⇒ «Attivo» è il caso normale, cioè
+     rumore su due schede su tre; «Inattivo» è l'eccezione, cioè informazione.
+     📌 *Un'etichetta che dice sempre la stessa cosa non informa; la stessa etichetta, quando
+     dice l'eccezione, è l'unica cosa da leggere.* */
+  const i = app.indexOf('<div class="member-card-badges">');
+  const j = app.indexOf('</div>', i);
+  assert.ok(i > 0 && j > i, 'la riga delle etichette non si trova: questa prova non guarda più niente');
+  const badges = app.slice(i, j);
+  assert.ok(!/>ID \$\{escapeHtml\(formatMemberIdLabel/.test(badges),
+    'è tornata l\'etichetta dell\'ID: lo stesso codice sta già nei «Riferimenti tecnici»');
+  assert.ok(!/Livello \$\{escapeHtml\(pmoLivelloEtichettaStaff/.test(badges),
+    'è tornata l\'etichetta del livello: lo stesso valore sta già nel campo «Livello di gioco»');
+  /* 🔄 Corretto da lui: «va bene lascia solo attivo» ⇒ l'etichetta di stato si vede SEMPRE, in
+     tutti e due gli stati, non solo quando è inattiva. La mia versione la mostrava solo
+     nell'eccezione; la sua ragione batte la mia — chi apre venti schede di fila legge lo stesso
+     posto ogni volta, e un'etichetta che a volte c'è e a volte no costringe a chiedersi se
+     manca o se non è stata disegnata. */
+  assert.match(badges, /\$\{g\.active !== false \? 'Attivo' : 'Inattivo'\}/,
+    'lo stato del socio non si vede più in entrambi i casi: una scheda disattivata diventa indistinguibile da una viva');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
