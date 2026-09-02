@@ -477,7 +477,12 @@ test('21. 🚨⭐⭐ stornare un pagamento: il flag è SEPARATO, e si storna una
     'sparito il flag dello storno');
   assert.match(app, /const PMO_PAYMENTS_WRITE_ENABLED = false;/,
     '🚨 l\'INCASSO si è acceso: non è stato chiesto, e si vede in segreteria');
-  assert.match(app, /if \(!PMO_PAYMENTS_VOID_ENABLED && !_harness && !_simulate\)/,
+  /* ⚠️ Scritta per reggere su ENTRAMBI i rami: su `test-preview` la riga ha in più `&& !_simulate`
+     (il ramo di simulazione), che su `main` non esiste — quella variabile lì non è nemmeno
+     dichiarata. Una guardia ancorata alla forma di un ramo solo diventa rossa sull'altro **nel
+     momento della promozione**, cioè quando serve di più.
+     📌 *Un banco che vive su due rami si scrive su ciò che i due rami hanno in comune.* */
+  assert.match(app, /if \(!PMO_PAYMENTS_VOID_ENABLED && !_harness/,
     'lo storno è tornato sotto il flag dell\'incasso: o resta spento, o accende anche il cobro');
 
   /* 🔎 Risalire alla prenotazione: il campo nello storico si chiama `numero`, NON `idReserva`.
