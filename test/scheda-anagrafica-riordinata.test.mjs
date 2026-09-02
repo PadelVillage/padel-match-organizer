@@ -541,4 +541,29 @@ test('22. 🔪🚨 lo storno marca UNA riga, non tutte quelle del socio', () => 
     'senza cliente né nome il worker sceglierebbe da sé quale giocatore stornare su una partita di quattro');
 });
 
+test('23. 🚨⭐⭐ la cella che aspetta un dato TIENE il suo posto (il livello non balla)', () => {
+  /* 🗣️ Lui: *«la parte del livello di gioco prima va a sinistra e poi va a destra. Poi torna a
+     sinistra e poi va a destra. Sembra un interruttore che si sposta.»*
+     📏 Misurato frame per frame, e confermato da due sue schermate: **non è il livello a muoversi,
+     è la cella «Bot Telegram» che appare**. Nasce vuota e si riempie DOPO, con una chiamata di
+     rete a un altro database; finché era `hidden` non occupava spazio e il livello scivolava al
+     suo posto, per essere ricacciato indietro all'arrivo della risposta.
+     ⚖️ Il difetto **esisteva già**, ma il caricamento dei Pagamenti — aggiunto oggi — ridisegna la
+     scheda dopo ~5 s e fa ripartire il ciclo: i quattro movimenti che lui descrive sono i quattro
+     misurati (23ms · 48ms · 5498ms · 5519ms).
+     📌 *Un elemento che arriva in ritardo deve occupare il suo posto da subito: chi legge non
+     distingue «non c'è» da «non c'è ancora», e intanto tutto il resto gli balla sotto gli occhi.* */
+  assert.match(app, /\.member-cella-in-attesa \{ visibility:hidden; \}/,
+    'la cella in attesa torna a `display:none`: lo spazio si libera e il livello riprende a saltare');
+  assert.match(app, /<div class="c3 member-cella-in-attesa" id="cardBotTelegramRow">/,
+    'la riga Bot Telegram è tornata `hidden` alla nascita: non occuperebbe spazio fino alla risposta del ponte');
+  assert.ok(!/id="cardBotTelegramRow" hidden/.test(app),
+    'la riga Bot Telegram nasce di nuovo con `hidden`');
+  assert.match(app, /riga\.classList\.remove\('member-cella-in-attesa'\);/,
+    'la cella non torna visibile quando il dato arriva: resterebbe uno spazio bianco per sempre');
+  // Il 403 è l'UNICO caso in cui sparisce davvero: lì l'assenza è la risposta, non l'attesa.
+  assert.match(app, /e\.codice === 'FORBIDDEN'\)\) \{ riga\.hidden = true; return; \}/,
+    'senza permesso la riga resta a occupare spazio vuoto invece di sparire');
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
