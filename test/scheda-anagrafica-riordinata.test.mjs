@@ -456,8 +456,14 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
      ridisegna → il tab attivo torna al primo, e i 42 movimenti restano in un pannello nascosto.
      📌 *Ridisegnare non è aggiornare: chi ridisegna eredita il compito di rimettere le cose dove
      chi guarda le aveva lasciate.* */
-  assert.match(app, /_tabAperto = document\.querySelector\('\.member-tab\.active'\)\?\.getAttribute\('data-mtab'\)[\s\S]{0,400}?pmoMemberTab\(_tabAperto\)/,
-    'dopo il caricamento il tab non si rimette dov\'era: la scheda salta su Anagrafica e i movimenti restano nascosti');
+  /* 🩹 La guardia controllava la cura NEL POSTO SBAGLIATO — dentro il caricamento — ed era verde
+     mentre lui vedeva la scheda saltare ancora: a ridisegnarla è anche `displayMembers()`, in
+     coda, da mezza applicazione. ⇒ Ora controlla il punto da cui il difetto nasce.
+     📌 *Una guardia messa dove ho visto il sintomo certifica la cura del sintomo.* */
+  assert.match(app, /function renderOpenMemberCard\(\)[\s\S]{0,900}?_tabAperto = document\.querySelector\('#memberCard \.member-tab\.active'\)[\s\S]{0,600}?pmoMemberTab\(_tabAperto\)/,
+    'il ridisegno della scheda non conserva più il tab aperto: torna al primo mentre si sta leggendo');
+  assert.match(app, /document\.querySelector\(`#memberCard \.member-tab\[data-mtab="\$\{_tabAperto\}"\]`\)\) pmoMemberTab/,
+    'si riattiva un tab senza controllare che esista ancora: coi permessi cambiati la scheda resterebbe bianca');
   assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
     'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
   // «Partita — campo Campo 2»: il payload porta già la parola. Visto guardando, non rileggendo.
