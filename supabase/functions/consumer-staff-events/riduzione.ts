@@ -15,6 +15,13 @@
 // gestionale — *il gestionale SA, il bot DICE*. Al bot resta la sua parte, che è un'altra:
 // decidere **se e quando** dire ciò che gli viene detto, con le difese anti-doppione che ha già.
 
+// ⭐ L'unico import, e si copia invece di riscrivere: `normNome` è la forma con cui questa
+// funzione confronta i nomi da sempre (`destinatarioPerNome`). Una seconda normalizzazione
+// «equivalente» qui dentro divergerebbe il giorno in cui qualcuno ne corregge una sola — è la
+// trappola pagata il 02/09 sulla sonda della ficha: *quando si imita un pezzo che funziona si
+// copia la SUA condizione, non se ne scrive una propria che sembra uguale*.
+import { normNome } from './identifica.ts';
+
 /** Un fatto come sta nella coda. */
 export type FattoInCoda = {
   id: string;
@@ -92,6 +99,25 @@ export type EsitoRidotto = {
    * inventarne un terzo.
    */
   chiestoDa?: string | null;
+  /**
+   * 🆕🚨⭐⭐ VOCE 123 (02/09/2026) — TUTTA la raffica è stata chiesta dalla STESSA persona?
+   *
+   * ⭐ Serve a chi decide se tacere: un fatto che una persona ha chiesto **per sé** non le si
+   * annuncia come gesto del circolo. Ma la domanda «chi l'ha chiesto?» qui sopra risponde
+   * **con l'ultimo** della raffica, come `tipo` e `da` — e su uno scarto quella regola non
+   * regge: un gruppo che mescola un gesto suo e uno della segreteria finirebbe zittito per
+   * intero se l'ultimo fosse il suo, e quella del circolo è una notizia che nessun altro gli
+   * darà.
+   * ⇒ Questo campo è vero **solo** se ogni singolo fatto del gruppo porta lo stesso
+   * richiedente, non vuoto. Basta un fatto senza `chiesto_da` (cioè della segreteria) perché
+   * torni falso e si consegni.
+   * ⚖️ Il verso dell'errore è quello di casa: sbagliando si consegna un avviso di troppo, mai
+   * si produce un silenzio. *Ogni scarto in più è un avviso che qualcuno non riceve.*
+   * ⛔ NON dice se quel richiedente è il destinatario: quella domanda vuole l'anagrafica, che
+   * qui dentro non c'è. La fa `index.ts` con `stessaPersona`, ed è la stessa divisione fra
+   * ricevuta e scarto — *questo modulo non decide niente, calcola*.
+   */
+  chiestoDaUnanime?: boolean;
   /**
    * 👥 Chi è entrato e chi è uscito, **al netto di tutta la raffica** — e qui NON si prende
    * l'ultimo fatto, al contrario di `tipo` e `da`.
@@ -345,6 +371,12 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
     // perché il gruppo torni alla quiete piena.
     if (Number.isFinite(visto) && adesso - visto < quietaDovuta(gruppo)) continue;
 
+    const chiestoDa = String(ultimo.chiesto_da ?? '').trim() || null;
+    // 🆕 VOCE 123 — un richiedente solo per tutta la raffica, o nessuno. `normNome('')` è
+    // vuoto, quindi un fatto della segreteria (senza `chiesto_da`) fa cadere l'unanimità da sé.
+    const chiestoDaUnanime = !!chiestoDa &&
+      gruppo.every((g) => normNome(g.chiesto_da) === normNome(chiestoDa));
+
     let gesto = statoFinale(gruppo.map((g) => g.gesto));
     const { entrati, usciti } = fondiFormazione(gruppo);
     // 👥 Un cambio di formazione che si annulla da sé non è una notizia: è il *tolto e
@@ -363,7 +395,10 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       persona: ultimo.persona,
       tipo: ultimo.tipo ?? null,
       da: ultimo.da ?? null,
-      chiestoDa: String(ultimo.chiesto_da ?? '').trim() || null,
+      chiestoDa: chiestoDa,
+      // 🆕 VOCE 123: vero solo se OGNI fatto del gruppo porta lo stesso richiedente. Vedi il
+      // perché sul campo, in cima al file.
+      chiestoDaUnanime,
       gesto,
       // ⭐ Escono solo su `formazione`: sugli altri gesti non significano niente, e un campo
       // pieno dove non serve è il modo di far credere a chi legge che serva.

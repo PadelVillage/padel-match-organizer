@@ -21,12 +21,12 @@
 // quattro cose non è ambiguo per chi lo scrive — lo è per chi lo legge, e chi lo legge è
 // sempre qualcun altro.*
 //
-// ⛔ Questo modulo NON decide niente: tiene i quattro nomi e li tiene in UN posto, perché
+// ⛔ Questo modulo NON decide niente: tiene i nomi degli esiti e li tiene in UN posto, perché
 // vivono in tre — il codice che chiude, la migrazione che documenta la colonna, e chi un
 // domani andrà a interrogarla. Tre stringhe scritte a mano in tre posti divergono.
 
 /**
- * I quattro modi in cui una riga della coda finisce.
+ * I modi in cui una riga della coda finisce.
  *
  * 🚨⭐⭐ IL PRIMO SI CHIAMAVA `consegnato`, E MENTIVA — corretto il 01/09/2026, poche ore dopo
  * averlo scritto, dalla PRIMA misura vera. Vale la pena leggerlo tutto, perché è il difetto
@@ -72,11 +72,31 @@ export const ESITO = {
    * messaggio sarebbe partito, quindi la riga è indistinguibile da una consegnata davvero.
    */
   CORSA_PERSA: 'corsa_persa',
+  /**
+   * 🆕🚨⭐⭐ VOCE 123 (02/09/2026) — IL GESTO ERA SUO, e a lui non si dice.
+   *
+   * 🗣️ Nasce da un difetto visto sul telefono del committente: alle 00:02:47 Maurizio toglie
+   * Marco dalla partita del 7 settembre, e 39 secondi dopo il **circolo** gli annuncia
+   * *«È cambiata la formazione della tua partita … L'ha chiesto Maurizio Aprea … Se non te lo
+   * aspettavi, parlane con Maurizio Aprea.»* ⇒ Un vicolo cieco: il circolo gli attribuisce un
+   * gesto che ha fatto lui e lo manda a chiedere spiegazioni a sé stesso.
+   *
+   * ⚖️ Perché la ricevuta della voce 70 NON lo copriva, ed è la misura che ha corretto la
+   * scheda: il fatto che raggiunge chi ha chiesto è `formazione` (lui **resta** in campo), e
+   * il vocabolario delle ricevute è `aggiunto | tolto | annullata`. `copertura()` accoppia
+   * anche sul gesto ⇒ **nessuna ricevuta può coprire un `formazione`**, oggi né mai.
+   * 📌 *Una protezione si estende dove arriva la sua chiave, non dove arriva la sua ragione.*
+   *
+   * ⛔ NON è «non dirlo a chi l'ha fatto» applicato al mittente: è il gestionale che decide di
+   * tacere, e il bot non riceve niente da scartare. La regola di casa resta intera — *il
+   * gestionale SA, il bot DICE*.
+   */
+  SUO_GESTO: 'suo_gesto',
 } as const;
 
 export type Esito = typeof ESITO[keyof typeof ESITO];
 
-/** I quattro valori, per chi deve controllarli o elencarli. */
+/** I valori, per chi deve controllarli o elencarli. */
 export const ESITI: readonly string[] = Object.values(ESITO);
 
 /**

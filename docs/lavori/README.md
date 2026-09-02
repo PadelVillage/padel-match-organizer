@@ -1871,27 +1871,83 @@ invece che con quella dei **coperti**, e le due divergono esattamente qui: nell'
 l'organizzatore e non chi entra (misura del 22/08), nel `remove` chi chiede è l'organizzatore e non
 chi esce. ⇒ *La 70 aveva già trovato la regola larga; il `remove` la applica stretta.*
 
-🔨 **La cura, e va disegnata prima di scriverla** — sono due strade e non una:
-① la ricevuta del `remove` copre **anche chi ha chiesto** (`member.name` accanto a `bersaglio.nome`);
-② oppure il fatto porta `chiesto_da` (c'è già, voce 116) e chi **manda** l'avviso salta il
-   destinatario che coincide col richiedente.
-⚖️ **Non sono equivalenti**: ① tace nel gestionale, ② tace nel bot. La regola di casa — *il
-gestionale SA, il bot DICE* — spinge verso ①, perché è il gestionale a sapere chi ha chiesto; ma ②
-è l'unica che regge se un domani il fatto nasce da una strada che la ricevuta non attraversa.
-📌 Prima di scegliere si guardano **tutti e cinque** i gesti (`add`, `remove`, `leave`, `cancel`,
-`create`), come fu fatto per la 70: una regola più larga scarta di più, e **ogni scarto in più è un
-avviso che qualcuno non riceve**. La 70 si guadagnò la larghezza gesto per gesto; questa deve fare
-lo stesso.
-
 🚨 **PERCHÉ IN URGENTI e non in coda, dichiarato**: non è un fastidio estetico. È un avviso
 **falso nell'attribuzione** — dice «il circolo» di un gesto del socio — e la 70 esiste apposta per
 impedirlo. E ha una conseguenza pratica: *«parlane con Maurizio Aprea»* detto a Maurizio è
 un'istruzione che non si può eseguire, cioè un vicolo cieco, che è la cosa che questo bot non deve
 mai produrre.
 
-⛔ **COSA NON SI SA ANCORA, e va misurato prima di curare**: se lo stesso succeda su `add`,
-`leave` e `cancel`. Stanotte si è visto **solo** sul `remove`. *Un esito visto una volta non è una
-regola*: gli altri tre vanno guardati, non supposti.
+---
+
+#### 📏 LA MISURA SUI CINQUE GESTI *(02/09/2026, 70ª — fatta PRIMA di scegliere, come la scheda chiedeva)*
+
+Interrogate le righe di `pmo_eventi_staff` con `chiesto_da` non vuoto (PROD, 30 giorni) e letto il
+codice che le produce. **Non è supposizione: gli altri quattro gesti sono stati guardati.**
+
+| gesto | chi chiede | il fatto che raggiunge LUI | coperto dalla ricevuta? |
+|---|---|---|---|
+| `create` | l'organizzatore, unico in campo | `aggiunto` su di sé | ✅ ricevuta `create` |
+| `entra` | chi entra | `aggiunto` su di sé | ✅ **misurato**: 01/09 20:44:28, Marco entra — la sua riga esce con `consegnato_at` ed `esito` **NULL**, cioè *coperta* |
+| `leave` | chi esce | `tolto` su di sé | ✅ ricevuta `leave` |
+| `cancel` | l'organizzatore | `annullata` su di sé | ✅ ricevuta `cancel`, che è **al plurale** su tutto il roster |
+| **`remove`** | l'organizzatore, che **RESTA in campo** | **`formazione`** | ❌ **mai** |
+| **`add`** | l'organizzatore, che **RESTA in campo** | **`formazione`** | ❌ **mai** |
+
+⇒ **Il difetto esiste su DUE gesti, non su uno**, e la regola che li separa dagli altri quattro è
+una sola: *chi chiede resta in campo*. Chi resta non riceve un fatto **su di sé** — riceve
+`formazione`, che parla degli altri.
+
+🩹🚨⭐⭐ **E LA STRADA ① DELLA SCHEDA NON AVREBBE FUNZIONATO.** Qui sopra c'era scritto *«la
+ricevuta del `remove` copre anche chi ha chiesto (`member.name` accanto a `bersaglio.nome`)»*:
+quella riga avrebbe scritto una ricevuta `persona: Maurizio, gesto: 'tolto'`, e il fatto che
+raggiunge Maurizio ha gesto **`formazione`**. `copertura()` accoppia fatto e ricevuta **anche sul
+gesto**, e il vocabolario delle ricevute è `aggiunto | tolto | annullata` — `formazione` non c'è
+e non c'è mai stato. ⇒ La cura sarebbe atterrata, sarebbe passata verde al banco, e **il difetto
+sarebbe rimasto identico**, con una riga in più a spiegare perché non poteva succedere.
+📌 *Una protezione si estende dove arriva la sua **chiave**, non dove arriva la sua **ragione**.*
+⚖️ È la riga corretta e non affiancata, come vuole la casa: la scheda diceva una cosa ragionevole
+e sbagliata, e a dirlo è stata la misura, non una rilettura.
+
+#### 🔨 LA CURA MESSA IN SERVIZIO — la ② **dentro il gestionale**
+
+⇒ Si è scelta la ②, con una correzione al modo in cui la scheda la descriveva: **non tace nel bot**.
+Lo scarto sta in `consumer-staff-events` (che *è* il gestionale): il bot non riceve niente da
+scartare, e la regola di casa resta intera — *il gestionale SA, il bot DICE*.
+
+· `consumer-staff-events/index.ts` — un esito ridotto **non esce** se il destinatario e chi ha
+  chiesto sono la stessa persona. La riga si **chiude** lo stesso, con l'esito nuovo `suo_gesto`;
+· `identifica.ts` — `stessaPersona()`. 🚨 **Si confrontano gli identificativi, non i nomi**:
+  `persona` è il nome come lo scrive la scheda del circolo, `chiesto_da` viene dall'anagrafica, e
+  il progetto sa già che le due grafie divergono. Un confronto fra stringhe fallirebbe **in
+  silenzio** proprio dove la cura serve;
+· `riduzione.ts` — `chiestoDaUnanime`: si scarta **solo** se OGNI fatto della raffica porta lo
+  stesso richiedente. ⛔ Senza, una raffica che mescola un suo gesto e uno della **segreteria**
+  verrebbe zittita per intero, e quella del circolo è l'unica notizia che nessun altro gli darà.
+  *Ogni scarto in più è un avviso che qualcuno non riceve.*
+· 🚨⭐ **e la lettura dell'anagrafica si allarga a chi ha chiesto** — difetto della cura
+  trovato **prima di spingerla**, rileggendo la cura invece del difetto: `schede` è filtrato sui
+  nomi cercati, e quelli nascevano dalle sole `persona`. Un richiedente scritto in anagrafica
+  diversamente da come lo scrive la scheda del circolo non si sarebbe trovato,
+  `destinatarioPerNome` avrebbe risposto `null` e **lo scarto non sarebbe mai scattato** — senza
+  nessun errore e senza nessun rosso. ⇒ *La sonda aveva ragione; erano i dati che le si davano a
+  non bastare.* C'è una guardia testuale apposta, perché è un guasto che nessun banco vedrebbe;
+· migrazione `20260902110000` — **nessun dato toccato, nessun vincolo**: aggiorna il commento
+  della colonna `esito`, che è dove il quinto valore va documentato.
+
+✅ **Provato al banco**: 79 file verdi / 0 rossi. Casi nuovi sull'unanimità (raffica mista, due
+richiedenti, tutta della segreteria, grafie diverse), su `stessaPersona` (duplicato d'anagrafica,
+omonimi, nome irrisolvibile) e tre guardie testuali sullo scarto. Il numero di guardia degli esiti
+è salito **da 4 a 5** col perché scritto accanto.
+
+⏳ **PERCHÉ LA VOCE RESTA APERTA — la prova fisica manca, e si dice invece di nasconderla.**
+Il banco dice che il meccanismo è giusto; non dice che un avviso non è partito. E qui il verde è
+**meno probante del solito**, perché la cura si vede solo per **ciò che non succede**.
+⇒ La prova che vale: **un `remove` (o un `add`) vero dal bot su PROD**, e poi
+① il richiedente **non riceve niente** sul telefono, ② gli **altri** in campo lo ricevono, e
+③ nel registro compare `[staff-events] non lo dico a … l'ha chiesto lui` con la riga chiusa a
+`esito = 'suo_gesto'`. Il ② è la metà che conta più del ①: uno scarto troppo largo si vede solo da
+lì, e uno zero letto dalla parte sbagliata direbbe «funziona» a una cura che ha zittito tutti.
+🧊 **Su TEST non si può**: calendario congelato e scritture simulate. È un gesto suo, su PROD.
 
 
 ### **92** — 🚨🚨 DUE messaggi identici allo stesso socio: la coda si legge e si chiude in due momenti
