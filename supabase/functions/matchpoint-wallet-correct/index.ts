@@ -105,6 +105,80 @@ async function callWorkerCorrect(opts: {
   throw e;
 }
 
+/* 🆕 02/09/2026 — LA RICARICA LASCIA TRACCIA NEL GESTIONALE.
+   🗣️ Sua richiesta: *«devi crearmi la sezione pagamenti, dove uno vede tutti i pagamenti che ha
+   fatto: sia le ricariche che i pagamenti delle partite e i rimborsi, tutto quanto»*.
+   📏 **Misurato prima di scrivere una riga: le ricariche NON ESISTEVANO.** Non «non si trovavano»:
+   questa edge chiamava il worker e non scriveva niente da nessuna parte, e `wallet_balance` (40
+   righe per 40 soci) è una **fotografia del saldo**, uno per socio — non lo storico dei movimenti.
+   ⇒ Il gestionale sapeva **quanto ha** un socio nel borsellino, **non come ci è arrivato**.
+   ⚖️ Era la regola di casa non applicata: *«ogni gesto va registrato dal gestionale nello STESSO
+   ISTANTE in cui è confermato»*. 🚨 Le ricariche già fatte **non si recuperano**; da qui in avanti sì.
+
+   🚨⭐⭐ **E NON È UN RECORD `payment`, di proposito.** Sarebbe stata la scelta ovvia — è un
+   movimento di denaro — ed è **sbagliata**: la sezione Incassi somma TUTTI i `payment`, e una
+   ricarica non è un incasso. Il circolo incassa quando il credito viene **speso** su una partita,
+   e quella riga esiste già (`method: 'wallet'`, 79 righe) ⇒ contarla due volte avrebbe gonfiato
+   i totali del circolo di ogni euro ricaricato.
+   ⇒ Va in `wallet_txn`, che **era già fra i tipi ammessi** dal CHECK della tabella e aveva **zero
+   righe**: dichiarato e mai usato. Nessuna migrazione.
+   📌 *Il tipo giusto per un dato non è quello che gli somiglia: è quello che non rompe i conti di
+   chi legge gli altri.*
+
+   ⛔ La traccia NON può far fallire la ricarica: a quel punto il denaro su Matchpoint si è già
+   mosso, e rispondere «non riuscita» sarebbe una bugia che fa ripetere il gesto. ⇒ Se la scrittura
+   fallisce la risposta resta `ok` e lo DICE (`traccia: 'non_scritta'` col motivo), invece di tacere.
+   📌 *Un fallimento che non si può propagare va dichiarato, non ingoiato.* */
+async function scriviTraccia(opts: {
+  op: 'recharge' | 'storno';
+  idInterno: string; codice: string; memberLocalId: string; playerName: string;
+  amountCents: number; balancePre: number | null; balancePost: number | null;
+  attore: StaffActor;
+}): Promise<{ stato: 'scritta' | 'non_scritta'; motivo?: string }> {
+  const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+  const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+  if (!sUrl || !sKey) return { stato: 'non_scritta', motivo: 'SERVICE_ROLE_MANCANTE' };
+  const adesso = new Date();
+  // Il GIORNO è quello di Roma, non UTC: una ricarica delle 00:30 non è del giorno prima.
+  const giorno = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(adesso);
+  // 🔑 Una chiave per EVENTO, non per socio: due ricariche allo stesso socio sono due movimenti,
+  // e una chiave deterministica sul socio le farebbe sovrascrivere l'una con l'altra.
+  const localKey = `wtx|${opts.idInterno || opts.codice}|${adesso.toISOString()}|${crypto.randomUUID().slice(0, 8)}`;
+  try {
+    const client = createClient(sUrl, sKey, { auth: { persistSession: false } });
+    const { error } = await client.from('pmo_cloud_records').upsert({
+      record_type: 'wallet_txn',
+      local_key: localKey,
+      payload: {
+        op: opts.op,
+        // ⚖️ Il SEGNO è la direzione: + ricarica, − storno. Così l'elenco si somma senza
+        // che chi legge debba conoscere il significato di `op`.
+        amount_cents: opts.op === 'recharge' ? Math.abs(opts.amountCents) : -Math.abs(opts.amountCents),
+        member_local_id: opts.memberLocalId || null,
+        id_cliente: opts.idInterno || null,
+        codice: opts.codice || null,
+        player_name: opts.playerName || '',
+        balance_cents_pre: opts.balancePre,
+        balance_cents_post: opts.balancePost,
+        data: giorno,
+        recorded_at: adesso.toISOString(),
+        source: 'pmo_wallet',
+        status: 'done',
+        staff_email: opts.attore.email || '',
+      },
+      deleted: false,
+      updated_at: adesso.toISOString(),
+      synced_at: adesso.toISOString(),
+    }, { onConflict: 'record_type,local_key' });
+    // 🚨 supabase-js RESTITUISCE l'errore invece di lanciarlo: senza questo controllo la traccia
+    // mancherebbe in silenzio, ed è esattamente il difetto che questa funzione esiste per curare.
+    if (error) return { stato: 'non_scritta', motivo: error.message };
+    return { stato: 'scritta' };
+  } catch (e) {
+    return { stato: 'non_scritta', motivo: errorText(e) };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
@@ -124,6 +198,10 @@ Deno.serve(async (req: Request) => {
   const cognome = clean((body as JsonMap).cognome);
   const email = clean((body as JsonMap).email);
   const telefono = clean((body as JsonMap).telefono);
+  // Servono SOLO alla traccia: identificano il movimento nella scheda del socio. Se l'app non li
+  // manda la ricarica funziona lo stesso — la riga nasce col solo id Matchpoint.
+  const memberLocalId = clean((body as JsonMap).memberLocalId || (body as JsonMap).member_local_id);
+  const playerName = clean((body as JsonMap).playerName || (body as JsonMap).player_name);
   const subtractCentsRaw = (body as JsonMap).subtractCents;
   const subtractCents = Number.isFinite(Number(subtractCentsRaw)) ? Math.round(Number(subtractCentsRaw)) : NaN;
   const addCentsRaw = (body as JsonMap).addCents;
@@ -187,6 +265,23 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  /* 🚨⭐ QUI, e non nell'app: è l'ordine della voce 75 — *registrare e rispondere partono
+     INSIEME dalla conferma del circolo*. Scrivendola nell'app basterebbe una scheda chiusa un
+     secondo dopo per perdere il movimento, che è esattamente come la 75 si era rotta: la ②
+     (rispondere) partita senza la ①  (registrare). */
+  const traccia = await scriviTraccia({
+    op: wantsRecharge ? 'recharge' : 'storno',
+    idInterno: clean(workerResult.idCliente) || idInterno,
+    codice, memberLocalId, playerName,
+    amountCents: wantsRecharge ? addCents : subtractCents,
+    balancePre: typeof workerResult.currentCents === 'number' ? workerResult.currentCents : null,
+    balancePost: typeof workerResult.balanceCentsPost === 'number' ? workerResult.balanceCentsPost : null,
+    attore: actor,
+  });
+  if (traccia.stato === 'non_scritta') {
+    console.error(JSON.stringify({ event: 'wallet_txn_non_scritta', op: wantsRecharge ? 'recharge' : 'storno', idInterno, codice, motivo: traccia.motivo }));
+  }
+
   return ok({
     op: wantsRecharge ? 'recharge' : 'storno',
     idInterno: clean(workerResult.idCliente) || idInterno,
@@ -196,5 +291,9 @@ Deno.serve(async (req: Request) => {
     currentCents: typeof workerResult.currentCents === 'number' ? workerResult.currentCents : null,
     targetCents: typeof workerResult.targetCents === 'number' ? workerResult.targetCents : null,
     balanceCentsPost: typeof workerResult.balanceCentsPost === 'number' ? workerResult.balanceCentsPost : null,
+    // ⛔ Il denaro si è mosso: la risposta resta `ok`. Ma se la traccia non c'è lo si DICE, o la
+    // sezione Pagamenti mostrerebbe un buco che nessuno sa spiegare.
+    traccia: traccia.stato,
+    ...(traccia.motivo ? { tracciaMotivo: traccia.motivo } : {}),
   });
 });
