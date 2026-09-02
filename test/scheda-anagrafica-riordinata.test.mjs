@@ -272,10 +272,13 @@ test('16. 🚨⭐ le tre etichette in cima sono via — ma «Inattivo» resta, e
     'è tornata l\'etichetta dell\'ID: lo stesso codice sta già nei «Riferimenti tecnici»');
   assert.ok(!/Livello \$\{escapeHtml\(pmoLivelloEtichettaStaff/.test(badges),
     'è tornata l\'etichetta del livello: lo stesso valore sta già nel campo «Livello di gioco»');
-  assert.ok(!/'Attivo'/.test(badges),
-    'è tornato «Attivo»: lo dicono già due schede su tre, quindi non dice niente');
-  assert.match(badges, /\$\{g\.active === false \? '<span class="badge badge-danger">Inattivo<\/span>' : ''\}/,
-    'sparito «Inattivo»: una scheda disattivata diventa indistinguibile da una viva');
+  /* 🔄 Corretto da lui: «va bene lascia solo attivo» ⇒ l'etichetta di stato si vede SEMPRE, in
+     tutti e due gli stati, non solo quando è inattiva. La mia versione la mostrava solo
+     nell'eccezione; la sua ragione batte la mia — chi apre venti schede di fila legge lo stesso
+     posto ogni volta, e un'etichetta che a volte c'è e a volte no costringe a chiedersi se
+     manca o se non è stata disegnata. */
+  assert.match(badges, /\$\{g\.active !== false \? 'Attivo' : 'Inattivo'\}/,
+    'lo stato del socio non si vede più in entrambi i casi: una scheda disattivata diventa indistinguibile da una viva');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
