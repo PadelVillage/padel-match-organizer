@@ -460,6 +460,9 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
     'dopo il caricamento il tab non si rimette dov\'era: la scheda salta su Anagrafica e i movimenti restano nascosti');
   assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
     'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
+  // «Partita — campo Campo 2»: il payload porta già la parola. Visto guardando, non rileggendo.
+  assert.match(app, /\/\^campo\\b\/i\.test\(_campoTxt\) \? _campoTxt : \('campo ' \+ _campoTxt\)/,
+    'la parola «campo» è tornata a raddoppiarsi nell\'etichetta della riga');
   assert.match(app, /Le ricariche si registrano dal 2 settembre 2026/,
     'tolto l\'avviso sulle ricariche mancanti: un elenco che tace su un pezzo è peggio di uno che dice cosa non sa');
 });
