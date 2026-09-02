@@ -18,7 +18,7 @@
 | edge vive sui pagamenti | 1 (`payment-void`) | **2** — nasce `matchpoint-payment-write` |
 | copie del recinto `scrittura-al-circolo.ts` | 9 | **10** |
 | banco | 79/81 | **80 su `main` · 82 su `test-preview`** |
-| urgenti in lista | 3 | **6** (una chiusa, quattro entrate) |
+| urgenti in lista | 3 | **7** (una chiusa, cinque entrate) |
 
 ⚖️ **Il filo della giornata:**
 > *Due volte in due giorni l'app ha chiamato una porta che non esisteva, e nessuno se n'era
@@ -46,6 +46,8 @@
    riproduce (§5).
 3. **La voce 128** — Cash · Card · Wallet ovunque: è lavoro vero, ~100 stringhe, e dentro ci sono
    chiavi che NON si toccano (§5).
+4. **La voce 129** — il saldo wallet a colpo d'occhio nella riga del giocatore: **il dato c'è già**,
+   e resta **una domanda sola** da fargli (§5).
 
 ---
 
@@ -252,6 +254,50 @@ distinguono solo guardandole una per una.*
 ⚠️ E «**carta**» è una parola comune: compare anche dove non c'entra col pagamento.
 ⏳ **Una domanda per lui**: vale anche per il **bot dei soci** (repo separato), che al socio dice
 «borsellino»? Lì è la parola che leggono i soci, non la segreteria.
+
+### 🏷️ Voce 128 — la parte DECISA: il bot NON si tocca
+
+🗣️ Risposta sua alla domanda che avevo lasciato aperta: *«non ti preoccupare che nel bot si chiama
+Borsellino. Il bot lo vedono i soci, il gestionale di prod lo vede la segreteria. Devi solamente
+ricordare che sono la stessa cosa.»*
+⇒ **Due parole per due pubblici**, ed è una scelta: `Wallet` in segreteria, `Borsellino` al socio.
+La 128 vale **solo per il gestionale**; `assistente-padel-agent` resta com'è.
+
+🚨 **E con questa scelta la stessa cosa ha QUATTRO nomi** — la tabella sta nella scheda della 128, e
+dentro c'è il vincolo duro: su **Matchpoint** la voce si chiama **«Saldo disponibile»** e **non si
+tocca mai**, perché il worker la clicca **per testo** (`cobroMethodLabels.borsellino`). Cambiarla
+vuol dire che l'incasso dal wallet non trova più il bottone.
+📌 *Quando la stessa cosa ha nomi diversi per ragioni buone, la cosa da scrivere non è quale nome sia
+giusto: è la tabella che li tiene insieme. Senza, il primo che ne trova due pensa di aver trovato un
+difetto — e «aggiusta».*
+
+### 👛 Voce 129 — il saldo wallet a colpo d'occhio (idea sua, e il dato c'è già)
+
+🗣️ *«sotto il nome c'è solamente l'importo. Potremmo spostare l'importo tutto a destra e sulla
+sinistra mettere un'iconcina con un emoticon di un borsellino… è un colpo d'occhio molto carino per
+chi fa segreteria e cassa la sera.»*
+
+📏⭐ **Il worker manda `saldoCents` su OGNI riga del roster** (`server.mjs:7811`), letto dalla ficha
+Matchpoint nello stesso giro che legge i giocatori. Oggi l'app lo usa per **una cosa sola** — decidere
+se il bottone Wallet è premibile — e poi lo butta via. ⇒ Non costa **una chiamata in più**.
+⛔ **Non pescare dal cloud**: `wallet_balance` è una fotografia di **40 righe** (28 con credito), è il
+report «clienti con credito residuo» e resta ferma all'ultimo giro.
+
+🔨 **Due scelte di disegno già prese** (e scritte nella scheda): ① la pastiglia si mostra **solo a chi
+ha credito**, o con `👛 0,00 €` su tre righe su quattro l'occhio smette di vederla; ② `saldoCents` può
+essere `null` ⇒ **mai** scrivere `0,00 €` quando la verità è «non lo so» (è l'errore della 114).
+✅ **Deciso da lui: la pastiglia è MUTA**, non cliccabile — nella scheda della partita ogni cosa
+cliccabile è un gesto che tocca il circolo.
+
+⏳ **E L'UNICA DOMANDA APERTA DI TUTTA LA LISTA**, sua seconda idea: *«potrebbe essere carino poter
+cliccare sul nome del socio e gli apre la scheda di anagrafica. Ma non so se si può fare.»*
+✅ **Si può** (`switchTab` + `openMemberCard`, e il socio si trova confrontando `p.idCliente` con
+`pmoIdMatchpoint(g)`), 🚨 **ma aprire la scheda socio vuol dire lasciare il calendario, e il pannello
+della partita può avere modifiche non salvate** (importi digitati, giocatori aggiunti o tolti).
+⇒ **Chiedergli quale delle tre**: ⓐ cliccabile solo se non c'è niente di modificato · ⓑ con conferma ·
+ⓒ la scheda socio si apre **sopra**, senza cambiare tab.
+⚠️ E il nome resta **muto** per chi non è in anagrafica (gli «Ospite», che nelle sue schermate sono la
+maggioranza): un nome cliccabile che non apre niente è peggio di un nome normale.
 
 ### ✅ Una cosa che NON è da fare, ed è misurata
 La sua preoccupazione — *«metti che uno non vuole pagare col borsellino perché si vuole tenere i
