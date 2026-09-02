@@ -424,12 +424,14 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
   // Lato app: i due tipi si chiedono insieme, e gli storni NON si saltano.
   assert.match(app, /p_record_types: \['payment', 'wallet_txn'\]/,
     'la sezione Pagamenti non chiede più i due tipi insieme');
-  /* 🔄 02/09 sera — questa guardia chiedeva `r.deleted || pl.voided_at`, ed era **sbagliata**:
-     su PROD i 20 storni sono anche `deleted`, quindi le due condizioni coincidevano e `deleted`
-     sembrava un buon segnale. Su TEST no — centinaia di righe `deleted` sono simulazioni
-     ripulite, cioè record CANCELLATI — e contandole come storni la sezione dichiarava 3.001 € di
-     rimborsi mai avvenuti. 📌 *Due condizioni che coincidono nei dati che guardo non sono la
-     stessa condizione: è l'ambiente con dati diversi a dire quale significava qualcosa.* */
+  /* 🔄 02/09 sera — la guardia chiedeva `r.deleted || pl.voided_at`. La distinzione è giusta ma
+     **PREVENTIVA**: 📏 misurato, le righe `deleted` senza `voided_at` sono **zero** su entrambi gli
+     ambienti, e i «3.001 € di rimborsi» che avevo preso per un difetto sono storni **veri**
+     (`status: voided`, `source: matchpoint`). Avevo spiegato quel numero — «saranno le simulazioni
+     ripulite» — invece di misurarlo, e l'avevo già scritto in un commit.
+     📌 *Una spiegazione plausibile trovata subito è il modo più rapido per smettere di cercare
+     quella vera.* ⇒ La guardia resta perché il giorno in cui una riga verrà cancellata per altri
+     motivi non diventi un rimborso: protegge un caso che oggi non esiste, e lo dice. */
   assert.match(app, /const stornato = !!\(pl\.voided_at \|\| \(pl\.status && pl\.status !== 'paid'\)\);/,
     'lo storno è tornato a riconoscersi dal flag `deleted`: le righe semplicemente cancellate diventerebbero rimborsi mai avvenuti');
   assert.match(app, /if \(r\.deleted && !stornato\) continue;/,
