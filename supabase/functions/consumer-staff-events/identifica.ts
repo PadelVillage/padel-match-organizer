@@ -106,3 +106,37 @@ export function destinatarioPerNome(
   const scelta = trovate.find((s) => s.pmoPlayerId.trim()) ?? trovate[0];
   return { id: scelta.id, pmoPlayerId: scelta.pmoPlayerId, memberId: scelta.memberId };
 }
+
+/**
+ * 🆕⭐⭐ VOCE 123 (02/09/2026) — DUE NOMI SONO LA STESSA PERSONA?
+ *
+ * 🗣️ Nasce da un difetto visto sul suo telefono: alle 00:02:47 Maurizio toglie Marco dalla
+ * partita del 7 settembre, e 39 secondi dopo il **circolo** gli annuncia *«È cambiata la
+ * formazione della tua partita … L'ha chiesto Maurizio Aprea … parlane con Maurizio Aprea»*.
+ * ⇒ Un'istruzione che non si può eseguire, data a chi il gesto l'ha appena fatto.
+ *
+ * ⭐ SI CONFRONTANO GLI IDENTIFICATIVI, NON I NOMI, ed è il punto di questa funzione. I due
+ * nomi da confrontare vengono da **due fonti diverse**: `persona` è il nome come lo scrive la
+ * scheda del circolo (quello che il sync rilegge), `chiesto_da` è `member.name` dall'anagrafica.
+ * Il progetto sa già che le due grafie divergono — è scritto sull'`add` di
+ * `consumer-booking-write` («il nome sulla scheda del circolo ha una grafia sua») — quindi un
+ * `normNome(a) === normNome(b)` fallirebbe **in silenzio** proprio dove la cura serve.
+ * ⇒ Si fanno passare tutti e due da `destinatarioPerNome`, che è l'unico pezzo che sa portare
+ * un nome a una persona, e si confrontano le persone.
+ *
+ * ⚖️ L'impronta prima dell'`id`, e non è pignoleria: la stessa persona può avere **due schede
+ * vive** in anagrafica (misurato il 21/08 su «Lidia Comes»), quindi due `id` diversi per un
+ * essere umano solo. L'impronta invece è la sua, ed è la stessa domanda che
+ * `destinatarioPerNome` si fa per decidere se due schede sono un duplicato o due omonimi.
+ * ⚠️ Senza impronta si ripiega sull'`id`: è più stretto, quindi al massimo **non** riconosce
+ * due schede della stessa persona ⇒ non scarta ⇒ resta il comportamento di prima. È il verso
+ * prudente, come dappertutto qui dentro: sbagliando si torna a un avviso di troppo, mai a un
+ * silenzio.
+ */
+export function stessaPersona(a: Destinatario | null, b: Destinatario | null): boolean {
+  if (!a || !b) return false;
+  const ia = impronta({ ...a, nome: '' });
+  const ib = impronta({ ...b, nome: '' });
+  if (ia && ib) return ia === ib;
+  return !!a.id && a.id === b.id;
+}

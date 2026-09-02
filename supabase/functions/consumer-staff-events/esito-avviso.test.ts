@@ -15,15 +15,20 @@ function test(name: string, fn: () => void) {
   catch (e) { failed += 1; console.log(`FAIL - ${name}`); console.log(`       ${(e as Error).message.split('\n')[0]}`); }
 }
 
-test('1. i quattro esiti sono quattro, distinti, e in minuscolo', () => {
-  assert.equal(ESITI.length, 4);
-  assert.equal(new Set(ESITI).size, 4);
+test('1. gli esiti sono CINQUE, distinti, e in minuscolo', () => {
+  /* 🔢 Il numero è salito da 4 a 5 il 02/09/2026 con `suo_gesto` (voce 123), e va alzato solo
+   * perché il punto nuovo OBBEDISCE alla regola: è un modo in più in cui una riga si chiude
+   * senza che un messaggio parta, e sta qui insieme agli altri quattro invece che sparso.
+   * ⚖️ Un numero di guardia si alza dichiarando il perché, o smette di essere una guardia e
+   * diventa la fotografia di ciò che c'è. */
+  assert.equal(ESITI.length, 5);
+  assert.equal(new Set(ESITI).size, 5);
   for (const e of ESITI) assert.match(e, /^[a-z_]+$/);
 });
 
 test('2. solo «passato_al_bot» dice che la riga è uscita di qui', () => {
   assert.equal(ePassatoAlBot(ESITO.PASSATO_AL_BOT), true);
-  for (const e of [ESITO.NON_RICONOSCIUTO, ESITO.NETTO_NULLO, ESITO.CORSA_PERSA]) {
+  for (const e of [ESITO.NON_RICONOSCIUTO, ESITO.NETTO_NULLO, ESITO.CORSA_PERSA, ESITO.SUO_GESTO]) {
     assert.equal(ePassatoAlBot(e), false, `«${e}» non è uscito verso il bot`);
   }
 });
@@ -78,7 +83,7 @@ test('5. ⛔ un errore sull\'esito non ferma la consegna', () => {
   assert.ok(!/return err\(/.test(ramo![0]), "un esito non scritto fa fallire la risposta: la diagnostica è diventata un cancello");
 });
 
-test('6. i quattro nomi stanno in UN posto: il codice non se li riscrive a mano', () => {
+test('6. i nomi degli esiti stanno in UN posto: il codice non se li riscrive a mano', () => {
   const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
   const senzaCommenti = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   for (const valore of ESITI) {
@@ -86,6 +91,60 @@ test('6. i quattro nomi stanno in UN posto: il codice non se li riscrive a mano'
       `«${valore}» è scritto a mano in index.ts invece di venire da ESITO: due copie divergono`);
   }
   assert.match(src, /from '\.\/esito-avviso\.ts'/, "index.ts non importa il modulo degli esiti");
+});
+
+test('7. 🆕 VOCE 123 — lo scarto «era suo» è nel GESTIONALE, e chiude la riga', () => {
+  /* 🚨 Le due metà che questa prova protegge, e sono tutte e due state sbagliate altrove:
+   * ① lo scarto NON deve uscire verso il bot — se uscisse, il gestionale direbbe una cosa
+   *    e chiederebbe al bot di non dirla, che è la regola di casa rovesciata;
+   * ② la riga si CHIUDE lo stesso — un fatto che non si consegna e non si chiude si
+   *    riesamina a ogni giro, per sempre. */
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.ok(src.length > 5000, 'sorgente non letto: questa prova non direbbe niente');
+  const ramo = src.match(/if \(e\.chiestoDaUnanime[\s\S]{0,700}?\n    \}/);
+  assert.ok(ramo, 'lo scarto della voce 123 non si trova: il difetto è tornato');
+  assert.match(ramo![0], /daChiudere\.push\(\.\.\.e\.ids\)/,
+    'la riga scartata non si chiude: si riesaminerà a ogni giro per sempre');
+  assert.match(ramo![0], /segnaEsito\(e\.ids, ESITO\.SUO_GESTO\)/,
+    'lo scarto non lascia il suo perché: sarebbe indistinguibile da un netto nullo');
+  assert.ok(!/eventi\.push/.test(ramo![0]),
+    'lo scarto manda comunque l\'evento al bot: non è più uno scarto');
+});
+
+test('8. 🆕 VOCE 123 — si scarta SOLO se tutta la raffica è sua', () => {
+  // 🚨 Senza `chiestoDaUnanime` un gruppo che mescola un suo gesto e uno della segreteria
+  // verrebbe zittito per intero, e quella del circolo è l'unica notizia che nessun altro
+  // gli darà. *Ogni scarto in più è un avviso che qualcuno non riceve.*
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  assert.match(src, /if \(e\.chiestoDaUnanime && stessaPersona\(/,
+    'lo scarto non pretende più che la raffica sia tutta dello stesso richiedente');
+});
+
+test('9. 🆕 VOCE 123 — i nomi si confrontano passando dall\'ANAGRAFICA, non fra loro', () => {
+  /* 📏 `persona` è il nome come lo scrive la scheda del circolo, `chiesto_da` viene
+   * dall'anagrafica: il progetto sa già che le due grafie divergono (vedi l'`add` di
+   * `consumer-booking-write`). Un `normNome(a) === normNome(b)` fallirebbe **in silenzio**
+   * proprio dove la cura serve, cioè restituendo il difetto senza nessun errore. */
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  const ramo = src.match(/if \(e\.chiestoDaUnanime[\s\S]{0,300}?\)\) \{/);
+  assert.ok(ramo, 'lo scarto non si trova');
+  assert.match(ramo![0], /destinatarioPerNome\(e\.chiestoDa/,
+    'il richiedente non passa dall\'anagrafica: il confronto è tornato fra stringhe');
+  assert.ok(!/normNome\(e\.chiestoDa/.test(ramo![0]),
+    'il confronto è fra nomi normalizzati: due grafie diverse della stessa persona non combaciano');
+});
+
+test('10. 🆕 VOCE 123 — l\'anagrafica si legge ANCHE per chi ha chiesto, o lo scarto è morto', () => {
+  /* 📏 Difetto trovato prima di spingere, rileggendo la cura invece del difetto: `schede` è
+   * filtrato sui nomi cercati, e quelli nascevano dalle sole `persona`. Un richiedente scritto
+   * in anagrafica diversamente da come lo scrive la scheda del circolo non si sarebbe trovato,
+   * `destinatarioPerNome` avrebbe risposto `null`, e lo scarto non sarebbe MAI scattato — senza
+   * nessun errore e senza nessun rosso. Questa prova è l\'unica cosa che se ne accorgerebbe. */
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  const ramo = src.match(/const nomi = \[[\s\S]{0,400}?\]\)\];/);
+  assert.ok(ramo, 'la composizione dei nomi da cercare è cambiata forma: questa prova non guarda più niente');
+  assert.match(ramo![0], /e\.chiestoDa/,
+    'i nomi di chi ha chiesto non entrano più fra quelli cercati: lo scarto della voce 123 non può scattare');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);

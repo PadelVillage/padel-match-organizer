@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { riduci, SOSPETTO_RAFFICA_SPEZZATA_MS, type FattoInCoda } from './riduzione.ts';
-import { destinatarioPerNome, normNome, type SchedaMinima } from './identifica.ts';
+import { destinatarioPerNome, normNome, stessaPersona, type SchedaMinima } from './identifica.ts';
 import { leggiImpaginato } from './impaginazione.ts';
 import {
   copertura,
@@ -9,7 +9,7 @@ import {
   TOLLERANZA_ANTICIPO_MS,
   type Ricevuta,
 } from './ricevute.ts';
-/* 🆕🔎 VOCE 68 (01/09/2026) — i quattro modi in cui una riga della coda finisce. Stanno in
+/* 🆕🔎 VOCE 68 (01/09/2026) — i modi in cui una riga della coda finisce. Stanno in
    un modulo perché vivono in tre posti (qui, la migrazione, e chi un domani interrogherà la
    colonna), e tre stringhe scritte a mano in tre posti divergono. */
 import { ESITO } from './esito-avviso.ts';
@@ -297,7 +297,26 @@ Deno.serve(async (req: Request) => {
   // chiudono e basta, e cercarne il nome in anagrafica sarebbe una lettura di dati personali
   // fatta per niente.
   const daDire = ridotti.filter((e) => e.gesto !== null);
-  const nomi = [...new Set(daDire.map((e) => e.persona))];
+  /* 🆕🚨⭐⭐ VOCE 123 — E ANCHE CHI HA CHIESTO, o la cura non potrebbe funzionare.
+   *
+   * 📏 Trovato prima di spingere, rileggendo la propria cura invece che il difetto: lo scarto
+   * qui sotto chiede `destinatarioPerNome(e.chiestoDa, schede)`, ma `schede` è filtrato su
+   * `cercati` — e `cercati` nasceva dalle sole `persona`. ⇒ Un richiedente scritto in
+   * anagrafica diversamente da come lo scrive la scheda del circolo non si sarebbe trovato,
+   * `destinatarioPerNome` avrebbe risposto `null`, e lo scarto **non sarebbe mai scattato**.
+   * Nessun errore, nessun rosso: il difetto sarebbe semplicemente rimasto.
+   * ⚖️ È la trappola della 69ª un piano più in là — *una sonda che risponde con sicurezza alla
+   * domanda sbagliata* — qui nella forma in cui la sonda ha ragione e i **dati che le si danno**
+   * non bastano.
+   * ⛔ Non allarga la lettura di dati personali a chiunque: sono i nomi di chi ha appena
+   * chiesto una scrittura **su questa stessa partita**, e servono per decidere se TACERE. */
+  const nomi = [...new Set([
+    ...daDire.map((e) => e.persona),
+    ...daDire
+      .filter((e) => e.chiestoDaUnanime)
+      .map((e) => String(e.chiestoDa ?? '').trim())
+      .filter(Boolean),
+  ])];
 
   const schede: SchedaMinima[] = [];
   if (nomi.length) {
@@ -382,6 +401,8 @@ Deno.serve(async (req: Request) => {
   /** Quanti fatti se li è presi un altro giro mentre questo lavorava. Vedi il passo 5. */
   let soffiati = 0;
   let nonRiconosciuti = 0;
+  /** 🆕 VOCE 123: quanti avvisi non sono partiti perché il gesto era di chi li riceverebbe. */
+  let suoiGesti = 0;
   let troncato = false;
 
   for (const e of ridotti) {
@@ -404,6 +425,42 @@ Deno.serve(async (req: Request) => {
       nonRiconosciuti += 1;
       continue;
     }
+
+    /* 🆕🚨⭐⭐ VOCE 123 (02/09/2026) — A CHI HA CHIESTO IL GESTO, IL CIRCOLO NON LO ANNUNCIA.
+     *
+     * 📏 VISTO SUCCEDERE, non dedotto. 00:02:47 Maurizio toglie Marco dalla partita del 7
+     * settembre; 00:03:26 gli arriva *«🔄 È cambiata la formazione della tua partita … Esce
+     * Marco Aprea. L'ha chiesto Maurizio Aprea … Se non te lo aspettavi, parlane con Maurizio
+     * Aprea.»* ⇒ Il circolo gli attribuisce un gesto suo e lo manda a parlare con sé stesso,
+     * che è un'istruzione che non si può eseguire.
+     *
+     * ⚖️ PERCHÉ NON BASTAVA LA RICEVUTA DELLA VOCE 70, ed è la misura che ha corretto la
+     * scheda della voce (che proponeva di allargarla): chi ha chiesto **resta in campo**,
+     * quindi il fatto che lo raggiunge è `formazione` — e il vocabolario delle ricevute è
+     * `aggiunto | tolto | annullata`. `copertura()` accoppia anche sul gesto ⇒ **nessuna
+     * ricevuta può coprire un `formazione`**, né oggi né allargandola a `member.name`.
+     * 📌 *Una protezione si estende dove arriva la sua CHIAVE, non dove arriva la sua ragione.*
+     *
+     * ⭐ E LO SCARTO STA NEL GESTIONALE, non nel bot: il bot non riceve niente da scartare, e
+     * la regola di casa resta intera — *il gestionale SA, il bot DICE*. È anche la forma che
+     * regge sui gesti futuri, perché non passa dal vocabolario delle ricevute.
+     *
+     * 🚨 SI CHIEDE ALL'ANAGRAFICA, non alle stringhe: `persona` è il nome come lo scrive la
+     * scheda del circolo, `chiesto_da` è quello dell'anagrafica, e il progetto sa già che le
+     * due grafie divergono. Un confronto fra nomi fallirebbe **in silenzio** proprio qui.
+     *
+     * ⛔ E SOLO SE LA RAFFICA È TUTTA SUA (`chiestoDaUnanime`): un gruppo che mescola un suo
+     * gesto e uno della segreteria si consegna, o gli si toglierebbe l'unica notizia che
+     * nessun altro gli darà. *Ogni scarto in più è un avviso che qualcuno non riceve.*
+     */
+    if (e.chiestoDaUnanime && stessaPersona(chi, destinatarioPerNome(e.chiestoDa ?? '', schede))) {
+      console.log(`[staff-events] non lo dico a ${e.persona} (${e.gesto} ${e.data} ${e.ora} C${e.campo}): l'ha chiesto lui`);
+      daChiudere.push(...e.ids);
+      segnaEsito(e.ids, ESITO.SUO_GESTO);
+      suoiGesti += 1;
+      continue;
+    }
+
     eventi.push({
       gesto: e.gesto,
       persona: e.persona,
@@ -585,6 +642,7 @@ Deno.serve(async (req: Request) => {
     consegnati: eventi.length,
     nettoNullo: ridotti.length - daDire.length,
     nonRiconosciuti,
+    suoiGesti,
     troncato,
     dryRun,
   }));
@@ -594,6 +652,10 @@ Deno.serve(async (req: Request) => {
     troncato,
     non_riconosciuti: nonRiconosciuti,
     coperti_da_ricevuta: coperti.length,
+    // 🆕 VOCE 123: quanti avvisi sono stati taciuti perché il gesto era di chi li riceverebbe.
+    // Come `gia_presi_da_un_altro_giro`, il bot non ci decide niente: è la traccia che rende
+    // visibile uno scarto che, per definizione, non lascia nessun messaggio dietro di sé.
+    suoi_gesti: suoiGesti,
     // 🆕 Quanti fatti se li è presi un altro giro sovrapposto (vedi il passo 5). Il bot non lo
     // usa per decidere niente — lo scrive nel registro, ed è così che la corsa si vede.
     gia_presi_da_un_altro_giro: soffiati,
