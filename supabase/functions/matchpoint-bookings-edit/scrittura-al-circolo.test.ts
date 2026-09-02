@@ -95,6 +95,13 @@ const GEMELLI = [
   // 🆕💰 9/08/2026 — il BORSELLINO: era l'ultima funzione di scrittura rimasta fuori dal recinto,
   // e le sue correzioni (storno e ricarica) toccavano il circolo da qualunque ambiente.
   'matchpoint-wallet-correct/scrittura-al-circolo.ts',
+  /* 🆕🧾 02/09/2026 — lo STORNO DI UN PAGAMENTO (`matchpoint-payment-void`). Nona copia, e nasce
+     con la funzione: l'app la chiamava da mesi ma l'edge non esisteva **né in git né su Supabase**
+     — a nasconderlo era il flag spento, che impediva al bottone di comparire e quindi anche al 404
+     di arrivare a qualcuno.
+     🚨 Sta nel recinto per la stessa ragione delle altre otto: il worker è **uno solo e condiviso**
+     fra TEST e PROD, quindi uno storno «di prova» annullerebbe un incasso **vero** del circolo. */
+  'matchpoint-payment-void/scrittura-al-circolo.ts',
 ];
 
 test(`8) ⚠️ le ${GEMELLI.length} copie del modulo sono identiche byte per byte`, () => {
