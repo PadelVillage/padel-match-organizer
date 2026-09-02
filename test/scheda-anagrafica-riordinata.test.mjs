@@ -254,5 +254,29 @@ test('15. il livello sta su UNA riga, così non lascia il buco accanto al bot Te
     'tolta la regola che mette cifra, parola e lucchetto in linea');
 });
 
+test('16. 🚨⭐ le tre etichette in cima sono via — ma «Inattivo» resta, e solo quando lo è', () => {
+  /* 🗣️ Sua richiesta: «ci sono queste 3 label che non servono a nulla, levale».
+     ⚖️ Due erano DOPPIONI: l'ID sta nei «Riferimenti tecnici», il livello nel campo «Livello di
+     gioco» — e da questo giro si leggono nella stessa schermata, quindi ripeterli in cima non
+     aggiungeva niente.
+     🚨 La terza no: «Attivo/Inattivo» era l'unico posto che diceva se il socio è disattivato.
+     📏 Su 5766 schede di PROD 2001 sono disattivate (35%) ⇒ «Attivo» è il caso normale, cioè
+     rumore su due schede su tre; «Inattivo» è l'eccezione, cioè informazione.
+     📌 *Un'etichetta che dice sempre la stessa cosa non informa; la stessa etichetta, quando
+     dice l'eccezione, è l'unica cosa da leggere.* */
+  const i = app.indexOf('<div class="member-card-badges">');
+  const j = app.indexOf('</div>', i);
+  assert.ok(i > 0 && j > i, 'la riga delle etichette non si trova: questa prova non guarda più niente');
+  const badges = app.slice(i, j);
+  assert.ok(!/>ID \$\{escapeHtml\(formatMemberIdLabel/.test(badges),
+    'è tornata l\'etichetta dell\'ID: lo stesso codice sta già nei «Riferimenti tecnici»');
+  assert.ok(!/Livello \$\{escapeHtml\(pmoLivelloEtichettaStaff/.test(badges),
+    'è tornata l\'etichetta del livello: lo stesso valore sta già nel campo «Livello di gioco»');
+  assert.ok(!/'Attivo'/.test(badges),
+    'è tornato «Attivo»: lo dicono già due schede su tre, quindi non dice niente');
+  assert.match(badges, /\$\{g\.active === false \? '<span class="badge badge-danger">Inattivo<\/span>' : ''\}/,
+    'sparito «Inattivo»: una scheda disattivata diventa indistinguibile da una viva');
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
