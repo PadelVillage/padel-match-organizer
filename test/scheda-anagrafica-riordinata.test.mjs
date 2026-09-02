@@ -175,7 +175,7 @@ test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro',
   assert.ok(fascia, 'la fascia del borsellino non si trova: questa prova non guarda più niente');
   assert.ok(!/<div class="member-hero-actions"><\/div>/.test(app),
     'la riga delle azioni è di nuovo VUOTA: la fascia torna a essere una cornice attorno al nulla');
-  assert.match(fascia[0], /pmoVaiARicarica\(\)/,
+  assert.match(fascia[0], /pmoApriRicarica\('/,
     'sparito «＋ Ricarica» dalla fascia: era la ragione per cui la fascia occupa spazio');
   assert.match(app, /\$\{\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\) \? `<div class="member-hero">/,
     'la fascia non è più condizionata al borsellino: senza quel permesso si disegna una cornice vuota');
@@ -234,7 +234,7 @@ test('13. 🔒 «Disattiva» chiede conferma — e solo quando disattiva', () =>
     'sparita la conferma di «Cancella socio»: è il gesto che non si disfa');
 });
 
-test('14. 🚨⭐ «＋ Ricarica» in cima NON scrive: porta al riquadro dove si digita la cifra', () => {
+test('14. 🚨⭐ «＋ Ricarica» apre la FINESTRA, e la finestra è la conferma', () => {
   /* 📏 Misurato prima di disegnarlo: la ricarica vera (`_pmoRechargeWallet` → edge
      `matchpoint-wallet-correct`) scrive DAVVERO sul Matchpoint del circolo e NON chiede nessuna
      conferma. Oggi la protegge solo il fatto che devi aprire apposta il tab Borsellino.
@@ -246,10 +246,14 @@ test('14. 🚨⭐ «＋ Ricarica» in cima NON scrive: porta al riquadro dove si
     'la SCRITTURA della ricarica è finita nella fascia in cima: è una scrittura reale su Matchpoint e non chiede conferma');
   assert.ok(!/pmoWalletRechargeAmt/.test(fascia[0]),
     'il campo dell\'importo è finito in cima: la cifra si digita dove si conferma il gesto, non in testa a ogni scheda');
-  assert.match(app, /function pmoVaiARicarica\(\) \{[\s\S]*?pmoMemberTab\('borsellino'\)/,
-    'il salto al tab Borsellino non c\'è più: il bottone in cima non porterebbe da nessuna parte');
-  assert.match(app, /if \(!campo\) \{[\s\S]*?showAlert\(/,
-    'se il riquadro non esiste il bottone tace: un bottone che tace è indistinguibile da uno rotto');
+  assert.match(fascia[0], /pmoApriRicarica\('/,
+    'il bottone in cima non apre più la finestra della ricarica');
+  assert.match(app, /const okGo = \(opts\.giaConfermato === true\) \? true : await _pmoConfirmRecharge/,
+    'la finestra non sostituisce più la conferma dell\'Assistente AI: due domande per un gesto solo, e la seconda invisibile');
+  assert.match(app, /\.then\(chiudiSeVa\);/,
+    'la finestra non si chiude dopo una ricarica riuscita: resta aperta sopra un gesto già fatto');
+  assert.strictEqual((app.match(/id="pmoWalletRechargeAmt"/g) || []).length, 1,
+    'la casella dell\'importo esiste in due posti: la finestra leggerebbe quella sbagliata');
 });
 
 test('15. il livello sta su UNA riga, così non lascia il buco accanto al bot Telegram', () => {
