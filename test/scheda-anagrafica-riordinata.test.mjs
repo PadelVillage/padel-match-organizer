@@ -385,6 +385,12 @@ test('19. 💳 la sezione «Pagamenti» ha preso il posto di «Attività», e i 
      🚨 L'unica cosa viva era «Nuova autovalutazione» ⇒ traslocata, non persa. */
   assert.match(app, /\{ key:'pagamenti', label:'Pagamenti', visible:\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\)/,
     'la sezione Pagamenti non è nella barra dei tab, o non è più legata al permesso Borsellino');
+  /* 🔀 Ordine chiesto da lui: Anagrafica · Pagamenti · Autovalutazione. Non è solo estetica —
+     `_firstTabKey` prende il PRIMO visibile, quindi l'ordine decide anche dove atterra chi non ha
+     il permesso Anagrafica. 📌 *Riordinare una fila cambia anche dove si arriva quando la fila si
+     accorcia.* */
+  assert.match(app, /key:'anagrafica'[\s\S]{0,400}?key:'pagamenti'[\s\S]{0,400}?key:'autoval'/,
+    'l\'ordine dei tab non è più Anagrafica · Pagamenti · Autovalutazione');
   assert.match(app, /const _nuovaAutovalBtn = showSecAttivita \? `/,
     'perso «Nuova autovalutazione»: era l\'unico posto da cui si lancia, e il permesso che la governa è quello di ATTIVITÀ');
   /* ⚠️ `[^`]*` qui NON funziona: il corpo del tab contiene template annidati, quindi la classe
@@ -422,8 +428,11 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
   assert.match(edge, /opts\.op === 'recharge' \? Math\.abs\(opts\.amountCents\) : -Math\.abs\(opts\.amountCents\)/,
     'perso il segno del movimento: una ricarica e uno storno diventerebbero indistinguibili nella somma');
   // Lato app: i due tipi si chiedono insieme, e gli storni NON si saltano.
-  assert.match(app, /p_record_types: \['payment', 'wallet_txn'\]/,
-    'la sezione Pagamenti non chiede più i due tipi insieme');
+  /* 🔄 la guardia chiedeva esattamente `['payment', 'wallet_txn']`: da quando la sezione si
+     carica anche le prenotazioni i tipi sono quattro. Il FATTO da proteggere non è la lunghezza
+     della lista — è che i due tipi dei MOVIMENTI ci siano entrambi. */
+  assert.match(app, /p_record_types: \['payment', 'wallet_txn',/,
+    'la sezione Pagamenti non chiede più payment e wallet_txn insieme: sparirebbero le ricariche o le partite');
   /* 🔄 02/09 sera — la guardia chiedeva `r.deleted || pl.voided_at`. La distinzione è giusta ma
      **PREVENTIVA**: 📏 misurato, le righe `deleted` senza `voided_at` sono **zero** su entrambi gli
      ambienti, e i «3.001 € di rimborsi» che avevo preso per un difetto sono storni **veri**
@@ -442,10 +451,88 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
   assert.match(app, /Mostrati i \$\{visibili\.length\} più recenti su \$\{righe\.length\}/,
     'il tetto non dice più quante righe nasconde: nascondere senza dirlo è peggio che mostrare tutto');
   // Il ciclo: un errore si RICORDA, o il ridisegno rilancia il caricamento all'infinito.
+  /* 🚨 Il tab si rimette dov'era: senza, la sezione era INUTILIZZABILE e nessuna guardia lo
+     vedeva. Misurato aprendola: click su «Pagamenti» → caricamento → `renderOpenMemberCard`
+     ridisegna → il tab attivo torna al primo, e i 42 movimenti restano in un pannello nascosto.
+     📌 *Ridisegnare non è aggiornare: chi ridisegna eredita il compito di rimettere le cose dove
+     chi guarda le aveva lasciate.* */
+  assert.match(app, /_tabAperto = document\.querySelector\('\.member-tab\.active'\)\?\.getAttribute\('data-mtab'\)[\s\S]{0,400}?pmoMemberTab\(_tabAperto\)/,
+    'dopo il caricamento il tab non si rimette dov\'era: la scheda salta su Anagrafica e i movimenti restano nascosti');
   assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
     'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
+  // «Partita — campo Campo 2»: il payload porta già la parola. Visto guardando, non rileggendo.
+  assert.match(app, /\/\^campo\\b\/i\.test\(_campoTxt\) \? _campoTxt : \('campo ' \+ _campoTxt\)/,
+    'la parola «campo» è tornata a raddoppiarsi nell\'etichetta della riga');
   assert.match(app, /Le ricariche si registrano dal 2 settembre 2026/,
     'tolto l\'avviso sulle ricariche mancanti: un elenco che tace su un pezzo è peggio di uno che dice cosa non sa');
+});
+
+test('21. 🚨⭐⭐ stornare un pagamento: il flag è SEPARATO, e si storna una riga sola', () => {
+  /* 🗣️ *«voglio avere la possibilità di stornare un pagamento fatto per errore»* → poi, messo
+     davanti al fatto che `PMO_PAYMENTS_WRITE_ENABLED` accende **anche l'incasso**: *«sì»* allo
+     storno da solo. ⇒ Un flag in più invece di uno acceso a metà.
+     📌 *Due gesti dietro lo stesso interruttore sono un gesto solo: chi vuole il primo si porta
+     via il secondo senza averlo chiesto.* */
+  assert.match(app, /const PMO_PAYMENTS_VOID_ENABLED = true;/,
+    'sparito il flag dello storno');
+  assert.match(app, /const PMO_PAYMENTS_WRITE_ENABLED = false;/,
+    '🚨 l\'INCASSO si è acceso: non è stato chiesto, e si vede in segreteria');
+  /* ⚠️ Scritta per reggere su ENTRAMBI i rami: su `test-preview` la riga ha in più `&& !_simulate`
+     (il ramo di simulazione), che su `main` non esiste — quella variabile lì non è nemmeno
+     dichiarata. Una guardia ancorata alla forma di un ramo solo diventa rossa sull'altro **nel
+     momento della promozione**, cioè quando serve di più.
+     📌 *Un banco che vive su due rami si scrive su ciò che i due rami hanno in comune.* */
+  assert.match(app, /if \(!PMO_PAYMENTS_VOID_ENABLED && !_harness/,
+    'lo storno è tornato sotto il flag dell\'incasso: o resta spento, o accende anche il cobro');
+
+  /* 🔎 Risalire alla prenotazione: il campo nello storico si chiama `numero`, NON `idReserva`.
+     🩹 Avevo cercato `idReserva`, trovato zero, e concluso «solo 2 pagamenti su 3124 sono
+     stornabili». Falso: sono la stessa cosa (identici su 158 righe su 158) e la misura vera è
+     **2796 su 3126**. 📌 *Cercare un campo per nome è cercarlo in una forma sola.* */
+  assert.match(app, /const num = String\(b\.idReserva \|\| b\.numero \|\| ''\)\.trim\(\);/,
+    'la ricerca guarda di nuovo un nome solo: nello storico il campo è `numero` e le partite passate sparirebbero');
+  /* 🚨 Le prenotazioni si CHIEDONO, non si leggono da `storicoPrenotazioni`.
+     📏 Misurato su PROD nel browser: quella variabile è **vuota** — l'app non idrata lo storico
+     all'avvio (le prenotazioni future sì, 303 righe; lo storico no). Leggerla avrebbe dato «non
+     risale» su OGNI partita passata, con tutte le guardie verdi.
+     📌 *Una funzione che legge una variabile globale scommette che qualcun altro l'abbia
+     riempita: se le importa davvero, se la carica.* */
+  assert.match(app, /p_record_types: \['payment', 'wallet_txn', 'booking', 'booking_history'\]/,
+    'la sezione non chiede più le prenotazioni: tornerebbe a dipendere da una variabile che su PROD è vuota');
+  assert.match(app, /const mappaSlot = new Map\(\);/,
+    'sparita la mappa slot→prenotazione costruita al caricamento');
+  assert.match(app, /r\.stornabile && r\.idReserva\) \? `<button/,
+    'il bottone compare anche senza prenotazione risolta: fallirebbe su una riga su dieci invece di dirlo');
+
+  // Il bottone c'è solo dove ha senso, e passa lo SLOT (senza, l'edge non marca niente).
+  assert.match(app, /stornabile: !stornato && pl\.method !== 'gift' && cents > 0,/,
+    'il bottone comparirebbe anche su omaggi, su righe già stornate o a importo zero');
+  /* Lo slot viaggia col click perché l'edge, senza, non sa quale riga marcare stornata
+     (`SLOT_INCOMPLETO`) — e preferisce non marcarne nessuna che marcarle tutte. */
+  assert.match(app, /pmoStornaPagamentoDaScheda\('\$\{escapeHtml\(chiave\)\}','\$\{escapeHtml\(r\.idReserva\)\}','\$\{escapeHtml\(r\.data\)\}','\$\{escapeHtml\(r\.campoNum\)\}','\$\{escapeHtml\(r\.oraHm\)\}'/,
+    'il bottone non passa più prenotazione, giorno, campo e ora: senza, l\'edge non sa quale riga marcare');
+});
+
+test('22. 🔪🚨 lo storno marca UNA riga, non tutte quelle del socio', () => {
+  /* 🚨 Il difetto più grosso della giornata, preso **rileggendo il proprio codice prima che
+     girasse**: in `marcaStornato` avevo scritto `clean(pl.__slot_ok) !== 'no'` — un campo che non
+     esiste, quindi una condizione sempre vera. Senza filtro sullo slot, stornare UN pagamento
+     avrebbe marcato «stornati» **tutti** i pagamenti di quel socio (58 su una scheda misurata), e
+     il sync non li avrebbe rimessi a posto: riconcilia solo ciò che il report gli riporta.
+     📌 *Una riga che ha la forma di un controllo e non controlla niente è peggio di un controllo
+     assente: chi rilegge la conta come fatta.* */
+  const edge = readFileSync(new URL('../supabase/functions/matchpoint-payment-void/index.ts', import.meta.url), 'utf8');
+  assert.ok(!/__slot_ok/.test(edge.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'il controllo finto sullo slot è tornato nel CODICE: marcherebbe stornati tutti i pagamenti del socio');
+  assert.match(edge, /const slotOk = slotChiave === /,
+    'sparito il confronto sullo slot: «questo pagamento» tornerebbe a essere «ogni pagamento di questa persona»');
+  assert.match(edge, /return \{ stato: 'non_marcata', motivo: 'SLOT_INCOMPLETO' \};/,
+    'senza uno slot completo non fallisce più chiusa: marcare a caso non si disfa');
+  // Il recinto: nona copia, e l'ultimo gradino prima del worker.
+  assert.match(edge, /if \(!scritturaAlCircoloConsentita\(Deno\.env\.get\('SUPABASE_URL'\)\)\) \{/,
+    'sparito il recinto: da TEST si stornerebbe sul registro cassa VERO, perché il worker è condiviso');
+  assert.match(edge, /if \(!idCliente && !playerName\)/,
+    'senza cliente né nome il worker sceglierebbe da sé quale giocatore stornare su una partita di quattro');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
