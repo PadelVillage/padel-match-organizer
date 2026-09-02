@@ -154,8 +154,18 @@ test('10. 🆕 la fascia del borsellino non si disegna se non ha niente dentro',
      niente — una cornice attorno al nulla, che sembra un guasto.
      📌 *Togliere un elemento non è solo togliere lui: è chiedersi cosa reggeva il contenitore
      che lo teneva.* */
-  assert.ok(!/<div class="member-hero-actions">/.test(app),
-    'la riga delle azioni della fascia è tornata: era il solo motivo per cui la fascia aveva due colonne');
+  /* 🔄 02/09 pomeriggio — la riga delle azioni è TORNATA, ma con dentro qualcosa: «↻ Aggiorna»
+     e «＋ Ricarica». Quello che la guardia vieta non è il contenitore, è il contenitore VUOTO —
+     e vietare il contenitore era una scorciatoia che ha smesso di dire la verità appena la
+     fascia ha avuto di nuovo un motivo per esistere.
+     📌 *Una guardia scritta sulla forma di oggi diventa un ostacolo il giorno dopo: si scrive
+     su cosa NON deve succedere.* */
+  const fascia = app.match(/<div class="member-hero">[\s\S]*?<\/div>` : ''\}/);
+  assert.ok(fascia, 'la fascia del borsellino non si trova: questa prova non guarda più niente');
+  assert.ok(!/<div class="member-hero-actions"><\/div>/.test(app),
+    'la riga delle azioni è di nuovo VUOTA: la fascia torna a essere una cornice attorno al nulla');
+  assert.match(fascia[0], /pmoVaiARicarica\(\)/,
+    'sparito «＋ Ricarica» dalla fascia: era la ragione per cui la fascia occupa spazio');
   assert.match(app, /\$\{\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\) \? `<div class="member-hero">/,
     'la fascia non è più condizionata al borsellino: senza quel permesso si disegna una cornice vuota');
 });
@@ -211,6 +221,37 @@ test('13. 🔒 «Disattiva» chiede conferma — e solo quando disattiva', () =>
     'tolta la conferma su «Disattiva»: il bottone è accanto a «Salva» e agirebbe al primo click');
   assert.match(app, /function deleteMemberCard[\s\S]{0,400}?if \(!confirm\(/,
     'sparita la conferma di «Cancella socio»: è il gesto che non si disfa');
+});
+
+test('14. 🚨⭐ «＋ Ricarica» in cima NON scrive: porta al riquadro dove si digita la cifra', () => {
+  /* 📏 Misurato prima di disegnarlo: la ricarica vera (`_pmoRechargeWallet` → edge
+     `matchpoint-wallet-correct`) scrive DAVVERO sul Matchpoint del circolo e NON chiede nessuna
+     conferma. Oggi la protegge solo il fatto che devi aprire apposta il tab Borsellino.
+     ⇒ Il bottone in cima apre quel riquadro e mette il cursore nell'importo.
+     📌 *Avvicinare un gesto senza conferma al posto più battuto equivale a togliergliela.* */
+  const fascia = app.match(/<div class="member-hero">[\s\S]*?<\/div>` : ''\}/);
+  assert.ok(fascia, 'la fascia non si trova');
+  assert.ok(!/pmoWalletRechargeClick\(/.test(fascia[0]),
+    'la SCRITTURA della ricarica è finita nella fascia in cima: è una scrittura reale su Matchpoint e non chiede conferma');
+  assert.ok(!/pmoWalletRechargeAmt/.test(fascia[0]),
+    'il campo dell\'importo è finito in cima: la cifra si digita dove si conferma il gesto, non in testa a ogni scheda');
+  assert.match(app, /function pmoVaiARicarica\(\) \{[\s\S]*?pmoMemberTab\('borsellino'\)/,
+    'il salto al tab Borsellino non c\'è più: il bottone in cima non porterebbe da nessuna parte');
+  assert.match(app, /if \(!campo\) \{[\s\S]*?showAlert\(/,
+    'se il riquadro non esiste il bottone tace: un bottone che tace è indistinguibile da uno rotto');
+});
+
+test('15. il livello sta su UNA riga, così non lascia il buco accanto al bot Telegram', () => {
+  /* 🗣️ Sua richiesta: «sistema anche lo spazio del bot Telegram».
+     📌 Uno spazio vuoto in una griglia non è quasi mai colpa della casella vuota: è l'altezza
+     della sua vicina. Qui la vicina era il livello, con cifra, parola e lucchetto IMPILATI. */
+  const corpo = corpoAnagrafica();
+  assert.match(corpo, /<div class="member-livello-riga"><input type="number"/,
+    'il livello è tornato impilato: la sua casella ricresce e il buco sotto «Bot Telegram» torna');
+  assert.ok(!/id="cardLevelUnlock" style="margin-top:6px;"/.test(corpo),
+    'il lucchetto è tornato sotto invece che in linea');
+  assert.match(app, /\.member-livello-riga \{ display:flex; align-items:center;/,
+    'tolta la regola che mette cifra, parola e lucchetto in linea');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
