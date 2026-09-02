@@ -451,6 +451,13 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
   assert.match(app, /Mostrati i \$\{visibili\.length\} più recenti su \$\{righe\.length\}/,
     'il tetto non dice più quante righe nasconde: nascondere senza dirlo è peggio che mostrare tutto');
   // Il ciclo: un errore si RICORDA, o il ridisegno rilancia il caricamento all'infinito.
+  /* 🚨 Il tab si rimette dov'era: senza, la sezione era INUTILIZZABILE e nessuna guardia lo
+     vedeva. Misurato aprendola: click su «Pagamenti» → caricamento → `renderOpenMemberCard`
+     ridisegna → il tab attivo torna al primo, e i 42 movimenti restano in un pannello nascosto.
+     📌 *Ridisegnare non è aggiornare: chi ridisegna eredita il compito di rimettere le cose dove
+     chi guarda le aveva lasciate.* */
+  assert.match(app, /_tabAperto = document\.querySelector\('\.member-tab\.active'\)\?\.getAttribute\('data-mtab'\)[\s\S]{0,400}?pmoMemberTab\(_tabAperto\)/,
+    'dopo il caricamento il tab non si rimette dov\'era: la scheda salta su Anagrafica e i movimenti restano nascosti');
   assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
     'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
   assert.match(app, /Le ricariche si registrano dal 2 settembre 2026/,
