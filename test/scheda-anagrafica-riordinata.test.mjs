@@ -424,10 +424,21 @@ test('20. 🚨⭐⭐ i movimenti del borsellino NON sono record `payment`, e gli
   // Lato app: i due tipi si chiedono insieme, e gli storni NON si saltano.
   assert.match(app, /p_record_types: \['payment', 'wallet_txn'\]/,
     'la sezione Pagamenti non chiede più i due tipi insieme');
-  assert.match(app, /const stornato = !!\(r\.deleted \|\| pl\.voided_at/,
-    'gli storni non sono più riconosciuti: sono righe `deleted`, e senza questo sparirebbero dall\'elenco');
-  assert.ok(!/if \(!r \|\| r\.deleted \|\| !r\.payload\) continue;[\s\S]{0,400}?wallet_txn/.test(app),
-    'la sezione Pagamenti salta i record deleted: gli storni sono proprio quelli');
+  /* 🔄 02/09 sera — questa guardia chiedeva `r.deleted || pl.voided_at`, ed era **sbagliata**:
+     su PROD i 20 storni sono anche `deleted`, quindi le due condizioni coincidevano e `deleted`
+     sembrava un buon segnale. Su TEST no — centinaia di righe `deleted` sono simulazioni
+     ripulite, cioè record CANCELLATI — e contandole come storni la sezione dichiarava 3.001 € di
+     rimborsi mai avvenuti. 📌 *Due condizioni che coincidono nei dati che guardo non sono la
+     stessa condizione: è l'ambiente con dati diversi a dire quale significava qualcosa.* */
+  assert.match(app, /const stornato = !!\(pl\.voided_at \|\| \(pl\.status && pl\.status !== 'paid'\)\);/,
+    'lo storno è tornato a riconoscersi dal flag `deleted`: le righe semplicemente cancellate diventerebbero rimborsi mai avvenuti');
+  assert.match(app, /if \(r\.deleted && !stornato\) continue;/,
+    'i record cancellati (non stornati) rientrano nell\'elenco: sono righe tolte dai conti, non movimenti');
+  // Un elenco senza tetto: «Ospite» ha 689 pagamenti su PROD, 1326 su TEST.
+  assert.match(app, /const visibili = tutte \? righe : righe\.slice\(0, TETTO\);/,
+    'tolto il tetto all\'elenco: la scheda del cliente generico disegnerebbe centinaia di righe');
+  assert.match(app, /Mostrati i \$\{visibili\.length\} più recenti su \$\{righe\.length\}/,
+    'il tetto non dice più quante righe nasconde: nascondere senza dirlo è peggio che mostrare tutto');
   // Il ciclo: un errore si RICORDA, o il ridisegno rilancia il caricamento all'infinito.
   assert.match(app, /window\.__pmoPagamentiCache\.set\(chiave, \{ errore:/,
     'un caricamento fallito non si ricorda: la scheda rilancerebbe la lettura a ogni ridisegno, per sempre');
