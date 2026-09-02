@@ -2,7 +2,7 @@
 
 **Fotografia del 21/08/2026, a fine 46ª sessione.** Misurata, non ricordata.
 
-## ✋ DA PROVARE INSIEME — in ordine *(aggiornato il 30/08 SERA, fine 64ª)*
+## ✋ DA PROVARE INSIEME — in ordine *(aggiornato il 02/09 POMERIGGIO, fine 71ª)*
 
 🩹 **Questo blocco è stato RISCRITTO, non aggiornato in un angolo.** Fino a stasera si apriva con
 *«delle 9 urgenti non ne è chiusa nessuna, e non per pigrizia»* ed elencava cinque prove da chiedergli:
@@ -10,9 +10,13 @@
 Una lista di richieste che restano scritte dopo essere state esaudite non è vecchia, **mente** — e la
 prima cosa che fa una sessione nuova è crederle e richiedergli quello che ha già dato.
 
-| | cosa | quanto | sblocca |
-|---|---|---|---|
-| **1️⃣** | **la 84 col difetto vero davanti** — vuole il difetto *in atto*, non ricostruito: si fa quando capita | — | **84** |
+✅ **NON C'È NESSUNA RICHIESTA APERTA** *(02/09 pomeriggio)*.
+🩹 **La 1️⃣ è stata ESAUDITA e TOLTA**: chiedeva *«la 84 col difetto vero davanti — vuole il difetto in
+atto, non ricostruito»*, e il difetto vero è arrivato da sé — la scheda di Maurizio del 02/09, quiz
+0/5, `review_reason: quiz_non_superato`. La 84 è **chiusa a prova fisica**: la riga del motivo l'ha
+**guardata lui** nella scheda socio.
+⇒ *Una richiesta che resta scritta dopo essere stata esaudita non è vecchia, **mente** — e la prima
+cosa che fa una sessione nuova è crederle e richiedergli quello che ha già dato.*
 
 
 🩹 **Due richieste sono state ESAUDITE e TOLTE nella stessa giornata**: «la sonda della 109 dal 31/08» (voce chiusa, e per una strada diversa da quella prevista — il codice invece della sonda) e «la voce 79 provata sul telefono», chiusa due volte in un giorno: l'avviso alle 15:28 e la **strada veloce** alle 20:34, misurata a 33 secondi.
@@ -32,8 +36,10 @@ dei soci) e la 🆕 **114** (oltre i 30 giorni il calendario staff dice «Libero
 sa: la cura è ① far dire alla griglia che non sappiamo, oppure ② allungare l'orizzonte del sync —
 due strade diverse, e la seconda costa scraping).
 
-⚖️ **Cosa dice questa lista, adesso che è corta**: le urgenti che restano sono **4** — 92, 84, 83, 65 —
+⚖️ **Cosa dice questa lista, adesso che è corta**: le urgenti che restano sono **3** — 92, 83, 65 —
 e **NON aspettano tutte un caso**.
+🩹 **Corretta di nuovo il 02/09 pomeriggio, con la 84 chiusa**: erano 4, e la quarta non aspettava
+niente — era lavoro, fatto in un pomeriggio.
 🩹🚨 **Corretta il 02/09, ed è la SECONDA volta che questa stessa frase mente.** Qui c'era scritto
 *«tutte e quattro aspettano un caso che non si può provocare»*, e la 123 l'ha smentita in un giorno:
 entrata il 02/09 a notte fonda e **chiusa a prova fisica la mattina dopo**, perché non aspettava
@@ -1475,9 +1481,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **4** — 📦 **la 123 è CHIUSA il 02/09 mattina, a prova fisica su PROD**, il giorno dopo essere entrata: *è passata di lì e non è successo niente* — stesso giro di consegna, stessa partita, e le due righe divergono dove devono (`suo_gesto` a chi ha chiesto, `passato_al_bot` a chi resta), confermato sui due telefoni. Da 5 a 4 — 🆕 **era entrata il 02/09, MESSA LÌ DA LUI** (*«apri l'altra in coda, tra gli urgenti»*): il circolo avvisa il socio di un gesto che ha fatto lui e lo manda a parlare con sé stesso — **vista succedere** sul suo telefono 🆕 **entra la 123 il 02/09, MESSA QUI DA LUI** (*«apri l'altra in coda, tra gli urgenti»*): il circolo avvisa il socio di un gesto che ha fatto lui e lo manda a parlare con sé stesso — **vista succedere** sul suo telefono alle 00:03:26. È la voce 70 rientrata da una porta che quella cura non copriva: la ricevuta del `remove` copre chi viene tolto, non chi ha chiesto. Non scavalca niente: entra in fondo. Da 4 a 5 — 📦 **la 109 è CHIUSA il 31/08 mattina, a prova fisica arrivata da sé**: un omaggio vero della segreteria su una partita viva, scritto alle 07:53:29 con `count: 1`. ⭐ E a chiuderla è stato il **codice**, non la sonda — il record `paygift` nasce solo leggendo la ficha di Matchpoint, quindi «l'omaggio è passato di là» è vero per costruzione. La sonda era stata sbagliata **tre volte in tre giorni**, ogni volta nel verso di affermare una cosa non vera. Da 5 a 4 — 📦 **la 108 è CHIUSA il 30/08 sera, a prova fisica su PROD**: il caso è arrivato da sé — un salvataggio vero di scheda socio passato dalla cura (`count: 1`, atterrato in 1,7 s) — e l'unica metà che dal cloud non si vede l'ha guardata **lui**: *«Nessun avviso giallo»*. ⇒ Le urgenti che restano aspettano **tutte** un caso, tranne la sonda della 109. — 📦 **la 97 è CHIUSA il 30/08 sera**, e il suo terzo passo si è rivelato un lavoro su **due repo con un ordine obbligato**: prima il bot smette di offrire l'indirizzo della pagina (17:01, deploy #126), poi la pagina si chiude (PROD **6.259**). Prova fisica su tutt'e due gli ambienti vivi: la porta c'è e il modulo **non esiste più nel DOM**. Da 7 a 6 — 📦 **la 110 è CHIUSA il 30/08 pomeriggio**, e le due righe che la tenevano aperta sono cadute nello stesso pomeriggio: le **6 domande** che volevano l'orecchio di chi gioca le ha rilette **lui** (cinque confermate, la P-T12 corretta e rideployata), e le cure le ha viste succedere **sul suo telefono**, col conto del livello rifatto a mano dalla formula in servizio. A residuo dichiarato. Da 8 a 7 — 📦 **la 105 è CHIUSA il 30/08 pomeriggio**, provata da lui sul gestionale di PROD nella finestra esatta: due salvataggi di fila sulla scheda di un socio **esposto** (riga viva `d7c6d389-…`, telefono che ne calcolerebbe un'altra) e la riga è rimasta **una**, doppioni **0**, soci vivi **2817** prima e dopo. Da 9 a 8 — 🆕 **entra la 110 il 30/08**, il test di autovalutazione ritarato in quattro punti su sua parola (*«VAi procedi e fai il lavoro»*): la banca dei trabocchetto bilanciata perché «nego sempre» passava nel 76-96% dei casi contro il 50% del caso, i pesi portati da 0,40/0,25/0,35 a 0,20/0,25/0,55 col freno basso tolto, le quattro scale tecniche ritarate sullo stesso metro, e la frequenza che smette di essere un dato raccolto e buttato. Curata, con tre guardie sabotate, e **aperta per due cose**: le 27 domande nuove non le ha rilette nessuno che giochi a padel, e nessuna delle quattro cure è stata vista succedere su un telefono. **Non scavalca niente**: entra in fondo. Da 8 a 9 — 🆕 **entra la 109 la sera del 29/08**, la RPC che non conosceva i pagamenti: **trovata tirando il filo della 108** (🩹 e NON è la sua causa: quella riga è stata corretta un'ora dopo — le 67 restano senza spiegazione). Una deriva fra due liste (la tabella ne ammette 22, la RPC 15) che scartava `payment` **in silenzio** dal 27/06 ⇒ **3032** record `payment` nel cloud e **zero** scritti dall'app — 🩹 e anche questo era letto male: su 3014 pagamenti non c'è **nessuna** riga a 0 €, quindi un omaggio non l'ha mai fatto nessuno. Il danno è **potenziale**, non avvenuto: la porta si chiude prima che qualcuno ci passi. Curata (solo `payment`, larghezza decisa da lui) e applicata sui due progetti; manca la prova fisica. Non scavalca niente: entra sopra perché **stava già perdendo dati**. Da 7 a 8 — 🆕 **entra la 108 la sera del 29/08**, un salvataggio di scheda socio che sparisce in silenzio mentre lo schermo dice «salvato»: **guasto suo**, visto succedere su un livello cambiato **due volte** e mai arrivato al cloud, e **misurato** — zero soci su 2817 con `payload.updatedAt` del 29/08, e **67 spinte su 411 in quindici giorni hanno scritto ZERO record** con l'app che le dava per riuscite. 🆕 **Il 29/08 notte le due piste su quelle 67 sono cadute tutte e due** (la whitelist non può spiegarle, e nessuna strada nota costruisce un record senza chiave): al loro posto c'è una **diagnostica nel registro**, applicata ai due database e provata eseguendo la RPC su TEST — la causa resta **ignota**, ma la prossima spinta a vuoto si spiega da sé. Sta in cima perché tocca l'anagrafica a ogni modifica normale della segreteria e **rende inerte il punto D**, promosso in PROD lo stesso giorno. Non scavalca nessuna: entra sopra perché le altre sei aspettano una prova, questa perde dati adesso. Da 6 a 7 — 📦 **la 101 è CHIUSA il 29/08 pomeriggio**: la lista del maestro vista popolarsi con un socio vero sull'app viva (lui rifa' il test dichiarando Agonista ⇒ dimostrato 5 con 4 in scheda ⇒ **ENTRA**), e prima ancora i quattro cancelli esercitati su 24 soci veri con il rosso accanto a ogni riga. 🚨 Nel farlo e' caduta una riga falsa della sua stessa scheda — il blocco non era un permesso mancante, era la guardia della console che fermava due **letture** in POST. Da 7 a 6 — 📦 **la 78 è CHIUSA il 29/08 pomeriggio**, provata da lui dentro la finestra esatta (aggiunta 15:21:25 → sync 15:25:04, **3′39″**) e col bottone «🔄 Aggiorna» toccato **quindici volte**, quattro nello stesso minuto: il registro del bot porta il «prima» e il «dopo» sulla stessa partita, più il **controllo** non cercato di una partita concorde che nello stesso minuto contava i posti. Da 8 a 7 — 🆕🔼 **entra la 105 la sera del 28/08**, il gestionale che sdoppia un socio scrivendo sotto una chiave calcolata invece che sotto quella della riga viva: **guasto visto succedere** (Maurizio, 22:17), non un'idea, e **non scavalca nessuna** — sta in cima perché si riattiva a ogni modifica normale della segreteria e intanto lascia il socio fuori dal test. Da 7 a 8 — 📦 **la 69 è CHIUSA il 28/08 pomeriggio**, curata alla **causa** dopo che l'effetto si era visto per la terza volta e su un terzo gesto (*«Non riesco ad aprire il test»* a Laura). ⚖️ E le due righe che la scheda portava come causa e come cura erano **tutt'e due false**: si sono corrette misurando. Da 8 a 7 — 📦 **la 104 è entrata e USCITA nella stessa giornata**, aperta a mezzogiorno su sua parola e chiusa nel pomeriggio con **due** prove fisiche sul suo telefono: le tecniche mescolate e le altre quattro ferme. Nel mezzo una sua decisione presa su una misura da 20.000 gettoni (*«teniamo la a»*), e due sabotaggi sopravvissuti alla prima stesura del banco. Da 9 a 8 — 🆕🔼 **era entrata la 104 il 28/08 a mezzogiorno, voce SUA**, e ci entra **promossa da lui**: l'avevo messa in coda dichiarando che non bloccava niente, e lui l'ha spostata di sopra (*«mettila nella lista dei task che stiamo facendo adesso»*). Non scavalca niente. Da 8 a 9 — 📦 **la 98 è CHIUSA il 28/08**, guardata da lui sul gestionale vero: due soci nel filtro del maestro, e il cablaggio dal vivo che era dichiarato non provato. Da 9 a 8 — 📦 **la 103 è entrata e USCITA in due ore**, difetto visto da lui sullo schermo e cura vista dal vivo 14 minuti dopo il deploy. 🆕 era entrata il 28/08 mattina, l'esito che nominava la parola dichiarata: il difetto l'ha visto **lui sullo schermo** durante una prova fisica (*«non coincide con le nostre regole la risposta»*), quindi la voce nasce da una misura e non da un'idea. Curata e in servizio, aperta per la prova fisica. Da 9 a 10 — 📦 **la 102 è entrata e USCITA nella stessa mattina**, curata, messa in servizio e vista dal vivo (a residuo dichiarato: la parola esatta da cui era nata non l'ha vista nessuno). 🆕 era entrata il 28/08 mattina, l'eco che diceva una parola che il bottone non aveva: voluta dalla **sessione** su una misura (delega del 23/08), e **non scavalca niente** — è curata e in servizio, ma non l'ha ancora vista nessuno su un telefono, che è la forma esatta che questa lista tiene aperta. Da 9 a 10 — 📦 **la 100 è CHIUSA il 28/08 mattina**, a prova fisica: la sua riga sta fra le chiuse. Da 10 a 9 — 🆕 **entra la 101 la tarda sera del 27/08**, il riallineo `test-preview` ← `main` della catena `assessment-*`: voluta dalla **sessione** su sua parola (*«quella voce la devi volere tu. FALLO SUBITO»*), e **non scavalca niente** — è entrata sotto alle nove, perché cresceva da sola invece di aspettare il suo turno. 🩹 **E questo numero era SBAGLIATO: diceva 8 con 9 voci sotto.** 📏 Non è una svista trovata rileggendo — `guard-docs-truth` lo dichiarava **rosso** dal #1117 di ieri sera, a ogni giro, e nessuno leggeva quel rosso. ⚖️ *Una guardia che nessuno guarda è una guardia che non c'è.* — 📦🔼 **il 26/08 il numero resta 8 ma le voci sono altre**: la **94** è stata chiusa a prova fisica sua e al suo posto è salita la **98**, la lista per il maestro — la prova stessa ha mostrato che quella segnalazione non la legge nessuno — 🔼 **e la 97 era salita qui dalla coda la sera stessa in cui ci era entrata**, per sua parola: il test di livello lo prova **dentro Telegram** ⇒ quella voce non è più il lavoro dopo la 94, è **la strada che la chiude**. Scavalca solo delle attese (98 e 99) — 🆕 **entra la 94 la sera del 25/08** (il **test di livello rifatto**: banca 27+9, tetto a Intermedio, i due valori, il terzo esito, l'attesa a zero), e con lei erano entrate la **95** e la **96** — 📦 **chiuse tutt'e due la sera stessa, provate da lui**: l'«Esci» con lo screenshot delle 22:04, l'«Annulla» e il menu `/gruppo` a parole (*«annulla e il menu /gruppo sono ok»*). 🚨 Erano già tutte in produzione mentre questa riga diceva ancora **6**: la giornata del 25/08 è stata lavorata **fuori dalla lista** — 📦 **e la 90 è stata chiusa da LUI a mezzogiorno del 25/08, a residuo dichiarato**: la bolla non l'ha mai vista nessuno su un telefono, perché un esito ignoto **non si provoca** — e la strada per provocarlo è stata scartata con la misura, non con un'impressione — 🔽 **la 88 è tornata IN CODA il 25/08, per sua parola** (*«per la 88 non fare sviluppo, metti solo in documentazione le regole»*): le quattro regole sono decise e scritte, il codice no, ed è voluto — 📦 **e la 89 è stata chiusa a mezzogiorno del 25/08**, cronometrata due volte da lui: **76 secondi** dal gesto al telefono, di cui **36 fuori dal nostro controllo** (worker 23, Telegram 13) ⇒ il bersaglio «entro 1 minuto» l'ha **ritirato lui sulla misura**, mentre la cura è risultata **dentro il suo budget** (40 su 50) — 📦 **anche la 86 è stata chiusa la mattina del 25/08**, curata e provata da lui nello stesso giro: il link d'invito non arriva più nudo, è un **messaggio pronto da inoltrare** col nome di chi invita e la parola «accettare» — 📦 **la 93 è stata chiusa la mattina del 25/08**, provata da lui sul telefono di Laura: il conto **visto scendere** a «fra 29 giorni» con le date invariate — il terzo dei suoi tre pezzi (**due richieste sue sulla stessa schermata**: le due date nel «mio livello» al posto del solo «fra 30 giorni» — e la misura ha mostrato che il **30 non era una costante**, il conto era già vero e le date il ponte le mandava già; e la **manina** del bottone «Togli i giocatori», che era lo stesso segno delle righe dei nomi — e non solo a occhio: la lettura della selezione ci finiva dentro. Curate, resta la prova fisica sul telefono) — 🆕 la **92** del 24/08 in tarda serata (**due messaggi identici allo stesso socio**, misurati nel registro a un secondo di distanza: la coda dei fatti del circolo si **legge** al passo 1 e si **chiude** al passo 5, e due giri sovrapposti la prendono tutt'e due. Mancava la presa atomica che tutti gli altri avvisi hanno. Curata; la prova fisica vuole un gesto della segreteria che attraversi un riavvio del bot) — 📦 **la 91 è entrata e uscita nella stessa sera**, curata e **provata da lui dentro la finestra esatta** (nome visibile 41 secondi dopo la prenotazione, senza stella e senza conteggi) — 🆕 la **90** del 24/08 sera (**una bolla sola che si aggiorna** invece di due messaggi che si smentiscono: idea sua, aperta e **curata la sera stessa**. Il difetto era di **forma e non di verità** — nessuno dei due messaggi mentiva, la **coppia** sì. Resta aperta per la prova fisica, che vuole un esito ignoto e non si provoca a comando) — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. 🩹 La scheda è stata **riscritta un'ora dopo perché era sbagliata** — il gestionale **dichiara già** l'istante vero (voce 76) e la quiete è **già** 30 secondi: avevo creduto a una nota del 22/08 superata il giorno dopo. La catena vera era **30s-2′30″** e la cura **una costante sola**, il ritiro del bot da 2 min a **20 secondi** — fatta, resta la prova col cronometro) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 📦 **la 87 è stata chiusa da LUI la notte del 25/08**, dopo la prova fisica sul telefono: cinque domande scritte a mano, quattro corrette e la quinta — «perché mi è arrivato questo messaggio?» — **corretta con le sue parole nello stesso giro**. E la caduta non era ignoranza: il testo giusto nella kb c'era già, ma il campo che si dichiarava «la risposta» conteneva tre righe che il modello ha l'ordine di NON dire  — 📦 **la 85 è stata chiusa da LUI la notte del 24/08** («85 provata ed è ok la puoi chiudere»), **a residuo dichiarato**: la frase è curata e provata, ma la causa nel worker — la griglia dei livelli che non si legge — resta scritta nella riga delle chiuse e **non è diventata una voce**: quella decisione è sua — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
-| 📋 **In coda** | **13** — 🆕 **entra la 122 il 02/09**, difetto SUO visto sul telefono: dopo «richiudi» il bottone restava «Richiudi» e lui ha ritoccato — misurato, due tocchi suoi a 16 secondi, **non** un doppione del bot. Curata la notte stessa (PR bot #118), aperta per la prova fisica. Non scavalca niente. Da 12 a 13 — 📦 **la 117 è CHIUSA a mezzanotte del 01/09, a prova fisica su PROD e sullo STESSO caso che l'aveva aperta**: `elimina_diretto` · `elimina_ok:marco aprea:4->3` · `ok: true` in 7,96 s, dopo due fallimenti sulla stessa partita e lo stesso giocatore. ⭐ E la prima cura era sbagliata in un pezzo: a trovarlo è stato il primo togli vero, che nello stesso referto **confermava** il resto. Da 13 a 12 — 🆕 **entrano la 120 e la 121 il 01/09 a tarda notte, tutte e due da una SUA parola**: la **120** è il gestionale che fa saltare la pagina in cima mentre si scrive in una scheda (difetto suo, visto sullo schermo — nessuna causa ipotizzata, di proposito); la **121** è il bot che dice «tolto» prima che il gestionale l'abbia registrato, **misurata** nel ramo `remove` dell'edge e con la cura scelta da lui fra tre. Nessuna delle due scavalca niente. Da 11 a 13 — 📦 **la 116 è CHIUSA il 01/09 sera, a prova fisica su PROD**: l'avviso dice «L'ha chiesto ⟨nome⟩» e non manda più in segreteria per un gesto che la segreteria non ha fatto. Da 9 a 8 — 🆕 **entrano la 117, la 118 e la 119 il 01/09 sera**, tutte e tre **misurate**, non pensate: la **117** è il click «elimina» che non va a termine (due fallimenti veri, e vale anche per l'app della segreteria); la **118** è il verdetto «non ci sono riuscito» detto su un `WORKER_ERROR` che era un «non lo so»; la **119** sono le etichette tagliate nel mezzo, difetto suo visto sullo schermo — curata, aperta per la prova. Nessuna scavalca niente. Da 8 a 11 — 📦 **la 114 è CHIUSA il 01/09 sera, a prova fisica su TUTTI E DUE gli ambienti vivi** (TEST 6.264 e PROD 6.260, col controllo accanto: dentro l'orizzonte 9 «Libero», oltre 0 «Libero» e 4 «non lo so»). ⭐ E ha insegnato una cosa che vale oltre sé stessa: **allargare l'orizzonte non era la cura**, perché la stessa frase falsa ricomparirebbe il giorno dopo il confine nuovo. Da 10 a 9 — 📦 **la 88 è CHIUSA il 01/09 sera, a prova fisica intera su PROD** (apre · vetrina · entra · e l'avviso a tutti e tre quelli in campo, non a chi l'ha fatto). Da 9 a 8 — 🆕 **entrano la 116 e la 115 il 01/09 sera, tutte e due nate DALLA PROVA della 88**: la 116 è l'avviso che dice «l'ha cambiata il circolo» di un gesto fatto da un socio — curata e in servizio la sera stessa, aperta per la prova fisica; la 115 è `esito IS NULL` che vuol dire due cose. Nessuna delle due scavalca niente. Da 8 a 10 — 🆕 **entra la 114 il 01/09**, nata da una sua domanda sul 4 ottobre: oltre l'orizzonte dei 30 giorni il calendario staff mostra i campi come **«Libero»** invece di dire che non sa. Sta in coda e **non in urgenti** perché è **lavorabile subito** — le 4 urgenti aspettano tutte un caso che non si provoca — e perché la finestra in cui morde è stretta (oltre 30 giorni); ma la cura va **decisa da lui**, che sono due strade diverse. Da 8 a 9 — 📦 **la 79 è CHIUSA il 31/08, a DUE prove fisiche sue nella stessa giornata**: il messaggio sul telefono alle **15:28** (l'ospite aggiunto — il caso esatto da cui era nata), e alle **20:34** la **strada veloce** misurata a **33 secondi** contro i 131,6 di prima, con `origine: 'conferma'` letta sul fatto e **zero doppioni** dal sync passato nel frattempo. ⇒ **Nessun residuo aperto**, giuntura compresa. Da 9 a 8 — 📦 **la 80 è CHIUSA il 30/08 a tarda sera, a prova fisica su PROD con la controprova dentro**: alle 23:25 il bot mostrava il roster pulito mentre la scheda del circolo aveva ancora l'Ospite. 🚨 E la PRIMA prova era fallita, trovando un difetto che il banco non poteva vedere — il confronto usava l'orologio di TUTTE le righe invece di quello del circolo, e la cura non avrebbe morso mai. — 🚫 **la 113 è SCARTATA il 30/08 a tarda sera, su sua parola e con una misura**: il difetto vuole una seconda consegna della stessa persona mentre qualcuno è fermo sull'anagrafica, e con più di una scheda ci sono **sei persone su 28**. 🔓 Con la condizione che la riapre scritta nella riga — 43 schede su 86 sono degli ultimi 7 giorni, quindi la popolazione di oggi non è quella di domani. — 📦 **la 99 è CHIUSA il 30/08 a tarda sera**, e metà era già fatta da lui il 27/08 senza che la scheda se ne fosse accorta: il cancello di Principiante è acceso da tre giorni. La seconda metà — il «2+2» — è stata **scartata** perché collideva con la sua regola più recente («una sbagliata su cinque») e perché la ripetizione che l'aveva motivata si era curata da sé. — 📦 **la 71 è CHIUSA il 30/08 a tarda sera, da lui e con la schermata in mano**: dentro la finestra il bot gli riconosce la partita come sua. ⛔ Con un residuo dichiarato — le due porte curate quella sera (togli e annullo) non le ha esercitate nessuno. — 🆕 **entra la 113 il 30/08 pomeriggio**, voce SUA: il cartellino «Da certificare» resta fermo a un test superato perché il rinfresco parte **solo entrando** in Anagrafica soci e nessun timer lo tocca — *«una persona di segreteria non aggiorna la pagina»*. Visto succedere sulla sua riga, sei minuti dopo un test nuovo. Sta in coda e non in urgenti perché la **lista** del maestro si rinfresca da sé: a essere vecchio è il cartellino di passaggio. Da 12 a 13 — 🆕 **entra la 112 il 30/08**, su sua parola: **1708 dei 2817 «soci» sono contatti di una rubrica Google**, non clienti del circolo — telefono ed email tutti, zero livelli, una sola età. L'app li tratta come soci e a 357 di loro ha generato un gettone del test; nessuna email è però mai partita verso di loro e nessuno ha consegnato una scheda ⇒ danno **potenziale**. Spiega da sola il «l'anagrafica copre 1102 soci su 2817» che sembrava un import rotto. Nessuna cura proposta: la scelta è sua. Da 11 a 12 — 🆕 **entra la 111 il 30/08**, il consenso di un minorenne: voce SUA, e la domanda che proponeva («sei maggiorenne?») è stata **scartata misurando** — in Italia il consenso digitale si dà a 14 anni, non a 18, e la porta non è da aprire ma **aperta da aprile**: il test è uscito verso 1339 soci, 54 minorenni fra quelli con età nota, e **un sedicenne ha consegnato 12 schede di cui 5 applicate**. Il prerequisito di qualunque cancello è la **data di nascita**, che in anagrafica è vuota su tutti e 2817. Sta in coda perché il prossimo passo è una sua decisione, non codice. Da 10 a 11 — 📦 **la 106 è CHIUSA il 29/08 a tarda sera, a prova fisica**: il gesto esatto del difetto rifatto dentro una finestra provocata col cancello del worker, e il registro che porta il «prima» e il «dopo» sulla stessa riga. Da 11 a 10 — 🆕 **entra la 106 il 29/08 pomeriggio**, il «non ci sono riuscito» detto su un esito che il gestionale non sapeva: **visto succedere** alle 15:28:58 su una rimozione dal bot, e **non scavalca niente** — il limite era gia' dichiarato nel codice dal 19/08 (solo `create` chiama la guardia dell'esito ignoto), oggi ha una data e un caso. Da 10 a 11 — 🔼 **e il 26/08 la 98 è salita in urgenti**, quando la mancanza che descriveva è passata da *prevista* a **misurata**: la segnalazione al maestro parte e finisce in un log che non legge nessuno. Scavalca la 99, perché far entrare più gente in un imbuto che non scarica peggiora il problema — 🆕 **erano entrate la 97, la 98 e la 99 la sera del 25/08**, tutt'e tre figlie della 94 — 🔼 **e la 97 è salita in urgenti nel giro di un'ora**, quando lui ha detto che il test lo prova **dentro Telegram**: da lavoro successivo è diventata **la strada per chiudere la 94**. Restano la **lista per il maestro**, senza la quale la certificazione promessa non arriva a nessuno, e il **cancello di Principiante** da accendere (decisione sua già presa) — 🔽 la **88**, tornata qui dalle urgenti il 25/08 con le sue quattro regole scritte e un punto aperto (lo 0,5, che ce l'ha l'81% dei soci e non è un livello ma un «non lo so»), la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
-| 📦 **Chiuse** | **102** il 13/08–02/09 + 🆕 **la 123 chiusa il 02/09** — *una misura che boccia la cura proposta vale più di una cura che atterra verde*: la strada scritta nella scheda non avrebbe funzionato, e a dirlo è stata la chiave della ricevuta, non una rilettura. Poi **101** il 13/08–01/09 + 🆕 **la 79 chiusa il 31/08** — *una domanda posta prima («controlla il doppione») cambia la forma di una cura; posta dopo sarebbe un incidente*. Poi **96** il 13–31/08 + 🆕 **la 109 chiusa il 31/08 mattina** — *una scheda che si contraddice non si risolve scegliendo la riga più convincente: si va a leggere il codice*. Poi **95** il 13–30/08 + 🆕 **la 97 chiusa il 30/08 sera** — *la regola dell'ordine di messa in servizio vale anche a rovescio: per TOGLIERE una strada si comincia da chi la offre, non da chi la apre*. Poi **89** il 13–30/08 + 🆕 **la 110 chiusa il 30/08 pomeriggio, a residuo dichiarato** — *una domanda può essere ambigua senza che la risposta giusta lo sia: a non dichiararsi era il concorrente*. Poi **88** il 13–30/08 + 🆕 **la 105 chiusa il 30/08 pomeriggio** — *una cura che produce un valore che nessuno riceve è verde in ogni banco che guardi il produttore invece del destinatario*, e la prova che l'ha chiusa non ha evitato la finestra: ci è passata dentro. Poi **87** il 13–29/08 + 🆕 **la 107 entrata e USCITA nello stesso pomeriggio**, voce SUA: la porta del test si chiama «Test Livello di Gioco», in servizio sui due bot e **guardata da lui nel menu** — *un nome di porta si mette sul gesto, non sull'oggetto*, e sta in un posto solo perché la voce 87 ha gia' misurato cosa costano le copie. Poi **85** il 13–29/08 + 🆕 **la 101 chiusa il 29/08 pomeriggio** — *un limite attribuito al bersaglio quando sta nell'attrezzo si autoconferma a ogni prova*. Poi **84** il 13–29/08 + 🆕 **la 78 chiusa il 29/08 pomeriggio** — *una prova fisica si progetta anche sulle schermate che il bersaglio NON ha*, e la finestra la apre solo un'**aggiunta**, mai una rimozione. Poi **83** il 13–28/08 + 🆕 **la 69 chiusa il 28/08 pomeriggio** — *una cura si disegna sul difetto raccontato e si convalida sul codice: se il racconto e il codice non combaciano, il difetto è dove sta il codice*. Poi **82** il 13–28/08 + 🆕 **la 104 chiusa il 28/08 pomeriggio**, in giornata e a due prove fisiche — *quando una decisione dice «questo sì e quello no», provare solo il «sì» prova metà cura e nessuna decisione*. Poi **81** il 13–28/08 + 🆕 **la 98 chiusa il 28/08** — *una regola vista funzionare due volte per la stessa via è ancora un caso solo*: qui le strade erano due. Poi **80** il 13–28/08 + 🆕 **la 103 chiusa il 28/08 mattina** — *la regola giusta con in pasto una riga monca*, trovata sabotando e non rileggendo. Poi **79** il 13–28/08 + 🆕 **la 102 chiusa il 28/08 mattina, a residuo dichiarato** — *provare la classe non è provare l'istanza, esattamente come provare l'istanza non prova la classe*. Poi **78** il 13–28/08 + 🆕 **la 100 chiusa il 28/08 mattina**, a prova fisica misurata sulla PROD viva con la console remota: nel filtro «Da certificare dal maestro» c'è **esattamente una riga**, quella di Laura, con la spiegazione accanto. *Una lista si prova guardandola dove la segreteria la guarda, non nel banco che la calcola.* Poi **77** il 13–26/08 + 🆕 **la 94 chiusa il 26/08 mattina, a prova fisica sua**: dodici domande fino in fondo dichiarando Avanzato, e il registro di PROD ha mostrato il caso più stretto girare giusto — con una sorpresa, perché il livello non si è riscritto per la ragione che la scheda prevedeva («ce l'ha già») ma per il **ribasso**. *Una previsione azzeccata sull'esito non è una previsione azzeccata sul meccanismo.* Poi **76** il 13–25/08 + 🆕 **la 95 e la 96 chiuse la sera del 25/08, provate da lui** (*«annulla e il menu /gruppo sono ok»*, dopo lo screenshot delle 22:04 sull'«Esci») + 🆕 **la 90 chiusa da lui a mezzogiorno del 25/08, a residuo dichiarato** (*una prova che non può produrre il caso che deve provare non è una prova a metà: è un'altra prova*) + 🆕 **la 89 chiusa a mezzogiorno del 25/08** (*un bersaglio si può scegliere; il pezzo di strada che non è tuo, no*) + 🆕 **la 86 chiusa la mattina del 25/08** (aperta il giorno prima, curata e provata nello stesso giro: *due messaggi, perché sono due i lettori*) + 🆕 **la 93 chiusa la mattina del 25/08** (il conto alla rovescia **visto scendere**: un conto non si prova vedendolo una volta) + 🆕 **la 87 chiusa la notte del 25/08, provata da lui sul telefono** — e la quinta domanda ha insegnato che *un campo che si dichiara «la risposta» non può contenere righe che chi lo legge ha l'ordine di non dire*. ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 85 chiusa da LUI la notte del 24/08**, a **residuo dichiarato**: la frase che confondeva *«non ho guardato»* con *«non è passato»* è curata e provata, ma la **causa** — la griglia dei livelli che il worker non riesce a leggere su una scheda appena salvata — resta **misurata e non curata**, e con lei la spinta del livello nato dal test, che nessuno ha ancora esercitato. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
+| 🔴 **Urgenti** | **3** — 📦 **la 84 è CHIUSA il 02/09 pomeriggio, a prova fisica su PROD**: la riga del motivo **vista da lui** nella scheda socio. Si chiude sulla ⓑ; la ⓐ e il residuo della ⓒ **proseguono nella 124**, per sua scelta — una voce che si chiude portandosi via del lavoro non curato non è chiusa, è persa. Da 4 a 3 — 📦 **la 123 è CHIUSA il 02/09 mattina, a prova fisica su PROD**, il giorno dopo essere entrata: *è passata di lì e non è successo niente* — stesso giro di consegna, stessa partita, e le due righe divergono dove devono (`suo_gesto` a chi ha chiesto, `passato_al_bot` a chi resta), confermato sui due telefoni. Da 5 a 4 — 🆕 **era entrata il 02/09, MESSA LÌ DA LUI** (*«apri l'altra in coda, tra gli urgenti»*): il circolo avvisa il socio di un gesto che ha fatto lui e lo manda a parlare con sé stesso — **vista succedere** sul suo telefono 🆕 **entra la 123 il 02/09, MESSA QUI DA LUI** (*«apri l'altra in coda, tra gli urgenti»*): il circolo avvisa il socio di un gesto che ha fatto lui e lo manda a parlare con sé stesso — **vista succedere** sul suo telefono alle 00:03:26. È la voce 70 rientrata da una porta che quella cura non copriva: la ricevuta del `remove` copre chi viene tolto, non chi ha chiesto. Non scavalca niente: entra in fondo. Da 4 a 5 — 📦 **la 109 è CHIUSA il 31/08 mattina, a prova fisica arrivata da sé**: un omaggio vero della segreteria su una partita viva, scritto alle 07:53:29 con `count: 1`. ⭐ E a chiuderla è stato il **codice**, non la sonda — il record `paygift` nasce solo leggendo la ficha di Matchpoint, quindi «l'omaggio è passato di là» è vero per costruzione. La sonda era stata sbagliata **tre volte in tre giorni**, ogni volta nel verso di affermare una cosa non vera. Da 5 a 4 — 📦 **la 108 è CHIUSA il 30/08 sera, a prova fisica su PROD**: il caso è arrivato da sé — un salvataggio vero di scheda socio passato dalla cura (`count: 1`, atterrato in 1,7 s) — e l'unica metà che dal cloud non si vede l'ha guardata **lui**: *«Nessun avviso giallo»*. ⇒ Le urgenti che restano aspettano **tutte** un caso, tranne la sonda della 109. — 📦 **la 97 è CHIUSA il 30/08 sera**, e il suo terzo passo si è rivelato un lavoro su **due repo con un ordine obbligato**: prima il bot smette di offrire l'indirizzo della pagina (17:01, deploy #126), poi la pagina si chiude (PROD **6.259**). Prova fisica su tutt'e due gli ambienti vivi: la porta c'è e il modulo **non esiste più nel DOM**. Da 7 a 6 — 📦 **la 110 è CHIUSA il 30/08 pomeriggio**, e le due righe che la tenevano aperta sono cadute nello stesso pomeriggio: le **6 domande** che volevano l'orecchio di chi gioca le ha rilette **lui** (cinque confermate, la P-T12 corretta e rideployata), e le cure le ha viste succedere **sul suo telefono**, col conto del livello rifatto a mano dalla formula in servizio. A residuo dichiarato. Da 8 a 7 — 📦 **la 105 è CHIUSA il 30/08 pomeriggio**, provata da lui sul gestionale di PROD nella finestra esatta: due salvataggi di fila sulla scheda di un socio **esposto** (riga viva `d7c6d389-…`, telefono che ne calcolerebbe un'altra) e la riga è rimasta **una**, doppioni **0**, soci vivi **2817** prima e dopo. Da 9 a 8 — 🆕 **entra la 110 il 30/08**, il test di autovalutazione ritarato in quattro punti su sua parola (*«VAi procedi e fai il lavoro»*): la banca dei trabocchetto bilanciata perché «nego sempre» passava nel 76-96% dei casi contro il 50% del caso, i pesi portati da 0,40/0,25/0,35 a 0,20/0,25/0,55 col freno basso tolto, le quattro scale tecniche ritarate sullo stesso metro, e la frequenza che smette di essere un dato raccolto e buttato. Curata, con tre guardie sabotate, e **aperta per due cose**: le 27 domande nuove non le ha rilette nessuno che giochi a padel, e nessuna delle quattro cure è stata vista succedere su un telefono. **Non scavalca niente**: entra in fondo. Da 8 a 9 — 🆕 **entra la 109 la sera del 29/08**, la RPC che non conosceva i pagamenti: **trovata tirando il filo della 108** (🩹 e NON è la sua causa: quella riga è stata corretta un'ora dopo — le 67 restano senza spiegazione). Una deriva fra due liste (la tabella ne ammette 22, la RPC 15) che scartava `payment` **in silenzio** dal 27/06 ⇒ **3032** record `payment` nel cloud e **zero** scritti dall'app — 🩹 e anche questo era letto male: su 3014 pagamenti non c'è **nessuna** riga a 0 €, quindi un omaggio non l'ha mai fatto nessuno. Il danno è **potenziale**, non avvenuto: la porta si chiude prima che qualcuno ci passi. Curata (solo `payment`, larghezza decisa da lui) e applicata sui due progetti; manca la prova fisica. Non scavalca niente: entra sopra perché **stava già perdendo dati**. Da 7 a 8 — 🆕 **entra la 108 la sera del 29/08**, un salvataggio di scheda socio che sparisce in silenzio mentre lo schermo dice «salvato»: **guasto suo**, visto succedere su un livello cambiato **due volte** e mai arrivato al cloud, e **misurato** — zero soci su 2817 con `payload.updatedAt` del 29/08, e **67 spinte su 411 in quindici giorni hanno scritto ZERO record** con l'app che le dava per riuscite. 🆕 **Il 29/08 notte le due piste su quelle 67 sono cadute tutte e due** (la whitelist non può spiegarle, e nessuna strada nota costruisce un record senza chiave): al loro posto c'è una **diagnostica nel registro**, applicata ai due database e provata eseguendo la RPC su TEST — la causa resta **ignota**, ma la prossima spinta a vuoto si spiega da sé. Sta in cima perché tocca l'anagrafica a ogni modifica normale della segreteria e **rende inerte il punto D**, promosso in PROD lo stesso giorno. Non scavalca nessuna: entra sopra perché le altre sei aspettano una prova, questa perde dati adesso. Da 6 a 7 — 📦 **la 101 è CHIUSA il 29/08 pomeriggio**: la lista del maestro vista popolarsi con un socio vero sull'app viva (lui rifa' il test dichiarando Agonista ⇒ dimostrato 5 con 4 in scheda ⇒ **ENTRA**), e prima ancora i quattro cancelli esercitati su 24 soci veri con il rosso accanto a ogni riga. 🚨 Nel farlo e' caduta una riga falsa della sua stessa scheda — il blocco non era un permesso mancante, era la guardia della console che fermava due **letture** in POST. Da 7 a 6 — 📦 **la 78 è CHIUSA il 29/08 pomeriggio**, provata da lui dentro la finestra esatta (aggiunta 15:21:25 → sync 15:25:04, **3′39″**) e col bottone «🔄 Aggiorna» toccato **quindici volte**, quattro nello stesso minuto: il registro del bot porta il «prima» e il «dopo» sulla stessa partita, più il **controllo** non cercato di una partita concorde che nello stesso minuto contava i posti. Da 8 a 7 — 🆕🔼 **entra la 105 la sera del 28/08**, il gestionale che sdoppia un socio scrivendo sotto una chiave calcolata invece che sotto quella della riga viva: **guasto visto succedere** (Maurizio, 22:17), non un'idea, e **non scavalca nessuna** — sta in cima perché si riattiva a ogni modifica normale della segreteria e intanto lascia il socio fuori dal test. Da 7 a 8 — 📦 **la 69 è CHIUSA il 28/08 pomeriggio**, curata alla **causa** dopo che l'effetto si era visto per la terza volta e su un terzo gesto (*«Non riesco ad aprire il test»* a Laura). ⚖️ E le due righe che la scheda portava come causa e come cura erano **tutt'e due false**: si sono corrette misurando. Da 8 a 7 — 📦 **la 104 è entrata e USCITA nella stessa giornata**, aperta a mezzogiorno su sua parola e chiusa nel pomeriggio con **due** prove fisiche sul suo telefono: le tecniche mescolate e le altre quattro ferme. Nel mezzo una sua decisione presa su una misura da 20.000 gettoni (*«teniamo la a»*), e due sabotaggi sopravvissuti alla prima stesura del banco. Da 9 a 8 — 🆕🔼 **era entrata la 104 il 28/08 a mezzogiorno, voce SUA**, e ci entra **promossa da lui**: l'avevo messa in coda dichiarando che non bloccava niente, e lui l'ha spostata di sopra (*«mettila nella lista dei task che stiamo facendo adesso»*). Non scavalca niente. Da 8 a 9 — 📦 **la 98 è CHIUSA il 28/08**, guardata da lui sul gestionale vero: due soci nel filtro del maestro, e il cablaggio dal vivo che era dichiarato non provato. Da 9 a 8 — 📦 **la 103 è entrata e USCITA in due ore**, difetto visto da lui sullo schermo e cura vista dal vivo 14 minuti dopo il deploy. 🆕 era entrata il 28/08 mattina, l'esito che nominava la parola dichiarata: il difetto l'ha visto **lui sullo schermo** durante una prova fisica (*«non coincide con le nostre regole la risposta»*), quindi la voce nasce da una misura e non da un'idea. Curata e in servizio, aperta per la prova fisica. Da 9 a 10 — 📦 **la 102 è entrata e USCITA nella stessa mattina**, curata, messa in servizio e vista dal vivo (a residuo dichiarato: la parola esatta da cui era nata non l'ha vista nessuno). 🆕 era entrata il 28/08 mattina, l'eco che diceva una parola che il bottone non aveva: voluta dalla **sessione** su una misura (delega del 23/08), e **non scavalca niente** — è curata e in servizio, ma non l'ha ancora vista nessuno su un telefono, che è la forma esatta che questa lista tiene aperta. Da 9 a 10 — 📦 **la 100 è CHIUSA il 28/08 mattina**, a prova fisica: la sua riga sta fra le chiuse. Da 10 a 9 — 🆕 **entra la 101 la tarda sera del 27/08**, il riallineo `test-preview` ← `main` della catena `assessment-*`: voluta dalla **sessione** su sua parola (*«quella voce la devi volere tu. FALLO SUBITO»*), e **non scavalca niente** — è entrata sotto alle nove, perché cresceva da sola invece di aspettare il suo turno. 🩹 **E questo numero era SBAGLIATO: diceva 8 con 9 voci sotto.** 📏 Non è una svista trovata rileggendo — `guard-docs-truth` lo dichiarava **rosso** dal #1117 di ieri sera, a ogni giro, e nessuno leggeva quel rosso. ⚖️ *Una guardia che nessuno guarda è una guardia che non c'è.* — 📦🔼 **il 26/08 il numero resta 8 ma le voci sono altre**: la **94** è stata chiusa a prova fisica sua e al suo posto è salita la **98**, la lista per il maestro — la prova stessa ha mostrato che quella segnalazione non la legge nessuno — 🔼 **e la 97 era salita qui dalla coda la sera stessa in cui ci era entrata**, per sua parola: il test di livello lo prova **dentro Telegram** ⇒ quella voce non è più il lavoro dopo la 94, è **la strada che la chiude**. Scavalca solo delle attese (98 e 99) — 🆕 **entra la 94 la sera del 25/08** (il **test di livello rifatto**: banca 27+9, tetto a Intermedio, i due valori, il terzo esito, l'attesa a zero), e con lei erano entrate la **95** e la **96** — 📦 **chiuse tutt'e due la sera stessa, provate da lui**: l'«Esci» con lo screenshot delle 22:04, l'«Annulla» e il menu `/gruppo` a parole (*«annulla e il menu /gruppo sono ok»*). 🚨 Erano già tutte in produzione mentre questa riga diceva ancora **6**: la giornata del 25/08 è stata lavorata **fuori dalla lista** — 📦 **e la 90 è stata chiusa da LUI a mezzogiorno del 25/08, a residuo dichiarato**: la bolla non l'ha mai vista nessuno su un telefono, perché un esito ignoto **non si provoca** — e la strada per provocarlo è stata scartata con la misura, non con un'impressione — 🔽 **la 88 è tornata IN CODA il 25/08, per sua parola** (*«per la 88 non fare sviluppo, metti solo in documentazione le regole»*): le quattro regole sono decise e scritte, il codice no, ed è voluto — 📦 **e la 89 è stata chiusa a mezzogiorno del 25/08**, cronometrata due volte da lui: **76 secondi** dal gesto al telefono, di cui **36 fuori dal nostro controllo** (worker 23, Telegram 13) ⇒ il bersaglio «entro 1 minuto» l'ha **ritirato lui sulla misura**, mentre la cura è risultata **dentro il suo budget** (40 su 50) — 📦 **anche la 86 è stata chiusa la mattina del 25/08**, curata e provata da lui nello stesso giro: il link d'invito non arriva più nudo, è un **messaggio pronto da inoltrare** col nome di chi invita e la parola «accettare» — 📦 **la 93 è stata chiusa la mattina del 25/08**, provata da lui sul telefono di Laura: il conto **visto scendere** a «fra 29 giorni» con le date invariate — il terzo dei suoi tre pezzi (**due richieste sue sulla stessa schermata**: le due date nel «mio livello» al posto del solo «fra 30 giorni» — e la misura ha mostrato che il **30 non era una costante**, il conto era già vero e le date il ponte le mandava già; e la **manina** del bottone «Togli i giocatori», che era lo stesso segno delle righe dei nomi — e non solo a occhio: la lettura della selezione ci finiva dentro. Curate, resta la prova fisica sul telefono) — 🆕 la **92** del 24/08 in tarda serata (**due messaggi identici allo stesso socio**, misurati nel registro a un secondo di distanza: la coda dei fatti del circolo si **legge** al passo 1 e si **chiude** al passo 5, e due giri sovrapposti la prendono tutt'e due. Mancava la presa atomica che tutti gli altri avvisi hanno. Curata; la prova fisica vuole un gesto della segreteria che attraversi un riavvio del bot) — 📦 **la 91 è entrata e uscita nella stessa sera**, curata e **provata da lui dentro la finestra esatta** (nome visibile 41 secondi dopo la prenotazione, senza stella e senza conteggi) — 🆕 la **90** del 24/08 sera (**una bolla sola che si aggiorna** invece di due messaggi che si smentiscono: idea sua, aperta e **curata la sera stessa**. Il difetto era di **forma e non di verità** — nessuno dei due messaggi mentiva, la **coppia** sì. Resta aperta per la prova fisica, che vuole un esito ignoto e non si provoca a comando) — 🆕 la **89** del 24/08 sera (la kb dice **«entro 1 minuto»**: non un errore ma un **bersaglio**, scelto da lui a conseguenza dichiarata. 🩹 La scheda è stata **riscritta un'ora dopo perché era sbagliata** — il gestionale **dichiara già** l'istante vero (voce 76) e la quiete è **già** 30 secondi: avevo creduto a una nota del 22/08 superata il giorno dopo. La catena vera era **30s-2′30″** e la cura **una costante sola**, il ritiro del bot da 2 min a **20 secondi** — fatta, resta la prova col cronometro) — 🆕 la **88** del 24/08 (**«Partite Aperte»**, una voce di menu nuova: partecipare a partite che un organizzatore apre di sua volontà — messa qui **da lui**, ed è l'unica di questa lista che **aggiunge** invece di curare, quindi ha priorità sulle attese e non sui guasti) — 📦 **la 87 è stata chiusa da LUI la notte del 25/08**, dopo la prova fisica sul telefono: cinque domande scritte a mano, quattro corrette e la quinta — «perché mi è arrivato questo messaggio?» — **corretta con le sue parole nello stesso giro**. E la caduta non era ignoranza: il testo giusto nella kb c'era già, ma il campo che si dichiarava «la risposta» conteneva tre righe che il modello ha l'ordine di NON dire  — 📦 **la 85 è stata chiusa da LUI la notte del 24/08** («85 provata ed è ok la puoi chiudere»), **a residuo dichiarato**: la frase è curata e provata, ma la causa nel worker — la griglia dei livelli che non si legge — resta scritta nella riga delle chiuse e **non è diventata una voce**: quella decisione è sua — la **84** del 24/08 (il test di livello: l'esito dopo **11 minuti** e il livello che **non si scrive mai**, con una socia vera ferma a 0,5 — aperta su sua parola, scavalca solo delle attese) — la **83** della notte del 23/08 (un «no» falso su un annullo **passato**: la voce 72 al rovescio) — — la **65** (curata e in servizio, aperta perché la cura non l'ha ancora vista succedere nessuno: **si aspetta, non si provoca**), la **78** e la 🔼 **69**, promossa la notte del 23/08 dalla sessione stessa. ⚖️ **Il perché della promozione, dichiarato come vuole la regola**: la 69 descriveva una *causa* archiviata come «1 caso su 2810, nessuna urgenza»; quella notte se n'è visto l'**effetto** — il bot che dice **«Non hai prenotazioni»** a una socia che in campo c'era, un minuto prima di dirle «Sei in campo». Un «no» falso, che è la specie di errore più grave qui dentro. Scavalca **solo delle attese**. ⭐⭐ **La 78 è stata VISTA FUNZIONARE la notte del 23/08**, nella finestra esatta e larga **33 secondi** (staff 22:19:31 → sync 22:20:04): tre nomi, nessun `— posto libero —`, nessun «Siete al completo», la riga «sta cambiando» — e il banco l'aveva **predetto eseguendo** i moduli veri sui payload veri un minuto prima. Resta aperta per il **bottone «🔄 Aggiorna»**, chiesto da lui guardando quella schermata e in servizio dalle 22:36, ma non ancora toccato |
+| 📋 **In coda** | **14** — 🆕 **entra la 124 il 02/09 pomeriggio, per decisione SUA** chiudendo la 84: la ⓐ (l'esito del test dopo 11 minuti) e il residuo della ⓒ, mai curati. Non è una voce inventata: è lavoro già in lista che stava per sparire col titolo. Da 13 a 14 — 🆕 **entra la 122 il 02/09**, difetto SUO visto sul telefono: dopo «richiudi» il bottone restava «Richiudi» e lui ha ritoccato — misurato, due tocchi suoi a 16 secondi, **non** un doppione del bot. Curata la notte stessa (PR bot #118), aperta per la prova fisica. Non scavalca niente. Da 12 a 13 — 📦 **la 117 è CHIUSA a mezzanotte del 01/09, a prova fisica su PROD e sullo STESSO caso che l'aveva aperta**: `elimina_diretto` · `elimina_ok:marco aprea:4->3` · `ok: true` in 7,96 s, dopo due fallimenti sulla stessa partita e lo stesso giocatore. ⭐ E la prima cura era sbagliata in un pezzo: a trovarlo è stato il primo togli vero, che nello stesso referto **confermava** il resto. Da 13 a 12 — 🆕 **entrano la 120 e la 121 il 01/09 a tarda notte, tutte e due da una SUA parola**: la **120** è il gestionale che fa saltare la pagina in cima mentre si scrive in una scheda (difetto suo, visto sullo schermo — nessuna causa ipotizzata, di proposito); la **121** è il bot che dice «tolto» prima che il gestionale l'abbia registrato, **misurata** nel ramo `remove` dell'edge e con la cura scelta da lui fra tre. Nessuna delle due scavalca niente. Da 11 a 13 — 📦 **la 116 è CHIUSA il 01/09 sera, a prova fisica su PROD**: l'avviso dice «L'ha chiesto ⟨nome⟩» e non manda più in segreteria per un gesto che la segreteria non ha fatto. Da 9 a 8 — 🆕 **entrano la 117, la 118 e la 119 il 01/09 sera**, tutte e tre **misurate**, non pensate: la **117** è il click «elimina» che non va a termine (due fallimenti veri, e vale anche per l'app della segreteria); la **118** è il verdetto «non ci sono riuscito» detto su un `WORKER_ERROR` che era un «non lo so»; la **119** sono le etichette tagliate nel mezzo, difetto suo visto sullo schermo — curata, aperta per la prova. Nessuna scavalca niente. Da 8 a 11 — 📦 **la 114 è CHIUSA il 01/09 sera, a prova fisica su TUTTI E DUE gli ambienti vivi** (TEST 6.264 e PROD 6.260, col controllo accanto: dentro l'orizzonte 9 «Libero», oltre 0 «Libero» e 4 «non lo so»). ⭐ E ha insegnato una cosa che vale oltre sé stessa: **allargare l'orizzonte non era la cura**, perché la stessa frase falsa ricomparirebbe il giorno dopo il confine nuovo. Da 10 a 9 — 📦 **la 88 è CHIUSA il 01/09 sera, a prova fisica intera su PROD** (apre · vetrina · entra · e l'avviso a tutti e tre quelli in campo, non a chi l'ha fatto). Da 9 a 8 — 🆕 **entrano la 116 e la 115 il 01/09 sera, tutte e due nate DALLA PROVA della 88**: la 116 è l'avviso che dice «l'ha cambiata il circolo» di un gesto fatto da un socio — curata e in servizio la sera stessa, aperta per la prova fisica; la 115 è `esito IS NULL` che vuol dire due cose. Nessuna delle due scavalca niente. Da 8 a 10 — 🆕 **entra la 114 il 01/09**, nata da una sua domanda sul 4 ottobre: oltre l'orizzonte dei 30 giorni il calendario staff mostra i campi come **«Libero»** invece di dire che non sa. Sta in coda e **non in urgenti** perché è **lavorabile subito** — le 4 urgenti aspettano tutte un caso che non si provoca — e perché la finestra in cui morde è stretta (oltre 30 giorni); ma la cura va **decisa da lui**, che sono due strade diverse. Da 8 a 9 — 📦 **la 79 è CHIUSA il 31/08, a DUE prove fisiche sue nella stessa giornata**: il messaggio sul telefono alle **15:28** (l'ospite aggiunto — il caso esatto da cui era nata), e alle **20:34** la **strada veloce** misurata a **33 secondi** contro i 131,6 di prima, con `origine: 'conferma'` letta sul fatto e **zero doppioni** dal sync passato nel frattempo. ⇒ **Nessun residuo aperto**, giuntura compresa. Da 9 a 8 — 📦 **la 80 è CHIUSA il 30/08 a tarda sera, a prova fisica su PROD con la controprova dentro**: alle 23:25 il bot mostrava il roster pulito mentre la scheda del circolo aveva ancora l'Ospite. 🚨 E la PRIMA prova era fallita, trovando un difetto che il banco non poteva vedere — il confronto usava l'orologio di TUTTE le righe invece di quello del circolo, e la cura non avrebbe morso mai. — 🚫 **la 113 è SCARTATA il 30/08 a tarda sera, su sua parola e con una misura**: il difetto vuole una seconda consegna della stessa persona mentre qualcuno è fermo sull'anagrafica, e con più di una scheda ci sono **sei persone su 28**. 🔓 Con la condizione che la riapre scritta nella riga — 43 schede su 86 sono degli ultimi 7 giorni, quindi la popolazione di oggi non è quella di domani. — 📦 **la 99 è CHIUSA il 30/08 a tarda sera**, e metà era già fatta da lui il 27/08 senza che la scheda se ne fosse accorta: il cancello di Principiante è acceso da tre giorni. La seconda metà — il «2+2» — è stata **scartata** perché collideva con la sua regola più recente («una sbagliata su cinque») e perché la ripetizione che l'aveva motivata si era curata da sé. — 📦 **la 71 è CHIUSA il 30/08 a tarda sera, da lui e con la schermata in mano**: dentro la finestra il bot gli riconosce la partita come sua. ⛔ Con un residuo dichiarato — le due porte curate quella sera (togli e annullo) non le ha esercitate nessuno. — 🆕 **entra la 113 il 30/08 pomeriggio**, voce SUA: il cartellino «Da certificare» resta fermo a un test superato perché il rinfresco parte **solo entrando** in Anagrafica soci e nessun timer lo tocca — *«una persona di segreteria non aggiorna la pagina»*. Visto succedere sulla sua riga, sei minuti dopo un test nuovo. Sta in coda e non in urgenti perché la **lista** del maestro si rinfresca da sé: a essere vecchio è il cartellino di passaggio. Da 12 a 13 — 🆕 **entra la 112 il 30/08**, su sua parola: **1708 dei 2817 «soci» sono contatti di una rubrica Google**, non clienti del circolo — telefono ed email tutti, zero livelli, una sola età. L'app li tratta come soci e a 357 di loro ha generato un gettone del test; nessuna email è però mai partita verso di loro e nessuno ha consegnato una scheda ⇒ danno **potenziale**. Spiega da sola il «l'anagrafica copre 1102 soci su 2817» che sembrava un import rotto. Nessuna cura proposta: la scelta è sua. Da 11 a 12 — 🆕 **entra la 111 il 30/08**, il consenso di un minorenne: voce SUA, e la domanda che proponeva («sei maggiorenne?») è stata **scartata misurando** — in Italia il consenso digitale si dà a 14 anni, non a 18, e la porta non è da aprire ma **aperta da aprile**: il test è uscito verso 1339 soci, 54 minorenni fra quelli con età nota, e **un sedicenne ha consegnato 12 schede di cui 5 applicate**. Il prerequisito di qualunque cancello è la **data di nascita**, che in anagrafica è vuota su tutti e 2817. Sta in coda perché il prossimo passo è una sua decisione, non codice. Da 10 a 11 — 📦 **la 106 è CHIUSA il 29/08 a tarda sera, a prova fisica**: il gesto esatto del difetto rifatto dentro una finestra provocata col cancello del worker, e il registro che porta il «prima» e il «dopo» sulla stessa riga. Da 11 a 10 — 🆕 **entra la 106 il 29/08 pomeriggio**, il «non ci sono riuscito» detto su un esito che il gestionale non sapeva: **visto succedere** alle 15:28:58 su una rimozione dal bot, e **non scavalca niente** — il limite era gia' dichiarato nel codice dal 19/08 (solo `create` chiama la guardia dell'esito ignoto), oggi ha una data e un caso. Da 10 a 11 — 🔼 **e il 26/08 la 98 è salita in urgenti**, quando la mancanza che descriveva è passata da *prevista* a **misurata**: la segnalazione al maestro parte e finisce in un log che non legge nessuno. Scavalca la 99, perché far entrare più gente in un imbuto che non scarica peggiora il problema — 🆕 **erano entrate la 97, la 98 e la 99 la sera del 25/08**, tutt'e tre figlie della 94 — 🔼 **e la 97 è salita in urgenti nel giro di un'ora**, quando lui ha detto che il test lo prova **dentro Telegram**: da lavoro successivo è diventata **la strada per chiudere la 94**. Restano la **lista per il maestro**, senza la quale la certificazione promessa non arriva a nessuno, e il **cancello di Principiante** da accendere (decisione sua già presa) — 🔽 la **88**, tornata qui dalle urgenti il 25/08 con le sue quattro regole scritte e un punto aperto (lo 0,5, che ce l'ha l'81% dei soci e non è un livello ma un «non lo so»), la **68**, la **70**, la **71**, la **72**, la **79**, la **80**, la 🆕 **81** della notte del 23/08 e la **60** in sezione D (in attesa che parli con Wansport). 🆕 **L'81 non è un'idea: è una misura** — una socia vera si è sentita dire che non aveva prenotazioni mentre ne aveva una, e il difetto **sopravvive** alla cura della 69 perché vale per qualunque futuro mancato riconoscimento. 📦 **La 82 è entrata e uscita nella stessa notte**, chiusa dal committente a cura vista sul proprio telefono. 🔼 **La 69 è uscita di qui** la notte stessa in cui il suo effetto è stato visto |
+| 📦 **Chiuse** | **103** il 13/08–02/09 + 🆕 **la 84 chiusa il 02/09 pomeriggio** + 🆕 **la 123 chiusa il 02/09** — *una misura che boccia la cura proposta vale più di una cura che atterra verde*: la strada scritta nella scheda non avrebbe funzionato, e a dirlo è stata la chiave della ricevuta, non una rilettura. Poi **101** il 13/08–01/09 + 🆕 **la 79 chiusa il 31/08** — *una domanda posta prima («controlla il doppione») cambia la forma di una cura; posta dopo sarebbe un incidente*. Poi **96** il 13–31/08 + 🆕 **la 109 chiusa il 31/08 mattina** — *una scheda che si contraddice non si risolve scegliendo la riga più convincente: si va a leggere il codice*. Poi **95** il 13–30/08 + 🆕 **la 97 chiusa il 30/08 sera** — *la regola dell'ordine di messa in servizio vale anche a rovescio: per TOGLIERE una strada si comincia da chi la offre, non da chi la apre*. Poi **89** il 13–30/08 + 🆕 **la 110 chiusa il 30/08 pomeriggio, a residuo dichiarato** — *una domanda può essere ambigua senza che la risposta giusta lo sia: a non dichiararsi era il concorrente*. Poi **88** il 13–30/08 + 🆕 **la 105 chiusa il 30/08 pomeriggio** — *una cura che produce un valore che nessuno riceve è verde in ogni banco che guardi il produttore invece del destinatario*, e la prova che l'ha chiusa non ha evitato la finestra: ci è passata dentro. Poi **87** il 13–29/08 + 🆕 **la 107 entrata e USCITA nello stesso pomeriggio**, voce SUA: la porta del test si chiama «Test Livello di Gioco», in servizio sui due bot e **guardata da lui nel menu** — *un nome di porta si mette sul gesto, non sull'oggetto*, e sta in un posto solo perché la voce 87 ha gia' misurato cosa costano le copie. Poi **85** il 13–29/08 + 🆕 **la 101 chiusa il 29/08 pomeriggio** — *un limite attribuito al bersaglio quando sta nell'attrezzo si autoconferma a ogni prova*. Poi **84** il 13–29/08 + 🆕 **la 78 chiusa il 29/08 pomeriggio** — *una prova fisica si progetta anche sulle schermate che il bersaglio NON ha*, e la finestra la apre solo un'**aggiunta**, mai una rimozione. Poi **83** il 13–28/08 + 🆕 **la 69 chiusa il 28/08 pomeriggio** — *una cura si disegna sul difetto raccontato e si convalida sul codice: se il racconto e il codice non combaciano, il difetto è dove sta il codice*. Poi **82** il 13–28/08 + 🆕 **la 104 chiusa il 28/08 pomeriggio**, in giornata e a due prove fisiche — *quando una decisione dice «questo sì e quello no», provare solo il «sì» prova metà cura e nessuna decisione*. Poi **81** il 13–28/08 + 🆕 **la 98 chiusa il 28/08** — *una regola vista funzionare due volte per la stessa via è ancora un caso solo*: qui le strade erano due. Poi **80** il 13–28/08 + 🆕 **la 103 chiusa il 28/08 mattina** — *la regola giusta con in pasto una riga monca*, trovata sabotando e non rileggendo. Poi **79** il 13–28/08 + 🆕 **la 102 chiusa il 28/08 mattina, a residuo dichiarato** — *provare la classe non è provare l'istanza, esattamente come provare l'istanza non prova la classe*. Poi **78** il 13–28/08 + 🆕 **la 100 chiusa il 28/08 mattina**, a prova fisica misurata sulla PROD viva con la console remota: nel filtro «Da certificare dal maestro» c'è **esattamente una riga**, quella di Laura, con la spiegazione accanto. *Una lista si prova guardandola dove la segreteria la guarda, non nel banco che la calcola.* Poi **77** il 13–26/08 + 🆕 **la 94 chiusa il 26/08 mattina, a prova fisica sua**: dodici domande fino in fondo dichiarando Avanzato, e il registro di PROD ha mostrato il caso più stretto girare giusto — con una sorpresa, perché il livello non si è riscritto per la ragione che la scheda prevedeva («ce l'ha già») ma per il **ribasso**. *Una previsione azzeccata sull'esito non è una previsione azzeccata sul meccanismo.* Poi **76** il 13–25/08 + 🆕 **la 95 e la 96 chiuse la sera del 25/08, provate da lui** (*«annulla e il menu /gruppo sono ok»*, dopo lo screenshot delle 22:04 sull'«Esci») + 🆕 **la 90 chiusa da lui a mezzogiorno del 25/08, a residuo dichiarato** (*una prova che non può produrre il caso che deve provare non è una prova a metà: è un'altra prova*) + 🆕 **la 89 chiusa a mezzogiorno del 25/08** (*un bersaglio si può scegliere; il pezzo di strada che non è tuo, no*) + 🆕 **la 86 chiusa la mattina del 25/08** (aperta il giorno prima, curata e provata nello stesso giro: *due messaggi, perché sono due i lettori*) + 🆕 **la 93 chiusa la mattina del 25/08** (il conto alla rovescia **visto scendere**: un conto non si prova vedendolo una volta) + 🆕 **la 87 chiusa la notte del 25/08, provata da lui sul telefono** — e la quinta domanda ha insegnato che *un campo che si dichiara «la risposta» non può contenere righe che chi lo legge ha l'ordine di non dire*. ~56 dal 7/08 + ~41 fino al 6/08. 🆕 **La 85 chiusa da LUI la notte del 24/08**, a **residuo dichiarato**: la frase che confondeva *«non ho guardato»* con *«non è passato»* è curata e provata, ma la **causa** — la griglia dei livelli che il worker non riesce a leggere su una scheda appena salvata — resta **misurata e non curata**, e con lei la spinta del livello nato dal test, che nessuno ha ancora esercitato. 🆕 **La 82 chiusa la notte del 23/08**: «Togli un giocatore» non funzionava su una partita con due ospiti **e non lo diceva** — cinque tocchi finiti in `tocca: ignoto` e in silenzio. Curata in due metà: il silenzio parla (vale per qualunque tocco, anche futuro) e i posti da Ospite li toglie la **segreteria**, per decisione sua. ⏳ Il residuo — l'identità per **nome**, viva per **13 gruppi di omonimi / 27 persone** — sta scritto nella scheda e **non è diventato una voce**: quella decisione è sua |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1703,7 +1709,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 3
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1941,665 +1947,6 @@ concentrati fra le **21:39 e le 21:49 del 29/08** — che non è un guasto, è l
 della voce 106**, le quattro chiusure del cancello del worker. Contarli insieme al 502 delle 10:48
 avrebbe dato *«dieci 502 in un giorno»*, cioè un allarme costruito sommando un incidente vero e un
 esperimento nostro. 📌 *Prima di contare degli errori si guarda se qualcuno li ha causati apposta.*
-
-### **84** — 🚨🚨 Il test di livello: l'esito arriva DOPO 11 MINUTI, e il livello non si scrive MAI
-
-🆕 **APERTA E MESSA IN URGENTI il 24/08/2026, su sua parola** (*«laura aprea ha fatto il test di
-autovalutazione ma dopo che ha finito… non ha ricevuto nessuna notifica sul bot»*, poi *«tra
-l'altro non è stato inserito il livello a laura nella sua scheda socio»*, poi — vista la misura —
-*«il primo giro funziona ma ci mette troppo a rispondere… 15 minuti non vanno bene, ci deve
-mettere alcuni secondi»*).
-⚖️ **Il perché dell'urgenza, dichiarato**: c'è **una socia vera, adesso**, che ha fatto quello che
-il bot le ha chiesto, ha risposto alla domanda — e ha ancora **livello 0,5**, cioè il muro che le
-impedisce di organizzare. È la situazione esatta per cui `assessment-apply-level` è stato scritto
-(*«la porta chiusa in faccia a chi ha fatto quello che gli avevamo chiesto»*). Scavalca **solo
-delle attese**: la 65 aspetta, la 78 aspetta un tocco, la 83 aspetta un worker lento.
-
-📏 **LA CATENA, misurata al secondo** (registro del bot in ora di Roma, database in UTC):
-
-| ora (Roma) | cosa |
-|---|---|
-| 09:47:04 | il bot: *«mi serve il tuo livello… fai il test»*, col bottone |
-| **09:48:22** | Laura consegna. Il quiz le dice **«inviato correttamente»** |
-| **09:59:11** | 🔔 il bot annuncia l'esito — **10′49″ dopo** |
-| 10:00:59 | Laura tocca **«Tengo questo livello»** |
-| 10:01:00 | il gestionale registra `member_decision: mi_fermo` |
-| — | `applied_level` **null**, e la scheda socio dice ancora **0,5** |
-
-⇒ **Sono TRE difetti distinti, non uno**, e vanno curati separatamente.
-
-#### ⓐ L'esito viaggia sull'orologio dei promemoria — fino a 15 minuti di silenzio
-
-🔎 `avvisaEsitoDelTest` gira **dentro il giro dei promemoria**, che il bot dichiara da sé nel
-registro: *«🔔 avvisi ACCESI (ogni 15 min)»*. ⇒ Chi consegna il test un secondo dopo un giro
-aspetta **quasi un quarto d'ora**, e Laura ne ha aspettati **10′49″**.
-⚖️ **La scelta di metterlo lì era motivata**, e il commento nel bot la dichiara: *«sta QUI e non in
-un secondo orologio… un secondo temporizzatore sarebbe una seconda cosa da tenere accesa»*. Il
-motivo regge; quello che non regge è la **cadenza ereditata** — un quarto d'ora è giusto per un
-promemoria, non per la risposta a una cosa appena consegnata.
-🚨 **E non si cura abbassando il giro**: quel giro fa una chiamata al ponte **per socio**, e
-portarlo a 30 secondi moltiplicherebbe per trenta il traffico di tutti — per servire un evento
-che càpita qualche volta al mese.
-⇒ **La forma giusta è la SORVEGLIANZA MIRATA**: il bot sa **esattamente** quando consegna un link
-del test, a chi, e a quale gettone. Da quel momento, e **solo per quel socio**, guarda spesso e per
-una finestra breve; smette appena ha parlato o appena la finestra scade. È la stessa macchina della
-voce 53 (`[attesa-esito] … torno a chiedere`), applicata a un'altra domanda.
-📌 La chiave `test:<gettone>` esiste già e vale per tutti e due: il giro dei 15′ e la sorveglianza
-non possono mandare due messaggi per la stessa scheda.
-
-#### ⓑ Il GENERE non arriva ⇒ la scheda resta «in mano alla segreteria» PER SEMPRE
-
-📏 **Misurato, ed è la causa del livello mancante.** `assessment-quiz` decide:
-`statoStaff = (genere === 'NA' || conoscenza.status !== 'pass' || pocaEsperienza) ? 'review' : …`.
-Laura ha passato il quiz **4/4, trabocchetto compreso** (`status: 'pass'`), l'esperienza non
-c'entra — a bocciarla è **`gender: ''`**.
-🔎 E il genere è vuoto perché la domanda **non le è mai stata fatta**: nella pagina del quiz vive
-dentro `assessmentPublicConfigureExternalData`, che la mostra **solo per il link esterno**; sulla
-strada del **gettone** esce prima (`if (!isExternal) { … return }`) senza nemmeno riempire
-`form.dataset.memberGender`.
-⛔ Da lì in poi la strada è chiusa a chiave: `assessment-apply-level` scarta ogni scheda con
-`staff_status` non vuoto — *«in mano alla segreteria (review)»* — quindi **nessun cron applicherà
-mai quel livello**, né dopo la scelta del socio, né dopo le 24 ore, né mai.
-📏 **2 su 2**: stessa sorte per **Fabiola Limuti** il 19/08 — `gender` vuoto, `review`,
-`applied_at` null da cinque giorni.
-⭐ **E la cura non è aggiungere una domanda: è non farla.** Sulla scheda socio di Laura c'è scritto
-**`gender: 'F'`**. *Il gestionale SA* — il genere lo deve leggere il **server** dal gettone
-(`assessment_tokens.member_local_id` → scheda socio), non richiederlo a chi l'ha già dato.
-Chiederlo di nuovo sarebbe un dato in più da tenere allineato, cioè un secondo posto dove diverge.
-
-#### ⓒ «Te lo registro sulla scheda a breve» — una promessa che il gestionale non mantiene
-
-🚨 Nello schermo del 24/08 il bot chiude così: *«Perfetto: tengo **Base** 👍 · Te lo registro sulla
-scheda **a breve**.»* Per via della ⓑ quel «a breve» **non arriva mai**.
-⚖️ È la **stessa forma della voce 83** vista da un altro lato: una frase che afferma qualcosa sullo
-stato del mondo senza che nessuno l'abbia verificata. Là era un «no» falso su una scrittura
-avvenuta, qui è un «sì» falso su una scrittura che non avverrà.
-📌 *Una frase che promette un fatto futuro va detta solo da chi può vedere quel fatto succedere.*
-⇒ Curata la ⓑ la promessa diventa vera; ma va deciso se il bot debba **confermare** quando è
-successo davvero, invece di annunciarlo prima.
-
-🗣️🎯 **E il 24/08 lui ha fatto LA domanda giusta: *«ma devono passare obbligatoriamente quindici
-minuti per aggiornare la scheda?»* — NO, e la risposta trasforma questa metà da «frase da
-sistemare» a «cura da fare».**
-
-📏 **Misurato**: `pmo-assessment-apply-level-prod`, schedule **`*/15 * * * *`**, attivo. Quindi
-fino a un quarto d'ora fra il tocco del socio e il livello sulla sua scheda.
-⚖️ **Ma l'attesa non serve a niente.** Nell'istante in cui il socio tocca «Tengo questo livello»
-la scelta arriva a `consumer-assessment-decision`, che **è il gestionale** e ha già tutto per
-scrivere. Oggi registra la scelta e basta: il cron se ne accorge quando passa.
-🔒 **Ed è la regola del committente del 22/08 applicata qui**: *«ogni gesto va detto al socio solo
-dopo che il circolo l'ha confermato — e nello STESSO ISTANTE dev'essere registrato dal
-gestionale»*. Il bot dice «te lo registro a breve» **prima** che sia registrato: è la metà
-«stesso istante» che manca, la stessa che la voce 75 aveva curato sulla creazione.
-
-🔨 **Come si fa, e come NON si fa.** ⛔ Il ponte **non** deve ricopiarsi la regola
-dell'applicazione — il non-scendere al ribasso, la scheda più recente dell'ultimo aggiornamento,
-il giro delle tre prove: sono tre regole delicate e due copie divergono al primo ripensamento.
-✅ Deve **chiamare** `assessment-apply-level`, che è già una funzione a sé e non vuole parametri
-obbligatori (`{}` basta; `{"simula": true}` è solo per le prove). ⇒ Il socio tocca, il ponte
-registra la scelta **e lancia il giro**: secondi invece di un quarto d'ora, e **nessuna regola
-duplicata**.
-⭐ Il cron **resta** ed è la rete: copre i due casi che non passano da un tocco — il
-**silenzio-assenso** delle 24 ore e la **terza prova**, che chiude il giro da sé.
-
-✅ **FATTA il 24/08**, e la sua seconda frase è finita nel codice perché è la ragione:
-*«se non lo trova variato è un disservizio»*. `consumer-assessment-decision`, su «mi fermo»,
-lancia il giro **subito** — chiamando `pmo_dispatch_assessment_apply_level`, cioè **la stessa
-strada del cron**: il segreto delle routine sta nel vault e quella funzione lo legge da sé
-(`SECURITY DEFINER`, `service_role=X`), quindi non serve portarselo dietro e non nasce un
-secondo modo di far partire quel giro.
-⚖️ **La risposta al socio non aspetta il giro**: la scelta è già scritta e vera. Se il giro non
-parte, il livello arriva col cron come prima — *si perde la fretta, non il fatto* — e l'errore
-resta nel registro. Torna anche `applicazione_lanciata`, così il bot può dire «te l'ho
-registrato» invece di «te lo registro a breve» **senza indovinare**: è il gestionale a dirglielo.
-🧪 Provata col sabotaggio: tolto il lancio cadono due guardie, fatta fallire la risposta insieme
-al giro ne cade una terza.
-🚨 **E una trappola dentro la trappola, costata due giri**: le prime guardie cercavano i nomi nel
-**file**, e i commenti che spiegano la cura li contengono tutti ⇒ togliendo il lancio vero
-restavano verdi. Adesso guardano `codice`, cioè il sorgente **senza commenti**. *Una guardia che
-legge le parole invece dei fatti non difende niente* — ed è lo stesso errore contro cui il
-progetto si difende dappertutto, rifatto dentro la sua stessa difesa.
-
-🧬 **E un reperto per la voce 69, trovato per strada**: nella copia cloud Laura ha **TRE righe**
-`member` — `email:aprea.lalla@gmail.com` (0,5), `phone:393338979606` (0,5) e una a id nudo
-`7a4186a7-…` ferma al 31/07 con livello **1**. ⚠️ **A video l'anagrafica ne mostra UNA sola**
-(ID-MP-000140, F, Principiante 0,5), quindi non sono tre schede per l'operatore: sono tre chiavi
-della stessa persona nella copia, ed è la famiglia della 69. ⇒ Quando il livello si applicherà,
-**su quale riga**? La domanda è della 69, ma la risposta serve qui.
-
-🧪 **IL COLLAUDO DEL 24/08 CON LIDIA COMES — cosa ha provato e cosa ha fatto CADERE.**
-
-| | esito |
-|---|---|
-| **ⓑ il sesso** | ✅ **PROVATA**: `genere: F` **ripescato dalla scheda**, `staff_status` **vuoto** (non più `review`), quiz `pass`, livello calcolato 2,5. La strada che teneva ferma Laura è aperta |
-| **ⓐ i secondi** | ❌ **CADUTA**, e il difetto era della cura: l'esito è arrivato alle **11:00:50** contro una consegna delle **10:48:41** — **12 minuti**, cioè col giro dei 15′. La sorveglianza **non è mai partita** |
-| **ⓒ la promessa** | ⏳ non ancora osservata: dipende dalla scelta del socio, che al momento del collaudo non era ancora arrivata |
-
-🚨⭐⭐ **PERCHÉ È CADUTA, e la lezione vale più della cura**: la sorveglianza si accendeva in **un
-punto solo** — il muro «mi serve il tuo livello». Lidia il link l'ha avuto dal **promemoria
-gentile** (`10:45:50 🎾 promemoria del livello a Lidia Comes`), e da quella porta non partiva
-niente. ⇒ **Le porte sono TRE**: il muro, il promemoria, e il bottone «rifai il test» dopo una
-bocciatura.
-⚖️ **È la trappola del 23/08 in persona** — *una regola messa dove si DISEGNA e non dove si ESEGUE*
-— rifatta **tre ore dopo averla letta**, con il banco verde e il deploy riuscito. 📌 *Un banco che
-prova la macchina non prova che qualcuno la accenda.*
-✅ **Curata**, e la cura non sono le due righe: è il caso **17quater**, che le porte le **conta** —
-ogni file che fabbrica il bottone del test deve accendere la sorveglianza, altrimenti cade.
-Sabotato due volte, compresa una quarta porta finta in un file nuovo.
-
-⏳ **Cosa manca ancora per chiuderla**: la prova fisica della ⓐ **col difetto vero davanti** — una
-consegna che passa dal **promemoria** e che l'esito raggiunge in secondi — e la ⓒ.
-
-#### 🔴 24/08 pomeriggio — la ⓐ è caduta una SECONDA volta, e la causa è la GUARDIA
-
-📏 **Collaudo con Fabiola Limuti, misurato sul registro del bot e sul database:**
-
-| ora (Roma) | cosa |
-|---|---|
-| 11:42:50 | `▸ Fabiola Limuti (chat 1110380688): /prenota → griglia` |
-| 11:42:51 | `↳ [griglia] rifiutata` — il muro, **col bottone del test** |
-| 11:44:24 | scheda consegnata al gestionale (`EB1NG2IUSAODAU`, 2,5, `consistency high`, `staff_status` vuoto) |
-| **11:52:51** | `🔔 esito del test (pass) a Fabiola Limuti` — **8′27″**, cioè il giro dei 15′ |
-
-🚨 **In tutto il registro, nessuna riga `[sorveglianza-test]`.** La sorveglianza non è mai partita.
-
-🎯 **LA CAUSA, e non è una porta dimenticata: è la GUARDIA che non poteva vederla.** Il caso
-17quater contava i **FILE** — *ogni file di `src/telegram/` che fabbrica `bottoneTestLivello` deve
-accendere la sorveglianza*. `bot.ts` conteneva già `sorvegliaEsitoDelTest(` (nel muro
-conversazionale, riga 2227) ⇒ **passava verde**. Ma dentro `bot.ts` le porte erano **due**: quel
-muro, e la **scheda della griglia** (`mandaScheda` → `conBottoneSegreteria` → `bottoneTestLivello`).
-Fabiola è passata dalla seconda.
-
-⚖️ ⭐⭐ *Una guardia che conta i FILE non vede la seconda porta dentro lo stesso file.* È la trappola
-della mattina un piano più su — e la mattina la lezione scritta era proprio *«le porte si contano,
-non si ricordano»*: **contarle era già la cura sbagliata**, e l'ha dimostrato lo stesso giorno.
-
-🔨 **CURA, in servizio dalle 11:59:19** (bot PR #71, `3746659`): l'accensione non sta più nelle
-porte, sta **a monte** — `linkDelTestConSorveglianza` in `bot.ts`, per cui passano **tutte** le
-strade della chat per costruzione. Chiedere lo stato del test conia il gettone **di quella
-persona** e si paga solo quando la risposta lo conterrà ⇒ passare di lì vuol dire *sto per
-mandarglielo*. ⛔ Non nella **fabbrica** del bottone (là si passa anche solo per *chiedere* se un
-bottone si può fare) e non nel **giro** degli avvisi (quello chiede lo stato di tutti i soci ogni
-quarto d'ora). La riga nel muro è stata **tolta**, non affiancata.
-🔒 Le guardie nuove non contano più: **17quater** pretende che in `bot.ts` `statoTestLivello(`
-compaia **esattamente due volte** (il punto a monte, e il ramo della scelta che legge la fascia e
-non manda link) — una terza chiamata è una porta che scavalca, e fa cadere il caso; **17quinquies**
-controlla che il muro e la griglia il link lo prendano proprio da lì. 🔪 Sabotate **quattro** volte,
-compresa una **quinta porta** che chiede il link per conto suo. Banco **1510 verdi**, `tsc` pulito.
-
-⏳ **LA PROVA FISICA MANCA ANCORA**, e va detto invece di dare per fatto: un banco verde e un deploy
-riuscito sono esattamente ciò che c'era stamattina quando la cura non funzionava. Serve un test
-consegnato **adesso**, con `[sorveglianza-test]` nel registro e l'esito in **secondi**.
-
-⏳ **IL RESIDUO, dichiarato**: chi tocca un bottone rimasto in chat **da giorni** non passa da
-nessuna porta, e il suo esito torna ad aspettare il quarto d'ora. Il bot **non lo può vedere**: il
-test si consegna al **gestionale**, non a lui. ⇒ La cura piena è che sia il gestionale a dire
-*«c'è un esito da annunciare»* — un giro veloce con **una domanda sola per tutti** — invece del bot
-che indovina quando vale la pena chiedere. È *il gestionale SA, il bot DICE* applicato alla fretta.
-
-#### 🚨🚨⭐⭐ 02/09 — E SOTTO LA STANZA MURATA C'ERA LA VERA CAUSA: **il gettone corrente è sempre quello VUOTO**
-
-📏 **Misurato al millesimo sui gettoni veri di PROD**, dopo il secondo *«non lo vedo»*:
-
-```
-08:18:22.105   ZOGPGGF0AR7B9J   completed   ← la scheda consegnata dal bot
-08:18:22.754   C8RA8CRXJZ3WXI   created     ← il gettone SUCCESSIVO, vuoto: 649 ms dopo
-```
-
-`syncAssessmentTokensFromSupabase` ordina i gettoni di un socio per
-`completed_at || sent_at || created_at` e tiene il **primo**. ⇒ Vince **sempre** quello appena
-coniato, che una scheda non ce l'ha. Poi `assessmentRecordFor` chiede
-`getAssessmentResponseByToken(rec.token)` e riceve **niente**: il pannello «Autovalutazione da
-validare» **non si disegna**, e la scheda socio mostra l'ultimo livello applicato come se non
-fosse arrivato nulla.
-
-🚨 **E non è il caso di Maurizio: è ogni scheda che passa dal bot, cioè TUTTE** — il canale
-email è dismesso dal 13/08 e la sezione Autovalutazione è congelata dal 13/06. ⇒ Da settimane la
-segreteria, aprendo una scheda socio, **non poteva vedere nessuna autovalutazione nuova**, e il
-sintomo era una scheda che diceva «Applicata» con la data vecchia — indistinguibile da «non è
-arrivato niente».
-
-⚖️ **Perché non si tocca l'ordinamento**: per il pannello «da inviare» il gettone nuovo **è**
-quello giusto — è lì che si guarda se un invito è partito. A essere sbagliata è la **domanda**:
-*«qual è la sua scheda?»* posta al **gettone** invece che al **socio**.
-🔨 ⇒ Se il gettone corrente non ha una scheda, si prende **la più recente del socio**
-(`assessmentMemberResponses`, che legge già anche l'archivio dei gettoni). E l'«applicata» si
-giudica sulla scheda che si **mostra**, non su `rec`: col ripiego possono essere gettoni diversi,
-e confrontare quello sbagliato direbbe «da validare» su una scheda già applicata.
-🔒 Guardia (caso 8), sabotata e vista rossa. ⚠️ Testuale.
-
-⛔ **COSA RESTA DA MISURARE, dichiarato**: questa correzione cambia cosa `assessmentRecordFor`
-torna per i soci che hanno una scheda non applicata ⇒ **i contatori** che ne dipendono possono
-salire. Non è stato misurato di quanto, e non si finge che non succeda.
-
-📌 **La catena di stamattina, tutta intera, è una lezione sola in tre gradini**: *un dato
-**scritto** non è un dato **arrivato** · un dato arrivato non è un dato **visto** · un dato visto
-non è ancora un dato **TROVATO*** — e l'ultimo gradino era una chiave che puntava a **mezzo
-secondo** di distanza. A trovarli tutti e tre è stato lui che apriva l'app; nessuna delle mie
-prove verdi ne ha visto uno.
-
-#### 🚨⭐⭐ 02/09 — LA CURA ERA IN UNA STANZA MURATA, e l'ha detto lui guardando
-
-📏 **«Negativo.»** Prima versione della cura: il motivo compariva **solo** nel pannello della
-sezione **Autovalutazione**. Quella sezione è **CONGELATA dal 13/06/2026** —
-`PMO_ASSESSMENT_PARKED = true` — e `pmoSectionVisibleFor` la nega **a tutti, owner compreso**.
-⇒ La colonna era scritta, la RPC la portava, l'app la traduceva (verificato sull'app viva) — e
-la **schermata non si poteva aprire**. Tre metà giuste e una porta chiusa.
-
-⚖️ **È il difetto del giorno stesso, un piano più in là.** La migrazione della RPC portava già
-scritto *«un dato scritto non è un dato arrivato: fra i due c'è sempre qualcuno che lo
-trasporta, ed è quello che di solito non si guarda»* — e la cura è finita nel gradino **dopo**:
-📌 *un dato arrivato non è un dato VISTO. Fra i due c'è una porta, e la porta era murata da tre
-mesi con un flag che il file dichiarava a chiare lettere.*
-
-⛔ **E nessuna prova lo avrebbe detto.** Banco verde, deploy riuscito, sorgente in servizio
-riletto, console remota che risponde giusto: **tutti e quattro** dicevano di sì. A dire di no è
-stato **lui che apriva il menu e non trovava la voce**. È la regola di casa nella sua forma più
-secca — *«fatto» non è uno stato del codice: è uno stato di ciò che la gente usa*.
-
-🔨 **Cura**: il motivo sta anche nella **scheda socio** (Anagrafica soci → Scheda →
-Autovalutazione), riga *«Perché è da controllare»* accanto a Coerenza e Conoscenza — la strada
-che la segreteria percorre davvero. La riga nel pannello congelato **resta**: il giorno che lo
-riaprissero è già a posto.
-🔒 Guardia nuova (`motivo-review.test.ts` caso 7): pretende che il motivo compaia **dentro**
-`memberAssessmentValidationPanel`, e che `PMO_ASSESSMENT_PARKED` sia **ancora** `true` — così
-il giorno che lo cambiassero questa spiegazione cade e la si rilegge, invece di restare appesa
-a un fatto che non vale più. ⚠️ È **testuale**, e si dice: legge il sorgente, non apre una pagina.
-
-#### 🩹 02/09 — «INCONGRUENZA» NEL BOT È GIUSTA, e chi la rileggerà penserà di no
-
-📏 **Segnalata come difetto e poi smentita andando a leggere**, la stessa mattina. Il bot, su una
-prova bocciata, dice *«Nel test di livello di gioco è rimasta un'**incongruenza**, quindi il
-livello non l'ho registrato»* — e sulla scheda vera del 02/09 la coerenza era **high** (dichiarato
-4,5, calcolato 4,5): a fermarla era il **quiz, 0/5**. Sembra il motivo sbagliato. **Non lo è.**
-
-⭐⭐ La parola è **sua**, scelta il 9/08, e il perché sta scritto sopra la funzione
-(`avvisi-testi.ts`): *«al socio non si dice mai COSA ha sbagliato — un test che lo spiega è un
-oracolo, e si indovina a tentativi»*. ⇒ «Incongruenza» **non nomina** `consistency_status`: dice
-*qualcosa non torna* senza dire cosa, ed è vaga **apposta**.
-
-⚖️ **L'errore di lettura, che è la cosa da ricordare**: ho giudicato una parola del **bot** col
-vocabolario del **gestionale**, dove «incongruenza» è un campo preciso. Sono due lingue diverse
-che condividono una parola. 📌 *Prima di chiamare falsa una frase, si va a leggere in quale
-vocabolario è stata scritta* — e lì accanto, di solito, c'è già il perché.
-
-🔒 **E il disegno regge anche dopo la cura di stamattina**: `review_reason` è nato per la
-**segreteria**, non per il socio. Che al socio il motivo non arrivi non è una dimenticanza da
-sanare: è la regola del 9/08 che continua a valere. ⛔ Chi un domani volesse «far dire al bot il
-motivo vero, adesso che c'è» starebbe togliendo una protezione, non aggiungendo una gentilezza.
-
-#### 🔎 E la «scheda non aggiornata» non è un secondo difetto
-
-📏 `applied_at` di `EB1NG2IUSAODAU` è **null** perché il livello si applica **dopo la scelta del
-socio** (o dopo il silenzio di 24 ore), e la domanda «tengo questo / riprovo» a Fabiola è arrivata
-solo alle **11:52:51**, con l'esito. ⇒ **Un difetto solo, due sintomi**: finché l'esito tarda,
-tarda anche la scheda. La cura della ⓒ (il livello applicato **subito** dopo «mi fermo») non
-c'entra e non è stata smentita: non è ancora stata esercitata.
-
-#### 🔢 24/08 — le prove sono TRE, e il bot non l'ha mai detto a nessuno
-
-🗣️ **Sua, guardando sul telefono la risposta a «Riprovo»**: *«non diciamo mai che i test sono tre.
-E dopo il terzo si applica il livello in automatico dell'ultimo test fatto. O almeno non mi
-ricordo, forse del migliore»*. ⇒ Se il conto non se lo ricorda **chi ha disegnato la regola**, il
-socio che decide se riprovare sta decidendo alla cieca.
-
-📏 **Misurato prima di scrivere le frasi**, perché una spiegazione sbagliata è peggio del silenzio:
-
-| domanda | risposta misurata |
-|---|---|
-| l'ultimo o il migliore? | **l'ULTIMO** — `soloLaPiuRecentePerSocio`, *«una scheda sola per socio, la più recente»* |
-| dopo il terzo si applica? | la terza **non chiede più niente** (non c'è una quarta a cui rimandare) |
-| …**comunque**? | **no**: quiz non superato, `consistency low`, dichiarato e calcolato distanti più di 0,5, scheda in mano alla segreteria, o il freno del ribasso la fermano lo stesso |
-| e se le finisce tutte e tre male? | resta **senza livello e fermo 30 giorni**, e nessuno gliel'aveva detto |
-
-🚨⭐⭐ **E il difetto che nessuno aveva visto, che è peggio del buco segnalato**: *«Va bene: questa
-prova non la registro»* è **vera sul LIVELLO e falsa su ciò che conta**. `giriDelSocio` conta le
-schede con esito `pass`/`fail` e **non guarda la scelta**, se non per «mi fermo» ⇒ una prova
-rifiutata **ha consumato un tentativo**. Chi legge «non la registro» capisce «non conta», e può
-arrivare all'ultima credendo di averne ancora due — poi il giro si chiude e restano trenta giorni.
-⚖️ È la stessa forma della **71** e della **83**: *una parola che significa due cose, con chi la
-legge costretto a indovinare*. E la cura è la stessa: **far uscire il fatto insieme al dato**.
-
-🔨 **CURA (bot PR #72)** — tre punti, non uno:
-· **dove il link ESCE** (muro, promemoria, offerta, invito, scheda): *«È la tua **seconda prova di
-  tre**, e vale l'ultima che fai»*; sull'ultima diventa
-  ***«È LA TUA ULTIMA PROVA DELLE TRE: QUELLO CHE ESCE VALE.»*** — tutta maiuscola e in
-  grassetto **su sua richiesta**, guardando il messaggio vero sul telefono. ⚖️ **Solo l'ultima**:
-  è l'unica riga che annuncia una cosa **irreversibile**, e se gridassero anche la prima e la
-  seconda non griderebbe più nessuna. Un caso lo pretende nei due versi, sabotato di là e di qua. ⛔ Non compare in **attesa** né nelle strade della **segreteria**: dire
-  «è la tua seconda di tre» a chi non ne può fare nessuna è il vicolo cieco con un numero attaccato;
-· **la domanda**: *«riprovare per salire ancora»* prometteva il **migliore**. Adesso dice che vale
-  l'ultima, e sull'ultima dice cosa succede dopo;
-· **la risposta a «Riprovo»**: *«questo **livello** non lo registro 👍 · Ti resta **una prova**.»*
-
-⭐ Il conto lo dà il **gestionale** (`tentativo`, `tentativiTotali`): il bot non impara che un giro
-sono tre prove. 🚨 **Fail closed** ovunque sul numero — senza un conto credibile la riga non esce,
-perché un numero sbagliato manderebbe qualcuno a **bruciare l'ultima prova** credendo di averne due.
-
-⚖️ **E non contraddice il taglio della mattina** — *«da adesso il giro è chiuso, potrai rifare il
-test fra trenta giorni»*, tolta su sua parola perché *«troppo una frase da tecnico»*: là arrivava a
-chi aveva **finito** e non doveva fare niente, qui arriva a chi sta per **decidere**.
-📌 *Un'informazione non è tecnica o gentile in sé: dipende da quando arriva.*
-
-🔒 **E una cura strutturale nascosta dentro questa**: i **cinque** punti che consegnano il link
-copiavano i campi dello stato **a mano, uno per uno** — la stessa forma del difetto della
-sorveglianza di poche ore prima, dove una porta nuova non armava niente. Un campo nuovo sarebbe
-arrivato dove qualcuno si ricordava di aggiungerlo e mancato altrove **senza rompere niente**.
-Adesso passano tutti da `campiDelTest(stato)`, e un caso lo pretende.
-🔪 Cinque sabotaggi visti rossi. Banco **1517 verdi**, `tsc` pulito.
-
-⏳ **Prova fisica da fare**: le frasi vanno **lette su un telefono**. La prima occasione è la terza
-prova di Fabiola, che è anche il caso «ultima prova delle tre».
-
-#### ⚡ 24/08 — dai 15 minuti ai ~6 secondi, e il pezzo che mancava era l'INNESCO
-
-📏 **Collaudo con Fabiola, terza prova**, misurato al secondo:
-
-| ora (Roma) | cosa |
-|---|---|
-| 12:48:12 | `⏱️ [sorveglianza-test] comincio` — **la porta della griglia arma**: la cura del pomeriggio è viva |
-| 12:49:28 | scheda consegnata al gestionale |
-| — | **silenzio**: la sorveglianza chiede ogni 15″ a un gestionale che non ha niente da dire |
-| 12:53:22 | giro d'applicazione lanciato **a mano** |
-| 12:53:23 | livello **2,5** sulla scheda — **0,7 secondi** |
-| 12:53:44 | `🔔 esito del test a Fabiola · sorveglianza: smetto` |
-
-⇒ **Tre sintomi (nessuna notifica · nessun livello detto · nessun livello in scheda), UNA causa.**
-
-🎯 A tacere era la porta ② di `siPuoAnnunciareIlTest` nel bot: *a test superato si aspetta che il
-livello sia DAVVERO nella scheda*. Quella porta ha un'uscita — `puo_scegliere` — che rompe lo
-stallo circolare per le prove **con** una scelta da fare. La **terza** una scelta non ce l'ha
-(chiude il giro da sé) ⇒ per lei la porta resta **intera**, e il livello lo scriveva solo il cron.
-⚖️ Sulla terza prova la lentezza del cron non era «si perde la fretta, non il fatto»: era
-**silenzio totale**, sull'unica prova che vale da sé.
-📌 E la lacuna era **dichiarata** in `consumer-assessment-decision` la mattina stessa — *«il cron
-RESTA, ed è la rete… e la terza prova, che chiude il giro da sé»* — creduta innocua perché nessuno
-l'aveva guardata **dall'altro lato**, dove il bot tace aspettando quel livello.
-⇒ *Un limite dichiarato in un file non è innocuo finché non lo si guarda dall'altro.*
-
-🔨 **Due cure, in servizio:**
-· **gestionale** — consegnata la scheda, il giro d'applicazione parte **subito**. A **ogni** scheda,
-  non solo alla terza: decidere lì «è la terza?» sarebbe una seconda copia della regola del giro.
-  Si chiama il **dispatcher** (il segreto sta nel vault), non si aspetta l'esito, non può far
-  fallire la consegna del quiz;
-· **bot** — la sorveglianza chiede ogni **5 secondi** invece di 15. 🗣️ Sua misura: *«dobbiamo stare
-  entro i dieci secondi»*. Con 15 il peggio era fuori **per costruzione**. Costo dichiarato: chi
-  apre la porta e il test non lo fa paga il tetto intero, ~240 domande al ponte invece di ~80.
-
-⇒ La catena diventa **~6 secondi**. ⏳ Per andare **sotto il secondo** la strada è un'altra e non è
-stata fatta: **il gestionale che CHIAMA il bot** quando il livello è scritto, invece del bot che
-chiede ogni tot. È la stessa freccia di *il gestionale SA, il bot DICE*, presa dal verso di chi sa.
-
-🚨 **E una guardia nuova ha trovato un guasto nel codice della cura stessa**: un `*/` dentro un
-commento a blocco lo **chiude a metà** (avevo scritto il cron come `*` `/15`), e la funzione non
-sarebbe partita su Deno. In un repo dove i commenti sono lunghi quanto il codice e pieni di
-percorsi e cron non è un caso limite.
-
-#### 🚨 24/08 — il bot si è contraddetto in quattro minuti: `/livello` diceva il falso
-
-```
-12:53:44  esito del test a Fabiola  → «Il tuo livello è Base»
-12:57:08  /livello                  → «Il tuo livello non è ancora stato definito»
-12:58:39  [griglia] scegli_ora      → il muro NON scatta: il gestionale sa che ce l'ha
-```
-
-📏 La scheda socio diceva **2,5 dalle 12:53:23**. A sbagliare **non era il gestionale**.
-
-🎯 E si è visto **da cosa mancava**: quella risposta non portava né la riga né il bottone del test,
-che il codice attacca **sempre** quando conosce lo stato del livello — e lo conosce solo se lo
-strumento `profilo` è stato interrogato. ⇒ **Il modello ha risposto su un fatto senza chiederlo a
-chi lo sa**, ripescando una frase vecchia dal filo della conversazione.
-⚖️ È *il gestionale SA, il bot DICE* violato nella forma peggiore: non un ritardo, non una frase
-infelice — **un fatto inventato**, che contraddice quello vero di quattro minuti prima.
-
-🔨 **CURA (bot PR #75, in servizio)**: `/livello` **non passa più dal modello**, esattamente come
-`/prenota` e `/prenotazioni` — che infatti non sbagliano mai. La frase la scrive il codice sul dato
-appena letto, ed è la **stessa** della riserva (`fraseDelLivello`, estratta apposta): cambia solo la
-premessa, e la premessa non è la frase.
-🚨 I **due cancelli** come nello strumento `profilo` (`level_assessed` **e** la tabella delle fasce);
-**non riconosciuto** ⇒ non si dice né sì né no (voce 81); ⚠️ e **non si ripiega sul modello** quando
-il ponte tace, al contrario di `/prenotazioni` — il ripiego sarebbe il difetto che questa porta cura.
-🔒 Una guardia vecchia è caduta bene: contava le strade che offrono il test (*«devono essere 2»*) ed
-è caduta perché ne è nata una terza. **Contare è già stato l'errore della sorveglianza, lo stesso
-giorno, due volte** ⇒ adesso pretende l'**invariante**: chi offre il test dice a chi sta parlando.
-
-⏳ **NON COPRE chi la domanda la SCRIVE** («che livello ho?»): quella strada passa ancora dal
-modello e può risbagliare. Serve una rete a parte, e non è stata fatta.
-
----
-
-#### 🚨🚨⭐⭐ 24/08 sera — IL COLLAUDO DI MARCO: la scheda è arrivata, ed è nata VECCHIA
-
-📏 **Il primo giro intero su un socio vero**, e non è passato. Cronologia al secondo (Roma):
-
-```
-20:53:16  Marco: /prenota → il muro col bottone del test
-20:53:20  ⏱️ [sorveglianza-test] comincio        ← la cura ① ARMA in 4 secondi ✅
-21:13:22  ⏱️ tetto scaduto senza esito           ← 20 minuti, e il quiz non era ancora aperto
-21:16:49  Marco apre il quiz
-21:18:23  consegna, in 1'34"                     ← scheda BUONA: knowledge `pass`, livello 2,5
-   …      silenzio: livello mai scritto, bot muto
-```
-
-⇒ **Il quiz è durato un minuto e mezzo.** I 23 minuti stanno fra il *ricevere* il link e
-l'*aprirlo*, che è la cosa che fa una persona qualunque.
-
-#### Le tre cause, e nessuna era prevista
-
-| | dove | cosa |
-|---|---|---|
-| **A** | `consumer-assessment-link` | riusava un gettone che aveva **già** una scheda, perché guardava `status`/`completed_at` invece di chiedere se la scheda esistesse |
-| **B** | `assessment-quiz` | l'`upsert(onConflict: 'token')` non riscriveva `submitted_at` ⇒ una scheda di stasera nasceva **con la data del 3 maggio** |
-| **C** | `TETTO_SORVEGLIANZA_TEST_MS` (bot) | il cronometro parte quando il link **si consegna**, non quando il socio **apre** il quiz |
-
-⚖️ **B è quella che ha ucciso il collaudo, ed è definitiva, non lenta**: `assessment-apply-level`
-confronta la data della scheda con `lastLevelUpdateAt` del socio (3 maggio 19:18) e la scarta come
-vecchia — **giustamente**. La guardia è sana; a mentire era la data. ⇒ Livello mai scritto, quindi
-niente da annunciare, quindi silenzio per sempre — nemmeno il giro dei 15′ la salverebbe.
-
-📏 **Larghezza misurata su PROD, non stimata**: **23** gettoni «riusabili» che hanno già una scheda,
-su **22 soci**; **6** schede già in archivio con una data riscritta all'indietro.
-
-#### 🎓 La lezione, che vale più delle tre cure
-
-Il passaggio di consegne del pomeriggio dava questa **garanzia**:
-> *«le vecchie schede restano bloccate perché `lastLevelUpdateAt` è dopo l'ultima scheda. **La
-> scheda nuova sarà più recente ⇒ passa**.»*
-
-La premessa era falsa: **non è nata nessuna scheda nuova**, ne è stata riscritta una vecchia. È la
-25ª — *la premessa vera che regge una conclusione falsa* — nella forma peggiore, perché stava
-scritta come **rassicurazione**: nessuno va a controllare la riga che dice «qui siamo a posto».
-
-📌 E il gemello, sulla **C**: il codice **dichiarava** la sua ipotesi — *«chi apre il link domani non
-è un caso da coprire qui»*. La categoria «domani» sembrava rara e in realtà copre quasi tutti. ⇒ *Un
-limite dichiarato con l'esempio estremo si fa credere raro: chi lo scrive difende l'esempio, non il
-confine.*
-
-🔨 **CURE A e B — scritte, banco verde, sabotate una per una.**
-🔄 **E qui c'era scritto «NON ancora in servizio»: non è più vero.** 📏 Misurato il 31/08 su
-`origin/main` — `gettoneDaRiusare` c'è in `consumer-assessment-link`, e `submitted_at: new
-Date().toISOString()` c'è in `assessment-quiz` — e le edge **si deployano col push** ⇒ sono in
-servizio su PROD **dal 28/08**. La riga vecchia è stata corretta, non affiancata.
-· A: la domanda diventa *«esiste già una scheda per questo gettone?»*, in una funzione **pura**
-  (`gettoneDaRiusare`) che il banco **esegue** invece di cercarla nel testo — 6 casi nuovi;
-· B: `submitted_at: new Date().toISOString()` dentro la riga, con due guardie **testuali** (e si
-  dicono testuali: da lì la riga non si può eseguire).
-⚠️ **Il `deno check` non è girato in locale** — `jsr.io` è bloccato dalla rete della sessione cloud —
-e lo fa `typecheck-edge-functions.yml` in CI.
-
-🔨 **CURA C — decisa da lui e SCRITTA**: *«Il tempo bisogna calcolarlo da quando si inizia a fare il
-quiz.»*
-⭐ Il fatto **esisteva già e nessuno lo scriveva**: `azione: 'pesca'` in `assessment-quiz` È il
-momento in cui il quiz si apre (la pagina si fa dare le domande). Non serviva un segnale nuovo —
-serviva conservare quello che passava già di lì.
-
-| pezzo | dove | stato |
-|---|---|---|
-| colonna `opened_at` | `assessment_tokens`, PROD **e** TEST | ✅ **applicata e verificata** su tutt'e due |
-| l'apertura si scrive | `assessment-quiz`, ramo `pesca` | ✅ scritta |
-| il fatto esce verso il bot (`quiz_aperto_il`) | `consumer-assessment-link` | ✅ scritta |
-| il cronometro ci si ancora | bot, `sorvegliaEsitoDelTest` | ✅ scritta |
-
-⚙️ **Come funziona adesso**: finché il quiz non è aperto si chiede ogni **30 secondi** (fino a **4
-ore**); dall'apertura si passa a **5 secondi** per **20 minuti**, contati **da lì**. ⇒ Alla consegna
-la fase veloce è già in corso, e il peggio è 5 secondi più il giro al ponte.
-⚖️ **Cosa costa, dichiarato**: al massimo ~**480** domande al ponte per un socio che il test non lo
-fa mai — il doppio del vecchio caso peggiore (~240), spalmato su un tempo **dodici volte** più lungo.
-🚨 C'è un **tetto assoluto** che il socio non può spostare: l'apertura si riscrive a ogni ricarica
-della pagina, e senza quel tetto una pagina ricaricata all'infinito terrebbe viva la sorveglianza.
-⚠️ **FAIL SOFT e non closed**: un ponte più vecchio del bot non manda il campo ⇒ ci si comporta come
-prima della cura. Qui il fail-closed sarebbe sbagliato — non c'è nessun messaggio da non mandare a
-sproposito, c'è solo un'attesa da tarare.
-
-⛔ **IL BUCO CHE RESTA, e non si chiude col polling**: chi apre il quiz **oltre le 4 ore**, o dopo un
-riavvio del bot, ricasca sul giro dei 15 minuti. La cura piena è **il gestionale che CHIAMA il bot**
-quando c'è un esito — ma il bot **non ha nessuna porta in ingresso** (misurato: nessun `listen`, nessun
-server nel suo sorgente), quindi vuole una superficie HTTP sulla VM dietro Caddy. È un lavoro a sé.
-
-🔗 **25/08 sera — la ⓑ ha una cura, e sta nella voce 94.** Il `review` che murava la porta per
-sempre non è più un vicolo cieco: il **terzo esito** (`applied_review`) scrive il livello **e**
-avvisa la segreteria ⇒ un sospetto non è più un **blocco**. ⚖️ Non chiude questa voce — la ⓐ e la
-ⓒ restano dove stavano, e la scheda di Marco del 24/08 resta bloccata lo stesso — ma toglie di
-mezzo la metà che nessun cron avrebbe mai sbloccato.
-
-⏳ **LA PROVA FISICA DELLA 84 RESTA APERTA**, e adesso servono due giri distinti: uno che eserciti la
-ⓒ («Tengo questo livello», mai toccata da nessuno) e uno che attraversi la finestra in cui A e B
-sbagliavano. ⛔ La scheda di Marco del 24/08 **resta bloccata**: le cure valgono da lì in avanti, non
-riparano una riga già nata con la data sbagliata.
-
-#### 🔎 02/09/2026 — LA MISURA CHE HA RIFATTO LA DIAGNOSI: «review» significava DUE COSE
-
-📏 **Chiesto alla funzione invece di ricostruirlo**: `assessment-apply-level` fatta girare in
-**simulazione** su PROD (`pmo_dispatch_assessment_apply_level(true)`, nessuna scrittura), e letti
-i motivi che dà lei.
-
-```
-esaminate 63 · applicate 0 · saltate 19
-```
-
-| motivo dello scarto | quanti |
-|---|---|
-| **in mano alla segreteria (`review`)** | **9** |
-| in mano alla segreteria (`pending` / `pending_attention`) | 5 |
-| il socio non esiste più in anagrafica | 3 |
-| il livello non scende · il socio ha già questo livello | 2 |
-
-🩹 **E DUE RIGHE DELLA SCHEDA SI ROVESCIANO, per una misura e non per un'opinione:**
-· *«la ⓑ ha una cura, e sta nella voce 94… un sospetto non è più un blocco»* — **falso**.
-  `applied_review` è lo stato che si **scrive** quando il tetto morde; il `review` in **ingresso**
-  è stato aperto **solo** nel ramo del gradino (`scendo`), mai nella catena normale. Nove soci
-  fermi lì lo dimostrano, da 5 a **125 giorni** — Lidia, Fabiola e Laura dal 27 agosto;
-  Alessandra Macchitella, Alberto Chiesurin e Adriano Dalle Crode dal 25 maggio;
-· *«servono due giri: uno che eserciti la ⓒ («Tengo questo livello», mai toccata da nessuno)»* —
-  **falso**: `mi_fermo` è stato toccato **16** volte dal 24/08, e `scendo` due. 📏 Il gradino
-  funziona e si misura: **2,2 s** (Laura, 28/08) e **69 s** (Fabiola, 27/08).
-
-⭐⭐ **E LA CAUSA NON È PIÙ QUELLA DELLA SCHEDA.** La ⓑ nasceva dal **genere mancante**: quella
-metà è curata davvero, le schede recenti portano M/F. Il `review` di oggi viene dal **quiz non
-superato** — e lì *non applicare è **giusto***, è la protezione che il progetto ha voluto.
-⇒ Il difetto è un altro, ed è una forma che questa casa conosce a memoria: **`review` significa
-due cose** — *una PERSONA ha deciso di guardarla* (`pending`, `pending_attention`, e il `review`
-che scrive l'app) e *la MACCHINA non se la prende* (quiz, sesso, le due bandiere, coerenza bassa,
-dati insufficienti) — con chi legge costretto a indovinare. È la **71**, la **83** e la **68**.
-📌 Nove schede si chiamavano «in mano alla segreteria» e **in mano a nessuno ci sono mai state**.
-
-🗣️ **Scelta sua, messa davanti alle due strade**: *«fai la 2»* — le schede della macchina
-**restano** nella lista della segreteria, ma **distinte**. (La ① era farle sparire.)
-
-#### 🔨 02/09 — LA CURA, e perché NON si è rinominato `review`
-
-🚨⭐⭐ **Rinominare sarebbe stato il difetto, e si è misurato prima di scegliere**: **sei** punti
-fra `index.html`, le edge e una funzione SQL confrontano quel valore **per uguaglianza** —
-`staff === 'review'`, `statoStaff !== 'review'`, `in ('da_controllare','review','attention')`. Un
-valore nuovo li avrebbe attraversati tutti **in silenzio**, fra cui il ramo del **gradino**, che
-`review` lo apre apposta e che avrebbe smesso di far scendere chi lo chiede.
-📌 *Una parola che significa due cose non si spacca: le si mette accanto quale delle due.*
-
-⇒ Si fa uscire il **perché accanto al dato**, e l'espressione che decide resta **identica**:
-
-· `assessment-quiz/motivo-review.ts` — modulo **puro**: quale cancello ha fermato la scheda.
-  ⭐ L'ordine dei sei motivi è la **copia** della condizione vera, non una equivalente: raccontare
-  il quarto cancello quando ha fermato il primo è una spiegazione sbagliata, che è peggio del
-  silenzio;
-· colonna `review_reason` — migrazione applicata a **PROD e TEST**, e non è gentilezza:
-  `assessment-quiz` compone la riga come **intersezione dei due schemi**, quindi una colonna su un
-  progetto solo farebbe **fallire la scrittura** sull'altro, cioè perderebbe la scheda di un socio;
-· 🚨⭐ la RPC `get_self_assessments_by_tokens` — **la metà che si sarebbe dimenticata**. L'app non
-  legge la tabella: passa da lì, e quella ha un elenco di colonne **fisso**. Il motivo sarebbe
-  rimasto scritto in un posto che nessuno guarda. 📌 *Un dato scritto non è un dato arrivato.*
-  ⚖️ Compatibile nei due versi (app vecchia ⇒ ignora il campo; app nuova ⇒ etichetta assente), e i
-  **grant** rimessi a mano: un `drop` se li porta via **in silenzio**, e la prova sarebbe stata un
-  `permission denied` alla segreteria, dopo;
-· `index.html` **6.265** — accanto al «da controllare con attenzione» compare il perché. Vuoto ⇒
-  **niente**: non si scrive «motivo sconosciuto» a una scheda che una persona ha messo lì apposta.
-
-🔒 **Le PAROLE stanno nell'app, i CODICI nel gestionale** — devono, perché il modulo gira su Deno e
-l'app nel browser — **e una guardia pretende che i due vocabolari coincidano**, invece della buona
-volontà. 🔪 **Due sabotaggi visti rossi**: una frase tolta dall'app, e un motivo nuovo nella regola
-che l'elenco non conosce. Più l'**invariante** provato su tutte le 216 combinazioni: *c'è un motivo
-se e solo se lo stato è `review`*. Banco **80 verdi / 0 rossi**.
-
-⚠️ **Le righe di prima restano a NULL, e va letto «non misurato»** — non «l'ha messa lì una
-persona». Le due non si distinguono a posteriori: è la scelta della voce 68 con `esito`.
-
-⏳ **COSA MANCA PER CHIUDERE QUESTA METÀ, dichiarato**: la **prova fisica**. Nessuno ha ancora
-visto l'etichetta nel pannello, e non la si vede finché **una scheda nuova non passa** dal quiz
-curato — le nove ferme hanno `review_reason` vuoto per costruzione. ⇒ Serve un test consegnato
-**dopo** la promozione a PROD, e poi il pannello **guardato con gli occhi**.
-🧊 Su TEST non si prova: il calendario è congelato e i soci sono gli stessi, ma il quiz vuole un
-gettone vivo. ⇒ È un gesto suo, su PROD.
-⛔ **E le altre metà della 84 restano dove stanno**: la ⓐ (il buco oltre le 4 ore e dopo un riavvio
-del bot) e il residuo della ⓒ non sono state toccate oggi.
-
-#### 🔨 02/09 pomeriggio — IL MOTIVO SI PERDEVA NEL **TRAVASO**, non nella RPC (PROD 6.264 · TEST 6.268)
-
-🚨⭐⭐ **La cura di stamattina era a metà, e il sintomo somigliava a una riuscita.** La scheda qui
-sopra chiedeva al committente una prova fisica a un click. 📏 **Quella prova non avrebbe provato
-niente**, ed è stato misurato **prima** di fargliela fare — sull'app **viva** di PROD 6.263, con la
-console remota, aprendo la scheda di un socio vero:
-
-| gradino | esito |
-|---|---|
-| colonna in archivio | ✅ `review_reason = 'quiz_non_superato'` |
-| RPC `get_self_assessments_by_tokens` | ✅ **16** colonne, la porta |
-| **app: `importAssessmentResponses`** | ❌ **ne teneva 15** — elenco dei campi **fisso** |
-| dizionario `ASSESSMENT_REVIEW_REASON_LABELS` | ✅ 6 codici, `quiz_non_superato` incluso |
-| riquadro nella scheda socio | ⛔ legge `response.review_reason`, che nell'oggetto **non esiste** |
-
-⇒ Sarebbe comparso il riquadro **«Autovalutazione da validare»** (la cura del gettone vuoto morde
-davvero) **senza** la riga «Perché è da controllare». E siccome l'istruzione diceva *«se vedi ancora
-Applicata, non ha morso»*, lui avrebbe visto una cosa **diversa da Applicata** e l'avrebbe letta
-come riuscita: una prova che **certifica il contrario di quello che misura**.
-
-⚖️ **È lo stesso difetto della riga qui sopra** — *«la RPC ha un elenco di colonne fisso»* — **due
-funzioni più in là**. La cura di stamattina aveva allargato l'imbuto che aveva trovato e non si era
-chiesta se ce ne fosse un altro dietro.
-📌 *Fra il dato e chi lo legge non c'è UN trasporto: ce ne sono **in fila**, e allargarne uno non
-dice niente degli altri. «Un dato scritto non è un dato arrivato» non si applica una volta sola —
-si riapplica a ogni giuntura, finché non si arriva agli occhi.*
-
-🔪 **E la guardia nuova, sabotata, al primo colpo è passata lo stesso**: cercava `/review_reason:/`
-e trovava la parola dentro il **commento** che avevo appena scritto sopra il campo. Stretta
-sull'assegnazione (`review_reason: cleanCell(firstAvailable(`), risabotata, **ora è rossa**.
-📌 *Una guardia che legge la spiegazione invece del codice certifica che qualcuno ha scritto la
-cura, non che la cura c'è.* Banco **80 verdi** su `test-preview`, **78** su `main`.
-
-🩹 **E una riga delle consegne era falsa, corretta misurando**: *«l'utenza di sola lettura non
-carica l'anagrafica, `giocatori` resta 0»*. 📏 `giocatori` è un `let`, quindi **non è una proprietà
-di `window`**: chi aveva misurato aveva letto `window.giocatori`. Dalla console remota si vedono
-**2822 soci**. Il limite **vero** è un altro e va scritto al suo posto: quell'utenza non ha i
-permessi delle **sotto-sezioni** della scheda socio ⇒ la scheda si apre e dice *«Nessuna sezione
-visibile per il tuo profilo»*. ⇒ Da lì si leggono i **dati**, non il **riquadro disegnato**.
-
-🚨 **Dichiarato e NON curato, misurato oggi**: `applied_member_id`, che `assessmentMemberResponses`
-interroga per accoppiare una scheda a un socio, **la RPC non lo manda affatto** (non è fra le 16
-colonne) ⇒ quel confronto è **cieco per ogni riga arrivata dal cloud**. Vuole una colonna in più
-nella RPC, cioè una migrazione: non appartiene a questa voce.
-
-⏳ **LA METÀ ⓑ RESTA APERTA, e adesso manca una cosa sola**: il pannello **guardato con gli occhi**
-su PROD ≥ 6.264. La catena dei dati è verificata gradino per gradino fino all'oggetto che l'app
-tiene; l'ultimo pezzo — che quella riga si **veda** — nessuna prova fatta qui lo copre, e le tre
-guardie sono **testuali**.
 
 ### **83** — 🚨🚨 Il bot ha detto «non ci sono riuscito» a un annullo che ERA PASSATO
 
@@ -2871,7 +2218,7 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-## 📋 IN CODA — 13
+## 📋 IN CODA — 14
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2880,7 +2227,7 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 12
+### C — Cose sapute e non risolte — 13
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2894,6 +2241,7 @@ i numeri erano coerenti fra loro, ed è tutto ciò che sa confrontare.
 
 | | |
 |---|---|
+| **124** | ⏳ **L'esito del test di livello arriva DOPO 11 MINUTI — e chi apre il quiz oltre le 4 ore ricasca nel giro dei 15′** — 🆕 **entra il 02/09 pomeriggio, per DECISIONE SUA**, chiudendo la 84: messo davanti alle tre strade ha scelto *«le sposto in una voce nuova in coda»*. ⇒ **Non è una voce inventata**: sono la **ⓐ** e il residuo della **ⓒ** della 84, mai curati, che senza questa riga sparirebbero col titolo della voce chiusa. 📌 *Una voce che si chiude portandosi via del lavoro non curato non è chiusa: è persa.* 📏 **La misura sta nella 84 e non si rifà**: Laura consegna alle 09:48:22, il bot annuncia alle 09:59:11 — **10′49″**. 🔎 La causa: `avvisaEsitoDelTest` gira **dentro il giro dei promemoria**, che il bot dichiara da sé nel registro (*«🔔 avvisi ACCESI (ogni 15 min)»*) ⇒ chi consegna un secondo dopo un giro aspetta quasi un quarto d'ora. ⚙️ **La cura piena è il GESTIONALE CHE CHIAMA IL BOT** — ed è la ragione per cui è un lavoro a sé e non una riga: **il bot non ha nessuna porta in ingresso**, vuole una superficie HTTP sulla VM dietro Caddy. ⚖️ È anche la forma giusta secondo la regola di casa (*il gestionale SA, il bot DICE*): oggi il bot **chiede** a intervalli, e chiedere a intervalli è la definizione del ritardo. 🚨 **E la ⓒ**: `mi_fermo` è stato toccato **16** volte dal 24/08 e `scendo` due; il gradino si misura — **2,2 s** (Laura, 28/08) e **69 s** (Fabiola, 27/08). ⛔ **Restano ferme 9 schede in `review`** (da 5 a **125** giorni): adesso si sa **perché** per le nuove, ma le vecchie hanno `review_reason` vuoto **per costruzione** — è *«non misurato»*, non *«l'ha messa lì una persona»*, e le due non si distinguono a posteriori. |
 | **122** | 🔁 **Dopo «richiudi» il bottone restava «Richiudi» — e il socio ha ritoccato** — 🗣️ **difetto SUO, visto sul suo telefono** il 02/09 (*«mi è venuto spontaneo cliccare su richiudi la partita, però non ha funzionato»* · *«se funziona bene, dovrebbe poi dire apri la partita»*). 📏 **Misurato nel registro del bot, e la misura ribalta l'apparenza**: `00:12:54 ▸ tocca: aperte chiudi` e `00:13:10 ▸ tocca: aperte chiudi` — **due tocchi suoi a 16 secondi**, non un doppione del bot. 🚨 **NON è la voce 92**: attribuirla lì manderebbe a cercare la cosa sbagliata. Il bot ha risposto due volte perché gli è stato chiesto due volte. 🔎 **La causa**: il ramo `apri/chiudi` di `bot.ts` mandava la conferma e si fermava — nessuna riscrittura della scheda ⇒ il bottone restava «🔒 Richiudi la partita» su una partita **appena richiusa**. ⚖️ **E la cura non era da inventare: stava già scritta dieci righe più su**, nel ramo `entra` — *«lasciargli sotto gli occhi la vetrina vecchia è l'invito a toccare di nuovo lo stesso bottone»*. Il ramo accanto non l'aveva mai applicata, e stanotte l'invito è stato **accettato**. 📌 *Una regola scritta in un commento vale per il ramo in cui è scritta, non per i suoi vicini: quelli vanno guardati uno per uno.* 📌 Difetto di **forma, non di verità**: la partita era chiusa davvero tutte e due le volte — è la coppia che mente mentre i due pezzi, presi da soli, dicono il vero (voce 90). ✅ **CURATA (PR bot #118): si riscrive in tutti e tre i casi** — aperta, chiusa, rifiutata — per la stessa ragione per cui `entra` lo fa «sia che sia entrato sia che no». Banco **1718/0**, `tsc` pulito, due guardie testuali nuove **viste rosse su due sabotaggi** e verdi dopo. Il censimento di `schermata-gia-cosi` sale da 12 a 13, col perché scritto lì — ⚖️ e stavolta il punto mancante **non l'ha annunciato la guardia, l'ha annunciato lui col dito**. ⛔ **APERTA per la prova fisica**: le guardie sono **testuali** — dicono che la riscrittura è cablata, non che arrivi sullo schermo. Serve un tocco vero: toccare «🔓 Apri ad altri giocatori» e vedere il bottone diventare «🔒 Richiudi la partita» senza mandare un secondo messaggio. Non scavalca niente. |
 | **118** | 🔇 **«Non ci sono riuscito» detto su un `WORKER_ERROR` che era un «non lo so»** — 📏 misurato sugli stessi due fallimenti del 01/09. `esitoIgnotoDaRisposta` riconosce l'ignoto solo su `esitoIgnoto: true`, sul codice `WORKER_ESITO_IGNOTO`, o quando **non c'è nessun codice**. Qui il codice c'era (`WORKER_ERROR`) ⇒ è caduto fra i **rifiuti**, e il bot ha affermato che il gesto non era passato. ⚖️ Ma `locator.click: Timeout` vuol dire *«ho premuto e non so com'è finita»*: il postback di Matchpoint può essere partito lo stesso. 🍀 Stavolta il verdetto era giusto **per caso** (la rimozione non era passata); il giorno in cui passa mentre il bot dice di no, quella persona resta fuori dal campo credendosi dentro. ⇒ È la forma della voce 72 — *dire «non è successo» quando si sa solo di aver smesso di aspettare*. |
 | **119** | 📱 **Le etichette dei bottoni si tagliano NEL MEZZO, e sparisce quello che distingue** — 🗣️ difetto **suo**, visto sullo schermo mentre prenotava il 01/09: *«attenzione a che non si leggono i testi»*, con sei fasce che dicevano tutte «…4 liberi». 📏 `🟢 12:00 · 4 liberi` sono 19 caratteri su un bottone largo **mezza riga**: Telegram taglia in mezzo e resta `🟢 12:…4 liberi` — cioè la parte uguale per tutti e sei. 🔨 **Curata** (PR bot #117): `etichettaFascia` a scala, cade la parola, poi il numero, **l'ora mai**; sulle piene «pieno» resta, perché un pallino rosso da solo è un colore, non un'informazione. ⛔ **Aperta per la prova fisica** e per due residui **non toccati**: `💬 Altri orari? Scrivi alla segreteria` (38 caratteri) si taglia anche lui su riga intera — il tetto di 37 fu osservato sul suo telefono il 29/07 e cambiarlo riapre una sua decisione; e **«🔄 Riprova a invitare»** invita a riprovare in una finestra in cui l'unica cosa che serve è **aspettare il sync** (misurato: 2′18″ quella sera), quindi manda a premere a vuoto. |
@@ -4920,17 +4268,18 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 02/09/2026 — 102 voci
+## 📦 CHIUSE — dal 13/08 al 02/09/2026 — 103 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**La prima voce è del 02/09**; **le tre dopo sono del 01/09**; **le due dopo sono del 31/08**; **le otto dopo sono del 30/08**; **le tre dopo sono del 29/08**; **le quattro dopo sono del 28/08**; **la dopo è del 26/08**; **le sette dopo sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
+**Le prime due voci sono del 02/09**; **le tre dopo sono del 01/09**; **le due dopo sono del 31/08**; **le otto dopo sono del 30/08**; **le tre dopo sono del 29/08**; **le quattro dopo sono del 28/08**; **la dopo è del 26/08**; **le sette dopo sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
 
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
+| **84** | 🎓 **IL TEST DI LIVELLO: l'esito dopo 11 MINUTI, il livello mai scritto, e la scheda «in mano alla segreteria» PER SEMPRE** — 📦 **CHIUSA il 02/09 pomeriggio, a prova fisica su PROD**: il committente ha aperto la scheda socio e ha **visto** la riga «Perché è da controllare → Quiz di conoscenza non superato». ⚖️ **Si chiude sulla ⓑ; la ⓐ e il residuo della ⓒ NON sono curati e proseguono nella voce 124** — scelta sua, messo davanti alle tre strade: *«le sposto in una voce nuova in coda»*. 📌 *Una voce che si chiude portandosi via del lavoro non curato non è chiusa: è persa.* 🔨 **La ⓑ, in tre gradini pagati uno per uno.** ① Il `review` non veniva più dal **genere** (metà curata davvero: le schede recenti portano M/F) ma dal **quiz non superato**, e lì *non applicare è giusto*. Il difetto era che **`review` significa due cose** — *una PERSONA ha deciso di guardarla* e *la MACCHINA non se la prende* — con chi legge costretto a indovinare: nove schede si chiamavano «in mano alla segreteria» e in mano a nessuno ci sono mai state. 🚨 **Rinominare sarebbe stato il difetto**, misurato prima di scegliere: **sei** punti fra `index.html`, le edge e una funzione SQL confrontano quel valore **per uguaglianza**, fra cui il ramo del **gradino**, che avrebbe smesso di far scendere chi lo chiede. 📌 *Una parola che significa due cose non si spacca: le si mette accanto quale delle due.* ⇒ Colonna `review_reason` + modulo puro `motivo-review.ts`, con l'ordine dei sei motivi **copia** della condizione vera (raccontare il quarto cancello quando ha fermato il primo è una spiegazione sbagliata, peggio del silenzio). ② 🚨 **La RPC aveva un elenco di colonne FISSO** — l'app non legge la tabella, passa da lì: il motivo sarebbe rimasto scritto dove nessuno guarda. *Un dato scritto non è un dato arrivato.* ③ 🚨⭐⭐ **E la cura era ancora a metà: c'era un SECONDO imbuto a elenco fisso, due funzioni più in là.** 📏 Misurato il 02/09 pomeriggio sull'app **viva** di PROD 6.263 con la console remota, aprendo la scheda di un socio vero: archivio ✅ · RPC ✅ (**16** colonne) · **`importAssessmentResponses` ❌ (ne teneva 15)** · dizionario ✅ · riquadro ⛔. ⇒ Sarebbe comparso il riquadro «da validare» **senza** la riga del motivo — e siccome l'istruzione diceva *«se vedi ancora Applicata, non ha morso»*, la prova fisica prevista avrebbe **certificato il contrario di quello che misurava**. Fermata prima, non dopo. 📌 *Fra il dato e chi lo legge i trasporti sono **in fila**: allargarne uno non dice niente degli altri — «un dato scritto non è un dato arrivato» si riapplica a **ogni giuntura**, finché non si arriva agli occhi.* 🩹 **E prima ancora, il GETTONE VUOTO**, misurato al millesimo: scheda consegnata dal bot alle **08:18:22.105**, gettone successivo vuoto coniato alle **08:18:22.754** — **649 ms dopo**; l'app tiene il più recente ⇒ il pannello non si disegnava **mai**, per **ogni** scheda arrivata dal bot, cioè per tutte: da settimane la segreteria vedeva «Applicata» con la data vecchia, indistinguibile da «non è arrivato niente». ⚖️ Curato **senza toccare l'ordinamento** (per «da inviare» il gettone nuovo È quello giusto): si è cambiata la **domanda** — la scheda si chiede al **socio**, non al gettone. 🔪 **Le guardie sono state sabotate, e una è passata lo stesso**: la 9 cercava `/review_reason:/` e trovava la parola nel **commento** scritto sopra il campo. Stretta sull'assegnazione, risabotata, rossa. 📌 *Una guardia che legge la spiegazione invece del codice certifica che qualcuno ha scritto la cura, non che la cura c'è.* ⚠️ **Le tre guardie restano TESTUALI** e si dice: leggono `index.html` come testo, non aprono nessuna pagina — a chiudere la voce è stato **lui che ha guardato**. 🩹 **Una riga delle consegne era falsa, corretta misurando**: *«l'utenza di sola lettura non carica l'anagrafica, `giocatori` resta 0»*. `giocatori` è un `let`, quindi **non è una proprietà di `window`**: chi aveva misurato aveva letto `window.giocatori`. Dalla console remota si vedono **2822 soci**. Il limite **vero** è un altro: quell'utenza non ha i permessi delle **sotto-sezioni** della scheda socio ⇒ si apre e dice *«Nessuna sezione visibile per il tuo profilo»* ⇒ da lì si leggono i **dati**, non il **riquadro disegnato**. 📌 *Un limite dichiarato che nessuno riprova resta vero per sempre perché sembra prudente — e questo era falso da mesi, per un nome.* 🚨 **Dichiarato e NON curato**: `applied_member_id`, che `assessmentMemberResponses` interroga, la RPC **non lo manda affatto** ⇒ quel confronto è cieco per ogni riga arrivata dal cloud. Vuole una colonna in più nella RPC, cioè una migrazione. ⛔ **E i contatori** che dipendono da `assessmentRecordFor` possono essere saliti: 📏 misurato il 02/09 sui gettoni veri di PROD — il ripiego scatta per **6 soci** su 1342, non per tutti. Versioni: **PROD 6.264 · TEST 6.268**. |
 | **123** | 🔔 **IL CIRCOLO AVVISAVA IL SOCIO DI UN GESTO CHE AVEVA FATTO LUI, e lo mandava a parlare con sé stesso** — 📦 **CHIUSA il 02/09 mattina, a PROVA FISICA su PROD**, il giorno dopo essere entrata fra le urgenti per sua decisione. 📏 **La prova ha la forma che vale**: non «non è successo niente di male», ma *è passata di lì e non è successo niente*. Alle **07:26:49** Maurizio toglie Laura dalla partita del 7 settembre; alle **07:27:30.811**, nello **stesso giro di consegna** e sulla stessa partita, le due righe divergono esattamente dove devono — `Maurizio → esito suo_gesto` (scartato, non esce verso il bot) e `Lidia → passato_al_bot` (esce). 🗣️ Confermato sui due telefoni: *«A me non è arrivato niente, a Lidia sì»*. ⭐ **La seconda metà conta più della prima**: uno scarto troppo largo si sarebbe visto solo da lì, e un silenzio su tutt'e due avrebbe detto «funziona» a una cura che aveva zittito tutti. 🔎 **E LA MISURA HA BOCCIATO LA CURA CHE LA SCHEDA PROPONEVA.** Guardati **tutti e cinque** i gesti prima di scegliere, come la scheda chiedeva: il difetto è su **DUE** — `remove` e `add` — e non su uno, e la regola che li separa dagli altri quattro è una sola, *chi chiede resta in campo* ⇒ riceve `formazione`, che parla degli altri, invece di un fatto su di sé. 🩹 La strada ① (*«la ricevuta del remove copre anche chi ha chiesto»*) avrebbe scritto `gesto: 'tolto'` mentre il fatto è `formazione`, e `copertura()` accoppia **anche sul gesto**: sarebbe atterrata **verde** col difetto intatto. 📌 *Una protezione si estende dove arriva la sua CHIAVE, non dove arriva la sua ragione.* 🔨 **La cura**: lo scarto sta nel **gestionale** (`consumer-staff-events`), non nel bot — la scheda descriveva la ② come «tace nel bot», e non doveva. Confronta gli **identificativi** e non i nomi (le due grafie divergono: un confronto fra stringhe fallirebbe **in silenzio** proprio dove la cura serve), e scatta **solo** se tutta la raffica ha lo stesso richiedente, o zittirebbe anche la notizia della segreteria. 🚨 **Un difetto della cura trovato PRIMA di spingerla**, rileggendo la cura invece del difetto: `schede` nasceva dalle sole `persona`, quindi il richiedente non si sarebbe risolto e **lo scarto non sarebbe mai scattato** — senza nessun errore e senza nessun rosso. C'è una guardia testuale apposta. 🧾 PR #1263, edge PROD e TEST **v15**, migrazione di solo commento sui due progetti, banco **79 verdi / 0 rossi**, guardia degli esiti da 4 a 5 col perché accanto. |
 | **117** | 🚫 **TOGLIERE UN GIOCATORE NON RIUSCIVA: il click su «Eliminare» non andava a termine** — 📦 **CHIUSA il 01/09 a mezzanotte, a PROVA FISICA su PROD e sullo STESSO caso che l'aveva aperta** (partita del 7 settembre, campo 3, e lo stesso giocatore). 📏 **Tre tentativi, tre esiti diversi, e sono la storia della cura**: **20:27** `elimina:marco aprea` **due volte** → il modale intercetta, timeout; **21:55** `elimina:` **una volta sola** → muore dentro `__doPostBack`; **22:02:47** `elimina_diretto:marco aprea` · `elimina_ok:marco aprea:4->3` · `salva` · `done`, **`ok: true` in 7,96 s**. ⇒ Non «non è successo niente di male», ma *è passata di lì e ha funzionato*. 🔎 **LA CAUSA, e NON era quella che la scheda supponeva.** Il call log del worker la dice: `<div id="mpModalDevolucionCapa"> … intercepts pointer events`. Fra il **29/08** e il **01/09** Matchpoint ha aggiunto al link `onclick="return confirmarEliminarParticipanteConDevolucion(this)"`: il primo click apre un modale che chiede cosa fare dei **pagamenti** e restituisce `false` ⇒ il postback non parte; il worker non lo sapeva, ri-scansionava dopo 1,2 s, trovava la persona ancora lì e **ri-cliccava** — e il secondo click cadeva sul modale. ⚖️ *«un solo tentativo, 8 s, nessun retry» era il SINTOMO*: un timeout più lungo avrebbe fallito identico, perché il link non torna cliccabile **mai** finché il modale è aperto. 📌 I `steps` lo dicevano già senza il call log — `elimina:` due volte. 🧾 **Il meccanismo è stato LETTO, non indovinato**, con una sonda nuova di sola lettura e **zero click** (`leggi-ficha-matchpoint.yml`, nata quella notte): `MPModalDevolucion.confirmar` scrive `ConfirmaBorrarParticipante='True'` e `ComportamientoDevolucionParticipante=<scelta>`, poi rilancia l'elemento. ⇒ Il modale non serve aprirlo. 🗣️ **`defecto` («Assegnato dal sistema») è una DECISIONE SUA**, non una scelta tecnica: quel campo governa il **rimborso** al socio. Ed è il `valorPorDefecto` di Matchpoint ⇒ identico a quello che ottiene la segreteria premendo «Confermare» senza toccare niente. 🩹 **E la prima cura era sbagliata in un pezzo, scoperto dal primo togli vero**: chiamavo `__doPostBack` da `page.evaluate`, che Playwright esegue in **strict mode**, dove `_doPostBack` non può frugare negli `arguments` del chiamante. ⚖️ **Quella misura ha però CONFERMATO il resto mentre bocciava quel pezzo** — modale non più aperto, `elimina:` una volta sola — ed è il motivo per cui vale più di una prova riuscita: ha separato ciò che funzionava da ciò che no. ⇒ Strada finale: si scrivono i due campi, si **toglie l'`onclick`** e si **clicca davvero**, così il `javascript:__doPostBack(…)` gira nel contesto della pagina, che è non-strict. 📌 Scartato `new Function` per fabbricare un chiamante non-strict: dipende da una sottigliezza di ES e da una CSP che non controlliamo. 🛡️ **Due protezioni entrate con la cura, e sono metà del lavoro**: il **tetto ai giri** (il ciclo poteva ri-tentare la stessa persona senza limite — è così che si arrivava al secondo click) e **l'invariante** *una rimozione riuscita fa sparire UNA riga*, ri-guardato per ~6 s prima di dichiarare il contrario, perché leggerlo una volta sola trasformerebbe una scheda lenta in un «no» falso. ⇒ È l'invariante a firmare la chiusura: `4->3` non è un'impressione, è un conteggio. ⚠️ **Valeva anche per l'app della segreteria**, stessa strada: curata anche quella. ⛔ **COSA NON È PROVATO, dichiarato**: la strada **senza** modale (lezioni, e le fiche fino al 29/08) non l'ha esercitata nessuno stanotte — è il ramo `else`, invariato, ma un ramo invariato non è un ramo provato. E i tre errori nominati (`REMOVE_NON_APPLICATA`, `REMOVE_CONFIRM_FIELDS_MISSING`, `REMOVE_TROPPI_GIRI`) non li ha visti nessuno: esistono perché il prossimo guasto abbia un nome. |
 | **116** | 🗣️ **Un gesto del socio arrivava agli altri firmato «il circolo»** — 📦 **CHIUSA il 01/09 sera, a PROVA FISICA su PROD.** 📏 Trovata dalla prova della 88 (20:01: tre soci leggono *«Entra Laura Aprea. **L'ha cambiata il circolo.** … chiedi in segreteria»*) — due bugie: l'attribuzione e la strada. ⚖️ Difetto della **79**, non della 88: la frase era fissa perché ogni fatto nasceva dal sync. ⭐⭐ E non bastava dedurlo da `origine`: `conferma` ci passa **anche la segreteria dall'app** — delle 16 righe `annullata` così, chi le avesse chieste **non lo sapeva nemmeno il gestionale**. 🔨 Curata con `chiesto_da` lungo tutta la catena (4 porte dei soci → le due edge di scrittura → colonna → riduzione → bot), su **tutti e cinque** i gesti. Ordine obbligato rispettato: bot 20:23 (inerte senza il campo) → migrazione → edge 20:44. ✋ **La prova, 22:44 del 01/09**: partita nata dal bot, aperta, Marco entra, e a Maurizio arriva *«**Entra Marco Aprea. L'ha chiesto Marco Aprea.** Se non te lo aspettavi, **parlane con Marco Aprea**»* — senza il circolo e senza il numero della segreteria. Gestionale concorde: `chiesto_da: Marco Aprea`, `esito: passato_al_bot` alle 22:45:15. ⭐ Lo stesso gesto ha riprovato la **88** su una partita nata dal bot, che non era mai successo. |
