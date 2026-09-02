@@ -2532,8 +2532,12 @@ che restava sono i refresh «veri» (push realtime da un altro dispositivo, rien
 refresh manuale) — cioè proprio i momenti in cui in segreteria si sta lavorando in due.
 
 🔨 **La cura (v6.290): l'etichetta esce dal flusso** e si appoggia nei **16px** di margine che
-l'intestazione ha già sotto di sé (l'etichetta ne chiede **14**: 12 di altezza + 2 di stacco) ⇒
-appare e sparisce senza muovere una riga. 📏 I 16 contro 14 sono misurati, non stimati.
+l'intestazione ha già sotto di sé ⇒ appare e sparisce senza muovere una riga.
+🩹 **E il primo tentativo sbordava di 1px, visto guardando la pagina viva.** Avevo scritto qui che
+l'etichetta «chiede 14px»: quel numero veniva da una misura fatta quando stava ancora **nel**
+flusso, cioè da un'altra pagina. Fuori dal flusso la sua riga è alta **17px** contro i **16** di
+margine, e toccava il bordo del calendario. Curato con `line-height:1` ⇒ ~11px, e restano ~5px di
+aria. 📌 *Una misura presa prima della cura non descrive la pagina che la cura produce.*
 ⛔ **`#staffCalSessionWarning` resta NEL FLUSSO, ed è una scelta dichiarata**: quello è uno stato che
 **dura** ed è un bersaglio da cliccare (*«tocca qui per uscire e rientrare»*). Toglierlo dal flusso
 lo farebbe sovrapporre al calendario.
