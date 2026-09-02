@@ -385,6 +385,12 @@ test('19. 💳 la sezione «Pagamenti» ha preso il posto di «Attività», e i 
      🚨 L'unica cosa viva era «Nuova autovalutazione» ⇒ traslocata, non persa. */
   assert.match(app, /\{ key:'pagamenti', label:'Pagamenti', visible:\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\)/,
     'la sezione Pagamenti non è nella barra dei tab, o non è più legata al permesso Borsellino');
+  /* 🔀 Ordine chiesto da lui: Anagrafica · Pagamenti · Autovalutazione. Non è solo estetica —
+     `_firstTabKey` prende il PRIMO visibile, quindi l'ordine decide anche dove atterra chi non ha
+     il permesso Anagrafica. 📌 *Riordinare una fila cambia anche dove si arriva quando la fila si
+     accorcia.* */
+  assert.match(app, /key:'anagrafica'[\s\S]{0,400}?key:'pagamenti'[\s\S]{0,400}?key:'autoval'/,
+    'l\'ordine dei tab non è più Anagrafica · Pagamenti · Autovalutazione');
   assert.match(app, /const _nuovaAutovalBtn = showSecAttivita \? `/,
     'perso «Nuova autovalutazione»: era l\'unico posto da cui si lancia, e il permesso che la governa è quello di ATTIVITÀ');
   /* ⚠️ `[^`]*` qui NON funziona: il corpo del tab contiene template annidati, quindi la classe
