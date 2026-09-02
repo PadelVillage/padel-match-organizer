@@ -119,7 +119,13 @@ function preparaContainer() {
 function leggiArgomenti(argv) {
   const a = { env: null, url: null, eval: null, file: null, shot: null, out: null,
               storageIn: null, storageOut: null, login: true,
-              allowWrites: false, attesa: 8000, timeout: 90000 };
+              allowWrites: false, attesa: 8000, timeout: 90000,
+              // 🆕 03/09/2026 — la finestra era CABLATA a 1440×900, e per un lavoro di layout
+              // quella è una misura sola. Le pieghe di questa app stanno a 1024 e a 760px: senza
+              // poterci arrivare, «l'ho guardata» vuol dire «l'ho guardata su UNO schermo».
+              // 📌 Un attrezzo di diagnosi che sa fare una sola domanda fa credere che ci sia una
+              // sola risposta.
+              viewport: { width: 1440, height: 900 } };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i], v = () => argv[++i];
     if (k === '--env') a.env = v();
@@ -134,6 +140,13 @@ function leggiArgomenti(argv) {
     else if (k === '--allow-writes') a.allowWrites = true;
     else if (k === '--attesa') a.attesa = Number(v());
     else if (k === '--timeout') a.timeout = Number(v());
+    else if (k === '--viewport') {
+      const m = /^(\d{2,5})x(\d{2,5})$/.exec(String(v() || ''));
+      // ⛔ Fallisce CHIUSA: un valore storpiato non deve ripiegare in silenzio su 1440×900, o la
+      // foto direbbe «guardata a 800px» mentre mostra tutt'altro.
+      if (!m) throw new Error('--viewport vuole la forma <larghezza>x<altezza>, per esempio 900x1200.');
+      a.viewport = { width: Number(m[1]), height: Number(m[2]) };
+    }
     else throw new Error(`Argomento sconosciuto: ${k}`);
   }
   if (!a.env || !AMBIENTI[a.env]) {
@@ -226,7 +239,8 @@ const browser = await chromium.launch({
 });
 report.proxy = proxyServer ? 'attivo' : 'nessuno';
 report.chromium = chromiumPath || 'quello pinnato da Playwright';
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const page = await browser.newPage({ viewport: arg.viewport });
+report.viewport = `${arg.viewport.width}x${arg.viewport.height}`;
 page.setDefaultTimeout(arg.timeout);
 
 page.on('console', m => report.console.push({ tipo: m.type(), testo: m.text().slice(0, 500) }));

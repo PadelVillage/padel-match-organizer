@@ -270,7 +270,11 @@ test('11. le sette caselle di «Dati socio» stanno su DUE righe che tornano esa
     'la cella del bot Telegram non riserva più il suo posto mentre aspetta la risposta del ponte');
 
   // 📱 I gradini: due campi per riga sul mezzo, una colonna sola sul telefono.
-  assert.match(app, /@media \(max-width: 1024px\) \{\s*\.member-griglia-fissa > \.[a-z-]+,\s*\.member-griglia-fissa > \.[a-z-]+ \{ grid-column:span 6; \}/,
+  /* 🩹 Scritta per un numero QUALUNQUE di classi, non per due: la prima versione ne cablava
+     esattamente due ed è diventata rossa appena il Sesso ha preso una larghezza sua — accusando
+     una modifica giusta. 📌 *Una guardia che conta gli elementi di un elenco che cresce è una
+     guardia che va riscritta a ogni crescita: meglio contarne «almeno due».* */
+  assert.match(app, /@media \(max-width: 1024px\) \{\s*(?:\.member-griglia-fissa > \.[a-z-]+,\s*)+\.member-griglia-fissa > \.[a-z-]+ \{ grid-column:span 6; \}/,
     'tolto il gradino di mezzo: fra 761 e 1024px un quarto di scheda sta sotto i 190px e il campo del livello si sfilaccia');
   assert.match(app, /@media \(max-width: 760px\) \{\s*\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:1fr; \}/,
     'tolto il ritorno a una colonna sotto i 760px: su un telefono i campi diventano illeggibili');
