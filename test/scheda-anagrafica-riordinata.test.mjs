@@ -36,7 +36,13 @@ function test(nome, fn) {
 /** Il corpo del tab Anagrafica, ritagliato dal sorgente. */
 function corpoAnagrafica() {
   const i = app.indexOf('const _anagraficaBody = showSecAnagrafica ? `');
-  const j = app.indexOf('const _borsellinoBody = tabBorsellino ? `');
+  /* 🔄 02/09 sera — il fondo era `const _borsellinoBody = tabBorsellino ? \`', sparito col tab
+     Borsellino. La guardia si RIANCORA al blocco successivo: nove prove leggevano questo ritaglio,
+     e tutte e nove sono cadute insieme con «non guarda più niente» — cioè fallendo bene, dicendo la
+     verità invece di passare verdi su una stringa vuota.
+     📌 *Un ritaglio delimitato da un vicino muore quando il vicino trasloca: che si accorga di
+     esserlo, invece di misurare il nulla, è metà del suo valore.* */
+  const j = app.indexOf('/* 🎓 VOCE 98 — IL RIQUADRO DEL MAESTRO');
   assert.ok(i > 0 && j > i, 'il corpo del tab Anagrafica non si trova: questa prova non guarda più niente');
   return app.slice(i, j);
 }
@@ -305,35 +311,62 @@ test('16. 🚨⭐ le tre etichette in cima sono via — ma «Inattivo» resta, e
 
 if (failed > 0) process.exit(1);
 
-test('17. 🚨⭐ «↩︎ Storna» chiede conferma nella SUA finestra, e conferma la cifra che ha mostrato', () => {
-  /* 🗣️ Sua domanda del 02/09 sera: «se sbaglio a fare una ricarica come la correggo?». Lo
-     strumento c'era già — lo storno nel tab Borsellino — ma con **lo stesso difetto** appena curato
-     sulla ricarica: `_pmoConfirmVoidWallet` fa la domanda con `svcAddMessage`, cioè nel pannello
-     dell'Assistente AI, lontano dal bottone premuto. Si premeva «Storna» e nella scheda non
-     succedeva niente.
-     🔪 SABOTAGGI, contando prima (trappola del 02/09 mattina): `giaConfermato` compare 4 volte nel
-     sorgente e `_pmoStornoInCorso` 6 — ancorare al nome della funzione, non alla prima occorrenza. */
+test('17. 🚨⭐ «↩︎ Storna» sta nella fascia e chiede conferma nella SUA finestra', () => {
+  /* 🗣️ Nato dalla sua domanda «se sbaglio a fare una ricarica come la correggo?»: lo strumento
+     c'era già — lo storno — ma faceva la domanda con svcAddMessage, cioè nel pannello
+     dell'Assistente AI, lontano dal bottone premuto.
+     🔄 **Questa guardia è stata RISCRITTA due volte in una sera, e la seconda volta di proposito.**
+     Nel primo giro proteggeva `_pmoStornoInCorso` — l'importo congelato all'apertura — perché la
+     casella viveva nel tab Borsellino, cioè FUORI dalla finestra, e restava viva dietro di essa.
+     Col tab eliminato la casella è entrata nella finestra ⇒ quella variabile è sparita e la guardia
+     si riscrive su ciò che protegge lo stesso fatto adesso: la casella è UNA, e sta dentro
+     `pmoApriStorno`. 📌 *Quando la struttura rende impossibile un errore, la guardia che lo
+     inseguiva si riscrive sulla struttura: tenerla com'era proteggerebbe un meccanismo morto.*
+     🔪 SABOTAGGI, contando prima: `giaConfermato` compare 4 volte, `pmoApriStorno` 4 — si ancora
+     al nome della funzione, mai alla prima occorrenza. */
+  const fascia = app.match(/<div class="member-hero">[\s\S]*?<\/div>` : ''\}/);
+  assert.ok(fascia, 'la fascia non si trova');
+  assert.match(fascia[0], /pmoApriStorno\('/,
+    'sparito «↩︎ Storna» dalla fascia: col tab Borsellino eliminato non resterebbe NESSUN modo di correggere una ricarica sbagliata');
+  assert.ok(!/pmoConfermaStorno\(/.test(fascia[0]),
+    'la SCRITTURA dello storno è finita nella fascia: è denaro reale su Matchpoint, si conferma dove si digita la cifra');
+  assert.match(fascia[0], /PMO_WALLET_WRITE_ENABLED && _walletHaSaldo\(g\)/,
+    'lo «Storna» si mostra anche su un borsellino a zero: un bottone che non può riuscire promette e delude');
   assert.match(app, /const okGo = \(opts\.giaConfermato === true\) \? true : await _pmoConfirmVoidWallet/,
     'la finestra non sostituisce la conferma dell\'Assistente AI: sarebbero due domande per un gesto solo, e la seconda invisibile');
-  assert.match(app, /function pmoWalletVoidClick[\s\S]{0,1400}?return pmoApriStorno\(/,
-    'il bottone «Storna» non apre più la finestra: la domanda tornerebbe nel pannello AI');
-  assert.ok(!/function pmoWalletVoidClick[\s\S]{0,1400}?return _pmoVoidWallet\(/.test(app),
-    'il bottone «Storna» scrive DIRETTAMENTE su Matchpoint saltando la finestra');
-  // ③ l'importo confermato è quello congelato all'apertura, non riletto dalla casella dietro.
-  assert.match(app, /function pmoConfermaStorno[\s\S]{0,1200}?subtractCents: inCorso\.subtractCents/,
-    'lo storno rilegge l\'importo al momento del sì: si confermerebbe una cifra e se ne stornerebbe un\'altra');
-  assert.ok(!/function pmoConfermaStorno[\s\S]{0,1200}?pmoWalletVoidAmt/.test(app),
-    'la conferma torna a leggere la casella viva dietro la finestra');
-  assert.match(app, /function pmoConfermaStorno[\s\S]{0,1200}?inCorso\.memberId !== String\(memberId\)/,
-    'sparito il controllo che la finestra stia confermando il socio che ha mostrato');
-  // La finestra muore con lo storno congelato, da QUALUNQUE porta (compreso il click sullo sfondo).
-  assert.match(app, /function pmoChiudiRicarica\(\)[\s\S]{0,600}?_pmoStornoInCorso = null;/,
-    'chiudendo dallo sfondo lo storno congelato sopravvive alla finestra che lo ha mostrato');
-  // Una sola casella dell'importo: due con lo stesso id a schermo è il guasto già pagato.
+  // La casella dell'importo è UNA sola e sta DENTRO la finestra: è questo che rende vero
+  // «si conferma la cifra che si è vista», da quando il congelamento non serve più.
   assert.strictEqual((app.match(/id="pmoWalletVoidAmt"/g) || []).length, 1,
     'la casella dell\'importo dello storno esiste in due posti: si leggerebbe quella sbagliata');
+  assert.match(app, /function pmoApriStorno[\s\S]{0,2600}?id="pmoWalletVoidAmt"/,
+    'la casella dell\'importo è di nuovo FUORI dalla finestra: resterebbe viva dietro, e si confermerebbe una cifra stornandone un\'altra');
+  assert.match(app, /function pmoApriStorno[\s\S]{0,2600}?id="pmoStornoDopo"/,
+    'sparito il «saldo dopo lo storno»: è l\'unico numero che dice cosa sta per succedere');
+  assert.match(app, /function pmoConfermaStorno[\s\S]{0,900}?sub > cur[\s\S]{0,200}?supera il saldo/,
+    'tolto il controllo dell\'importo prima della chiamata: l\'errore tornerebbe dopo trenta secondi di browser remoto');
   assert.match(app, /_pmoFinestraEsito\(btn, '<span class="pmo-spin">↻<\/span> Storno in corso…', function \(\) \{\s*return _pmoVoidWallet\(\{ giaConfermato: true/,
     'lo storno non passa dall\'helper dell\'esito: errore e attesa tornerebbero solo nel pannello AI');
+});
+
+test('18. 🗑️ il tab «Borsellino» è sparito, e NIENTE di ciò che conteneva è sparito con lui', () => {
+  /* 🗣️ Sua richiesta: «controllami che la tab borsellino non serve più… e se ti torna tutto, la
+     puoi pure eliminare». 📏 **Controllato: NON tornava.** Saldo, «aggiornato» e «↻ Aggiorna»
+     erano doppioni della fascia, ma lo Storna e la nota per i soci senza id Matchpoint vivevano
+     SOLO lì. ⇒ Prima il trasloco, poi la chiusura.
+     📌 *«L'abbiamo integrata totalmente» è un'ipotesi da verificare voce per voce, non una
+     premessa: si conta cosa c'era, non si guarda cosa somiglia.*
+     🚨 E questa guardia esiste per il verso opposto a quello che sembra: non sorveglia che il tab
+     resti morto — sorveglia che i suoi DUE inquilini unici siano ancora a casa da qualche parte. */
+  assert.ok(!/const _borsellinoBody/.test(app), 'il tab Borsellino è tornato: due porte per lo stesso gesto');
+  assert.ok(!/key:'borsellino'/.test(app), 'la voce «Borsellino» è tornata nella barra dei tab');
+  // ① lo Storna ha una casa (guardia 17 sopra) · ② la nota dei soci senza id Matchpoint pure:
+  assert.match(app, /class="member-hero-nota">💡 Questo socio non ha un id Matchpoint collegato/,
+    'persa la nota per i soci SENZA id Matchpoint: viveva solo nel tab, e diceva l\'unica cosa che quelle schede possono fare');
+  // Il PERMESSO resta, e resta agganciato alla fascia: eliminare il tab non cambia CHI vede.
+  assert.match(app, /\$\{\(PMO_PAYMENTS_UI_ENABLED && showSecBorsellino\) \? `<div class="member-hero">/,
+    'la fascia non è più condizionata al permesso Borsellino: eliminando il tab il saldo si mostrerebbe a chi non lo vedeva');
+  assert.match(app, /const showSecBorsellino = _canMemberSec\('view_members_borsellino'\)/,
+    'sparito il permesso view_members_borsellino: era gated il tab E la fascia');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);
