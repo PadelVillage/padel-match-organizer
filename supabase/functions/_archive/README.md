@@ -10,20 +10,48 @@ Serve a un caso preciso: una funzione **viva su Supabase il cui sorgente non sta
 Lasciarla fuori dal repo significa che la pipeline non è in grado di riprodurla; portarla
 dentro `supabase/functions/` la deploierebbe. Qui sta tracciata senza essere deployata.
 
-## `matchpoint-payment-write` · `matchpoint-payment-void`
+## 📭 Stato al 03/09/2026: la cartella è VUOTA, e non è un errore
 
-Fase 2b «pagamenti in scrittura» (v6.038, giugno 2026): incasso di un giocatore e storno
-del cobro su Matchpoint, via worker `/collect-payment`. **Scrivono denaro reale**, non sono
-idempotenti; il backstop è il kill-switch del worker (`MATCHPOINT_PAYMENT_WRITE_ENABLED`,
-default OFF).
+Le uniche due funzioni che ci hanno abitato — `matchpoint-payment-write` (incasso) e
+`matchpoint-payment-void` (storno di un pagamento) — **sono uscite tutt'e due**, a un giorno di
+distanza, e la cartella resta perché resta il meccanismo: il giorno in cui servirà tenere un
+sorgente in git senza deployarlo, si mette qui.
 
-| dove | stato |
-|---|---|
-| progetto TEST `cudiqnrrlbyqryrtaprd` | 🆕 **CANCELLATE il 9/08/2026** (erano `ACTIVE` v16) — vedi sotto |
-| progetto PROD `qqbfphyslczzkxoncgex` | **non esistono**, e non sono mai esistite |
-| git | qui, in `_archive/`: conservate e mai deployate |
+| quando | cosa | dove è andata |
+|---|---|---|
+| 02/09/2026 | `matchpoint-payment-void` | riscritta da zero in `supabase/functions/matchpoint-payment-void/`, **v1 ACTIVE su PROD** |
+| 03/09/2026 | `matchpoint-payment-write` | portata in `supabase/functions/matchpoint-payment-write/`, dentro il recinto |
 
-### 🆕 9/08/2026 — cancellate da TEST, per sua decisione
+## 🚨⭐⭐ Cosa ha insegnato questa cartella, ed è la parte che conta
+
+Un sorgente in `_archive/` **esiste in git**: si legge, si apre, compare in un `grep`, e ha in
+tutto e per tutto l'aspetto di una funzione che c'è. Su Supabase però non arriva mai.
+⇒ Per mesi `index.html` ha chiamato `/functions/v1/matchpoint-payment-write` e
+`/functions/v1/matchpoint-payment-void` senza che nessuno se ne accorgesse, perché il flag
+`PMO_PAYMENTS_WRITE_ENABLED = false` impediva ai bottoni di comparire: **il 404 non è mai arrivato
+a nessuno perché nessuno ha mai potuto premere**.
+
+📌 *Il flag che nasconde un bottone è anche ciò che impedisce di accorgersi che dietro non c'è
+niente: il difetto non si manifesta finché non lo si accende, cioè nel momento peggiore.*
+
+⇒ Adesso c'è una guardia che lo dice prima, e guarda la **classe** e non i due casi:
+`test/porta-che-non-ce.test.mjs` fallisce se l'app compone un indirizzo `/functions/v1/…` che non
+ha un sorgente deployabile, **o** che ne ha uno qui dentro.
+
+🩹 E la stessa guardia, il giorno in cui è nata, ha trovato una terza cosa che nessuno cercava:
+`matchpoint-payment-void` era stata riscritta il 02/09 **senza togliere da qui la versione di
+giugno**. Due cartelle con lo stesso nome, 157 righe contro 276, e quella archiviata era la
+versione **senza recinto** — cioè chi fosse andato a leggere «il codice dello storno» avrebbe
+letto quello sbagliato, nella direzione meno prudente.
+📌 *Un gemello stantio è peggio di nessuna copia: chi lo trova non ha modo di sapere che non è
+quello in servizio.* ⇒ Chi tira fuori una funzione da qui **toglie anche il sorgente da qui**, e
+la guardia adesso lo impone.
+
+## Perché queste due erano finite in archivio (9/08/2026)
+
+Fase 2b «pagamenti in scrittura» (v6.038, giugno 2026): incasso di un giocatore e storno del cobro
+su Matchpoint, via worker `/collect-payment` e `/void-payment`. **Scrivono denaro reale**, non sono
+idempotenti; il backstop è il kill-switch del worker (`MATCHPOINT_PAYMENT_WRITE_ENABLED`).
 
 Sono uscite allo scoperto rifacendo il censimento «chi scrive sul circolo» durante la voce del
 **borsellino**: la voce diceva «7 dentro il recinto, 1 fuori», ma su TEST le funzioni fuori dal
@@ -32,28 +60,16 @@ proprio nell'ambiente dove ci si crede al sicuro, e raggiungibili da chiunque av
 staff di TEST: una chiamata diretta incassava o stornava **denaro vero** sul Matchpoint del circolo.
 
 Messo davanti alla scelta (cancellarle · metterle dentro il recinto · lasciarle), ha scelto di
-**cancellarle**: ⭐ togliere il buco per costruzione invece di sorvegliarlo, e non aggiungere
-codice vivo per difendere codice che nessuno usa. L'app non le chiamava da nessuna parte —
-in TEST i pagamenti passano dal ramo di simulazione, in PROD `PMO_PAYMENTS_WRITE_ENABLED` è
-cablato a `false`.
+**cancellarle**: ⭐ togliere il buco per costruzione invece di sorvegliarlo. Fatto con
+`delete-edge-function.yml`, `environment: test`, una funzione per volta.
 
-Fatto con `delete-edge-function.yml`, `environment: test`, una funzione per volta.
-📏 Verificato sul bersaglio: sparite dall'elenco di `cudi…`, e il passo «Delete su PROD» risulta
-**skipped** in tutt'e due le esecuzioni.
-⇒ **Il sorgente resta qui**: se un domani la scrittura pagamenti tornasse a essere una direzione,
-si riparte da questi due file. La cancellazione ha tolto il *runtime*, non la memoria.
+⚖️ **E la condizione a cui sono tornate è esattamente quella che mancava allora**: non «l'incasso
+non serviva», ma «non si tiene viva una scrittura di denaro fuori dal recinto». Oggi tutte e due
+stanno dentro `scrittura-al-circolo.ts` — nona e decima copia — e il caso 9 di
+`matchpoint-bookings-edit/scrittura-al-circolo.test.ts` verifica che il recinto stia **sulla
+strada** e non solo nella cartella.
+📌 *Una funzione si archivia per un difetto: riaccenderla senza aver curato quel difetto è
+rimettere in servizio il difetto, non la funzione.*
 
-Il sorgente è stato recuperato il 19/07/2026 da uno stash locale del 30/06 che ne era
-l'unica copia dal lato git; i marcatori del codice combaciano con la versione viva letta
-via API. In PROD `index.html` le chiama in due punti, ma dietro `PMO_PAYMENTS_WRITE_ENABLED`
-cablato a `false`: codice morto, coerente con la decisione «Matchpoint = economia unica,
-Incassi in sola lettura».
-
-Entrambe sono nella lista `VERIFY_JWT_FUNCTIONS` dei due workflow (PR #544): se un giorno
-uscissero da `_archive/`, il deploy conserverebbe la verifica JWT invece di spegnerla.
-
-✅ **Quella decisione è stata presa il 9/08/2026** (vedi sopra): la scrittura pagamenti da app
-non è una direzione, le funzioni sono state cancellate dal runtime di TEST col workflow, e
-questa cartella **resta** — perché serve ancora a quello per cui è nata: tenere il sorgente di
-una cosa che non deve deployarsi. ⭐ Quello che è cambiato è che ora non c'è più niente di vivo
-da nessuna parte a cui corrisponda.
+Entrambe restano nella lista `VERIFY_JWT_FUNCTIONS` dei due workflow (PR #544): il deploy conserva
+la verifica JWT invece di spegnerla.

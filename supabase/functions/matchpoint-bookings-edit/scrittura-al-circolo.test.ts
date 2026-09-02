@@ -3,7 +3,7 @@
 //
 // 🚨⭐⭐ Questo banco misura TRE cose diverse, e la terza è quella che di solito manca:
 //   ① la REGOLA è giusta (chi passa e chi no);
-//   ② le OTTO COPIE del modulo sono identiche — il deploy salta `_shared/`, quindi il modulo è
+//   ② le COPIE del modulo sono identiche — il deploy salta `_shared/`, quindi il modulo è
 //      duplicato per forza e la deriva fra copie è il modo in cui questi fix si riaprono;
 //   ③ 🚨 la regola è COLLEGATA: in tutte e otto le funzioni la chiamata sta PRIMA del punto di
 //      non ritorno. Una guardia perfetta che nessuno chiama resta verde e non difende niente —
@@ -78,7 +78,7 @@ test('7) maiuscole e spazi non cambiano la risposta', () => {
   assert.equal(scritturaAlCircoloConsentita(`  HTTPS://${REF_PROD.toUpperCase()}.SUPABASE.CO  `), true);
 });
 
-// ── ② le otto copie ────────────────────────────────────────────────────────────────────────
+// ── ② le copie ────────────────────────────────────────────────────────────────────────
 
 const GEMELLI = [
   'matchpoint-bookings-create/scrittura-al-circolo.ts',
@@ -102,6 +102,13 @@ const GEMELLI = [
      🚨 Sta nel recinto per la stessa ragione delle altre otto: il worker è **uno solo e condiviso**
      fra TEST e PROD, quindi uno storno «di prova» annullerebbe un incasso **vero** del circolo. */
   'matchpoint-payment-void/scrittura-al-circolo.ts',
+  /* 🆕💶 03/09/2026 — l'INCASSO (`matchpoint-payment-write`). Decima copia, e non nasce con la
+     funzione: la funzione esisteva **dal giugno 2026**, in `_archive/`, dove lui l'aveva mandata il
+     9/08 proprio perché era una scrittura di denaro **fuori dal recinto**. ⇒ Torna viva adesso
+     perché adesso il recinto ce l'ha: è la condizione a cui torna, non un dettaglio del ritorno.
+     📌 *Una funzione si archivia per un difetto: riaccenderla senza aver curato quel difetto è
+     rimettere in servizio il difetto, non la funzione.* */
+  'matchpoint-payment-write/scrittura-al-circolo.ts',
 ];
 
 test(`8) ⚠️ le ${GEMELLI.length} copie del modulo sono identiche byte per byte`, () => {
@@ -135,6 +142,14 @@ const PUNTI_DI_NON_RITORNO: Record<string, RegExp[]> = {
   // 💰 Il borsellino: `/correct-wallet` muove denaro vero in tutte e due le direzioni (storno e
   // ricarica). Una strada sola, e il recinto le sta davanti.
   'matchpoint-wallet-correct/index.ts': [/await callWorkerCorrect\(/],
+  /* 🧾💶 03/09/2026 — LE DUE FUNZIONI DEI PAGAMENTI, e la prima delle due è un buco che era già
+     aperto: `matchpoint-payment-void` era entrata nelle COPIE ieri (caso 8) ma **non qui**, dove si
+     controlla che il recinto stia davvero sulla strada. ⇒ Il caso 8 certificava che il file era
+     identico agli altri nove; nessuno certificava che qualcuno lo chiamasse prima di scrivere.
+     📌 *Avere il modulo e attraversarlo sono due fatti diversi, e servono due guardie diverse:
+     la prima da sola dice solo che la difesa è stata COPIATA.* */
+  'matchpoint-payment-void/index.ts': [/await callWorkerVoid\(/],
+  'matchpoint-payment-write/index.ts': [/await callWorkerCollect\(/],
 };
 
 for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
