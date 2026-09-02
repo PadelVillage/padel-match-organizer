@@ -152,5 +152,28 @@ test('6. l\'elenco dei motivi è quello che la regola sa produrre, senza avanzi'
     'la funzione produce motivi che l\'elenco non conosce (o viceversa)');
 });
 
+test('7. 🚨⭐⭐ il motivo si vede in un pannello RAGGIUNGIBILE, non solo in uno che esiste', () => {
+  /* 📏 Difetto della cura, trovato il 02/09 perché il committente è andato a guardare e ha
+     detto «negativo». La prima versione mostrava il motivo **solo** nel pannello della sezione
+     Autovalutazione — che è CONGELATA dal 13/06/2026 (`PMO_ASSESSMENT_PARKED = true`) e
+     `pmoSectionVisibleFor` la nega **a tutti, owner compreso**.
+     ⇒ La colonna era giusta, la RPC la portava, l'app la traduceva — e la schermata non si
+     poteva aprire. *Un dato arrivato non è un dato visto: fra i due c'è una porta, ed è quella
+     che non si guarda.*
+     ⇒ Adesso sta anche nella scheda socio (Anagrafica soci → Scheda → Autovalutazione), che è
+     la strada che la segreteria percorre davvero.
+     ⚠️ GUARDIA TESTUALE, e si dice: legge il sorgente, non apre nessuna pagina. Dice che la
+     riga è nel pannello giusto, non che si veda. */
+  const app = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
+  const pannello = app.match(/id="memberAssessmentValidationPanel"[\s\S]*?<\/section>`/);
+  assert.ok(pannello, 'il pannello della scheda socio non si trova: questa prova non guarda più niente');
+  assert.match(pannello![0], /assessmentReviewReasonLabel\(/,
+    'il motivo non compare nella scheda socio: resterebbe solo nella sezione congelata, cioè invisibile');
+  // 🔒 E la sezione È ancora congelata: il giorno che la riaprissero questa riga cade e si
+  // rilegge il caso, invece di lasciare una spiegazione appesa a un fatto cambiato.
+  assert.match(app, /const PMO_ASSESSMENT_PARKED = true;/,
+    'la sezione Autovalutazione non è più congelata: rileggi il perché di questa prova');
+});
+
 console.log(`\n${passed} verdi · ${failed} rossi`);
 if (failed > 0) process.exit(1);
