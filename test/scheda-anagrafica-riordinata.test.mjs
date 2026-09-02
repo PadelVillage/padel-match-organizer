@@ -208,7 +208,11 @@ test('11. le sette caselle di «Dati socio» stanno su righe fisse, non a caso',
     assert.ok(corpo.includes(`<div class="${cls}"><label>${et}</label>`),
       `il campo «${et}» non occupa più ${cls === 'c2' ? 'un terzo' : 'metà'} riga: le righe si scompongono`);
   }
-  assert.match(corpo, /<div class="c3" id="cardBotTelegramRow" hidden>/,
+  /* 🔄 02/09 sera — cercava `class="c3" … hidden`, la forma di prima: da quando la cella tiene
+     il suo posto mentre aspetta il ponte (`member-cella-in-attesa`, `visibility:hidden`) quel
+     testo non c'è più. Il FATTO da proteggere resta lo stesso — sta a MEZZA riga accanto al
+     livello, cioè `c3` — e va scritto senza legarsi al modo in cui è nascosta. */
+  assert.match(corpo, /<div class="c3[^"]*" id="cardBotTelegramRow"/,
     'la riga del bot Telegram non sta più a metà riga accanto al livello');
   assert.match(app, /\.member-form-grid\.member-griglia-fissa \{ grid-template-columns:repeat\(6, 1fr\); \}/,
     'le sei colonne non ci sono più: 3+3 e 2+2 non tornerebbero esatte');
