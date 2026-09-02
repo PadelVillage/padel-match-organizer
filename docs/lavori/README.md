@@ -2137,6 +2137,34 @@ test si consegna al **gestionale**, non a lui. ⇒ La cura piena è che sia il g
 *«c'è un esito da annunciare»* — un giro veloce con **una domanda sola per tutti** — invece del bot
 che indovina quando vale la pena chiedere. È *il gestionale SA, il bot DICE* applicato alla fretta.
 
+#### 🚨⭐⭐ 02/09 — LA CURA ERA IN UNA STANZA MURATA, e l'ha detto lui guardando
+
+📏 **«Negativo.»** Prima versione della cura: il motivo compariva **solo** nel pannello della
+sezione **Autovalutazione**. Quella sezione è **CONGELATA dal 13/06/2026** —
+`PMO_ASSESSMENT_PARKED = true` — e `pmoSectionVisibleFor` la nega **a tutti, owner compreso**.
+⇒ La colonna era scritta, la RPC la portava, l'app la traduceva (verificato sull'app viva) — e
+la **schermata non si poteva aprire**. Tre metà giuste e una porta chiusa.
+
+⚖️ **È il difetto del giorno stesso, un piano più in là.** La migrazione della RPC portava già
+scritto *«un dato scritto non è un dato arrivato: fra i due c'è sempre qualcuno che lo
+trasporta, ed è quello che di solito non si guarda»* — e la cura è finita nel gradino **dopo**:
+📌 *un dato arrivato non è un dato VISTO. Fra i due c'è una porta, e la porta era murata da tre
+mesi con un flag che il file dichiarava a chiare lettere.*
+
+⛔ **E nessuna prova lo avrebbe detto.** Banco verde, deploy riuscito, sorgente in servizio
+riletto, console remota che risponde giusto: **tutti e quattro** dicevano di sì. A dire di no è
+stato **lui che apriva il menu e non trovava la voce**. È la regola di casa nella sua forma più
+secca — *«fatto» non è uno stato del codice: è uno stato di ciò che la gente usa*.
+
+🔨 **Cura**: il motivo sta anche nella **scheda socio** (Anagrafica soci → Scheda →
+Autovalutazione), riga *«Perché è da controllare»* accanto a Coerenza e Conoscenza — la strada
+che la segreteria percorre davvero. La riga nel pannello congelato **resta**: il giorno che lo
+riaprissero è già a posto.
+🔒 Guardia nuova (`motivo-review.test.ts` caso 7): pretende che il motivo compaia **dentro**
+`memberAssessmentValidationPanel`, e che `PMO_ASSESSMENT_PARKED` sia **ancora** `true` — così
+il giorno che lo cambiassero questa spiegazione cade e la si rilegge, invece di restare appesa
+a un fatto che non vale più. ⚠️ È **testuale**, e si dice: legge il sorgente, non apre una pagina.
+
 #### 🩹 02/09 — «INCONGRUENZA» NEL BOT È GIUSTA, e chi la rileggerà penserà di no
 
 📏 **Segnalata come difetto e poi smentita andando a leggere**, la stessa mattina. Il bot, su una
