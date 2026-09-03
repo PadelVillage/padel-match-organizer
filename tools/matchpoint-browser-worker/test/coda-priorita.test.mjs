@@ -63,11 +63,31 @@ test('⭐ l\'ordine dei tre livelli è quello e non un altro: persone > sincroni
 });
 
 test('⭐ CONTROLLO NEGATIVO: le interattive non sono state degradate dall\'aggiunta di mezzo', () => {
-  // Il modo sbagliato di aggiungere un livello è schiacciare quello di sopra. Le sei op con una
-  // persona che aspetta devono restare TUTTE sopra ogni sincronizzazione.
-  assert.equal(MP_INTERACTIVE_OPS.size, 6);
+  // Il modo sbagliato di aggiungere un livello è schiacciare quello di sopra: ogni op con una
+  // persona che aspetta deve restare sopra OGNI sincronizzazione.
+  //
+  // 🩹⭐⭐ 03/09/2026 — QUI C'ERA `assert.equal(MP_INTERACTIVE_OPS.size, 6)`, e si è rotto
+  // aggiungendo i quattro gesti sui soldi — che erano rimasti fuori dall'elenco e cadevano a
+  // priorità FONDO, insieme al poller. La guardia aveva torto e il codice ragione.
+  // ⇒ Il numero è stato **sostituito dai nomi**, non aggiornato: un conteggio a mano si rompe a
+  // ogni aggiunta legittima e non si accorge di una SOSTITUZIONE (togline una, mettine un'altra:
+  // il 6 torna e nessuno se ne accorge). I nomi invece si rompono solo quando qualcuno **toglie**
+  // un gesto di una persona da sopra il sync, che è il difetto vero da fermare.
+  // 📌 *Una guardia deve rompersi su ciò che è sbagliato, non su ciò che è cambiato.*
+  const CON_UNA_PERSONA_CHE_ASPETTA = [
+    'create', 'edit', 'cancel', 'client', 'disable-client', 'reactivate-client',
+    'collect-payment', 'set-charge', 'void-payment', 'correct-wallet',
+  ];
+  for (const op of CON_UNA_PERSONA_CHE_ASPETTA) {
+    assert.ok(MP_INTERACTIVE_OPS.has(op), `${op} è uscito dall'elenco delle interattive: chi lo ha chiesto aspetta dietro al sync`);
+  }
   for (const op of MP_INTERACTIVE_OPS) {
     assert.ok(mpJobPriority({ op }) > mpJobPriority({ op: 'export-history' }), `${op} non passa più davanti al sync`);
+  }
+  // 🚨 E il caso che il conteggio NON copriva: un'op del fondo non deve poter entrare qui
+  // di straforo — se ci entrasse, il poller passerebbe davanti alle persone.
+  for (const op of ['poll', 'keepalive', 'read-tabellone', 'export-history']) {
+    assert.ok(!MP_INTERACTIVE_OPS.has(op), `${op} non ha nessuno che aspetta: sopra le persone non ci va`);
   }
 });
 
