@@ -193,5 +193,48 @@ test('⑦ IL DISEGNO GUARDA ENTRAMBE LE FONTI, e la LOCALE ha la precedenza', ()
   assert.match(pezzo, /throw err;/, 'il rigetto viene ingoiato: un errore di rete sparirebbe');
 });
 
+const vaSoloNellaBarra = new Function(dichiarazioneDi('svcMessaggioVaSoloNellaBarra') + '\nreturn svcMessaggioVaSoloNellaBarra;')();
+
+test('⑧ 🚨 LA BARRA SI ANCORA ALLA FINESTRA, NON ALLA COLONNA — pagato con una promozione invisibile', () => {
+  /* 📏 Misurato sulla pagina viva di PROD 6.307 con la console remota: la barra ESISTEVA,
+     l'aggancio era attivo, markup e CSS erano quelli giusti — e stava a `top: 894` con la
+     finestra alta 900. Ancorata alla colonna con `bottom:0` finiva in fondo al CALENDARIO, che
+     è più alto dello schermo: fuori vista, e tanto più giù quante più righe ha la griglia.
+     ⚖️ Ogni misura fatta prima era vera e nessuna chiedeva *si vede?*. */
+  const i = APP.indexOf('.svc-semaforo {');
+  assert.ok(i > 0, 'manca la regola CSS della barra');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.match(regola, /position:fixed/, 'la barra è tornata ancorata alla colonna: finirebbe sotto lo schermo');
+  assert.match(regola, /bottom:0/, 'la barra non è più sul bordo basso');
+  assert.ok(!/position:absolute/.test(regola), 'position:absolute è tornato: è il difetto di 6.307');
+  // …e la larghezza della colonna si riprende a mano, o la D diventa una fascia da bordo a bordo.
+  const all = dichiarazioneDi('svcAllineaSemaforoAllaColonna');
+  assert.match(all, /querySelector\('\.svc-grid-col'\)/, 'la barra non si allinea più alla colonna');
+  assert.match(all, /el\.style\.width = /, 'la larghezza non si imposta: la barra prenderebbe tutto lo schermo');
+  const dis = dichiarazioneDi('svcRidisegnaSemaforo');
+  assert.match(dis, /svcAllineaSemaforoAllaColonna\(el\)/, 'il disegno non allinea la barra: resterebbe dove capita');
+});
+
+test('⑨ GLI AVANZAMENTI ESCONO DALLA SCHEDA, GLI ESITI RESTANO', () => {
+  // 🗣️ «Vorrei levare tutti i messaggi dentro la scheda.» — detto dopo aver visto la scheda e la
+  //    barra raccontare la stessa cosa due volte.
+  assert.equal(vaSoloNellaBarra('<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta su Matchpoint</strong></span> · modifica: Campo 3'), true);
+  assert.equal(vaSoloNellaBarra('⏳ Aggiorno la lista giocatori da Matchpoint… (3s · puoi già modificare)'), true);
+  assert.equal(vaSoloNellaBarra('Lista giocatori aggiornata da Matchpoint.'), true);
+  // ⛔ E QUESTA È LA METÀ CHE PROTEGGE: un rifiuto col motivo dentro serve anche cinque minuti
+  //    dopo, e la barra lo mostra per 14 secondi. Toglierlo non sarebbe pulizia, sarebbe perdita.
+  assert.equal(vaSoloNellaBarra('⛔ Matchpoint ha rifiutato: il campo è già prenotato in quell\'ora.'), false);
+  assert.equal(vaSoloNellaBarra('✅ Prenotazione creata su Matchpoint.'), false);
+  assert.equal(vaSoloNellaBarra('Ho aggiunto Lidia Comes alla partita.'), false);
+  assert.equal(vaSoloNellaBarra(''), false);
+  assert.equal(vaSoloNellaBarra(null), false);
+  // Chi scriveva su quel messaggio deve poterlo fare ancora: `_setNote` gli riscrive dentro a
+  // ogni secondo, e un `null` di ritorno farebbe esplodere l'attesa dei giocatori.
+  const add = dichiarazioneDi('svcAddMessage').slice(0, 1200);
+  assert.match(add, /svcMessaggioVaSoloNellaBarra\(html\)/, 'i messaggi di avanzamento tornano nella scheda');
+  assert.match(add, /const d = document\.createElement\('div'\); d\.innerHTML = html; return d;/,
+    'si torna qualcosa che non è un div scrivibile: chi ci scrive sopra esplode');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
