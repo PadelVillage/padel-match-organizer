@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
     //    disegna la barra non ha bisogno di interpretare un errore per sapere cosa fare.
     console.error(`[queue-status] worker irraggiungibile: ${errorText(netErr)}`);
     return err(502, 'WORKER_UNREACHABLE', 'Il sistema del circolo non risponde in questo momento.', {
-      semaforo: { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false, dove: null },
+      semaforo: { acceso: false, frase: null, che: null, chi: null, inAttesa: 0, dichiarazioneMancante: false, dove: null },
     });
   }
 
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
   if (!res.ok) {
     console.error(`[queue-status] worker in errore: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`);
     return err(502, 'WORKER_ERROR', 'Il sistema del circolo non risponde in questo momento.', {
-      semaforo: { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false, dove: null },
+      semaforo: { acceso: false, frase: null, che: null, chi: null, inAttesa: 0, dichiarazioneMancante: false, dove: null },
     });
   }
   // Lo snapshot grezzo resta tale e quale (busy, running, waiting, waitingCount, time): serve

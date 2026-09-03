@@ -140,7 +140,8 @@ test('la frase si scrive come TESTO, non come markup', () => {
   const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
   assert.ok(!/innerHTML/.test(corpo),
     'la frase attraversa la coda del worker: non è un posto in cui si accetta del markup');
-  assert.ok(/textContent = sem\.frase/.test(corpo), 'la frase non si scrive più con `textContent`');
+  assert.ok(/testo\.textContent = sem\.che/.test(corpo), 'la frase non si scrive più con `textContent`');
+  assert.ok(/chi\.textContent = sem\.chi;/.test(corpo), 'il «chi» non si scrive più con `textContent`');
 });
 
 // ── ③ IL POLLING È RIACCESO — era commentato dal 3 giugno 2026 ──────────────────────────────
@@ -199,6 +200,26 @@ test('la cella accesa non sposta di un pixel quello che le sta intorno', () => {
 test('chi ha chiesto meno animazioni non vede il puntino pulsare', () => {
   assert.ok(/prefers-reduced-motion: reduce\) \{ \.svc-semaforo-dot \{ animation:none/.test(APP),
     'il puntino pulsa anche per chi ha chiesto di non vedere animazioni');
+});
+
+// ── ⑥ IL «CHI» NON SI TRONCA — cura nata da una misura sul telefono ────────────────────────
+test('il «chi» si disegna a parte e NON si tronca', () => {
+  // 📏 Misurato con la console remota su TEST a 390px: della frase intera entravano **43
+  //    caratteri su 61**, e a cadere era la coda — cioè proprio il «chi». Su un telefono, chi fa
+  //    segreteria perdeva l'unica cosa che gli dice se è stata lei o no, e gli restava il
+  //    dettaglio di campo e ora che la cella accesa gli dice già.
+  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  assert.ok(/sem\.che/.test(corpo), 'il render non usa più la metà `che`');
+  assert.ok(/svc-semaforo-chi/.test(corpo), 'il «chi» non ha più un elemento suo');
+  const i = APP.indexOf('.svc-semaforo-chi {');
+  assert.ok(i > 0, 'manca la regola CSS del «chi»');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/flex:0 0 auto/.test(regola), 'il «chi» può ancora restringersi e troncarsi: ' + regola);
+});
+
+test('senza «chi» la barra non disegna un elemento vuoto', () => {
+  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  assert.ok(/if \(sem\.chi\) \{/.test(corpo), 'il «chi» si disegna anche quando non c\'è');
 });
 
 console.log('\n' + passed + ' ok, ' + failed + ' failed');

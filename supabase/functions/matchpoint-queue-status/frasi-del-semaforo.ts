@@ -63,8 +63,24 @@ export type SnapshotDellaCoda = {
 export type Semaforo = {
   /** `true` solo se c'è un GESTO in corso: il traffico automatico non accende niente. */
   acceso: boolean;
-  /** La frase, già in italiano e già senza nomi interni. `null` quando non c'è niente da dire. */
+  /** La frase intera, già in italiano e già senza nomi interni. `null` quando non c'è niente da dire. */
   frase: string | null;
+  /**
+   * Le DUE metà della frase, separate — e non è una comodità, è una misura.
+   *
+   * 📏 Misurato il 03/09 con la console remota su TEST, a larghezza telefono (390px): della frase
+   * «prenotazione partita · Campo 2 · 16:30 · richiesta da un socio» entrano **43 caratteri su
+   * 61**, e quello che si taglia è la coda — cioè **proprio il «chi»**.
+   * 🚨 Su un telefono, chi fa segreteria perde l'unica informazione che gli dice *se è stata lei
+   * o no*, e gli resta il dettaglio di un campo e di un'ora che la CELLA accesa gli dice già.
+   * ⇒ Le due metà viaggiano separate perché chi disegna possa far troncare **solo il `che`** e
+   *   tenere il `chi` intero. È lo stesso vincolo suo che ha scelto la disposizione D:
+   *   *«ricordati che si utilizza la web app sia da mobile che da desktop»*.
+   * 📌 *Una frase composta a monte decide cosa si perde quando lo spazio finisce, e a monte
+   *    nessuno sa quanto spazio c'è.*
+   */
+  che: string | null;
+  chi: string | null;
   /** Quanti gesti aspettano dietro a questo. Il traffico automatico non si conta. */
   inAttesa: number;
   /**
@@ -178,6 +194,8 @@ export function semaforoDaSnapshot(snapshot: SnapshotDellaCoda | null | undefine
     return {
       acceso: false,
       frase: null,
+      che: null,
+      chi: null,
       inAttesa,
       dichiarazioneMancante: mancaSuRunning || mancaSuWaiting,
       dove: null,
@@ -188,7 +206,10 @@ export function semaforoDaSnapshot(snapshot: SnapshotDellaCoda | null | undefine
   const chi = chiSpiegato(running!);
   return {
     acceso: true,
+    // `frase` resta, ed è la stessa di prima: chi la usa intera non deve cambiare niente.
     frase: chi ? `${che} · ${chi}` : che,
+    che,
+    chi,
     inAttesa,
     dichiarazioneMancante: mancaSuWaiting,
     dove: dovePulito(running!.dove),

@@ -2260,10 +2260,44 @@ poi si promuove — e se la vuole diversa, cambiarla su TEST costa niente.
 2. dice se la barra va bene com'è — altezza, colore, dove sta, cosa scrive;
 3. **allora** si promuove a PROD con le sole righe del fix.
 
-📏 **Misurato con la console remota su TEST prima di dirlo** (`sonda-semaforo.js`, 1440×900 e a
-larghezza telefono): vedi la riga della misura più sotto. Il **banco** dice che le regole sono
-giuste; la **console** dice che il disegno sta dove deve; il **suo occhio** dice se serve. Sono tre
-cose diverse e nessuna sostituisce le altre.
+### 📏 LA MISURA COL BROWSER SU TEST — cosa dice, e cosa NON dice
+
+Fatta con la console remota su `test.padelvillage.club` a **due larghezze**, perché il vincolo è suo
+(*«si utilizza la web app sia da mobile che da desktop»*).
+
+| | desktop 1440×900 | telefono 390×844 |
+|---|---|---|
+| la griglia si sposta? | **no** — `dy 0 · dh 0` | **no** — `dy 0 · dh 0` |
+| barra larga quanto la colonna | ✅ 1058 px | ✅ 390 px |
+| barra sul bordo basso | ✅ | ✅ |
+| ruba i click? | **no** (`pointer-events:none`; sotto risponde `.svc-grid-col`) | — |
+| altezza barra | 30 px | 37 px |
+| il testo ci sta? | ✅ intero (62 caratteri) | ⛔ **43 su 61** |
+
+⚖️ **La riga «la griglia non si sposta» è la misura che vale**: è la ragione per cui la D è stata
+scelta sulla C, ed è stata **provata invece che sperata**.
+
+🚨⭐⭐ **E LA MISURA HA TROVATO UN DIFETTO CHE IL BANCO NON POTEVA VEDERE: sul telefono si perdeva
+proprio il «CHI».** Della frase *«prenotazione partita · Campo 2 · 16:30 · richiesta da un socio»*
+entrano **43 caratteri su 61**, e a cadere è la **coda** — cioè l'unica cosa che dice a chi fa
+segreteria *se è stata lei o no*. Restava il dettaglio di campo e ora, che la **cella accesa gli
+dice già**.
+🔨 Curato: la edge manda `che` e `chi` **separati** (oltre alla frase intera, che resta), e la barra
+tronca **solo il `che`** tenendo il `chi` intero.
+📌 *Chi compone una frase a monte decide cosa si perde quando lo spazio finisce, e a monte nessuno
+sa quanto spazio c'è.*
+
+⛔⛔ **COSA LA MISURA NON DICE, e va detto invece di lasciarlo credere: LA CELLA NON È STATA
+PROVATA.** In nessuna delle due larghezze:
+· su **desktop** la griglia era **vuota** — `1 figlio, 0 celle` — con l'utenza `readonly` della
+  console. La sonda ha misurato la barra, non ha mai visto una cella;
+· su **telefono** la vista attiva è l'**agenda**, non la griglia (`wrapVisibile:false`,
+  `agendaVisibile:true`) ⇒ le celle `.cell` **lì non esistono per costruzione**, e la metà «cella»
+  della disposizione D **su mobile non c'è**.
+⚖️ La seconda non è un difetto da curare: è la ragione per cui la D ha **due** metà, e su telefono
+resta quella che parla anche senza sapere dove. Ma **va saputa**, perché la disposizione gli è stata
+presentata come «barra + cella» a due larghezze.
+⇒ La cella la può vedere **solo lui**, aprendo TEST con la sua utenza mentre qualcuno fa un gesto.
 
 🩹⭐⭐ **E UNA RIGA DI QUESTA SCHEDA ERA FALSA, misurata scrivendo il pezzo ②.** Diceva che la coda
 distingue un gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*, e ne traeva
