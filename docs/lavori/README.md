@@ -2407,11 +2407,50 @@ non una strada nuova.
 ⚖️ **Il costo, dichiarato**: è il **worker**, quindi si tocca **solo da `main`** (regola 1 del
 `CLAUDE.md`) ed è **un solo processo condiviso TEST+PROD** su Hetzner. Non è una modifica all'app.
 
-⏳ **RESTA UNA SOLA DOMANDA, la ③ di sopra, ed è di disegno**: sul gestionale in che forma?
-🔨 **Proposta dichiarata** (e detta a lui): si scrive nella **copia locale della partita**, dove il
-roster tiene già gli importi ed è **lo stesso posto da cui la scheda li rilegge**. ⛔ **NON** fra i
-`payment`: lì la sezione Incassi lo conterebbe come **incassato**, che è falso finché nessuno paga.
-📌 *Un importo a carico non è un pagamento, e i due non possono stare nello stesso libro.*
+🩹🚨⭐⭐ **LA ③ HA RISPOSTA, E LA PROPOSTA SCRITTA QUI SOPRA ERA SBAGLIATA** *(misurato il 03/09
+prima di scrivere una riga di codice)*. Qui c'era scritto — ed è stato **corretto, non affiancato**
+— che l'importo andasse nella **copia locale della partita**, «dove il roster tiene già gli importi
+ed è lo stesso posto da cui la scheda li rilegge». 📏 **Falso in tutt'e due le metà:**
+· la scheda gli importi li rilegge **vivi da Matchpoint** a ogni apertura — `matchpoint-bookings-edit`
+  con `read:true` → `partecipantiFinali` → `importoCents`/`pendenteCents`;
+· la copia locale (`staff_booking.giocatori`) tiene **solo i nomi** — `[{ nome }]` — e
+  `_staffCalPersistRosterFromWorker` **la riscrive così a ogni lettura autorevole**.
+⇒ Un importo messo là non sarebbe stato «registrato»: sarebbe stato **cancellato dalla lettura
+successiva**. Un secondo libro che si svuota da sé.
+📌 *Una proposta di disegno è un'ipotesi finché non si è guardato dove il dato vive davvero — e
+suonava tanto più credibile quanto più era precisa.*
+✅ **Il posto giusto era già lì**: il **registro dei gesti della segreteria** (`staff_edit`, con
+`azione: 'set_charge'`), dove stanno già la modifica del roster, lo spostamento e la nota.
+⛔ **NON** fra i `payment`, e questo reggeva: lì la sezione Incassi lo conterebbe come **incassato**,
+falso finché nessuno paga. 📌 *Un importo a carico non è un pagamento, e i due non possono stare
+nello stesso libro.*
+
+---
+
+🔨 **IN SERVIZIO dal 03/09** — TEST **6.294**, PROD **6.281**. Tre pezzi:
+· **worker** `/set-charge`: riusa i passi che `collect_payment` faceva già **prima** del cobro e si
+  **ferma lì**. Tre difese — non tocca una riga già riscossa (`ALREADY_PAID`, o resterebbe una
+  differenza che nessuno ha incassato), è **idempotente** e lo dichiara (`changed:false`), e
+  **non dice «fatto» sulla fiducia**: ricarica la scheda e **rilegge** il campo, e se Matchpoint
+  non ha preso il valore è un **errore**, non un successo;
+· **edge** `matchpoint-charge-write`, **nuova** e non un modo in più dell'incasso — il nome è la
+  prima cosa che qualcuno legge, e `payment-…` avrebbe invitato, un giorno, a farle scrivere un
+  pagamento «già che c'è». Undicesima copia del recinto, in tutte e tre le guardie del banco;
+· **app**: il Salva ora **guarda gli importi** (confronto col valore con cui la casella è stata
+  disegnata), li scrive **prima** della modifica alla prenotazione e ne **aspetta** l'esito.
+⚖️ **Il kill-switch è quello del cobro** (`MATCHPOINT_PAYMENT_WRITE_ENABLED`), e va contro la regola
+generale *«un gesto, un interruttore»*: il `.env` della VM non sta in git e il deploy non lo
+riscrive ⇒ un interruttore nuovo **nascerebbe spento** e nessuno da qui potrebbe accenderlo. La
+funzione arriverebbe morta. 🔎 Da oggi `/health` del worker dichiara `paymentWriteEnabled`: prima
+l'unico modo di sapere se il worker avrebbe accettato un incasso era **provare a incassare**.
+🔇 **Al socio non parte niente** — gesto interno della segreteria, sua decisione del 03/09.
+
+⏳ **RESTA APERTA: manca la prova fisica, ed è sua.** Aprire la scheda di una partita su **PROD**,
+cambiare l'importo a carico di un giocatore, premere **Salva**, e poi riaprire la scheda: il numero
+nuovo dev'esserci ancora (viene riletto da Matchpoint, non dalla memoria dell'app).
+🧊 **Su TEST non si può**, e non è pigrizia: il recinto rifiuta **prima** del worker (503
+`AMBIENTE_DI_PROVA`) perché il worker è **uno solo e condiviso** — un importo «di prova» cambierebbe
+quello che una persona **vera** deve pagare al banco.
 
 Non scavalca niente: entra in fondo.
 
