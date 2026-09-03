@@ -31,6 +31,7 @@ import {
   semaforoDaSnapshot,
   etichettaPerLoperatore,
   chiSpiegato,
+  dovePulito,
   SENZA_ETICHETTA,
 } from './frasi-del-semaforo.ts';
 
@@ -60,7 +61,7 @@ test('il traffico automatico in attesa non si CONTA', () => {
 
 test('coda vuota → spenta e muta', () => {
   const s = semaforoDaSnapshot({ busy: false, running: null, waiting: [] });
-  assert.deepEqual(s, { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false });
+  assert.deepEqual(s, { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false, dove: null });
 });
 
 // ── ② IL GESTO SI VEDE, E DICE CHI ──────────────────────────────────────────────────────────
@@ -179,6 +180,42 @@ test('i due guasti dell\'edge non mandano più un messaggio tecnico al calendari
     'manca la frase del gestionale sui due guasti');
   const conteggio = (edge.match(/console\.error\(`\[queue-status\]/g) || []).length;
   assert.equal(conteggio, 2, 'i due guasti non finiscono entrambi nel registro: ' + conteggio);
+});
+
+// ── ⑦ DOVE — la seconda metà della disposizione D, e le mezze coordinate ────────────────────
+test('con campo, data e ora complete la cella si può accendere', () => {
+  const job = { ...GESTO, dove: { campo: 2, data: '2026-09-03', ora: '16:30' } };
+  const s = semaforoDaSnapshot({ running: job, waiting: [] });
+  assert.deepEqual(s.dove, { campo: 2, data: '2026-09-03', ora: '16:30' });
+});
+
+test('MEZZE coordinate non accendono niente', () => {
+  // 🚨 Col campo ma senza l'ora si accenderebbe una COLONNA INTERA, e chi guarda leggerebbe
+  //    «sta succedendo qualcosa su tutto il Campo 2». Peggio di non dire dove.
+  for (const mezze of [
+    { campo: 2, data: '2026-09-03', ora: '' },
+    { campo: 2, data: '', ora: '16:30' },
+    { campo: null, data: '2026-09-03', ora: '16:30' },
+    { campo: 0, data: '2026-09-03', ora: '16:30' },
+    { campo: 2, data: '3 settembre', ora: '16:30' },
+    { campo: 2, data: '2026-09-03', ora: 'sedici e mezza' },
+  ]) {
+    assert.equal(dovePulito(mezze), null, 'sono passate: ' + JSON.stringify(mezze));
+  }
+});
+
+test('un gesto SENZA coordinate accende la barra lo stesso', () => {
+  // È il caso normale delle op che lavorano per `idReserva`: la cella non si accende, la barra sì.
+  // ⇒ È esattamente perché la disposizione D ha DUE metà.
+  const s = semaforoDaSnapshot({ running: { ...GESTO, dove: null }, waiting: [] });
+  assert.equal(s.acceso, true);
+  assert.equal(s.dove, null);
+});
+
+test('la barra spenta non porta coordinate', () => {
+  const s = semaforoDaSnapshot({ running: { ...SYNC, dove: { campo: 1, data: '2026-09-03', ora: '08:00' } }, waiting: [] });
+  assert.equal(s.acceso, false);
+  assert.equal(s.dove, null, 'una cella accesa senza barra: il sync si vedrebbe dalla cella');
 });
 
 console.log('\n' + passed + ' ok, ' + failed + ' failed');

@@ -37,12 +37,19 @@
 
 /** Cosa la coda dichiara di un job. Tutti i campi sono opzionali di proposito: questo modulo
  *  deve reggere anche uno snapshot che arrivi da un worker più vecchio di lui. */
+export type DoveNelCalendario = {
+  campo?: number | null;
+  data?: string | null;
+  ora?: string | null;
+};
+
 export type JobDellaCoda = {
   op?: string;
   label?: string;
   operatore?: string;
   chiestoDa?: string;
   gesto?: boolean;
+  dove?: DoveNelCalendario | null;
 };
 
 export type SnapshotDellaCoda = {
@@ -70,6 +77,15 @@ export type Semaforo = {
    * e chi lo legge è sempre qualcun altro.* (voce 71)
    */
   dichiarazioneMancante: boolean;
+  /**
+   * Dove nel calendario, per accendere la CELLA — la seconda metà della disposizione D.
+   *
+   * `null` quando le coordinate non ci sono tutte, ed è un caso normale, non un guasto: le
+   * operazioni che lavorano per `idReserva` non portano campo/data/ora. ⇒ La barra c'è lo
+   * stesso, ed è esattamente per questo che la D ha DUE metà: la cella dice **dove**, la barra
+   * dice qualcosa **anche quando il dove non si sa** o lo slot è fuori vista.
+   */
+  dove: DoveNelCalendario | null;
 };
 
 /**
@@ -116,6 +132,23 @@ export function chiSpiegato(job: JobDellaCoda): string | null {
   return operatore;
 }
 
+/**
+ * Le coordinate, solo se sono COMPLETE.
+ *
+ * 🚨 Mezze coordinate sono peggio di nessuna: con il campo ma senza l'ora si accenderebbe una
+ * colonna intera, e chi guarda leggerebbe «sta succedendo qualcosa su tutto il Campo 2».
+ * ⇒ O si sa dove, o non si accende niente e parla la barra.
+ */
+export function dovePulito(dove: DoveNelCalendario | null | undefined): DoveNelCalendario | null {
+  const d = dove ?? null;
+  if (!d) return null;
+  const campo = typeof d.campo === 'number' && Number.isFinite(d.campo) && d.campo > 0 ? d.campo : null;
+  const data = String(d.data ?? '').trim();
+  const ora = String(d.ora ?? '').trim();
+  if (campo === null || !/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{1,2}:\d{2}$/.test(ora)) return null;
+  return { campo, data, ora };
+}
+
 /** Un job è un gesto **dichiarato**. `undefined` non è `false`: vedi `dichiarazioneMancante`. */
 function eDichiaratoGesto(job: JobDellaCoda | null | undefined): boolean {
   return !!job && job.gesto === true;
@@ -147,6 +180,7 @@ export function semaforoDaSnapshot(snapshot: SnapshotDellaCoda | null | undefine
       frase: null,
       inAttesa,
       dichiarazioneMancante: mancaSuRunning || mancaSuWaiting,
+      dove: null,
     };
   }
 
@@ -157,5 +191,6 @@ export function semaforoDaSnapshot(snapshot: SnapshotDellaCoda | null | undefine
     frase: chi ? `${che} · ${chi}` : che,
     inAttesa,
     dichiarazioneMancante: mancaSuWaiting,
+    dove: dovePulito(running!.dove),
   };
 }
