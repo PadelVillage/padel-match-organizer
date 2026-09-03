@@ -2375,9 +2375,36 @@ darebbe saldi **vecchi** e **assenti per quasi tutti**.
    disponibile», che è la stessa frase che l'app usa già sul bottone Wallet.
    📌 *È lo stesso bivio della **114** («Libero» invece di «non lo so»), e in questo progetto quel
    bivio è già stato sbagliato due volte;*
+   🔎 **Lui è andato a guardare su Matchpoint** (03/09 sera, schermata della scheda di Marco Aprea):
+   *«quando il giocatore ha il borsellino a zero, lui ci scrive 0,00»*. ⚖️ **Cosa prova e cosa no**:
+   prova che sulla **scheda cliente** Matchpoint dichiara lo zero — ed è proprio la riga che il
+   worker legge (`walletSaldoLabel` = `#CC_Cabecera_LabelSaldo_Actual`, testo «Portafoglio: X,XX €»).
+   ⛔ **Ma il saldo che finisce nella riga del giocatore non viene da lì**: viene da
+   `partSaldoAttuale(ridx)`, una **colonna dentro la ficha della partita** (`server.mjs:7818`).
+   Sono due pagine diverse ⇒ il `null` da noi resta il caso **«non l'ho letto»** (timeout di 1500ms
+   o cella vuota), non «il socio ha zero».
+   📏 **Come si scioglie il dubbio senza indovinare**: una sonda con la console remota che apra una
+   scheda vera su PROD e conti quante righe del roster hanno `saldoCents === null`. Se sono zero su
+   un campione vero, la domanda è accademica e si scrive `0,00 €` e basta;*
 ③ ✅ **pastiglia MUTA**, non cliccabile — sua decisione. ⚖️ *In una scheda dove ogni cosa cliccabile
    tocca il circolo, un bottone innocuo in mezzo a bottoni che scrivono su Matchpoint è un invito a
    sbagliare mira.*
+
+🚨⭐ **E UNA TRAPPOLA DI NOMI, trovata guardando insieme a lui: la stessa cosa ha TRE nomi, e
+vanno tenuti separati.**
+
+| dove | parola |
+|---|---|
+| Matchpoint, scheda cliente | **Portafoglio** |
+| Matchpoint, dialog dell'incasso | **Saldo disponibile** (`cobroMethodLabels.borsellino`) |
+| il nostro gestionale | **Wallet** (sua decisione del 02/09, voce 128) |
+
+⛔ **Uniformarli romperebbe il worker**, che sul dialog dell'incasso clicca **per testo**. È
+esattamente l'avvertimento della **128**, dove le tre famiglie di chiavi lasciate intatte erano il
+permesso, le chiavi di dato e **i testi che Matchpoint scrive**.
+📌 *Un nome che l'utente legge e un nome che una macchina cerca sono due cose diverse anche quando
+indicano lo stesso oggetto: la voglia di «mettere ordine» fra i due è il modo tipico di rompere un
+automatismo senza toccarne una riga.*
 
 ⚠️ **Vale per la partita E per la lezione** — sono le sue parole, e la scheda è la stessa
 (`staffCalRenderPlayersEditor`), quindi non è lavoro in più: è una condizione da non restringere
