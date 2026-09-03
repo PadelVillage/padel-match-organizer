@@ -2237,9 +2237,9 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ⏳ **① e ② IN SERVIZIO, mancano ③ e ④**
+### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ⏳ **TUTTA IN SERVIZIO, e non l'ha ancora vista nessuno**
 
-🔄 **AGGIORNATA il 03/09 sera (76ª): i primi due dei quattro pezzi sono scritti, fusi e deployati.**
+🔄 **AGGIORNATA il 03/09 a tarda notte (78ª).** 🩹 Il titolo diceva *«① e ② in servizio, mancano ③ e ④»*: era vero il 03/09 sera ed è **falso da quella stessa notte** — i quattro pezzi sono tutti fusi e deployati, ne è nato un **quinto**, e ciò che manca non è codice ma **il suo occhio**. *Un titolo che elenca cosa manca invecchia più in fretta del testo che sta sotto, e nessuno lo rilegge perché sembra un'intestazione.*
 
 | pezzo | stato |
 |---|---|
@@ -2247,12 +2247,64 @@ ancora. Non prima: prima non c'è niente da leggere.
 | **②** le tre edge dicono al worker CHI ha chiesto la scrittura | ✅ **in servizio** su `qqbf…` e sul worker (PR #1306) |
 | **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ✅ **in servizio** su `qqbf…` (PR #1308) |
 | **④a** le coordinate strutturate per la cella (`dove`) | ✅ **in servizio** su worker e edge (PR #1309) |
-| **④b** app: la barra D + la cella + il polling riacceso | 🧪 **su TEST 6.299 — NON su PROD**, aspetta il suo occhio |
+| **④b** app: la barra D + la cella + il polling riacceso | ✅ **promossa in PROD 6.286** — 🔴 e **non si vede**: vedi ⑤ |
+| **⑤** la barra diventa il **posto unico** dove si leggono le azioni, con **due fonti** | 🧪 **su TEST 6.307**, aspetta il suo occhio |
 
-🧪⭐ **IL SEMAFORO SI VEDE — SU TEST, E SOLO LÀ.** La barra è viva su `test.padelvillage.club`
-(6.299) e su PROD **non c'è**. È una scelta, non un lavoro a metà: la disposizione D lui l'ha scelta
-**da disegni**, e il calendario è la superficie che guarda tutto il circolo. ⇒ Prima la guarda viva,
-poi si promuove — e se la vuole diversa, cambiarla su TEST costa niente.
+🩹 **Qui c'era scritto «IL SEMAFORO SI VEDE — SU TEST, E SOLO LÀ», e la riga è stata CORRETTA e non
+affiancata.** Era vera il 03/09 sera: la barra viveva su TEST 6.299 e su PROD non c'era, per scelta.
+È falsa da quella notte in tutt'e due le metà — su PROD la barra **c'è** (6.286), e **non si accende**;
+su TEST c'è la versione a due fonti (6.307), che è un'altra cosa. ⇒ Vedi il blocco qui sotto.
+
+🔴🔄 **AGGIORNATA il 03/09 a tarda notte (78ª): la barra promossa in PROD NON SI ACCENDEVA, e la
+cura non è stata cercarne il perché.** Il 03/09 alle 23:10 lui salva una Nota su Campo 3 · 05/09 ·
+15:00; la scrittura parte (*«⏳ Sto elaborando la richiesta su Matchpoint…»*) e sul bordo basso del
+calendario **non compare niente**. Tutto ciò che dal cloud si poteva controllare era **a posto** —
+worker deployato, edge `matchpoint-queue-status` ACTIVE e aggiornata, markup e CSS giusti in PROD,
+polling non più commentato.
+
+🗣️ **La strada l'ha data lui, ed è meglio di quella che stavo per prendere** (mettere una sonda
+nella pagina per farsi dire cosa risponde la edge):
+> *«Tutti i messaggi di azione li portiamo in una barra sotto il calendario. Si leggono tutte le
+> azioni là.»*
+
+⭐⭐ **PERCHÉ È PIÙ FORTE DELLA DIAGNOSI: toglie la causa invece di trovarla.** La barra aveva **una
+fonte sola** — la coda del worker, in fondo a quattro anelli (app → edge → worker → coda) — e basta
+che ne salti uno perché resti spenta **in modo indistinguibile da «non sta succedendo niente»**.
+⇒ Dal pezzo ⑤ le fonti sono **due, e non si sostituiscono**:
+· ① la **LOCALE**: l'app sa cosa ha appena chiesto lei, nell'istante in cui parte, **senza passare
+  da nessuna rete**. Se il browser ha fatto il gesto, la barra si accende;
+· ② la **CODA**: resta intera, perché è l'unica che sappia dei gesti **degli altri** — l'altra
+  postazione, il bot. Nessuna sonda locale può vederli.
+📌 *Una barra con una fonte sola ha un silenzio che significa due cose — «non sta succedendo
+niente» e «non sono riuscito a chiederlo» — e chi guarda deve indovinare quale.*
+
+🔄 **E RIBALTA UNA SUA DECISIONE DI POCHE ORE PRIMA**, chiesta e risposta stanotte: l'**esito** ora
+si vede (✅ fatto · ⛔ non è passata · ❔ non so com'è finita). Il 03/09 pomeriggio l'aveva escluso, e
+`frasi-del-semaforo.ts` lo dichiara ancora in testa a sé. ⚖️ Le due si contraddicono meno di quanto
+sembri: quella riguardava l'esito dei gesti **altrui**, che la coda non conosce; questo è l'esito
+del gesto fatto **da questo browser**, che è l'unico a saperlo per certo.
+
+🚨⭐⭐ **LA RIGA CHE COSTA, ed è la voce 72 messa su una superficie che guarda tutto il circolo:
+«non è passata» si dice SOLO su un rifiuto pronunciato dal gestionale.** Una linea caduta, un
+timeout, un `esitoIgnoto` **non sono un no** — e scriverlo sul calendario spingerebbe la segreteria
+a rifare un gesto che può essere già passato, cioè a occupare **due volte lo stesso campo**.
+
+🕸️ **L'aggancio sta in UN punto solo** — la `fetch` verso le edge del gestionale — e non nei ~20
+punti dell'app che scrivono su Matchpoint: quella strada sarebbe stata più esplicita e più fragile
+insieme, venti occasioni di dimenticarsene oggi e una in più per ogni gesto che nascerà. È il
+difetto dell'elenco a mano, già pagato **due volte dentro questa stessa voce**.
+🚨 E non cambia niente del comportamento: la risposta torna **intatta** al chiamante, il rigetto
+viene rilanciato, ogni passo sta sotto `try`. **Una barra non deve poter far fallire una
+prenotazione.**
+
+🧪 **Provato: banco 93 verdi / 0 rossi**, col caso nuovo `test/la-barra-e-il-posto-unico.test.mjs`
+**sabotato tre volte** — tolta una riga dalla lista bianca, una rete caduta trasformata in «non è
+passata», disarmata la trappola `read:true` — e ogni sabotaggio fa cadere **il caso giusto e solo
+quello**.
+⛔ **NON provato, e va detto invece di lasciarlo credere**: che la barra **si veda**. Il banco gira
+senza browser ⇒ prova le regole. E su TEST le scritture verso Matchpoint sono **simulate**, quindi
+la fonte ② non ha traffico da mostrare — ma la fonte ①, che è quella nuova, **su TEST si esercita
+benissimo**: parte dalla `fetch`, non dall'esito.
 
 ⛔ **COSA MANCA PER CHIUDERE LA VOCE, in ordine:**
 1. **lui apre `test.padelvillage.club`** e guarda il calendario mentre qualcuno fa un gesto (basta
