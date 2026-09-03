@@ -84,7 +84,7 @@ jobs:
           # in supabase/functions/_archive/, che la CI non deploya. Sono in lista in
           # anticipo: il giorno che qualcuno le committasse davvero, senza questa riga
           # il primo deploy le lascerebbe aperte.
-          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto matchpoint-payment-write matchpoint-payment-void"
+          VERIFY_JWT_FUNCTIONS="matchpoint-wallet-correct matchpoint-wallet-sync pmo-cloud-backup pmo-cloud-backup-auto matchpoint-payment-write matchpoint-payment-void matchpoint-charge-write"
 
           for fn in ${{ steps.changed.outputs.functions }}; do
             if [ ! -d "supabase/functions/$fn" ]; then

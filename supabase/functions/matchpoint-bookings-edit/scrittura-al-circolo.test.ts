@@ -106,6 +106,15 @@ const GEMELLI = [
      📌 *Una funzione si archivia per un difetto: riaccenderla senza aver curato quel difetto è
      rimettere in servizio il difetto, non la funzione.* */
   'matchpoint-payment-write/scrittura-al-circolo.ts',
+  /* 🆕💶 03/09/2026 — l'IMPORTO A CARICO (`matchpoint-charge-write`, voce 132). Undicesima copia.
+     ⚖️ Non muove denaro — cambia QUANTO uno deve, non incassa niente — e proprio per questo il
+     recinto poteva sembrare di troppo. Non lo è: il worker è **uno solo e condiviso** fra TEST e
+     PROD, quindi un importo cambiato «per prova» cambierebbe quello che una persona VERA deve
+     pagare al banco, su una partita vera.
+     📌 *Il recinto non guarda quanto è grave il gesto: guarda se la penna tocca la carta del
+     circolo.* Un gesto «piccolo» lasciato fuori è esattamente il modo in cui un recinto smette
+     di essere una regola e diventa un elenco di eccezioni. */
+  'matchpoint-charge-write/scrittura-al-circolo.ts',
 ];
 
 test(`8) ⚠️ le ${GEMELLI.length} copie del modulo sono identiche byte per byte`, () => {
@@ -147,6 +156,8 @@ const PUNTI_DI_NON_RITORNO: Record<string, RegExp[]> = {
      la prima da sola dice solo che la difesa è stata COPIATA.* */
   'matchpoint-payment-void/index.ts': [/await callWorkerVoid\(/],
   'matchpoint-payment-write/index.ts': [/await callWorkerCollect\(/],
+  // 💶 L'importo a carico (voce 132): una strada sola, e il recinto le sta davanti.
+  'matchpoint-charge-write/index.ts': [/await callWorkerSetCharge\(/],
 };
 
 for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
@@ -242,6 +253,13 @@ const CHI_RIFIUTA: Record<string, RegExp> = {
   // libro mastro UNICO, quindi «registrare qui una correzione di prova» aprirebbe il secondo
   // libro che la regola del progetto vieta.
   'matchpoint-wallet-correct/index.ts': /callWorkerCorrect\(/,
+  // 💶 03/09 — l'importo a carico entra ANCHE qui, e non solo nei casi 8 e 9. ⚖️ Le due dei
+  // pagamenti (`payment-void`, `payment-write`) in questa sezione non ci sono: nate il 02/09,
+  // sono entrate nelle copie e nella posizione ma non nel controllo di cosa c'è DENTRO il ramo
+  // del rifiuto — il punto cieco che la sezione ④ esiste apposta per coprire.
+  // 📌 *Una funzione entra in tutte le guardie che la riguardano, o entra in quelle che ci si
+  // ricorda* — e quel che ci si ricorda, sei giorni dopo, è la prima.
+  'matchpoint-charge-write/index.ts': /callWorkerSetCharge\(/,
 };
 
 for (const [rel, maiChiamare] of Object.entries(CHI_RIFIUTA)) {

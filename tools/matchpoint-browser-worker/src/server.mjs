@@ -200,6 +200,7 @@ function mpJobMeta(op, body = {}) {
   }
   if (op === 'edit')   return { op, operatore, label: ['modifica', campoTxt, ora].filter(Boolean).join(' · ') };
   if (op === 'cancel') return { op, operatore, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'set-charge') return { op, operatore, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
   if (op === 'client') {
     const c = body.client || {};
     const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
@@ -3752,6 +3753,17 @@ async function handleCollectPayment(req, res) {
   const body = await readBody(req);
   // SCRITTURA NON-IDEMPOTENTE (denaro reale): nessun retry, a differenza delle letture.
   const result = await mpQueueRun(mpJobMeta('collect-payment', body), () => collectPaymentWithBrowser(body));
+  json(res, 200, result);
+}
+
+async function handleSetCharge(req, res) {
+  requireWorkerAuth(req);
+  const body = await readBody(req);
+  // IDEMPOTENTE (scrivere due volte lo stesso importo lascia lo stesso importo), ma
+  // resta in coda come le altre scritture: la ficha è una sola e i postback non si
+  // sovrappongono. Nessun retry lo stesso — un doppio giro qui non farebbe danno,
+  // ma non servirebbe: chi chiama sa già rileggere l'esito.
+  const result = await mpQueueRun(mpJobMeta('set-charge', body), () => setChargeWithBrowser(body));
   json(res, 200, result);
 }
 
@@ -8503,6 +8515,134 @@ async function collectPaymentWithBrowser(input = {}) {
   }
 }
 
+// ── IMPORTO A CARICO (voce 132 — SCRITTURA su Matchpoint, ma NON un incasso) ───
+//
+// 🗣️ Voce del committente, 03/09/2026: «quando su una scheda cambio l'importo e poi
+//    clicco salva me lo deve riportare su Matchpoint e sul gestionale».
+//
+// ⚖️ COS'È E COSA NON È. Scrive `TextBoxCargoReserva` e salva con *Actualizar*: cambia
+//    QUANTO il giocatore deve, non muove un centesimo. `collect_payment` faceva già
+//    questo passo — come preludio al cobro — e questo modo si limita a FERMARSI LÌ:
+//    stessi selettori, stesso salvataggio, senza *Incassare*.
+//    📌 Un importo a carico non è un pagamento, e i due non stanno nello stesso libro.
+//
+// 🔒 KILL-SWITCH: lo STESSO del cobro (MATCHPOINT_PAYMENT_WRITE_ENABLED), e la scelta va
+//    DICHIARATA perché va contro la regola generale del `CLAUDE.md` («un gesto deve avere
+//    UN interruttore»). Il `.env` della VM non sta in git e il deploy non lo riscrive:
+//    un interruttore NUOVO nascerebbe spento e da qui nessuno potrebbe accenderlo ⇒ la
+//    funzione arriverebbe morta. E questo campo è già oggi scritto da quel ramo sotto
+//    quello switch: è la stessa mano sullo stesso campo, non un secondo gesto.
+//
+// ✅ IDEMPOTENTE, al contrario del cobro: scrivere due volte 10,00 € lascia 10,00 €.
+//    Se l'importo è già quello non tocca niente e lo dice (`changed: false`).
+//
+// 🚨 NON TOCCA UNA RIGA GIÀ RISCOSSA: cambiare il carico sotto un cobro già fatto
+//    lascerebbe una differenza che nessuno ha incassato. Torna `ALREADY_PAID`.
+//
+// 🎯 E NON DICE «FATTO» SULLA FIDUCIA: dopo il salvataggio ricarica la scheda e RILEGGE
+//    il campo. Se Matchpoint non ha preso il valore è un ERRORE, non un successo — è la
+//    regola del `CLAUDE.md`: si parla solo dopo che il circolo ha confermato.
+const MP_SET_CHARGE_MAX_CENTS = 100000; // 1.000,00 € — tetto contro il refuso di battitura
+async function setChargeWithBrowser(input = {}) {
+  const username = clean(input.username) || env('MATCHPOINT_USERNAME');
+  const password = clean(input.password) || env('MATCHPOINT_PASSWORD');
+  if (!username || !password) throw fail('MATCHPOINT_WORKER_SECRETS_MISSING', 'Mancano credenziali Matchpoint nel worker.');
+
+  const baseUrl = clean(input.baseUrl) || env('MATCHPOINT_BASE_URL', DEFAULT_BASE_URL);
+  const idReserva = input.idReserva ? String(input.idReserva) : null;
+  const idClienteWanted = clean(input.idCliente);
+  const playerName = clean(input.playerName);
+  const amountCents = (input.amountCents != null && Number.isFinite(Number(input.amountCents))) ? Math.round(Number(input.amountCents)) : null;
+
+  const diagnostic = { mode: 'set_charge', steps: [], input: { idReserva, idCliente: idClienteWanted, amountCents } };
+  instrumentStepTiming(diagnostic);
+
+  // Validazioni DURE prima di toccare il browser.
+  if (!idReserva) throw fail('PARAMS_MANCANTI', 'idReserva richiesto per cambiare l\'importo a carico.', diagnostic);
+  if (!idClienteWanted && !playerName) throw fail('PARAMS_MANCANTI', 'idCliente o playerName richiesto per identificare il giocatore.', diagnostic);
+  if (amountCents == null || amountCents < 0) throw fail('IMPORTO_NON_VALIDO', 'amountCents deve essere un intero >= 0.', diagnostic);
+  if (amountCents > MP_SET_CHARGE_MAX_CENTS) throw fail('IMPORTO_NON_VALIDO', `amountCents oltre il tetto di sicurezza (max ${MP_SET_CHARGE_MAX_CENTS} = 1.000,00 €).`, diagnostic);
+
+  // KILL-SWITCH server-side, condiviso col cobro (vedi il cappello qui sopra).
+  if (!boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false)) {
+    throw fail('PAYMENT_WRITE_DISABLED', 'Scrittura pagamenti disattivata sul worker (kill-switch MATCHPOINT_PAYMENT_WRITE_ENABLED=OFF).', diagnostic);
+  }
+
+  const acq = await mpAcquirePage(baseUrl, username, password, diagnostic);
+  const page = acq.page;
+  let _opFailed = false;
+  try {
+    // Apri la scheda (partita o lezione) — stessa auto-detect del cobro.
+    diagnostic.steps.push('goto_ficha');
+    const fichaCandidates = [
+      `${baseUrl}/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+      `${baseUrl}/ClasesYCursos/FichaClaseSueltaPorUsuario.aspx?modo=fancy&id=${idReserva}`,
+    ];
+    let fichaUrl = null;
+    for (const cand of fichaCandidates) {
+      await page.goto(cand, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
+      const hasExtender = await page.locator('#CC_Datos_FormViewFicha_ButtonExtender').count().catch(() => 0);
+      if (hasExtender) { fichaUrl = cand; break; }
+    }
+    if (!fichaUrl) throw fail('FICHA_NON_TROVATA', `Scheda partita/lezione non trovata per id ${idReserva}.`, diagnostic);
+    const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
+    diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
+
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    if (found.ridx == null) {
+      throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
+    }
+    let ridx = found.ridx;
+    let idClienteReale = found.idCliente || idClienteWanted;
+    diagnostic.steps.push(`row:${ridx}:matchBy=${found.matchBy}`);
+
+    // 🚨 GUARDIA: su una riga già riscossa il carico non si tocca.
+    const pendPre = await _readPendenteCents(page, ridx);
+    diagnostic.steps.push('pendente_pre:' + pendPre);
+    if (pendPre === 0) {
+      return { ok: false, code: 'ALREADY_PAID', idReserva, idCliente: idClienteReale, message: 'Giocatore già riscosso su Matchpoint: l\'importo a carico non è stato toccato.', diagnostic };
+    }
+
+    const cargoSel = (i) => `input[id*="RepeaterParticipantes_${RP}_Listado_${i}_TextBoxCargoReserva_${i}"]`;
+    const curTxt = (await page.locator(cargoSel(ridx)).first().inputValue().catch(() => '')).trim();
+    const curCents = mpMoneyToCents(curTxt);
+    diagnostic.steps.push('cargo_pre:' + curCents);
+
+    // Già com'è richiesto → non si scrive niente. Idempotenza, non pigrizia.
+    if (curCents === amountCents) {
+      diagnostic.steps.push('done:no_change');
+      return { ok: true, changed: false, idReserva, idCliente: idClienteReale, amountCents, precedenteCents: curCents, pendenteCents: pendPre, diagnostic };
+    }
+
+    const itAmount = (amountCents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    await page.locator(cargoSel(ridx)).first().fill(itAmount, { timeout: 6000 });
+    diagnostic.steps.push(`cargo_set:${curCents}->${amountCents}`);
+    await clickSaveActualizar(page, diagnostic, 'set_cargo');
+
+    // 🎯 RILEGGE dalla pagina ricaricata: il "fatto" lo dice Matchpoint, non noi.
+    await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+    await page.waitForTimeout(300);
+    const re = await _findParticipantRow(page, RP, idClienteReale, playerName);
+    if (re.ridx == null) throw fail('GIOCATORE_NON_TROVATO', 'Partecipante non più trovato dopo l\'aggiornamento importo.', diagnostic);
+    ridx = re.ridx; idClienteReale = re.idCliente || idClienteReale;
+    const afterTxt = (await page.locator(cargoSel(ridx)).first().inputValue().catch(() => '')).trim();
+    const afterCents = mpMoneyToCents(afterTxt);
+    const pendPost = await _readPendenteCents(page, ridx);
+    diagnostic.steps.push(`cargo_post:${afterCents} pendente_post:${pendPost}`);
+    if (afterCents !== amountCents) {
+      throw fail('IMPORTO_NON_APPLICATO', `Matchpoint non ha preso l'importo: chiesto ${amountCents}, riletto ${afterCents}.`, diagnostic);
+    }
+    diagnostic.steps.push('done');
+    return { ok: true, changed: true, idReserva, idCliente: idClienteReale, amountCents, precedenteCents: curCents, pendenteCents: pendPost, diagnostic };
+  } catch (_e) {
+    _opFailed = true;
+    throw _e;
+  } finally {
+    await acq.release(_opFailed);
+  }
+}
+
 // ── STORNO pagamento (Fase 2b — SCRITTURA, denaro reale: annulla un cobro) ─────
 // Helper: conferma un dialog "Sei sicuro?" (swal2 o pulsanti Sì/Confermare/Aceptar).
 async function _confirmDialogYes(page, diagnostic, tag) {
@@ -9510,12 +9650,18 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
-          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
+          '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
           '/poller/status', '/poller/slots', '/poller/changes', '/poller/force-run',
         ],
+        // 🔒⭐ LO STATO DEL KILL-SWITCH, non il suo valore segreto (è un booleano, non una chiave).
+        // Prima di oggi l'unico modo di sapere se il worker avrebbe accettato un incasso era
+        // PROVARE a incassare: un ramo di scrittura su denaro vero come sonda diagnostica.
+        // ⇒ Chi sta per chiedere un cobro, uno storno o un cambio di importo può controllare
+        //    PRIMA, che è la stessa ragione per cui qui sopra c'è `features`.
+        paymentWriteEnabled: boolEnv('MATCHPOINT_PAYMENT_WRITE_ENABLED', false),
         pollerEnabled: POLLER_ENABLED,
         pollerIntervalMs: POLLER_INTERVAL_MS,
         pollerDaysAhead: POLLER_DAYS_AHEAD,
@@ -9559,6 +9705,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/collect-payment') {
       return await handleCollectPayment(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/set-charge') {
+      return await handleSetCharge(req, res);
     }
     if (req.method === 'POST' && req.url === '/void-payment') {
       return await handleVoidPayment(req, res);
