@@ -68,10 +68,28 @@ function costanteDi(nome) {
 
 // Le regole vere dell'app, ESEGUITE — non cercate con una regex.
 const MAPPA = new Function(costanteDi('SVC_AZIONI_DELLAPP') + '\nreturn SVC_AZIONI_DELLAPP;')();
+function costanteArray(nome) {
+  const i = APP.indexOf('const ' + nome + ' = [');
+  assert.ok(i > 0, 'costante non trovata: ' + nome);
+  const apre = APP.indexOf('[', i);
+  let g = 0, k = apre;
+  for (; k < APP.length; k++) {
+    const c = APP[k];
+    if (c === '[') g++;
+    else if (c === ']') { g--; if (g === 0) { k++; break; } }
+  }
+  return APP.slice(i, k) + ';';
+}
 const azioneDaChiamata = new Function(
   'SVC_AZIONI_DELLAPP',
-  dichiarazioneDi('svcAzioneDaChiamata') + '\n' + dichiarazioneDi('svcDoveDelGesto') + '\nreturn svcAzioneDaChiamata;'
+  dichiarazioneDi('svcAzioneDaChiamata') + '\n' + dichiarazioneDi('svcDoveDelGesto') + '\n'
+    + dichiarazioneDi('svcAffinaEdit') + '\nreturn svcAzioneDaChiamata;'
 )(MAPPA);
+const affinaEdit = new Function(dichiarazioneDi('svcAffinaEdit') + '\nreturn svcAffinaEdit;')();
+const ESITI = new Function(costanteDi('SVC_ESITI') + '\nreturn SVC_ESITI;')();
+const fraseDellEsito = new Function(
+  costanteDi('SVC_ESITI') + '\n' + dichiarazioneDi('svcFraseDellEsito') + '\nreturn svcFraseDellEsito;')();
+const motivoDelRifiuto = new Function(dichiarazioneDi('svcMotivoDelRifiuto') + '\nreturn svcMotivoDelRifiuto;')();
 const doveDelGesto = new Function(dichiarazioneDi('svcDoveDelGesto') + '\nreturn svcDoveDelGesto;')();
 const esitoDellaRisposta = new Function(dichiarazioneDi('svcEsitoDellaRisposta') + '\nreturn svcEsitoDellaRisposta;')();
 const esitoDelLavoro = new Function(dichiarazioneDi('svcEsitoDelLavoro') + '\nreturn svcEsitoDelLavoro;')();
@@ -93,9 +111,8 @@ test('① LE DUE TRAPPOLE DELLA 137: aprire una scheda e cercare un telefono NON
     null, 'cercare un telefono annuncia un «nuovo cliente» che non nasce');
   // E le stesse due chiamate SENZA il flag sono azioni vere: se questa metà non passasse, la
   // difesa qui sopra starebbe spegnendo tutto invece di filtrare.
-  assert.equal(azioneDaChiamata(U('matchpoint-bookings-edit'), { campo: 3, data: '2026-09-05', ora: '15:00' }).che,
-    'modifica di una prenotazione');
-  assert.equal(azioneDaChiamata(U('matchpoint-clients-create'), { telefono: '3331234567' }).che, 'nuovo cliente');
+  assert.equal(azioneDaChiamata(U('matchpoint-bookings-edit'), { campo: 3, data: '2026-09-05', ora: '15:00' }).soggetto, 'Prenotazione');
+  assert.equal(azioneDaChiamata(U('matchpoint-clients-create'), { telefono: '3331234567' }).soggetto, 'Cliente');
 });
 
 test('② IL SYNC AUTOMATICO NON SI VEDE — è la sua decisione, ed è quella che regge tutto il resto', () => {
@@ -193,7 +210,9 @@ test('⑦ IL DISEGNO GUARDA ENTRAMBE LE FONTI, e la LOCALE ha la precedenza', ()
   assert.match(pezzo, /throw err;/, 'il rigetto viene ingoiato: un errore di rete sparirebbe');
 });
 
-const vaSoloNellaBarra = new Function(dichiarazioneDi('svcMessaggioVaSoloNellaBarra') + '\nreturn svcMessaggioVaSoloNellaBarra;')();
+const vaSoloNellaBarra = new Function(
+  costanteArray('SVC_ESITI_NELLA_SCHEDA') + '\n' + dichiarazioneDi('svcMessaggioVaSoloNellaBarra')
+    + '\nreturn svcMessaggioVaSoloNellaBarra;')();
 
 test('⑧ 🚨 LA BARRA SI ANCORA ALLA FINESTRA, NON ALLA COLONNA — pagato con una promozione invisibile', () => {
   /* 📏 Misurato sulla pagina viva di PROD 6.307 con la console remota: la barra ESISTEVA,
@@ -215,17 +234,28 @@ test('⑧ 🚨 LA BARRA SI ANCORA ALLA FINESTRA, NON ALLA COLONNA — pagato con
   assert.match(dis, /svcAllineaSemaforoAllaColonna\(el\)/, 'il disegno non allinea la barra: resterebbe dove capita');
 });
 
-test('⑨ GLI AVANZAMENTI ESCONO DALLA SCHEDA, GLI ESITI RESTANO', () => {
+test("⑨ AVANZAMENTI ED ESITI ESCONO DALLA SCHEDA — LE DOMANDE DELL'ASSISTENTE NO", () => {
   // 🗣️ «Vorrei levare tutti i messaggi dentro la scheda.» — detto dopo aver visto la scheda e la
   //    barra raccontare la stessa cosa due volte.
   assert.equal(vaSoloNellaBarra('<span class="mp-sync-head">⏳ <strong>Sto elaborando la richiesta su Matchpoint</strong></span> · modifica: Campo 3'), true);
   assert.equal(vaSoloNellaBarra('⏳ Aggiorno la lista giocatori da Matchpoint… (3s · puoi già modificare)'), true);
   assert.equal(vaSoloNellaBarra('Lista giocatori aggiornata da Matchpoint.'), true);
-  // ⛔ E QUESTA È LA METÀ CHE PROTEGGE: un rifiuto col motivo dentro serve anche cinque minuti
-  //    dopo, e la barra lo mostra per 14 secondi. Toglierlo non sarebbe pulizia, sarebbe perdita.
-  assert.equal(vaSoloNellaBarra('⛔ Matchpoint ha rifiutato: il campo è già prenotato in quell\'ora.'), false);
-  assert.equal(vaSoloNellaBarra('✅ Prenotazione creata su Matchpoint.'), false);
+  // ② GLI ESITI di un gesto su Matchpoint escono anche loro (04/09): «leverei totalmente tutti i
+  //    messaggi da dentro la scheda». La barra li ha presi in carico, e lì un rifiuto NON se ne va
+  //    da solo — vedi ⑪. Senza quella metà questa sarebbe una perdita di informazione.
+  assert.equal(vaSoloNellaBarra('❌ Modifica non riuscita (Campo 3 · 05/09/2026): slot occupato'), true);
+  assert.equal(vaSoloNellaBarra('❌ <strong>Annullamento non riuscito</strong>: nessun evento'), true);
+  assert.equal(vaSoloNellaBarra('⌛ <strong>Non ho la conferma</strong> della modifica (Campo 3)'), true);
+  assert.equal(vaSoloNellaBarra('🧹 <strong>Card rimossa dal calendario</strong>: Campo 2'), true);
+  // ⛔⛔ E LA METÀ CHE PROTEGGE, che vale più di tutte: le DOMANDE dell'Assistente restano. Non
+  //    sono resoconti di qualcosa che è successo — sono una conversazione a cui lui deve
+  //    rispondere, e toglierle non pulisce la scheda: spegne l'assistente, che resta ad aspettare
+  //    la risposta a una domanda che nessuno ha potuto leggere.
+  assert.equal(vaSoloNellaBarra('👥 <strong>Quale «Laura»?</strong> Scegli dall\'elenco.'), false);
+  assert.equal(vaSoloNellaBarra('👨‍🏫 <strong>Quale maestro?</strong>'), false);
+  assert.equal(vaSoloNellaBarra('👥 Aggiungi il <strong>giocatore</strong> (o scrivi <em>Ospite</em>)'), false);
   assert.equal(vaSoloNellaBarra('Ho aggiunto Lidia Comes alla partita.'), false);
+  assert.equal(vaSoloNellaBarra('⚠️ Orario di fine non valido.'), false);
   assert.equal(vaSoloNellaBarra(''), false);
   assert.equal(vaSoloNellaBarra(null), false);
   // Chi scriveva su quel messaggio deve poterlo fare ancora: `_setNote` gli riscrive dentro a
@@ -234,6 +264,67 @@ test('⑨ GLI AVANZAMENTI ESCONO DALLA SCHEDA, GLI ESITI RESTANO', () => {
   assert.match(add, /svcMessaggioVaSoloNellaBarra\(html\)/, 'i messaggi di avanzamento tornano nella scheda');
   assert.match(add, /const d = document\.createElement\('div'\); d\.innerHTML = html; return d;/,
     'si torna qualcosa che non è un div scrivibile: chi ci scrive sopra esplode');
+});
+
+test('⑪ 🚨 IL NOME DELLA EDGE NON È IL TIPO DI AZIONE: `edit` sono CINQUE gesti diversi', () => {
+  /* 🗣️ Richiesta sua del 04/09, guardando la barra dire «modifica di una prenotazione» dopo aver
+     salvato una nota: «si può mettere il tipo di azione che si sta effettuando / è stato
+     effettuato al posto di quello generico?»
+     ⚖️ Lo dice il CORPO della richiesta, non l'indirizzo — e il corpo lo costruisce chi sa cosa
+     sta facendo, quindi non si sta indovinando niente. */
+  const q = (b) => azioneDaChiamata(U('matchpoint-bookings-edit'), b);
+  assert.equal(q({ note: 'ciao' }).soggetto, 'Nota');
+  assert.equal(q({ note: 'ciao' }).corso, '📝 Salvo la nota');
+  assert.equal(q({ players: { add: [{ nome: 'Laura' }] } }).soggetto, 'Giocatore');
+  assert.equal(q({ players: { add: [{ nome: 'A' }, { nome: 'B' }] } }).soggetto, 'Giocatori');
+  assert.equal(q({ players: { remove: ['Laura'] } }).participio, 'tolto');
+  assert.equal(q({ move: { campo: 2, data: '2026-09-05' } }).participio, 'spostata');
+  assert.equal(q({ istruttore: 'LoZio' }).soggetto, 'Maestro');
+  assert.equal(q({ descrizione: 'x' }).soggetto, 'Descrizione');
+  // ⚠️ Un salvataggio può portare PIÙ cambiamenti insieme e la riga ne dice UNO: si dichiara il
+  //    più grosso. Uno spostamento con dentro anche una nota resta uno SPOSTAMENTO — chi guarda
+  //    il calendario deve accorgersi che una partita ha cambiato campo, non che c'è una nota.
+  assert.equal(q({ move: { campo: 2 }, note: 'x', players: { add: [{ nome: 'A' }] } }).participio, 'spostata');
+  assert.equal(q({ players: { add: [{ nome: 'A' }] }, note: 'x' }).soggetto, 'Giocatore');
+  // E un corpo che non porta nessuno di quei campi non inventa: resta la frase della edge.
+  assert.equal(affinaEdit({ campo: 3 }), null);
+  assert.equal(affinaEdit(null), null);
+  // ⚠️ La voce 128 vuole Cash · Card · Wallet sotto gli occhi della segreteria: una parola
+  //    italiana qui sarebbe la quarta di un vocabolario che ne ha tre. La guardia
+  //    `letichetta-si-traduce-la-chiave-no` ha preso questa riga la prima volta che è stata scritta.
+  assert.equal(MAPPA['matchpoint-wallet-correct'].soggetto, 'Wallet');
+});
+
+test('⑫ 🚨⭐⭐ UN RIFIUTO NON SE NE VA DA SOLO — da quando la scheda non lo scrive più', () => {
+  /* Il successo passa da sé: il calendario lo mostra un attimo dopo. Il rifiuto e il dubbio no —
+     la barra è l'unico posto in cui sono scritti, e un messaggio che sparisce dopo quattordici
+     secondi è un messaggio che qualcuno non leggerà mai. Chi non l'ha letto crede sia andata bene. */
+  assert.ok(ESITI.fatto.durataMs > 0, 'il «fatto» resta appeso: diventerebbe uno sfondo');
+  assert.equal(ESITI.rifiutato.durataMs, 0, 'un rifiuto sparisce da sé: si perde l\'unico posto in cui è scritto');
+  assert.equal(ESITI.ignoto.durataMs, 0, 'un dubbio sparisce da sé, e un dubbio non letto passa per un «fatto»');
+  // Le tre frasi sono TRE, e non una negata a caso: «non è passata» detto su un dubbio è una
+  // bugia (voce 72), e «fatto» detto su un rifiuto è la stessa bugia dall'altra parte.
+  const az = { soggetto: 'Nota', participio: 'salvata' };
+  assert.equal(fraseDellEsito(az, 'fatto'), '✅ Nota salvata');
+  assert.equal(fraseDellEsito(az, 'rifiutato'), '⛔ Nota NON salvata');
+  assert.match(fraseDellEsito(az, 'ignoto'), /non so com'è finita/);
+  // Il MOTIVO è la seconda riga, ed è l'unica che dice perché: senza, un «non è passata» non si
+  // può nemmeno rifare.
+  assert.equal(motivoDelRifiuto({ message: 'lo slot è già occupato' }), 'lo slot è già occupato');
+  assert.equal(motivoDelRifiuto({ error: 'SLOT_OCCUPATO' }), 'SLOT_OCCUPATO');
+  assert.equal(motivoDelRifiuto({}), '');
+  assert.equal(motivoDelRifiuto(null), '');
+  assert.equal(motivoDelRifiuto({ message: 'x'.repeat(500) }).length, 120, 'un motivo lunghissimo sfonda la riga');
+  // …e la ✕ esiste solo dove serve: su un esito che non se ne va da sé.
+  const dis = dichiarazioneDi('svcRidisegnaSemaforo');
+  assert.match(dis, /if \(finita && !SVC_ESITI\[loc\.stato\]\.durataMs\)/,
+    'la ✕ non è agganciata alla persistenza: comparirebbe dove non serve o mancherebbe dove serve');
+  assert.match(dis, /svcScacciaAzione\(\)/, 'la ✕ non chiude niente: il rifiuto resterebbe per sempre');
+  // La barra ha DUE righe, ed è la richiesta sua: «raddoppiare l'altezza». Il raddoppio non è
+  // solo spazio — è la riga in cui ci stanno il DOVE e il MOTIVO, che prima non ci stavano.
+  assert.match(dis, /svc-semaforo-corpo/, 'la barra è tornata a una riga sola');
+  const css = APP.slice(APP.indexOf('.svc-semaforo {'));
+  assert.match(css.slice(0, 600), /min-height:5[0-9]px/, 'la barra ha perso l\'altezza doppia');
 });
 
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');

@@ -170,7 +170,7 @@ test('la frase si scrive come TESTO, non come markup', () => {
   const corpo = corpoDelDisegno();
   assert.ok(!/innerHTML/.test(corpo),
     'la frase attraversa la coda del worker: non è un posto in cui si accetta del markup');
-  assert.ok(/testo\.textContent = che;/.test(corpo), 'la frase non si scrive più con `textContent`');
+  assert.ok(/testo\.textContent = riga1;/.test(corpo), 'la frase non si scrive più con `textContent`');
   assert.ok(/spanChi\.textContent = chi;/.test(corpo), 'il «chi» non si scrive più con `textContent`');
 });
 
