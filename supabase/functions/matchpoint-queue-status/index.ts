@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
+import { semaforoDaSnapshot } from './frasi-del-semaforo.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -69,13 +70,27 @@ Deno.serve(async (req: Request) => {
       headers: { 'Authorization': `Bearer ${workerApiKey}` },
     });
   } catch (netErr) {
-    return err(502, 'WORKER_UNREACHABLE', `Worker non raggiungibile: ${errorText(netErr)}`);
+    // 🚦 VOCE 137 — anche il GUASTO parla italiano. `WORKER_UNREACHABLE` con dentro il messaggio
+    //    di rete finiva dritto in una risposta che il calendario può mostrare: il codice resta
+    //    per il registro, ma accanto viaggia un semaforo SPENTO e onesto («non lo so»), così chi
+    //    disegna la barra non ha bisogno di interpretare un errore per sapere cosa fare.
+    console.error(`[queue-status] worker irraggiungibile: ${errorText(netErr)}`);
+    return err(502, 'WORKER_UNREACHABLE', 'Il sistema del circolo non risponde in questo momento.', {
+      semaforo: { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false },
+    });
   }
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return err(502, 'WORKER_ERROR', errorText((body as JsonMap).message || (body as JsonMap).error || body));
+    console.error(`[queue-status] worker in errore: ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`);
+    return err(502, 'WORKER_ERROR', 'Il sistema del circolo non risponde in questo momento.', {
+      semaforo: { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false },
+    });
   }
-  // Inoltra tale e quale lo snapshot della coda (busy, running, waiting, waitingCount, time).
-  return json(body, 200);
+  // Lo snapshot grezzo resta tale e quale (busy, running, waiting, waitingCount, time): serve
+  // alla diagnosi, e toglierlo vorrebbe dire perdere l'unica finestra sulla coda che abbiamo.
+  // ⭐ Accanto arriva `semaforo`, che è ciò che si DISEGNA: già filtrato dell'automatico e già
+  //   tradotto in una frase del gestionale. La differenza fra i due non è cosmetica — è la
+  //   ragione per cui la barra non può mostrare per sbaglio il nome di un pezzo interno.
+  return json({ ...(body as JsonMap), semaforo: semaforoDaSnapshot(body as JsonMap) }, 200);
 });
