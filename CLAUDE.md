@@ -338,19 +338,33 @@ non deve conoscerne né l'indirizzo, né lo stato, **né il nome**.
 codice del bot ci sono **zero** riferimenti a worker/Matchpoint/Hetzner fuori dai commenti, e il
 ponte chiama **quattro** edge, tutte `consumer-*` del gestionale (`consumer-booking-write`,
 `consumer-player-readmodel`, `consumer-assessment-link`, `consumer-assessment-decision`).
-⇒ ①  e ③ **reggono già** nella struttura. Quello che NON regge è il **vocabolario**.
+⇒ ①  e ③ **reggono già** nella struttura. Il **vocabolario** allora non reggeva — ⚠️ e qui c'era
+scritto al presente che non regge, per quindici giorni dopo che era stato curato: vedi sotto.
 
-🚨⭐⭐ **LA VIOLAZIONE VIVA, trovata la sera stessa: `worker_error` arriva fino al bot.** Il
-19/08 alle 18:53 il registro del bot ha scritto `[griglia] rifiutata (worker_error)` — cioè il
-gestionale ha risposto al bot **col nome di un suo pezzo interno**, e il bot l'ha girato al socio
-come un **rifiuto**.
-⚖️ È sbagliato due volte: rompe ③ (il bot sente parlare del worker) e rompe ②, che è la metà che
-costa — *«non ho prenotato»* detto sulla parola del worker **può essere falso**, perché un worker
-che non risponde non vuol dire che Matchpoint non abbia scritto. E se era passata, il socio che
-riprova occupa il campo **due volte**.
-⇒ La forma giusta esiste già ed è `esito_ignoto` (voce 53, `supabase/functions/consumer-booking-write/esito-scrittura.ts`):
-*«non lo so ancora»*, con l'ordine di **non rifarla**. Un guasto del worker deve entrare **lì**,
-non uscire con un nome proprio. 📌 Curarlo è un lavoro dichiarato, non ancora fatto.
+✅⭐ **LA VIOLAZIONE È STATA CURATA — e questa riga diceva il contrario fino al 03/09/2026.**
+Il difetto c'era, ed era grosso: il 19/08 alle 18:53 il registro del bot scrisse
+`[griglia] rifiutata (worker_error)` — il gestionale rispondeva al bot **col nome di un suo pezzo
+interno**, e il bot lo girava al socio come un **rifiuto**. Sbagliato due volte: rompeva ③ (il bot
+sente parlare del worker) e ②, che è la metà che costa — *«non ho prenotato»* detto sulla parola
+del worker **può essere falso**, perché un worker che non risponde non vuol dire che Matchpoint
+non abbia scritto; e se era passata, il socio che riprova occupa il campo **due volte**.
+
+📏 **Misurato il 03/09 prima di correggere la riga**, non dedotto: la guardia esiste, si chiama
+`NOMI_INTERNI` (`supabase/functions/consumer-booking-write/esito-scrittura.ts:336`) e blocca
+`worker|matchpoint|hetzner|playwright|caddy|nip.io|browser|https?://` **prima** che il testo esca
+verso il bot. **Fallisce CHIUSA**: al minimo sospetto non ritaglia il pezzo colpevole, sostituisce
+tutto il dettaglio con *«il circolo non ha dato un motivo comprensibile»* — perché ritagliare
+lascerebbe in piedi la metà che nessuno ha pensato di cercare. È applicata su **otto** uscite di
+`index.ts`, e il terzo verdetto (`esito_ignoto`) è in servizio: le tre parole che il bot può
+sentire sono `fatto` · `scrittura_rifiutata` · `esito_ignoto`.
+
+⚖️ **La riga vecchia è stata CORRETTA, non affiancata** — diceva *«curarlo è un lavoro dichiarato,
+non ancora fatto»*, ed era vera il 19/08. Il lavoro è stato fatto dopo, e per **quindici giorni**
+questo file ha continuato a dichiarare come aperto un difetto chiuso.
+📌 *È la 26ª nel suo verso meno sospetto: di solito è un **limite** dichiarato che nessuno riprova;
+qui era un **difetto** dichiarato che nessuno riprova. Fa lo stesso danno — pianificare un lavoro
+già fatto — e si nasconde meglio, perché una riga che denuncia un proprio difetto non sembra mai
+una riga da controllare.*
 
 ⛔ **Come si applica, quando si scrive codice:**
 · nelle risposte delle edge verso il bot **non compaiono** `worker`, `matchpoint`, `browser`,
