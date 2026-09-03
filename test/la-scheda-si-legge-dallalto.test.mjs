@@ -57,6 +57,13 @@ function estraiTetto() {
 }
 const tetto = estraiTetto();
 
+/** L'elenco delle schede protette, letto dall'app. */
+function elencoSchede() {
+  const m = APP.match(/const SVC_SCHEDE_CHE_SI_LEGGONO_DALLALTO = '([^']+)';/);
+  assert.ok(m, 'SVC_SCHEDE_CHE_SI_LEGGONO_DALLALTO non c\'è più: se è stata rinominata, questo banco va aggiornato con lei');
+  return m[1];
+}
+
 /* ── IL FATTO ────────────────────────────────────────────────────────────────
  * Con una scheda aperta, qualunque siano le misure, la cima della scheda deve restare dentro
  * il rettangolo visibile: `scrollTop <= cimaScheda`. */
@@ -115,11 +122,37 @@ test('_svcAutoScroll riconosce la scheda dal BOX, non dalla bolla', () => {
   // staffCalBringEditorToTop sposta il `.svc-edit-box` in fondo al contenitore, FUORI dalla sua
   // bolla `.svc-edit-host`: una guardia agganciata all'host perderebbe la scheda proprio nel
   // percorso dell'assistente (aggiunta/rimozione giocatore), che è uno di quelli che scrolla.
-  const i = APP.indexOf('function _svcAutoScroll(cont, soloInGiu) {');
-  assert.ok(i > 0, '_svcAutoScroll non c\'è più');
-  const corpo = APP.slice(i, i + 1400);
-  assert.ok(corpo.includes(".querySelector('.svc-edit-box')"),
-    '_svcAutoScroll deve cercare `.svc-edit-box`: agganciata a `.svc-edit-host` perde la scheda spostata da staffCalBringEditorToTop');
+  assert.ok(elencoSchede().includes('.svc-edit-box'),
+    'l\'elenco deve contenere `.svc-edit-box`: agganciato a `.svc-edit-host` perde la scheda spostata da staffCalBringEditorToTop');
+});
+
+/* ── LA FAMIGLIA ─────────────────────────────────────────────────────────────
+ * 🚨 Il 02/09 il tetto proteggeva UNA scheda — quella della partita — e il 03/09 lui ha segnalato
+ * lo stesso identico difetto sulla scheda «Nuova prenotazione», che è un'altra classe. La cura era
+ * giusta, l'ELENCO era corto.
+ * 📌 *Una cura si scrive sulla famiglia, non sull'esemplare che si aveva davanti* — e finché la
+ * famiglia è un elenco scritto a mano, l'unica cosa che tiene onesto l'elenco è un banco che
+ * conta i membri da sé invece di fidarsi. */
+test('OGNI scheda che l\'app crea nella chat sta nell\'elenco protetto', () => {
+  const elenco = elencoSchede();
+  // Le schede che il codice crea davvero: una classe `svc-…-card` / `svc-…-box` messa a un
+  // elemento. Contate dal sorgente, non elencate qui: una lista scritta a mano in un banco ha
+  // esattamente lo stesso difetto della lista che il banco deve sorvegliare.
+  const create = new Set();
+  for (const m of APP.matchAll(/(?:classList\.add\(|className\s*=\s*)'(svc-[a-z0-9-]*(?:card|box))'/g)) create.add(m[1]);
+  assert.ok(create.size >= 2, 'non trovo più le schede nel sorgente: è cambiato il modo di crearle, e questo banco non sa più contarle');
+  const fuori = [...create].filter((c) => !elenco.includes('.' + c));
+  assert.deepEqual(fuori, [],
+    'queste schede si aprirebbero TAGLIATE IN ALTO perché non sono nell\'elenco SVC_SCHEDE_CHE_SI_LEGGONO_DALLALTO: '
+    + fuori.map((c) => '.' + c).join(', '));
+});
+
+test('le BOLLE dei messaggi NON entrano nell\'elenco: la chat resta una chat', () => {
+  // Se `.svc-msg` finisse lì dentro, il tetto si aggancerebbe al primo messaggio e nessun
+  // messaggio nuovo andrebbe più in fondo — cioè si romperebbe una decisione presa.
+  const elenco = elencoSchede();
+  assert.ok(!/\.svc-msg\b/.test(elenco),
+    '`.svc-msg` è una riga di chat, non un modulo da leggere dall\'alto: nell\'elenco romperebbe l\'auto-scroll dei messaggi');
 });
 
 test('l\'observer non strappa MAI verso l\'alto chi sta leggendo', () => {
