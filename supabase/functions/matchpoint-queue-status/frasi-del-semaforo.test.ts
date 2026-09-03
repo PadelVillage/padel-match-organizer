@@ -61,7 +61,7 @@ test('il traffico automatico in attesa non si CONTA', () => {
 
 test('coda vuota → spenta e muta', () => {
   const s = semaforoDaSnapshot({ busy: false, running: null, waiting: [] });
-  assert.deepEqual(s, { acceso: false, frase: null, inAttesa: 0, dichiarazioneMancante: false, dove: null });
+  assert.deepEqual(s, { acceso: false, frase: null, che: null, chi: null, inAttesa: 0, dichiarazioneMancante: false, dove: null });
 });
 
 // ── ② IL GESTO SI VEDE, E DICE CHI ──────────────────────────────────────────────────────────
@@ -216,6 +216,31 @@ test('la barra spenta non porta coordinate', () => {
   const s = semaforoDaSnapshot({ running: { ...SYNC, dove: { campo: 1, data: '2026-09-03', ora: '08:00' } }, waiting: [] });
   assert.equal(s.acceso, false);
   assert.equal(s.dove, null, 'una cella accesa senza barra: il sync si vedrebbe dalla cella');
+});
+
+// ── ⑧ LE DUE METÀ SEPARATE — nate da una misura sul telefono ────────────────────────────────
+test('`che` e `chi` arrivano separati, oltre alla frase intera', () => {
+  // 📏 A 390px della frase intera entrano 43 caratteri su 61, e a tagliarsi è la coda — cioè
+  //    PROPRIO il «chi», l'unica cosa che dice a chi fa segreteria se è stata lei o no.
+  //    ⇒ Chi disegna deve poter troncare solo il `che`. Una frase composta a monte decide cosa
+  //    si perde quando lo spazio finisce, e a monte nessuno sa quanto spazio c'è.
+  const dalBot = { ...GESTO, operatore: 'assistente-soci@padelvillage.club', chiestoDa: 'socio' };
+  const s = semaforoDaSnapshot({ running: dalBot, waiting: [] });
+  assert.equal(s.che, 'prenotazione partita · Campo 2 · 16:30');
+  assert.equal(s.chi, 'richiesta da un socio');
+  assert.equal(s.frase, s.che + ' · ' + s.chi, 'la frase intera non è più la somma delle due metà');
+});
+
+test('senza «chi» le due metà restano coerenti con la frase', () => {
+  const s = semaforoDaSnapshot({ running: { ...GESTO, operatore: '—', chiestoDa: '' }, waiting: [] });
+  assert.equal(s.chi, null);
+  assert.equal(s.frase, s.che);
+});
+
+test('anche le due metà passano dalla difesa sui nomi interni', () => {
+  const s = semaforoDaSnapshot({ running: { ...GESTO, label: 'modifica · timeout worker', operatore: 'worker@interno' }, waiting: [] });
+  assert.ok(!/worker/i.test(String(s.che)), s.che);
+  assert.equal(s.chi, null);
 });
 
 console.log('\n' + passed + ' ok, ' + failed + ' failed');

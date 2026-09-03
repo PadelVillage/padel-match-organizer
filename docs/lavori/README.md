@@ -2245,13 +2245,59 @@ ancora. Non prima: prima non c'è niente da leggere.
 |---|---|
 | **①** worker: la coda smette di chiamare «modifica» una lettura | ✅ **in servizio** su Hetzner (PR #1305) |
 | **②** le tre edge dicono al worker CHI ha chiesto la scrittura | ✅ **in servizio** su `qqbf…` e sul worker (PR #1306) |
-| **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ⛔ **da scrivere** |
-| **④** app: la barra D + la cella + riaccendere `svcStartQueuePolling()` | ⛔ **da scrivere** |
+| **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ✅ **in servizio** su `qqbf…` (PR #1308) |
+| **④a** le coordinate strutturate per la cella (`dove`) | ✅ **in servizio** su worker e edge (PR #1309) |
+| **④b** app: la barra D + la cella + il polling riacceso | 🧪 **su TEST 6.299 — NON su PROD**, aspetta il suo occhio |
 
-🚨 **IL SEMAFORO NON SI VEDE ANCORA, ed è la cosa da non fraintendere leggendo «in servizio».** I due
-pezzi fatti stanno **sotto**: la coda adesso sa dire il vero su cosa sta facendo e per chi. Quello che
-chi fa segreteria **guarda** — la barra sul calendario — non esiste, e finché non esiste la voce non
-si avvicina alla chiusura di un passo solo agli occhi di chi la usa.
+🧪⭐ **IL SEMAFORO SI VEDE — SU TEST, E SOLO LÀ.** La barra è viva su `test.padelvillage.club`
+(6.299) e su PROD **non c'è**. È una scelta, non un lavoro a metà: la disposizione D lui l'ha scelta
+**da disegni**, e il calendario è la superficie che guarda tutto il circolo. ⇒ Prima la guarda viva,
+poi si promuove — e se la vuole diversa, cambiarla su TEST costa niente.
+
+⛔ **COSA MANCA PER CHIUDERE LA VOCE, in ordine:**
+1. **lui apre `test.padelvillage.club`** e guarda il calendario mentre qualcuno fa un gesto (basta
+   aprire una scheda da un'altra postazione, o un gesto suo dal bot verso TEST);
+2. dice se la barra va bene com'è — altezza, colore, dove sta, cosa scrive;
+3. **allora** si promuove a PROD con le sole righe del fix.
+
+### 📏 LA MISURA COL BROWSER SU TEST — cosa dice, e cosa NON dice
+
+Fatta con la console remota su `test.padelvillage.club` a **due larghezze**, perché il vincolo è suo
+(*«si utilizza la web app sia da mobile che da desktop»*).
+
+| | desktop 1440×900 | telefono 390×844 |
+|---|---|---|
+| la griglia si sposta? | **no** — `dy 0 · dh 0` | **no** — `dy 0 · dh 0` |
+| barra larga quanto la colonna | ✅ 1058 px | ✅ 390 px |
+| barra sul bordo basso | ✅ | ✅ |
+| ruba i click? | **no** (`pointer-events:none`; sotto risponde `.svc-grid-col`) | — |
+| altezza barra | 30 px | 37 px |
+| il testo ci sta? | ✅ intero (62 caratteri) | ⛔ **43 su 61** |
+
+⚖️ **La riga «la griglia non si sposta» è la misura che vale**: è la ragione per cui la D è stata
+scelta sulla C, ed è stata **provata invece che sperata**.
+
+🚨⭐⭐ **E LA MISURA HA TROVATO UN DIFETTO CHE IL BANCO NON POTEVA VEDERE: sul telefono si perdeva
+proprio il «CHI».** Della frase *«prenotazione partita · Campo 2 · 16:30 · richiesta da un socio»*
+entrano **43 caratteri su 61**, e a cadere è la **coda** — cioè l'unica cosa che dice a chi fa
+segreteria *se è stata lei o no*. Restava il dettaglio di campo e ora, che la **cella accesa gli
+dice già**.
+🔨 Curato: la edge manda `che` e `chi` **separati** (oltre alla frase intera, che resta), e la barra
+tronca **solo il `che`** tenendo il `chi` intero.
+📌 *Chi compone una frase a monte decide cosa si perde quando lo spazio finisce, e a monte nessuno
+sa quanto spazio c'è.*
+
+⛔⛔ **COSA LA MISURA NON DICE, e va detto invece di lasciarlo credere: LA CELLA NON È STATA
+PROVATA.** In nessuna delle due larghezze:
+· su **desktop** la griglia era **vuota** — `1 figlio, 0 celle` — con l'utenza `readonly` della
+  console. La sonda ha misurato la barra, non ha mai visto una cella;
+· su **telefono** la vista attiva è l'**agenda**, non la griglia (`wrapVisibile:false`,
+  `agendaVisibile:true`) ⇒ le celle `.cell` **lì non esistono per costruzione**, e la metà «cella»
+  della disposizione D **su mobile non c'è**.
+⚖️ La seconda non è un difetto da curare: è la ragione per cui la D ha **due** metà, e su telefono
+resta quella che parla anche senza sapere dove. Ma **va saputa**, perché la disposizione gli è stata
+presentata come «barra + cella» a due larghezze.
+⇒ La cella la può vedere **solo lui**, aprendo TEST con la sua utenza mentre qualcuno fa un gesto.
 
 🩹⭐⭐ **E UNA RIGA DI QUESTA SCHEDA ERA FALSA, misurata scrivendo il pezzo ②.** Diceva che la coda
 distingue un gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*, e ne traeva
