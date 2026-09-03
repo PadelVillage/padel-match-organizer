@@ -222,27 +222,42 @@ function mpJobMeta(op, body = {}) {
     ? `Campo ${b.campo}`
     : (body.idReserva ? `#${body.idReserva}` : '');
   const ora = clean(b.ora || body.ora) || '';
+  // 🚦 VOCE 137 ④ — le coordinate STRUTTURATE, per accendere la cella giusta sul calendario.
+  //    ⛔ Non si spremono dall'etichetta a valle: «Campo 2 · 16:30» è una frase fatta per essere
+  //    letta, e chi la ri-analizza sta ricostruendo un dato che qui c'era già intero. La prima
+  //    volta funziona; poi qualcuno cambia il separatore per farla stare sul telefono, e la
+  //    cella smette di accendersi senza che niente diventi rosso.
+  //    📌 *Un dato che è stato trasformato in una frase non si recupera dalla frase: si porta
+  //       accanto.*
+  //    ⚠️ `data` può mancare (le op che lavorano per `idReserva` non la portano): la cella allora
+  //    non si accende e resta la barra, che è esattamente perché la disposizione D ha DUE metà.
+  const campoNum = Number(String(b.campo ?? '').replace(/\D/g, ''));
+  const dove = {
+    campo: Number.isFinite(campoNum) && campoNum > 0 ? campoNum : null,
+    data: clean(b.data || body.data) || '',
+    ora: ora,
+  };
   const gesto = eGestoDiUnaPersona({ op }, body);
   if (op === 'create') {
     const tipo = clean(b.tipo) || 'prenotazione';
-    return { op, operatore, chiestoDa, gesto, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, dove, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
   }
   if (op === 'edit') {
     // ① la lettura che si chiamava «modifica».
     const che = eSolaLettura(body) ? 'lettura scheda' : 'modifica';
-    return { op, operatore, chiestoDa, gesto, label: [che, campoTxt, ora].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, dove, label: [che, campoTxt, ora].filter(Boolean).join(' · ') };
   }
-  if (op === 'cancel') return { op, operatore, chiestoDa, gesto, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
-  if (op === 'set-charge') return { op, operatore, chiestoDa, gesto, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'cancel') return { op, operatore, chiestoDa, gesto, dove, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'set-charge') return { op, operatore, chiestoDa, gesto, dove, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
   if (op === 'client') {
     const c = body.client || {};
     const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
     // ② la ricerca che si chiamava «nuovo cliente». Il telefono NON entra nell'etichetta: è un
     //    dato di una persona, e questa riga finisce sotto gli occhi di chiunque guardi il calendario.
     const che = eSolaRicerca(body) ? 'ricerca cliente' : 'nuovo cliente';
-    return { op, operatore, chiestoDa, gesto, label: [che, nome].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, dove, label: [che, nome].filter(Boolean).join(' · ') };
   }
-  return { op, operatore, chiestoDa, gesto, label: op };
+  return { op, operatore, chiestoDa, gesto, dove, label: op };
 }
 
 // Fotografia dello stato della coda per GET /queue/status.
@@ -261,11 +276,12 @@ function mpQueueSnapshot() {
       //    là vorrebbe dire indovinarla — e sarebbe una seconda copia che diverge in silenzio.
       gesto: mpQueue.running.gesto === true,
       chiestoDa: mpQueue.running.chiestoDa || '',
+      dove: mpQueue.running.dove || null,
       priority: mpQueue.running.priority,
       runningMs: now - mpQueue.running.startedAt,
     } : null,
     waitingCount: mpQueue.waiting.length,
-    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, gesto: j.gesto === true, chiestoDa: j.chiestoDa || '', priority: j.priority })),
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, gesto: j.gesto === true, chiestoDa: j.chiestoDa || '', dove: j.dove || null, priority: j.priority })),
     time: new Date().toISOString(),
   };
 }
@@ -312,6 +328,7 @@ function mpQueueRun(meta, fn) {
       //       è che dimenticarlo non fa rumore.*
       gesto: meta.gesto === true,
       chiestoDa: meta.chiestoDa || '',
+      dove: meta.dove || null,
       priority: mpJobPriority(meta),
       enqueuedAt: Date.now(),
       fn,
