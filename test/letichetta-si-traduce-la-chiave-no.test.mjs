@@ -81,9 +81,24 @@ test('la CHIAVE DI PERMESSO `view_members_borsellino` è intatta', () => {
 test('le CHIAVI DI DATO della sezione Incassi sono intatte', () => {
   // Se una di queste cambia nome, la somma si fa su un campo che non esiste e il totale per
   // metodo esce 0,00 € — senza nessun errore in console.
-  for (const chiave of ["come: 'borsellino'", 'sel.borsellino', 'sel.carta', 'sel.contanti', 'd.borsellino', 'pl.borsellino']) {
+  /* 🩹 03/09 — questo elenco conteneva anche `pl.borsellino`, e la voce 133 l'ha fatto sparire
+     LEGITTIMAMENTE: la tabella non aggrega più per giocatore, disegna una riga per movimento, e
+     quell'oggetto non esiste più. ⇒ La guardia ha fatto il suo mestiere (ha visto il cambio di
+     forma e si è fermata), e la cura è stata **guardare se il fatto reggeva ancora**, non
+     cancellare la riga: i totali continuano a vivere in `sel.*` e `d.*`.
+     ⭐ In cambio si è aggiunto un ancoraggio più duraturo: le tre parole che
+     `_incassiMethodBucket` RESTITUISCE sono le chiavi vere, e non cambiano forma quando cambia
+     la tabella. 📌 *Una guardia che si rompe su un cambio di forma va riportata sul fatto, non
+     allentata: allentarla è come toglierla, solo più lentamente.* */
+  for (const chiave of ["come: 'borsellino'", 'sel.borsellino', 'sel.carta', 'sel.contanti', 'd.borsellino']) {
     assert.ok(APP.includes(chiave),
       `la chiave di dato \`${chiave}\` è sparita: i totali per metodo della sezione Incassi vanno a zero`);
+  }
+  // Le tre parole che il classificatore RESTITUISCE: sono le chiavi con cui si somma, e restano
+  // le stesse anche se un domani la tabella cambia di nuovo forma.
+  for (const chiave of ['contanti', 'carta', 'borsellino']) {
+    assert.ok(new RegExp("return '" + chiave + "';").test(APP),
+      `_incassiMethodBucket non restituisce più \`${chiave}\`: i pagamenti finirebbero in un secchio che nessuno somma`);
   }
   const m = APP.match(/const _PAY_METHOD_LABEL = \{([^}]+)\}/);
   for (const chiave of ['contanti', 'carta', 'borsellino']) {
