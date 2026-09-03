@@ -2245,13 +2245,25 @@ ancora. Non prima: prima non c'è niente da leggere.
 |---|---|
 | **①** worker: la coda smette di chiamare «modifica» una lettura | ✅ **in servizio** su Hetzner (PR #1305) |
 | **②** le tre edge dicono al worker CHI ha chiesto la scrittura | ✅ **in servizio** su `qqbf…` e sul worker (PR #1306) |
-| **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ⛔ **da scrivere** |
-| **④** app: la barra D + la cella + riaccendere `svcStartQueuePolling()` | ⛔ **da scrivere** |
+| **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ✅ **in servizio** su `qqbf…` (PR #1308) |
+| **④a** le coordinate strutturate per la cella (`dove`) | ✅ **in servizio** su worker e edge (PR #1309) |
+| **④b** app: la barra D + la cella + il polling riacceso | 🧪 **su TEST 6.299 — NON su PROD**, aspetta il suo occhio |
 
-🚨 **IL SEMAFORO NON SI VEDE ANCORA, ed è la cosa da non fraintendere leggendo «in servizio».** I due
-pezzi fatti stanno **sotto**: la coda adesso sa dire il vero su cosa sta facendo e per chi. Quello che
-chi fa segreteria **guarda** — la barra sul calendario — non esiste, e finché non esiste la voce non
-si avvicina alla chiusura di un passo solo agli occhi di chi la usa.
+🧪⭐ **IL SEMAFORO SI VEDE — SU TEST, E SOLO LÀ.** La barra è viva su `test.padelvillage.club`
+(6.299) e su PROD **non c'è**. È una scelta, non un lavoro a metà: la disposizione D lui l'ha scelta
+**da disegni**, e il calendario è la superficie che guarda tutto il circolo. ⇒ Prima la guarda viva,
+poi si promuove — e se la vuole diversa, cambiarla su TEST costa niente.
+
+⛔ **COSA MANCA PER CHIUDERE LA VOCE, in ordine:**
+1. **lui apre `test.padelvillage.club`** e guarda il calendario mentre qualcuno fa un gesto (basta
+   aprire una scheda da un'altra postazione, o un gesto suo dal bot verso TEST);
+2. dice se la barra va bene com'è — altezza, colore, dove sta, cosa scrive;
+3. **allora** si promuove a PROD con le sole righe del fix.
+
+📏 **Misurato con la console remota su TEST prima di dirlo** (`sonda-semaforo.js`, 1440×900 e a
+larghezza telefono): vedi la riga della misura più sotto. Il **banco** dice che le regole sono
+giuste; la **console** dice che il disegno sta dove deve; il **suo occhio** dice se serve. Sono tre
+cose diverse e nessuna sostituisce le altre.
 
 🩹⭐⭐ **E UNA RIGA DI QUESTA SCHEDA ERA FALSA, misurata scrivendo il pezzo ②.** Diceva che la coda
 distingue un gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*, e ne traeva
