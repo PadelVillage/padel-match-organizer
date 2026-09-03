@@ -327,6 +327,160 @@ const guardie = [
 
 let passati = 0, falliti = 0;
 console.log('BANCO — l\'idratazione dei soci dal cloud non lascia fuori nessuno\n');
+// ── 🆔 L'ID INTERNO MATCHPOINT — e PERCHÉ sta fuori dal confronto sulla freschezza ──────────
+// 📏 Difetto misurato il 03/09/2026 sulla scheda del 04/09 C3 14:00, su TEST: il nome di
+// Michele Marchi si apriva (289) e quelli di Erika Poser (239) e Marta Morelli (187) no —
+// mentre nel cloud tutti e tre avevano il loro id, identico. La causa: `matchpointIdInterno`
+// non era in `PMO_MEMBER_CLOUD_FIELDS`, quindi per un socio GIÀ in localStorage non arrivava
+// MAI. Chi ce l'aveva, ce l'aveva solo perché la sua riga era entrata dopo.
+//
+// 🚨⭐⭐ E il caso 18 è quello che protegge la DECISIONE, non il calcolo: la cura «ovvia» —
+// aggiungere il campo a `PMO_MEMBER_CLOUD_FIELDS` — è verde su tutti gli altri casi e
+// FALLISCE solo qui, perché quell'elenco si copia unicamente quando la riga del cloud è più
+// fresca della copia locale. Un id non compete sulla freschezza: è l'indirizzo della persona
+// su Matchpoint. Dentro il gate la cura resterebbe inerte proprio per i soci che ne hanno
+// bisogno — quelli fermi in locale da prima che il numero esistesse, cioè tutti.
+//
+// ⚖️ È la stessa forma della chiave `cloudLocalKey` del 28/08, curata dieci righe sopra nello
+// stesso file: *una cura che produce un valore che nessuno riceve è verde in ogni banco che
+// guardi il produttore invece del destinatario.*
+// Toglie commenti e stringhe: una guardia deve rompersi su ciò che è SBAGLIATO, non su ciò
+// che ne PARLA. Il 03/09 tre sonde di fila hanno pescato il commento che spiega perché una
+// cosa non si fa, e sono state rosse (o verdi) per il testo invece che per il codice.
+function soloCodice(testo) {
+  let out = '', stringa = null, prec = '';
+  for (let i = 0; i < testo.length; i++) {
+    const c = testo[i], succ = testo[i + 1];
+    if (stringa) { if (c === stringa && prec !== '\\') stringa = null; prec = c; continue; }
+    if (c === '/' && succ === '/') { const f = testo.indexOf('\n', i); i = f < 0 ? testo.length : f; out += '\n'; prec = '\n'; continue; }
+    if (c === '/' && succ === '*') { const f = testo.indexOf('*/', i + 2); i = f < 0 ? testo.length : f + 1; out += ' '; prec = ' '; continue; }
+    if (c === '"' || c === "'" || c === '`') { stringa = c; prec = c; continue; }
+    out += c; prec = c;
+  }
+  return out;
+}
+
+const regolaId = () => {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(estrai('cleanCell') + '\n' + estrai('pmoIdInternoDalCloud') + '\n' + estrai('pmoCodiceClienteDalCloud'), ctx);
+  return ctx;
+};
+
+caso('18. il socio fermo in locale IMPARA l\'id interno dal cloud', async () => {
+  const ctx = regolaId();
+  return [
+    ctx.pmoIdInternoDalCloud({ matchpointIdInterno: '' }, { matchpointIdInterno: '239' }) === '239',
+    ctx.pmoIdInternoDalCloud({}, { matchpointIdInterno: '187' }) === '187',
+    // già uguale ⇒ niente da imparare (o l'elenco si riscriverebbe a vuoto ad ogni giro)
+    ctx.pmoIdInternoDalCloud({ matchpointIdInterno: '289' }, { matchpointIdInterno: '289' }) === '',
+  ];
+});
+
+caso('19. ⛔ un cloud SENZA id non PROPONE niente — e chi chiama scrive solo su proposta', async () => {
+  const ctx = regolaId();
+  // È il verso pericoloso: l'id lo scrive l'app quando aggiunge un giocatore a una partita,
+  // quindi può esistere qui PRIMA che la riga del cloud lo porti. Cancellarlo spegnerebbe il
+  // nome cliccabile proprio per i soci su cui aveva funzionato.
+  //
+  // 🚨🧰 E QUESTO CASO, SCRITTO COM'ERA, PASSAVA PER LA RAGIONE SBAGLIATA — trovato
+  // sabotandolo il 03/09. La funzione torna «il valore da scrivere», quindi davanti a un cloud
+  // vuoto torna '' comunque: togliendole la riga di guardia il caso restava VERDE. Cioè
+  // sorvegliava una cosa che non poteva rompersi, mentre la cosa che può rompersi — che chi
+  // chiama scriva SOLO su proposta non vuota — non la guardava nessuno.
+  // ⇒ La metà che conta è la seconda, ed è una guardia sul CODICE di chi chiama.
+  // 📌 *Un sabotaggio che lascia verde non dice che la cura è solida: dice che la prova non
+  //    guarda dove sta il rischio.*
+  const proposte = [
+    ctx.pmoIdInternoDalCloud({ matchpointIdInterno: '289' }, {}) === '',
+    ctx.pmoIdInternoDalCloud({ matchpointIdInterno: '289' }, { matchpointIdInterno: '' }) === '',
+    ctx.pmoIdInternoDalCloud({ matchpointIdInterno: '289' }, { matchpointIdInterno: '   ' }) === '',
+  ];
+  // La scrittura nell'idratazione è CONDIZIONATA. Si guarda il solo codice: la parola
+  // `matchpointIdInterno` compare qui sopra una dozzina di volte nei commenti che spiegano
+  // la regola, e una sonda ingenua pescherebbe la spiegazione invece dell'assegnamento.
+  const corpo = soloCodice(estrai('pmoEnsureCloudMembersHydrated'));
+  const scritturaGuardata = /if\s*\(\s*idImparato\s*\)\s*g\.matchpointIdInterno\s*=/.test(corpo);
+  const scrittureTotali = (corpo.match(/g\.matchpointIdInterno\s*=/g) || []).length;
+  return [
+    ...proposte,
+    scritturaGuardata,          // si scrive solo se c'è una proposta
+    scrittureTotali === 1,      // e non c'è una seconda scrittura non guardata
+  ];
+});
+
+caso('20. 🚨 l\'id NON passa dal confronto sulla freschezza — la strada sbagliata muore qui', async () => {
+  const ctx = regolaId();
+  const regolaCampi = regola();
+  const VECCHIA = '2026-08-01 10:00:00.000000+00';   // la riga del cloud è INDIETRO
+  const locale = { id: 'x1', matchpointIdInterno: '', updatedAt: '2026-08-09T10:30:03.689Z' };
+  const cloud  = { id: 'x1', matchpointIdInterno: '239' };
+  // ① la via giusta: fuori dal gate, l'id arriva anche con la riga del cloud vecchia
+  const fuori = ctx.pmoIdInternoDalCloud(locale, cloud);
+  // ② la via sbagliata, simulata: dentro `pmoMemberFieldsFromCloud` non arriverebbe MAI —
+  //    e non perché il campo non c'è, ma perché il gate chiude prima. Lo si mostra su un
+  //    campo che NELL'ELENCO C'È DAVVERO, così il caso non regge su una svista.
+  const dentro = regolaCampi.pmoMemberFieldsFromCloud(
+    { id: 'x1', level: 0.5, updatedAt: '2026-08-09T10:30:03.689Z' },
+    { id: 'x1', level: 4 },
+    VECCHIA,
+  );
+  return [
+    fuori === '239',
+    dentro.changed === false,   // ⇐ la prova che il gate chiude: il livello NON passa
+  ];
+});
+
+caso('21. 🔢 anche il CODICE CLIENTE si impara — e lì in gioco c\'è la guardia anti-omonimia', async () => {
+  const ctx = regolaId();
+  // 📏 Non è la 138 con un altro nome: senza `expectedClientCode` il worker cerca per NOME e
+  // la guardia anti-omonimia non scatta affatto (`searchAndAddPlayer`: `searchTerm =
+  // expectedClientCode || nome`). Su PROD gli omonimi esatti sono 13 gruppi, 27 soci.
+  return [
+    ctx.pmoCodiceClienteDalCloud({ memberId: '' }, { memberId: '000229' }) === '000229',
+    ctx.pmoCodiceClienteDalCloud({}, { memberId: '000178' }) === '000178',
+    // un segnaposto PMO-… non è un codice Matchpoint: quello vero lo scavalca
+    ctx.pmoCodiceClienteDalCloud({ memberId: 'PMO-000222' }, { memberId: '000279' }) === '000279',
+    // già uguale ⇒ niente da imparare
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '000279' }) === '',
+  ];
+});
+
+caso('22. ⛔ un codice VERO in locale NON viene sostituito da un altro codice vero del cloud', async () => {
+  const ctx = regolaId();
+  // 🚨 È la riga che tiene questa cura dal diventare la 138 al contrario. Due codici veri e
+  // diversi non sono un aggiornamento: sono due PERSONE, e sceglierne una in silenzio è
+  // esattamente l'azzardo appena tolto. La regola è quella di `chooseMemberId` nell'import —
+  // il vero vince sul segnaposto e sul vuoto, per il resto vince quello che c'è già.
+  return [
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '000101' }) === '',
+    // e il cloud senza codice, o con un segnaposto, non cancella né sporca il mio
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, {}) === '',
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '' }) === '',
+    ctx.pmoCodiceClienteDalCloud({ memberId: '' }, { memberId: 'PMO-000999' }) === '',
+    // e chi chiama scrive solo su proposta, come per l'id
+    /if\s*\(\s*codiceImparato\s*\)\s*g\.memberId\s*=/.test(soloCodice(estrai('pmoEnsureCloudMembersHydrated'))),
+    (soloCodice(estrai('pmoEnsureCloudMembersHydrated')).match(/g\.memberId\s*=/g) || []).length === 1,
+  ];
+});
+
+// ── Guardia testuale: il campo non deve finire nell'elenco che passa dal gate ────────────────
+// ⚠️ Cerca nel SOLO CODICE, non nei commenti: qui sopra la parola `matchpointIdInterno` compare
+// una dozzina di volte proprio per spiegare perché lì non ci va, e una sonda ingenua pescherebbe
+// la spiegazione invece del difetto — è successo tre volte il 03/09.
+const elencoCampi = (() => {
+  const i = html.indexOf('const PMO_MEMBER_CLOUD_FIELDS');
+  return i < 0 ? '' : html.slice(i, html.indexOf(';', i));
+})();
+guardie.push([
+  'matchpointIdInterno NON è in PMO_MEMBER_CLOUD_FIELDS (starebbe dietro il gate sulla freschezza)',
+  !!elencoCampi && !elencoCampi.includes('matchpointIdInterno'),
+]);
+guardie.push([
+  "memberId NON è in PMO_MEMBER_CLOUD_FIELDS (stessa ragione, e lì c'è di mezzo la guardia anti-omonimia)",
+  !!elencoCampi && !elencoCampi.includes('memberId'),
+]);
+
 console.log('Guardie sulla base:');
 guardie.forEach(([nome, ok]) => {
   console.log(`  ${ok ? '✅' : '❌'} ${nome}`);
