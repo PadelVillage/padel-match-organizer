@@ -2363,10 +2363,18 @@ darebbe saldi **vecchi** e **assenti per quasi tutti**.
    ⇒ E questa decisione rende il punto ② **più** importante, non meno: se lo zero è una
    dichiarazione esplicita, scrivere `0,00 €` quando il dato **manca** non è più un'omissione, è
    **una bugia netta**;
-② 🚨 **`saldoCents` può essere `null`** — Matchpoint non dà il dato, e l'app lo dice già altrove
-   («Saldo borsellino non disponibile»). Lì **non** si scrive `0,00 €`: sarebbe dire «non ha soldi»
-   quando la verità è «non lo so». 📌 *È lo stesso errore della **114** («Libero» invece di «non lo
-   so»), e in questo progetto è già costato due volte;*
+② 🚨⭐ **`saldoCents` può essere `null`, e QUESTA È L'UNICA DOMANDA APERTA DELLA VOCE.**
+   Matchpoint a volte non dà il dato, e l'app lo dice già altrove («Saldo borsellino non
+   disponibile»). ✅ **Saldo ZERO → `👛 0,00 €`**: confermato da lui il 03/09 sera (*«sì, scrivere
+   0,00 €»*). ⏳ **Saldo `null` → da confermare**: la sua frase arrivava subito dopo la decisione
+   sullo zero e può voler dire tutt'e due le cose, quindi **non si indovina**.
+   ⚖️ Il rischio, detto per intero: scrivere `0,00 €` su un saldo **ignoto** dice «non ha credito»
+   mentre la verità è «non lo so» — e chi fa cassa la sera può **rinunciare a un Wallet che invece
+   funzionava**, o mandare a pagare in contanti chi aveva il credito.
+   🔨 Proposta se sceglie di distinguere: `👛 —` (oppure `👛 ?`) col titolo «Saldo borsellino non
+   disponibile», che è la stessa frase che l'app usa già sul bottone Wallet.
+   📌 *È lo stesso bivio della **114** («Libero» invece di «non lo so»), e in questo progetto quel
+   bivio è già stato sbagliato due volte;*
 ③ ✅ **pastiglia MUTA**, non cliccabile — sua decisione. ⚖️ *In una scheda dove ogni cosa cliccabile
    tocca il circolo, un bottone innocuo in mezzo a bottoni che scrivono su Matchpoint è un invito a
    sbagliare mira.*
