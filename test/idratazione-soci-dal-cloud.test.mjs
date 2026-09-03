@@ -363,7 +363,7 @@ function soloCodice(testo) {
 const regolaId = () => {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext(estrai('cleanCell') + '\n' + estrai('pmoIdInternoDalCloud'), ctx);
+  vm.runInContext(estrai('cleanCell') + '\n' + estrai('pmoIdInternoDalCloud') + '\n' + estrai('pmoCodiceClienteDalCloud'), ctx);
   return ctx;
 };
 
@@ -431,6 +431,39 @@ caso('20. 🚨 l\'id NON passa dal confronto sulla freschezza — la strada sbag
   ];
 });
 
+caso('21. 🔢 anche il CODICE CLIENTE si impara — e lì in gioco c\'è la guardia anti-omonimia', async () => {
+  const ctx = regolaId();
+  // 📏 Non è la 138 con un altro nome: senza `expectedClientCode` il worker cerca per NOME e
+  // la guardia anti-omonimia non scatta affatto (`searchAndAddPlayer`: `searchTerm =
+  // expectedClientCode || nome`). Su PROD gli omonimi esatti sono 13 gruppi, 27 soci.
+  return [
+    ctx.pmoCodiceClienteDalCloud({ memberId: '' }, { memberId: '000229' }) === '000229',
+    ctx.pmoCodiceClienteDalCloud({}, { memberId: '000178' }) === '000178',
+    // un segnaposto PMO-… non è un codice Matchpoint: quello vero lo scavalca
+    ctx.pmoCodiceClienteDalCloud({ memberId: 'PMO-000222' }, { memberId: '000279' }) === '000279',
+    // già uguale ⇒ niente da imparare
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '000279' }) === '',
+  ];
+});
+
+caso('22. ⛔ un codice VERO in locale NON viene sostituito da un altro codice vero del cloud', async () => {
+  const ctx = regolaId();
+  // 🚨 È la riga che tiene questa cura dal diventare la 138 al contrario. Due codici veri e
+  // diversi non sono un aggiornamento: sono due PERSONE, e sceglierne una in silenzio è
+  // esattamente l'azzardo appena tolto. La regola è quella di `chooseMemberId` nell'import —
+  // il vero vince sul segnaposto e sul vuoto, per il resto vince quello che c'è già.
+  return [
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '000101' }) === '',
+    // e il cloud senza codice, o con un segnaposto, non cancella né sporca il mio
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, {}) === '',
+    ctx.pmoCodiceClienteDalCloud({ memberId: '000279' }, { memberId: '' }) === '',
+    ctx.pmoCodiceClienteDalCloud({ memberId: '' }, { memberId: 'PMO-000999' }) === '',
+    // e chi chiama scrive solo su proposta, come per l'id
+    /if\s*\(\s*codiceImparato\s*\)\s*g\.memberId\s*=/.test(soloCodice(estrai('pmoEnsureCloudMembersHydrated'))),
+    (soloCodice(estrai('pmoEnsureCloudMembersHydrated')).match(/g\.memberId\s*=/g) || []).length === 1,
+  ];
+});
+
 // ── Guardia testuale: il campo non deve finire nell'elenco che passa dal gate ────────────────
 // ⚠️ Cerca nel SOLO CODICE, non nei commenti: qui sopra la parola `matchpointIdInterno` compare
 // una dozzina di volte proprio per spiegare perché lì non ci va, e una sonda ingenua pescherebbe
@@ -442,6 +475,10 @@ const elencoCampi = (() => {
 guardie.push([
   'matchpointIdInterno NON è in PMO_MEMBER_CLOUD_FIELDS (starebbe dietro il gate sulla freschezza)',
   !!elencoCampi && !elencoCampi.includes('matchpointIdInterno'),
+]);
+guardie.push([
+  "memberId NON è in PMO_MEMBER_CLOUD_FIELDS (stessa ragione, e lì c'è di mezzo la guardia anti-omonimia)",
+  !!elencoCampi && !elencoCampi.includes('memberId'),
 ]);
 
 console.log('Guardie sulla base:');
