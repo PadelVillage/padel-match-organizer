@@ -1,0 +1,205 @@
+/* 🚦 «Il semaforo non sposta la griglia, e non mostra il sync» — banco del pezzo ④ della voce 137.
+ *
+ * 🗣️ LA VOCE È SUA (03/09/2026): «come poter avere sul gestionale la visione di quello che sta
+ * succedendo sul Matchpoint NON legato alla scheda… tipo in sovrapposizione sul calendario»,
+ * col vincolo «ricordati che si utilizza la web app sia da mobile che da desktop».
+ * Fra quattro disposizioni disegnate ha scelto la **D**: barra sovrapposta al bordo basso della
+ * griglia (larga quanto lei) **+ la cella accesa** quando lo slot è in vista.
+ *
+ * ⚖️ PERCHÉ LA D E NON LE ALTRE, che è quello che questo banco difende:
+ *   · la **C** stava nel flusso e spostava la griglia di ~22px ⇒ riapriva il 3 giugno 2026
+ *     (quando il banner fu tolto proprio perché ingombrava) **e** la voce 130;
+ *   · la **B**, solo la cella, tace quando lo slot è fuori vista — e quel silenzio è
+ *     indistinguibile da «non sta succedendo nulla»;
+ *   · la **A**, la pastiglia nell'angolo, sul telefono tronca la frase utile.
+ *
+ * 🚨⭐⭐ E IL DIFETTO CHE LA VERSIONE SPENTA AVEVA DENTRO, e che riaccenderla senza guardare
+ * avrebbe rimesso in servizio: `svcRenderQueueStatus` leggeva `snap.running` e `snap.waitingCount`
+ * GREZZI, quindi scriveva «🔄 Sincronizzazione automatica in corso…» ogni due minuti — cioè
+ * esattamente la cosa che lui ha chiesto di non vedere — e contava i job automatici nel
+ * «in coda: N», annunciando un ingorgo dove non c'era.
+ * 📌 *Un pezzo funzionante spento per una ragione di layout non è un pezzo pronto: è un pezzo che
+ * nessuno ha più guardato, e nel frattempo le decisioni sono cambiate.*
+ *
+ * ⛔ QUELLO CHE QUESTO BANCO **NON** DICE: che la barra si veda, che stia dove deve stare sullo
+ * schermo vero, e che da telefono si legga. Gira senza browser ⇒ prova le REGOLE. Il resto lo
+ * dicono la console remota su TEST e poi il suo occhio, ed è per questo che il pezzo ④ NON va
+ * su PROD prima che lui l'abbia guardato: la disposizione l'ha scelta da disegni, non dal vivo.
+ *
+ * Esegui:  node test/il-semaforo-non-sposta-la-griglia.test.mjs
+ */
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const QUI = dirname(fileURLToPath(import.meta.url));
+const APP = readFileSync(join(QUI, '..', 'index.html'), 'utf8');
+
+let passed = 0, failed = 0;
+function test(nome, fn) {
+  try { fn(); passed++; console.log('ok   - ' + nome); }
+  catch (e) { failed++; console.log('FAIL - ' + nome + '\n       ' + e.message); }
+}
+
+/** Le sole righe di CODICE di un testo: via i commenti.
+ *
+ * 🩹⭐ SERVE, e l'ho imparato tre volte oggi. Una sonda che cerca «questa cosa non deve
+ * comparire» e guarda anche i commenti dà l'allarme **proprio a chi ha scritto la difesa**:
+ * il commento che spiega *perché* non si usa `innerHTML` contiene la parola `innerHTML`.
+ * 📌 *Una guardia deve rompersi su ciò che è sbagliato, non su ciò che ne parla.*
+ */
+function soloCodice(testo) {
+  return String(testo).split('\n').filter(function (r) {
+    return !/^\s*(\/\/|\*|\/\*)/.test(r);
+  }).join('\n');
+}
+
+/** Il corpo di `function nome(`, contando le graffe dalla PRIMA del corpo.
+ *  ⚠️ Si parte da `) {` e non da `function`: un valore predefinito `= {}` nella firma aprirebbe
+ *  e chiuderebbe una graffa prima del corpo, e il ritaglio finirebbe dopo tre caratteri. */
+function corpoDi(nome) {
+  const i = APP.indexOf('function ' + nome + '(');
+  assert.ok(i > 0, 'funzione non trovata: ' + nome);
+  const apre = APP.indexOf(') {', i);
+  assert.ok(apre > i, 'firma inattesa: ' + nome);
+  let g = 0, visto = false, out = '';
+  for (let k = apre + 2; k < APP.length; k++) {
+    const c = APP[k];
+    out += c;
+    if (c === '{') { g++; visto = true; }
+    else if (c === '}') { g--; if (visto && g === 0) break; }
+  }
+  return out;
+}
+
+// ── ① LA BARRA È SOVRAPPOSTA — la ragione per cui la D è stata scelta ───────────────────────
+test('la barra è fuori dal flusso: `absolute` sul bordo basso', () => {
+  const i = APP.indexOf('.svc-semaforo {');
+  assert.ok(i > 0, 'la regola CSS della barra non c\'è');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/position:absolute/.test(regola), 'la barra è tornata nel flusso: sposterebbe la griglia');
+  assert.ok(/bottom:0/.test(regola), 'la barra non è ancorata al bordo basso');
+  assert.ok(/left:0/.test(regola) && /right:0/.test(regola), 'la barra non è larga quanto la griglia');
+});
+
+test('la colonna della griglia è posizionata, o la barra finisce in fondo allo schermo', () => {
+  const i = APP.indexOf('.svc-grid-col {');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/position:relative/.test(regola),
+    'senza `position:relative` la barra si ancora alla pagina, non alla griglia');
+});
+
+test('la barra non ruba i click alla griglia sotto', () => {
+  const i = APP.indexOf('.svc-semaforo {');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/pointer-events:none/.test(regola),
+    'la barra intercetta i click: uno slot coperto sarebbe uno slot che ogni tanto non si prenota');
+});
+
+test('il testo si tronca invece di andare a capo', () => {
+  // Una barra che cresce in altezza si mangia una riga di calendario proprio quando c'è
+  // qualcosa da guardare.
+  const i = APP.indexOf('.svc-semaforo-testo {');
+  assert.ok(i > 0, 'manca la regola del testo');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/white-space:nowrap/.test(regola) && /text-overflow:ellipsis/.test(regola), regola);
+});
+
+test('la barra nasce NASCOSTA', () => {
+  const i = APP.indexOf('id="svcQueueStatus"');
+  assert.ok(i > 0, 'l\'elemento della barra non è nel DOM (era stato tolto nel 2026)');
+  const tag = APP.slice(APP.lastIndexOf('<', i), APP.indexOf('>', i) + 1);
+  assert.ok(/\bhidden\b/.test(tag), 'la barra nasce visibile: si vedrebbe una striscia vuota');
+  assert.ok(/aria-live/.test(tag), 'la barra non si annuncia a chi usa un lettore di schermo');
+});
+
+test('la barra sta DENTRO la colonna della griglia', () => {
+  // Fuori di lì `position:absolute` si ancorerebbe a un'altra antenata.
+  const col = APP.indexOf('<div class="svc-grid-col">');
+  const barra = APP.indexOf('id="svcQueueStatus"');
+  const chiusura = APP.indexOf('<div class="svc-chat-panel"', col);
+  assert.ok(col > 0 && barra > col && barra < chiusura, 'la barra è finita fuori dalla colonna');
+});
+
+// ── ② IL SYNC NON SI VEDE — il difetto che la versione spenta aveva dentro ──────────────────
+test('il render legge `semaforo`, MAI lo snapshot grezzo', () => {
+  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  assert.ok(/snap\.semaforo/.test(corpo), 'il render non legge il semaforo tradotto dalla edge');
+  assert.ok(!/snap\.running/.test(corpo), 'il render è tornato a leggere `running` grezzo');
+  assert.ok(!/waitingCount/.test(corpo), 'il render è tornato a contare i job automatici');
+});
+
+test('la frase «Sincronizzazione automatica in corso» non esiste più nel render', () => {
+  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  assert.ok(!/Sincronizzazione automatica/i.test(corpo),
+    'è tornata la frase che lui ha chiesto di NON vedere sul calendario');
+});
+
+test('la frase si scrive come TESTO, non come markup', () => {
+  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  assert.ok(!/innerHTML/.test(corpo),
+    'la frase attraversa la coda del worker: non è un posto in cui si accetta del markup');
+  assert.ok(/textContent = sem\.frase/.test(corpo), 'la frase non si scrive più con `textContent`');
+});
+
+// ── ③ IL POLLING È RIACCESO — era commentato dal 3 giugno 2026 ──────────────────────────────
+test('`svcStartQueuePolling()` non è più commentata', () => {
+  assert.ok(/\n\s*svcStartQueuePolling\(\);/.test(APP),
+    'la riga che accende il semaforo è ancora commentata');
+  assert.ok(!/\/\/\s*svcStartQueuePolling\(\);/.test(APP),
+    'è rimasta la vecchia riga commentata: due righe, una sola vera');
+});
+
+// ── ④ LA CELLA — la seconda metà della D ────────────────────────────────────────────────────
+test('ogni cella dichiara le proprie coordinate', () => {
+  // Tutte e tre le forme: occupata di testa, occupata di continuazione, libera. Un gesto può
+  // riguardare uno slot qualunque, e una cella senza coordinate il semaforo non la trova.
+  assert.ok(/el\.dataset\.campo = String\(f\); el\.dataset\.ora = hour;/.test(APP),
+    'le celle non dichiarano più dove si trovano');
+  const conteggio = (APP.match(/_dove\(document\.createElement\('div'\)\)/g) || []).length;
+  assert.equal(conteggio, 3, 'le forme di cella con coordinate sono ' + conteggio + ', non 3');
+});
+
+test('un gesto di un ALTRO giorno non accende una cella di oggi', () => {
+  const corpo = corpoDi('svcAccendiCella');
+  assert.ok(/staffCalDate/.test(corpo) && /dove\.data !== giornoMostrato/.test(corpo),
+    'la cella si accenderebbe anche per un gesto su un altro giorno');
+});
+
+test('senza coordinate non si accende niente, e non si rompe niente', () => {
+  const corpo = corpoDi('svcAccendiCella');
+  assert.ok(/if \(!dove \|\| !dove\.campo \|\| !dove\.ora\) return;/.test(corpo),
+    'la cella si accende su coordinate incomplete');
+});
+
+test('la cella accesa si spegne prima di accenderne un\'altra', () => {
+  // Senza, due gesti di fila lascerebbero due celle accese e il calendario direbbe il falso.
+  const corpo = corpoDi('svcAccendiCella');
+  assert.ok(/querySelectorAll\('\.svc-cella-attiva'\)/.test(corpo) && /classList\.remove\('svc-cella-attiva'\)/.test(corpo), corpo.slice(0, 300));
+});
+
+test('la cella si riaccende SUBITO dopo un ridisegno della griglia', () => {
+  // 🚨 La griglia si ridisegna da sé (un sync, un click, un cambio giorno) e porta via la cella
+  //    accesa. Aspettare il giro dopo del polling vuol dire fino a 4 secondi di buio su un gesto
+  //    che ne dura sei: la cella spenta a metà racconta che l'operazione è finita quando non lo è.
+  assert.ok(/svcRiaccendiCellaDopoRidisegno\(\);/.test(APP), 'manca la chiamata dopo il ridisegno');
+  assert.ok(/let _svcUltimoSemaforo = null;/.test(APP), 'non si tiene l\'ultimo semaforo ricevuto');
+});
+
+test('la cella accesa non sposta di un pixel quello che le sta intorno', () => {
+  const i = APP.indexOf('.cell.svc-cella-attiva {');
+  assert.ok(i > 0, 'manca la regola della cella accesa');
+  const regola = APP.slice(i, APP.indexOf('}', i));
+  assert.ok(/outline:/.test(regola), 'usa un `border`, che cambia la scatola e sposta la griglia');
+  assert.ok(!/(^|[^-])border:/.test(regola), regola);
+});
+
+// ── ⑤ IL MOVIMENTO SI PUÒ SPEGNERE ──────────────────────────────────────────────────────────
+test('chi ha chiesto meno animazioni non vede il puntino pulsare', () => {
+  assert.ok(/prefers-reduced-motion: reduce\) \{ \.svc-semaforo-dot \{ animation:none/.test(APP),
+    'il puntino pulsa anche per chi ha chiesto di non vedere animazioni');
+});
+
+console.log('\n' + passed + ' ok, ' + failed + ' failed');
+process.exit(failed ? 1 : 0);

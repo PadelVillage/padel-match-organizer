@@ -241,5 +241,35 @@ test('il RUOLO, non l\'email: le tre edge non riconoscono il bot da una stringa'
   }
 });
 
+// ── ⑧ LE COORDINATE — strutturate, non spremute dall'etichetta ──────────────────────────────
+test('`dove` attraversa tutta la catena, come `gesto` e `chiestoDa`', () => {
+  assert.ok(/const dove = \{/.test(SERVER), '`mpJobMeta` non compone più `dove`');
+  assert.ok(/dove: meta\.dove \|\| null,/.test(SERVER),
+    '`mpQueueRun` non copia `dove` sul job: si fermerebbe alla meta');
+  assert.ok(/dove: mpQueue\.running\.dove \|\| null,/.test(SERVER),
+    'lo snapshot non espone `dove` sul job in corso');
+  assert.ok(/dove: j\.dove \|\| null/.test(SERVER),
+    'lo snapshot non espone `dove` sui job in attesa');
+});
+
+test('OGNI etichetta porta `dove` insieme a `gesto` e `chiestoDa`', () => {
+  const i = SERVER.indexOf('function mpJobMeta(');
+  const apre = SERVER.indexOf(') {', i);
+  let g = 0, visto = false, corpo = '';
+  for (let k = apre + 2; k < SERVER.length; k++) {
+    const c = SERVER[k];
+    corpo += c;
+    if (c === '{') { g++; visto = true; }
+    else if (c === '}') { g--; if (visto && g === 0) break; }
+  }
+  const ritorni = corpo.split('\n').filter((r) => r.includes('return { op,'));
+  assert.ok(ritorni.length >= 6, 'i return sono meno di prima: ' + ritorni.length);
+  for (const r of ritorni) {
+    for (const campo of ['gesto', 'chiestoDa', 'dove']) {
+      assert.ok(r.includes(campo), `un return senza \`${campo}\`: ` + r.trim());
+    }
+  }
+});
+
 console.log('\n' + passed + ' ok, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);
