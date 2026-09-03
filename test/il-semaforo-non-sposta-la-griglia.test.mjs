@@ -122,26 +122,39 @@ test('la barra sta DENTRO la colonna della griglia', () => {
   assert.ok(col > 0 && barra > col && barra < chiusura, 'la barra è finita fuori dalla colonna');
 });
 
+/* 🩹 LA SONDA SI È SPOSTATA, il 03/09 notte, e la riga vecchia è stata CORRETTA e non affiancata.
+   Fino a quella sera il disegno stava tutto dentro `svcRenderQueueStatus`, e questi casi
+   guardavano lì. Col pezzo ⑤ della voce 137 la barra ha DUE fonti — la coda e il gesto fatto da
+   questo browser — e il disegno è passato in `svcRidisegnaSemaforo`, mentre `svcRenderQueueStatus`
+   è rimasto il guscio che riceve lo snapshot.
+   🚨 I tre casi che sono diventati rossi NON avevano trovato un difetto: guardavano un posto che
+   il codice aveva lasciato. ⇒ Si leggono i DUE corpi insieme, così la sonda regge anche il giorno
+   in cui il disegno si sposterà ancora.
+   📌 *Quando una prova cade dopo una riorganizzazione, il primo sospettato è la prova.* */
+function corpoDelDisegno() {
+  return soloCodice(corpoDi('svcRenderQueueStatus')) + '\n' + soloCodice(corpoDi('svcRidisegnaSemaforo'));
+}
+
 // ── ② IL SYNC NON SI VEDE — il difetto che la versione spenta aveva dentro ──────────────────
 test('il render legge `semaforo`, MAI lo snapshot grezzo', () => {
-  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  const corpo = corpoDelDisegno();
   assert.ok(/snap\.semaforo/.test(corpo), 'il render non legge il semaforo tradotto dalla edge');
   assert.ok(!/snap\.running/.test(corpo), 'il render è tornato a leggere `running` grezzo');
   assert.ok(!/waitingCount/.test(corpo), 'il render è tornato a contare i job automatici');
 });
 
 test('la frase «Sincronizzazione automatica in corso» non esiste più nel render', () => {
-  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  const corpo = corpoDelDisegno();
   assert.ok(!/Sincronizzazione automatica/i.test(corpo),
     'è tornata la frase che lui ha chiesto di NON vedere sul calendario');
 });
 
 test('la frase si scrive come TESTO, non come markup', () => {
-  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
+  const corpo = corpoDelDisegno();
   assert.ok(!/innerHTML/.test(corpo),
     'la frase attraversa la coda del worker: non è un posto in cui si accetta del markup');
-  assert.ok(/testo\.textContent = sem\.che/.test(corpo), 'la frase non si scrive più con `textContent`');
-  assert.ok(/chi\.textContent = sem\.chi;/.test(corpo), 'il «chi» non si scrive più con `textContent`');
+  assert.ok(/testo\.textContent = che;/.test(corpo), 'la frase non si scrive più con `textContent`');
+  assert.ok(/spanChi\.textContent = chi;/.test(corpo), 'il «chi» non si scrive più con `textContent`');
 });
 
 // ── ③ IL POLLING È RIACCESO — era commentato dal 3 giugno 2026 ──────────────────────────────
@@ -208,8 +221,8 @@ test('il «chi» si disegna a parte e NON si tronca', () => {
   //    caratteri su 61**, e a cadere era la coda — cioè proprio il «chi». Su un telefono, chi fa
   //    segreteria perdeva l'unica cosa che gli dice se è stata lei o no, e gli restava il
   //    dettaglio di campo e ora che la cella accesa gli dice già.
-  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
-  assert.ok(/sem\.che/.test(corpo), 'il render non usa più la metà `che`');
+  const corpo = corpoDelDisegno();
+  assert.ok(/sem\.che \|\| sem\.frase/.test(corpo), 'il render non usa più la metà `che` della coda');
   assert.ok(/svc-semaforo-chi/.test(corpo), 'il «chi» non ha più un elemento suo');
   const i = APP.indexOf('.svc-semaforo-chi {');
   assert.ok(i > 0, 'manca la regola CSS del «chi»');
@@ -218,8 +231,8 @@ test('il «chi» si disegna a parte e NON si tronca', () => {
 });
 
 test('senza «chi» la barra non disegna un elemento vuoto', () => {
-  const corpo = soloCodice(corpoDi('svcRenderQueueStatus'));
-  assert.ok(/if \(sem\.chi\) \{/.test(corpo), 'il «chi» si disegna anche quando non c\'è');
+  const corpo = corpoDelDisegno();
+  assert.ok(/if \(chi\) \{/.test(corpo), 'il «chi» si disegna anche quando non c\'è');
 });
 
 console.log('\n' + passed + ' ok, ' + failed + ' failed');
