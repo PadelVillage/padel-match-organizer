@@ -2237,7 +2237,54 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ✅ **DECISA, da scrivere**
+### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ⏳ **① e ② IN SERVIZIO, mancano ③ e ④**
+
+🔄 **AGGIORNATA il 03/09 sera (76ª): i primi due dei quattro pezzi sono scritti, fusi e deployati.**
+
+| pezzo | stato |
+|---|---|
+| **①** worker: la coda smette di chiamare «modifica» una lettura | ✅ **in servizio** su Hetzner (PR #1305) |
+| **②** le tre edge dicono al worker CHI ha chiesto la scrittura | ✅ **in servizio** su `qqbf…` e sul worker (PR #1306) |
+| **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ⛔ **da scrivere** |
+| **④** app: la barra D + la cella + riaccendere `svcStartQueuePolling()` | ⛔ **da scrivere** |
+
+🚨 **IL SEMAFORO NON SI VEDE ANCORA, ed è la cosa da non fraintendere leggendo «in servizio».** I due
+pezzi fatti stanno **sotto**: la coda adesso sa dire il vero su cosa sta facendo e per chi. Quello che
+chi fa segreteria **guarda** — la barra sul calendario — non esiste, e finché non esiste la voce non
+si avvicina alla chiusura di un passo solo agli occhi di chi la usa.
+
+🩹⭐⭐ **E UNA RIGA DI QUESTA SCHEDA ERA FALSA, misurata scrivendo il pezzo ②.** Diceva che la coda
+distingue un gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*, e ne traeva
+l'avvertimento che filtrare su un'assenza avrebbe fatto sparire in silenzio un gesto staff a cui
+quel campo sfuggisse.
+📏 **Non è così**: `consumerActor` dà da sempre al bot un attore **pieno** — `role: 'consumer'` e
+un'email sua (`assistente-soci@padelvillage.club`) — su **tutte e tre** le edge. `operatore` c'è, e
+non è vuoto.
+⇒ **Cambia la cura, non solo la frase**: non c'era nessuna assenza da rendere esplicita, c'era un
+**ruolo** che si fermava all'edge invece di arrivare al worker. Il campo `chiestoDa` porta il
+**ruolo**, non l'email — `email === 'assistente-soci@…'` funzionerebbe finché nessuno rinomina
+quella casella, e il giorno in cui la rinomina **niente diventa rosso**.
+📌 *Una regola che poggia su una stringa che qualcun altro può cambiare non è una regola: è una
+scommessa sul fatto che nessuno la cambi.*
+
+🧪 **Banco: `tools/matchpoint-browser-worker/test/gesto-di-una-persona.test.mjs`, 19 prove**, e la
+catena `chiestoDa` si controlla **anello per anello** (meta → job → snapshot).
+🚨 **Perché anello per anello, e non a campione**: scrivendo ① il flag `gesto` **non arrivava alla
+coda** — `mpQueueRun` costruisce il job campo per campo, non con uno spread, quindi lo snapshot
+avrebbe letto `undefined`. Sarebbe stato **un semaforo spento per sempre**, indistinguibile da «non
+sta succedendo niente». 📌 *Il difetto di un oggetto ricostruito a mano non è che si dimentica un
+campo: è che dimenticarlo non fa rumore.*
+
+🩹 **E due sonde erano rosse per sé stesse, non per un difetto:** una ritagliava `mpJobMeta`
+contando le graffe da `function`, ma la firma è `(op, body = {})` e quel `{}` del valore predefinito
+chiudeva il ritaglio dopo tre caratteri; l'altra vietava di riconoscere il bot per email e cascava
+sul **commento** che spiega perché non si fa. 📌 *Una guardia deve rompersi su ciò che è sbagliato,
+non su ciò che ne parla.*
+
+---
+
+#### Il disegno per intero, che resta perché ③ e ④ ci si appoggiano
+
 
 🗣️ **Voce SUA**, 03/09/2026: *«quello che vorrei studiare con te è come poter avere sul gestionale
 la visione di quello che sta succedendo sul Matchpoint **non legato alla scheda**… se ci sganciamo
@@ -2356,19 +2403,21 @@ di rileggerla — è la lezione già pagata due volte con gli elenchi scritti a 
 `export-slot-schedule` · `get-slots` · `read-tabellone` · `read-wallet` · i due export dei report ·
 `poll` · `keepalive` · `debug`.
 
-## 🔧 COSA MANCA DA SCRIVERE, in ordine
+## 🔧 I QUATTRO PEZZI — i primi due FATTI, gli altri due no
 
-1. **Worker** (⚠️ **solo da `main`**, regola anti-drift): `mpJobMeta` deve smettere di chiamare
-   «modifica» una lettura e «nuovo cliente» una ricerca. **Si corregge alla radice**, o lo stesso
-   errore ricompare in ogni consumatore che leggerà quella coda.
-2. **Edge** (3 righe in `matchpoint-bookings-create` / `edit` / `cancel`): inoltrare `chiestoDa` al
-   worker. 🚨 Oggi **si ferma all'edge**: la coda distingue un gesto del bot solo perché gli
-   **manca** `operatore` — cioè su **un'assenza**, e filtrare su un'assenza fa sparire in silenzio
-   un gesto staff a cui quel campo sfuggisse. Serve a **etichettare** («richiesta da un socio»),
-   non a nascondere.
-3. **Edge `matchpoint-queue-status`**: filtrare l'automatico e tradurre in frasi del gestionale.
-4. **App**: la barra D + la cella accesa + riaccendere `svcStartQueuePolling()` (oggi commentata) e
-   **ricreare l'elemento** su cui disegnare, che il 3 giugno era stato tolto dal DOM.
+1. ✅ **Worker** (⚠️ **solo da `main`**, regola anti-drift): `mpJobMeta` ha smesso di chiamare
+   «modifica» una lettura e «nuovo cliente» una ricerca. **Corretto alla radice**, o lo stesso
+   errore sarebbe ricomparso in ogni consumatore che leggerà quella coda. In servizio (PR #1305).
+2. ✅ **Edge** (`matchpoint-bookings-create` / `edit` / `cancel`): inoltrano `chiestoDa` al worker,
+   che lo porta fino allo snapshot. In servizio (PR #1306).
+   🩹 **La riga che stava qui era falsa** e diceva che la coda riconosce il bot da **un'assenza**
+   di `operatore`: vedi la correzione in testa alla scheda. Non era un'assenza, era un **ruolo**
+   che si fermava all'edge. Serve a **etichettare** («richiesta da un socio»), non a nascondere.
+3. ⛔ **Edge `matchpoint-queue-status`**: filtrare l'automatico e tradurre in frasi del gestionale.
+   📌 I mattoni ci sono già: lo snapshot porta `gesto` (*c'è una persona dietro?*) e `chiestoDa`
+   (*socio o staff?*), quindi qui non si ricalcola niente — si **traduce**.
+4. ⛔ **App**: la barra D + la cella accesa + riaccendere `svcStartQueuePolling()` (oggi commentata)
+   e **ricreare l'elemento** su cui disegnare, che il 3 giugno era stato tolto dal DOM.
 
 Non scavalca niente: entra in fondo.
 
