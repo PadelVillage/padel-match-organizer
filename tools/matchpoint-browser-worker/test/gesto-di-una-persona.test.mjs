@@ -178,5 +178,68 @@ test('nessuna etichetta della coda porta con sé un TELEFONO', () => {
   }
 });
 
+// ── ⑦ CHI HA CHIESTO — «socio» dal bot, «staff» dalla segreteria ────────────────────────────
+test('`chiestoDa` attraversa TUTTA la catena: meta → job → snapshot', () => {
+  // 🚨 Stessa forma del difetto di `gesto`: il job si costruisce campo per campo, quindi un
+  //    campo nuovo che non venga aggiunto in `mpQueueRun` si perde in silenzio. Qui la catena
+  //    si controlla ANELLO PER ANELLO, perché è l'unico modo in cui il buco fa rumore.
+  assert.ok(/const chiestoDa = clean\(body\.chiestoDa\) \|\| '';/.test(SERVER),
+    '`mpJobMeta` non legge più `chiestoDa` dal payload');
+  assert.ok(/chiestoDa: meta\.chiestoDa \|\| '',/.test(SERVER),
+    '`mpQueueRun` non copia `chiestoDa` sul job: si fermerebbe alla meta');
+  assert.ok(/chiestoDa: mpQueue\.running\.chiestoDa \|\| '',/.test(SERVER),
+    'lo snapshot non espone `chiestoDa` sul job in corso');
+  assert.ok(/chiestoDa: j\.chiestoDa \|\| ''/.test(SERVER),
+    'lo snapshot non espone `chiestoDa` sui job in attesa');
+});
+
+test('OGNI etichetta di `mpJobMeta` porta con sé `chiestoDa`', () => {
+  // Un solo `return` dimenticato basterebbe a far sparire l'etichetta per UN tipo di gesto —
+  // e sarebbe il difetto peggiore, perché gli altri cinque continuerebbero a funzionare.
+  const i = SERVER.indexOf('function mpJobMeta(');
+  const apre = SERVER.indexOf(') {', i);
+  let g = 0, visto = false, corpo = '';
+  for (let k = apre + 2; k < SERVER.length; k++) {
+    const c = SERVER[k];
+    corpo += c;
+    if (c === '{') { g++; visto = true; }
+    else if (c === '}') { g--; if (visto && g === 0) break; }
+  }
+  const ritorni = corpo.split('\n').filter((r) => r.includes('return { op,'));
+  assert.ok(ritorni.length >= 6, 'i return di `mpJobMeta` sono meno di prima: ' + ritorni.length);
+  for (const r of ritorni) {
+    assert.ok(r.includes('chiestoDa'), 'un return senza `chiestoDa`: ' + r.trim());
+    assert.ok(r.includes('gesto'), 'un return senza `gesto`: ' + r.trim());
+  }
+});
+
+test('il RUOLO, non l\'email: le tre edge non riconoscono il bot da una stringa', () => {
+  // ⛔ `email === 'assistente-soci@…'` funzionerebbe finché nessuno rinomina quella casella, e il
+  //    giorno in cui qualcuno la rinomina NIENTE diventa rosso: i gesti dal bot si
+  //    ridichiarerebbero «staff» in silenzio.
+  // 🩹 E la scheda della 137 qui sbagliava: diceva che il bot si riconosce da un'ASSENZA di
+  //    `operatore`. `consumerActor` gli dà un attore pieno — `operatore` c'è e non è vuoto.
+  for (const quale of ['create', 'edit', 'cancel']) {
+    const p = join(QUI, '..', '..', '..', 'supabase', 'functions', `matchpoint-bookings-${quale}`, 'index.ts');
+    const edge = readFileSync(p, 'utf8');
+    assert.ok(/function chiCiHaChiesto\(actor: StaffActor\): string \{\s*\n\s*return actor\.role === 'consumer' \? 'socio' : 'staff';/.test(edge),
+      `${quale}: \`chiCiHaChiesto\` non decide più sul RUOLO`);
+    assert.ok(edge.includes("chiestoDa: chiCiHaChiesto(actor)"),
+      `${quale}: la chiamata al worker non porta \`chiestoDa\``);
+    assert.ok(edge.includes("chiestoDa: chiestoDa ?? ''"),
+      `${quale}: il corpo inviato al worker non contiene \`chiestoDa\``);
+    // 🩹 Si guardano solo le righe di CODICE. La prima stesura di questa prova cercava la
+    //    stringa nel file intero ed è cascata sul COMMENTO che spiega perché non si fa così:
+    //    una sonda che non distingue il codice dalla sua documentazione dà l'allarme proprio a
+    //    chi ha scritto la difesa. 📌 *Una guardia deve rompersi su ciò che è sbagliato, non su
+    //    ciò che ne parla.*
+    const soloCodice = edge.split('\n')
+      .filter((r) => !/^\s*(\/\/|\*|\/\*)/.test(r))
+      .join('\n');
+    assert.ok(!/email === ['"]assistente-soci/.test(soloCodice),
+      `${quale}: il bot viene riconosciuto da un'EMAIL invece che dal ruolo`);
+  }
+});
+
 console.log('\n' + passed + ' ok, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

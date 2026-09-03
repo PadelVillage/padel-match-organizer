@@ -115,6 +115,35 @@ function consumerActor(req: Request): StaffActor | null {
   };
 }
 
+/**
+ * 🚦 VOCE 137 — chi ha chiesto questa scrittura, detto come FATTO e non dedotto.
+ *
+ * Serve al semaforo del calendario: chi fa segreteria vuole vedere *«c'è un'operazione in
+ * corso, e questa l'ha chiesta un socio dal bot»*. 🗣️ Decisione sua, che ha ribaltato la
+ * precedente: *«io che sono di segreteria devo vedere le azioni di chi le fa dal chatbot e le
+ * azioni che faccio io da gestionale»*.
+ *
+ * 🩹⭐⭐ E LA SCHEDA DELLA 137 QUI SBAGLIAVA, misurato il 03/09: diceva che la coda distingue un
+ * gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*. Non è così. `consumerActor`
+ * dà da sempre al bot un attore **pieno**, con `role: 'consumer'` e un'email sua
+ * (`assistente-soci@padelvillage.club`) ⇒ `operatore` c'è, e non è vuoto.
+ * ⇒ Cambia la cura, non solo la frase: non c'è nessuna assenza da rendere esplicita — c'è un
+ * **ruolo** che si ferma qui invece di arrivare al worker.
+ *
+ * ⛔ E si passa il RUOLO, non l'email, benché l'email basterebbe a riconoscerlo: filtrare su
+ * `email === 'assistente-soci@…'` funzionerebbe finché nessuno rinomina quella casella, e il
+ * giorno in cui qualcuno la rinomina **niente diventa rosso** — i gesti dal bot si
+ * ridichiarerebbero «staff» in silenzio. 📌 *Una regola che poggia su una stringa che qualcun
+ * altro può cambiare non è una regola: è una scommessa sul fatto che nessuno la cambi.*
+ *
+ * ⚖️ Etichetta, non filtro: il semaforo deve DIRE «richiesta da un socio», non NASCONDERE nulla.
+ * Un gesto che restasse senza etichetta si vede lo stesso — come «staff», che è il verso giusto
+ * in cui sbagliare (un falso silenzio sarebbe indistinguibile dal funzionamento normale).
+ */
+function chiCiHaChiesto(actor: StaffActor): string {
+  return actor.role === 'consumer' ? 'socio' : 'staff';
+}
+
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -146,8 +175,9 @@ async function callWorkerCancelBooking(opts: {
   workerApiKey: string;
   cancel: CancelRequest;
   operatore?: string;
+  chiestoDa?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, cancel, operatore } = opts;
+  const { workerUrl, workerApiKey, cancel, operatore, chiestoDa } = opts;
   const endpoint = `${workerUrl}/cancel-booking`;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -159,7 +189,7 @@ async function callWorkerCancelBooking(opts: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${workerApiKey}`,
         },
-        body: JSON.stringify({ idReserva: cancel.idReserva, campo: cancel.campo, data: cancel.data, ora: cancel.ora, operatore: operatore ?? '' }),
+        body: JSON.stringify({ idReserva: cancel.idReserva, campo: cancel.campo, data: cancel.data, ora: cancel.ora, operatore: operatore ?? '', chiestoDa: chiestoDa ?? '' }),
       });
     } catch (netErr) {
       if (attempt === 3) {
@@ -462,7 +492,7 @@ async function runCancelJobInBackground(opts: {
     // tomba, e non resterebbe nessun elenco da cui ricavare chi avvisare.
     const primaDelGesto = await rosterPrimaDellAnnullo({ supabaseUrl, supabaseKey, cancel })
       .catch(() => null);
-    const workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
+    const workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email, chiestoDa: chiCiHaChiesto(actor) });
     try {
       await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
     } catch (dbErr) {
@@ -607,7 +637,7 @@ Deno.serve(async (req: Request) => {
   // Call browser worker
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email });
+    workerResult = await callWorkerCancelBooking({ workerUrl, workerApiKey, cancel, operatore: actor.email, chiestoDa: chiCiHaChiesto(actor) });
   } catch (workerErr) {
     // ⭐ Il terzo esito anche sulla strada sincrona: 502 col CODICE giusto e il marchio.
     const ignoto = !!(workerErr && typeof workerErr === 'object' && (workerErr as { esitoIgnoto?: boolean }).esitoIgnoto === true);
