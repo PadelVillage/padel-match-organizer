@@ -2467,7 +2467,65 @@ di rileggerla — è la lezione già pagata due volte con gli elenchi scritti a 
 
 Non scavalca niente: entra in fondo.
 
-### **138** — 🔗 IL NOME DEL GIOCATORE APRE LA SCHEDA SOCIO — 🧪 **su TEST 6.301, aspetta il suo dito**
+### **138** — 🔗 IL NOME DEL GIOCATORE APRE LA SCHEDA SOCIO — 🧪 **su TEST 6.302, e apriva LA PERSONA SBAGLIATA**
+
+🚨🚨⭐⭐ **LA PRIMA STESURA APRIVA LA SCHEDA DI UN'ALTRA PERSONA, e l'ha trovato LUI al primo click**
+*(03/09 sera, TEST 6.301)*: 🗣️ *«guarda cliccando il nome sulla scheda cosa si apre… un nome
+differente 🙂 ma il clic funziona»*. Cliccando **Filippo Battistella** si apriva **Giovanni Modanese**.
+
+⚖️ **LA CAUSA È IL TERZO NUMERO.** Matchpoint dà a ogni persona **DUE numeri distinti**:
+· il **codice cliente** della tendina («000140-Nome»), che l'anagrafica tiene in `memberId`;
+· l'**id interno** (`id_people`), che tiene in `matchpointIdInterno`.
+Il roster del worker porta `HiddenFieldIdCliente`, che **malgrado il nome è l'ID INTERNO**
+(`server.mjs:5763` lo scrive a parole). ⇒ Confrontarlo col **codice cliente** fa combaciare due
+numeri **di numerazioni diverse che si sovrappongono**, e il socio che esce è un altro.
+
+🚨🚨 **E IL PROGETTO QUESTO DIFETTO L'AVEVA GIÀ PAGATO — un mese fa, in produzione, con un
+avvertimento in maiuscolo dentro il worker** (`server.mjs:6525`):
+> *«NON confrontare `HiddenFieldIdCliente` col CODICE CLIENTE. […] il 2/08/2026, in PRODUZIONE,
+> il codice cliente di Laura Aprea (000140 → «140») era identico all'ID INTERNO di Marco Aprea
+> (140)»* — e quella volta **un giocatore spariva da una partita sotto un «✅ confermato»**.
+⇒ Non è una coincidenza che ricapiti: quei due numeri **si sovrappongono davvero**, e ogni volta
+che qualcuno li confronta il danno è **muto**.
+
+📌 **LA LEZIONE, ed è la più cara della giornata**: la scheda di questa voce diceva *«il socio si
+trova confrontando `p.idCliente` con `pmoIdMatchpoint(g)`»*, e **l'ho preso per buono senza
+misurarlo**. Il codice lo smentiva in **TRE** punti — il commento di `_staffCalPlayerCode` tre
+righe sopra la funzione che stavo scrivendo, quello di `pmoIdMatchpoint`, e l'avvertimento del
+worker. *Una cura si disegna sul difetto raccontato e si convalida sul CODICE: se il racconto e il
+codice non combaciano, vale il codice.*
+⚠️ E il difetto era **il peggiore possibile per questa voce**: non dà errore, apre una scheda
+**vera**, con dentro una **persona vera**. In cassa la sera si ricarica il Wallet di chi non c'entra.
+
+🔨 **CURATO in 6.302**: si confronta l'**id interno** da tutt'e due le parti, con
+`_staffCalPlayerCode` — la stessa funzione che l'app usa già per confrontare i giocatori col worker.
+⛔ **Nessun ripiego sul nome**: davanti a un id che non aggancia, la risposta è **nome muto**.
+Cercare «per nome che somiglia» rimetterebbe in piedi la classe di difetto appena tolta.
+🧪 Il banco ora **esercita proprio questo caso**: fra i soci di prova, il `memberId` di uno vale
+quanto il `matchpointIdInterno` di un altro ⇒ chi guarda la colonna sbagliata prende la persona
+sbagliata, e la prova diventa rossa.
+
+📏🚨 **MA LA CURA SICURA RENDE LA VOCE QUASI INUTILE, ed è misurato — non va nascosto:**
+
+| | soci attivi | con **id interno** | con **codice cliente** |
+|---|---|---|---|
+| PROD, 03/09 | **3764** | **121** (3%) | 1110 (29%) |
+
+⇒ Oggi il nome è cliccabile per **tre soci su cento**. Il click non è *sbagliato*: **non c'è**.
+⚖️ È il verso giusto in cui sbagliare (muto invece che sbagliato), ma non è la voce che lui ha
+chiesto. 🗣️ La sua frase era *«cliccando il nome ti apre la sua scheda»*, non *«ogni tanto»*.
+📌 *`matchpointIdInterno` si popola SOLO quando l'app aggiunge un giocatore a una partita e il
+worker restituisce `idPeople`: cresce con l'uso, ma da 121 a 3764 non ci arriva da sé.*
+⇒ **Voce nuova, nata da questa misura: la 140** (in coda).
+
+⏳ **COSA MANCA PER CHIUDERLA**: il suo dito su un socio **che l'id interno ce l'ha** — digitare un
+importo, cliccare il nome, chiudere, e ritrovare l'importo. Dal codice risulta che non si perde
+niente (né `openMemberCard` né `closeMemberCard` toccano `staffCalPlayersState`), ma non è provato.
+
+---
+
+#### La scheda com'era, che resta per il ragionamento
+
 
 🔄 **AGGIORNATA il 03/09 sera (76ª): ha scelto, e l'ho scritta.** La domanda gliel'ho fatta mentre
 era davanti allo schermo di PROD, chiudendo la 139 — ⇒ **la ⓒ: la scheda si apre SOPRA**, senza
@@ -2552,7 +2610,7 @@ in anagrafica — gli «Ospite», che nelle sue schermate sono spesso la maggior
 
 Non scavalca niente: entra in fondo.
 
-## 📋 IN CODA — 14
+## 📋 IN CODA — 15
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2561,7 +2619,7 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
 
-### C — Cose sapute e non risolte — 13
+### C — Cose sapute e non risolte — 14
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2575,6 +2633,7 @@ i numeri erano coerenti fra loro, ed è tutto ciò che sa confrontare.
 
 | | |
 |---|---|
+| **140** | 🔢 **L'ID INTERNO MATCHPOINT CE L'HANNO 121 SOCI SU 3764** — 📏 **nata da una misura del 03/09**, fatta chiudendo il difetto della 138 e non da un'idea: su PROD i soci **attivi** sono **3764**, quelli con `matchpointIdInterno` **121 (3%)**, quelli col codice cliente **1110 (29%)**. ⚖️ **Perché conta**: l'id interno è l'**unico** numero con cui si può riconoscere senza sbagliare un giocatore letto dal **roster di una partita** — il codice cliente **non si può usare**, e la 138 ha appena mostrato cosa succede a provarci (apre la **persona sbagliata**; il worker lo dice dal 2/08/2026, con un caso di produzione). ⇒ Finché resta al 3%, **ogni** funzione che parte dal roster e vuole arrivare al socio funziona per **tre righe su cento**: oggi il nome cliccabile della 138, domani qualunque altra. 📌 **Perché è basso**: `matchpointIdInterno` si scrive **solo** quando l'app aggiunge un giocatore a una partita e il worker restituisce `idPeople`. Cresce con l'uso, ma da 121 a 3764 non ci arriva da sé. 🔨 **La strada da guardare** — ⚠️ **non ancora misurata, e va misurata prima di sceglierla**: far portare l'id interno al **sync clienti**, che l'anagrafica la rilegge tutta. Da verificare se la pagina da cui `export-clients` legge lo espone; se non lo espone, la strada è un'altra e costa di più. ⛔ **Cosa NON fare, ed è la ragione per cui questa voce esiste invece di una scorciatoia**: agganciare il socio **per nome**. È indovinare la persona, ed è la stessa classe di difetto della 138. |
 | **124** | ⏳ **L'esito del test di livello arriva DOPO 11 MINUTI — e chi apre il quiz oltre le 4 ore ricasca nel giro dei 15′** — 🆕 **entra il 02/09 pomeriggio, per DECISIONE SUA**, chiudendo la 84: messo davanti alle tre strade ha scelto *«le sposto in una voce nuova in coda»*. ⇒ **Non è una voce inventata**: sono la **ⓐ** e il residuo della **ⓒ** della 84, mai curati, che senza questa riga sparirebbero col titolo della voce chiusa. 📌 *Una voce che si chiude portandosi via del lavoro non curato non è chiusa: è persa.* 📏 **La misura sta nella 84 e non si rifà**: Laura consegna alle 09:48:22, il bot annuncia alle 09:59:11 — **10′49″**. 🔎 La causa: `avvisaEsitoDelTest` gira **dentro il giro dei promemoria**, che il bot dichiara da sé nel registro (*«🔔 avvisi ACCESI (ogni 15 min)»*) ⇒ chi consegna un secondo dopo un giro aspetta quasi un quarto d'ora. ⚙️ **La cura piena è il GESTIONALE CHE CHIAMA IL BOT** — ed è la ragione per cui è un lavoro a sé e non una riga: **il bot non ha nessuna porta in ingresso**, vuole una superficie HTTP sulla VM dietro Caddy. ⚖️ È anche la forma giusta secondo la regola di casa (*il gestionale SA, il bot DICE*): oggi il bot **chiede** a intervalli, e chiedere a intervalli è la definizione del ritardo. 🚨 **E la ⓒ**: `mi_fermo` è stato toccato **16** volte dal 24/08 e `scendo` due; il gradino si misura — **2,2 s** (Laura, 28/08) e **69 s** (Fabiola, 27/08). ⛔ **Restano ferme 9 schede in `review`** (da 5 a **125** giorni): adesso si sa **perché** per le nuove, ma le vecchie hanno `review_reason` vuoto **per costruzione** — è *«non misurato»*, non *«l'ha messa lì una persona»*, e le due non si distinguono a posteriori. |
 | **122** | 🔁 **Dopo «richiudi» il bottone restava «Richiudi» — e il socio ha ritoccato** — 🗣️ **difetto SUO, visto sul suo telefono** il 02/09 (*«mi è venuto spontaneo cliccare su richiudi la partita, però non ha funzionato»* · *«se funziona bene, dovrebbe poi dire apri la partita»*). 📏 **Misurato nel registro del bot, e la misura ribalta l'apparenza**: `00:12:54 ▸ tocca: aperte chiudi` e `00:13:10 ▸ tocca: aperte chiudi` — **due tocchi suoi a 16 secondi**, non un doppione del bot. 🚨 **NON è la voce 92**: attribuirla lì manderebbe a cercare la cosa sbagliata. Il bot ha risposto due volte perché gli è stato chiesto due volte. 🔎 **La causa**: il ramo `apri/chiudi` di `bot.ts` mandava la conferma e si fermava — nessuna riscrittura della scheda ⇒ il bottone restava «🔒 Richiudi la partita» su una partita **appena richiusa**. ⚖️ **E la cura non era da inventare: stava già scritta dieci righe più su**, nel ramo `entra` — *«lasciargli sotto gli occhi la vetrina vecchia è l'invito a toccare di nuovo lo stesso bottone»*. Il ramo accanto non l'aveva mai applicata, e stanotte l'invito è stato **accettato**. 📌 *Una regola scritta in un commento vale per il ramo in cui è scritta, non per i suoi vicini: quelli vanno guardati uno per uno.* 📌 Difetto di **forma, non di verità**: la partita era chiusa davvero tutte e due le volte — è la coppia che mente mentre i due pezzi, presi da soli, dicono il vero (voce 90). ✅ **CURATA (PR bot #118): si riscrive in tutti e tre i casi** — aperta, chiusa, rifiutata — per la stessa ragione per cui `entra` lo fa «sia che sia entrato sia che no». Banco **1718/0**, `tsc` pulito, due guardie testuali nuove **viste rosse su due sabotaggi** e verdi dopo. Il censimento di `schermata-gia-cosi` sale da 12 a 13, col perché scritto lì — ⚖️ e stavolta il punto mancante **non l'ha annunciato la guardia, l'ha annunciato lui col dito**. ⛔ **APERTA per la prova fisica**: le guardie sono **testuali** — dicono che la riscrittura è cablata, non che arrivi sullo schermo. Serve un tocco vero: toccare «🔓 Apri ad altri giocatori» e vedere il bottone diventare «🔒 Richiudi la partita» senza mandare un secondo messaggio. Non scavalca niente. |
 | **118** | 🔇 **«Non ci sono riuscito» detto su un `WORKER_ERROR` che era un «non lo so»** — 📏 misurato sugli stessi due fallimenti del 01/09. `esitoIgnotoDaRisposta` riconosce l'ignoto solo su `esitoIgnoto: true`, sul codice `WORKER_ESITO_IGNOTO`, o quando **non c'è nessun codice**. Qui il codice c'era (`WORKER_ERROR`) ⇒ è caduto fra i **rifiuti**, e il bot ha affermato che il gesto non era passato. ⚖️ Ma `locator.click: Timeout` vuol dire *«ho premuto e non so com'è finita»*: il postback di Matchpoint può essere partito lo stesso. 🍀 Stavolta il verdetto era giusto **per caso** (la rimozione non era passata); il giorno in cui passa mentre il bot dice di no, quella persona resta fuori dal campo credendosi dentro. ⇒ È la forma della voce 72 — *dire «non è successo» quando si sa solo di aver smesso di aspettare*. |

@@ -82,54 +82,64 @@ function dichiarazioneDi(nome) {
   return APP.slice(e.inizio, e.fine);
 }
 
-// La regola di ricerca del socio, ESEGUITA — non cercata con una regex.
-const trovaSocio = new Function(
-  'giocatori', 'pmoChiaveCodiceCliente', 'pmoIdMatchpoint',
-  dichiarazioneDi('_staffCalSocioDelGiocatore') + '\nreturn _staffCalSocioDelGiocatore;'
-);
-
-// Le due funzioni vere dell'app, estratte così come sono: se cambiano, cambia anche questo banco.
-// 🩹 A tutt'e due va passato `cleanCell`, e la prima stesura non lo dava alla prima: dentro
-//    `_staffCalSocioDelGiocatore` il `ReferenceError` finiva nel `try/catch`, che tornava `null`
-//    — cioè il banco diceva «il socio non si trova» quando a non funzionare era LA SONDA.
+// Le regole vere dell'app, ESEGUITE — non cercate con una regex.
+// 🩹 A `pmoChiaveCodiceCliente` va passato `cleanCell`, e la prima stesura non gliel'ha dato:
+//    dentro `_staffCalSocioDelGiocatore` il `ReferenceError` finiva nel `try/catch`, che tornava
+//    `null` — il banco diceva «il socio non si trova» mentre a non funzionare era LA SONDA.
 //    📌 *Un catch che ingoia tutto protegge l'app e acceca chi la prova: quando una prova
 //       fallisce contro una funzione difesa così, il primo sospettato è la prova.*
 const CLEAN = function (v) { return String(v == null ? '' : v).trim(); };
-const chiave = new Function('cleanCell', dichiarazioneDi('pmoChiaveCodiceCliente') + '\nreturn pmoChiaveCodiceCliente;')(CLEAN);
-const idMp = new Function('cleanCell', dichiarazioneDi('pmoIdMatchpoint') + '\nreturn pmoIdMatchpoint;')(CLEAN);
+const codiceInterno = new Function(dichiarazioneDi('_staffCalPlayerCode') + '\nreturn _staffCalPlayerCode;')();
+const trovaSocio = new Function(
+  'giocatori', '_staffCalPlayerCode',
+  dichiarazioneDi('_staffCalSocioDelGiocatore') + '\nreturn _staffCalSocioDelGiocatore;'
+);
 
+// 🚨 I SOCI DI PROVA SONO COSTRUITI SUL DIFETTO VERO: ognuno ha DUE numeri diversi, e per m2 il
+//    codice cliente vale quanto l'ID INTERNO di m1. Chi confrontasse la colonna sbagliata
+//    aprirebbe m2 al posto di m1 — che è esattamente quello che è successo su TEST 6.301.
 const SOCI = [
-  { id: 'm1', nome: 'Alberto Chiapinotto', memberId: '000140' },
-  { id: 'm2', nome: 'Erika Poser', memberId: '000255' },
-  { id: 'm3', nome: 'Senza codice', memberId: 'PMO-abc' },
+  { id: 'm1', nome: 'Alberto Chiapinotto', memberId: '000140', matchpointIdInterno: '9911' },
+  { id: 'm2', nome: 'Erika Poser',         memberId: '9911',   matchpointIdInterno: '4477' },
+  { id: 'm3', nome: 'Senza id interno',    memberId: '000255', matchpointIdInterno: '' },
 ];
-const cerca = (p) => trovaSocio(SOCI, chiave, idMp)(p);
+const cerca = (p) => trovaSocio(SOCI, codiceInterno)(p);
 
-// ── ① IL SOCIO SI TROVA, E LA CHIAVE SI NORMALIZZA ──────────────────────────────────────────
+// ── ① IL SOCIO SI TROVA, E SI TROVA SULL'ID INTERNO ─────────────────────────────────────────
 test('un giocatore del roster trova il suo socio', () => {
-  const s = cerca({ nome: 'Alberto Chiapinotto', idCliente: '000140' });
+  // `idCliente` del roster è l'ID INTERNO (`HiddenFieldIdCliente`), non il codice cliente.
+  const s = cerca({ nome: 'Alberto Chiapinotto', idCliente: '9911' });
   assert.ok(s, 'socio non trovato');
   assert.equal(s.id, 'm1');
 });
 
-test('«140» e «000140» sono lo stesso socio', () => {
-  // Il roster e l'anagrafica non scrivono il codice con lo stesso numero di zeri: senza la
-  // normalizzazione a sei cifre metà dei nomi resterebbero muti senza una ragione visibile.
-  assert.equal(cerca({ idCliente: '140' }).id, 'm1');
-  assert.equal(cerca({ idCliente: '000140' }).id, 'm1');
+// ── ①bis IL DIFETTO CHE HA TROVATO LUI, e che questo banco esiste per non far tornare ───────
+test('🚨 NON apre la scheda di un\'altra persona (i due numeri di Matchpoint)', () => {
+  // 🗣️ Su TEST 6.301, al primo click: «guarda cliccando il nome sulla scheda cosa si apre… un
+  //    nome differente». Cliccando «Filippo Battistella» si apriva «Giovanni Modanese».
+  // ⚖️ Matchpoint dà a ogni cliente DUE numeri: il CODICE CLIENTE («000140-Nome», in `memberId`)
+  //    e l'ID INTERNO (`id_people`, in `matchpointIdInterno`). La prima stesura confrontava
+  //    l'id interno del roster col CODICE CLIENTE dell'anagrafica ⇒ due numeri diversi che per
+  //    caso si somigliano, e il socio che esce è un altro.
+  // 🚨 Nei soci di prova il `memberId` di m2 vale quanto il `matchpointIdInterno` di m1: chi
+  //    guarda la colonna sbagliata prende m2. Deve prendere m1.
+  const s = cerca({ nome: 'Alberto Chiapinotto', idCliente: '9911' });
+  assert.equal(s.id, 'm1', 'ha agganciato il socio SBAGLIATO: sta confrontando il codice cliente');
+  assert.notEqual(s.nome, 'Erika Poser');
 });
 
-test('gli zeri IN ECCESSO non si tolgono — limite dichiarato, non difetto di questa voce', () => {
-  // 📏 Misurato scrivendo il banco: `pmoChiaveCodiceCliente` riempie gli zeri MANCANTI
-  //    (`padStart(6)`) ma non toglie quelli in più ⇒ «00000140» a otto cifre non aggancia.
-  // ⛔ Non si cura QUI, ed è una scelta: quella funzione è la stessa che regge l'anti-omonimia
-  //    delle SCRITTURE su Matchpoint (`pmoChiaveCodiceCliente` in `index.html:11491`). Allargarla
-  //    per far cliccare un nome vorrebbe dire toccare la guardia che impedisce di aggiungere il
-  //    socio sbagliato a una partita: un prezzo sproporzionato al guadagno.
-  // ⚖️ E il caso è teorico: Matchpoint i codici li scrive a sei cifre. Se un giorno smettesse, il
-  //    sintomo sarebbe un nome muto — cioè il verso SICURO in cui sbagliare, non un nome che apre
-  //    la scheda di qualcun altro.
-  assert.equal(cerca({ idCliente: '00000140' }), null);
+test('l\'id interno NON si riempie di zeri', () => {
+  // Il `padStart(6)` serve al CODICE cliente («140» = «000140»). L'id interno è un numero e
+  // basta: normalizzarlo qui farebbe combaciare cose che Matchpoint tiene distinte — cioè
+  // ricreerebbe, in piccolo, lo stesso difetto appena tolto.
+  assert.equal(cerca({ idCliente: '009911' }), null);
+});
+
+test('un socio SENZA id interno non viene agganciato da una chiave vuota', () => {
+  // Se la chiave vuota di un Ospite facesse coppia con la chiave vuota di un socio, OGNI ospite
+  // aprirebbe la scheda di quel socio. È il difetto peggiore possibile qui, ed è silenzioso.
+  assert.equal(codiceInterno(SOCI[2]), '', 'il socio di prova non è più senza id interno');
+  assert.equal(cerca({ nome: 'Ospite', idCliente: '' }), null);
 });
 
 // ── ② GLI «OSPITE» RESTANO MUTI — la regola che vale più di tutte ────────────────────────────
@@ -140,21 +150,22 @@ test('un «Ospite» non trova nessuno', () => {
   assert.equal(cerca({ nome: 'Ospite', idCliente: null }), null);
 });
 
-test('un codice che non è un numero non aggancia niente', () => {
+test('un id che non è un numero non aggancia niente', () => {
   assert.equal(cerca({ idCliente: 'PMO-abc' }), null);
   assert.equal(cerca({ idCliente: 'ospite' }), null);
 });
 
-test('un codice che nessun socio ha resta muto, non aggancia il primo che passa', () => {
+test('un id che nessun socio ha resta muto, non aggancia il primo che passa', () => {
   assert.equal(cerca({ idCliente: '999999' }), null);
 });
 
-test('un socio senza codice Matchpoint non viene agganciato per sbaglio', () => {
-  // `pmoIdMatchpoint` torna '' per un `PMO-…`: se la chiave vuota facesse coppia con la chiave
-  // vuota di un Ospite, OGNI ospite aprirebbe la scheda di quel socio. È il difetto peggiore
-  // possibile qui, ed è silenzioso.
-  assert.equal(cerca({ nome: 'Ospite', idCliente: '' }), null);
-  assert.equal(idMp(SOCI[2]), '', 'il socio di prova non è più senza codice: il caso non è coperto');
+test('⛔ nessun ripiego sul NOME quando l\'id non aggancia', () => {
+  // Cercare «per nome che somiglia» rimetterebbe in piedi la classe di difetto appena tolta:
+  // indovinare la persona. Davanti a un id che non aggancia la risposta è nome muto.
+  assert.equal(cerca({ nome: 'Erika Poser', idCliente: '' }), null);
+  assert.equal(cerca({ nome: 'Alberto Chiapinotto', idCliente: '999999' }), null);
+  const corpo = soloCodice(corpoDi('_staffCalSocioDelGiocatore'));
+  assert.ok(!/\.nome/.test(corpo), 'la ricerca del socio guarda il nome: è un ripiego che indovina');
 });
 
 // ── ③ NON SI ROMPE ──────────────────────────────────────────────────────────────────────────
