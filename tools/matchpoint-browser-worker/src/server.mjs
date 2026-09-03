@@ -11,6 +11,7 @@ import {
 // ⚠️ Si importa SOLO `mpJobPriority`: gli elenchi delle op vivono là e chi li vuole leggere va
 // là. Importarli qui senza usarli darebbe l'impressione che questo file li consulti ancora.
 import { mpJobPriority } from './coda-priorita.mjs';
+import { eGestoDiUnaPersona, eSolaLettura, eSolaRicerca } from './gesto-di-una-persona.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -187,6 +188,26 @@ function mpJobTimeoutMs(op) {
 
 // Etichetta leggibile ("cosa") per /queue/status, ricavata dal payload della richiesta.
 // `operatore` ("chi") arriverà dall'app in Fase 2; per ora ripiega su '—'.
+//
+// 🚦⭐⭐ VOCE 137 (03/09/2026) — DUE ETICHETTE QUI DENTRO MENTIVANO, e si correggono ALLA
+// RADICE. Non era un difetto visibile: nessuno leggeva `/queue/status`, perché il pezzo che lo
+// mostrava è spento dal 3 giugno. Ma il semaforo sul calendario le mostrerà a chi fa segreteria.
+//
+//   ① `edit` con `read:true` NON è una modifica, è la LETTURA autorevole del roster — quella
+//      che parte da sola quando si APRE una scheda. Il worker lo sa (`readOnly = input.read
+//      === true`), la coda no, e la chiamava «modifica». ⇒ Il gesto più frequente della
+//      segreteria — aprire una scheda — sarebbe apparso come una modifica in corso.
+//   ② `client` con `soloRicerca` NON crea niente: è la ricerca per telefono che si fa PRIMA di
+//      creare un socio, e si chiamava «nuovo cliente». ⇒ Avrebbe annunciato un socio mai nato.
+//
+// ⚖️ Si correggono qui e non nel consumatore perché un'etichetta sbagliata alla radice ricompare
+// in OGNI consumatore che leggerà questa coda — il semaforo oggi, un registro o un allarme domani.
+// 📌 *Chi cura il sintomo dove lo vede lascia la causa a chi verrà dopo, e quello non saprà
+// nemmeno che c'era.*
+//
+// `gesto` risponde a UNA domanda — *c'è una persona dietro?* — e la risposta la dà un modulo
+// puro (`gesto-di-una-persona.mjs`), che il banco esegue. Il vocabolario verso l'operatore lo
+// mette il gestionale: qui si porta il fatto, non la frase.
 function mpJobMeta(op, body = {}) {
   const operatore = clean(body.operatore) || '—';
   const b = body.booking || body || {};
@@ -194,19 +215,27 @@ function mpJobMeta(op, body = {}) {
     ? `Campo ${b.campo}`
     : (body.idReserva ? `#${body.idReserva}` : '');
   const ora = clean(b.ora || body.ora) || '';
+  const gesto = eGestoDiUnaPersona({ op }, body);
   if (op === 'create') {
     const tipo = clean(b.tipo) || 'prenotazione';
-    return { op, operatore, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
+    return { op, operatore, gesto, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
   }
-  if (op === 'edit')   return { op, operatore, label: ['modifica', campoTxt, ora].filter(Boolean).join(' · ') };
-  if (op === 'cancel') return { op, operatore, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
-  if (op === 'set-charge') return { op, operatore, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'edit') {
+    // ① la lettura che si chiamava «modifica».
+    const che = eSolaLettura(body) ? 'lettura scheda' : 'modifica';
+    return { op, operatore, gesto, label: [che, campoTxt, ora].filter(Boolean).join(' · ') };
+  }
+  if (op === 'cancel') return { op, operatore, gesto, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'set-charge') return { op, operatore, gesto, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
   if (op === 'client') {
     const c = body.client || {};
     const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
-    return { op, operatore, label: ['nuovo cliente', nome].filter(Boolean).join(' · ') };
+    // ② la ricerca che si chiamava «nuovo cliente». Il telefono NON entra nell'etichetta: è un
+    //    dato di una persona, e questa riga finisce sotto gli occhi di chiunque guardi il calendario.
+    const che = eSolaRicerca(body) ? 'ricerca cliente' : 'nuovo cliente';
+    return { op, operatore, gesto, label: [che, nome].filter(Boolean).join(' · ') };
   }
-  return { op, operatore, label: op };
+  return { op, operatore, gesto, label: op };
 }
 
 // Fotografia dello stato della coda per GET /queue/status.
@@ -220,11 +249,15 @@ function mpQueueSnapshot() {
       op: mpQueue.running.op,
       label: mpQueue.running.label,
       operatore: mpQueue.running.operatore,
+      // 🚦 VOCE 137 — «c'è una persona dietro?». Viaggia col job invece di essere ricalcolato a
+      //    valle: chi legge lo snapshot non ha più il payload sotto mano, quindi rifare la regola
+      //    là vorrebbe dire indovinarla — e sarebbe una seconda copia che diverge in silenzio.
+      gesto: mpQueue.running.gesto === true,
       priority: mpQueue.running.priority,
       runningMs: now - mpQueue.running.startedAt,
     } : null,
     waitingCount: mpQueue.waiting.length,
-    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, priority: j.priority })),
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, gesto: j.gesto === true, priority: j.priority })),
     time: new Date().toISOString(),
   };
 }
@@ -262,6 +295,14 @@ function mpQueueRun(meta, fn) {
       op: meta.op || 'op',
       label: meta.label || meta.op || 'operazione',
       operatore: meta.operatore || '—',
+      // 🚦 VOCE 137 — il job si costruisce CAMPO PER CAMPO, non con uno spread: un campo nuovo
+      //    in `mpJobMeta` che non venga aggiunto anche qui NON arriva alla coda, e a valle si
+      //    legge `undefined` senza che niente diventi rosso. È successo scrivendo questa riga:
+      //    lo snapshot leggeva `j.gesto` e sarebbe stato `false` per sempre — un semaforo che
+      //    non si accende mai, indistinguibile da «non sta succedendo niente».
+      //    📌 *Il difetto di un oggetto ricostruito a mano non è che si dimentica un campo:
+      //       è che dimenticarlo non fa rumore.*
+      gesto: meta.gesto === true,
       priority: mpJobPriority(meta),
       enqueuedAt: Date.now(),
       fn,
