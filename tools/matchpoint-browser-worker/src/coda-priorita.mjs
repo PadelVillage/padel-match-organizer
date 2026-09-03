@@ -73,9 +73,23 @@
  * più grossa: smette di poter **corrompere** l'operazione di qualcun altro.
  */
 
-/** C'è una persona che aspetta: passano davanti a tutto. */
+/** C'è una persona che aspetta: passano davanti a tutto.
+ *
+ * 🩹🚨⭐⭐ 03/09/2026 — I QUATTRO GESTI SUI SOLDI MANCAVANO, e non è una dimenticanza innocua:
+ * `collect-payment`, `set-charge`, `void-payment` e `correct-wallet` cadevano nel `return`
+ * finale di `mpJobPriority`, cioè **priorità FONDO — insieme al poller e al keepalive**.
+ * ⇒ Un incasso, con la segretaria e il socio fermi al banco ad aspettare, veniva scelto
+ * DOPO il sync delle prenotazioni e dopo le letture del tabellone.
+ * 📌 *Un elenco scritto a mano non è una regola: è una fotografia del giorno in cui è stato
+ * scritto.* Quando è nato (22/08) i pagamenti non passavano ancora dalla coda — sono arrivati
+ * fra il 2 e il 3 settembre, e nessuno è tornato qui.
+ * ⚖️ Trovato cercando come distinguere «i gesti di una persona» per il semaforo della voce 137,
+ * non cercando questo: il filtro «solo le interattive» avrebbe **perso proprio i gesti nuovi**,
+ * ed è così che il difetto è venuto a galla. */
 export const MP_INTERACTIVE_OPS = new Set([
   'create', 'edit', 'cancel', 'client', 'disable-client', 'reactivate-client',
+  // 💶 I soldi: c'è sempre qualcuno fermo al banco che aspetta.
+  'collect-payment', 'set-charge', 'void-payment', 'correct-wallet',
 ]);
 
 /**
@@ -120,7 +134,7 @@ export function mpJobPriority(meta) {
 export const HANDLER_CHE_APRONO_UN_BROWSER = [
   'handleCreateBooking', 'handleCancelBooking', 'handleEditBooking',
   'handleCreateClient', 'handleUpdateClient', 'handleDisableClient', 'handleReactivateClient',
-  'handleCollectPayment', 'handleVoidPayment', 'handleCorrectWallet',
+  'handleCollectPayment', 'handleSetCharge', 'handleVoidPayment', 'handleCorrectWallet',
   'handleReadWallet', 'handleExportWalletReport', 'handleExportPaymentsReport',
   'handleReadInstructors', 'handleDebugFindClient', 'handleReadTabellone',
   // I quattro che il 22/08 la scavalcavano:
