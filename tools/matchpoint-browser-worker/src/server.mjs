@@ -210,6 +210,13 @@ function mpJobTimeoutMs(op) {
 // mette il gestionale: qui si porta il fatto, non la frase.
 function mpJobMeta(op, body = {}) {
   const operatore = clean(body.operatore) || '—';
+  // 🚦 VOCE 137 — «socio» quando la scrittura è arrivata dal bot, «staff» dalla segreteria.
+  //    Lo dice l'edge, che il ruolo ce l'ha (`actor.role`); il worker lo trasporta e basta.
+  //    ⛔ Non lo DEDUCE da `operatore`: un'email è una stringa che qualcuno può rinominare, e il
+  //    giorno in cui la rinomina niente diventerebbe rosso. Vuoto = non dichiarato, che il
+  //    consumatore legge come «staff»: il verso giusto in cui sbagliare, perché un gesto
+  //    etichettato male si vede lo stesso mentre un gesto nascosto no.
+  const chiestoDa = clean(body.chiestoDa) || '';
   const b = body.booking || body || {};
   const campoTxt = (b.campo !== undefined && b.campo !== null && b.campo !== '')
     ? `Campo ${b.campo}`
@@ -218,24 +225,24 @@ function mpJobMeta(op, body = {}) {
   const gesto = eGestoDiUnaPersona({ op }, body);
   if (op === 'create') {
     const tipo = clean(b.tipo) || 'prenotazione';
-    return { op, operatore, gesto, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, label: ['prenotazione', tipo, campoTxt, ora].filter(Boolean).join(' · ') };
   }
   if (op === 'edit') {
     // ① la lettura che si chiamava «modifica».
     const che = eSolaLettura(body) ? 'lettura scheda' : 'modifica';
-    return { op, operatore, gesto, label: [che, campoTxt, ora].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, label: [che, campoTxt, ora].filter(Boolean).join(' · ') };
   }
-  if (op === 'cancel') return { op, operatore, gesto, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
-  if (op === 'set-charge') return { op, operatore, gesto, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'cancel') return { op, operatore, chiestoDa, gesto, label: ['annullamento', campoTxt, ora].filter(Boolean).join(' · ') };
+  if (op === 'set-charge') return { op, operatore, chiestoDa, gesto, label: ['importo a carico', campoTxt, ora].filter(Boolean).join(' · ') };
   if (op === 'client') {
     const c = body.client || {};
     const nome = [clean(c.nome || c.firstName), clean(c.cognome || c.surname)].filter(Boolean).join(' ');
     // ② la ricerca che si chiamava «nuovo cliente». Il telefono NON entra nell'etichetta: è un
     //    dato di una persona, e questa riga finisce sotto gli occhi di chiunque guardi il calendario.
     const che = eSolaRicerca(body) ? 'ricerca cliente' : 'nuovo cliente';
-    return { op, operatore, gesto, label: [che, nome].filter(Boolean).join(' · ') };
+    return { op, operatore, chiestoDa, gesto, label: [che, nome].filter(Boolean).join(' · ') };
   }
-  return { op, operatore, gesto, label: op };
+  return { op, operatore, chiestoDa, gesto, label: op };
 }
 
 // Fotografia dello stato della coda per GET /queue/status.
@@ -253,11 +260,12 @@ function mpQueueSnapshot() {
       //    valle: chi legge lo snapshot non ha più il payload sotto mano, quindi rifare la regola
       //    là vorrebbe dire indovinarla — e sarebbe una seconda copia che diverge in silenzio.
       gesto: mpQueue.running.gesto === true,
+      chiestoDa: mpQueue.running.chiestoDa || '',
       priority: mpQueue.running.priority,
       runningMs: now - mpQueue.running.startedAt,
     } : null,
     waitingCount: mpQueue.waiting.length,
-    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, gesto: j.gesto === true, priority: j.priority })),
+    waiting: mpQueue.waiting.map((j) => ({ id: j.id, op: j.op, label: j.label, operatore: j.operatore, gesto: j.gesto === true, chiestoDa: j.chiestoDa || '', priority: j.priority })),
     time: new Date().toISOString(),
   };
 }
@@ -303,6 +311,7 @@ function mpQueueRun(meta, fn) {
       //    📌 *Il difetto di un oggetto ricostruito a mano non è che si dimentica un campo:
       //       è che dimenticarlo non fa rumore.*
       gesto: meta.gesto === true,
+      chiestoDa: meta.chiestoDa || '',
       priority: mpJobPriority(meta),
       enqueuedAt: Date.now(),
       fn,

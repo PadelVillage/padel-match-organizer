@@ -133,6 +133,35 @@ function consumerActor(req: Request): StaffActor | null {
   };
 }
 
+/**
+ * 🚦 VOCE 137 — chi ha chiesto questa scrittura, detto come FATTO e non dedotto.
+ *
+ * Serve al semaforo del calendario: chi fa segreteria vuole vedere *«c'è un'operazione in
+ * corso, e questa l'ha chiesta un socio dal bot»*. 🗣️ Decisione sua, che ha ribaltato la
+ * precedente: *«io che sono di segreteria devo vedere le azioni di chi le fa dal chatbot e le
+ * azioni che faccio io da gestionale»*.
+ *
+ * 🩹⭐⭐ E LA SCHEDA DELLA 137 QUI SBAGLIAVA, misurato il 03/09: diceva che la coda distingue un
+ * gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*. Non è così. `consumerActor`
+ * dà da sempre al bot un attore **pieno**, con `role: 'consumer'` e un'email sua
+ * (`assistente-soci@padelvillage.club`) ⇒ `operatore` c'è, e non è vuoto.
+ * ⇒ Cambia la cura, non solo la frase: non c'è nessuna assenza da rendere esplicita — c'è un
+ * **ruolo** che si ferma qui invece di arrivare al worker.
+ *
+ * ⛔ E si passa il RUOLO, non l'email, benché l'email basterebbe a riconoscerlo: filtrare su
+ * `email === 'assistente-soci@…'` funzionerebbe finché nessuno rinomina quella casella, e il
+ * giorno in cui qualcuno la rinomina **niente diventa rosso** — i gesti dal bot si
+ * ridichiarerebbero «staff» in silenzio. 📌 *Una regola che poggia su una stringa che qualcun
+ * altro può cambiare non è una regola: è una scommessa sul fatto che nessuno la cambi.*
+ *
+ * ⚖️ Etichetta, non filtro: il semaforo deve DIRE «richiesta da un socio», non NASCONDERE nulla.
+ * Un gesto che restasse senza etichetta si vede lo stesso — come «staff», che è il verso giusto
+ * in cui sbagliare (un falso silenzio sarebbe indistinguibile dal funzionamento normale).
+ */
+function chiCiHaChiesto(actor: StaffActor): string {
+  return actor.role === 'consumer' ? 'socio' : 'staff';
+}
+
 async function getActor(req: Request): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -168,8 +197,9 @@ async function callWorkerCreateBooking(opts: {
   baseUrl: string;
   booking: BookingRequest;
   operatore?: string;
+  chiestoDa?: string;
 }): Promise<JsonMap> {
-  const { workerUrl, workerApiKey, username, password, baseUrl, booking, operatore } = opts;
+  const { workerUrl, workerApiKey, username, password, baseUrl, booking, operatore, chiestoDa } = opts;
   const endpoint = `${workerUrl}/create-booking`;
 
   let res: Response;
@@ -180,7 +210,7 @@ async function callWorkerCreateBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ username, password, baseUrl, booking, operatore: operatore ?? '' }),
+      body: JSON.stringify({ username, password, baseUrl, booking, operatore: operatore ?? '', chiestoDa: chiestoDa ?? '' }),
     });
   } catch (netErr) {
     // NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.
@@ -439,7 +469,7 @@ async function runBookingJobInBackground(opts: {
   // annulla — e su quella si scrive.
   const scritturaIniziataAlle = new Date().toISOString();
   try {
-    const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
+    const workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email, chiestoDa: chiCiHaChiesto(actor) });
     try {
       await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
@@ -702,7 +732,7 @@ Deno.serve(async (req: Request) => {
   const scritturaIniziataAlle = new Date().toISOString();
   let workerResult: JsonMap;
   try {
-    workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email });
+    workerResult = await callWorkerCreateBooking({ workerUrl, workerApiKey, username, password, baseUrl, booking, operatore: actor.email, chiestoDa: chiCiHaChiesto(actor) });
   } catch (workerErr) {
     // ⭐ Stesso terzo esito della strada asincrona, e qui pesa di PIÙ: da questa passa il
     // RICORRENTE, che crea fino a quattro prenotazioni di fila. Il ciclo dell'app conta `fail++`
