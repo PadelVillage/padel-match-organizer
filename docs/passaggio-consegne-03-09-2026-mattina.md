@@ -153,12 +153,31 @@ costruzione.
 🗣️ **Sua**, 03/09 mattina: *«quando su una scheda cambio l'importo e poi clicco salva me lo deve
 riportare su Matchpoint e sul gestionale»*. 📸 Con schermata di PROD 6.278.
 
-⛔ **NON MISURATA.** Le tre domande da chiudere **guardando**, prima di scrivere una riga:
-① l'importo digitato oggi **dove finisce** quando si preme Salva?
-② la scrittura dell'importo su Matchpoint **esiste già** nel worker (l'incasso lo imposta prima di
-cliccare *Incassare*) o va aggiunta?
-③ 🚨 **«e sul gestionale» in che forma?** Un importo **a carico** non è un pagamento: se finisse fra
-i `payment`, la sezione Incassi lo conterebbe come **incassato**, che è falso finché nessuno paga.
+🔄 **MISURATA il 03/09, prima di chiudere la sessione — due domande su tre hanno risposta.**
+L'occasione l'ha data lui provando: *«ho provato a salvare un importo variato nella partita di oggi
+alle 12, importo di Luca Allera, ma non mi salva il cambiamento»*.
+
+🚨⭐⭐ **NON È UN GUASTO: quella casella non è mai stata salvabile.** Il Salva manda solo
+campo/data/ora, `players`, `note`, `descrizione`, `istruttore` — l'importo non c'è, e non è nemmeno
+nella condizione che decide se salvare. Cambiando **solo** l'importo esce «ℹ️ Nessuna modifica da
+salvare», che è quello che ha visto.
+📌 *Un campo che si può digitare ma non salvare non è un difetto del salvataggio: è un campo che
+promette una cosa che nessuno gli ha mai chiesto di fare.*
+
+📏 L'importo digitato è letto in **due** posti, nessuno dei quali è il Salva: il **totale live** e i
+**tre bottoni dell'incasso** (finisce in `amountCents`).
+
+✅ **La strada esiste già nel worker**: dentro `collect_payment` la scrittura dell'importo è un
+passo **separato, PRIMA** di *Incassare* (`fill(TextBoxCargoReserva)` → `clickSaveActualizar` →
+`set_cargo` → ricarica e rilegge il pendente). ⇒ «Salvare senza incassare» vuol dire **fermarsi lì**.
+⚖️ **Costo dichiarato**: è il **worker** ⇒ si tocca **solo da `main`**, ed è **un solo processo
+condiviso TEST+PROD** su Hetzner.
+
+⏳ **RESTA la terza domanda, ed è di disegno**: «e sul gestionale» in che forma?
+🔨 **Proposta già detta a lui**: nella **copia locale della partita**, dove il roster tiene già gli
+importi ed è lo stesso posto da cui la scheda li rilegge. ⛔ **NON** fra i `payment`, o la sezione
+Incassi lo conterebbe come **incassato**. 📌 *Un importo a carico non è un pagamento, e i due non
+possono stare nello stesso libro.*
 
 🚨⭐⭐ **La regola che la governa è già scritta in `CLAUDE.md`**: *ogni gesto va detto al socio SOLO
 DOPO che il circolo l'ha confermato — e nello STESSO ISTANTE dev'essere registrato dal gestionale.*

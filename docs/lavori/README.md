@@ -2368,6 +2368,51 @@ metà dello stesso passo, e la seconda non può partire prima della conferma del
 ⚖️ È la stessa forma della voce 75 — il bot diceva «✅ Prenotato» e 25 secondi dopo il gestionale non
 trovava la partita — applicata al **denaro** invece che alle prenotazioni.
 
+
+---
+
+🔄🩹 **MISURATA il 03/09 mattina, e le tre domande di sopra hanno risposta.** L'occasione l'ha data
+lui provando: *«ho provato a salvare un importo variato nella partita di oggi alle 12, importo di
+Luca Allera, ma non mi salva il cambiamento di importo»*.
+
+🚨⭐⭐ **NON È UN GUASTO: quella casella non è MAI stata salvabile.** `staffCalPlayersSave` costruisce
+un pacchetto con **campo/data/ora, `players` (add/remove), `note`, `descrizione`, `istruttore`** — e
+basta. L'importo non c'è, e non c'è nemmeno nella condizione che decide se salvare:
+```
+if (!moveChanged && !playersChanged && !noteChanged && !descrChanged && !istruttoreChanged) {
+  svcAddMessage('system', 'ℹ️ Nessuna modifica da salvare'); return;
+}
+```
+⇒ Cambiando **solo** l'importo, il Salva esce dicendo «nessuna modifica». È esattamente ciò che ha
+visto, e la scheda glielo diceva già senza che si notasse: *«Modifica l'importo a carico se serve,
+poi **incassa**»*.
+📌 *Un campo che si può digitare ma non salvare non è un difetto del salvataggio: è un campo che
+promette una cosa che nessuno gli ha mai chiesto di fare. Il difetto è la promessa.*
+
+📏 **Dove finisce l'importo digitato, oggi**: `_payAmtInputs` viene letto in **due** posti, nessuno
+dei quali è il Salva — il **totale live** in fondo alla scheda, e i **tre bottoni dell'incasso**
+(`_pmoEuroToCents(amt.value)` finisce in `amountCents`). ⇒ L'importo serve, ma **passando
+dall'incasso**.
+
+✅ **E LA STRADA ESISTE GIÀ NEL WORKER — è la scoperta che accorcia il lavoro.** Dentro
+`collect_payment` la scrittura dell'importo è **un passo separato, PRIMA** di cliccare *Incassare*:
+```
+if (curCents !== amountCents) {
+  fill(TextBoxCargoReserva, itAmount); clickSaveActualizar(...'set_cargo');
+  → ricarica la ficha e rilegge il pendente
+}
+```
+⇒ «Salva l'importo senza incassare» vuol dire **fermarsi lì**: un modo nuovo che riusa quei passi,
+non una strada nuova.
+⚖️ **Il costo, dichiarato**: è il **worker**, quindi si tocca **solo da `main`** (regola 1 del
+`CLAUDE.md`) ed è **un solo processo condiviso TEST+PROD** su Hetzner. Non è una modifica all'app.
+
+⏳ **RESTA UNA SOLA DOMANDA, la ③ di sopra, ed è di disegno**: sul gestionale in che forma?
+🔨 **Proposta dichiarata** (e detta a lui): si scrive nella **copia locale della partita**, dove il
+roster tiene già gli importi ed è **lo stesso posto da cui la scheda li rilegge**. ⛔ **NON** fra i
+`payment`: lì la sezione Incassi lo conterebbe come **incassato**, che è falso finché nessuno paga.
+📌 *Un importo a carico non è un pagamento, e i due non possono stare nello stesso libro.*
+
 Non scavalca niente: entra in fondo.
 
 
