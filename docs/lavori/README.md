@@ -2398,6 +2398,22 @@ solo**. 📌 *Una guardia che si rompe su un caso legittimo va resa più PRECISA
 accusava il codice invece di sé stesso).
 
 🔨 **IN SERVIZIO su TEST 6.295 e PROD 6.282.**
+
+📏 **RIMISURATA sulla pagina viva di PROD 6.282**, sullo stesso caso che era rosso — stessa scheda,
+stesso viewport, stessa sequenza:
+
+| | prima (6.281) | adesso (6.282) |
+|---|---|---|
+| `scrollTop` dopo il click | **570 → 0** (strappo in cima) | **570**, resta dov'era |
+| riga d'esito dentro la scheda | non esisteva | `✅ Importo aggiornato…`, classe `svc-edit-esito ok`, **visibile** |
+| pastiglia | non esisteva | `↓ ✅ Importo aggiornato su Matchpoint` |
+| scrivendo in chat, scheda in cima | messaggio 568px fuori, invisibile | `↓ 2 nuovi · 🤖 risposta a una frase scritta…` |
+
+⚖️ **Cosa questa misura NON dice**, e va detto: è **geometria** — dice che gli elementi ci sono e
+stanno dentro il rettangolo visibile, non che a colpo d'occhio si **notino**. Il colore, la
+dimensione e il fatto che l'occhio ci cada sopra li giudica lui, non un `getBoundingClientRect`.
+📌 *Una misura può dimostrare che una cosa non è nascosta; che si veda è un'altra affermazione.*
+
 ⏳ **RESTA APERTA: manca la prova fisica, ed è sua.** Su PROD: aprire una partita, cambiare un
 importo, premere **Salva** — e vedere l'esito **senza scorrere**, sia sulla riga dentro la scheda
 sia (se si è più in su) sulla pastiglia. Poi lo stesso scrivendo una frase in chat con la scheda
