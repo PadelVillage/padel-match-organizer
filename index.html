@@ -2954,6 +2954,8 @@
        questa pastiglia dal BOTTONE Wallet qui sotto, che l'icona monocroma ce l'ha già.
        ⚠️ `-ignoto` è il caso «non l'ho letto»: grigio e in corsivo, perché un trattino che ha
        l'aria di un numero è peggio dell'assenza del trattino. */
+    .svc-pl-name-apri { cursor:pointer; text-decoration:underline dotted var(--text-muted); text-underline-offset:3px; }
+    .svc-pl-name-apri:hover, .svc-pl-name-apri:focus-visible { color:var(--accent); text-decoration-color:var(--accent); }
     .svc-pl-wallet { flex:0 0 auto; display:inline-flex; align-items:center; gap:3px; font-size:.74rem; font-weight:700; color:var(--text); white-space:nowrap; cursor:default; }
     .svc-pl-wallet-ic { font-size:13px; line-height:1; }
     .svc-pl-wallet-ignoto { color:var(--text-muted); font-weight:600; font-style:italic; }
@@ -13158,6 +13160,45 @@ Grazie.`
     // e al giro dopo l'edge riapplicherebbe la stessa scheda. Per sempre.
     const PMO_MEMBER_CLOUD_FIELDS = ['firstName', 'surname', 'name', 'phone', 'email', 'level', 'gender', 'pmoPlayerId',
                                      'levelSource', 'selfAssessmentDate', 'lastLevelUpdateAt'];
+    // 🆔 L'ID INTERNO MATCHPOINT non sta in `PMO_MEMBER_CLOUD_FIELDS`, ed è una scelta, non una
+    // dimenticanza: quei campi si copiano solo se la riga del cloud è PIÙ FRESCA della copia
+    // locale, e un id non compete sulla freschezza — è l'INDIRIZZO della persona su Matchpoint,
+    // scritto una volta e mai contraddetto. Dentro quel confronto resterebbe inerte proprio per
+    // i soci che ne hanno bisogno: quelli fermi in locale da prima che il numero esistesse.
+    // ⛔ Solo cloud→locale, e solo su un valore presente: un cloud senza id non cancella l'id che
+    //    questo browser ha già imparato aggiungendo quella persona a una partita.
+    // 📌 Funzione a sé, e non un `if` in mezzo all'idratazione, perché è una DECISIONE (dove sta
+    //    il confronto sulla freschezza) e le decisioni si provano.
+    function pmoIdInternoDalCloud(locale, cloud) {
+      const vivo = cleanCell(cloud && cloud.matchpointIdInterno);
+      if (!vivo) return '';
+      return String((locale && locale.matchpointIdInterno) || '') === vivo ? '' : vivo;
+    }
+    // 🔢 IL CODICE CLIENTE ha lo STESSO difetto e conseguenze PEGGIORI (03/09/2026, misurato
+    // curando la 138). Neanche `memberId` sta in `PMO_MEMBER_CLOUD_FIELDS` ⇒ una copia locale
+    // che non ce l'ha non lo impara mai. Ma qui non si spegne un nome cliccabile: si spegne la
+    // GUARDIA ANTI-OMONIMIA DELLE SCRITTURE.
+    // 📏 Misurato nel worker: `searchAndAddPlayer` usa `expectedClientCode` come termine di
+    // ricerca e per scartare i candidati con codice diverso PRIMA di cliccare. Senza,
+    // `searchTerm` ripiega sul NOME e il controllo sul codice non scatta affatto.
+    // 📏 E gli omonimi ci sono davvero: su PROD **13 gruppi, 27 soci** con nome e cognome
+    // identici. ⇒ Un codice mancante non è un dettaglio: è la differenza fra aggiungere a una
+    // partita la persona giusta e aggiungerne un'altra con lo stesso nome.
+    // ⛔ LA REGOLA È QUELLA DI `chooseMemberId` NELL'IMPORT, non una inventata qui: un codice
+    //    Matchpoint vero (sole cifre, 3+) vince su un segnaposto `PMO-…` o sul vuoto; per il
+    //    resto **vince quello che c'è già**. Un codice vero locale NON viene sostituito da un
+    //    codice vero diverso del cloud: sarebbero due persone, e sceglierne una in silenzio è
+    //    lo stesso azzardo della 138.
+    // 📌 Fuori dal confronto sulla freschezza per la stessa ragione dell'id: un codice cliente
+    //    è un indirizzo, non un dato che invecchia.
+    function pmoCodiceClienteDalCloud(locale, cloud) {
+      const vero = (v) => /^\d{3,}$/.test(v);
+      const vivo = cleanCell(cloud && cloud.memberId);
+      const mio = String((locale && locale.memberId) || '').trim();
+      if (!vero(vivo)) return '';        // il cloud non ha un codice vero: niente da imparare
+      if (vero(mio)) return '';          // ne ho già uno vero: non si sostituisce
+      return vivo === mio ? '' : vivo;
+    }
     function pmoMemberFieldsFromCloud(locale, cloud, cloudRowAt) {
       if (!locale || !cloud) return { changed: false, next: locale };
       if (!(pmoCloudTsMs(cloudRowAt) > pmoCloudTsMs(locale.updatedAt))) return { changed: false, next: locale };
@@ -13448,8 +13489,18 @@ Grazie.`
              guardi il produttore invece del destinatario.* */
           const chiaveViva = cleanCell(m.cloudLocalKey);
           if (chiaveViva && g.cloudLocalKey !== chiaveViva) { g.cloudLocalKey = chiaveViva; }
+          const idInternoVivo = pmoIdInternoDalCloud(g, m);
+          const idImparato = !!idInternoVivo;
+          if (idImparato) g.matchpointIdInterno = idInternoVivo;
+          const codiceVivo = pmoCodiceClienteDalCloud(g, m);
+          const codiceImparato = !!codiceVivo;
+          if (codiceImparato) g.memberId = codiceVivo;
           const esito = pmoMemberFieldsFromCloud(g, m, rowAt.get(id));
-          if (esito.changed) { giocatori[i] = esito.next; updated++; }
+          if (esito.changed) giocatori[i] = esito.next;
+          // Un solo conteggio per riga: `updated` non è una statistica, è ciò che fa scattare il
+          // `save('giocatori')` qui sotto — e senza quel salvataggio ciò che si è imparato si
+          // perde al ricaricamento, cioè la cura durerebbe una sessione sola.
+          if (idImparato || codiceImparato || esito.changed) updated++;
         });
         if (updated > 0) console.log('PMO_CLOUD_MEMBERS_REFRESHED', { updated, total: giocatori.length });
         // Dedup consistente con l'import (pmoImportContactKey = nome+telefono, STRETTA):
@@ -41960,6 +42011,88 @@ Per confermare scrivi ELIMINA.`);
   // poi salva via matchpoint-bookings-edit. Aggiorna la copia locale e ridisegna.
   let staffCalPlayersState = null;
 
+  // ── 🔗 VOCE 138 — IL NOME DEL GIOCATORE APRE LA SUA SCHEDA ────────────────────────────────
+  //
+  // 🗣️ Sua, 03/09/2026: «manca la possibilità di cliccare sul nome del giocatore e ti apre la sua
+  // scheda di anagrafica» — e prima, il 02/09: «potrebbe essere carino… ma non so se si può fare».
+  //
+  // ✅ SCELTA SUA fra tre strade, la ⓒ: **la scheda si apre SOPRA**, senza cambiare tab.
+  // ⚖️ Le altre due pagavano un prezzo che questa non paga: la ⓐ (cliccabile solo se non c'è
+  // niente di modificato) lascia il click a volte assente, e un nome che a volte non risponde è
+  // un nome di cui non ci si fida; la ⓑ (chiedi conferma) mette un popup nel mezzo del lavoro.
+  //
+  // 🚨⭐⭐ E LA SCHEDA DELLA VOCE DICEVA CHE LA ⓒ ERA «LA PIÙ LUNGA DA FARE». È FALSO, misurato
+  // prima di scrivere una riga: `openMemberCard` NON cambia tab — disegna dentro
+  // `#memberCardOverlay`, che è un `position:fixed` **fratello del login**, fuori da ogni tab
+  // (`index.html:6548`). ⇒ Chiamarla dal calendario apre la scheda sopra e basta.
+  // 📌 *Prima di costruire, guarda cosa c'è già: è la seconda volta oggi che il pezzo esisteva —
+  //    il semaforo era spento dietro un commento, questo era già della forma giusta.*
+  //
+  // ⛔ E il prezzo che si temeva NON c'è: né `openMemberCard` né `closeMemberCard` toccano
+  // `staffCalPlayersState` o il DOM del pannello della partita ⇒ gli importi digitati e i
+  // giocatori aggiunti restano sotto, e si ritrovano chiudendo la scheda.
+  //
+  // Il socio, se c'è. `null` per gli «Ospite» — che nelle sue schermate sono spesso la
+  // maggioranza delle righe, e che devono restare NOMI MUTI.
+  // 📌 *Un nome cliccabile che non apre niente è peggio di un nome normale: promette e non
+  //    mantiene.* È la ragione per cui qui si torna `null` invece di aprire una scheda vuota.
+  //
+  // 🚨🚨⭐⭐ E QUI LA PRIMA STESURA APRIVA LA SCHEDA DI UN'ALTRA PERSONA. Trovato da LUI su TEST
+  // 6.301, al primo click: «guarda cliccando il nome sulla scheda cosa si apre… un nome
+  // differente». Cliccando «Filippo Battistella» si apriva «Giovanni Modanese».
+  //
+  // ⚖️ LA CAUSA È IL TERZO NUMERO, quello che questo file documenta da mesi: Matchpoint dà a
+  // ogni cliente DUE numeri diversi, e io ne ho confrontato uno con l'altro —
+  //   · il CODICE CLIENTE (quello della tendina «000140-Nome»), che l'anagrafica tiene in
+  //     `memberId` e che legge `pmoIdMatchpoint`;
+  //   · l'ID INTERNO (`id_people`), che l'anagrafica tiene in `matchpointIdInterno`.
+  // Il roster del worker porta `HiddenFieldIdCliente`, che malgrado il nome è l'ID INTERNO
+  // (`server.mjs:5763` lo dice a parole: «idCliente (id interno Matchpoint)»). ⇒ Confrontarlo
+  // col codice cliente fa combaciare DUE NUMERI DIVERSI che per caso si somigliano, e il socio
+  // che esce è un altro.
+  //
+  // 🩹 E la scheda della voce 138 diceva proprio quello: «il socio si trova confrontando
+  // `p.idCliente` del roster con `pmoIdMatchpoint(g)`». L'ho preso per buono senza misurarlo.
+  //
+  // 🚨🚨 E IL PROGETTO QUESTO DIFETTO L'AVEVA GIÀ PAGATO, con un caso vero e un avvertimento
+  // in maiuscolo che sta nel worker da un mese (`server.mjs:6525`):
+  //   «NON confrontare `HiddenFieldIdCliente` col CODICE CLIENTE. […] il 2/08/2026, in
+  //    PRODUZIONE, il codice cliente di Laura Aprea (000140 → "140") era identico all'ID
+  //    INTERNO di Marco Aprea (140)» — e quella volta un giocatore SPARIVA da una partita
+  //   sotto un «✅ confermato».
+  // ⇒ Non è una coincidenza che ricapiti: i due numeri **si sovrappongono davvero**, e ogni
+  //   volta che qualcuno li confronta il danno è **muto**.
+  // 📌 *Una cura si disegna sul difetto raccontato e si convalida sul CODICE: se il racconto e
+  //    il codice non combaciano, vale il codice.* Qui il codice lo diceva in TRE punti — il
+  //    commento di `_staffCalPlayerCode` tre righe sopra, quello di `pmoIdMatchpoint`, e
+  //    l'avvertimento del worker — e li ho saltati tutti fidandomi di una riga di scheda.
+  //
+  // 🚨 Ed era il difetto peggiore possibile per questa voce, perché è SILENZIOSO: non dà
+  // errore, apre una scheda vera, con dentro una persona vera. In cassa la sera si ricarica il
+  // Wallet di chi non c'entra.
+  //
+  // ⛔ NESSUN RIPIEGO SUL NOME, di proposito: davanti a un id che non aggancia, la risposta è
+  // nome muto. Cercare «per nome che somiglia» rimetterebbe in piedi esattamente la classe di
+  // difetto appena tolta — indovinare la persona.
+  function _staffCalSocioDelGiocatore(p) {
+    try {
+      if (!p) return null;
+      if (typeof giocatori === 'undefined' || !Array.isArray(giocatori)) return null;
+      if (typeof _staffCalPlayerCode !== 'function') return null;
+      // L'ID INTERNO, da tutt'e due le parti — `_staffCalPlayerCode` è la stessa funzione con
+      // cui l'app confronta già i giocatori col worker quando li aggiunge a una partita.
+      // ⛔ Nessun riempimento di zeri: quello serve al CODICE CLIENTE («140» = «000140»),
+      //    l'id interno è un numero e basta, e normalizzarlo qui vorrebbe dire far combaciare
+      //    cose che Matchpoint tiene distinte.
+      const idInterno = String((p && p.idCliente) || '').trim();
+      if (!/^\d{1,12}$/.test(idInterno)) return null;
+      return giocatori.find(function (g) {
+        const suo = _staffCalPlayerCode(g);
+        return suo && suo === idInterno;
+      }) || null;
+    } catch (e) { return null; }
+  }
+
   function _staffCalPlayerCode(member) {
     // Id da confrontare col worker = id interno Matchpoint (id_people = HiddenFieldIdPeople),
     // salvato in matchpointIdInterno. NON memberId (che è il codice/tessera, un numero diverso).
@@ -42835,6 +42968,29 @@ Per confermare scrivi ELIMINA.`);
           nm.className = 'svc-pl-name';
           nm.textContent = p.nome;
           if (marked) { nm.style.textDecoration = 'line-through'; nm.style.opacity = '.5'; }
+          // 🔗 VOCE 138 — il nome apre la scheda del socio, SOPRA il calendario (sua scelta ⓒ).
+          // ⛔ Non è un `<button>`, di proposito: in questa scheda ogni bottone scrive su
+          //    Matchpoint, e uno innocuo in mezzo a quelli è un invito a sbagliare mira — è la
+          //    stessa ragione per cui la pastiglia del Wallet (voce 139) è muta. Qui il segno è
+          //    un tratteggio sotto il nome, che si legge come «si può aprire» senza somigliare
+          //    a un comando. `role="link"` e il tasto lo rendono raggiungibile da tastiera.
+          // ⛔ Su una riga segnata per la RIMOZIONE non si aggancia: là il nome è barrato e
+          //    l'unica cosa che deve dire è «questo sta per uscire».
+          const _socio = marked ? null : _staffCalSocioDelGiocatore(p);
+          if (_socio) {
+            nm.classList.add('svc-pl-name-apri');
+            nm.setAttribute('role', 'link');
+            nm.setAttribute('tabindex', '0');
+            nm.title = 'Apri la scheda di ' + p.nome;
+            const _apri = function (ev) {
+              if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+              try { openMemberCard(String(_socio.id)); } catch (e) {}
+            };
+            nm.addEventListener('click', _apri);
+            nm.addEventListener('keydown', function (ev) {
+              if (ev.key === 'Enter' || ev.key === ' ') _apri(ev);
+            });
+          }
           row.appendChild(nm);
           // ✕ rimuovi/ripristina giocatore — sempre presente (icona sola, tooltip). Sta sulla
           // riga del NOME perché è l'unica azione che riguarda la PERSONA e non i soldi.
