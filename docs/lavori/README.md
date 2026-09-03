@@ -2354,8 +2354,15 @@ residuo» — **40 righe**, 28 con credito (misurate il 02/09), ferma all'ultimo
 darebbe saldi **vecchi** e **assenti per quasi tutti**.
 
 ✅ **TUTTO GIÀ DECISO — non aspetta nessuna risposta, è solo da scrivere:**
-① **la pastiglia si mostra SOLO a chi ha credito.** Il wallet ce l'ha una minoranza: con
-   `👛 0,00 €` su tre righe su quattro l'occhio smette di vederla **proprio la sera che serve**;
+① 🔄 **LA PASTIGLIA C'È SEMPRE, e con zero DICHIARA ZERO** — *«la pastiglia deve essere sempre
+   presente; se il giocatore non ha nulla nel borsellino, la pastiglia dichiara zero»* (sua, 03/09
+   sera). ⚠️ **Ribalta la mia proposta**, che era di mostrarla **solo a chi ha credito** per non
+   riempire l'occhio di `👛 0,00 €` su tre righe su quattro. La sua vince, e la ragione è migliore
+   della mia: **«non ha credito» è un'informazione**, e chi fa cassa la sera la usa — una riga
+   senza pastiglia direbbe soltanto «non lo so», che è la cosa sbagliata da far pensare;
+   ⇒ E questa decisione rende il punto ② **più** importante, non meno: se lo zero è una
+   dichiarazione esplicita, scrivere `0,00 €` quando il dato **manca** non è più un'omissione, è
+   **una bugia netta**;
 ② 🚨 **`saldoCents` può essere `null`** — Matchpoint non dà il dato, e l'app lo dice già altrove
    («Saldo borsellino non disponibile»). Lì **non** si scrive `0,00 €`: sarebbe dire «non ha soldi»
    quando la verità è «non lo so». 📌 *È lo stesso errore della **114** («Libero» invece di «non lo
