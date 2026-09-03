@@ -74,16 +74,33 @@ function corpoDi(nome) {
 }
 
 // ── ① LA BARRA È SOVRAPPOSTA — la ragione per cui la D è stata scelta ───────────────────────
-test('la barra è fuori dal flusso: `absolute` sul bordo basso', () => {
+/* 🩹 QUESTO CASO CHIEDEVA `position:absolute`, ed è stato CORRETTO il 03/09 a tarda notte —
+   pagato con una promozione in PROD che non si vedeva. La regola che difende è **«la barra sta
+   fuori dal flusso e non sposta la griglia»**; `absolute` era il modo in cui era scritta, non la
+   regola. 📏 Misurato sulla pagina viva di PROD 6.307: ancorata alla colonna, la barra stava a
+   `top: 894` con la finestra alta 900 — in fondo al CALENDARIO, che è più alto dello schermo.
+   ⇒ `fixed` soddisfa la stessa regola e in più **si vede**. Il caso ora accetta l'una o l'altra e
+   pretende ciò che conta davvero: che non sia `static` né `relative`.
+   📌 *Una prova che nomina il MEZZO invece del fine difende la vecchia soluzione dalla nuova.* */
+test('la barra è fuori dal flusso: sovrapposta, non incastrata nella griglia', () => {
   const i = APP.indexOf('.svc-semaforo {');
   assert.ok(i > 0, 'la regola CSS della barra non c\'è');
   const regola = APP.slice(i, APP.indexOf('}', i));
-  assert.ok(/position:absolute/.test(regola), 'la barra è tornata nel flusso: sposterebbe la griglia');
+  assert.ok(/position:(absolute|fixed)/.test(regola), 'la barra è tornata nel flusso: sposterebbe la griglia');
   assert.ok(/bottom:0/.test(regola), 'la barra non è ancorata al bordo basso');
-  assert.ok(/left:0/.test(regola) && /right:0/.test(regola), 'la barra non è larga quanto la griglia');
+  // 🩹 La larghezza della colonna non la dà più il CSS (con `fixed`, `left/right:0` sarebbero i
+  //    bordi dello SCHERMO): la ridà `svcAllineaSemaforoAllaColonna` misurando `.svc-grid-col`
+  //    a ogni accensione e a ogni resize. La regola è la stessa — larga quanto la griglia — e a
+  //    cambiare è chi la applica, quindi la prova segue il codice invece del CSS.
+  const all = APP.slice(APP.indexOf('function svcAllineaSemaforoAllaColonna('));
+  assert.ok(/el\.style\.width = Math\.round\(r\.width\)/.test(all.slice(0, 900)),
+    'la barra non prende più la larghezza della colonna: sarebbe una fascia da bordo a bordo');
 });
 
-test('la colonna della griglia è posizionata, o la barra finisce in fondo allo schermo', () => {
+/* 🩹 Il titolo diceva «o la barra finisce in fondo allo schermo»: da quando la barra è `fixed`
+   quella conseguenza non è più sua. `position:relative` sulla colonna resta necessario — serve
+   alla CELLA accesa, che è l'altra metà della disposizione D — e la prova resta, col motivo giusto. */
+test('la colonna della griglia è posizionata, o la cella accesa perde il suo riferimento', () => {
   const i = APP.indexOf('.svc-grid-col {');
   const regola = APP.slice(i, APP.indexOf('}', i));
   assert.ok(/position:relative/.test(regola),
