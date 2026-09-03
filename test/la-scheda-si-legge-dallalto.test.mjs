@@ -107,13 +107,46 @@ test('la scheda più alta dello schermo non fa scorrere OLTRE la sua cima', () =
 /* ── LA CLASSE ───────────────────────────────────────────────────────────────
  * Il difetto non era in UN punto: `scrollTop = scrollHeight` compariva in cinque, e ne bastava
  * uno vivo per rimettere il titolo sopra il bordo. Chi ne aggiunge un sesto deve passare di qui. */
-test('nessuno scrolla più la chat dello staff «in fondo» scavalcando il tetto', () => {
+test('nessuno scrolla la chat dello staff «in fondo» DI PROPRIA INIZIATIVA', () => {
   const corpo = APP.slice(APP.indexOf('function svcAddMessage('));
   const colpevoli = [];
   const re = /(\w+)\.scrollTop\s*=\s*\1\.scrollHeight/g;
   for (const m of APP.matchAll(re)) colpevoli.push(m[0]);
-  assert.deepEqual(colpevoli, [],
-    'trovato un auto-scroll che va in fondo senza passare da _svcAutoScroll: ' + colpevoli.join(', ')
+
+  /* 🩹⭐⭐ 03/09/2026 — QUESTA GUARDIA È DIVENTATA ROSSA, E AVEVA RAGIONE A META'.
+   *
+   * La voce 134 ha aggiunto una pastiglia «↓ messaggio nuovo» che, CLICCATA, porta davvero in
+   * fondo — scavalcando il tetto. Passando da `_svcAutoScroll` non farebbe niente: si fermerebbe
+   * alla cima della scheda, cioè dove l'operatore è già.
+   *
+   * ⚖️ Il fatto che questa guardia difende non è «nessuno arriva mai in fondo»: è **nessuno ci va
+   * senza che l'operatore l'abbia chiesto**. Il difetto della 127 era un salto deciso dal
+   * PROGRAMMA mentre qualcuno leggeva; un dito su una pastiglia è l'esatto contrario — è la
+   * persona che dice «portami di là».
+   * ⇒ La guardia si riporta SUL FATTO: l'unico scavalco ammesso è dentro il gestore del click
+   * della pastiglia, e resta **uno solo**. Allargarla a «ovunque» sarebbe stato allentarla, che
+   * è come toglierla, solo più lentamente.
+   * 📌 *Una guardia che si rompe su un caso legittimo va resa più PRECISA, non più permissiva.* */
+  const dentroLaPastiglia = (() => {
+    const i = APP.indexOf('function _svcPastiglia(');
+    if (i < 0) return '';
+    let g = 0, visto = false, out = '';
+    for (let k = i; k < APP.length; k++) {
+      const c = APP[k]; out += c;
+      if (c === '{') { g++; visto = true; }
+      else if (c === '}') { g--; if (visto && g === 0) break; }
+    }
+    return out;
+  })();
+  const ammessi = (dentroLaPastiglia.match(re) || []);
+  assert.equal(ammessi.length, 1,
+    'lo scavalco del tetto dentro la pastiglia dev\'essere UNO: è l\'eccezione, non una porta aperta');
+  assert.ok(/addEventListener\('click'/.test(dentroLaPastiglia),
+    'lo scavalco è lecito solo perché sta dietro un CLICK: senza il gestore, è di nuovo un salto deciso dal programma');
+
+  const abusivi = colpevoli.filter((c) => !ammessi.includes(c));
+  assert.deepEqual(abusivi, [],
+    'trovato un auto-scroll che va in fondo di propria iniziativa: ' + abusivi.join(', ')
     + ' — usa _svcAutoScroll(contenitore), o il titolo della scheda tornerà sopra il bordo');
   assert.ok(corpo.length > 0);
 });
