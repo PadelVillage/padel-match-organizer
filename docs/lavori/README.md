@@ -2237,7 +2237,7 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — aspetta la sua scelta
+### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ✅ **DECISA, da scrivere**
 
 🗣️ **Voce SUA**, 03/09/2026: *«quello che vorrei studiare con te è come poter avere sul gestionale
 la visione di quello che sta succedendo sul Matchpoint **non legato alla scheda**… se ci sganciamo
@@ -2288,12 +2288,87 @@ messe davanti a lui, come per la 131 — *un esempio prima di scrivere*:
 **dice qualcosa anche quando lo slot è fuori vista**; ed è la sola che sul telefono non deve
 tagliare la frase utile, perché la barra è larga quanto la griglia mentre la pastiglia no.
 
-⏳ **ASPETTA DUE SUE DECISIONI, e senza quelle non si scrive codice:**
-① **quale disposizione** (A · B · C · D);
-② 🚨 **se il semaforo deve mostrare anche il SYNC AUTOMATICO** (ogni 2 minuti). Detto **prima**:
-   se non si distingue, la barra risulta accesa quasi sempre e diventa **rumore di fondo** — cioè
-   una cosa che si smette di guardare, che è il modo in cui si perde un avviso senza toglierlo.
-   La coda dichiara l'operazione (`op: 'poll'`), quindi tenere fuori l'automatico **si può**.
+🔄 **HA RISPOSTO — e queste due righe qui sopra dicevano «aspetta una scelta» quando la scelta era
+già stata data.** Correggo invece di affiancare: *una richiesta che resta scritta dopo essere stata
+esaudita non è vecchia, **mente**, e la prima cosa che fa una sessione nuova è crederle.*
+
+## ✅ LE QUATTRO DECISIONI SUE — due delle quali le ha RIBALTATE in corsa
+
+**① Disposizione: la D.** Barra **sovrapposta** al bordo basso della griglia, larga quanto lei,
+**+ la cella accesa** quando lo slot è in vista. Le quattro disposizioni gli sono state messe
+davanti disegnate a due larghezze: <https://claude.ai/code/artifact/877f04bc-695c-4937-a5d9-7e6f8af5c224>
+⚠️ **Si usa da mobile E da desktop** — vincolo suo, esplicito, ed è il motivo per cui la A cade
+(sul telefono tronca la frase) e la C pure (sposta la griglia di ~22px, cioè riapre il 3 giugno **e**
+la voce 130).
+
+**② Il sync automatico NON si vede.** 🗣️ *«Ogni due minuti la pagina si aggiorna con i dati
+importati da Matchpoint. Questo io non vorrei vederlo sul calendario segnalato.»*
+⇒ Fuori `export-history`, che è proprio il giro dei 2 minuti. Si può fare: la coda dichiara
+l'operazione.
+
+**③ 🔄 I gesti dal CHATBOT sì, si vedono — ha ribaltato.** Prima li aveva esclusi (*«saranno molte
+più di quattro, diventa un rumore»*), poi: 🗣️ *«io che sono di segreteria devo vedere le azioni di
+chi le fa dal chatbot e le azioni che faccio io da gestionale»*. **Vale la seconda.**
+⚖️ E il rumore che temeva resta fuori **per costruzione, non per fiducia**: «in corso» dura pochi
+secondi e **si spegne da sé** — non è una lista che si accumula.
+
+**④ 🔄 L'ESITO non va sul semaforo — ed è la decisione che ha cancellato metà del lavoro.**
+🗣️ *«Io di segreteria ho bisogno di capire se ci sono azioni in corso **e quali**, mentre chi opera
+sul chatbot deve capire se l'azione che ha fatto è andata a buon fine o no.»*
+⇒ **Cade il pezzo più rischioso di tutti**: la memoria degli esiti dentro il worker **non serve**.
+· l'esito della **sua** azione lo sa già il suo browser (voci 134 e 136, in servizio);
+· l'esito del **socio** glielo dice già il bot (`fatto` · `scrittura_rifiutata` · `esito_ignoto`).
+
+## 🏛️ L'ARCHITETTURA — e una correzione che mi sono fatto
+
+```
+🤖 chatbot  ⇄  🖥️ gestionale  ⇄  ⚙️ worker  ⇄  🎾 Matchpoint
+                                 └── tramite, nei due versi ──┘
+⛔ chatbot ⇠⇢ worker · chatbot ⇠⇢ Matchpoint : MAI
+```
+🩹 **Avevo applicato al gestionale una regola che vale per il BOT.** *«Il worker il bot non deve
+proprio filarselo»* è vero del bot; il worker **è** il tramite del **gestionale**, nei due versi, e
+che il gestionale sappia la risposta di Matchpoint è **normale** — è il suo mestiere.
+⇒ Resta **una sola** conseguenza, ed è di **vocabolario**: quello che l'operatore legge dev'essere
+una frase del gestionale, mai un codice del worker.
+
+## 🚨 DUE TRAPPOLE MISURATE — senza queste il semaforo mente il primo giorno
+
+**① Aprire una scheda accoda un job che la coda chiama «modifica».** La lettura autorevole dei
+giocatori passa da `edit` con `read:true` — il worker lo sa (`server.mjs:7696`), **la coda no**.
+⇒ Chi guarda il calendario vedrebbe *«sta modificando una prenotazione»* mentre qualcuno ha
+soltanto **aperto** una scheda: un allarme su un gesto che non tocca niente.
+
+**② La ricerca per telefono prima di creare un socio** è op `client` col flag `soloRicerca`,
+etichetta «nuovo cliente», e **non crea niente**.
+
+⇒ La regola «è un gesto di una persona?» **non può guardare solo il nome dell'op**: deve guardare i
+**flag**. Va in un **modulo puro** accanto a `coda-priorita.mjs`, così il banco la **esegue** invece
+di rileggerla — è la lezione già pagata due volte con gli elenchi scritti a mano
+(`MP_INTERACTIVE_OPS` senza i soldi, `HANDLER_CHE_APRONO_UN_BROWSER` senza `handleSetCharge`).
+
+## 📋 L'ELENCO, letto dal worker
+
+**Si vedono**: `create` · `edit` (**senza** `read`) · `cancel` · `set-charge` · `collect-payment` ·
+`void-payment` · `correct-wallet` · `client` (**senza** `soloRicerca`) · `disable-client` ·
+`reactivate-client`.
+**Non si vedono**: `export-history` ← **il giro ogni 2 minuti** · `export-clients` ·
+`export-slot-schedule` · `get-slots` · `read-tabellone` · `read-wallet` · i due export dei report ·
+`poll` · `keepalive` · `debug`.
+
+## 🔧 COSA MANCA DA SCRIVERE, in ordine
+
+1. **Worker** (⚠️ **solo da `main`**, regola anti-drift): `mpJobMeta` deve smettere di chiamare
+   «modifica» una lettura e «nuovo cliente» una ricerca. **Si corregge alla radice**, o lo stesso
+   errore ricompare in ogni consumatore che leggerà quella coda.
+2. **Edge** (3 righe in `matchpoint-bookings-create` / `edit` / `cancel`): inoltrare `chiestoDa` al
+   worker. 🚨 Oggi **si ferma all'edge**: la coda distingue un gesto del bot solo perché gli
+   **manca** `operatore` — cioè su **un'assenza**, e filtrare su un'assenza fa sparire in silenzio
+   un gesto staff a cui quel campo sfuggisse. Serve a **etichettare** («richiesta da un socio»),
+   non a nascondere.
+3. **Edge `matchpoint-queue-status`**: filtrare l'automatico e tradurre in frasi del gestionale.
+4. **App**: la barra D + la cella accesa + riaccendere `svcStartQueuePolling()` (oggi commentata) e
+   **ricreare l'elemento** su cui disegnare, che il 3 giugno era stato tolto dal DOM.
 
 Non scavalca niente: entra in fondo.
 
@@ -2330,7 +2405,44 @@ in anagrafica — gli «Ospite», che nelle sue schermate sono spesso la maggior
 
 Non scavalca niente: entra in fondo.
 
-### **139** — 👛 QUANTO HA NEL BORSELLINO, accanto all'importo — decisa, da scrivere
+### **139** — 👛 QUANTO HA NEL WALLET, accanto all'importo — ⏳ **IN SERVIZIO SU TEST 6.298, aspetta il suo occhio**
+
+🔄 **AGGIORNATA il 03/09 sera (76ª): scritta, e la domanda aperta È STATA DECISA — da me, non da lui.**
+La sonda che questa scheda proponeva per scioglierla **non si poteva fare**: contare i `saldoCents === null`
+su un campione vero vuol dire aprire una scheda con la console remota, e aprire una scheda passa da
+`/functions/v1/matchpoint-bookings-edit` — che la console **blocca** senza `--allow-writes`
+(`tools/verifica-browser/console.mjs:164`), e quel flag su PROD resta a domanda.
+⇒ Invece di spendere il flag o di fermare la voce su una risposta da una riga, **ho preso la strada
+sicura e la dichiaro**: `null` → `👛 —`, titolo **«Saldo Wallet non disponibile»**. È la lettura
+prudente del suo *«sì, scrivere 0,00 €»*, ed è **una riga** da ribaltare se intendeva l'altra.
+⚖️ Il costo dell'errore non è simmetrico, ed è per questo che la prudenza qui è la scelta giusta e
+non un rinvio: `0,00 €` su un saldo ignoto **inventa un fatto**, `—` su un saldo che era zero fa
+soltanto guardare il bottone Wallet — che quel numero ce l'ha già nel proprio titolo.
+
+🩹⭐ **E LA GUARDIA DELLA 128 HA FERMATO LA PRIMA STESURA — banco rosso, non rilettura.** Il testo
+diceva *«Saldo borsellino non disponibile»* e *«Borsellino di …»*: nel gestionale la parola è **Wallet**
+(sua decisione del 02/09), e `letichetta-si-traduce-la-chiave-no.test.mjs` è cascato sulla riga esatta.
+⇒ Correggendola le due frasi sono diventate **LA STESSA** — la pastiglia e il bottone spento dicono
+parola per parola *«Saldo Wallet non disponibile»*, che è meglio di due sinonimi.
+📌 *Una guardia che si rompe su ciò che è sbagliato ha appena guadagnato il suo posto: quella riga
+l'avevo scritta copiandola da questa scheda, che diceva «borsellino» perché è la parola con cui la
+voce è nata — e nessuna rilettura l'avrebbe presa.*
+
+🔨 **Cos'è stato scritto** (`index.html`, TEST 6.298): `_pmoWalletPastiglia(saldoCents)` — regola
+**pura**, tenuta fuori dal disegno perché è l'unico punto in cui la voce può fare danno — più la
+pastiglia in coda alla riga dei soldi e tre righe di CSS. Nessuna edge, nessuna migrazione, nessun worker.
+🧪 **Banco: `test/zero-non-e-non-lo-so.test.mjs`, 9 prove, e la regola la ESEGUE** (`new Function` sul
+corpo estratto), non la cerca con una regex: un banco che grepasse «non disponibile» resterebbe verde
+anche se domani quel ramo diventasse irraggiungibile.
+⛔ **Cosa il banco NON dice**: gira senza browser ⇒ prova la **regola**, non il **render**. Che la
+pastiglia si veda — e si veda abbastanza da essere un colpo d'occhio — lo dice solo il suo occhio.
+⏳ **PER QUESTO LA VOCE RESTA APERTA**, ed è quello che manca per chiuderla: **guardare una scheda
+su PROD la sera, mentre fa cassa**. Sue parole: *«se non si nota non serve»*.
+
+---
+
+#### La scheda com'era scritta, che resta perché il ragionamento serve
+
 
 🗣️ **Sua**, 03/09/2026 sera, subito dopo aver chiuso la 129: *«mi sono ricordato che non c'è
 accanto all'importo, dentro la scheda della partita o della lezione, se un giocatore ha dei soldi
