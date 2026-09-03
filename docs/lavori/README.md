@@ -1728,7 +1728,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 6
+## 🔴 URGENTI — 5
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -2467,7 +2467,59 @@ di rileggerla — è la lezione già pagata due volte con gli elenchi scritti a 
 
 Non scavalca niente: entra in fondo.
 
-### **138** — 🔗 IL NOME DEL GIOCATORE NON APRE LA SCHEDA SOCIO
+### **138** — 🔗 IL NOME DEL GIOCATORE APRE LA SCHEDA SOCIO — 🧪 **su TEST 6.301, aspetta il suo dito**
+
+🔄 **AGGIORNATA il 03/09 sera (76ª): ha scelto, e l'ho scritta.** La domanda gliel'ho fatta mentre
+era davanti allo schermo di PROD, chiudendo la 139 — ⇒ **la ⓒ: la scheda si apre SOPRA**, senza
+cambiare tab.
+⚖️ Le altre due pagavano un prezzo che questa non paga: la **ⓐ** lascia il click **a volte assente**,
+e un nome che a volte non risponde è un nome di cui non ci si fida; la **ⓑ** mette un popup nel
+mezzo del lavoro.
+
+🚨⭐⭐ **E QUESTA SCHEDA DICEVA CHE LA ⓒ ERA «LA PIÙ LUNGA DA FARE». È FALSO**, misurato prima di
+scrivere una riga: `openMemberCard` **non cambia tab** — disegna dentro `#memberCardOverlay`, che è
+un `position:fixed` **fratello del login** (`index.html:6548`), fuori da ogni tab. ⇒ Chiamarla dal
+calendario apre la scheda **sopra** e basta, e la strada dichiarata più cara era **la più corta**.
+📌 *Prima di costruire, guarda cosa c'è già* — ed è la **seconda volta nella stessa giornata**: il
+semaforo della 137 era spento dietro un commento, questo era già della forma giusta.
+⚠️ Se la scelta fosse stata la ⓐ o la ⓑ, avremmo pagato un prezzo **per un problema che non
+c'era**: la stima sbagliata non rendeva solo il lavoro più lungo, rendeva **peggiori le altre due
+opzioni sul tavolo**.
+
+⛔ **E il prezzo che la scheda temeva NON c'è, letto nel codice**: né `openMemberCard` né
+`closeMemberCard` toccano `staffCalPlayersState` o il DOM del pannello della partita ⇒ gli importi
+digitati e i giocatori aggiunti **restano sotto** e si ritrovano chiudendo la scheda.
+🧪 **Non è provato col dito**, ed è la cosa che manca per chiudere: digitare un importo, aprire un
+nome, chiudere, e vedere l'importo ancora lì.
+
+✅ **Gli «Ospite» restano nomi MUTI**, com'era scritto: `_staffCalSocioDelGiocatore` torna `null` e
+il nome non prende né tratteggio né click. 📌 *Un nome cliccabile che non apre niente è peggio di
+un nome normale: promette e non mantiene.*
+⛔ **E il nome NON è un bottone**: in quella scheda ogni bottone scrive su Matchpoint, e uno
+innocuo in mezzo a quelli è un invito a sbagliare mira — stessa ragione della pastiglia muta della
+139. Il segno è un **tratteggio** sotto il nome (`text-decoration`, non un bordo, che sposterebbe
+l'elenco di un pixel), con `role="link"` e il tasto Invio per la tastiera.
+
+📏 **UN LIMITE DICHIARATO, trovato dal banco e NON curato di proposito**: `pmoChiaveCodiceCliente`
+riempie gli zeri **mancanti** (`140` → `000140`) ma non toglie quelli **in eccesso** ⇒ un
+`00000140` a otto cifre non aggancia. Non si allarga qui: quella funzione regge anche
+l'**anti-omonimia delle scritture** su Matchpoint, e toccarla per far cliccare un nome è un prezzo
+sproporzionato. ⚖️ Il caso è teorico (Matchpoint scrive a sei cifre) e il sintomo sarebbe un nome
+**muto** — il verso sicuro, non un nome che apre la scheda di qualcun altro.
+
+🧪 **Banco: `test/il-nome-muto-non-promette.test.mjs`, 13 prove**, e la ricerca del socio la
+**esegue** estraendo le funzioni vere dall'app.
+🩹 **Due difetti erano della SONDA, non del codice**, e vanno ricordati perché somigliavano a
+difetti veri: ① passava a `new Function` il solo **corpo** invece della dichiarazione, quindi lo
+eseguiva sul posto; ② non dava `cleanCell` a `pmoChiaveCodiceCliente`, e il `ReferenceError`
+finiva nel `try/catch` della funzione — il banco diceva *«il socio non si trova»* mentre a non
+funzionare era la prova. 📌 *Un catch che ingoia tutto protegge l'app e acceca chi la prova:
+quando una prova fallisce contro una funzione difesa così, il primo sospettato è la prova.*
+
+---
+
+#### La scheda com'era, che resta per il ragionamento
+
 
 🗣️ **Sua**, 03/09/2026 sera, chiudendo la 129: *«l'unica cosa che rimane fuori è che il nome del
 giocatore dalla scheda della partita non è cliccabile»*. Nasce come **residuo dichiarato** di una
@@ -2486,7 +2538,7 @@ non è il problema.
 pancia — importi digitati, giocatori aggiunti o tolti. Un click su un nome non deve far perdere
 quel lavoro.
 
-⏳ **ASPETTA UNA SUA SCELTA FRA TRE**, ed è l'unica cosa che manca per poterla scrivere:
+✅ **LE TRE STRADE CHE GLI SONO STATE MESSE DAVANTI** — ha scelto la **ⓒ** (vedi in testa):
 · **ⓐ** il nome è cliccabile **solo se non c'è niente di modificato** — mai una perdita, ma il
   click a volte non c'è e bisogna capire perché;
 · **ⓑ** si **chiede conferma** («hai modifiche non salvate, esco lo stesso?») — sempre cliccabile,
@@ -2497,129 +2549,6 @@ quel lavoro.
 ⚠️ **E una cosa vale comunque, qualunque strada si scelga**: il nome resta **muto** per chi non è
 in anagrafica — gli «Ospite», che nelle sue schermate sono spesso la maggioranza delle righe.
 📌 *Un nome cliccabile che non apre niente è peggio di un nome normale: promette e non mantiene.*
-
-Non scavalca niente: entra in fondo.
-
-### **139** — 👛 QUANTO HA NEL WALLET, accanto all'importo — ⏳ **IN SERVIZIO SU TEST 6.298, aspetta il suo occhio**
-
-🔄 **AGGIORNATA il 03/09 sera (76ª): scritta, e la domanda aperta È STATA DECISA — da me, non da lui.**
-La sonda che questa scheda proponeva per scioglierla **non si poteva fare**: contare i `saldoCents === null`
-su un campione vero vuol dire aprire una scheda con la console remota, e aprire una scheda passa da
-`/functions/v1/matchpoint-bookings-edit` — che la console **blocca** senza `--allow-writes`
-(`tools/verifica-browser/console.mjs:164`), e quel flag su PROD resta a domanda.
-⇒ Invece di spendere il flag o di fermare la voce su una risposta da una riga, **ho preso la strada
-sicura e la dichiaro**: `null` → `👛 —`, titolo **«Saldo Wallet non disponibile»**. È la lettura
-prudente del suo *«sì, scrivere 0,00 €»*, ed è **una riga** da ribaltare se intendeva l'altra.
-⚖️ Il costo dell'errore non è simmetrico, ed è per questo che la prudenza qui è la scelta giusta e
-non un rinvio: `0,00 €` su un saldo ignoto **inventa un fatto**, `—` su un saldo che era zero fa
-soltanto guardare il bottone Wallet — che quel numero ce l'ha già nel proprio titolo.
-
-🩹⭐ **E LA GUARDIA DELLA 128 HA FERMATO LA PRIMA STESURA — banco rosso, non rilettura.** Il testo
-diceva *«Saldo borsellino non disponibile»* e *«Borsellino di …»*: nel gestionale la parola è **Wallet**
-(sua decisione del 02/09), e `letichetta-si-traduce-la-chiave-no.test.mjs` è cascato sulla riga esatta.
-⇒ Correggendola le due frasi sono diventate **LA STESSA** — la pastiglia e il bottone spento dicono
-parola per parola *«Saldo Wallet non disponibile»*, che è meglio di due sinonimi.
-📌 *Una guardia che si rompe su ciò che è sbagliato ha appena guadagnato il suo posto: quella riga
-l'avevo scritta copiandola da questa scheda, che diceva «borsellino» perché è la parola con cui la
-voce è nata — e nessuna rilettura l'avrebbe presa.*
-
-🔨 **Cos'è stato scritto** (`index.html`, TEST 6.298): `_pmoWalletPastiglia(saldoCents)` — regola
-**pura**, tenuta fuori dal disegno perché è l'unico punto in cui la voce può fare danno — più la
-pastiglia in coda alla riga dei soldi e tre righe di CSS. Nessuna edge, nessuna migrazione, nessun worker.
-🧪 **Banco: `test/zero-non-e-non-lo-so.test.mjs`, 9 prove, e la regola la ESEGUE** (`new Function` sul
-corpo estratto), non la cerca con una regex: un banco che grepasse «non disponibile» resterebbe verde
-anche se domani quel ramo diventasse irraggiungibile.
-⛔ **Cosa il banco NON dice**: gira senza browser ⇒ prova la **regola**, non il **render**. Che la
-pastiglia si veda — e si veda abbastanza da essere un colpo d'occhio — lo dice solo il suo occhio.
-⏳ **PER QUESTO LA VOCE RESTA APERTA**, ed è quello che manca per chiuderla: **guardare una scheda
-su PROD la sera, mentre fa cassa**. Sue parole: *«se non si nota non serve»*.
-
----
-
-#### La scheda com'era scritta, che resta perché il ragionamento serve
-
-
-🗣️ **Sua**, 03/09/2026 sera, subito dopo aver chiuso la 129: *«mi sono ricordato che non c'è
-accanto all'importo, dentro la scheda della partita o della lezione, se un giocatore ha dei soldi
-nel borsellino»*. È **la seconda metà** del residuo di quella voce (la prima è la 138), e come
-quella sta in una voce sua perché **un residuo lasciato dentro una voce chiusa è un residuo perso**.
-
-🗣️ L'idea originale, 02/09 notte: *«sotto il nome c'è solamente l'importo. Potremmo spostare
-l'importo tutto a destra e sulla sinistra mettere un'iconcina con un emoticon di un borsellino, così
-da capire al volo quanto il socio ha dentro. È un colpo d'occhio molto carino per chi fa segreteria
-e cassa la sera.»*
-
-📏⭐ **LA MISURA CHE LA RENDE MIGLIORE DI COME È STATA PENSATA: il saldo CE L'ABBIAMO GIÀ, ed è
-quello vero.** Il worker mette `saldoCents` su **ogni** riga del roster (`server.mjs:7811`), letto
-dalla ficha Matchpoint **nello stesso giro** che legge i giocatori — per chi deve pagare e per chi
-ha già pagato. Oggi l'app lo usa per **una cosa sola** (decidere se il bottone Wallet è premibile,
-`index.html:43545`) e poi lo **butta via**.
-⇒ Il colpo d'occhio **non costa una chiamata in più**: costa **smettere di buttarlo**.
-
-⛔ **E la fonte NON è il cloud**: `wallet_balance` è la fotografia del report «clienti con credito
-residuo» — **40 righe**, 28 con credito (misurate il 02/09), ferma all'ultimo giro. Pescare da lì
-darebbe saldi **vecchi** e **assenti per quasi tutti**.
-
-✅ **TUTTO GIÀ DECISO — non aspetta nessuna risposta, è solo da scrivere:**
-① 🔄 **LA PASTIGLIA C'È SEMPRE, e con zero DICHIARA ZERO** — *«la pastiglia deve essere sempre
-   presente; se il giocatore non ha nulla nel borsellino, la pastiglia dichiara zero»* (sua, 03/09
-   sera). ⚠️ **Ribalta la mia proposta**, che era di mostrarla **solo a chi ha credito** per non
-   riempire l'occhio di `👛 0,00 €` su tre righe su quattro. La sua vince, e la ragione è migliore
-   della mia: **«non ha credito» è un'informazione**, e chi fa cassa la sera la usa — una riga
-   senza pastiglia direbbe soltanto «non lo so», che è la cosa sbagliata da far pensare;
-   ⇒ E questa decisione rende il punto ② **più** importante, non meno: se lo zero è una
-   dichiarazione esplicita, scrivere `0,00 €` quando il dato **manca** non è più un'omissione, è
-   **una bugia netta**;
-② 🚨⭐ **`saldoCents` può essere `null`, e QUESTA È L'UNICA DOMANDA APERTA DELLA VOCE.**
-   Matchpoint a volte non dà il dato, e l'app lo dice già altrove («Saldo borsellino non
-   disponibile»). ✅ **Saldo ZERO → `👛 0,00 €`**: confermato da lui il 03/09 sera (*«sì, scrivere
-   0,00 €»*). ⏳ **Saldo `null` → da confermare**: la sua frase arrivava subito dopo la decisione
-   sullo zero e può voler dire tutt'e due le cose, quindi **non si indovina**.
-   ⚖️ Il rischio, detto per intero: scrivere `0,00 €` su un saldo **ignoto** dice «non ha credito»
-   mentre la verità è «non lo so» — e chi fa cassa la sera può **rinunciare a un Wallet che invece
-   funzionava**, o mandare a pagare in contanti chi aveva il credito.
-   🔨 Proposta se sceglie di distinguere: `👛 —` (oppure `👛 ?`) col titolo «Saldo borsellino non
-   disponibile», che è la stessa frase che l'app usa già sul bottone Wallet.
-   📌 *È lo stesso bivio della **114** («Libero» invece di «non lo so»), e in questo progetto quel
-   bivio è già stato sbagliato due volte;*
-   🔎 **Lui è andato a guardare su Matchpoint** (03/09 sera, schermata della scheda di Marco Aprea):
-   *«quando il giocatore ha il borsellino a zero, lui ci scrive 0,00»*. ⚖️ **Cosa prova e cosa no**:
-   prova che sulla **scheda cliente** Matchpoint dichiara lo zero — ed è proprio la riga che il
-   worker legge (`walletSaldoLabel` = `#CC_Cabecera_LabelSaldo_Actual`, testo «Portafoglio: X,XX €»).
-   ⛔ **Ma il saldo che finisce nella riga del giocatore non viene da lì**: viene da
-   `partSaldoAttuale(ridx)`, una **colonna dentro la ficha della partita** (`server.mjs:7818`).
-   Sono due pagine diverse ⇒ il `null` da noi resta il caso **«non l'ho letto»** (timeout di 1500ms
-   o cella vuota), non «il socio ha zero».
-   📏 **Come si scioglie il dubbio senza indovinare**: una sonda con la console remota che apra una
-   scheda vera su PROD e conti quante righe del roster hanno `saldoCents === null`. Se sono zero su
-   un campione vero, la domanda è accademica e si scrive `0,00 €` e basta;*
-③ ✅ **pastiglia MUTA**, non cliccabile — sua decisione. ⚖️ *In una scheda dove ogni cosa cliccabile
-   tocca il circolo, un bottone innocuo in mezzo a bottoni che scrivono su Matchpoint è un invito a
-   sbagliare mira.*
-
-🚨⭐ **E UNA TRAPPOLA DI NOMI, trovata guardando insieme a lui: la stessa cosa ha TRE nomi, e
-vanno tenuti separati.**
-
-| dove | parola |
-|---|---|
-| Matchpoint, scheda cliente | **Portafoglio** |
-| Matchpoint, dialog dell'incasso | **Saldo disponibile** (`cobroMethodLabels.borsellino`) |
-| il nostro gestionale | **Wallet** (sua decisione del 02/09, voce 128) |
-
-⛔ **Uniformarli romperebbe il worker**, che sul dialog dell'incasso clicca **per testo**. È
-esattamente l'avvertimento della **128**, dove le tre famiglie di chiavi lasciate intatte erano il
-permesso, le chiavi di dato e **i testi che Matchpoint scrive**.
-📌 *Un nome che l'utente legge e un nome che una macchina cerca sono due cose diverse anche quando
-indicano lo stesso oggetto: la voglia di «mettere ordine» fra i due è il modo tipico di rompere un
-automatismo senza toccarne una riga.*
-
-⚠️ **Vale per la partita E per la lezione** — sono le sue parole, e la scheda è la stessa
-(`staffCalRenderPlayersEditor`), quindi non è lavoro in più: è una condizione da non restringere
-per sbaglio.
-
-🔨 **Costo stimato: poche righe nella riga del giocatore**, dove `saldoCents` è già in mano
-(`index.html:43545`). Nessuna edge, nessuna migrazione, nessun worker.
-⏳ Poi vuole **il suo occhio**: è un colpo d'occhio, e se non si nota non serve.
 
 Non scavalca niente: entra in fondo.
 
@@ -4673,17 +4602,18 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 03/09/2026 — 115 voci
+## 📦 CHIUSE — dal 13/08 al 03/09/2026 — 116 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
 1 e ne contano 9, e la guardia fallisce. Chi chiude in un giorno nuovo **allarga la data di questa**,
 non ne apre un'altra sotto.
 
-**Le prime nove voci sono del 03/09**; **le cinque dopo sono del 02/09**; **le tre dopo sono del 01/09**; **le due dopo sono del 31/08**; **le otto dopo sono del 30/08**; **le tre dopo sono del 29/08**; **le quattro dopo sono del 28/08**; **la dopo è del 26/08**; **le sette dopo sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
+**Le prime dieci voci sono del 03/09**; **le cinque dopo sono del 02/09**; **le tre dopo sono del 01/09**; **le due dopo sono del 31/08**; **le otto dopo sono del 30/08**; **le tre dopo sono del 29/08**; **le quattro dopo sono del 28/08**; **la dopo è del 26/08**; **le sette dopo sono del 25/08**, **le due dopo del 24/08**; **le dieci dopo sono del 22-23/08**; **le sette dopo sono del 19/08**; **le tre dopo sono del 18/08**; **le due dopo sono del 17/08**; poi il blocco del **16/08** e, a scendere, quelli del **15**, del **14** e del **13/08**. Nel blocco del 15/08 alcune sono **annullate** invece che chiuse, e l'etichetta lo dice riga per riga perché «non serviva più» e «è stato fatto» non sono la stessa cosa.
 
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
+| **139** | 👛 **QUANTO HA NEL WALLET, ACCANTO ALL'IMPORTO** — 📦 **CHIUSA il 03/09, a PROVA FISICA su PROD 6.285**, con la sua schermata del calendario: *«mi sembra che ci sia tutto»*. Nello scatto la pastiglia fa esattamente il lavoro per cui è nata — `👛 29,00 €` con **Wallet acceso** su Erika Poser, `👛 0,00 €` con **Wallet spento** sulle altre tre righe: il colpo d'occhio che aveva chiesto (*«per chi fa segreteria e cassa la sera»*) si legge senza aprire niente. 📏 **Non è costata una chiamata in più**: il worker metteva già `saldoCents` su ogni riga del roster, letto dalla ficha nello stesso giro dei giocatori, e l'app lo usava per **una cosa sola** (accendere il bottone Wallet) e poi lo **buttava**. ⇒ È costato smettere di buttarlo. 🚨⭐ **La decisione che poteva fare danno, presa da me e dichiarata: `null` NON è zero.** Lo zero si **dichiara** (`0,00 €`, sua decisione: *«non ha credito» è un'informazione*), ma il `null` del worker vuol dire **«non l'ho letto»** — cella assente o lettura scaduta a 1500 ms — e scriverci `0,00 €` direbbe *«non ha credito»* mentre la verità è *«non lo so»*: chi fa cassa rinuncerebbe a un Wallet che invece funzionava. ⇒ `👛 —` col titolo **«Saldo Wallet non disponibile»**, **esattamente** la frase che il bottone dice già. ⚖️ La sonda che avrebbe sciolto il dubbio **non si poteva fare**: la console remota blocca tutto `/functions/v1/` e leggere una scheda passa di lì. È **una riga** da ribaltare se intendeva l'altra. 🩹 **La guardia della 128 ha fermato la prima stesura**, che diceva *«Saldo borsellino non disponibile»*: nel gestionale la parola è **Wallet**. Correggendola le due frasi sono diventate **la stessa** — meglio di due sinonimi. 📌 *Quella riga l'avevo copiata dalla scheda, che diceva «borsellino» perché è la parola con cui la voce è nata: nessuna rilettura l'avrebbe presa, il banco sì.* 🧪 `test/zero-non-e-non-lo-so.test.mjs`, 9 prove, e la regola la **esegue** invece di cercarla con una regex. |
 | **136** | 🔔 **DUE AVVISI PER LO STESSO FATTO (e il secondo copriva un bottone)** — 📦 **CHIUSA il 03/09, a PROVA FISICA dal telefono**: *«ho fatto il test»*. 🗣️ Nata poche ore dopo la 134, dalla sua schermata di PROD 6.283: *«è molto brutto. Ci sono due avvisi, è troppo pieno per quello che si sta verificando su Matchpoint.»* 🚨⭐⭐ **È un difetto della 134, e la scheda della 134 diceva il contrario**: là c'era scritto che la riga dentro la scheda e la pastiglia *«si affiancano, non sono due copie»* — **vero** con l'esito fuori dal bordo, **falso** con l'esito dentro. Nello stesso istante, per lo stesso evento, erano due copie della stessa frase, e la seconda finiva **sopra «Annulla prenotazione»**. ⚖️ **Non era una svista di scrittura: era una previsione presa per un fatto.** Avevo misurato il caso in cui l'esito è fuori dal bordo — dove le due cose davvero si affiancano — e ho scritto la regola generale su **quell'unico caso**. 📌 *Una misura su un caso non autorizza una frase su tutti i casi: la generalizzazione è un'affermazione in più, e va misurata a parte.* 🔨 La riga dentro la scheda **vince**, perché è la più vicina al gesto; la pastiglia compare **solo** quando quella non si vede o non c'è. E quando compare si legge come una cosa che sta **sopra** il pannello: fondo pieno invece di trasparente, ombra marcata, `z-index` più alto — sul telefono la trasparenza la faceva sembrare parte dei bottoni. ⚖️ **Chi l'ha trovata è stato lui, in mezz'ora, guardando**: nessun banco che conta righe vede due avvisi sovrapposti. |
 | **125** | 💶 **L'INCASSO NELLA SCHEDA PARTITA** — 📦 **CHIUSA il 03/09, a PROVA FISICA su PROD**: *«ho fatto il test»*. 🚨 Era la voce che aspettava **il gesto che nessun banco poteva sostituire**: il ramo che scrive davvero un cobro su Matchpoint **non l'aveva percorso nessuno da giugno**, e su TEST non si poteva provare — il recinto rifiuta prima del worker, perché il worker è **uno solo e condiviso** e un incasso «di prova» sarebbe denaro vero addebitato a una persona vera. ⇒ Restava aperta **per costruzione**, non per pigrizia: l'unica prova possibile era un incasso che lui doveva fare comunque. ⭐ Il metodo è suo, ed è quello che l'ha resa sicura: *usare incassi veri che deve fare comunque, così la cassa è corretta per costruzione.* 🔎 Prima del suo gesto è stato **misurato che il kill-switch del worker era acceso** (`paymentWriteEnabled: true`, letto dal `/health` in servizio): fino a quel giorno l'unico modo di saperlo sarebbe stato **provare a incassare**, cioè usare un ramo di scrittura su denaro vero come sonda. 📌 *Una voce che aspetta un gesto non è una voce ferma: è una voce che ha già fatto tutto il resto.* |
 | **129** | 👛 **IL SALDO WALLET A COLPO D'OCCHIO** — 📦 **CHIUSA il 03/09 su sua istruzione** (*«puoi chiudere… la 129»*). 🚨⭐⭐ **VA DETTO SUBITO E SENZA GIRI: di questa voce NON È STATO COSTRUITO NIENTE.** Né la pastiglia 👛 nella riga del giocatore, né il nome del socio cliccabile. `saldoCents` continua a servire a **una cosa sola** — decidere se il bottone Wallet è premibile — e poi viene buttato. ⇒ La voce si chiude **archiviata, non fatta**: se un domani la si rivuole, si riapre e si riparte da qui, dove il lavoro di pensiero è **tutto già fatto**. ⭐ **E quello che resta scritto vale più del codice che non c'è.** 📏 La misura che la rendeva migliore di com'era stata pensata: **il saldo ce l'abbiamo già, ed è quello vero** — il worker mette `saldoCents` su **ogni** riga del roster, letto dalla ficha nello stesso giro che legge i giocatori ⇒ il colpo d'occhio **non costerebbe una chiamata in più**, costerebbe smettere di buttarlo. ⛔ E la fonte **non** è il cloud: `wallet_balance` è una fotografia di **40 righe** (28 con credito) ferma all'ultimo giro. 🔨 Due scelte di disegno che non erano nella richiesta: ① la pastiglia **solo a chi ha credito** (con `👛 0,00 €` su tre righe su quattro l'occhio smette di vederla proprio la sera che serve); ② 🚨 `saldoCents` può essere **`null`**, e lì non si scrive `0,00 €` — sarebbe dire «non ha soldi» quando la verità è «non lo so», **lo stesso errore della 114**, che in questo progetto è già costato due volte. ✅ Deciso da lui: pastiglia **muta**, non cliccabile — *in una scheda dove ogni cosa cliccabile tocca il circolo, un bottone innocuo in mezzo è un invito a sbagliare mira.* ⏳ **Restava senza risposta una sola domanda**, e resta: il nome cliccabile fa **lasciare il calendario** con modifiche non salvate in pancia ⇒ ⓐ cliccabile solo se non c'è niente di modificato · ⓑ con conferma · ⓒ si apre sopra senza cambiare tab. |
