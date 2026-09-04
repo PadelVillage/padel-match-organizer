@@ -3278,6 +3278,34 @@
     .svc-edit-actions-bar { border-top:1px solid #e6e8ee; padding-top:10px; margin-top:4px; }
     @media (min-width:900px) {
       .svc-layout { flex-direction:row; height:min(80vh, 860px); }
+      /* 🖥️⭐⭐ VOCE 153/C — IL CALENDARIO PRENDE QUELLO CHE RESTA, non una frazione del tutto.
+         🚨 Il difetto, MISURATO su PROD 6.349 a quattro altezze di finestra: la pagina è alta
+              190 (sopra il calendario) + 80% dell'altezza finestra (il calendario) + 203 (sotto)
+            e il modello prevede esattamente il misurato — 265 · 233 · 213 px da scorrere a
+            640 · 800 · 900. ⇒ La pagina entrerebbe solo con una finestra alta **1.966 px**: il
+            calendario non era «stretto su schermi piccoli», era fuori **SEMPRE**, anche su un 1920.
+         ⚖️ La causa è la riga qui sopra: `min(80vh, 860px)` è una frazione della FINESTRA, e
+            ignora i 393 px di cornice che stanno intorno al calendario.
+         🚨🚨 E quella riga GOVERNA DUE COSE — la scheda partita **e** la shell del calendario:
+            cambiarla avrebbe mosso anche la scheda, cioè le voci 149-157 appena confermate una
+            per una. ⇒ Si scrive **dopo**, con un selettore più specifico che prende il solo
+            calendario, e la scheda resta esattamente dov'era.
+         🩹⭐⭐ E QUESTA RIGA È STATA SCRITTA UNA VOLTA NEL POSTO SBAGLIATO: dentro
+            `@media (max-width:899px)`, cioè sul TELEFONO — dove non serviva e avrebbe fatto
+            danno, e dove su desktop non si sarebbe applicata mai. La sonda l'ha vista subito
+            (512px, cioè ancora 80vh) ma la prima spiegazione che viene in mente è «il deploy non
+            è ancora arrivato», che avrebbe fatto perdere il giro.
+            📌 *«Un selettore già scoped al calendario» non dice in quale `@media` sta: lo scope
+            dell'ELEMENTO e lo scope della LARGHEZZA sono due cose diverse, e se ne controlla una
+            sola per volta senza accorgersene.*
+         📌 Il numero sta in UNA variabile con un nome, non sparso dentro il calc: se un domani la
+            cornice cambia (una fascia in più sopra, un blocco tolto sotto) si rimisura quella e
+            basta. Un numero che descrive i propri vicini va tenuto dove si vede che li descrive —
+            è la lezione della 157 (`grid-row:2`) applicata prima di ripagarla.
+         ⛔ Il pavimento di 360px non è ornamentale: sotto, la griglia diventa illeggibile, e da lì
+            in giù è giusto che a scorrere torni la pagina invece di schiacciare le righe. */
+      #staffCalV36 { --pmo-cal-cornice: 393px; }
+      #staffCalV36 > .svc-layout { height: max(360px, calc(100vh - var(--pmo-cal-cornice))); }
       .svc-grid-col { overflow:auto; }
       /* 🪟 La scheda è una FINESTRA sopra il calendario (restyling del 04/09/2026): non è più
          una colonna a destra né il pannello della sidebar. Misure prese dalla scheda socio
@@ -8435,7 +8463,7 @@ body.assessment-public-mode .assessment-public-only-card {
   <script>
     'use strict';
 
-    const APP_VERSION = '6.349';
+    const APP_VERSION = '6.353';
     // Fase 1 feature flag — shell UI pagamenti (riga incasso scheda partita +
     // borsellino scheda socio). Sola lettura finché la Fase 2 non collega il worker.
     const PMO_PAYMENTS_UI_ENABLED = true;
