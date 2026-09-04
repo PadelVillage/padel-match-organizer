@@ -585,7 +585,7 @@ Stato pubblicato:
 - il submit pubblico `assessment=link-esterno` controlla il project ref Supabase prima di scrivere;
 - PROD puo salvare richieste link esterno solo sul project ref `qqbfphyslczzkxoncgex`;
 - TEST puo salvare richieste link esterno solo sul project ref `cudiqnrrlbyqryrtaprd`;
-- la diagnostica `Amministrazione > Supabase > Verifica TEST/PROD` confronta il project ref esatto atteso.
+- la diagnostica `Impostazioni > Utenti Staff > Controlli tecnici > Verifica TEST/PROD` confronta il project ref esatto atteso.
 
 La promozione e' solo app UI + documentazione: nessun deploy Edge Function, nessuna modifica SQL, scheduler, segreti, dati reali, Matchpoint reale, Gmail o WhatsApp automatico. Gli scheduler PROD esistenti restano preservati e TEST resta senza cron.
 

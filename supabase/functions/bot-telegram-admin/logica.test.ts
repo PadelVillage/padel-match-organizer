@@ -75,7 +75,7 @@ Deno.test('permesso: con una configurazione presente, la voce spuntata via CHIUD
   assertEquals(vedeLaSezione('collaboratore', { view_dashboard: true }), true);
 });
 
-Deno.test('permesso: chiuso il capitolo Amministrazione, è chiusa anche la sezione', () => {
+Deno.test('permesso: chiuso il capitolo Impostazioni, è chiusa anche la sezione', () => {
   // Senza questo controllo si entrerebbe in una sotto-sezione di un capitolo negato.
   assertEquals(vedeLaSezione('collaboratore', { view_administration: false, view_admin_telegram: true }), false);
 });

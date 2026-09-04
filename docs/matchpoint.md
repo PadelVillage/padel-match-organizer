@@ -45,7 +45,7 @@ Il bottone `Applica soft-delete approvati in TEST` opera solo in TEST, richiede 
 
 ## Nota TEST v5.485
 
-`Amministrazione > Dati Matchpoint` include una diagnostica read-only `Diagnostica conteggi soci` per analizzare le differenze fra cloud soci, Anagrafica, Dashboard e fotografia clienti Matchpoint.
+`Impostazioni > Dati` include una diagnostica read-only `Diagnostica conteggi soci` per analizzare le differenze fra cloud soci, Anagrafica, Dashboard e fotografia clienti Matchpoint.
 
 La diagnostica non modifica dati: legge i record cloud `member`, confronta i conteggi locali, classifica record tecnici, soci Matchpoint, soci non Matchpoint senza gemello e candidati a verifica manuale per eventuale soft-delete. La lista candidata non autorizza alcuna pulizia automatica.
 
@@ -53,7 +53,7 @@ E' stato preparato anche il file SQL `supabase_pmo_member_count_audit_dry_run.sq
 
 ## Nota TEST v5.470
 
-`Amministrazione > Dati Matchpoint > Stato routine automatiche` non dipende piu solo dalla cronologia locale del browser. All'apertura della sottosezione, la app legge i riepiloghi cloud Matchpoint (`matchpoint_data`) e, se sono piu recenti, scarica i record normalizzati gia presenti nel cloud per aggiornare il browser locale.
+`Impostazioni > Dati > Stato routine automatiche` non dipende piu solo dalla cronologia locale del browser. All'apertura della sottosezione, la app legge i riepiloghi cloud Matchpoint (`matchpoint_data`) e, se sono piu recenti, scarica i record normalizzati gia presenti nel cloud per aggiornare il browser locale.
 
 In TEST lo scheduler automatico resta disattivato: la UI mostra `TEST manuale` e `Manuale in TEST`, lasciando i bottoni `Aggiorna ora` come unico modo operativo di collaudo. Nessuna modifica a scheduler, Edge Function, SQL, dati reali o PROD.
 
@@ -63,11 +63,11 @@ La sezione deve essere una schermata operativa rapida per importare dati e crear
 
 ## Documenti collegati
 
-- `docs/routine-dati-automatiche.md`: bozza operativa della routine automatica dati, con sequenza temporale, stati esito, gestione errori e pannello di controllo ora in `Amministrazione > Dati Matchpoint`.
+- `docs/routine-dati-automatiche.md`: bozza operativa della routine automatica dati, con sequenza temporale, stati esito, gestione errori e pannello di controllo ora in `Impostazioni > Dati`.
 
 ## Struttura UI v5.455 TEST
 
-- Percorso: `Amministrazione > Dati Matchpoint`.
+- Percorso: `Impostazioni > Dati`.
 - La vecchia voce principale `DATI (in/out)` non compare piu nel menu laterale.
 - Titolo interno: `Dati Matchpoint`.
 - Contenuto operativo invariato rispetto alla vecchia sezione dati.

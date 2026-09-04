@@ -32,12 +32,12 @@ const ALLOWED_MODES = new Set(['primary-email', 'recall-email', 'third-email', '
 // 🚨 `gmail-check` è TENUTA, ed è una correzione del 13/08: la potatura se l'era portata via insieme
 // al canale, ma non appartiene al canale — appartiene all'INVITO STAFF. Non spedisce nulla: chiede
 // un token per verificare che l'account mittente sia ancora collegato. È quello che alimenta il
-// bottone «Verifica Gmail» in Amministrazione › Utenti, l'unico posto da cui si può ricollegare
+// bottone «Verifica Gmail» in Impostazioni › Utenti Staff, l'unico posto da cui si può ricollegare
 // Gmail quando il token scade. Senza, l'invito staff si rompe e non si ripara dall'app.
 // L'esenzione gemella sta nel gestionale (`PMO_ASSESSMENT_EMAIL_ACTIONS_ESENTI`): cambiarle insieme.
 //
 // `config-check` resta viva di proposito: è in sola lettura, non prende token Gmail e non spedisce,
-// e la chiama il pannello `Verifica TEST/PROD` dell'Amministrazione con una fetch propria (quindi
+// e la chiama il pannello `Verifica TEST/PROD` delle Impostazioni con una fetch propria (quindi
 // non passa dall'interruttore dell'app). Toglierla romperebbe quel pannello senza guadagno.
 //
 // Il codice delle azioni ritirate resta nel file, non è stato asportato: riaccenderle è rimetterle

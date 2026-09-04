@@ -240,7 +240,7 @@ Stato guardia ambiente Link esterno TEST/PROD 2026-05-18 21:53:
 - TEST puo salvare richieste link esterno solo se la config Supabase punta al project ref `cudiqnrrlbyqryrtaprd`;
 - PROD puo salvare richieste link esterno solo se la config Supabase punta al project ref `qqbfphyslczzkxoncgex`;
 - se una vecchia configurazione locale o un link/config incrociato carica il project ref sbagliato, l'invio viene bloccato prima della scrittura;
-- la diagnostica `Amministrazione > Supabase > Verifica TEST/PROD` confronta il project ref esatto atteso per l'ambiente corrente;
+- la diagnostica `Impostazioni > Utenti Staff > Controlli tecnici > Verifica TEST/PROD` confronta il project ref esatto atteso per l'ambiente corrente (percorso **misurato** sulla pagina viva di PROD 6.346: il vecchio `Amministrazione > Supabase` era vecchio in entrambi i segmenti, non solo nel nome del capitolo);
 - nessuna modifica a SQL, Supabase schema, Edge Function, scheduler, segreti, Matchpoint, Gmail, WhatsApp automatico o dati reali.
 
 Stato app/diagnostica email Autovalutazione PROD verificato il 2026-05-16 22:13:

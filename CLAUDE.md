@@ -1054,7 +1054,7 @@ dei ref remoti → `git fetch --prune`.
   | ② | **il PERMESSO** `cloud_sync`, che serve alle edge | stessa riga, campo `permissions` | 🟢 **già `true`** |
   | ③ | **la guardia dell'ATTREZZO**, che blocca tutto `/functions/v1/` | `--allow-writes` di `console.mjs` | 🟢 **mio** — provato: `scritture: "CONSENTITE"` |
 
-  ⇒ **Ne manca uno solo, ed è una parola in un campo.** In *Amministrazione → Utenti*, sulla riga
+  ⇒ **Ne manca uno solo, ed è una parola in un campo.** In *Impostazioni → Utenti Staff*, sulla riga
   dell'utenza della console, il ruolo va da **Solo lettura** a **Staff**.
   ⛔⛔ **NON a «Admin» né a «Proprietario», ed è la parte che conta**: quei due ruoli
   **scavalcano l'intera whitelist** dei permessi (`if (['owner','admin'].includes(role)) return
