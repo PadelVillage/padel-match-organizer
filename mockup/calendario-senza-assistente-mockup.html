@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calendario senza assistente</title>
+<title>Calendario a tutta larghezza</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
 <style>
   :root{
     --ink:#16202e; --ink-soft:#4b5768; --ink-faint:#77839a;
-    --paper:#f2f4f8; --card:#ffffff; --line:#dde3ec;
+    --paper:#f2f4f8; --line:#dde3ec;
     --accent:#2563eb; --accent-deep:#1F4788; --navy:#17304f;
     --ok:#067647; --ok-bg:#e9f7ef; --warn:#b45309; --danger:#b42318;
     --lez-bg:#fdeacd; --lez-ink:#a2560c; --par-bg:#dbe7fb; --par-ink:#1d4ed8;
@@ -20,256 +20,211 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
 
-  /* ── intestazione della proposta (non fa parte dell'app) ───────────────── */
-  .pitch{max-width:1320px;margin:0 auto;padding:26px 22px 10px}
-  .pitch .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
-  .pitch h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:2rem;margin:6px 0 4px;letter-spacing:-.01em;text-wrap:balance}
-  .pitch p.sub{margin:0;color:var(--ink-soft);font-size:.95rem;max-width:74ch;line-height:1.55}
-  .switch{display:flex;gap:8px;margin:18px 0 12px;flex-wrap:wrap}
+  .pitch{max-width:1400px;margin:0 auto;padding:26px 22px 0}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+  .pitch h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:2rem;margin:6px 0 6px;letter-spacing:-.01em;text-wrap:balance}
+  .pitch p.sub{margin:0;color:var(--ink-soft);font-size:.95rem;max-width:78ch;line-height:1.55}
+  .switch{display:flex;gap:8px;margin:18px 0 14px;flex-wrap:wrap;align-items:center}
   .switch button{font:inherit;font-size:.86rem;font-weight:600;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:.15s}
   .switch button:hover{border-color:#b9c6da}
   .switch button[aria-pressed="true"]{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
   .switch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .legenda{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent-deep);border-radius:10px;padding:12px 14px;margin-bottom:16px;max-width:1320px}
+  .switch .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+  .switch .demo{border-style:dashed}
+  .legenda{display:flex;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent-deep);border-radius:10px;padding:12px 14px;margin:0 auto 16px;max-width:1400px}
   .legenda .tit{font-weight:700;font-size:.9rem;margin-bottom:3px}
-  .legenda .txt{font-size:.87rem;color:var(--ink-soft);line-height:1.5;max-width:92ch}
-  .legenda code{background:#eef2f8;border-radius:4px;padding:1px 5px;font-size:.85em}
+  .legenda .txt{font-size:.87rem;color:var(--ink-soft);line-height:1.55;max-width:96ch}
 
-  /* ── cornice dell'app ──────────────────────────────────────────────────── */
-  .frame{max-width:1320px;margin:0 auto 34px;border:1px solid #c9d3e2;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(16,32,60,.14);background:#fff}
-  .app{display:flex;height:720px;font-size:13px}
+  .frame{max-width:1400px;margin:0 auto 30px;border:1px solid #c9d3e2;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(16,32,60,.14);background:#fff}
+  .app{display:flex;height:740px;font-size:13px}
 
+  /* sidebar — c'è solo nello stato di OGGI */
   .side{width:238px;flex:0 0 238px;background:var(--navy);color:#fff;display:flex;flex-direction:column;padding:14px 12px;gap:12px}
   .side .brand{display:flex;align-items:center;gap:10px}
   .side .logo{width:38px;height:38px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px}
   .side .brand b{display:block;font-size:.95rem}
   .side .brand span{font-size:.72rem;opacity:.7}
-  .side .menu{display:flex;flex-direction:column;gap:2px;margin-top:6px}
-  .side .menu a{color:#dbe6f5;text-decoration:none;padding:9px 11px;border-radius:8px;font-size:.86rem;display:flex;gap:9px;align-items:center}
-  .side .menu a.on{background:rgba(255,255,255,.13);color:#fff;font-weight:600}
-  .side .filler{flex:1 1 auto;min-height:0}
-  .side .foot{font-size:.7rem;opacity:.55}
-  /* stato attuale: pannello bianco vuoto + barra di scrittura */
-  .side .chat-host{flex:1 1 auto;min-height:0;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;flex-direction:column;justify-content:flex-end;padding:8px}
-  .side .chat-host .vuoto{flex:1 1 auto;display:flex;align-items:center;justify-content:center;color:#b9c2d0;font-size:.78rem;text-align:center;padding:0 10px;line-height:1.4}
+  .side .voce{padding:9px 11px;border-radius:8px;background:rgba(255,255,255,.13);font-weight:600;font-size:.86rem}
+  .chat-host{flex:1 1 auto;min-height:0;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.22);display:flex;flex-direction:column;justify-content:flex-end;padding:8px;position:relative}
+  .chat-host .vuoto{flex:1 1 auto;display:flex;align-items:center;justify-content:center;color:#b9c2d0;font-size:.78rem;text-align:center;padding:0 10px;line-height:1.4;overflow:hidden}
   .chatbar{display:flex;gap:6px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
-  .chatbar .inp{flex:1 1 auto;border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:#98a2b3;font-size:.78rem;background:#fff}
+  .chatbar .inp{flex:1 1 auto;border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:#98a2b3;font-size:.78rem}
   .chatbar .mic,.chatbar .snd{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:#f9fafb;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 auto}
-  .via{position:relative}
-  .via::after{content:"";position:absolute;inset:-6px -4px;border:2px dashed #e8564f;border-radius:12px;pointer-events:none}
-  .via-tag{position:absolute;right:-4px;top:-22px;background:#e8564f;color:#fff;font-size:.63rem;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;white-space:nowrap}
+  .via-tag{position:absolute;left:8px;top:-11px;background:#e8564f;color:#fff;font-size:.63rem;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px}
 
   .main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;background:#f6f8fb}
-  .tabs{display:flex;gap:6px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line)}
-  .tabs span{padding:8px 14px;border-radius:9px;font-weight:600;font-size:.84rem;color:var(--ink-soft)}
+
+  /* barra in alto — nella proposta prende anche logo, versione ed Esci */
+  .topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line)}
+  .topbar .brandtop{display:flex;align-items:center;gap:9px;padding-right:14px;margin-right:2px;border-right:1px solid var(--line)}
+  .topbar .brandtop .logo{width:32px;height:32px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .topbar .brandtop b{font-size:.88rem;display:block;line-height:1.15}
+  .topbar .brandtop span{font-size:.68rem;color:var(--ink-faint)}
+  .tabs{display:flex;gap:6px;flex:1 1 auto;min-width:0;overflow:hidden}
+  .tabs span{padding:8px 14px;border-radius:9px;font-weight:600;font-size:.84rem;color:var(--ink-soft);white-space:nowrap}
   .tabs span.on{background:var(--accent-deep);color:#fff}
-  .calhead{display:flex;align-items:flex-end;justify-content:space-between;padding:14px 18px 10px;gap:12px}
+  .esci{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;font-size:.78rem;font-weight:600;color:var(--ink-soft);flex:0 0 auto}
+
+  .calhead{display:flex;align-items:flex-end;justify-content:space-between;padding:13px 18px 9px;gap:12px}
   .calhead h2{margin:0;font-size:1.15rem;color:var(--accent-deep)}
   .calhead .sott{margin:3px 0 0;font-size:.8rem;color:var(--ink-soft)}
   .datenav{display:flex;align-items:center;gap:7px;font-size:.82rem}
   .datenav .b{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px}
   .datenav .d{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-weight:600;font-variant-numeric:tabular-nums}
 
-  .stage{flex:1 1 auto;min-height:0;position:relative;display:flex;padding:0 18px 18px;gap:14px}
-  .gridcol{flex:1 1 auto;min-width:0;position:relative;display:flex;flex-direction:column}
+  .stage{flex:1 1 auto;min-height:0;position:relative;padding:0 18px 18px}
+  .gridcol{position:relative;height:100%;display:flex;flex-direction:column}
   .gridwrap{flex:1 1 auto;min-height:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#fff}
-  .grid{display:grid;grid-template-columns:54px repeat(6,1fr);grid-auto-rows:minmax(0,1fr);height:100%}
-  .grid .h{border-bottom:1px solid var(--line);border-right:1px solid #eef1f6;font-size:.75rem;color:var(--ink-faint);padding:6px 8px;font-weight:600;background:#fbfcfe}
+  .grid{display:grid;grid-auto-rows:minmax(0,1fr);height:100%;transition:grid-template-columns .35s ease}
+  .grid .h{border-bottom:1px solid var(--line);border-right:1px solid #eef1f6;font-size:.75rem;color:var(--ink-faint);padding:6px 8px;font-weight:600;background:#fbfcfe;font-variant-numeric:tabular-nums}
   .grid .rowlab{border-right:1px solid var(--line);border-bottom:1px solid #eef1f6;display:flex;align-items:center;gap:6px;padding-left:9px;font-weight:600;color:var(--ink-soft);font-size:.8rem;background:#fbfcfe}
   .grid .rowlab i{width:8px;height:8px;border-radius:50%;display:inline-block}
   .cell{border-right:1px solid #eef1f6;border-bottom:1px solid #eef1f6;padding:5px 6px;font-size:.7rem;line-height:1.25;overflow:hidden;cursor:pointer;position:relative}
   .cell.free{background:var(--free-bg);color:var(--free-ink);display:flex;align-items:center;justify-content:center;font-weight:600}
   .cell.lez{background:var(--lez-bg);color:var(--lez-ink)}
   .cell.par{background:var(--par-bg);color:var(--par-ink)}
-  .cell b{display:block;font-size:.76rem;margin-bottom:1px}
-  .cell .ora{opacity:.75;font-size:.64rem}
+  .cell b{display:block;font-size:.75rem;margin-bottom:1px}
+  .cell .ora{opacity:.75;font-size:.63rem;display:block}
   .cell:hover{filter:brightness(.97)}
-  .cell.acceso{outline:2px solid var(--accent);outline-offset:-2px;box-shadow:inset 0 0 0 999px rgba(37,99,235,.06)}
+  .cell.acceso{outline:2px solid var(--accent);outline-offset:-2px}
+  .oltre{display:none}
+  .app.largo .oltre{display:block}
+  .app.largo .cell.oltre.free{display:flex}
+  .guadagno{position:absolute;right:20px;top:-30px;background:#e9f7ef;border:1px solid #bce3cd;color:var(--ok);font-size:.72rem;font-weight:700;border-radius:999px;padding:4px 11px}
 
-  /* barra semaforo SOTTO il calendario (solo stato attuale) */
+  /* barra 137 sotto il calendario — solo nello stato di OGGI */
   .barra{position:absolute;left:0;right:0;bottom:0;background:#fff;border:1px solid #cfd9e8;border-bottom:none;border-radius:10px 10px 0 0;box-shadow:0 -6px 18px rgba(16,32,60,.10);padding:8px 12px;font-size:.78rem;display:flex;gap:9px;align-items:flex-start}
 
-  /* ── la scheda ─────────────────────────────────────────────────────────── */
-  .scheda{display:flex;flex-direction:column;background:#fff;border:1px solid #b7c7e3;border-radius:12px;overflow:hidden;box-shadow:0 18px 55px rgba(15,23,42,.22)}
-  .sch-head{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line);background:#fff}
+  /* la scheda */
+  .backdrop{position:absolute;inset:0;background:rgba(16,32,60,.36);border-radius:10px;z-index:5}
+  .scheda{position:absolute;z-index:6;top:12px;bottom:12px;left:50%;transform:translateX(-50%);width:min(760px,calc(100% - 80px));display:flex;flex-direction:column;background:#fff;border:1px solid #b7c7e3;border-radius:12px;overflow:hidden;box-shadow:0 18px 55px rgba(15,23,42,.26)}
+  .sch-head{display:flex;align-items:flex-start;gap:9px;padding:12px 15px;border-bottom:1px solid var(--line);flex:0 0 auto}
   .sch-head .ic{font-size:17px;color:var(--accent)}
   .sch-head .t{flex:1 1 auto;min-width:0}
-  .sch-head .t b{display:block;font-size:.94rem}
-  .sch-head .t span{font-size:.76rem;color:var(--ink-soft)}
-  .sch-head .x{border:1px solid var(--line);background:#fff;border-radius:8px;width:28px;height:28px;flex:0 0 auto;cursor:pointer;color:var(--ink-soft);font-size:14px}
-  .sch-body{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 14px;background:#f7f9fc;display:flex;flex-direction:column;gap:10px}
-  .sez{background:#fff;border:1px solid #e8eaf0;border-radius:12px;padding:11px 12px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .sch-head .t b{display:block;font-size:.96rem}
+  .sch-head .t span{font-size:.77rem;color:var(--ink-soft)}
+  .sch-head .x{border:1px solid var(--line);background:#fff;border-radius:8px;width:29px;height:29px;flex:0 0 auto;cursor:pointer;color:var(--ink-soft);font-size:14px}
+  .sch-body{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 15px;background:#f7f9fc;display:flex;flex-direction:column;gap:10px}
+  .sez{background:#fff;border:1px solid #e8eaf0;border-radius:12px;padding:11px 13px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
   .sez h4{margin:0 0 8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint)}
   .campi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  .campo{border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:.8rem;font-weight:600;background:#fff}
+  .campo{border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:.82rem;font-weight:600}
   .campo small{display:block;font-weight:600;font-size:.64rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
-  .pl{padding:8px 0}
+  .pl{padding:7px 0;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
   .pl + .pl{border-top:1px solid #eef0f3}
-  .pl-row{display:flex;align-items:center;gap:7px}
   .pl-ic{width:18px;text-align:center;flex:0 0 auto}
-  .pl-name{flex:1 1 auto;font-size:.82rem;font-weight:600;text-decoration:underline dotted #98a2b3;text-underline-offset:3px;cursor:pointer}
+  .pl-name{flex:1 1 190px;min-width:130px;font-size:.84rem;font-weight:600;text-decoration:underline dotted #98a2b3;text-underline-offset:3px;cursor:pointer}
   .pl-name:hover{color:var(--accent);text-decoration-color:var(--accent)}
-  .pl-star{color:#c98a04}
-  .pl-money{display:flex;align-items:center;gap:7px;margin-top:5px;padding-left:25px}
-  .eur{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--accent);border-radius:8px;padding:2px 7px;height:27px;font-weight:700;font-size:.8rem}
+  .eur{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--accent);border-radius:8px;padding:2px 8px;height:28px;font-weight:700;font-size:.82rem}
   .eur em{font-style:normal;color:var(--ink-faint);font-weight:600}
-  .wallet{display:inline-flex;align-items:center;gap:3px;font-size:.75rem;font-weight:700}
-  .paid{color:var(--ok);font-weight:700;font-size:.78rem}
-  .mini{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 9px;font-size:.72rem;font-weight:600;color:var(--ink-soft)}
-  .azioni{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line);background:#fff}
-  .az{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 12px;font-size:.78rem;font-weight:600;color:var(--ink-soft);cursor:pointer}
+  .wallet{display:inline-flex;align-items:center;gap:3px;font-size:.76rem;font-weight:700;white-space:nowrap}
+  .paid{color:var(--ok);font-weight:700;font-size:.79rem;white-space:nowrap}
+  .mini{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font-size:.73rem;font-weight:600;color:var(--ink-soft);cursor:pointer}
+  .azioni{display:flex;gap:7px;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--line);flex:0 0 auto}
+  .az{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;font-size:.79rem;font-weight:600;color:var(--ink-soft);cursor:pointer}
   .az.pri{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
   .az.dan{color:var(--danger);border-color:#f1c7c3}
 
-  /* striscia di stato IN FONDO ALLA SCHEDA (la barra della 137 che trasloca) */
-  .stato{display:flex;gap:9px;align-items:flex-start;padding:10px 14px;border-top:1px solid #cfd9e8;background:#f4f8ff;font-size:.78rem;line-height:1.35}
+  /* la striscia della 137, in fondo alla scheda */
+  .stato{display:flex;gap:10px;align-items:flex-start;padding:11px 15px;border-top:1px solid #cfd9e8;background:#f4f8ff;font-size:.79rem;line-height:1.35;flex:0 0 auto}
   .stato .sp{width:14px;height:14px;border-radius:50%;border:2px solid #bcd0f0;border-top-color:var(--accent);animation:sp .8s linear infinite;flex:0 0 auto;margin-top:2px}
   @keyframes sp{to{transform:rotate(360deg)}}
-  @media (prefers-reduced-motion:reduce){.stato .sp{animation:none}}
+  @media (prefers-reduced-motion:reduce){.stato .sp,.pill .sp{animation:none}}
   .stato .r1{font-weight:700}
-  .stato .r2{color:var(--ink-soft);font-size:.75rem}
+  .stato .r2{color:var(--ink-soft);font-size:.76rem}
   .stato.ok{background:var(--ok-bg);border-top-color:#bce3cd}
-  .stato.ok .sp{display:none}
   .stato.ko{background:#fff4f2;border-top-color:#f2c0bb}
-  .stato.ko .sp{display:none}
-  .stato .chiudi{margin-left:auto;border:1px solid #d9c4c1;background:#fff;border-radius:7px;padding:3px 8px;font-size:.7rem;font-weight:600;cursor:pointer;color:var(--danger);display:none}
-  .stato.ko .chiudi{display:block}
-  .stato .glyph{font-size:15px;line-height:1.1}
+  .stato .glyph{font-size:15px}
+  .stato .chiudi{margin-left:auto;border:1px solid #d9c4c1;background:#fff;border-radius:7px;padding:4px 9px;font-size:.72rem;font-weight:600;cursor:pointer;color:var(--danger)}
 
-  /* PROPOSTA A — finestra centrata sul calendario */
-  .backdrop{position:absolute;inset:0;background:rgba(16,32,60,.34);border-radius:10px;z-index:5}
-  .schedaA{position:absolute;z-index:6;top:14px;bottom:14px;left:50%;transform:translateX(-50%);width:min(620px,calc(100% - 60px));max-height:calc(100% - 28px)}
-
-  /* PROPOSTA B — pannello che entra da destra */
-  .schedaB{flex:0 0 400px;max-width:46%;align-self:stretch;min-height:0}
-
-  /* pastiglia di stato quando NESSUNA scheda è aperta */
-  .pill{position:absolute;right:12px;top:-38px;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #cfd9e8;border-radius:999px;padding:5px 12px;font-size:.75rem;font-weight:600;box-shadow:0 4px 14px rgba(16,32,60,.12);z-index:4}
+  .pill{position:absolute;right:22px;top:-31px;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #cfd9e8;border-radius:999px;padding:5px 13px;font-size:.75rem;font-weight:600;box-shadow:0 4px 14px rgba(16,32,60,.12);z-index:4;cursor:pointer}
   .pill .sp{width:12px;height:12px;border-radius:50%;border:2px solid #bcd0f0;border-top-color:var(--accent);animation:sp .8s linear infinite}
 
-  .nota{max-width:1320px;margin:0 auto 40px;padding:0 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-  .nota .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .nota .box h3{margin:0 0 7px;font-size:.92rem}
-  .nota .box p{margin:0 0 8px;font-size:.85rem;color:var(--ink-soft);line-height:1.55}
-  .nota .box p:last-child{margin-bottom:0}
-  .nota .box.warn{border-left:4px solid var(--warn)}
+  .nota{max-width:1400px;margin:0 auto 44px;padding:0 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;align-items:start}
+  .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .box h3{margin:0 0 7px;font-size:.92rem}
+  .box p{margin:0 0 8px;font-size:.85rem;color:var(--ink-soft);line-height:1.55}
+  .box p:last-child{margin-bottom:0}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.mis{border-left:4px solid var(--ok)}
+  .box b{color:var(--ink)}
+  .box code{background:#eef2f8;border-radius:4px;padding:1px 5px;font-size:.85em}
+
+  /* telefono */
+  .fono{width:210px;flex:0 0 auto;border:8px solid #263449;border-radius:24px;overflow:hidden;background:#f6f8fb;margin:8px auto 0;box-shadow:0 10px 26px rgba(16,32,60,.18)}
+  .fono .tb{background:#fff;border-bottom:1px solid var(--line);padding:7px 9px;display:flex;align-items:center;gap:7px;font-size:.66rem;font-weight:700}
+  .fono .tb .ham{border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-weight:700}
+  .fono .ag{padding:7px;display:flex;flex-direction:column;gap:5px}
+  .fono .ag .r{border-radius:7px;padding:5px 7px;font-size:.6rem;line-height:1.3}
+  .fono .sheet{background:#fff;border-top:2px solid #b7c7e3;border-radius:12px 12px 0 0;padding:8px;font-size:.6rem;box-shadow:0 -6px 18px rgba(16,32,60,.14)}
+  .fono .sheet .st{margin-top:7px;border-top:1px solid #cfd9e8;background:#f4f8ff;margin:7px -8px -8px;padding:6px 8px;font-size:.56rem;line-height:1.3}
   .hidden{display:none !important}
-  .demo{display:flex;gap:8px;align-items:center;margin:0 auto 18px;max-width:1320px;padding:0 22px;flex-wrap:wrap}
-  .demo b{font-size:.8rem;color:var(--ink-soft)}
-  .demo button{font:inherit;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
-  .demo button:hover{border-color:#b9c6da}
 </style>
 </head>
 <body>
 
 <div class="pitch">
-  <div class="eyebrow">Mockup · da approvare prima di sviluppare</div>
-  <h1>Il calendario senza assistente</h1>
-  <p class="sub">L'assistente digitale sparisce: niente barra di scrittura, niente microfono, niente pannello di chat. La scheda della partita non vive più lì dentro — si apre <b>sopra il calendario</b>, come già fa la scheda socio in Anagrafica. E il messaggio di avanzamento, che oggi sta nella barra sotto il calendario, <b>trasloca in fondo alla scheda</b>. Due disposizioni a confronto: clicca una partita o uno slot verde per vederla aprire.</p>
-  <div class="switch" role="group" aria-label="Scegli la disposizione">
+  <div class="eyebrow">Mockup · proposta A, rivista con la tua indicazione</div>
+  <h1>Il calendario a tutta larghezza</h1>
+  <p class="sub">L'assistente digitale sparisce — barra di scrittura, microfono, invio e il pannello che li ospita. Con lui sparisce anche <b>la colonna scura a sinistra</b>: il menu resta quello in alto, che su desktop c'è già, e i 304 px liberati se li prende il calendario. La scheda della partita si apre <b>sopra il calendario</b>, come la scheda socio in Anagrafica, e il messaggio di avanzamento della 137 lascia il fondo del calendario per diventare la <b>striscia in fondo alla scheda</b>.</p>
+  <div class="switch" role="group" aria-label="Confronto">
     <button data-v="oggi" aria-pressed="false">Oggi (v6.311)</button>
-    <button data-v="A" aria-pressed="true">Proposta A · finestra centrata</button>
-    <button data-v="B" aria-pressed="false">Proposta B · pannello a destra</button>
+    <button data-v="A" aria-pressed="true">La proposta</button>
+    <span class="sep"></span>
+    <button class="demo" data-s="run">⏳ in corso</button>
+    <button class="demo" data-s="ok">✅ confermata</button>
+    <button class="demo" data-s="ko">⛔ rifiutata</button>
+    <button class="demo" data-s="close">chiudi la scheda</button>
   </div>
 </div>
 
 <div class="pitch" style="padding-top:0">
-  <div class="legenda">
-    <div>
-      <div class="tit" id="legTit">Proposta A — la scheda è una finestra sopra il calendario</div>
-      <div class="txt" id="legTxt">La scheda si apre centrata, con il calendario in ombra dietro: una cosa sola da guardare. La sidebar perde la chat e torna a essere solo il menu. È la stessa forma della scheda socio, quindi non c'è niente di nuovo da imparare.</div>
-    </div>
-  </div>
-</div>
-
-<div class="demo">
-  <b>Prova la striscia di stato:</b>
-  <button data-s="run">⏳ operazione in corso</button>
-  <button data-s="ok">✅ confermata da Matchpoint</button>
-  <button data-s="ko">⛔ rifiutata</button>
-  <button data-s="close">chiudi la scheda</button>
+  <div class="legenda"><div>
+    <div class="tit" id="legTit"></div>
+    <div class="txt" id="legTxt"></div>
+  </div></div>
 </div>
 
 <div class="frame">
-  <div class="app">
+  <div class="app largo" id="app">
 
-    <!-- SIDEBAR -->
-    <aside class="side">
-      <div class="brand">
-        <div class="logo">🎾</div>
-        <div><b>Padel Village</b><span>v6.311</span></div>
+    <aside class="side hidden" id="side">
+      <div class="brand"><div class="logo">🎾</div><div><b>Padel Village</b><span>v6.311</span></div></div>
+      <div class="voce">Calendario</div>
+      <div class="chat-host">
+        <div class="via-tag">via, tutto</div>
+        <div class="vuoto" id="chatVuoto">qui compaiono le schede<br>e i messaggi</div>
+        <div class="chatbar"><div class="inp">💬 Scrivi o detta…</div><div class="mic">🎤</div><div class="snd">➤</div></div>
       </div>
-
-      <!-- stato attuale: pannello chat -->
-      <div class="chat-host via" id="chatHost">
-        <div class="via-tag">via con il restyling</div>
-        <div class="vuoto">qui compaiono le schede<br>e i messaggi</div>
-        <div class="chatbar">
-          <div class="inp">💬 Scrivi o detta…</div>
-          <div class="mic">🎤</div>
-          <div class="snd">➤</div>
-        </div>
-      </div>
-
-      <!-- dopo: solo menu -->
-      <nav class="menu hidden" id="sideMenu">
-        <a class="on" href="#">📅 Calendario</a>
-        <a href="#">👥 Anagrafica soci</a>
-        <a href="#">💶 Incassi</a>
-        <a href="#">⚙️ Amministrazione</a>
-      </nav>
-      <div class="filler" id="sideFiller" hidden></div>
-      <div class="foot">Padel Village · staff</div>
     </aside>
 
-    <!-- CONTENUTO -->
     <div class="main">
-      <div class="tabs">
-        <span class="on">Calendario</span><span>Anagrafica soci</span><span>Incassi</span><span>Amministrazione ▾</span>
+      <div class="topbar">
+        <div class="brandtop hidden" id="brandTop">
+          <div class="logo">🎾</div>
+          <div><b>Padel Village</b><span>v6.311</span></div>
+        </div>
+        <div class="tabs">
+          <span class="on">Calendario</span><span>Anagrafica soci</span><span>Assistente AI</span><span>Incassi</span><span>Amministrazione ▾</span>
+        </div>
+        <button class="esci hidden" id="esciTop">⎋ Esci</button>
       </div>
+
       <div class="calhead">
         <div>
           <h2>Calendario campi staff</h2>
           <p class="sott">Visualizza e prenota slot su Matchpoint direttamente dall'app.</p>
         </div>
-        <div class="datenav">
-          <span class="b">‹</span><span class="d">05/09/2026</span><span style="color:var(--accent-deep);font-weight:600">Sabato</span><span class="b">›</span><span class="b">Oggi</span>
-        </div>
+        <div class="datenav"><span class="b">‹</span><span class="d">05/09/2026</span><span style="color:var(--accent-deep);font-weight:600">Sabato</span><span class="b">›</span><span class="b">Oggi</span></div>
       </div>
 
-      <div class="stage" id="stage">
+      <div class="stage">
         <div class="gridcol">
-          <div class="gridwrap">
-            <div class="grid" id="grid">
-              <div class="h"></div>
-              <div class="h">09</div><div class="h">10</div><div class="h">11</div><div class="h">12</div><div class="h">15</div><div class="h">16</div>
+          <div class="guadagno hidden" id="guadagno">+3 ore in vista, senza scorrere</div>
+          <div class="pill hidden" id="pill"><span class="sp"></span> Sto scrivendo su Matchpoint… <span style="color:var(--ink-faint);font-weight:600">apri</span></div>
 
-              <div class="rowlab"><i style="background:#f87171"></i>C1</div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">09:00–10:00</span><div>🎾 Lucas Vidal</div></div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">10:00–11:00</span><div>🎾 Lucas Vidal</div></div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">11:00–12:00</span><div>🎾 Lucas Vidal</div></div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">12:00–13:00</span><div>🎾 Lucas Vidal</div></div>
-              <div class="cell free">Libero</div><div class="cell free">Libero</div>
+          <div class="gridwrap"><div class="grid" id="grid"></div></div>
 
-              <div class="rowlab"><i style="background:#fbbf24"></i>C2</div>
-              <div class="cell free">Libero</div><div class="cell free">Libero</div><div class="cell free">Libero</div><div class="cell free">Libero</div><div class="cell free">Libero</div>
-              <div class="cell par"><b>Partita</b><span class="ora">16:30–18:00</span><div>Maurizio Aprea<br>Fabio De Luca</div></div>
-
-              <div class="rowlab"><i style="background:#34d399"></i>C3</div>
-              <div class="cell par"><b>Partita</b><span class="ora">09:00–10:30</span><div>Ivana Tadiotto</div></div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">10:30–12:00</span><div>🎾 LoZio</div></div>
-              <div class="cell free">Libero</div><div class="cell free">Libero</div>
-              <div class="cell par" id="cellaTarget"><b>Partita</b><span class="ora">15:00–16:30</span><div>👑 Maurizio Aprea<br>Laura Aprea</div></div>
-              <div class="cell free">Libero</div>
-
-              <div class="rowlab"><i style="background:#818cf8"></i>C4</div>
-              <div class="cell free">Libero</div>
-              <div class="cell lez"><b>Lezione</b><span class="ora">10:30–12:00</span><div>🎾 Spinazzè</div></div>
-              <div class="cell free">Libero</div><div class="cell free">Libero</div><div class="cell free">Libero</div><div class="cell free">Libero</div>
-            </div>
-          </div>
-
-          <!-- barra 137 sotto il calendario: solo nello stato di OGGI -->
           <div class="barra hidden" id="barra">
             <div class="sp" style="width:14px;height:14px;border-radius:50%;border:2px solid #bcd0f0;border-top-color:var(--accent);animation:sp .8s linear infinite;margin-top:2px"></div>
             <div>
@@ -278,147 +233,159 @@
             </div>
           </div>
 
-          <!-- pastiglia: nessuna scheda aperta ma qualcosa sta succedendo -->
-          <div class="pill hidden" id="pill"><span class="sp"></span> Sto scrivendo su Matchpoint…</div>
-
           <div class="backdrop hidden" id="backdrop"></div>
-          <div class="scheda schedaA hidden" id="schedaA"></div>
+          <div class="scheda hidden" id="scheda"></div>
         </div>
-        <div class="scheda schedaB hidden" id="schedaB"></div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="nota">
-  <div class="box">
-    <h3>Cosa sparisce, esattamente</h3>
-    <p>La barra <code>💬 Scrivi o detta…</code>, il microfono, il tasto invia e il pannello che li ospita. Con loro se ne va la chat mobile in fondo allo schermo e il bottone 💬 fluttuante.</p>
-    <p>La sidebar resta, ma torna a fare solo il menu: lo spazio che oggi tiene un pannello quasi sempre vuoto se lo prende il calendario.</p>
+  <div class="box mis">
+    <h3>Quanto calendario si guadagna</h3>
+    <p>La colonna della griglia su un portatile da 1440 px <b>è stata misurata ieri: 1058 px</b>. Senza la colonna a sinistra diventa <b>~1362 px</b>: <b>+29%</b>, cioè circa <b>tre fasce orarie in più</b> senza scorrere. Nel mockup il confronto è reale — passa da «Oggi» alla proposta e guarda le colonne che compaiono a destra.</p>
   </div>
   <div class="box">
-    <h3>Dove va il messaggio della 137</h3>
-    <p>La striscia che oggi sta sotto il calendario diventa il <b>fondo della scheda</b>: si legge dove si sta già guardando, e non deve più farsi largo sopra la griglia.</p>
-    <p>Le tre facce restano quelle di ieri: <b>in corso</b> (azzurra, con la rotellina), <b>fatta</b> (verde, sparisce da sé), <b>rifiutata</b> (rossa, resta finché non la si chiude).</p>
+    <h3>Cosa deve traslocare in alto</h3>
+    <p>La colonna scura non contiene solo la chat: tiene anche <b>logo, numero di versione, la targhetta TEST/PROD e il tasto Esci</b>. Nel mockup logo e versione stanno a sinistra della barra in alto, Esci all'estrema destra.</p>
+    <p>Il bottone «Calendario» che oggi sta lì dentro <b>non serve più</b>: è la stessa voce che è già nella barra in alto.</p>
   </div>
   <div class="box warn">
-    <h3>La domanda che il "+" apre</h3>
-    <p>La barra sotto il calendario si vedeva <b>anche a scheda chiusa</b> — è così che la segreteria si accorge di un gesto arrivato dal bot o da un'altra postazione. Dentro la scheda, quel caso non ha più un posto.</p>
-    <p>Nel mockup la risposta proposta è la <b>pastiglia in alto a destra</b>: piccola, senza coordinate, e cliccandola si apre la scheda giusta. Da decidere insieme: pastiglia, oppure la scheda si apre da sé.</p>
+    <h3>Sul telefono la colonna resta</h3>
+    <p>Su telefono quella colonna <b>è</b> il menu — il cassetto che si apre col ☰ — e lì non c'è nessuno spazio da guadagnare, perché è già chiusa. ⇒ Il cambiamento è del <b>desktop</b>: sul telefono sparisce solo la barra di scrittura, e la scheda diventa un foglio che sale dal basso, con la stessa striscia di stato in fondo.</p>
+    <div class="fono">
+      <div class="tb"><span class="ham">☰</span> Calendario · Sab 05/09</div>
+      <div class="ag">
+        <div class="r" style="background:var(--par-bg);color:var(--par-ink)"><b>09:00 Partita</b><br>Ivana Tadiotto</div>
+        <div class="r" style="background:var(--lez-bg);color:var(--lez-ink)"><b>10:30 Lezione</b><br>LoZio</div>
+      </div>
+      <div class="sheet">
+        <b>Modifica prenotazione</b><br><span style="color:var(--ink-faint)">Campo 3 · 05/09 · 15:00</span>
+        <div style="margin-top:5px">👑 Maurizio Aprea · <b>29,00 €</b><br>🔴 Laura Aprea · <b>8,50 €</b></div>
+        <div class="st"><b>⏳ Sto elaborando su Matchpoint · modifica</b><br>Campo 3 · 15:00 · richiesta da un socio</div>
+      </div>
+    </div>
+  </div>
+  <div class="box warn">
+    <h3>La domanda ancora aperta</h3>
+    <p>La barra della 137 si vedeva <b>anche a scheda chiusa</b>: è così che la segreteria si accorge di un gesto arrivato dal bot o da un'altra postazione. Dentro la scheda, quel caso non ha più un posto.</p>
+    <p>Qui è disegnata come <b>pastiglia in alto a destra</b> — piccola, senza coordinate, e cliccandola si apre la scheda giusta. L'alternativa è che <b>la scheda si apra da sé</b>. Da decidere.</p>
   </div>
 </div>
 
 <script>
 (function(){
-  var vista = 'A', stato = 'run', aperta = false;
+  var vista='A', stato='run', aperta=true;
+  var $=function(id){return document.getElementById(id)};
 
-  var LEG = {
-    oggi: ['Oggi (v6.311) — com’è adesso',
-      'La scheda della partita nasce dentro il pannello della chat, in sidebar: stretta, e con il calendario che resta lì accanto a contendersi l’attenzione. Il messaggio di avanzamento sta nella barra in fondo al calendario, lontano dalla scheda.'],
-    A: ['Proposta A — la scheda è una finestra sopra il calendario',
-      'La scheda si apre centrata, con il calendario in ombra dietro: una cosa sola da guardare, e tutta la larghezza per i nomi e gli importi. È la stessa forma della scheda socio in Anagrafica, quindi non c’è niente di nuovo da imparare.'],
-    B: ['Proposta B — la scheda è un pannello che entra da destra',
-      'Il calendario resta visibile e cliccabile mentre la scheda è aperta: si vedono gli altri campi e le altre ore senza chiudere niente — comodo per spostare una partita. In cambio la scheda è più stretta e la griglia si restringe.']
+  var ORE_BASE=['09','10','11','12','15','16'], ORE_PIU=['17','18','19'];
+
+  var PIANO={
+    C1:{col:'#f87171',v:{'09':['lez','Lezione','09:00–10:00','🎾 Lucas Vidal'],'10':['lez','Lezione','10:00–11:00','🎾 Lucas Vidal'],'11':['lez','Lezione','11:00–12:00','🎾 Lucas Vidal'],'12':['lez','Lezione','12:00–13:00','🎾 Lucas Vidal']}},
+    C2:{col:'#fbbf24',v:{'16':['par','Partita','16:30–18:00','Maurizio Aprea<br>Fabio De Luca'],'17':['par','Partita','16:30–18:00','Nicola Stella<br>Roberto Ruzzini']}},
+    C3:{col:'#34d399',v:{'09':['par','Partita','09:00–10:30','Ivana Tadiotto'],'10':['lez','Lezione','10:30–12:00','🎾 LoZio'],'15':['par','Partita','15:00–16:30','👑 Maurizio Aprea<br>Laura Aprea','target'],'18':['lez','Lezione','18:00–19:30','🎾 Spinazzè']}},
+    C4:{col:'#818cf8',v:{'10':['lez','Lezione','10:30–12:00','🎾 Spinazzè'],'19':['par','Partita','19:00–20:30','Paola Tamagnone']}}
   };
 
+  function costruisciGriglia(){
+    var ore=ORE_BASE.concat(ORE_PIU);
+    var g=$('grid');
+    g.style.gridTemplateColumns='54px repeat('+ORE_BASE.length+',1fr)'+(vista==='A'?' repeat('+ORE_PIU.length+',1fr)':'');
+    var h='<div class="h"></div>';
+    ore.forEach(function(o,i){ h+='<div class="h'+(i>=ORE_BASE.length?' oltre':'')+'">'+o+'</div>'; });
+    Object.keys(PIANO).forEach(function(k){
+      var r=PIANO[k];
+      h+='<div class="rowlab"><i style="background:'+r.col+'"></i>'+k+'</div>';
+      ore.forEach(function(o,i){
+        var extra=(i>=ORE_BASE.length)?' oltre':'';
+        var c=r.v[o];
+        if(c){ h+='<div class="cell '+c[0]+extra+'"'+(c[4]?' id="cellaTarget"':'')+'><b>'+c[1]+'</b><span class="ora">'+c[2]+'</span><div>'+c[3]+'</div></div>'; }
+        else { h+='<div class="cell free'+extra+'">Libero</div>'; }
+      });
+    });
+    g.innerHTML=h;
+  }
+
+  function riga(ic,nome,org,pagato,imp){
+    var soldi = pagato
+      ? '<span class="paid">✓ pagato 12,00 €</span><button class="mini">↩︎ storna</button>'
+      : '<span class="eur"><em>€</em> '+imp+'</span><span class="wallet">👛 29,00 €</span><button class="mini">Contanti</button><button class="mini">POS</button><button class="mini">Wallet</button>';
+    return '<div class="pl"><span class="pl-ic">'+ic+'</span>'+(org?'<span style="color:#c98a04">👑</span>':'')
+      +'<span class="pl-name">'+nome+'</span>'+soldi+'<button class="mini">✕</button></div>';
+  }
+
+  function striscia(){
+    if(stato==='ok') return '<div class="stato ok"><span class="glyph">✅</span><div><div class="r1">Fatta su Matchpoint · modifica</div><div class="r2">Campo 3 · 05/09/2026 · 15:00 · richiesta da te</div></div></div>';
+    if(stato==='ko') return '<div class="stato ko"><span class="glyph">⛔</span><div><div class="r1">Matchpoint non ha accettato · modifica</div><div class="r2">Campo 3 · 05/09/2026 · 15:00 · lo slot risulta già occupato</div></div><button class="chiudi" id="btnLetto">Ho letto</button></div>';
+    return '<div class="stato"><span class="sp"></span><div><div class="r1">Sto elaborando la richiesta su Matchpoint · modifica</div><div class="r2">Campo 3 · 05/09/2026 · 15:00 · richiesta da un socio</div></div></div>';
+  }
+
   function schedaHTML(){
-    return ''
-    + '<div class="sch-head"><div class="ic">📅</div><div class="t"><b>Modifica prenotazione</b><span>Campo 3 · 05/09/2026 · 15:00</span></div><button class="x" id="btnX" aria-label="Chiudi">✕</button></div>'
+    return '<div class="sch-head"><div class="ic">📅</div><div class="t"><b>Modifica prenotazione</b><span>Campo 3 · 05/09/2026 · 15:00 · 90′</span></div><button class="x" id="btnX" aria-label="Chiudi">✕</button></div>'
     + '<div class="sch-body">'
-    +   '<div class="sez"><h4>Quando</h4><div class="campi">'
-    +     '<div class="campo"><small>Campo</small>C3</div>'
-    +     '<div class="campo"><small>Data</small>05/09/2026</div>'
-    +     '<div class="campo"><small>Ora</small>15:00</div>'
-    +     '<div class="campo"><small>Durata</small>90′</div>'
-    +   '</div></div>'
-    +   '<div class="sez"><h4>Giocatori · 3 su 4</h4>'
-    +     riga('✅','Maurizio Aprea',true,'paid','pagato 12,00 €','29,00')
-    +     + riga('🔴','Laura Aprea',false,'due','','8,50')
-    +     + riga('🔴','Fabiola Limuti',false,'due','','—')
-    +   '</div>'
-    +   '<div class="sez"><h4>Nota</h4><div style="font-size:.82rem;color:var(--ink-soft)">Campo bagnato al mattino, controllare prima.</div></div>'
+    +   '<div class="sez"><h4>Quando</h4><div class="campi"><div class="campo"><small>Campo</small>C3</div><div class="campo"><small>Data</small>05/09/2026</div><div class="campo"><small>Ora</small>15:00</div><div class="campo"><small>Durata</small>90′</div></div></div>'
+    +   '<div class="sez"><h4>Giocatori · 3 su 4</h4>'+riga('✅','Maurizio Aprea',true,true,'')+riga('🔴','Laura Aprea',false,false,'8,50')+riga('🔴','Fabiola Limuti',false,false,'—')+'</div>'
+    +   '<div class="sez"><h4>Nota</h4><div style="font-size:.83rem;color:var(--ink-soft)">Campo bagnato al mattino, controllare prima.</div></div>'
     + '</div>'
     + '<div class="azioni"><button class="az pri">Salva</button><button class="az">Sposta</button><button class="az">Aggiungi giocatore</button><button class="az dan">Annulla prenotazione</button></div>'
-    + strisciaHTML();
+    + striscia();
   }
 
-  function riga(ic,nome,org,tipo,paid,imp){
-    var soldi = tipo==='paid'
-      ? '<span class="paid">✓ '+paid+'</span><button class="mini">↩︎ storna</button>'
-      : '<span class="eur"><em>€</em> '+imp+'</span><span class="wallet">👛 29,00 €</span><button class="mini">Contanti</button><button class="mini">Wallet</button>';
-    return '<div class="pl"><div class="pl-row"><span class="pl-ic">'+ic+'</span>'
-      + (org?'<span class="pl-star">👑</span>':'')
-      + '<span class="pl-name">'+nome+'</span><button class="mini">✕</button></div>'
-      + '<div class="pl-money">'+soldi+'</div></div>';
-  }
-
-  function strisciaHTML(){
-    if(stato==='ok'){
-      return '<div class="stato ok"><span class="glyph">✅</span><div><div class="r1">Fatta su Matchpoint · modifica</div>'
-        + '<div class="r2">Campo 3 · 05/09/2026 · 15:00 · richiesta da te</div></div></div>';
-    }
-    if(stato==='ko'){
-      return '<div class="stato ko"><span class="glyph">⛔</span><div><div class="r1">Matchpoint non ha accettato · modifica</div>'
-        + '<div class="r2">Campo 3 · 05/09/2026 · 15:00 · lo slot risulta già occupato</div></div>'
-        + '<button class="chiudi">Ho letto</button></div>';
-    }
-    return '<div class="stato"><span class="sp"></span><div><div class="r1">Sto elaborando la richiesta su Matchpoint · modifica</div>'
-      + '<div class="r2">Campo 3 · 05/09/2026 · 15:00 · richiesta da un socio</div></div></div>';
-  }
-
-  var $ = function(id){ return document.getElementById(id); };
+  var LEG={
+    oggi:['Oggi (v6.311) — com’è adesso',
+      'La colonna scura a sinistra si tiene 304 px per un pannello che è quasi sempre vuoto, e la scheda della partita nasce lì dentro: 214 px di larghezza per nomi, importi e bottoni. Il messaggio di avanzamento sta nella barra in fondo al calendario, lontano dalla scheda.'],
+    A:['La proposta — niente colonna a sinistra, scheda sopra il calendario',
+      'Il menu è quello in alto, che su desktop c’è già; logo, versione ed Esci traslocano lì. La griglia si prende tutta la larghezza (tre fasce orarie in più, senza scorrere). La scheda si apre centrata sopra il calendario, larga il doppio di oggi, e in fondo porta la striscia di stato che prima stava sotto il calendario.']
+  };
 
   function render(){
-    var oggi = (vista==='oggi');
-    $('chatHost').classList.toggle('hidden', !oggi);
-    $('sideMenu').classList.toggle('hidden', oggi);
-    $('sideFiller').hidden = oggi;
-    $('barra').classList.toggle('hidden', !(oggi && aperta));
-    $('pill').classList.toggle('hidden', oggi || aperta);
+    var oggi=(vista==='oggi');
+    $('app').classList.toggle('largo',!oggi);
+    $('side').classList.toggle('hidden',!oggi);
+    $('brandTop').classList.toggle('hidden',oggi);
+    $('esciTop').classList.toggle('hidden',oggi);
+    $('guadagno').classList.toggle('hidden',oggi||aperta);
+    $('barra').classList.toggle('hidden',!(oggi&&aperta));
+    $('pill').classList.toggle('hidden',oggi||aperta);
+    costruisciGriglia();
 
-    var A = $('schedaA'), B = $('schedaB'), bd = $('backdrop');
-    A.classList.add('hidden'); B.classList.add('hidden'); bd.classList.add('hidden');
-    $('cellaTarget').classList.toggle('acceso', aperta);
+    var sc=$('scheda'), bd=$('backdrop');
+    sc.classList.add('hidden'); bd.classList.add('hidden');
+    var t=document.getElementById('cellaTarget');
+    if(t) t.classList.toggle('acceso',aperta);
 
     if(oggi){
-      // stato attuale: la scheda sta nel pannello della sidebar
-      $('chatHost').querySelector('.vuoto').innerHTML = aperta
-        ? '<div style="text-align:left;color:var(--ink);font-size:.72rem;line-height:1.4"><b>Modifica prenotazione</b><br><span style="color:var(--ink-faint)">Campo 3 · 05/09 · 15:00</span><br><br>👑 Maurizio Aprea<br>🔴 Laura Aprea<br>🔴 Fabiola Limuti<br><br><span style="color:var(--ink-faint)">… la scheda vive qui dentro, in 214 px</span></div>'
+      $('chatVuoto').innerHTML = aperta
+        ? '<div style="text-align:left;color:var(--ink);font-size:.71rem;line-height:1.45"><b>Modifica prenotazione</b><br><span style="color:var(--ink-faint)">Campo 3 · 05/09 · 15:00</span><br><br>👑 Maurizio Aprea<br>🔴 Laura Aprea<br>🔴 Fabiola Limuti<br><br><span style="color:var(--ink-faint)">…la scheda vive qui, in 214 px</span></div>'
         : 'qui compaiono le schede<br>e i messaggi';
     } else if(aperta){
-      var host = (vista==='A') ? A : B;
-      host.innerHTML = schedaHTML();
-      host.classList.remove('hidden');
-      if(vista==='A') bd.classList.remove('hidden');
-      host.querySelector('#btnX').addEventListener('click', function(){ aperta=false; render(); });
-      var ho = host.querySelector('.stato .chiudi');
-      if(ho) ho.addEventListener('click', function(){ aperta=false; render(); });
+      sc.innerHTML=schedaHTML(); sc.classList.remove('hidden'); bd.classList.remove('hidden');
+      sc.querySelector('#btnX').addEventListener('click',function(){aperta=false;render();});
+      var l=sc.querySelector('#btnLetto'); if(l) l.addEventListener('click',function(){aperta=false;render();});
     }
-    var l = LEG[vista];
-    $('legTit').textContent = l[0];
-    $('legTxt').textContent = l[1];
+    $('legTit').textContent=LEG[vista][0];
+    $('legTxt').textContent=LEG[vista][1];
   }
 
-  document.querySelectorAll('.switch button').forEach(function(b){
-    b.addEventListener('click', function(){
-      vista = b.dataset.v;
-      document.querySelectorAll('.switch button').forEach(function(o){ o.setAttribute('aria-pressed', String(o===b)); });
+  document.querySelectorAll('.switch button[data-v]').forEach(function(b){
+    b.addEventListener('click',function(){
+      vista=b.dataset.v;
+      document.querySelectorAll('.switch button[data-v]').forEach(function(o){o.setAttribute('aria-pressed',String(o===b));});
       render();
     });
   });
-  document.querySelectorAll('.demo button').forEach(function(b){
-    b.addEventListener('click', function(){
-      if(b.dataset.s==='close'){ aperta=false; render(); return; }
-      stato = b.dataset.s; aperta = true; render();
+  document.querySelectorAll('.switch button[data-s]').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(b.dataset.s==='close'){aperta=false;render();return;}
+      stato=b.dataset.s; aperta=true; render();
     });
   });
-  document.getElementById('grid').addEventListener('click', function(e){
-    var c = e.target.closest('.cell'); if(!c) return;
-    aperta = true; stato = 'run'; render();
-  });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ aperta=false; render(); } });
+  $('grid').addEventListener('click',function(e){ if(e.target.closest('.cell')){aperta=true;stato='run';render();} });
+  $('pill').addEventListener('click',function(){aperta=true;stato='run';render();});
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){aperta=false;render();} });
 
-  aperta = true; render();
+  render();
 })();
 </script>
 </body>
