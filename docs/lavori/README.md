@@ -1864,7 +1864,7 @@ mentre sette deploy andavano in produzione. ⇒ *Il difetto non è che manchi un
 sessione dopo, aprendo la lista come deve, non ci avrebbe trovato niente di tutto questo.* La
 regola di casa dice che la lista si aggiorna **durante** il lavoro, non a giornata finita.
 
-### **158** — 🤖 UN COLLAUDO CHE PARLA COL BOT: una conversazione scritta, gesti compresi — 🔨 **in lavorazione**
+### **158** — 🤖 UN COLLAUDO CHE PARLA COL BOT: una conversazione scritta, gesti compresi — ✅ **IN SERVIZIO, e la METÀ «parole» è PROVATA SUL VIVO**
 
 🗣️ **Sua, il 04/09/2026 a notte.** Nasce da una sua domanda — *«visto che noi abbiamo anche un
 chatbot collegato al gestionale, riusciresti a fare anche gli stessi test sul chatbot?»* — e dalla
@@ -1915,6 +1915,43 @@ lettori sullo stesso token si rubano i messaggi dei soci.
 prova che sembra più grande di quello che è: non dice che **Telegram consegna**, non dice che sul
 telefono si **vede** bene (impaginazione, lunghezze, emoji), e non dice niente della **tastiera
 vera**. Copre tutto il resto: dal testo del socio fino al ponte, e ritorno.
+
+---
+
+✅⭐⭐ **PROVA FISICA DELLA METÀ «PAROLE», sul vivo** *(04/09/2026, giro 6 del workflow)*: il copione
+`{"scrivo":"ciao"}` mandato al **bot di prova sulla VM**, verso il gestionale di TEST. Trascrizione
+vera, raccolta dal filo intercettato:
+
+```
+💬 SOCIO scrive «ciao»
+🤖 BOT:  ⏳ Attendi un attimo…                    (messaggio 1001)
+🗑️  BOT cancella il messaggio 1001
+🤖 BOT:  Ciao! Sono l'assistente automatico del Padel Village. Posso aiutarti a:
+         • Vedere il tuo saldo o le tue prenotazioni · Prenotare un campo · …
+```
+⭐ **E lo SCHERMO finale contiene solo il secondo messaggio**: il «Attendi un attimo…» è stato
+cancellato e il modello se n'è accorto ⇒ si comporta come un telefono, che è **il pezzo su cui
+poggiano i gesti** (un bottone si preme su ciò che è ancora in chat, non su ciò che è stato mandato).
+📏 14 secondi in tutto. Il bot di prova in pm2 è rimasto su: nessun 409.
+
+⏳ **COSA MANCA PER CHIUDERLA — una cosa sola, dichiarata**: la metà dei **GESTI** non è ancora
+passata sul vivo. Il meccanismo è provato al banco (13 prove, 5 sabotaggi 5 rossi) e la sua
+premessa — lo schermo che si riscrive — è appena stata vista funzionare qui sopra; ma **premere un
+bottone vero non l'ha ancora fatto nessuno**, e finché non succede questa voce resta aperta.
+📌 *Il banco dice che il meccanismo è giusto; il vivo dice che i bottoni ci sono.*
+
+🩹⭐⭐ **E IL DIFETTO DI METODO DELLA SERATA, che non sta nel codice: HO LETTO UNO STATO STANTIO E CI
+HO COSTRUITO SOPRA UNA DIAGNOSI.** L'API di GitHub Actions continuava a rispondere «in corso» su un
+giro **già finito da minuti**. Ne ho concluso *«il collaudo si impianta»*, l'ho detto al
+committente, ho fermato a mano un giro **riuscito**, e ho scritto in un commit che il blocco stava
+nel caricamento del bot — una causa **dedotta da un silenzio che non c'era**.
+⚖️ Le due scadenze aggiunte restano buone (un attrezzo che può non rispondere è muto, e il muto si
+smette di interrogare): quello che era sbagliato non è la cura, è **la misura che la giustificava**.
+📌 *Rileggere lo stesso stato più volte non è misurare due volte: se la fonte è ferma, la seconda
+lettura conferma la prima con la stessa sicurezza con cui la prima era sbagliata.* È la 24ª — la
+sonda che guarda nel posto sbagliato — nella forma in cui il posto sbagliato è **il tempo**.
+⇒ La contro-prova che vale, e costa poco: guardare **il fatto** (la trascrizione, l'artefatto) e non
+**lo stato** (il semaforo del giro). Il fatto non torna indietro.
 
 ### **156** — 🏷️ «IMPOSTAZIONI» AL POSTO DI «AMMINISTRAZIONE» — 🔨 **IN SERVIZIO su PROD 6.346**
 
