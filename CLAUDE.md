@@ -656,7 +656,10 @@ cambia, e si avvisa quando esce. Aspettare a mano costa attenzione e si dimentic
 
 ✅ **Cosa deve contenere l'avviso**, o è una notifica e non un'informazione:
 · **quale numero** e **da che ora** (`last-modified`, non «adesso»);
-· **cosa può rifare lui** per vedere la cura — il gesto esatto, non «prova»;
+· **cosa è pronto**, in modo che lui sappia su cosa può mettere le mani — 🔄 **e qui c'era scritto
+  «cosa può rifare lui, il gesto esatto», corretto la sera stessa da lui**: *«Avvisami sempre quando
+  io posso operare. Non mi dire di fare.»* ⇒ si apre il campo, non si assegna un compito. Vedi la
+  sezione qui sotto;
 · ⚠️ **cosa quel deploy NON ha provato**, che è l'obbligo ① della delega e non decade qui.
 
 ⚖️ **Perché è una regola e non una cortesia**: il postulato dice che la prova la faccio io e lui
@@ -666,6 +669,49 @@ quello che il postulato ha sostituito.
 
 📌 Vale per **PROD**. TEST arriva live in 20-30 s e si spinge molte volte al giorno: annunciarlo
 ogni volta renderebbe rumore proprio l'avviso che deve farsi notare.
+
+### 🟢 «PUOI OPERARE» / 🔴 «NON SONO PRONTO» — l'avviso ha DUE stati (FERMA, 04/09/2026)
+
+🗣️ Sue parole, date una dopo l'altra la sera in cui è nata la regola sul deploy:
+
+> *«Metti anche una regola che mi avvisi quando le guardie sono verdi.»*
+> *«Somma ci siamo capiti. Avvisami sempre quando io posso operare. Non mi dire di fare.»*
+> *«Se non sei pronto [dillo].»*
+
+⇒ **Non sono tre richieste: è una sola, detta tre volte più precisa.** Le guardie verdi erano
+l'esempio; la cosa che vuole sapere è **quando il campo è libero per lui**.
+
+> **A fine di ogni giro di lavoro si dice UNA delle due, mai nessuna:**
+> 🟢 **«puoi operare»** — è tutto atterrato e non c'è niente di rosso in sospeso;
+> 🔴 **«non sono pronto»** — con **cosa** manca, così l'attesa ha una fine visibile.
+
+🚨⭐⭐ **E LA CORREZIONE CHE VALE PIÙ DELLA REGOLA — «NON MI DIRE DI FARE».** L'avviso **apre un
+campo**, non assegna un compito: *«il cambio importo su PROD è pronto quando vuoi»*, non *«rifai il
+cambio importo»*. La differenza non è di cortesia — è **di ruolo**: il postulato dice che la prova
+la faccio io e lui **supervisiona**, e chi supervisiona decide **se e quando** guardare. Un avviso
+scritto all'imperativo gli ribalta addosso una lista di cose da fare, che è esattamente ciò che il
+postulato gli ha tolto dalle mani.
+📌 *Si dichiara uno **stato del sistema**, non un'azione dell'altro.*
+
+⛔ **PERCHÉ SONO DUE STATI E NON UNO SOLO**, ed è la metà che si dimentica: avvisare **solo** sul
+verde rende il **silenzio ambiguo** — vorrebbe dire insieme *«è rosso»* e *«non ho ancora
+guardato»*, e le due chiedono cose opposte (aspettare, o venire a controllare). ⇒ Il rosso si dice
+**sempre**, anche quando è mio da curare: dirlo non è chiedergli di intervenire, è togliergli il
+dubbio.
+
+📏 **QUANDO si dice: una volta per GIRO, non per corsa.** Le guardie girano a ogni spinta e un giro
+di lavoro ne fa molte: annunciarle una per una renderebbe rumore proprio l'avviso che deve farsi
+notare — la stessa ragione per cui il deploy si annuncia per PROD e non per TEST.
+🚨 **E si guarda la corsa dell'ULTIMO commit di OGNI ramo**, non l'ultima corsa del repo: la
+finestra del punto 4bis lascia una rossa **transitoria** su `test-preview` mentre `main` è già
+verde, e il ramo che resta indietro non rigira da sé. Se una guardia è rossa solo per quella
+finestra, **la si rilancia** (`workflow_dispatch`) invece di aspettare il backstop delle 06:00 —
+*una guardia che resta rossa si smette di leggere*, e non conta che il rosso sia vecchio di dieci
+minuti o di un giorno.
+
+✅ **Cosa contiene un 🟢 che serve davvero**: quale versione è viva **dove**, che le guardie sono
+verdi **su tutti e due i rami**, e ⚠️ **cosa non è stato provato** — l'obbligo ① della delega non
+decade qui: *«puoi operare»* dice che il campo è libero, non che è tutto dimostrato.
 
 ### ✋ UN TASK NON È FINITO FINCHÉ NON LO SI È PROVATO **FISICAMENTE** (FERMA, 23/08/2026 sera)
 
