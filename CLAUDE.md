@@ -111,6 +111,47 @@ per intero, perché il confine non passa dove sembra:
 📌 *Il confine non è fra TEST e PROD: è fra GUARDARE e SCRIVERE. Il primo è mio su tutti e due
 gli ambienti, il secondo è suo su quello vero.*
 
+### 🎯 LA SCHEDA SEGNALATA DA LUI È CAMPO LIBERO — tranne il salvataggio di un PAGAMENTO (FERMA, 04/09/2026)
+
+🗣️ **Sue parole:**
+
+> *«Dobbiamo mettere una regola che quando io ti segnalo una scheda dove tu puoi lavorare, tu lì
+> hai campo libero per procedere in totale autonomia tranne sul salvataggio di un pagamento.»*
+
+⇒ **Quando lui indica una scheda (una prenotazione, una partita, una lezione) come banco di
+lavoro, su QUELLA scheda il confine «guardare/scrivere» qui sopra NON si applica**: si scrive
+davvero, senza chiedere, anche su PROD. È lui che ha designato il bersaglio, ed è la designazione
+a fare l'autorizzazione.
+
+✅ **Cosa si può fare, su una scheda segnalata:** cambiare l'**importo a carico**, aggiungere e
+togliere giocatori, spostarla, cambiarne durata, nota, descrizione, maestro — e premere **Salva**
+fino in fondo, guardando cosa succede.
+
+⛔⛔ **L'UNICA COSA CHE RESTA FUORI: SALVARE UN PAGAMENTO.** Cash · Card · Wallet — cioè
+`matchpoint-payment-write` e la sua strada — e per simmetria lo **storno**
+(`matchpoint-payment-void`), che è lo stesso libro letto al contrario.
+⚖️ **Il perché, e va capito o la regola si applica male**: un incasso entra nella **cassa del
+circolo**, e una riga di cassa non è una prova — è denaro che qualcuno dovrà quadrare a fine
+serata. 🚨 **L'importo a carico invece NON è un pagamento** (voce 132: *«un importo a carico non è
+un pagamento, e i due non stanno nello stesso libro»*): è **idempotente**, non genera nessun
+`payment`, e la sezione Incassi non lo vede. È esattamente per questo che sta **dentro** il campo
+libero e l'incasso **fuori**.
+
+📌 *La riga non separa «scritture pericolose» da «scritture innocue»: separa ciò che si può
+rifare da ciò che qualcuno deve contare.*
+
+🔑 **E CI VUOLE UN CANCELLO APERTO DA LUI, che è una cosa diversa dal permesso.** Misurato il
+04/09: l'utenza della console remota ha `role: "readonly"`, e
+`pmoBlockWriteIfReadonly('modificare una prenotazione')` ferma `staffCalPlayersSave` **alla prima
+riga**, prima di qualunque messaggio. ⇒ Finché quel ruolo è `readonly`, «campo libero» non si
+attraversa lo stesso: la regola dà il **permesso**, il ruolo dà la **possibilità**, e servono
+tutte e due. La procedura per aprirlo sta in **🌐 Console remota**, sotto *«i tre cancelli»*.
+
+🔄 **QUESTO CORREGGE LA RIGA QUI SOPRA, non la affianca.** *«Il secondo è suo su quello vero»*
+resta vero **ovunque tranne che sulla scheda che lui ha segnalato**. Se un domani le due
+sembrassero in contrasto, vale questa: è più recente e più stretta — vale su **una** scheda per
+volta, non su tutte.
+
 
 ## 📋 Prima di iniziare: cosa c'è da fare → `docs/lavori/README.md`
 
@@ -1000,6 +1041,34 @@ dei ref remoti → `git fetch --prune`.
   🚨 **L'autonomia copre le LETTURE, non `--allow-writes`**: quel flag resta a domanda, e su PROD a
   maggior ragione. La divisione non è mia — è la stessa che l'attrezzo fa da sé mettendo le
   scritture dietro un interruttore esplicito.
+  🔄 **Con UNA eccezione, dal 04/09/2026: la scheda che lui ha segnalato come banco di lavoro.**
+  Là il flag si usa senza chiedere — vedi *🎯 LA SCHEDA SEGNALATA DA LUI È CAMPO LIBERO* in testa
+  al file. Resta fuori il **salvataggio di un pagamento**, sempre e ovunque.
+
+  🔑⭐⭐ **I TRE CANCELLI FRA LA CONSOLE E UN «SALVA» CHE ARRIVA IN FONDO** — misurati il
+  04/09/2026 uno per uno, perché sono **indipendenti** e aprirne due su tre non serve a niente:
+
+  | | cancello | dove sta | stato al 04/09 |
+  |---|---|---|---|
+  | ① | **il RUOLO dell'utenza** — `pmoBlockWriteIfReadonly` ferma `staffCalPlayersSave` alla prima riga se `role === 'readonly'` | riga del profilo staff, tabella utenti del gestionale | 🔴 **`readonly`** — l'unico che serve LUI |
+  | ② | **il PERMESSO** `cloud_sync`, che serve alle edge | stessa riga, campo `permissions` | 🟢 **già `true`** |
+  | ③ | **la guardia dell'ATTREZZO**, che blocca tutto `/functions/v1/` | `--allow-writes` di `console.mjs` | 🟢 **mio** — provato: `scritture: "CONSENTITE"` |
+
+  ⇒ **Ne manca uno solo, ed è una parola in un campo.** In *Amministrazione → Utenti*, sulla riga
+  dell'utenza della console, il ruolo va da **Solo lettura** a **Staff**.
+  ⛔⛔ **NON a «Admin» né a «Proprietario», ed è la parte che conta**: quei due ruoli
+  **scavalcano l'intera whitelist** dei permessi (`if (['owner','admin'].includes(role)) return
+  true`), quindi aprirebbero anche gestione utenti, incassi, anagrafica, borsellino — tutto ciò
+  che oggi è spuntato **no**. **Staff** invece lascia la whitelist al suo posto: resta esattamente
+  `cloud_sync` + `view_dashboard`, cioè quello che l'utenza ha già.
+  📌 *Si apre il cancello che serve, non la porta che sta accanto.*
+  ⚠️ E va detto per intero: `staff` toglie il freno a **tutte** le scritture della scheda, non solo
+  a quella segnalata. La cosa che tiene stretto il perimetro **non è più il ruolo, è la regola** —
+  si scrive solo sulla scheda che lui ha indicato, e mai un pagamento.
+  🩹 Se un domani si volesse restringerlo davvero nel codice, il posto è `pmoIsReadonlyStaff`, che
+  oggi guarda **solo il ruolo** e non i permessi: un `role: 'readonly'` con un permesso di
+  scrittura spuntato resterebbe bloccato lo stesso. È una scelta che sta in piedi, ma è quella che
+  rende impossibile un «readonly che può fare una cosa sola».
   🚨 **Di default non scrive**: bloccati PATCH/PUT/DELETE, gli insert e **tutto `/functions/v1/`**,
   che è la strada verso il worker condiviso e quindi verso il **Matchpoint vero**. `--allow-writes`
   disarma la guardia, e su PROD vuol dire scrivere sul serio.
