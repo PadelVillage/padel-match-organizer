@@ -2034,13 +2034,51 @@ un 15 pollici o un 13 o un 9?»*
 ⚖️ **La risposta onesta è NO**, e la domanda non è una rifinitura: **è la causa del difetto che la
 152 non è riuscita a chiudere.**
 
-📏 **MISURATO su PROD 6.340**, stessa scheda (7/09 · Campo 4), tre schermi:
+🔄 **RIMISURATO su PROD 6.349 il 04/09 a notte, DOPO la 157 — e il numero «94 px» NON VALE PIÙ.**
+Stessa scheda (7/09 · Campo 4 · 09:00, quattro giocatori), **quattro** schermi, calendario idratato:
 
-| schermo | pannello | quanto dello schermo | sfora |
+| schermo | pannello | quota schermo | esce dallo schermo | scorre DENTRO |
+|---|---|---|---|---|
+| **1024×640** (9-10″) | 860×542 | 🚨 **84%** | 0 | 🚨 **203 px** |
+| **1280×800** (13″) | 860×702 | 67% | ✅ **0** *(era 94)* | ⚠️ **43 px** |
+| **1440×900** (15″) | 860×745 | 60% | 0 | ✅ 0 |
+| **1920×1080** | 860×745 | 45% | 0 | ✅ 0 |
+
+⚖️ **Cosa è cambiato e cosa NO, ed è la distinzione che serve per decidere.**
+· **La metà curata dalla 157**: la scheda **non esce più dallo schermo** da nessuna parte — i 94 px
+  di prima erano contenuto **tagliato fuori**, e non ci sono più. ⇒ *Ripartire da quel numero
+  avrebbe fatto curare un difetto che non c'è.*
+· **La metà VIVA, che è quella della domanda sua**: il pannello è **sempre 860**, e non scala mai.
+  Su un 1024 si mangia l'**84%** dello schermo e ne nasconde **203 px** dietro uno scorrimento; su
+  un 1920 ne usa il **45%** e avanza spazio a destra e a sinistra. ⇒ **La 153 regge intera**: la
+  157 ha tolto il *taglio*, non la *scala*.
+📌 *Una cura che toglie il sintomo peggiore non chiude la voce: la rende meno urgente e più facile
+da sbagliare, perché il numero che tutti ricordano non fa più male.*
+
+🧊 **E IL CALENDARIO, misurato per la prima volta** — la scheda del 04/09 diceva *«non è mai stato
+misurato»*, e la sonda di allora sbagliava selettore (`.staff-cal-table` è CSS morto; è
+**`#staffCalGridTable`**):
+
+| schermo | griglia | sfora in orizzontale | la PAGINA scorre di |
 |---|---|---|---|
-| **1280×800** (13″) | **860 px** | 67% | 🚨 **94 px** |
-| **1440×900** (15″) | **860 px** | 60% | ⚠️ **0÷10 px**, oscilla |
-| **1920×1080** | **860 px** | 45% | ✅ 0 |
+| 1024×640 | 946 px | ✅ 0 | 🚨 **265 px** |
+| 1280×800 | 1202 px | ✅ 0 | **233 px** |
+| 1440×900 | 1362 px | ✅ 0 | **213 px** |
+| 1920×1080 | 1842 px | ✅ 0 | ⚠️ **173 px** |
+
+⭐ **Il calendario in LARGHEZZA scala già** (946 → 1842: segue la finestra, e non sfora mai) —
+⇒ **il problema del calendario non è quello che sembrava**. Quello che non entra è l'**ALTEZZA**:
+`main.main-content` ha sempre da scorrere, **anche su un 1920**, e su un 1024 sono 265 px.
+⚖️ ⇒ Sono **due difetti diversi con due cure diverse**, e trattarli insieme è il modo di sbagliarli
+tutti e due: la **scheda** non scala in **larghezza** (un numero fisso), il **calendario** non entra
+in **altezza** (le fasce orarie hanno un'altezza fissa che non tiene conto della finestra).
+
+📏 **E le soglie sono DICIOTTO, non tredici** — ricontate il 04/09 notte su `index.html`:
+560 · 620 · 650 · 680 · 720 · 760 · 899 · 900 · 950 · 960 · 1000 · 1024 · 1050 · 1100 · 1120 ·
+1180 · 1200 · 1380. La riga vecchia ne elencava 13 e ne saltava 5 (650 · 950 · 1000 · 1024 · 1200),
+tutte scritte con **uno spazio dopo i due punti** (`max-width: 950px`) — cioè invisibili a una
+ricerca scritta senza spazio. 📌 *Una conta fatta con un filtro cieco a una variante di scrittura
+non è bassa per caso: è bassa **sempre**, e sempre dalla stessa parte.*
 
 🚨⭐⭐ **Il pannello è FISSO a 860 px e non scala mai.** Su un 13″ si mangia i due terzi dello
 schermo e la scheda **non entra per 94 px**; su un monitor grande ne usa meno della metà e avanza
@@ -2048,12 +2086,12 @@ spazio. E le colonne della scheda sono `330px 423px`: la sinistra è **fissa**, 
 schermo piccolo a stringersi è solo la destra — proprio la colonna alta.
 
 📌 *La 152 non è sbagliata: è **tarata su un monitor solo**. Ho misurato a 1440, curato a 1440, e
-verificato a 1440. Su 1280 la stessa cura lascia 94 px fuori — e nessuno se ne sarebbe accorto
-finché non apriva la scheda da un portatile.*
+verificato a 1440. Su 1280 la stessa cura lasciava 94 px fuori — e nessuno se ne sarebbe accorto
+finché non apriva la scheda da un portatile.* 🔄 Quei 94 px li ha poi tolti la **157**; la lezione
+resta, e vale per la cura della 153 stessa: **si misura su quattro larghezze, non su una**.
 
-📏 **E il difetto è più vecchio della 152**: nel foglio di stile ci sono **tredici** soglie diverse
-— 560 · 620 · 680 · 720 · 760 · 899 · 900 · 960 · 1050 · 1100 · 1120 · 1180 · 1380 px — nate una
-per volta, ognuna per il suo caso. ⇒ L'app non **scala**: fa **gradini**, e i gradini non sono
+📏 **E il difetto è più vecchio della 152**: nel foglio di stile ci sono **diciotto** soglie diverse
+(l'elenco è qui sopra), nate una per volta, ognuna per il suo caso. ⇒ L'app non **scala**: fa **gradini**, e i gradini non sono
 nemmeno allineati fra loro.
 
 🔨 **La forma di una risposta vera** (da decidere con lui, non ancora scritta):
@@ -2066,8 +2104,14 @@ nemmeno allineati fra loro.
 ⛔ **Perché non l'ho fatto stanotte**: è una modifica **visibile** e larga, tocca il calendario oltre
 alla scheda, e vuole un **mockup approvato** più misure su almeno tre larghezze vere. Farla di
 fretta a fine sessione sarebbe stato il modo di rompere quello che stasera funziona.
-⚠️ **Il calendario NON è stato misurato**: la sonda non ha trovato la griglia (selettore sbagliato),
-e la sua domanda lo nomina esplicitamente. È la prima cosa da misurare, non da supporre.
+🔄 **Il calendario ADESSO È MISURATO** (tabella qui sopra), e la riga che diceva *«è la prima cosa
+da misurare, non da supporre»* è stata **esaudita**: scala in larghezza, non entra in altezza.
+⏳ **Cosa resta da decidere con lui**, ed è la sola cosa che manca: quale delle due forme vuole per
+il pannello — ① `clamp(min, %, max)` sulla **larghezza**, così cresce col monitor; ② colonne
+proporzionali (`fr`) invece di `330px` fisso; ③ il calendario che entra nella finestra in
+**altezza**. Sono tre lavori separabili, e il **③ non tocca la scheda**.
+🎨 Prima di scrivere una riga: **mockup**, e con la tabella che si misura da sé — è quella che nella
+157 ha scoperto il fatto che non avevo previsto.
 
 ### **152** — 📐 LA SCHEDA ENTRA TUTTA, E IL CONTO DELLA PARTITA — 🔨 **CURATA, aspetta il suo occhio**
 
