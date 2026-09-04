@@ -1728,7 +1728,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 10
+## 🔴 URGENTI — 11
 
 🔄 **18/08, e la 59 è stata CHIUSA da lui** — *«chiudi la voce cinquantanove e aggiorna i docs»*.
 Era il seguito della 58, messa qui da lui la sera prima con l'ordine dei pezzi già dato (*«fai la B
@@ -1863,6 +1863,50 @@ richieste una dopo l'altra, e i conteggi sono rimasti fermi a **6 / 9 / 74** per
 mentre sette deploy andavano in produzione. ⇒ *Il difetto non è che manchi un file: è che la
 sessione dopo, aprendo la lista come deve, non ci avrebbe trovato niente di tutto questo.* La
 regola di casa dice che la lista si aggiorna **durante** il lavoro, non a giornata finita.
+
+### **154** — 🪟 L'ULTIMA SCHEDA APERTA STA SOPRA — 🔨 **CURATA e PROVATA SU PROD**
+
+🗣️ **Suo, la sera del 04/09/2026**, guardando la pagina viva: *«Ti trovato un errore con la scheda
+aperta della partita se clicco sul nome la scheda di anagrafica va sotto invece che sopra.»*
+📸 Con la schermata: la scheda di Lidia Comes dietro la finestra «Modifica prenotazione».
+
+📏 **LA CAUSA, misurata nel foglio di stile** — non è il numero sbagliato, è un numero che **non
+decide niente**: `.member-card-overlay` e `.svc-chat-panel` hanno **lo stesso** `z-index` (2600). A
+parità decide l'**ordine nel DOM**, e `#svcChatPanel` viene dopo `#memberCardOverlay` ⇒ la scheda
+partita vince **sempre**, chiunque sia stato aperto per ultimo.
+
+⛔ **E ALZARE LA SCHEDA SOCIO E BASTA SAREBBE STATO SBAGLIATO — è la parte che vale.** Dalla scheda
+socio si **salva l'anagrafica**, e l'esito di quel salvataggio lo scrive `pmoMemberEditChatFlow`
+**aprendo il pannello della chat**: con la scheda socio fissata sopra, quell'esito finirebbe sotto.
+⇒ Si curava il difetto che lui ha visto **creandone il gemello** nel punto in cui si scrive su
+Matchpoint — e quello nessuno lo guarda, perché nessuno lo sta cercando.
+📌 *Una cura che sposta il difetto invece di toglierlo si riconosce da questo: cura il caso che ti
+hanno mostrato e rompe quello che non ti hanno mostrato.*
+
+🔨 **LA CURA — «l'ultima aperta sta sopra»**: `pmoPortaInCima(el)`, una classe sola
+(`pmo-in-cima`, `z-index:2720`) che **passa di mano** fra le due schede, agganciata a **tutt'e due**
+le aperture (`openMemberCard` e `svcOpenChat`). Un `if` che alza e non abbassa lascerebbe due
+elementi a 2720 e il **pareggio tornerebbe identico**.
+🚨 La metà della scheda partita sta **dentro** la soglia dei 900 px: sotto, quella scheda è un
+foglio dal basso a `z-index:300` e la pila del telefono è un'altra cosa. Il difetto misurato è del
+**desktop**, e si cura dove è stato visto.
+
+🧪 **Banco** `test/lultima-scheda-aperta-sta-sopra.test.mjs`, **13 prove**, e la regola si **esegue**
+su un DOM finto invece di essere cercata a parole. 📏 **Quattro sabotaggi, quattro rossi**: la classe
+che non passa di mano (3 rosse), l'aggancio tolto da `svcOpenChat`, il livello riportato a 2600, la
+regola desktop spostata fuori dai 900 px.
+
+✅⭐ **PROVA FISICA SU PROD 6.342, e nei DUE VERSI** — non i numeri, ma **chi risponde** nel punto in
+cui le due finestre si sovrappongono (`elementFromPoint` a 720,475):
+· dopo `openMemberCard` (la **stessa** chiamata del click sul nome, `index.html:43473`): socio
+  **2720**, partita **2600**, e al punto risponde **`memberCardOverlay`** ⇒ la scheda socio è sopra;
+· riaprendo la partita: i due si **invertono** (2600 / 2720) e risponde un elemento **dentro il
+  pannello partita** ⇒ la cima torna a lei, che è il caso dell'esito del salvataggio anagrafica.
+
+⏳ **Resta aperta per il SUO occhio**: la prova è girata sulla pagina viva ma con una scheda
+prenotazione **nuova** (la console parte pulita e il calendario non le si idrata), non sulla partita
+del 7/09 con i quattro giocatori. Le due finestre e le due funzioni sono le stesse; il gesto suo —
+aprire la partita vera e cliccare «Lidia Comes» — non l'ha ancora fatto nessuno.
 
 ### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR: c'è una SOGLIA, non un adattamento — ⏳ **da decidere con lui**
 
