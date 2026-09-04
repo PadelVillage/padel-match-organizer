@@ -98,20 +98,24 @@ test('③ 🚨 lo spazio riservato in cima ai messaggi copre l\'altezza VERA del
   const fascia = regola(SEL_FASCIA);
   const btn = regola(SEL_BTN, SEL_FASCIA);
   const msg = regola(SEL_MSG);
-  const padFascia = (function () {
-    const m = fascia.match(/padding\s*:\s*(-?\d+(?:\.\d+)?)px/);
-    return m ? Number(m[1]) : null;
-  })();
+  // 🩹 L'altezza si LEGGE dalla regola, non si calcola da bottone + padding: al primo giro
+  // l'avevo dedotta (30 + 4 + 4 = 38) e la pagina viva ne misurava **48**. La guardia passava
+  // verde confrontando due numeri che combaciavano solo nella mia aritmetica.
+  // 📌 *Una guardia che ricalcola invece di leggere difende il proprio conto, non la pagina.*
+  const hFascia = px(fascia, 'height');
   const hBtn = px(btn, 'height');
   const padTop = px(msg, 'padding-top');
-  assert.ok(padFascia != null, 'il padding della fascia non si legge più: la sonda non sa che dire');
+  assert.ok(hFascia != null,
+    'la fascia non dichiara più un\'altezza: senza, ognuno la deduce a modo suo e il buco torna');
+  assert.match(fascia, /box-sizing\s*:\s*border-box/,
+    'senza `border-box` l\'altezza dichiarata non comprende il padding e i conti si sfalsano');
   assert.ok(hBtn != null, 'l\'altezza del bottone ✕ non si legge più');
   assert.ok(padTop != null, 'lo spazio riservato in cima ai messaggi non si legge più');
-  const altezzaFascia = hBtn + 2 * padFascia;
+  const altezzaFascia = hFascia;
   assert.ok(padTop >= altezzaFascia,
     '🚨 lo spazio riservato (' + padTop + 'px) è MINORE della fascia (' + altezzaFascia + 'px): '
     + 'la differenza è terra di nessuno, e ci passano le righe con la loro ✕ — è precisamente '
-    + 'il buco da cui è nato il difetto (52 contro 30)');
+    + 'il buco da cui è nato il difetto (52 contro 30, e poi 48 contro 38)');
 });
 
 test('③ e il numero non è un caso: cambiando il padding della fascia si rompe', () => {
@@ -121,10 +125,9 @@ test('③ e il numero non è un caso: cambiando il padding della fascia si rompe
   const fascia = regola(SEL_FASCIA);
   const btn = regola(SEL_BTN, SEL_FASCIA);
   const msg = regola(SEL_MSG);
-  const padFascia = Number((fascia.match(/padding\s*:\s*(-?\d+(?:\.\d+)?)px/) || [])[1]);
-  const altezzaFascia = px(btn, 'height') + 2 * padFascia;
+  const altezzaFascia = px(fascia, 'height');
   const padTop = px(msg, 'padding-top');
-  assert.ok(padTop - altezzaFascia <= 24,
+  assert.ok(padTop - altezzaFascia <= 8,
     'lo spazio riservato è ' + (padTop - altezzaFascia) + 'px più del necessario: un margine così '
     + 'largo fa passare il controllo anche quando la fascia cresce, e la guardia smette di dire '
     + 'qualcosa. Meglio stretto e vero che largo e inerte');
