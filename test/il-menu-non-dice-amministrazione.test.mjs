@@ -91,13 +91,20 @@ test('② 🚨🚨 e la navigazione punta ancora alla chiave, non al nome', () =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-test('③ il capitolo ha ancora i suoi cinque figli', () => {
+test('③ il capitolo ha ancora i suoi figli', () => {
   const i = APP.indexOf('data-section-key="administration"');
   assert.ok(i > 0, 'bottone del capitolo non trovato');
   const menu = APP.slice(i, i + 1800);
-  for (const voce of ['Utenti Staff', 'Notifiche staff', 'Dati', 'Bot Telegram', 'Circoli']) {
+  // ⚖️ Le voci elencate sono le QUATTRO che vivono su TUTT'E DUE i rami. «Circoli» esiste solo
+  //    su test-preview: pretenderla qui renderebbe questo banco ROSSO SU PROD per una voce che
+  //    a PROD non è mai stata promossa — cioè farebbe fallire una cura sana per un fatto che
+  //    non la riguarda. 📌 Un banco che accompagna una promozione deve reggere sui due rami,
+  //    o diventa un ostacolo alla promozione invece che una garanzia.
+  for (const voce of ['Utenti Staff', 'Notifiche staff', 'Dati', 'Bot Telegram']) {
     assert.ok(menu.includes('>' + voce + '<'), 'sparita la voce «' + voce + '» dal menu');
   }
+  const quanti = (menu.match(/data-subsection-key="view_admin_/g) || []).length;
+  assert.ok(quanti >= 4, 'il capitolo ha ' + quanti + ' voci: ne sono sparite');
 });
 
 test('③ il bottone del menu si legge «Impostazioni»', () => {
