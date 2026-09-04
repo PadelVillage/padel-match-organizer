@@ -2741,10 +2741,18 @@ difende **quella riga**, che è il freno di tutta la scelta.
 (il caso che prima usciva vuoto): i **4 nomi ci sono già a 15 ms**, «Leggo i giocatori da
 Matchpoint» **non compare**, **4** icone «non lo so» e **0** ✗ rosse, zero errori di pagina.
 L'indicatore «rileggo da Matchpoint…» l'ho visto **comparire a 15 ms e spegnersi a 30**.
-⚠️ **Quello che quella prova NON dice**: lì il worker è **bloccato dalla console** (le letture
-`/functions/v1/` non partono), quindi la rilettura fallisce all'istante — **quanto resta acceso
-l'indicatore nella vita vera non l'ho misurato**, e nemmeno che i nomi del worker sostituiscano
-quelli locali quando arrivano. Quello lo dice una scheda vera su PROD.
+✅⭐⭐ **E LA STESSA PROVA SU PROD 6.323, fatta da me** — è il **postulato** del 04/09 applicato la
+prima volta: su una partita **di oggi** (04/09, Campo 3, 14:00) col roster salvato a **stringhe**,
+cioè uno dei **67** che prima uscivano vuoti. 📏 **4 nomi visibili a 15 ms**, «Leggo i giocatori da
+Matchpoint» **non compare**, **4** icone «non lo so» e **0** ✗ rosse, zero errori di pagina.
+⚠️ **QUELLO CHE NESSUNA DELLE DUE PROVE DICE, e non si arrotonda**: la console remota blocca
+`/functions/v1/` **di proposito** (è la strada verso il worker condiviso, quindi verso il
+Matchpoint vero), quindi la rilettura fallisce all'istante e l'indicatore lo si vede **comparire a
+15 ms e spegnersi a 30**. ⇒ **Non sono misurati**: quanto resta acceso nella vita vera, e che i
+nomi del worker **sostituiscano** quelli locali quando arrivano. 📌 Per misurarli servirebbe
+`--allow-writes`, che disarma la guardia **anche per le scritture** e su PROD vuol dire scrivere
+sul Matchpoint del circolo: **non si fa per una misura**. Lo vede chi apre una scheda vera
+dall'app — l'indicatore resterà acceso i secondi che il worker impiega.
 🧪 Banco nuovo `la-scheda-si-apre-piena` (13 casi), con `_normRoster` **eseguita** e non solo
 letta; **sabotata 5 volte su una COPIA**, cade tutte e 5.
 
