@@ -178,5 +178,21 @@ test('⑥ 🚨 il DOM non è stato toccato: il titolo resta FIGLIO DIRETTO del b
     'il titolo viene appeso alla testata: la cura doveva essere di sola posizione');
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑧ 🚨 La riga di partenza dei giocatori — il difetto che il banco NON aveva visto
+// ─────────────────────────────────────────────────────────────────────────────
+test('⑧ 🚨 i giocatori partono dalla riga 1, non dalla 2 (era la riga del titolo)', () => {
+  // 📏 Trovato sulla PAGINA VIVA di TEST 6.348, non qui: Slot a 118 e giocatori a 280.
+  //    `grid-row:2` esisteva perché la riga 1 era del titolo a tutta larghezza. Tolto il titolo
+  //    dal flusso, quel `2` descriveva una vicina che non c'è più — e nessuna prova di questo
+  //    banco poteva accorgersene, perché la regola era ancora lì, scritta bene, e sbagliata.
+  const { corpo } = regolaCon('.svc-edit-box > [data-feature="players-payments"]', /grid-row/);
+  const m = corpo.match(/grid-row\s*:\s*(\d+)\s*\//);
+  assert.ok(m, 'la colonna dei giocatori non dichiara più una riga di partenza');
+  assert.equal(Number(m[1]), 1,
+    'i giocatori partono dalla riga ' + m[1] + ': con il titolo fuori dal flusso quella riga è '
+    + 'occupata dallo Slot, e la colonna destra scivola sotto invece di partire in cima');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
