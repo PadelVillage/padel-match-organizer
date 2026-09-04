@@ -12,6 +12,28 @@
 **provato**, con scritto **cosa** è stato provato e **come**. Il suo mestiere è **verificare che
 quello che ho detto sia vero**, non scoprire al posto mio se funziona.
 
+🔁 **L'ORDINE DEI PASSI, dettato da lui il 04/09 e da seguire così com'è scritto:**
+
+> *«Tu fai gli sviluppi, li guardi e li provi su test; quando sei convinto che funzionano li porti
+> su prod. Poi dopo li guardi e li testi su prod e dopo che sei sicuro che tutto funziona mi dici
+> di andare a controllarti.»*
+
+| | passo | chi |
+|---|---|---|
+| ① | si sviluppa | io |
+| ② | **si guarda e si prova su TEST** | io |
+| ③ | quando sono convinto che funziona → **si porta su PROD** | io |
+| ④ | **si guarda e si prova su PROD** | io |
+| ⑤ | quando sono sicuro → **gli si dice di andare a controllare** | lui |
+
+⛔ **Il passo ④ non si salta**, ed è quello che si è più tentati di saltare: TEST è verde, la
+promozione è andata, il numero è giusto — sembra fatto. Ma su PROD ci sono i **dati veri**, la
+cache da `max-age=600` che serve ancora la copia vecchia, e la larghezza del telefono da cui
+guarda lui. 📌 *Fra «l'ho promosso» e «l'ho visto funzionare dove la gente lo usa» ci stanno
+tutti i difetti che questa lista ha imparato a memoria.*
+⛔ E il passo ⑤ **non è «prova tu se funziona»**: è *«ho finito, vieni a controllare che quello
+che ho detto sia vero»*. La differenza è tutta lì.
+
 🔨 **Cosa vuol dire, in pratica:**
 · la prova si fa **sulla pagina viva** — console remota (`tools/verifica-browser`, autorizzata su
   TEST **e PROD**), oppure il bot con un gesto vero;
