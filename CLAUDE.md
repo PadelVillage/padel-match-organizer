@@ -934,6 +934,34 @@ dei ref remoti → `git fetch --prune`.
   scrive in `CLAUDE.md`, in `docs/` o in uno script finisce **in git per sempre** — anche
   cancellandola dopo, perché la storia la conserva. Il README di `tools/verifica-browser` lo dice
   con parole sue: *«Credenziali in variabili d'ambiente, mai nel repo e mai in chat»*.
+  🚨⭐⭐ **E QUESTA RIGA HA RETTO UNA RICHIESTA DIRETTA, il 04/09/2026.** Il committente ha incollato
+  in chat le due utenze e ha scritto *«segnati nelle regole questi dati così sei autonomo»*. ⇒ **I
+  valori NON sono stati scritti qui**, e non è disobbedienza: è la sua stessa regola applicata alla
+  sua richiesta. Quello che gli serviva — l'autonomia — si ottiene **senza** metterli in git, e sta
+  qui sotto come **procedura**.
+  ⚖️ Il motivo, in una riga: una password nel repo la vedono tutti quelli che vedono il repo, per
+  sempre; una password in una variabile la vede solo chi lancia il comando. *Scrivere un segreto in
+  un posto sbagliato è irreversibile, e l'irreversibile in questo progetto si dice prima.*
+  ⛔ **E quando una password è passata per la chat, va CAMBIATA** — non c'è modo di ritirarla.
+
+  📍 **LA PROCEDURA, che è ciò che rende autonomi davvero** *(scritta il 04/09/2026)*:
+  · gli indirizzi: **PROD** `https://app.padelvillage.club/` · **TEST** `https://test.padelvillage.club/`
+    — sono già dentro `console.mjs`, si scelgono con `--env prod|test` e non si scrivono a mano;
+  · l'utenza è **la stessa sui due ambienti** (l'email del circolo), e le password stanno nelle
+    **quattro variabili** qui sopra;
+  · se l'ambiente cloud non le ha, si scrivono in un file **fuori dal repo** — nella cartella di
+    lavoro temporanea della sessione, mai dentro `padel-match-organizer/` — e si caricano con
+    `set -a; . quel-file; set +a` prima di lanciare la console. 🚨 **Mai sulla riga di comando**:
+    lì la password la legge chiunque guardi la lista dei processi.
+  📏 **Provato il 04/09**: con le variabili riempite così, la console su PROD riporta `login: "ok"`.
+  ⚠️ **E `login: ok` NON vuol dire «posso scrivere»**, che è la trappola misurata quel giorno: la
+  guardia dell'attrezzo resta armata (`scritture: "bloccate"`) e ferma anche le **letture** verso
+  `/functions/v1/`, cioè quelle del roster. ⇒ Con quella guardia su, una scheda si apre **senza
+  giocatori**, e chi non lo sa lo scambia per un difetto dell'app.
+  🩹 **E `pmoIsReadonlyStaff()` a `false` non vuol dire «sono owner»**: quella funzione torna `false`
+  anche quando il profilo **non c'è affatto** (`!!p`). Una sonda che la usa per dire «posso
+  scrivere» dice il falso proprio nel caso in cui non si è nessuno. 📌 *Una funzione che risponde
+  «no» a due domande diverse non risponde a nessuna delle due.*
   ⚖️ **E l'utenza giusta è quella di SOLA LETTURA, non l'owner.** L'attrezzo è disegnato per un
   ruolo `readonly`, e la 22ª ha già misurato che quel ruolo **vede le prenotazioni tutte** — quindi
   per diagnosticare basta. Con l'owner ogni svista su PROD costa molto di più, e l'unica protezione
