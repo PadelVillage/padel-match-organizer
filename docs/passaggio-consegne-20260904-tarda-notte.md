@@ -27,7 +27,7 @@
 | versioni app | PROD 6.340 · TEST 6.341 | **PROD 6.349 · TEST 6.350** |
 | PR fuse | — | **#1352 → #1363** (dodici) |
 | banco | 102 verdi | **106 verdi / 0 rossi** |
-| voci | 122 chiuse · 10 urgenti | 122 chiuse · **14 urgenti** (entrano 154 · 155 · 156 · 157) |
+| voci | 122 chiuse · 10 urgenti | **123 chiuse · 13 urgenti** (entrano 154 · 155 · 156 · 157; la **157 è già chiusa da lui**) |
 
 ---
 
@@ -41,9 +41,10 @@
 | edge | 3 rideployate (solo commenti, vedi punto 5) |
 
 ### ⛔ LE COSE DA FARE PER PRIME
-1. **Il suo occhio su quattro voci nuove**, tutte già in servizio su PROD e già provate da me:
-   **154** (la scheda socio va sopra), **155** (la barra fissa), **156** («Impostazioni»),
-   **157** (nota bassa + titolo nella testata). Nessuna aspetta lavoro: aspettano lui.
+1. **Il suo occhio su TRE voci nuove**, tutte già in servizio su PROD e già provate da me:
+   **154** (la scheda socio va sopra), **155** (la barra fissa), **156** («Impostazioni»).
+   Nessuna aspetta lavoro: aspettano lui.
+   ✅ La **157** è stata **chiusa da lui la sera stessa** — *«controllato ed è ok»*.
 2. 🚨 **La 153 è la più grossa rimasta e NON è stata toccata**: il pannello della scheda è **fisso
    a 860 px** e non scala col monitor. ⚠️ Ma **va rimisurata**: la 157 ha appena tolto ~55 px
    dall'altezza della scheda, quindi il «sfora di 94 px a 1280×800» è **di prima della 157** e
@@ -167,7 +168,9 @@ benché sia `overflow:auto`.
 📌 *Prima di spostare un nodo per ottenere una posizione, si guarda se la posizione si può
 **chiedere**. Un nodo spostato porta con sé un ciclo di vita da sorvegliare* — qui, un titolo che
 sopravvive alla scheda chiusa.
-✅ Provata su TEST e PROD a tre larghezze.
+✅ Provata su TEST e PROD a tre larghezze, e **CHIUSA da lui la sera stessa**: *«controllato ed è ok»*.
+⭐ È la prima voce chiusa nella forma piena del POSTULATO: il lavoro gli è arrivato **provato**, e a
+lui è toccato **verificare che quel che avevo detto fosse vero** — non scoprire se funzionava.
 
 ---
 
@@ -222,7 +225,8 @@ sopravvive alla scheda chiusa.
 | | |
 |---|---|
 | 🖥️ **153** (aperta, **da decidere con lui**) | il pannello è **fisso a 860 px** e non scala col monitor · nel CSS ci sono **tredici** soglie non allineate · ⚠️ **il numero «94 px a 1280» è di PRIMA della 157 e va rimisurato** · il **calendario** non è mai stato misurato |
-| **157 · 156 · 155 · 154** (aperte) | tutte in servizio su PROD e provate da me: **aspettano il suo occhio** |
+| **156 · 155 · 154** (aperte) | in servizio su PROD e provate da me: **aspettano il suo occhio** |
+| ✅ **157** (CHIUSA) | chiusa da lui il 04/09 a tarda notte: *«controllato ed è ok»* |
 | **152** (aperta) | il ramo «conto parziale» non è mai passato sul vivo — adesso la console idratata lo rende possibile |
 | **151 · 150 · 149** (aperte) | in servizio, aspettano il suo occhio |
 | **142** (aperta) | id interno + Osservazioni nel gestionale ⇒ chiude anche la **138** |
