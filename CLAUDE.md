@@ -633,6 +633,40 @@ ribaltarla, che è possibile solo se la trova **scritta**.
 📌 *Una delega larga non è il permesso di decidere in silenzio: è l'obbligo di decidere e di
 dichiarare cosa si è deciso.*
 
+### 📢 OGNI DEPLOY SU PROD SI ANNUNCIA (FERMA, 04/09/2026)
+
+🗣️ Sua richiesta, data dopo che la 147 era già atterrata su PROD: *«Metti anche nelle regole, di
+avvisarmi sempre quando è fatto un deploy su Prod.»*
+
+> **Quando PROD serve una versione nuova, glielo si dice. Sempre, senza aspettare che lo chieda.**
+
+⛔ **E l'avviso non è il merge della PR.** Fra il merge e il momento in cui il suo browser scarica
+il file nuovo passano due cose che possono non succedere: il deploy di Pages, e la cache di PROD
+(`max-age=600`). ⇒ Si annuncia **il fatto**, non l'intenzione: *PROD serve la 6.330*, misurato.
+
+📏 **Come si misura, che è l'unica parte che si può sbagliare** — il numero da solo **non basta**,
+perché con quella cache lo si può rileggere vecchio per dieci minuti:
+```
+curl -s -H 'Cache-Control: no-cache' "https://app.padelvillage.club/?cb=$(date +%s)" \
+  | grep -o "APP_VERSION = '[0-9.]*'"
+curl -sI https://app.padelvillage.club/ | grep -i last-modified
+```
+⭐ **Non si sta lì a guardare**: si lascia un `until` in background che esce quando il numero
+cambia, e si avvisa quando esce. Aspettare a mano costa attenzione e si dimentica.
+
+✅ **Cosa deve contenere l'avviso**, o è una notifica e non un'informazione:
+· **quale numero** e **da che ora** (`last-modified`, non «adesso»);
+· **cosa può rifare lui** per vedere la cura — il gesto esatto, non «prova»;
+· ⚠️ **cosa quel deploy NON ha provato**, che è l'obbligo ① della delega e non decade qui.
+
+⚖️ **Perché è una regola e non una cortesia**: il postulato dice che la prova la faccio io e lui
+**supervisiona**. Supervisionare vuol dire poter guardare — e non può guardare una cosa di cui non
+sa che è arrivata. Un deploy silenzioso trasforma la supervisione in fiducia, che è esattamente
+quello che il postulato ha sostituito.
+
+📌 Vale per **PROD**. TEST arriva live in 20-30 s e si spinge molte volte al giorno: annunciarlo
+ogni volta renderebbe rumore proprio l'avviso che deve farsi notare.
+
 ### ✋ UN TASK NON È FINITO FINCHÉ NON LO SI È PROVATO **FISICAMENTE** (FERMA, 23/08/2026 sera)
 
 🗣️ Sue parole, la sera stessa della delega:
