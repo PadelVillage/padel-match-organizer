@@ -68,6 +68,18 @@
   /* DOPO: due colonne */
   .duecol{display:grid;grid-template-columns:330px 1fr;gap:14px;align-items:start}
   .duecol .colonna{min-width:0}
+  .extra{border:1px solid var(--line);border-radius:10px;padding:11px;margin-top:11px;background:#fbfdff}
+  .extra h4{margin:0 0 8px;font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:6px}
+  .extra .r{display:flex;justify-content:space-between;gap:10px;font-size:.8rem;padding:5px 0;border-top:1px solid #eef2f8}
+  .extra .r:first-of-type{border-top:0}
+  .extra .r b{font-variant-numeric:tabular-nums}
+  .extra .tot{border-top:2px solid var(--line);margin-top:4px;padding-top:7px;font-weight:800}
+  .extra .g{font-size:.78rem;padding:6px 0;border-top:1px solid #eef2f8;line-height:1.45}
+  .extra .g:first-of-type{border-top:0}
+  .extra .g em{color:var(--ink-faint);font-style:normal;font-weight:700}
+  .costo{margin-top:9px;font-size:.72rem;border-radius:8px;padding:7px 9px;line-height:1.45}
+  .costo.gratis{background:var(--ok-bg);color:#065f46;border:1px solid #9fe0bd}
+  .costo.paga{background:var(--warn-bg);color:#8a4b06;border:1px solid #f0cf9a}
 
   /* etichette di misura */
   .quota{position:absolute;font-size:.68rem;font-weight:800;color:var(--accent-deep);background:#fff;border:1px solid #c3d4f0;
@@ -109,6 +121,14 @@
     <button id="bDopo"  aria-pressed="false" onclick="mostra('dopo')">La proposta</button>
   </div>
 
+  <div class="switch" id="varianti" role="group" aria-label="Cosa mettere nello spazio libero" hidden>
+    <span style="font-size:.8rem;color:var(--ink-faint);font-weight:700;margin-right:2px">nello spazio libero:</span>
+    <button aria-pressed="true"  onclick="variante('niente')">niente</button>
+    <button aria-pressed="false" onclick="variante('conto')">A · il conto</button>
+    <button aria-pressed="false" onclick="variante('gesti')">B · chi ha fatto cosa</button>
+    <button aria-pressed="false" onclick="variante('soci')">C · cosa sanno i soci</button>
+  </div>
+
   <div class="scena">
     <div class="pannello" id="pannello">
       <div class="chiudi">✕</div>
@@ -118,6 +138,7 @@
   </div>
 
   <div id="spiega"></div>
+  <div id="verdetto"></div>
 
   <h2>I numeri, misurati</h2>
   <table class="mis">
@@ -216,12 +237,52 @@
   const testa = `<div class="testa">🗓 Modifica prenotazione</div>
       <div class="sotto" style="margin-bottom:2px">Campo 4 · 07/09/2026 · 09:00</div>`;
 
+  const EXTRA = {
+    niente: '',
+    conto: `
+      <div class="extra"><h4>💰 Il conto della partita</h4>
+        <div class="r"><span>A carico · 4 giocatori × 8,00</span><b>32,00</b></div>
+        <div class="r"><span>Già incassato</span><b>0,00</b></div>
+        <div class="r tot"><span>Manca all'appello</span><b>32,00</b></div>
+        <div class="costo gratis">✅ <strong>Non costa niente:</strong> il totale la scheda lo calcola
+          <em>già</em> (somma delle caselle «€ a carico»), e i pagamenti fatti li ha <em>già</em> in mano —
+          servono alla pastiglia «✓ pagato». Nessuna lettura in più.</div>
+      </div>`,
+    gesti: `
+      <div class="extra"><h4>📋 Chi ha fatto cosa, qui</h4>
+        <div class="g"><em>oggi 19:32</em> · Maurizio Aprea<br>ha cambiato l'importo di Lidia Comes: 8,00 → 9,00</div>
+        <div class="g"><em>ieri 22:10</em> · Lidia Comes (dal bot)<br>è entrata in partita</div>
+        <div class="g"><em>ieri 21:58</em> · Maurizio Aprea<br>ha creato la prenotazione</div>
+        <div class="costo paga">⚠️ <strong>Costa una lettura in più a ogni apertura:</strong> quelle righe
+          stanno nel registro <code>staff_edit</code> del gestionale, che la scheda oggi <em>non</em> legge.
+          Va deciso se vale il ritardo — la scheda si apre già aspettando il worker.</div>
+      </div>`,
+    soci: `
+      <div class="extra"><h4>📣 Cosa sanno i soci</h4>
+        <div class="g">Lidia Comes · <em>avvisata ieri 21:58</em><br>«sei in partita lunedì 7 alle 9:00, Campo 4»</div>
+        <div class="g">Fabiola Limuti · <em>avvisata ieri 21:58</em></div>
+        <div class="g">Ospite ×2 · <em>nessun avviso</em> — non hanno una scheda socio</div>
+        <div class="costo paga">⚠️ <strong>Costa una lettura in più</strong> (i «fatti» accodati verso il
+          bot). ⭐ Ma è l'unico posto in cui si vedrebbe se un avviso <em>non</em> è partito: oggi quella
+          domanda non ha una risposta dentro l'app.</div>
+      </div>`,
+  };
+  let varianteAttiva = 'niente';
+  function variante(v) {
+    varianteAttiva = v;
+    document.querySelectorAll('#varianti button').forEach((b, i) => {
+      b.setAttribute('aria-pressed', ['niente','conto','gesti','soci'][i] === v);
+    });
+    mostra('dopo');
+  }
+
   function mostra(quale) {
     const m = document.getElementById('messaggi');
     const d = document.getElementById('decorazioni');
     const s = document.getElementById('spiega');
     document.getElementById('bPrima').setAttribute('aria-pressed', quale === 'prima');
     document.getElementById('bDopo').setAttribute('aria-pressed', quale === 'dopo');
+    document.getElementById('varianti').hidden = (quale !== 'dopo');
 
     if (quale === 'prima') {
       m.innerHTML = `<div class="scheda" style="width:612px">${testa}${sezSlot}${sezGioc}${sezNote}${azioni}</div>`;
@@ -236,7 +297,7 @@
     } else {
       m.innerHTML = `<div class="scheda">${testa}
         <div class="duecol">
-          <div class="colonna">${sezSlot}${sezNote}${azioni}</div>
+          <div class="colonna">${sezSlot}${sezNote}${azioni}${EXTRA[varianteAttiva]}</div>
           <div class="colonna">${sezGioc}</div>
         </div></div>`;
       d.innerHTML = `<div class="quota" style="top:14px;left:600px">tutto dentro, niente da scorrere</div>`;
@@ -247,6 +308,18 @@
         e i giocatori restano tutti e quattro sott'occhio insieme agli importi.</div>`;
     }
   }
+  // 📏 L'altezza NON si dichiara: si misura sul disegno, e si dice se sfora.
+  function misura() {
+    const sc = document.querySelector('.scheda'); const el = document.getElementById('verdetto');
+    if (!sc || !el) return;
+    const h = Math.round(sc.getBoundingClientRect().height);
+    const dentro = h <= 761;
+    el.innerHTML = `<div class="nota-box ${dentro ? 'ok' : 'warn'}"><strong>Misurato su questo disegno:</strong>
+      la scheda è alta <strong>${h} px</strong> contro <strong>761</strong> visibili ⇒
+      ${dentro ? '<strong>entra, senza scorrere.</strong>' : '<strong>NON entra: mancano ' + (h - 761) + ' px</strong> — servirebbe allargare la finestra.'}</div>`;
+  }
+  const _mostra = mostra;
+  mostra = function (q) { _mostra(q); requestAnimationFrame(misura); };
   mostra('prima');
 </script>
 </body>
