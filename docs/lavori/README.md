@@ -2081,6 +2081,13 @@ non è più compatto, è **tagliato***.
 ⛔ A 1024 morde il **pavimento di 360 px**, ed è la scelta dichiarata: sotto, la griglia diventa
 illeggibile e torna giusto che a scorrere sia la pagina invece di schiacciare le righe.
 
+✅⭐ **E PROVATA ANCHE SU PROD 6.353**, che è la metà che il postulato pretende: la pagina **dichiara**
+`v6.353` (letto, non dedotto), la cornice risulta applicata (`--pmo-cal-cornice: 393px`), la shell
+del calendario è **507 px** — cioè `900 − 393`, il conto esatto — la colonna scorre **180 px** dentro
+di sé e **la pagina scorre ZERO**.
+📌 *La versione si legge dalla pagina insieme alla misura, non si deduce dal fatto che il deploy è
+andato: le due cose si separano proprio nei minuti in cui si guarda.*
+
 🩹⭐⭐ **E il difetto preso lungo la strada, che vale più della cura**: la prima versione della riga
 era finita dentro **`@media (max-width:899px)`** — cioè sul **telefono**, dove non serviva e avrebbe
 fatto danno, e dove su desktop non si sarebbe applicata **mai**. La sonda l'ha vista subito (512 px,
