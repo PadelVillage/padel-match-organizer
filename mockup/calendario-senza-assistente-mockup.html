@@ -139,6 +139,10 @@
 
   .pill{position:absolute;right:22px;top:-31px;display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #cfd9e8;border-radius:999px;padding:5px 13px;font-size:.75rem;font-weight:600;box-shadow:0 4px 14px rgba(16,32,60,.12);z-index:4;cursor:pointer}
   .pill .sp{width:12px;height:12px;border-radius:50%;border:2px solid #bcd0f0;border-top-color:var(--accent);animation:sp .8s linear infinite}
+  .pill.ok{background:var(--ok-bg);border-color:#bce3cd;color:var(--ok)}
+  .pill.ko{background:#fff4f2;border-color:#f2c0bb;color:var(--danger)}
+  .pill .apri{color:var(--ink-faint);font-weight:600}
+  .pill.ko .apri,.pill.ok .apri{color:inherit;opacity:.7}
 
   .nota{max-width:1400px;margin:0 auto 44px;padding:0 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;align-items:start}
   .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
@@ -175,6 +179,7 @@
     <button class="demo" data-s="ok">✅ confermata</button>
     <button class="demo" data-s="ko">⛔ rifiutata</button>
     <button class="demo" data-s="close">chiudi la scheda</button>
+    <button class="demo" data-s="fuori">…mentre la scheda è chiusa</button>
   </div>
 </div>
 
@@ -221,7 +226,7 @@
       <div class="stage">
         <div class="gridcol">
           <div class="guadagno hidden" id="guadagno">+3 ore in vista, senza scorrere</div>
-          <div class="pill hidden" id="pill"><span class="sp"></span> Sto scrivendo su Matchpoint… <span style="color:var(--ink-faint);font-weight:600">apri</span></div>
+          <div class="pill hidden" id="pill"></div>
 
           <div class="gridwrap"><div class="grid" id="grid"></div></div>
 
@@ -268,9 +273,10 @@
     </div>
   </div>
   <div class="box warn">
-    <h3>La domanda ancora aperta</h3>
-    <p>La barra della 137 si vedeva <b>anche a scheda chiusa</b>: è così che la segreteria si accorge di un gesto arrivato dal bot o da un'altra postazione. Dentro la scheda, quel caso non ha più un posto.</p>
-    <p>Qui è disegnata come <b>pastiglia in alto a destra</b> — piccola, senza coordinate, e cliccandola si apre la scheda giusta. L'alternativa è che <b>la scheda si apra da sé</b>. Da decidere.</p>
+    <h3>Gesto in corso a scheda chiusa: la pastiglia</h3>
+    <p>La barra della 137 si vedeva <b>anche a scheda chiusa</b>: è così che la segreteria si accorge di un gesto arrivato dal bot o da un'altra postazione. Dentro la scheda, quel caso non avrebbe più un posto.</p>
+    <p><b>Pastiglia, non apertura automatica.</b> Chi sta in segreteria è quasi sempre dentro un altro gesto, e in questa scheda ogni bottone scrive su Matchpoint: una scheda che si apre da sé — <b>quando decide il socio col bot</b>, non l'operatore — si prenderebbe il click già partito. È anche l'ingombro per cui il banner del 3 giugno fu tolto (v5.627) e per cui la barra è sovrapposta e non nel flusso.</p>
+    <p>La pastiglia porta con sé le due cose che la barra faceva: <b>tiene le tre facce</b> — azzurra in corso, verde che sparisce da sé, <b>rossa che resta finché non la si apre</b> (regola della 137 ⑤: un rifiuto non se ne va da solo) — e <b>la cella del calendario resta accesa</b>, così il «dove» si vede sulla griglia e il «cosa» si legge nella pastiglia. Un click la apre sulla partita giusta.</p>
   </div>
 </div>
 
@@ -347,7 +353,14 @@
     $('esciTop').classList.toggle('hidden',oggi);
     $('guadagno').classList.toggle('hidden',oggi||aperta);
     $('barra').classList.toggle('hidden',!(oggi&&aperta));
-    $('pill').classList.toggle('hidden',oggi||aperta);
+    var pl=$('pill');
+    pl.classList.toggle('hidden',oggi||aperta);
+    pl.classList.remove('ok','ko');
+    if(!oggi&&!aperta){
+      if(stato==='ok'){ pl.classList.add('ok'); pl.innerHTML='✅ Fatta su Matchpoint · C3 · 15:00 <span class="apri">sparisce da sé</span>'; }
+      else if(stato==='ko'){ pl.classList.add('ko'); pl.innerHTML='⛔ Matchpoint ha rifiutato · C3 · 15:00 <span class="apri">apri</span>'; }
+      else { pl.innerHTML='<span class="sp"></span> Sto scrivendo su Matchpoint… <span class="apri">apri</span>'; }
+    }
     costruisciGriglia();
 
     var sc=$('scheda'), bd=$('backdrop');
@@ -378,6 +391,7 @@
   document.querySelectorAll('.switch button[data-s]').forEach(function(b){
     b.addEventListener('click',function(){
       if(b.dataset.s==='close'){aperta=false;render();return;}
+      if(b.dataset.s==='fuori'){aperta=false;render();return;}
       stato=b.dataset.s; aperta=true; render();
     });
   });
