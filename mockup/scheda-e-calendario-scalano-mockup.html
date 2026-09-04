@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scala col monitor — voce 153</title>
+<style>
+  /* Palette presa dall'app, non inventata: sono le stesse variabili di #staffCalV36. */
+  :root{
+    --accent:#2563eb; --accent-light:rgba(37,99,235,.10); --accent-hover:#1d4ed8;
+    --surface:#ffffff; --surface2:#f0eeea; --border:#d8d7d2;
+    --text:#1f2430; --muted:#4b5563;
+    --ok:#16a34a; --ok-light:rgba(22,163,74,.10);
+    --no:#dc2626; --no-light:rgba(220,38,38,.08);
+    --warn:#b7791f; --warn-light:rgba(183,121,31,.10);
+    --ground:#f7f6f3;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--text);
+    font:15px/1.55 var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  .foglio{max-width:1080px; margin:0 auto; padding:32px 24px 80px; display:flex; flex-direction:column; gap:34px}
+
+  header h1{font-size:1.7rem; line-height:1.2; margin:0 0 6px; text-wrap:balance; letter-spacing:-.01em}
+  header p{margin:0; color:var(--muted); max-width:62ch}
+  .occhiello{
+    font-size:.72rem; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--accent); font-weight:700; margin:0 0 8px;
+  }
+
+  section{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px}
+  section > h2{
+    margin:0 0 4px; font-size:1.12rem; letter-spacing:-.005em;
+    display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  }
+  section > h2 .lettera{
+    font:700 .78rem/1 var(--sans); letter-spacing:.06em;
+    background:var(--accent); color:#fff; padding:5px 8px; border-radius:5px;
+  }
+  section > .sotto{margin:0 0 18px; color:var(--muted); max-width:64ch}
+
+  table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+  .scorre{overflow-x:auto; margin-top:6px}
+  th,td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{
+    font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); font-weight:700; border-bottom-width:2px;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--mono); font-size:.92rem}
+  .pill{display:inline-block; padding:2px 7px; border-radius:99px; font-size:.76rem; font-weight:700}
+  .pill.no{background:var(--no-light); color:var(--no)}
+  .pill.ok{background:var(--ok-light); color:var(--ok)}
+  .pill.warn{background:var(--warn-light); color:var(--warn)}
+
+  /* La barra di proporzione: quanto dello schermo si prende il pannello. */
+  .barra{position:relative; height:16px; background:var(--surface2); border-radius:3px; overflow:hidden; min-width:120px}
+  .barra i{position:absolute; inset:0 auto 0 0; background:var(--accent); opacity:.85; display:block}
+  td.prop{width:180px}
+
+  .nota{
+    margin:16px 0 0; padding:12px 14px; border-left:3px solid var(--accent);
+    background:var(--accent-light); border-radius:0 6px 6px 0; color:var(--text);
+  }
+  .nota.attenzione{border-left-color:var(--warn); background:var(--warn-light)}
+  .nota p{margin:0}
+  .nota p + p{margin-top:8px}
+  code{font-family:var(--mono); font-size:.9em; background:var(--surface2); padding:1px 5px; border-radius:4px}
+
+  .misure{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-top:4px}
+  .misure div{background:var(--surface); padding:12px 14px}
+  .misure dt{font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:0 0 4px}
+  .misure dd{margin:0; font-family:var(--mono); font-size:1.28rem; line-height:1.1}
+  .misure dd small{font-family:var(--sans); font-size:.72rem; color:var(--muted); display:block; margin-top:3px; line-height:1.35}
+
+  /* Le sonde: schermi veri di larghezza vera, fuori dallo sguardo, che il browser
+     misura per noi. `container-type` fa sì che i cqw dentro si risolvano contro
+     LA SONDA e non contro la finestra — è così che una pagina larga 1000px può
+     dire cosa succede su un monitor da 1920. */
+  .banco{position:absolute; left:-10000px; top:0; visibility:hidden}
+  .sonda{container-type:inline-size}
+  .oggi{width:min(860px, calc(100cqw - 48px))}
+  .propostaA{width:clamp(620px, 66cqw, 1180px)}
+
+  footer{color:var(--muted); font-size:.86rem; border-top:1px solid var(--border); padding-top:16px}
+  footer strong{color:var(--text)}
+
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --surface:#191b20; --surface2:#23262d; --border:#343841;
+      --text:#e8e9ec; --muted:#a0a5b0; --ground:#111318;
+      --accent:#6a9bff; --accent-light:rgba(106,155,255,.13);
+      --ok:#4ade80; --ok-light:rgba(74,222,128,.12);
+      --no:#f87171; --no-light:rgba(248,113,113,.12);
+      --warn:#e0a955; --warn-light:rgba(224,169,85,.12);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="banco" aria-hidden="true" id="banco"></div>
+
+<div class="foglio">
+
+  <header>
+    <p class="occhiello">Voce 153 · mockup che si misura da sé</p>
+    <h1>La scheda e il calendario non scalano col monitor</h1>
+    <p>
+      Tre lavori separabili. I numeri qui sotto non sono scritti a mano: li calcola il browser
+      aprendo questa pagina, con la regola CSS vera messa dentro schermi finti della larghezza
+      dichiarata. Le misure di partenza vengono da PROD 6.349, scheda del 7/09 · Campo 4 · 09:00.
+    </p>
+  </header>
+
+  <!-- ─────────────────────────── A ─────────────────────────── -->
+  <section>
+    <h2><span class="lettera">A</span> Il pannello smette di essere un numero</h2>
+    <p class="sotto">
+      Oggi <code>width: min(860px, 100vw − 48px)</code>: <strong>860 px sempre</strong>, dal portatile
+      al monitor grande. La proposta è un intervallo — <code>clamp(620px, 66cqw, 1180px)</code> —
+      così cresce col monitor invece di restare fermo.
+    </p>
+    <div class="scorre">
+      <table id="tabA">
+        <thead>
+          <tr>
+            <th>schermo</th>
+            <th>oggi</th><th>quota</th>
+            <th>proposta A</th><th>quota</th>
+            <th class="prop">quanto dello schermo, oggi → A</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="nota">
+      <p>
+        <strong>Il minimo non è ornamentale.</strong> Sotto i 900 px la scheda è un foglio dal basso —
+        un'altra cosa — quindi il pavimento di <code>clamp</code> serve solo a non farla stringere
+        fra 900 e 940, dove sarebbe illeggibile senza essere ancora un telefono.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── B ─────────────────────────── -->
+  <section>
+    <h2><span class="lettera">B</span> Le colonne, che oggi si stringono solo da un lato</h2>
+    <p class="sotto">
+      Dentro la scheda: <code>grid-template-columns: 330px minmax(0,1fr)</code>. La sinistra è
+      <strong>fissa</strong> ⇒ su uno schermo piccolo a stringersi è <strong>solo</strong> la colonna
+      dei giocatori, che è anche la più alta. Proposta: proporzionali, con un minimo leggibile.
+    </p>
+    <div class="scorre">
+      <table id="tabB">
+        <thead>
+          <tr>
+            <th>larghezza pannello</th>
+            <th>oggi · sinistra</th><th>oggi · giocatori</th>
+            <th>B · sinistra</th><th>B · giocatori</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="nota">
+      <p>
+        <strong>B ha senso solo dentro A.</strong> Con il pannello fermo a 860 le due colonne si
+        spartiscono sempre la stessa torta: cambiare come si divide senza cambiare quanto è grande
+        sposta il problema da una colonna all'altra.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── C ─────────────────────────── -->
+  <section>
+    <h2><span class="lettera">C</span> Il calendario non entra mai — e non è un modo di dire</h2>
+    <p class="sotto">
+      Misurato su PROD con la console remota, a quattro altezze di finestra. Il calendario è alto
+      <strong>l'80% della finestra</strong> (<code>height: min(80vh, 860px)</code>) ma comincia
+      <strong>190 px</strong> più in basso, e sotto di lui restano <strong>203 px</strong> di pagina.
+    </p>
+
+    <div class="misure">
+      <div><dt>sopra il calendario</dt><dd>190 px<small>costante alle due altezze misurate</small></dd></div>
+      <div><dt>il calendario</dt><dd>80 vh<small>512 px su 640 · 720 px su 900</small></dd></div>
+      <div><dt>sotto il calendario</dt><dd>203 px<small>costante</small></dd></div>
+      <div><dt>serve una finestra alta</dt><dd id="soglia">—<small>perché la pagina non debba scorrere</small></dd></div>
+    </div>
+
+    <div class="scorre">
+      <table id="tabC">
+        <thead>
+          <tr>
+            <th>finestra</th><th>pagina alta</th><th>da scorrere</th><th>misurato</th><th>entra?</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="nota attenzione">
+      <p>
+        <strong>🚨 La stessa riga CSS governa DUE cose.</strong> <code>.svc-layout { height: min(80vh, 860px) }</code>
+        vale sia per la <em>scheda partita</em> sia per la <em>shell del calendario</em>: toccarla per
+        il calendario muove anche la scheda — cioè proprio quello che è stato appena confermato voce
+        per voce.
+      </p>
+      <p>
+        ⇒ La cura di C <strong>non</strong> è cambiare quel numero, è dare al calendario
+        <em>quello che resta</em> invece di una frazione del tutto:
+        <code>height: calc(100vh − 190px − 203px)</code>, con un minimo sotto il quale si smette di
+        stringere e si comincia a scorrere dentro la griglia.
+      </p>
+    </div>
+  </section>
+
+  <footer id="piede">
+    Le tre lettere sono <strong>separabili</strong>: <strong>C non tocca la scheda</strong> ed è la
+    più isolata; <strong>B ha senso solo dentro A</strong>. Ogni numero di questa pagina è stato
+    calcolato dal browser al caricamento — se una regola cambia, la tabella cambia con lei.
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SCHERMI = [1024, 1280, 1440, 1920];
+  var ALTEZZE = [640, 800, 900, 1080];
+  var SOPRA = 190, SOTTO = 203, FRAZIONE = 0.80;
+  // 📏 Misurato sul vivo, non dedotto: pagina osservata a quelle quattro altezze.
+  var MISURATO = { 640: 265, 800: 233, 900: 213, 1080: 173 };
+
+  var banco = document.getElementById('banco');
+
+  /* Una sonda è uno SCHERMO FINTO largo davvero N px. `container-type:inline-size`
+     fa sì che i `cqw` della regola dentro si risolvano contro la sonda: è il browser
+     a fare il conto di `clamp`, non noi a rifarlo in JavaScript — che è tutta la
+     differenza fra misurare e riscrivere la regola sperando di ricopiarla giusta. */
+  function sonda(larghezza, classe) {
+    var s = document.createElement('div');
+    s.className = 'sonda';
+    s.style.width = larghezza + 'px';
+    var dentro = document.createElement('div');
+    dentro.className = classe;
+    s.appendChild(dentro);
+    banco.appendChild(s);
+    var w = dentro.getBoundingClientRect().width;
+    banco.removeChild(s);
+    return w;
+  }
+
+  function cella(testo, mono) {
+    var td = document.createElement('td');
+    if (mono) td.className = 'num';
+    td.textContent = testo;
+    return td;
+  }
+  function quota(px, schermo) { return Math.round(px / schermo * 100) + '%'; }
+
+  // ── A ────────────────────────────────────────────────────────
+  var corpoA = document.querySelector('#tabA tbody');
+  var largA = {};
+  SCHERMI.forEach(function (w) {
+    var oggi = Math.round(sonda(w, 'oggi'));
+    var nuovo = Math.round(sonda(w, 'propostaA'));
+    largA[w] = { oggi: oggi, nuovo: nuovo };
+
+    var tr = document.createElement('tr');
+    tr.appendChild(cella(w + ' px', false));
+    tr.appendChild(cella(oggi + ' px', true));
+    tr.appendChild(cella(quota(oggi, w), true));
+    tr.appendChild(cella(nuovo + ' px', true));
+    tr.appendChild(cella(quota(nuovo, w), true));
+
+    var td = document.createElement('td');
+    td.className = 'prop';
+    var b1 = document.createElement('div'); b1.className = 'barra';
+    var i1 = document.createElement('i'); i1.style.width = (oggi / w * 100) + '%'; b1.appendChild(i1);
+    var b2 = document.createElement('div'); b2.className = 'barra'; b2.style.marginTop = '3px';
+    var i2 = document.createElement('i'); i2.style.width = (nuovo / w * 100) + '%'; i2.style.opacity = '.55'; b2.appendChild(i2);
+    td.appendChild(b1); td.appendChild(b2);
+    tr.appendChild(td);
+    corpoA.appendChild(tr);
+  });
+
+  // ── B ────────────────────────────────────────────────────────
+  // Oggi: 330 fisso + il resto (meno 12 di gap e 2 di bordi).
+  // B: minmax(280px, .85fr) minmax(0, 1.15fr) — proporzionale, con un minimo leggibile.
+  var corpoB = document.querySelector('#tabB tbody');
+  [860, largA[1024].nuovo, largA[1440].nuovo, largA[1920].nuovo].forEach(function (pannello, idx) {
+    var utile = pannello - 12 - 2 - 40; /* gap + bordi + padding interno */
+    var sinOggi = 330, gioOggi = Math.max(0, utile - 330);
+    var sinB = Math.max(280, Math.round(utile * 0.85 / 2));
+    var gioB = utile - sinB;
+
+    var tr = document.createElement('tr');
+    tr.appendChild(cella(pannello + ' px' + (idx === 0 ? '  (oggi)' : ''), false));
+    tr.appendChild(cella(sinOggi + ' px', true));
+    tr.appendChild(cella(gioOggi + ' px', true));
+    tr.appendChild(cella(sinB + ' px', true));
+    tr.appendChild(cella(gioB + ' px', true));
+    corpoB.appendChild(tr);
+  });
+
+  // ── C ────────────────────────────────────────────────────────
+  var corpoC = document.querySelector('#tabC tbody');
+  ALTEZZE.forEach(function (h) {
+    var pagina = Math.round(SOPRA + FRAZIONE * h + SOTTO);
+    var scorre = Math.max(0, pagina - h);
+    var tr = document.createElement('tr');
+    tr.appendChild(cella(h + ' px', false));
+    tr.appendChild(cella(pagina + ' px', true));
+    tr.appendChild(cella(scorre + ' px', true));
+
+    var tdM = document.createElement('td');
+    tdM.className = 'num';
+    tdM.textContent = (MISURATO[h] != null ? MISURATO[h] + ' px' : '—');
+    tr.appendChild(tdM);
+
+    var tdE = document.createElement('td');
+    var p = document.createElement('span');
+    p.className = 'pill ' + (scorre === 0 ? 'ok' : 'no');
+    p.textContent = scorre === 0 ? 'entra' : 'no';
+    tdE.appendChild(p);
+    tr.appendChild(tdE);
+    corpoC.appendChild(tr);
+  });
+
+  // La soglia: 190 + 0,8h + 203 ≤ h  ⇒  h ≥ 393 / 0,2
+  var soglia = Math.ceil((SOPRA + SOTTO) / (1 - FRAZIONE));
+  var dd = document.getElementById('soglia');
+  dd.childNodes[0].nodeValue = soglia.toLocaleString('it-IT') + ' px';
+})();
+</script>
+</body>
+</html>
