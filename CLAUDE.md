@@ -26,6 +26,26 @@ quello che ho detto sia vero**, non scoprire al posto mio se funziona.
 | ④ | **si guarda e si prova su PROD** | io |
 | ⑤ | quando sono sicuro → **gli si dice di andare a controllare** | lui |
 
+🚫🚫 **E IL PASSO ③ NON SI CHIEDE — aggiunto il 04/09 sera, detto da lui TRE VOLTE di fila
+perché non restasse frainteso:**
+
+> *«Non mi devi chiedere il permesso per portare in prod, lo devi fare in automatico. Dopo che su
+> test hai fatto tutti i test che funziona. Poi lo porti in prod in automatico, poi controlli in
+> prod che funziona e poi mi avvisi quando è finito che io vado a controllare.»*
+
+⇒ **Fermarsi fra il ② e il ③ per chiedere «lo porto in prod?» è la cosa che lui ha tolto di
+mezzo.** Non è il permesso di saltare le prove: è l'**ordine** in cui vanno fatte. La catena si
+percorre intera e da sola, e ci si ferma **solo** al ⑤.
+🗣️ *«Ogni volta che apriamo una chat questa regola deve essere presente.»* ⇒ **sta qui, in testa,
+apposta** — questo file si carica a ogni sessione, ed è la prima cosa che si legge.
+⛔ **Resta fuori una cosa sola, ed è quella di sempre**: ciò che è **irreversibile o si vede da
+fuori** — una scrittura vera sul Matchpoint del circolo, un messaggio verso i soci,
+`--allow-writes` su PROD. Quello si **dice prima**, anche procedendo. *«Non chiedere» vale sul
+portare in produzione una cura provata, non sul premere un bottone che qualcuno fuori da qui
+vedrà.*
+📖 I quattro passi in dettaglio — cosa prova ciascuno e dove arriva — stanno in **🚀 LA PROMOZIONE
+A PROD NON SI CHIEDE**, più sotto.
+
 ⛔ **Il passo ④ non si salta**, ed è quello che si è più tentati di saltare: TEST è verde, la
 promozione è andata, il numero è giusto — sembra fatto. Ma su PROD ci sono i **dati veri**, la
 cache da `max-age=600` che serve ancora la copia vecchia, e la larghezza del telefono da cui
@@ -669,6 +689,50 @@ quello che il postulato ha sostituito.
 
 📌 Vale per **PROD**. TEST arriva live in 20-30 s e si spinge molte volte al giorno: annunciarlo
 ogni volta renderebbe rumore proprio l'avviso che deve farsi notare.
+
+### 🚀 LA PROMOZIONE A PROD NON SI CHIEDE: È UNA CATENA DI QUATTRO PASSI (FERMA, 04/09/2026)
+
+🗣️ Sue parole, dette due volte nello stesso minuto perché non restassero fraintese:
+
+> *«Non mi devi chiedere il permesso per portare in prod, lo devi fare in automatico. Dopo che su
+> test hai fatto tutti i test che funziona. Poi lo porti in prod in automatico, poi controlli in
+> prod che funziona e poi mi avvisi quando è finito che io vado a controllare.»*
+
+⇒ **Non è il permesso di saltare le prove: è l'ordine in cui vanno fatte, e sono QUATTRO passi.**
+Fermarsi fra il ② e il ③ per chiedere è la cosa che lui ha appena tolto di mezzo.
+📖 **Questa sezione è il DETTAGLIO del POSTULATO in testa al file, non una seconda regola**: là
+stanno i cinque passi e la riga «il ③ non si chiede», qui cosa prova ciascun passo e dove arriva.
+Se un domani divergessero, vale quello in testa — ed è il segno che una delle due va corretta,
+non affiancata.
+
+| | passo | cosa vuol dire |
+|---|---|---|
+| ① | **si prova su TEST** | banco intero verde, sintassi, e la cura **sabotata** — un banco che non cade non difende niente |
+| ② | **si promuove a PROD** | senza chiedere: le **righe** su un ramo basato su `main`, PR, CI verde, merge |
+| ③ | **si controlla su PROD** | che quello che è atterrato **faccia la cosa giusta**, sulla pagina viva |
+| ④ | **si avvisa** | 🟢 «puoi operare», nella forma della sezione qui sotto |
+
+🚨⭐⭐ **IL PASSO ③ È QUELLO CHE SI SALTA, ed è quello che dà senso al ②.** Un merge riuscito non è
+un controllo: dice che il file è partito, non che l'app fa la cosa giusta. Il controllo si fa **con
+la console remota, sulla pagina viva di PROD** — è dentro l'autonomia di lettura del 16/08, e non
+si chiede.
+⛔ **E si dichiara sempre dove arriva**: la console entra come **sola lettura**, quindi ciò che
+richiede una **scrittura** (un incasso, una prenotazione, un cambio importo vero) **non lo può
+esercitare**. ⇒ Il ③ prova ciò che si può **guardare e calcolare**; il resto è quello che lui va a
+controllare al ④, e va scritto come *«non provato»*, non lasciato credere.
+
+⛔ **COSA LA REGOLA NON COPRE, e non è cambiato**: ciò che è **irreversibile o si vede da fuori**
+— una scrittura vera sul Matchpoint del circolo, un messaggio che parte verso i soci,
+`--allow-writes` su PROD. Quello si **dice prima**, anche procedendo. La delega del 23/08 tiene
+intera: qui si toglie il permesso sulla **promozione**, non sul gesto che tocca il mondo.
+📌 *«Non chiedere» vale sul portare in produzione una cura provata, non sul premere un bottone che
+qualcuno fuori da qui vedrà.*
+
+⚖️ **Perché la catena non si accorcia.** Il ① senza il ③ è il verde che non ha mai guardato
+l'ambiente vero; il ③ senza il ① è provare sull'ambiente del circolo. E senza il ④ i primi tre
+sono successi in silenzio: lui **supervisiona**, e non può supervisionare ciò di cui non sa.
+🩹 Il passo che manca più spesso è il ③, perché dopo il merge **sembra** finito: il numero da solo
+non basta (`max-age=600`), e va guardato `last-modified` insieme alla versione.
 
 ### 🟢 «PUOI OPERARE» / 🔴 «NON SONO PRONTO» — l'avviso ha DUE stati (FERMA, 04/09/2026)
 
