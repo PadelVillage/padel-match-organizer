@@ -37,6 +37,15 @@ function test(nome, fn) {
   catch (e) { failed++; console.log('FAIL - ' + nome + '\n       ' + e.message); }
 }
 
+/** Le sole righe di CODICE di un testo: via i commenti.
+ *  🩹⭐ Una guardia deve rompersi su ciò che è sbagliato, non su ciò che ne PARLA: il commento
+ *  che spiega perché la scheda non si apre da sé contiene la parola `svcOpenChat`. */
+function soloCodice(testo) {
+  return String(testo).split('\n').filter(function (r) {
+    return !/^\s*(\/\/|\*|\/\*)/.test(r);
+  }).join('\n');
+}
+
 /** Dove finisce `function nome(`: l'indice DOPO la sua graffa di chiusura.
  *  ⚠️ Le graffe si contano dalla prima del CORPO e non dalla firma. */
 function dichiarazioneDi(nome) {
@@ -214,24 +223,59 @@ const vaSoloNellaBarra = new Function(
   costanteArray('SVC_ESITI_NELLA_SCHEDA') + '\n' + dichiarazioneDi('svcMessaggioVaSoloNellaBarra')
     + '\nreturn svcMessaggioVaSoloNellaBarra;')();
 
-test('⑧ 🚨 LA BARRA SI ANCORA ALLA FINESTRA, NON ALLA COLONNA — pagato con una promozione invisibile', () => {
-  /* 📏 Misurato sulla pagina viva di PROD 6.307 con la console remota: la barra ESISTEVA,
-     l'aggancio era attivo, markup e CSS erano quelli giusti — e stava a `top: 894` con la
-     finestra alta 900. Ancorata alla colonna con `bottom:0` finiva in fondo al CALENDARIO, che
-     è più alto dello schermo: fuori vista, e tanto più giù quante più righe ha la griglia.
-     ⚖️ Ogni misura fatta prima era vera e nessuna chiedeva *si vede?*. */
+test('⑧ 🚨 LA STRISCIA HA DUE CASE E NESSUNA DELLE DUE PUÒ FINIRE FUORI SCHERMO', () => {
+  /* 📏 Il fatto che questa guardia difende, e che è stato PAGATO: su PROD 6.307 la barra
+     ESISTEVA, l'aggancio era attivo, markup e CSS erano quelli giusti — e stava a `top: 894`
+     con la finestra alta 900. Ancorata alla colonna con `bottom:0` finiva in fondo al
+     CALENDARIO, che è più alto dello schermo. Ogni misura fatta prima era vera e nessuna
+     chiedeva *si vede?*.
+     🔄 RISCRITTA il 04/09/2026 col restyling: la striscia non è più una barra sotto il
+     calendario, ha due case — dentro la scheda quando è aperta, pastiglia quando è chiusa.
+     ⇒ L'invariante da difendere NON è più «si allinea alla colonna» (che era il mezzo), è
+     **«non può finire dove non si vede»** (che era il fine). La pastiglia prende dalla colonna
+     un suggerimento e poi si TAGLIA dentro la finestra: è il taglio la regola. */
   const i = APP.indexOf('.svc-semaforo {');
-  assert.ok(i > 0, 'manca la regola CSS della barra');
+  assert.ok(i > 0, 'manca la regola CSS della striscia');
   const regola = APP.slice(i, APP.indexOf('}', i));
-  assert.match(regola, /position:fixed/, 'la barra è tornata ancorata alla colonna: finirebbe sotto lo schermo');
-  assert.match(regola, /bottom:0/, 'la barra non è più sul bordo basso');
+  assert.match(regola, /position:fixed/, 'la striscia è tornata ancorata a un elemento: finirebbe sotto lo schermo');
   assert.ok(!/position:absolute/.test(regola), 'position:absolute è tornato: è il difetto di 6.307');
-  // …e la larghezza della colonna si riprende a mano, o la D diventa una fascia da bordo a bordo.
-  const all = dichiarazioneDi('svcAllineaSemaforoAllaColonna');
-  assert.match(all, /querySelector\('\.svc-grid-col'\)/, 'la barra non si allinea più alla colonna');
-  assert.match(all, /el\.style\.width = /, 'la larghezza non si imposta: la barra prenderebbe tutto lo schermo');
+
+  // ① La pastiglia si taglia DENTRO la finestra, in tutt'e due le direzioni.
+  const pos = dichiarazioneDi('svcPosizionaPastiglia');
+  assert.match(pos, /window\.innerHeight/, 'la pastiglia non guarda l\'altezza della finestra: può finire sotto il bordo');
+  assert.match(pos, /window\.innerWidth/, 'la pastiglia non guarda la larghezza della finestra: può finire oltre il bordo destro');
+  assert.match(pos, /Math\.min\(Math\.max\(/, 'il valore calcolato non è tagliato: un suggerimento senza taglio è il difetto di 6.307');
+
+  // ② Il disegno sceglie la casa a OGNI giro: la scheda si apre e si chiude sotto la striscia,
+  //    e una striscia rimasta dentro una finestra chiusa è il silenzio.
   const dis = dichiarazioneDi('svcRidisegnaSemaforo');
-  assert.match(dis, /svcAllineaSemaforoAllaColonna\(el\)/, 'il disegno non allinea la barra: resterebbe dove capita');
+  assert.match(dis, /svcSchedaAperta\(\)/, 'il disegno non guarda se la scheda è aperta: la striscia resterebbe dove capita');
+  assert.match(dis, /svc-semaforo-in-scheda/, 'manca la casa dentro la scheda');
+  assert.match(dis, /svc-semaforo-pastiglia/, 'manca la pastiglia');
+  assert.match(dis, /appendChild\(el\)/, 'la striscia non trasloca: resta dov\'era anche quando la casa cambia');
+
+  // ③ Aprire e chiudere la scheda RIDISEGNA: senza, la striscia resta nella casa sbagliata.
+  for (const f of ['svcOpenChat', 'svcCloseChat']) {
+    assert.match(dichiarazioneDi(f), /svcRidisegnaSemaforo\(\)/, f + ' non ridisegna la striscia: resterebbe nella casa sbagliata');
+  }
+});
+
+test('⑧b ⛔ LA SCHEDA NON SI APRE DA SÉ: la pastiglia si CLICCA', () => {
+  /* 🗣️ Sua scelta del 04/09 fra le due, dopo il mockup: pastiglia, non apertura automatica.
+     ⚖️ La ragione è di sicurezza e non di gusto: chi fa segreteria è quasi sempre dentro un
+     altro gesto, e nella scheda ogni bottone scrive su Matchpoint. Una finestra che si apre
+     QUANDO DECIDE IL SOCIO COL BOT si prende il click già partito.
+     🚨 Questa guardia si romperebbe se qualcuno, per «comodità», facesse aprire la scheda dal
+     disegno della striscia — cioè dal punto in cui arriva la notizia di un gesto altrui. */
+  const dis = dichiarazioneDi('svcRidisegnaSemaforo');
+  assert.ok(!/svcOpenChat\(\)/.test(soloCodice(dis)),
+    'il disegno della striscia apre la scheda da sé: è la cosa che è stata scartata');
+  // La pastiglia però DEVE essere una via: senza click sopra, un gesto altrui non si può aprire.
+  assert.match(dis, /el\.onclick = dentro \? null : svcApriDallaPastiglia/,
+    'la pastiglia non è cliccabile, oppure lo è anche la striscia dentro la scheda');
+  const apri = dichiarazioneDi('svcApriDallaPastiglia');
+  assert.match(apri, /celle\[i\]\.click\(\)/, 'la pastiglia non apre la scheda della cella: riscriverebbe l\'apertura');
+  assert.match(apri, /svcOpenChat\(\)/, 'senza ripiego: con la cella fuori vista la pastiglia non farebbe niente');
 });
 
 test("⑨ AVANZAMENTI ED ESITI ESCONO DALLA SCHEDA — LE DOMANDE DELL'ASSISTENTE NO", () => {
