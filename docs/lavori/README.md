@@ -2662,7 +2662,7 @@ in anagrafica — gli «Ospite», che nelle sue schermate sono spesso la maggior
 
 Non scavalca niente: entra in fondo.
 
-## 📋 IN CODA — 15
+## 📋 IN CODA — 17
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2670,6 +2670,63 @@ Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manu
 **assorbite dentro la voce 61** (urgenti) per sua decisione: *«sì assorbile nella 61»*. Non sono
 state chiuse né cancellate — le loro schede, coi numeri misurati il 17/08, stanno **per intero**
 dentro la 61, che è il posto dove adesso si lavora la sezione «Il mio livello».
+
+### 142 — 🪟 La scheda completa al click: giocatori, id e Osservazioni dentro il gestionale
+
+🗣️ **Sua, e disegnata da lui in cinque messaggi il 04/09/2026**, provando dal cellulare: *«quando
+apro la scheda la lettura dei giocatori ci mette un sacco di tempo, ma lui ha già i giocatori
+dentro il gestionale… perché ogni volta dobbiamo andare a leggere Matchpoint?»* → *«ogni due
+minuti importiamo da Matchpoint tutti questi dati anche se da fonti diverse, così quando clicco
+su una scheda ho tutti i dati immediatamente»*.
+
+📏 **Misurato il 04/09, e la sua intuizione era giusta a metà — è la metà che cambia la cura:**
+· i **nomi** il gestionale ce li ha, glieli porta il sync ogni 2′ (roster dalla `descrizione`
+  dell'export; il tabellone raschia righe di testo). Su quelli leggere Matchpoint è sprecato;
+· l'**id interno** no, e sta **solo** dentro la scheda della singola prenotazione
+  (`HiddenFieldIdCliente`). Senza, non si può dire a Matchpoint **chi** togliere né aprire la
+  scheda del socio giusto — è la **voce 138**, dove il numero sbagliato apriva un'altra persona;
+· le **Osservazioni** nemmeno. 📏 Prova: la nota *«ciao ciao»* che lui ha salvato il 03/09 alle
+  23:10 su Campo 3 · 05/09 · 15:00 **non c'è** nel record — al suo posto
+  `"-Maurizio Aprea.-Laura Aprea.-Fabiola Limuti."`, cioè la lista dei nomi.
+
+🩹 **E il difetto che lui VEDE è nostro, non di Matchpoint**: la scheda i nomi locali li ha già in
+mano all'apertura — poi li **nasconde**. `rosterLoading` copre Giocatori e Pagamenti finché il
+worker non risponde, quindi si aspettano ~20s per vedere una cosa che era lì. Il commento tre
+righe sopra dice *«apri SUBITO la scheda con i giocatori già noti in locale»*, e la riga sotto li
+copre. 📌 *Un commento che promette e una riga che disfa, a tre righe di distanza.*
+
+🔨 **La forma decisa insieme** — id e Osservazioni **stanno nello stesso posto**, quindi si
+prendono con **una** lettura: al **primo incontro** del sync con una prenotazione, poi **solo
+quando i nomi cambiano** (l'export dice quando). ⇒ Al click la scheda è completa e non si aspetta
+niente.
+📏 Costo misurato: **300** prenotazioni future in archivio (158 con giocatori) = il conto una
+tantum; poi **~40 nuove al giorno** (misurate 11→101 in 10 giorni). ⭐ E non è lavoro nuovo: è la
+**stessa** lettura che oggi si fa a **ogni apertura di scheda**, ripetuta sulla stessa partita da
+chiunque la riapra ⇒ spostandola può essere un **risparmio**.
+⚠️ Il buco stretto da coprire: due omonimi che si scambiano lascerebbero la lista dei nomi
+identica ⇒ prima di un gesto **distruttivo** (togliere qualcuno) si rilegge comunque.
+⛔ **Cade la mia proposta dei bottoni spenti** (`mockup/scheda-giocatori-subito-mockup.html`): con
+gli id in archivio non serve più aspettare niente. Il mockup **va rifatto** su questa forma.
+
+### 143 — 👛 Il borsellino in cassa: dieci minuti sono troppi quando c'è la fila
+
+🗣️ **Sua, e nasce da una sua contraddizione dichiarata**, subito dopo aver scelto i 10 minuti:
+*«mi devo contraddire perché quando facciamo le operazioni di cassa che c'è tanta gente, se non si
+aggiorna velocemente poi qualcuno della segreteria può protestare»*.
+
+✅ **Cosa è già in servizio** (04/09, PROD): i saldi si rinfrescano **ogni 10 minuti** da soli —
+routine `wallet` nello scheduler, provata dal vivo (dispatch 11:20, saldi riscritti 23s dopo).
+
+⚖️ **Perché accorciare il ritmo NON è la cura**: il dispatcher manda **una** routine per giro,
+quindi ogni tick preso al borsellino è un tick tolto alle prenotazioni; e il worker è **un browser
+solo**, quindi anche lanciandole insieme si metterebbero in fila. A 2 minuti resterebbe comunque
+una finestra.
+🔨 **La cura precisa: dopo un'operazione di cassa sappiamo ESATTAMENTE di chi è cambiato il
+saldo** ⇒ si rinfresca **quello**, sul colpo, invece di aspettare il giro. Copre il caso che
+protesta (*«ho appena ricaricato e vedo ancora il vecchio numero»*) senza toccare il ritmo di
+fondo. Seconda metà, quando ci saranno gli id (**142**): all'apertura di una scheda si rinfrescano
+i **≤4** giocatori di quella partita.
+📌 *Un dato che si muove non si insegue col ritmo: si rinfresca dove lo si muove.*
 
 ### C — Cose sapute e non risolte — 14
 
