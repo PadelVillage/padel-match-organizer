@@ -106,6 +106,25 @@ begin
       -- erano la STESSA importazione del live e quindi ridondanti. Clienti/Storico/Backup
       -- restano nei when sopra (anche dentro 01-06: non sono prenotazioni future).
       if not (v_local_time >= '01:00' and v_local_time < '06:00') then
+        -- 👛 SALDI BORSELLINO, ogni 10 minuti (sua decisione del 04/09/2026: «mettilo ogni 10
+        -- minuti»). La macchina esisteva GIA' tutta — report Matchpoint «Clienti con saldo /
+        -- credito residuo» -> worker /export-wallet-report -> edge matchpoint-wallet-sync ->
+        -- record wallet_balance, e l'app i saldi li legge dal CLOUD, non dal vivo. Mancava solo
+        -- il ritmo: girava quando qualcuno premeva un bottone, e in archivio c'erano 40 saldi.
+        -- 🚨 QUESTO TICK LO TOGLIE ALLE PRENOTAZIONI, e va detto invece di scoprirlo dopo:
+        --    il dispatcher manda UNA routine per giro, quindi ai minuti :00 :10 :20 :30 :40 :50
+        --    il sync prenotazioni salta e il suo intervallo massimo passa da 2 a 4 minuti, una
+        --    volta ogni dieci. ⚖️ Sta dentro l'inviluppo gia' misurato (voce 53: mediana ~2', massimo
+        --    10'04"), e il worker e' comunque serializzato — un browser solo — quindi lanciarle
+        --    insieme non le farebbe correre in parallelo: le metterebbe in fila.
+        -- ⛔ Fuori dalla pausa notturna come le prenotazioni: di notte il circolo e' chiuso e i
+        --    saldi non si muovono. E i `when` fissi qui sopra vincono, quindi il giro salta anche
+        --    ai 7 orari delle routine clienti/storico/backup.
+        if (extract(minute from v_local_ts)::int % 10) = 0 then
+          v_routine_key := 'wallet';
+          v_routine_label := 'Saldi borsellino Matchpoint';
+          v_function_slug := 'matchpoint-wallet-sync';
+        else
         -- Guard anti-accavallamento: salta se l'ultimo dispatch live e' partito da poco
         -- (<150s) e non risulta ancora un import completato dopo di esso (run in volo).
         -- Il completamento e' segnalato dal record matchpoint_bookings_auto_import_last,
@@ -137,6 +156,7 @@ begin
         v_routine_key := 'bookings_live';
         v_routine_label := 'Prenotazioni future Matchpoint (live)';
         v_function_slug := 'matchpoint-bookings-sync';
+        end if;
       else
         return jsonb_build_object(
           'ok', true,
