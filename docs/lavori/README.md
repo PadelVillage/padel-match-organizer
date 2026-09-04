@@ -1953,7 +1953,7 @@ sonda che guarda nel posto sbagliato — nella forma in cui il posto sbagliato �
 ⇒ La contro-prova che vale, e costa poco: guardare **il fatto** (la trascrizione, l'artefatto) e non
 **lo stato** (il semaforo del giro). Il fatto non torna indietro.
 
-### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR — 🔨 **C IN SERVIZIO su PROD 6.353** · restano A e B
+### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR — 🔨 **C e A IN SERVIZIO su PROD** · resta B
 
 🗣️ **Sua domanda**, il 04/09 a notte, subito dopo la 152: *«hai fatto anche un pensiero sul fatto
 di rendere scalabile/adattabile la scheda e il calendario a seconda del tipo di monitor? cioè se è
@@ -2106,6 +2106,36 @@ sempre la stessa torta.
 (676 contro 860). È il senso della cura — smette di mangiarsi lo schermo — ma è meno spazio per il
 contenuto, e su un 1280 non cambia quasi nulla. **A si sente sui monitor grandi e sui piccoli, non
 in mezzo.**
+
+## ✅ A — FATTO, in servizio su PROD 6.355
+
+🔨 `width: min(clamp(620px, 66vw, 1180px), calc(100vw - 48px))`: la larghezza smette di essere un
+numero e diventa un intervallo. Il `min(…, 100vw - 48px)` resta perché **il margine dalle sponde è
+un fatto della finestra, non della proporzione**.
+
+✅ **Prova fisica su TEST 6.355, quattro larghezze — e i numeri coincidono AL PIXEL con quelli che
+il mockup aveva calcolato PRIMA che la riga fosse scritta:**
+
+| schermo | prima | ora | quota |
+|---|---|---|---|
+| 1024 | 860 · **84%** | **676** | 66% |
+| 1280 | 860 · 67% | **845** | 66% |
+| 1440 | 860 · 60% | **950** | 66% |
+| 1920 | 860 · **45%** | **1180** | 61% |
+
+⇒ *Un disegno che si misura non illustra una decisione: la **predice**.* È la stessa cosa vista
+nella 157, dove il mockup aveva scoperto un fatto non previsto — qui ha confermato quattro numeri
+al pixel, che è la prova che il modello dietro era giusto e non una coincidenza fortunata.
+
+🩹⭐ **E l'attrezzo ha pagato subito**: la sonda legge la **versione dalla pagina** insieme alla
+misura, e il primo giro ha colto il deploy **a metà** — 1024 e 1440 misurati su **v6.354** (prima
+di A), 1920 su **v6.355**. Senza quella riga la conclusione sarebbe stata *«A funziona solo a
+1920»*, tratta da due misure fatte sul **codice vecchio**.
+📌 *Una misura su una pagina viva porta due dati, non uno: il numero **e** la versione che l'ha
+prodotto. Il secondo non è contorno — è ciò che dice a quale codice appartiene il primo.*
+
+⏳ **RESTA B**: le colonne proporzionali invece di `330px` fisso. Ora ha senso davvero, perché il
+pannello non è più fermo — a 1024 la sinistra scenderebbe a 280 e i giocatori guadagnerebbero ~50 px.
 
 ### **92** — 🚨🚨 DUE messaggi identici allo stesso socio: la coda si legge e si chiude in due momenti
 
