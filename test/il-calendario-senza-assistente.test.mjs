@@ -179,5 +179,35 @@ test('④ 🚨 LA STRISCIA A RIPOSO NON SI VEDE — `hidden` da solo non basta',
     'la striscia a riposo torna a dipingersi: una fascia vuota in fondo a ogni schermata');
 });
 
+test('⑤ 🚨 SUL TELEFONO LA PASTIGLIA STA IN BASSO, dov\'era il foglio', () => {
+  /* 🗣️ Sua segnalazione dopo una serie di modifiche vere dal cellulare (04/09/2026): «quando mi
+     deve dire che l'operazione ha dato buon fine si sposta con un messaggio in alto al telefono,
+     anziché essere sempre tutto in basso».
+     ⚖️ Era la conseguenza di due comportamenti giusti che si incontravano: alla conferma di
+     Matchpoint il foglio si chiude da sé (`svcAutoCloseIfMobile`), e chiudendolo la striscia
+     diventa pastiglia — che era ancorata al bordo ALTO della colonna. Il «✅ fatto» finiva in
+     cima allo schermo, mentre il pollice era in fondo.
+     🚨 La guardia sta sulla LARGHEZZA e non sull'esito: chi rifacesse il calcolo «per pulizia»
+     ripasserebbe di qui. */
+  const pos = soloCodice(corpoDi('svcPosizionaPastiglia'));
+  assert.match(pos, /innerWidth < 900/, 'la pastiglia non distingue più il telefono dal computer');
+  assert.match(pos, /bottom = '12px'|bottom = "12px"/, 'sul telefono la pastiglia non è ancorata in basso');
+  assert.ok(/top = 'auto'/.test(pos), 'sul telefono resta ancorata in alto: il ✅ schizza dove non guarda nessuno');
+});
+
+test('⑥ NELLA STRISCIA NON C\'È PIÙ «da te» — ma il «chi» della CODA resta', () => {
+  /* 🗣️ Sua richiesta, leggendola sul telefono: «sulla barra c'è scritto "da te"? io lo leverei».
+     ⚖️ Si può togliere perché l'azione LOCALE l'ha appena fatta chi legge: «da te» diceva una
+     cosa già saputa, occupando la coda della riga — che sul telefono è ciò che si taglia per primo.
+     ⛔ Ma il «chi» che arriva dalla CODA («richiesta da un socio») NON si tocca: è l'unica cosa
+     che dice a chi fa segreteria *se è stata lei o no*, ed è la metà per cui la riga 1 si disegna
+     in due pezzi separati. Questa guardia esiste perché le due non si confondano di nuovo. */
+  const acc = soloCodice(corpoDi('svcAccendiAzione'));
+  assert.ok(!/chi: 'da te'/.test(acc), 'il «da te» è tornato nella striscia');
+  const dis = soloCodice(corpoDi('svcRidisegnaSemaforo'));
+  assert.match(dis, /const chi = loc \? loc\.chi : sem\.chi/, 'il «chi» della coda non si legge più: si perde chi ha chiesto il gesto');
+  assert.match(dis, /svc-semaforo-chi/, 'il pezzo separato del «chi» è sparito: sul telefono si troncherebbe la coda della frase');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
