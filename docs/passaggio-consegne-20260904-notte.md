@@ -39,8 +39,23 @@
 | ⚠️ da fare per primo | il **controllo su PROD** della 152 (vedi punto 5) e questo file da spingere |
 
 ### ⛔ LE COSE DA FARE PER PRIME
-1. **Controllare la 152 sulla pagina viva di PROD** (`--allow-writes`, sola lettura di fatto): che
-   a 1440 la scheda non scorra più e che a 390 resti una colonna. Su TEST è verde, su PROD **no**.
+1. 🚨⭐⭐ **LA 152 SU PROD È AL LIMITE, e questo è il primo lavoro.** Misurata **due volte** sulla
+   stessa scheda (7/09 · Campo 4) alla stessa larghezza (1440×900), a dieci minuti di distanza:
+   · **771 px** di contenuto in **761** visibili ⇒ **sfora di 10**;
+   · **755 px** in **755** ⇒ **entra**.
+   ⚖️ Non è un errore di misura: è **una riga di testo che va a capo o no** a seconda del momento
+   (il suggerimento sotto i giocatori, e le righe che cambiano forma quando la lettura del worker
+   atterra). ⇒ La cura ha fatto quasi tutto — da **453 px** da scorrere a **0÷10** — ma **non ha
+   chiuso**: a volte scorre ancora, per una decina di pixel.
+   📌 *Un numero che cambia fra due misure non si arrotonda a quello che fa comodo: si dice che
+   oscilla, e si cura il caso peggiore.*
+   🔨 **Il rimedio era già dichiarato nel mockup**: allargare la finestra da 860 a ~1000 px (a 1440
+   di schermo c'è posto), oppure stringere la colonna sinistra da 330 a 300. ⛔ **Non è ancora
+   stato scritto**, e le prove fatte sulla pagina viva **non lo dimostrano**: nell'istante in cui
+   sono girate la scheda stava già a 755, quindi tutte e sei le larghezze provate «entravano» —
+   la sonda non poteva distinguerle. Va rimisurato **nel momento in cui sfora**.
+   ⚠️ *Questa è la sonda che non discrimina: sei prove tutte verdi non dicono che sei rimedi
+   funzionano, dicono che il caso da curare non c'era.*
 2. **Il ramo «conto parziale» non è mai passato sul vivo**: la partita di prova è saldata, quindi
    l'avviso «⚠️ Conto parziale» l'ha eseguito solo il banco. Serve una scheda con **un importo non
    letto** — si trova aprendo una partita e guardando **entro il primo secondo**, prima che la
@@ -225,7 +240,7 @@ giro del difetto 136·145·147·150, stavolta sui soldi).
 
 | | |
 |---|---|
-| **152** (aperta) | ⚠️ **da controllare su PROD**, e il ramo «conto parziale» non è mai passato sul vivo |
+| **152** (aperta) | 🚨 **su PROD sfora ancora di ~10 px**, a intermittenza (vedi punto 0) · e il ramo «conto parziale» non è mai passato sul vivo |
 | **151** (aperta) | provata su PROD; manca il suo occhio |
 | **150** (aperta) | provata su TEST e PROD; manca il suo occhio |
 | **149** (aperta) | in servizio; che il trattino si veda bene lo dice il suo occhio |
