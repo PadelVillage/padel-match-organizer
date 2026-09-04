@@ -1904,7 +1904,10 @@ misurato sulla stessa pagina:
 · al punto della barra risponde un elemento **dentro la barra** ⇒ non è coperta dal contenuto;
 · 🚨 **con una scheda aperta** risponde **`svcChatOverlay`** ⇒ il velo la copre, come deve.
 
-⏳ **Resta il suo occhio su PROD**, e una finestra **bassa** diversa dalle due misurate.
+✅ **E su PROD 6.344, a TRE larghezze** (1280×800 · 1440×900 · 1920×1080): `restaFerma` vero
+su tutte, misure `[20, 0, 0, 0]` — parte al suo posto e poi si inchioda a zero — e al punto della
+barra risponde sempre un elemento **dentro la barra**.
+⏳ **Resta il suo occhio**, e una finestra **bassa** (sotto gli 800 px di altezza) mai misurata.
 
 ### **154** — 🪟 L'ULTIMA SCHEDA APERTA STA SOPRA — 🔨 **CURATA e PROVATA SU PROD**
 
@@ -1945,10 +1948,30 @@ cui le due finestre si sovrappongono (`elementFromPoint` a 720,475):
 · riaprendo la partita: i due si **invertono** (2600 / 2720) e risponde un elemento **dentro il
   pannello partita** ⇒ la cima torna a lei, che è il caso dell'esito del salvataggio anagrafica.
 
-⏳ **Resta aperta per il SUO occhio**: la prova è girata sulla pagina viva ma con una scheda
-prenotazione **nuova** (la console parte pulita e il calendario non le si idrata), non sulla partita
-del 7/09 con i quattro giocatori. Le due finestre e le due funzioni sono le stesse; il gesto suo —
-aprire la partita vera e cliccare «Lidia Comes» — non l'ha ancora fatto nessuno.
+✅⭐⭐ **E POI IL GESTO VERO, sulla partita vera** *(stessa notte, dopo una sua sollecitazione:
+«tu devi fare tutte le prove finché arrivi al risultato»)*. Qui sopra c'era scritto che la prova
+era girata su una scheda prenotazione **nuova** perché «la console parte pulita e il calendario non
+le si idrata». 🩹 **Era una rinuncia, non un limite**: l'app sa idratarsi da sola dal cloud con una
+lettura **già consentita** dalla guardia — `staffCalRefreshFromCloud({force:true, withMembers:true})`,
+da **0** a **173** occupazioni, **zero** richieste bloccate.
+📏 Fatto per intero su PROD 6.344: aperto il blocco **09:00–10:30** del **7/09 · Campo 4** dalla
+griglia vera → titolo *«Modifica prenotazione · Campo 4 · 07/09/2026 · 09:00»*, quattro giocatori
+(Lidia Comes · Fabiola Limuti · Ospite · Ospite) → **cliccato «Lidia Comes»** → si apre la sua
+scheda e al punto di sovrapposizione risponde **`memberCardOverlay`**.
+📏 **E il verso opposto misurato CONTANDO, non guardando una volta**: 6 giri × 3 larghezze
+(1280×800 · 1440×900 · 1920×1080) = **18 su 18**, su tutt'e tre le cose — il socio sopra al click
+sul nome, la partita che si riprende la cima riaprendo il pannello, e l'**esito visibile** dentro
+quel pannello (il messaggio scritto come lo scrive `pmoMemberEditChatFlow` salvando l'anagrafica,
+locale, senza nessuna scrittura al circolo).
+🩹 **L'oscillazione «1 giro su 6» vista prima ERA LA SONDA, e adesso si sa perché**: chiudevo la
+scheda socio togliendo la classe `open` a mano, quindi `memberInlineOpenId` restava pieno e il giro
+dopo `openMemberCard` faceva da **interruttore** e la richiudeva. E l'esito risultava «non visibile»
+perché lo cercavo **senza portarlo in vista**: un messaggio fuori dalla finestra non è coperto, è
+altrove. 📌 *Un numero che oscilla va inseguito fino a sapere CHI oscilla: qui erano due difetti
+miei, e uno dei due mi aveva quasi fatto dichiarare fragile una cura sana.*
+⏳ **Cosa resta**: il **suo** occhio, e il salvataggio vero di un'anagrafica — quello scrive su
+Matchpoint e la scheda autorizzata è una prenotazione, non un socio. La **pila** di quel caso è
+provata 18 volte su 18; la **scrittura** no, e non la faccio senza che me lo dica.
 
 ### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR: c'è una SOGLIA, non un adattamento — ⏳ **da decidere con lui**
 
