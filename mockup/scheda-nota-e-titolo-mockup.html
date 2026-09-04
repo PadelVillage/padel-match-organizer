@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La nota più bassa, e la scheda che parte più in alto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+  :root{
+    --ink:#16202e; --ink-soft:#4b5768; --ink-faint:#77839a;
+    --paper:#f2f4f8; --line:#dde3ec;
+    --accent:#2563eb; --accent-deep:#1F4788;
+    --ok:#067647; --ok-bg:#e9f7ef; --warn:#b45309; --warn-bg:#fff7e8; --danger:#b42318;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:26px 22px 60px}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:2rem;margin:6px 0 10px;letter-spacing:-.01em}
+  h2{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:1.2rem;margin:34px 0 8px}
+  p.sub{margin:0 0 4px;color:var(--ink-soft);font-size:.95rem;max-width:82ch;line-height:1.62}
+  .quote{border-left:3px solid var(--accent);padding:8px 0 8px 14px;margin:16px 0;color:var(--ink);font-size:.97rem;line-height:1.6}
+  .quote b{font-weight:700}
+  .nota-metodo{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:18px 0;font-size:.9rem;line-height:1.62;color:var(--ink-soft)}
+  .nota-metodo b{color:var(--ink)}
+
+  .switch{display:flex;gap:8px;margin:20px 0 2px;flex-wrap:wrap;align-items:center}
+  .switch button{font:inherit;font-size:.86rem;font-weight:600;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  .switch button[aria-pressed="true"]{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+  .switch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .scena{margin-top:16px;background:#eef2f8;border:1px solid var(--line);border-radius:14px;padding:18px;overflow:auto}
+  .pannello{width:860px;background:#fff;border-radius:14px;box-shadow:0 18px 44px rgba(16,32,60,.16);position:relative;margin:0 auto}
+  .testata{height:32px;display:flex;align-items:center;justify-content:flex-end;padding:6px 10px 0}
+  .testata .x{width:26px;height:26px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-weight:700;font-size:.9rem}
+  /* titolo dentro la testata: variante A */
+  .testata.con-titolo{justify-content:space-between;height:auto;padding:10px 12px 6px;border-bottom:1px solid #eef2f7}
+  .testata .titolo-inline{display:flex;align-items:baseline;gap:9px;font-weight:800;font-size:.95rem}
+  .testata .titolo-inline span{font-weight:500;color:var(--ink-soft);font-size:.82rem}
+  .corpo{padding:12px 16px 16px}
+
+  .scheda{padding:0}
+  .griglia{display:grid;grid-template-columns:330px minmax(0,1fr);column-gap:12px;align-items:start}
+  .titolo{grid-column:1 / -1;display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+  .titolo.solo-sinistra{grid-column:1}
+  .titolo .ico{font-size:1.1rem;color:var(--accent)}
+  .titolo b{display:block;font-size:.95rem;font-weight:700}
+  .titolo small{display:block;font-size:.78rem;color:var(--ink-soft);margin-top:2px}
+  .titolo.una-riga{align-items:baseline}
+  .titolo.una-riga b{display:inline}
+  .titolo.una-riga small{display:inline;margin-left:8px}
+
+  .sez{border:1px solid var(--line);border-radius:10px;padding:11px;background:#fcfdff;grid-column:1;margin-bottom:10px}
+  .sez.destra{grid-column:2;grid-row:2 / span 10;margin-bottom:0}
+  .sez.destra.in-cima{grid-row:1 / span 10}
+  .sez h4{margin:0 0 9px;font-size:.8rem;font-weight:800;display:flex;align-items:center;gap:6px;color:var(--ink)}
+  .campi{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .campo label{display:block;font-size:.7rem;color:var(--ink-soft);margin-bottom:3px;font-weight:600}
+  .campo .box{border:1px solid var(--line);border-radius:8px;background:#eef1f6;padding:7px 9px;font-size:.82rem;font-weight:700}
+  .nota-ta{width:100%;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;color:#94a3b8;font-style:italic;
+           font-size:14px;line-height:21px;padding:10px 12px;min-height:64px;height:85px;overflow:hidden}
+  .nota-ta.bassa{height:65px;min-height:48px}
+  .hint{font-size:.7rem;color:var(--ink-soft);margin-top:4px;font-weight:600}
+
+  .bottoni{grid-column:1;margin-bottom:10px}
+  .bottoni .riga{display:flex;gap:8px}
+  .bottoni .b{flex:1;text-align:center;border-radius:9px;padding:9px 4px;font-size:.84rem;font-weight:700;border:1px solid var(--line);background:#fff}
+  .bottoni .b.ok{background:var(--ok-bg);border-color:#bfe6cf;color:var(--ok)}
+  .bottoni .b.ko{margin-top:8px;flex:none;display:block;background:#fdf1f0;border-color:#f3c9c5;color:var(--danger)}
+  .conto{grid-column:1;border:1px solid #e8eaf0;border-radius:12px;background:#fbfdff;padding:11px 13px;margin-bottom:0}
+  .conto .r{display:flex;justify-content:space-between;font-size:.82rem;padding:5px 0}
+  .conto .r+.r{border-top:1px solid #eef2f8}
+  .conto .r.tot{border-top:2px solid #e3e8f0;margin-top:3px;padding-top:8px;font-weight:800}
+  .conto .r.tot b{color:var(--warn)}
+
+  .gioc{border-top:1px solid var(--line);padding:9px 0}
+  .gioc:first-of-type{border-top:0;padding-top:2px}
+  .nome{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.86rem}
+  .nome .x{margin-left:auto;color:var(--ink-faint)}
+  .soldi{display:flex;align-items:center;gap:8px;margin:7px 0 8px}
+  .eur{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--accent);border-radius:8px;padding:3px 8px;font-weight:800;font-size:.82rem;color:var(--ink)}
+  .paghe{display:flex;gap:7px}
+  .paghe b{flex:1;text-align:center;border:1px solid var(--accent);color:var(--accent);border-radius:9px;padding:8px 4px;font-size:.76rem;font-weight:700}
+  .paghe b.off{border-color:var(--line);color:#b3bdcc;background:#f7f9fc}
+
+  table.mis{border-collapse:collapse;width:100%;margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.87rem}
+  table.mis th,table.mis td{padding:9px 12px;text-align:left;border-bottom:1px solid #eef2f7}
+  table.mis th{background:#f6f8fc;font-weight:700;font-size:.78rem;letter-spacing:.02em;color:var(--ink-soft)}
+  table.mis tr:last-child td{border-bottom:0}
+  table.mis td.num{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
+  .guadagno{color:var(--ok);font-weight:800}
+  .costo{color:var(--danger);font-weight:800}
+  .badge{display:inline-block;font-size:.7rem;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:99px;background:#eaf0fb;color:var(--accent-deep);margin-left:6px}
+  .avviso{background:var(--warn-bg);border:1px solid #f0d9a8;border-radius:12px;padding:13px 15px;margin:16px 0;font-size:.9rem;line-height:1.6}
+  .avviso b{color:#7c4a06}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Mockup · 04/09/2026 · scheda partita e lezione</div>
+  <h1>La nota più bassa, e la scheda che parte più in alto</h1>
+
+  <div class="quote">
+    🗣️ <b>«Sulla parte sinistra c'è il campo nota che è troppo alto, poi diminuirlo di parecchio,
+    tanto di solito una nota che si mette non è mai più di 2 righe. Mentre la parte sinistra la puoi
+    alzare all'altezza del titolo della scheda.»</b>
+  </div>
+
+  <div class="nota-metodo">
+    📏 <b>I numeri qui sotto sono misurati sulla scheda vera</b>, su PROD 6.346 a 1440×900, prima di
+    disegnare — non stimati. La finestra è <b>860 px</b>, la colonna sinistra <b>330 px</b>, il
+    titolo alto <b>41 px</b> (più 10 di margine), e i pezzi della colonna sinistra misurano
+    <b>Slot 152 · Nota 161 · bottoni 87 · conto 120</b>, cioè <b>521 px</b> in tutto contro i
+    <b>396</b> della colonna dei giocatori.
+    <br>⚖️ <b>Ed è il fatto che decide questo lavoro</b>: la colonna sinistra è più lunga di quella
+    destra di <b>125 px</b>, quindi è lei a dettare l'altezza della scheda. Accorciarla accorcia
+    tutto; accorciare la destra non servirebbe a niente.
+    <br>🔎 Questa pagina <b>si misura da sé</b>: la tabella in fondo a ogni variante la calcola il
+    browser aprendo la pagina, non l'ho scritta a mano.
+  </div>
+
+  <h2>① La nota — questa è chiara, e si fa così</h2>
+  <p class="sub">Oggi la casella è di <b>3 righe</b> (85 px). Tu dici che una nota non è mai più di
+  due. Portandola a <b>2 righe</b> e abbassando il minimo da 64 a 48 px si scende a <b>65 px</b>.
+  ⚠️ Resta <b>trascinabile</b> dall'angolo: chi ha da scrivere di più se la allarga, non perde niente.</p>
+
+  <div class="avviso">
+    🚨 <b>E una cosa che i numeri hanno detto e io non avevo previsto — guardala prima di scegliere.</b>
+    L'altezza della finestra la detta <b>la più alta delle due colonne</b>. Sulla scheda misurata su
+    PROD (pochi giocatori) comanda la sinistra — 521 contro 396 — e lì accorciare la nota si vede
+    tutto. Ma con <b>quattro</b> giocatori le due si avvicinano fino quasi a pareggiare: da quel
+    punto in poi <b>ogni pixel tolto alla nota non lo vede più nessuno</b>, perché a comandare è
+    passata la destra.
+    <br>⇒ <b>La ① da sola non basta</b>, ed è per questo che la scelta fra A, B e C conta: il titolo
+    è a <b>tutta larghezza</b>, quindi quello che si guadagna togliendolo dalla griglia si guadagna
+    <b>sempre</b>, chiunque delle due colonne stia comandando. La tabella sotto ogni variante te lo
+    dice riga per riga, e l'ultima riga ti dice chi sta comandando in quel momento.
+  </div>
+
+  <h2>② «Alzare la parte sinistra all'altezza del titolo» — qui ho tre letture</h2>
+  <p class="sub">La tua frase si può leggere in tre modi che danno risultati diversi, e non voglio
+  indovinare. Guardali affiancati e dimmi la lettera.</p>
+
+  <div class="switch" id="sw">
+    <button data-v="oggi" aria-pressed="true">Oggi</button>
+    <button data-v="A" aria-pressed="false">A · il titolo va nella testata</button>
+    <button data-v="B" aria-pressed="false">B · il titolo occupa solo la colonna sinistra</button>
+    <button data-v="C" aria-pressed="false">C · il titolo su una riga sola</button>
+  </div>
+  <p class="sub" id="spiega" style="margin-top:10px"></p>
+
+  <div class="scena">
+    <div class="pannello" id="pannello"></div>
+  </div>
+
+  <table class="mis" id="tab"></table>
+
+  <div class="avviso">
+    ⚠️ <b>Cosa questo mockup NON dice.</b> Che sullo schermo vero entri tutto: qui la scheda è
+    ricostruita con le misure prese, ma i giocatori veri sono quattro e non due, e la colonna destra
+    cresce con loro. ⇒ La cura va misurata <b>sulla pagina viva</b> dopo averla scritta, alle tre
+    larghezze — è la lezione della 152, che era stata tarata su un monitor solo.
+    <br>⛔ E <b>nessuna delle tre varianti tocca il DOM</b>: la riga dell'esito e la guardia della
+    voce 150 cercano i loro pezzi fra i <b>figli diretti</b> del box. Incartare le sezioni le
+    ucciderebbe in silenzio.
+  </div>
+</div>
+
+<script>
+const SPIEGA = {
+  oggi: "Com'è adesso: il titolo si prende tutta la larghezza (765 px per scriverne 330), e sotto di lui partono le due colonne. Nota di 3 righe.",
+  A: "🅰️ Il titolo esce dalla scheda e va nella testata, accanto alla ✕ — che oggi è una barra vuota alta 32 px. Le due colonne partono in cima. È la lettura che alza DAVVERO la parte sinistra, ed è quella che guadagna di più.",
+  B: "🅱️ Il titolo resta dov'è ma si restringe alla sola colonna sinistra: a salire è la colonna dei GIOCATORI, che si porta a filo del titolo. La sinistra resta dov'era — se intendevi questo, il nome «alzare la parte sinistra» descrive il risultato visto da fuori, non chi si muove.",
+  C: "🅲 Il titolo resta al suo posto ma si compatta su UNA riga sola (nome e coordinate accanto, non sotto). Il meno invasivo: non sposta niente, guadagna solo l'altezza della seconda riga."
+};
+
+function giocatori(n){
+  let h='';
+  const nomi=['Alberto Chiapinotto','Erika Poser','Marta Morelli','Michele Marchi'];
+  for(let i=0;i<n;i++){
+    h+=`<div class="gioc">
+      <div class="nome">☆ ${nomi[i]} <span class="x">✕</span></div>
+      <div class="soldi"><span class="eur">€ ${i===0?'0,00':'10,00'}</span> <small style="color:#77839a">🪙 —</small></div>
+      <div class="paghe"><b>Cash</b><b>Card</b><b class="off">Wallet</b></div>
+    </div>`;
+  }
+  return h;
+}
+
+function disegna(v){
+  const titoloInTestata = v==='A';
+  const titoloSoloSx    = v==='B';
+  const titoloUnaRiga   = v==='C';
+  const notaBassa       = true;              // ① vale in tutte le varianti
+  const notaCls = (v==='oggi') ? '' : ' bassa';
+
+  const testata = titoloInTestata
+    ? `<div class="testata con-titolo">
+         <div class="titolo-inline">📅 Modifica prenotazione <span>Campo 3 · 04/09/2026 · 14:00</span></div>
+         <div class="x">✕</div>
+       </div>`
+    : `<div class="testata"><div class="x">✕</div></div>`;
+
+  const titolo = titoloInTestata ? '' :
+    `<div class="titolo${titoloSoloSx?' solo-sinistra':''}${titoloUnaRiga?' una-riga':''}" id="ilTitolo">
+       <div class="ico">📅</div>
+       <div><b>Modifica prenotazione</b><small>Campo 3 · 04/09/2026 · 14:00</small></div>
+     </div>`;
+
+  return `${testata}
+  <div class="corpo">
+   <div class="scheda">
+    <div class="griglia" id="griglia">
+      ${titolo}
+      <div class="sez" id="sezSlot">
+        <h4>🕐 Slot</h4>
+        <div class="campi">
+          <div class="campo"><label>Campo</label><div class="box">3</div></div>
+          <div class="campo"><label>Data</label><div class="box">04/09/2026</div></div>
+          <div class="campo"><label>Dalle</label><div class="box">14:00</div></div>
+          <div class="campo"><label>Alle</label><div class="box">15:30 · 90 min</div></div>
+        </div>
+      </div>
+      <div class="sez destra${(titoloInTestata||titoloSoloSx)?' in-cima':''}" id="sezGioc">
+        <h4>👥 Giocatori e pagamenti</h4>
+        ${giocatori(4)}
+      </div>
+      <div class="sez" id="sezNota">
+        <h4>📝 Note</h4>
+        <div class="nota-ta${notaCls}" id="laNota">Scrivi qui le osservazioni… (verranno salvate su Matchpoint)</div>
+        <div class="hint">Facoltativo · max 300 caratteri</div>
+      </div>
+      <div class="bottoni" id="sezBtn">
+        <div class="riga"><div class="b ok">✓ Salva</div><div class="b">✕ Chiudi</div></div>
+        <div class="b ko">🗑 Annulla prenotazione</div>
+      </div>
+      <div class="conto" id="sezConto">
+        <div class="r"><span>A carico</span><span>40,00 €</span></div>
+        <div class="r"><span>Già incassato</span><span>0,00 €</span></div>
+        <div class="r tot"><span>Manca all'appello</span><b>40,00 €</b></div>
+      </div>
+    </div>
+   </div>
+  </div>`;
+}
+
+// 📏 il mockup si misura DA SÉ: nessun numero scritto a mano nella tabella
+const OGGI = {};
+function misura(){
+  const p = document.getElementById('pannello');
+  const q = s => p.querySelector(s);
+  const H = e => e ? Math.round(e.getBoundingClientRect().height) : 0;
+  return {
+    scheda: H(p),
+    nota: H(q('#laNota')),
+    sezNota: H(q('#sezNota')),
+    titolo: H(q('#ilTitolo')) || 0,
+    sinistra: H(q('#sezSlot')) + H(q('#sezNota')) + H(q('#sezBtn')) + H(q('#sezConto')),
+    destra: H(q('#sezGioc')),
+  };
+}
+
+function riga(nome, ora, prima, unita){
+  const d = ora - prima;
+  const segno = d === 0 ? '—' : (d < 0 ? `<span class="guadagno">−${-d} px</span>` : `<span class="costo">+${d} px</span>`);
+  return `<tr><td>${nome}</td><td class="num">${prima}${unita}</td><td class="num">${ora}${unita}</td><td class="num">${segno}</td></tr>`;
+}
+
+function aggiorna(v){
+  document.getElementById('pannello').innerHTML = disegna(v);
+  document.getElementById('spiega').innerHTML = SPIEGA[v];
+  const m = misura();
+  if (v === 'oggi') Object.assign(OGGI, m);
+  const t = document.getElementById('tab');
+  t.innerHTML = `<tr><th>misurato dal browser, adesso</th><th style="text-align:right">oggi</th>
+      <th style="text-align:right">questa variante</th><th style="text-align:right">differenza</th></tr>`
+    + riga('<b>altezza della finestra intera</b>', m.scheda, OGGI.scheda||m.scheda, ' px')
+    + riga('la casella della nota', m.nota, OGGI.nota||m.nota, ' px')
+    + riga('la sezione Note per intero', m.sezNota, OGGI.sezNota||m.sezNota, ' px')
+    + riga('il titolo dentro la scheda', m.titolo, OGGI.titolo||m.titolo, ' px')
+    + riga('colonna sinistra (somma dei pezzi)', m.sinistra, OGGI.sinistra||m.sinistra, ' px')
+    + riga('colonna dei giocatori', m.destra, OGGI.destra||m.destra, ' px')
+    + chiDetta(m);
+}
+
+/* 🚨 LA RIGA CHE VALE PIÙ DELLE ALTRE, e non era prevista: a decidere l'altezza della finestra è
+   la colonna PIÙ ALTA delle due. Con pochi giocatori è la sinistra (sulla scheda vera misurata su
+   PROD: 521 contro 396) e accorciare la nota si vede tutto; con QUATTRO giocatori le due si
+   avvicinano fino a pareggiare, e da lì in poi ogni pixel tolto alla nota non lo vede nessuno —
+   perché a comandare è passata la destra.
+   ⇒ È la ragione per cui la ① da sola non basta, e la scelta fra A, B e C conta davvero. */
+function chiDetta(m){
+  const comanda = m.sinistra >= m.destra ? 'la SINISTRA' : 'la DESTRA (i giocatori)';
+  const margine = Math.abs(m.sinistra - m.destra);
+  const avviso = margine <= 30
+    ? ' — <b>e le due sono quasi pari (' + margine + ' px)</b>: da qui in avanti accorciare la nota non si vede più'
+    : ' — con ' + margine + ' px di vantaggio';
+  return '<tr><td colspan="4" style="background:#f8fafd"><b>Chi detta l\'altezza della finestra:</b> '
+       + comanda + avviso + '.</td></tr>';
+}
+
+document.getElementById('sw').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  for (const x of document.querySelectorAll('#sw button')) x.setAttribute('aria-pressed', String(x === b));
+  aggiorna(b.dataset.v);
+});
+
+// si parte da «oggi» così i numeri di riferimento sono presi dal vero, non dichiarati
+aggiorna('oggi');
+</script>
+</body>
+</html>
