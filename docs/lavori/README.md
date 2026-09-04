@@ -1934,6 +1934,34 @@ cancellato e il modello se n'è accorto ⇒ si comporta come un telefono, che è
 poggiano i gesti** (un bottone si preme su ciò che è ancora in chat, non su ciò che è stato mandato).
 📏 14 secondi in tutto. Il bot di prova in pm2 è rimasto su: nessun 409.
 
+🩹⭐⭐ **E IL DIFETTO PIÙ COSTOSO DELLA VOCE, che era MIO e sembrava del gestionale**: il collaudo
+chiama le due porte **saltando `avvio.ts`**, che era l'unico posto in cui il segreto del ponte
+veniva letto dal suo file (convenzione `*_FILE`). ⇒ Il bot girava **senza segreto** e ogni chiamata
+al gestionale falliva — ma **non taceva**: rispondeva *«In questo momento non riesco a recuperare le
+tue prenotazioni»* e *«Non è stato possibile verificare con il circolo… (CONSUMER_BRIDGE_SECRET non
+configurato)»*, cioè con la faccia di **un guasto del gestionale di TEST**.
+⚖️ La conversazione «ciao» riusciva — non tocca il ponte — e proprio per questo il difetto sembrava
+del mondo: ero a un passo dall'aprire una voce contro un gestionale **sano**.
+🔨 Cura: `preparativi.ts` — il segreto dal file e il controllo delle variabili stanno in **un posto
+solo**, e lo chiamano sia `avvio.ts` sia il collaudo. ⛔ **Non** ricopiati nel collaudo: due copie
+della stessa preparazione divergono, ed è la trappola dichiarata di questo repo.
+✅ **Provata sul vivo**: nel registro del bot di prova ora si legge
+`🆔 ID Padel Village imparato dal ponte: matchpoint_n29tlt → PMO-000523` e `[griglia] scegli_ora`.
+
+⭐⭐ **E IL PRIMO GESTO HA GIÀ INSEGNATO DUE COSE, fallendo.** Il copione premeva «lun 7» e si è
+fermato dicendo: *«non trovo un bottone «lun 7». Sullo schermo ci sono: 🟢 09:00 · 1 · ⛔ 10:30
+pieno · … · ⬅️ Altri giorni · ❌ Annulla»*.
+① **Un fatto sul BOT che non sapevo**: a *«vorrei prenotare un campo»* il bot **salta il passo dei
+giorni** — capisce «oggi» e mostra direttamente le ore (*«Oggi, sabato 5 settembre — a che ora?»*).
+Il copione presupponeva una griglia che il bot non aveva mostrato.
+② **Un fatto sull'ATTREZZO, ed è la prova che fa quello per cui è stato scritto**: davanti a
+un'etichetta che non c'è **non ha premuto un bottone a caso** — si è fermato ed **ha elencato cosa
+c'era davvero**. 📌 *Una sonda che sceglie da sé fra i bersagli disponibili non fallisce: riesce sul
+bersaglio sbagliato, e la trascrizione racconta una conversazione mai avvenuta.*
+⇒ Il fallimento di quel giro **non è un difetto della cura: è la cura che funziona**, ed è anche il
+modo in cui il collaudo servirà — dicendo *cosa il bot fa davvero* invece di confermare cosa ci si
+aspettava.
+
 ⏳ **COSA MANCA PER CHIUDERLA — una cosa sola, dichiarata**: la metà dei **GESTI** non è ancora
 passata sul vivo. Il meccanismo è provato al banco (13 prove, 5 sabotaggi 5 rossi) e la sua
 premessa — lo schermo che si riscrive — è appena stata vista funzionare qui sopra; ma **premere un
