@@ -196,9 +196,9 @@ freschezza certificata*. Se lo snapshot è scaduto e la rilettura fallisce, la r
 quindi si nega un'occasione invece di mandare qualcuno a vuoto. Accettabile, e in linea col metro
 di casa: il sync Matchpoint ha mediana ~2 minuti e massimo 10.
 
-## 🖥️ La sezione in Amministrazione
+## 🖥️ La sezione in Impostazioni
 
-Si innesta come voce del capitolo **Amministrazione** (che oggi ha Utenti Staff, Notifiche staff,
+Si innesta come voce del capitolo **Impostazioni** (che oggi ha Utenti Staff, Notifiche staff,
 Dati, Bot Telegram), con `goToTabSection('administration','Circoli esterni')`.
 
 Una riga per circolo:
