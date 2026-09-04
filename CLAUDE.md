@@ -46,6 +46,20 @@ vedrà.*
 📖 I quattro passi in dettaglio — cosa prova ciascuno e dove arriva — stanno in **🚀 LA PROMOZIONE
 A PROD NON SI CHIEDE**, più sotto.
 
+🔎🔎 **E LUI CONTROLLA SEMPRE SU PROD — sue parole del 04/09 sera:**
+
+> *«Ricordati che io controllo sempre su prod.»*
+
+⇒ **Non è un dettaglio di preferenza: è ciò che decide DOVE una prova conta.** Il passo ⑤ avviene
+su **PROD**, sempre ⇒ un lavoro provato solo su TEST gli arriva **non provato dove lui guarda**, e
+la differenza fra i due ambienti è esattamente quella che fa cadere le cose (dati veri, cache da
+`max-age=600`, calendario di TEST **congelato**, larghezza del suo telefono).
+📌 *Se la prova sta su TEST e il controllo sta su PROD, i due non si incontrano mai — e il verde
+che dichiaro non è il verde che lui vede.*
+⇒ **Nel resoconto si scrive SEMPRE, e per ciascuna cosa provata, SU QUALE AMBIENTE.** «Provato»
+senza l'ambiente accanto è una parola che non dice niente; e ciò che su PROD non si è potuto
+esercitare si dichiara **non provato là**, anche se su TEST è verde.
+
 ⛔ **Il passo ④ non si salta**, ed è quello che si è più tentati di saltare: TEST è verde, la
 promozione è andata, il numero è giusto — sembra fatto. Ma su PROD ci sono i **dati veri**, la
 cache da `max-age=600` che serve ancora la copia vecchia, e la larghezza del telefono da cui
