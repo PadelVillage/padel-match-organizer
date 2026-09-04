@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I giocatori si vedono subito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+  :root{
+    --ink:#16202e; --ink-soft:#4b5768; --ink-faint:#77839a;
+    --paper:#f2f4f8; --line:#dde3ec;
+    --accent:#2563eb; --accent-deep:#1F4788;
+    --ok:#067647; --ok-bg:#e9f7ef; --warn:#b45309; --warn-bg:#fff7e8; --danger:#b42318;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 44px}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:2rem;margin:6px 0 8px;letter-spacing:-.01em;text-wrap:balance}
+  p.sub{margin:0;color:var(--ink-soft);font-size:.95rem;max-width:76ch;line-height:1.6}
+  .switch{display:flex;gap:8px;margin:20px 0 6px;flex-wrap:wrap;align-items:center}
+  .switch button{font:inherit;font-size:.86rem;font-weight:600;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer}
+  .switch button:hover{border-color:#b9c6da}
+  .switch button[aria-pressed="true"]{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+  .switch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .switch .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+  .switch .az{border-style:dashed}
+
+  .scena{display:grid;grid-template-columns:280px 1fr;gap:26px;align-items:start;margin-top:22px}
+  @media (max-width:820px){ .scena{grid-template-columns:1fr} }
+
+  /* telefono */
+  .fono{width:280px;border:10px solid #22314a;border-radius:30px;overflow:hidden;background:#f6f8fb;box-shadow:0 16px 40px rgba(16,32,60,.20);position:relative;height:600px;display:flex;flex-direction:column}
+  .fono .tb{background:#fff;border-bottom:1px solid var(--line);padding:8px 10px;display:flex;align-items:center;gap:8px;font-size:.7rem;font-weight:700;flex:0 0 auto}
+  .fono .ham{border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+  .fono .corpo{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;background:#eef3f8}
+  .fono .agenda{padding:8px;display:flex;flex-direction:column;gap:6px}
+  .fono .agenda .r{border-radius:8px;padding:6px 8px;font-size:.62rem;line-height:1.35;background:#dbe7fb;color:#1d4ed8}
+  .fono .agenda .r.lez{background:#fdeacd;color:#a2560c}
+  .velo{position:absolute;inset:0;background:rgba(16,32,60,.34)}
+
+  /* il foglio della scheda */
+  .foglio{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #b7c7e3;border-radius:14px 14px 0 0;box-shadow:0 -8px 26px rgba(16,32,60,.20);display:flex;flex-direction:column;max-height:88%}
+  .foglio .x{align-self:flex-end;border:1px solid var(--line);background:#fff;border-radius:8px;width:26px;height:26px;margin:6px 8px 0;font-size:12px;color:var(--ink-soft);cursor:pointer;flex:0 0 auto}
+  .foglio .cont{overflow:auto;padding:2px 10px 10px;display:flex;flex-direction:column;gap:8px}
+  .tit{font-weight:700;font-size:.82rem}
+  .titsub{font-size:.66rem;color:var(--ink-soft);margin-top:1px}
+  .sez{background:#f8fafd;border:1px solid #e8eaf0;border-radius:10px;padding:8px 9px}
+  .sez h4{margin:0 0 6px;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint)}
+
+  /* il caricamento di OGGI */
+  .caric{display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 10px;color:var(--ink-faint);font-size:.68rem;text-align:center;line-height:1.45}
+  .rotella{width:20px;height:20px;border-radius:50%;border:2.5px solid #cfdcf0;border-top-color:var(--accent);animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.rotella{animation:none}}
+  .cronometro{font-variant-numeric:tabular-nums;font-weight:700;color:var(--warn)}
+
+  /* righe giocatore */
+  .pl{padding:6px 0;font-size:.68rem}
+  .pl+.pl{border-top:1px solid #eef0f3}
+  .pl-r{display:flex;align-items:center;gap:6px}
+  .pl-n{flex:1 1 auto;font-weight:600}
+  .pl-n.apri{text-decoration:underline dotted #98a2b3;text-underline-offset:3px}
+  .pl-s{flex:0 0 auto}
+  .mini{border:1px solid var(--line);background:#fff;border-radius:7px;padding:3px 7px;font-size:.6rem;font-weight:600;color:var(--ink-soft);flex:0 0 auto}
+  .mini[disabled]{opacity:.38;border-style:dashed;cursor:not-allowed}
+  .pl-money{display:flex;align-items:center;gap:5px;margin-top:4px;padding-left:20px;flex-wrap:wrap}
+  .eur{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--accent);border-radius:7px;padding:2px 6px;font-weight:700;font-size:.66rem}
+  .eur.spenta{border-color:#cfd6e2;color:var(--ink-faint)}
+
+  /* la riga che dichiara cosa manca */
+  .attesa{display:flex;align-items:center;gap:7px;font-size:.63rem;color:var(--warn);background:var(--warn-bg);border:1px solid #f0dcb4;border-radius:8px;padding:5px 8px;line-height:1.35}
+  .attesa .rot{width:11px;height:11px;border-radius:50%;border:2px solid #ecd3a4;border-top-color:var(--warn);animation:sp .8s linear infinite;flex:0 0 auto}
+  .pronta{display:flex;align-items:center;gap:7px;font-size:.63rem;color:var(--ok);background:var(--ok-bg);border:1px solid #bce3cd;border-radius:8px;padding:5px 8px}
+
+  /* colonna spiegazione */
+  .spiega{display:flex;flex-direction:column;gap:14px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .box h3{margin:0 0 8px;font-size:.95rem}
+  .box p{margin:0 0 9px;font-size:.87rem;color:var(--ink-soft);line-height:1.6}
+  .box p:last-child{margin-bottom:0}
+  .box b{color:var(--ink)}
+  .box code{background:#eef2f8;border-radius:4px;padding:1px 5px;font-size:.85em}
+  .box.oggi{border-left:4px solid var(--warn)}
+  .box.prop{border-left:4px solid var(--ok)}
+  .box.attenzione{border-left:4px solid var(--danger)}
+  table.dati{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:4px}
+  table.dati th,table.dati td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.dati th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);font-weight:700}
+  table.dati td.si{color:var(--ok);font-weight:700;white-space:nowrap}
+  table.dati td.no{color:var(--danger);font-weight:700;white-space:nowrap}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Mockup · da approvare prima di sviluppare</div>
+  <h1>I giocatori si vedono subito</h1>
+  <p class="sub">Aprendo la scheda di una partita, i nomi dei giocatori <b>il gestionale li ha già</b> — glieli porta il sync ogni due minuti. Oggi però li nasconde dietro un caricamento finché Matchpoint non risponde, e su rete lenta sono venti secondi passati a guardare una rotella davanti a un dato che era lì. La proposta: <b>i nomi si leggono subito</b>, e ad aspettare la lettura restano solo i <b>bottoni</b> che hanno davvero bisogno dei numeri.</p>
+
+  <div class="switch" role="group" aria-label="Confronto">
+    <button data-v="oggi" aria-pressed="false">Oggi</button>
+    <button data-v="prop" aria-pressed="true">La proposta</button>
+    <span class="sep"></span>
+    <button class="az" data-a="riapri">↻ riapri la scheda</button>
+    <button class="az" data-a="atterra">▶︎ la lettura atterra</button>
+  </div>
+
+  <div class="scena">
+    <div class="fono">
+      <div class="tb"><span class="ham">☰</span> Calendario · Sab 05/09</div>
+      <div class="corpo">
+        <div class="agenda">
+          <div class="r lez"><b>10:30 Lezione</b><br>🎾 LoZio · Maurizio Aprea</div>
+          <div class="r"><b>15:00 Partita</b><br>Maurizio Aprea · Laura Aprea</div>
+          <div class="r"><b>16:30 Partita</b><br>Fabio De Luca · Nicola Stella</div>
+        </div>
+        <div class="velo"></div>
+        <div class="foglio">
+          <button class="x">✕</button>
+          <div class="cont" id="cont"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spiega">
+      <div class="box" id="legenda"></div>
+
+      <div class="box">
+        <h3>Che cosa ha già il gestionale, e cosa no</h3>
+        <p>Misurato nel codice, non supposto: il sync ricava il roster dalla <code>descrizione</code> dell'export Matchpoint, che è una <b>lista di nomi</b>; il tabellone raschia le righe di testo delle celle — anche lì, nomi.</p>
+        <table class="dati">
+          <tr><th>dato</th><th>nel gestionale</th><th>a cosa serve</th></tr>
+          <tr><td><b>nomi</b> dei giocatori</td><td class="si">✅ sì, ogni 2′</td><td>leggere chi c'è in campo</td></tr>
+          <tr><td><b>id interno</b> di ciascuno</td><td class="no">❌ no</td><td>togliere un giocatore · aprire la sua scheda socio</td></tr>
+          <tr><td><b>Osservazioni</b> (Note)</td><td class="no">❌ no</td><td>al suo posto c'è l'artefatto della descrizione, cioè i nomi</td></tr>
+        </table>
+      </div>
+
+      <div class="box attenzione">
+        <h3>Perché i bottoni non possono partire prima</h3>
+        <p>Senza l'id interno non si può dire a Matchpoint <b>chi</b> togliere, e non si può aprire la scheda del socio giusto. È esattamente la <b>voce 138</b>: confrontando il numero sbagliato, cliccando <i>Filippo Battistella</i> si apriva <i>Giovanni Modanese</i>.</p>
+        <p>⇒ Un bottone acceso prima che i numeri siano arrivati sarebbe un bottone che <b>indovina la persona</b>. Meglio spento e dichiarato.</p>
+      </div>
+
+      <div class="box">
+        <h3>La strada più lunga, che resta aperta</h3>
+        <p>Far portare i <b>numeri</b> al sync, così Matchpoint all'apertura non si legge più affatto — è la regola «il gestionale SA». ⚠️ Ma gli id stanno <b>solo dentro la scheda della singola prenotazione</b>: né l'export né il tabellone li espongono. Vorrebbe dire aprire una scheda per prenotazione ogni due minuti, sul worker condiviso con la produzione.</p>
+        <p>È la stessa radice della <b>voce 140</b> (l'id interno ce l'hanno 121 soci su 1119). Questa proposta non la sostituisce: la rende meno urgente.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var vista='prop', atterrata=false, sec=0, timer=null;
+  var $=function(id){return document.getElementById(id)};
+
+  var LEG={
+    oggi:['Oggi — i nomi ci sono, ma non si vedono',
+      'La scheda si apre subito e il titolo si legge. Ma le sezioni <b>Giocatori</b> e <b>Pagamenti</b> restano coperte da un caricamento finché Matchpoint non risponde: su rete lenta sono venti secondi davanti a una rotella. Il codice li ha già in mano — il commento dice <i>«apri SUBITO con i giocatori già noti in locale»</i> — e la riga sotto li nasconde.'],
+    prop:['La proposta — leggere subito, agire quando si può',
+      'I nomi compaiono all\'istante, presi dal gestionale. Una riga gialla dichiara che i <b>numeri</b> stanno arrivando, e i bottoni che ne hanno bisogno (togliere, aprire la scheda socio) restano spenti finché non atterrano. Chi deve solo <b>guardare chi c\'è in campo</b> non aspetta più niente; chi deve agire aspetta solo per la parte che lo richiede davvero.']
+  };
+
+  function riga(ic, nome, org, imp, pagato){
+    var apri = atterrata ? ' apri' : '';
+    var soldi = pagato
+      ? '<span class="pl-s" style="color:var(--ok);font-weight:700">✓ pagato 12,00 €</span>'
+      : '<span class="eur' + (atterrata?'':' spenta') + '"><span style="color:var(--ink-faint)">€</span> ' + imp + '</span>'
+        + '<button class="mini"' + (atterrata?'':' disabled') + '>Contanti</button>'
+        + '<button class="mini"' + (atterrata?'':' disabled') + '>Wallet</button>';
+    return '<div class="pl"><div class="pl-r"><span>' + ic + '</span>' + (org?'<span>👑</span>':'')
+      + '<span class="pl-n' + apri + '">' + nome + '</span>'
+      + '<button class="mini"' + (atterrata?'':' disabled') + ' title="Togli">✕</button></div>'
+      + '<div class="pl-money">' + soldi + '</div></div>';
+  }
+
+  function testata(){
+    return '<div><div class="tit">Modifica prenotazione</div><div class="titsub">Campo 3 · 05/09/2026 · 15:00 · 90′</div></div>';
+  }
+
+  function disegna(){
+    var c=$('cont');
+    if(vista==='oggi'){
+      c.innerHTML = testata()
+        + '<div class="sez"><h4>Slot</h4><div style="font-size:.68rem;font-weight:600">C3 · 05/09/2026 · 15:00 · 90′</div></div>'
+        + '<div class="sez"><div class="caric"><div class="rotella"></div><div>Aggiorno la lista giocatori da Matchpoint…<br><span class="cronometro">' + sec + 's</span> · puoi già modificare</div></div></div>';
+    } else {
+      c.innerHTML = testata()
+        + '<div class="sez"><h4>Slot</h4><div style="font-size:.68rem;font-weight:600">C3 · 05/09/2026 · 15:00 · 90′</div></div>'
+        + '<div class="sez"><h4>Giocatori · 3 su 4</h4>'
+        + riga('✅','Maurizio Aprea',true,'',true)
+        + riga('🔴','Laura Aprea',false,'8,50',false)
+        + riga('🔴','Fabiola Limuti',false,'—',false)
+        + '<div style="margin-top:8px">'
+        + (atterrata
+            ? '<div class="pronta">✅ Letta da Matchpoint · tutto disponibile</div>'
+            : '<div class="attesa"><span class="rot"></span><div>Nomi dal gestionale, aggiornati poco fa.<br>Sto leggendo i numeri: fra un momento potrai togliere un giocatore e aprire la sua scheda.</div></div>')
+        + '</div></div>';
+    }
+    var l=LEG[vista];
+    $('legenda').innerHTML = '<h3>' + l[0] + '</h3><p>' + l[1] + '</p>';
+  }
+
+  function avvia(){
+    clearInterval(timer); sec=0; atterrata=false; disegna();
+    timer=setInterval(function(){ sec+=1; if(vista==='oggi') disegna(); if(sec>=20){clearInterval(timer);} },1000);
+  }
+
+  document.querySelectorAll('.switch button[data-v]').forEach(function(b){
+    b.addEventListener('click',function(){
+      vista=b.dataset.v;
+      document.querySelectorAll('.switch button[data-v]').forEach(function(o){o.setAttribute('aria-pressed',String(o===b));});
+      avvia();
+    });
+  });
+  document.querySelectorAll('.switch button[data-a]').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(b.dataset.a==='riapri'){ avvia(); return; }
+      clearInterval(timer); atterrata=true; disegna();
+    });
+  });
+  document.querySelector('.foglio .x').addEventListener('click', avvia);
+
+  avvia();
+})();
+</script>
+</body>
+</html>
