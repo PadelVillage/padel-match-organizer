@@ -180,5 +180,33 @@ test('④ ogni punto che manda un `wait` è un gesto che la barra racconta', () 
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑤ il gate «solo lettura» parla UNA volta sola (04/09, trovato misurando il Salva)
+//    📏 Premuto «Salva» sulla pagina viva, la stessa identica frase compariva DUE volte: come
+//    messaggio nella scheda e come toast in alto, parola per parola. Era l'unica coppia
+//    `svcAddMessage` + `showAlert` con lo stesso testo in tutta l'app — cercata su tutte e 530
+//    le chiamate a `showAlert`, non trovata per caso.
+// ─────────────────────────────────────────────────────────────────────────────
+test('⑤ il rifiuto «solo lettura» va in UN posto, non in due', () => {
+  const i = APP.indexOf('function pmoBlockWriteIfReadonly(');
+  assert.ok(i > 0, 'la guardia della sola lettura non c\'è più');
+  const corpo = APP.slice(i, APP.indexOf('\n\t    }', i));
+  const nChat = (corpo.match(/svcAddMessage\(/g) || []).length;
+  const nToast = (corpo.match(/showAlert\(/g) || []).length;
+  assert.equal(nChat, 1, 'il messaggio nella scheda dev\'esserci una volta sola');
+  assert.equal(nToast, 1, 'il toast dev\'esserci una volta sola');
+  assert.match(corpo, /if \(!detto\)/,
+    '🚨 i due avvisi devono essere ALTERNATIVI, non in fila: senza il ramo, lo stesso testo torna '
+    + 'a comparire due volte — è esattamente lo stato misurato il 04/09');
+});
+
+test('⑤ ma se la scheda non c\'è, il toast resta l\'ultima voce', () => {
+  const i = APP.indexOf('function pmoBlockWriteIfReadonly(');
+  const corpo = APP.slice(i, APP.indexOf('\n\t    }', i));
+  assert.match(corpo, /getElementById\('svcChatMessages'\)/,
+    'la scelta fra i due posti deve guardare se la chat ESISTE: un gesto nato altrove nella '
+    + 'pagina resterebbe senza nessun avviso, e un avviso di meno è peggio di uno di troppo');
+});
+
 console.log('\n' + passed + ' passate, ' + failed + ' fallite');
 process.exit(failed ? 1 : 0);
