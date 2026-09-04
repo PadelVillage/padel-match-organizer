@@ -37,6 +37,24 @@ che un numero sia quello giusto — **lo guardo io**.
 📌 *Chiedergli di provare quello che potevo provare io non è prudenza: è spostare su di lui il
 lavoro di verifica, e lasciargli come unica difesa la fiducia.*
 
+🚨⭐⭐ **IL LIMITE VERO, MISURATO IL 04/09 — e non è «quali ambienti», è «con quale utenza».**
+🗣️ Sua domanda: *«devi fare i test sia in test che in prod prima di dirmi di guardare, era
+un'ultima verifica?»* ⇒ **Sì: il suo sguardo è l'ULTIMA verifica, non il collaudo.** Ma va detto
+per intero, perché il confine non passa dove sembra:
+· la console remota entra come utenza **`readonly`** (scelta di sicurezza, vedi più sotto), e ogni
+  gesto che **scrive** sbatte contro il gate `pmoBlockWriteIfReadonly` **prima** di partire;
+· ⇒ posso provare **tutto ciò che si guarda e si calcola** — che una voce di menu non ci sia, che
+  una scheda si apra piena, che un banner sia uno solo, che due bottoni non si tocchino, cosa
+  risponde `elementFromPoint`, cosa scrive una funzione — **su TEST e su PROD**;
+· ⛔ **non** posso attraversare fino in fondo un gesto che scrive davvero: premere «Salva» da
+  owner, incassare, prenotare, togliere un giocatore. Quelli restano **suoi**, e non per
+  abitudine: perché lo strumento non li fa, e perché su PROD scriverebbero sul **Matchpoint del
+  circolo**.
+⚖️ ⇒ Quando una prova si ferma lì, non si dice «provato»: si dice **cosa** è stato provato e
+**dove si è fermata**, e il gesto si chiede a lui — come previsto dall'eccezione qui sopra.
+📌 *Il confine non è fra TEST e PROD: è fra GUARDARE e SCRIVERE. Il primo è mio su tutti e due
+gli ambienti, il secondo è suo su quello vero.*
+
 
 ## 📋 Prima di iniziare: cosa c'è da fare → `docs/lavori/README.md`
 
