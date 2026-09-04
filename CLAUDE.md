@@ -1,5 +1,43 @@
 # Padel Match Organizer — istruzioni di progetto
 
+## 🥇 POSTULATO PRINCIPALE — la prova la faccio IO, lui SUPERVISIONA (FERMA, 04/09/2026)
+
+🗣️ **Sue parole, e vengono prima di tutto il resto:**
+
+> *«Puoi anche fare tu la prova su prod prima di dirmi che il lavoro è ok. Io devo solo
+> supervisionare che quello che hai detto risponde a verità.»*
+
+⇒ **Un lavoro non si annuncia «ok» finché non l'ho provato IO sull'ambiente dove la gente lo usa
+— PROD compresa.** Non gli si consegna un lavoro *da collaudare*: gli si consegna un lavoro
+**provato**, con scritto **cosa** è stato provato e **come**. Il suo mestiere è **verificare che
+quello che ho detto sia vero**, non scoprire al posto mio se funziona.
+
+🔨 **Cosa vuol dire, in pratica:**
+· la prova si fa **sulla pagina viva** — console remota (`tools/verifica-browser`, autorizzata su
+  TEST **e PROD**), oppure il bot con un gesto vero;
+· si prova **su PROD**, perché è lì che il difetto lo vede chi lavora, e su TEST il calendario è
+  **congelato** (mostra il passato: una prova che «riesce» lì può non voler dire niente);
+· nel resoconto va **cosa ho provato E cosa NON ho provato**: una misura che l'ambiente non
+  permetteva si dichiara mancante, non si arrotonda a «funziona».
+
+⛔ **Cosa NON autorizza, e non è un dettaglio:** il postulato riguarda le **PROVE**, non le
+**scritture**. Restano fuori — e si dicono prima — le cose **irreversibili o visibili da fuori**:
+una prenotazione vera sul Matchpoint del circolo, un messaggio che parte verso i soci,
+`--allow-writes` su PROD. ⇒ *Provare non è scrivere*: si guarda con i propri occhi, non si fanno
+gesti al posto suo.
+
+🔄 **QUESTO CORREGGE UNA RIGA PIÙ IN BASSO, non la affianca.** La sezione *«✋ Un task non è finito
+finché non lo si è provato FISICAMENTE»* diceva: *«per prenotazioni, avvisi e roster la prova
+fisica è su PROD, spesso con un gesto suo ⇒ chiedergli il gesto fa parte del lavoro»*. Vero per i
+gesti che **scrivono davvero**; **falso** come abitudine generale, ed era diventato il modo
+normale di chiudere. ⇒ Il gesto suo si chiede **solo** quando serve una scrittura vera che non
+posso fare io. Tutto il resto — che la scheda si apra piena, che una voce di menu sia sparita,
+che un numero sia quello giusto — **lo guardo io**.
+
+📌 *Chiedergli di provare quello che potevo provare io non è prudenza: è spostare su di lui il
+lavoro di verifica, e lasciargli come unica difesa la fiducia.*
+
+
 ## 📋 Prima di iniziare: cosa c'è da fare → `docs/lavori/README.md`
 
 **Apri quel file all'inizio di ogni sessione.** Contiene le tre liste — 🔴 urgenti, 📋 in coda,
@@ -587,10 +625,17 @@ servizio da giorni e restano aperte apposta.
 
 🧊 **E dove si prova, che non è ovvio**: su **TEST** il calendario è **congelato** e le scritture
 verso Matchpoint sono **simulate** ⇒ per tutto ciò che riguarda prenotazioni, avvisi e roster la
-prova fisica **è su PROD**, spesso con un gesto suo. ⇒ Chiedergli il gesto **fa parte del lavoro**,
-non è un disturbo — ma va chiesto quando la cura è **davvero in servizio**, o la prova non prova
-niente (23/08, ore 17:20: la cura della 77 era ancora commentata e il suo annullo sarebbe passato a
-vuoto).
+prova fisica **è su PROD**.
+🔄 **Corretto il 04/09/2026 dal POSTULATO in testa a questo file, e qui c'era scritto il
+contrario**: *«spesso con un gesto suo ⇒ chiedergli il gesto fa parte del lavoro»*. ⇒ **La prova
+su PROD la faccio IO** con la console remota; il gesto suo si chiede **solo** quando serve una
+**scrittura vera** che non posso fare io (una prenotazione sul Matchpoint del circolo, un
+messaggio ai soci). ⚖️ La riga vecchia non era sbagliata sui gesti che scrivono — era diventata
+un'**abitudine generale**, e l'abitudine spostava su di lui la verifica di cose che potevo
+guardare da solo.
+⛔ Quando il gesto suo serve davvero, va chiesto quando la cura è **in servizio**, o la prova non
+prova niente (23/08, ore 17:20: la cura della 77 era ancora commentata e il suo annullo sarebbe
+passato a vuoto).
 
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
