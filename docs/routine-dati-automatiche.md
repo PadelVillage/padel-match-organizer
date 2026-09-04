@@ -32,7 +32,7 @@ Corretto il disallineamento tra routine cloud Matchpoint e dati visibili nel bro
 
 Comportamento aggiornato:
 
-- quando lo staff apre `Amministrazione > Dati Matchpoint`, la app legge in sola lettura i riepiloghi cloud `matchpoint_clients_auto_import_last`, `matchpoint_bookings_auto_import_last` e `matchpoint_history_auto_import_last`;
+- quando lo staff apre `Impostazioni > Dati`, la app legge in sola lettura i riepiloghi cloud `matchpoint_clients_auto_import_last`, `matchpoint_bookings_auto_import_last` e `matchpoint_history_auto_import_last`;
 - se un riepilogo cloud e' piu recente della cronologia locale `dailyDiffHistory`, la app scarica i record cloud gia normalizzati e aggiorna il browser locale;
 - non viene rilanciato Matchpoint, non vengono chiamate Edge Function di import e non viene modificato lo scheduler;
 - in TEST il pannello mostra `TEST manuale` e la colonna `Prossima esecuzione` mostra `Manuale in TEST`, perche' il cron automatico TEST resta disattivato da policy;

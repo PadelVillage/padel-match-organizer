@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 
-// Crea l'accesso personale di un utente staff GIA AUTORIZZATO in Amministrazione,
+// Crea l'accesso personale di un utente staff GIA AUTORIZZATO in Impostazioni,
 // con l'account Supabase Auth gia confermato (email_confirm: true) → nessuna email di
 // conferma. Cosi la registrazione e' un solo passaggio: invito → scegli password → entri.
 //
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     if (!isValidEmail(email)) return json({ ok: false, error: 'INVALID_EMAIL' }, 400);
     if (password.length < 8) return json({ ok: false, error: 'WEAK_PASSWORD' }, 400);
 
-    // 1) L'email DEVE essere autorizzata in Amministrazione (profilo staff invited/active).
+    // 1) L'email DEVE essere autorizzata in Impostazioni (profilo staff invited/active).
     const { data: canData, error: canErr } = await admin.rpc('pmo_can_register_staff', { p_email: email });
     if (canErr) return json({ ok: false, error: 'AUTHZ_CHECK_FAILED', message: canErr.message }, 500);
     const can = Array.isArray(canData) ? canData[0] : canData;
