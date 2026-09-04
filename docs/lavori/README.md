@@ -2708,6 +2708,50 @@ identica ⇒ prima di un gesto **distruttivo** (togliere qualcuno) si rilegge co
 ⛔ **Cade la mia proposta dei bottoni spenti** (`mockup/scheda-giocatori-subito-mockup.html`): con
 gli id in archivio non serve più aspettare niente. Il mockup **va rifatto** su questa forma.
 
+✅⭐ **PRIMO PASSO FATTO E IN SERVIZIO** *(04/09, TEST 6.323 → PROD 6.323)*, dopo che lui l'ha
+riprovata dal cellulare la sera stessa: *«continua a esserci la rotellina che pensa e mi dice
+"leggo i giocatori da Matchpoint": questo non dovrebbe più esistere, si dovrebbe aprire la scheda
+con già i giocatori visibili»*.
+
+🚨⭐⭐ **E LA MISURA HA SPACCATO IL DIFETTO IN DUE — la scheda qui sopra ne descriveva UNO.** Sui
+record veri di PROD, i roster salvati in `staff_booking` sono **173 elenchi di OGGETTI** e **67 di
+STRINGHE**: il sync scrive i nomi, il worker scrive gli oggetti, e `_normRoster` **teneva solo i
+secondi** (`p.nome` è `undefined` su una stringa ⇒ scartata).
+⇒ Per i 173 la rotellina **copriva** dei nomi che c'erano; per i 67 sotto la rotellina **non
+c'era niente**. ⚖️ Togliere solo il velo — che è quello che dice la riga «il difetto che lui VEDE
+è nostro» — avrebbe curato due terzi del difetto e lasciato l'altro terzo con una sezione
+**vuota**: peggio della rotellina, *perché una sezione vuota sembra una risposta*.
+📌 *Un difetto visto una volta è un'ipotesi sul suo perché: la misura può dire che i perché sono
+due, e la cura del primo peggiora il secondo.*
+
+🔨 **I quattro pezzi**: ① `_normRoster` accetta le stringhe; ② il velo `rosterLoading` si alza
+**solo** dove non c'è niente da mostrare; ③ **tre** segni di pagamento invece di due — stato non
+ancora letto ⇒ cerchio tratteggiato grigio «non lo so ancora», **non** la ✗ rossa «da incassare»
+(con la scheda aperta subito quel caso capita a **ogni** apertura, e chi fa cassa andrebbe a
+chiedere soldi **già pagati**: è `esito_ignoto` applicato ai soldi); ④ `rosterRefreshing`, flag
+nuovo e separato — il velo diceva «non ho niente», questo dice «sto rileggendo», ed è un rigo
+discreto in coda al titolo della sezione.
+
+⚖️ **Il rischio che il velo copriva resta, accettato a occhi aperti**: l'elenco locale può essere
+vecchio fino a ~2′ (la cadenza del sync). 🚨 **Ma non può far togliere la persona sbagliata**: la
+rimozione manda al worker il **nome** (`.map(p => p.nome)`), mai la posizione — e il banco ⑤
+difende **quella riga**, che è il freno di tutta la scelta.
+
+✅ **PROVA FISICA su TEST 6.323**, console remota su una prenotazione col roster a **stringhe**
+(il caso che prima usciva vuoto): i **4 nomi ci sono già a 15 ms**, «Leggo i giocatori da
+Matchpoint» **non compare**, **4** icone «non lo so» e **0** ✗ rosse, zero errori di pagina.
+L'indicatore «rileggo da Matchpoint…» l'ho visto **comparire a 15 ms e spegnersi a 30**.
+⚠️ **Quello che quella prova NON dice**: lì il worker è **bloccato dalla console** (le letture
+`/functions/v1/` non partono), quindi la rilettura fallisce all'istante — **quanto resta acceso
+l'indicatore nella vita vera non l'ho misurato**, e nemmeno che i nomi del worker sostituiscano
+quelli locali quando arrivano. Quello lo dice una scheda vera su PROD.
+🧪 Banco nuovo `la-scheda-si-apre-piena` (13 casi), con `_normRoster` **eseguita** e non solo
+letta; **sabotata 5 volte su una COPIA**, cade tutte e 5.
+
+⏳ **LA VOCE RESTA APERTA**, ed è metà: id interno e Osservazioni dentro il gestionale al primo
+incontro del sync non ci sono ancora ⇒ **i soldi arrivano ancora dal worker** (per questo il terzo
+segno serve), la **138** aspetta ancora l'id, e la seconda metà della **143** pure.
+
 ### 143 — 👛 Il borsellino in cassa: dieci minuti sono troppi quando c'è la fila
 
 🗣️ **Sua, e nasce da una sua contraddizione dichiarata**, subito dopo aver scelto i 10 minuti:
