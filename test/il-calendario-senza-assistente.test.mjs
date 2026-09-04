@@ -167,5 +167,17 @@ test('③c NIENTE RESTA SPOSTATO DI 304px PER SCANSARE UNA COLONNA CHE NON C\'È
   assert.ok(!/\.staff-cal-input-bar \{ left:304px/.test(codice), 'la barra del calendario vecchio è ancora spostata');
 });
 
+test('④ 🚨 LA STRISCIA A RIPOSO NON SI VEDE — `hidden` da solo non basta', () => {
+  /* 📏 Il fatto, visto in una SCHERMATA di PROD 6.315 e poi misurato: la striscia era
+     `hidden = true` e `display: flex`, cioè DIPINTA — una fascia azzurra vuota alta 52px in
+     fondo a ogni schermata dell'app (`848→900` su una finestra alta 900).
+     ⚖️ `[hidden] { display:none }` è una regola del BROWSER: la più debole che ci sia, e
+     qualunque classe con un `display` la scavalca. E il difetto era cieco alle sonde:
+     `pointer-events:none` fa rispondere «il calendario» a `elementFromPoint`.
+     📌 Nessuna prova senza occhi l'avrebbe preso. Questa guardia esiste perché non torni. */
+  assert.ok(/\.svc-semaforo\[hidden\] \{ display:none !important; \}/.test(APP),
+    'la striscia a riposo torna a dipingersi: una fascia vuota in fondo a ogni schermata');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
