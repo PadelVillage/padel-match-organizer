@@ -144,6 +144,35 @@ vederlo fallire senza spiegazione.
   sessione e il suo `localStorage`, accumulati in ore d'uso; qui la pagina è sempre pulita.
   Per i sintomi che dipendono dallo stato serve `--storage-in` con un export fatto sul posto,
   e se il difetto nasce da una sequenza lunga di azioni va ricostruita la sequenza.
+
+  🚨⭐⭐ **E IL CASO CHE COSTA PIÙ DI TUTTI, perché non sembra un limite dell'attrezzo: IL
+  CALENDARIO SI APRE TUTTO «LIBERO».** Le prenotazioni vivono in `localStorage`, quindi su
+  una pagina pulita non ce n'è nessuna, e la griglia si disegna **vuota e credibile**. Chi la
+  guarda conclude «dalla console il calendario non si vede» e rinuncia a ogni prova fisica
+  che parta da una partita vera — è successo il 04/09/2026, ed è costato una prova annunciata
+  al committente e non fatta.
+
+  ✅ **La cura è UNA RIGA, e non chiede niente alla guardia**: l'app sa idratarsi da sola dal
+  cloud, con una lettura che è già consentita.
+  ```js
+  await staffCalRefreshFromCloud({ force: true, withMembers: true });
+  // 📌 poi si aspetta IL FATTO, non i secondi:
+  //    prenotazioniOccupazione.length > 0
+  const inp = document.getElementById('staffCalDate');
+  inp.value = '2026-09-07'; renderStaffCalendar();
+  ```
+  📏 Misurato il 04/09 su PROD: da **0** a **173** occupazioni, **zero** richieste bloccate.
+  ⚖️ Prima di trovarla avevo scritto un foro nella guardia delle edge per far passare
+  `pmo-cloud-backup`: **non serviva**, e l'ho tolto. Un foro in una guardia si apre solo dopo
+  aver dimostrato che la strada senza foro non esiste.
+
+  🩹 **Due trappole nelle sonde sul calendario**, pagate lo stesso giorno:
+  · i blocchi prenotati si agganciano con `addEventListener`, quindi filtrarli su `e.onclick`
+    li trova **tutti nulli** su un calendario pieno. Si cercano per **contenuto** (il div più
+    interno che porta un orario);
+  · `offsetParent !== null` è **sempre falso** per un elemento `position:fixed` — cioè per la
+    scheda partita e per la scheda socio. Chi lo usa come «è visibile?» conclude che la scheda
+    non si apre mai. Si guarda `getComputedStyle(el).display` e l'altezza del rettangolo.
 - **`api.github.com` dalla pagina non risponde.** L'app di TEST interroga l'API di GitHub
   (regole del parser): dal browser del container quella chiamata fallisce, perché il traffico
   GitHub passa da un proxy dedicato con le sue regole. La pagina si carica lo stesso, ma le
