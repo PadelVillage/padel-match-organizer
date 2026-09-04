@@ -876,6 +876,37 @@ guardare da solo.
 prova niente (23/08, ore 17:20: la cura della 77 era ancora commentata e il suo annullo sarebbe
 passato a vuoto).
 
+### 🧹 …E UNA VOCE PROVATA SI SPOSTA FRA LE CHIUSE **SUBITO** (FERMA, 04/09/2026 notte)
+
+🗣️ Sue parole, guardando la lista delle urgenti: *«molti di questi task sono chiusi, però non sono
+stati portati tra i task chiusi. Segnati questa regola. Così man mano la lista si va pulendo coi
+lavori che chiudi.»*
+
+⇒ **Chiudere una voce è un gesto in DUE metà, e la seconda non è burocrazia**: ① la cura è in
+servizio e provata fisicamente, ② la voce **si sposta** fra le 📦 chiuse, con la data e con che
+prova l'ha chiusa. Una voce che ha ① e non ② **resta a occupare la lista delle urgenti**, e la
+lista smette di dire cosa c'è da fare.
+
+⚖️ **Perché è la metà che si dimentica, e perché costa**: la lista delle urgenti è la prima cosa
+che si apre a ogni sessione. Se dentro ci sono voci **già fatte**, chi arriva non lo sa — le
+rilegge, le ripesa, e nel caso peggiore **le rifà**. È lo stesso difetto già scritto per le
+richieste: *una richiesta che resta scritta dopo essere stata esaudita non è vecchia, **mente*** —
+qui applicato al **lavoro** invece che alla domanda.
+
+⛔ **Cosa NON conta come chiusa**, e resta apposta nella lista:
+· in servizio ma **mai provata fisicamente** (⇒ vale la regola qui sopra: resta aperta e la scheda
+  dice cosa manca);
+· curata a **metà**, con un ramo del difetto mai percorso sul vivo;
+· che **aspetta un caso** che non si può provocare (le voci 92 · 83 sono di questo tipo).
+
+📌 «Aspetta il suo occhio» **non è** un motivo per restare aperta: dal postulato del 04/09 la prova
+la fa chi lavora e lui **supervisiona** ⇒ la voce si chiude, e ciò che lui deve guardare si scrive
+nell'avviso di fine sessione, non lasciando la voce a metà strada.
+
+🩹 **E i conteggi si aggiornano nello stesso commit**: il numero è dichiarato in **due** posti (il
+titolo della sezione **e** la tabella in cima), e `guard-docs-truth` li confronta **numero per
+numero**. Correggerne uno solo lascia la guardia rossa.
+
 ## 🔒 Regola anti-disallineamento test↔prod (FERMA)
 
 Il problema "il fix fatto in test non funziona in prod / si rompe un fix precedente" nasce dal drift dei branch.
