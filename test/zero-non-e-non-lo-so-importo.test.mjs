@@ -50,7 +50,20 @@ function soloCodice(testo) {
 function ramoCasella() {
   const i = APP.indexOf('} else if (payRow) {');
   assert.ok(i > 0, 'il ramo della casella € non c\'è più: questo banco non sa dove guardare');
-  return APP.slice(i, i + 4200);
+  /* 🩹⭐ 04/09/2026 — QUI C'ERA `APP.slice(i, i + 4200)`, e i 4200 erano una FINESTRA A CASO.
+     La voce 151 ha aggiunto al ramo il caso «importo ricordato»: il codice è cresciuto di poche
+     righe e `amt.disabled` è finito FUORI dalla finestra ⇒ il banco ha dichiarato disabilitata
+     una casella che nessuno aveva toccato. 📌 *Una sonda tarata su una LUNGHEZZA misura quanto è
+     lungo il codice, non cosa fa: cresce il codice e la sonda mente, senza che nessuno abbia
+     rotto niente.* ⇒ Adesso il ramo si chiude contando le graffe: comincia dove comincia e
+     finisce dove finisce. */
+  let g = 0, visto = false, k = APP.indexOf('{', i + 1); // la graffa che APRE il ramo, non la `}` che chiude il precedente
+  for (; k < APP.length; k++) {
+    const c = APP[k];
+    if (c === '{') { g++; visto = true; }
+    else if (c === '}') { g--; if (visto && g === 0) { k++; break; } }
+  }
+  return APP.slice(i, k);
 }
 
 /** Dove finisce `function nome(`: l'indice DOPO la sua graffa di chiusura. */
@@ -117,19 +130,47 @@ test('④ 🚨 IL SEGNAPOSTO C\'È, e la casella NON è disabilitata', () => {
     'la casella viene disabilitata quando l\'importo è ignoto');
 });
 
-test('⑤ 🚨🚨 IL «DA» NON SI INVENTA — né nel riepilogo né nella CONFERMA del denaro', () => {
-  /* 🚨 La conferma è il punto in cui una persona autorizza del denaro: «0,00 → 9,00» le farebbe
-     credere che quel giocatore non dovesse niente. È la bugia più cara di tutta questa voce. */
+/* 🩹⭐⭐ ⑤ RISCRITTA IL 04/09/2026, E RAFFORZATA — la voce 151 ha spostato il meccanismo.
+ *
+ * ⚖️ Fino a stasera questa prova cercava, **a parole**, la stringa `c.daCents == null ? '(non
+ *    letto) → '` dentro due fette del sorgente. La regola era scritta a mano in DUE punti, e il
+ *    banco controllava che ci fosse in tutti e due. La 151 li ha fatti delegare a una funzione
+ *    sola (`_pmoImportoDa`, tre esiti) ⇒ la stringa non c'è più in nessuno dei due, e la prova è
+ *    diventata rossa.
+ * 🚨 Rossa, NON cieca — ed è la differenza che conta: una guardia testuale che perde il suo
+ *    appiglio si nota. Quella della 147 poggiava sull'**esistenza** di un pezzo e quando il pezzo
+ *    è stato tolto è morta **in silenzio**, continuando a passare.
+ * 🔨 Adesso la prova ha due metà, e la seconda è più forte di tutto quello che c'era prima:
+ *    ① i due punti **delegano** alla regola invece di riscriverla (questo resta testuale: è una
+ *       domanda sulla FORMA del codice, e non c'è altro modo di farla);
+ *    ② la regola si **ESEGUE**, sui tre esiti. Prima nessuno l'aveva mai eseguita: si controllava
+ *       che una certa stringa fosse scritta, non che producesse la frase giusta. */
+test('⑤ 🚨🚨 IL «DA» NON SI INVENTA — e la regola sta in UN posto solo', () => {
   const i = APP.indexOf("parts.push('Importo ' + c.nome");
   assert.ok(i > 0, 'la riga della conferma non c\'è più');
   const conferma = APP.slice(i, i + 400);
-  assert.match(conferma, /c\.daCents == null \? '\(non letto\) → '/,
-    'la conferma stampa un «da» che nessuno ha letto: chi autorizza il denaro legge il falso');
+  assert.match(conferma, /_pmoImportoDa\(c\.daCents, c\.daLettoAt/,
+    'la conferma non passa più dalla regola: se ricomincia a calcolarsi il «da» da sé, torna a divergere');
 
   const j = APP.indexOf('const _riga = function (c) {');
   assert.ok(j > 0, 'la riga del riepilogo non c\'è più');
   const riepilogo = APP.slice(j, j + 400);
-  assert.match(riepilogo, /c\.daCents == null \? '→ '/, 'il riepilogo inventa il «da»');
+  assert.match(riepilogo, /_pmoImportoDa\(c\.daCents, c\.daLettoAt/, 'il riepilogo si è staccato dalla regola');
+});
+
+test('⑤bis 🚨🚨 E LA REGOLA, ESEGUITA, non inventa il «da» — è il punto in cui si autorizza del denaro', () => {
+  /* 🚨 «0,00 → 9,00» farebbe credere a chi autorizza che quel giocatore non dovesse niente.
+     È la bugia più cara di tutta questa voce, e adesso è provata eseguendo invece che leggendo. */
+  const da = new Function(dichiarazioneDi('_pmoImportoDa') + '\nreturn _pmoImportoDa;')();
+  const euro = (c) => (c / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const quando = () => 'alle 21:03';
+  assert.equal(da(null, null, euro, quando), '(non letto)', 'il «da» mai letto viene inventato');
+  assert.equal(da(null, '2026-09-03T19:03:00Z', euro, quando), '(non letto)',
+    'un «quando» non basta a fabbricare un «quanto»');
+  assert.equal(da(0, null, euro, quando), '0,00', 'lo zero LETTO perde il suo «da»: un omaggio è un dato');
+  assert.equal(da(800, null, euro, quando), '8,00');
+  assert.equal(da(800, '2026-09-03T19:03:00Z', euro, quando), '8,00 (letto alle 21:03)',
+    'un importo RICORDATO stampato come appena letto è un «da» inventato quanto lo zero');
 });
 
 test('⑥ ⛔ E LA REGOLA VALE ANCHE PER IL WALLET — la 139 non dev\'essere tornata indietro', () => {
