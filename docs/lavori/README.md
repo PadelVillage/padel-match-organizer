@@ -1953,7 +1953,7 @@ sonda che guarda nel posto sbagliato — nella forma in cui il posto sbagliato �
 ⇒ La contro-prova che vale, e costa poco: guardare **il fatto** (la trascrizione, l'artefatto) e non
 **lo stato** (il semaforo del giro). Il fatto non torna indietro.
 
-### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR: c'è una SOGLIA, non un adattamento — ⏳ **da decidere con lui**
+### **153** — 🖥️ LA SCHEDA NON SCALA COL MONITOR — 🔨 **C IN SERVIZIO su PROD 6.353** · restano A e B
 
 🗣️ **Sua domanda**, il 04/09 a notte, subito dopo la 152: *«hai fatto anche un pensiero sul fatto
 di rendere scalabile/adattabile la scheda e il calendario a seconda del tipo di monitor? cioè se è
@@ -2040,6 +2040,65 @@ proporzionali (`fr`) invece di `330px` fisso; ③ il calendario che entra nella 
 **altezza**. Sono tre lavori separabili, e il **③ non tocca la scheda**.
 🎨 Prima di scrivere una riga: **mockup**, e con la tabella che si misura da sé — è quella che nella
 157 ha scoperto il fatto che non avevo previsto.
+
+---
+
+🎨 **IL MOCKUP C'È**: `mockup/scheda-e-calendario-scalano-mockup.html`, e si misura da sé — le
+larghezze candidate stanno dentro **schermi finti** della larghezza dichiarata
+(`container-type:inline-size`), così i `cqw` si risolvono contro la sonda ⇒ **è il browser a fare
+il conto di `clamp`**, non io a rifarlo in JavaScript sperando di ricopiare la regola giusta.
+
+🗣️ **E l'ordine l'ha deciso chi lavora**, su sua richiesta esplicita — *«Non mi chiedere a me da
+dove devi partire. Decidi tu dove è meglio per il progetto.»* ⇒ **C → A → B**, per tre ragioni:
+C è l'unico difetto misurato come **sempre** presente (A e B sono proporzioni sbagliate, C è una
+cosa che non ci sta); C **non tocca la scheda**, quindi non rischia le sette voci confermate quella
+notte; e soprattutto **C scioglie l'incastro** — finché la riga condivisa governava scheda e
+calendario insieme, A avrebbe mosso anche il calendario.
+
+## ✅ C — FATTO, in servizio su PROD 6.353
+
+📏 **Il difetto, e il modello che lo descrive**: la pagina è alta
+`190 (sopra) + 80% dell'altezza finestra (il calendario) + 203 (sotto)`, e prevede **esattamente**
+il misurato — 265 · 233 · 213 px da scorrere a 640 · 800 · 900 (a 1080 prevede 177 contro 173).
+⇒ La pagina sarebbe entrata solo con una finestra alta **1.966 px**: il calendario non era «stretto
+su schermi piccoli», era fuori **SEMPRE**, anche su un 1920 — dove si notava meno solo perché
+scrollare 173 px dà meno fastidio che scrollarne 265.
+
+🚨🚨 **La riga che lo causava governa DUE cose**: `.svc-layout { height: min(80vh, 860px) }` vale
+per la **scheda partita** e per la **shell del calendario**. ⇒ La cura non è cambiare quel numero —
+avrebbe mosso anche la scheda — ma scriverne uno **dopo**, con un selettore più specifico che
+prende il solo calendario: `#staffCalV36 > .svc-layout { height: max(360px, calc(100vh - var(--pmo-cal-cornice))) }`.
+
+✅ **PROVA FISICA su TEST 6.352**, e la domanda giusta **non** era «è più basso»: era **«la parte
+che non entra si raggiunge?»** — *un contenitore più corto del contenuto senza nessuno che scorre
+non è più compatto, è **tagliato***.
+
+| finestra | pagina da scorrere | chi scorre dentro |
+|---|---|---|
+| **1440×900** | **213 → 0** ✅ | la colonna, 180 px |
+| 1024×640 | 265 → 113 | la colonna, 67 px |
+
+⛔ A 1024 morde il **pavimento di 360 px**, ed è la scelta dichiarata: sotto, la griglia diventa
+illeggibile e torna giusto che a scorrere sia la pagina invece di schiacciare le righe.
+
+🩹⭐⭐ **E il difetto preso lungo la strada, che vale più della cura**: la prima versione della riga
+era finita dentro **`@media (max-width:899px)`** — cioè sul **telefono**, dove non serviva e avrebbe
+fatto danno, e dove su desktop non si sarebbe applicata **mai**. La sonda l'ha vista subito (512 px,
+cioè ancora `80vh`) ma la spiegazione che viene in mente per prima è *«il deploy non è ancora
+arrivato»*, e sarebbe costata il giro.
+📌 *«Un selettore già scoped al calendario» non dice in quale `@media` sta: lo scope dell'**elemento**
+e lo scope della **larghezza** sono due cose diverse, e se ne controlla una sola per volta senza
+accorgersene.* Il punto del file «accanto alle altre regole del calendario» era circondato da regole
+del telefono, e quella vicinanza è bastata.
+
+⏳ **RESTANO A e B**, e la scheda dice cosa sono: **A** il pannello da 860 fissi a un intervallo che
+cresce col monitor (84% dello schermo a 1024, 45% a 1920); **B** le colonne proporzionali invece di
+`330px` fisso — e **B ha senso solo dentro A**, perché a pannello fermo le due colonne si spartiscono
+sempre la stessa torta.
+⚠️ **Il rovescio di A, dichiarato prima di farlo**: su un 1024 la scheda diventa **più stretta**
+(676 contro 860). È il senso della cura — smette di mangiarsi lo schermo — ma è meno spazio per il
+contenuto, e su un 1280 non cambia quasi nulla. **A si sente sui monitor grandi e sui piccoli, non
+in mezzo.**
 
 ### **92** — 🚨🚨 DUE messaggi identici allo stesso socio: la coda si legge e si chiude in due momenti
 
