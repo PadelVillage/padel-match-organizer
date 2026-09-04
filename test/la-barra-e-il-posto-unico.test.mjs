@@ -220,8 +220,11 @@ test('⑦ IL DISEGNO GUARDA ENTRAMBE LE FONTI, e la LOCALE ha la precedenza', ()
 });
 
 const vaSoloNellaBarra = new Function(
-  costanteArray('SVC_ESITI_NELLA_SCHEDA') + '\n' + dichiarazioneDi('svcMessaggioVaSoloNellaBarra')
+  costanteArray('SVC_ESITI_NELLA_SCHEDA') + '\n' + costanteArray('SVC_AVANZAMENTI_NELLA_BARRA')
+    + '\n' + dichiarazioneDi('svcMessaggioVaSoloNellaBarra')
     + '\nreturn svcMessaggioVaSoloNellaBarra;')();
+const eAvanzamento = new Function(
+  dichiarazioneDi('svcEAvanzamentoInCorso') + '\nreturn svcEAvanzamentoInCorso;')();
 
 test('⑧ 🚨 LA STRISCIA HA DUE CASE E NESSUNA DELLE DUE PUÒ FINIRE FUORI SCHERMO', () => {
   /* 📏 Il fatto che questa guardia difende, e che è stato PAGATO: su PROD 6.307 la barra
@@ -369,6 +372,56 @@ test('⑫ 🚨⭐⭐ UN RIFIUTO NON SE NE VA DA SOLO — da quando la scheda non
   assert.match(dis, /svc-semaforo-corpo/, 'la barra è tornata a una riga sola');
   const css = APP.slice(APP.indexOf('.svc-semaforo {'));
   assert.match(css.slice(0, 600), /min-height:5[0-9]px/, 'la barra ha perso l\'altezza doppia');
+});
+
+test('⑬ 🚨 VOCE 147 — UN GESTO IN VOLO SI LEGGE IN UN POSTO SOLO (i posti sono QUATTRO)', () => {
+  /* 🗣️ Sua segnalazione del 04/09 sulla schermata di PROD 6.328: «trovo sulla scheda ancora 2
+     messaggi distinti» — la pastiglia «↓ ↻ Salvo su Matchpoint l'impor…» e la striscia
+     «💶 Cambio l'importo».
+     ⚖️ IL DIFETTO CHE QUESTO BANCO ESISTE PER NON FAR TORNARE: la 136 spegneva la pastiglia
+     guardando se la riga dentro la scheda era visibile; la 145 ha TOLTO quella riga per gli
+     avanzamenti, e con lei è caduta la condizione. Una guardia che poggia sull'esistenza di un
+     altro pezzo non urla quando quel pezzo sparisce: smette di proteggere in silenzio.
+     ⛔ Questo banco è TESTUALE: prova le regole, non che sullo schermo si veda una striscia sola.
+     Quello lo dice l'occhio, a 390 px, su un gesto vero. */
+
+  // ① I tre avanzamenti dei pagamenti non nascono più in chat: la barra li dice per nome.
+  assert.equal(vaSoloNellaBarra("↻ Salvo su Matchpoint l'importo a carico… (non chiudere)<br><span>Ospite 0,00 € → 20,00 €</span>"), true);
+  assert.equal(vaSoloNellaBarra('↻ Salvo su Matchpoint gli importi a carico… (non chiudere)'), true);
+  assert.equal(vaSoloNellaBarra('↻ Incasso Cash di 20,00 € per Ospite… (non chiudere)'), true);
+  assert.equal(vaSoloNellaBarra('🧪 Simulazione incasso Card di 20,00 € per Ospite… (non chiudere)'), true);
+  assert.equal(vaSoloNellaBarra('↻ Storno del pagamento di Mario Rossi… (non chiudere)'), true);
+  assert.equal(vaSoloNellaBarra('🧪 Simulazione storno del pagamento di Mario Rossi… (non chiudere)'), true);
+
+  // ⛔⛔ E QUELLO CHE RESTA IN CHAT VALE PIÙ DI QUELLO CHE ESCE — il WALLET si fa dalla scheda del
+  //     SOCIO, dove `.svc-edit-box` non esiste: togliergli la chat gli toglierebbe l'unico posto
+  //     in cui il suo esito è scritto. Per il doppione c'è la guardia ②, che leva la striscia e
+  //     non l'informazione.
+  assert.equal(vaSoloNellaBarra('↻ Storno wallet di Mario Rossi… (non chiudere)'), false);
+  assert.equal(vaSoloNellaBarra('↻ Ricarica wallet di Mario Rossi… (non chiudere)'), false);
+  // ⛔ E gli ESITI dei pagamenti restano fuori da questa lista: li disegna la riga nella scheda.
+  assert.equal(vaSoloNellaBarra('✅ Importo aggiornato su Matchpoint'), false);
+  assert.equal(vaSoloNellaBarra('⚠️ Nessun importo aggiornato. '), false);
+
+  // ② La pastiglia non ripete un gesto in volo — e i due segni servono TUTTI E DUE.
+  assert.equal(eAvanzamento('↻ Storno wallet di Mario Rossi… (non chiudere)'), true);
+  assert.equal(eAvanzamento("↻ Salvo su Matchpoint l'importo a carico… (non chiudere)"), true);
+  assert.equal(eAvanzamento('🧪 Simulazione incasso Cash di 20,00 € per Ospite… (non chiudere)'), true);
+  // 🚨 LE TRE COSE CHE NON DEVE PRENDERE, ed è per loro che il «(non chiudere)» è obbligatorio:
+  //    un esito che comincia uguale, una domanda che aspetta un click, un resoconto qualunque.
+  assert.equal(eAvanzamento('⏳ Campo 3 · 18:00: dopo 4 tentativi non riesco a raggiungere Matchpoint per verificare.'), false);
+  assert.equal(eAvanzamento('🧪 SIMULAZIONE — Stornare il pagamento di 20,00 € di Mario Rossi?'), false);
+  assert.equal(eAvanzamento('👥 Quale «Laura»? Scegli dall\'elenco.'), false);
+  assert.equal(eAvanzamento('✅ Importo aggiornato su Matchpoint'), false);
+  assert.equal(eAvanzamento(''), false);
+  assert.equal(eAvanzamento(null), false);
+
+  // ③ E la guardia dev'essere DAVVERO agganciata, prima delle altre due: la 145 ha insegnato che
+  //    una regola scritta e non chiamata nel punto giusto è una regola che non c'è.
+  const agg = dichiarazioneDi('_svcAggiornaPastiglia');
+  assert.match(agg, /svcEAvanzamentoInCorso\(st\.testo\)/, 'la pastiglia non guarda se il gesto è in volo: il doppione torna');
+  assert.ok(agg.indexOf('svcEAvanzamentoInCorso') < agg.indexOf('_svcEsitoInSchedaVisibile'),
+    'la guardia nuova arriva dopo quella che poggia sulla riga tolta dalla 145: non servirebbe a niente');
 });
 
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
