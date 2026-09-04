@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La scheda entra tutta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+  :root{
+    --ink:#16202e; --ink-soft:#4b5768; --ink-faint:#77839a;
+    --paper:#f2f4f8; --line:#dde3ec;
+    --accent:#2563eb; --accent-deep:#1F4788;
+    --ok:#067647; --ok-bg:#e9f7ef; --warn:#b45309; --warn-bg:#fff7e8; --danger:#b42318;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 22px 56px}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:2rem;margin:6px 0 8px;letter-spacing:-.01em;text-wrap:balance}
+  h2{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:1.15rem;margin:34px 0 10px}
+  p.sub{margin:0;color:var(--ink-soft);font-size:.95rem;max-width:80ch;line-height:1.6}
+  .switch{display:flex;gap:8px;margin:22px 0 4px;flex-wrap:wrap;align-items:center}
+  .switch button{font:inherit;font-size:.86rem;font-weight:600;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer}
+  .switch button:hover{border-color:#b9c6da}
+  .switch button[aria-pressed="true"]{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+  .switch button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ── la finestra bianca, in scala 1:1 sui numeri misurati ─────────────────── */
+  .scena{margin-top:18px;background:#eef2f8;border:1px solid var(--line);border-radius:14px;padding:18px;overflow:auto}
+  .pannello{width:860px;height:800px;background:#fff;border-radius:14px;box-shadow:0 18px 44px rgba(16,32,60,.16);
+            position:relative;display:flex;flex-direction:column;margin:0 auto}
+  .pannello .chiudi{position:absolute;top:10px;right:12px;width:30px;height:30px;border-radius:50%;background:#f1f5f9;
+            display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-weight:700;font-size:1rem}
+  .messaggi{flex:1 1 auto;min-height:0;overflow:auto;padding:16px}
+  .messaggi::-webkit-scrollbar{width:10px}
+  .messaggi::-webkit-scrollbar-thumb{background:#c8d4e4;border-radius:99px}
+
+  .scheda{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px}
+  .testa{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1rem;margin-bottom:2px}
+  .testa .sotto{font-weight:500;color:var(--ink-soft);font-size:.84rem}
+  .sez{border:1px solid var(--line);border-radius:10px;padding:11px;margin-top:11px;background:#fcfdff}
+  .sez h4{margin:0 0 9px;font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:6px;color:var(--ink)}
+  .campi{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .campo label{display:block;font-size:.7rem;color:var(--ink-soft);margin-bottom:3px;font-weight:600}
+  .campo .box{border:1px solid var(--line);border-radius:8px;background:#eef1f6;padding:7px 9px;font-size:.82rem;font-weight:600}
+  .gioc{border-top:1px solid var(--line);padding:9px 0}
+  .gioc:first-of-type{border-top:0;padding-top:2px}
+  .nome{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.86rem}
+  .nome .x{margin-left:auto;color:var(--ink-faint);font-weight:600}
+  .soldi{display:flex;align-items:center;gap:8px;margin:7px 0 8px}
+  .eur{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--accent);border-radius:8px;padding:3px 8px;height:30px;font-weight:800;font-size:.82rem}
+  .eur.ricordato{border-style:dashed}
+  .eur small{color:var(--ink-faint);font-weight:600}
+  .wal{font-size:.74rem;font-weight:700;color:var(--ink-soft)}
+  .paghe{display:flex;gap:7px}
+  .paghe b{flex:1;text-align:center;border:1px solid var(--accent);color:var(--accent);border-radius:9px;padding:8px 4px;font-size:.78rem;font-weight:700;background:#fff}
+  .paghe b.off{border-color:var(--line);color:#b3bdcc;background:#f7f9fc}
+  .nota{border:1px solid var(--line);border-radius:9px;background:#fff;height:74px;padding:8px;color:var(--ink-faint);font-size:.8rem}
+  .azioni{display:flex;gap:8px;margin-top:11px}
+  .azioni b{border-radius:9px;padding:9px 4px;font-size:.83rem;font-weight:700;text-align:center}
+  .azioni .ok{flex:2;background:#e9f7ef;color:var(--ok);border:1px solid #9fe0bd}
+  .azioni .no{flex:1;background:#fff;color:var(--ink-soft);border:1px solid var(--line)}
+  .annulla{margin-top:8px;border:1px solid #f3b0a8;color:var(--danger);background:#fff5f4;border-radius:9px;padding:9px;text-align:center;font-size:.83rem;font-weight:700}
+
+  /* DOPO: due colonne */
+  .duecol{display:grid;grid-template-columns:330px 1fr;gap:14px;align-items:start}
+  .duecol .colonna{min-width:0}
+  .extra{border:1px solid var(--line);border-radius:10px;padding:11px;margin-top:11px;background:#fbfdff}
+  .extra h4{margin:0 0 8px;font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:6px}
+  .extra .r{display:flex;justify-content:space-between;gap:10px;font-size:.8rem;padding:5px 0;border-top:1px solid #eef2f8}
+  .extra .r:first-of-type{border-top:0}
+  .extra .r b{font-variant-numeric:tabular-nums}
+  .extra .tot{border-top:2px solid var(--line);margin-top:4px;padding-top:7px;font-weight:800}
+  .extra .g{font-size:.78rem;padding:6px 0;border-top:1px solid #eef2f8;line-height:1.45}
+  .extra .g:first-of-type{border-top:0}
+  .extra .g em{color:var(--ink-faint);font-style:normal;font-weight:700}
+  .costo{margin-top:9px;font-size:.72rem;border-radius:8px;padding:7px 9px;line-height:1.45}
+  .costo.gratis{background:var(--ok-bg);color:#065f46;border:1px solid #9fe0bd}
+  .costo.paga{background:var(--warn-bg);color:#8a4b06;border:1px solid #f0cf9a}
+
+  /* etichette di misura */
+  .quota{position:absolute;font-size:.68rem;font-weight:800;color:var(--accent-deep);background:#fff;border:1px solid #c3d4f0;
+         border-radius:6px;padding:2px 7px;box-shadow:0 2px 8px rgba(16,32,60,.10)}
+  .vuoto{position:absolute;top:52px;bottom:14px;right:14px;width:231px;border:2px dashed #f0b6ae;border-radius:10px;
+         background:repeating-linear-gradient(135deg,rgba(240,182,174,.13) 0 8px,transparent 8px 16px);
+         display:flex;align-items:center;justify-content:center;text-align:center;color:var(--danger);font-size:.74rem;font-weight:800;line-height:1.4}
+  .taglio{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--danger)}
+  .taglio span{position:absolute;right:8px;top:-11px;background:var(--danger);color:#fff;font-size:.65rem;font-weight:800;border-radius:5px;padding:2px 7px}
+
+  table.mis{border-collapse:collapse;width:100%;margin-top:12px;font-size:.86rem}
+  table.mis th,table.mis td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  table.mis th{background:#eef2f8;font-weight:800;font-size:.78rem}
+  table.mis td.n{font-variant-numeric:tabular-nums;font-weight:700}
+  .nota-box{border-left:4px solid var(--accent);background:#fff;border-radius:0 10px 10px 0;padding:12px 14px;margin-top:14px;font-size:.9rem;line-height:1.6;color:var(--ink-soft)}
+  .nota-box.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .nota-box.ok{border-left-color:var(--ok);background:var(--ok-bg)}
+  .nota-box strong{color:var(--ink)}
+  .fono-riga{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-top:12px}
+  .fono{width:250px;border:9px solid #22314a;border-radius:26px;overflow:hidden;background:#fff;box-shadow:0 14px 34px rgba(16,32,60,.18)}
+  .fono .top{background:#f7f9fc;border-bottom:1px solid var(--line);padding:7px 10px;font-size:.64rem;font-weight:800;color:var(--ink-soft)}
+  .fono .corpo{padding:9px;font-size:.62rem}
+  .fono .sez{margin-top:7px;padding:7px}
+  .fono .sez h4{font-size:.66rem;margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Mockup · 04/09/2026 · da approvare</div>
+  <h1>La scheda entra tutta</h1>
+  <p class="sub">
+    🗣️ <em>«A livello grafico puoi migliorarla così da far entrare tutte le informazioni dentro la scheda aperta.»</em><br>
+    Misurato sulla pagina viva di <strong>PROD 6.338</strong>, a 1440×900, sulla partita del <strong>7/09 ore 9:00 · Campo 4</strong>
+    — non ridisegnato a occhio. I riquadri qui sotto sono in <strong>scala 1:1</strong> sui numeri veri.
+  </p>
+
+  <div class="switch" role="group" aria-label="Confronto">
+    <button id="bPrima" aria-pressed="true" onclick="mostra('prima')">Com'è adesso</button>
+    <button id="bDopo"  aria-pressed="false" onclick="mostra('dopo')">La proposta</button>
+  </div>
+
+  <div class="switch" id="varianti" role="group" aria-label="Cosa mettere nello spazio libero" hidden>
+    <span style="font-size:.8rem;color:var(--ink-faint);font-weight:700;margin-right:2px">nello spazio libero:</span>
+    <button aria-pressed="true"  onclick="variante('niente')">niente</button>
+    <button aria-pressed="false" onclick="variante('conto')">A · il conto</button>
+    <button aria-pressed="false" onclick="variante('gesti')">B · chi ha fatto cosa</button>
+    <button aria-pressed="false" onclick="variante('soci')">C · cosa sanno i soci</button>
+  </div>
+
+  <div class="scena">
+    <div class="pannello" id="pannello">
+      <div class="chiudi">✕</div>
+      <div class="messaggi" id="messaggi"></div>
+      <div id="decorazioni"></div>
+    </div>
+  </div>
+
+  <div id="spiega"></div>
+  <div id="verdetto"></div>
+
+  <h2>I numeri, misurati</h2>
+  <table class="mis">
+    <tr><th>cosa</th><th>misura</th><th>cosa vuol dire</th></tr>
+    <tr><td>la finestra bianca</td><td class="n">860 × 800 px</td><td>lo spazio che c'è</td></tr>
+    <tr><td>la scheda dentro</td><td class="n">612 px di larghezza</td><td>ne usa il <strong>71%</strong> — restano <strong>231 px vuoti</strong> a destra</td></tr>
+    <tr><td>contenuto in verticale</td><td class="n">1214 px</td><td>in <strong>761</strong> visibili ⇒ <strong>453 px si devono scorrere</strong></td></tr>
+    <tr><td>Slot</td><td class="n">152 px</td><td rowspan="4">le quattro sezioni, alte così</td></tr>
+    <tr><td><strong>Giocatori e pagamenti</strong></td><td class="n">718 px</td></tr>
+    <tr><td>Note</td><td class="n">161 px</td></tr>
+    <tr><td>bottoni</td><td class="n">87 px</td></tr>
+  </table>
+
+  <div class="nota-box ok">
+    <strong>La proposta in una riga:</strong> le quattro sezioni vanno <strong>su due colonne</strong>.
+    A sinistra Slot + Note + bottoni (<strong>441 px</strong> in tutto), a destra Giocatori e pagamenti (<strong>718</strong>).
+    La colonna più alta resta <strong>718 contro 761 disponibili</strong> ⇒ <strong>entra tutto, senza scorrere</strong> —
+    e i 231 px sprecati diventano la seconda colonna.
+  </div>
+
+  <div class="nota-box warn">
+    ⚠️ <strong>Quello che questo mockup NON sa, e va detto prima di scriverlo:</strong> i 718 px della colonna
+    Giocatori sono misurati a <strong>612 px di larghezza</strong>. Stringendola a <strong>478</strong> le righe
+    possono crescere (le tre etichette Cash · Card · Wallet hanno meno posto) ⇒ <strong>l'altezza va rimisurata
+    sulla pagina viva dopo la modifica</strong>, non data per buona da qui. Se crescesse oltre i 761 px, il rimedio
+    dichiarato è allargare la finestra da 860 a ~1000, che a 1440 di schermo c'è.
+    <br>📌 <em>Un mockup dice come si dispone, non quanto sarà alto: quello lo dice la pagina.</em>
+  </div>
+
+  <h2>Sul telefono non cambia niente — ed è voluto</h2>
+  <p class="sub">Sotto i <strong>900 px</strong> la scheda resta <strong>una colonna sola</strong>: due colonne su
+  390 px di larghezza le renderebbero illeggibili tutte e due. La disposizione nuova si accende solo dove c'è
+  spazio, e il foglio a tutto schermo del telefono — con la chiusura automatica della voce 148 — resta identico.</p>
+  <div class="fono-riga">
+    <div class="fono">
+      <div class="top">📱 telefono · 390 px — invariato</div>
+      <div class="corpo">
+        <div class="sez"><h4>🕐 Slot</h4><div style="color:#77839a">Campo 4 · 07/09 · 09:00–10:30</div></div>
+        <div class="sez"><h4>👥 Giocatori e pagamenti</h4><div style="color:#77839a">Lidia Comes · 8,00<br>Fabiola Limuti · 8,00<br>Ospite · 8,00<br>Ospite · 8,00</div></div>
+        <div class="sez"><h4>📝 Note</h4></div>
+        <div class="sez" style="border:0;padding:0;margin-top:8px"><div class="azioni"><b class="ok">✓ Salva</b><b class="no">✕ Chiudi</b></div></div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:240px">
+      <div class="nota-box">
+        <strong>La soglia è quella che c'è già.</strong> L'app usa <strong>900 px</strong> per decidere cosa è
+        telefono (è la stessa di <code>svcAutoCloseIfMobile</code>): la disposizione a due colonne si aggancia lì,
+        senza inventarne una nuova.
+        <br>📌 <em>Una misura che esiste già si riusa: due soglie diverse per la stessa domanda divergono al primo
+        cambio.</em>
+      </div>
+    </div>
+  </div>
+
+  <h2>Cosa NON cambia</h2>
+  <p class="sub">
+    ⛔ Nessun campo si sposta di sezione, nessuno sparisce, nessuno cambia nome. Le caselle degli importi restano
+    dove sono, coi tre stati della <strong>voce 151</strong> (letto · <span style="border-bottom:2px dashed #2563eb">ricordato</span> · «—» non letto).
+    I bottoni <strong>Cash · Card · Wallet</strong> restano identici — e restano fuori da quello che tocco io.
+    ⇒ È una modifica di <strong>disposizione</strong>, non di contenuto: si può ribaltare cambiando una riga di CSS.
+  </p>
+</div>
+
+<script>
+  const G = [
+    { nome:'Lidia Comes', org:true,  eur:'8,00' },
+    { nome:'Fabiola Limuti', org:false, eur:'8,00' },
+    { nome:'Ospite', org:false, eur:'8,00' },
+    { nome:'Ospite', org:false, eur:'8,00' },
+  ];
+  const sezSlot = `
+    <div class="sez"><h4>🕐 Slot</h4>
+      <div class="campi">
+        <div class="campo"><label>Campo</label><div class="box">4</div></div>
+        <div class="campo"><label>Data</label><div class="box">07/09/2026</div></div>
+        <div class="campo"><label>Dalle</label><div class="box">09:00</div></div>
+        <div class="campo"><label>Alle</label><div class="box">10:30 <span style="color:#77839a;font-weight:600">· 90 min</span></div></div>
+      </div>
+    </div>`;
+  const sezGioc = `
+    <div class="sez"><h4>👥 Giocatori e pagamenti</h4>
+      ${G.map(g => `
+        <div class="gioc">
+          <div class="nome">${g.org ? '⭐ ' : ''}${g.nome}<span class="x">✕</span></div>
+          <div class="soldi">
+            <span class="eur ricordato"><small>€</small> ${g.eur}</span>
+            <span class="wal">👛 —</span>
+          </div>
+          <div class="paghe"><b>Cash</b><b>Card</b><b class="off">Wallet</b></div>
+        </div>`).join('')}
+    </div>`;
+  const sezNote = `<div class="sez"><h4>📝 Note</h4><div class="nota">Scrivi qui le osservazioni… (verranno salvate su Matchpoint)</div>
+      <div style="font-size:.7rem;color:#77839a;margin-top:6px">Facoltativo · max 300 caratteri</div></div>`;
+  const azioni = `<div class="azioni"><b class="ok">✓ Salva</b><b class="no">✕ Chiudi</b></div>
+      <div class="annulla">🗑 Annulla prenotazione</div>`;
+  const testa = `<div class="testa">🗓 Modifica prenotazione</div>
+      <div class="sotto" style="margin-bottom:2px">Campo 4 · 07/09/2026 · 09:00</div>`;
+
+  const EXTRA = {
+    niente: '',
+    conto: `
+      <div class="extra"><h4>💰 Il conto della partita</h4>
+        <div class="r"><span>A carico · 4 giocatori × 8,00</span><b>32,00</b></div>
+        <div class="r"><span>Già incassato</span><b>0,00</b></div>
+        <div class="r tot"><span>Manca all'appello</span><b>32,00</b></div>
+        <div class="costo gratis">✅ <strong>Non costa niente:</strong> il totale la scheda lo calcola
+          <em>già</em> (somma delle caselle «€ a carico»), e i pagamenti fatti li ha <em>già</em> in mano —
+          servono alla pastiglia «✓ pagato». Nessuna lettura in più.</div>
+      </div>`,
+    gesti: `
+      <div class="extra"><h4>📋 Chi ha fatto cosa, qui</h4>
+        <div class="g"><em>oggi 19:32</em> · Maurizio Aprea<br>ha cambiato l'importo di Lidia Comes: 8,00 → 9,00</div>
+        <div class="g"><em>ieri 22:10</em> · Lidia Comes (dal bot)<br>è entrata in partita</div>
+        <div class="g"><em>ieri 21:58</em> · Maurizio Aprea<br>ha creato la prenotazione</div>
+        <div class="costo paga">⚠️ <strong>Costa una lettura in più a ogni apertura:</strong> quelle righe
+          stanno nel registro <code>staff_edit</code> del gestionale, che la scheda oggi <em>non</em> legge.
+          Va deciso se vale il ritardo — la scheda si apre già aspettando il worker.</div>
+      </div>`,
+    soci: `
+      <div class="extra"><h4>📣 Cosa sanno i soci</h4>
+        <div class="g">Lidia Comes · <em>avvisata ieri 21:58</em><br>«sei in partita lunedì 7 alle 9:00, Campo 4»</div>
+        <div class="g">Fabiola Limuti · <em>avvisata ieri 21:58</em></div>
+        <div class="g">Ospite ×2 · <em>nessun avviso</em> — non hanno una scheda socio</div>
+        <div class="costo paga">⚠️ <strong>Costa una lettura in più</strong> (i «fatti» accodati verso il
+          bot). ⭐ Ma è l'unico posto in cui si vedrebbe se un avviso <em>non</em> è partito: oggi quella
+          domanda non ha una risposta dentro l'app.</div>
+      </div>`,
+  };
+  let varianteAttiva = 'niente';
+  function variante(v) {
+    varianteAttiva = v;
+    document.querySelectorAll('#varianti button').forEach((b, i) => {
+      b.setAttribute('aria-pressed', ['niente','conto','gesti','soci'][i] === v);
+    });
+    mostra('dopo');
+  }
+
+  function mostra(quale) {
+    const m = document.getElementById('messaggi');
+    const d = document.getElementById('decorazioni');
+    const s = document.getElementById('spiega');
+    document.getElementById('bPrima').setAttribute('aria-pressed', quale === 'prima');
+    document.getElementById('bDopo').setAttribute('aria-pressed', quale === 'dopo');
+    document.getElementById('varianti').hidden = (quale !== 'dopo');
+
+    if (quale === 'prima') {
+      m.innerHTML = `<div class="scheda" style="width:612px">${testa}${sezSlot}${sezGioc}${sezNote}${azioni}</div>`;
+      d.innerHTML = `
+        <div class="vuoto">231 px<br>vuoti</div>
+        <div class="taglio" style="top:761px"><span>qui finisce lo schermo — sotto si scorre (453 px)</span></div>
+        <div class="quota" style="top:14px;left:640px">la scheda usa 612 di 860</div>`;
+      s.innerHTML = `<div class="nota-box warn"><strong>Adesso:</strong> la scheda sta in una colonna sola larga
+        <strong>612 px</strong> dentro una finestra da <strong>860</strong>. I <strong>231 px</strong> a destra non
+        li usa nessuno, e intanto <strong>453 px</strong> di contenuto finiscono sotto il bordo: per arrivare a
+        «Salva» si scorre. <em>Lo spazio c'è — è solo dalla parte sbagliata.</em></div>`;
+    } else {
+      m.innerHTML = `<div class="scheda">${testa}
+        <div class="duecol">
+          <div class="colonna">${sezSlot}${sezNote}${azioni}${EXTRA[varianteAttiva]}</div>
+          <div class="colonna">${sezGioc}</div>
+        </div></div>`;
+      d.innerHTML = `<div class="quota" style="top:14px;left:600px">tutto dentro, niente da scorrere</div>`;
+      s.innerHTML = `<div class="nota-box ok"><strong>La proposta:</strong> due colonne. A sinistra
+        <strong>Slot</strong>, <strong>Note</strong> e i bottoni; a destra <strong>Giocatori e pagamenti</strong>,
+        che è la sezione alta e quella che si guarda di più. Nessun campo cambia posto dentro la propria sezione:
+        cambia solo <strong>dove stanno le sezioni</strong>. ⇒ Si arriva a «Salva» <strong>senza scorrere</strong>,
+        e i giocatori restano tutti e quattro sott'occhio insieme agli importi.</div>`;
+    }
+  }
+  // 📏 L'altezza NON si dichiara: si misura sul disegno, e si dice se sfora.
+  function misura() {
+    const sc = document.querySelector('.scheda'); const el = document.getElementById('verdetto');
+    if (!sc || !el) return;
+    const h = Math.round(sc.getBoundingClientRect().height);
+    const dentro = h <= 761;
+    el.innerHTML = `<div class="nota-box ${dentro ? 'ok' : 'warn'}"><strong>Misurato su questo disegno:</strong>
+      la scheda è alta <strong>${h} px</strong> contro <strong>761</strong> visibili ⇒
+      ${dentro ? '<strong>entra, senza scorrere.</strong>' : '<strong>NON entra: mancano ' + (h - 761) + ' px</strong> — servirebbe allargare la finestra.'}</div>`;
+  }
+  const _mostra = mostra;
+  mostra = function (q) { _mostra(q); requestAnimationFrame(misura); };
+  mostra('prima');
+</script>
+</body>
+</html>
