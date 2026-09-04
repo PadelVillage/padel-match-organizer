@@ -61,6 +61,12 @@
    letto** — si trova aprendo una partita e guardando **entro il primo secondo**, prima che la
    lettura del worker atterri.
 3. Le **tre voci nuove (150 · 151 · 152) sono tutte APERTE** e aspettano il suo occhio.
+4. 🖥️⭐⭐ **LA 153, e spiega il punto 1**: il pannello della scheda è **fisso a 860 px** e non scala
+   col monitor. Misurato su PROD, stessa scheda: **1280×800 → sfora di 94 px** · 1440×900 → 0÷10 ·
+   1920×1080 → 0. ⇒ La cura della 152 è **tarata su un monitor solo**. Nel foglio di stile ci sono
+   **tredici** soglie diverse (560·620·680·720·760·899·900·960·1050·1100·1120·1180·1380): l'app non
+   scala, fa **gradini** non allineati. ⚠️ Il **calendario** non è ancora stato misurato — la sonda
+   non ha trovato la griglia — ed è nominato nella sua domanda.
 
 ---
 
