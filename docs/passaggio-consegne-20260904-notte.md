@@ -22,10 +22,10 @@
 | | inizio sessione | adesso |
 |---|---|---|
 | versioni app | PROD 6.334 · TEST 6.335 | **PROD 6.340 · TEST 6.341** |
-| PR fuse | — | **#1345 → #1348** (quattro) |
+| PR fuse | — | **#1345 → #1350** (sei) |
 | banco | 99 verdi | **102 verdi / 0 rossi** (su `test-preview`) |
-| voci chiuse | 122 | 122 (nessuna chiusa: tre nuove, tutte aperte per il suo occhio) |
-| urgenti | 6 | **9** (entrano 150, 151, 152) |
+| voci chiuse | 122 | 122 (nessuna chiusa: **quattro nuove**, tutte aperte) |
+| urgenti | 6 | **10** (entrano 150 · 151 · 152 · 153) |
 
 ---
 
@@ -172,7 +172,7 @@ undici le copie insieme**, o la prova di identità byte-per-byte diventa rossa.
 
 ---
 
-## 5. 🔨 LE TRE VOCI NUOVE — tutte in servizio, tutte APERTE
+## 5. 🔨 LE QUATTRO VOCI NUOVE — tre in servizio, una da decidere; tutte APERTE
 
 ### 🔔 150 — l'esito detto due volte in fondo alla scheda
 🗣️ *«Continuano ad esserci due messaggi uno dopo l'altro in basso alla scheda.»*
@@ -213,6 +213,21 @@ giro del difetto 136·145·147·150, stavolta sui soldi).
 ✅ TEST 6.340: a 1440 **744 in 744 ⇒ zero scorrimento**; a 390 una colonna.
 ⏳ **Non provato**: PROD, e il ramo «conto parziale».
 
+### 🖥️ 153 — la scheda non scala col monitor *(da decidere con lui, NIENTE è stato scritto)*
+🗣️ *«hai fatto anche un pensiero sul fatto di rendere scalabile/adattabile la scheda e il
+calendario a seconda del tipo di monitor? cioè se è un 15 pollici o un 13 o un 9?»*
+⚖️ **La risposta era no** — e la domanda **è la causa del difetto che la 152 non ha chiuso**.
+📏 Misurato su PROD 6.340, stessa scheda: **1280×800 → il pannello è 860 px = 67% dello schermo,
+la scheda sfora di 94 px** · 1440×900 → 0÷10 · 1920×1080 → 0. **Il pannello è fisso e non scala
+mai**; le colonne sono `330px` + il resto, quindi su uno schermo piccolo a stringersi è solo la
+colonna alta.
+📏 E nel foglio di stile ci sono **tredici** soglie diverse (560·620·680·720·760·899·900·960·1050·
+1100·1120·1180·1380), nate una per volta: l'app non **scala**, fa **gradini** non allineati.
+🔨 La forma di una risposta: pannello con `clamp()` invece di un numero, colonne in `fr` invece di
+`330px`, e le tredici soglie guardate **insieme**.
+⛔ Vuole un **mockup approvato** e misure su almeno tre larghezze vere. ⚠️ Il **calendario NON è
+stato misurato** (selettore sbagliato nella sonda) ed è nominato nella sua domanda.
+
 ---
 
 ## 6. 🧠 I DIFETTI DI METODO PRESI OGGI
@@ -246,7 +261,8 @@ giro del difetto 136·145·147·150, stavolta sui soldi).
 
 | | |
 |---|---|
-| **152** (aperta) | 🚨 **su PROD sfora ancora di ~10 px**, a intermittenza (vedi punto 0) · e il ramo «conto parziale» non è mai passato sul vivo |
+| 🖥️ **153** (aperta, **da decidere con lui**) | 🚨 **la più importante delle quattro**: il pannello è **fisso a 860 px** e non scala col monitor ⇒ su **1280×800 la scheda sfora di 94 px**. È la CAUSA di quello che la 152 non ha chiuso. ⚠️ Il **calendario** non è ancora misurato |
+| **152** (aperta) | 🚨 **su PROD sfora ancora di ~10 px** a 1440, a intermittenza (vedi punto 0), e **94 px** a 1280 (vedi 153) · il ramo «conto parziale» non è mai passato sul vivo |
 | **151** (aperta) | provata su PROD; manca il suo occhio |
 | **150** (aperta) | provata su TEST e PROD; manca il suo occhio |
 | **149** (aperta) | in servizio; che il trattino si veda bene lo dice il suo occhio |
@@ -274,6 +290,12 @@ dice «non si può» o «non c'è», la prima cosa da sospettare è la sonda.* S
 **quattro** volte — il `payRows` ereditato, i 26 record «mancanti», i due `setAttribute` «lontani»,
 la frase trovata nei commenti. **Quattro su quattro erano miei.**
 
-⭐⭐ E quella nuova, che è la lezione della 152: *chi cambia la **parentela** del DOM per ottenere
+⭐⭐⭐ **E LA LEZIONE PIÙ CARA DELLA SERATA, che è arrivata da una sua domanda e non da una misura:**
+ho misurato la 152 **a 1440**, curata **a 1440** e verificata **a 1440** — e mi ero convinto che
+fosse fatta. È bastato che lui chiedesse *«e su un 13 pollici?»* per scoprire che mancavano **94
+px**. 📌 *Una cura verificata su un solo caso non è verificata: è **coincidente**. E il caso su cui
+la verifichi è quasi sempre quello su cui l'hai scritta.*
+
+⭐⭐ E quella della 152: *chi cambia la **parentela** del DOM per ottenere
 un layout paga in **guardie che muoiono in silenzio**.* Una disposizione si cambia con la
 disposizione.
