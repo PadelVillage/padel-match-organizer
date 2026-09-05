@@ -749,6 +749,55 @@ Deno.serve(async (req: Request) => {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
   }
 
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+  // 🧪⏳ STUB DI COLLAUDO — VOCE 72, 06/09/2026. **TEMPORANEO**: si toglie rimettendo la
+  // funzione dal ramo (`deploy-edge-functions-test.yml`, `matchpoint-bookings-create`).
+  //
+  // 🚨 STA DENTRO IL RECINTO, non al posto suo: la condizione è la STESSA
+  // (`!scritturaAlCircoloConsentita`), quindi su PROD questo blocco non esiste nemmeno — e il
+  // worker non viene chiamato neanche di qua. Ciò che sostituisce non è la guardia: è l'ESITO,
+  // cioè il corpo con cui il worker rifiuta, che su TEST non si può ottenere altrimenti (fuori
+  // dalla produzione al worker non ci si parla, e sopra il worker c'è il Matchpoint vero).
+  //
+  // ⚖️ Il corpo finto è quello VERO del 22/08 (registro del worker, 10:56:51 UTC):
+  // `SAVE_BUTTON_NOT_FOUND` con gli step che finiscono in `save_button_not_found`. Fra le due
+  // corse del collaudo cambia UNA cosa sola — `save_attempt` fra i `navigationAttempts` — che è
+  // la CREPA della voce 72: **stesso codice, due fatti opposti**.
+  if (!scritturaAlCircoloConsentita(supabaseUrl)) {
+    const corpoFinto: JsonMap = {
+      ok: false,
+      error: 'SAVE_BUTTON_NOT_FOUND',
+      message: 'Bottone "Salvare" non trovato (url=https://app-padelvillage-it.matchpoint.com.es/…)',
+      diagnostic: {
+        navigationAttempts: [
+          { action: 'osservazioni_tab_click' },
+          { action: 'osservazioni_textarea_absent' },
+          { action: 'save_button_not_found' },
+        ],
+      },
+    };
+    // Stesso cablaggio della strada vera (`callWorkerCreateBooking` + il suo `catch`): la
+    // regola la decide il modulo puro, qui c'è solo il filo.
+    const testo = `Worker error 500: ${errorText(corpoFinto.message || corpoFinto.error || corpoFinto)}`;
+    const workerErr = esitoDellaRispostaWorker(corpoFinto) === 'ignoto'
+      ? erroreEsitoIgnoto(testo)
+      : new Error(testo);
+    const codice = codiceDiRifiuto(workerErr);
+    console.warn(JSON.stringify({ event: 'stub_collaudo_voce_72', variante: 'certo', codice }));
+    await annotaFallimentoAlCircolo({
+      azione: 'create',
+      status: codice === 'WORKER_ESITO_IGNOTO' ? 'unknown' : 'error',
+      errore: errorText(workerErr),
+      richiesta: booking,
+      attore: actor.email,
+    });
+    return err(502, codice, errorText(workerErr), {
+      booking,
+      ...(codice === 'WORKER_ESITO_IGNOTO' ? { esitoIgnoto: true } : {}),
+    });
+  }
+  // ══════════════════════════════════════════════════════════════════════════════════════════
+
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // 🚨 STA PRIMA DEL RAMO ASINCRONO, e non è un dettaglio: di là la risposta torna subito e la
   // prenotazione parte in sottofondo. Un recinto messo dopo avrebbe lasciato aperta proprio la
