@@ -931,16 +931,27 @@ Deno.serve(async (req: Request) => {
       if ([...roster.chiavi.keys()].some((nn) => nameVariants.has(nn))) quante += 1;
     }
 
-    // ⭐ LA FRESCHEZZA: `synced_at` più recente fra le righe prenotazione, cioè l'ultimo giro di
-    // sync ATTERRATO. Si guardano TUTTE le righe, anche le cancellate: una cancellata porta
-    // l'istante in cui è stata vista l'ultima volta, che è comunque un giro atterrato.
-    // 🚨 Un giro FALLITO non sposta questo valore, ed è precisamente ciò che lo rende una
-    // testimonianza: le righe si riscrivono solo a esportazione riuscita.
+    // ⭐ LA FRESCHEZZA: l'istante dell'ultimo giro di sync ATTERRATO.
+    //
+    // 🔄 05/09/2026 — SI LEGGE DAL TIMBRO DEL GIRO, non più da `max(synced_at)` sulle righe
+    //    prenotazione. Qui c'era: *«si guardano TUTTE le righe, anche le cancellate»*.
+    //    ⚖️ Il significato è lo STESSO e la garanzia pure — quel timbro
+    //    (`matchpoint_bookings_auto_import_last`) sta nello **stesso upsert** delle righe, quindi
+    //    un giro fallito non lo sposta, che è esattamente ciò che rende la freschezza una
+    //    testimonianza e non una data.
+    //    🚨 Ma il PREZZO era enorme: leggere `max(synced_at)` dalle righe obbligava il sync a
+    //    RISCRIVERLE TUTTE a ogni giro, invariate comprese, per tenere il timbro fresco.
+    //    📏 Misurato su PROD il 05/09: **437 righe riscritte ogni 2 minuti, di cui 0 cambiate**
+    //    — ~250.000 scritture inutili al giorno, e `n_tup_upd` a **14,3 milioni** con
+    //    `n_tup_hot_upd` a **ZERO** (ogni riscrittura è una riga nuova più tutti gli indici).
+    //    È la fabbrica di WAL che ha portato all'avaria del database quella mattina.
+    // 📌 *Un dato che si legge da mille righe obbliga a scrivere mille righe per tenerlo vero:
+    //    il costo di una lettura non si paga leggendo, si paga a monte.*
     const { data: frescoRows, error: frescoErr } = await service
       .from('pmo_cloud_records')
       .select('synced_at')
-      .in('record_type', ['booking', 'booking_occupancy'])
-      .order('synced_at', { ascending: false })
+      .eq('record_type', 'matchpoint_data')
+      .eq('local_key', 'matchpoint_bookings_auto_import_last')
       .limit(1);
     if (frescoErr) return err(500, 'DB_ERROR', 'Errore lettura freschezza della copia.');
     const copiaFrescaAl = clean(frescoRows?.[0]?.synced_at) || null;

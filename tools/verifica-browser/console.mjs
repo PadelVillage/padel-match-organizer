@@ -293,19 +293,39 @@ try {
   report.forceEnv = cfg.forceEnv;
 
   if (arg.login) {
-    await page.fill('#pmoStaffEmail', email);
-    await page.fill('#pmoStaffAuthPassword', password);
-    await page.click('#pmoLoginButton');
-    try {
-      await page.waitForFunction(
-        () => document.body.classList.contains('pmo-auth-unlocked') ||
-              getComputedStyle(document.getElementById('pmoLoginOverlay')).display === 'none',
-        { timeout: 30000 }
-      );
-      report.login = 'ok';
-    } catch {
-      const msg = await page.evaluate(() => document.getElementById('pmoLoginMessage')?.textContent || '');
-      throw new Error(`Login non riuscito: ${msg || 'nessun messaggio dalla pagina'}`);
+    /* 🔁 SI RIPROVA, e non è pignoleria: l'APP aborta il login da sé dopo 20 secondi
+       (`PMO_SUPABASE_AUTH_TIMEOUT_MS`), e in una giornata in cui il database è lento
+       l'autenticazione ci mette di più. Premere «Accedi» UNA volta sola rendeva l'attrezzo
+       inutilizzabile proprio nel momento in cui serve per diagnosticare.
+       📏 Misurato il 05/09/2026, durante l'avaria del database di PROD: quattro tentativi di
+       fila caduti tutti sullo stesso «Accesso non completato entro 20 secondi», mentre una
+       lettura REST passava in 5 secondi. ⇒ Non era il gestionale a essere irraggiungibile: era
+       l'attrezzo a chiedere una volta e ad arrendersi.
+       📌 *Uno strumento di diagnosi che non regge la giornata storta non c'è proprio, perché la
+          giornata storta è l'unica in cui serve.* */
+    const TENTATIVI_LOGIN = 5;
+    let ultimoMsg = '';
+    for (let t = 1; t <= TENTATIVI_LOGIN; t++) {
+      await page.fill('#pmoStaffEmail', email);
+      await page.fill('#pmoStaffAuthPassword', password);
+      await page.click('#pmoLoginButton');
+      try {
+        await page.waitForFunction(
+          () => document.body.classList.contains('pmo-auth-unlocked') ||
+                getComputedStyle(document.getElementById('pmoLoginOverlay')).display === 'none',
+          { timeout: 45000 }
+        );
+        report.login = t === 1 ? 'ok' : `ok (al ${t}º tentativo)`;
+        break;
+      } catch {
+        ultimoMsg = await page.evaluate(() => document.getElementById('pmoLoginMessage')?.textContent || '');
+        if (t === TENTATIVI_LOGIN) {
+          throw new Error(`Login non riuscito dopo ${TENTATIVI_LOGIN} tentativi: ${ultimoMsg || 'nessun messaggio dalla pagina'}`);
+        }
+        // Si respira fra un tentativo e l'altro: insistere su un'autenticazione in affanno la
+        // peggiora, e il tempo che si aspetta è quello che le serve per riprendersi.
+        await page.waitForTimeout(4000 * t);
+      }
     }
     await page.waitForTimeout(arg.attesa);
   } else {
