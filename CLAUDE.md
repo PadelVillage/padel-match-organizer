@@ -945,6 +945,34 @@ guardare da solo.
 prova niente (23/08, ore 17:20: la cura della 77 era ancora commentata e il suo annullo sarebbe
 passato a vuoto).
 
+🆕🗣️⭐⭐ **I DUE PERMESSI, e non sono lo stesso permesso — sue parole del 05/09/2026 sera:**
+
+> *«per quanto riguarda test puoi fare tutte le prove che vuoi perché non viene toccato matchpoint.
+> Invece su prod, se devi fare delle prove, dimmelo perché c'è una partita lunedì alle ore nove
+> campo 4 a nome lidia e fabiola che puoi utilizzare perché sono persone di segreteria di Padel
+> Village.»*
+
+· 🧪 **TEST — MANO LIBERA, non si chiede niente.** Le scritture verso Matchpoint sono **simulate**,
+  quindi nessuna prova può toccare il circolo. Vale per prenotare, disdire, aprire e richiudere,
+  togliere un giocatore, per le **schede doppie messe apposta** nel database di `cudi…` e per
+  qualunque copione di `collaudo-conversazione`. ⇒ Davanti a una voce che aspetta una prova, su
+  TEST **si prova**, non si chiede il permesso.
+· 🚨 **PROD — SI DICE PRIMA, sempre.** E adesso c'è **dove** provare: 📏 misurata sul gestionale il
+  05/09, **lunedì 7 settembre, ore 09:00, Campo 4**, roster `-Lidia Comes.-Ospite.-Ospite.-Fabiola
+  Limuti.`. ⭐ È **arrivata dal sync**, quindi ha la `descrizione` — cioè un **roster leggibile**,
+  che è esattamente ciò che su TEST non si può avere (vedi il paragrafo sulle prenotazioni nate dal
+  bot). E Lidia e Fabiola stanno **tutt'e due nella whitelist Telegram** ⇒ i gesti del bot su di
+  loro si esercitano davvero, non per finta.
+
+⚖️ **Il permesso è sul BERSAGLIO, non sul gesto**: avere la partita di servizio non toglie l'obbligo
+di annunciare una scrittura vera sul Matchpoint del circolo o un messaggio che parte verso dei soci
+— resta la riga della delega del 23/08. Quello che toglie è la **domanda su dove**: la risposta c'è.
+⚠️ **È una risorsa che si consuma**: se una prova la lascia diversa da com'era — un giocatore tolto,
+la partita aperta — si rimette com'era, o lo si dice. E la data è **quel** lunedì: passato il 7/09
+la partita non c'è più, e la riga qui sopra va riletta come un esempio, non come un indirizzo.
+📌 *Il freno su PROD non è mai stato «non toccare»: era «non so su cosa toccare senza fare danno».
+Sciolto quello, resta solo l'annuncio.*
+
 ### 🧹 …E UNA VOCE PROVATA SI SPOSTA FRA LE CHIUSE **SUBITO** (FERMA, 04/09/2026 notte)
 
 🗣️ Sue parole, guardando la lista delle urgenti: *«molti di questi task sono chiusi, però non sono
