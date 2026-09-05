@@ -1,0 +1,121 @@
+# SENTINELLA DELLA SALUTE DEL DATABASE — voce 161.
+#
+# Misura una volta al giorno i numeri che l'avaria del 05/09 (voce 160) aveva reso
+# visibili per settimane senza che nessuno li guardasse, e SUONA su Telegram quando
+# escono di riga.
+#
+# ⭐⭐ PERCHE' QUI E NON SULLA VM, che e' l'opposto della scelta fatta per la sorella
+#     (la sentinella della freschezza di TEST, che sta sulla VM apposta):
+#     quella sorveglia la SINCRONIA, che gira su Actions ⇒ su Actions sarebbe morta
+#     insieme a cio' che guarda. Questa sorveglia SUPABASE, che con Actions non ha
+#     niente a che vedere ⇒ quell'argomento non si applica.
+#     ⚖️ E cade a favore, per una ragione di sicurezza: per leggere pg_stat_user_tables
+#        e pg_ls_waldir() serve una credenziale di AMMINISTRAZIONE del progetto. Qui
+#        SUPABASE_ACCESS_TOKEN c'e' gia' (lo stesso dei deploy) e non esce mai; portarlo
+#        sulla VM vorrebbe dire posare accanto ai due bot una chiave che puo' cancellare
+#        il database. Una guardia non si paga allargando la superficie che difende.
+#     ⛔ Il prezzo, detto: se Actions e' in avaria questa sentinella tace, e gli schedule
+#        di GitHub si spengono da soli dopo ~60 giorni di repo fermo. Il primo caso costa
+#        una misura (il delta si normalizza sul TEMPO passato, non sui giri, quindi la
+#        lettura dopo recupera); il secondo si vede perche' smette di arrivare il BATTITO.
+#
+# 🔑 Serve TELEGRAM_SENTINELLA_CHAT_ID (+ token) per avere una voce. Senza, gira
+#    DISARMATA: misura, scrive la storia, e dichiara nel registro cio' che avrebbe
+#    mandato. Una guardia disarmata che lo dichiara e' onesta; una che crede di aver
+#    parlato no.
+
+name: Sentinella salute database (voce 161)
+
+on:
+  schedule:
+    # 05:20 UTC = 07:20 a Roma. Dopo l'anagrafica-mirror delle 05:00 e fuori dalla
+    # pausa notturna del sync (01:00-06:00): la finestra di 24 ore che si misura
+    # e' cosi' sempre la stessa, e i confronti fra un giorno e l'altro reggono.
+    - cron: '20 5 * * *'
+  workflow_dispatch:
+    inputs:
+      progetto:
+        description: 'Quale database guardare'
+        required: true
+        type: choice
+        options: [prod, test]
+        default: prod
+      muto:
+        description: 'Solo misura: non scrive la lettura e non manda niente'
+        required: false
+        type: boolean
+        default: false
+      prova:
+        description: 'Manda solo un messaggio di prova (per armarla la prima volta)'
+        required: false
+        type: boolean
+        default: false
+
+# Due giri insieme sulla stessa storia si scriverebbero addosso: il secondo
+# leggerebbe come «lettura di ieri» quella che il primo ha appena messo.
+concurrency:
+  group: sentinella-salute-db
+  cancel-in-progress: false
+
+jobs:
+  guarda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Il banco, PRIMA di guardare il database vero
+        # Se il pensiero e' rotto, la misura che ne esce e' peggio di nessuna misura:
+        # arriverebbe con l'autorevolezza di un numero.
+        run: node tools/sentinella-salute-db/banco-salute.mjs
+
+      - name: Guarda (o prova la voce)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          TELEGRAM_SENTINELLA_TOKEN: ${{ secrets.TELEGRAM_SENTINELLA_TOKEN }}
+          TELEGRAM_SENTINELLA_CHAT_ID: ${{ secrets.TELEGRAM_SENTINELLA_CHAT_ID }}
+          SCELTA: ${{ github.event.inputs.progetto || 'prod' }}
+        run: |
+          set -euo pipefail
+          if [ "$SCELTA" = "test" ]; then
+            export PMO_PROGETTO_REF=cudiqnrrlbyqryrtaprd PMO_PROGETTO_NOME=TEST
+          else
+            export PMO_PROGETTO_REF=qqbfphyslczzkxoncgex PMO_PROGETTO_NOME=PROD
+          fi
+          echo "🩺 guardo $PMO_PROGETTO_NOME ($PMO_PROGETTO_REF)"
+          ARG=""
+          [ "${{ github.event.inputs.prova }}" = "true" ] && ARG="--prova"
+          [ "${{ github.event.inputs.muto }}" = "true" ] && ARG="$ARG --muto"
+
+          # 🚨 TRE esiti, non due: 0 fatto · 2 disarmata (IN ATTESA, non rotta) · 1 guasto.
+          #    Un rosso per una credenziale che manca e' un rosso che si smette di leggere:
+          #    e' la stessa ragione per cui guard-worker-sync e' stata resa paziente.
+          set +e
+          node tools/sentinella-salute-db/sentinella.mjs $ARG
+          ESITO=$?
+          set -e
+          case "$ESITO" in
+            0) echo "✅ giro fatto" ;;
+            2) echo "::warning::La sentinella GUARDA ma non PUO' PARLARE: le manca una voce."
+               echo "Non e' rotta, e' in attesa. Metti TELEGRAM_SENTINELLA_CHAT_ID e rilancia." ;;
+            *) echo "::error::La sentinella non e' riuscita a misurare — questo e' un guasto vero."
+               exit 1 ;;
+          esac
+
+      # Il giro non e' finito quando il programma esce: e' finito quando la lettura
+      # e' NELLA STORIA. Una sentinella che misura e non ricorda non ha un delta
+      # domani, cioe' non e' una sentinella.
+      - name: Ha davvero RICORDATO?
+        if: ${{ github.event.inputs.prova != 'true' && github.event.inputs.muto != 'true' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SCELTA: ${{ github.event.inputs.progetto || 'prod' }}
+        run: |
+          set -euo pipefail
+          REF=qqbfphyslczzkxoncgex; NOME=PROD
+          [ "$SCELTA" = "test" ] && { REF=cudiqnrrlbyqryrtaprd; NOME=TEST; }
+          RISP=$(curl -sS -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"query\":\"select misurato_at, verdetto, consecutivi from public.pmo_sentinella_salute where progetto = '$NOME' order by id desc limit 1;\"}")
+          echo "$RISP"
+          echo "$RISP" | grep -q '"verdetto"' \
+            || { echo "::error::nessuna lettura nella storia: ha misurato ma non ha ricordato"; exit 1; }
