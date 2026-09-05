@@ -772,7 +772,6 @@ Deno.serve(async (req: Request) => {
         navigationAttempts: [
           { action: 'osservazioni_tab_click' },
           { action: 'osservazioni_textarea_absent' },
-          { action: 'save_attempt' },
           { action: 'save_button_not_found' },
         ],
       },
@@ -784,7 +783,7 @@ Deno.serve(async (req: Request) => {
       ? erroreEsitoIgnoto(testo)
       : new Error(testo);
     const codice = codiceDiRifiuto(workerErr);
-    console.warn(JSON.stringify({ event: 'stub_collaudo_voce_72', variante: 'ignoto', codice }));
+    console.warn(JSON.stringify({ event: 'stub_collaudo_voce_72', variante: 'certo', codice }));
     await annotaFallimentoAlCircolo({
       azione: 'create',
       status: codice === 'WORKER_ESITO_IGNOTO' ? 'unknown' : 'error',
