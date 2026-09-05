@@ -140,12 +140,65 @@ libero e l'incasso **fuori**.
 📌 *La riga non separa «scritture pericolose» da «scritture innocue»: separa ciò che si può
 rifare da ciò che qualcuno deve contare.*
 
-🔑 **E CI VUOLE UN CANCELLO APERTO DA LUI, che è una cosa diversa dal permesso.** Misurato il
-04/09: l'utenza della console remota ha `role: "readonly"`, e
-`pmoBlockWriteIfReadonly('modificare una prenotazione')` ferma `staffCalPlayersSave` **alla prima
-riga**, prima di qualunque messaggio. ⇒ Finché quel ruolo è `readonly`, «campo libero» non si
-attraversa lo stesso: la regola dà il **permesso**, il ruolo dà la **possibilità**, e servono
-tutte e due. La procedura per aprirlo sta in **🌐 Console remota**, sotto *«i tre cancelli»*.
+🔑 **CI VUOLE UN CANCELLO APERTO DA LUI, che è una cosa diversa dal permesso** — la regola dà il
+**permesso**, il ruolo dà la **possibilità**, e servono tutte e due.
+✅ **APERTO, e questa riga diceva il contrario fino al 05/09/2026.** Diceva *«l'utenza della
+console ha `role: "readonly"`, quindi campo libero non si attraversa lo stesso»*: era vera il
+04/09, e lui l'ha aperto dopo. 📏 Misurato il 05/09 sulla pagina viva di PROD, prima di toccare
+qualunque cosa: `padelvillage.club+claude@gmail.com` ha **`role: "staff"`**, `cloud_sync: true`.
+⭐ E l'ha aperto **giusto**: `staff` e non `admin`/`owner`, quindi la whitelist dei permessi è
+rimasta **intera** — `manage_users`, `view_admin_utenti`, `view_members_anagrafica`,
+`view_members_borsellino` restano tutti **no**. È esattamente la differenza scritta più sotto:
+*si apre il cancello che serve, non la porta che sta accanto*.
+🚨 **E il ruolo si MISURA, non si ricorda**: si legge `pmoStaffProfile.role`, mai
+`pmoIsReadonlyStaff()` — quella torna `false` anche quando il profilo **non c'è affatto** (`!!p`),
+quindi direbbe «posso scrivere» proprio nel caso in cui non si è nessuno.
+
+### 👥 I CINQUE DESTINATARI DI CASA: i loro avvisi si possono far partire (FERMA, 05/09/2026)
+
+🗣️ **Sue parole**, dopo che mi ero fermato davanti a due telefoni veri — e poi allargate da lui
+nel giro di un minuto:
+
+> *«Puoi utilizzare Lidia Comes e Fabiola Limuti tranquillamente perché sono persone di
+> segreteria. Segnatela.»* · *«Come anche Marco Aprea e Laura Aprea.»* · *«Anche Maurizio
+> Aprea.»*
+
+⇒ **Sulla scheda che lui ha segnalato, i gesti che AVVISANO si provano fino in fondo** — anche
+quelli che fanno arrivare un messaggio vero su un telefono vero, se il telefono è uno di questi:
+
+| chi | `chat_id` |
+|---|---|
+| **Lidia Comes** | 8602768462 |
+| **Fabiola Limuti** | 1110380688 |
+| **Marco Aprea** | 6420557069 |
+| **Laura Aprea** | 6759398557 |
+| **Maurizio Aprea** (il committente stesso, detto da lui) | 1256773674 |
+
+📌 **Sono TUTTA la rubrica di PROD** — misurato il 05/09: `telegram_rubrica` su `ayly…` ha
+esattamente queste cinque persone con `tolto_il` nullo, e lui le ha nominate **tutte e cinque**,
+in tre messaggi di fila. ⇒ **Oggi** la regola copre chiunque il bot possa raggiungere.
+🚨 **E proprio per questo va guardata la TABELLA, non ricordata questa riga**: il giorno in cui
+entra un socio vero la rubrica smette di essere «gente di casa», e questa riga — che oggi è vera
+— diventerebbe il permesso di scrivere a uno sconosciuto. *Una lista che oggi coincide con
+«tutti» non è «tutti»: è una lista che si allunga senza avvisare.*
+🔎 Prima di far partire un avviso di prova: `select etichetta, chat_id from telegram_rubrica
+where tolto_il is null` — se compare un nome che non è in tabella, quel nome è **fuori**.
+
+📏 **Perché la domanda era nata, e perché era giusta farla** *(misurato il 05/09 prima di
+scrivere)*: gli avvisi ai soci nascono da **cinque** gesti e solo cinque —
+`aggiunto` · `tolto` · `annullata` · `spostata` · `formazione`
+(`supabase/functions/matchpoint-bookings-sync/eventi-staff.ts`). ⇒ **nota, descrizione, durata e
+importo a carico non fanno partire NIENTE**, e sono la strada per provare la catena senza
+disturbare nessuno. E i destinatari qui sopra hanno **chat_id propri** (non il suo) e esiti
+`passato_al_bot` recenti: i messaggi arrivano davvero, non finiscono nel vuoto.
+
+⚖️ **Cosa NON diventa libero, e va tenuto distinto**: questa riga dice che **quelle persone** si
+possono avvisare, non che gli avvisi ai soci siano diventati liberi. Verso **chiunque altro**
+resta la regola di sempre — un messaggio che parte verso un socio è **irreversibile e si vede da
+fuori**, quindi si dice prima. 📌 *Non è caduta la regola: è stato dichiarato che quei
+destinatari stanno dentro casa.*
+🩹 E la coda si guarda **prima e dopo** (`pmo_eventi_staff`, righe totali e `max(created_at)`):
+è il modo di sapere se è partito qualcosa invece di crederlo.
 
 🔄 **QUESTO CORREGGE LA RIGA QUI SOPRA, non la affianca.** *«Il secondo è suo su quello vero»*
 resta vero **ovunque tranne che sulla scheda che lui ha segnalato**. Se un domani le due
