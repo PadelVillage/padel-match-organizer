@@ -238,6 +238,22 @@ sposta, e il commit resta nella storia.
 | **Bot Telegram soci** `@loziocoach_bot` | `assistente-padel-agent` (**privato**) | nessun deploy automatico: gira in **pm2 sulla VM Hetzner** (`/opt/assistente-padel-agent`, Node 24 in `/opt/node24`) | ponti edge su `qqbf…` + memoria e whitelist su `aylykijfirtegyxzdwgu` |
 | **Emulatore** | `chat-giocatori-emulatore` | `main` → Pages | nessuno (solo localStorage) |
 
+🖥️ **Il COMPUTE di PROD è MICRO dal 05/09/2026** (1 GB di RAM, 2 core), free upgrade fatto dal
+committente alle 14:03 di quel giorno. Prima era **NANO** (0,5 GB), ed è la ragione per cui un
+eccesso di scritture è diventato un **blocco totale** di otto ore (voce 160): letture da 30-40 s,
+login impossibile, sync fermo. La causa cronica era il sync che riscriveva **437 righe invariate
+ogni 2 minuti** — 62 GB di WAL per un database da 685 MB — curata lo stesso giorno (PR #1382) e
+**dimostrata** nel pomeriggio: 1-2 aggiornamenti per giro. 📏 Con 2.800 soci, il bot e tre sync
+1 GB resta tirato: **SMALL** (2 GB, ~15 $/mese) è la scelta che evita di ritrovarsi lì, ed è una
+decisione di **costo**, quindi sua — sta fra le decisioni in testa a `docs/lavori/README.md`.
+🚨⭐ **E la lezione operativa, pagata quella mattina con tre tentativi andati a vuoto: un
+ripristino in `finally` protegge dall'ECCEZIONE, non dal TEMPO.** Un gettone scaduto durante un
+giro lungo fa partire il ripristino **a vuoto**, e i tentativi successivi li uccidono i **propri**
+timeout (700 s, 1500 s, 420 s), non il database. ⇒ Su PROD ogni giro di scrittura va **corto e
+separato**, con il gettone ripreso **prima di ogni chiamata** — e le console remote aperte si
+chiudono quando non servono, perché il polling del semaforo ogni 4 s (voce 162) pesa proprio
+quando il database rallenta.
+
 ⛔ **La web app dei soci (`soci.padelvillage.club`) è DISMESSA dal 25/07/2026**, per decisione del
 committente dopo che il bot Telegram è andato in servizio: Pages spento, repo `padel-match-assistant`
 tornato **privato**, record DNS `soci` eliminato, e le due edge di login (`consumer-auth-start`,
