@@ -13,6 +13,7 @@ import {
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
+import { esitoDelRifiutoDiModifica } from './esito-modifica.ts';
 // 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
 // esteso sopra `dichiaraSpostamentoAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
@@ -233,9 +234,21 @@ async function callWorkerEditBooking(opts: {
     throw new Error('WORKER_EDIT_BOOKING_NOT_IMPLEMENTED: Il worker browser non espone /edit-booking. Verifica che il worker sia aggiornato e deployato.');
   }
 
-  throw new Error(
+  // 🆕🔇 VOCE 118 (05/09/2026) — UN RIFIUTO DEL WORKER NON È SEMPRE «NON È PASSATA».
+  // Fino a oggi ogni corpo `ok:false` usciva di qui come errore semplice ⇒ `WORKER_ERROR` ⇒ a
+  // valle (consumer-booking-write, poi il bot) «non ci sono riuscito». Ma un
+  // `locator.click: Timeout` a metà di una rimozione vuol dire «ho premuto e non so com'è
+  // finita», e la modifica scrive su Matchpoint in modo INCREMENTALE (vedi il commento sul
+  // retry qui sopra): il click può essere passato. ⇒ Il verdetto lo dà `esito-modifica.ts`
+  // — i fallimenti CERTI per nome, il diario del worker per i gesti già fatti, e tutto il
+  // resto è ignoto — e il marchio è lo stesso della strada di rete: `esitoIgnoto`, che i due
+  // `catch` di questa edge leggono già.
+  const verdetto = esitoDelRifiutoDiModifica({ status: res.status, corpo: body, readOnly: edit.read === true });
+  const e = new Error(
     `Worker error ${res.status} (nessun retry): ${errorText((body as JsonMap).message || (body as JsonMap).error || body)}`,
-  );
+  ) as Error & { esitoIgnoto?: boolean };
+  if (verdetto === 'ignoto') e.esitoIgnoto = true;
+  throw e;
 }
 
 async function saveStaffEditRecord(opts: {
