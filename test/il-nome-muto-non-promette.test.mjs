@@ -90,9 +90,20 @@ function dichiarazioneDi(nome) {
 //       fallisce contro una funzione difesa così, il primo sospettato è la prova.*
 const CLEAN = function (v) { return String(v == null ? '' : v).trim(); };
 const codiceInterno = new Function(dichiarazioneDi('_staffCalPlayerCode') + '\nreturn _staffCalPlayerCode;')();
+// 🎭 La regola del jolly si INIETTA VERA, non si imita: `_staffCalSocioDelGiocatore` chiama
+//    `isGuestJollyMember`, che a sua volta poggia su `playerFullName`, `isGuestJollyName`,
+//    `normalizeKey` e `normalizeText`. Rifarne una copia qui vorrebbe dire provare la copia:
+//    il giorno in cui l'app cambia la definizione di «Ospite», questo banco resterebbe verde
+//    difendendo una regola che non esiste più.
+// 🩹 E `cleanCell` sta in cima alla catena, non per completezza: senza, `normalizeText` esplode,
+//    il `try/catch` di `_staffCalSocioDelGiocatore` ingoia l'eccezione e torna `null` ⇒ OGNI nome
+//    diventa muto e il banco dice «socio non trovato», che somiglia a un difetto della cura.
+//    📏 Successo qui il 05/09: tre prove rosse in un colpo, e la cura era sana.
+const REGOLE_JOLLY = ['cleanCell', 'normalizeText', 'normalizeKey', 'playerFullName', 'isGuestJollyName', 'isGuestJollyMember']
+  .map(dichiarazioneDi).join('\n');
 const trovaSocio = new Function(
   'giocatori', '_staffCalPlayerCode',
-  dichiarazioneDi('_staffCalSocioDelGiocatore') + '\nreturn _staffCalSocioDelGiocatore;'
+  REGOLE_JOLLY + '\n' + dichiarazioneDi('_staffCalSocioDelGiocatore') + '\nreturn _staffCalSocioDelGiocatore;'
 );
 
 // 🚨 I SOCI DI PROVA SONO COSTRUITI SUL DIFETTO VERO: ognuno ha DUE numeri diversi, e per m2 il
@@ -102,6 +113,11 @@ const SOCI = [
   { id: 'm1', nome: 'Alberto Chiapinotto', memberId: '000140', matchpointIdInterno: '9911' },
   { id: 'm2', nome: 'Erika Poser',         memberId: '9911',   matchpointIdInterno: '4477' },
   { id: 'm3', nome: 'Senza id interno',    memberId: '000255', matchpointIdInterno: '' },
+  // 🎭 IL JOLLY, COPIATO DAI DATI VERI e non immaginato. 📏 Su PROD il 05/09/2026 ci sono DUE
+  //    record «Ospite» vivi, tutt'e due `guestJolly: true`, codice cliente `000001` e id interno
+  //    `1` — e il roster di una partita porta l'Ospite con `idCliente: '1'`, non vuoto.
+  //    ⇒ Prima di questa riga il banco provava un Ospite SENZA id, cioè il caso che non capita.
+  { id: 'm4', firstName: 'Ospite', name: 'Ospite', memberId: '000001', matchpointIdInterno: '1', guestJolly: true },
 ];
 const cerca = (p) => trovaSocio(SOCI, codiceInterno)(p);
 
@@ -148,6 +164,47 @@ test('un «Ospite» non trova nessuno', () => {
   assert.equal(cerca({ nome: 'Ospite', idCliente: '' }), null);
   assert.equal(cerca({ nome: 'Ospite' }), null);
   assert.equal(cerca({ nome: 'Ospite', idCliente: null }), null);
+});
+
+test('🚨 un «Ospite» con l\'id VERO (1) resta muto — il caso misurato su PROD', () => {
+  // 📏 05/09/2026, console remota su PROD 6.363, partita del 07/09 19:30 Campo 2: il nome
+  //    «Ospite» usciva CLICCABILE, `role="link"`, tooltip «Apri la scheda di Ospite» — e apriva
+  //    il jolly del circolo. La scheda della voce dichiarava il contrario, e questo banco pure.
+  // ⚖️ Il difetto non era nella regola: era nel CASO DI PROVA. L'Ospite un id ce l'ha.
+  assert.equal(codiceInterno(SOCI[3]), '1', 'il jolly di prova non ha più l\'id interno vero');
+  assert.equal(cerca({ nome: 'Ospite', idCliente: '1' }), null, 'l\'Ospite apre ancora una scheda');
+  assert.equal(cerca({ nome: 'Ospite', idCliente: '01' }), null, 'zeri davanti: stesso jolly');
+});
+
+test('🎭 la PRIMA serratura: l\'id 1 è il jolly anche se l\'anagrafica se lo dimentica', () => {
+  // Su Matchpoint l'Ospite è il cliente `000001`, id interno `1`, e l'app lo dà già per assodato
+  // altrove (`_normRoster` riconosce l'Ospite senza nome proprio da quell'id). Se un giorno il
+  // record in anagrafica perdesse il flag `guestJolly` e il nome «Ospite» — un errore di
+  // importazione basta — la seconda serratura non scatterebbe più e il jolly tornerebbe
+  // cliccabile IN SILENZIO. Questa prova è l'unica che tiene in piedi quella riga.
+  const anagraficaSmemorata = [{ id: 'x9', nome: 'Cliente 1', matchpointIdInterno: '1' }];
+  assert.equal(trovaSocio(anagraficaSmemorata, codiceInterno)({ nome: 'Ospite', idCliente: '1' }), null);
+});
+
+test('🎭 la seconda serratura: un jolly agganciato da un id inatteso resta muto', () => {
+  // La prima serratura guarda l'id della riga (1). Questa guarda il socio TROVATO: se un domani
+  // il jolly avesse un altro id interno, il nome tornerebbe cliccabile senza che nessuno se ne
+  // accorga — ed è la stessa forma di difetto silenzioso della voce.
+  const jollyStrano = [{ id: 'x1', name: 'Ospite', guestJolly: true, matchpointIdInterno: '7788' }];
+  assert.equal(trovaSocio(jollyStrano, codiceInterno)({ nome: 'Ospite', idCliente: '7788' }), null);
+});
+
+test('🎭 il flag `ospite` del roster basta da solo', () => {
+  // `_normRoster` lo mette quando il worker manda l'Ospite col nome VUOTO: là il nome non dice
+  // niente, e l'unica cosa che resta a dirlo è il flag.
+  assert.equal(cerca({ nome: '', ospite: true, idCliente: '9911' }), null);
+});
+
+test('⚖️ e le due serrature non chiudono la porta a un socio vero', () => {
+  // Una guardia che sbaglia per eccesso qui si pagherebbe con nomi muti a caso, cioè con la
+  // voce 138 disfatta in silenzio. Il socio con id interno 9911 deve continuare ad aprirsi.
+  const s = cerca({ nome: 'Alberto Chiapinotto', idCliente: '9911' });
+  assert.ok(s && s.id === 'm1', 'la guardia del jolly ha mangiato un socio vero');
 });
 
 test('un id che non è un numero non aggancia niente', () => {
