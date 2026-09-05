@@ -1306,6 +1306,36 @@ Deno.serve(async (req) => {
         else unchangedOccupancyRows += 1;
       } else if (recordType === 'booking') changedBookingRows += 1;
       else changedOccupancyRows += 1;
+
+      /* 🚨⭐⭐ QUELLO CHE NON È CAMBIATO NON SI RISCRIVE — 05/09/2026.
+         Qui le righe invariate venivano contate come tali (`unchangedBookingRows`, due righe
+         più su) **e poi riscritte lo stesso**. Sapevamo che erano uguali, e le scrivevamo.
+
+         📏 Misurato su PROD il 05/09, dal timbro dell'ultimo giro: `unchangedBookingRows: 272`
+         e `unchangedOccupancyRows: 165` contro `changed: 0` e `new: 0`.
+         ⇒ **437 righe riscritte, zero cambiate.** Ogni 2 minuti, ~570 giri al giorno:
+         ~250.000 scritture inutili al giorno. Su `pmo_cloud_records`: `n_tup_upd`
+         **14.343.602** su **31.193** righe vive, e `n_tup_hot_upd` **ZERO** — nessuna
+         riscrittura economica, quindi ognuna è una riga nuova PIÙ tutte le voci d'indice.
+         ⇒ Una fabbrica di WAL. Quella mattina l'archiviazione del WAL ha smesso di farcela
+         (`archiving WAL file failed too many times`) e il database è diventato irraggiungibile
+         perfino per il servizio di autenticazione.
+
+         ⚖️ SI POTEVA FARE SOLO INSIEME A UN'ALTRA COSA, e senza quella sarebbe stato un danno:
+         `synced_at` su queste righe era il **certificato di freschezza** — ciò che permette al
+         bot di dire «no, non hai prenotato» invece di «non lo so ancora». Smettere di
+         riscriverle lo avrebbe congelato. ⇒ Il timbro è stato spostato sulla riga del GIRO
+         (`matchpoint_bookings_auto_import_last`, in `consumer-booking-write`), che sta nello
+         stesso upsert e porta la stessa garanzia: un giro fallito non la muove.
+         📌 *Non è una micro-ottimizzazione: è aver scoperto che tenere fresco UN dato costava
+            la riscrittura di MILLE righe, e aver spostato il dato invece di pagare il prezzo.*
+
+         ⛔ E NON tocca chi guarda il `synced_at` della SINGOLA riga
+         (`consumer-player-readmodel`, che distingue «il sync non ha ancora recepito» da
+         «qualcuno l'ha rimessa»): quel caso nasce da un roster CAMBIATO, e una riga cambiata
+         si scrive come prima. Una riga invariata non ha niente da rivelare. */
+      if (existingPayload && stableStringify(existingPayload) === stableStringify(payload)) return;
+
       records.push({
         record_type: recordType,
         local_key: localKey,
