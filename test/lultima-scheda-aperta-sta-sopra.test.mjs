@@ -192,26 +192,84 @@ test('④ e l\'esito dell\'anagrafica passa DAVVERO da svcOpenChat (la premessa 
 // ─────────────────────────────────────────────────────────────────────────────
 // ⑤ 🚨 la metà desktop sta dentro la soglia dei 900
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 🚨⭐⭐ QUALE `@media` CONTIENE un punto del foglio di stile — contando, non cercando.
+ *
+ * 🩹 Nasce da un ROSSO vero su `main` (05/09/2026): queste due prove usavano
+ * `lastIndexOf('@media')`, cioè *«la parola più vicina indietro»*. Poi un commento della voce
+ * 153/C — scritto **dentro** il blocco dei 900 px — ha nominato `@media` nella sua spiegazione,
+ * e la sonda ha ritagliato lì: la condizione che leggeva era mezza frase di prosa, e la prova è
+ * caduta su una regola che stava **esattamente dove doveva stare**.
+ *
+ * 📌 *Una sonda che cerca «il più vicino indietro» in un testo annidato non trova il contenitore:
+ * trova il vicino.* — è la stessa riga già scritta nella voce 155, curata là e rimasta qui. ⇒ La
+ * cura non è togliere la parola dal commento (curerebbe l'istanza, e domani un altro commento la
+ * riscrive): è **contare le graffe** e **saltare i commenti**, così nessun testo può più fingersi
+ * struttura.
+ *
+ * ⇒ Torna la condizione della `@media` che contiene `indice`, oppure `null` se è a livello base.
+ */
+function mediaCheContiene(indice, testo = APP) {
+  const pila = [];
+  let k = 0;
+  while (k < indice) {
+    // I commenti CSS si saltano interi: è lì che la prosa può nominare `@media` o `{`.
+    if (testo[k] === '/' && testo[k + 1] === '*') {
+      const fine = testo.indexOf('*/', k + 2);
+      k = fine === -1 ? indice : fine + 2;
+      continue;
+    }
+    if (testo[k] === '{') {
+      // Di chi è questa graffa? Si guarda il pezzo che la precede, fermandosi al confine del
+      // blocco precedente — così `@media …{` si riconosce e una regola qualunque no.
+      const daDove = Math.max(testo.lastIndexOf('}', k - 1), testo.lastIndexOf('{', k - 1)) + 1;
+      const testa = testo.slice(daDove, k);
+      pila.push(/@media/.test(testa) ? testa.trim() : null);
+      k++;
+      continue;
+    }
+    if (testo[k] === '}') { pila.pop(); k++; continue; }
+    k++;
+  }
+  for (let n = pila.length - 1; n >= 0; n--) if (pila[n]) return pila[n];
+  return null;
+}
+
 test('⑤ 🚨 la regola della scheda partita sta DENTRO @media (min-width:900px)', () => {
   const i = APP.indexOf('.svc-chat-panel.pmo-in-cima {');
   assert.ok(i > 0, 'regola non trovata');
-  const prima = APP.slice(0, i);
-  const j = prima.lastIndexOf('@media');
-  assert.ok(j > 0, 'la regola non sta dentro nessun @media');
-  const condizione = APP.slice(j, APP.indexOf('{', j));
+  const condizione = mediaCheContiene(i);
+  assert.ok(condizione, 'la regola non sta dentro nessun @media');
   assert.match(condizione, /min-width\s*:\s*900px/,
-    'la regola sta dentro «' + condizione.trim() + '» invece che sopra i 900 px: sul telefono la pila è un\'altra cosa');
+    'la regola sta dentro «' + condizione + '» invece che sopra i 900 px: sul telefono la pila è un\'altra cosa');
 });
 
 test('⑤ la regola della scheda SOCIO invece è di base, non dentro un @media', () => {
   const i = APP.indexOf('.member-card-overlay.pmo-in-cima {');
   assert.ok(i > 0, 'regola non trovata');
-  const prima = APP.slice(0, i);
-  const apreMedia = prima.lastIndexOf('@media');
-  // se l'ultima @media aperta prima è già stata chiusa, siamo fuori: conto le graffe.
-  let g = 0;
-  for (let k = apreMedia; k < i; k++) { const c = APP[k]; if (c === '{') g++; else if (c === '}') g--; }
-  assert.equal(g, 0, 'la scheda socio in cima è finita dentro un @media: sul telefono non varrebbe');
+  assert.equal(mediaCheContiene(i), null,
+    'la scheda socio in cima è finita dentro un @media: sul telefono non varrebbe');
+});
+
+// 🧪 La sonda si prova da sé, o è una guardia di cui nessuno ha mai visto il metro.
+// ⚖️ Sono le due trappole che l'hanno rotta davvero, non casi inventati: un commento che NOMINA
+//    `@media` dentro il blocco giusto, e un blocco già chiuso subito prima di quello che conta.
+test('⑤ la sonda non si fa ingannare da un commento che nomina @media', () => {
+  // 🩹⭐ Questa prova è nata SBAGLIATA e corretta subito, ed è il difetto che vale scrivere:
+  //    ricopiava la logica di `mediaCheContiene` qui dentro invece di chiamarla. Sabotando la
+  //    funzione vera restava verde — cioè misurava la propria copia.
+  //    📌 *Una prova che ricopia la logica invece di chiamarla non prova la logica: prova la copia,
+  //    e la copia non va in produzione.* ⇒ Ora la funzione prende il testo come argomento.
+  const finto = [
+    '@media (max-width:899px) { .a { color:red; } }',
+    '@media (min-width:900px) {',
+    '  /* qui si spiega in quale @media { sta la regola, con tanto di graffa */',
+    '  .bersaglio { z-index:1; }',
+    '}',
+  ].join('\n');
+  const condizione = mediaCheContiene(finto.indexOf('.bersaglio {'), finto);
+  assert.match(String(condizione), /min-width\s*:\s*900px/,
+    'il commento che nomina @media ha ingannato la sonda: è il rosso del 05/09 daccapo');
 });
 
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
