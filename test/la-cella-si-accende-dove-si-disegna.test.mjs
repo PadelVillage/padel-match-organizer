@@ -198,5 +198,39 @@ test('🚨 FALLISCE CHIUSA: coordinate mezze o orario illeggibile non accendono 
   assert.equal(svcCellaDelleCoordinate(GRIGLIA, { campo: 1, ora: '02:00' }), null, 'ora fuori da ogni pezzo');
 });
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   ⑤ IL TELEFONO — l'altra metà, e la scheda della voce la dava per persa
+   ───────────────────────────────────────────────────────────────────────────── */
+
+test('la cella si cerca nel calendario CHE SI VEDE, non solo in quello del computer', () => {
+  /* 📏 Misurato su TEST 6.359 a 390×844: l'agenda del telefono portava **24** pezzi con le
+     coordinate, la griglia del computer **0** perché nascosta — e le celle accese erano **0**,
+     perché la ricerca guardava solo `#staffCalGridTable`.
+     🩹 La scheda della 137 diceva che sul telefono «la metà cella non c'è per costruzione, le
+     `.cell` lì non esistono». Metà di quella frase è caduta con la cura: l'agenda la disegna la
+     STESSA funzione, quindi le coordinate ci sono. Restava che nessuno le guardasse. */
+  const corpo = soloCodice(corpoDi('svcContenitoreDelCalendario'));
+  assert.ok(/staffCalGridTable/.test(corpo) && /staffCalAgendaBody/.test(corpo),
+    'il contenitore non conosce tutt\'e due le viste');
+  for (const chi of ['svcAccendiCella', 'svcApriDallaPastiglia']) {
+    assert.ok(/svcContenitoreDelCalendario\(/.test(soloCodice(corpoDi(chi))),
+      chi + ' cerca ancora in un contenitore solo: sul telefono non troverebbe niente');
+  }
+});
+
+test('si sceglie per VISIBILITÀ, non ripetendo la soglia dei 900px', () => {
+  // La soglia sta già in `renderStaffCalendar`. Riscriverla qui creerebbe due verità che un
+  // giorno divergono, e il giorno che divergono la cella si accende nella vista nascosta.
+  const corpo = soloCodice(corpoDi('svcContenitoreDelCalendario'));
+  assert.ok(!/900/.test(corpo), 'la soglia dei 900px è stata copiata: ora ci sono due verità');
+  assert.ok(/getBoundingClientRect\(\)\.height > 0/.test(corpo), 'non si guarda la visibilità');
+});
+
+test('🚨 spegnere cerca OVUNQUE: girando il telefono non resta una accesa nella vista nascosta', () => {
+  const corpo = soloCodice(corpoDi('svcAccendiCella'));
+  assert.ok(/document\.querySelectorAll\('\.svc-cella-attiva'\)/.test(corpo),
+    'si spegne solo dentro il contenitore scelto: una accesa nell\'altra vista sopravvive al gesto');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
