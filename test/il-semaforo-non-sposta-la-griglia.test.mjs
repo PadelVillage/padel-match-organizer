@@ -219,8 +219,18 @@ test('la cella si riaccende SUBITO dopo un ridisegno della griglia', () => {
 });
 
 test('la cella accesa non sposta di un pixel quello che le sta intorno', () => {
-  const i = APP.indexOf('.cell.svc-cella-attiva {');
+  /* 🩹 05/09/2026 — qui c'era scritto `.cell.svc-cella-attiva`, ed era una guardia che
+     sorvegliava una regola SPENTA: la classe `.cell` la mette solo `_staffCalBuildGrid`, che
+     nessuno chiama. Il banco restava verde mentre la cella non poteva accendersi in nessun caso.
+     📌 *Una guardia può essere verde su una cosa che non esiste: controlla la FORMA, e la forma
+        di una regola morta è identica a quella di una viva.* */
+  const i = APP.indexOf('.svc-cella-attiva {');
   assert.ok(i > 0, 'manca la regola della cella accesa');
+  // ⚠️ `soloCodice`, non `APP`: il commento che spiega perché `.cell` è sparito la NOMINA, e
+  //    senza il filtro questa guardia accuserebbe la riga che la difende. Terza volta in tre
+  //    giorni che un commento fa cadere una sonda: si guarda il codice, non chi ne parla.
+  assert.ok(!/\.cell\.svc-cella-attiva/.test(soloCodice(APP)),
+    'la regola è tornata legata a `.cell`, che nella pagina viva non esiste');
   const regola = APP.slice(i, APP.indexOf('}', i));
   assert.ok(/outline:/.test(regola), 'usa un `border`, che cambia la scatola e sposta la griglia');
   assert.ok(!/(^|[^-])border:/.test(regola), regola);
