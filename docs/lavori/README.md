@@ -2237,7 +2237,7 @@ caratteri, e il difetto sarebbe tornato alla prima riga nuova scritta con `conso
 ⇒ **La voce si chiude al primo `esito IGNOTO` datato dopo il timbro**, che dirà se il nome esce
 ancora. Non prima: prima non c'è niente da leggere.
 
-### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ⏳ **TUTTA IN SERVIZIO, e non l'ha ancora vista nessuno**
+### **137** — 🚦 «COSA STA SUCCEDENDO SU MATCHPOINT» FUORI DALLA SCHEDA — ✅ **TUTTA IN SERVIZIO E PROVATA SULLA PAGINA VIVA** (05/09)
 
 🔄 **AGGIORNATA il 03/09 a tarda notte (78ª).** 🩹 Il titolo diceva *«① e ② in servizio, mancano ③ e ④»*: era vero il 03/09 sera ed è **falso da quella stessa notte** — i quattro pezzi sono tutti fusi e deployati, ne è nato un **quinto**, e ciò che manca non è codice ma **il suo occhio**. *Un titolo che elenca cosa manca invecchia più in fretta del testo che sta sotto, e nessuno lo rilegge perché sembra un'intestazione.*
 
@@ -2248,7 +2248,8 @@ ancora. Non prima: prima non c'è niente da leggere.
 | **③** `matchpoint-queue-status`: filtrare l'automatico, tradurre in frasi del gestionale | ✅ **in servizio** su `qqbf…` (PR #1308) |
 | **④a** le coordinate strutturate per la cella (`dove`) | ✅ **in servizio** su worker e edge (PR #1309) |
 | **④b** app: la barra D + la cella + il polling riacceso | ✅ **promossa in PROD 6.286** — 🔴 e **non si vede**: vedi ⑤ |
-| **⑤** la barra diventa il **posto unico** dove si leggono le azioni, con **due fonti** | 🧪 **su TEST 6.307**, aspetta il suo occhio |
+| **⑤** la barra diventa il **posto unico** dove si leggono le azioni, con **due fonti** | ✅ **in servizio su PROD** e **provata sulla pagina viva** (05/09) |
+| **⑤bis** la **CELLA** accesa, che dal 03/09 era rotta senza che nessuno potesse accorgersene | ✅ **curata e provata** su TEST 6.360, computer **e** telefono (PROD 6.360) |
 
 🩹 **Qui c'era scritto «IL SEMAFORO SI VEDE — SU TEST, E SOLO LÀ», e la riga è stata CORRETTA e non
 affiancata.** Era vera il 03/09 sera: la barra viveva su TEST 6.299 e su PROD non c'era, per scelta.
@@ -2306,11 +2307,19 @@ senza browser ⇒ prova le regole. E su TEST le scritture verso Matchpoint sono 
 la fonte ② non ha traffico da mostrare — ma la fonte ①, che è quella nuova, **su TEST si esercita
 benissimo**: parte dalla `fetch`, non dall'esito.
 
-⛔ **COSA MANCA PER CHIUDERE LA VOCE, in ordine:**
-1. **lui apre `test.padelvillage.club`** e guarda il calendario mentre qualcuno fa un gesto (basta
-   aprire una scheda da un'altra postazione, o un gesto suo dal bot verso TEST);
-2. dice se la barra va bene com'è — altezza, colore, dove sta, cosa scrive;
-3. **allora** si promuove a PROD con le sole righe del fix.
+🩹🩹 **QUESTE TRE RIGHE ERANO QUI, E SONO STATE CORRETTE — non affiancate** *(05/09/2026)*.
+Dicevano: *«① lui apre TEST e guarda il calendario mentre qualcuno fa un gesto; ② dice se la barra
+va bene; ③ **allora** si promuove a PROD»*. Sono cadute per **due** ragioni diverse, e vale la pena
+tenerle distinte:
+· il **POSTULATO del 04/09** ha spostato la prova: la faccio io, sulla pagina viva, su TEST **e su
+  PROD**; lui **supervisiona**. Un elenco che comincia con *«lui apre»* è esattamente l'abitudine
+  che quel postulato ha tolto di mezzo;
+· e il passo ③ **era già superato dai fatti**: 📏 misurato il 05/09 sul ramo `main`, il pezzo ⑤ era
+  **in servizio su PROD da giorni** — `svcAggancioDelleAzioni`, `.svc-semaforo` e uno
+  `svcStartQueuePolling()` **non commentato** stanno tutti nell'`index.html` di `main`. Non c'era
+  niente da promuovere: mancava la **prova**, non il deploy.
+📌 *Una lista di cose da fare che nessuno rilegge diventa una lista di cose da rifare — e il passo
+   che «manca» può essere già fatto da una settimana.*
 
 #### 📏 LA MISURA COL BROWSER SU TEST — cosa dice, e cosa NON dice
 
@@ -2339,17 +2348,65 @@ tronca **solo il `che`** tenendo il `chi` intero.
 📌 *Chi compone una frase a monte decide cosa si perde quando lo spazio finisce, e a monte nessuno
 sa quanto spazio c'è.*
 
-⛔⛔ **COSA LA MISURA NON DICE, e va detto invece di lasciarlo credere: LA CELLA NON È STATA
-PROVATA.** In nessuna delle due larghezze:
-· su **desktop** la griglia era **vuota** — `1 figlio, 0 celle` — con l'utenza `readonly` della
-  console. La sonda ha misurato la barra, non ha mai visto una cella;
-· su **telefono** la vista attiva è l'**agenda**, non la griglia (`wrapVisibile:false`,
-  `agendaVisibile:true`) ⇒ le celle `.cell` **lì non esistono per costruzione**, e la metà «cella»
-  della disposizione D **su mobile non c'è**.
-⚖️ La seconda non è un difetto da curare: è la ragione per cui la D ha **due** metà, e su telefono
-resta quella che parla anche senza sapere dove. Ma **va saputa**, perché la disposizione gli è stata
-presentata come «barra + cella» a due larghezze.
-⇒ La cella la può vedere **solo lui**, aprendo TEST con la sua utenza mentre qualcuno fa un gesto.
+#### 🩹⭐⭐ LA CELLA NON SI ACCENDEVA — E LE DUE SPIEGAZIONI SCRITTE QUI ERANO TUTT'E DUE SBAGLIATE
+
+*(misurato e curato il 05/09/2026 — questo blocco **corregge** quello che c'era, non gli si affianca)*
+
+🩹 **Qui era scritto**: *«la cella non è stata provata — su desktop la griglia era vuota (1 figlio,
+0 celle) con l'utenza readonly; su telefono la vista attiva è l'agenda ⇒ le `.cell` lì non esistono
+per costruzione, e la metà cella su mobile non c'è»*, e si chiudeva con *«la cella la può vedere
+solo lui»*. Sono cadute tutt'e tre.
+
+⛔ **① «la griglia era vuota per via del readonly» — falso, e lo era già.** La griglia si idrata da
+sé con una lettura che l'utenza `readonly` ha sempre potuto fare: `staffCalRefreshFromCloud({
+force:true, withMembers:true })` la porta da 0 a **173** occupazioni, zero richieste bloccate.
+Non era un limite dell'utenza: era una sonda che non aveva chiesto i dati.
+
+⛔ **② «su telefono le celle non esistono per costruzione» — mezzo falso, ed è la metà peggiore.**
+Vero che sul telefono si vede l'**agenda**; falso che lì non ci siano celle. A disegnare **tutt'e
+due** le viste è la **stessa** `_staffCalBuildHorizontal` — computer e telefono, stesso codice.
+
+🚨⭐⭐ **LA CAUSA VERA, che nessuna delle due nominava: le coordinate erano state messe in una
+funzione MORTA.** Il pezzo ④ le aveva scritte in `_staffCalBuildGrid`, e **nessuno chiama**
+`_staffCalBuildGrid`: `renderStaffCalendar` manda su `_staffCalBuildHorizontal` in tutti e due i
+rami. ⇒ `svcAccendiCella` cercava `.cell[data-campo]` in una griglia che non ne ha **nemmeno una**.
+📏 Misurato sulla pagina viva di **PROD 6.357**: dentro `#staffCalGridTable` **118 `div`**, e
+`.cell` = **0**, `[data-campo]` = **0**, `[data-ora]` = **0**.
+📌 *Un pezzo di codice che nessuno chiama non è «da provare»: è già rotto, e la prova che manca è
+   l'unica cosa che lo direbbe.*
+⚖️ **Ed è per questo che le due spiegazioni vecchie erano pericolose e non solo sbagliate**: tutt'e
+due davano al vuoto una causa **innocente e definitiva** — un limite dell'utenza, una scelta di
+disegno — cioè la forma esatta di una cosa che nessuno riprova. Il difetto è rimasto invisibile due
+giorni **protetto da queste righe**.
+
+🔨 **La cura**: le coordinate sulla disposizione che gira davvero (segmento **libero** e blocco
+**prenotato**), scritte come **intervallo in minuti** — un gesto sulle 09:30 deve accendere la
+partita 09:00–10:30, che per un confronto d'uguaglianza sarebbe stata invisibile; **una sola**
+funzione di ricerca (`svcCellaDelleCoordinate`) condivisa con la pastiglia; il contenitore scelto
+per **visibilità**, così vale anche sul telefono; e **fallisce chiusa**.
+
+✅ **PROVATO SULLA PAGINA VIVA — TEST 6.360**, e stavolta la parola vuol dire qualcosa:
+| | computer 1440×900 | telefono 390×844 |
+|---|---|---|
+| pezzi con le coordinate | **24** | **24** (nell'agenda) |
+| celle accese sul gesto | **1**, ed è quella giusta | **1**, nell'agenda |
+| nella vista nascosta | — | **0** |
+| all'esito si spegne | ✅ | ✅ |
+| la pastiglia | in alto a destra | in basso, 12 px dal bordo |
+⭐ Il gesto è stato puntato **alle 08:30 dentro il libero 08:00–09:00**: è il caso che il vecchio
+confronto non poteva prendere, cioè quello che prova l'intervallo e non solo la presenza.
+
+⛔ **COSA RESTA NON PROVATO, e va detto**: nessun gesto **vero** di segreteria è stato attraversato
+fino in fondo — la console entra in **sola lettura**, e su PROD la sua `fetch` verso
+`/functions/v1/` viene **abortita** (su TEST risponde `[pmo-mp-sim]` **dentro la pagina**, in 8 ms,
+senza che niente esca dal browser). ⇒ Quello che si è provato è **l'aggancio, le coordinate, la
+ricerca, il disegno e i due verdetti**; quello che non si è provato è la catena che finisce sul
+Matchpoint del circolo.
+⚖️ E i **due verdetti** si sono visti tutt'e due sul vivo, che è il pezzo che vale di più: su TEST
+**«✅ fatto»** (il simulatore risponde ok), su PROD **«❔ non so com'è finita — la connessione è
+caduta mentre la richiesta era in volo»** con la rete caduta. È **la riga che costa** di questa voce,
+esercitata sulla finestra esatta in cui sbaglierebbe: una linea caduta **non** diventa «non è
+passata».
 
 🩹⭐⭐ **E UNA RIGA DI QUESTA SCHEDA ERA FALSA, misurata scrivendo il pezzo ②.** Diceva che la coda
 distingue un gesto del bot *«solo perché gli MANCA `operatore` — un'assenza»*, e ne traeva
