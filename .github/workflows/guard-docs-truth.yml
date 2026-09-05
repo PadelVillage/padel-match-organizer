@@ -72,65 +72,120 @@ jobs:
           set -euo pipefail
           git fetch -q origin main test-preview
 
+          # 🔎 QUALE COPIA SI GIUDICA — e perché non è più `origin/main` comunque sia andata.
+          # *(05/09/2026, 89ª sessione.)* Fino a stasera il DICHIARATO si leggeva sempre da
+          # `origin/main`, mentre il REALE si leggeva dai due rami. Nella finestra del 4bis —
+          # fra la spinta su `test-preview` e il merge su `main` — le due letture parlano di
+          # due istanti diversi, e la guardia diventa ROSSA PER COSTRUZIONE. Non è una
+          # possibilità: è successo stasera (run 1128: «dichiara TEST v6.368, ma test-preview
+          # gira a 6.370»), ed era la terza sessione che se lo riprometteva.
+          # 📏 MISURATE 9 promozioni fra il 04 e il 05/09: lo scarto fra il momento in cui
+          # `test-preview` dichiara la nuova PROD e il momento in cui `main` la gira davvero
+          # va da **-256 s a +120 s**, in tutt'e due i versi. Non è un caso raro da tollerare:
+          # è la forma normale di ogni promozione.
+          # ⇒ Si giudica la copia CHE È STATA SPINTA (il ref che ha acceso il run), e su un
+          # push si controlla la RIGA DEL RAMO CHE SI È MOSSO: un push su `test-preview` non
+          # può essere giudicato sullo stato in volo di `main`, né viceversa.
+          # ⚖️ Cosa NON si perde: le due righe si controllano INSIEME sul backstop giornaliero
+          # e su ogni lancio a mano, cioè quando non c'è niente in volo. La malattia del 13/08
+          # — 689 versioni di scarto per tre mesi — non dura due minuti, dura mesi: resta presa
+          # dal backstop il mattino dopo, e dal push del ramo che mente appena si muove.
+          # 🚨 La differenza fra le due guardie sta qui: `guard-worker-sync` confronta i due
+          # rami FRA LORO (e per quello la pazienza di 90 s basta), questa confronta un
+          # documento con un fatto — e nella finestra il fatto è diverso sui due rami.
+          REF="${GITHUB_REF_NAME}"
+          EVT="${GITHUB_EVENT_NAME}"
+          DOC='docs/stato-progetto-corrente.md'
+
           # La misura: APP_VERSION nel codice che gira davvero su ciascun ramo.
           ver_of() {
             git show "$1:index.html" \
               | grep -m1 -oE "APP_VERSION *= *'[0-9]+\.[0-9]+'" \
               | grep -oE "[0-9]+\.[0-9]+" | head -1
           }
-          PROD_REAL="$(ver_of origin/main || true)"
-          TEST_REAL="$(ver_of origin/test-preview || true)"
-
-          # La dichiarazione: la tabella «Versione corrente» del registro.
+          # La dichiarazione: la tabella «Versione corrente» del registro, nella copia spinta.
           # Righe della forma:  | PROD | **v6.219** | `main` | ...
-          DOC='docs/stato-progetto-corrente.md'
           decl_of() {
-            git show "origin/main:$DOC" \
+            git show "origin/$REF:$DOC" \
               | grep -m1 -E "^\| *$1 *\|" \
               | grep -oE "v[0-9]+\.[0-9]+" | head -1 | tr -d 'v'
           }
-          PROD_DECL="$(decl_of PROD || true)"
-          TEST_DECL="$(decl_of TEST || true)"
 
-          # Meglio fallire che dare un verde che non ha controllato nulla.
-          if [ -z "$PROD_REAL" ] || [ -z "$TEST_REAL" ]; then
-            echo "::error::APP_VERSION non trovata in index.html (main='$PROD_REAL' test='$TEST_REAL')."
-            echo "È cambiata la forma della riga? Il guard non sa più dove guardare."
-            exit 1
+          case "$EVT:$REF" in
+            push:main)         RIGHE='PROD' ;;
+            push:test-preview) RIGHE='TEST' ;;
+            *)                 RIGHE='PROD TEST' ;;   # backstop e lanci a mano: tutt'e due
+          esac
+
+          controlla() {
+            fail=0
+            PROD_REAL="$(ver_of origin/main || true)"
+            TEST_REAL="$(ver_of origin/test-preview || true)"
+            # Meglio fallire che dare un verde che non ha controllato nulla.
+            if [ -z "$PROD_REAL" ] || [ -z "$TEST_REAL" ]; then
+              echo "::error::APP_VERSION non trovata in index.html (main='$PROD_REAL' test='$TEST_REAL')."
+              echo "È cambiata la forma della riga? Il guard non sa più dove guardare."
+              exit 1
+            fi
+            echo "  copia giudicata: origin/$REF   (evento: $EVT ⇒ righe controllate: $RIGHE)"
+            echo ""
+            echo "                 dichiarato   reale"
+            for riga in PROD TEST; do
+              if [ "$riga" = PROD ]; then real="$PROD_REAL"; else real="$TEST_REAL"; fi
+              decl="$(decl_of "$riga" || true)"
+              if [ -z "$decl" ]; then
+                echo "::error::Versione dichiarata per $riga non trovata in origin/$REF:$DOC."
+                echo "È cambiata la forma della tabella «Versione corrente»? Il guard non sa più dove"
+                echo "guardare; un verde qui significherebbe 'non ho controllato', non 'va tutto bene'."
+                exit 1
+              fi
+              case " $RIGHE " in
+                *" $riga "*)
+                  printf '  %-14s %-12s %s\n' "$riga" "$decl" "$real"
+                  if [ "$decl" != "$real" ]; then
+                    echo "::error::$DOC dichiara $riga v$decl, ma il suo ramo gira a $real."
+                    fail=1
+                  fi
+                  ;;
+                *)
+                  printf '  %-14s %-12s %-9s ← non controllata: si è mosso solo %s\n' \
+                         "$riga" "$decl" "$real" "$REF"
+                  ;;
+              esac
+            done
+            return $fail
+          }
+
+          if ! controlla; then
+            echo ""
+            echo "⏳ Non fallisco subito: aspetto 90 secondi e rileggo i ref."
+            echo "   Un registro spinto un attimo prima (o dopo) del numero di versione è una"
+            echo "   finestra di transizione, non una bugia. È la stessa pazienza che"
+            echo "   guard-worker-sync ha dal 14/08, e per la stessa ragione: una guardia che"
+            echo "   ogni tanto ha torto è una guardia che si smette di leggere."
+            sleep 90
+            git fetch -q origin main test-preview
+            echo ""
+            if ! controlla; then
+              echo ""
+              echo "RIMEDIO: aggiorna la tabella «Versione corrente» in $DOC ai valori reali."
+              echo "Quel file si impegna in testa a sé stesso a dichiarare la versione corrente:"
+              echo "se non lo fa, non è un documento vecchio, è un documento che mente — ed è"
+              echo "la malattia curata il 13/08 (689 versioni di scarto, per tre mesi)."
+              exit 1
+            fi
+            echo "…rientrato alla seconda lettura: era la finestra di transizione."
           fi
-          if [ -z "$PROD_DECL" ] || [ -z "$TEST_DECL" ]; then
-            echo "::error::Versioni dichiarate non trovate in $DOC (PROD='$PROD_DECL' TEST='$TEST_DECL')."
-            echo "È cambiata la forma della tabella «Versione corrente»? Il guard non sa più dove guardare;"
-            echo "un verde qui significherebbe 'non ho controllato', non 'va tutto bene'."
-            exit 1
-          fi
-
-          echo "                 dichiarato   reale"
-          printf '  PROD           %-12s %s\n' "$PROD_DECL" "$PROD_REAL"
-          printf '  TEST           %-12s %s\n' "$TEST_DECL" "$TEST_REAL"
-          echo ""
-
-          FAIL=0
-          [ "$PROD_DECL" = "$PROD_REAL" ] || { echo "::error::$DOC dichiara PROD v$PROD_DECL, ma main gira a $PROD_REAL."; FAIL=1; }
-          [ "$TEST_DECL" = "$TEST_REAL" ] || { echo "::error::$DOC dichiara TEST v$TEST_DECL, ma test-preview gira a $TEST_REAL."; FAIL=1; }
 
           # La fotografia dei lavori: scarto segnalato, mai bloccante (è datata per natura).
           LAV='docs/lavori/README.md'
-          LAV_PROD="$(git show "origin/main:$LAV" | grep -m1 -oE 'app PROD \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
-          LAV_TEST="$(git show "origin/main:$LAV" | grep -m1 -oE 'TEST \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
+          LAV_PROD="$(git show "origin/$REF:$LAV" | grep -m1 -oE 'app PROD \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
+          LAV_TEST="$(git show "origin/$REF:$LAV" | grep -m1 -oE 'TEST \*\*[0-9]+\.[0-9]+\*\*' | grep -oE '[0-9]+\.[0-9]+' || true)"
           if [ -n "$LAV_PROD" ] && { [ "$LAV_PROD" != "$PROD_REAL" ] || [ "$LAV_TEST" != "$TEST_REAL" ]; }; then
             echo "::warning::La fotografia in $LAV dichiara PROD $LAV_PROD / TEST $LAV_TEST, oggi sono $PROD_REAL / $TEST_REAL."
             echo "Non è un errore: quella è una fotografia datata. Ma se lo scarto cresce, la prossima sessione parte con un'idea vecchia del sistema."
           fi
 
-          if [ "$FAIL" -ne 0 ]; then
-            echo ""
-            echo "RIMEDIO: aggiorna la tabella «Versione corrente» in $DOC ai valori reali."
-            echo "Quel file si impegna in testa a sé stesso a dichiarare la versione corrente:"
-            echo "se non lo fa, non è un documento vecchio, è un documento che mente — ed è"
-            echo "la malattia curata il 13/08 (689 versioni di scarto, per tre mesi)."
-            exit 1
-          fi
           echo "✅ I registri dichiarano le versioni vere."
 
   conteggi-lavori:
@@ -143,13 +198,19 @@ jobs:
       - name: I conteggi di docs/lavori/README.md devono corrispondere alle voci contate
         run: |
           set -euo pipefail
-          git fetch -q origin main
+          REF="${GITHUB_REF_NAME}"
+          git fetch -q origin "$REF"
 
-          # Basta controllare una copia: guard-worker-sync garantisce che docs/ sia
+          # Basta controllare UNA copia: guard-worker-sync garantisce che docs/ sia
           # identico sui due rami. Se quella guardia sparisse, questo controllo
-          # coprirebbe solo main — sono legate, e vanno tolte insieme o mai.
+          # coprirebbe solo il ramo spinto — sono legate, e vanno tolte insieme o mai.
+          # 🚨 Ma la copia giusta è QUELLA SPINTA, non sempre `main`. *(05/09/2026)* Prima si
+          # leggeva `origin/main` comunque: un conteggio sbagliato spinto su `test-preview`
+          # passava VERDE — la guardia controllava un file che non era quello appena scritto,
+          # e diceva «i conti tornano» intendendo «ho letto un altro documento».
           F='docs/lavori/README.md'
-          git show "origin/main:$F" > /tmp/lavori.md
+          git show "origin/$REF:$F" > /tmp/lavori.md
+          echo "  copia giudicata: origin/$REF"
 
           # --- ciò che il file DICHIARA ---
           URG_H=$(grep -m1 -oE '^## .*URGENTI — [0-9]+' /tmp/lavori.md | grep -oE '[0-9]+$' || true)
