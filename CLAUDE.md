@@ -1032,6 +1032,32 @@ e sbagliati passano verdi. L'altra metà è **`guard-docs-truth.yml`** (13/08), 
   e non solo nella somma: il 13/08 la sezione C ne dichiarava 11 con 12 voci e la D 5 con 4, i due
   errori si **annullavano** e il totale tornava.
 
+🔄⭐ **QUALE COPIA GIUDICA — corretto il 05/09/2026 sera, e qui c'era scritto il contrario.** Fino a
+quel giorno `guard-docs-truth` leggeva i documenti **sempre da `origin/main`** mentre misurava le
+versioni vere **sui due rami**: nella finestra del 4bis quelle due letture parlano di **due istanti
+diversi**, e la guardia diventava **rossa per costruzione a ogni promozione**, senza rigirare da sé.
+📏 **Misurate 9 promozioni fra il 04 e il 05/09**: lo scarto fra il momento in cui `test-preview`
+dichiara la nuova PROD e il momento in cui `main` la gira davvero va da **-256 s a +120 s**, in
+tutt'e due i versi. Non era un caso raro: era la **forma normale** di una promozione.
+⇒ **Adesso si giudica la copia CHE È STATA SPINTA** (il ref che ha acceso il run), e su un push si
+controlla **la riga del ramo che si è mosso** — un push su `test-preview` non si giudica sullo stato
+in volo di `main`, né viceversa. Le due righe si controllano **insieme** sul backstop giornaliero e
+su ogni lancio a mano, cioè quando non c'è niente in volo. In più la guardia è **paziente** come la
+sorella: alla prima divergenza aspetta 90 secondi, rilegge i ref e ricontrolla.
+⚖️ **Cosa NON si perde**: la malattia del 13/08 — 689 versioni di scarto — non dura due minuti, dura
+**mesi**, e resta presa dal backstop il mattino dopo e dal push del ramo che mente appena si muove.
+🚨 **E la stessa correzione ha chiuso un VERDE FALSO nell'altro job**: i conteggi si leggevano pure
+loro da `origin/main`, quindi **un conteggio sbagliato spinto su `test-preview` passava verde** —
+la guardia diceva «i conti tornano» e voleva dire «ho letto un altro documento». *(Sabotaggio
+provato: sezione C dichiarata 17 con 18 voci ⇒ prima verde, adesso rossa.)*
+📌 *Una guardia che ha torto a ogni promozione non è severa: è una guardia che si smette di leggere —
+la stessa ragione per cui `guard-worker-sync` fu resa paziente il 14/08.*
+⛔ **Cosa è stato provato e cosa no**: sei esercizi sul **meccanismo**, con l'origine finta montata
+sull'istante vero del run 1128 — la finestra storica torna verde, la pazienza vista **rientrare** con
+il merge atterrato durante i 90 s, e quattro sabotaggi visti rossi (riga TEST che mente, riga PROD
+che mente, backstop che le controlla tutt'e due, conteggio sbagliato su `test-preview`). **Non è una
+corsa CI vera**: la prima promozione che attraversa la finestra è la prova che manca.
+
 ⚖️ Di proposito **non** controlla gli sha né le PR aperte: un file che cita il proprio sha è vecchio
 nell'istante in cui lo si salva, e una guardia sempre rossa si ignora. Le versioni dichiarate nella
 **fotografia** `docs/lavori/README.md` danno solo un avviso, non un errore: è datata per natura.
@@ -1063,7 +1089,8 @@ guardia che ogni tanto ha torto è una guardia che si smette di leggere — la s
 `guard-worker-sync` è stata resa paziente. Qui la protezione è la regola, e si applica **scrivendo**.
 
 📌 Le due guardie sono **complementari e legate**: `guard-docs-truth` controlla una sola copia perché
-`guard-worker-sync` garantisce che i rami siano identici. Si tolgono insieme o mai.
+`guard-worker-sync` garantisce che i rami siano identici — **la copia spinta**, dal 05/09 (sopra).
+Si tolgono insieme o mai.
 
 I rami di lavoro non vanno potati a mano: `cleanup-claude-branches.yml` cancella ogni notte
 tutto tranne `main` e `test-preview`. Se ne vedi molti in locale è solo la tua copia stantia
