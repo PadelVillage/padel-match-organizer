@@ -973,6 +973,23 @@ la partita non c'è più, e la riga qui sopra va riletta come un esempio, non co
 📌 *Il freno su PROD non è mai stato «non toccare»: era «non so su cosa toccare senza fare danno».
 Sciolto quello, resta solo l'annuncio.*
 
+⛔⭐⭐ **E L'UNICA COSA ESCLUSA SU QUELLA PARTITA, detta da lui pochi minuti dopo:**
+
+> *«Puoi fare qualsiasi prova su questa partita in prod di lunedì sette settembre alle ore nove
+> campo quattro, tranne quella di **salvare un pagamento**. Se no, si modifica la cassa vera.»*
+
+⇒ **Tutto il resto sì** — prenotare, entrare, uscire, aprire e richiudere, togliere un giocatore,
+spostare, gli avvisi che ne escono. **Un pagamento no**, e la ragione la dà lui: un incasso non
+resta dentro la partita, **esce nella cassa del circolo** e da lì lo tira fuori solo uno storno.
+⚖️ È un confine di **natura diversa** da tutti gli altri di questo file: non è «rischi di rompere
+qualcosa», è *questa scrittura ha un fuori*. Per questo è l'unica eccezione a un permesso che
+altrimenti è pieno.
+🚨 **Non vuol dire che la voce 125 sia inesigibile**: quella chiede un **incasso vero da 1 €** ed è
+un **gesto SUO**, già in cima al blocco *«✋ DA PROVARE INSIEME»* di `docs/lavori/README.md`, che si
+chiude da sé con lo storno dalla scheda socio. ⇒ Le due righe non si contraddicono: *il pagamento
+lo fa lui, non io.* Chi legge questa esclusione e ne conclude «la 125 non si può provare» ha letto
+un divieto dove c'è una **divisione dei compiti**.
+
 ### 🧹 …E UNA VOCE PROVATA SI SPOSTA FRA LE CHIUSE **SUBITO** (FERMA, 04/09/2026 notte)
 
 🗣️ Sue parole, guardando la lista delle urgenti: *«molti di questi task sono chiusi, però non sono
