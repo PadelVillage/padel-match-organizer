@@ -92,6 +92,35 @@ export const ESITO = {
    * gestionale SA, il bot DICE*.
    */
   SUO_GESTO: 'suo_gesto',
+  /**
+   * 🆕🔇 VOCE 115 (05/09/2026) — IL GESTO L'HA FATTO IL SOCIO DAL BOT, e lo dice una RICEVUTA.
+   *
+   * 📏 Misurato il 01/09 sulle righe di quella sera: la riga di Laura (entrata dal bot alle
+   * 18:01) usciva chiusa con `consegnato_at` pieno e `esito` **NULL**, perché il ramo della
+   * ricevuta (voce 70) chiude il fatto al passo 1, prima di arrivare dove l'esito si scrive.
+   * ⇒ Quel NULL teneva insieme due cose che nessuno sapeva più separare: le righe chiuse prima
+   * del 01/09 (finite, non ne nascono più) e «non gliel'ho detto perché l'ha fatto lui» —
+   * che nasce a ogni gesto di un socio, cioè la categoria che cresce. 📏 Al 05/09 erano 26
+   * righe su 26 ricevute consumate: la misura del difetto era cieca esattamente lì.
+   *
+   * ⚖️ È la forma della voce 71 — *un solo silenzio per due domande diverse* — prodotta dalla
+   * cura della 68 il giorno dopo averla scritta. E la lezione è la stessa: la domanda non è
+   * come si chiama il valore, è **chi è in grado di rispondere** — qui il gestionale, che la
+   * ricevuta l'ha in mano (`pmo_ricevute_gesti.usata_da` = l'id di questa riga).
+   *
+   * ⛔ Diverso da `suo_gesto`, e va tenuto distinto: là il gestionale ha deciso di tacere
+   * confrontando `chiesto_da` con la persona (gesti `formazione`); qui il fatto è stato
+   * accoppiato a una ricevuta lasciata da `consumer-booking-write` (gesti `aggiunto` ·
+   * `tolto` · `annullata`). Due chiavi diverse, due parole diverse — fonderle rifarebbe il
+   * silenzio a due significati che questa voce toglie.
+   *
+   * 🔤 Si chiama `gesto_dal_bot` e non «coperto da ricevuta» per una ragione che la guardia
+   * del banco (caso 2bis) ha fatto valere al primo giro: «ricevuta» qui è la quietanza in
+   * `pmo_ricevute_gesti`, ma letta in una colonna suona come «il socio l'ha ricevuto» — cioè
+   * la promessa che questa colonna non può fare. Il nome dice da dove viene il gesto, non
+   * cosa ne sa il socio.
+   */
+  GESTO_DAL_BOT: 'gesto_dal_bot',
 } as const;
 
 export type Esito = typeof ESITO[keyof typeof ESITO];

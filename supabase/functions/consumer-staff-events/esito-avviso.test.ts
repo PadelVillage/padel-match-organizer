@@ -15,20 +15,23 @@ function test(name: string, fn: () => void) {
   catch (e) { failed += 1; console.log(`FAIL - ${name}`); console.log(`       ${(e as Error).message.split('\n')[0]}`); }
 }
 
-test('1. gli esiti sono CINQUE, distinti, e in minuscolo', () => {
+test('1. gli esiti sono SEI, distinti, e in minuscolo', () => {
+  /* 🔢 Da 5 a 6 il 05/09/2026 con `gesto_dal_bot` (voce 115): la strada della ricevuta
+   * (voce 70) chiudeva le righe senza scrivere PERCHÉ, e il suo NULL era indistinguibile
+   * dalle 605 righe chiuse prima che la colonna esistesse. */
   /* 🔢 Il numero è salito da 4 a 5 il 02/09/2026 con `suo_gesto` (voce 123), e va alzato solo
    * perché il punto nuovo OBBEDISCE alla regola: è un modo in più in cui una riga si chiude
    * senza che un messaggio parta, e sta qui insieme agli altri quattro invece che sparso.
    * ⚖️ Un numero di guardia si alza dichiarando il perché, o smette di essere una guardia e
    * diventa la fotografia di ciò che c'è. */
-  assert.equal(ESITI.length, 5);
-  assert.equal(new Set(ESITI).size, 5);
+  assert.equal(ESITI.length, 6);
+  assert.equal(new Set(ESITI).size, 6);
   for (const e of ESITI) assert.match(e, /^[a-z_]+$/);
 });
 
 test('2. solo «passato_al_bot» dice che la riga è uscita di qui', () => {
   assert.equal(ePassatoAlBot(ESITO.PASSATO_AL_BOT), true);
-  for (const e of [ESITO.NON_RICONOSCIUTO, ESITO.NETTO_NULLO, ESITO.CORSA_PERSA, ESITO.SUO_GESTO]) {
+  for (const e of [ESITO.NON_RICONOSCIUTO, ESITO.NETTO_NULLO, ESITO.CORSA_PERSA, ESITO.SUO_GESTO, ESITO.GESTO_DAL_BOT]) {
     assert.equal(ePassatoAlBot(e), false, `«${e}» non è uscito verso il bot`);
   }
 });
@@ -145,6 +148,19 @@ test('10. 🆕 VOCE 123 — l\'anagrafica si legge ANCHE per chi ha chiesto, o l
   assert.ok(ramo, 'la composizione dei nomi da cercare è cambiata forma: questa prova non guarda più niente');
   assert.match(ramo![0], /e\.chiestoDa/,
     'i nomi di chi ha chiesto non entrano più fra quelli cercati: lo scarto della voce 123 non può scattare');
+});
+
+test('11. 🆕🔇 VOCE 115 — la strada della ricevuta scrive il suo esito NELLO STESSO update che chiude', () => {
+  /* ⚖️ Non «da qualche parte»: nello stesso `.update` di `consegnato_at`. Scriverlo in un
+   * secondo passo riaprirebbe la finestra in cui la riga è chiusa e muta — cioè il difetto.
+   * 📏 Al 05/09 erano 26 righe su 26 ricevute consumate, tutte con `esito` NULL. */
+  const src = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+  const i = src.indexOf('const { error: chiudiRicErr }');
+  assert.ok(i > 0, 'la chiusura dei coperti non si trova più');
+  const pezzo = src.slice(i, src.indexOf(';', i));
+  assert.match(pezzo, /\.update\(\{ consegnato_at: adesso, esito: ESITO\.GESTO_DAL_BOT \}\)/,
+    'i fatti coperti da ricevuta si chiudono senza esito: il loro NULL torna a voler dire due cose');
+  assert.equal(ESITO.GESTO_DAL_BOT, 'gesto_dal_bot');
 });
 
 console.log(`\n${passed} verdi · ${failed} rossi`);

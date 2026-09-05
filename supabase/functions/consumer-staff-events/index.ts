@@ -247,9 +247,12 @@ Deno.serve(async (req: Request) => {
   // è che un fatto già scartato non trovi più la sua ricevuta — e quel fatto è già chiuso.
   if (!dryRun && coperti.length) {
     const adesso = new Date().toISOString();
+    // 🆕🔇 VOCE 115 — il PERCHÉ si scrive nello stesso gesto che chiude, non dopo: questa
+    //    strada non arriva mai al passo in cui gli altri esiti vengono scritti, e fino al
+    //    05/09 lasciava `esito` NULL — indistinguibile dalle righe chiuse prima del 01/09.
     const { error: chiudiRicErr } = await service
       .from('pmo_eventi_staff')
-      .update({ consegnato_at: adesso })
+      .update({ consegnato_at: adesso, esito: ESITO.GESTO_DAL_BOT })
       .in('id', coperti.map((c) => c.fatto.id));
     if (chiudiRicErr) {
       // Se non si riesce a chiudere i coperti si ferma tutto: proseguire vorrebbe dire
