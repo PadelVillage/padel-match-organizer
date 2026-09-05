@@ -220,6 +220,22 @@ jobs:
           chk "📦 chiuse (titolo di sezione)"   "$CHIU_H" "$CHIU_N"
           chk "📦 chiuse (tabella in cima)"     "$CHIU_T" "$CHIU_N"
 
+          # 🚨 E una voce può esistere SENZA riga, cioè fuori dal conto di sopra. È successo:
+          # la 142 e la 143 sono entrate il 04/09/2026 con la loro scheda `### N — …` in cima
+          # alla sezione IN CODA e non hanno mai avuto una riga in tabella ⇒ la coda ne
+          # dichiarava 17 e ne conteneva 19, e questa guardia restava VERDE per un giorno e
+          # mezzo, perché contava le righe e una voce senza riga per lei non esiste.
+          # ⇒ Ogni scheda numerata dentro IN CODA deve avere la sua riga in C o in D.
+          # Le schede delle voci CHIUSE che restano lì per il ragionamento non hanno questa
+          # forma (`## 🔓 VOCE 88 — …`), quindi non entrano: si cercano i soli `### N — `.
+          SCHEDE=$(awk '/^## .*IN CODA —/{f=1;next} /^## .*CHIUSE —/{f=0} f && /^### [0-9]+ —/{print $2}' /tmp/lavori.md)
+          for n in $SCHEDE; do
+            if ! grep -qE "^\| \*\*$n\*\* \|" /tmp/lavori.md; then
+              echo "::error::la voce $n ha una scheda dentro «IN CODA» ma nessuna riga in tabella: non la conta nessuno."
+              FAIL=1
+            fi
+          done
+
           if [ "$FAIL" -ne 0 ]; then
             echo ""
             echo "Ogni numero è verificato PER CONTO SUO, non solo la somma: il 13/08 la"
