@@ -277,7 +277,13 @@ test('⑧b ⛔ LA SCHEDA NON SI APRE DA SÉ: la pastiglia si CLICCA', () => {
   assert.match(dis, /el\.onclick = dentro \? null : svcApriDallaPastiglia/,
     'la pastiglia non è cliccabile, oppure lo è anche la striscia dentro la scheda');
   const apri = dichiarazioneDi('svcApriDallaPastiglia');
-  assert.match(apri, /celle\[i\]\.click\(\)/, 'la pastiglia non apre la scheda della cella: riscriverebbe l\'apertura');
+  /* 🩹 05/09/2026 — qui si pretendeva `celle[i].click()`, cioè il ciclo che cercava
+     `.cell[data-campo]`: un selettore che nella pagina viva non trova mai niente. La ricerca è
+     diventata una sola funzione condivisa con `svcAccendiCella`, e la pretesa si sposta su
+     QUELLA — perché il fatto da difendere non è come si cerca la cella, è che la si CLICCHI
+     invece di riscrivere l'apertura di una scheda. */
+  assert.match(apri, /svcCellaDelleCoordinate\(/, 'la pastiglia non cerca più la cella del gesto');
+  assert.match(apri, /cella\.click\(\)/, 'la pastiglia non apre la scheda della cella: riscriverebbe l\'apertura');
   assert.match(apri, /svcOpenChat\(\)/, 'senza ripiego: con la cella fuori vista la pastiglia non farebbe niente');
 });
 
