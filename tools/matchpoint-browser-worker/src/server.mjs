@@ -61,6 +61,16 @@ const MP_PAYMENT_SELECTORS = {
   cobroConfermaUrlRe: /\/cobro\/Ayuda[A-Za-z]*\.aspx/i,
   cobroConfermaBtn: '#CC_Datos_ButtonSoloCobrar',      // «Incassare» (senza stampa)
   cobroConfermaLabels: ['Incassare', 'Cobrar'],
+  // 🚨⭐ E LO STORNO HA LA SUA, di finestra — la TERZA volta che lo stesso difetto si ripresenta.
+  //    Misurato il 06/09: dopo «Anular» si apre `Facturacion/SeleccionFormaPago.aspx` in un
+  //    fancybox che chiede «Con quale metodo di pagamento desidera effettuare il rimborso?»
+  //    (predefinito: *Usa stesso metodo di pagamento del documento*) e COPRE la pagina — per
+  //    questo il «Salvare» della scheda risultava non cliccabile, non perche` mancasse.
+  // ⭐ Il predefinito e` anche la scelta giusta: si rimborsa com'era stato incassato. Nessun
+  //    radio da toccare, solo «Accettare».
+  stornoRimborsoUrlRe: /SeleccionFormaPago\.aspx/i,
+  stornoRimborsoBtn: '#CC_Datos_ButtonAceptar',
+  stornoRimborsoLabels: ['Accettare', 'Aceptar'],
   //    Gli id sono la chiave PRIMARIA: non dipendono dalla lingua, e il testo del
   //    borsellino porta il saldo dentro di se` («Saldo disponibile: 0,00»).
   cobroMethodIds: {
@@ -8570,6 +8580,36 @@ async function _confermaCobroInCassa(page, atteso, diagnostic) {
   throw fail('COBRO_CASSA_SENZA_BOTTONE', 'Cassa aperta ma senza il bottone «Incassare»: nessun incasso effettuato.', Object.assign({}, diagnostic, { cobroCandidatiInCassa }));
 }
 
+// ⭐ LA FINESTRA DELLO STORNO — «con quale metodo rimborsare?». Si apre in un fancybox dopo
+// «Anular» e COPRE la pagina: e` per questo che il «Salvare» della scheda risultava non
+// cliccabile (`SAVE_BUTTON_CLICK_TIMEOUT`), non perche` mancasse.
+// ⚖️ Si preme «Accettare» senza toccare i radio: il predefinito e` *usa lo stesso metodo del
+//    documento*, cioe` si rimborsa com'era stato incassato — la scelta che non inventa nulla.
+// Torna `true` se ha confermato, `false` se quella finestra non compare (allora l'esito lo dira`
+// la rilettura del pendente, che e` la sola prova che conta).
+async function _confermaRimborso(page, diagnostic) {
+  const scadenza = Date.now() + 8000;
+  let frame = null;
+  for (;;) {
+    frame = page.frames().find((f) => MP_PAYMENT_SELECTORS.stornoRimborsoUrlRe.test(f.url() || '')) || null;
+    if (frame || Date.now() >= scadenza) break;
+    await page.waitForTimeout(400);
+  }
+  if (!frame) { diagnostic.steps.push('storno_rimborso:assente'); return false; }
+  const tries = [MP_PAYMENT_SELECTORS.stornoRimborsoBtn]
+    .concat(MP_PAYMENT_SELECTORS.stornoRimborsoLabels.map((t) => `input[type="submit"][value="${t}"], input[type="button"][value="${t}"]`));
+  for (const sel of tries) {
+    const loc = frame.locator(sel);
+    if (!(await loc.count().catch(() => 0))) continue;
+    await loc.first().click({ timeout: 8000 }); // NIENTE retry: qui il denaro si muove
+    diagnostic.steps.push('storno_rimborso_accetta');
+    await page.waitForTimeout(1500);
+    return true;
+  }
+  const candidatiInRimborso = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+  throw fail('STORNO_RIMBORSO_SENZA_BOTTONE', 'Finestra del rimborso aperta ma senza il bottone «Accettare»: storno non completato.', Object.assign({}, diagnostic, { candidatiInRimborso }));
+}
+
 async function _clickCobroMethod(page, methodKey, methodLabel, playerName, diagnostic) {
   // ① ASPETTA IL FRAME, non il pulsante. Il dialog arriva dopo un postback: un'attesa
   //    fissa non distingue «non c'e`» da «non c'e` ANCORA», e le due vogliono cure opposte.
@@ -9063,6 +9103,7 @@ async function voidPaymentWithBrowser(input = {}) {
 
     // Annulla il pagamento + conferma + salva.
     await _clickAnularPago(page, diagnostic);
+    await _confermaRimborso(page, diagnostic);
     // 🔎 VOCE 171, e QUI LO STORNO HA LO STESSO DIFETTO DEL COBRO — misurato su PROD il 06/09
     //    subito dopo aver curato l'incasso: `anular_click` passa, poi `SAVE_BUTTON_CLICK_TIMEOUT`
     //    e il pagamento resta in piedi (giocatore ancora «riscosso», pendente 0).
@@ -9945,7 +9986,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa', 'storno-conferma-rimborso'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
