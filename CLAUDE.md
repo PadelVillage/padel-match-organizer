@@ -97,15 +97,22 @@ lavoro di verifica, e lasciargli come unica difesa la fiducia.*
 🗣️ Sua domanda: *«devi fare i test sia in test che in prod prima di dirmi di guardare, era
 un'ultima verifica?»* ⇒ **Sì: il suo sguardo è l'ULTIMA verifica, non il collaudo.** Ma va detto
 per intero, perché il confine non passa dove sembra:
-· la console remota entra come utenza **`readonly`** (scelta di sicurezza, vedi più sotto), e ogni
-  gesto che **scrive** sbatte contro il gate `pmoBlockWriteIfReadonly` **prima** di partire;
-· ⇒ posso provare **tutto ciò che si guarda e si calcola** — che una voce di menu non ci sia, che
+🔄🚨 **CORRETTO IL 06/09/2026 NOTTE, e la correzione ribalta il paragrafo: l'utenza NON e' piu'
+`readonly`, e i gesti che scrivono LI HO ATTRAVERSATI DAVVERO.** Qui c'era scritto che la console
+entra come `readonly` e che *«non posso attraversare fino in fondo un gesto che scrive»* — era vero
+il 04/09, e lui ha aperto il cancello il 05/09. 📏 Nella notte del 06/09 un **incasso vero** di 8,00 €
+e il suo **storno** sono passati per questa strada, su PROD, con denaro vero.
+· la console entra oggi con **`role: "staff"`** e **tutti** i permessi (misurato, non ricordato);
+· ⇒ posso provare **tutto cio' che si guarda e si calcola** — che una voce di menu non ci sia, che
   una scheda si apra piena, che un banner sia uno solo, che due bottoni non si tocchino, cosa
   risponde `elementFromPoint`, cosa scrive una funzione — **su TEST e su PROD**;
-· ⛔ **non** posso attraversare fino in fondo un gesto che scrive davvero: premere «Salva» da
-  owner, incassare, prenotare, togliere un giocatore. Quelli restano **suoi**, e non per
-  abitudine: perché lo strumento non li fa, e perché su PROD scriverebbero sul **Matchpoint del
-  circolo**.
+· ⇒ e posso **anche** attraversare un gesto che scrive, con `--allow-writes`. ⛔ **Ma quello resta
+  a domanda**, ed e' l'unica cosa che non e' cambiata: su PROD scrive sul **Matchpoint del circolo**,
+  e un incasso lo paga una persona vera. Il confine oggi non e' *«lo strumento non ci arriva»* —
+  e' *«ci arriva, e per questo si chiede»*.
+📌 La riga vecchia non era sbagliata quando fu scritta: e' la **26ª** un'altra volta — *un limite
+dichiarato che nessuno riprova resta vero per sempre perche' sembra prudente*. Il ruolo si **misura**
+(`pmoStaffProfile.role`), non si legge da qui.
 ⚖️ ⇒ Quando una prova si ferma lì, non si dice «provato»: si dice **cosa** è stato provato e
 **dove si è fermata**, e il gesto si chiede a lui — come previsto dall'eccezione qui sopra.
 📌 *Il confine non è fra TEST e PROD: è fra GUARDARE e SCRIVERE. Il primo è mio su tutti e due
@@ -146,10 +153,18 @@ rifare da ciò che qualcuno deve contare.*
 console ha `role: "readonly"`, quindi campo libero non si attraversa lo stesso»*: era vera il
 04/09, e lui l'ha aperto dopo. 📏 Misurato il 05/09 sulla pagina viva di PROD, prima di toccare
 qualunque cosa: `padelvillage.club+claude@gmail.com` ha **`role: "staff"`**, `cloud_sync: true`.
-⭐ E l'ha aperto **giusto**: `staff` e non `admin`/`owner`, quindi la whitelist dei permessi è
-rimasta **intera** — `manage_users`, `view_admin_utenti`, `view_members_anagrafica`,
-`view_members_borsellino` restano tutti **no**. È esattamente la differenza scritta più sotto:
-*si apre il cancello che serve, non la porta che sta accanto*.
+🔄 **E LA SECONDA META DI QUESTA RIGA E' STATA CORRETTA IL 06/09/2026 NOTTE: i permessi NON sono
+piu' una whitelist stretta.** Qui c'era scritto che `manage_users`, `view_admin_utenti`,
+`view_members_anagrafica` e `view_members_borsellino` *«restano tutti no»*: 📏 misurati sulla pagina
+viva di PROD, sono **tutti e quattro `true`**, insieme a `view_incassi`, `routines`, `view_dashboard`,
+`view_administration`, `view_admin_telegram`, `view_admin_notifiche`, `view_admin_matchpoint`,
+`view_members`, `view_members_autoval`, `view_members_attivita` e `cloud_sync` — cioe' **tutti**.
+Il **ruolo** resta `staff` (non `admin`/`owner`), quindi quella meta' della riga vecchia regge.
+⚖️ **E li ha spuntati per un motivo, non per fretta**: ha trovato un difetto del gestionale —
+*spuntando il capitolo, le sottosezioni non si attivavano* — e li ha messi a mano uno per uno.
+📌 Vale ancora la forma della riga vecchia — *si apre il cancello che serve, non la porta che sta
+accanto* — ma non descrive piu' questa utenza: oggi le porte sono aperte tutte, e l'unica cosa che
+resta chiusa e' il **ruolo**.
 🚨 **E il ruolo si MISURA, non si ricorda**: si legge `pmoStaffProfile.role`, mai
 `pmoIsReadonlyStaff()` — quella torna `false` anche quando il profilo **non c'è affatto** (`!!p`),
 quindi direbbe «posso scrivere» proprio nel caso in cui non si è nessuno.
@@ -840,10 +855,14 @@ non affiancata.
 un controllo: dice che il file è partito, non che l'app fa la cosa giusta. Il controllo si fa **con
 la console remota, sulla pagina viva di PROD** — è dentro l'autonomia di lettura del 16/08, e non
 si chiede.
-⛔ **E si dichiara sempre dove arriva**: la console entra come **sola lettura**, quindi ciò che
-richiede una **scrittura** (un incasso, una prenotazione, un cambio importo vero) **non lo può
-esercitare**. ⇒ Il ③ prova ciò che si può **guardare e calcolare**; il resto è quello che lui va a
-controllare al ④, e va scritto come *«non provato»*, non lasciato credere.
+⛔ **E si dichiara sempre dove arriva**: la console entra in **sola lettura per difetto**, quindi ciò
+che richiede una **scrittura** (un incasso, una prenotazione, un cambio importo vero) al ③ **non
+viene esercitato**. ⇒ Il ③ prova ciò che si può **guardare e calcolare**; il resto va scritto come
+*«non provato»*, non lasciato credere.
+🔄 **Corretto il 06/09/2026 notte**: qui c'era *«non lo può esercitare»*, ed è diventato falso — con
+`--allow-writes` la console **ci arriva** (un incasso vero e il suo storno sono passati di lì su PROD
+la notte del 06/09). Resta vero che al ③ non si fa: non perché lo strumento non possa, ma perché
+quello è il caso «si dice prima» del blocco qui sotto.
 
 ⛔ **COSA LA REGOLA NON COPRE, e non è cambiato**: ciò che è **irreversibile o si vede da fuori**
 — una scrittura vera sul Matchpoint del circolo, un messaggio che parte verso i soci,
@@ -1146,8 +1165,11 @@ dei ref remoti → `git fetch --prune`.
   porta 8123; apri `http://localhost:8123/test/handle-test.html`, leggi `window.__RESULTS__`). Mocka il worker.
 - Worker condiviso: i log PROD sono su Hetzner (`~/.pm2/logs/matchpoint-worker-*.log`), pm2 `matchpoint-worker`.
 - 🌐 **Console remota sul gestionale** (`tools/verifica-browser/`): apre `app.padelvillage.club`
-  o `test.padelvillage.club` in Chromium, fa login come utente **di sola lettura** ed esegue uno
-  snippet dentro la pagina — `node console.mjs --env test|prod --eval "return …"`. Serve a non
+  o `test.padelvillage.club` in Chromium, fa login come utente **staff** ed esegue uno
+  snippet dentro la pagina, **in sola lettura per difetto** — `node console.mjs --env test|prod
+  --eval "return …"`. ⚠️ *«utente di sola lettura»* diceva questa riga fino al 06/09/2026: l'utenza
+  ha `role: "staff"` **da lui** dal 05/09, ed è la **guardia dell'attrezzo** — non il ruolo — a
+  tenerla in lettura finché non si passa `--allow-writes`. Serve a non
   dover più chiedere al committente «apri DevTools, incolla questo, dimmi cosa esce»:
   `page.evaluate()` **è** quella console. Girare lo stesso snippet di là e di qua *è* la diagnosi:
   uguale in entrambi → è il codice, diverso → sono i dati o l'ambiente.
@@ -1189,10 +1211,14 @@ dei ref remoti → `git fetch --prune`.
   anche quando il profilo **non c'è affatto** (`!!p`). Una sonda che la usa per dire «posso
   scrivere» dice il falso proprio nel caso in cui non si è nessuno. 📌 *Una funzione che risponde
   «no» a due domande diverse non risponde a nessuna delle due.*
-  ⚖️ **E l'utenza giusta è quella di SOLA LETTURA, non l'owner.** L'attrezzo è disegnato per un
-  ruolo `readonly`, e la 22ª ha già misurato che quel ruolo **vede le prenotazioni tutte** — quindi
-  per diagnosticare basta. Con l'owner ogni svista su PROD costa molto di più, e l'unica protezione
-  che resta è la guardia dell'attrezzo (che è brava, ma è **una** guardia invece di due).
+  ⚖️ **L'utenza NON è più `readonly`, e va saputo: oggi è `staff` con TUTTI i permessi.** 🔄 Questa
+  riga diceva *«l'utenza giusta è quella di SOLA LETTURA, non l'owner»*, ed era una raccomandazione
+  che la realtà ha superato — lui ha alzato il ruolo il 05/09 e spuntato tutti i permessi il 06/09.
+  📏 Misurato il 06/09 notte: `role: "staff"`, e **quindici** permessi su quindici a `true`.
+  ⚖️ Resta vero il **perché** della riga vecchia, e adesso pesa di più: con un'utenza che vede e
+  può tutto, l'unica protezione che resta è **la guardia dell'attrezzo** — che è brava, ma è **una**
+  guardia invece di due. ⇒ `--allow-writes` su PROD non è una comodità: è l'unica cosa che separa
+  una diagnosi da una scrittura sul Matchpoint del circolo.
   📌 Vuole l'ambiente cloud configurato — allowlist dei 6 domini, le `PMO_VERIFY_*`, e lo script
   che importa la CA del proxy nel magazzino NSS di Chromium. Il README lì dentro ha l'elenco e le
   **tre trappole del container**: senza quelle correzioni il sintomo è «il sito non risponde»
@@ -1226,14 +1252,21 @@ dei ref remoti → `git fetch --prune`.
   | ② | **il PERMESSO** `cloud_sync`, che serve alle edge | stessa riga, campo `permissions` | 🟢 **già `true`** |
   | ③ | **la guardia dell'ATTREZZO**, che blocca tutto `/functions/v1/` | `--allow-writes` di `console.mjs` | 🟢 **mio** — provato: `scritture: "CONSENTITE"` |
 
-  ⇒ **Ne manca uno solo, ed è una parola in un campo.** In *Impostazioni → Utenti Staff*, sulla riga
-  dell'utenza della console, il ruolo va da **Solo lettura** a **Staff**.
-  ⛔⛔ **NON a «Admin» né a «Proprietario», ed è la parte che conta**: quei due ruoli
-  **scavalcano l'intera whitelist** dei permessi (`if (['owner','admin'].includes(role)) return
-  true`), quindi aprirebbero anche gestione utenti, incassi, anagrafica, borsellino — tutto ciò
-  che oggi è spuntato **no**. **Staff** invece lascia la whitelist al suo posto: resta esattamente
-  `cloud_sync` + `view_dashboard`, cioè quello che l'utenza ha già.
-  📌 *Si apre il cancello che serve, non la porta che sta accanto.*
+  ✅ **TUTTI E TRE APERTI, e la tabella qui sopra è una fotografia del 04/09 che non descrive più
+  oggi.** Il ① lo ha alzato lui il **05/09** (da *Solo lettura* a **Staff**, come diceva questa riga);
+  📏 e il **06/09 notte** i **permessi sono tutti e quindici `true`** — misurato, non ricordato.
+  ⚖️ **Regge la scelta di NON dargli «Admin»/«Proprietario»**: quei due ruoli **scavalcano** la
+  whitelist nel codice (`if (['owner','admin'].includes(role)) return true`), e allora nessuna
+  spunta significherebbe più niente. Con `staff` la whitelist **esiste** ancora — semplicemente,
+  oggi è aperta tutta.
+  🔄 **Ma la frase che questa riga usava per rassicurare è caduta**: diceva *«resta esattamente
+  `cloud_sync` + `view_dashboard`»* e che gestione utenti, incassi, anagrafica e borsellino restano
+  *«spuntati no»*. **Non è più vero di nessuno dei quattro.**
+  🩹 **E il motivo per cui li ha spuntati tutti è un DIFETTO del gestionale, trovato da lui**:
+  *spuntando il capitolo, le sottosezioni non si attivavano* — quindi ha dovuto metterli a mano uno
+  per uno. ⚠️ Quel difetto **non è ancora una voce in lista**, e va portato a lui prima di aprirla.
+  📌 *Si apre il cancello che serve, non la porta che sta accanto* — resta la regola giusta, e resta
+  scritta qui proprio perché stavolta si sono aperte anche le porte accanto.
   ⚠️ E va detto per intero: `staff` toglie il freno a **tutte** le scritture della scheda, non solo
   a quella segnalata. La cosa che tiene stretto il perimetro **non è più il ruolo, è la regola** —
   si scrive solo sulla scheda che lui ha indicato, e mai un pagamento.
