@@ -29,8 +29,8 @@ Fabiola disponibile in prod per fare qualsiasi tipo di test tranne il test di pa
 3. 🔘 **La 167 è nata stamattina, fatta, provata e CHIUSA nel pomeriggio**: TEST 6.373 → PROD 6.373.
 4. 🚨 **Un difetto trovato PRIMA di spingere, che nessun banco poteva vedere** — due regole CSS
    entrambe corrette e il guasto nell'**ordine** (§3). È la cosa da ricordare di oggi.
-5. 🆕 **Un fatto nuovo misurato**, dentro la 165: `pmo_staff_profiles` si riscrive **9.057 volte al
-   giorno** le sue 4 righe (erano 1.617 il 05/09).
+5. 🩹 **Un numero che avevo scritto nel registro era MIO, non del sistema** — e l'ho tolto (§5).
+6. ✅ **Su sua parola, tolto un indice da PROD**: database da 688 a **644 MB** (§6).
 
 ---
 
@@ -126,8 +126,9 @@ il caso ⑧ di `test/i-bottoni-stanno-nel-pie.test.mjs`.
   si riscrive **9.057 volte al giorno** le sue 4 righe (erano 1.617 il 05/09, ⇒ **5,5 volte tanto**),
   abbastanza da far suonare l'amplificazione. ⚠️ **Non è stato misurato CHI lo scrive**: il numero
   dice che c'è qualcosa, non cosa.
-- 💰 **Il compute**: con 702 MB/giorno di WAL scritto su 688 MB di database (**1,0 a 1**) il MICRO
-  **non è sotto sforzo**. Lo SMALL resta una sua decisione di costo, non un'urgenza.
+- 💰 **Il compute**: DECISO da lui — *«Lasciamo com'è»*. Resta il **MICRO** (1 GB), e i numeri gli
+  danno ragione: **266 MB/giorno** di WAL scritto su 688 MB di database. Il «servono 11 GB/giorno»
+  che ieri rendeva urgente lo SMALL era **l'LSN**, non le scritture.
 - 🔎 **Fabio De Luca, lunedì 7 e martedì 8**: non aperta, e va chiesto a lui prima. ⚠️ La sua
   partita delle 18:00 di lunedì è stata **solo aperta e guardata** misurando la 167, niente di più.
 - ⚠️ **La partita di lunedì 7, 09:00, Campo 4** (Lidia · Fabiola) è **intatta**: aperta in sola
@@ -158,3 +159,59 @@ il caso ⑧ di `test/i-bottoni-stanno-nel-pie.test.mjs`.
   fra due letture o i ritmi si astengono.
 - 🚨 **Il checkout locale può essere STANTIO** (oggi HEAD era del 31/08): `git status -sb` prima di
   tutto, e `git checkout -B test-preview origin/test-preview` con un ref di backup.
+
+
+---
+
+## 5 · 🩹⭐⭐ Il numero che avevo scritto era MIO — la sonda dentro la misura
+
+Un'ora dopo aver chiuso la 161, avevo scritto nella **165**, come *fatto nuovo trovato dalla
+sentinella*: *«`pmo_staff_profiles` si riscrive 9.057 volte al giorno le sue 4 righe, contro le
+1.617 del 05/09 ⇒ cinque volte e mezzo tanto»*.
+
+📏 **Rimisurato su una finestra pulita di 11 minuti, senza nessuna console aperta: 53
+aggiornamenti ⇒ ~1.740× al giorno per riga**, cioè **in linea col 05/09**. Nessun peggioramento.
+Il 9.057× stava dentro la finestra 10:03→10:34 in cui **avevo tre sessioni della console remota
+aperte**, e ognuna sonda il semaforo ogni 4 s passando dalla guardia dei permessi, che **scrive**.
+
+⚖️ Il difetto non è il numero sbagliato: è **averlo messo nel registro come fatto misurato** senza
+chiedermi chi generasse il traffico che stavo misurando. Il `CLAUDE.md` avverte da ieri che le
+console aperte pesano — lo sapevo, e ho attribuito al sistema il peso che ci mettevo io.
+📌 *Prima di scrivere un numero come fatto: lo strumento che lo legge è dentro la misura?*
+
+🔎⭐ **E cercando il colpevole è uscita la cosa vera**, che vale più della cifra: `last_seen_at`
+**non è un battito**. Lo scrive `pmo_current_staff_profile()` — la **guardia dei permessi** — con
+un `update` **a ogni chiamata**, e da lì passano **17 RPC** dello staff. ⇒ *Ogni lettura dello
+staff è anche una scrittura*, e il ritmo è proporzionale a **quanto si usa il gestionale**, non a
+un timer. Curarlo vuol dire non riscrivere se `last_seen_at` è già di poco fa. ⛔ Non fatto, e non
+urgente: quegli update sono **HOT al 97,5%**.
+
+---
+
+## 6 · ✅ L'indice tolto da PROD, con la sua parola
+
+🗣️ Messo davanti alla scelta **in parole non tecniche** (perché me l'ha chiesto: *«mi parli un po'
+troppo difficile, non ho capito cosa vuoi che io decida»*) ha risposto **«Sì, toglila»**.
+
+`drop index public.idx_pmo_cloud_records_payload_gin` su `qqbf…`, ~11:20.
+
+| | prima | dopo |
+|---|---|---|
+| tabella `pmo_cloud_records` | 87 MB | **42 MB** |
+| database | 688 MB | **644 MB** |
+| indici | 7 | **6** |
+| righe | 23.937 | **23.961** (tutte lì) |
+
+🔎 **I tre controlli fatti prima**: `idx_scan = 1` in 21 ore; nessuna riga dell'app usa `@>` o `?`
+sul payload — l'unico posto è `supabase_pmo_member_count_audit_dry_run.sql`, uno script lanciato a
+mano (con ogni probabilità proprio quell'unica lettura); e **la definizione per rimetterlo salvata
+prima di cancellarlo**: `CREATE INDEX idx_pmo_cloud_records_payload_gin ON
+public.pmo_cloud_records USING gin (payload)`.
+
+📏 **Prova fisica su PROD 6.373 subito dopo**: il calendario del 7/09 disegna **14 prenotazioni**,
+la scheda delle 09:00 si apre coi **4 giocatori** e Lidia e Fabiola letti per nome, nessun errore
+nuovo in console.
+
+⏳ **Resta il punto ② della 165** — se `updated_at` debba restare indicizzato — ed è **un'altra
+decisione sua**: quell'indice è usato **2.256 volte** (contro l'1 del GIN), quindi il conto non è
+ovvio e va **misurato prima** di proporglielo.
