@@ -2308,6 +2308,38 @@ niente di questa voce.
 decina di secondi** senza ricaricare la pagina, e in archivio la riga
 `wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
 
+🚨🚨⭐⭐ **E LA PROVA COL PAGAMENTO, SU MAURIZIO APREA, **NON SI PUÒ FARE** — misurato il 06/09
+notte aprendo la scheda vera, prima di premere.**
+📏 Il roster della 9844 letto dal worker dice, per lui: `stato: riscosso`, `importoCents: 0`,
+`pendenteCents: 0`. ⇒ **La sua quota è OFFERTA**, e non è un caso di quella partita: nell'altra sua
+del 7/09 (9845, 18:00 Campo 3) è **identico**, e in archivio **tutti** i suoi pagamenti sono
+`method: gift`, `amount_cents: 0`, senza eccezioni.
+⛔ ⇒ `/collect-payment` si fermerebbe alla **guardia anti-doppio** (`pendente === 0` →
+`ALREADY_PAID`) **senza toccare niente**: non un rosso da capire, proprio un gesto che non parte.
+🚨 **E la strada che verrebbe in mente è la peggiore**: incassare un importo diverso da quello a
+carico fa **riscrivere l'importo a carico sulla prenotazione vera** (`cargo_set:X->Y` nel worker,
+salvato su Matchpoint) — e lo **storno non lo rimette**. Su Maurizio vorrebbe dire creargli un
+dovuto che il circolo gli aveva messo a zero, su una partita che gioca fra poche ore.
+⇒ **Serve una decisione sua**, e sono due: **①** un socio/partita dove ci sia un dovuto vero e un
+borsellino capiente, oppure **②** su Maurizio la sequenza completa e reversibile *importo a carico
+0 → 1,00 € → incasso col borsellino → storno → importo di nuovo 0*, che tocca i dati veri **quattro
+volte** e va voluta esplicitamente.
+📌 *La prova che non parte non è un fallimento della cura: è un fatto sul bersaglio, e si scopre
+solo andando a guardare il bersaglio.*
+
+✅⭐ **QUELLO CHE INVECE È STATO PROVATO FISICAMENTE, la notte del 06/09, a ZERO euro:** il ↻ del
+borsellino nella scheda di Maurizio, eseguito su PROD 6.388 chiamando `pmoWalletRefresh` — la
+funzione vera del bottone, non un'imitazione.
+| | |
+|---|---|
+| prima | `600` · `source: matchpoint` · 19:31:04 (l'aveva scritta il sync) |
+| **dopo** | `600` · **`source: pmo_wallet_read`** · **19:33:15** · 6 campi esatti |
+⇒ La prova sta nella **fonte**, non nel numero: `pmo_wallet_read` **nessun sync la scrive mai**, e
+il numero non doveva muoversi — non era cambiato niente sul borsellino. ⏱️ Il giro ha impiegato
+**17,7 s**, che è la ragione per cui la rilettura sta in sottofondo e non davanti alla cassa.
+⇒ **Metà catena è provata sul campo**: edge → fotografia archiviata, chiave giusta, socio giusto,
+nessun campo di troppo. Manca la metà che parte da un pagamento.
+
 🚨 **PRIMA DI PREMERE, UN CONTO DA FARE: col borsellino non si può pagare più di quello che c'è.**
 📏 Il borsellino di Maurizio Aprea ha **6,00 €** (5,00 + il 1 € della prova di ieri sera). ⇒ Se
 l'importo a carico della partita è **più** di 6,00 €, il pagamento col borsellino **non può
