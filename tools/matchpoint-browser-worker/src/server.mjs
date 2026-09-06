@@ -8437,29 +8437,91 @@ async function _readPendenteCents(page, ridx) {
 // Le etichette (Contanti/Carta/Saldo disponibile) sono uniche tra i pulsanti del
 // dialog → has-text (substring) è robusto. ⚠️ Il DOM esatto del dialog si conferma
 // solo dal vivo: lascio diagnostica ricca e più selettori di ripiego.
+// ── SONDA della voce 171 (06/09/2026) ──────────────────────────────────────────
+// Davanti a un metodo non trovato il worker diceva SOLO quale cercava, mai quali
+// vedeva: ogni diagnosi diventava un altro tentativo alla cieca su una cassa vera.
+// Questa raccolta elenca i cliccabili visibili di OGNI contesto — iframe compresi,
+// perché i dialog di Matchpoint sono iframe fancybox (lo sa gia` la correzione del
+// saldo, che cerca `FichaCorreccionSaldo.aspx` fra i `page.frames()`, mentre qui si
+// e` sempre cercato nel solo frame principale).
+// ⚠️ Raccolta in SOLA LETTURA: guarda e non clicca. Se il dialog fosse altrove, il
+//    click sbagliato lo farebbe su una cassa vera.
+async function _collectCobroCandidates(page) {
+  const contesti = [];
+  for (const fr of page.frames()) {
+    const info = {
+      main: fr === page.mainFrame(),
+      url: (fr.url() || '').slice(0, 160),
+      name: (fr.name() || '').slice(0, 40),
+    };
+    try {
+      Object.assign(info, await fr.evaluate(() => {
+        const visibile = (el) => {
+          const r = el.getBoundingClientRect();
+          if (!r.width || !r.height) return false;
+          const s = getComputedStyle(el);
+          return s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0';
+        };
+        const testo = (el) => String(el.innerText || el.textContent || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        const cliccabili = [];
+        document.querySelectorAll('button, a, input[type="button"], input[type="submit"], [onclick], [role="button"]').forEach((el) => {
+          if (cliccabili.length >= 40 || !visibile(el)) return;
+          const t = testo(el);
+          if (t) cliccabili.push({ tag: el.tagName.toLowerCase(), id: String(el.id || '').slice(0, 60), testo: t });
+        });
+        const iframes = [];
+        document.querySelectorAll('iframe').forEach((el) => {
+          if (iframes.length >= 10) return;
+          iframes.push({ src: String(el.getAttribute('src') || '').slice(0, 160), cls: String(el.className || '').slice(0, 60), visibile: visibile(el) });
+        });
+        return { bodyText: String(document.body ? document.body.innerText : '').replace(/\s+/g, ' ').trim().slice(0, 300), cliccabili, iframes };
+      }));
+    } catch (e) {
+      info.err = String((e && e.message) || e).slice(0, 80);
+    }
+    contesti.push(info);
+  }
+  return contesti;
+}
+
 async function _clickCobroMethod(page, methodLabel, diagnostic) {
-  await page.waitForTimeout(400); // lascia aprire il dialog dopo il postback di Cobrar
   const tries = [
     `button:visible:has-text("${methodLabel}")`,
     `a:visible:has-text("${methodLabel}")`,
     `[onclick]:visible:has-text("${methodLabel}")`,
     `:is(button,a,div,span,label):visible:has-text("${methodLabel}")`,
   ];
-  for (const sel of tries) {
-    const loc = page.locator(sel);
-    const n = await loc.count().catch(() => 0);
-    if (n) {
+  // Il dialog arriva dopo un postback: si ASPETTA che compaia invece di scommettere
+  // su 400 ms fissi. Un'attesa fissa non distingue «non c'e`» da «non c'e` ANCORA»,
+  // e le due vogliono cure opposte.
+  const scadenza = Date.now() + 8000;
+  let giri = 0;
+  for (;;) {
+    giri++;
+    let vistoQualcosa = false;
+    for (const sel of tries) {
+      const loc = page.locator(sel);
+      const n = await loc.count().catch(() => 0);
+      if (!n) continue;
+      vistoQualcosa = true;
       try {
         await loc.first().click({ timeout: 6000 });
-        diagnostic.steps.push('cobro_method:' + methodLabel);
+        diagnostic.steps.push(`cobro_method:${methodLabel}:giro${giri}`);
         await page.waitForTimeout(300);
         return;
       } catch (e) {
         diagnostic.steps.push('cobro_method_retry:' + String((e && e.message) || e).slice(0, 40));
       }
     }
+    // Trovato ma non cliccabile ⇒ si esce SUBITO: l'incasso non e` idempotente, e
+    // ritentare un click che potrebbe essere gia` passato e` il rischio da non correre.
+    if (vistoQualcosa) { diagnostic.cobroEsito = 'trovato_non_cliccabile'; break; }
+    if (Date.now() >= scadenza) { diagnostic.cobroEsito = 'mai_comparso'; break; }
+    await page.waitForTimeout(400);
   }
-  throw fail('FORMA_PAGO_NON_TROVATA', `Pulsante metodo "${methodLabel}" non trovato nel dialog incasso.`, diagnostic);
+  diagnostic.cobroGiri = giri;
+  const cobroCandidates = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+  throw fail('FORMA_PAGO_NON_TROVATA', `Pulsante metodo "${methodLabel}" non trovato nel dialog incasso.`, Object.assign({}, diagnostic, { cobroCandidates }));
 }
 
 // Apre la scheda partita/lezione, trova il partecipante, (opz.) corregge l'importo
