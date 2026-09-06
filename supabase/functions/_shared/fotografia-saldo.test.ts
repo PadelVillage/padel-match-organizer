@@ -15,7 +15,12 @@
  * ⛔ QUELLO CHE NON DICE: che il numero arrivi sullo schermo della segreteria. Dice che la regola
  *    è quella giusta. Che il saldo si veda cambiato lo dice solo una ricarica vera su PROD.
  *
- * Esegui:  deno test --allow-read supabase/functions/matchpoint-wallet-correct/fotografia-saldo.test.ts
+ *   ⑥ la **provenienza** (`source`) dice per quale delle due strade è arrivato il numero — la
+ *      ricarica che il saldo dopo ce l'ha in mano, o la rilettura dopo un pagamento col
+ *      borsellino, dove il saldo dopo non c'è. Un valore inventato ricade sul default invece di
+ *      finire in archivio come una parola che nessuna sonda cerca.
+ *
+ * Esegui:  deno test --allow-read supabase/functions/_shared/fotografia-saldo.test.ts
  */
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { decidiFotografiaSaldo } from './fotografia-saldo.ts';
@@ -87,4 +92,53 @@ Deno.test('⭐ il caso della prova su PROD: 1 € sul borsellino, saldo dopo 100
   // 🚨 E nessun campo in più: il payload deve poter essere sovrascritto dal sync senza che la
   //    riga «cambi» per un campo che solo noi scriviamo — sarebbe la voce 160 in miniatura.
   assertEquals(Object.keys(e.payload).length, 6);
+});
+
+/* ── ⑥ LA PROVENIENZA — entrata il 06/09 sera con la seconda metà della voce 143 ────────────── */
+
+Deno.test('⑥ chi non dichiara la provenienza resta il chiamante di sempre (la ricarica)', () => {
+  const e = decidiFotografiaSaldo({ ...base, balancePost: 100 });
+  assert(e.scrivi);
+  assertEquals(e.payload.source, 'pmo_wallet_correct');
+});
+
+Deno.test('⑥ la rilettura dopo un pagamento col borsellino si dichiara, e si distingue', () => {
+  const e = decidiFotografiaSaldo({ ...base, balancePost: 100, source: 'pmo_wallet_read' });
+  assert(e.scrivi);
+  assertEquals(e.payload.source, 'pmo_wallet_read');
+  // 🔑 …e la CHIAVE resta la stessa: le due strade scrivono sullo stesso record, o il socio
+  //    avrebbe due saldi e l'app ne mostrerebbe uno a caso.
+  assertEquals(e.localKey, 'wbal|m-123');
+  assertEquals(Object.keys(e.payload).length, 6);
+});
+
+Deno.test('⑥ una provenienza inventata NON finisce in archivio: ricade sul default', () => {
+  for (const v of ['matchpoint', 'worker', '', 'PMO_WALLET_READ', null]) {
+    const e = decidiFotografiaSaldo({ ...base, balancePost: 100, source: v as never });
+    assert(e.scrivi);
+    assertEquals(e.payload.source, 'pmo_wallet_correct',
+      `una provenienza fuori dai due valori previsti deve ricadere sul default, ricevuto ${JSON.stringify(v)}`);
+  }
+});
+
+Deno.test('⭐ il caso della prova di lunedì 7/09, coi dati veri della partita delle 10:30', () => {
+  /* 📏 Copiati dall'archivio di PROD il 06/09, non inventati (lezione della 138: *un caso di
+     prova si copia dai dati, non dall'idea che se ne ha*): Maurizio Aprea ha id interno `4` nel
+     roster della prenotazione 9844, e `member_local_id` `7d454239…` in anagrafica. Il pagamento
+     col borsellino gli toglie il dovuto, e la rilettura scrive QUEL saldo su QUELLA chiave. */
+  const e = decidiFotografiaSaldo({
+    memberLocalId: '7d454239-929a-4346-8ba0-ec778d7763a3',
+    codice: '4',
+    playerName: 'Maurizio Aprea',
+    balancePost: 0,
+    adessoIso: ADESSO,
+    source: 'pmo_wallet_read',
+  });
+  assert(e.scrivi);
+  assertEquals(e.localKey, 'wbal|7d454239-929a-4346-8ba0-ec778d7763a3');
+  // ⑤ ZERO si scrive: dopo un pagamento che svuota il borsellino, «non ha più credito» non è
+  //    «non lo so» — ed è esattamente il numero che la segreteria deve vedere in cassa.
+  assertEquals(e.payload.balance_cents, 0);
+  assertEquals(e.payload.id_cliente, '4');
+  assertEquals(e.payload.source, 'pmo_wallet_read');
 });

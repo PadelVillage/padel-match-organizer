@@ -5,7 +5,7 @@ import {
   MESSAGGIO_AMBIENTE_DI_PROVA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
-import { decidiFotografiaSaldo } from './fotografia-saldo.ts';
+import { decidiFotografiaSaldo } from '../_shared/fotografia-saldo.ts';
 
 // matchpoint-wallet-correct — Fase 2b: corregge il saldo del BORSELLINO (Portafoglio/Monedero)
 // di un cliente su Matchpoint, via worker /correct-wallet ("Correzione del saldo"), in ENTRAMBE
