@@ -2040,6 +2040,49 @@ dall'app — l'indicatore resterà acceso i secondi che il worker impiega.
 🧪 Banco nuovo `la-scheda-si-apre-piena` (13 casi), con `_normRoster` **eseguita** e non solo
 letta; **sabotata 5 volte su una COPIA**, cade tutte e 5.
 
+🔨⭐ **06/09 POMERIGGIO (94ª): LA SECONDA METÀ È SCRITTA, PROVATA AL BANCO E DEPLOYATA SU TEST —
+ma è SPENTA, e va detto per primo.** `PMO_ARRICCHISCI_SCHEDE` di default è **0**: il codice
+atterra inerte e non cambia niente in servizio.
+· 🔨 **Dove**: dentro il giro del sync, nel punto in cui si sa già **cosa c'è in archivio** e
+  **cosa dice l'export adesso** — la differenza fra i due dice quali prenotazioni non abbiamo mai
+  letto per intero. Per ciascuna, **una** lettura in sola lettura (`/edit-booking` con
+  `read:true`, che il worker già espone) ⇒ **il worker non si tocca**.
+· 🚨⭐⭐ **La trappola più grossa, schivata apposta: nel payload non entra NESSUN TIMBRO DI TEMPO.**
+  Un `arricchitoAt` renderebbe il payload diverso a ogni giro ⇒ ogni riga riscritta ogni 2
+  minuti, cioè la fabbrica di WAL da cui nasce la **160**. Entrano solo fatti stabili: gli id, le
+  Osservazioni, e l'**impronta dei nomi** per cui valgono. Stessi nomi ⇒ payload identico ⇒ non si
+  riscrive. Il banco ha un caso che cade se qualcuno ci rimette un timbro.
+· ⛔ **`giocatori` non si tocca**, resta `string[]`: su quella lista `eventi-staff.ts` decide **chi
+  viene avvisato**. Gli id vanno in un campo accanto (`idClienti`), ed è una **mappa per nome** e
+  non un elenco parallelo — due elenchi si disallineano appena qualcuno riordina il roster, e il
+  roster si riordina. 📌 *Non si cambia la forma del dato su cui poggia un avviso, per un dato che
+  serve a una scheda.*
+· ⚖️ **Tre freni** per quando si accende: tetto per giro (l'arretrato di ~300 si smaltisce in molti
+  giri), budget di tempo (giro già lungo ⇒ non si comincia), una lettura alla volta (il worker è un
+  browser solo: quattro insieme non vanno in parallelo, vanno in fila). E tutto best-effort: questo
+  passo **non può** far fallire un giro di sync.
+· 🧪 Banco `arricchimento-scheda` (**18 casi**), funzioni pure ed **eseguite**, **sabotato 5 volte**:
+  cade tutte e 5. Verde nella corsa Deno vera della CI, e l'edge si deploya su TEST senza errori.
+· 🩹 **Due versioni della sonda ⑤ fallivano sul CODICE GIUSTO**: leggevano il sorgente con una regex
+  e scambiavano l'annotazione di tipo `giocatori: unknown` per un'assegnazione. 📌 *Una sonda che
+  deve indovinare la grammatica per capire cosa guarda è più fragile della cosa che sorveglia, e
+  quando sbaglia dice «rotto» di ciò che è sano.* ⇒ Sostituita da una prova di **comportamento**.
+· 🩹 E la prova stava per finire nel **corridoio sbagliato della CI**: importava da `deno.land`
+  invece che da `jsr:`, e `prove.yml` smista guardando proprio quello ⇒ sarebbe stata lanciata con
+  Node e sarebbe caduta. Corretta prima di spingere.
+⛔⛔ **COSA MANCA PER CHIUDERLA, ed è quasi tutto il valore:**
+① **l'interruttore va acceso**, e da qui non si può: `PMO_ARRICCHISCI_SCHEDE` è una variabile
+   d'ambiente del progetto Supabase, e **nessun workflow sa scriverla**. Serve o una sua mano dal
+   pannello Supabase, o un workflow nuovo che la scriva (il token per farlo la CI ce l'ha già).
+② 🚨 **si può provare SOLO SU PROD**: su TEST il calendario è una **fotografia congelata**, quindi
+   molte di quelle prenotazioni su Matchpoint non esistono più ⇒ la lettura fallirebbe e direbbe
+   «non funziona» di una cosa sana.
+③ **non è promossa a PROD**, ed è una scelta: portare su PROD un codice **spento** vuol dire
+   sostituire la funzione che tiene vivo il calendario per un guadagno **zero**. Si promuove quando
+   la si può accendere e guardare nello stesso giro.
+④ **l'app non legge ancora `idClienti`**: finché non lo fa, i soldi e gli id arrivano ancora dal
+   worker a ogni apertura di scheda — cioè il beneficio che la voce insegue non c'è ancora.
+
 ⏳ **LA VOCE RESTA APERTA**, ed è metà: id interno e Osservazioni dentro il gestionale al primo
 incontro del sync non ci sono ancora ⇒ **i soldi arrivano ancora dal worker** (per questo il terzo
 segno serve), la **138** aspetta ancora l'id, e la seconda metà della **143** pure.
