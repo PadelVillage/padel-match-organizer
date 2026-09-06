@@ -2880,6 +2880,37 @@ voci uscite (sotto, accanto alla 52 e alla 54) è la voce che lo spiega, così n
 
 ## 🆕 Nate misurando, **non** ancora in coda
 
+### 🚨 UN FILE DI `_shared/` CAMBIATO DA SOLO NON RIDEPLOYA NESSUNA EDGE — misurato il 06/09 notte
+
+📏 **Trovato promuovendo la voce 143**, guardando il workflow prima di fidarsi che il deploy
+portasse il modulo nuovo. `deploy-edge-functions-{test,prod}.yml` sceglie cosa deployare così:
+```
+git diff --name-only … -- 'supabase/functions/**' | awk -F/ '… $3 !~ /^_/ {print $3}'
+```
+⇒ Le cartelle che iniziano per `_` sono **saltate di proposito** (non sono funzioni deployabili), e
+`_shared/` è una di quelle. La dipendenza viene inclusa **solo** quando si deploya una funzione che
+la importa. ✅ Nella 143 è andata bene ed è **verificato dal vivo**, non supposto: il sorgente in
+servizio su `cudi…` porta `functions/_shared/fotografia-saldo.ts` accanto all'`index.ts`, perché nello
+stesso commit cambiavano anche le due funzioni.
+
+🚨 **Il caso che fa danno è un altro**: un commit che tocca **soltanto** un file di `_shared/`. Il
+workflow non trova nessuna funzione da deployare, **esce verde** e in servizio resta la versione
+vecchia della regola — con la CI che dice che è andato tutto bene. È il difetto peggiore per un
+deploy, ed è **lo stesso** già pagato il 28/07/2026 con `HEAD~1..HEAD` (allora si perdeva una
+funzione su due, e il commento che lo racconta sta tre righe sopra questo `awk`): *si legge come
+pubblicato ciò che non è mai partito*.
+⚖️ **Non è teorico**: `_shared/` è importata da almeno 6 funzioni — le prenotazioni
+(`chiudi-copia-locale`, `dichiara-fatti`, `fatti-da-conferma`, `traccia-fallimento`), le due del
+borsellino da stanotte. Una correzione a `fatti-da-conferma.ts` per curare un avviso sbagliato ai
+soci resterebbe **a terra in silenzio**.
+
+🔨 **La cura, piccola e a portata**: quando il diff tocca `supabase/functions/_shared/**`, aggiungere
+alla lista le funzioni che **importano** quel file (`grep -l` sugli `index.ts`), invece di non
+aggiungere niente. ⛔ Non «deploya tutto»: sarebbe lento e rischioso: si deploya chi lo usa.
+📌 **NON è ancora in coda**: nasce da una misura fatta stanotte, non da una sua parola né da un
+guasto visto. Va messa in lista da lui, o dalla sessione che decide di promuoverla — dichiarandolo.
+
+
 ### 🔁 IL GIRO DEL CIRCOLO DEL BOT È A PASSO FISSO E NON ASPETTA IL PRECEDENTE — misurato il 05/09 notte
 
 🔼 **Diventata la voce 164 la notte stessa, su sua parola** (*«se questo lo reputi un problema, correggi»*): la riga sta in sezione C, la cura è nel bot. Qui resta la **misura** da cui è nata.
