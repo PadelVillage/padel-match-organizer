@@ -20,15 +20,28 @@ name: Interruttore arricchimento schede (voce 142)
 #      `test-preview` con bersaglio `prod`, di far atterrare su PROD il codice di TEST scavalcando
 #      la promozione. Qui si scrive una variabile e basta.
 #
-# ⚠️ E UNA COSA CHE VA SAPUTA PRIMA DI ACCENDERLO SU PROD: al 06/09 la seconda metà della 142 vive
-#    **solo su `test-preview`**. Scrivere la variabile su PROD prima di aver promosso il codice non
-#    rompe niente, ma non fa succedere niente: la funzione in servizio là quella variabile non la
-#    legge nemmeno. ⇒ Prima si promuove, poi si accende.
+# ✅ IL CODICE È SU PROD dal 06/09 (PR #1421, deploy `Deploy Edge Functions (PROD)` #234): la
+#    funzione in servizio su `qqbf…` legge davvero queste due variabili — verificato leggendo il
+#    sorgente deployato, non l'esito del deploy.
+# 🔄 QUI C'ERA SCRITTO IL CONTRARIO fino a quel momento («la seconda metà vive solo su
+#    `test-preview` ⇒ accendere su PROD non fa succedere niente»), ed era vero quando fu scritto.
+#    Riga CORRETTA, non affiancata: chi la leggesse oggi rinuncerebbe ad accendere credendo che
+#    non serva a niente. ⇒ Prima si promuove, poi si accende — e la promozione è fatta.
 #
-# 🔎 SI RILEGGE DOPO AVER SCRITTO, invece di credere all'esito del comando: `secrets list` dice
-#    che la variabile c'è. ⛔ Non dice il VALORE — Supabase mostra solo un'impronta — quindi
-#    quanto vale davvero lo dice il registro della funzione al giro dopo (`arricchimento_schede`,
-#    con dentro `tetto`). 📌 *Un comando riuscito dice che è partito, non che è arrivato.*
+# 🔎 SI RILEGGE DOPO AVER SCRITTO, invece di credere all'esito del comando, e si controlla il
+#    VALORE — non solo che la riga esista. 📌 *Un comando riuscito dice che è partito, non che è
+#    arrivato.*
+# 🔄 QUI C'ERA SCRITTO IL CONTRARIO, e la riga è stata CORRETTA (non affiancata) il 06/09: diceva
+#    che `secrets list` prova che la variabile c'è ma non quanto vale, «perché mostra solo
+#    un'impronta». 📏 Misurato sulla prima corsa vera: quell'impronta è lo **SHA-256 del valore**
+#    (`5feceb66…` è sha256 di «0», `d4735e3a…` di «2») ⇒ per un numero corto si ricalcola e si
+#    confronta, e la rilettura PROVA il valore. Il passo lo fa dal 06/09; questo commento e il
+#    riepilogo in fondo avevano continuato a dire di no.
+#    ⚖️ È la 26ª — *un limite dichiarato che nessuno riprova resta vero per sempre perché sembra
+#    prudente* — nella forma peggiore: dentro lo stesso file che lo smentisce.
+# ⚠️ Resta vero, e non è la stessa cosa: la variabile scritta dice cosa leggerà il PROSSIMO giro,
+#    non cosa ha fatto l'ultimo. Quello lo dice il registro della funzione (`arricchimento_schede`,
+#    con dentro `tetto` · `lette` · `riuscite`).
 
 on:
   workflow_dispatch:
@@ -155,7 +168,9 @@ jobs:
             echo "| schede per giro | **${{ steps.controlli.outputs.tetto }}**$([ '${{ steps.controlli.outputs.tetto }}' = '0' ] && echo ' — SPENTO' || true) |"
             echo "| budget per giro | ${{ steps.controlli.outputs.budget }} ms |"
             echo ""
-            echo "⚠️ \`secrets list\` dice che le variabili **ci sono**, non quanto valgono: Supabase"
-            echo "mostra solo un'impronta. Il valore vero lo dice il registro della funzione al giro"
-            echo "dopo, nella riga \`arricchimento_schede\` (che porta \`tetto\`, \`lette\`, \`riuscite\`)."
+            echo "✅ La rilettura ha verificato il **valore**, non solo che la riga esista:"
+            echo "l'impronta che Supabase mostra è lo SHA-256 del valore, e viene ricalcolata e"
+            echo "confrontata. ⚠️ Ma dice cosa leggerà il **prossimo** giro, non cosa ha fatto"
+            echo "l'ultimo: quello sta nel registro della funzione, riga \`arricchimento_schede\`"
+            echo "(con dentro \`tetto\` · \`lette\` · \`riuscite\`)."
           } >> "$GITHUB_STEP_SUMMARY"
