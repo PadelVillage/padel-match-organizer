@@ -1728,7 +1728,55 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 0
+## 🔴 URGENTI — 1
+
+### 171 — 💶🚨 IL PAGAMENTO COL BORSELLINO NON FUNZIONA: il worker non trova «Saldo disponibile»
+
+🆕 **Entra il 06/09/2026 notte, e non è una supposizione: è un guasto VISTO**, provando su PROD un
+incasso vero che il committente aveva autorizzato.
+📏 **Il fatto**: `matchpoint-payment-write` con `method: 'wallet'`, importo **8,00 €** — esattamente
+il pendente, così il worker non avrebbe toccato l'importo a carico — su Fabiola Limuti nella
+prenotazione **9844**. Risposta:
+> `Pulsante metodo "Saldo disponibile" non trovato nel dialog incasso.` (`FORMA_PAGO_NON_TROVATA`)
+
+⇒ Il worker apre il dialog dell'incasso, cerca la voce **per testo**
+(`MP_PAYMENT_SELECTORS.cobroMethodLabels.borsellino = 'Saldo disponibile'`) e **non la trova**.
+✅ **Nessun denaro mosso**: il gesto fallisce **prima** del click sul metodo — pendente rimasto
+`800`, nessun record `payment`, e il borsellino rimesso a `0` com'era (i due `wallet_txn`, +800 e
+−800, si annullano).
+
+⚖️ **NON è un difetto della voce 143**, e va detto per non curare la cosa sbagliata: la rilettura
+del saldo non è nemmeno partita, ed è **giusto così** — l'incasso non è riuscito, e un saldo
+riletto lì avrebbe dato alla fotografia una freschezza che non ha. È esattamente il caso ⑪ del
+banco (*«un incasso NON riuscito non rilegge niente»*), visto succedere sul campo.
+
+🔎 **Cosa NON si sa ancora, dichiarato invece che indovinato** — le tre ipotesi, in ordine di costo:
+① l'**etichetta è cambiata** su Matchpoint (e allora `CLAUDE.md`, che dichiara «la voce si chiama
+   *Saldo disponibile*», è la 26ª un'altra volta: un fatto dichiarato che nessuno riprova);
+② la voce **compare solo a certe condizioni** (tipo di prenotazione, cliente, o saldo visto dal
+   dialog) — ⚠️ ma il saldo c'era: 8,00 €, caricati un minuto prima e confermati dal worker stesso
+   (`balanceCentsPost: 800`);
+③ il dialog non si è aperto del tutto e il worker ha cercato in una pagina che non era quella.
+
+🚨 **E il worker non aiuta a distinguerle**: davanti a un metodo non trovato dice *quale cercava*,
+**non quali ha visto**. ⇒ Prima cura, che costa poco e serve a tutte e tre le ipotesi: far
+**elencare nel `diagnostic` le voci presenti nel dialog**. Senza, ogni tentativo successivo è un
+altro giro alla cieca su una cassa vera.
+📌 *Una sonda che dice cosa cercava e non cosa ha trovato trasforma ogni diagnosi in un tentativo.*
+
+⛔ **Cosa NON fare**: incassare un importo diverso dal pendente per «provare». Il worker in quel
+caso **riscrive l'importo a carico sulla prenotazione vera** (`cargo_set`), e lo storno non lo
+rimette.
+⚠️ E il ramo `wallet` di `/collect-payment` **non l'ha percorso nessuno da giugno**: la voce 125
+aveva provato l'incasso in **contanti**. ⇒ Non si sa se questo sia un guasto nuovo o se col
+borsellino non abbia **mai** funzionato.
+
+📌 **PROMOSSA A URGENTE da chi lavora, il 06/09 notte** (la delega del 23/08 copre le promozioni,
+e chiede di dichiararle): **non scavalca niente** — le urgenti erano **0**. Il perché è che la
+segreteria crede di avere un bottone che **non può riuscire**, e un bottone che promette e non
+mantiene è peggio di un bottone che manca: se la sera in cassa qualcuno ci prova, il socio è
+davanti e l'incasso non si fa.
+
 
 🎯⭐⭐ **DA QUALE SI COMINCIA — deciso il 05/09 sera, su sua richiesta** (*«risolvi come pensi sia
 giusto da quale iniziare le urgenti»*), e dichiarato col perché come vuole la delega del 23/08.
@@ -2307,6 +2355,74 @@ niente di questa voce.
 📏 Cosa si guarda per dire che ha funzionato: il chip 👛 nella riga di Maurizio cambia **entro una
 decina di secondi** senza ricaricare la pagina, e in archivio la riga
 `wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
+
+🚨🚨⭐⭐ **E LA PROVA COL PAGAMENTO, SU MAURIZIO APREA, **NON SI PUÒ FARE** — misurato il 06/09
+notte aprendo la scheda vera, prima di premere.**
+📏 Il roster della 9844 letto dal worker dice, per lui: `stato: riscosso`, `importoCents: 0`,
+`pendenteCents: 0`. ⇒ **La sua quota è OFFERTA**, e non è un caso di quella partita: nell'altra sua
+del 7/09 (9845, 18:00 Campo 3) è **identico**, e in archivio **tutti** i suoi pagamenti sono
+`method: gift`, `amount_cents: 0`, senza eccezioni.
+⛔ ⇒ `/collect-payment` si fermerebbe alla **guardia anti-doppio** (`pendente === 0` →
+`ALREADY_PAID`) **senza toccare niente**: non un rosso da capire, proprio un gesto che non parte.
+🚨 **E la strada che verrebbe in mente è la peggiore**: incassare un importo diverso da quello a
+carico fa **riscrivere l'importo a carico sulla prenotazione vera** (`cargo_set:X->Y` nel worker,
+salvato su Matchpoint) — e lo **storno non lo rimette**. Su Maurizio vorrebbe dire creargli un
+dovuto che il circolo gli aveva messo a zero, su una partita che gioca fra poche ore.
+⇒ **Serve una decisione sua**, e sono due: **①** un socio/partita dove ci sia un dovuto vero e un
+borsellino capiente, oppure **②** su Maurizio la sequenza completa e reversibile *importo a carico
+0 → 1,00 € → incasso col borsellino → storno → importo di nuovo 0*, che tocca i dati veri **quattro
+volte** e va voluta esplicitamente.
+📌 *La prova che non parte non è un fallimento della cura: è un fatto sul bersaglio, e si scopre
+solo andando a guardare il bersaglio.*
+
+🧪⭐⭐ **LA PROVA DEL PAGAMENTO È STATA FATTA, la notte del 06/09 — e NON È PASSATA, per un
+motivo che non è questa voce.** Su sua autorizzazione (*«ricarica il borsellino di Fabiola Limuti e
+fai la prova»*): borsellino caricato di **8,00 €**, incasso col borsellino di **8,00 €** — cioè
+esattamente il pendente, per non far riscrivere al worker l'importo a carico — sulla 9844.
+⛔ Risposta: **`Pulsante metodo "Saldo disponibile" non trovato nel dialog incasso.`** ⇒ è la voce
+**171**, appena aperta: il pagamento col borsellino **oggi non funziona**, e non per colpa di questa
+cura.
+✅ **Nessun denaro mosso e tutto rimesso com'era**: pendente ancora `800`, nessun record `payment`,
+borsellino di Fabiola tornato a `0` (i due `wallet_txn` +800 e −800 si annullano).
+⭐ **E una cosa questa voce l'ha provata lo stesso, sul campo**: la rilettura **non è partita**,
+perché l'incasso non è riuscito — che è il comportamento giusto e il caso **⑪** del banco, visto
+succedere davvero. Un saldo riletto lì avrebbe dato alla fotografia una freschezza che non ha.
+⏳ ⇒ **La metà «pagamento» di questa voce resta NON PROVATA**, e non può esserlo finché la 171 non è
+curata. La metà «rilettura» invece è provata due volte: col ↻ (sotto) e con la **ricarica** di
+stanotte, che ha scritto `source: pmo_wallet_correct` · `id_cliente: 000291` — il **codice**
+cliente, che è la conferma dal vivo della correzione qui sotto.
+
+🚨⭐⭐ **E LA PROVA HA TROVATO UN DIFETTO NELLA CURA STESSA — i DUE NUMERI, un'altra volta.**
+📏 Misurato subito dopo, guardando i saldi di altri soci: in archivio `id_cliente` **191** è
+**Luciano Pase** (codice `000191`, id interno **assente**); ma **191** nel roster di una
+prenotazione è l'id interno di **Valeria Moschet** (codice `000182`). ⇒ Il campo `id_cliente` della
+fotografia è quello che scrive il **sync**, e il sync ci mette il **CODICE CLIENTE**. La prima
+stesura di questa cura ci scriveva l'**ID INTERNO** preso dal roster: **due numerazioni nella
+stessa colonna**, a seconda di chi aveva scritto la riga. È la **voce 138 in un altro campo**.
+⚖️ **Danno limitato, e si dice perché è la parte che conta**: la **chiave** del record è
+`member_local_id`, quindi il saldo non è mai finito sul socio sbagliato — a essere inaffidabile era
+il campo `id_cliente`, che una sonda o una join futura avrebbero letto mescolato.
+🚨 **E NON SI VEDEVA DALLA PROVA**: era stata fatta su Maurizio Aprea, che ha id interno `4` e
+codice `000004` — **i due numeri coincidono**. 📌 *Un caso di prova scelto fra quelli dove i due
+valori coincidono non prova niente sui due valori.*
+🔨 Curato in `matchpoint-wallet-read` (6.390): il codice cliente lo passa il **chiamante**
+(`socio.memberId`, la stessa fonte che usa già la ricarica) e senza socio agganciato resta `null`
+— *meglio un campo vuoto che il sync riempirà, che un numero giusto nella numerazione sbagliata*.
+🧪 Banco: casi ⑭-⑰, col caso di **Valeria Moschet** preso dai dati veri perché è lì che i due
+numeri divergono; rimettendo il difetto diventano rossi.
+
+✅⭐ **QUELLO CHE INVECE È STATO PROVATO FISICAMENTE, la notte del 06/09, a ZERO euro:** il ↻ del
+borsellino nella scheda di Maurizio, eseguito su PROD 6.388 chiamando `pmoWalletRefresh` — la
+funzione vera del bottone, non un'imitazione.
+| | |
+|---|---|
+| prima | `600` · `source: matchpoint` · 19:31:04 (l'aveva scritta il sync) |
+| **dopo** | `600` · **`source: pmo_wallet_read`** · **19:33:15** · 6 campi esatti |
+⇒ La prova sta nella **fonte**, non nel numero: `pmo_wallet_read` **nessun sync la scrive mai**, e
+il numero non doveva muoversi — non era cambiato niente sul borsellino. ⏱️ Il giro ha impiegato
+**17,7 s**, che è la ragione per cui la rilettura sta in sottofondo e non davanti alla cassa.
+⇒ **Metà catena è provata sul campo**: edge → fotografia archiviata, chiave giusta, socio giusto,
+nessun campo di troppo. Manca la metà che parte da un pagamento.
 
 🚨 **PRIMA DI PREMERE, UN CONTO DA FARE: col borsellino non si può pagare più di quello che c'è.**
 📏 Il borsellino di Maurizio Aprea ha **6,00 €** (5,00 + il 1 € della prova di ieri sera). ⇒ Se
