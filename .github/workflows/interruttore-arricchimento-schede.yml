@@ -114,16 +114,38 @@ jobs:
             "PMO_ARRICCHISCI_BUDGET_MS=${{ steps.controlli.outputs.budget }}" \
             --project-ref "${{ steps.controlli.outputs.ref }}"
 
-      - name: Rileggi, invece di credere al comando
+      - name: Rileggi, e controlla il VALORE (non solo che la riga esista)
         run: |
           set -euo pipefail
-          echo "::group::Variabili sul progetto ${{ steps.controlli.outputs.ref }}"
-          npx supabase@latest secrets list --project-ref "${{ steps.controlli.outputs.ref }}" \
+          REF='${{ steps.controlli.outputs.ref }}'
+          TETTO='${{ steps.controlli.outputs.tetto }}'
+          BUDGET='${{ steps.controlli.outputs.budget }}'
+
+          echo "::group::Variabili sul progetto $REF"
+          npx supabase@latest secrets list --project-ref "$REF" | tee /tmp/secrets.txt \
             | grep -E 'PMO_ARRICCHISCI' || {
               echo "::error::Le variabili non risultano scritte sul progetto. Il comando è partito ma non è arrivato."
               exit 1
             }
           echo "::endgroup::"
+
+          # ⭐ L'impronta che Supabase mostra è lo SHA-256 del valore: per un numero corto si
+          #    ricalcola e si confronta. Così questo passo prova che è arrivato IL VALORE GIUSTO,
+          #    non che esiste una riga con quel nome.
+          controlla() {
+            nome="$1"; atteso="$2"
+            impronta=$(grep -E "^\s*$nome\s*\|" /tmp/secrets.txt | awk -F'|' '{gsub(/ /,"",$2); print $2}')
+            calcolata=$(printf '%s' "$atteso" | sha256sum | awk '{print $1}')
+            if [ -z "$impronta" ]; then
+              echo "::error::$nome non compare nella rilettura."; return 1
+            fi
+            if [ "$impronta" != "$calcolata" ]; then
+              echo "::error::$nome è arrivato con un valore DIVERSO da «$atteso» (impronta $impronta)."; return 1
+            fi
+            echo "  ✅ $nome = $atteso (impronta verificata)"
+          }
+          controlla PMO_ARRICCHISCI_SCHEDE "$TETTO"
+          controlla PMO_ARRICCHISCI_BUDGET_MS "$BUDGET"
           {
             echo "### Interruttore arricchimento schede"
             echo ""
