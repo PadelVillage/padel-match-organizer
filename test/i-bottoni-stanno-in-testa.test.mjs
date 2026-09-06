@@ -123,14 +123,45 @@ test('② 🚨 la barra resta FIGLIA DIRETTA del box (o esito e guardia della 15
 // ─────────────────────────────────────────────────────────────────────────────
 // ③ ④ ⑦ la disposizione
 // ─────────────────────────────────────────────────────────────────────────────
-test('③ il piè attraversa le due colonne, e solo da 900 px in su', () => {
-  const { corpo, indice } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /grid-column/);
-  assert.match(corpo, /grid-column\s*:\s*1\s*\/\s*-1/,
-    'il piè non attraversa più le due colonne: resterebbe stretto nella colonna sinistra');
+test('③ 🔄 sopra i 900 px la barra sta nella BANDA FERMA, in `absolute` (voce 168)', () => {
+  /* 🩹 Qui prima si chiedeva `grid-column:1 / -1`, giusto finché la barra era un elemento della
+   *    griglia in fondo. La 168 l'ha tolta dal flusso ⇒ quella regola non ha più oggetto e va
+   *    SOSTITUITA con quella che adesso fa il lavoro.
+   * 🚨 E il motivo per cui non è `sticky`: MISURATO sulla pagina viva di TEST 6.375 — per un
+   *    elemento di griglia il contenitore dello sticky è la sua CELLA, alta quanto la barra,
+   *    quindi la corsa è zero e la barra si muoveva con lo scroll (842 → 473 → 118). */
+  const { corpo, indice } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /position\s*:\s*absolute/);
+  assert.match(corpo, /position\s*:\s*absolute/,
+    'la barra non è più in `absolute`: torna dentro il flusso della griglia e riprende a '
+    + 'scorrere via, che è il difetto da cui la 168 nasce');
+  assert.match(corpo, /top\s*:\s*\d+px/, 'la barra non dichiara un `top`: non si aggancia alla banda');
+  assert.match(corpo, /background\s*:/,
+    'la barra non ha sfondo pieno: la scheda le scorre SOTTO e si leggerebbe attraverso i bottoni');
+  assert.match(corpo, /z-index\s*:\s*[1-9]/, 'la barra non ha z-index: il contenuto le finisce sopra');
   const media = mediaAperteIn(indice);
   assert.ok(media.some(c => /min-width\s*:\s*900px/.test(c)),
-    'la regola del piè sta fuori dalla @media dei 900 px: sul telefono la scheda è una colonna '
-    + 'sola e una griglia a due non c\'è');
+    'la regola sta fuori dalla @media dei 900: sul telefono la scheda è un foglio dal basso e '
+    + 'lì a tenere ferma la barra è lo `sticky`, che senza griglia funziona');
+});
+
+test('③ 🚨 e la barra NON è `pointer-events:none` — al contrario del titolo', () => {
+  /* ⚖️ Il titolo sta nella stessa banda ed è `pointer-events:none` di proposito (voce 157): è
+   *    una scritta, e prendersi i click sarebbe la 146 daccapo. Questi invece sono BERSAGLI:
+   *    la stessa riga copiata sopra la barra la renderebbe invisibile al dito — e il difetto
+   *    non si vedrebbe guardando, solo provando a premere. */
+  const { corpo } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /position\s*:\s*absolute/);
+  assert.ok(!/pointer-events\s*:\s*none/.test(corpo),
+    'la barra ha `pointer-events:none`: si vede e non si preme — copiata dal titolo, dove serve');
+});
+
+test('③ e il box PAGA lo spazio che la barra non occupa più nel flusso', () => {
+  const { corpo, indice } = regolaCon('.svc-edit-box', /padding-top/);
+  const m = corpo.match(/padding-top\s*:\s*(\d+)px/);
+  assert.ok(m, 'il box non riserva più spazio in cima: la prima sezione parte sotto la barra e resta coperta');
+  assert.ok(Number(m[1]) >= 40,
+    'lo spazio riservato in cima è ' + m[1] + 'px: la barra ne occupa ~47 e coprirebbe l\'inizio della scheda');
+  assert.ok(mediaAperteIn(indice).some(c => /min-width\s*:\s*900px/.test(c)),
+    'il padding sta fuori dalla @media dei 900: sul telefono la barra è nel flusso e quello spazio sarebbe un buco');
 });
 
 test('③ e l\'esito lo attraversa insieme a lui, restandogli sopra', () => {
