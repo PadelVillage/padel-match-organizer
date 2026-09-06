@@ -40,7 +40,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { pathToFileURL } from 'node:url';
-import { deltaFra, giudica, leggibile, SOGLIE } from './misura.mjs';
+import { deltaFra, giudica, leggibile, regoleDiIeri, evolviRegole, SOGLIE } from './misura.mjs';
 
 const API = 'https://api.supabase.com/v1';
 const TOKEN_SUPABASE = process.env.SUPABASE_ACCESS_TOKEN || '';
@@ -88,6 +88,17 @@ select jsonb_build_object(
   'wal_su_disco', (select coalesce(sum(size),0) from pg_ls_waldir()),
   'wal_file', (select count(*) from pg_ls_waldir()),
   'lsn_bytes', pg_wal_lsn_diff(pg_current_wal_lsn(), '0/0')::bigint,
+  -- 🚨 06/09: l'LSN avanza di un segmento ogni archive_timeout (120 s) anche a database
+  --    fermo. Il WAL SCRITTO davvero e' pg_stat_wal.wal_bytes — e si azzera col riavvio
+  --    come gli altri contatori, quindi il delta lo tratta allo stesso modo.
+  'wal_scritto', (select wal_bytes from pg_stat_wal),
+  'wal_segmento', (select setting::bigint from pg_settings where name = 'wal_segment_size'),
+  'archive_timeout_s', (select setting::int from pg_settings where name = 'archive_timeout'),
+  -- Il guasto della 160 per nome: l'archiviazione che fallisce.
+  'archivio', (select jsonb_build_object(
+      'archiviati', archived_count, 'falliti', failed_count,
+      'ultimo_ok', last_archived_time, 'ultimo_fallito', last_failed_time,
+      'ultimo_segmento', last_archived_wal) from pg_stat_archiver),
   'avvio', pg_postmaster_start_time(),
   'tabelle', (select coalesce(jsonb_agg(jsonb_build_object(
       'nome', relname, 'ins', n_tup_ins, 'upd', n_tup_upd, 'hot', n_tup_hot_upd,
@@ -104,7 +115,7 @@ async function misuraOra() {
 
 async function ultimaLettura() {
   const righe = await sql(
-    `select misurato_at, misura, verdetto, consecutivi, allarme_attivo, ultimo_battito
+    `select misurato_at, misura, verdetto, regole, consecutivi, allarme_attivo, ultimo_battito
        from public.pmo_sentinella_salute
       where progetto = ${lett(NOME)} and misura is not null
       order by id desc limit 1;`);
@@ -154,22 +165,44 @@ async function telegram(testo) {
   } catch (e) { log('⚠️ Telegram non raggiungibile:', e.message); return false; }
 }
 
-function testoAllarme(g, delta, m) {
+const pieDiPagina = (m, delta) => {
   const finestra = delta.finestraMs > 0
     ? `finestra misurata: <b>${(delta.finestraMs / 3600000).toFixed(1)} ore</b>`
     : 'prima lettura';
-  const nonGiudicate = g.regole.filter(r => r.esito === 'non-giudicata');
+  return `database ${leggibile(m.db_bytes)} · WAL sul disco ${leggibile(m.wal_su_disco)} · ${finestra}\n`;
+};
+
+// Gli allarmi NUOVI di questo giro; quelli gia' detti e ancora in piedi si citano
+// in una riga, senza rifare la lezione — e' la forma che non stanca chi legge.
+function testoAllarme(nuovi, ancoraAttivi, regole, delta, m) {
+  const nonGiudicate = regole.filter(r => r.esito === 'non-giudicata');
+  const vecchi = ancoraAttivi.filter(r => !nuovi.some(n => n.codice === r.codice));
   return (
     `🩺 <b>Salute del database ${NOME}: qualcosa e' fuori riga</b>\n\n` +
-    g.allarmi.map(a => `<b>${a.titolo}</b>\n${a.dettaglio}`).join('\n\n') +
+    nuovi.map(a => `<b>${a.titolo}</b>\n${a.dettaglio}`).join('\n\n') +
     `\n\n──────────\n` +
-    `database ${leggibile(m.db_bytes)} · WAL sul disco ${leggibile(m.wal_su_disco)} · ${finestra}\n` +
+    pieDiPagina(m, delta) +
+    (vecchi.length
+      ? `🔁 ancora fuori riga da prima: ${vecchi.map(r => `<code>${r.codice}</code>`).join(', ')}\n`
+      : '') +
     (nonGiudicate.length
       ? `⚠️ non ho potuto giudicare: ${nonGiudicate.map(r => `<code>${r.codice}</code>`).join(', ')} — questo <b>non</b> vuol dire che siano a posto.\n`
       : '') +
-    `\n➡️ Da guardare: <code>pg_stat_user_tables</code> sul progetto <code>${REF}</code>, ` +
+    `\n➡️ Da guardare: <code>pg_stat_user_tables</code>, <code>pg_stat_wal</code> e <code>pg_stat_archiver</code> sul progetto <code>${REF}</code>, ` +
     `e la storia in <code>pmo_sentinella_salute</code>.\n` +
     `📌 Questo e' il genere di numero che il 05/09 e' cresciuto per settimane senza che nessuno lo guardasse.`
+  );
+}
+
+function testoRientro(rientri, ancoraAttivi, delta, m) {
+  return (
+    `✅ <b>Salute del database ${NOME}: ${rientri.length === 1 ? 'una misura e\' rientrata' : 'alcune misure sono rientrate'}</b>\n\n` +
+    rientri.map(r => `<code>${r.codice}</code> — ${r.dettaglio || 'dentro le soglie'}`).join('\n') +
+    `\n\n──────────\n` +
+    pieDiPagina(m, delta) +
+    (ancoraAttivi.length
+      ? `🔁 ancora fuori riga: ${ancoraAttivi.map(r => `<code>${r.codice}</code>`).join(', ')}\n`
+      : `Niente piu' fuori riga.\n`)
   );
 }
 
@@ -192,49 +225,59 @@ export async function giro() {
 
   const delta = deltaFra(prima?.misura || null, m);
   const g = giudica(m, delta, SOGLIE);
-  const consecutivi = g.verdetto === 'allarme' ? Number(prima?.consecutivi || 0) + 1 : 0;
-  let allarmeAttivo = !!prima?.allarme_attivo;
+  // 🚨 Gli allarmi si contano e si ricordano PER REGOLA (misura.mjs, `evolviRegole`):
+  //    un solo «attivo» per tutto il giro faceva tacere ogni guasto nuovo finche'
+  //    ne restava in piedi uno vecchio.
+  const s = evolviRegole(regoleDiIeri(prima), g.regole, GIRI_PRIMA_DI_SUONARE);
+  const { consecutivi, allarmeAttivo } = s;
   let ultimoBattito = prima?.ultimo_battito || null;
   const mandati = [];
 
   log(`progetto=${NOME} · verdetto=${g.verdetto} · delta=${delta.stato}` +
-      ` · finestra=${(delta.finestraMs / 3600000).toFixed(2)}h · di fila=${consecutivi}`);
-  for (const r of g.regole) log(`   ${r.esito === 'allarme' ? '🔴' : r.esito === 'a-posto' ? '🟢' : '⚪'} ${r.codice}: ${r.titolo || r.dettaglio || r.perche}`);
-
-  if (g.verdetto === 'allarme' && consecutivi >= GIRI_PRIMA_DI_SUONARE && !allarmeAttivo) {
-    if (await telegram(testoAllarme(g, delta, m))) mandati.push('allarme');
-    allarmeAttivo = true;
+      ` · finestra=${(delta.finestraMs / 3600000).toFixed(2)}h · di fila=${consecutivi}` +
+      ` · attivi=${s.attivi.map(r => r.codice).join(',') || '(nessuno)'}`);
+  for (const r of s.regole) {
+    const segno = r.esito === 'allarme' ? '🔴' : r.esito === 'a-posto' ? '🟢' : '⚪';
+    log(`   ${segno} ${r.codice}${r.esito === 'allarme' ? ` (di fila ${r.di_fila}${r.attivo ? ', gia\' detto' : ''})` : ''}: ${r.titolo || r.dettaglio || r.perche}`);
   }
-  if (g.verdetto === 'serena' && allarmeAttivo) {
-    if (await telegram(
-      `✅ <b>Salute del database ${NOME}: rientrata</b>\n\n` +
-      `Le misure sono tornate dentro le soglie. ` +
-      `Database ${leggibile(m.db_bytes)}, WAL sul disco ${leggibile(m.wal_su_disco)}.`)) mandati.push('rientro');
-    allarmeAttivo = false;
+
+  let dettoAdesso = false;
+  if (s.nuovi.length) {
+    if (await telegram(testoAllarme(s.nuovi, s.attivi, s.regole, delta, m))) { mandati.push('allarme'); dettoAdesso = true; }
+  }
+  if (s.rientri.length) {
+    if (await telegram(testoRientro(s.rientri, s.attivi, delta, m))) { mandati.push('rientro'); dettoAdesso = true; }
   }
 
   // 💓 Il battito: e' cio' che rende verificabile «silenzio = tutto a posto».
-  //    Non parte se c'e' un allarme in corso (li' i messaggi arrivano gia'), ne'
-  //    se non si e' potuto giudicare niente. E al primissimo giro fa partire
-  //    l'orologio SENZA battere — chi installa ha gia' ricevuto il --prova.
-  if (!ultimoBattito) {
+  //    Ogni messaggio mandato vale come battito (dimostra che guardo). Se non e'
+  //    partito niente per BATTITO_GIORNI, batto — anche con un allarme in piedi:
+  //    un allarme detto una volta e poi silenzio per un mese sarebbe indistinguibile
+  //    da una sentinella morta. Al primissimo giro fa partire l'orologio SENZA
+  //    battere — chi installa ha gia' ricevuto il --prova.
+  if (dettoAdesso) {
     ultimoBattito = ora();
-  } else if (BATTITO_GIORNI > 0 && g.verdetto === 'serena' && !allarmeAttivo &&
+  } else if (!ultimoBattito) {
+    ultimoBattito = ora();
+  } else if (BATTITO_GIORNI > 0 && g.verdetto !== 'non-giudicabile' &&
              Date.now() - new Date(ultimoBattito).getTime() > BATTITO_GIORNI * 86400000) {
     if (await telegram(
       `💓 <b>Sentinella della salute di ${NOME}: sono viva</b>\n\n` +
-      `Database ${leggibile(m.db_bytes)} · WAL sul disco ${leggibile(m.wal_su_disco)}. Niente da segnalare.\n\n` +
+      `Database ${leggibile(m.db_bytes)} · WAL sul disco ${leggibile(m.wal_su_disco)}. ` +
+      (s.attivi.length
+        ? `Ancora fuori riga: ${s.attivi.map(r => `<code>${r.codice}</code>`).join(', ')} — gia' detto, niente di nuovo.\n\n`
+        : `Niente da segnalare.\n\n`) +
       `📌 Questo arriva ogni ${BATTITO_GIORNI} giorni <b>apposta</b>: se smette di arrivare, ` +
       `vuol dire che ho smesso di guardare — e quello e' l'unico silenzio di cui preoccuparsi.`)) mandati.push('battito');
     ultimoBattito = ora();
   }
 
   if (!MUTO) {
-    await salva({ misura: m, verdetto: g.verdetto, regole: g.regole, consecutivi, allarmeAttivo, ultimoBattito, mandati });
+    await salva({ misura: m, verdetto: g.verdetto, regole: s.regole, consecutivi, allarmeAttivo, ultimoBattito, mandati });
   } else {
     log('🤐 --muto: non scrivo la lettura nel database.');
   }
-  return { verdetto: g.verdetto, delta, regole: g.regole, consecutivi, allarmeAttivo, mandati };
+  return { verdetto: g.verdetto, delta, regole: s.regole, consecutivi, allarmeAttivo, nuovi: s.nuovi, rientri: s.rientri, mandati };
 }
 
 // `--prova`: manda UN messaggio e dice se ce l'ha fatta. Tre esiti, non due —

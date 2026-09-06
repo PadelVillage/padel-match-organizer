@@ -57,15 +57,42 @@ sporcherebbe il repo ogni notte. Nella tabella `pmo_sentinella_salute` invece la
 Una riga al giorno, cancellate da sé dopo 400 giorni: *una sentinella della salute che
 gonfia il database che sorveglia sarebbe la 160 in miniatura.*
 
-## Le cinque regole, e cosa difende ciascuna
+## Le sei regole, e cosa difende ciascuna
 
 | regola | forma | soglia | prende |
 |---|---|---|---|
 | `wal-su-disco` | fotografia | ≥ 8 GB | il WAL che si accumula (62 GB, il 05/09) |
-| `hot` | **rapporto** | HOT < 20% su ≥ 500 aggiornamenti | 🎯 **il difetto della 160** |
-| `wal-al-giorno` | **ritmo** | > 6× la dimensione del database | il traffico che diventa WAL |
+| `archiviazione` | fotografia | ultimo tentativo **fallito** più recente dell'ultimo riuscito (`pg_stat_archiver`) | 🎯 **il guasto della 160 per nome**, 17 ore prima degli 8 GB |
+| `hot` | **rapporto** | HOT < 20% su ≥ 500 aggiornamenti | gli aggiornamenti che pagano tutti gli indici |
+| `wal-al-giorno` | **ritmo** | WAL **scritto** > 6× la dimensione del database | il traffico che diventa WAL |
 | `amplificazione` | **ritmo** | una tabella > 30× le sue righe al giorno | un giro impazzito |
 | `tuple-morte` | fotografia | > 40% su tabelle ≥ 1000 righe | il bloat |
+
+🚨⭐⭐ **L'LSN NON È IL WAL SCRITTO — misurato il 06/09/2026, e la prima stesura lo
+confondeva.** Su Supabase `archive_timeout` è **120 s**: ogni due minuti il database
+chiude il segmento corrente (16 MB) e ne apre uno nuovo, pieno o vuoto. La posizione
+(`pg_current_wal_lsn`) salta quindi di 16 MB ogni 2 minuti — **720 volte al giorno,
+11,5 GB** — qualunque cosa faccia l'applicazione.
+📏 Su PROD, due campioni a **2′15″** di distanza: LSN avanzato **16,7 MB**, WAL scritto
+(`pg_stat_wal.wal_bytes`) **93 KB**. In 21 ore dal riavvio: **235 MB** scritti contro
+**~10 GB** di LSN. I file in `pg_wal` hanno l'ora di modifica esattamente ogni 120 s.
+⇒ La regola `wal-al-giorno` giudica sul **WAL scritto**; l'avanzamento dell'LSN lo
+riporta accanto, in segmenti, perché è **quello** che si accumula sul disco quando
+l'archiviazione si ferma — ed è esattamente la 160: 62 GB in cinque giorni di
+`archiving WAL file failed`, non cinque giorni di scritture.
+⚖️ Per questo la regola nuova è `archiviazione`, e non una soglia più furba sul WAL: il
+rubinetto dei 62 GB era l'archiviazione ferma, e `pg_stat_archiver` lo dice al primo
+tentativo fallito non seguito da una ripresa.
+
+🚨⭐ **E gli allarmi si contano e si dicono PER REGOLA, non per giro** (`evolviRegole`
+in `misura.mjs`). La prima stesura aveva un solo `allarme_attivo`: con l'HOT fermo in
+allarme — e su `pmo_cloud_records` lo è **per costruzione**, finché il trigger
+`pmo_touch_updated_at` tocca `updated_at`, che è indicizzato, a ogni update — lo stato
+restava «attivo» per sempre, e un guasto **nuovo** non avrebbe mandato **nessun
+messaggio**. Ora ogni regola ha il suo `di_fila` e il suo `attivo`: un allarme nuovo si
+dice quando arriva a due giri, un rientro si dice per la regola che rientra, e le
+righe scritte prima del 06/09 (un solo conteggio per giro) si traducono senza ridire
+ciò che era già stato detto.
 
 🚨⭐ **Quale regola prende quale difetto è MISURATO, non supposto — e la prima stesura
 sbagliava.** Il banco si aspettava che la 160 la prendessero *due* regole: l'HOT **e**
@@ -96,7 +123,7 @@ pronunciare il verdetto è `non-giudicabile`, mai `serena`.
 |---|---|
 | **suona troppo presto** | suona alla **seconda** lettura fuori riga di fila. Un travaso in blocco sposta i numeri per un giorno ed è normale; la 160 era lì da settimane |
 | **scambia «non lo so» per «a posto»** | database irraggiungibile → **`cieca`**, che non accusa nessuno; regola senza dati → `non-giudicata` |
-| **tace e sembra tranquilla** | **battito** ogni 7 giorni: se smette di arrivare, ho smesso di guardare |
+| **tace e sembra tranquilla** | **battito** ogni 7 giorni senza messaggi — anche con un allarme in piedi, perché «detto una volta e poi silenzio per un mese» sarebbe indistinguibile da una sentinella morta. Ogni messaggio mandato vale come battito |
 
 ## Come si usa
 
@@ -124,8 +151,12 @@ misura, ricorda, e scrive nel registro ciò che avrebbe mandato.
 
 ## ⛔ Cosa questo attrezzo NON dice
 
-- **Non dice che il database sia sano**: dice che i cinque numeri che guarda sono
+- **Non dice che il database sia sano**: dice che i sei numeri che guarda sono
   dentro le soglie. Un guasto di altra forma passa senza che lei se ne accorga.
+- **Non dice che il giro automatico sia partito**: il 06/09 il cron delle 05:20 UTC
+  **non è scattato** (nessun run `schedule` in Actions, nessuna riga nella storia),
+  e il giro lo ha lanciato una mano alle 09:12. Se GitHub salta uno schedule lo si
+  vede solo dal **battito** che non arriva, o guardando la storia.
 - **Non guarda TEST se non glielo si chiede**: il giro automatico è su **PROD**. Un
   allarme su TEST — dove il calendario è congelato e il traffico è finto — sarebbe
   rumore, e *una guardia che ogni tanto ha torto è una guardia che si smette di leggere*.
