@@ -1841,15 +1841,68 @@ fa cadere.
 ⛔ **Quello che il banco NON dice**: perché il dialog non dia i metodi. Dice che quando non li dà, il
 worker consegna l'elenco di cosa c'era.
 
-⏳ **COSA MANCA PER CHIUDERLA, ed è un GESTO — non altro codice.** La sonda si legge solo facendo
-**un tentativo vero**, e da questa sessione non si può lanciare: la **console remota è stata fermata
-dal classificatore di sicurezza** (sia con `--allow-writes`, sia in sola lettura), e il worker dal
-container non si raggiunge (l'host non è nell'allowlist di uscita).
-⇒ Serve che il gesto lo faccia lui, dall'app: **scheda della partita → riga di Fabiola → Incassare →
-Contanti**, con l'importo **esattamente pari al pendente**. Stanotte quel gesto fallisce senza toccare
-niente; da adesso, fallendo, **lascia la lista nel registro**.
-🚨 **E può anche riuscire** (ipotesi ⑤): in quel caso non è un imprevisto ma la prova ② già fatta —
-ci si **ferma a guardare gli Incassi** prima dello storno, come da suo ordine del 06/09.
+🩹 **E QUI C'ERA SCRITTO CHE SERVIVA UN GESTO SUO, perché la console era stata fermata dal
+classificatore.** È durata un'ora: lui ha aperto il ruolo `staff` sull'utenza della console (e ha
+trovato, aprendolo, un difetto suo del gestionale — *spuntando il capitolo non si attivavano le
+sottosezioni*), poi ha cambiato la modalità dei permessi della sessione. ⇒ Da lì in poi le prove
+le ho fatte **io**, com'è giusto per il postulato: la riga vecchia è **corretta, non affiancata**.
+
+---
+
+## ✅⭐⭐ RISOLTA LA SERA STESSA — ed erano TRE STANZE, non una
+
+📏 **La sonda ha risposto al primo colpo, e la risposta era la ④.** Dopo il click su «Incassare» il
+frame principale **resta la scheda partita**; i metodi vivono in un **fancybox-iframe**.
+⇒ Non era l'etichetta (①③), non era il markup (②), **e non era il tempo** (⑤: 20 giri in 8 secondi,
+tutti passati a cercare nella stanza sbagliata).
+📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**, e le due cose si
+somigliano solo per chi guarda da un posto solo.*
+
+🚨 **E le stanze erano TRE**, scoperte una alla volta, ognuna con la stessa medicina — *prima guarda,
+poi cura*:
+
+| | dove | cosa c'è | come si è scoperta |
+|---|---|---|---|
+| ① | la **scheda** partita | «Incassare» per ogni riga | già nota |
+| ② | iframe `CobroParticipanteReserva.aspx?id_participante=…` | **Contanti** (`CC_Datos_LinkButtonCobrarEfectivo`), Carta, **Saldo disponibile: 0,00** | la sonda del dialog |
+| ③ | iframe `cobro/AyudaCobroEfectivo.aspx?importe=…&idpeople=…` | la **cassa**: Annullare · **Incassare** (`CC_Datos_ButtonSoloCobrar`) · Incassare e stampare | la sonda sul **salvataggio** |
+
+⚖️ **Il secondo gradino non era un imprevisto: era la stessa lezione.** Cliccato il metodo, il worker
+cercava «Actualizar» nella **scheda** — e il cobro si conferma nella **cassa**. Due volte di fila il
+difetto è stato *guardare nella stanza sbagliata*, e due volte la cura è stata **guardare prima di
+cercare**, mai indovinare un pulsante su una cassa vera.
+
+🔑⭐⭐ **E LA COSA MIGLIORE È UN REGALO DELL'URL DELLA CASSA**: porta **importo** e **persona**, scritti
+da Matchpoint. Si leggono **prima** di premere — l'unico istante in cui si può sapere *cosa* si sta per
+incassare e *a chi* **mentre si è ancora in tempo a non farlo**. ⇒ Due guardie nuove che prima non
+potevano esistere: importo diverso → `COBRO_CASSA_IMPORTO_DIVERSO`, persona diversa →
+`COBRO_CASSA_PERSONA_DIVERSA`, **e in nessuno dei due casi si clicca**. Più una terza sul **nome nel
+dialog**, perché il dialog è per-partecipante.
+📌 *Le guardie sono nate CON la cura: prima non servivano, perché non si cliccava affatto. Una cura
+che apre una strada nuova porta con sé i pericoli nuovi di quella strada.*
+
+🚨 **E un difetto trovato di striscio, che contava più di quanto sembri**: il worker tornava
+`ok: true` **sempre**, anche col pendente ancora intero — e l'app guarda `data.ok`, quindi avrebbe
+scritto **«✅ Incassato» su un incasso mai avvenuto**. Invisibile finché il gesto moriva prima; con la
+cura quella diventa la strada normale. ⇒ Reso onesto **prima** di percorrerla: `COBRO_NON_CONFERMATO`
+(non è passato) e `COBRO_ESITO_IGNOTO` (non lo so) sono **due risposte diverse**, e la seconda dice
+di non riprovare.
+
+✅⭐⭐ **PROVATA FISICAMENTE SU PROD, con un incasso VERO** *(autorizzato: «puoi utilizzare anche
+Fabiola per fare un pagamento vero»)*: partita **9844**, Fabiola Limuti, **8,00 €** — esattamente il
+pendente, riletto dal circolo nello stesso giro invece che ricordato — metodo **Contanti**.
+> `ok: true` · `statoPost: "riscosso"` · `pendentePostCents: 0` · **23 secondi**
+
+⚖️ **Cosa NON dice questa prova**: che funzionino **carta** e **borsellino**. La cassa
+(`AyudaCobroEfectivo`) è quella dei **contanti**; per gli altri metodi il terzo gradino potrebbe non
+esserci o essere un'altra pagina — il codice lo gestisce (se la cassa non compare prosegue e l'esito
+lo dice la rilettura del pendente), **ma nessuno l'ha ancora visto succedere**.
+
+🧪 **Banchi**: `test/il-dialog-incasso-dice-cosa-vede.test.mjs` (**8 casi**, sabotato **6** volte) e
+`test/la-cassa-dice-quanto-e-a-chi.test.mjs` (**7 casi**, sabotato **5** volte). Nel secondo il caso
+che conta di più è quello in cui **NON si preme**.
+⭐ `/health` dichiara `sonda-dialog-incasso` · `cobro-nel-frame-del-dialog` · `cobro-confermato-in-cassa`:
+il processo in servizio **si controlla**, non si deduce dal ramo.
 
 📌 **PROMOSSA A URGENTE da chi lavora, il 06/09 notte** (la delega del 23/08 copre le promozioni,
 e chiede di dichiararle): **non scavalca niente** — le urgenti erano **0**. Il perché è che la
