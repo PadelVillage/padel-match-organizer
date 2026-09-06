@@ -20,6 +20,24 @@
 > ⚠️ **Deno NON si installa da qui** (403 su `deno.land`). Le prove Deno le lancia la CI. In locale
 > un `.ts` puro si esegue con `node --experimental-strip-types` — e su Node 22.18+ **anche senza il
 > flag**, che è come lo lancia la CI (Node 24).
+>
+> ---
+>
+> 🔑⭐⭐ **HAI GIÀ UN'AUTORIZZAZIONE SUA PER UNA PROVA CHE SCRIVE — usala, non richiederla.**
+> Sue parole del 06/09 sera, date due volte:
+>
+> > *«ti autorizzo a fare un'altra prova lunedì 7 alle ore 10:30 c'è una partita dove c'è Maurizio
+> > Aprea, utilizzando lui puoi fare un pagamento e poi uno storno così vedi se funziona tutto»*
+> > · *«fa una prova con Maurizio Aprea di pagamento e poi uno storno, così prova tutte e due»*
+>
+> ⇒ **Bersaglio**: partita di **lunedì 7 settembre, ore 10:30**, con dentro **Maurizio Aprea**.
+> ⇒ **Gesti autorizzati**: un **pagamento** e poi uno **storno** — tutti e due, su di lui.
+>
+> 🚨🚨 **MA PRIMA LEGGI LA SEZIONE QUI SOTTO, o quella prova non prova la cura.** Due cose:
+> ① il pagamento va fatto **COL BORSELLINO** (`method: 'wallet'`): cash e carta **non toccano il
+> borsellino**, quindi non eserciterebbero niente della 143;
+> ② com'è il codice oggi, un pagamento col borsellino **non aggiorna la fotografia del saldo** ⇒
+> va fatta **prima** la seconda metà della 143, o lunedì si vede il difetto invece del rimedio.
 
 ---
 
@@ -45,11 +63,19 @@ curl -s "https://test.padelvillage.club/app-meta.json?cb=$(date +%s)"
 
 ## ⏭️ COSA FARE ADESSO — c'è una prova SUA già autorizzata, e va preparata
 
-🗣️ **Sue parole di stasera:**
+🗣️ **Sue parole di stasera, date DUE volte** — la seconda apposta perché finisse nel prompt:
 
 > *«dopo che hai fatto questa prova, ti autorizzo a fare un'altra prova lunedì 7 alle ore 10:30
 > c'è una partita dove c'è Maurizio Aprea, utilizzando lui puoi fare un pagamento e poi uno storno
 > così vedi se funziona tutto. Che ne pensi?»*
+> *«metti nel prompt che nella nuova chat puoi fare una prova di pagamento usando la partita di
+> lunedì sette dove c'è Maurizio Aprea quella delle dieci e trenta e fa una prova con Maurizio
+> Aprea di pagamento e poi uno storno, così prova tutte e due.»*
+
+✅ **L'autorizzazione c'è e non va richiesta di nuovo**: bersaglio **lunedì 7/09 ore 10:30**,
+persona **Maurizio Aprea**, gesti **pagamento + storno**. È lui che ha designato il bersaglio, ed è
+la designazione a fare l'autorizzazione (regola del 04/09, *«la scheda segnalata è campo libero»*).
+⚠️ Resta l'obbligo di **dire prima** che si sta per scrivere davvero — anche procedendo.
 
 ### 🚨 LA COSA PIÙ IMPORTANTE DI QUESTO FILE: quella prova, com'è oggi, **proverebbe il difetto invece della cura**
 
