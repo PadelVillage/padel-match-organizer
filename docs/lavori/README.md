@@ -2089,11 +2089,58 @@ atterra inerte e non cambia niente in servizio.
 ② 🚨 **si può provare SOLO SU PROD**: su TEST il calendario è una **fotografia congelata**, quindi
    molte di quelle prenotazioni su Matchpoint non esistono più ⇒ la lettura fallirebbe e direbbe
    «non funziona» di una cosa sana.
-③ **non è promossa a PROD**, ed è una scelta: portare su PROD un codice **spento** vuol dire
-   sostituire la funzione che tiene vivo il calendario per un guadagno **zero**. Si promuove quando
-   la si può accendere e guardare nello stesso giro.
+③ ✅ **PROMOSSA E ACCESA SU PROD IL 06/09 POMERIGGIO** (PR #1421 + #1423). Qui c'era scritto che
+   non si promuoveva perché *«portare su PROD un codice spento vuol dire sostituire la funzione che
+   tiene vivo il calendario per un guadagno zero»* — riga **corretta**, non affiancata: la
+   condizione che poneva («si promuove quando la si può accendere e guardare nello stesso giro») è
+   stata **soddisfatta**, promossa e accesa e guardata nello stesso pomeriggio.
 ④ **l'app non legge ancora `idClienti`**: finché non lo fa, i soldi e gli id arrivano ancora dal
    worker a ogni apertura di scheda — cioè il beneficio che la voce insegue non c'è ancora.
+   ⇒ **È il solo passo che resta**, ed è quello che chiude la voce.
+
+🚨⭐⭐ **E ACCENDERLA HA TROVATO UN DIFETTO CHE IL BANCO NON POTEVA VEDERE: il dato NON SI
+ACCUMULAVA.** *(06/09, la misura che ha giustificato tutto il passo.)*
+📏 **Acceso a tetto 1 per 14 minuti**: quattro giri, quattro `riuscite: 1` nel registro — e in
+archivio **UNA sola** prenotazione arricchita, **ogni volta una diversa** (14:43 Campo 3/Spinazzè →
+14:49 Campo 1/Aprea). `changedBookingRows` intanto saliva da 1 a **2**.
+⚖️ **Il perché è strutturale**: `validation.bookings` nasce dall'export XLSX **a ogni giro**, e
+l'export `idClienti`/`note`/`arricchitoPer` non li porta. Il giro arricchiva la riga che leggeva;
+tutte le altre venivano riscritte dal payload nuovo, **senza** quei campi ⇒ il lavoro del giro
+prima veniva **cancellato**. Ne guadagni una, ne perdi una: il conto non sale mai.
+🚨 E costava **due** volte: la riga che perde il dato risulta *cambiata* ⇒ **due righe riscritte a
+ogni giro, per sempre**, senza mai convergere. È la **voce 160 in miniatura** — piccola, ma senza
+fine.
+🔨 **Curato con `conservaArricchimento`** (PR #1423): riporta avanti ciò che l'archivio ha già.
+· ⛔ **fuori dal gate del tetto**, di proposito: vale anche a interruttore **spento**, o
+  rispegnerlo butterebbe via il raccolto — e chi rispegne lo fa per prudenza, non per cancellare;
+· ⛔ conserva **solo se l'impronta salvata combacia coi nomi di adesso**: un roster cambiato rende
+  quegli id **stantii**, e tenerli in vita è peggio che non averli;
+· ⭐ il registro porta ora **`conservate`**, ed è il numero che *dice* se il dato si accumula:
+  fermo mentre `riuscite` sale = il giro sta buttando via il lavoro di quello prima.
+📏 **PROVA FISICA CHE LA CURA REGGE, su PROD**: `conservate` **0 → 2 → 4** su tre giri con
+`riuscite: 2`, e le prenotazioni arricchite in archivio **da 1 a 6**. Prima non si muoveva.
+🧪 Banco Deno **18 → 21 casi**, e il caso nuovo prova il **GIRO** e non le funzioni: ne simula
+**cinque** e pretende 3 partite arricchite. **Sabotato** togliendo la conservazione dà `ottenuto 1`
+— **esattamente** il numero che PROD aveva mostrato.
+📌 *Il banco di prima era verde e mancava tutto: provava i **pezzi**, e il difetto stava nel modo in
+cui i **giri si susseguono**. Un verde sui pezzi non dice niente sulla catena.*
+📌 E la lezione più larga, che è il postulato stesso: **spenta, quella riga sarebbe rimasta
+sbagliata per sempre.** Nessuna rilettura l'avrebbe trovata — il codice, guardato da fermo, è
+giusto. L'ha detta solo il conto che non saliva.
+
+📏 **QUELLO CHE È COSTATO, misurato e non temuto** — il worker è **un browser solo condiviso con
+PROD**, quindi è la domanda che conta:
+· il giro di sync passa da **~67 s** (base) a **~109-111 s** con l'arricchimento acceso;
+· nei ~10 minuti osservati a tetto 2 il **ritmo del dispatch non è peggiorato**: gap medio 120 s e
+  **zero** buchi oltre 130 s, contro un gap medio di **154 s con 4 buchi su 14** misurato *prima* di
+  accendere. ⚠️ Campione piccolo (3 dispatch) ⇒ dice «non è peggiorato», **non** «migliora»;
+· 🚨 nessun guasto nuovo del worker: l'ultimo resta quello del **29/08**.
+⚖️ **Lasciato acceso a TETTO 1** e non 2, ed è una scelta dichiarata: il costo per giro si dimezza
+e resta margine sui 120 s del dispatch, mentre l'accumulo veloce **non serve a niente** finché il
+punto ④ non è fatto. L'arretrato si smaltisce da sé, senza fretta.
+⏳ **NON MISURATO**: come si comporta su una giornata intera, e cosa succede quando l'arretrato è
+finito (atteso: `lette` scende a 0 da sé, perché non ci sono più candidate — ma è un'attesa, non una
+misura).
 
 ⏳ **LA VOCE RESTA APERTA**, ed è metà: id interno e Osservazioni dentro il gestionale al primo
 incontro del sync non ci sono ancora ⇒ **i soldi arrivano ancora dal worker** (per questo il terzo
