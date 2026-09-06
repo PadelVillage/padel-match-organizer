@@ -2308,6 +2308,15 @@ niente di questa voce.
 decina di secondi** senza ricaricare la pagina, e in archivio la riga
 `wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
 
+🚨 **PRIMA DI PREMERE, UN CONTO DA FARE: col borsellino non si può pagare più di quello che c'è.**
+📏 Il borsellino di Maurizio Aprea ha **6,00 €** (5,00 + il 1 € della prova di ieri sera). ⇒ Se
+l'importo a carico della partita è **più** di 6,00 €, il pagamento col borsellino **non può
+riuscire** — e sarebbe un rosso che non dice niente su questa voce.
+⇒ Due strade, tutte e due valide: **①** incassare un importo **parziale** entro i 6,00 € (il campo
+«€ a carico» si può scrivere: bastano **1,00 €**, l'importo non è la prova — il *metodo* lo è), o
+**②** ricaricargli prima quello che serve. 📌 *La prova più piccola che esercita la catena è la
+prova migliore: meno denaro vero si muove, meno c'è da rimettere a posto.*
+
 🚨⭐⭐ **E FRA I DUE GESTI CI SI FERMA A GUARDARE GLI INCASSI — suo ordine del 06/09 notte:**
 > *«Prima dello storno vai a vedere in incassi se ti torna tutto e poi fai lo storno.»*
 
