@@ -9779,7 +9779,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
