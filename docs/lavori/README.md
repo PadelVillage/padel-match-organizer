@@ -2071,9 +2071,21 @@ atterra inerte e non cambia niente in servizio.
   invece che da `jsr:`, e `prove.yml` smista guardando proprio quello ⇒ sarebbe stata lanciata con
   Node e sarebbe caduta. Corretta prima di spingere.
 ⛔⛔ **COSA MANCA PER CHIUDERLA, ed è quasi tutto il valore:**
-① **l'interruttore va acceso**, e da qui non si può: `PMO_ARRICCHISCI_SCHEDE` è una variabile
-   d'ambiente del progetto Supabase, e **nessun workflow sa scriverla**. Serve o una sua mano dal
-   pannello Supabase, o un workflow nuovo che la scriva (il token per farlo la CI ce l'ha già).
+① ✅ **L'INTERRUTTORE C'È E FUNZIONA** *(06/09, su sua richiesta: «Costruisci l'interruttore»)* —
+   `.github/workflows/interruttore-arricchimento-schede.yml`. 🔒 Stretto di proposito: i **nomi**
+   delle variabili sono scritti dentro e non arrivano da un input (⇒ non può scrivere un secret
+   qualunque), il valore è un **numero con un tetto vero** (0-10 schede, 5-60 s), su PROD va
+   scritta la parola `PROD`, e ⛔ **non deploya niente** — o lanciato da `test-preview` con
+   bersaglio `prod` farebbe atterrare su PROD il codice di TEST scavalcando la promozione.
+   📏 **Provato su TEST in tutt'e due i versi**: corsa #1 acceso (tetto 2), corsa #2 rispento
+   (tetto 0), tutt'e due verdi, e TEST è rimasto **spento**.
+   🔄⭐ **E una riga mia corretta dalla PRIMA corsa vera**: avevo scritto che `secrets list` prova
+   che la variabile *c'è* ma non *quanto vale*, «perché Supabase mostra solo un'impronta».
+   📏 Misurato sull'esito: quell'impronta è lo **SHA-256 del valore** —
+   `d4735e3a…` è sha256 di «2», `5feceb66…` di «0», `876c9b16…` di «20000». ⇒ La rilettura adesso
+   **ricalcola l'impronta e pretende che combaci**, quindi prova il valore e non l'esistenza; se
+   arrivasse diverso il passo diventa rosso. 📌 *«Non si può sapere» va sempre completato con «da
+   dove»* — bastava guardare cosa fosse davvero quella riga di esadecimali.
 ② 🚨 **si può provare SOLO SU PROD**: su TEST il calendario è una **fotografia congelata**, quindi
    molte di quelle prenotazioni su Matchpoint non esistono più ⇒ la lettura fallirebbe e direbbe
    «non funziona» di una cosa sana.
