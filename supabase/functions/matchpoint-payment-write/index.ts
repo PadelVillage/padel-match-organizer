@@ -192,6 +192,20 @@ Deno.serve(async (req: Request) => {
     const code = clean((workerErr as { code?: string })?.code) || 'WORKER_ERROR';
     const diagnostic = (workerErr as { diagnostic?: unknown })?.diagnostic;
     const status = code === 'WORKER_NETWORK_ERROR' ? 502 : 422;
+    // 🔎 VOCE 171 — LA DIAGNOSI SI REGISTRA, non solo si restituisce. Il worker ora allega
+    // `cobroCandidates` (cosa VEDEVA nel dialog, iframe compresi), ma quella lista arrivava
+    // solo nel browser di chi ha premuto: l'app mostra `message` e butta il resto.
+    // ⇒ Chi deve diagnosticare non ha modo di leggerla, e l'unico modo di procurarsela sarebbe
+    //    un altro incasso vero su una cassa vera. Qui finisce nel registro della piattaforma.
+    // 📌 Una sonda la cui risposta non raggiunge chi diagnostica non è una sonda.
+    // ⚖️ Nel REGISTRO, non nel messaggio: al cassiere serve una frase, non un dump — e questa
+    //    edge parla al gestionale, non al bot (la regola sui nomi interni riguarda quel verso).
+    try {
+      console.error(JSON.stringify({
+        event: 'collect_payment_fallito', code, idReserva, idCliente, playerName, method, amountCents,
+        message: errorText(workerErr), diagnostic,
+      }));
+    } catch (_logErr) { /* un registro che esplode non deve far cadere la risposta */ }
     return err(status, code, errorText(workerErr), { idReserva, idCliente, ...(diagnostic ? { diagnostic } : {}) });
   }
 
