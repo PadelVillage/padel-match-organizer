@@ -7,9 +7,9 @@ arrivati alle **13:00 locali (11:00 UTC)**.
 
 | | |
 |---|---|
-| **PROD** | app **6.373** (voce 167, PR #1408), viva dalle **10:35:10 UTC** |
-| **TEST** | app **6.374** (stesso contenuto: 1 = allineati) |
-| liste | 🔴 urgenti **0** · 📋 in coda **14** (C 14 + D 0) · 📦 chiuse **148** |
+| **PROD** | app **6.377** (voce 168, PR #1411), viva dalle **12:43:42 UTC** |
+| **TEST** | app **6.378** (stesso contenuto: 1 = allineati) |
+| liste | 🔴 urgenti **0** · 📋 in coda **14** (C 14 + D 0) · 📦 chiuse **149** |
 | bot (`assistente-padel-agent`) | **non toccato** |
 
 🗣️ **Le sue due parole di oggi pomeriggio**, ed è da lì che è partito tutto:
@@ -215,3 +215,91 @@ nuovo in console.
 ⏳ **Resta il punto ② della 165** — se `updated_at` debba restare indicizzato — ed è **un'altra
 decisione sua**: quell'indice è usato **2.256 volte** (contro l'1 del GIN), quindi il conto non è
 ovvio e va **misurato prima** di proporglielo.
+
+
+---
+
+## 7 · 🔝 La voce 168 — entrata e chiusa nel pomeriggio
+
+🗣️ Sua richiesta, con lo screenshot di PROD 6.373 mentre era **sceso** dentro la scheda: *«vorrei
+che i bottoni salva, chiudi, aggiungi e annulla vengano messi a seguire il titolo… perché quella
+barra rimane sempre fissa anche quando scrolli»*.
+
+⚖️ La **167** li aveva messi in fondo, e in fondo **spariscono appena si scorre**. Non è la 167
+sbagliata: è la 167 messa alla prova dall'**uso vero**.
+
+🚨⭐⭐ **E LA PRIMA CURA NON FUNZIONAVA — ed è la cosa da ricordare di oggi.** `position:sticky;
+top:0` era scritto bene e **non faceva niente**. 📏 Misurato scorrendo davvero su TEST 6.375: la
+barra si è mossa **esattamente** con lo scroll, 842 → 473 → 118 su 737 px.
+⇒ Per un elemento di **griglia** il blocco contenitore dello sticky è la **sua cella**, alta quanto
+la barra: corsa disponibile **zero**.
+📌 *Una proprietà che non ha spazio in cui lavorare è una riga che SEMBRA una cura — e sul sorgente
+si legge come se funzionasse. Nessuna rilettura l'avrebbe trovata: solo lo scroll vero.*
+
+⭐ Il meccanismo giusto ce l'aveva già il **titolo** (voce 157): `absolute` risolve contro il
+pannello (`fixed`) e non viene ritagliato da `#svcChatMessages`. Il nodo **non si sposta** — resta
+figlio diretto del box, quindi le due ricerche della 150 continuano a trovarlo.
+
+📏 E un **secondo difetto che da fermi non si vedeva**: col `top` a 44 restavano **5 px scoperti**
+in cui passavano gli importi dei giocatori. `top:40px` è misurato (pannello a 74, scroller a 114).
+
+✅ Provata a **1280×720** (dove la scheda sborda davvero — a 1850×1130 ci sta tutta e la prova non
+direbbe niente) su **TEST 6.377** e su **PROD 6.377**, sulla partita di lunedì 7 con Lidia e
+Fabiola: barra a **y=115** a ogni posizione di scroll, quattro bottoni raggiungibili, zero intrusi.
+
+---
+
+## 8 · 🧪 Il secondo indice: la risposta è NO, e viene da un banco
+
+🗣️ Sua richiesta: *«riesci a fare due cose insieme, misurare il secondo indice e continuare coi
+task in coda?»*
+
+⚖️ Nella 165 c'era scritto che togliere l'indice su `updated_at` era *«l'unica strada per riaprire
+l'HOT»*. 📏 **È falso**, e il banco lo dimostra: sette tabelle di prova su `cudi…` con la stessa
+forma di `pmo_cloud_records`, 5.000 righe l'una.
+
+| banco | indice `updated_at` | indice espressione `payload` | HOT |
+|---|---|---|---|
+| A · B · C · D · G | varie combinazioni, **con** l'indice sul payload | sì | **0,0%** |
+| F | **sì** | no | **0,0%** |
+| E | no | no | **63,1%** |
+
+⇒ **I bloccanti sono DUE e vanno tolti tutti e due: togliendone uno solo il guadagno è ZERO.** E il
+secondo non era sospettato: **un indice sull'ESPRESSIONE del payload rende l'intera colonna un
+ostacolo anche quando il suo filtro non riguarda quelle righe** (banco G: righe `booking`, indice
+`where record_type='member'`, HOT 0). Postgres decide sulle colonne toccate dagli indici, non sul
+predicato.
+
+🩹 **E c'era un difetto nel mio stesso esperimento**: nei primi banchi insert e update giravano
+nella **stessa transazione**, dove `now()` è costante ⇒ il trigger scriveva in `updated_at` lo
+stesso valore, quindi quella colonna non «cambiava». Rifatto in transazioni separate.
+📌 *Un banco che non riproduce la condizione vera dà una risposta vera a un'altra domanda.*
+
+💰 **Perché il consiglio è NON farlo**: misurato su 50 minuti di PROD, `updated_at` è letto **~3.900
+volte al giorno** (una ogni 22 s) e `member_id` **~1.900**, contro le **~30.600 scritture**. Non
+somigliano al GIN, letto **una volta in 21 ore**. ⇒ Si scambierebbero due indici vivi per il 63% di
+HOT su una tabella che scrive 266 MB al giorno e non dà problemi.
+✅ A costo zero resta solo `idx_pmo_cloud_records_group_date`: **0 letture**, 16 kB — ma **da solo
+non riapre l'HOT**.
+
+🧹 Le sette tabelle del banco sono state **cancellate** da `cudi…` a misura finita.
+
+---
+
+## 9 · 🖱️ La voce 120: non riprodotta, e l'ipotesi che c'era è CADUTA
+
+📏 Tre fatti nuovi, tutti misurati:
+1. **La riga «con l'utenza di sola lettura non si può mettere in scena» è vecchia**: era vera della
+   *scheda socio*, ma la scheda «Modifica prenotazione» ha **6 campi scrivibili** anche per il
+   `readonly`. ⇒ *«Non si può provare» andava completato con «quale scheda».*
+2. **Non si riproduce scrivendo nelle Note**: una lettera ogni 1,5 s per 45 s, a 1280×720 (scheda
+   che sborda), con una spia su `window.scrollTo`, `scrollIntoView` e il **setter di `scrollTop`**.
+   Su TEST **e** su PROD: scroll **fermo al pixel**, fuoco mai perso, **zero** eventi.
+3. 🚨 **Il fatto ② della scheda non regge più**: il 05/09 erano state misurate *«due riscritture di
+   `#staffCalGridTable.innerHTML` in 25 secondi»*. Rimisurato con un observer su **tutto
+   `document.body`** (attaccato **dopo** il render — la prima sonda restava appesa a un nodo
+   sostituito), in tre condizioni da 30 s: **griglia 0 · 0 · 0, scheda 0 · 0 · 0**.
+
+⇒ **L'unica ipotesi in piedi è caduta**, e serve una cosa sola da lui: **in quale schermata** gli
+succede — prenotazione, scheda socio, Anagrafica, Incassi? Sulle prime due non succede; le altre
+due sono pagine che **scorrono davvero**.
