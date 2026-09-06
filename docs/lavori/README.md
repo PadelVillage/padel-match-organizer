@@ -2094,9 +2094,42 @@ atterra inerte e non cambia niente in servizio.
    tiene vivo il calendario per un guadagno zero»* — riga **corretta**, non affiancata: la
    condizione che poneva («si promuove quando la si può accendere e guardare nello stesso giro») è
    stata **soddisfatta**, promossa e accesa e guardata nello stesso pomeriggio.
-④ **l'app non legge ancora `idClienti`**: finché non lo fa, i soldi e gli id arrivano ancora dal
-   worker a ogni apertura di scheda — cioè il beneficio che la voce insegue non c'è ancora.
-   ⇒ **È il solo passo che resta**, ed è quello che chiude la voce.
+④ ✅⭐⭐ **L'APP LEGGE `idClienti` E `note` — FATTO E PROVATO SU PROD 6.384 il 06/09 sera.**
+   🔄 Qui c'era scritto *«l'app non legge ancora `idClienti` ⇒ il beneficio che la voce insegue non
+   c'è ancora»*: riga **corretta**, non affiancata.
+   🔨 **Come**: all'apertura della scheda si cerca il record del sync per quelle coordinate e — solo
+   se l'**impronta dei nomi** salvata combacia con i nomi che si stanno mostrando — si pre-popola il
+   campo **Osservazioni** e si accostano gli **id** ai giocatori (`idCliente`).
+   🔄 E ha **corretto una riga del codice**, che diceva *«la nota è autorevole dal worker e il dato
+   locale può contenere l'artefatto-descrizione ⇒ NON pre-popoliamo il campo Note dal locale»*.
+   ⚖️ Quella riga non parlava della nota: parlava di `staff_booking.note`, che è un campo **sporco**.
+   La nota che il sync porta ora è **letta dalla scheda di Matchpoint** — la stessa che leggerebbe il
+   worker — e marcata con l'impronta. ⇒ Non è più «il locale è inaffidabile», è «il locale ha due
+   campi e uno dei due è autorevole».
+   ⛔ **La rilettura dal worker RESTA e resta autorevole**: arriva dopo e sovrascrive. Cambia
+   l'**attesa**, non la **fonte** — il worker resta il tramite verso Matchpoint, come da regola sua.
+   📌 *Il gestionale risponde subito, il circolo conferma dopo: nessuno dei due perde il proprio
+   mestiere.*
+   🚨 **UNA TERZA COPIA, dichiarata**: `pmoChiaveNome`/`pmoImprontaRoster` nell'app sono i gemelli
+   delle funzioni dell'edge. Non si poteva evitare (Deno sul server, browser sul client) ⇒ il freno
+   che sostituisce l'unicità è `test/impronta-roster.test.mjs`, che **esegue tutt'e due** le copie
+   su 27 casi e pretende lo stesso risultato. Sabotato 3 volte: accenti non tolti (8 rossi),
+   ordinamento tolto (6 rossi), funzione rinominata (cade con un messaggio leggibile).
+   ✅ **PROVA FISICA SU PROD 6.384**, console remota, aprendo **davvero** la scheda della partita
+   del 07/09 · 19:30 · Campo 2: le Osservazioni **`OSPITE: FRANCESCA BIANCOLIN`** ci sono **subito**
+   (prima il campo si apriva vuoto), `origNote` allineata (⇒ il salvataggio non la perde), **4 id su
+   4** accostati (Oriana Canzian → `11`), `rosterLoading: false`, e `rosterRefreshing: true` — cioè
+   la rilettura dal worker parte lo stesso.
+   📏 E sui dati veri di PROD: **132** record arricchiti in memoria, impronta combaciante **132 su
+   132, zero fallimenti** — le due copie si riconoscono al 100%; **28** con Osservazioni non vuote.
+   ⛔ **Su TEST non si poteva provare** (arricchimento spento, calendario congelato): là la console
+   ha potuto dire solo «nessuna regressione» — funzioni presenti, 0 errori di pagina, `arricchite: 0`.
+
+⏳ **COSA MANCA ANCORA, ed è perché la voce NON si chiude**: i **soldi**. La scheda si apre con nomi,
+   id e Osservazioni, ma i **pagamenti** arrivano ancora dal worker a ogni apertura — ed erano parte
+   del *«ho tutti i dati immediatamente»* da cui la voce nasce. Quel pezzo è la **seconda metà della
+   143**, che adesso ha l'id che le serviva. ⇒ La voce resta aperta con scritto cosa manca, come la
+   65 e la 68.
 
 🚨⭐⭐ **E ACCENDERLA HA TROVATO UN DIFETTO CHE IL BANCO NON POTEVA VEDERE: il dato NON SI
 ACCUMULAVA.** *(06/09, la misura che ha giustificato tutto il passo.)*
