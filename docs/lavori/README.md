@@ -2286,6 +2286,17 @@ scritto per ricordarsene. ⇒ Aggiunti i casi ⑨-⑪ che eseguono `_pmoCollectP
 ora quel sabotaggio è rosso, insieme a «rilegge sempre» e «rilegge anche a incasso fallito».
 📌 *Un banco che prova solo il pezzo non dice niente su chi lo chiama.*
 
+➕ **E ANCHE IL ↻ DELLA SCHEDA SOCIO ARCHIVIA, da stanotte** — stesso principio, gesto diverso.
+Prima quel bottone leggeva il saldo dal vivo e **se lo teneva**: il numero finiva in
+`window.__pmoWalletCache`, cioè lo vedeva **chi aveva premuto**, si perdeva al reload e la
+postazione accanto continuava a mostrare quello del giro di prima. ⇒ Ora passa anche
+`memberLocalId` — e lì il socio è noto **con certezza**, perché siamo nella *sua* scheda: nessun
+aggancio da indovinare, e **nessuna lettura in più** (è la stessa che si stava già facendo).
+⭐ **E serve anche come PROVA**: è l'unico gesto della voce che si può esercitare su PROD **senza
+muovere un centesimo** — sola lettura verso Matchpoint, scrittura solo nel gestionale. ⇒ Un click
+su ↻ nella scheda di un socio qualunque prova metà catena (edge → fotografia) **prima** di lunedì.
+📌 *Quando una catena si può spezzare in due, la metà che non costa niente si prova subito.*
+
 ⏳ **LA VOCE RESTA APERTA, e le manca UNA cosa sola: la prova FISICA.** Nessun pagamento vero col
 borsellino è ancora passato di qui. ⛔ Su **TEST non si può** — il recinto rifiuta prima del worker
 — quindi è **PROD o niente**.
