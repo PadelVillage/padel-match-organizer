@@ -1,0 +1,139 @@
+name: Interruttore arricchimento schede (voce 142)
+
+# 🪟⭐⭐ L'INTERRUTTORE DELLA VOCE 142 — accende e spegne la lettura che riempie la scheda.
+#
+# 🗣️ Sua richiesta del 06/09/2026: *«Costruisci l'interruttore»*, dopo che gli avevo scritto che
+#    per accendere l'arricchimento serviva scrivere una variabile sul progetto Supabase e che da
+#    una sessione cloud non ci si arrivava.
+#
+# ⚖️ PERCHÉ ESISTE, e non è una comodità: il POSTULATO dice che **la prova la faccio io** e lui
+#    supervisiona. Un interruttore che sta solo nel pannello Supabase ribalta su di lui il gesto
+#    che serve a me per provare — cioè esattamente ciò che il postulato gli ha tolto dalle mani.
+#
+# 🔒 QUANTO È STRETTO, ed è la parte che conta:
+#    · i nomi delle variabili sono **scritti qui dentro** e non si possono passare da fuori ⇒
+#      questo workflow **non** può scrivere un secret qualunque, solo questi due;
+#    · il valore è un **numero**, e ha un tetto vero (0-10 per il tetto, 5-60 s per il budget):
+#      un errore di battitura tipo `100` viene **rifiutato**, non applicato;
+#    · su **PROD** va scritta la parola `PROD`, come per il deploy del bot ai soci;
+#    · **non deploya niente.** Un workflow che sapesse anche deployare permetterebbe, lanciato da
+#      `test-preview` con bersaglio `prod`, di far atterrare su PROD il codice di TEST scavalcando
+#      la promozione. Qui si scrive una variabile e basta.
+#
+# ⚠️ E UNA COSA CHE VA SAPUTA PRIMA DI ACCENDERLO SU PROD: al 06/09 la seconda metà della 142 vive
+#    **solo su `test-preview`**. Scrivere la variabile su PROD prima di aver promosso il codice non
+#    rompe niente, ma non fa succedere niente: la funzione in servizio là quella variabile non la
+#    legge nemmeno. ⇒ Prima si promuove, poi si accende.
+#
+# 🔎 SI RILEGGE DOPO AVER SCRITTO, invece di credere all'esito del comando: `secrets list` dice
+#    che la variabile c'è. ⛔ Non dice il VALORE — Supabase mostra solo un'impronta — quindi
+#    quanto vale davvero lo dice il registro della funzione al giro dopo (`arricchimento_schede`,
+#    con dentro `tetto`). 📌 *Un comando riuscito dice che è partito, non che è arrivato.*
+
+on:
+  workflow_dispatch:
+    inputs:
+      bersaglio:
+        description: 'Quale gestionale'
+        required: true
+        default: test
+        type: choice
+        options: [test, prod]
+      tetto:
+        description: 'Quante schede leggere per giro (0 = SPENTO, max 10)'
+        required: true
+        default: '0'
+      budget_ms:
+        description: 'Quanti millisecondi al massimo spendere per giro (5000-60000)'
+        required: false
+        default: '20000'
+      conferma_prod:
+        description: 'Solo per PROD: scrivi PROD'
+        required: false
+        default: ''
+
+jobs:
+  interruttore:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Controlla i numeri PRIMA di toccare qualunque cosa
+        id: controlli
+        run: |
+          set -euo pipefail
+          TETTO='${{ github.event.inputs.tetto }}'
+          BUDGET='${{ github.event.inputs.budget_ms }}'
+          BERSAGLIO='${{ github.event.inputs.bersaglio }}'
+          CONFERMA='${{ github.event.inputs.conferma_prod }}'
+
+          # ⛔ Il tetto è un numero intero con un tetto VERO. Il worker è un browser solo,
+          #    condiviso con PROD: un `100` battuto per sbaglio non deve poter partire.
+          case "$TETTO" in
+            ''|*[!0-9]*) echo "::error::Il tetto dev'essere un numero intero. Ricevuto: «$TETTO»"; exit 1;;
+          esac
+          if [ "$TETTO" -gt 10 ]; then
+            echo "::error::Tetto $TETTO troppo alto: il massimo è 10. Il worker è UN browser solo, condiviso con PROD."
+            exit 1
+          fi
+
+          case "$BUDGET" in
+            ''|*[!0-9]*) echo "::error::Il budget dev'essere un numero intero di millisecondi. Ricevuto: «$BUDGET»"; exit 1;;
+          esac
+          if [ "$BUDGET" -lt 5000 ] || [ "$BUDGET" -gt 60000 ]; then
+            echo "::error::Budget $BUDGET fuori scala: ammessi 5000-60000 ms."
+            exit 1
+          fi
+
+          if [ "$BERSAGLIO" = "prod" ]; then
+            REF=qqbfphyslczzkxoncgex
+            if [ "$CONFERMA" != "PROD" ]; then
+              echo "::error::Per il gestionale VERO va scritta la parola PROD nella casella di conferma."
+              exit 1
+            fi
+          else
+            REF=cudiqnrrlbyqryrtaprd
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "tetto=$TETTO" >> "$GITHUB_OUTPUT"
+          echo "budget=$BUDGET" >> "$GITHUB_OUTPUT"
+
+          if [ "$TETTO" = "0" ]; then
+            echo "::notice::SPENGO l'arricchimento su $BERSAGLIO ($REF)."
+          else
+            echo "::notice::ACCENDO l'arricchimento su $BERSAGLIO ($REF): $TETTO schede per giro, budget ${BUDGET}ms."
+          fi
+
+      - name: Scrivi le due variabili (e SOLO queste due)
+        run: |
+          set -euo pipefail
+          # 🔒 I nomi sono scritti QUI: non arrivano da un input, quindi questo workflow non può
+          #    scrivere un secret qualunque. È l'unica cosa che lo tiene stretto davvero.
+          npx supabase@latest secrets set \
+            "PMO_ARRICCHISCI_SCHEDE=${{ steps.controlli.outputs.tetto }}" \
+            "PMO_ARRICCHISCI_BUDGET_MS=${{ steps.controlli.outputs.budget }}" \
+            --project-ref "${{ steps.controlli.outputs.ref }}"
+
+      - name: Rileggi, invece di credere al comando
+        run: |
+          set -euo pipefail
+          echo "::group::Variabili sul progetto ${{ steps.controlli.outputs.ref }}"
+          npx supabase@latest secrets list --project-ref "${{ steps.controlli.outputs.ref }}" \
+            | grep -E 'PMO_ARRICCHISCI' || {
+              echo "::error::Le variabili non risultano scritte sul progetto. Il comando è partito ma non è arrivato."
+              exit 1
+            }
+          echo "::endgroup::"
+          {
+            echo "### Interruttore arricchimento schede"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| gestionale | \`${{ github.event.inputs.bersaglio }}\` (\`${{ steps.controlli.outputs.ref }}\`) |"
+            echo "| schede per giro | **${{ steps.controlli.outputs.tetto }}**$([ '${{ steps.controlli.outputs.tetto }}' = '0' ] && echo ' — SPENTO' || true) |"
+            echo "| budget per giro | ${{ steps.controlli.outputs.budget }} ms |"
+            echo ""
+            echo "⚠️ \`secrets list\` dice che le variabili **ci sono**, non quanto valgono: Supabase"
+            echo "mostra solo un'impronta. Il valore vero lo dice il registro della funzione al giro"
+            echo "dopo, nella riga \`arricchimento_schede\` (che porta \`tetto\`, \`lette\`, \`riuscite\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
