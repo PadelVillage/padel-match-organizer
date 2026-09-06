@@ -63,12 +63,12 @@ const attendi = () => new Promise((r) => setTimeout(r, 5));
    🚨 Si rifabbrica a OGNI caso, e non è un vezzo: la funzione legge `staffCalPlayersState` dallo
       scope, quindi un contesto riusato porterebbe il roster del caso precedente. (Sbagliato la
       prima volta, e il banco accusava il codice invece di sé stesso.) */
-function banco({ roster = [], saldoLetto = 0, fetchRompe = false } = {}) {
+function banco({ roster = [], saldoLetto = 0, fetchRompe = false, idReserva = '9844' } = {}) {
   const chiamate = [];
   const cache = new Map(), cloud = new Map();
   let ridisegni = 0;
   const ctx = {
-    staffCalPlayersState: { idReserva: '9844', roster },
+    staffCalPlayersState: { idReserva, roster },
     // La vera `_staffCalSocioDelGiocatore` è la funzione della voce 138 (id interno con id
     // interno, e davanti a un id che non aggancia NON indovina): qui si dichiara il suo esito.
     _staffCalSocioDelGiocatore: (p) => (p && p.__socio) || null,
@@ -96,7 +96,7 @@ function banco({ roster = [], saldoLetto = 0, fetchRompe = false } = {}) {
    `4` nel roster della prenotazione 9844 (lunedì 7/09, 10:30, Campo 4) e `member_local_id`
    `7d454239…` in anagrafica. */
 const MAURIZIO = () => ({ idx: '3', idCliente: '4', nome: 'Maurizio Aprea', saldoCents: 600,
-                          __socio: { id: '7d454239-929a-4346-8ba0-ec778d7763a3' } });
+                          __socio: { id: '7d454239-929a-4346-8ba0-ec778d7763a3', memberId: '000004' } });
 const GESTO = { idReserva: '9844', idCliente: '4', idx: '3', playerName: 'Maurizio Aprea', motivo: 'incasso-wallet' };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
@@ -310,4 +310,62 @@ test('⑬ e le due mappe della stessa pagina non restano con due numeri diversi'
   await b.aggiorna('7d454239-929a-4346-8ba0-ec778d7763a3', null);
   assert.equal(b.cache.get('4').balance_cents, 600);
   assert.equal(b.cloud.get('7d454239-929a-4346-8ba0-ec778d7763a3').balance_cents, 600);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   ⑭-⑯ I DUE NUMERI — e questi casi esistono perché il difetto è stato COMMESSO, non immaginato.
+
+   📏 La prima stesura di questa cura (06/09, in servizio per un'ora) scriveva nella fotografia
+   l'ID INTERNO preso dal roster. Ma il campo `id_cliente` di quel record è quello che scrive
+   `matchpoint-wallet-sync`, e il sync ci mette il CODICE CLIENTE. Due numerazioni nella stessa
+   colonna, a seconda di chi aveva scritto la riga.
+
+   🚨 E NON SI VEDEVA, che è la parte da ricordare: la prova era stata fatta su Maurizio Aprea,
+   che ha id interno 4 e codice 000004 — i due numeri COINCIDONO. Il difetto è saltato fuori solo
+   guardando un socio dove divergono:
+     · `id_cliente` **191** in archivio = **Luciano Pase** (codice 000191, id interno assente);
+     · **191** nel roster di una prenotazione = id interno di **Valeria Moschet** (codice 000182).
+   Due persone, lo stesso numero, due colonne diverse. È la voce 138 in un altro campo.
+   📌 *Un caso di prova scelto fra quelli dove i due valori coincidono non prova niente sui due
+      valori.* */
+
+test('⑭ 🚨 alla fotografia va il CODICE cliente, non l\'id interno del roster', async () => {
+  const p = MAURIZIO();
+  const b = banco({ roster: [p], saldoLetto: 600 });
+  b.rileggi(GESTO);
+  await attendi();
+  assert.equal(b.chiamate[0].codiceCliente, '000004');
+  // ⛔ E l'id interno resta al suo posto, che è l'indirizzo per LEGGERE da Matchpoint:
+  //    i due campi viaggiano insieme e non si scambiano.
+  assert.equal(b.chiamate[0].idInterno, '4');
+});
+
+test('⑮ 🚨 il caso dove i due numeri DIVERGONO: Valeria Moschet', async () => {
+  /* 📏 Dati veri di PROD: id interno 191, codice 000182. Con la stesura sbagliata qui sarebbe
+     partito «191» — che in quella colonna è il codice di un\'altra persona. */
+  const valeria = { idx: '1', idCliente: '191', nome: 'Valeria Moschet', saldoCents: null,
+                    __socio: { id: '1e81b18f-f88c-4663-9016-3cc45c213f7e', memberId: '000182' } };
+  // 🚨 L'idReserva del banco DEVE essere quella della scheda aperta: con una diversa la riga non
+  //    si trova, il socio non si aggancia e il caso passerebbe/cadrebbe per la ragione sbagliata.
+  //    (Sbagliato la prima volta: il caso accusava il codice di non leggere `memberId`.)
+  const b = banco({ roster: [valeria], saldoLetto: 0, idReserva: '9808' });
+  b.rileggi({ idReserva: '9808', idCliente: '191', idx: '1', playerName: 'Valeria Moschet' });
+  await attendi();
+  assert.equal(b.chiamate[0].codiceCliente, '000182');
+  assert.notEqual(b.chiamate[0].codiceCliente, '191');
+});
+
+test('⑯ senza socio agganciato il codice resta VUOTO, non ripiega sull\'id interno', async () => {
+  // Meglio un campo che il sync riempirà, che un numero giusto nella numerazione sbagliata.
+  const ignoto = { idx: '2', idCliente: '999', nome: 'Tal dei Tali', saldoCents: null, __socio: null };
+  const b = banco({ roster: [ignoto], saldoLetto: 100 });
+  b.rileggi({ idReserva: '9844', idCliente: '999', idx: '2', playerName: 'Tal dei Tali' });
+  await attendi();
+  assert.equal(b.chiamate[0].codiceCliente, '');
+});
+
+test('⑰ e il ↻ della scheda socio passa lo stesso campo, dalla stessa fonte', async () => {
+  const b = bancoRefresh({ socio: { ...SOCIO(), memberId: '000004' }, saldoLetto: 600 });
+  await b.aggiorna('7d454239-929a-4346-8ba0-ec778d7763a3', null);
+  assert.equal(b.chiamate[0].codiceCliente, '000004');
 });
