@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
+import { vaArricchita, scegliDaArricchire, fondiArricchimento } from './arricchimento-scheda.ts';
 import {
   fattiDaConfronto,
   finestraDedup,
@@ -46,6 +47,15 @@ type ParsedBooking = {
   // una colonna istruttore. Chiave ASSENTE = tabellone non letto; chiave VUOTA = letto, nessun
   // maestro dichiarato. La differenza serve allo sticky (vedi il ramo occupancy).
   istruttore?: string;
+  /* 🪟 VOCE 142, seconda metà — quello che l'export NON porta e che serve alla scheda.
+     ⛔ `giocatori` resta `string[]` e NON si tocca: su quella lista `eventi-staff.ts` decide chi
+        viene avvisato, e non si cambia la forma di un dato da cui dipende un avviso.
+     🚨 Nessuno di questi tre è un timbro di tempo, ed è deliberato: un campo che cambia da sé
+        farebbe riscrivere la riga a ogni giro (voce 160). `arricchitoPer` è l'impronta dei NOMI
+        per cui la lettura vale — stabile finché il roster è lo stesso. */
+  idClienti?: Record<string, string>;
+  note?: string;
+  arricchitoPer?: string;
 };
 
 const CORS_HEADERS = {
@@ -700,6 +710,68 @@ async function enrichBookingsWithTabellone(
   return true;
 }
 
+/** 🪟⭐⭐ VOCE 142, seconda metà — L'ID INTERNO E LE OSSERVAZIONI DENTRO IL GESTIONALE.
+ *
+ * 🗣️ Sua: *«perché ogni volta dobbiamo andare a leggere Matchpoint?»*. I **nomi** l'export li
+ *    porta già (dal 04/09 la scheda si apre piena); l'**id interno** e le **Osservazioni** no —
+ *    stanno solo dentro la scheda della singola prenotazione, e servono una lettura a testa.
+ *
+ * ⛔⛔ NASCE SPENTA, e non è prudenza generica: `PMO_ARRICCHISCI_SCHEDE` di default è **0**.
+ *    ⚖️ Il motivo è misurato, non temuto: il worker è **un solo browser condiviso con PROD**, il
+ *    sync ci passa già per l'export (worker giù = calendario congelato, misurato il 15/08) e
+ *    ieri il database è stato irraggiungibile per otto ore. Accendere una lettura in più per
+ *    prenotazione dentro il giro che tiene vivo il calendario è una cosa che si **guarda mentre
+ *    succede**, non che si dà per buona perché il banco è verde.
+ *    ⇒ Il codice atterra inerte; si accende con una variabile, su PROD, guardando i log.
+ *
+ * 🚨 E SI PUÒ PROVARE SOLO SU PROD, va detto invece di scoprirlo: su TEST il calendario è una
+ *    **fotografia congelata**, quindi le prenotazioni che ci sono dentro su Matchpoint spesso
+ *    non esistono più ⇒ la lettura fallirebbe e direbbe «non funziona» di una cosa sana.
+ *
+ * ⚖️ Best-effort per costruzione: qualunque cosa vada storta qui viene scritta nel registro e
+ *    ingoiata. Questo passo **non può** far fallire un giro di sync — il calendario vale più
+ *    della comodità di una scheda. */
+async function leggiSchedaDalWorker(
+  booking: ParsedBooking,
+  workerUrl: string,
+  workerApiKey: string,
+  username: string,
+  password: string,
+  baseUrl: string,
+  timeoutMs: number,
+): Promise<{ partecipantiFinali?: any[]; note?: string } | null> {
+  const endpoint = `${workerBaseUrl(workerUrl)}/edit-booking`;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${workerApiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      // `read: true` è la LETTURA autorevole: il worker lo sa (`readOnly`) e non scrive niente.
+      // È la stessa strada che l'app percorre aprendo una scheda — qui si fa una volta, non a
+      // ogni apertura.
+      body: JSON.stringify({
+        username, password, baseUrl, read: true,
+        ...(booking.idReserva ? { idReserva: String(booking.idReserva) } : {}),
+        campo: booking.campo, data: booking.data, ora: booking.ora,
+      }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data?.ok) return null;
+    return { partecipantiFinali: data.partecipantiFinali, note: data.note };
+  } catch (_err) {
+    return null;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
 async function exportFutureBookingsViaBrowserWorker(): Promise<MatchpointExport> {
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
@@ -1345,6 +1417,65 @@ Deno.serve(async (req) => {
         synced_at: importedAt,
       });
     };
+
+    /* 🪟⭐⭐ VOCE 142, seconda metà — LA SCHEDA COMPLETA SENZA CHIEDERE A MATCHPOINT.
+       Qui si sa già due cose che servono e che prima non stavano insieme: **cosa c'è in archivio**
+       (`existingPayloadByTypedKey`, appena costruita) e **cosa dice l'export adesso**. La
+       differenza fra le due dice quali prenotazioni non abbiamo mai letto per intero.
+
+       ⛔⛔ DI DEFAULT NON FA NIENTE (`PMO_ARRICCHISCI_SCHEDE` = 0), e il perché sta sulla
+       funzione `leggiSchedaDalWorker`: il worker è **un browser solo condiviso con PROD**, il
+       sync ci passa già, e questa è una lettura in più **per prenotazione**. Si accende
+       guardando, non perché il banco è verde.
+
+       ⚖️ TRE FRENI, e nessuno è decorativo:
+       · il **tetto per giro** — l'arretrato (misurato il 04/09: ~300 prenotazioni future) si
+         smaltisce in molti giri invece che in uno solo che sfonderebbe il limite dell'edge;
+       · il **budget di tempo** — se il giro è già lungo non si comincia nemmeno: il calendario
+         vale più della comodità di una scheda;
+       · **una alla volta** — il worker è un browser solo: chiedergliene quattro insieme non le
+         fa in parallelo, le mette in fila e fa scadere il giro.
+       🚨 E si servono prima le prenotazioni **più vicine nel tempo**: sono quelle che qualcuno
+       aprirà davvero oggi. */
+    const _arrTetto = Math.max(0, Number(clean(Deno.env.get('PMO_ARRICCHISCI_SCHEDE') || '0')) || 0);
+    let _arrLette = 0, _arrRiuscite = 0;
+    if (_arrTetto > 0) {
+      try {
+        const wUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL') || '');
+        const wKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY') || '');
+        const wUser = clean(Deno.env.get('MATCHPOINT_USERNAME') || '');
+        const wPass = clean(Deno.env.get('MATCHPOINT_PASSWORD') || '');
+        const wBase = (Deno.env.get('MATCHPOINT_BASE_URL') || DEFAULT_BASE_URL).replace(/\/+$/, '');
+        const _oggi = todayIsoRome();
+        // Budget: quanto tempo del giro si è disposti a spendere qui, in tutto.
+        const _budgetMs = Math.max(0, Number(clean(Deno.env.get('PMO_ARRICCHISCI_BUDGET_MS') || '20000')) || 20000);
+        const _fine = Date.now() + _budgetMs;
+        if (wUrl && wKey && wUser && wPass) {
+          const candidati = validation.bookings.filter((b, i) => {
+            if (!b?.data || b.data < _oggi) return false;   // il passato non si apre più
+            const prev = existingPayloadByTypedKey.get(`booking|${bookingCloudKey(b, i, 'booking')}`);
+            return vaArricchita(prev, b.giocatori);
+          });
+          for (const b of scegliDaArricchire(candidati, _arrTetto)) {
+            if (Date.now() >= _fine) break;
+            _arrLette += 1;
+            const lettura = await leggiSchedaDalWorker(b, wUrl, wKey, wUser, wPass, wBase, 25000);
+            const fuso = fondiArricchimento(lettura, b.giocatori);
+            if (!fuso) continue;
+            b.idClienti = fuso.idClienti;
+            b.note = fuso.note;
+            b.arricchitoPer = fuso.arricchitoPer;
+            _arrRiuscite += 1;
+          }
+        }
+      } catch (errArr) {
+        // ⛔ Ingoiato apposta: questo passo non può far fallire un giro di sync.
+        console.warn(JSON.stringify({ event: 'arricchimento_schede_saltato', error: String(errArr) }));
+      }
+      console.log(JSON.stringify({
+        event: 'arricchimento_schede', tetto: _arrTetto, lette: _arrLette, riuscite: _arrRiuscite,
+      }));
+    }
 
     validation.bookings.forEach((booking, index) => {
       addSnapshotRecord('booking', bookingCloudKey(booking, index, 'booking'), booking);
