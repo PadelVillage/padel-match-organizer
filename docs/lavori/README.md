@@ -2238,15 +2238,96 @@ scritto e l'app non l'ha riletto»: due guasti diversi, due posti diversi in cui
 ⚠️ **Il borsellino di Maurizio Aprea ha 1 € in più** (da 5,00 a 6,00): è denaro vero, e se va tolto
 si storna.
 
-⏳ **COSA MANCA — la seconda metà, e adesso si sa esattamente cos'è.** Il **pagamento COL
-borsellino** (`matchpoint-payment-write` con `method: 'wallet'`) **non** aggiorna la fotografia:
-📏 misurato — quell'edge il saldo dopo **non ce l'ha**, e il worker non glielo torna. ⇒ Là il numero
-resta vecchio fino al giro dei 10 minuti, esattamente com'era prima di questa cura.
-🚨 **E va saputo prima di provarlo**: un pagamento **cash/card** non tocca il borsellino, quindi non
-eserciterebbe niente di questa voce. La prova che vale è un pagamento **col borsellino**.
-⇒ La strada senza far aspettare la cassa: `matchpoint-wallet-read` (che già legge **un** socio
-solo) scrive la fotografia riusando `decidiFotografiaSaldo`, e l'app la chiama **in sottofondo**
-dopo un pagamento col borsellino. Dichiarata, non ancora fatta.
+✅⭐ **SECONDA METÀ SCRITTA E IN SERVIZIO — 06/09/2026 notte, PROD 6.386.** Era la parte che
+mancava: il **pagamento COL borsellino** non aggiornava la fotografia. 📏 Misurato, non dedotto —
+`/collect-payment` torna `statoPost` e `pendentePostCents`, **il saldo del borsellino no**, perché
+il cobro si fa nella schermata della **prenotazione** e non in quella del borsellino. ⇒ Là il
+numero restava vecchio fino al giro dei 10 minuti, esattamente com'era prima della cura.
+
+🔨 **Il saldo non è in mano ⇒ si va a RILEGGERLO**, e lo fa `matchpoint-wallet-read`, che già lo
+sapeva fare. Da oggi **quello che legge lo scrive**: la fotografia `wallet_balance`, con la
+**stessa regola** della ricarica (`decidiFotografiaSaldo`, spostata in `_shared/` perché i gesti
+sono due e la regola dev'essere una) e la provenienza dichiarata (`pmo_wallet_read`).
+📌 *Due copie della stessa regola divergono il giorno in cui una sola viene corretta.*
+
+🚨⭐⭐ **E IL PEZZO CHE NON SI VEDEVA LEGGENDO QUESTA SCHEDA: dove sta l'occhio non è dove stava la
+cura.** Nella scheda della partita il chip 👛 **non** legge la fotografia del gestionale: legge
+`p.saldoCents`, che il worker ha portato all'**APERTURA** della scheda insieme ai giocatori. ⇒
+Curare solo l'archivio avrebbe lasciato il cassiere a guardare il numero di prima **proprio nella
+riga dove ha appena premuto**. Si aggiornano tutti e due, col **medesimo** numero riletto dal
+circolo. 📌 *La lezione della 134: il posto giusto per una risposta è accanto alla domanda.*
+
+⛔ **Il saldo nuovo NON si calcola, si CHIEDE.** Sottrarre l'importo pagato da quello che avevamo
+sarebbe fabbricare una verità nostra: basta un incasso dalla postazione accanto, o una ricarica di
+due minuti fa, e il numero «giusto» è **falso e nessuno lo sa**. È *il gestionale SA, l'app DICE*
+applicato ai soldi.
+
+⏳ **In sottofondo, e non è un dettaglio**: la lettura al worker costa ~10 s (📏 10,6 s misurati il
+06/09) e il numero serve **dopo** l'incasso, non per farlo ⇒ nessuna attesa sul percorso del
+cassiere, e nessun avviso se fallisce (l'incasso è già riuscito: dirlo lì mentirebbe su di lui).
+⛔ **Cash e card non chiedono niente al worker** — è un browser solo, condiviso col sync delle
+prenotazioni, e ogni lettura inutile è un tick tolto a quello. Sullo **storno** il metodo si legge
+dall'indice: borsellino **o ignoto** si rilegge, cash/card no. *Nel dubbio si paga il costo che si
+sa misurare.*
+
+⚠️ **Il socio si aggancia con `_staffCalSocioDelGiocatore`** (id interno con id interno, voce 138):
+senza aggancio si legge per il chip ma **non si archivia**. Ricavare la chiave «a occhio» è il
+difetto silenzioso della 138 — il codice cliente di Laura Aprea (000140 → «140») è identico
+all'**id interno** di Marco Aprea (140), e in cassa la sera si aggiornerebbe il borsellino di chi
+non c'entra.
+
+🧪 **Il banco, e cosa NON diceva.** 11 casi su `_shared/fotografia-saldo.test.ts` (sabotato 3
+volte, rosso ogni volta) e un banco nuovo, `test/il-saldo-si-rilegge-dopo-il-gesto.test.mjs`, che
+**estrae le funzioni da `index.html` e le esegue**.
+🚨📏 **E aveva un buco, misurato invece che supposto**: spegnendo l'aggancio (`if (method ===
+'wallet')` → `if (false)`) i primi **otto** casi restavano **tutti verdi**. Provavano che la
+funzione è giusta, non che qualcuno la **chiama** — il *ramo spento* del 19/08, dentro il banco
+scritto per ricordarsene. ⇒ Aggiunti i casi ⑨-⑪ che eseguono `_pmoCollectPayment` per davvero;
+ora quel sabotaggio è rosso, insieme a «rilegge sempre» e «rilegge anche a incasso fallito».
+📌 *Un banco che prova solo il pezzo non dice niente su chi lo chiama.*
+
+⏳ **LA VOCE RESTA APERTA, e le manca UNA cosa sola: la prova FISICA.** Nessun pagamento vero col
+borsellino è ancora passato di qui. ⛔ Su **TEST non si può** — il recinto rifiuta prima del worker
+— quindi è **PROD o niente**.
+✅ **Ed è già autorizzata**: lunedì **7/09 ore 10:30**, Campo 4, prenotazione **9844** (Lidia Comes ·
+Ospite · Fabiola Limuti · **Maurizio Aprea**, id interno `4`), un **pagamento** e poi uno **storno**
+su di lui. 🚨 **COL BORSELLINO**: cash e card non toccano il borsellino e non eserciterebbero
+niente di questa voce.
+📏 Cosa si guarda per dire che ha funzionato: il chip 👛 nella riga di Maurizio cambia **entro una
+decina di secondi** senza ricaricare la pagina, e in archivio la riga
+`wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
+
+🚨⭐⭐ **E FRA I DUE GESTI CI SI FERMA A GUARDARE GLI INCASSI — suo ordine del 06/09 notte:**
+> *«Prima dello storno vai a vedere in incassi se ti torna tutto e poi fai lo storno.»*
+
+⇒ **I gesti sono tre, non due**: pagamento → **si apre la sezione Incassi e si controlla che torni
+tutto** → storno. ⛔ Lo storno **non parte** finché quel controllo non è fatto.
+⚖️ E non è pignoleria di procedura: lo storno **cancella la scena del delitto**. Un incasso che
+arriva in Incassi col metodo sbagliato, con l'importo sbagliato o attribuito alla persona sbagliata
+si vede **solo mentre c'è**; stornato prima di guardarlo, resta un giro fatto e niente da leggere,
+e la prova andrebbe rifatta con un'altra prenotazione vera.
+📌 *Un gesto che rimette le cose a posto va fatto DOPO aver guardato come stavano — o si rimette a
+posto anche la prova.*
+📏 Cosa deve tornare in Incassi: **una** riga nuova per Maurizio Aprea sulla prenotazione **9844**,
+metodo **Wallet** (non «modalità in arrivo…», non Cash), l'importo giusto, e i totali per metodo
+che salgono di quell'importo **sul borsellino** e non altrove.
+
+⏱️ **QUANTO SI ASPETTA PRIMA DI GUARDARE — misurato il 06/09 sul cron di PROD, per non stare lì a
+fissare uno schermo che non può ancora sapere.** Il sync degli incassi di **oggi** è
+`pmo-payments-sync-today-prod`, `*/5 6-21 * * *` ⇒ **ogni 5 minuti**, e le 10:30 italiane (08:30
+UTC) sono dentro la finestra. ⇒ Fra il pagamento e il controllo in Incassi si aspetta **fino a ~5
+minuti**, non di più; se dopo dieci non c'è ancora niente, quello **è** il difetto e va guardato lì,
+non stornato via. *(L'altro, `pmo-payments-sync-prod` a `23 * * * *`, è il giro orario su tutto lo
+storico: non è quello che porta l'incasso di adesso.)*
+⚖️ **E l'attesa NON riguarda il chip 👛**, che è il bersaglio vero di questa voce: quello si muove
+da sé entro una decina di secondi, perché non aspetta nessun sync — è la rilettura in sottofondo.
+⇒ Se il chip cambia subito e Incassi arriva cinque minuti dopo, **è il comportamento giusto**: sono
+due strade diverse, e questa voce ha accorciato solo la prima.
+📌 **Nota per lo storno**: l'app decide se rileggere il saldo dal metodo che l'indice conosce.
+Guardando gli Incassi **prima** (come chiede lui) il metodo è ormai noto ⇒ si passa dal ramo
+`storno-wallet`; stornando subito si sarebbe passati da `storno-metodo-ignoto`, che rilegge lo
+stesso. Le due strade portano allo stesso posto, ed è voluto — ma la prima è quella che **prova**
+anche il riconoscimento del metodo.
 
 ### C — Cose sapute e non risolte — 13
 
