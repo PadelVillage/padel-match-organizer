@@ -1730,7 +1730,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ## 🔴 URGENTI — 1
 
-### 171 — 💶🚨 IL PAGAMENTO COL BORSELLINO NON FUNZIONA: il worker non trova «Saldo disponibile»
+### 171 — 💶🚨🚨 L'INCASSO DALLA SCHEDA PARTITA NON FUNZIONA — **per NESSUN metodo**
 
 🆕 **Entra il 06/09/2026 notte, e non è una supposizione: è un guasto VISTO**, provando su PROD un
 incasso vero che il committente aveva autorizzato.
@@ -1750,13 +1750,43 @@ del saldo non è nemmeno partita, ed è **giusto così** — l'incasso non è ri
 riletto lì avrebbe dato alla fotografia una freschezza che non ha. È esattamente il caso ⑪ del
 banco (*«un incasso NON riuscito non rilegge niente»*), visto succedere sul campo.
 
+🔄🚨⭐⭐ **CORRETTA UN'ORA DOPO, e la correzione allarga il guasto invece di ridurlo.** Questa
+scheda si apriva dicendo *«il pagamento COL BORSELLINO non funziona»*, e attribuiva la colpa
+all'etichetta di quella voce. 📏 **Misurato subito dopo, con un secondo tentativo autorizzato**
+(*«puoi utilizzare anche Fabiola per fare un pagamento vero»*) — stessa partita, stessa persona,
+stesso importo, ma metodo **CONTANTI**:
+> `Pulsante metodo "Contanti" non trovato nel dialog incasso.`
+
+⇒ **Non è la voce del borsellino: è il dialog.** Nessun metodo viene trovato — né `Saldo
+disponibile`, né `Contanti`. ⇒ **L'incasso dalla scheda partita non funziona per NESSUN metodo**,
+e il guasto non è nell'etichetta ma un gradino prima: o il dialog non si apre, o non è più quello
+che il worker si aspetta.
+⚖️ **Ed è un guasto di PRODUZIONE su una funzione di cassa**, non una limitazione di un ramo poco
+usato: cambia la gravità di questa voce, non solo la sua descrizione.
+📌 *La prima diagnosi aveva ragione sul fatto e torto sulla causa: aveva provato UN metodo e
+concluso sulla VOCE di quel metodo. Il secondo tentativo, con un metodo diverso, è costato due
+minuti e ha spostato il difetto di un piano.*
+⛔ **Quando ha smesso non si sa**: l'ultimo incasso vero riuscito di cui c'è traccia è quello
+chiesto dal committente il **02/09** (voce 125, in contanti). ⇒ Fra il 02/09 e stanotte qualcosa è
+cambiato — probabilmente **Matchpoint**, che il worker pilota per selettori e testi.
+
+✅ **Nessun denaro mosso nemmeno al secondo tentativo**: pendente ancora `800`, **zero** record
+`payment` per Fabiola oggi.
+⭐ **E una cosa la si è provata sul campo**: dopo l'incasso fallito **nessuna rilettura del saldo è
+partita** (la spia su `matchpoint-wallet-read` ha contato **0** chiamate) — cioè i casi **⑩** e
+**⑪** del banco della 143, visti succedere davvero invece che a banco.
+
 🔎 **Cosa NON si sa ancora, dichiarato invece che indovinato** — le tre ipotesi, in ordine di costo:
-① l'**etichetta è cambiata** su Matchpoint (e allora `CLAUDE.md`, che dichiara «la voce si chiama
-   *Saldo disponibile*», è la 26ª un'altra volta: un fatto dichiarato che nessuno riprova);
-② la voce **compare solo a certe condizioni** (tipo di prenotazione, cliente, o saldo visto dal
-   dialog) — ⚠️ ma il saldo c'era: 8,00 €, caricati un minuto prima e confermati dal worker stesso
-   (`balanceCentsPost: 800`);
-③ il dialog non si è aperto del tutto e il worker ha cercato in una pagina che non era quella.
+① 🥇 **il dialog non si apre più** — il click su «Incassare» (`partIncassaBtn`) non produce quello
+   che produceva, e il worker cerca i metodi in una pagina che non li ha. ⇒ È l'ipotesi che
+   **spiega tutti e due** i fallimenti con una causa sola, ed è la prima da provare;
+② il dialog si apre ma è **cambiato dentro** (markup nuovo: i metodi non sono più `button`/`a`/
+   `[onclick]` con quel testo, ma per esempio celle di tabella o voci di una tendina);
+③ le **etichette** sono cambiate tutte e due insieme — possibile ma meno economico, e comunque
+   distinguibile dalla stessa sonda.
+⛔ **Cade invece l'ipotesi «la voce del borsellino compare solo con saldo»**, che la prima stesura
+teneva per buona: il saldo c'era (8,00 € caricati un minuto prima, confermati dal worker con
+`balanceCentsPost: 800`) e comunque **Contanti** non dipende da nessun saldo.
 
 🚨 **E il worker non aiuta a distinguerle**: davanti a un metodo non trovato dice *quale cercava*,
 **non quali ha visto**. ⇒ Prima cura, che costa poco e serve a tutte e tre le ipotesi: far
