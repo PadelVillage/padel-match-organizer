@@ -1801,6 +1801,56 @@ rimette.
 aveva provato l'incasso in **contanti**. ⇒ Non si sa se questo sia un guasto nuovo o se col
 borsellino non abbia **mai** funzionato.
 
+🔎✅ **06/09 SERA, 97ª sessione: LA SONDA È IN SERVIZIO — e con lei una QUARTA ipotesi, che non
+stava fra le tre.**
+
+📏 **Il fatto che la fa nascere, letto nel worker e non supposto**: i dialog di Matchpoint sono
+**iframe fancybox**, e il worker lo sa già — la correzione del saldo cerca `FichaCorreccionSaldo.aspx`
+**fra i `page.frames()`** e commenta *«Il dialog è un IFRAME fancybox»*. `_clickCobroMethod`, invece,
+ha sempre cercato i metodi con `page.locator(…)`, cioè **nel solo frame principale**.
+⇒ ④ **il dialog si apre in un iframe e il worker guarda nella stanza sbagliata.** Spiega tutti e due
+i fallimenti con una causa sola — come la ①, ma dicendone anche il **meccanismo**.
+⛔ **Non è ancora una diagnosi**: è un'ipotesi in più che la stessa lista conferma o smentisce senza
+un secondo giro. Se il dialog non fosse in un iframe, la sonda mostrerà il frame principale con dentro
+o senza i metodi, e le tre di prima restano in piedi.
+
+🚨 **E una QUINTA, che non è un'ipotesi sul DOM ma sul TEMPO**: il worker aspettava il dialog
+**400 ms fissi** dopo un postback. Un'attesa fissa non distingue *«non c'è»* da *«non c'è **ancora**»*,
+e le due vogliono cure opposte. Ora aspetta finché non compare (8 s) e **dichiara quale dei due era**
+(`mai_comparso` · `trovato_non_cliccabile`).
+⚖️ Se fosse questa, l'incasso **riesce già da adesso** — e sarebbe la cura, non solo la sonda. Va
+detto perché cambia cosa aspettarsi dal prossimo tentativo: **può anche riuscire**.
+
+🔧 **Cosa è in servizio** (#1438 worker, #1439 edge — le due si tengono):
+· il worker, al fallimento, allega `cobroCandidates`: per **ogni contesto, iframe compresi**, i
+  cliccabili visibili col loro testo, gli iframe presenti e un estratto del body. Raccolta in **sola
+  lettura**: guarda e non clicca — se il dialog fosse altrove, il click sbagliato lo farebbe su una
+  cassa vera;
+· `matchpoint-payment-write` **registra** quella diagnosi (`console.error`) invece di limitarsi a
+  restituirla. 📌 *Una sonda la cui risposta non raggiunge chi diagnostica non è una sonda*: l'app
+  mostra `message` e butta il resto, quindi la lista viveva **solo nel browser di chi ha premuto** —
+  e l'unico modo di rileggerla sarebbe stato un altro incasso vero.
+· ⭐ **la sonda si dichiara in `/health`** (`features: […, 'sonda-dialog-incasso']`) — verificato **sul
+  worker in servizio**, non dedotto dal ramo: è la lezione del 3/08, quando sulla VM finì il codice
+  vecchio e a scoprirlo fu l'effetto.
+
+🧪 **Banco**: `test/il-dialog-incasso-dice-cosa-vede.test.mjs`, **7 casi** che **estraggono** le due
+funzioni da `server.mjs` e le **eseguono** con un doppio del `page`. **Sabotato 5 volte** — giro unico,
+lista non allegata, click ritentati, raccolta del solo `mainFrame`, frame rotto che propaga: ognuno lo
+fa cadere.
+⛔ **Quello che il banco NON dice**: perché il dialog non dia i metodi. Dice che quando non li dà, il
+worker consegna l'elenco di cosa c'era.
+
+⏳ **COSA MANCA PER CHIUDERLA, ed è un GESTO — non altro codice.** La sonda si legge solo facendo
+**un tentativo vero**, e da questa sessione non si può lanciare: la **console remota è stata fermata
+dal classificatore di sicurezza** (sia con `--allow-writes`, sia in sola lettura), e il worker dal
+container non si raggiunge (l'host non è nell'allowlist di uscita).
+⇒ Serve che il gesto lo faccia lui, dall'app: **scheda della partita → riga di Fabiola → Incassare →
+Contanti**, con l'importo **esattamente pari al pendente**. Stanotte quel gesto fallisce senza toccare
+niente; da adesso, fallendo, **lascia la lista nel registro**.
+🚨 **E può anche riuscire** (ipotesi ⑤): in quel caso non è un imprevisto ma la prova ② già fatta —
+ci si **ferma a guardare gli Incassi** prima dello storno, come da suo ordine del 06/09.
+
 📌 **PROMOSSA A URGENTE da chi lavora, il 06/09 notte** (la delega del 23/08 copre le promozioni,
 e chiede di dichiararle): **non scavalca niente** — le urgenti erano **0**. Il perché è che la
 segreteria crede di avere un bottone che **non può riuscire**, e un bottone che promette e non
