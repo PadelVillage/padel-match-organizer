@@ -2195,9 +2195,58 @@ una finestra.
 🔨 **La cura precisa: dopo un'operazione di cassa sappiamo ESATTAMENTE di chi è cambiato il
 saldo** ⇒ si rinfresca **quello**, sul colpo, invece di aspettare il giro. Copre il caso che
 protesta (*«ho appena ricaricato e vedo ancora il vecchio numero»*) senza toccare il ritmo di
-fondo. Seconda metà, quando ci saranno gli id (**142**): all'apertura di una scheda si rinfrescano
-i **≤4** giocatori di quella partita.
+fondo.
 📌 *Un dato che si muove non si insegue col ritmo: si rinfresca dove lo si muove.*
+
+✅⭐⭐ **PRIMA METÀ FATTA E PROVATA SU PROD — 06/09/2026 sera, con una ricarica VERA da 1 €.**
+
+🔎 **E la misura ha reso il difetto più preciso di come questa scheda lo raccontava**: i record del
+borsellino sono **DUE**, e la ricarica ne aggiornava **solo uno**.
+| record | cos'è | com'era |
+|---|---|---|
+| `wallet_txn` | il **movimento** (chi, quanto, pre, post) | scritto dal 02/09 ✅ |
+| `wallet_balance` | la **fotografia**, cioè *quella che l'app legge per mostrare il numero* | **non aggiornata** ❌ |
+⇒ Il gestionale sapeva insieme *«è stata fatta una ricarica di 1 €»* e *«il saldo è quello di dieci
+minuti fa»*: **due verità sullo stesso socio**, nello stesso archivio.
+
+⭐⭐ **E LA CURA NON COSTA UNA LETTURA — è il punto che ha cambiato il disegno di questa scheda.**
+Qui era scritto *«si rinfresca quello, sul colpo»*, che voleva dire **una lettura in più al
+worker**. ⛔ Non serve: il saldo dopo è **già in mano** (`balanceCentsPost`, letto da Matchpoint
+nello stesso giro che ha mosso il denaro). Il worker — un browser solo condiviso col sync — **non
+viene toccato**.
+📌 *Prima di aggiungere una lettura, guardare se la risposta è già nella mano che si ha.*
+
+🔨 **Dove**: in `matchpoint-wallet-correct`, subito dopo `scriviTraccia` — il punto in cui il
+circolo ha confermato. È la **regola dei tre passi** applicata al saldo invece che alla partita.
+🧪 Regola in un modulo **puro** (`fotografia-saldo.ts`) così il banco la **esegue**: 8 casi,
+**sabotati 4 volte** e rossi ogni volta (chiave diversa dal sync, scrittura senza `memberLocalId`,
+`null` accettato come saldo, un campo in più nel payload = la voce 160 in miniatura).
+
+📏 **LA PROVA FISICA, e attraversa la finestra esatta in cui prima sbagliava** — ricarica di **1 €**
+sul borsellino di **Maurizio Aprea**, autorizzata da lui (*«prova a mettere 1 euro sul borsellino di
+Maurizio Aprea, così ti può tornare la prova?»*):
+| istante | saldo | fonte | |
+|---|---|---|---|
+| 18:30:48 | 500 | `matchpoint` | il giro di prima |
+| **18:37:29** | **600** | **`pmo_wallet_correct`** | ⭐ la cura, **nell'istante** della ricarica |
+| 18:40:33 | 600 | `matchpoint` | il sync conferma **lo stesso numero** |
+⇒ Prima della cura, fra le 18:37:29 e le 18:40:33 il gestionale avrebbe mostrato **5,00 €**: **tre
+minuti e quattro secondi** di numero sbagliato, che con la fila in cassa è il caso che protesta.
+✅ La risposta dell'edge dice `traccia: scritta` **e** `fotografia: scritta` — il campo nuovo, che
+esiste perché *«il numero non si è mosso»* resti distinguibile fra «non l'ho scritto» e «l'ho
+scritto e l'app non l'ha riletto»: due guasti diversi, due posti diversi in cui si curano.
+⚠️ **Il borsellino di Maurizio Aprea ha 1 € in più** (da 5,00 a 6,00): è denaro vero, e se va tolto
+si storna.
+
+⏳ **COSA MANCA — la seconda metà, e adesso si sa esattamente cos'è.** Il **pagamento COL
+borsellino** (`matchpoint-payment-write` con `method: 'wallet'`) **non** aggiorna la fotografia:
+📏 misurato — quell'edge il saldo dopo **non ce l'ha**, e il worker non glielo torna. ⇒ Là il numero
+resta vecchio fino al giro dei 10 minuti, esattamente com'era prima di questa cura.
+🚨 **E va saputo prima di provarlo**: un pagamento **cash/card** non tocca il borsellino, quindi non
+eserciterebbe niente di questa voce. La prova che vale è un pagamento **col borsellino**.
+⇒ La strada senza far aspettare la cassa: `matchpoint-wallet-read` (che già legge **un** socio
+solo) scrive la fotografia riusando `decidiFotografiaSaldo`, e l'app la chiama **in sottofondo**
+dopo un pagamento col borsellino. Dichiarata, non ancora fatta.
 
 ### C — Cose sapute e non risolte — 13
 
