@@ -25,6 +25,7 @@ import {
   vaArricchita,
   scegliDaArricchire,
   fondiArricchimento,
+  conservaArricchimento,
 } from './arricchimento-scheda.ts';
 
 Deno.test('chiaveNome: maiuscole, accenti e spazi doppi non fanno due persone', () => {
@@ -171,4 +172,79 @@ Deno.test('⑤ ciò che esce NON contiene `giocatori`: su quella lista eventi-st
   );
   assertEquals(Object.keys(out!).sort(), ['arricchitoPer', 'idClienti', 'note']);
   assert(!Object.prototype.hasOwnProperty.call(out!, 'giocatori'));
+});
+
+/* 🚨⭐⭐ I CASI NATI DAL DIFETTO VISTO SU PROD IL 06/09 — e che il banco di prima mancava tutto.
+ *
+ * 📏 Acceso a tetto 1 per 14 minuti: quattro giri, quattro `riuscite: 1`, e in archivio UNA sola
+ *    prenotazione arricchita — ogni volta una DIVERSA. Le funzioni pure erano giuste; a perdere il
+ *    lavoro era il collegamento, perché `validation.bookings` nasce dall'export a ogni giro e
+ *    l'export questi campi non li porta.
+ * ⚖️ Il primo caso qui sotto non prova una funzione: prova il GIRO, simulandone cinque. È l'unica
+ *    forma in cui quel difetto si vede — guardando una fusione alla volta, tutto tornava.
+ * 📌 *Un banco che prova solo i pezzi non vede il difetto che sta nel modo in cui si susseguono.* */
+
+Deno.test('⭐ il difetto di PROD: dopo cinque giri il dato si è ACCUMULATO, non sostituito', () => {
+  const archivio = new Map<string, unknown>();
+  const partite = [
+    { k: 'a', giocatori: ['Anna Bianchi', 'Bruno Neri'] },
+    { k: 'b', giocatori: ['Carlo Verdi', 'Dario Blu'] },
+    { k: 'c', giocatori: ['Elsa Rosa', 'Furio Gialli'] },
+  ];
+  const idPer: Record<string, Record<string, string>> = {
+    a: { 'anna bianchi': '1', 'bruno neri': '2' },
+    b: { 'carlo verdi': '3', 'dario blu': '4' },
+    c: { 'elsa rosa': '5', 'furio gialli': '6' },
+  };
+
+  for (let giro = 0; giro < 5; giro++) {
+    // il payload nuovo nasce dall'export: SOLO i nomi, nessun id — è il fatto da cui nasce il difetto
+    const nuovi = partite.map((p) => ({ k: p.k, giocatori: [...p.giocatori] })) as Array<
+      { k: string; giocatori: string[]; idClienti?: Record<string, string>; note?: string; arricchitoPer?: string }
+    >;
+    for (const b of nuovi) {
+      const tenuto = conservaArricchimento(archivio.get(b.k), b.giocatori);
+      if (tenuto) { b.idClienti = tenuto.idClienti; b.note = tenuto.note; b.arricchitoPer = tenuto.arricchitoPer; }
+    }
+    const cand = nuovi.filter((b) => vaArricchita(archivio.get(b.k), b.giocatori));
+    if (cand.length) {
+      const b = cand[0];
+      const fuso = fondiArricchimento(
+        { partecipantiFinali: Object.entries(idPer[b.k]).map(([nome, idCliente]) => ({ nome, idCliente })), note: '' },
+        b.giocatori,
+      );
+      if (fuso) { b.idClienti = fuso.idClienti; b.note = fuso.note; b.arricchitoPer = fuso.arricchitoPer; }
+    }
+    for (const b of nuovi) archivio.set(b.k, { ...b });
+  }
+
+  const arricchite = [...archivio.values()].filter((v) => (v as { idClienti?: unknown }).idClienti).length;
+  // ⛔ Senza la conservazione questo numero è 1 — ed è ESATTAMENTE ciò che PROD ha mostrato.
+  assertEquals(arricchite, 3);
+});
+
+Deno.test('conservaArricchimento: si conserva solo se l\'impronta vale ancora per QUESTI nomi', () => {
+  const roster = ['Maurizio Aprea', 'Fabio De Luca'];
+  const archivio = {
+    idClienti: { 'maurizio aprea': '4', 'fabio de luca': '137' },
+    note: '', arricchitoPer: improntaRoster(roster),
+  };
+  assertEquals(conservaArricchimento(archivio, roster)?.idClienti, archivio.idClienti);
+  // roster cambiato ⇒ quegli id non parlano più di questa partita: si lascia ricadere in lettura
+  assertEquals(conservaArricchimento(archivio, ['Maurizio Aprea', 'Tizio Nuovo']), null);
+  // riordinato ⇒ è lo stesso roster: si conserva
+  assertEquals(conservaArricchimento(archivio, ['Fabio De Luca', 'Maurizio Aprea'])?.idClienti, archivio.idClienti);
+});
+
+Deno.test('conservaArricchimento: niente da conservare, e niente timbri di tempo', () => {
+  const roster = ['Anna Bianchi'];
+  const impronta = improntaRoster(roster);
+  assertEquals(conservaArricchimento(undefined, roster), null);
+  assertEquals(conservaArricchimento({}, roster), null);
+  assertEquals(conservaArricchimento({ arricchitoPer: impronta, idClienti: {} }, roster), null);
+  assertEquals(conservaArricchimento({ arricchitoPer: impronta, idClienti: ['4'] }, roster), null);
+  const tenuto = conservaArricchimento({ arricchitoPer: impronta, idClienti: { 'anna bianchi': '9' }, note: 'x' }, roster);
+  assertEquals(Object.keys(tenuto!).sort(), ['arricchitoPer', 'idClienti', 'note']);
+  // conservato ⇒ non si rilegge
+  assert(!vaArricchita(tenuto, roster));
 });

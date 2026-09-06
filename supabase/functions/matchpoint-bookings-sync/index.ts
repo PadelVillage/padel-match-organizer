@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { collectTabelloneOnlyOccupancies, maestroDaTestoTabellone } from './tabellone-rescue.ts';
 import { resolveIdReserva } from './idreserva-resolve.ts';
 import { decideTick, FULL_TICK_MARKER_KEY, NEAR_WINDOW_DAYS, type FullTickMarker } from './full-tick.ts';
-import { vaArricchita, scegliDaArricchire, fondiArricchimento } from './arricchimento-scheda.ts';
+import { vaArricchita, scegliDaArricchire, fondiArricchimento, conservaArricchimento } from './arricchimento-scheda.ts';
 import {
   fattiDaConfronto,
   finestraDedup,
@@ -1437,6 +1437,27 @@ Deno.serve(async (req) => {
          fa in parallelo, le mette in fila e fa scadere il giro.
        🚨 E si servono prima le prenotazioni **più vicine nel tempo**: sono quelle che qualcuno
        aprirà davvero oggi. */
+    /* 🚨⭐⭐ PRIMA DI TUTTO: RIPORTARE AVANTI CIÒ CHE ERA GIÀ STATO LETTO.
+       📏 Misurato su PROD il 06/09 (tetto 1, 14 minuti): quattro letture riuscite e in archivio
+          UNA sola prenotazione arricchita, ogni volta una diversa. `validation.bookings` nasce
+          dall'export a ogni giro e questi campi l'export non li porta ⇒ senza questo passo il
+          giro arricchisce una riga e ne CANCELLA un'altra: il conto non sale mai, e le due righe
+          risultano cambiate a ogni giro per sempre (la voce 160 in miniatura).
+       ⛔ STA FUORI DAL TETTO di proposito: vale anche a interruttore SPENTO, o rispegnerlo
+          butterebbe via tutto il lavoro già fatto — e chi lo rispegne lo fa per prudenza, non per
+          cancellare.
+       ⚖️ Non legge niente da nessuna parte: sposta un dato che è già nostro. */
+    let _arrConservate = 0;
+    validation.bookings.forEach((b, i) => {
+      const prev = existingPayloadByTypedKey.get(`booking|${bookingCloudKey(b, i, 'booking')}`);
+      const tenuto = conservaArricchimento(prev, b.giocatori);
+      if (!tenuto) return;
+      b.idClienti = tenuto.idClienti;
+      b.note = tenuto.note;
+      b.arricchitoPer = tenuto.arricchitoPer;
+      _arrConservate += 1;
+    });
+
     const _arrTetto = Math.max(0, Number(clean(Deno.env.get('PMO_ARRICCHISCI_SCHEDE') || '0')) || 0);
     let _arrLette = 0, _arrRiuscite = 0;
     if (_arrTetto > 0) {
@@ -1474,6 +1495,9 @@ Deno.serve(async (req) => {
       }
       console.log(JSON.stringify({
         event: 'arricchimento_schede', tetto: _arrTetto, lette: _arrLette, riuscite: _arrRiuscite,
+        // ⭐ `conservate` è il numero che dice se il dato SI ACCUMULA: se resta fermo mentre
+        //    `riuscite` sale, il giro sta buttando via ciò che il giro prima aveva letto.
+        conservate: _arrConservate,
       }));
     }
 

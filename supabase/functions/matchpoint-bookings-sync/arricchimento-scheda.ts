@@ -116,3 +116,52 @@ export function fondiArricchimento(
   if (!Object.keys(idClienti).length && !note) return null;
   return { idClienti, note, arricchitoPer: impronta };
 }
+
+/** 🚨⭐⭐ QUELLO CHE L'ARRICCHIMENTO SI PORTA DIETRO DAL GIRO PRIMA — e senza cui non si accumula.
+ *
+ * 📏 MISURATO SU PROD IL 06/09, acceso a tetto 1 per 14 minuti: quattro giri, quattro letture,
+ *    quattro `riuscite: 1` — e in archivio **una sola** prenotazione arricchita, ogni volta una
+ *    DIVERSA. Il banco era verde e l'aveva mancato tutto: le funzioni pure erano giuste, era il
+ *    collegamento a perdere il lavoro.
+ *
+ * ⚖️ IL PERCHÉ, ed è strutturale e non una svista locale: `validation.bookings` **nasce
+ *    dall'export XLSX a ogni giro**, e l'export questi tre campi non li porta. Il giro arricchisce
+ *    la riga che legge; tutte le altre vengono riscritte dal payload nuovo, che `idClienti` non ce
+ *    l'ha ⇒ il dato del giro prima **viene cancellato**. Ne guadagni una, ne perdi una: il conto
+ *    non sale mai.
+ *
+ * 🚨 E costava DUE volte, perché la riga che perde il dato risulta **cambiata**: due righe
+ *    riscritte a ogni giro per sempre, che non convergono mai. È la voce 160 in miniatura — la
+ *    fabbrica di WAL, in piccolo ma senza fine.
+ *
+ * ⛔ SI CONSERVA SOLO SE VALE ANCORA: l'impronta salvata deve combaciare con i nomi di adesso. Un
+ *    roster cambiato rende quegli id **stantii** ⇒ non si riportano, e la riga torna candidata a
+ *    una lettura nuova. Conservare senza controllare l'impronta terrebbe in vita un id sbagliato,
+ *    che è peggio di non averlo.
+ *
+ * 📌 *Un dato che nasce da una lettura occasionale, dentro un payload che si ricostruisce da capo
+ *    a ogni giro, va riportato avanti a mano — o non esiste.* */
+export function conservaArricchimento(
+  payloadEsistente: unknown,
+  giocatoriOra: unknown,
+): { idClienti: Record<string, string>; note: string; arricchitoPer: string } | null {
+  const p = (payloadEsistente || {}) as Record<string, unknown>;
+  const impronta = improntaRoster(giocatoriOra);
+  if (!impronta) return null;
+  // ⛔ Deve valere per QUESTI nomi: un'impronta diversa è un roster cambiato, e quegli id non
+  //    parlano più di questa partita.
+  if (String(p.arricchitoPer || '') !== impronta) return null;
+  const id = p.idClienti;
+  if (!id || typeof id !== 'object' || Array.isArray(id)) return null;
+  const idClienti: Record<string, string> = {};
+  for (const [k, v] of Object.entries(id as Record<string, unknown>)) {
+    const val = v == null ? '' : String(v).trim();
+    if (k && val) idClienti[k] = val;
+  }
+  if (!Object.keys(idClienti).length) return null;
+  return {
+    idClienti,
+    note: typeof p.note === 'string' ? p.note : '',
+    arricchitoPer: impronta,
+  };
+}
