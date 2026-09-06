@@ -1,22 +1,29 @@
-// il-dialog-incasso-dice-cosa-vede.test.mjs — VOCE 171, la SONDA (06/09/2026)
+// il-dialog-incasso-dice-cosa-vede.test.mjs — VOCE 171: la sonda E la cura (06/09/2026)
 //
-// 🎯 COSA DIFENDE. L'incasso dalla scheda partita è rotto su PROD per OGNI metodo: due tentativi
-// veri, `wallet` e `cash`, hanno risposto tutti e due «Pulsante metodo … non trovato nel dialog
-// incasso». Il worker però diceva solo QUALE cercava, mai QUALI vedeva ⇒ ogni diagnosi successiva
-// sarebbe stata un altro tentativo alla cieca su una cassa vera.
-// 📌 Una sonda che dice cosa cercava e non cosa ha trovato trasforma ogni diagnosi in un tentativo.
+// 🎯 COSA DIFENDE. L'incasso dalla scheda partita era rotto su PROD per OGNI metodo: due
+// tentativi veri, `wallet` e `cash`, tutti e due «Pulsante metodo … non trovato nel dialog
+// incasso». Il worker però diceva solo QUALE cercava, mai QUALI vedeva ⇒ ogni diagnosi
+// successiva sarebbe stata un altro tentativo alla cieca su una cassa vera.
 //
-// 🚨 E LA SECONDA COSA, che non stava fra le tre ipotesi della scheda: il worker aspettava il
-// dialog **400 ms fissi**. Un'attesa fissa non distingue «non c'è» da «non c'è ANCORA», e le due
-// vogliono cure opposte — quindi ora aspetta finché non compare, e DICE quale dei due era.
+// 📏 LA CAUSA, misurata dalla sonda su PROD e non supposta: dopo il click su «Incassare» il
+// frame principale resta la scheda partita, e i metodi vivono in un fancybox-iframe
+// `CobroParticipanteReserva.aspx?id_participante=…` — `Contanti`
+// (`CC_Datos_LinkButtonCobrarEfectivo`), `Carta`, `Saldo disponibile: 0,00`.
+// ⇒ Non era l'etichetta, e non era il tempo (20 giri in 8 s, mai comparso): era la STANZA.
+// 📌 Un elemento cercato nel contesto sbagliato non è «assente»: è altrove, e le due cose si
+//    somigliano solo per chi guarda da un posto solo.
 //
-// 🚨 LE PROVE SONO SUL COMPORTAMENTO: le funzioni si ESTRAGGONO da `server.mjs` e si ESEGUONO con
-// un doppio del `page`. Un banco che cercasse la stringa `cobroCandidates` resterebbe verde davanti
-// a un ramo mai percorso.
+// 🚨 E LA GUARDIA NUOVA, che nasce dalla cura stessa: il dialog è PER PARTECIPANTE, quindi
+// cliccare in un frame trovato per URL può incassare alla PERSONA SBAGLIATA. Prima il rischio
+// non esisteva perché non si cliccava affatto.
 //
-// ⛔ QUELLO CHE QUESTO BANCO NON DICE: perché il dialog non si apra su Matchpoint. Dice che quando
-// non si apre il worker consegna l'elenco di cosa c'era, iframe compresi. La causa la dirà quella
-// lista, letta dopo un tentativo vero.
+// 🚨 LE PROVE SONO SUL COMPORTAMENTO: le funzioni si ESTRAGGONO da `server.mjs` e si ESEGUONO
+// con un doppio del `page`. Un banco che cercasse la stringa `cobroMethodIds` resterebbe verde
+// davanti a un ramo mai percorso.
+//
+// ⛔ QUELLO CHE QUESTO BANCO NON DICE: che un incasso vero vada a buon fine su Matchpoint.
+// Dice che il worker cerca il metodo nel frame giusto, per id, e che si ferma quando il dialog
+// non c'è o è di un altro. Che il denaro si muova lo dice solo un incasso vero su PROD.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,8 +36,8 @@ const QUI = dirname(fileURLToPath(import.meta.url));
 const sorgente = readFileSync(join(QUI, '..', 'tools', 'matchpoint-browser-worker', 'src', 'server.mjs'), 'utf8');
 
 // `server.mjs` avvia un server quando lo si importa: le funzioni si ritagliano dal testo.
-function estrai(nome) {
-  const inizio = sorgente.indexOf(`async function ${nome}(`);
+function estrai(nome, prefisso = 'async function') {
+  const inizio = sorgente.indexOf(`${prefisso} ${nome}(`);
   if (inizio < 0) throw new Error(`funzione «${nome}» non trovata in server.mjs`);
   let i = sorgente.indexOf('{', sorgente.indexOf(')', inizio));
   let graffe = 0;
@@ -41,121 +48,161 @@ function estrai(nome) {
   throw new Error(`funzione «${nome}» non chiusa`);
 }
 
-// `fail` è la sola dipendenza esterna delle due funzioni: qui la si fabbrica uguale nella forma
-// (codice + messaggio + diagnostica attaccata all'errore).
+// I selettori si prendono dal sorgente vero: se un id cambia lì, questo banco lo segue.
+function estraiSelettori() {
+  const inizio = sorgente.indexOf('const MP_PAYMENT_SELECTORS = {');
+  const i = sorgente.indexOf('{', inizio);
+  let graffe = 0;
+  for (let j = i; j < sorgente.length; j++) {
+    if (sorgente[j] === '{') graffe++;
+    else if (sorgente[j] === '}') { graffe--; if (!graffe) return sorgente.slice(inizio, j + 1) + ';'; }
+  }
+  throw new Error('MP_PAYMENT_SELECTORS non chiuso');
+}
+
 const contesto = vm.createContext({
   fail: (code, message, diagnostic) => Object.assign(new Error(message), { code, diagnostic }),
 });
-vm.runInContext(`${estrai('_collectCobroCandidates')}\n${estrai('_clickCobroMethod')}\nglobalThis.__f = { _clickCobroMethod, _collectCobroCandidates };`, contesto);
-const { _clickCobroMethod, _collectCobroCandidates } = contesto.__f;
+vm.runInContext(
+  `${estraiSelettori()}\n${estrai('_collectCobroCandidates')}\n${estrai('_cobroDialogFrame', 'function')}\n${estrai('_clickCobroMethod')}\n`
+  + 'globalThis.__f = { _clickCobroMethod, _collectCobroCandidates, _cobroDialogFrame, MP_PAYMENT_SELECTORS };',
+  contesto,
+);
+const { _clickCobroMethod, _collectCobroCandidates, MP_PAYMENT_SELECTORS } = contesto.__f;
 
-// ── Doppio del `page` di Playwright, ridotto a ciò che le due funzioni usano ────────────────────
-// `comparsaAlGiro`: da quale interrogazione in poi il metodo «esiste» (0 = subito, ∞ = mai).
-function fintaPagina({ comparsaAlGiro = 0, clickEsplode = false, frames = [] } = {}) {
-  const registro = { count: 0, click: 0, attese: [], evaluate: 0 };
-  const page = {
+const URL_DIALOG = 'https://mp/Reservas/CobroParticipanteReserva.aspx?modo=fancy&id_participante=27677';
+const URL_SCHEDA = 'https://mp/Reservas/FichaPartidaPagoPorUsuario.aspx?modo=fancy&id=9844';
+
+// ── Doppi ───────────────────────────────────────────────────────────────────────────────────
+// `contenuto`: quel che `evaluate` restituisce (la sonda chiede un oggetto, la guardia una
+// stringa) — si distingue dalla forma della risposta attesa, come fa Playwright davvero.
+function fintoFrame(url, name, { corpo = '', cliccabili = [], clickEsplode = false } = {}) {
+  const registro = { click: 0, selettoriProvati: [] };
+  return {
     registro,
-    locator(sel) {
-      return {
-        count: async () => { registro.count++; return registro.count > comparsaAlGiro ? 1 : 0; },
-        first: () => ({
-          click: async () => {
-            registro.click++;
-            if (clickEsplode) throw new Error('elemento coperto da un overlay');
-          },
-        }),
-      };
+    url: () => url,
+    name: () => name,
+    evaluate: async (fn) => {
+      const r = typeof fn === 'function' ? undefined : undefined;
+      // La sonda passa una funzione che ritorna un oggetto; la guardia una che ritorna testo.
+      // Qui si decide dal contenuto della funzione, senza eseguirla nel DOM (che non c'è).
+      return String(fn).includes('cliccabili')
+        ? { bodyText: corpo, cliccabili, iframes: [] }
+        : corpo;
+    },
+    locator: (sel) => ({
+      count: async () => { registro.selettoriProvati.push(sel); return cliccabili.some((c) => sel.includes(c.id) || sel.includes(c.testo)) ? 1 : 0; },
+      first: () => ({
+        click: async () => { registro.click++; if (clickEsplode) throw new Error('elemento coperto da un overlay'); },
+      }),
+    }),
+  };
+}
+
+const METODI = [
+  { id: 'CC_Datos_LinkButtonCobrarEfectivo', testo: 'Contanti' },
+  { id: 'CC_Datos_LinkButtonCobrarTarjeta', testo: 'Carta' },
+  { id: 'CC_Datos_LinkButtonCobrarSaldo', testo: 'Saldo disponibile: 0,00' },
+];
+
+function fintaPagina({ conDialog = true, corpoDialog = 'FABIOLA LIMUTI CAMPO 4 Da pagare: 8,00 €', clickEsplode = false, ritardoGiri = 0 } = {}) {
+  const principale = fintoFrame(URL_SCHEDA, '', { corpo: 'Partita n. 9844', cliccabili: [{ id: 'Cobrar', testo: 'Incassare' }] });
+  const dialog = fintoFrame(URL_DIALOG, 'fancybox-frame1', { corpo: corpoDialog, cliccabili: METODI, clickEsplode });
+  const registro = { attese: [], interrogazioni: 0 };
+  const page = {
+    registro, dialog, principale,
+    mainFrame: () => principale,
+    frames() {
+      registro.interrogazioni++;
+      if (!conDialog) return [principale];
+      return registro.interrogazioni > ritardoGiri ? [principale, dialog] : [principale];
     },
     waitForTimeout: async (ms) => { registro.attese.push(ms); },
-    mainFrame: () => frames[0],
-    frames: () => frames,
+    locator: () => ({ count: async () => 0, first: () => ({ click: async () => { throw new Error('il main non si clicca'); } }) }),
   };
   return page;
 }
 
-function fintoFrame(url, name, risposta) {
-  return { url: () => url, name: () => name, evaluate: async () => risposta };
-}
-
-const CONTENUTO_VUOTO = { bodyText: 'Scheda partita', cliccabili: [{ tag: 'a', id: 'Cobrar_2', testo: 'Incassare' }], iframes: [] };
-const CONTENUTO_DIALOG = { bodyText: 'Forma di pagamento', cliccabili: [{ tag: 'button', id: 'btnEfectivo', testo: 'Contanti' }], iframes: [] };
-
-function pagineConFrame(opts = {}) {
-  const principale = fintoFrame('https://mp/Reservas/FichaPartida.aspx?id=9844', '', CONTENUTO_VUOTO);
-  const dialogo = fintoFrame('https://mp/Reservas/FichaCobro.aspx?id=9844', 'fancybox-frame', CONTENUTO_DIALOG);
-  return fintaPagina(Object.assign({ frames: [principale, dialogo] }, opts));
-}
-
 const diag = () => ({ steps: [] });
 
-// ── ① il metodo c'è subito: si clicca e non si raccoglie niente ─────────────────────────────────
-test('① metodo presente subito → click, nessuna raccolta', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: 0 });
+// ── ① il caso vero: il metodo sta nell'IFRAME, e ci si clicca ────────────────────────────────
+test('① il metodo si clicca nel frame del dialog, non nella pagina', async () => {
+  const page = fintaPagina();
   const d = diag();
-  await _clickCobroMethod(page, 'Contanti', d);
-  assert.equal(page.registro.click, 1);
-  assert.equal(page.registro.evaluate, 0);
-  assert.ok(d.steps.some((s) => s.startsWith('cobro_method:Contanti:giro1')), d.steps.join('|'));
+  await _clickCobroMethod(page, 'contanti', 'Contanti', 'Fabiola Limuti', d);
+  assert.equal(page.dialog.registro.click, 1, 'ha cliccato nel dialog');
+  assert.equal(page.principale.registro.click, 0, 'non ha cliccato nella pagina');
+  assert.match(d.cobroDialogUrl, /CobroParticipanteReserva/);
 });
 
-// ── ② il dialog arriva TARDI: è il caso che i 400 ms fissi perdevano ────────────────────────────
-test('② dialog lento (comparsa dopo alcune interrogazioni) → si aspetta e si clicca', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: 9 });   // ~3 giri da 4 selettori
+// ── ② si clicca per ID, non per testo: il testo del borsellino porta il saldo dentro ─────────
+test('② il borsellino si prende per id, benché il suo testo contenga il saldo', async () => {
+  const page = fintaPagina();
   const d = diag();
-  await _clickCobroMethod(page, 'Contanti', d);
-  assert.equal(page.registro.click, 1, 'ha cliccato una volta sola');
-  assert.ok(d.steps.some((s) => /cobro_method:Contanti:giro[2-9]/.test(s)), d.steps.join('|'));
+  await _clickCobroMethod(page, 'borsellino', 'Saldo disponibile', 'Fabiola Limuti', d);
+  assert.ok(d.steps.some((s) => s.endsWith(':id')), d.steps.join('|'));
+  const primo = page.dialog.registro.selettoriProvati[0];
+  assert.equal(primo, MP_PAYMENT_SELECTORS.cobroMethodIds.borsellino, 'l\'id si prova per primo');
 });
 
-// ── ③ non compare MAI: fallisce DICENDO cosa ha visto ───────────────────────────────────────────
-test('③ mai comparso → FORMA_PAGO_NON_TROVATA con l\'elenco di cosa c\'era', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: Infinity });
+// ── ③ il dialog arriva TARDI: si aspetta il frame, non si scommette su un'attesa fissa ───────
+test('③ dialog lento → si aspetta e si clicca lo stesso', async () => {
+  const page = fintaPagina({ ritardoGiri: 3 });
   const d = diag();
-  const err = await _clickCobroMethod(page, 'Contanti', d).then(() => null, (e) => e);
+  await _clickCobroMethod(page, 'contanti', 'Contanti', 'Fabiola Limuti', d);
+  assert.equal(page.dialog.registro.click, 1);
+  assert.ok(d.cobroGiri > 1, 'ha fatto più di un giro');
+});
+
+// ── ④ il dialog non compare MAI: fallisce DICENDO cosa c'era ─────────────────────────────────
+test('④ dialog mai comparso → FORMA_PAGO_NON_TROVATA con l\'elenco dei contesti', async () => {
+  const page = fintaPagina({ conDialog: false });
+  const d = diag();
+  const err = await _clickCobroMethod(page, 'contanti', 'Contanti', 'Fabiola Limuti', d).then(() => null, (e) => e);
   assert.ok(err, 'doveva fallire');
   assert.equal(err.code, 'FORMA_PAGO_NON_TROVATA');
-  assert.equal(err.diagnostic.cobroEsito, 'mai_comparso');
-  assert.ok(Array.isArray(err.diagnostic.cobroCandidates), 'la lista dev\'esserci');
-  assert.equal(err.diagnostic.cobroCandidates.length, 2, 'un contesto per frame');
-  assert.equal(page.registro.click, 0, 'non ha cliccato niente');
+  assert.equal(err.diagnostic.cobroEsito, 'dialog_mai_comparso');
+  assert.ok(Array.isArray(err.diagnostic.cobroCandidates));
+  assert.equal(page.principale.registro.click, 0, 'non ha cliccato niente');
 });
 
-// ── ④ trovato ma non cliccabile: si esce SUBITO (l'incasso non è idempotente) ───────────────────
-test('④ trovato ma il click esplode → un solo tentativo, e lo dichiara', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: 0, clickEsplode: true });
+// ── ⑤ LA GUARDIA: il dialog di un ALTRO giocatore non si clicca ──────────────────────────────
+test('⑤ dialog di un\'altra persona → non si incassa, e lo dice', async () => {
+  const page = fintaPagina({ corpoDialog: 'LIDIA COMES CAMPO 4 Da pagare: 8,00 €' });
   const d = diag();
-  const err = await _clickCobroMethod(page, 'Contanti', d).then(() => null, (e) => e);
+  const err = await _clickCobroMethod(page, 'contanti', 'Contanti', 'Fabiola Limuti', d).then(() => null, (e) => e);
+  assert.ok(err, 'doveva fallire');
+  assert.equal(err.code, 'COBRO_DIALOG_ALTRO_GIOCATORE');
+  assert.equal(page.dialog.registro.click, 0, 'NESSUN click: è denaro di qualcun altro');
+});
+
+// ── ⑥ senza nome la guardia non si può esercitare: si DICHIARA invece di fingere ─────────────
+test('⑥ senza playerName → si procede, ma la guardia si dichiara non esercitata', async () => {
+  const page = fintaPagina({ corpoDialog: 'QUALCUNO CAMPO 4' });
+  const d = diag();
+  await _clickCobroMethod(page, 'contanti', 'Contanti', '', d);
+  assert.equal(d.cobroPersonaVerificata, false);
+  assert.equal(page.dialog.registro.click, 1);
+});
+
+// ── ⑦ trovato ma non cliccabile: un tentativo solo (l'incasso non è idempotente) ─────────────
+test('⑦ click che esplode → un solo tentativo, e lo dichiara', async () => {
+  const page = fintaPagina({ clickEsplode: true });
+  const d = diag();
+  const err = await _clickCobroMethod(page, 'contanti', 'Contanti', 'Fabiola Limuti', d).then(() => null, (e) => e);
   assert.ok(err, 'doveva fallire');
   assert.equal(err.diagnostic.cobroEsito, 'trovato_non_cliccabile');
-  assert.equal(err.diagnostic.cobroGiri, 1, 'un giro solo: non si ritenta un click che poteva passare');
-  assert.ok(page.registro.click <= 4, 'al massimo i selettori di un giro, mai un secondo giro');
+  assert.equal(page.dialog.registro.click, 1, 'un click solo: non si ritenta ciò che poteva passare');
 });
 
-// ── ⑤ la raccolta guarda DENTRO gli iframe: è lì che vivono i dialog di Matchpoint ──────────────
-test('⑤ la raccolta elenca anche i frame non principali', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: Infinity });
+// ── ⑧ la raccolta guarda DENTRO gli iframe ed è in sola lettura ──────────────────────────────
+test('⑧ la sonda elenca i frame e non clicca niente', async () => {
+  const page = fintaPagina();
+  page.frames(); // materializza il dialog
   const contesti = await _collectCobroCandidates(page);
   assert.equal(contesti.length, 2);
   assert.equal(contesti[0].main, true);
-  assert.equal(contesti[1].main, false);
-  assert.match(contesti[1].url, /FichaCobro/);
-  assert.equal(contesti[1].cliccabili[0].testo, 'Contanti', 'il metodo era nel frame, e la sonda lo mostra');
-});
-
-// ── ⑥ un frame che rifiuta di farsi leggere non fa cadere la sonda ──────────────────────────────
-test('⑥ un frame che esplode → si annota l\'errore, gli altri si leggono lo stesso', async () => {
-  const rotto = { url: () => 'https://mp/altro', name: () => '', evaluate: async () => { throw new Error('cross-origin'); } };
-  const buono = fintoFrame('https://mp/Reservas/FichaPartida.aspx', '', CONTENUTO_VUOTO);
-  const page = fintaPagina({ comparsaAlGiro: Infinity, frames: [buono, rotto] });
-  const contesti = await _collectCobroCandidates(page);
-  assert.equal(contesti.length, 2);
-  assert.match(contesti[1].err, /cross-origin/);
-  assert.ok(contesti[0].cliccabili.length, 'il frame buono si è letto lo stesso');
-});
-
-// ── ⑦ la sonda è in SOLA LETTURA: guarda e non clicca ───────────────────────────────────────────
-test('⑦ la raccolta non clicca niente', async () => {
-  const page = pagineConFrame({ comparsaAlGiro: 0 });
-  await _collectCobroCandidates(page);
-  assert.equal(page.registro.click, 0);
+  assert.match(contesti[1].url, /CobroParticipanteReserva/);
+  assert.equal(page.dialog.registro.click, 0);
+  assert.equal(page.principale.registro.click, 0);
 });
