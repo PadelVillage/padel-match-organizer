@@ -8685,7 +8685,25 @@ async function collectPaymentWithBrowser(input = {}) {
     await _clickCobroMethod(page, methodKey, methodLabel, playerName || found.nome, diagnostic);
 
     // Salva il cobro con Actualizar (clic robusto anti-swal2).
-    await clickSaveActualizar(page, diagnostic, 'salva_cobro');
+    // 🔎 VOCE 171, secondo gradino — misurato su PROD il 06/09: cliccato il metodo per id, il
+    //    salvataggio va in `SAVE_BUTTON_CLICK_TIMEOUT` e il pendente resta INTATTO (800, ancora
+    //    «in sospeso», riletto subito dopo) ⇒ il click sul metodo NON incassa da solo: apre il
+    //    passo dopo, DENTRO il dialog. `clickSaveActualizar` invece cerca «Actualizar» nella
+    //    PAGINA — di nuovo la stanza sbagliata, un gradino più in là.
+    // ⚠️ Qui non si indovina il pulsante: si GUARDA. Al fallimento si allega cosa c'era nel
+    //    dialog in quel preciso momento, che è l'unica cosa che nessuna lettura successiva può
+    //    più dire (il dialog si chiude col giro).
+    // 📌 La sonda che ha risolto il primo gradino serve identica al secondo: la lezione non era
+    //    «il dialog è un iframe», era «prima di cercare, guarda dove sei».
+    try {
+      await clickSaveActualizar(page, diagnostic, 'salva_cobro');
+    } catch (_saveErr) {
+      const cobroCandidates = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+      if (_saveErr && typeof _saveErr === 'object') {
+        _saveErr.diagnostic = Object.assign({}, _saveErr.diagnostic || diagnostic, { cobroCandidatiDopoMetodo: cobroCandidates });
+      }
+      throw _saveErr;
+    }
 
     // Verifica esito: ri-leggi pendente per la riga (riscosso = 0).
     await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
