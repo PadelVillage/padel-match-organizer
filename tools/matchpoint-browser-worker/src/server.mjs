@@ -47,6 +47,17 @@ const MP_PAYMENT_SELECTORS = {
   partIncassaBtn:       (idx) => `a[id*="RepeaterParticipantes"][id*="Listado_${idx}_LinkButtonCobrar_${idx}"]`,
   // dialog "Incassare": metodo a PULSANTI, click per testo visibile
   cobroMethodLabels: { contanti: 'Contanti', carta: 'Carta', borsellino: 'Saldo disponibile' },
+  // 🚨⭐ VOCE 171 — il dialog e` un IFRAME fancybox, non un pezzo della pagina. Misurato
+  //    sul vivo il 06/09/2026: `CobroParticipanteReserva.aspx?id_participante=…`, e i
+  //    metodi vivono LI` DENTRO. Cercarli nel frame principale non li trova mai.
+  cobroDialogUrlRe: /CobroParticipanteReserva\.aspx/i,
+  //    Gli id sono la chiave PRIMARIA: non dipendono dalla lingua, e il testo del
+  //    borsellino porta il saldo dentro di se` («Saldo disponibile: 0,00»).
+  cobroMethodIds: {
+    contanti: '#CC_Datos_LinkButtonCobrarEfectivo',
+    carta: '#CC_Datos_LinkButtonCobrarTarjeta',
+    borsellino: '#CC_Datos_LinkButtonCobrarSaldo',
+  },
 
   // -- scheda cliente: borsellino / Portafoglio --
   walletSaldoLabel: '#CC_Cabecera_LabelSaldo_Actual', // testo "Portafoglio: X,XX €"
@@ -8422,7 +8433,9 @@ async function _findParticipantRow(page, RP, idClienteWanted, playerName) {
     righeViste.push(`${ridx}:${nome}#${idCli}`);
     const byId = !!wantId && _digits(idCli) === wantId;
     const byName = !byId && !!playerName && !!_norm(nome) && (_norm(nome).includes(_norm(playerName)) || _norm(playerName).includes(_norm(nome)));
-    if (byId || byName) return { ridx, idCliente: idCli, matchBy: byId ? 'id' : 'name', righeViste };
+    // `nome` esce insieme alla riga: serve alla guardia sul destinatario del dialog incasso
+    // (voce 171), che senza un nome non puo` essere esercitata.
+    if (byId || byName) return { ridx, idCliente: idCli, nome, matchBy: byId ? 'id' : 'name', righeViste };
     ridx++;
   }
   return { ridx: null, idCliente: null, matchBy: null, righeViste };
@@ -8484,42 +8497,87 @@ async function _collectCobroCandidates(page) {
   return contesti;
 }
 
-async function _clickCobroMethod(page, methodLabel, diagnostic) {
-  const tries = [
-    `button:visible:has-text("${methodLabel}")`,
-    `a:visible:has-text("${methodLabel}")`,
-    `[onclick]:visible:has-text("${methodLabel}")`,
-    `:is(button,a,div,span,label):visible:has-text("${methodLabel}")`,
-  ];
-  // Il dialog arriva dopo un postback: si ASPETTA che compaia invece di scommettere
-  // su 400 ms fissi. Un'attesa fissa non distingue «non c'e`» da «non c'e` ANCORA»,
-  // e le due vogliono cure opposte.
+// ⭐⭐ LA CURA della voce 171 (06/09/2026) — il dialog e` un IFRAME, e il worker
+// guardava nel frame principale. Misurato sul vivo dalla sonda qui sopra: dopo il
+// click su «Incassare» il frame principale resta la scheda partita, e i metodi
+// vivono in un fancybox-iframe `CobroParticipanteReserva.aspx?id_participante=…`
+// (`Contanti` · `Carta` · `Saldo disponibile: 0,00`). ⇒ Non era l'etichetta, non era
+// il tempo (20 giri in 8 s, mai comparso nel frame sbagliato): era la STANZA.
+// 📌 Un elemento cercato nel contesto sbagliato non e` «assente»: e` altrove, e le due
+//    cose si somigliano solo per chi guarda da un posto solo.
+function _cobroDialogFrame(page) {
+  return page.frames().find((f) => MP_PAYMENT_SELECTORS.cobroDialogUrlRe.test(f.url() || '')) || null;
+}
+
+async function _clickCobroMethod(page, methodKey, methodLabel, playerName, diagnostic) {
+  // ① ASPETTA IL FRAME, non il pulsante. Il dialog arriva dopo un postback: un'attesa
+  //    fissa non distingue «non c'e`» da «non c'e` ANCORA», e le due vogliono cure opposte.
   const scadenza = Date.now() + 8000;
+  let frame = null;
   let giri = 0;
   for (;;) {
     giri++;
-    let vistoQualcosa = false;
-    for (const sel of tries) {
-      const loc = page.locator(sel);
-      const n = await loc.count().catch(() => 0);
-      if (!n) continue;
-      vistoQualcosa = true;
-      try {
-        await loc.first().click({ timeout: 6000 });
-        diagnostic.steps.push(`cobro_method:${methodLabel}:giro${giri}`);
-        await page.waitForTimeout(300);
-        return;
-      } catch (e) {
-        diagnostic.steps.push('cobro_method_retry:' + String((e && e.message) || e).slice(0, 40));
-      }
-    }
-    // Trovato ma non cliccabile ⇒ si esce SUBITO: l'incasso non e` idempotente, e
-    // ritentare un click che potrebbe essere gia` passato e` il rischio da non correre.
-    if (vistoQualcosa) { diagnostic.cobroEsito = 'trovato_non_cliccabile'; break; }
-    if (Date.now() >= scadenza) { diagnostic.cobroEsito = 'mai_comparso'; break; }
+    frame = _cobroDialogFrame(page);
+    if (frame || Date.now() >= scadenza) break;
     await page.waitForTimeout(400);
   }
   diagnostic.cobroGiri = giri;
+  if (!frame) {
+    diagnostic.cobroEsito = 'dialog_mai_comparso';
+    const cobroCandidates = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+    throw fail('FORMA_PAGO_NON_TROVATA', `Dialog incasso non comparso (metodo "${methodLabel}").`, Object.assign({}, diagnostic, { cobroCandidates }));
+  }
+  diagnostic.cobroDialogUrl = (frame.url() || '').slice(0, 200);
+  diagnostic.steps.push('cobro_dialog:giro' + giri);
+
+  // ② GUARDIA SUL DESTINATARIO — nuova, e serve proprio perche` adesso si clicca in un
+  //    frame trovato per URL. Il dialog e` PER PARTECIPANTE (`id_participante`): se fosse
+  //    quello di un'altra riga, il click incasserebbe alla PERSONA SBAGLIATA. Il nome sta
+  //    nel corpo del dialog, quindi si controlla invece di sperare.
+  //    ⚠️ Esercitabile solo con un `playerName`: senza, si dichiara e si prosegue — meglio
+  //    una guardia dichiarata come non esercitata che una che finge di aver controllato.
+  const corpo = await frame.evaluate(() => String(document.body ? document.body.innerText : '')).catch(() => '');
+  const _norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (playerName && _norm(corpo)) {
+    if (!_norm(corpo).includes(_norm(playerName))) {
+      diagnostic.cobroEsito = 'dialog_di_un_altro';
+      diagnostic.cobroDialogTesto = corpo.replace(/\s+/g, ' ').trim().slice(0, 200);
+      throw fail('COBRO_DIALOG_ALTRO_GIOCATORE', `Il dialog incasso non appartiene a "${playerName}": nessun incasso effettuato.`, diagnostic);
+    }
+    diagnostic.steps.push('cobro_dialog_persona:ok');
+  } else {
+    diagnostic.cobroPersonaVerificata = false;
+  }
+
+  // ③ CLICCA PER ID, col testo come ripiego. Gli id (`CC_Datos_LinkButtonCobrarEfectivo`
+  //    e fratelli) non dipendono dalla lingua; il testo del borsellino invece PORTA IL
+  //    SALDO DENTRO («Saldo disponibile: 0,00»), quindi come chiave primaria sarebbe
+  //    fragile due volte.
+  const perId = MP_PAYMENT_SELECTORS.cobroMethodIds[methodKey];
+  const tries = [];
+  if (perId) tries.push(perId);
+  tries.push(
+    `a:visible:has-text("${methodLabel}")`,
+    `button:visible:has-text("${methodLabel}")`,
+    `[onclick]:visible:has-text("${methodLabel}")`,
+  );
+  for (const sel of tries) {
+    const loc = frame.locator(sel);
+    if (!(await loc.count().catch(() => 0))) continue;
+    try {
+      await loc.first().click({ timeout: 6000 });
+      diagnostic.steps.push(`cobro_method:${methodLabel}:${sel === perId ? 'id' : 'testo'}`);
+      await page.waitForTimeout(300);
+      return;
+    } catch (e) {
+      // Trovato ma non cliccabile ⇒ si esce SUBITO: l'incasso non e` idempotente, e
+      // ritentare un click che potrebbe essere gia` passato e` il rischio da non correre.
+      diagnostic.cobroEsito = 'trovato_non_cliccabile';
+      diagnostic.steps.push('cobro_method_fallito:' + String((e && e.message) || e).slice(0, 40));
+      break;
+    }
+  }
+  if (!diagnostic.cobroEsito) diagnostic.cobroEsito = 'metodo_assente_nel_dialog';
   const cobroCandidates = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
   throw fail('FORMA_PAGO_NON_TROVATA', `Pulsante metodo "${methodLabel}" non trovato nel dialog incasso.`, Object.assign({}, diagnostic, { cobroCandidates }));
 }
@@ -8540,11 +8598,10 @@ async function collectPaymentWithBrowser(input = {}) {
   const playerName = clean(input.playerName);
   const method = clean(input.method).toLowerCase(); // cash | card | wallet
   const amountCents = (input.amountCents != null && Number.isFinite(Number(input.amountCents))) ? Math.round(Number(input.amountCents)) : null;
-  const methodLabel = {
-    cash: MP_PAYMENT_SELECTORS.cobroMethodLabels.contanti,
-    card: MP_PAYMENT_SELECTORS.cobroMethodLabels.carta,
-    wallet: MP_PAYMENT_SELECTORS.cobroMethodLabels.borsellino,
-  }[method];
+  // cash|card|wallet (come lo chiede il gestionale) → contanti|carta|borsellino (come si
+  // chiamano i selettori di Matchpoint). La chiave serve per l'id, l'etichetta per il ripiego.
+  const methodKey = { cash: 'contanti', card: 'carta', wallet: 'borsellino' }[method];
+  const methodLabel = methodKey ? MP_PAYMENT_SELECTORS.cobroMethodLabels[methodKey] : undefined;
 
   const diagnostic = { mode: 'collect_payment', steps: [], input: { idReserva, idCliente: idClienteWanted, method, amountCents } };
   instrumentStepTiming(diagnostic);
@@ -8622,7 +8679,10 @@ async function collectPaymentWithBrowser(input = {}) {
     diagnostic.steps.push('cobrar_click');
     await dismissSwalOk(page, diagnostic, 'cobro_pre');
     await page.locator(MP_PAYMENT_SELECTORS.partIncassaBtn(ridx)).first().click({ timeout: 12000 });
-    await _clickCobroMethod(page, methodLabel, diagnostic);
+    // Il nome serve alla guardia sul destinatario: il dialog e` per-partecipante. Se il
+    // chiamante non l'ha passato si usa quello letto dalla riga — che e` la stessa riga
+    // su cui si e` appena premuto «Incassare».
+    await _clickCobroMethod(page, methodKey, methodLabel, playerName || found.nome, diagnostic);
 
     // Salva il cobro con Actualizar (clic robusto anti-swal2).
     await clickSaveActualizar(page, diagnostic, 'salva_cobro');
@@ -9779,7 +9839,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
