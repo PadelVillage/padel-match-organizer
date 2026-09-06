@@ -260,3 +260,54 @@ test('⑪ 🚨 un incasso NON riuscito non rilegge niente: non c\'è nessun sald
   assert.equal(esito.ok, false);
   assert.equal(b.riletture.length, 0);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════
+   ⑫-⑬ IL BOTTONE ↻ DELLA SCHEDA SOCIO — il gesto che la segreteria fa più spesso.
+   Fino a stanotte leggeva il saldo e lo teneva per sé: il numero finiva in
+   `window.__pmoWalletCache`, cioè lo vedeva chi aveva premuto, si perdeva al reload, e la
+   postazione accanto continuava a mostrare quello del giro di prima. Qui il socio è noto con
+   CERTEZZA — siamo nella sua scheda — quindi archiviare non costa una lettura in più: è la
+   stessa che si stava già facendo. */
+
+const SORGENTE_REFRESH = 'async ' + estrai('pmoWalletRefresh');
+
+function bancoRefresh({ socio, saldoLetto = 0 } = {}) {
+  const chiamate = [];
+  const cache = new Map(), cloud = new Map();
+  const ctx = {
+    giocatori: [socio],
+    _walletClientId: (g) => g && g.matchpointIdInterno,
+    playerFullName: (g) => g && g.name,
+    loadAssessmentSupabaseConfig: async () => ({ supabaseUrl: 'https://edge', supabaseKey: 'k' }),
+    pmoRequireStaffPermission: async () => ({ accessToken: 't' }),
+    displayMembers: () => {}, renderOpenMemberCard: () => {},
+    document: { getElementById: () => null },
+    alert: () => {}, console: { warn: () => {} },
+    window: { __pmoWalletCache: cache, __pmoWalletCloud: cloud },
+    fetch: async (_u, o) => {
+      chiamate.push(JSON.parse(o.body));
+      return { ok: true, status: 200, json: async () => ({ ok: true, balanceCents: saldoLetto, fotografia: 'scritta' }) };
+    },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(SORGENTE_REFRESH, ctx);
+  return { aggiorna: ctx.pmoWalletRefresh, chiamate, cache, cloud };
+}
+
+const SOCIO = () => ({ id: '7d454239-929a-4346-8ba0-ec778d7763a3', name: 'Maurizio Aprea', matchpointIdInterno: '4' });
+
+test('⑫ il ↻ passa la chiave del gestionale, così il saldo lo vede TUTTA la segreteria', async () => {
+  const b = bancoRefresh({ socio: SOCIO(), saldoLetto: 600 });
+  await b.aggiorna('7d454239-929a-4346-8ba0-ec778d7763a3', null);
+  assert.equal(b.chiamate.length, 1);
+  assert.equal(b.chiamate[0].idInterno, '4');
+  assert.equal(b.chiamate[0].memberLocalId, '7d454239-929a-4346-8ba0-ec778d7763a3',
+    'senza questo l\'edge legge e non archivia: il numero resta nel browser che ha premuto');
+});
+
+test('⑬ e le due mappe della stessa pagina non restano con due numeri diversi', async () => {
+  const b = bancoRefresh({ socio: SOCIO(), saldoLetto: 600 });
+  await b.aggiorna('7d454239-929a-4346-8ba0-ec778d7763a3', null);
+  assert.equal(b.cache.get('4').balance_cents, 600);
+  assert.equal(b.cloud.get('7d454239-929a-4346-8ba0-ec778d7763a3').balance_cents, 600);
+});
