@@ -124,25 +124,45 @@ test('ci stanno tutte ⇒ non si tocca NIENTE (nessun «+0» sui riquadri che st
   assert.deepEqual(F.pmoPianoRighe(2, 4), { mostra: 2, nascoste: 0, conContatore: false });
 });
 
-test('ne stanno 3 su 4 ⇒ se ne mostrano 2 e il «+2» prende la terza riga', () => {
-  assert.deepEqual(F.pmoPianoRighe(4, 3), { mostra: 2, nascoste: 2, conContatore: true });
+test('🚨 ne stanno 3 su 4 ⇒ se ne mostrano TUTTE E TRE, e il «+1» non ruba una riga', () => {
+  // 📏 La prima versione tornava { mostra: 2 } e su TEST 6.379 il riquadro delle 18:00 di C2
+  //    mostrava UN nome e «+3», dove prima se ne leggevano TRE interi. Per togliere mezzo nome
+  //    ne toglieva due interi: il contatore si prendeva una riga sua.
+  assert.deepEqual(F.pmoPianoRighe(4, 3), { mostra: 3, nascoste: 1, conContatore: true });
 });
 
-test('🚨 non ci sta nemmeno una riga ⇒ NIENTE contatore: sarebbe lui la riga tagliata', () => {
-  assert.deepEqual(F.pmoPianoRighe(4, 0), { mostra: 0, nascoste: 4, conContatore: false });
+test('non ci sta nemmeno una riga ⇒ nessun nome, e il conto lo dice lo stesso', () => {
+  assert.deepEqual(F.pmoPianoRighe(4, 0), { mostra: 0, nascoste: 4, conContatore: true });
+});
+
+test('⭐ il contatore NON è una riga in più: si attacca alla riga dell\'orario, che c\'è già', () => {
+  assert.match(APP, /if \(piano\.conContatore && info\.rigaOrario\)/,
+    'su una riga sua il «+N» si mangia l\'ultima riga leggibile — è il difetto che questa cura toglie');
+  assert.match(APP, /info\.rigaOrario\.appendChild\(piu\);/);
 });
 
 test('il conto torna sempre: mostrate + nascoste = totale, e mai più righe del tetto', () => {
   for (let tot = 0; tot <= 6; tot++) for (let cap = 0; cap <= 6; cap++) {
     const p = F.pmoPianoRighe(tot, cap);
     assert.equal(p.mostra + p.nascoste, tot, `tot=${tot} cap=${cap}`);
-    const occupate = p.mostra + (p.conContatore ? 1 : 0);
-    assert.ok(occupate <= Math.max(cap, tot === 0 ? 0 : occupate === 0 ? 0 : cap),
-      `tot=${tot} cap=${cap}: occupa ${occupate} righe con un tetto di ${cap}`);
+    assert.ok(p.mostra <= cap, `tot=${tot} cap=${cap}: mostra ${p.mostra} righe con un tetto di ${cap}`);
+    assert.equal(p.conContatore, p.nascoste > 0, `tot=${tot} cap=${cap}: contatore e nascoste in disaccordo`);
   }
 });
 
 // ── Le due cose strutturali che il DOM non racconta ──────────────────────────
+test('🩹 il tetto e i fondi si misurano nella STESSA origine (schermo), non offsetTop contro clientHeight', () => {
+  const da = APP.indexOf('const _piani = [];');
+  // 🩹 Si guarda il CODICE, non i commenti: il commento che spiega l'errore contiene la parola
+  //    «offsetTop», e una sonda che non li toglie trova sempre ciò che cerca.
+  const passo = APP.slice(da, APP.indexOf('for (const p of _piani)', da))
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/offsetTop/.test(passo),
+    'offsetTop parte dal bordo e clientHeight il bordo non lo conta: mescolarli sbagliava di una riga intera');
+  assert.match(passo, /getBoundingClientRect\(\)\.bottom/);
+  assert.match(passo, /borderBottomWidth/, 'il bordo di una PARTITA APERTA è 2px tratteggiati, non 1 pieno');
+});
+
 test('prima TUTTE le letture, poi TUTTE le scritture (o il browser ricalcola a ogni riquadro)', () => {
   const da = APP.indexOf('const _piani = [];');
   assert.ok(da > 0, 'il passo delle misure non c\'è più');
