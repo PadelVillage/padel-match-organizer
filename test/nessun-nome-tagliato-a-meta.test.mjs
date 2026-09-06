@@ -117,7 +117,7 @@ test('🚨 si misura il fondo delle LETTERE, non della riga — l\'interlinea no
   // 📏 Su TEST 6.380 il terzo nome del riquadro delle 18:00 di C2 finiva a 84,5 con un tetto a
   //    83,5: sforava di 1,5 px su una riga alta 15,6 e veniva nascosto, lasciando 16 px di
   //    spazio vuoto sotto. I tagli VERI misurati prima della cura andavano da 11 a 17 px.
-  const passo = APP.slice(APP.indexOf('const _piani = [];'), APP.indexOf('for (const p of _piani)'))
+  const passo = APP.slice(APP.indexOf('const _quantiCiStanno = function (info) {'), APP.indexOf('let _larghi ='))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.match(passo, /rr\.bottom - Math\.max\(0, \(rr\.height - fs\) \/ 2\)/,
     'contando anche l\'interlinea si nasconde un nome che si legge benissimo');
@@ -167,28 +167,18 @@ test('il conto torna sempre: mostrate + nascoste = totale, e mai più righe del 
 
 // ── Le due cose strutturali che il DOM non racconta ──────────────────────────
 test('🩹 il tetto e i fondi si misurano nella STESSA origine (schermo), non offsetTop contro clientHeight', () => {
-  const da = APP.indexOf('const _piani = [];');
+  const da = APP.indexOf('const _quantiCiStanno = function (info) {');
   // 🩹 Si guarda il CODICE, non i commenti: il commento che spiega l'errore contiene la parola
   //    «offsetTop», e una sonda che non li toglie trova sempre ciò che cerca.
-  const passo = APP.slice(da, APP.indexOf('for (const p of _piani)', da))
+  const passo = APP.slice(da, APP.indexOf('let _larghi =', da))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!/offsetTop/.test(passo),
     'offsetTop parte dal bordo e clientHeight il bordo non lo conta: mescolarli sbagliava di una riga intera');
   assert.equal((passo.match(/getBoundingClientRect\(\)/g) || []).length >= 2, true,
     'tetto e fondi devono venire tutti e due dal rettangolo sullo schermo');
-  assert.match(passo, /_rb\.bottom/, 'il tetto parte dal fondo del riquadro sullo schermo');
+  assert.match(passo, /rb\.bottom - \(parseFloat\(cs\.borderBottomWidth\)/, 'il tetto parte dal fondo del riquadro sullo schermo');
   assert.match(passo, /rr\.bottom/, 'i fondi delle righe pure');
   assert.match(passo, /borderBottomWidth/, 'il bordo di una PARTITA APERTA è 2px tratteggiati, non 1 pieno');
-});
-
-test('prima TUTTE le letture, poi TUTTE le scritture (o il browser ricalcola a ogni riquadro)', () => {
-  const da = APP.indexOf('const _piani = [];');
-  assert.ok(da > 0, 'il passo delle misure non c\'è più');
-  const fine = APP.indexOf('for (const p of _piani)', da);
-  assert.ok(fine > da, 'il passo delle modifiche non c\'è più');
-  const letture = APP.slice(da, fine);
-  assert.ok(!/\.remove\(\)|appendChild|\.title =/.test(letture),
-    'una modifica dentro il giro delle misure: il calcolo della pagina si rifà a ogni riquadro');
 });
 
 test('l\'elenco intero resta raggiungibile: chi nasconde dei nomi li mette nel `title`', () => {
@@ -214,6 +204,47 @@ test('⛔ ma i DUE ESITI della stessa strada restano in chat, dove si rileggono 
 
 test('⛔ e resta in chat anche «non riesco ancora a raggiungere Matchpoint»: comincia come un avanzamento, è un ESITO', () => {
   assert.equal(G('⏳ Campo 1 · 2026-09-15 · 09:00: non riesco ancora a raggiungere Matchpoint. <strong>La verifica resta aperta</strong> e la riprendo da solo.'), false);
+});
+
+
+// ── ⑥ Prima si prova a farceli STARE ─────────────────────────────────────────
+test("🚨⭐ PRIMA si rimpicciolisce, e solo DOPO si nasconde — «sempre tre su quattro» era questo", () => {
+  // 🗣️ Sue parole su PROD 6.381, cioè sulla cura precedente in servizio: «Nel calendario di prod
+  //    continuano a vedersi sempre tre giocatori su quattro.» Il «+1» DICHIARAVA il nome che
+  //    manca; lui il nome lo vuole LEGGERE. Il taglio è l'ultima spiaggia, non la prima.
+  const iGradi = APP.indexOf('const _GRADI = [');
+  assert.ok(iGradi > 0, 'i gradi di rimpicciolimento non ci sono più');
+  const iTaglio = APP.indexOf('for (let i = piano.mostra; i < info.righe.length; i++)');
+  assert.ok(iTaglio > iGradi, "il taglio deve venire DOPO i gradi: è l'ultima spiaggia, non la prima");
+  const gradi = APP.slice(iGradi, APP.indexOf('];', iGradi));
+  assert.match(gradi, /\{ fs: null, lh: null \}/,
+    "il primo grado è «com'è»: un riquadro che ci sta già non si deve rimpicciolire");
+  const quanti = (gradi.match(/fs:/g) || []).length;
+  assert.ok(quanti >= 4, `servono almeno tre gradi più stretti dopo quello pieno, ce ne sono ${quanti}`);
+  // e i gradi devono STRINGERE davvero, in ordine
+  const nums = [...gradi.matchAll(/fs:\s*(\d+)/g)].map(m => Number(m[1]));
+  assert.ok(nums.length >= 3, 'nessun grado con una misura vera');
+  for (let i = 1; i < nums.length; i++) assert.ok(nums[i] < nums[i - 1], 'i gradi devono stringere, in ordine');
+});
+
+test('i gradi si APPLICANO davvero alle righe (non basta averli scritti in una lista)', () => {
+  const da = APP.indexOf('let _larghi = _daNonTagliare.filter');
+  assert.ok(da > 0, 'il giro dei gradi non c’è più');
+  const giro = APP.slice(da, APP.indexOf('_larghi = _restano;', da));
+  assert.match(giro, /r\.style\.fontSize = _GRADI\[g\]\.fs \+ 'px';/, 'il grado non tocca il font della riga');
+  assert.match(giro, /r\.style\.lineHeight = String\(_GRADI\[g\]\.lh\);/, 'il grado non tocca l’interlinea');
+});
+
+test('un giro per GRADO, non per riquadro: le scritture del grado prima, le misure dopo', () => {
+  const da = APP.indexOf('let _larghi = _daNonTagliare.filter');
+  const giro = APP.slice(da, APP.indexOf('_larghi = _restano;', da))
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const iScrittura = giro.indexOf('r.style.fontSize');
+  const iLettura = giro.indexOf('_quantiCiStanno(info)');
+  assert.ok(iScrittura > 0 && iLettura > iScrittura,
+    'le misure devono venire DOPO le modifiche del grado, non alternate a esse');
+  assert.ok(!/\.remove\(\)|appendChild/.test(giro),
+    'nascondere righe dentro il giro dei gradi farebbe ricalcolare la pagina a ogni riquadro');
 });
 
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
