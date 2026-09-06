@@ -51,6 +51,16 @@ const MP_PAYMENT_SELECTORS = {
   //    sul vivo il 06/09/2026: `CobroParticipanteReserva.aspx?id_participante=…`, e i
   //    metodi vivono LI` DENTRO. Cercarli nel frame principale non li trova mai.
   cobroDialogUrlRe: /CobroParticipanteReserva\.aspx/i,
+  // 🚨⭐⭐ E IL DIALOG HA UN TERZO PIANO. Misurato il 06/09: cliccato il metodo, dentro il
+  //    dialog si apre un ALTRO fancybox-iframe — la cassa —
+  //    `cobro/AyudaCobroEfectivo.aspx?importe=8,00&idpeople=301&…`, con «Annullare»,
+  //    «Incassare» e «Incassare e stampare». ⇒ Il cobro si conferma LI`, e il click sul
+  //    metodo da solo non muove un centesimo (verificato: pendente intatto dopo due giri).
+  // ⭐ Quell'URL porta IMPORTO e PERSONA: sono la guardia piu` forte che questo gesto possa
+  //    avere, perche` le scrive Matchpoint e si leggono PRIMA di premere.
+  cobroConfermaUrlRe: /\/cobro\/Ayuda[A-Za-z]*\.aspx/i,
+  cobroConfermaBtn: '#CC_Datos_ButtonSoloCobrar',      // «Incassare» (senza stampa)
+  cobroConfermaLabels: ['Incassare', 'Cobrar'],
   //    Gli id sono la chiave PRIMARIA: non dipendono dalla lingua, e il testo del
   //    borsellino porta il saldo dentro di se` («Saldo disponibile: 0,00»).
   cobroMethodIds: {
@@ -8509,6 +8519,57 @@ function _cobroDialogFrame(page) {
   return page.frames().find((f) => MP_PAYMENT_SELECTORS.cobroDialogUrlRe.test(f.url() || '')) || null;
 }
 
+// ⭐⭐ TERZO GRADINO — la CASSA. Dopo il metodo si apre `AyudaCobro*.aspx`, ed e` li` che il
+// cobro si conferma. Torna `true` se ha confermato, `false` se quel passo non esiste per
+// questo metodo (allora l'esito lo dira` la rilettura del pendente).
+// 🚨 PRIMA DI PREMERE si controllano IMPORTO e PERSONA, letti dall'URL che ha scritto
+//    Matchpoint: e` l'unico punto in cui si puo` sapere cosa si sta per incassare e a chi
+//    **mentre si e` ancora in tempo a non farlo**. Se non tornano, non si preme.
+async function _confermaCobroInCassa(page, atteso, diagnostic) {
+  const scadenza = Date.now() + 8000;
+  let frame = null;
+  for (;;) {
+    frame = page.frames().find((f) => MP_PAYMENT_SELECTORS.cobroConfermaUrlRe.test(f.url() || '')) || null;
+    if (frame || Date.now() >= scadenza) break;
+    await page.waitForTimeout(400);
+  }
+  if (!frame) { diagnostic.steps.push('cobro_cassa:assente'); return false; }
+  const url = frame.url() || '';
+  diagnostic.cobroConfermaUrl = url.slice(0, 200);
+
+  // GUARDIA ①: l'importo scritto nell'URL dev'essere quello che si voleva incassare.
+  const mImp = url.match(/[?&]importe=([^&]*)/i);
+  const centsUrl = mImp ? mpMoneyToCents(decodeURIComponent(mImp[1])) : null;
+  if (centsUrl == null || centsUrl !== atteso.amountCents) {
+    diagnostic.cobroEsito = 'cassa_importo_diverso';
+    throw fail('COBRO_CASSA_IMPORTO_DIVERSO', `La cassa chiede ${centsUrl} centesimi invece di ${atteso.amountCents}: nessun incasso effettuato.`, diagnostic);
+  }
+  // GUARDIA ②: e la persona dev'essere la stessa della riga.
+  const mChi = url.match(/[?&]idpeople=([^&]*)/i);
+  const chiUrl = mChi ? String(decodeURIComponent(mChi[1])).replace(/\D/g, '').replace(/^0+/, '') : '';
+  const chiAtteso = String(atteso.idCliente || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (chiUrl && chiAtteso && chiUrl !== chiAtteso) {
+    diagnostic.cobroEsito = 'cassa_persona_diversa';
+    throw fail('COBRO_CASSA_PERSONA_DIVERSA', `La cassa risulta intestata a un altro cliente (${chiUrl} invece di ${chiAtteso}): nessun incasso effettuato.`, diagnostic);
+  }
+  diagnostic.steps.push(`cobro_cassa_ok:${centsUrl}c:${chiUrl || '-'}`);
+
+  // Si preme «Incassare» (NON «Incassare e stampare»): stampare vorrebbe una stampante.
+  const tries = [MP_PAYMENT_SELECTORS.cobroConfermaBtn]
+    .concat(MP_PAYMENT_SELECTORS.cobroConfermaLabels.map((t) => `input[type="submit"][value="${t}"], input[type="button"][value="${t}"]`));
+  for (const sel of tries) {
+    const loc = frame.locator(sel);
+    if (!(await loc.count().catch(() => 0))) continue;
+    await loc.first().click({ timeout: 8000 }); // NIENTE retry: qui il denaro si muove
+    diagnostic.steps.push('cobro_cassa_incassa');
+    await page.waitForTimeout(1200);
+    return true;
+  }
+  diagnostic.cobroEsito = 'cassa_senza_bottone';
+  const cobroCandidatiInCassa = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+  throw fail('COBRO_CASSA_SENZA_BOTTONE', 'Cassa aperta ma senza il bottone «Incassare»: nessun incasso effettuato.', Object.assign({}, diagnostic, { cobroCandidatiInCassa }));
+}
+
 async function _clickCobroMethod(page, methodKey, methodLabel, playerName, diagnostic) {
   // ① ASPETTA IL FRAME, non il pulsante. Il dialog arriva dopo un postback: un'attesa
   //    fissa non distingue «non c'e`» da «non c'e` ANCORA», e le due vogliono cure opposte.
@@ -8684,34 +8745,47 @@ async function collectPaymentWithBrowser(input = {}) {
     // su cui si e` appena premuto «Incassare».
     await _clickCobroMethod(page, methodKey, methodLabel, playerName || found.nome, diagnostic);
 
-    // Salva il cobro con Actualizar (clic robusto anti-swal2).
-    // 🔎 VOCE 171, secondo gradino — misurato su PROD il 06/09: cliccato il metodo per id, il
-    //    salvataggio va in `SAVE_BUTTON_CLICK_TIMEOUT` e il pendente resta INTATTO (800, ancora
-    //    «in sospeso», riletto subito dopo) ⇒ il click sul metodo NON incassa da solo: apre il
-    //    passo dopo, DENTRO il dialog. `clickSaveActualizar` invece cerca «Actualizar» nella
-    //    PAGINA — di nuovo la stanza sbagliata, un gradino più in là.
-    // ⚠️ Qui non si indovina il pulsante: si GUARDA. Al fallimento si allega cosa c'era nel
-    //    dialog in quel preciso momento, che è l'unica cosa che nessuna lettura successiva può
-    //    più dire (il dialog si chiude col giro).
-    // 📌 La sonda che ha risolto il primo gradino serve identica al secondo: la lezione non era
-    //    «il dialog è un iframe», era «prima di cercare, guarda dove sei».
-    try {
-      await clickSaveActualizar(page, diagnostic, 'salva_cobro');
-    } catch (_saveErr) {
-      const cobroCandidates = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
-      if (_saveErr && typeof _saveErr === 'object') {
-        _saveErr.diagnostic = Object.assign({}, _saveErr.diagnostic || diagnostic, { cobroCandidatiDopoMetodo: cobroCandidates });
-      }
-      throw _saveErr;
-    }
+    // 🔎 VOCE 171, terzo gradino — e qui c'era `clickSaveActualizar`, che era SBAGLIATO.
+    // 📏 Misurato su PROD il 06/09, due giri: cliccato il metodo per id, il salvataggio andava
+    //    in `SAVE_BUTTON_CLICK_TIMEOUT` e il pendente restava INTATTO (800, ancora «in sospeso»).
+    //    ⇒ Il cobro non si salva con l'«Actualizar» della SCHEDA: si conferma nella CASSA, un
+    //    terzo iframe che si apre dentro il dialog (`AyudaCobroEfectivo.aspx?importe=…&idpeople=…`).
+    // ⚖️ Tolto e non affiancato: cercare «Actualizar» qui non era un ripiego innocuo, era la
+    //    ragione per cui il gesto finiva sempre in errore anche quando tutto il resto era giusto.
+    const confermato = await _confermaCobroInCassa(page, { amountCents, idCliente: idClienteReale }, diagnostic);
+    diagnostic.cobroConfermatoInCassa = confermato;
 
     // Verifica esito: ri-leggi pendente per la riga (riscosso = 0).
     await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
     await page.waitForTimeout(300);
-    const reAfter = await _findParticipantRow(page, RP, idClienteReale, playerName);
-    const pendAfter = reAfter.ridx != null ? await _readPendenteCents(page, reAfter.ridx) : null;
+    let reAfter = await _findParticipantRow(page, RP, idClienteReale, playerName);
+    let pendAfter = reAfter.ridx != null ? await _readPendenteCents(page, reAfter.ridx) : null;
+    // Una seconda occhiata prima di dare un verdetto: la scheda puo` essere solo indietro di un
+    // istante. E` una LETTURA, quindi ripeterla non costa niente a nessuno.
+    if (pendAfter !== 0) {
+      await page.waitForTimeout(1500);
+      await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.waitForTimeout(300);
+      reAfter = await _findParticipantRow(page, RP, idClienteReale, playerName);
+      pendAfter = reAfter.ridx != null ? await _readPendenteCents(page, reAfter.ridx) : null;
+      diagnostic.steps.push('pendente_post_ricontrollo:' + pendAfter);
+    }
     const statoPost = pendAfter == null ? null : (pendAfter === 0 ? 'riscosso' : 'in_sospeso');
     diagnostic.steps.push('pendente_post:' + pendAfter);
+
+    // 🚨⭐⭐ «FATTO» LO DICE IL CIRCOLO, NON IL FATTO CHE SIAMO ARRIVATI IN FONDO.
+    // Qui si tornava `ok: true` SEMPRE, anche col pendente ancora intero: l'app guarda
+    // `data.ok` e avrebbe scritto «✅ Incassato» su un incasso mai avvenuto. Finora quel ramo
+    // non si raggiungeva mai — il gesto moriva prima — quindi il difetto era invisibile; con la
+    // cura della cassa diventa la strada normale, e va reso onesto PRIMA di percorrerla.
+    // ⚖️ Le due risposte non dicono la stessa cosa: pendente ancora dovuto = **non e` passato**
+    //    (si puo` riprovare); pendente ILLEGGIBILE = **non lo so** (non si riprova, si guarda).
+    if (pendAfter == null) {
+      return { ok: false, code: 'COBRO_ESITO_IGNOTO', idReserva, idCliente: idClienteReale, method, amountCents, statoPost: null, pendentePostCents: null, message: 'Incasso inviato ma esito non verificabile: controllare su Matchpoint prima di riprovare.', diagnostic };
+    }
+    if (pendAfter !== 0) {
+      return { ok: false, code: 'COBRO_NON_CONFERMATO', idReserva, idCliente: idClienteReale, method, amountCents, statoPost, pendentePostCents: pendAfter, message: `Il circolo risulta ancora in attesa di ${pendAfter} centesimi: nessun incasso registrato.`, diagnostic };
+    }
     diagnostic.steps.push('done');
     return { ok: true, idReserva, idCliente: idClienteReale, method, methodLabel, amountCents, statoPost, pendentePostCents: pendAfter, diagnostic };
   } catch (_e) {
@@ -9857,7 +9931,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
