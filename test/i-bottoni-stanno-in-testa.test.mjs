@@ -1,4 +1,9 @@
-/* 🔘 «I bottoni della scheda stanno nel piè» — banco della VOCE 167 (06/09/2026).
+/* 🔝 «I bottoni della scheda stanno in TESTA, e ci restano» — banco delle VOCI 167 e 168.
+ *
+ * 🔄⭐⭐ RINOMINATO il 06/09/2026 pomeriggio, e il nome vecchio era «…stanno nel piè».
+ *    La 168 li ha spostati dal fondo alla testa: un banco che si chiama «nel piè» mentre
+ *    difende il contrario non è vecchio, **mente** — e il primo che lo apre gli crede.
+ *    ⇒ Si rinomina, non si affianca.
  *
  * 🗣️ Sua richiesta: «vorrei che tutti i bottoni siano in basso, cioè salva, chiudi, annulla e
  *    aggiungi. Immettere tutti in orizzontale in basso alla scheda. che ne dici? così è più
@@ -30,7 +35,7 @@
  * ⛔ QUELLO CHE NON DICE: che sullo schermo i quattro ci stiano davvero in fila senza toccarsi.
  *    Quello lo dice la pagina viva, ed è la prova fisica.
  *
- * Esegui:  node test/i-bottoni-stanno-nel-pie.test.mjs
+ * Esegui:  node test/i-bottoni-stanno-in-testa.test.mjs
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -183,10 +188,31 @@ test('⑧ 🚨 le due disposizioni del piè stanno in @media DISGIUNTE, o l\'ord
 // ─────────────────────────────────────────────────────────────────────────────
 // ⑤ il conto sopra il piè
 // ─────────────────────────────────────────────────────────────────────────────
-test('⑤ il CONTO si disegna PRIMA del piè, o finisce fuori dalla scheda', () => {
-  assert.ok(iDove('box.appendChild(conto);') < iDove('box.appendChild(actions);'),
-    'il conto è tornato sotto la barra: con il piè a tutta larghezza in fondo, «A carico / Già '
-    + 'incassato / Manca all\'appello» scivolerebbe sotto il bordo della scheda');
+test('⑤ 🔄 la barra sta SUBITO DOPO il titolo (voce 168)', () => {
+  /* 🗣️ Sua richiesta: «vorrei che i bottoni vengano messi a seguire il titolo… questo perché
+   *    quella barra rimane sempre fissa anche quando scrolli». ⇒ In fondo sparivano appena si
+   *    scorreva, e un bottone che c'è ma non si vede vale come un bottone che non c'è. */
+  const t = iDove('box.appendChild(title);');
+  const a = iDove('box.appendChild(actions);');
+  assert.ok(a > t, 'la barra non viene più dopo il titolo');
+  // 🩹 la fetta parte DOPO la chiamata del titolo, o quella conterebbe sé stessa (difetto
+  //    di questo caso, trovato facendolo cadere su un codice giusto).
+  const inMezzo = APP.slice(t + 'box.appendChild(title);'.length, a);
+  assert.ok(!/box\.appendChild\((?!actions)/.test(inMezzo),
+    'fra il titolo e la barra si è infilato qualcos\'altro: la barra non è più il primo blocco '
+    + 'della scheda, e in cima ci finirebbe quello');
+});
+
+test('⑤ 🚨 e ci RESTA: è `sticky` in cima, con sfondo pieno e uno z-index', () => {
+  const { corpo } = regolaCon('.svc-edit-actions-bar', /position\s*:\s*sticky/);
+  assert.match(corpo, /position\s*:\s*sticky/, 'la barra non è più ferma: torna a sparire scorrendo');
+  assert.match(corpo, /top\s*:\s*0/, 'la barra è sticky ma senza `top`: non si aggancia a niente');
+  // 🚨 Le due cose che, mancando, fanno un difetto che si vede solo scorrendo:
+  assert.match(corpo, /background\s*:/,
+    'la barra non ha uno sfondo pieno: il contenuto che le passa sotto si legge ATTRAVERSO i '
+    + 'bottoni, e il difetto compare solo quando qualcuno scorre');
+  assert.match(corpo, /z-index\s*:\s*[1-9]/,
+    'la barra non ha z-index: le sezioni che scorrono le finiscono SOPRA');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
