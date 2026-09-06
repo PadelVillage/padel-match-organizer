@@ -113,6 +113,21 @@ test('si ferma alla PRIMA che non ci sta, non salta avanti a cercarne una più c
   assert.equal(F.pmoRigheIntereCheCiStanno([20, 90, 30], 40), 1);
 });
 
+test('🚨 si misura il fondo delle LETTERE, non della riga — l\'interlinea non si conta', () => {
+  // 📏 Su TEST 6.380 il terzo nome del riquadro delle 18:00 di C2 finiva a 84,5 con un tetto a
+  //    83,5: sforava di 1,5 px su una riga alta 15,6 e veniva nascosto, lasciando 16 px di
+  //    spazio vuoto sotto. I tagli VERI misurati prima della cura andavano da 11 a 17 px.
+  const passo = APP.slice(APP.indexOf('const _piani = [];'), APP.indexOf('for (const p of _piani)'))
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(passo, /rr\.bottom - Math\.max\(0, \(rr\.height - fs\) \/ 2\)/,
+    'contando anche l\'interlinea si nasconde un nome che si legge benissimo');
+  assert.match(passo, /getComputedStyle\(r\)\.fontSize/, 'il respiro dipende dal font della riga, non da una costante');
+  // e la regola in numeri: 1,5 px di sforamento su una riga da 15,6 con font 12 => la riga passa
+  const respiro = (15.6 - 12) / 2;                 // 1.8
+  assert.equal(F.pmoRigheIntereCheCiStanno([84.5 - respiro], 83.5), 1, 'un pixel e mezzo di interlinea non è un nome tagliato');
+  assert.equal(F.pmoRigheIntereCheCiStanno([95 - respiro], 83.5), 0, 'undici pixel invece sì, ed è il difetto vero');
+});
+
 test('mezzo pixel di tolleranza, e non uno di più', () => {
   assert.equal(F.pmoRigheIntereCheCiStanno([68.4], 68), 1);
   assert.equal(F.pmoRigheIntereCheCiStanno([69], 68), 0);
@@ -159,7 +174,10 @@ test('🩹 il tetto e i fondi si misurano nella STESSA origine (schermo), non of
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!/offsetTop/.test(passo),
     'offsetTop parte dal bordo e clientHeight il bordo non lo conta: mescolarli sbagliava di una riga intera');
-  assert.match(passo, /getBoundingClientRect\(\)\.bottom/);
+  assert.equal((passo.match(/getBoundingClientRect\(\)/g) || []).length >= 2, true,
+    'tetto e fondi devono venire tutti e due dal rettangolo sullo schermo');
+  assert.match(passo, /_rb\.bottom/, 'il tetto parte dal fondo del riquadro sullo schermo');
+  assert.match(passo, /rr\.bottom/, 'i fondi delle righe pure');
   assert.match(passo, /borderBottomWidth/, 'il bordo di una PARTITA APERTA è 2px tratteggiati, non 1 pieno');
 });
 
