@@ -9063,7 +9063,21 @@ async function voidPaymentWithBrowser(input = {}) {
 
     // Annulla il pagamento + conferma + salva.
     await _clickAnularPago(page, diagnostic);
-    await clickSaveActualizar(page, diagnostic, 'salva_storno');
+    // 🔎 VOCE 171, e QUI LO STORNO HA LO STESSO DIFETTO DEL COBRO — misurato su PROD il 06/09
+    //    subito dopo aver curato l'incasso: `anular_click` passa, poi `SAVE_BUTTON_CLICK_TIMEOUT`
+    //    e il pagamento resta in piedi (giocatore ancora «riscosso», pendente 0).
+    // ⚠️ Non si indovina dove sia il bottone: si GUARDA, com'è servito due volte per il cobro.
+    //    La lista di cosa c'era in quell'istante è l'unica cosa che nessuna lettura successiva
+    //    può più dire.
+    try {
+      await clickSaveActualizar(page, diagnostic, 'salva_storno');
+    } catch (_saveErr) {
+      const candidatiDopoAnnullo = await _collectCobroCandidates(page).catch((e) => [{ err: String((e && e.message) || e).slice(0, 80) }]);
+      if (_saveErr && typeof _saveErr === 'object') {
+        _saveErr.diagnostic = Object.assign({}, _saveErr.diagnostic || diagnostic, { candidatiDopoAnnullo });
+      }
+      throw _saveErr;
+    }
 
     // Verifica: dopo lo storno il pendente deve tornare > 0 (stato in_sospeso).
     await page.goto(fichaUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
