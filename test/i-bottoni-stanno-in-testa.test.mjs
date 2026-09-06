@@ -1,4 +1,9 @@
-/* 🔘 «I bottoni della scheda stanno nel piè» — banco della VOCE 167 (06/09/2026).
+/* 🔝 «I bottoni della scheda stanno in TESTA, e ci restano» — banco delle VOCI 167 e 168.
+ *
+ * 🔄⭐⭐ RINOMINATO il 06/09/2026 pomeriggio, e il nome vecchio era «…stanno nel piè».
+ *    La 168 li ha spostati dal fondo alla testa: un banco che si chiama «nel piè» mentre
+ *    difende il contrario non è vecchio, **mente** — e il primo che lo apre gli crede.
+ *    ⇒ Si rinomina, non si affianca.
  *
  * 🗣️ Sua richiesta: «vorrei che tutti i bottoni siano in basso, cioè salva, chiudi, annulla e
  *    aggiungi. Immettere tutti in orizzontale in basso alla scheda. che ne dici? così è più
@@ -30,7 +35,7 @@
  * ⛔ QUELLO CHE NON DICE: che sullo schermo i quattro ci stiano davvero in fila senza toccarsi.
  *    Quello lo dice la pagina viva, ed è la prova fisica.
  *
- * Esegui:  node test/i-bottoni-stanno-nel-pie.test.mjs
+ * Esegui:  node test/i-bottoni-stanno-in-testa.test.mjs
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -118,14 +123,45 @@ test('② 🚨 la barra resta FIGLIA DIRETTA del box (o esito e guardia della 15
 // ─────────────────────────────────────────────────────────────────────────────
 // ③ ④ ⑦ la disposizione
 // ─────────────────────────────────────────────────────────────────────────────
-test('③ il piè attraversa le due colonne, e solo da 900 px in su', () => {
-  const { corpo, indice } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /grid-column/);
-  assert.match(corpo, /grid-column\s*:\s*1\s*\/\s*-1/,
-    'il piè non attraversa più le due colonne: resterebbe stretto nella colonna sinistra');
+test('③ 🔄 sopra i 900 px la barra sta nella BANDA FERMA, in `absolute` (voce 168)', () => {
+  /* 🩹 Qui prima si chiedeva `grid-column:1 / -1`, giusto finché la barra era un elemento della
+   *    griglia in fondo. La 168 l'ha tolta dal flusso ⇒ quella regola non ha più oggetto e va
+   *    SOSTITUITA con quella che adesso fa il lavoro.
+   * 🚨 E il motivo per cui non è `sticky`: MISURATO sulla pagina viva di TEST 6.375 — per un
+   *    elemento di griglia il contenitore dello sticky è la sua CELLA, alta quanto la barra,
+   *    quindi la corsa è zero e la barra si muoveva con lo scroll (842 → 473 → 118). */
+  const { corpo, indice } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /position\s*:\s*absolute/);
+  assert.match(corpo, /position\s*:\s*absolute/,
+    'la barra non è più in `absolute`: torna dentro il flusso della griglia e riprende a '
+    + 'scorrere via, che è il difetto da cui la 168 nasce');
+  assert.match(corpo, /top\s*:\s*\d+px/, 'la barra non dichiara un `top`: non si aggancia alla banda');
+  assert.match(corpo, /background\s*:/,
+    'la barra non ha sfondo pieno: la scheda le scorre SOTTO e si leggerebbe attraverso i bottoni');
+  assert.match(corpo, /z-index\s*:\s*[1-9]/, 'la barra non ha z-index: il contenuto le finisce sopra');
   const media = mediaAperteIn(indice);
   assert.ok(media.some(c => /min-width\s*:\s*900px/.test(c)),
-    'la regola del piè sta fuori dalla @media dei 900 px: sul telefono la scheda è una colonna '
-    + 'sola e una griglia a due non c\'è');
+    'la regola sta fuori dalla @media dei 900: sul telefono la scheda è un foglio dal basso e '
+    + 'lì a tenere ferma la barra è lo `sticky`, che senza griglia funziona');
+});
+
+test('③ 🚨 e la barra NON è `pointer-events:none` — al contrario del titolo', () => {
+  /* ⚖️ Il titolo sta nella stessa banda ed è `pointer-events:none` di proposito (voce 157): è
+   *    una scritta, e prendersi i click sarebbe la 146 daccapo. Questi invece sono BERSAGLI:
+   *    la stessa riga copiata sopra la barra la renderebbe invisibile al dito — e il difetto
+   *    non si vedrebbe guardando, solo provando a premere. */
+  const { corpo } = regolaCon('.svc-edit-box > .svc-edit-actions-bar', /position\s*:\s*absolute/);
+  assert.ok(!/pointer-events\s*:\s*none/.test(corpo),
+    'la barra ha `pointer-events:none`: si vede e non si preme — copiata dal titolo, dove serve');
+});
+
+test('③ e il box PAGA lo spazio che la barra non occupa più nel flusso', () => {
+  const { corpo, indice } = regolaCon('.svc-edit-box', /padding-top/);
+  const m = corpo.match(/padding-top\s*:\s*(\d+)px/);
+  assert.ok(m, 'il box non riserva più spazio in cima: la prima sezione parte sotto la barra e resta coperta');
+  assert.ok(Number(m[1]) >= 40,
+    'lo spazio riservato in cima è ' + m[1] + 'px: la barra ne occupa ~47 e coprirebbe l\'inizio della scheda');
+  assert.ok(mediaAperteIn(indice).some(c => /min-width\s*:\s*900px/.test(c)),
+    'il padding sta fuori dalla @media dei 900: sul telefono la barra è nel flusso e quello spazio sarebbe un buco');
 });
 
 test('③ e l\'esito lo attraversa insieme a lui, restandogli sopra', () => {
@@ -183,10 +219,31 @@ test('⑧ 🚨 le due disposizioni del piè stanno in @media DISGIUNTE, o l\'ord
 // ─────────────────────────────────────────────────────────────────────────────
 // ⑤ il conto sopra il piè
 // ─────────────────────────────────────────────────────────────────────────────
-test('⑤ il CONTO si disegna PRIMA del piè, o finisce fuori dalla scheda', () => {
-  assert.ok(iDove('box.appendChild(conto);') < iDove('box.appendChild(actions);'),
-    'il conto è tornato sotto la barra: con il piè a tutta larghezza in fondo, «A carico / Già '
-    + 'incassato / Manca all\'appello» scivolerebbe sotto il bordo della scheda');
+test('⑤ 🔄 la barra sta SUBITO DOPO il titolo (voce 168)', () => {
+  /* 🗣️ Sua richiesta: «vorrei che i bottoni vengano messi a seguire il titolo… questo perché
+   *    quella barra rimane sempre fissa anche quando scrolli». ⇒ In fondo sparivano appena si
+   *    scorreva, e un bottone che c'è ma non si vede vale come un bottone che non c'è. */
+  const t = iDove('box.appendChild(title);');
+  const a = iDove('box.appendChild(actions);');
+  assert.ok(a > t, 'la barra non viene più dopo il titolo');
+  // 🩹 la fetta parte DOPO la chiamata del titolo, o quella conterebbe sé stessa (difetto
+  //    di questo caso, trovato facendolo cadere su un codice giusto).
+  const inMezzo = APP.slice(t + 'box.appendChild(title);'.length, a);
+  assert.ok(!/box\.appendChild\((?!actions)/.test(inMezzo),
+    'fra il titolo e la barra si è infilato qualcos\'altro: la barra non è più il primo blocco '
+    + 'della scheda, e in cima ci finirebbe quello');
+});
+
+test('⑤ 🚨 e ci RESTA: è `sticky` in cima, con sfondo pieno e uno z-index', () => {
+  const { corpo } = regolaCon('.svc-edit-actions-bar', /position\s*:\s*sticky/);
+  assert.match(corpo, /position\s*:\s*sticky/, 'la barra non è più ferma: torna a sparire scorrendo');
+  assert.match(corpo, /top\s*:\s*0/, 'la barra è sticky ma senza `top`: non si aggancia a niente');
+  // 🚨 Le due cose che, mancando, fanno un difetto che si vede solo scorrendo:
+  assert.match(corpo, /background\s*:/,
+    'la barra non ha uno sfondo pieno: il contenuto che le passa sotto si legge ATTRAVERSO i '
+    + 'bottoni, e il difetto compare solo quando qualcuno scorre');
+  assert.match(corpo, /z-index\s*:\s*[1-9]/,
+    'la barra non ha z-index: le sezioni che scorrono le finiscono SOPRA');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
