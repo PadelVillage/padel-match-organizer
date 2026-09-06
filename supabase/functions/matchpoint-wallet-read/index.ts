@@ -194,6 +194,20 @@ Deno.serve(async (req: Request) => {
      socio prima di questa voce) continua a funzionare identico e semplicemente non scrive. */
   const memberLocalId = clean((body as JsonMap).memberLocalId);
   const playerName = clean((body as JsonMap).playerName);
+  /* 🚨⭐⭐ IL CODICE CLIENTE, E NON L'ID INTERNO — misurato il 06/09 notte, dopo averlo sbagliato.
+     Matchpoint dà a ogni persona DUE numeri in numerazioni diverse, e il campo `id_cliente` della
+     fotografia è quello che scrive `matchpoint-wallet-sync`: il CODICE CLIENTE (dalla colonna
+     «Cod.» del report), non l'`id_people` del roster.
+     📏 La prova che sono davvero due namespace, presa dai dati veri: `id_cliente` **191** in
+     archivio è **Luciano Pase** (codice 000191, id interno assente); ma **191** nel roster di una
+     prenotazione è l'id interno di **Valeria Moschet** (il cui codice è 000182). Due persone, lo
+     stesso numero, due colonne diverse.
+     ⇒ Scrivere qui l'id interno metterebbe DUE numerazioni nella stessa colonna, a seconda di chi
+     ha scritto la riga: è la voce 138 daccapo — e non si vedrebbe, perché per i soci con id basso
+     (Maurizio: id 4, codice 000004) i due numeri COINCIDONO.
+     ⛔ E se il chiamante non lo sa, resta `null`: meglio un campo vuoto che il sync riempirà, che
+     un numero giusto nella numerazione sbagliata. */
+  const codiceCliente = clean((body as JsonMap).codiceCliente);
 
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
@@ -221,7 +235,8 @@ Deno.serve(async (req: Request) => {
      lo dice a chi ha chiesto. */
   const fotografia = await aggiornaFotografiaSaldo({
     memberLocalId,
-    codice: clean(workerResult.idCliente) || idInterno,
+    // ⚠️ NON `workerResult.idCliente`: quello è l'id interno (id_people), un'altra numerazione.
+    codice: codiceCliente,
     playerName,
     balanceCents,
   });
