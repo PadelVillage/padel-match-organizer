@@ -18,6 +18,14 @@
  *    sync — non viene toccato.
  *    📌 *Prima di aggiungere una lettura, guardare se la risposta è già nella mano che si ha.*
  *
+ * 🔄 06/09 SERA — STA IN `_shared/` E NON PIÙ DENTRO `matchpoint-wallet-correct`, perché i gesti
+ *    che muovono il borsellino sono DUE e la regola dev'essere UNA:
+ *    · la RICARICA/STORNO (`matchpoint-wallet-correct`) — il saldo dopo ce l'ha in mano;
+ *    · il PAGAMENTO COL BORSELLINO — dove il saldo dopo **non** c'è (misurato il 06/09:
+ *      `/collect-payment` torna `statoPost` e `pendentePostCents`, il saldo no), e lo si va a
+ *      rileggere con `matchpoint-wallet-read`.
+ *    📌 *Due copie della stessa regola divergono il giorno in cui una sola viene corretta.*
+ *
  * PURA di proposito, così il banco la ESEGUE invece di rileggerla (lezione della 149).
  */
 
@@ -46,6 +54,12 @@ export function decidiFotografiaSaldo(opts: {
   playerName?: unknown;
   balancePost: unknown;
   adessoIso: string;
+  /** ⚖️ DA DOVE VIENE IL NUMERO, e non è un'etichetta di comodo: `pmo_wallet_correct` è un saldo
+   *  che abbiamo visto muoversi noi, `pmo_wallet_read` è un saldo che siamo andati a RILEGGERE
+   *  dopo un gesto che l'ha mosso. Guardando una riga si deve poter dire da quale delle due
+   *  strade è arrivata, o il giorno in cui una delle due sbaglia non si sa quale guardare.
+   *  ⛔ Il default resta quello della ricarica: chi non lo dichiara è il chiamante di sempre. */
+  source?: 'pmo_wallet_correct' | 'pmo_wallet_read';
 }): EsitoFotografia {
   const localId = String(opts.memberLocalId == null ? '' : opts.memberLocalId).trim();
   if (!localId) return { scrivi: false, motivo: 'MEMBER_LOCAL_ID_MANCANTE' };
@@ -65,9 +79,12 @@ export function decidiFotografiaSaldo(opts: {
       player_name: String(opts.playerName == null ? '' : opts.playerName),
       balance_cents: opts.balancePost,
       // ⚖️ `source` dice DA DOVE viene questo valore, e non è un capriccio: distingue una
-      //    fotografia scritta da un gesto da una scattata dal report. Il sync la riallineerà al
-      //    giro dopo con lo stesso numero e `source: 'matchpoint'`.
-      source: 'pmo_wallet_correct',
+      //    fotografia scritta da un gesto (`pmo_wallet_correct`) o riletta dopo un gesto
+      //    (`pmo_wallet_read`) da una scattata dal report. Il sync la riallineerà al giro dopo
+      //    con lo stesso numero e `source: 'matchpoint'`.
+      // 🚨 UN VALORE FUORI DAI DUE PREVISTI NON PASSA: si ricade sul default invece di scrivere
+      //    in archivio una parola che nessuna sonda cerca.
+      source: opts.source === 'pmo_wallet_read' ? 'pmo_wallet_read' : 'pmo_wallet_correct',
       synced_at: opts.adessoIso,
     },
   };
