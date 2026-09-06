@@ -1898,7 +1898,27 @@ pendente, riletto dal circolo nello stesso giro invece che ricordato — metodo 
 esserci o essere un'altra pagina — il codice lo gestisce (se la cassa non compare prosegue e l'esito
 lo dice la rilettura del pendente), **ma nessuno l'ha ancora visto succedere**.
 
-🧪 **Banchi**: `test/il-dialog-incasso-dice-cosa-vede.test.mjs` (**8 casi**, sabotato **6** volte) e
+🔁⭐⭐ **E LO STORNO ERA LA STESSA IDENTICA COSA — terza stanza, stessa sera.** Dopo «Anular»,
+Matchpoint apre in un fancybox `Facturacion/SeleccionFormaPago.aspx` — *«con quale metodo di
+pagamento desidera effettuare il rimborso?»*, predefinito **Usa stesso metodo del documento**, con
+**Accettare** (`CC_Datos_ButtonAceptar`). Quella finestra **COPRE la pagina** ⇒ il «Salvare» della
+scheda risultava non cliccabile (`SAVE_BUTTON_CLICK_TIMEOUT`): **non mancava, era coperto.**
+📏 Pagato con **tre** tentativi in cui il pagamento restava in piedi ogni volta.
+✅ **Curato e PROVATO su PROD**: `ok:true · statoPost:"in_sospeso" · pendente 800` in **22 secondi**,
+con la traccia che attraversa la finestra (`storno_rimborso_accetta` → `salva_storno_click_ok`).
+
+🚨⭐⭐ **E IL RESIDUO CHE NESSUNO SI ASPETTAVA, trovato guardando invece di fidarsi: IL RIMBORSO
+FINISCE NEL BORSELLINO.** Dopo lo storno Fabiola aveva **8,00 € di credito** che prima non aveva
+(`saldo: 800`, era `0`) — il «rimborso con lo stesso metodo» non ha restituito contanti: ha
+accreditato il borsellino.
+⇒ Rimesso a zero con `matchpoint-wallet-correct` (`subtractCents: 800` → `balanceCentsPost: 0`,
+10 secondi), e la fotografia della voce 143 si è scritta da sé.
+📌 *Uno storno non riporta il mondo com'era: lo riporta com'era **sul conto che guardavi**. Chi
+controlla solo la riga che aveva mosso non vede il credito comparso altrove.* ⚠️ Vale per ogni
+storno futuro: **si guarda anche il borsellino**, non solo il pendente.
+
+🧪 **Banchi**: `test/il-dialog-incasso-dice-cosa-vede.test.mjs` (**8 casi**, sabotato **6** volte),
+`test/lo-storno-conferma-il-rimborso.test.mjs` (**4 casi**, sabotato **3** volte) e
 `test/la-cassa-dice-quanto-e-a-chi.test.mjs` (**7 casi**, sabotato **5** volte). Nel secondo il caso
 che conta di più è quello in cui **NON si preme**.
 ⭐ `/health` dichiara `sonda-dialog-incasso` · `cobro-nel-frame-del-dialog` · `cobro-confermato-in-cassa`:
