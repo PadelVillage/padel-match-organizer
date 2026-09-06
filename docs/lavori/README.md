@@ -2327,6 +2327,25 @@ volte** e va voluta esplicitamente.
 📌 *La prova che non parte non è un fallimento della cura: è un fatto sul bersaglio, e si scopre
 solo andando a guardare il bersaglio.*
 
+🚨⭐⭐ **E LA PROVA HA TROVATO UN DIFETTO NELLA CURA STESSA — i DUE NUMERI, un'altra volta.**
+📏 Misurato subito dopo, guardando i saldi di altri soci: in archivio `id_cliente` **191** è
+**Luciano Pase** (codice `000191`, id interno **assente**); ma **191** nel roster di una
+prenotazione è l'id interno di **Valeria Moschet** (codice `000182`). ⇒ Il campo `id_cliente` della
+fotografia è quello che scrive il **sync**, e il sync ci mette il **CODICE CLIENTE**. La prima
+stesura di questa cura ci scriveva l'**ID INTERNO** preso dal roster: **due numerazioni nella
+stessa colonna**, a seconda di chi aveva scritto la riga. È la **voce 138 in un altro campo**.
+⚖️ **Danno limitato, e si dice perché è la parte che conta**: la **chiave** del record è
+`member_local_id`, quindi il saldo non è mai finito sul socio sbagliato — a essere inaffidabile era
+il campo `id_cliente`, che una sonda o una join futura avrebbero letto mescolato.
+🚨 **E NON SI VEDEVA DALLA PROVA**: era stata fatta su Maurizio Aprea, che ha id interno `4` e
+codice `000004` — **i due numeri coincidono**. 📌 *Un caso di prova scelto fra quelli dove i due
+valori coincidono non prova niente sui due valori.*
+🔨 Curato in `matchpoint-wallet-read` (6.390): il codice cliente lo passa il **chiamante**
+(`socio.memberId`, la stessa fonte che usa già la ricarica) e senza socio agganciato resta `null`
+— *meglio un campo vuoto che il sync riempirà, che un numero giusto nella numerazione sbagliata*.
+🧪 Banco: casi ⑭-⑰, col caso di **Valeria Moschet** preso dai dati veri perché è lì che i due
+numeri divergono; rimettendo il difetto diventano rossi.
+
 ✅⭐ **QUELLO CHE INVECE È STATO PROVATO FISICAMENTE, la notte del 06/09, a ZERO euro:** il ↻ del
 borsellino nella scheda di Maurizio, eseguito su PROD 6.388 chiamando `pmoWalletRefresh` — la
 funzione vera del bottone, non un'imitazione.
