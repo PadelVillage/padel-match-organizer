@@ -5,6 +5,7 @@ import {
   MESSAGGIO_AMBIENTE_DI_PROVA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
+import { decidiFotografiaSaldo } from './fotografia-saldo.ts';
 
 // matchpoint-wallet-correct — Fase 2b: corregge il saldo del BORSELLINO (Portafoglio/Monedero)
 // di un cliente su Matchpoint, via worker /correct-wallet ("Correzione del saldo"), in ENTRAMBE
@@ -179,6 +180,77 @@ async function scriviTraccia(opts: {
   }
 }
 
+/* 👛⭐⭐ VOCE 143 — LA FOTOGRAFIA DEL SALDO SI AGGIORNA NELLO STESSO ISTANTE DEL MOVIMENTO.
+ *
+ * 🗣️ Sua, dal 04/09: *«quando facciamo le operazioni di cassa che c'è tanta gente, se non si
+ *    aggiorna velocemente poi qualcuno della segreteria può protestare»*.
+ *
+ * 📏 IL DIFETTO, misurato il 06/09 e più preciso di come la scheda lo raccontava: ci sono DUE
+ *    record diversi, e questa edge ne aggiornava solo uno.
+ *    · `wallet_txn` — il MOVIMENTO (chi, quanto, pre, post). Scritto dal 02/09. ✅
+ *    · `wallet_balance` — la FOTOGRAFIA del saldo, **quella che l'app legge per mostrare il
+ *      numero**. NON aggiornata ⇒ dopo una ricarica il saldo mostrato restava vecchio fino al
+ *      giro dei 10 minuti. ❌
+ *    ⇒ Il gestionale sapeva *«è stata fatta una ricarica di 1 €»* e insieme *«il saldo è quello
+ *      di dieci minuti fa»*. Due verità sullo stesso socio, nello stesso archivio.
+ *
+ * ⭐ E LA CURA NON COSTA NIENTE, che è la parte che cambia il disegno della scheda: il saldo DOPO
+ *    ce l'abbiamo GIÀ in mano — `workerResult.balanceCentsPost`, letto da Matchpoint nello stesso
+ *    giro che ha mosso il denaro. La scheda della 143 prevedeva *«si rinfresca quello, sul colpo»*,
+ *    cioè una lettura in più al worker. ⛔ Non serve: sarebbe andare a richiedere un dato che è
+ *    già arrivato. Il worker — un browser solo condiviso col sync — non viene toccato.
+ *    📌 *Prima di aggiungere una lettura, guardare se la risposta è già nella mano che si ha.*
+ *
+ * ⛔ BEST-EFFORT, e per la stessa ragione di `scriviTraccia`: a questo punto il denaro su
+ *    Matchpoint **si è già mosso**. Se questa scrittura fallisce la risposta resta `ok` e lo
+ *    DICE (`fotografia: 'non_scritta'`), invece di far ripetere alla segreteria un gesto riuscito.
+ *
+ * 🔑 LA FORMA È QUELLA DEL SYNC, non una nuova: stessa `local_key` (`wbal|<memberLocalId>`) e
+ *    stessi campi di `matchpoint-wallet-sync`, o al giro delle 10 nascerebbe un secondo record
+ *    per lo stesso socio e l'app ne mostrerebbe uno a caso.
+ *    ⚖️ `source` dice **da dove viene questo valore** (`pmo_wallet_correct` invece di `matchpoint`):
+ *    non è un capriccio, è ciò che permette di distinguere una fotografia scritta da un gesto da
+ *    una scattata dal report. Il sync la riallineerà al giro dopo con lo stesso numero.
+ *
+ * ⚠️ SENZA `memberLocalId` NON SI SCRIVE: la chiave del record è quella, e inventarla dal codice
+ *    Matchpoint creerebbe una riga che il sync non ritroverebbe mai — un saldo fantasma che non si
+ *    aggiorna più. Meglio nessuna fotografia che una che nessuno può correggere. */
+async function aggiornaFotografiaSaldo(opts: {
+  memberLocalId: string; codice: string; playerName: string; balancePost: number | null;
+}): Promise<{ stato: 'scritta' | 'non_scritta'; motivo?: string }> {
+  const adesso = new Date().toISOString();
+  // 🔑 La REGOLA sta nel modulo puro accanto, non qui: così il banco la esegue davvero invece di
+  //    rileggerla, e questa funzione resta solo il braccio che scrive.
+  const scelta = decidiFotografiaSaldo({
+    memberLocalId: opts.memberLocalId,
+    codice: opts.codice,
+    playerName: opts.playerName,
+    balancePost: opts.balancePost,
+    adessoIso: adesso,
+  });
+  if (!scelta.scrivi) return { stato: 'non_scritta', motivo: scelta.motivo };
+  const sUrl = clean(Deno.env.get('SUPABASE_URL'));
+  const sKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+  if (!sUrl || !sKey) return { stato: 'non_scritta', motivo: 'SERVICE_ROLE_MANCANTE' };
+  try {
+    const client = createClient(sUrl, sKey, { auth: { persistSession: false } });
+    const { error } = await client.from('pmo_cloud_records').upsert({
+      record_type: 'wallet_balance',
+      local_key: scelta.localKey,
+      payload: scelta.payload,
+      deleted: false,
+      updated_at: adesso,
+      synced_at: adesso,
+    }, { onConflict: 'record_type,local_key' });
+    // 🚨 supabase-js RESTITUISCE l'errore invece di lanciarlo: senza questo controllo la
+    //    fotografia mancherebbe in silenzio — lo stesso difetto che questa funzione cura.
+    if (error) return { stato: 'non_scritta', motivo: error.message };
+    return { stato: 'scritta' };
+  } catch (e) {
+    return { stato: 'non_scritta', motivo: errorText(e) };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
@@ -282,6 +354,22 @@ Deno.serve(async (req: Request) => {
     console.error(JSON.stringify({ event: 'wallet_txn_non_scritta', op: wantsRecharge ? 'recharge' : 'storno', idInterno, codice, motivo: traccia.motivo }));
   }
 
+  /* 👛 VOCE 143 — e NELLO STESSO ISTANTE si aggiorna la FOTOGRAFIA del saldo, non solo il
+     movimento. Sta qui e non altrove perché è il punto in cui il circolo ha confermato: è la
+     regola dei tre passi applicata al saldo invece che alla partita — *ogni gesto va registrato
+     dal gestionale nello STESSO ISTANTE in cui è confermato*.
+     🚨 Prima di questa riga il gestionale sapeva «c'è stata una ricarica» e insieme «il saldo è
+     quello di dieci minuti fa»: due verità sullo stesso socio. */
+  const fotografia = await aggiornaFotografiaSaldo({
+    memberLocalId,
+    codice,
+    playerName,
+    balancePost: typeof workerResult.balanceCentsPost === 'number' ? workerResult.balanceCentsPost : null,
+  });
+  if (fotografia.stato === 'non_scritta') {
+    console.error(JSON.stringify({ event: 'wallet_balance_non_aggiornato', op: wantsRecharge ? 'recharge' : 'storno', idInterno, codice, motivo: fotografia.motivo }));
+  }
+
   return ok({
     op: wantsRecharge ? 'recharge' : 'storno',
     idInterno: clean(workerResult.idCliente) || idInterno,
@@ -295,5 +383,10 @@ Deno.serve(async (req: Request) => {
     // sezione Pagamenti mostrerebbe un buco che nessuno sa spiegare.
     traccia: traccia.stato,
     ...(traccia.motivo ? { tracciaMotivo: traccia.motivo } : {}),
+    // 👛 VOCE 143 — e si dice anche se la FOTOGRAFIA del saldo è stata aggiornata: senza questo,
+    // «il numero non si è mosso» resterebbe indistinguibile fra «non l'ho scritto» e «l'ho scritto
+    // e l'app non l'ha riletto». Sono due guasti diversi e si curano in due posti diversi.
+    fotografia: fotografia.stato,
+    ...(fotografia.motivo ? { fotografiaMotivo: fotografia.motivo } : {}),
   });
 });
