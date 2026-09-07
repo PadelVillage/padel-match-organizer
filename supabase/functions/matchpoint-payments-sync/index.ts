@@ -1,5 +1,22 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+/* 🩹 IL TIPO DEL CLIENT AMMINISTRATIVO, corretto il 07/09/2026 mentre si curava la voce 173.
+ * Le tre funzioni-aiuto dichiaravano `AdminClient`, che NON è il tipo che
+ * `createClient(url, key)` restituisce davvero: senza generici l'espressione vale
+ * `SupabaseClient<any, "public", "public", any, any>`, mentre `ReturnType<…>` prende i generici
+ * di DEFAULT (`… never, never …`) ⇒ ogni chiamata che passava `admin` era un errore di tipo.
+ * 📏 Erano **otto**, tutte della stessa famiglia, e `deno check` le contava una per una: la cura
+ * della 173 ne aggiungeva una nona (il suo `logAudit`), e il gate differenziale — giustamente —
+ * si è fatto rosso su «8 prima, 9 ora».
+ * ⚖️ Si è curata la FAMIGLIA invece di schivare l'istanza: togliere quel `logAudit` avrebbe reso
+ * il gate verde lasciando un guasto della rilettura degli storni **senza traccia**, che è il
+ * contrario di ciò che serve. Il workflow lo chiede per iscritto: *«errori preesistenti, da
+ * ripulire quando tocchi questo file»*. 📏 Misurato in locale con Deno vero: da 8 a **0**.
+ * 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna
+ *    quella CHIAMATA: i generici di default e quelli dedotti sono due cose diverse.* */
+// deno-lint-ignore no-explicit-any
+type AdminClient = SupabaseClient<any, any, any, any, any>;
 import * as XLSX from 'xlsx';
 import {
   buildMemberIndex,
@@ -13,6 +30,7 @@ import {
   resolveReconcileWindow,
   selectTombstoneKeys,
 } from './reconcile-window.ts';
+import { applicaStorniPreservati } from './storno-preservato.ts';
 
 // matchpoint-payments-sync — sincronizza gli INCASSI delle prenotazioni dei campi da Matchpoint,
 // dal report 11.13 "Pagamenti effettuati nelle prenotazioni" (Estadisticas/Reservas/
@@ -150,7 +168,7 @@ async function getActor(req: Request): Promise<StaffActor | null> {
   };
 }
 
-async function verifyRoutineSecret(admin: ReturnType<typeof createClient>, secret: string) {
+async function verifyRoutineSecret(admin: AdminClient, secret: string) {
   const value = clean(secret);
   if (!value) return false;
   const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
@@ -252,7 +270,7 @@ function parsePaymentsWorkbook(bytes: Uint8Array): { ok: true; rows: PaymentRow[
   return { ok: true, rows, headers, sourceRows: rawRows.length };
 }
 
-async function loadMembers(admin: ReturnType<typeof createClient>): Promise<MemberIndex> {
+async function loadMembers(admin: AdminClient): Promise<MemberIndex> {
   const records: MemberRecord[] = [];
   for (let from = 0, page = 0; page < 50; page += 1, from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await admin
@@ -274,7 +292,7 @@ function memberLocalId(rec: MemberRecord): string {
   return clean(p.id) || clean(rec.local_key);
 }
 
-async function logAudit(admin: ReturnType<typeof createClient>, actor: StaffActor | null, action: string, detail: JsonMap) {
+async function logAudit(admin: AdminClient, actor: StaffActor | null, action: string, detail: JsonMap) {
   if (!actor) return;
   await admin.from('pmo_audit_log').insert({
     actor_user_id: actor.userId,
@@ -411,6 +429,64 @@ Deno.serve(async (req: Request) => {
   }
   const paymentsWritten = records.length;
 
+  /* 3a) 🔁 VOCE 173 — LO STORNO SOPRAVVIVE AL SYNC (07/09/2026).
+   *
+   * 📏 Il guasto, misurato su PROD con un prima e un dopo sulle stesse due righe: marcate
+   *    `status: 'void'` da `matchpoint-payment-void`, tornavano `status: 'paid'` al primo giro
+   *    di qui — e questo giro parte ogni 5 minuti, quindi negli Incassi uno storno durava al
+   *    massimo cinque minuti. ⭐ Su 3297 pagamenti vivi di PROD `status` aveva **un solo
+   *    valore**: `paid`. Non era sfortuna, era lo stato stazionario.
+   *
+   * ⚖️ Perché la riconciliazione qui sotto NON bastava, e non è un suo difetto: lei marca ciò
+   *    che è SPARITO dal report, e uno storno non fa sparire niente — 📏 il report 11.13 non ha
+   *    nessuna colonna che dica «annullato», e gli stornati continuano a comparirci (byMethod
+   *    identico prima e dopo uno storno vero). Sono due meccanismi per due fatti diversi.
+   *
+   * 🎯 È «il gestionale SA» applicato alla cassa: lo storno l'ha fatto il gestionale, quindi è
+   *    un fatto NOSTRO, e uno specchio non può cancellarlo. Su questo Matchpoint non ha voce.
+   *
+   * ⛔ Si legge PRIMA di scrivere, e solo le chiavi che stiamo per riscrivere: non è la stessa
+   *    lettura della riconciliazione, che filtra sull'asse `booking_data` mentre queste righe
+   *    sono in chiave di data-PAGAMENTO. Riusarla sembrerebbe un risparmio e sarebbe l'asse
+   *    sbagliato — lo stesso errore che nel luglio 2026 cancellò 768 incassi.
+   */
+  let storniPreservati = 0;
+  let storniLetturaFallita: string | null = null;
+  if (newPaymentKeys.size > 0) {
+    const chiavi = [...newPaymentKeys];
+    const esistentiPerChiave = new Map<string, JsonMap>();
+    // Blocchi piccoli: `.in()` finisce nella query string, e una chiave di pagamento è lunga.
+    for (let i = 0; i < chiavi.length; i += 100) {
+      const blocco = chiavi.slice(i, i + 100);
+      const { data, error } = await admin
+        .from('pmo_cloud_records')
+        .select('local_key,payload')
+        .eq('record_type', 'payment')
+        .in('local_key', blocco);
+      if (error) {
+        /* ⛔ FALLISCE CHIUSA, ed è la parte che conta: se non riesco a sapere quali righe erano
+         * stornate, NON scrivo — riscrivere alla cieca rimetterebbe `paid` su tutto, cioè
+         * esattamente il guasto che questa cura esiste per togliere. Meglio un sync saltato
+         * (il prossimo è fra cinque minuti) di una cassa che torna a mentire.
+         * 📌 Una cura che davanti a un imprevisto riproduce il difetto non è una cura. */
+        storniLetturaFallita = errorText(error);
+        await logAudit(admin, actor, 'matchpoint_payments_sync_error', {
+          source, message: 'storni_scan: ' + storniLetturaFallita,
+        });
+        break;
+      }
+      for (const r of (Array.isArray(data) ? data : []) as { local_key: string; payload: JsonMap }[]) {
+        esistentiPerChiave.set(r.local_key, (r.payload || {}) as JsonMap);
+      }
+    }
+    if (storniLetturaFallita) {
+      return err(503, 'STORNI_SCAN_FAILED',
+        'Non riesco a rileggere gli storni già registrati: il sync si ferma invece di sovrascriverli.',
+        { dettaglio: storniLetturaFallita });
+    }
+    storniPreservati = applicaStorniPreservati(records, esistentiPerChiave).preservati;
+  }
+
   // 3b) #3 — TOMBSTONE dei cobros spariti dal report (stornati/mutati in Matchpoint). Senza
   // questa passata un pagamento annullato in MP resterebbe come record `payment` ATTIVO e la
   // sezione Incassi lo conterebbe ancora (doppio conteggio).
@@ -484,6 +560,9 @@ Deno.serve(async (req: Request) => {
       // spiegato a voce — ed è esattamente così che i 778 storni del 22/07 erano stati
       // archiviati come «la finestra è mobile» sei ore prima di scoprire cos'erano davvero.
       reconcileWindow,
+      // 🔁 Voce 173: quante righe hanno conservato uno storno che il report non conosce.
+      // 📌 Una cura che non lascia un numero dietro di sé si può solo credere.
+      storniPreservati,
       reportRows: parsed.rows.length, written: paymentsWritten, matched, tombstoned,
       unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers,
     },
