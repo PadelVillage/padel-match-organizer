@@ -1516,7 +1516,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** — 💶 **la 171 è CHIUSA il 07/09 mattina, a prova fisica su PROD e su TUTTI E TRE i metodi** (contanti 23 s · borsellino 10,8 s · carta 5,1 s, tutti stornati subito), più la cura dell'attesa sul repeater per il `GIOCATORE_NON_TROVATO` intermittente — ⚠️ quella **non** provata contro il guasto visto, e la scheda lo dice. 🆕 **Entra al suo posto la 174**: la **correzione del borsellino** non trova più il suo pulsante (`WALLET_CORRECTION_UI_NON_TROVATA`, due volte identiche dopo tre successi stanotte) ⇒ 🚨 **Fabiola Limuti ha 8,00 € di credito che non le spettano**, e oggi si tolgono solo **a mano** dal gestionale. |
+| 🔴 **Urgenti** | **1** — 💶 **la 171 è CHIUSA il 07/09 mattina, a prova fisica su PROD e su TUTTI E TRE i metodi** (contanti 23 s · borsellino 10,8 s · carta 5,1 s, tutti stornati subito), più la cura dell'attesa sul repeater per il `GIOCATORE_NON_TROVATO` intermittente — ⚠️ quella **non** provata contro il guasto visto, e la scheda lo dice. 🆕 **Entra al suo posto la 174**: la **correzione del borsellino** non trovava più il suo pulsante (`WALLET_CORRECTION_UI_NON_TROVATA`, tre volte identiche — 08:33, 08:35, 08:51 — dopo tre successi stanotte). 🔨 **CAUSA TROVATA e cura IN SERVIZIO dalle 09:02** (PR #1456): non era il pulsante, era la **stanza** — un avviso swal2 copriva la ficha e intercettava **ogni click**, quindi il ledger del borsellino non si apriva; l'avviso veniva tolto **un passo dopo che serviva**. ⏳ **La voce resta APERTA**: manca la **prova fisica** — lo storno di −8,00 € su Fabiola **dall'app su PROD**, che fa **lui**. 🚨 Finché non è fatto, **Fabiola Limuti ha 8,00 € di credito che non le spettano**. |
 | 📋 **In coda** | **14** — 🔐 **entra la 172 il 06/09 notte**, da una sua parola: nel pannello dei permessi staff **spuntando il capitolo le sottosezioni non si attivano**, e lui ha dovuto metterle a mano una per una. In coda e non urgente perché il difetto è **noto e aggirabile**, e perché prima della cura vanno misurate tre cose che nessuno ha guardato (se sia solo il disegno o anche il salvataggio; se togliendo il capitolo le sottosezioni restino accese; cosa apra il capitolo da solo). — 🖱️ **la 120 CHIUSA il 06/09 pomeriggio (94ª), a SUA PAROLA**: *«NON SUCCEDE PIU»*. La voce nasceva da un suo *«spesso e volentieri»* — qualcosa che **solo lui** vedeva e che nessuna sonda è riuscita a far succedere (45 s di scrittura vera con la spia su `scrollTo`/`scrollIntoView`/il setter di `scrollTop`, su TEST **e** PROD: **zero** eventi; e l'unica ipotesi in piedi non riproducibile in 90 s) ⇒ il testimone che l'aveva visto è lo stesso che dice che non c'è più. 🩹 **Non si sa QUALE cura l'abbia tolto** — fra il 01/09 e oggi sono passate la 127, la 134, la 157 e la 168 — e sta scritto nella scheda: *una voce chiusa con la porta accostata*. Se torna, si riapre. ⚖️ Restano **13**, e le due più grosse sono sempre la **142** (la scheda completa al click: id interno e Osservazioni dentro il gestionale) e la **143** (il borsellino in cassa). |
 | 📦 **Chiuse** | **153** — 💶 **la 171 il 07/09 mattina** (vedi la riga delle urgenti): era il guasto totale dell'incasso, ed erano **tre stanze**, non una. 📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**.* — 💸 **la 173 il 07/09 mattina** (vedi la riga delle urgenti). Con lei una correzione che non era nella voce: le tre funzioni-aiuto di `matchpoint-payments-sync` dichiaravano `ReturnType<typeof createClient>`, che **non è** il tipo che `createClient(url,key)` restituisce ⇒ **8 errori di tipo preesistenti**, portati a **0**. 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna quella CHIAMATA.* — 🪟 **la 169 è ENTRATA E CHIUSA il 06/09 pomeriggio** (TEST 6.379→6.382 → PROD 6.382, PR #1413 e #1414), su sua segnalazione con due schermate: ① il **maestro** non compare più due volte (Matchpoint lo mette anche nel roster, in minuscolo, e la guardia che doveva vederlo stava sul ramo sbagliato **e** confrontava lettera per lettera); ② i **quattro nomi si vedono** — le righe si stringono per gradi finché ci stanno tutte, e il taglio con «+N» è l'ultima spiaggia; ③ «Riprendo una verifica» esce **solo nella barra**. 🚨 Ci sono volute **quattro versioni**, ognuna smentita da una misura e l'ultima **da lui**: *«continuano a vedersi sempre tre giocatori su quattro»* — il «+1» dichiarava il nome mancante, lui lo vuole **leggere**. *Dichiarare un'assenza non è toglierla.* ✅ Provata su TEST **e** PROD a 810 · 740 · 680 px: **0** righe tagliate, **4 nomi su 4**. Con lei la **120**, chiusa a sua parola. |
 
@@ -1782,6 +1782,52 @@ c'è** nella ficha cliente quando il pulsante non lo trova — la stessa medicin
 **vuoto**: ⇒ non elenca abbastanza (iframe? altra sotto-scheda?), e allargarlo è il primo lavoro.
 📌 *Una sonda che torna una lista vuota non dice «non c'è niente»: dice «non ho guardato dove
 serviva».*
+
+🔨 **LA CAUSA È STATA TROVATA il 07/09 mattina, e NON era il pulsante: era la STANZA.** La cura
+è in servizio sul worker dalle **09:02** (PR #1456, deploy run 176, `/health` dichiara
+`borsellino-avviso-tolto-prima` — letto dal processo, non dedotto dal ramo).
+
+📏 **La diagnosi sta tutta nella traccia già raccolta, e non è servito nessun giro nuovo:**
+· `swal_dismiss:corr_pre` è spinto **solo dentro il corpo del ciclo** di `dismissSwalOk`, cioè
+  **solo se `button.swal2-confirm` era davvero visibile** ⇒ un avviso swal2 **c'era**;
+· non c'è **nessun** passo `wallet_tab:` e c'è `wallet_subtab:none` ⇒ dentro
+  `_openWalletSaldoLedger` **ogni click è scaduto**;
+· ma `saldo_pre:800` è **riuscito** — ed è un `innerText` sull'intestazione
+  (`#CC_Cabecera_LabelSaldo_Actual`).
+⇒ **Letture passate + click falliti = la firma di un overlay.** Il contenitore swal2 copre lo
+schermo e intercetta i puntatori: il ledger non si apriva, e il pulsante «Correzione del saldo»
+**vive lì dentro**. Non era sparito: **non c'era la stanza**. E l'avviso veniva tolto **due gesti
+più tardi** — un passo dopo che serviva.
+⚖️ Il sospetto del *riavvio* (sessione calda buttata dal deploy delle 08:26) **regge**, ma adesso
+è **spiegato**, non supposto: una sessione nuova incontra l'avviso che una vecchia aveva già chiuso.
+
+🔨 **La cura, tre pezzi:** ① `dismissSwalOk(..., 'ficha_pre')` **prima** di aprire il ledger — è
+la riga che cura; ② `_openWalletSaldoLedger` **smette di tacere** (ogni click che non passa lascia
+`wallet_tab_ko:` / `wallet_subtab_ko:` invece di essere scartato con un commento, e il tab mancante
+ha un passo suo) **e si ripara da sé una volta** — ma solo se c'è un avviso da togliere, perché
+senza niente da togliere il secondo giro proverebbe la stessa identica cosa; ③ la **sonda**
+guardava in una stanza sola (`page.evaluate` gira nel frame principale): ora percorre **tutti i
+frame**, e la nuova `_collectFichaStanze` dice cosa la pagina **mostra** — avviso aperto e suo
+testo, tab a portata di click, elenco dei frame.
+📌 *Una lista vuota non dice «non c'è niente»: dice «non ho guardato dove serviva» — e diventa
+leggibile solo accanto a ciò che la pagina mostrava in quell'istante.*
+
+🔪 Banco `test/il-velo-si-toglie-prima-di-bussare.test.mjs`: **22 casi**, funzioni **estratte dal
+worker in servizio**, **3 sabotaggi** che cadono tutti. 🩹 E due trappole pagate scrivendolo, che
+restano scritte nel banco: il sabotaggio «click di nuovo muti» ne mutava **una sola** delle due
+`catch` e il banco restava **verde**; e il caso ⑤ controllava `/_ko:/`, che matcha anche
+`swal_dismiss:ledger_ko` ⇒ **passava senza mai toccare la riga che dice di difendere**.
+
+⏳🚨 **LA VOCE RESTA APERTA, e il perché è la regola del 23/08: manca la PROVA FISICA.** Quello
+che c'è è **banco + lettura della traccia**; le guardie d'ordine sono **testuali**. Il worker è
+**uno solo** e gira **solo da `main`** ⇒ qui **non esiste un «provo su TEST»**.
+⇒ **Cosa manca per chiuderla, ed è una cosa sola**: lo storno di **−8,00 €** su Fabiola Limuti
+fatto **dall'app su PROD**, con esito `Wallet 0,00 €`. Il committente ha scelto di farlo **lui
+dall'app** (07/09) — che è anche la prova più forte, perché attraversa **la porta della
+segreteria**, quella dello screenshot, e non solo l'edge.
+📏 **Il segno da guardare nei registri**: `POST /functions/v1/matchpoint-wallet-correct` è andato
+**422** tre volte oggi — **08:33:24**, **08:35:25** e **08:51:01** (l'ultimo è lo screenshot suo).
+Un **200** al prossimo tentativo è la chiusura.
 
 📌 **PROMOSSA A URGENTE da chi lavora, il 07/09** (delega del 23/08: si dichiara promozione, perché
 e cosa scavalca). **Non scavalca niente** — le urgenti erano tornate a **0** con la chiusura della
