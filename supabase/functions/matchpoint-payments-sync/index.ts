@@ -13,6 +13,7 @@ import {
   resolveReconcileWindow,
   selectTombstoneKeys,
 } from './reconcile-window.ts';
+import { applicaStorniPreservati } from './storno-preservato.ts';
 
 // matchpoint-payments-sync — sincronizza gli INCASSI delle prenotazioni dei campi da Matchpoint,
 // dal report 11.13 "Pagamenti effettuati nelle prenotazioni" (Estadisticas/Reservas/
@@ -411,6 +412,64 @@ Deno.serve(async (req: Request) => {
   }
   const paymentsWritten = records.length;
 
+  /* 3a) 🔁 VOCE 173 — LO STORNO SOPRAVVIVE AL SYNC (07/09/2026).
+   *
+   * 📏 Il guasto, misurato su PROD con un prima e un dopo sulle stesse due righe: marcate
+   *    `status: 'void'` da `matchpoint-payment-void`, tornavano `status: 'paid'` al primo giro
+   *    di qui — e questo giro parte ogni 5 minuti, quindi negli Incassi uno storno durava al
+   *    massimo cinque minuti. ⭐ Su 3297 pagamenti vivi di PROD `status` aveva **un solo
+   *    valore**: `paid`. Non era sfortuna, era lo stato stazionario.
+   *
+   * ⚖️ Perché la riconciliazione qui sotto NON bastava, e non è un suo difetto: lei marca ciò
+   *    che è SPARITO dal report, e uno storno non fa sparire niente — 📏 il report 11.13 non ha
+   *    nessuna colonna che dica «annullato», e gli stornati continuano a comparirci (byMethod
+   *    identico prima e dopo uno storno vero). Sono due meccanismi per due fatti diversi.
+   *
+   * 🎯 È «il gestionale SA» applicato alla cassa: lo storno l'ha fatto il gestionale, quindi è
+   *    un fatto NOSTRO, e uno specchio non può cancellarlo. Su questo Matchpoint non ha voce.
+   *
+   * ⛔ Si legge PRIMA di scrivere, e solo le chiavi che stiamo per riscrivere: non è la stessa
+   *    lettura della riconciliazione, che filtra sull'asse `booking_data` mentre queste righe
+   *    sono in chiave di data-PAGAMENTO. Riusarla sembrerebbe un risparmio e sarebbe l'asse
+   *    sbagliato — lo stesso errore che nel luglio 2026 cancellò 768 incassi.
+   */
+  let storniPreservati = 0;
+  let storniLetturaFallita: string | null = null;
+  if (newPaymentKeys.size > 0) {
+    const chiavi = [...newPaymentKeys];
+    const esistentiPerChiave = new Map<string, JsonMap>();
+    // Blocchi piccoli: `.in()` finisce nella query string, e una chiave di pagamento è lunga.
+    for (let i = 0; i < chiavi.length; i += 100) {
+      const blocco = chiavi.slice(i, i + 100);
+      const { data, error } = await admin
+        .from('pmo_cloud_records')
+        .select('local_key,payload')
+        .eq('record_type', 'payment')
+        .in('local_key', blocco);
+      if (error) {
+        /* ⛔ FALLISCE CHIUSA, ed è la parte che conta: se non riesco a sapere quali righe erano
+         * stornate, NON scrivo — riscrivere alla cieca rimetterebbe `paid` su tutto, cioè
+         * esattamente il guasto che questa cura esiste per togliere. Meglio un sync saltato
+         * (il prossimo è fra cinque minuti) di una cassa che torna a mentire.
+         * 📌 Una cura che davanti a un imprevisto riproduce il difetto non è una cura. */
+        storniLetturaFallita = errorText(error);
+        await logAudit(admin, actor, 'matchpoint_payments_sync_error', {
+          source, message: 'storni_scan: ' + storniLetturaFallita,
+        });
+        break;
+      }
+      for (const r of (Array.isArray(data) ? data : []) as { local_key: string; payload: JsonMap }[]) {
+        esistentiPerChiave.set(r.local_key, (r.payload || {}) as JsonMap);
+      }
+    }
+    if (storniLetturaFallita) {
+      return err(503, 'STORNI_SCAN_FAILED',
+        'Non riesco a rileggere gli storni già registrati: il sync si ferma invece di sovrascriverli.',
+        { dettaglio: storniLetturaFallita });
+    }
+    storniPreservati = applicaStorniPreservati(records, esistentiPerChiave).preservati;
+  }
+
   // 3b) #3 — TOMBSTONE dei cobros spariti dal report (stornati/mutati in Matchpoint). Senza
   // questa passata un pagamento annullato in MP resterebbe come record `payment` ATTIVO e la
   // sezione Incassi lo conterebbe ancora (doppio conteggio).
@@ -484,6 +543,9 @@ Deno.serve(async (req: Request) => {
       // spiegato a voce — ed è esattamente così che i 778 storni del 22/07 erano stati
       // archiviati come «la finestra è mobile» sei ore prima di scoprire cos'erano davvero.
       reconcileWindow,
+      // 🔁 Voce 173: quante righe hanno conservato uno storno che il report non conosce.
+      // 📌 Una cura che non lascia un numero dietro di sé si può solo credere.
+      storniPreservati,
       reportRows: parsed.rows.length, written: paymentsWritten, matched, tombstoned,
       unmatched: parsed.rows.length - matched, totalCents, byMethod, headers: parsed.headers,
     },
