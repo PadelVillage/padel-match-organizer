@@ -7893,6 +7893,13 @@ async function editBookingWithBrowser(input = {}) {
     // === LETTURA SOLA (read) — restituisce i partecipanti attuali senza modificare nulla ===
     if (readOnly) {
       diagnostic.steps.push('read_only_roster');
+      /* 🕰️ VOCE 171 — anche QUI si aspetta il fatto, e qui pesa di piu` che sull'incasso.
+         Un incasso che sbaglia dice «giocatore non trovato» e la segreteria se ne accorge; una
+         LETTURA che sbaglia risponde con un roster **vuoto**, che ha tutta l'aria di un dato —
+         e a valle diventa «non riesco a leggere chi c'e` in campo adesso», detto di una partita
+         piena. 📌 *Uno zero letto troppo presto non dice «non c'e`»: dice «non e` ancora
+         arrivato», e le due si somigliano moltissimo.* */
+      await _attendiRighePartecipanti(page, RP, diagnostic);
       const partecipantiLettura = [];
       let ridx = 0;
       while (true) {
@@ -8437,9 +8444,80 @@ async function editBookingWithBrowser(input = {}) {
 }
 
 // ── INCASSO pagamento partita (Fase 2b — SCRITTURA, DENARO REALE) ─────────────
+/* 🕰️🚨 VOCE 171 — «GIOCATORE NON TROVATO» SU UN GIOCATORE CHE C'ERA (07/09/2026).
+ *
+ * 📏 IL FATTO, misurato su PROD e non raccontato: il 07/09 alle 00:04 un incasso e` morto con
+ *    `GIOCATORE_NON_TROVATO` e **`righeViste: []`** — zero righe. Trenta secondi prima la lettura
+ *    dello STESSO roster ne vedeva **quattro**, con la persona cercata a `idx 2`. Ripetuto
+ *    identico tre minuti dopo, e` passato.
+ *
+ * 🔎 COSA E` STATO ESCLUSO, misurandolo:
+ *    · non e` la scansione — la strada della LETTURA e quella dell'INCASSO caricano la ficha con
+ *      lo stesso URL, lo stesso `domcontentloaded` + 300 ms fissi e lo stesso locator, riga per
+ *      riga (le due funzioni sono gemelle);
+ *    · non e` una ficha sbagliata — il `ButtonExtender` era stato trovato (`ficha:partita`), cioe`
+ *      eravamo su una scheda vera, e l'URL porta l'idReserva;
+ *    · non si e` lasciato prendere ripetendo: la stessa scansione in **sola lettura sei volte di
+ *      fila** ha dato **4 righe su 4, sei volte su sei**, in 2,2 s ciascuna.
+ *
+ * ⛔ **LA CAUSA NON E` STATA TROVATA**, e questa riga lo dice invece di chiuderla con un nome.
+ *
+ * 🔨 ⇒ Si cura la CLASSE, non l'ipotesi: *un'attesa fissa non distingue «non c'e`» da «non c'e`
+ *    ANCORA»*, ed e` esattamente la lezione gia` pagata sul dialog dell'incasso (ipotesi ⑤ della
+ *    stessa voce). Qui restavano 300 ms fissi dopo un `domcontentloaded`.
+ *    ① si aspetta il **fatto** (la riga 0 del repeater) invece dei millisecondi;
+ *    ② se dopo l'attesa non c'e` ancora niente, si **ricarica la ficha UNA volta** e si riguarda:
+ *       e` un GET su una pagina di sola lettura, quindi non ha effetti — e separa *«la pagina e`
+ *       venuta su male»* da *«righe non ce ne sono davvero»*;
+ *    ③ e si **dichiara quale dei tre casi** era, perche' la cura porti con se' la propria sonda.
+ *
+ * ⚠️ **QUESTA CURA NON E` PROVATA CONTRO IL GUASTO VISTO**, e va detto: il caso e` intermittente
+ *    e non si sa provocare. Cio` che e` provato e` che il meccanismo funziona (banco) e che non
+ *    rompe la strada normale. **La prova arrivera` dai registri**: se un giorno comparira` un
+ *    `repeater:comparso:giro2` o un `repeater:ricaricata`, quello sara` il giorno in cui l'incasso
+ *    sarebbe fallito e non e` fallito.
+ * 📌 *Una cura che non puo` essere provata subito deve almeno saper dire, dopo, di essere servita.*
+ */
+async function _attendiRighePartecipanti(page, RP, diagnostic, opts = {}) {
+  const attesaMs = Number.isFinite(opts.attesaMs) ? opts.attesaMs : 8000;
+  const riga0 = `input[id*="RepeaterParticipantes_${RP}_Listado_0_TextBoxNombreValor_0"]`;
+  const conta = async () => await page.locator(riga0).count().catch(() => 0);
+
+  const attendi = async () => {
+    const scadenza = Date.now() + attesaMs;
+    let giri = 0;
+    for (;;) {
+      giri += 1;
+      if (await conta() > 0) return { c: true, giri };
+      if (Date.now() >= scadenza) return { c: false, giri };
+      await page.waitForTimeout(250);
+    }
+  };
+
+  let r = await attendi();
+  if (r.c) {
+    // ⭐ `giro1` e` la strada normale e non dice niente di nuovo; da `giro2` in su questa riga e`
+    //    il reperto: la riga C'ERA, ma non ancora quando si sarebbe guardata prima.
+    if (diagnostic && Array.isArray(diagnostic.steps)) diagnostic.steps.push(`repeater:comparso:giro${r.giri}`);
+    return { presenti: true, giri: r.giri, ricaricata: false };
+  }
+
+  // ② la seconda ipotesi: la pagina e` venuta su male. Una rilettura, UNA sola.
+  if (diagnostic && Array.isArray(diagnostic.steps)) diagnostic.steps.push(`repeater:vuoto_dopo_${attesaMs}ms:ricarico`);
+  try { await page.reload({ waitUntil: 'domcontentloaded', timeout: 12000 }); } catch (_e) { /* si riguarda lo stesso */ }
+  r = await attendi();
+  if (diagnostic && Array.isArray(diagnostic.steps)) {
+    diagnostic.steps.push(r.c ? `repeater:ricaricata:comparso:giro${r.giri}` : 'repeater:mai_comparso');
+  }
+  return { presenti: r.c, giri: r.giri, ricaricata: true };
+}
+
 // Helper: trova la riga partecipante per idCliente (HiddenFieldIdCliente = id URL,
 // quello passato dall'app), fallback per nome. Ritorna ridx o null.
-async function _findParticipantRow(page, RP, idClienteWanted, playerName) {
+// ⚠️ Aspetta che il repeater CI SIA prima di dire che una persona non c'e`: vedi il blocco qui
+//    sopra. Senza, «non trovato» e «non ancora caricato» escono con la stessa faccia.
+async function _findParticipantRow(page, RP, idClienteWanted, playerName, diagnostic) {
+  await _attendiRighePartecipanti(page, RP, diagnostic);
   const _digits = (s) => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
   const _norm = (s) => String(s || '').toLowerCase().trim();
   const wantId = _digits(idClienteWanted);
@@ -8740,7 +8818,7 @@ async function collectPaymentWithBrowser(input = {}) {
     diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
 
     // Trova la riga del partecipante (preferisci idCliente, fallback nome).
-    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName, diagnostic);
     if (found.ridx == null) {
       throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
     }
@@ -8910,7 +8988,7 @@ async function setChargeWithBrowser(input = {}) {
     const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
     diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
 
-    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName, diagnostic);
     if (found.ridx == null) {
       throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
     }
@@ -9087,7 +9165,7 @@ async function voidPaymentWithBrowser(input = {}) {
     const RP = fichaUrl.includes('ClaseSuelta') ? 'WUCUsuarioClase' : 'WUCUsuarioPartida';
     diagnostic.steps.push('ficha:' + (RP === 'WUCUsuarioClase' ? 'lezione' : 'partita'));
 
-    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName);
+    const found = await _findParticipantRow(page, RP, idClienteWanted, playerName, diagnostic);
     if (found.ridx == null) {
       throw fail('GIOCATORE_NON_TROVATO', `Partecipante (idCliente ${idClienteWanted || '-'} / "${playerName || '-'}") non trovato nella scheda.`, Object.assign({}, diagnostic, { righeViste: found.righeViste }));
     }
@@ -9986,7 +10064,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa', 'storno-conferma-rimborso'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa', 'storno-conferma-rimborso', 'repeater-atteso-non-cronometrato'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
