@@ -2108,6 +2108,41 @@ niente di questa voce.
 decina di secondi** senza ricaricare la pagina, e in archivio la riga
 `wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
 
+🚨⭐⭐ **E QUELLA RIGA VA GUARDATA ENTRO DIECI MINUTI, O DICE IL FALSO — misurato il 07/09
+pomeriggio, e corregge il criterio qui sopra invece di affiancarlo.**
+📏 Andato a cercare in archivio la prova del ↻ del 06/09 (`source: pmo_wallet_read`, ore 19:33:15):
+**non c'è più.** La riga `wbal|7d454239…` di Maurizio Aprea oggi dice `source: matchpoint`,
+`updated_at 13:50:21` — e il saldo è lo stesso, **600**.
+⚖️ **Non è la cura ad aver smesso di funzionare: è la routine dei 10 minuti che RISCRIVE quella
+riga**, e con essa la provenienza. `pmo_wallet_read` e `pmo_wallet_correct` **non sono uno stato
+che resta**: sono una traccia che il giro successivo cancella.
+⇒ ⛔ **Chi controlla dopo più di dieci minuti legge `matchpoint` e conclude che la rilettura NON è
+partita** — di una rilettura partita. È la **24ª** (*la sonda che guarda troppo tardi*) infilata
+nel criterio di chiusura di questa voce, cioè nel punto peggiore: avrebbe fatto dichiarare rotta
+una cura sana, o — peggio — riaprire la voce.
+🔨 **Il criterio corretto**: il `source` si guarda **entro il giro**, e la finestra è di **≤10
+minuti** dal gesto. Fuori da lì quella colonna non è una prova né in un verso né nell'altro.
+📌 *Un criterio di chiusura che poggia su un campo che qualcun altro riscrive ha una scadenza, e la
+scadenza va scritta accanto al criterio — o il criterio mente da solo, senza che nessuno lo tocchi.*
+📏 **Perché una riga `pmo_wallet_correct` sopravvive dal 10:52 e sembra smentirlo**: è
+`wbal|640a444a…` (id cliente `000291`, saldo `0`, nome vuoto), e la routine **non la tocca** —
+come non tocca altre tre righe ferme a luglio. ⇒ Sopravvive chi è **fuori** dal giro, non chi è
+dentro: la sopravvivenza di quella riga non dice niente sulla durata delle altre.
+
+⏳ **E QUINDI: il pagamento col borsellino della 171 NON ha chiuso questa voce, ed è stato
+misurato invece che supposto.** La 171 si è chiusa il 07/09 con un incasso vero **col borsellino**
+(10,8 s), e verrebbe da pensare che la rilettura di questa voce sia passata di lì. 📏 In archivio
+**non esiste nessuna riga `pmo_wallet_read`**, in nessun momento: le fotografie sono **41**, e le
+provenienze sono solo `matchpoint` (40) e `pmo_wallet_correct` (1).
+⚖️ ⚠️ **Ma questo zero NON prova che la rilettura non sia partita**, ed è esattamente la lezione
+①  del 07/09 mattina — *uno zero non distingue «rotta» da «non l'ha chiamata nessuno»*: qui si
+somma alla scadenza dei 10 minuti qui sopra, quindi lo zero ha **due** spiegazioni innocenti
+(il gesto è passato dall'**edge** e non dal bottone dell'app ⇒ `_pmoCollectPayment` non è mai
+stata eseguita; oppure la traccia c'è stata ed è stata riscritta).
+⇒ **Resta vero quello che questa voce chiedeva**: serve il gesto **dall'app**, e il controllo
+**entro dieci minuti**. *Provare la strada non è provare la porta da cui ci si entra* — e adesso
+si sa anche **per quanto tempo** la porta lascia il segno.
+
 🚨🚨⭐⭐ **E LA PROVA COL PAGAMENTO, SU MAURIZIO APREA, **NON SI PUÒ FARE** — misurato il 06/09
 notte aprendo la scheda vera, prima di premere.**
 📏 Il roster della 9844 letto dal worker dice, per lui: `stato: riscosso`, `importoCents: 0`,
@@ -2766,6 +2801,43 @@ voci uscite (sotto, accanto alla 52 e alla 54) è la voce che lo spiega, così n
 ---
 
 ## 🆕 Nate misurando, **non** ancora in coda
+
+### 🕰️ LA FOTOGRAFIA DEL BORSELLINO HA UN TIMBRO DI TEMPO NEL PAYLOAD, e si riscrive tutta ogni 10′ — misurato il 07/09 pomeriggio
+
+📏 **Trovata tirando il filo della 143**, cercando in archivio la traccia di un `pmo_wallet_read` —
+e la cosa che è saltata fuori è un'altra: **tutte e 41** le righe `wallet_balance` portano nel
+payload un campo `synced_at`, che è l'**istante del giro** e cambia a ogni passata.
+
+| | |
+|---|---|
+| righe `wallet_balance` in archivio | **41** |
+| riscritte nell'ultimo giro | **37**, tutte con lo **stesso** `updated_at` (13:50:21.324477) ⇒ una sola scrittura in blocco |
+| righe col timbro `synced_at` nel payload | **41 su 41** |
+| cadenza | la routine `wallet`, **ogni 10 minuti** |
+
+⚖️ ⇒ Il payload è **diverso a ogni giro anche quando il saldo non si è mosso**, perché a muoversi
+è il timbro. Fanno **~37-40 righe riscritte ogni 10′**, cioè **~5.500 riscritture al giorno**, per
+sempre e senza mai convergere.
+
+🚨 **È ESATTAMENTE la trappola che la scheda della 142 dichiara di aver schivato**, in un altro
+record: *«nel payload non entra NESSUN TIMBRO DI TEMPO. Un `arricchitoAt` renderebbe il payload
+diverso a ogni giro ⇒ ogni riga riscritta ogni 2 minuti, cioè la fabbrica di WAL da cui nasce la
+160»*. Là è stata vista e evitata; qui c'era già, e nessuno l'aveva guardata.
+📌 *Una trappola riconosciuta mentre si scrive codice nuovo non si va quasi mai a cercare nel
+codice vecchio — ed è lì che ha avuto tempo di girare.*
+
+⚖️ **La proporzione, detta onestamente**: ~5.500 riscritture al giorno sono **poca cosa** accanto
+alla **160**, e il WAL vero di PROD misurato il 07/09 è **0,4 a 1** — non c'è nessuna emergenza.
+Ciò che la rende degna di essere scritta non è la taglia, è che **non finisce**.
+
+⛔ **NON è stata curata, ed è deliberato**: non è una voce in lista, e *la delega copre l'ordine
+delle voci, non la loro esistenza*. Qui c'è la **misura**; se diventi lavoro lo decide lui.
+⏳ **E cosa NON è stato misurato**: se il chi-scrive salterebbe le righe invariate **senza** il
+timbro. Che le righe **siano** riscritte lo dice l'`updated_at`; che il timbro sia **la ragione**
+per cui nessuna deduplica può scattare è una lettura della **forma** del payload, non una misura.
+⇒ Prima di toccarlo, quello va provato: `payload_hash` su queste righe è **`null`**, quindi la
+deduplica potrebbe non essere nemmeno cablata — e togliere il timbro non cambierebbe niente.
+📌 *Una cura ovvia su un meccanismo non misurato è un'ipotesi con l'aria di una soluzione.*
 
 ### 🚨 UN FILE DI `_shared/` CAMBIATO DA SOLO NON RIDEPLOYA NESSUNA EDGE — misurato il 06/09 notte
 
