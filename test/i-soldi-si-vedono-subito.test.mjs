@@ -72,6 +72,7 @@ function banco(pagamentiInArchivio = []) {
   vm.runInContext([
     'const _PAY_METHOD_LABEL = { contanti: "Cash", carta: "Card", borsellino: "Wallet", omaggio: "Offerta", altro: "Altro" };',
     'let _staffCalPaidIndex = new Map();',
+    'let _staffCalPaidIndexAt = 0;',
     // `_incassiMethodBucket` sta lontanissimo nel file e non è ciò che si prova: si dichiara il
     // suo esito, che è una mappa parola→secchio, e si tiene la funzione VERA per il resto.
     'function _incassiMethodBucket(m){ m = String(m||"").toLowerCase();'
@@ -90,11 +91,23 @@ function banco(pagamentiInArchivio = []) {
     estrai('_payPaidBadge'),
     estrai('_staffCalRefreshPaidIndex'),
     // 🚨 Le `const`/`let` di primo livello NON diventano proprietà del contesto: si espongono.
+    estrai('_staffCalMaybeRefreshPaidIndex'),
+    // 🚨 `_incassiFetch` si ESTRAE, non si finge: è lì dentro che vive il `ok:false`, e
+    //    sostituendola con uno stub il sabotaggio «il guasto torna indistinguibile dal vuoto»
+    //    restava VERDE — il banco provava il proprio stub. Il confine falso si sposta un passo
+    //    più in là, su `pmoStaffRpcPaged`, che è il vero confine col database.
+    estrai('_incassiFetch'),
     'globalThis.__leggiIndice = () => _staffCalPaidIndex;',
+    'globalThis.__leggiTimbro = () => _staffCalPaidIndexAt;',
+    'globalThis.__timbra = (v) => { _staffCalPaidIndexAt = v; };',
+    'globalThis.__metti = (k, n, m, c) => _staffCalPaidIndexAdd(k, n, m, c);',
   ].join('\n'), ctx);
 
-  // `_incassiFetch` è il confine col database: qui si dichiara cosa risponde.
-  ctx._incassiFetch = async () => ({ payments: pagamentiInArchivio, lastSync: null });
+  // Il confine col database è `pmoStaffRpcPaged`: qui si dichiara cosa risponde. `_incassiFetch`
+  // resta quella VERA, estratta da index.html, e ci passa sopra per davvero.
+  ctx.pmoStaffRpcPaged = async () => pagamentiInArchivio.map((pl) => ({
+    record_type: 'payment', local_key: 'pay|x', deleted: false, payload: pl,
+  }));
   return ctx;
 }
 
@@ -266,4 +279,101 @@ test('③ un omaggio poi trasformato in incasso vero NON resta un 🎁', () => {
 test('③ e senza nessun metodo noto resta l’attesa, non un omaggio', () => {
   const c = banco([]);
   assert.deepEqual(puro(c._payPaidBadge(null, null, [])), { kind: 'wait' });
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ④ IL DIFETTO CHE HA TROVATO LA PROVA FISICA, non il banco — e che questa cura rende PORTANTE
+//
+// 📏 Su TEST 6.394 la scheda mostrava «non lo so ancora» per due giocatori che l'archivio
+//    conosceva; forzando il rinfresco comparivano tutt'e due. ⇒ La regola era giusta, l'indice
+//    era VUOTO: il primo disegno del calendario gira prima che la sessione staff sia pronta, la
+//    lettura fallisce, e un elenco vuoto era indistinguibile da «non c'è nessun pagamento».
+// 📌 Prima il danno era cosmetico (mancava l'etichetta del metodo su una riga già ✓); la cura
+//    dei soldi lo rende portante. *Una cura può trasformare un difetto innocuo in quello che la
+//    regge, e da quel momento va curato anche lui.*
+// ══════════════════════════════════════════════════════════════════════════════════════════
+test('④ una lettura FALLITA non svuota l’indice che c’era', async () => {
+  const c = banco([PAGATO()]);
+  await c._staffCalRefreshPaidIndex();
+  assert.ok(info(c), 'preparazione fallita: il pagamento non è entrato');
+
+  c.pmoStaffRpcPaged = async () => { throw new Error('Accedi con email personale Supabase'); };
+  const esito = await c._staffCalRefreshPaidIndex();
+
+  assert.equal(esito, false, 'un guasto si è dichiarato riuscito');
+  assert.ok(info(c), '🚨 un guasto di lettura ha CANCELLATO i pagamenti che si conoscevano');
+});
+
+test('④ 🚨 e non consuma la finestra dei due minuti: il prossimo disegno riprova', async () => {
+  const c = banco([PAGATO()]);
+  c.__timbra(1_700_000_000_000);   // 🚨 sporcato apposta: con lo zero iniziale l'asserzione
+  //    qui sotto passerebbe DA SOLA, anche con la cura tolta — ed è successo, visto in un
+  //    sabotaggio rimasto verde. 📌 *Un caso che parte già nello stato che vuole dimostrare
+  //    non dimostra niente: verifica sé stesso.*
+  c.pmoStaffRpcPaged = async () => { throw new Error('sessione non pronta'); };
+  await c._staffCalRefreshPaidIndex();
+  assert.equal(c.__leggiTimbro(), 0,
+    'la finestra è stata bruciata da un tentativo fallito: per due minuti l’archivio non risponde a nessuno');
+});
+
+test('④ una lettura che ESPLODE si comporta come una fallita', async () => {
+  const c = banco([PAGATO()]);
+  await c._staffCalRefreshPaidIndex();
+  c.__timbra(1_700_000_000_000);
+  c.pmoStaffRpcPaged = async () => { throw new Error('esplosa'); };
+  const esito = await c._staffCalRefreshPaidIndex();
+  assert.equal(esito, false);
+  assert.equal(c.__leggiTimbro(), 0);
+  assert.ok(info(c), 'un’eccezione ha cancellato i pagamenti che si conoscevano');
+});
+
+test('④ e una riga MALFORMATA non brucia la finestra né l’indice', async () => {
+  // 🩹 Scritto perché un sabotaggio restava VERDE: `_incassiFetch` cattura per conto suo, quindi
+  //    un guasto di rete non arriva MAI al `catch` esterno di `_staffCalRefreshPaidIndex` — e la
+  //    sua rete di sicurezza non era esercitata da nessun caso. 📌 *Una difesa che nessun caso
+  //    attraversa non è difesa: è dichiarata.* Qui l'eccezione nasce DOPO la lettura, nel giro
+  //    che costruisce l'indice, che è l'unico modo di arrivarci.
+  const c = banco([PAGATO()]);
+  await c._staffCalRefreshPaidIndex();
+  c.__timbra(1_700_000_000_000);
+  c.pmoStaffRpcPaged = async () => [{
+    record_type: 'payment', local_key: 'pay|rotta', deleted: false,
+    payload: { status: 'paid', booking_data: '2026-09-06', campo: 'Campo 1', ora: '17:30',
+               get player_name() { throw new Error('riga rotta'); } },
+  }];
+  const esito = await c._staffCalRefreshPaidIndex();
+  assert.equal(esito, false, 'una riga rotta si è dichiarata un giro riuscito');
+  assert.equal(c.__leggiTimbro(), 0, 'una riga rotta ha bruciato la finestra dei due minuti');
+  assert.ok(info(c), 'una riga rotta ha cancellato i pagamenti buoni');
+});
+
+test('④ una lettura RIUSCITA invece consuma la finestra, o si leggerebbe a ogni disegno', async () => {
+  const c = banco([PAGATO()]);
+  c.__leggiTimbro();
+  await c._staffCalMaybeRefreshPaidIndex();
+  await new Promise((r) => setTimeout(r, 5));
+  assert.ok(c.__leggiTimbro() > 0, 'senza timbro il calendario rileggerebbe il database a ogni disegno');
+  assert.ok(info(c));
+});
+
+test('④ ⚠️ l’indice NON dimentica, ed è VOLUTO: protegge l’incasso appena fatto', async () => {
+  // 🔎 Scoperto scrivendo questo banco, aspettandosi il contrario: un giro RIUSCITO che non
+  //    riporta più un pagamento non lo toglie dall'indice — il blocco «preserva gli add
+  //    ottimistici» ripesca dal giro di prima tutto ciò che il sync non ha.
+  // ⚖️ NON si cambia, ed è una scelta dichiarata: quel blocco esiste per il cobro appena fatto
+  //    alla cassa, che nel cloud non c'è ancora. Toglierlo farebbe tornare «non lo so ancora»
+  //    proprio sulla riga dove la segreteria ha appena incassato — il caso che questa voce serve.
+  // ⏳ IL COSTO, dichiarato e non nascosto: uno storno fatto da un'ALTRA postazione sparisce dal
+  //    sync ma resta nell'indice di questo browser fino a un ricaricamento. ⇒ Per la finestra in
+  //    cui il worker non ha ancora risposto quella riga mostra ✓. Il worker la corregge appena
+  //    parla, e chi ha stornato lo toglie dal proprio indice da sé (`_staffCalPaidIndexRemove`).
+  // 📌 *Un banco serve anche a scoprire che il codice fa una cosa diversa da quella che ti
+  //    aspetti — e allora si guarda PERCHÉ, invece di cambiarlo perché il caso è rosso.*
+  const c = banco([PAGATO()]);
+  await c._staffCalRefreshPaidIndex();
+  c.pmoStaffRpcPaged = async () => [];
+  const esito = await c._staffCalRefreshPaidIndex();
+  assert.equal(esito, true, 'un giro riuscito si è dichiarato fallito');
+  assert.ok(info(c), 'la protezione dell’incasso appena fatto è stata tolta');
 });
