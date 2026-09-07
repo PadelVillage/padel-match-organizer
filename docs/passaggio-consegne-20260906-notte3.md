@@ -16,8 +16,17 @@
 > «allineato»).
 > ⚠️ **La console remota vuole `npm install`** (`cd tools/verifica-browser && npm install`, ~1′):
 > il container nasce senza playwright. Le `PMO_VERIFY_*` **ci sono già** nell'ambiente cloud.
-> ⚠️ **Deno non si installa da qui** (403). Le prove `.ts` le lancia la CI; in locale
-> `node --experimental-strip-types`, e i `test/*.test.mjs` girano con `node <file>`.
+> 🔄 **DENO SI INSTALLA — e questa riga diceva il contrario** *(corretta il 07/09/2026)*. Diceva
+> *«Deno non si installa da qui (403)»*: è vero di **deno.land**, ed è **falso di npm** —
+> `npm install deno` porta un Deno vero (2.9.6), e con quello `deno check` si esegue in locale.
+> 📏 È servito il 07/09 per trovare il nono errore di tipo della voce 173 in due minuti, invece
+> di indovinarlo a colpi di CI. ⚖️ È la **26ª**: un limite dichiarato che nessuno riprova resta
+> vero per sempre perché sembra prudente — e qui era **mezzo vero**, che è la forma peggiore.
+> ⛔ **Cosa resta vero**: `jsr.io` è **fuori allowlist**, quindi `deno check index.ts` su un'edge
+> muore sull'import `jsr:` della riga 1. Si aggira sostituendolo con uno stub locale in una copia
+> fuori dal repo: il resto del grafo di tipi si controlla tutto, e il conteggio degli errori torna
+> identico a quello della CI (misurato: 9 sulla PR, 8 sulla base, come diceva il gate).
+> · in locale valgono anche `node --experimental-strip-types` e `node <file>` per i `.test.mjs`.
 >
 > ---
 >
