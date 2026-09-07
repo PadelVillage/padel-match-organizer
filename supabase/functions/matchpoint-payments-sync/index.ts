@@ -1,5 +1,22 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+/* 🩹 IL TIPO DEL CLIENT AMMINISTRATIVO, corretto il 07/09/2026 mentre si curava la voce 173.
+ * Le tre funzioni-aiuto dichiaravano `AdminClient`, che NON è il tipo che
+ * `createClient(url, key)` restituisce davvero: senza generici l'espressione vale
+ * `SupabaseClient<any, "public", "public", any, any>`, mentre `ReturnType<…>` prende i generici
+ * di DEFAULT (`… never, never …`) ⇒ ogni chiamata che passava `admin` era un errore di tipo.
+ * 📏 Erano **otto**, tutte della stessa famiglia, e `deno check` le contava una per una: la cura
+ * della 173 ne aggiungeva una nona (il suo `logAudit`), e il gate differenziale — giustamente —
+ * si è fatto rosso su «8 prima, 9 ora».
+ * ⚖️ Si è curata la FAMIGLIA invece di schivare l'istanza: togliere quel `logAudit` avrebbe reso
+ * il gate verde lasciando un guasto della rilettura degli storni **senza traccia**, che è il
+ * contrario di ciò che serve. Il workflow lo chiede per iscritto: *«errori preesistenti, da
+ * ripulire quando tocchi questo file»*. 📏 Misurato in locale con Deno vero: da 8 a **0**.
+ * 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna
+ *    quella CHIAMATA: i generici di default e quelli dedotti sono due cose diverse.* */
+// deno-lint-ignore no-explicit-any
+type AdminClient = SupabaseClient<any, any, any, any, any>;
 import * as XLSX from 'xlsx';
 import {
   buildMemberIndex,
@@ -151,7 +168,7 @@ async function getActor(req: Request): Promise<StaffActor | null> {
   };
 }
 
-async function verifyRoutineSecret(admin: ReturnType<typeof createClient>, secret: string) {
+async function verifyRoutineSecret(admin: AdminClient, secret: string) {
   const value = clean(secret);
   if (!value) return false;
   const { data, error } = await admin.rpc('pmo_verify_data_routine_secret', { p_secret: value });
@@ -253,7 +270,7 @@ function parsePaymentsWorkbook(bytes: Uint8Array): { ok: true; rows: PaymentRow[
   return { ok: true, rows, headers, sourceRows: rawRows.length };
 }
 
-async function loadMembers(admin: ReturnType<typeof createClient>): Promise<MemberIndex> {
+async function loadMembers(admin: AdminClient): Promise<MemberIndex> {
   const records: MemberRecord[] = [];
   for (let from = 0, page = 0; page < 50; page += 1, from += SUPABASE_PAGE_SIZE) {
     const { data, error } = await admin
@@ -275,7 +292,7 @@ function memberLocalId(rec: MemberRecord): string {
   return clean(p.id) || clean(rec.local_key);
 }
 
-async function logAudit(admin: ReturnType<typeof createClient>, actor: StaffActor | null, action: string, detail: JsonMap) {
+async function logAudit(admin: AdminClient, actor: StaffActor | null, action: string, detail: JsonMap) {
   if (!actor) return;
   await admin.from('pmo_audit_log').insert({
     actor_user_id: actor.userId,
