@@ -137,6 +137,12 @@ fino in fondo, guardando cosa succede.
 ⛔⛔ **L'UNICA COSA CHE RESTA FUORI: SALVARE UN PAGAMENTO.** Cash · Card · Wallet — cioè
 `matchpoint-payment-write` e la sua strada — e per simmetria lo **storno**
 (`matchpoint-payment-void`), che è lo stesso libro letto al contrario.
+🔄 **E DAL 07/09/2026 NON È PIÙ UN'ECCEZIONE DI QUESTA SEZIONE: è una regola generale del
+progetto.** Qui era scritta come *«l'unica cosa che resta fuori»* dal campo libero di **una** scheda
+segnalata — vera, ma troppo stretta. Lui ha dichiarato che **dal gestionale non si fanno pagamenti,
+mai, su niente** (⇒ *🔌 IL DISTACCO DA MATCHPOINT*, più sotto). ⇒ Non serve più una scheda
+segnalata perché il divieto valga: vale **ovunque e sempre**, e questa riga ne è ormai un caso
+particolare invece che la fonte.
 ⚖️ **Il perché, e va capito o la regola si applica male**: un incasso entra nella **cassa del
 circolo**, e una riga di cassa non è una prova — è denaro che qualcuno dovrà quadrare a fine
 serata. 🚨 **L'importo a carico invece NON è un pagamento** (voce 132: *«un importo a carico non è
@@ -547,6 +553,51 @@ deploy (che gira sui computer di GitHub) e **`githubstatus.com`**, che è un alt
 ⚖️ ⇒ *Una misura fatta dal Mac parla della rete del committente; per parlare del mondo serve una
 sonda che stia altrove.* È la 24ª — la sonda che guarda nel cassetto sbagliato — nella forma in cui
 il cassetto sbagliato è **la propria posizione**.
+
+## 🔌 IL DISTACCO DA MATCHPOINT — e la regola sui PAGAMENTI che ne discende (FERMA, 07/09/2026)
+
+🗣️ **Sue parole, date la sera in cui ha fatto cassare tutte le voci sui pagamenti** (*«poi ti
+spiego»* — questa è la spiegazione):
+
+> *«Entro venti giorni ci staccheremo da Matchpoint, quindi al momento noi leggeremo tutti i dati
+> di numeri da Matchpoint per quanto riguarda gli incassi e i costi delle partite, ma non andremo
+> mai dal nostro gestionale a fare pagamenti che riguardano le partite o qualsiasi altra cosa.»*
+
+⇒ **Due cose in una frase, e vanno tenute separate perché hanno durate diverse:**
+
+| | cosa dice | quanto dura |
+|---|---|---|
+| 📖 **si LEGGE da Matchpoint** | i **numeri**: incassi e costi delle partite. Oggi Matchpoint è ancora la **fonte** di quei dati | **fino al distacco** |
+| ⛔ **non si SCRIVE mai un pagamento** | dal gestionale **non parte nessun pagamento** — né sulle partite né su qualunque altra cosa | **per sempre**, distacco o no |
+
+🗓️ **La data**: detto il **07/09/2026** ⇒ il distacco cade **intorno al 27/09/2026**. ⚠️ È una
+scadenza dichiarata da lui, non una misura: quando arriva, **la riga «si legge da Matchpoint» va
+riletta**, non ereditata. 📌 *Una scadenza scritta senza la data in cui è stata detta diventa
+eterna: «entro venti giorni» letto fra un mese vuol dire ancora venti giorni.*
+
+⛔⛔ **LA METÀ CHE NON SCADE, ed è quella operativa: IL GESTIONALE NON FA PAGAMENTI.**
+Non «non ancora», non «non senza chiedere»: **mai**. Vale per Cash, Card e Wallet, per lo **storno**
+(che è lo stesso libro letto al contrario), per le partite e per qualunque altra cosa.
+⇒ **Cosa comporta, quando si scrive codice o si progetta una prova:**
+· non si apre nessun lavoro la cui prova richieda un pagamento salvato dal gestionale — è la
+  ragione per cui la **143** è stata cassata invece che rimandata;
+· le **letture** restano tutte: `matchpoint-payments-sync`, la sezione **Incassi**, i costi delle
+  partite, il saldo del borsellino. Leggere non è scrivere, e qui la riga passa esattamente lì;
+· una richiesta futura che suoni come *«facciamo pagare dal gestionale»* **contraddice questa
+  regola**: si riporta a lui, non si esegue.
+
+⚠️⭐ **E UNA CONSEGUENZA CHE VA PORTATA A LUI, non decisa qui**: nell'app di PROD i **bottoni
+Cash · Card · Wallet esistono e funzionano** (voce 171, chiusa il 07/09 mattina a prova fisica su
+tutti e tre i metodi, `PMO_PAYMENTS_WRITE_ENABLED`). ⇒ Una regola che dice *«mai»* e tre bottoni
+che lo fanno **non possono convivere a lungo**: o i bottoni si tolgono, o la regola ha un'eccezione
+che non è scritta. **La scelta è sua** — qui sta il fatto, non la decisione.
+📌 *Una regola contraddetta da un bottone in servizio non protegge niente: la prima persona che
+preme decide al posto della regola.*
+
+🎯 **Perché questa regola non è una restrizione ma un disegno**: è la stessa forma già scritta in
+*«il gestionale SA, il bot DICE»* e nei *tre passi*, applicata al denaro. Il giorno del distacco il
+gestionale deve poter smettere di parlare con Matchpoint **senza che nessun soldo resti a metà
+strada** — e l'unico modo di garantirlo è che **nessun soldo ci sia mai passato**.
 
 ## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
 
@@ -1003,11 +1054,13 @@ resta dentro la partita, **esce nella cassa del circolo** e da lì lo tira fuori
 ⚖️ È un confine di **natura diversa** da tutti gli altri di questo file: non è «rischi di rompere
 qualcosa», è *questa scrittura ha un fuori*. Per questo è l'unica eccezione a un permesso che
 altrimenti è pieno.
-🚨 **Non vuol dire che la voce 125 sia inesigibile**: quella chiede un **incasso vero da 1 €** ed è
-un **gesto SUO**, già in cima al blocco *«✋ DA PROVARE INSIEME»* di `docs/lavori/README.md`, che si
-chiude da sé con lo storno dalla scheda socio. ⇒ Le due righe non si contraddicono: *il pagamento
-lo fa lui, non io.* Chi legge questa esclusione e ne conclude «la 125 non si può provare» ha letto
-un divieto dove c'è una **divisione dei compiti**.
+🔄🚨 **E QUESTO PARAGRAFO È CADUTO IL 07/09/2026: la voce 125 è CHIUSA e i pagamenti sono
+cassati.** Qui c'era scritto che la 125 restava esigibile perché *«il pagamento lo fa lui, non io»*
+— cioè che l'esclusione era una **divisione dei compiti**, non un divieto. ⇒ **Non è più così**:
+dal gestionale non parte un pagamento né mio né suo (⇒ *🔌 IL DISTACCO DA MATCHPOINT*). La riga
+vecchia non era sbagliata quando fu scritta: descriveva chi preme il bottone, in un mondo in cui
+quel bottone si premeva.
+📌 *Quando cade il permesso, cade anche la riga che spiegava a chi apparteneva.*
 
 ### 🧹 …E UNA VOCE PROVATA SI SPOSTA FRA LE CHIUSE **SUBITO** (FERMA, 04/09/2026 notte)
 
