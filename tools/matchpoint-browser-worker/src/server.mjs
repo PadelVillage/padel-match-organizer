@@ -9218,26 +9218,49 @@ async function voidPaymentWithBrowser(input = {}) {
 // ── STORNO / Correzione borsellino (Fase 2b — SCRITTURA, denaro reale) ─────────
 // Apre la sezione "Fatturazione e pagamenti" → sotto-tab "Saldo" (ledger borsellino),
 // dove vivono i pulsanti Ricarica credito / Correzione del saldo / ...
+// 🚨 VOCE 174 — QUESTA FUNZIONE TACEVA I PROPRI FALLIMENTI, ed è così che il guasto del
+//    07/09 è sembrato «il pulsante non c'è più». Ogni click stava in un try/catch che scartava
+//    l'errore con un commento (`prova prossima`) e NON lasciava traccia: dal fuori, una scheda
+//    coperta da un avviso e una scheda senza quel tab si somigliavano come due gocce d'acqua.
+// ⚖️ Ora ogni click che non passa lo DICE (`wallet_tab_ko:` / `wallet_subtab_ko:`), e il tab
+//    mancante ha un passo suo (`wallet_tab:none`) invece del silenzio.
+// 🔁 E la funzione si RIPARA da sé una volta: se non è passata e c'è un avviso da togliere, lo
+//    toglie e ritenta — ma solo in quel caso. Se non c'era niente da togliere il secondo giro
+//    proverebbe la stessa identica cosa, e un ritentativo che non cambia niente è solo attesa.
 async function _openWalletSaldoLedger(page, diagnostic) {
-  for (const lab of [MP_PAYMENT_SELECTORS.walletBillingTab, 'Facturación y pagos', 'Fatturazione']) {
-    const tab = page.locator(`a:visible:has-text("${lab}")`).first();
-    if (await tab.count().catch(() => 0)) {
-      try { await tab.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_tab:' + lab); break; } catch (e) { /* prova prossima */ }
+  for (let giro = 0; giro < 2; giro++) {
+    if (giro > 0) {
+      const via = await dismissSwalOk(page, diagnostic, 'ledger_ko');
+      if (!via.dismissed) break;
+      diagnostic.steps.push('wallet_ledger:ritento_dopo_avviso');
     }
-  }
-  for (const lab of MP_PAYMENT_SELECTORS.walletSaldoSubTabLabels) {
-    const sub = page.locator(`a:visible:has-text("${lab}"), li:visible:has-text("${lab}") a:visible`).first();
-    if (await sub.count().catch(() => 0)) {
-      try { await sub.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_subtab:' + lab); return true; } catch (e) { /* prova prossima */ }
+    let tabAperta = false;
+    for (const lab of [MP_PAYMENT_SELECTORS.walletBillingTab, 'Facturación y pagos', 'Fatturazione']) {
+      const tab = page.locator(`a:visible:has-text("${lab}")`).first();
+      if (!(await tab.count().catch(() => 0))) continue;
+      try { await tab.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_tab:' + lab); tabAperta = true; break; }
+      catch (e) { diagnostic.steps.push('wallet_tab_ko:' + lab + ':' + String((e && e.message) || e).slice(0, 60)); }
     }
+    if (!tabAperta) diagnostic.steps.push('wallet_tab:none');
+    for (const lab of MP_PAYMENT_SELECTORS.walletSaldoSubTabLabels) {
+      const sub = page.locator(`a:visible:has-text("${lab}"), li:visible:has-text("${lab}") a:visible`).first();
+      if (!(await sub.count().catch(() => 0))) continue;
+      try { await sub.click({ timeout: 4000 }); await page.waitForTimeout(700); diagnostic.steps.push('wallet_subtab:' + lab); return true; }
+      catch (e) { diagnostic.steps.push('wallet_subtab_ko:' + lab + ':' + String((e && e.message) || e).slice(0, 60)); }
+    }
+    diagnostic.steps.push('wallet_subtab:none');
   }
-  diagnostic.steps.push('wallet_subtab:none');
   return false;
 }
 
 // Candidati DOM per il pulsante "Correzione del saldo" (e affini) — mappatura dal vivo.
+// 🚨 VOCE 174 — GUARDAVA IN UNA STANZA SOLA. `page.evaluate` gira nel frame PRINCIPALE: se il
+//    pulsante sta in un iframe, questa sonda tornava `[]` — e `[]` è la risposta più bugiarda
+//    che una sonda possa dare, perché ha la faccia di «non c'è niente» mentre dice «non ho
+//    guardato dove serviva». È la lezione della 171 (le TRE STANZE) applicata al borsellino.
+// ⇒ Ora percorre TUTTI i frame e dice, per ogni candidato, DA QUALE viene.
 async function _collectCorrezioneCandidates(page) {
-  return await page.evaluate(() => {
+  const scan = () => {
     const out = [];
     const els = [...document.querySelectorAll('a,button,input[type="button"],input[type="submit"]')];
     for (const el of els) {
@@ -9250,7 +9273,36 @@ async function _collectCorrezioneCandidates(page) {
       }
     }
     return out.slice(0, 30);
-  }).catch(() => []);
+  };
+  const out = [];
+  for (const fr of page.frames()) {
+    const dove = fr === page.mainFrame() ? 'main' : (fr.url() || fr.name() || '?').slice(0, 110);
+    let parte = null;
+    try { parte = await fr.evaluate(scan); } catch (e) { out.push({ frame: dove, err: String((e && e.message) || e).slice(0, 60) }); continue; }
+    for (const c of parte || []) out.push(Object.assign({ frame: dove }, c));
+    if (out.length >= 40) break;
+  }
+  return out.slice(0, 40);
+}
+
+// 🔎 VOCE 174 — IN QUALE STANZA SONO? Il compagno della sonda qui sopra, e serve proprio quando
+//    quella torna vuota: dice cosa la pagina MOSTRA in quell'istante — se c'è un avviso aperto
+//    (e cosa dice), quali tab sono a portata di click, e quanti frame ci sono.
+// 📌 Una lista di candidati vuota diventa leggibile solo accanto a questo: `[]` con un avviso
+//    aperto è un guasto diverso da `[]` su una pagina pulita, e la cura è opposta.
+async function _collectFichaStanze(page) {
+  const base = await page.evaluate(() => {
+    const vis = (el) => !!(el.offsetParent || el.getClientRects().length);
+    const sw = document.querySelector('.swal2-container');
+    return {
+      avvisoAperto: !!sw,
+      avvisoTesto: sw ? (sw.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 140) : '',
+      tabVisibili: [...document.querySelectorAll('a')].filter(vis)
+        .map((a) => (a.innerText || '').replace(/\s+/g, ' ').trim()).filter((t) => t && t.length < 40).slice(0, 30),
+    };
+  }).catch((e) => ({ err: String((e && e.message) || e).slice(0, 60) }));
+  base.frames = page.frames().map((f) => (f === page.mainFrame() ? 'main' : (f.url() || f.name() || '?').slice(0, 110)));
+  return base;
 }
 
 // Candidati dei CAMPI/pulsanti del dialog correzione — mappatura dal vivo. Cerca prima un
@@ -9471,10 +9523,24 @@ async function correctWalletWithBrowser(input = {}) {
     const targetCents = currentCents + deltaCents; // deltaCents = +addCents (ricarica) | -subtractCents (storno)
     diagnostic.targetCents = targetCents;
 
+    // 🚨⭐⭐ VOCE 174 — L'AVVISO SI TOGLIE PRIMA DI BUSSARE, NON DOPO.
+    //    Il 07/09 questa riga stava DUE gesti più in basso, e il conto tornava così: la ficha
+    //    veniva su con un avviso swal2 (sessione del browser NUOVA dopo il deploy delle 08:26 —
+    //    una sessione calda quell'avviso l'aveva già chiuso), il suo contenitore copre lo
+    //    schermo e INTERCETTA I CLICK ⇒ dentro `_openWalletSaldoLedger` ogni click scadeva,
+    //    il ledger non si apriva, e il pulsante «Correzione del saldo» — che vive LÌ DENTRO —
+    //    non era nel DOM. Da fuori si leggeva `WALLET_CORRECTION_UI_NON_TROVATA` con
+    //    `correzioneCandidates: []`, cioè «il pulsante non c'è più»: falso. Non c'era la STANZA.
+    // 📏 Ed è la traccia stessa a dirlo, senza supposizioni: `saldo_pre:800` è RIUSCITO — perché
+    //    quello è un `innerText` sull'intestazione, e un velo che intercetta i click non ferma
+    //    una lettura. Le letture passavano, i click no: è esattamente la firma di un overlay.
+    await dismissSwalOk(page, diagnostic, 'ficha_pre');
+
     // Apri il ledger "Saldo" del borsellino.
-    await _openWalletSaldoLedger(page, diagnostic);
+    const ledgerAperto = await _openWalletSaldoLedger(page, diagnostic);
 
     // Clicca "Correzione del saldo": prima l'id reale (confermato), poi fallback per testo.
+    // (secondo giro di avvisi: un postback del tab può alzarne uno nuovo)
     await dismissSwalOk(page, diagnostic, 'corr_pre');
     let opened = false;
     const byId = page.locator(MP_PAYMENT_SELECTORS.walletCorrezioneBtnId).first();
@@ -9493,7 +9559,8 @@ async function correctWalletWithBrowser(input = {}) {
     }
     if (!opened) {
       const candidates = await _collectCorrezioneCandidates(page);
-      throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { correzioneCandidates: candidates }));
+      const stanze = await _collectFichaStanze(page).catch(() => null);
+      throw fail('WALLET_CORRECTION_UI_NON_TROVATA', 'Pulsante "Correzione del saldo" non trovato (DOM da mappare dal vivo).', Object.assign({}, diagnostic, { ledgerAperto, correzioneCandidates: candidates, stanze }));
     }
     // Il dialog è un IFRAME fancybox: FichaCorreccionSaldo.aspx (mappato dal vivo, 29/06).
     // Campi: #CC_Datos_TextBoxImporte (importo, SEGNO = direzione: negativo = riduzione),
@@ -10064,7 +10131,7 @@ const server = http.createServer(async (req, res) => {
         //    ⭐ Chi sta per chiedere una di queste cose deve poter CONTROLLARE prima, invece
         //    di scoprirlo dall'effetto: un campo che si aggiunge insieme alla funzione è
         //    l'unico modo per accorgersi che il processo in servizio è indietro.
-        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa', 'storno-conferma-rimborso', 'repeater-atteso-non-cronometrato'],
+        features: ['ricerca-telefono-prima-di-creare', 'solo-ricerca', 'set-charge-senza-incasso', 'sonda-dialog-incasso', 'cobro-nel-frame-del-dialog', 'cobro-confermato-in-cassa', 'storno-conferma-rimborso', 'repeater-atteso-non-cronometrato', 'borsellino-avviso-tolto-prima'],
         routes: [
           '/export-clients', '/export-booking-history', '/get-slots', '/export-slot-schedule', '/read-tabellone', '/read-instructors',
           '/create-booking', '/cancel-booking', '/edit-booking', '/collect-payment', '/set-charge', '/void-payment', '/correct-wallet', '/create-client', '/update-client', '/disable-client', '/reactivate-client', '/debug-find-client', '/read-wallet', '/export-wallet-report', '/export-payments-report',
