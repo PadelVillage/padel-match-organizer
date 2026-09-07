@@ -10,20 +10,12 @@
 Una lista di richieste che restano scritte dopo essere state esaudite non è vecchia, **mente** — e la
 prima cosa che fa una sessione nuova è crederle e richiedergli quello che ha già dato.
 
-🆕⭐ **DUE RICHIESTE NUOVE, scritte il 07/09/2026 alle 00:15 — e il blocco era di nuovo VUOTO.**
-Nascono dal giro col borsellino, e sono di quelle che **non costano niente**:
+🩹 **E il blocco è tornato VUOTO il 07/09/2026 NOTTE.** La **1️⃣** — *«un CLICK tuo sul bottone «Wallet»»* — è stata **TOLTA** perché
+la voce che sbloccava, la **143**, è stata cassata da lui (*«Cassiamo e chiudiamo tutte quelle che riguardano i pagamenti verso
+matchpoint»*). ⇒ Chiedere un gesto per una voce chiusa è la stessa bugia dell'altro verso: *una richiesta che resta scritta dopo che
+non serve più non è vecchia, **mente**.* ⛔ **Nessuna richiesta aperta: non c'è niente che io stia aspettando da lui.**
 
-| | cosa | quanto | sblocca |
-|---|---|---|---|
-| **1️⃣** | 👛 **un CLICK tuo sul bottone «Wallet»** nella scheda della partita, su un socio che ha credito — *dall'app, non da me*. Il gesto l'ho provato fino in fondo su PROD; la **porta da cui ci si entra** no, e la rilettura del saldo che la 143 aspetta sta esattamente lì | un minuto | **143** |
 
-📌 **La 2️⃣ riusa il TUO metodo del 02/09** — *«usare incassi veri che deve fare comunque, così la
-cassa è corretta per costruzione»* — invece di inventare una prova apposta. È la ragione per cui
-non ti sto chiedendo di muovere denaro: ti sto chiedendo di dirmi com'è andato un gesto tuo.
-⚠️ **E la 1️⃣ è una delusione dichiarata, non un dettaglio**: il pagamento col borsellino l'ho
-mandato **all'edge diretta**, quindi il ramo dell'app che rilegge il saldo **non è stato
-esercitato**. *Provare la strada non è provare la porta da cui ci si entra* — e la 143 chiede la
-porta.
 
 
 🩹 **La 2️⃣ è stata TOLTA perché non serve più**: chiedeva il suo schermo per la **127** e due
@@ -38,11 +30,7 @@ servizio.*
 partita su PROD (voce 127) e di tenere aperto il calendario (voce 130). ⇒ *«L'ho aperta e la scheda
 si vede tutta. E il calendario non si sposta più.»* Tutt'e due **chiuse a prova fisica**.
 
-🆕 **1️⃣ UN INCASSO VERO DA 1 € SU PROD** *(chiesto il 02/09)*. Scheda di una partita → riga di un
-giocatore che deve ancora pagare → importo **1,00 €** → **Contanti**. È la prova fisica della voce
-**125**: l'incasso è acceso da oggi, e il ramo che scrive davvero su Matchpoint **non l'ha percorso
-nessuno da giugno**. ⛔ Su TEST non si può — il recinto rifiuta prima del worker — quindi è PROD o
-niente. 🩹 Poi si storna dalla scheda socio → Pagamenti → ↩︎, e il giro si chiude da sé.
+🩹 **E anche questa 1️⃣ — «UN INCASSO VERO DA 1 € SU PROD», chiesta il 02/09 per la voce 125 — è stata TOLTA il 07/09 notte**: la **125 è chiusa**, e i pagamenti verso Matchpoint li ha cassati lui. Era una richiesta che mentiva in tutti e due i modi che questo blocco elenca — esaudita **e** non più voluta.
 🩹 **Corretta il 02/09**: qui c'era scritto *«NON C'È NESSUNA RICHIESTA APERTA»*, vero il 02/09
 pomeriggio e falso da stamattina. È la stessa malattia di segno opposto a quella che questo blocco
 cura — una lista che mente perché nessuno l'ha riaperta quando la richiesta è tornata.
@@ -1517,8 +1505,8 @@ contesto**, non eseguire il compito scritto.
 | | |
 |---|---|
 | 🔴 **Urgenti** | **0** — 💶 **la 171 è CHIUSA il 07/09 mattina, a prova fisica su PROD e su TUTTI E TRE i metodi** (contanti 23 s · borsellino 10,8 s · carta 5,1 s, tutti stornati subito), più la cura dell'attesa sul repeater per il `GIOCATORE_NON_TROVATO` intermittente — ⚠️ quella **non** provata contro il guasto visto, e la scheda lo dice. 👛 **E la 174, entrata alle 08:33, è CHIUSA alle 09:19 dello stesso giorno, a PROVA FISICA su PROD con denaro vero**: il borsellino di **Fabiola Limuti è tornato a 0,00 €**, e quegli 8,00 € che non le spettavano **non ci sono più**. |
-| 📋 **In coda** | **7** — 🌙 **quattro chiuse il 07/09 NOTTE su sua parola** (*«Chiudiamo centoundici, centododici, sessantotto e centosessantaquattro»*): la **111** e la **112** come **decisioni**, col loro residuo portato fuori nella voce **175** invece di sparire col titolo; la **68** su una misura che ha smentito la sua stessa scheda; la **164** con la metà «fasce» vista sul suo schermo. ⇒ Entra la **175**, quindi 10 − 4 + 1. — 📱 **esce anche la 119 il 07/09 sera**, sulla sua schermata: sei fasce tutte leggibili e tutte diverse. E la prova ha aperto il seguito — guardandola ha deciso di togliere numero e parola, e oggi le fasce sono `🟢 12:30` e `⛔ 18:00`. Prima erano uscite la 172 e la 142. |
-| 📦 **Chiuse** | **162** — 🚦 **la 111 e la 112 il 07/09 notte**, come **decisioni**: la regola c'è, il filtro no, e il filtro è la **175**. — 🔕 **la 68 il 07/09 notte**, ed è la **26ª**: la sua scheda era del 21/08 e la misura dice **381 eventi consecutivi con un esito, zero muti in sei giorni** — l'avevano curata la 73, la 74, la 76 e la 115 passando di lì, e nessuno era tornato a guardare. ⚠️ La chiusura dichiara il suo limite: `passato_al_bot` è il gestionale che parla del **gestionale**, non un messaggio visto su un telefono. — 🔁 **la 164 il 07/09 notte**, metà a prova fisica e metà a banco, detto quale è quale. — 📱 **la 119 il 07/09 sera**, provata sul suo schermo. — 🪟 **la 142 il 07/09 pomeriggio**, col criterio di chiusura scritto PRIMA della prova. — 🔐 **la 172 il 07/09 pomeriggio**, misurata prima di curare come la sua scheda pretendeva. — 🔥 **la 165 il 07/09 pomeriggio**: era nata su un numero falso (l'«11 GB» era l'avanzamento dell'LSN, non WAL scritto — il WAL vero è **0,4 a 1**), e si è chiusa curando due cose che all'apertura non erano in lista. — 👛 **la 174 il 07/09 alle 09:19**, aperta alle 08:33 e chiusa **46 minuti dopo**: non era il pulsante, era la **stanza**. 📌 *Letture passate + click falliti = la firma di un overlay.* — 💶 **la 171 il 07/09 mattina** (vedi la riga delle urgenti): era il guasto totale dell'incasso, ed erano **tre stanze**, non una. 📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**.* — 💸 **la 173 il 07/09 mattina** (vedi la riga delle urgenti). Con lei una correzione che non era nella voce: le tre funzioni-aiuto di `matchpoint-payments-sync` dichiaravano `ReturnType<typeof createClient>`, che **non è** il tipo che `createClient(url,key)` restituisce ⇒ **8 errori di tipo preesistenti**, portati a **0**. 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna quella CHIAMATA.* — 🪟 **la 169 è ENTRATA E CHIUSA il 06/09 pomeriggio** (TEST 6.379→6.382 → PROD 6.382, PR #1413 e #1414), su sua segnalazione con due schermate: ① il **maestro** non compare più due volte (Matchpoint lo mette anche nel roster, in minuscolo, e la guardia che doveva vederlo stava sul ramo sbagliato **e** confrontava lettera per lettera); ② i **quattro nomi si vedono** — le righe si stringono per gradi finché ci stanno tutte, e il taglio con «+N» è l'ultima spiaggia; ③ «Riprendo una verifica» esce **solo nella barra**. 🚨 Ci sono volute **quattro versioni**, ognuna smentita da una misura e l'ultima **da lui**: *«continuano a vedersi sempre tre giocatori su quattro»* — il «+1» dichiarava il nome mancante, lui lo vuole **leggere**. *Dichiarare un'assenza non è toglierla.* ✅ Provata su TEST **e** PROD a 810 · 740 · 680 px: **0** righe tagliate, **4 nomi su 4**. Con lei la **120**, chiusa a sua parola. |
+| 📋 **In coda** | **6** — 👛 **la 143 CASSATA da lui il 07/09 notte** (*«poi ti spiego»*), e con lei la richiesta 1️⃣: era l'unica voce aperta sui pagamenti verso Matchpoint, le altre sei erano già chiuse. — 🌙 **quattro chiuse il 07/09 NOTTE su sua parola** (*«Chiudiamo centoundici, centododici, sessantotto e centosessantaquattro»*): la **111** e la **112** come **decisioni**, col loro residuo portato fuori nella voce **175** invece di sparire col titolo; la **68** su una misura che ha smentito la sua stessa scheda; la **164** con la metà «fasce» vista sul suo schermo. ⇒ Entra la **175**, quindi 10 − 4 + 1. — 📱 **esce anche la 119 il 07/09 sera**, sulla sua schermata: sei fasce tutte leggibili e tutte diverse. E la prova ha aperto il seguito — guardandola ha deciso di togliere numero e parola, e oggi le fasce sono `🟢 12:30` e `⛔ 18:00`. Prima erano uscite la 172 e la 142. |
+| 📦 **Chiuse** | **163** — 👛 **la 143 il 07/09 notte, CASSATA da lui**: si chiude **senza** la prova che chiedeva — un pagamento col borsellino premuto dal bottone dell'app — e la scheda lo dice invece di arrotondarlo. — 🚦 **la 111 e la 112 il 07/09 notte**, come **decisioni**: la regola c'è, il filtro no, e il filtro è la **175**. — 🔕 **la 68 il 07/09 notte**, ed è la **26ª**: la sua scheda era del 21/08 e la misura dice **381 eventi consecutivi con un esito, zero muti in sei giorni** — l'avevano curata la 73, la 74, la 76 e la 115 passando di lì, e nessuno era tornato a guardare. ⚠️ La chiusura dichiara il suo limite: `passato_al_bot` è il gestionale che parla del **gestionale**, non un messaggio visto su un telefono. — 🔁 **la 164 il 07/09 notte**, metà a prova fisica e metà a banco, detto quale è quale. — 📱 **la 119 il 07/09 sera**, provata sul suo schermo. — 🪟 **la 142 il 07/09 pomeriggio**, col criterio di chiusura scritto PRIMA della prova. — 🔐 **la 172 il 07/09 pomeriggio**, misurata prima di curare come la sua scheda pretendeva. — 🔥 **la 165 il 07/09 pomeriggio**: era nata su un numero falso (l'«11 GB» era l'avanzamento dell'LSN, non WAL scritto — il WAL vero è **0,4 a 1**), e si è chiusa curando due cose che all'apertura non erano in lista. — 👛 **la 174 il 07/09 alle 09:19**, aperta alle 08:33 e chiusa **46 minuti dopo**: non era il pulsante, era la **stanza**. 📌 *Letture passate + click falliti = la firma di un overlay.* — 💶 **la 171 il 07/09 mattina** (vedi la riga delle urgenti): era il guasto totale dell'incasso, ed erano **tre stanze**, non una. 📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**.* — 💸 **la 173 il 07/09 mattina** (vedi la riga delle urgenti). Con lei una correzione che non era nella voce: le tre funzioni-aiuto di `matchpoint-payments-sync` dichiaravano `ReturnType<typeof createClient>`, che **non è** il tipo che `createClient(url,key)` restituisce ⇒ **8 errori di tipo preesistenti**, portati a **0**. 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna quella CHIAMATA.* — 🪟 **la 169 è ENTRATA E CHIUSA il 06/09 pomeriggio** (TEST 6.379→6.382 → PROD 6.382, PR #1413 e #1414), su sua segnalazione con due schermate: ① il **maestro** non compare più due volte (Matchpoint lo mette anche nel roster, in minuscolo, e la guardia che doveva vederlo stava sul ramo sbagliato **e** confrontava lettera per lettera); ② i **quattro nomi si vedono** — le righe si stringono per gradi finché ci stanno tutte, e il taglio con «+N» è l'ultima spiaggia; ③ «Riprendo una verifica» esce **solo nella barra**. 🚨 Ci sono volute **quattro versioni**, ognuna smentita da una misura e l'ultima **da lui**: *«continuano a vedersi sempre tre giocatori su quattro»* — il «+1» dichiarava il nome mancante, lui lo vuole **leggere**. *Dichiarare un'assenza non è toglierla.* ✅ Provata su TEST **e** PROD a 810 · 740 · 680 px: **0** righe tagliate, **4 nomi su 4**. Con lei la **120**, chiusa a sua parola. |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1746,7 +1734,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ## 🔴 URGENTI — 0
 
-## 📋 IN CODA — 7
+## 📋 IN CODA — 6
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2007,310 +1995,7 @@ chiedeva, e per questo non la tengono aperta:
   finisce è un'**attesa**, non una misura;
 · **la 138 aspetta ancora l'id** dove serve a lei: qui l'id c'è, ma è un'altra voce.
 
-### 143 — 👛 Il borsellino in cassa: dieci minuti sono troppi quando c'è la fila
-
-🗣️ **Sua, e nasce da una sua contraddizione dichiarata**, subito dopo aver scelto i 10 minuti:
-*«mi devo contraddire perché quando facciamo le operazioni di cassa che c'è tanta gente, se non si
-aggiorna velocemente poi qualcuno della segreteria può protestare»*.
-
-✅ **Cosa è già in servizio** (04/09, PROD): i saldi si rinfrescano **ogni 10 minuti** da soli —
-routine `wallet` nello scheduler, provata dal vivo (dispatch 11:20, saldi riscritti 23s dopo).
-
-⚖️ **Perché accorciare il ritmo NON è la cura**: il dispatcher manda **una** routine per giro,
-quindi ogni tick preso al borsellino è un tick tolto alle prenotazioni; e il worker è **un browser
-solo**, quindi anche lanciandole insieme si metterebbero in fila. A 2 minuti resterebbe comunque
-una finestra.
-🔨 **La cura precisa: dopo un'operazione di cassa sappiamo ESATTAMENTE di chi è cambiato il
-saldo** ⇒ si rinfresca **quello**, sul colpo, invece di aspettare il giro. Copre il caso che
-protesta (*«ho appena ricaricato e vedo ancora il vecchio numero»*) senza toccare il ritmo di
-fondo.
-📌 *Un dato che si muove non si insegue col ritmo: si rinfresca dove lo si muove.*
-
-✅⭐⭐ **PRIMA METÀ FATTA E PROVATA SU PROD — 06/09/2026 sera, con una ricarica VERA da 1 €.**
-
-🔎 **E la misura ha reso il difetto più preciso di come questa scheda lo raccontava**: i record del
-borsellino sono **DUE**, e la ricarica ne aggiornava **solo uno**.
-| record | cos'è | com'era |
-|---|---|---|
-| `wallet_txn` | il **movimento** (chi, quanto, pre, post) | scritto dal 02/09 ✅ |
-| `wallet_balance` | la **fotografia**, cioè *quella che l'app legge per mostrare il numero* | **non aggiornata** ❌ |
-⇒ Il gestionale sapeva insieme *«è stata fatta una ricarica di 1 €»* e *«il saldo è quello di dieci
-minuti fa»*: **due verità sullo stesso socio**, nello stesso archivio.
-
-⭐⭐ **E LA CURA NON COSTA UNA LETTURA — è il punto che ha cambiato il disegno di questa scheda.**
-Qui era scritto *«si rinfresca quello, sul colpo»*, che voleva dire **una lettura in più al
-worker**. ⛔ Non serve: il saldo dopo è **già in mano** (`balanceCentsPost`, letto da Matchpoint
-nello stesso giro che ha mosso il denaro). Il worker — un browser solo condiviso col sync — **non
-viene toccato**.
-📌 *Prima di aggiungere una lettura, guardare se la risposta è già nella mano che si ha.*
-
-🔨 **Dove**: in `matchpoint-wallet-correct`, subito dopo `scriviTraccia` — il punto in cui il
-circolo ha confermato. È la **regola dei tre passi** applicata al saldo invece che alla partita.
-🧪 Regola in un modulo **puro** (`fotografia-saldo.ts`) così il banco la **esegue**: 8 casi,
-**sabotati 4 volte** e rossi ogni volta (chiave diversa dal sync, scrittura senza `memberLocalId`,
-`null` accettato come saldo, un campo in più nel payload = la voce 160 in miniatura).
-
-📏 **LA PROVA FISICA, e attraversa la finestra esatta in cui prima sbagliava** — ricarica di **1 €**
-sul borsellino di **Maurizio Aprea**, autorizzata da lui (*«prova a mettere 1 euro sul borsellino di
-Maurizio Aprea, così ti può tornare la prova?»*):
-| istante | saldo | fonte | |
-|---|---|---|---|
-| 18:30:48 | 500 | `matchpoint` | il giro di prima |
-| **18:37:29** | **600** | **`pmo_wallet_correct`** | ⭐ la cura, **nell'istante** della ricarica |
-| 18:40:33 | 600 | `matchpoint` | il sync conferma **lo stesso numero** |
-⇒ Prima della cura, fra le 18:37:29 e le 18:40:33 il gestionale avrebbe mostrato **5,00 €**: **tre
-minuti e quattro secondi** di numero sbagliato, che con la fila in cassa è il caso che protesta.
-✅ La risposta dell'edge dice `traccia: scritta` **e** `fotografia: scritta` — il campo nuovo, che
-esiste perché *«il numero non si è mosso»* resti distinguibile fra «non l'ho scritto» e «l'ho
-scritto e l'app non l'ha riletto»: due guasti diversi, due posti diversi in cui si curano.
-⚠️ **Il borsellino di Maurizio Aprea ha 1 € in più** (da 5,00 a 6,00): è denaro vero, e se va tolto
-si storna.
-
-✅⭐ **SECONDA METÀ SCRITTA E IN SERVIZIO — 06/09/2026 notte, PROD 6.386.** Era la parte che
-mancava: il **pagamento COL borsellino** non aggiornava la fotografia. 📏 Misurato, non dedotto —
-`/collect-payment` torna `statoPost` e `pendentePostCents`, **il saldo del borsellino no**, perché
-il cobro si fa nella schermata della **prenotazione** e non in quella del borsellino. ⇒ Là il
-numero restava vecchio fino al giro dei 10 minuti, esattamente com'era prima della cura.
-
-🔨 **Il saldo non è in mano ⇒ si va a RILEGGERLO**, e lo fa `matchpoint-wallet-read`, che già lo
-sapeva fare. Da oggi **quello che legge lo scrive**: la fotografia `wallet_balance`, con la
-**stessa regola** della ricarica (`decidiFotografiaSaldo`, spostata in `_shared/` perché i gesti
-sono due e la regola dev'essere una) e la provenienza dichiarata (`pmo_wallet_read`).
-📌 *Due copie della stessa regola divergono il giorno in cui una sola viene corretta.*
-
-🚨⭐⭐ **E IL PEZZO CHE NON SI VEDEVA LEGGENDO QUESTA SCHEDA: dove sta l'occhio non è dove stava la
-cura.** Nella scheda della partita il chip 👛 **non** legge la fotografia del gestionale: legge
-`p.saldoCents`, che il worker ha portato all'**APERTURA** della scheda insieme ai giocatori. ⇒
-Curare solo l'archivio avrebbe lasciato il cassiere a guardare il numero di prima **proprio nella
-riga dove ha appena premuto**. Si aggiornano tutti e due, col **medesimo** numero riletto dal
-circolo. 📌 *La lezione della 134: il posto giusto per una risposta è accanto alla domanda.*
-
-⛔ **Il saldo nuovo NON si calcola, si CHIEDE.** Sottrarre l'importo pagato da quello che avevamo
-sarebbe fabbricare una verità nostra: basta un incasso dalla postazione accanto, o una ricarica di
-due minuti fa, e il numero «giusto» è **falso e nessuno lo sa**. È *il gestionale SA, l'app DICE*
-applicato ai soldi.
-
-⏳ **In sottofondo, e non è un dettaglio**: la lettura al worker costa ~10 s (📏 10,6 s misurati il
-06/09) e il numero serve **dopo** l'incasso, non per farlo ⇒ nessuna attesa sul percorso del
-cassiere, e nessun avviso se fallisce (l'incasso è già riuscito: dirlo lì mentirebbe su di lui).
-⛔ **Cash e card non chiedono niente al worker** — è un browser solo, condiviso col sync delle
-prenotazioni, e ogni lettura inutile è un tick tolto a quello. Sullo **storno** il metodo si legge
-dall'indice: borsellino **o ignoto** si rilegge, cash/card no. *Nel dubbio si paga il costo che si
-sa misurare.*
-
-⚠️ **Il socio si aggancia con `_staffCalSocioDelGiocatore`** (id interno con id interno, voce 138):
-senza aggancio si legge per il chip ma **non si archivia**. Ricavare la chiave «a occhio» è il
-difetto silenzioso della 138 — il codice cliente di Laura Aprea (000140 → «140») è identico
-all'**id interno** di Marco Aprea (140), e in cassa la sera si aggiornerebbe il borsellino di chi
-non c'entra.
-
-🧪 **Il banco, e cosa NON diceva.** 11 casi su `_shared/fotografia-saldo.test.ts` (sabotato 3
-volte, rosso ogni volta) e un banco nuovo, `test/il-saldo-si-rilegge-dopo-il-gesto.test.mjs`, che
-**estrae le funzioni da `index.html` e le esegue**.
-🚨📏 **E aveva un buco, misurato invece che supposto**: spegnendo l'aggancio (`if (method ===
-'wallet')` → `if (false)`) i primi **otto** casi restavano **tutti verdi**. Provavano che la
-funzione è giusta, non che qualcuno la **chiama** — il *ramo spento* del 19/08, dentro il banco
-scritto per ricordarsene. ⇒ Aggiunti i casi ⑨-⑪ che eseguono `_pmoCollectPayment` per davvero;
-ora quel sabotaggio è rosso, insieme a «rilegge sempre» e «rilegge anche a incasso fallito».
-📌 *Un banco che prova solo il pezzo non dice niente su chi lo chiama.*
-
-➕ **E ANCHE IL ↻ DELLA SCHEDA SOCIO ARCHIVIA, da stanotte** — stesso principio, gesto diverso.
-Prima quel bottone leggeva il saldo dal vivo e **se lo teneva**: il numero finiva in
-`window.__pmoWalletCache`, cioè lo vedeva **chi aveva premuto**, si perdeva al reload e la
-postazione accanto continuava a mostrare quello del giro di prima. ⇒ Ora passa anche
-`memberLocalId` — e lì il socio è noto **con certezza**, perché siamo nella *sua* scheda: nessun
-aggancio da indovinare, e **nessuna lettura in più** (è la stessa che si stava già facendo).
-⭐ **E serve anche come PROVA**: è l'unico gesto della voce che si può esercitare su PROD **senza
-muovere un centesimo** — sola lettura verso Matchpoint, scrittura solo nel gestionale. ⇒ Un click
-su ↻ nella scheda di un socio qualunque prova metà catena (edge → fotografia) **prima** di lunedì.
-📌 *Quando una catena si può spezzare in due, la metà che non costa niente si prova subito.*
-
-⏳ **LA VOCE RESTA APERTA, e le manca UNA cosa sola: la prova FISICA.** Nessun pagamento vero col
-borsellino è ancora passato di qui. ⛔ Su **TEST non si può** — il recinto rifiuta prima del worker
-— quindi è **PROD o niente**.
-✅ **Ed è già autorizzata**: lunedì **7/09 ore 10:30**, Campo 4, prenotazione **9844** (Lidia Comes ·
-Ospite · Fabiola Limuti · **Maurizio Aprea**, id interno `4`), un **pagamento** e poi uno **storno**
-su di lui. 🚨 **COL BORSELLINO**: cash e card non toccano il borsellino e non eserciterebbero
-niente di questa voce.
-📏 Cosa si guarda per dire che ha funzionato: il chip 👛 nella riga di Maurizio cambia **entro una
-decina di secondi** senza ricaricare la pagina, e in archivio la riga
-`wbal|7d454239-929a-4346-8ba0-ec778d7763a3` porta `source: pmo_wallet_read` con l'orario del gesto.
-
-🚨⭐⭐ **E QUELLA RIGA VA GUARDATA ENTRO DIECI MINUTI, O DICE IL FALSO — misurato il 07/09
-pomeriggio, e corregge il criterio qui sopra invece di affiancarlo.**
-📏 Andato a cercare in archivio la prova del ↻ del 06/09 (`source: pmo_wallet_read`, ore 19:33:15):
-**non c'è più.** La riga `wbal|7d454239…` di Maurizio Aprea oggi dice `source: matchpoint`,
-`updated_at 13:50:21` — e il saldo è lo stesso, **600**.
-⚖️ **Non è la cura ad aver smesso di funzionare: è la routine dei 10 minuti che RISCRIVE quella
-riga**, e con essa la provenienza. `pmo_wallet_read` e `pmo_wallet_correct` **non sono uno stato
-che resta**: sono una traccia che il giro successivo cancella.
-⇒ ⛔ **Chi controlla dopo più di dieci minuti legge `matchpoint` e conclude che la rilettura NON è
-partita** — di una rilettura partita. È la **24ª** (*la sonda che guarda troppo tardi*) infilata
-nel criterio di chiusura di questa voce, cioè nel punto peggiore: avrebbe fatto dichiarare rotta
-una cura sana, o — peggio — riaprire la voce.
-🔨 **Il criterio corretto**: il `source` si guarda **entro il giro**, e la finestra è di **≤10
-minuti** dal gesto. Fuori da lì quella colonna non è una prova né in un verso né nell'altro.
-📌 *Un criterio di chiusura che poggia su un campo che qualcun altro riscrive ha una scadenza, e la
-scadenza va scritta accanto al criterio — o il criterio mente da solo, senza che nessuno lo tocchi.*
-📏 **Perché una riga `pmo_wallet_correct` sopravvive dal 10:52 e sembra smentirlo**: è
-`wbal|640a444a…` (id cliente `000291`, saldo `0`, nome vuoto), e la routine **non la tocca** —
-come non tocca altre tre righe ferme a luglio. ⇒ Sopravvive chi è **fuori** dal giro, non chi è
-dentro: la sopravvivenza di quella riga non dice niente sulla durata delle altre.
-
-⏳ **E QUINDI: il pagamento col borsellino della 171 NON ha chiuso questa voce, ed è stato
-misurato invece che supposto.** La 171 si è chiusa il 07/09 con un incasso vero **col borsellino**
-(10,8 s), e verrebbe da pensare che la rilettura di questa voce sia passata di lì. 📏 In archivio
-**non esiste nessuna riga `pmo_wallet_read`**, in nessun momento: le fotografie sono **41**, e le
-provenienze sono solo `matchpoint` (40) e `pmo_wallet_correct` (1).
-⚖️ ⚠️ **Ma questo zero NON prova che la rilettura non sia partita**, ed è esattamente la lezione
-①  del 07/09 mattina — *uno zero non distingue «rotta» da «non l'ha chiamata nessuno»*: qui si
-somma alla scadenza dei 10 minuti qui sopra, quindi lo zero ha **due** spiegazioni innocenti
-(il gesto è passato dall'**edge** e non dal bottone dell'app ⇒ `_pmoCollectPayment` non è mai
-stata eseguita; oppure la traccia c'è stata ed è stata riscritta).
-⇒ **Resta vero quello che questa voce chiedeva**: serve il gesto **dall'app**, e il controllo
-**entro dieci minuti**. *Provare la strada non è provare la porta da cui ci si entra* — e adesso
-si sa anche **per quanto tempo** la porta lascia il segno.
-
-🚨🚨⭐⭐ **E LA PROVA COL PAGAMENTO, SU MAURIZIO APREA, **NON SI PUÒ FARE** — misurato il 06/09
-notte aprendo la scheda vera, prima di premere.**
-📏 Il roster della 9844 letto dal worker dice, per lui: `stato: riscosso`, `importoCents: 0`,
-`pendenteCents: 0`. ⇒ **La sua quota è OFFERTA**, e non è un caso di quella partita: nell'altra sua
-del 7/09 (9845, 18:00 Campo 3) è **identico**, e in archivio **tutti** i suoi pagamenti sono
-`method: gift`, `amount_cents: 0`, senza eccezioni.
-⛔ ⇒ `/collect-payment` si fermerebbe alla **guardia anti-doppio** (`pendente === 0` →
-`ALREADY_PAID`) **senza toccare niente**: non un rosso da capire, proprio un gesto che non parte.
-🚨 **E la strada che verrebbe in mente è la peggiore**: incassare un importo diverso da quello a
-carico fa **riscrivere l'importo a carico sulla prenotazione vera** (`cargo_set:X->Y` nel worker,
-salvato su Matchpoint) — e lo **storno non lo rimette**. Su Maurizio vorrebbe dire creargli un
-dovuto che il circolo gli aveva messo a zero, su una partita che gioca fra poche ore.
-⇒ **Serve una decisione sua**, e sono due: **①** un socio/partita dove ci sia un dovuto vero e un
-borsellino capiente, oppure **②** su Maurizio la sequenza completa e reversibile *importo a carico
-0 → 1,00 € → incasso col borsellino → storno → importo di nuovo 0*, che tocca i dati veri **quattro
-volte** e va voluta esplicitamente.
-📌 *La prova che non parte non è un fallimento della cura: è un fatto sul bersaglio, e si scopre
-solo andando a guardare il bersaglio.*
-
-🧪⭐⭐ **LA PROVA DEL PAGAMENTO È STATA FATTA, la notte del 06/09 — e NON È PASSATA, per un
-motivo che non è questa voce.** Su sua autorizzazione (*«ricarica il borsellino di Fabiola Limuti e
-fai la prova»*): borsellino caricato di **8,00 €**, incasso col borsellino di **8,00 €** — cioè
-esattamente il pendente, per non far riscrivere al worker l'importo a carico — sulla 9844.
-⛔ Risposta: **`Pulsante metodo "Saldo disponibile" non trovato nel dialog incasso.`** ⇒ è la voce
-**171**, appena aperta: il pagamento col borsellino **oggi non funziona**, e non per colpa di questa
-cura.
-✅ **Nessun denaro mosso e tutto rimesso com'era**: pendente ancora `800`, nessun record `payment`,
-borsellino di Fabiola tornato a `0` (i due `wallet_txn` +800 e −800 si annullano).
-⭐ **E una cosa questa voce l'ha provata lo stesso, sul campo**: la rilettura **non è partita**,
-perché l'incasso non è riuscito — che è il comportamento giusto e il caso **⑪** del banco, visto
-succedere davvero. Un saldo riletto lì avrebbe dato alla fotografia una freschezza che non ha.
-⏳ ⇒ **La metà «pagamento» di questa voce resta NON PROVATA**, e non può esserlo finché la 171 non è
-curata. La metà «rilettura» invece è provata due volte: col ↻ (sotto) e con la **ricarica** di
-stanotte, che ha scritto `source: pmo_wallet_correct` · `id_cliente: 000291` — il **codice**
-cliente, che è la conferma dal vivo della correzione qui sotto.
-
-🚨⭐⭐ **E LA PROVA HA TROVATO UN DIFETTO NELLA CURA STESSA — i DUE NUMERI, un'altra volta.**
-📏 Misurato subito dopo, guardando i saldi di altri soci: in archivio `id_cliente` **191** è
-**Luciano Pase** (codice `000191`, id interno **assente**); ma **191** nel roster di una
-prenotazione è l'id interno di **Valeria Moschet** (codice `000182`). ⇒ Il campo `id_cliente` della
-fotografia è quello che scrive il **sync**, e il sync ci mette il **CODICE CLIENTE**. La prima
-stesura di questa cura ci scriveva l'**ID INTERNO** preso dal roster: **due numerazioni nella
-stessa colonna**, a seconda di chi aveva scritto la riga. È la **voce 138 in un altro campo**.
-⚖️ **Danno limitato, e si dice perché è la parte che conta**: la **chiave** del record è
-`member_local_id`, quindi il saldo non è mai finito sul socio sbagliato — a essere inaffidabile era
-il campo `id_cliente`, che una sonda o una join futura avrebbero letto mescolato.
-🚨 **E NON SI VEDEVA DALLA PROVA**: era stata fatta su Maurizio Aprea, che ha id interno `4` e
-codice `000004` — **i due numeri coincidono**. 📌 *Un caso di prova scelto fra quelli dove i due
-valori coincidono non prova niente sui due valori.*
-🔨 Curato in `matchpoint-wallet-read` (6.390): il codice cliente lo passa il **chiamante**
-(`socio.memberId`, la stessa fonte che usa già la ricarica) e senza socio agganciato resta `null`
-— *meglio un campo vuoto che il sync riempirà, che un numero giusto nella numerazione sbagliata*.
-🧪 Banco: casi ⑭-⑰, col caso di **Valeria Moschet** preso dai dati veri perché è lì che i due
-numeri divergono; rimettendo il difetto diventano rossi.
-
-✅⭐ **QUELLO CHE INVECE È STATO PROVATO FISICAMENTE, la notte del 06/09, a ZERO euro:** il ↻ del
-borsellino nella scheda di Maurizio, eseguito su PROD 6.388 chiamando `pmoWalletRefresh` — la
-funzione vera del bottone, non un'imitazione.
-| | |
-|---|---|
-| prima | `600` · `source: matchpoint` · 19:31:04 (l'aveva scritta il sync) |
-| **dopo** | `600` · **`source: pmo_wallet_read`** · **19:33:15** · 6 campi esatti |
-⇒ La prova sta nella **fonte**, non nel numero: `pmo_wallet_read` **nessun sync la scrive mai**, e
-il numero non doveva muoversi — non era cambiato niente sul borsellino. ⏱️ Il giro ha impiegato
-**17,7 s**, che è la ragione per cui la rilettura sta in sottofondo e non davanti alla cassa.
-⇒ **Metà catena è provata sul campo**: edge → fotografia archiviata, chiave giusta, socio giusto,
-nessun campo di troppo. Manca la metà che parte da un pagamento.
-
-🚨 **PRIMA DI PREMERE, UN CONTO DA FARE: col borsellino non si può pagare più di quello che c'è.**
-📏 Il borsellino di Maurizio Aprea ha **6,00 €** (5,00 + il 1 € della prova di ieri sera). ⇒ Se
-l'importo a carico della partita è **più** di 6,00 €, il pagamento col borsellino **non può
-riuscire** — e sarebbe un rosso che non dice niente su questa voce.
-⇒ Due strade, tutte e due valide: **①** incassare un importo **parziale** entro i 6,00 € (il campo
-«€ a carico» si può scrivere: bastano **1,00 €**, l'importo non è la prova — il *metodo* lo è), o
-**②** ricaricargli prima quello che serve. 📌 *La prova più piccola che esercita la catena è la
-prova migliore: meno denaro vero si muove, meno c'è da rimettere a posto.*
-
-🚨⭐⭐ **E FRA I DUE GESTI CI SI FERMA A GUARDARE GLI INCASSI — suo ordine del 06/09 notte:**
-> *«Prima dello storno vai a vedere in incassi se ti torna tutto e poi fai lo storno.»*
-
-⇒ **I gesti sono tre, non due**: pagamento → **si apre la sezione Incassi e si controlla che torni
-tutto** → storno. ⛔ Lo storno **non parte** finché quel controllo non è fatto.
-⚖️ E non è pignoleria di procedura: lo storno **cancella la scena del delitto**. Un incasso che
-arriva in Incassi col metodo sbagliato, con l'importo sbagliato o attribuito alla persona sbagliata
-si vede **solo mentre c'è**; stornato prima di guardarlo, resta un giro fatto e niente da leggere,
-e la prova andrebbe rifatta con un'altra prenotazione vera.
-📌 *Un gesto che rimette le cose a posto va fatto DOPO aver guardato come stavano — o si rimette a
-posto anche la prova.*
-📏 Cosa deve tornare in Incassi: **una** riga nuova per Maurizio Aprea sulla prenotazione **9844**,
-metodo **Wallet** (non «modalità in arrivo…», non Cash), l'importo giusto, e i totali per metodo
-che salgono di quell'importo **sul borsellino** e non altrove.
-
-⏱️ **QUANTO SI ASPETTA PRIMA DI GUARDARE — misurato il 06/09 sul cron di PROD, per non stare lì a
-fissare uno schermo che non può ancora sapere.** Il sync degli incassi di **oggi** è
-`pmo-payments-sync-today-prod`, `*/5 6-21 * * *` ⇒ **ogni 5 minuti**, e le 10:30 italiane (08:30
-UTC) sono dentro la finestra. ⇒ Fra il pagamento e il controllo in Incassi si aspetta **fino a ~5
-minuti**, non di più; se dopo dieci non c'è ancora niente, quello **è** il difetto e va guardato lì,
-non stornato via. *(L'altro, `pmo-payments-sync-prod` a `23 * * * *`, è il giro orario su tutto lo
-storico: non è quello che porta l'incasso di adesso.)*
-⚖️ **E l'attesa NON riguarda il chip 👛**, che è il bersaglio vero di questa voce: quello si muove
-da sé entro una decina di secondi, perché non aspetta nessun sync — è la rilettura in sottofondo.
-⇒ Se il chip cambia subito e Incassi arriva cinque minuti dopo, **è il comportamento giusto**: sono
-due strade diverse, e questa voce ha accorciato solo la prima.
-📌 **Nota per lo storno**: l'app decide se rileggere il saldo dal metodo che l'indice conosce.
-Guardando gli Incassi **prima** (come chiede lui) il metodo è ormai noto ⇒ si passa dal ramo
-`storno-wallet`; stornando subito si sarebbe passati da `storno-metodo-ignoto`, che rilegge lo
-stesso. Le due strade portano allo stesso posto, ed è voluto — ma la prima è quella che **prova**
-anche il riconoscimento del metodo.
-
-✅⭐⭐ **IL CASO DI PROVA È PRONTO E SCELTO SUI DATI — 07/09/2026 sera.** Le due prove precedenti
-non sono partite per il **bersaglio**, non per la cura: su Maurizio Aprea la quota era **offerta**
-(`pendente 0` ⇒ `/collect-payment` si fermava alla guardia anti-doppio senza toccare niente), e su
-Fabiola Limuti il borsellino era troppo piccolo. 📌 *Un caso di prova si sceglie misurando il
-bersaglio, non prendendo chi si ha sottomano.*
-
-🎯 **CARLO CERIALI** — id cliente `160`, `member_local_id` `84986747-5f5f-41ac-b652-0034bb7790c6`.
-
-| | |
-|---|---|
-| borsellino | **33,00 €** (misurato il 07/09 alle 19:20, fonte `matchpoint`) |
-| come paga di solito | **20 pagamenti col borsellino da 12,00 €**, l'ultimo il **02/09** — più 2 in contanti a giugno |
-| omaggi | **nessuno**, mai |
-| partite future senza pagamento registrato | **08/09 · 18:00 · Campo 2** e **09/09 · 18:00 · Campo 2** |
-
-⭐ **Perché è il bersaglio giusto e non un altro qualunque**: pagare **12,00 € col borsellino** su di
-lui non è un gesto anomalo da rimettere a posto, è **quello che fa già ogni settimana** — quindi
-l'importo coincide con quello a carico e il worker **non** riscrive il `cargo_set` (il danno che
-sullo storno non si rimette). E 33,00 € coprono la quota quasi tre volte: il fallimento «col
-borsellino non si può pagare più di quello che c'è» non può capitare.
-
-🚨 **E LA COSA NUOVA DA SAPERE PRIMA DI PREMERE, misurata il 07/09**: la verifica in archivio
-(`source: pmo_wallet_read` sulla riga `wbal|84986747…`) va fatta **entro dieci minuti** dal gesto.
-Dopo, la routine dei 10 minuti riscrive quella riga con `source: matchpoint` e chi guarda legge un
-**falso negativo** — vedi il paragrafo della scadenza qui sopra.
-
-⛔ **Cosa serve da lui, ed è una parola sola**: il permesso di incassare **12,00 € col borsellino**
-su Carlo Ceriali in una delle due partite, **dal bottone dell'app**. Poi: si guardano gli **Incassi**
-(suo ordine del 06/09 — lo storno cancella la scena del delitto), e **poi** si storna.
-
-### C — Cose sapute e non risolte — 7
+### C — Cose sapute e non risolte — 6
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2338,7 +2023,6 @@ Una scheda scritta e non censita esce **rossa**, invece di sparire dal conto.
 
 | | |
 |---|---|
-| **143** | 👛 **Il borsellino in cassa: dieci minuti sono troppi quando c'è la fila** — 🗣️ **sua**, e nasce da una sua contraddizione dichiarata subito dopo aver scelto i 10 minuti: *«quando facciamo le operazioni di cassa che c'è tanta gente, se non si aggiorna velocemente poi qualcuno della segreteria può protestare»*. ✅ In servizio il rinfresco automatico **ogni 10′** (routine `wallet`, provata dal vivo il 04/09). ⛔ **Accorciare il ritmo NON è la cura**: il dispatcher manda una routine per giro ⇒ ogni tick preso dal borsellino è un tick tolto alle **prenotazioni**, e il worker è **un browser solo** — a 2 minuti resterebbe comunque una finestra. 🔨 La cura è rinfrescare **il socio di cui sappiamo che il saldo è appena cambiato**, sul colpo. 📌 *Un dato che si muove non si insegue col ritmo: si rinfresca dove lo si muove.* ⏳ Seconda metà legata alla **142**: con gli id, all'apertura di una scheda si rinfrescano i ≤4 giocatori di quella partita. 📄 Scheda per intero qui sopra. |
 | **140** | 🔢 **L'ID INTERNO MATCHPOINT CE L'HANNO 118 SOCI SU 1119 — e il denominatore «3764» di ieri sera era SBAGLIATO** — 🩹⭐⭐ **QUESTA RIGA È STATA CORRETTA, non affiancata** *(03/09/2026 notte)*: diceva *«121 su 3764 (3%)»* e alla riprova **non torna**. ⚖️ Non era un errore di conto: era il **denominatore sbagliato**, ed è il genere di sbaglio che fa pianificare il lavoro sbagliato — con 3.600 soci da coprire la voce sembra un cantiere, con 1.001 è un pomeriggio. 📏 **Rimisurato su PROD, righe `member` non archiviate**: **1119** hanno il codice cliente (⇒ **sono** clienti Matchpoint), di cui **118** hanno anche l'id interno e **1001 no** — che è il bersaglio esatto. Gli altri **1704** non hanno il codice, e **1703 di loro vengono dalla rubrica Google**: non sono soci a cui manca qualcosa, **su Matchpoint non esistono**, e un id interno non possono averlo. ⇒ Non siamo al 3%, siamo all'**11%**. 📏 Lo conferma il sync notturno da sé: legge **1108 righe**, non 3764. ⭐⭐ **E la riga che DECIDE LA STRADA è uno zero**: i soci con l'id ma **senza** il codice cliente sono **0** ⇒ il legame **codice cliente → id interno** copre l'universo intero, e non serve né il telefono né il nome. Non è nemmeno un aggancio nuovo: è **quello che l'app già usa** (`pmoChiaveCodiceCliente`) quando scrive l'id aggiungendo un giocatore a una partita — applicato in blocco invece che uno per volta. ⚖️ **Perché la 138 funziona lo stesso, e questa voce non la blocca**: l'11% è quanti soci *oggi* hanno il nome cliccabile, e cresce da sé a ogni giocatore aggiunto dall'app. 🔨 **LA STRADA, e il costo — misurato il 03/09 notte**: la pagina che porta i due numeri **insieme** è `Listadoclientes.aspx`, cioè **la stessa che il sync clienti visita GIÀ due volte per notte** (l'anagrafica e il report Codice). Il codice cliente è una sua colonna, l'id interno sta nel **link di ogni riga** — e il worker quelle righe **le legge già così** nell'anti-doppione (`mpCercaClientePerTelefono` ricava l'id da `gotoClient(<id>)`). ⇒ Non è un giro nuovo su Matchpoint: è **leggere le righe di una pagina che apriamo comunque**, senza login in più e senza nessuna scrittura. 💰 Costo: la lettura sta nel **worker** ⇒ si lavora **da `main`**, e ogni deploy riavvia il processo condiviso (**un tick di sync**, latenza e non dati); la scrittura dei 1001 id è una passata dell'edge del sync clienti, che quei soci **li tocca già**; **a regime zero**, perché viaggia sulla pagina della notte. ⏳⚠️ **DUE COSE NON MISURATE, e si vedono solo aprendo quella pagina viva** (serve il worker: dal cloud la console remota non ci arriva, blocca tutto `/functions/v1/`): ① **quale colonna** porta il codice nell'HTML — che ci sia lo prova l'export che ne esce, ma il ritaglio va fatto sul posto; ② **se `pagesize` si può alzare** oltre le 15 righe di default: se sì sono ~2 caricamenti, se no una settantina. ⇒ Cambia il **costo**, non la fattibilità, e **una lettura sola risponde a tutt'e due**. ⛔ **Cosa NON fare, ed è la ragione per cui questa voce esiste invece di una scorciatoia**: agganciare il socio **per nome**. È indovinare la persona, ed è la stessa classe di difetto della 138. |
 | **124** | ⏳ **L'esito del test di livello arriva DOPO 11 MINUTI — e chi apre il quiz oltre le 4 ore ricasca nel giro dei 15′** — 🆕 **entra il 02/09 pomeriggio, per DECISIONE SUA**, chiudendo la 84: messo davanti alle tre strade ha scelto *«le sposto in una voce nuova in coda»*. ⇒ **Non è una voce inventata**: sono la **ⓐ** e il residuo della **ⓒ** della 84, mai curati, che senza questa riga sparirebbero col titolo della voce chiusa. 📌 *Una voce che si chiude portandosi via del lavoro non curato non è chiusa: è persa.* 📏 **La misura sta nella 84 e non si rifà**: Laura consegna alle 09:48:22, il bot annuncia alle 09:59:11 — **10′49″**. 🔎 La causa: `avvisaEsitoDelTest` gira **dentro il giro dei promemoria**, che il bot dichiara da sé nel registro (*«🔔 avvisi ACCESI (ogni 15 min)»*) ⇒ chi consegna un secondo dopo un giro aspetta quasi un quarto d'ora. ⚙️ **La cura piena è il GESTIONALE CHE CHIAMA IL BOT** — ed è la ragione per cui è un lavoro a sé e non una riga: **il bot non ha nessuna porta in ingresso**, vuole una superficie HTTP sulla VM dietro Caddy. ⚖️ È anche la forma giusta secondo la regola di casa (*il gestionale SA, il bot DICE*): oggi il bot **chiede** a intervalli, e chiedere a intervalli è la definizione del ritardo. 🚨 **E la ⓒ**: `mi_fermo` è stato toccato **16** volte dal 24/08 e `scendo` due; il gradino si misura — **2,2 s** (Laura, 28/08) e **69 s** (Fabiola, 27/08). ⛔ **Restano ferme 9 schede in `review`** (da 5 a **125** giorni): adesso si sa **perché** per le nuove, ma le vecchie hanno `review_reason` vuoto **per costruzione** — è *«non misurato»*, non *«l'ha messa lì una persona»*, e le due non si distinguono a posteriori. |
 | **118** | 🔇 **«Non ci sono riuscito» detto su un `WORKER_ERROR` che era un «non lo so» — ✅ CURATA il 05/09 sera, in servizio su TEST e PROD** — 🔨 Modulo puro `matchpoint-bookings-edit/esito-modifica.ts`, sulla regola della sorella `create` (voce 72): i fallimenti **CERTI** per nome (lanciati **prima** di toccare la scheda: `PARAMS_MANCANTI`, `PRENOTAZIONE_NON_TROVATA`, `FICHA_NON_TROVATA`…, più 401/413/501), il **diario del worker** (`diagnostic.steps`) per i gesti già fatti — *il diario vince sulla parola*: un codice certo dopo un `elimina:`/`add_result:` non è più certo — e **tutto il resto è ignoto**, `locator.click: Timeout` compreso. In sola lettura resta certo. Il marchio è `esitoIgnoto`, che i due `catch` dell'edge leggono già ⇒ `WORKER_ESITO_IGNOTO` ⇒ il bot dice «non lo so ancora» (frasi della voce 106). ⭐ Nessuna riga del worker toccata. 🧪 Banco 7 casi (il 7° verifica il cablaggio **e** che ogni passo elencato esista nel worker vero), due sabotaggi visti rossi. ⏳ **RESTA APERTA per la prova sul vivo, e va detto perché non si può provocare**: su TEST le scritture sono simulate e il worker **non viene chiamato**; su PROD serve un fallimento vero del worker a metà modifica. Si chiude alla prossima riga `remove KO … (ESITO IGNOTO)` nel registro dell'edge con un `Timeout` sotto. — 📏 misurato sugli stessi due fallimenti del 01/09. `esitoIgnotoDaRisposta` riconosce l'ignoto solo su `esitoIgnoto: true`, sul codice `WORKER_ESITO_IGNOTO`, o quando **non c'è nessun codice**. Qui il codice c'era (`WORKER_ERROR`) ⇒ è caduto fra i **rifiuti**, e il bot ha affermato che il gesto non era passato. ⚖️ Ma `locator.click: Timeout` vuol dire *«ho premuto e non so com'è finita»*: il postback di Matchpoint può essere partito lo stesso. 🍀 Stavolta il verdetto era giusto **per caso** (la rimozione non era passata); il giorno in cui passa mentre il bot dice di no, quella persona resta fuori dal campo credendosi dentro. ⇒ È la forma della voce 72 — *dire «non è successo» quando si sa solo di aver smesso di aspettare*. |
@@ -4461,7 +4145,7 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 07/09/2026 — 162 voci
+## 📦 CHIUSE — dal 13/08 al 07/09/2026 — 163 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
@@ -4477,6 +4161,7 @@ non ne apre un'altra sotto.
 | **112** | ✅ *(07/09/2026 notte, 99ª sessione — **chiusa da LUI** nello stesso messaggio, dopo «Anche la centododici è stata decisa»)* ⚖️ **Decisione, non cura**: i 1708 contatti della rubrica **si marcano, non si cancellano**, e il marcatore (`importedFrom: rubrica-google`) **esiste già su tutti e 1708** ⇒ nessuna migrazione. 🔨 ⇒ Il filtro nei due punti — generazione dei gettoni (**357** già fatti per loro) e pubblico di un invio — è la voce **175**. ⭐ **E i due residui erano lo STESSO lavoro**, che separati non si vedeva: 111 e 112 chiedono due **predicati** diversi negli **stessi due punti**. Unirli è il motivo per cui la 175 è una voce e non due. — 🔞📇 **1708 SOCI SU 2817 NON SONO SOCI: SONO CONTATTI DI UNA RUBRICA GOOGLE** — 🗣️ **voce SUA del 30/08**, aperta su sua parola (*«sì, mettila in elenco»*) dopo che la misura è uscita tirando il filo della **111**. 📏 **IL FATTO**: la tabella `member` tiene **due popolazioni** che nessuno distingue — **1102** clienti veri di Matchpoint (età su 1100, livello su 529) e **1708** contatti con `importedFrom: rubrica-google`, che hanno telefono ed email tutti e 1708 ma **zero livelli e una sola età**. Più 7 creati a mano. ⇒ **L'anagrafica non è monca: è mescolata.** E questo spiega da solo il «copre 1102 soci su 2817» che sembrava un import rotto. 🚨 **PERCHÉ È UNA VOCE E NON UNA CURIOSITÀ**: quei 1708 stanno in una tabella che si chiama `member`, l'**app li tratta come soci**, e a **357 di loro è stato generato un gettone** del test di livello. ⭐ Nessuna email è mai partita verso di loro (misurato: le 542 email inviate sono andate tutte a clienti Matchpoint) e **nessuno ha mai consegnato una scheda** — quindi oggi il danno è **potenziale**, non avvenuto. ⚖️ **Ha lo stesso risvolto della 111**, ed è più grande: là erano 2 bambini, qui sono 1708 persone di cui non sappiamo se siano soci, se abbiano mai messo piede al circolo, né su che base la loro rubrica sia finita nel gestionale. ⛔ **Non ho proposto nessuna cura, ed è deliberato**: le strade (separare le due popolazioni, marcarle, non generare gettoni per i contatti, o toglierli) hanno conseguenze diverse su chi riceve messaggi dal circolo, e **la scelta è sua**. Qui c'è la misura, non il rimedio. 📌 *Prima di curare un import che «perde gente», si guarda se la gente che manca sia mai stata quella che si crede.* 🗣️⭐⭐ **07/09 SERA: la decisione TORNA A ME** — *«troppo tecnica la domanda non so risponderti, il tecnico sei tu»*. ⇒ Qui la scheda diceva *«non ho proposto nessuna cura, ed è deliberato… la scelta è sua»*: riga **corretta**, la scelta è mia. 🔨 **DECISO: si MARCANO, non si cancellano** — e ci sono tre ragioni, non una. **①** Cancellare 1708 righe è **irreversibile** e butta via dati che il circolo ha (telefono ed email di gente che conosce), per risolvere un problema che è di **trattamento**, non di archiviazione. **②** Il marcatore **esiste già**: `importedFrom: rubrica-google` sta su tutte e 1708 ⇒ **non serve nessuna migrazione**, serve un **filtro** nei due punti dove quelle righe fanno danno — dove si generano i gettoni (**357** già generati) e dove si costruisce il pubblico di un invio. **③** Una riga marcata si può sempre promuovere a socio vero il giorno che passa da Matchpoint; una riga cancellata no. 📌 *Fra due cure che risolvono lo stesso problema, si sceglie quella che si può disfare.* ⚖️ **E il rischio oggi è potenziale, non avvenuto** (misurato: nessuna email è mai partita verso di loro, nessuno ha mai consegnato una scheda) ⇒ non c'è fretta di premere, c'è da non lasciarlo aperto. ⏳ **NON ancora fatto**: il filtro tocca **chi riceve messaggi dal circolo**, cioè qualcosa che si vede da fuori ⇒ si sviluppa, si prova, e glielo si dice prima di accenderlo. È il primo lavoro della prossima sessione. |
 | **68** | ✅ *(07/09/2026 notte, 99ª sessione — **chiusa da LUI** sulla misura, e la misura è di stasera)* 🔄 **LA SUA SCHEDA ERA DEL 21/08 E NON REGGEVA PIÙ.** Diceva che il bot «non ha un tipo di avviso per partita cambiata dallo staff» e che «le aggiunte non lo attivano». 📏 **Rimisurato su `pmo_eventi_staff`, 7 giorni**: **431** eventi, **374 passati al bot**, **50 muti** — e i 50 muti sono **tutti del 1° settembre o prima**, l'ultimo alle 15:29:11. ⇒ Dalle **16:21 del 01/09** in poi sono **381 eventi consecutivi con un esito, zero muti in sei giorni**, e passano tutti e cinque i gesti che la scheda dichiarava mancanti: aggiunto (214), formazione (156), annullata (28), spostata (22), tolto (11) — su partite **e** lezioni. L'ultimo alle **22:05 di stasera**. ⚖️ **Non l'ha curata questa voce**: l'hanno curata la 73, la 74, la 76 e la 115 passando di lì, e nessuno è tornato a riguardare questa scheda. È la **26ª** — *un limite dichiarato che nessuno riprova resta vero per sempre perché sembra prudente* — costata l'apertura di un cantiere che non serviva. 🚨⭐⭐ **COSA NON È PROVATO, e va letto prima di credere alla chiusura**: `passato_al_bot` dice che **il gestionale ha consegnato al bot**, non che un messaggio sia **arrivato su un telefono**. Questa voce nasceva da *«sul bot dei soci non succede niente»*, cioè dalla **seconda** cosa, che **nessuno ha visto**. La chiusura è **sua**, dichiarata, su una misura che copre il gestionale e si ferma al confine del bot. 📌 *Chiudere su una misura che parla di metà catena è una scelta legittima solo se la scheda dice quale metà.* ⏳ Se un domani un socio segnala di nuovo «non mi arriva niente», il posto dove guardare **non è più il gestionale**: è fra il bot e Telegram. — 🔕 **Lo staff agisce dal gestionale e ai soci non arriva niente** — 🗣️ sua segnalazione: *«quando da gestionale faccio un'azione, cioè metto, levo giocatori o attivo partite o elimino partite, sul bot dei soci non succede niente, cioè non arriva nessun avviso»*. 📏 **MISURATO il 21/08, ed è un buco di disegno in tre punti sommati, non un guasto:** ① il bot **non ha un tipo di avviso** per «partita cambiata dallo staff» — `TipoAvviso` (`avvisi.ts:41`) elenca i nove che esistono e nessuno lo è; ② l'unico rilevatore di cambiamento è `decidiTornataIncompleta` (`avvisi.ts:398-424`), che confronta **un solo numero** (`giocatori_visti`, l'unica memoria del roster: `registro-avvisi.ts:38-40`) e scatta **solo** sul calo da 4 a meno di 4, una volta sola, prima della scadenza disdetta ⇒ **le AGGIUNTE non lo attivano** (porta 3), i cali sotto quota 4 nemmeno (porta 2), e una **sostituzione** è invisibile perché il conteggio non cambia; ③ una **partita annullata** non viene nemmeno esaminata — il giro itera `for (const b of seguite)` (`promemoria.ts:525`), cioè solo sulle partite che ci sono **adesso**, e nessuna riga confronta l'elenco di oggi con quello del giro prima. ⭐ **Il DATO arriva**: `consumer-player-readmodel` rilegge `booking`+`staff_booking` live a ogni giro, col ritardo del sync (~2′, max 10′04″). Manca **chi lo confronti e chi lo dica**. ⚖️ **Il contrasto che lo rende evidente**: la stessa azione fatta dal SOCIO dal bot avvisa gli altri subito (`bot.ts:1384`, `bot.ts:1468` iniettano `avvisa:`); fatta dallo STAFF non ha nessun equivalente. 🚪 **E la porta esiste già**: `bot-telegram-admin` è il ponte gestionale→bot, con credenziali funzionanti e deploy separato per ambiente — oggi ci passano **solo** whitelist e inviti d'accesso (tabelle `telegram_operatori` e `telegram_inviti`, nessun `sendMessage`). ⇒ Aggiungere lì la notifica sarebbe conforme alla regola ferrea — *il gestionale SA, il bot DICE* — al contrario di una diff calcolata nel bot, che sarebbe la «memoria parallela» esclusa dalla 64. ⚠️ **Il limite era già dichiarato** ma come nota a margine di altri lavori (voce 64, riga 1365: «coprono i gesti fatti da **questo bot**: una partita annullata dal gestionale o dal circolo qui non si vede»): questa è la prima volta che ha una scheda sua. ✅ **DECISO il 21/08** (le tre risposte stanno nella tabella qui sotto): il messaggio va a **una sola persona**, quella che il gesto ha toccato; la raffica si assorbe con **2 minuti** di quiete e si manda lo **stato finale**; e **toccato ≠ cambiato**. ⇒ Il rumore — la ragione per cui il ritiro degli inviti orfani (voce 63) è **muto per scelta** — è tenuto fuori da tutte e tre insieme, non da una sola |
 | **164** | ✅ *(07/09/2026 notte, 99ª sessione — **chiusa da LUI**, con la metà «fasce» provata sul suo schermo la sera stessa)* ⚖️ **Due metà, e si chiudono per due strade diverse**: la metà **fasce** è **prova fisica** (`/prenota` → «Domani, martedì 8 settembre», sei bottoni `🟢 12:30 · 🟢 14:00 · 🟢 16:30 · ⛔ 18:00 · ⛔ 19:30 · ⛔ 21:00`, solo pallino e ora — sua parola: **«FUNZIONA»**); la metà **`unoAllaVolta`** è coperta dal **banco** (1741 verdi, due sabotaggi rossi) e dal deploy sui soci (run 143), **non** da un salto visto succedere. ⏳ **Il residuo si chiude da sé o non si chiude**: le righe `⏭️`/`▶️` compaiono alla prossima lentezza del gestionale — *una finestra da guardare, non da aprire*. — 🔁 **IL GIRO DEL CIRCOLO DEL BOT È A PASSO FISSO E NON ASPETTA IL PRECEDENTE — CURATA, IN SERVIZIO SUI SOCI dal 05/09 alle 21:24:56.** 🚀 Deploy `deploy-bot-hetzner` bersaglio **soci** (run 138), dallo sha `d6c8472`; verificato con `stato-bot`: `online`, riavvii **0 → 1**, uptime 38 s, `ponti edge qqbf… (PROD)` e `✍️ prenotazioni REALI` ⇒ il `.env` non l'ha toccato nessuno. ⏳ **Resta aperta per la sola finestra da guardare** (righe `⏭️`/`▶️` nel registro dei soci alla prossima lentezza). 🆕 *Entrata il 05/09/2026 notte, 87ª sessione, da una sua parola: «se questo lo reputi un problema, correggi».* 📏 **Il difetto, misurato guardando la finestra della 92 dentro l'avaria della 160**: in `promemoria.ts` i due timer (`giro avvisi` ogni 15′, `giro circolo` ogni 20 s) sono `setInterval` a passo fisso, e un `setInterval` non aspetta il giro precedente. Il 05/09 fra le 08:53 e le 10:08 `consumer-staff-events` rispondeva a **150 s** (504 del cancello) o a **~74 s** (500 sull'anagrafica) ⇒ fino a **otto giri in volo insieme**, **109** giri falliti in 75 minuti, tutti a leggere la stessa coda al passo 1. ⚖️ Due danni nello stesso gesto: ① è **la finestra della 92** — due giri sulla stessa coda — aperta non ai riavvii ma **ogni volta che il gestionale rallenta**, cioè quando la serratura del passo 5 serve; ② è **carico che cresce quando il sistema è in ginocchio**, la forma della voce **162** sull'app. 🔨 **La cura** (bot, commit `d6c8472` su `main`): `unoAllaVolta(nome, corpo)` — al massimo **un** giro in volo per timer; il tick che trova il precedente in volo **salta** (torna `null`, e i due tick lo ignorano); il primo salto e uno ogni dieci finiscono nel registro (`⏭️ giro circolo: il giro precedente è ancora in volo, salto questo tick (N di fila)`), la ripresa dice quanti tick sono stati saltati (`▶️ … ripreso dopo N tick saltati`); un'eccezione del corpo **rilascia** il posto. Applicata a **tutti e due** i timer. ⛔ Non decide niente sul merito — solo *quando* chiedere, mai *cosa* rispondere: *il gestionale SA, il bot DICE* regge. ✅ **Banco**: `tsc` pulito, **1736 verdi** (erano 1731), 5 prove nuove — quattro **eseguite** (salto, ripresa, rilascio su eccezione, trasparenza senza sovrapposizione) e la quinta **testuale** sul cablaggio; **due sabotaggi visti rossi** (il giro del circolo rimesso nudo; il posto non rilasciato su eccezione). 🚀 **Deploy**: sul bot di **prova** la notte stessa (`deploy-bot-hetzner.yml`); su quello dei **SOCI no** — vuole un riavvio del processo che parla ai soci veri, e quello si fa **quando lo dice lui** (regola della voce 71). ⏳ **Cosa manca per chiudere**: ① il deploy sui soci; ② la **prova fisica**, che qui **non si provoca nemmeno su TEST**: il bot di prova ha i due giri **silenziati** (`silenziaAvvisi`, regola del 5/08) e quindi non chiama mai `consumer-staff-events`; il salto si vede solo sul bot dei soci, alla prossima lentezza del gestionale, come righe `⏭️`/`▶️` nel registro. Una finestra da guardare, non da aprire. ✅⭐ **DEPLOY SUI SOCI FATTO il 07/09/2026 alle 19:45** (`deploy-bot-hetzner` run **143**, sha `bcd483f`), **su sua autorizzazione esplicita**: *«FALLO tu se serve farlo con mia autorizzazione»*. ⇒ Cade il punto ① di «cosa manca». ⭐ **Un solo riavvio invece di due**, ed è una scelta: nello stesso deploy è andata anche l'etichetta nuova delle fasce (PR bot #121), invece di far ripartire due volte il processo che parla ai soci veri. 🔎 **Prima è stato deployato il bot di PROVA** (run 142) e solo dopo i soci, come vuole la catena. ⛔ **Cosa NON è stato fatto, e va detto**: il `collaudo-conversazione` sul bot di prova **non è partito** — il copione vuole anche `chat`, l'id Telegram di un socio di prova, che non ho e che **non si inventa** (manderebbe messaggi a qualcuno). ⇒ La modifica è coperta dal banco (1741 verdi, `tsc` pulito), **non** da una conversazione vera. ⏳ **RESTA APERTA per il punto ②**: il salto del giro si vede solo alla prossima lentezza del gestionale, come righe `⏭️`/`▶️` nel registro. *Una finestra da guardare, non da aprire.* ✅⭐ **E LA METÀ «FASCE» È PROVATA FISICAMENTE — 07/09/2026 notte, sul SUO schermo.** 🗣️ Gli avevo scritto che il `collaudo-conversazione` non poteva partire (vuole l'id Telegram di un socio di prova, che non ho e **non si inventa**) e che bastavano dieci secondi suoi: *riapri `/prenota` → domani e guarda che gli orari siano nudi*. ⇒ Fatto, con schermata: **«Domani, martedì 8 settembre — a che ora?»** e sei bottoni **`🟢 12:30 · 🟢 14:00 · 🟢 16:30 · ⛔ 18:00 · ⛔ 19:30 · ⛔ 21:00`** — **solo il pallino e l'ora**, nessun conteggio di campi liberi e nessun «pieno». Sua parola: **«FUNZIONA»**. ⇒ La modifica delle fasce non è più coperta dal solo banco: è stata **vista** in una conversazione vera. ⏳ **La voce resta aperta lo stesso, e solo per il punto ②** — il salto del giro (`⏭️`/`▶️`) si vede alla prossima lentezza del gestionale. 📌 *Due metà nella stessa voce si chiudono separatamente: provarne una non chiude l'altra, e dirlo è ciò che tiene onesto il conteggio.* |
+| **143** | ✅ *(07/09/2026 notte, 99ª sessione — **CASSATA E CHIUSA da LUI**: «Cassiamo e chiudiamo tutte quelle che riguardano i pagamenti verso matchpoint, poi ti spiego». Il perché lo dà lui, e quando arriva va scritto qui.)* ⛔⭐⭐ **SI CHIUDE SENZA LA PROVA CHE CHIEDEVA, e va detto per intero perché è l'unica voce chiusa così.** Quello che le mancava era **una cosa sola**: un pagamento col borsellino **premuto dal bottone dell'app**, seguito dal controllo che il gestionale rilegga il saldo da solo (`source: pmo_wallet_read` sulla riga `wbal|…`). **Non è mai passato nessuno.** ⚖️ **Cosa È provato, e non è poco**: la metà **rilettura** due volte sul campo (il ↻ della scheda socio il 06/09 alle 19:33:15 — `600` invariato ma `source: pmo_wallet_read`, cioè la prova sta nella **fonte** e non nel numero; e la **ricarica vera da 1 €** delle 18:37:29, che ha chiuso una finestra di **3′04″** in cui il gestionale avrebbe mostrato il saldo vecchio); i **due record** (`wallet_txn` il movimento, `wallet_balance` la fotografia — era la seconda a non aggiornarsi); il banco (11 casi su `_shared/fotografia-saldo.ts` più `il-saldo-si-rilegge-dopo-il-gesto.test.mjs` che **estrae le funzioni da `index.html` e le esegue**, sabotati e rossi ogni volta). ⛔ **Cosa NON è provato**: la metà **pagamento**. Tre tentativi, tre bersagli, tre motivi diversi — e nessuno era la cura: ① **Maurizio Aprea** ha tutti i pagamenti in omaggio (`gift`, 0 €) ⇒ `pendente 0` ⇒ `/collect-payment` si ferma alla guardia anti-doppio **senza toccare niente**; ② **Fabiola Limuti**, borsellino troppo piccolo, e sopra ci è caduta la voce **171** (*«Pulsante metodo "Saldo disponibile" non trovato»*); ③ **Marco Aprea** il 07/09 notte, sulla partita **9890** (14/09 · 10:30 · Campo 3) che lui aveva preparato apposta: 📏 misurato prima di premere — **importo 800, pendente 800** (un dovuto vero, il bersaglio era giusto) ma **borsellino 1,00 €**, e il chip 👛 diceva `—` perché il worker non aveva letto il saldo all'apertura della scheda ⇒ il bottone Wallet era grigio per **due** ragioni indipendenti (*saldo insufficiente* e *saldo non disponibile*). 📌 *Un caso di prova si sceglie misurando il bersaglio, non prendendo chi si ha sottomano* — imparato tre volte, e la terza è stata la volta in cui misurare ha impedito di muovere denaro per niente. 🚨⭐ **E LA COSA DA NON PERDERE, se un domani si riapre**: il criterio di chiusura di questa voce **aveva una scadenza e non lo diceva**. La riga `wbal|…` la **riscrive la routine dei 10 minuti**, e con essa la provenienza ⇒ chi controlla dopo più di dieci minuti legge `matchpoint` e conclude che la rilettura **non è partita** — di una rilettura partita. 📏 Misurato il 07/09: la traccia del ↻ del 06/09 alle 19:33 **non c'era più** il giorno dopo. ⇒ **Il controllo va fatto ENTRO DIECI MINUTI dal gesto**, o è un falso negativo. *Un criterio di chiusura che poggia su un campo che qualcun altro riscrive ha una scadenza, e la scadenza va scritta accanto al criterio.* — 👛 **Il borsellino in cassa: dieci minuti sono troppi quando c'è la fila** — 🗣️ **sua**, e nasce da una sua contraddizione dichiarata subito dopo aver scelto i 10 minuti: *«quando facciamo le operazioni di cassa che c'è tanta gente, se non si aggiorna velocemente poi qualcuno della segreteria può protestare»*. ✅ In servizio il rinfresco automatico **ogni 10′** (routine `wallet`, provata dal vivo il 04/09). ⛔ **Accorciare il ritmo NON è la cura**: il dispatcher manda una routine per giro ⇒ ogni tick preso dal borsellino è un tick tolto alle **prenotazioni**, e il worker è **un browser solo** — a 2 minuti resterebbe comunque una finestra. 🔨 La cura è rinfrescare **il socio di cui sappiamo che il saldo è appena cambiato**, sul colpo. 📌 *Un dato che si muove non si insegue col ritmo: si rinfresca dove lo si muove.* ⏳ Seconda metà legata alla **142**: con gli id, all'apertura di una scheda si rinfrescano i ≤4 giocatori di quella partita. 📄 Scheda per intero qui sopra.  🚨⭐⭐ **E IL FATTO OPERATIVO CHE NON DEVE ANDARE PERSO CON QUESTA SCHEDA, perché morde chiunque riprovi:** incassare col borsellino un importo **diverso** da quello a carico fa **riscrivere l'importo a carico sulla prenotazione vera** (`cargo_set:X->Y` nel worker, salvato su Matchpoint) — **e lo storno NON lo rimette**. ⇒ Chi volesse aggirare un borsellino troppo piccolo abbassando la cifra creerebbe al socio un dovuto sbagliato su una partita vera, e non se ne accorgerebbe: lo storno rimette il pagamento, non l'importo. 📌 *Una prova che aggira un vincolo invece di soddisfarlo cambia il bersaglio in un punto che nessuno sta guardando.* |
 | **119** | 📱 **Le etichette dei bottoni si tagliano NEL MEZZO, e sparisce quello che distingue** — 🗣️ difetto **suo**, visto sullo schermo mentre prenotava il 01/09: *«attenzione a che non si leggono i testi»*, con sei fasce che dicevano tutte «…4 liberi». 📏 `🟢 12:00 · 4 liberi` sono 19 caratteri su un bottone largo **mezza riga**: Telegram taglia in mezzo e resta `🟢 12:…4 liberi` — cioè la parte uguale per tutti e sei. 🔨 **Curata** (PR bot #117): `etichettaFascia` a scala, cade la parola, poi il numero, **l'ora mai**; sulle piene «pieno» resta, perché un pallino rosso da solo è un colore, non un'informazione. ⛔ **Aperta per la prova fisica** e per due residui **non toccati**: `💬 Altri orari? Scrivi alla segreteria` (38 caratteri) si taglia anche lui su riga intera — il tetto di 37 fu osservato sul suo telefono il 29/07 e cambiarlo riapre una sua decisione; e **«🔄 Riprova a invitare»** invita a riprovare in una finestra in cui l'unica cosa che serve è **aspettare il sync** (misurato: 2′18″ quella sera), quindi manda a premere a vuoto. 📏⭐ **MISURATA SUL BOT VIVO DI TEST il 05/09 sera** (89ª, `collaudo-conversazione` run 12, `/prenota` → domani): le quattro fasce escono `⛔ 09:00 pieno` (13) · `⛔ 10:30 pieno` (13) · `⛔ 16:00 pieno` (13) · `🟢 17:30 · 3` (12) — **tutte sotto il tetto di 14, tutte diverse, l'ora sempre presente**. Le forme piene sarebbero state `⛔ 09:00 · pieno` (15) e `🟢 17:30 · 3 liberi` (19), cioè tagliate tutt'e quattro ⇒ la scala **morde su dati veri**, non solo sul banco. ⏳ **Resta aperta lo stesso, e per due ragioni diverse**: il collaudo misura la **stringa**, non lo schermo (dichiara da sé di non dire «come si vede sul telefono»), e i **due residui** qui sopra non sono stati toccati. 🔎 **06/09 MATTINA (92ª): i due residui MISURATI, e nessuno dei due è un lavoro.** ① `💬 Altri orari? Scrivi alla segreteria` è **37 caratteri**, non 38: il 38 era `.length` di JavaScript, che conta l'emoji come due unità UTF-16 — in punti di codice sono 37, cioè **la stessa stringa identica** che il 29/07 si è letta intera sul suo telefono e da cui il tetto di 37 è stato misurato. Nessuno l'ha vista tagliata: era un errore di conteggio, non un difetto. ② «🔄 Riprova a invitare» sta **sotto** un testo che dice già *«Attendi un attimo… ✅ La partita è prenotata: non rifarla. Poi tocca il bottone qui sotto»*, e la forma è una **sua correzione del 22/08**: il tempo si dice **una volta sola, in testa**, e la riga dell'azione dice solo **cosa** fare. Mettere un tempo sul bottone («fra 2 minuti») rifarebbe la promessa che lui ha tolto — e chi tocca troppo presto rilegge la stessa frase, che è l'esito onesto. ⇒ Nessuna riga del bot toccata (repo raggiungibile stamattina, `dc52eee`). **Resta aperta solo per la prova sul suo schermo.** 📦 **CHIUSA il 07/09/2026 sera, a PROVA FISICA SUL SUO SCHERMO** — era l'unica cosa che le mancava. 📏 La sua schermata del bot dei soci (`/prenota` → domani) mostra **sei** fasce: `🟢 12:30 · 2` · `🟢 14:00 · 4` · `🟢 16:30 · 3` · `⛔ 18:00 pieno` · `⛔ 19:30 pieno` · `⛔ 21:00 pieno`. ⇒ **Tutte leggibili per intero, tutte diverse fra loro, e l'ora sempre presente** — che è esattamente la scala («cade la parola, poi il numero, l'ora mai»), vista funzionare dove il difetto era nato. ⭐ E si è chiuso anche il **residuo dichiarato**: `💬 Altri orari? Scrivi alla segreteria` sta su una riga intera e **si legge tutto**, il che conferma dal vivo la misura che diceva **37 punti di codice e non 38** — cioè che non era un difetto ma un errore di conteggio. 🔄⭐⭐ **E nello stesso momento la voce ha prodotto il suo seguito**: guardando quella schermata lui ha deciso di togliere il DATO — *«non serve che tu mi scrivi quanti campi liberi ci sono, basta mettere l'orario col pallino verde»*, poi *«anche "pieno" lo leverei»* ⇒ oggi le fasce sono `🟢 12:30` e `⛔ 18:00` (PR bot #121, in servizio sui soci dalle 19:45). 📌 *La cura ha fatto vedere la schermata come si legge davvero, e solo allora si è potuto decidere cosa toglierne: una prova fisica non chiude soltanto una voce, a volte ne apre la successiva.* |
 | **142** | 🪟 **LA SCHEDA COMPLETA AL CLICK: giocatori, id, Osservazioni e SOLDI dentro il gestionale** — 📦 **CHIUSA il 07/09/2026 pomeriggio, a PROVA FISICA su TEST 6.395 e su PROD 6.395** (PR [#1467](https://github.com/PadelVillage/padel-match-organizer/pull/1467)). 🗣️ Sua, disegnata in cinque messaggi il 04/09 dal cellulare: *«così quando clicco su una scheda ho tutti i dati immediatamente»*. ✅ **Tutti e quattro i dati sono immediati**: nomi (04/09), id e Osservazioni (06/09, PROD 6.384), **soldi** (07/09, PROD 6.395). 🩹 **L'ultimo pezzo non richiedeva una fonte nuova**: `_staffCalPaidInfo` esisteva già, ma la scheda la consultava **solo se il worker aveva già detto «riscosso»** — cioè solo per scrivere l'etichetta del metodo. 📌 *Un dato consultato solo per decorare una risposta che qualcun altro ha già dato non è una fonte: è una didascalia.* ⛔ **E si risponde in UN VERSO SOLO**: l'assenza dall'archivio non diventa mai la ✗ rossa «da incassare»; il worker che dice «in sospeso» non viene ribaltato; e lo **storno** resta offerto **solo** su uno stato confermato dal circolo. 📌 *Un dato basta per INFORMARE molto prima di bastare per AGIRE.* 🚨 **Per leggere quei record si è dovuta correggere la regola dello storno**, e la misura ha trovato due cose: il booleano `voided` non ce l'ha **nessuna** delle **3320** righe (una difesa **morta**, con l'aria di difendere), e lo stesso stato è scritto in **DUE** modi — `voided` (20 righe, 03/06→26/08) e `void` (3, nate il 06/09 alle 22:08) ⇒ se ne riconoscevano **3 su 23**. ⚖️ Non facevano danno **oggi** solo perché le 20 vecchie sono `deleted` e la lettura le scarta: a proteggerle era un meccanismo **diverso** da quello che il codice dichiarava, e la parola era già cambiata una volta senza che nessuno se ne accorgesse. 🚨⭐⭐ **E LA PROVA FISICA HA TROVATO CIÒ CHE IL BANCO NON POTEVA VEDERE**: su TEST la scheda diceva ancora «non lo so ancora» per due giocatori che l'archivio conosceva — non sbagliava la regola, l'**indice era vuoto**. La prima lettura gira prima che la sessione staff sia pronta, fallisce, e un elenco vuoto era **indistinguibile** da «non c'è nessun pagamento» ⇒ si sostituiva l'indice col vuoto **e** si bruciava la finestra dei 2′. 📌 *Prima era un difetto cosmetico; questa cura lo rende **portante** — e da quel momento va curato anche lui.* 📏 **Il criterio di chiusura è stato SCRITTO PRIMA della prova** (lezione della 174): *«la stessa sonda deve dare 3 ✓ e 1 ◌, e nessun Storna»*. Su PROD 6.395, partita del 05/09 · Campo 2 · 16:30: **3 ✓ e 1 ◌**, metodi giusti persona per persona (Card · Cash · Card), **nessun «Storna»**, zero errori di pagina. Prima, sulla stessa partita a 6.392: **quattro «non lo so ancora»** su quattro. 🧪 Banco `i-soldi-si-vedono-subito` (**20 casi**): le righe che decidono il segno si **ritagliano da `index.html` ed ESEGUONO**. **Rifatto due volte perché passava per il motivo sbagliato** — casi che partivano già nello stato da dimostrare, uno stub al posto della funzione vera, e una difesa che nessun caso attraversava. Sabotato **8 volte, rosso 8 su 8**. ⏳ **Cosa NON è provato, e sta nella scheda**: che il worker, quando risponde, **sovrascriva** il segno dell'archivio (la console blocca `/functions/v1/` di proposito ⇒ la rilettura non parte mai; lo dice il banco, non un occhio). 📄 Scheda per intero sopra. ✅⭐⭐ **CONTROLLATA DA LUI SU PROD il 07/09 pomeriggio** — passo ⑤ del postulato, chiuso con una parola sola: *«FUNZIONA»*, su tutte e due le cose che gli avevo chiesto di guardare (il capitolo che accende le sottosezioni, e la scheda che apre i pagamenti già noti senza la rotellina). 📌 *Un lavoro consegnato PROVATO gli costa due minuti di verifica; consegnato da collaudare gli costerebbe la giornata.* |
 | **172** | 🔐 **SPUNTANDO IL CAPITOLO, LE SOTTOSEZIONI NON SI ATTIVAVANO** (permessi staff) — 📦 **CHIUSA il 07/09/2026 pomeriggio, a PROVA FISICA su TEST 6.392 e su PROD 6.392** (PR [#1464](https://github.com/PadelVillage/padel-match-organizer/pull/1464)). 🗣️ Difetto **suo** del 06/09, trovato aprendo i permessi dell'utenza della console: ha dovuto metterle **una per una a mano**. ⛔ La scheda diceva *«non si tocca il codice prima»* e poneva **tre domande**: sono state misurate sull'app viva con la console remota, in **sola lettura** e su profili **sintetici** — nessun profilo vero toccato. **①** era **solo il disegno**: i figli restavano `checked:false` col contatore a «0 / 4», ma il Salva raccoglieva **fedelmente** ciò che le caselle mostravano ⇒ il salvataggio era onesto, e la cura non andava lì. **②** togliendo il capitolo i figli restavano `true` e solo `disabled`, col contatore al **pieno** di un gruppo spento, e si salvavano `true` **orfani** sotto un padre `false` — inerti (il padre fa da cancello) ma illeggibili in archivio. **③** 🚨⭐⭐ **il capitolo da solo APRIVA**, ed è il verso che questa scheda dichiarava **NON MISURATO** (*«nessuno l'ha misurato in quel verso»*): con `view_administration:true` e le sottosezioni a `false`, `pmoAdminSectionViewAllowed('users')` rispondeva **`false`** e l'app apriva lo stesso **Utenti Staff** — il pannello più potente del gestionale — perché il `|| 'users'` finale di `pmoFirstAllowedAdminSection` **vinceva sul permesso**. ⚖️ Danno limitato da `manage_users:false` (le RPC di scrittura restavano bloccate lato server), ma il pannello si apriva. 🔨 **Cura in tre pezzi**: il capitolo è un **interruttore maestro** (`pmoToggleSectionGroup`) e il suo stato si **deriva** dai figli (tutti / nessuno / **indeterminato**), così il contatore non può più mentire; i figli **non si disabilitano più** — col padre derivato, disabilitarli quando è spento chiuderebbe *la porta a chiave dall'interno*, e nessuno potrebbe più riaccenderne uno; e il ripiego torna `PMO_ADMIN_SECTION_NESSUNA`, che `pmoAdminSectionKey` **riconosce** (senza, il suo `return 'users'` finale rimetterebbe il buco che si sta chiudendo). 🩹 **Una cura più larga è stata SCARTATA misurando**: nascondere il capitolo quando nessun figlio è permesso. Sembrava più pulita, ma solo `assessment` e `administration` hanno sottosezioni **di navigazione** — su `members` i figli governano pezzi *dentro* la scheda, e il capitolo ha contenuto proprio ⇒ nasconderlo toglierebbe l'elenco soci a chi ha diritto di vederlo. 📌 *La cura che sembra più pulita va misurata su tutti i casi che tocca, non solo su quello da cui nasce.* 📏 **PROVA FISICA, con un `.click()` vero sulla casella e non una chiamata a mano alla funzione** — su **TEST**: figli `0 / 5` → **`5 / 5`**, ripiego `users` → **`nessuna`**; su **PROD**: `0 / 4` → **`4 / 4`**, ripiego `users` → **`nessuna`**; togliendo il capitolo i figli vanno a `false` e non restano più `true` orfani. **Zero errori di pagina** in tutt'e due. ⭐ I numeri diversi (5 e 4) non sono un difetto: su `test-preview` c'è «Circoli» e su `main` no — ed è la ragione per cui il banco **legge** quel numero invece di scriverlo. 🧪 Banco `il-capitolo-accende-le-sottosezioni` (**11 casi**): funzioni **estratte da `index.html` ed ESEGUITE**, e il gesto passa dall'attributo `onchange` dell'**HTML vero** ⇒ prova anche il **cablaggio**, non solo la funzione. **Sabotato 6 volte, rosso 6 su 6.** 🩹 Due trappole pagate scrivendolo: l'estrattore a graffe si rompe su `escapeHtml`, il cui corpo contiene la regex `/[&<>"']/g` che scambia per l'inizio di una stringa (⇒ quella si prende **a riga**); e un `deepStrictEqual` fra un array del contesto `vm` e uno del banco **fallisce pur avendo gli stessi valori**, mostrando due liste identiche — *un banco che accusa il codice per un confine di realm è peggio di niente*. ⛔ **Cosa NON è provato**: che una **sessione staff vera** con quel profilo si veda negare il pannello. La misura ha esercitato le funzioni che lo decidono, con profili sintetici, sull'app viva di tutt'e due gli ambienti — non un login con un'utenza limitata. ✅⭐⭐ **CONTROLLATA DA LUI SU PROD il 07/09 pomeriggio** — passo ⑤ del postulato, chiuso con una parola sola: *«FUNZIONA»*, su tutte e due le cose che gli avevo chiesto di guardare (il capitolo che accende le sottosezioni, e la scheda che apre i pagamenti già noti senza la rotellina). 📌 *Un lavoro consegnato PROVATO gli costa due minuti di verifica; consegnato da collaudare gli costerebbe la giornata.* |
