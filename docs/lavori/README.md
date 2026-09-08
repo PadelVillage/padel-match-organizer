@@ -1998,9 +1998,24 @@ prezzi confermati; il calendario risolto giorno per giorno attraverso il confine
 senza date, cancellazione della base, elenco chiusure vuoto; **banco 125 file verdi, 0 rossi**, e i
 **due sabotaggi nuovi** del modulo delle fasce visti cadere (un giorno chiuso che rende fasce lo
 stesso; la settimana che non scavalca più il chiuso).
-⏳ **Cosa NON è ancora provato, e per questo la voce resta APERTA**: il **pannello sulla pagina
-viva** di TEST — che è esattamente il difetto che la 176 ha pagato (banco verde, pannello giusto,
-e un lunedì con cinque fasce invece di sei che solo aprire la pagina poteva mostrare).
+✅⭐ **E PROVATO SULLA PAGINA VIVA DI TEST 6.402**, con la console remota, dal principio alla
+fine — non «si carica», ma *il gesto intero fatto e disfatto*:
+· il pannello **disegna**: 41 righe, la riga «Oggi martedì 8 settembre vale Griglia base — 6 fasce»,
+  **366 quadratini** su 13 mesi nel calendario di controllo, il lunedì a 10 · 10 · 8 · 12 · **13** · 12;
+· **creato un periodo dal pannello** («Prova 185», 1-30/11): nasce con **41 fasce copiate**, non
+  vuoto — la protezione descritta sopra, vista funzionare;
+· cambiato un prezzo dentro il periodo e **salvato**: il 05/11 il calendario risponde **«Prova 185»**
+  col prezzo nuovo, mentre il **31/10 resta «Griglia base»** con le sue 7 fasce. ⇒ *il confine è
+  stato attraversato davvero, non dedotto*;
+· **aggiunta una chiusura** (10/11): quel giorno torna `chiuso=true`, col motivo, e **zero fasce**;
+· **rimesso tutto com'era**: periodo eliminato, chiusura tolta, e il 05/11 torna «Griglia base».
+  📏 Ricontrollato nel database: **1 periodo, 0 chiusure, 41 fasce, 41 prezzi**.
+
+⏳ **Cosa NON è ancora provato, e per questo la voce resta APERTA**: la metà del **BOT**. Le due
+edge (`availability_day` e la `kb`) sono in servizio su `cudi` e il banco le copre, ma **nessun
+gesto vero del bot** ha ancora attraversato la strada nuova. ⇒ È la stessa prova che manca alla
+**177**, e si farà con la sonda del ponte allargata ad `availability_day`.
+📌 *Un banco verde dice che il meccanismo è giusto, non che qualcuno ci è passato.*
 
 ## 📋 IN CODA — 4
 
