@@ -256,6 +256,26 @@ primo **non proteggono** il secondo, e non lo dicono — continuano a suonare pr
 | *«si incassa solo su test, su PROD mai»* + *«dal gestionale si incassa, perché Matchpoint non c'è più»* | la **cassa nasce sul sistema nuovo** ⇒ *🔌 IL DISTACCO*, più sotto |
 | *«devi darmi la possibilità di definire io come voglio gli slot prenotabili»* | ⇒ la voce **176**, fatta l'08/09: `pmo_fasce_prenotabili` |
 
+🆕🗣️⭐⭐ **E L'ULTIMO PONTE VERSO PROD È UNO SOLO — sue parole dell'08/09/2026 sera:**
+
+> *«A noi servirà solamente una volta ricollegarci con il gestionale di prod per riallineare i dati
+> dei soci in anagrafica. Dopodiché Prod si spegnerà per sempre.»*
+
+⇒ **Due cose, e la seconda è quella che cambia il lavoro:**
+· ⚖️ *«PROD non si tocca»* **guadagna la sua unica eccezione, ed è dichiarata da lui**: **una**
+  riconnessione, in **lettura**, per riallineare l'**anagrafica dei soci**. È esattamente il
+  meccanismo della **voce 182** — si legge da `qqbf` con `pmo_get_records_admin_page` e si scrive
+  sul sistema nuovo — e non passa da nessuna parte di mezzo;
+· 🎯 **il ponte che serve è verso il GESTIONALE di PROD, non verso Matchpoint.** ⇒ Nel futuro
+  dichiarato **non c'è più niente** che richieda al sistema nuovo di chiamare Matchpoint: la
+  strada dei secret `MATCHPOINT_*` su `cudi` non serve a nessun lavoro previsto.
+📌 *Una riconnessione che si fa una volta sola non è una dipendenza: è un trasloco.* E come tutti i
+traslochi si fa **una volta**, o si seppellisce quello che il sistema nuovo ha fatto nel frattempo
+(⇒ la 182 dice **quando**, e il «quando» non si anticipa).
+
+⚠️ **La data non c'è**, e non va inventata: lui ha detto *«dopodiché»*, non un giorno. La scadenza
+dichiarata resta quella del distacco (~27/09), e **si rilegge** quando arriva invece di ereditarla.
+
 🚨🚨⭐⭐ **LA TRAPPOLA CENTRALE, e NON è «togliere Matchpoint».**
 Il sistema nuovo è servito da `test.padelvillage.club`, e l'app si riconosce «di prova»
 **dall'hostname** (`pmoIsTestHostname`, `/^test\./`). ⇒ Finché si riconosce così, in **produzione**
