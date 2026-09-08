@@ -36,7 +36,7 @@ import {
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 // 🗓️ voce 177 — la griglia viene dalla TABELLA `pmo_fasce_prenotabili`, col blocco vecchio
 // come solo ripiego. Il perché sta per esteso in `fasce-prenotabili.ts`.
-import { fasceComeGriglia, fasceDelGiorno } from './fasce-prenotabili.ts';
+import { fasceDelGiorno, giornoDalCalendario } from './fasce-prenotabili.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
 import { registraConRitenta } from './registra-copia.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte». Stanno in un modulo perché le
@@ -435,12 +435,12 @@ Deno.serve(async (req: Request) => {
     // distacco) resta solo come RIPIEGO. Si leggono tutt'e due in un colpo: il ripiego serve
     // proprio quando la tabella non risponde, quindi chiederlo dopo vorrebbe dire un secondo
     // giro nel momento peggiore.
+    // 🗓️ voce 185 — si chiede per DATA, non per giorno della settimana: con i periodi, «che
+    // fasce ci sono di lunedì» non ha più una risposta sola. A risolvere periodo e chiusura è il
+    // gestionale (`pmo_calendario_effettivo`), qui si legge il verdetto.
     const dow = new Date(`${dayData}T12:00:00Z`).getUTCDay();
-    const [fasceRes, schedRes] = await Promise.all([
-      service
-        .from('pmo_fasce_prenotabili')
-        .select('giorno, ora_inizio, ora_fine, attiva')
-        .eq('giorno', dow),
+    const [calRes, schedRes] = await Promise.all([
+      service.rpc('pmo_calendario_effettivo', { p_dal: dayData, p_al: dayData }),
       service
         .from('pmo_cloud_records')
         .select('payload')
@@ -453,13 +453,17 @@ Deno.serve(async (req: Request) => {
     // negare al socio un elenco che sappiamo ancora produrre. Si scrive nel registro e si
     // tira dritto. Un errore sul RIPIEGO invece resta fatale come prima: se cade anche
     // quello non è rimasta nessuna griglia da cui rispondere.
-    if (fasceRes.error) {
-      console.error('[booking-write] fasce non lette, uso il ripiego:', fasceRes.error.message);
+    if (calRes.error) {
+      console.error('[booking-write] calendario non letto, uso il ripiego:', calRes.error.message);
     }
     if (schedRes.error) return err(500, 'DB_ERROR', 'Errore lettura griglia slot.');
-    const griglia = fasceRes.error ? null : fasceComeGriglia(fasceRes.data);
+    const giorno = calRes.error ? null : giornoDalCalendario(calRes.data, dayData);
     const schedule = (schedRes.data?.[0]?.payload as JsonMap | undefined)?.value as JsonMap | undefined;
-    const rawSlots = fasceDelGiorno(griglia, schedule ?? null, dow) as unknown as JsonMap[];
+    // ⛔ Un giorno CHIUSO non ripiega sulla griglia vecchia: la chiusura è una risposta, non un
+    // buco. Ripiegare qui vorrebbe dire proporre di giocare a Natale.
+    const rawSlots = giorno
+      ? (giorno.fasce as unknown as JsonMap[])
+      : (fasceDelGiorno(null, schedule ?? null, dow) as unknown as JsonMap[]);
 
     // Ciò che occupa un campo quel giorno: prenotazioni, copie in app E occupazioni «nude»
     // (manutenzioni e lezioni che vivono solo come `booking_occupancy`). Regola e misure in
@@ -489,7 +493,14 @@ Deno.serve(async (req: Request) => {
       if (dayData === today && sStart <= nowMin) continue; // oggi: salta le fasce già iniziate
       const busy = campiOccupati(occupied, sStart, sEnd);
       const freeCampi = CAMPI.filter((c) => !busy.has(c));
-      slots.push({ ora: start, ora_fine: end, free_campi: freeCampi, campi_totali: CAMPI.length });
+      // 💶 voce 185/186 — il prezzo A GIOCATORE viaggia insieme allo slot: il bot non lo calcola
+      // (non saprebbe da dove), lo riceve. `null` = non ancora deciso, e chi lo mostra deve
+      // dirlo invece di scrivere 0,00 €, che vorrebbe dire gratis.
+      const prezzo = (s as { prezzoCents?: number | null }).prezzoCents;
+      slots.push({
+        ora: start, ora_fine: end, free_campi: freeCampi, campi_totali: CAMPI.length,
+        prezzo_cents: typeof prezzo === 'number' ? prezzo : null,
+      });
     }
 
     // 🔎 La FONTE va nel registro accanto al numero: «6 fasce» non dice se vengono dalla
@@ -497,9 +508,20 @@ Deno.serve(async (req: Request) => {
     // che serve sapere. 📌 *Un conteggio senza la sua provenienza non è una misura.*
     console.log(
       `[booking-write] availability_day ${dayData} → ${slots.length} fasce per ${etichetta}` +
-        ` (fonte: ${griglia ? 'pmo_fasce_prenotabili' : 'ripiego potentialSlotSchedule'})`,
+        ` (fonte: ${giorno ? `pmo_calendario_effettivo/${giorno.periodo_nome ?? '?'}` : 'ripiego potentialSlotSchedule'}` +
+        `${giorno?.chiuso ? ' · CHIUSO' : ''})`,
     );
-    return ok({ member: { id: member.id, name: member.name }, data: dayData, slots, today });
+    // 🚨 Il motivo della chiusura lo scrive la segreteria in italiano, ma passa lo stesso dalla
+    // guardia dei nomi interni prima di uscire verso il bot: una casella di testo libera è
+    // esattamente il posto da cui un nome che il socio non deve sentire arriva in fondo.
+    return ok({
+      member: { id: member.id, name: member.name },
+      data: dayData,
+      slots,
+      today,
+      chiuso: giorno?.chiuso === true,
+      motivo_chiusura: giorno?.chiuso && giorno.motivo ? dettaglioPerIlBot(giorno.motivo) : null,
+    });
   }
 
   // ── Slot: validazione comune (data/ora/durata nel fuso del circolo) ───────

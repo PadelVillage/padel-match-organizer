@@ -19,7 +19,7 @@ import { clienteDelCircolo } from './cliente-del-circolo.ts';
 import { livelloDimostrato } from './livello-dimostrato.ts';
 // 🗓️ voce 177 — gli orari che il bot RACCONTA vengono dalla stessa tabella su cui
 // l'app fa prenotare. Il perché sta per esteso in `fasce-prenotabili.ts`.
-import { fasceComeGriglia } from './fasce-prenotabili.ts';
+import { grigliaDalCalendario } from './fasce-prenotabili.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte», nello STESSO modulo che usa
  * `consumer-booking-write` per ammettere. Se le due copie divergessero, questa vetrina
  * mostrerebbe partite in cui poi il gestionale non fa entrare — e il socio non leggerebbe
@@ -215,11 +215,14 @@ Deno.serve(async (req: Request) => {
   // vecchio resta il RIPIEGO, e questa riga lo dice perché prima diceva il contrario.
   if (action === 'kb') {
     const env = supabaseUrl.includes(PROD_REF) ? 'prod' : 'test';
-    const [fasceRes, slotRes, kbRes] = await Promise.all([
-      // 🗓️ voce 177 — la FONTE degli orari è la tabella; il blocco qui sotto è il RIPIEGO.
-      service
-        .from('pmo_fasce_prenotabili')
-        .select('giorno, ora_inizio, ora_fine, attiva'),
+    // 🗓️ voce 185 — la griglia della settimana la calcola il GESTIONALE, che sa di periodi e
+    // chiusure: si chiedono 14 giorni e per ogni giorno della settimana si tiene il primo NON
+    // chiuso. 🚨 Con 7 giorni, una settimana che contiene Natale racconterebbe «il venerdì non si
+    // gioca mai» — un dato falso che nessuno andrebbe a controllare.
+    const fra14 = new Date(`${today}T12:00:00Z`);
+    fra14.setUTCDate(fra14.getUTCDate() + 13);
+    const [calRes, slotRes, kbRes] = await Promise.all([
+      service.rpc('pmo_calendario_effettivo', { p_dal: today, p_al: fra14.toISOString().slice(0, 10) }),
       service
         .from('pmo_cloud_records')
         .select('payload')
@@ -244,10 +247,10 @@ Deno.serve(async (req: Request) => {
     }
     // ⚖️ Un errore sulle FASCE non è fatale — c'è il ripiego, e tacere gli orari al bot
     // sarebbe peggio che darglieli vecchi. Si scrive nel registro e si tira dritto.
-    if (fasceRes.error) {
-      console.error('[readmodel] fasce non lette, uso il ripiego:', fasceRes.error.message);
+    if (calRes.error) {
+      console.error('[readmodel] calendario non letto, uso il ripiego:', calRes.error.message);
     }
-    const griglia = fasceRes.error ? null : fasceComeGriglia(fasceRes.data);
+    const griglia = calRes.error ? null : grigliaDalCalendario(calRes.data);
     const slotPayload = (slotRes.data?.[0]?.payload ?? null) as JsonMap | null;
     // 🗓️ voce 177 — quello che il bot racconta è la griglia della TABELLA, cioè la stessa
     // su cui `consumer-booking-write` fa prenotare. Il blocco vecchio resta il ripiego.
@@ -258,7 +261,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(
       `[readmodel] kb env=${env} slot=${slotSchedule ? 'sì' : 'no'} kb=${kbRow ? 'sì' : 'no'}` +
-        ` fonte=${griglia ? 'pmo_fasce_prenotabili' : 'ripiego potentialSlotSchedule'}`,
+        ` fonte=${griglia ? 'pmo_calendario_effettivo' : 'ripiego potentialSlotSchedule'}`,
     );
 
     return ok({

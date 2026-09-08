@@ -30,8 +30,12 @@
  * `partita-aperta.ts`. Cambiandone uno si cambiano TUTTI.
  */
 
-/** Una fascia nella forma che i due lettori del bot già si aspettano. */
-export type Fascia = { start: string; end: string; name: string };
+/**
+ * Una fascia nella forma che i due lettori del bot già si aspettano.
+ * 💶 `prezzoCents` (voce 185) è quanto paga OGNI giocatore: arriva solo dal calendario effettivo,
+ * ed è `null` quando nessuno ha ancora deciso quel prezzo — che NON è zero, cioè «gratis».
+ */
+export type Fascia = { start: string; end: string; name: string; prezzoCents?: number | null };
 
 /** Griglia per giorno della settimana, convenzione `getDay()`: '0' = domenica. */
 export type Griglia = Record<string, Fascia[]>;
@@ -121,4 +125,110 @@ export function fasceDelGiorno(
     ? ((blocco as Record<string, unknown>)[k] as Fascia[])
     : [];
   return vecchie;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * VOCE 185 — LA GRIGLIA DIPENDE DAL GIORNO, NON SOLO DAL GIORNO DELLA SETTIMANA
+ * ══════════════════════════════════════════════════════════════════════════════
+ * 🗣️ Richiesta del committente (08/09/2026): orari e prezzi cambiano con la stagione, e ci sono
+ * giorni di chiusura. ⇒ «Che fasce ci sono di lunedì?» non ha più UNA risposta: dipende da QUALE
+ * lunedì. Chi legge deve chiedere per DATA.
+ *
+ * ⭐ E chi risponde è il GESTIONALE, con `pmo_calendario_effettivo`: la stessa funzione che usa
+ * l'app. Qui non si risolvono periodi né chiusure — si legge quello che il gestionale ha già
+ * deciso. 📌 *Due posti che calcolano la stessa cosa sono un guasto che aspetta il primo cambio.*
+ *
+ * ⛔ Il ripiego resta quello di prima (il blocco `potentialSlotSchedule`): se la RPC non risponde
+ * si torna a una griglia vecchia invece che a una griglia VUOTA, che il socio leggerebbe «il
+ * circolo è chiuso» — una bugia, non un'attesa.
+ */
+
+/** Un giorno come lo racconta `pmo_calendario_effettivo`. */
+export type GiornoCalendario = {
+  data: string;
+  chiuso: boolean;
+  motivo: string | null;
+  periodo_nome: string | null;
+  fasce: Fascia[];
+};
+
+type RigaCalendario = {
+  data?: unknown;
+  chiuso?: unknown;
+  motivo?: unknown;
+  periodo_nome?: unknown;
+  fasce?: unknown;
+};
+
+function fasceDellaRiga(v: unknown): Fascia[] {
+  if (!Array.isArray(v)) return [];
+  const out: Fascia[] = [];
+  for (const f of v) {
+    if (!f || typeof f !== 'object') continue;
+    const start = normalizzaOra((f as Record<string, unknown>).ora_inizio);
+    const end = normalizzaOra((f as Record<string, unknown>).ora_fine);
+    if (!start || !end) continue;
+    const grezzo = (f as Record<string, unknown>).prezzo_cents;
+    const prezzoCents = typeof grezzo === 'number' && Number.isFinite(grezzo) ? grezzo : null;
+    out.push({ start, end, name: `${start}-${end}`, prezzoCents });
+  }
+  out.sort((a, b) => a.start.localeCompare(b.start));
+  return out;
+}
+
+function righeDellaRisposta(risposta: unknown): RigaCalendario[] | null {
+  if (!risposta || typeof risposta !== 'object') return null;
+  const r = risposta as Record<string, unknown>;
+  if (r.ok !== true || !Array.isArray(r.giorni)) return null;
+  return r.giorni as RigaCalendario[];
+}
+
+/**
+ * Il giorno chiesto, dalla risposta della RPC. `null` = non l'abbiamo ⇒ si usa il ripiego.
+ * 🚨 Un giorno CHIUSO torna con `fasce: []` e `chiuso: true`, e le due cose vanno lette insieme:
+ * un elenco vuoto senza `chiuso` è «non lo so», con `chiuso` è «quel giorno non si gioca».
+ */
+export function giornoDalCalendario(risposta: unknown, giornoIso: string): GiornoCalendario | null {
+  const righe = righeDellaRisposta(risposta);
+  if (!righe) return null;
+  for (const g of righe) {
+    if (typeof g?.data !== 'string' || g.data !== giornoIso) continue;
+    return {
+      data: giornoIso,
+      chiuso: g.chiuso === true,
+      motivo: typeof g.motivo === 'string' && g.motivo.trim() ? g.motivo.trim() : null,
+      periodo_nome: typeof g.periodo_nome === 'string' ? g.periodo_nome : null,
+      fasce: g.chiuso === true ? [] : fasceDellaRiga(g.fasce),
+    };
+  }
+  return null;
+}
+
+/**
+ * La griglia della SETTIMANA, per chi racconta gli orari invece di proporre un giorno solo.
+ * 🚨 Per ogni giorno della settimana si prende il primo giorno **non chiuso** che lo rappresenta:
+ * altrimenti una settimana che contiene Natale racconterebbe «il venerdì non si gioca mai».
+ * ⇒ Torna `null` se non è rimasta nemmeno una fascia: è il segnale di usare il ripiego.
+ */
+export function grigliaDalCalendario(risposta: unknown): Griglia | null {
+  const righe = righeDellaRisposta(risposta);
+  if (!righe) return null;
+
+  const griglia: Griglia = { '0': [], '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
+  const visti = new Set<string>();
+  let utili = 0;
+
+  for (const g of righe) {
+    if (typeof g?.data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(g.data)) continue;
+    if (g.chiuso === true) continue;
+    const dow = String(new Date(`${g.data}T12:00:00Z`).getUTCDay());
+    if (visti.has(dow)) continue;
+    const fasce = fasceDellaRiga(g.fasce);
+    if (!fasce.length) continue;
+    visti.add(dow);
+    griglia[dow] = fasce;
+    utili += fasce.length;
+  }
+
+  return utili === 0 ? null : griglia;
 }
