@@ -1892,9 +1892,10 @@ adesso»*.
 
 ### 179 — ⏳ IL VERDETTO `verifica` SI CONGELA PER SEMPRE, e sembra pazienza
 
-📏 **Misurato l'08/09**: `consumer-booking-write/index.ts` legge la freschezza da
-`matchpoint_data | matchpoint_bookings_auto_import_last`. ⇒ **Spento il sync da Matchpoint** (fatto
-l'08/09: sei routine tolte), **quel timbro non si muove più**.
+📏 **Misurato l'08/09**: `consumer-booking-write` legge la freschezza dal timbro
+`matchpoint_data | matchpoint_bookings_auto_import_last`. ⇒ **Spento il sync da Matchpoint** (sei
+routine tolte l'08/09), **quel timbro non si muove più**: sul gestionale nuovo è fermo al **07/09
+15:30**, ~25 ore prima della misura, e non si muoverà mai più.
 
 🚨 **La conseguenza, ed è la parte insidiosa**: `verdettoScrittura` non può più dire **`no`**, quindi
 ogni verifica risponde **`non_ancora`** — **per sempre**. Il bot chiederebbe al socio di aspettare
@@ -1902,13 +1903,62 @@ una cosa che **non arriverà mai**.
 📌 *Un guasto che si presenta come pazienza non viene segnalato da nessuno: il socio aspetta, e
 aspettare è quello che gli è stato chiesto di fare.*
 
-⚖️ **La sicurezza regge, l'utilità no** — ed è la stessa forma già scritta per la pausa notturna del
-sync: un «no» falso **non può uscire**, perché la certificazione di freschezza non arriva. Si perde
-la risposta, non la verità. Ma stavolta non è una finestra di cinque ore: è **definitivo**.
+🔨✅ **CURATA E IN SERVIZIO SU `cudi` l'08/09 sera** — commit `692e6e0c`.
+Il gestionale **dichiara la propria natura** in una riga `app_setting` (`pmoFontePrenotazioni`), e
+la regola sta tutta in `fonteDichiarata`. È *il gestionale SA* applicato alla freschezza: da dove
+nascono le prenotazioni che vede lo può sapere **solo lui**.
 
-🔨 **Va sciolto con una `fonteNativa`**: la freschezza del sistema nuovo non la certifica più un
-import da Matchpoint, la certifica il gestionale stesso — che è precisamente *il gestionale SA*.
-⛔ **Il bot non si tocca**: `git diff` vuoto nel repo del bot è il criterio di accettazione.
+🚨⭐⭐ **PERCHÉ NON SI RIUSA `scritturaAlCircoloConsentita`, che pure ce l'avremmo già.**
+Sono **due domande diverse** — *«posso scrivere sul Matchpoint del circolo?»* e *«da dove nascono
+le prenotazioni che vedo?»* — che oggi coincidono **per costruzione**, non per natura.
+📌 *Una funzione che risponde a due domande diverse non risponde a nessuna delle due*, e qui
+l'errore aprirebbe proprio il ramo che fa uscire un **`no`**: l'unica cosa che quel file esiste per
+non dire a sproposito. ⇒ La fonte è una **dichiarazione**, non un'inferenza; il ref di PROD resta,
+ma come **rete** — non decide, **rifiuta** la combinazione pericolosa.
+⛔ E non se ne fa una **dodicesima** copia byte-identica del modulo del recinto: quelle undici
+rispondono alla domanda del recinto, e infilarci dentro una domanda diversa è il modo in cui un
+recinto smette di essere una regola. A tenere legati i due valori è il **caso 35** del banco, che
+rilegge il file canonico invece di fidarsi.
+
+⭐ **E LA METÀ CHE SI DIMENTICA: la natività cambia DUE rami, non solo la freschezza.** Cade anche
+`fuori_finestra` — quella soglia descrive fin dove arriva l'**export**, e senza export non esiste.
+Lasciarla in piedi direbbe *«oltre 60 giorni non lo saprò mai»* a un gestionale che lo sa benissimo.
+📌 *Una soglia si porta dietro il meccanismo che la spiega: tolto quello, non è più prudente — è
+solo sbagliata.*
+
+⚖️ **Su PROD il comportamento è IDENTICO**: la riga non c'è (⇒ `import_matchpoint`) e la rete
+rifiuterebbe `nativa` anche se qualcuno la scrivesse.
+🚨 **Il margine dei 150 s RESTA** anche da fonte nativa: la natività toglie l'attesa del **giro**,
+non la prudenza su un ramo asincrono ancora in volo.
+⛔ **La fonte resta nel LOG e non nella risposta**: `import_matchpoint` contiene un nome che
+`NOMI_INTERNI` scarterebbe, e il socio si vedrebbe arrivare la frase generica al posto della
+risposta. 📌 *Un nome interno non è pericoloso dove sta: è pericoloso dove va.*
+⛔ **Il bot non si tocca**, ed è il criterio di accettazione: nel suo repo non è stata cambiata una
+riga.
+
+✅ **Provato**: banco di `esito-scrittura.test.ts` salito da **24 a 36** casi; **125 file verdi, 0
+rossi** su tutto il progetto (7 Deno saltati); sintassi delle due edge; e la funzione nuova
+**verificata dentro il bundle in servizio** su `cudi`, non solo nel workflow verde.
+🔪 **CINQUE SABOTAGGI visti cadere sul caso giusto**: la finestra rimessa anche in nativa (31),
+qualunque parola accettata come «nativa» (26), la rete su PROD tolta (27), il ripiego sul timbro
+vecchio tolto (33), il margine dei 150 s tolto (4 **e** 30).
+🩹 E un caso ha fatto il suo mestiere **prima** di essere buono: il **34** cercava il *valore* della
+chiave mentre l'edge usa la *costante* — avrebbe dato rosso su un file sano, e verde il giorno in
+cui qualcuno avesse scritto la stringa a mano invece di importarla.
+
+⏳⛔ **PERCHÉ LA VOCE RESTA APERTA — e stavolta il motivo è misurato, non ereditato.**
+Manca la **prova fisica**: un `verifica` vero che attraversi la finestra in cui prima sbagliava.
+🔨 L'attrezzo per farlo **è stato costruito** (`sonda-ponte-soci.yml`, sola lettura, cablata su
+`cudi` e sulla sola azione `verifica`), ma la chiamata vuole `CONSUMER_BRIDGE_SECRET` e 📏 **quel
+valore sulla VM non c'è**: il bot di prova non lo porta — `pm2_env` ha **72 chiavi e nessuna di
+segreto**, `/proc/<pid>/environ` è leggibile e non ce l'ha, e nella sua cartella c'è solo
+`.env.example`.
+🩹 **E l'ipotesi comoda era sbagliata**: sembrava che il ponte su `cudi` fosse **disarmato**. 📏 Una
+richiesta con una chiave finta risponde **401 `UNAUTHORIZED`**, non **503 `BRIDGE_DISARMED`** ⇒ il
+segreto **c'è**, ed è solo illeggibile. *Meglio averlo misurato che scritto.*
+⇒ **Cosa manca, in una riga**: sapere quel valore, o farlo girare a chi ce l'ha. Finché non
+succede, la 179 è **in servizio e provata al banco, non provata viva** — ed è la stessa mancanza
+della **177**.
 
 ### 180 — 💶 LA SCHEDA LEGGE I SOLDI DA MATCHPOINT DAL VIVO — e quella strada è FUORI dalla barriera
 
@@ -2248,7 +2298,7 @@ pericolosa di tutte.*
 | | |
 |---|---|
 | **181** | 💰 **LA CASSA NATIVA sul sistema nuovo** — 🗣️ sua: *«dal gestionale si incassa, perché Matchpoint non c'è più»* + *«si incassa solo su test, su PROD mai»*. ⛔ **Dipende dalla 180 e non si può anticipare**: oggi solo **14** `staff_booking` su 256 portano gli importi ⇒ non c'è su cosa addebitare. ⭐ **Un precedente c'è già in servizio**: `payment` con sorgente **`pmo_gift`** — 33 righe — cioè una riga di cassa nata da noi e non da Matchpoint. 🚨 **E una cosa da NON portarsi dietro**: il prototipo nel browser ha già il **difetto del doppio incasso** — `_pmoSimPayKey` mette `Date.now()` nella chiave ⇒ **due clic = due incassi**. 📌 *Una chiave che contiene l'istante non è una chiave: è un contatore.* ⚠️ E **`wallet_balance` è una fotografia**, non un saldo calcolato: al distacco va **rovesciato** — `wallet_txn` diventa il mastro e il saldo si somma. |
-| **182** | 📦 **IL TRAVASO da PROD al sistema nuovo — UNA-TANTUM, mai una sincronia** — 🗣️ sua: *«prod e test devono vivere due vite separate a livello gestionale»*. ⭐ **Il meccanismo è già trovato e provato**: si legge da PROD con `pmo_get_records_admin_page`, si scrive sul sistema nuovo con `pmo_upsert_records_admin`, via PostgREST con le utenze staff (`PMO_VERIFY_*`, già nell'ambiente), **file-a-file**. ⇒ **non passa niente da nessuna parte, non serve nessuna edge nuova, e PROD non si tocca** — che è il vincolo. 📏 **Delta misurato**: `booking_history` +5771 · `payment` +748 · `staff_edit` +217 · `staff_cancel` +50 · `wallet_txn` 13 · modelli WhatsApp 42 · `app_setting`. 🚨 **Due chiavi di `app_setting` vanno ESCLUSE**: `assessmentSettings` e `postMatchFeedbackSettings` puntano al `config.js` di **PROD** ⇒ i questionari scriverebbero **nel database sbagliato**. ⏳ **Quando**: dopo la 180 e la 178, e comunque **una volta sola** — rifarlo dopo che il sistema nuovo ha vissuto per conto suo significherebbe seppellire quello che ha fatto. |
+| **182** | 📦 **IL TRAVASO da PROD al sistema nuovo — UNA-TANTUM, mai una sincronia** — 🗣️ sua: *«prod e test devono vivere due vite separate a livello gestionale»*. ⭐ **Il meccanismo è già trovato e provato**: si legge da PROD con `pmo_get_records_admin_page`, si scrive sul sistema nuovo con `pmo_upsert_records_admin`, via PostgREST con le utenze staff (`PMO_VERIFY_*`, già nell'ambiente), **file-a-file**. ⇒ **non passa niente da nessuna parte, non serve nessuna edge nuova, e PROD non si tocca** — che è il vincolo. 📏 **Delta misurato**: `booking_history` +5771 · `payment` +748 · `staff_edit` +217 · `staff_cancel` +50 · `wallet_txn` 13 · modelli WhatsApp 42 · `app_setting`. 🚨 **Due chiavi di `app_setting` vanno ESCLUSE**: `assessmentSettings` e `postMatchFeedbackSettings` puntano al `config.js` di **PROD** ⇒ i questionari scriverebbero **nel database sbagliato**. ⏳ **Quando**: dopo la 180 e la 178, e comunque **una volta sola** — rifarlo dopo che il sistema nuovo ha vissuto per conto suo significherebbe seppellire quello che ha fatto. 🆕🗣️ **08/09 sera, sue parole**: *«A noi servirà solamente una volta ricollegarci con il gestionale di prod per riallineare i dati dei soci in anagrafica. Dopodiché Prod si spegnerà per sempre.»* ⇒ Questa voce **è** quella riconnessione, ed è l'unica eccezione dichiarata a *«PROD non si tocca»*: **una**, in **lettura**, sull'**anagrafica**. ⭐ E dice anche una cosa sul distacco: il ponte che resta va verso il **gestionale** di PROD, **non** verso Matchpoint ⇒ nel futuro dichiarato non c'è più niente che chieda al sistema nuovo di chiamare Matchpoint. |
 | **184** | 🎭 **L'AMBIENTE SI RICONOSCE DALL'HOSTNAME — e l'indirizzo nuovo ha una trappola** — 🚨 **è la voce più pericolosa della lista**, e sta in coda solo perché va fatta **al momento del passaggio**, non prima. ⇒ Finché l'app si riconosce «di prova» da `/^test\./`, in produzione entrano i comportamenti da laboratorio: WhatsApp dirottati su **un solo telefono**, incassi **finti**, prenotazioni **finte nel browser**, email dell'autovalutazione dirottate. ⛔ **Fallisce in silenzio e verso l'esterno**: i soci non ricevono, il circolo non incassa, **nessun errore**. 🏠 **L'indirizzo deciso è `soci.padelvillage.club`** — libero dal 25/07 (Pages spento, DNS cancellato). ⚠️ **Ma `pmoDetectPublicBaseUrl()` cade sul fondo** per un hostname che non inizia per `test.` e restituisce `https://app.padelvillage.club/` ⇒ l'app servita da `soci.` prenderebbe la configurazione di **PROD**, si collegherebbe a `qqbf`, e — riconosciuta come produzione — `scritturaAlCircoloConsentita(qqbf)` risponderebbe **vero**: **scriverebbe sul Matchpoint vero**. 🔨 **Tre cose prima di metterci l'app, nessuna saltabile**: ① il caricatore dichiara `window.PMO_PUBLIC_BASE_URL` con la **propria** origine; ② su `soci.` il file si chiama **`config.js`** (non `-test`) e punta a **`cudi`**; ③ `pmoAssertSupabaseMatchesRuntime` impara la coppia (produzione ⇄ `cudi`). 📌 *La lista delle simulazioni NON è chiusa*: prima del passaggio si cerca tutta (`grep -n 'PMO_IS_TEST_ENV\|isTestEnv()'`), non fidandosi di un elenco scritto a memoria. |
 
 | banco | indice su `updated_at` | indice sull'espressione `payload` | `fillfactor` | HOT |
