@@ -14,6 +14,9 @@ import {
 // 📐 La scheda del circolo che una partita nata in prova si scrive da sé. Regola pura, provata
 // da sola: senza, su TEST la partita non ha un organizzatore e non si può gestire.
 import { schedaNativa } from './scheda-nativa.ts';
+// 💶 voce 180 — l'importo a carico NASCE dal listino invece di essere letto da Matchpoint.
+// Il perché per esteso sta in `importo-dal-listino.ts`.
+import { importiDalListino, prezzoDellaFascia, quantiConImporto } from './importo-dal-listino.ts';
 // ⭐⭐ I TRE ESITI della voce 23 — regola pura, in un modulo a sé e in `.js` perché il banco di
 // prova gira in Node e da un modulo vero si IMPORTA invece di estrarre a fette. Stessa medicina
 // di `conoscenza.js`, e per lo stesso motivo: una regola che nessuno può eseguire è una regola
@@ -395,6 +398,42 @@ async function saveStaffBookingRecord(opts: {
     // all'`organizzatore_ignoto` di prima. Mai una scheda che nomina la persona sbagliata.
     const scheda = schedaNativa(booking.giocatori);
     if (scheda) nostro.descrizione = scheda;
+
+    // 💶⭐⭐ VOCE 180 — E LA PARTITA NASCE COL SUO PREZZO ADDOSSO.
+    // 📏 Il fatto che rende necessaria questa riga: oggi gli importi della scheda arrivano da
+    // Matchpoint **dal vivo**, e per questo esistono solo sulle partite che qualcuno ha aperto a
+    // mano — 14 su 256 su PROD, 2 su 30 qui. ⇒ La cassa non avrebbe su cosa addebitare.
+    // ⭐ A dire quanto costa è il GESTIONALE (`pmo_calendario_effettivo`, voce 185): la stessa
+    // funzione che risponde all'app e al bot, così il prezzo è uno solo. Il giorno in cui
+    // Matchpoint si spegne, questa riga non cambia.
+    // ⚖️ Se il listino non risponde o quella fascia non ha un prezzo, **non si scrive niente** e
+    // si registra: un importo inventato è peggio di un importo mancante, perché nessuno lo
+    // verrà a controllare.
+    try {
+      const { data: cal, error: calErr } = await client.rpc('pmo_calendario_effettivo', {
+        p_dal: booking.data, p_al: booking.data,
+      });
+      if (calErr) throw new Error(calErr.message);
+      const giorno = (((cal as JsonMap)?.giorni ?? []) as JsonMap[])
+        .find((g) => clean(g?.data) === clean(booking.data)) ?? null;
+      const prezzo = prezzoDellaFascia((giorno?.fasce ?? []) as JsonMap[], booking.ora);
+      const conImporti = importiDalListino(
+        (nostro.giocatori ?? []) as JsonMap[], prezzo, new Date().toISOString(),
+      );
+      nostro.giocatori = conImporti;
+      console.log(JSON.stringify({
+        event: 'importi_dal_listino',
+        data: booking.data, ora: booking.ora,
+        periodo: clean(giorno?.periodo_nome) || null,
+        prezzo_cents: prezzo,
+        quanti: quantiConImporto(conImporti),
+      }));
+    } catch (listinoErr) {
+      // ⛔ Non è fatale: la prenotazione esiste comunque, e senza importo la scheda dirà «da
+      // definire» — che è la verità. Rifiutare qui vorrebbe dire perdere una partita per un
+      // prezzo mancante.
+      console.warn(JSON.stringify({ event: 'importi_dal_listino_falliti', error: errorText(listinoErr) }));
+    }
   }
 
   // 🚨⭐⭐ SOPRA UNA LAPIDE NON SI FONDE — 22/08/2026, voce 75, e senza questa riga la cura
