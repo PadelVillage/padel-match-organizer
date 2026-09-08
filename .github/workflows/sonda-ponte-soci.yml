@@ -62,73 +62,86 @@ jobs:
       - name: 🔑 Il segreto del ponte, dal bot di PROVA
         run: |
           set -euo pipefail
-          # 🩹⭐ PIÙ FONTI, non una — la lezione pagata due volte oggi sull'attrezzo dei secret.
-          #    Il primo giro (run 1) ha dato `env_assente`: guardava SOLO
-          #    `/opt/assistente-padel-agent-prova/.env`. «Non sta lì» non è «non c'è sulla VM».
-          #    📌 *Una sonda che interroga UNA fonte risponde su quella fonte, non sul fatto.*
-          # ⇒ Si prova per gradi e si DICHIARA quale strada ha risposto. E quando nessuna
-          #    risponde, si stampa DOVE si è guardato — solo NOMI di file, mai contenuti.
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
-            "$DEPLOY_USER@$DEPLOY_HOST" bash -s > /tmp/segreto.txt <<'REMOTO' || true
-            export PATH="/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-            NOME=assistente-telegram-prova
+          # 🩹⭐⭐ TRE FONTI E DUE GIRI, e la forma non è un vezzo — è la lezione ⑤ del
+          #    passaggio di consegne: *il posto giusto dove interpretare un dato è quello dove
+          #    non serve annidare una terza sintassi.* Python dentro ssh dentro YAML non è un
+          #    file valido, quindi di là si RACCOGLIE e di qua si INTERPRETA.
+          # 🩹 E i due giri precedenti hanno sbagliato per lo stesso motivo, due volte:
+          #    · giro 1 guardava UNA cartella e diceva `env_assente`;
+          #    · giro 2 cercava il processo con `pgrep -f assistente-telegram-prova`, cioè il
+          #      nome PM2 dentro la riga di comando, dove non c'è — e i `2>/dev/null`
+          #      zittivano l'unica cosa che l'avrebbe detto.
+          #    📌 *Un errore silenziato ha la stessa faccia di un valore assente.*
 
-            dai_env () {  # $1 = file .env
-              [ -r "$1" ] || return 1
-              V="$(grep -m1 '^CONSUMER_BRIDGE_SECRET=' "$1" | cut -d= -f2- | tr -d "\"'" )"
-              if [ -n "$V" ]; then echo "STRADA=env:$1"; echo "SEGRETO=$V"; return 0; fi
-              F="$(grep -m1 '^CONSUMER_BRIDGE_SECRET_FILE=' "$1" | cut -d= -f2- | tr -d "\"'" )"
-              if [ -n "$F" ] && [ -r "$F" ]; then
-                echo "STRADA=file-da-env:$F"; echo "SEGRETO=$(head -c 4096 "$F" | tr -d '\r\n')"; return 0
-              fi
-              return 1
-            }
+          # ── giro 1: si raccoglie ciò che pm2 sa, senza interpretarlo di là ──
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" \
+            'export PATH="/opt/node24/bin:/usr/local/bin:/usr/bin:/bin:$PATH"; pm2 jlist' \
+            > /tmp/pm2.json 2>/tmp/pm2.err || echo "pm2 è uscito male: $(head -c 200 /tmp/pm2.err)"
 
-            # ① i .env plausibili del bot di prova
-            for f in /opt/assistente-padel-agent-prova/.env \
-                     /opt/assistente-padel-agent-prova/_prove/.env \
-                     /opt/assistente-telegram-prova/.env; do
-              dai_env "$f" && exit 0
-            done
+          cat > /tmp/leggi.py <<'PY'
+          import json, sys
+          NOME = 'assistente-telegram-prova'
+          CHIAVE, CHIAVE_FILE = 'CONSUMER_BRIDGE_SECRET', 'CONSUMER_BRIDGE_SECRET_FILE'
+          try:
+              d = json.load(open('/tmp/pm2.json'))
+          except Exception as e:
+              print('NOTA=pm2 non ha risposto JSON (%s)' % type(e).__name__); raise SystemExit
+          p = next((x for x in d if x.get('name') == NOME), None)
+          if p is None:
+              print('NOTA=processo %s assente; pm2 vede: %s' % (NOME, ', '.join(str(x.get('name')) for x in d)))
+              raise SystemExit
+          e = p.get('pm2_env') or {}
+          print('PID=%s' % (p.get('pid') or ''))
+          print('CWD=%s' % (e.get('pm_cwd') or ''))
+          # ⛔ solo i NOMI delle chiavi che somigliano a un segreto, mai i valori
+          print('NOTA=pm2_env ha %d chiavi; quelle di segreto: %s'
+                % (len(e), ','.join(k for k in e if 'SECRET' in k or 'BRIDGE' in k) or 'nessuna'))
+          print('SEGRETO=%s' % (e.get(CHIAVE) or ''))
+          print('DAFILE=%s' % (e.get(CHIAVE_FILE) or ''))
+          PY
+          python3 /tmp/leggi.py > /tmp/letto.txt
+          grep -E '^NOTA=' /tmp/letto.txt | sed 's/^NOTA=/  · /' || true
+          campo () { grep -m1 "^$1=" /tmp/letto.txt | cut -d= -f2- || true; }
+          SEG="$(campo SEGRETO)"; DAFILE="$(campo DAFILE)"; PID="$(campo PID)"; CWD="$(campo CWD)"
+          STRADA=""
+          [ -n "$SEG" ] && STRADA="pm2"
 
-            # ② l'ambiente che pm2 ha dato AL PROCESSO del bot di prova
-            if command -v pm2 >/dev/null 2>&1; then
-              V="$(pm2 jlist 2>/dev/null | python3 -c "
-            import json,sys
-            try: d=json.load(sys.stdin)
-            except Exception: d=[]
-            e=next(((p.get('pm2_env') or {}) for p in d if p.get('name')=='$NOME'), {})
-            print(e.get('CONSUMER_BRIDGE_SECRET') or '')
-            " 2>/dev/null)"
-              if [ -n "$V" ]; then echo "STRADA=pm2"; echo "SEGRETO=$V"; exit 0; fi
-            fi
-
-            # ③ la fonte che non mente: l'ambiente del PROCESSO VIVO
-            PID="$(pgrep -f "$NOME" | head -1)"
-            if [ -n "$PID" ] && [ -r "/proc/$PID/environ" ]; then
-              V="$(tr '\0' '\n' < "/proc/$PID/environ" | grep -m1 '^CONSUMER_BRIDGE_SECRET=' | cut -d= -f2-)"
-              if [ -n "$V" ]; then echo "STRADA=proc:$PID"; echo "SEGRETO=$V"; exit 0; fi
-              F="$(tr '\0' '\n' < "/proc/$PID/environ" | grep -m1 '^CONSUMER_BRIDGE_SECRET_FILE=' | cut -d= -f2-)"
-              if [ -n "$F" ] && [ -r "$F" ]; then
-                echo "STRADA=file-da-proc:$F"; echo "SEGRETO=$(head -c 4096 "$F" | tr -d '\r\n')"; exit 0
-              fi
-            fi
-
-            # ⛔ Nessuna strada. Si dice DOVE si è guardato: solo nomi, mai contenuti.
-            echo "STRADA=non_trovato"
-            echo "DOVE: cartelle sotto /opt —"; ls -1 /opt 2>/dev/null | sed 's/^/  /'
-            echo "DOVE: file .env* nelle cartelle del bot —"
-            ls -1 /opt/assistente-padel-agent-prova/.env* /opt/assistente-padel-agent/.env* 2>/dev/null | sed 's/^/  /' || echo "  (nessuno)"
-            echo "DOVE: processi che somigliano al bot di prova —"; pgrep -af "$NOME" 2>/dev/null | sed 's/^/  /' || echo "  (nessuno)"
-          REMOTO
-          STRADA="$(grep -m1 '^STRADA=' /tmp/segreto.txt | cut -d= -f2- || true)"
-          SEG="$(grep -m1 '^SEGRETO=' /tmp/segreto.txt | cut -d= -f2- || true)"
-          [ -n "$SEG" ] && echo "::add-mask::$SEG"
-          echo "strada: ${STRADA:-nessuna risposta}"
+          # ── giro 2: solo se serve, si va a prendere il valore dove pm2 ha detto ──
           if [ -z "$SEG" ]; then
-            echo "── dove ho guardato ──"
-            sed -n '/^DOVE/,$p' /tmp/segreto.txt || true
-            echo "::error::Il segreto del ponte non si è trovato sulla VM. Non invento una chiamata che non posso fare."
+            # ⭐ I posti si costruiscono da ciò che pm2 ha detto (il suo `pm_cwd` e il suo PID),
+            #    non da una cartella indovinata: è la correzione del giro 2.
+            POSTI="$DAFILE|${CWD:+$CWD/.env}|${PID:+/proc/$PID/environ}|/opt/assistente-padel-agent-prova/.env"
+            SEG="$(ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_HOST" \
+              "POSTI='$POSTI' bash -s" <<'REMOTO'
+            IFS='|' read -ra P <<< "$POSTI"
+            for f in "${P[@]}"; do
+              [ -n "$f" ] && [ -r "$f" ] || continue
+              case "$f" in
+                */environ) V="$(tr '\0' '\n' < "$f" | grep -m1 '^CONSUMER_BRIDGE_SECRET=' | cut -d= -f2-)" ;;
+                *.env)     V="$(grep -m1 '^CONSUMER_BRIDGE_SECRET=' "$f" | cut -d= -f2- | tr -d "\"'" )" ;;
+                *)         V="$(head -c 4096 "$f" | tr -d '\r\n')" ;;
+              esac
+              if [ -n "$V" ]; then echo "TROVATO:$f:$V"; exit 0; fi
+            done
+            echo "NIENTE"
+            echo "── dove ho guardato (solo nomi) ──" >&2
+            for f in "${P[@]}"; do
+              [ -n "$f" ] || continue
+              if [ -r "$f" ]; then echo "  leggibile, ma senza la chiave: $f" >&2; else echo "  non leggibile: $f" >&2; fi
+            done
+            ls -1a /opt/assistente-padel-agent-prova 2>&1 | head -20 | sed 's/^/  contenuto: /' >&2
+          REMOTO
+            )"
+            case "$SEG" in
+              TROVATO:*) STRADA="$(echo "$SEG" | cut -d: -f2)"; SEG="$(echo "$SEG" | cut -d: -f3-)" ;;
+              *) SEG="" ;;
+            esac
+          fi
+
+          [ -n "$SEG" ] && echo "::add-mask::$SEG"
+          echo "strada: ${STRADA:-nessuna}"
+          if [ -z "$SEG" ]; then
+            echo "::error::Il segreto del ponte non si è trovato sulla VM. Non invento una chiamata che non posso fare — sopra c'è l'elenco di dove ho guardato."
             exit 1
           fi
           printf '%s' "$SEG" > /tmp/seg
