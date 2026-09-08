@@ -59,9 +59,29 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: 🔑 Il segreto del ponte, dal bot di PROVA
+      - name: 🔑 Il segreto del ponte — prima il secret del repo, poi la VM
+        env:
+          DAL_REPO: ${{ secrets.CONSUMER_BRIDGE_SECRET_TEST }}
         run: |
           set -euo pipefail
+          # 🔑⭐⭐ LA STRADA CORTA, aggiunta l'08/09 sera. 📏 Misurato: sulla VM quel valore NON
+          #    c'è — il bot di prova non lo porta (pm2: 72 chiavi, nessuna di segreto;
+          #    `/proc/<pid>/environ` leggibile e senza; nella sua cartella solo `.env.example`).
+          #    Sta sul Mac del committente, e dal cloud il Mac non si raggiunge.
+          # ⇒ La casella giusta è un SECRET DEL REPO: lo vede solo chi lancia il workflow, esce
+          #    mascherato nei log, e non entra mai in git. ⛔ La strada sbagliata sarebbe la chat:
+          #    una password incollata lì è già bruciata e va cambiata.
+          # ⚖️ Se la casella è vuota non si fallisce: si prova la VM come prima. La strada corta
+          #    si AGGIUNGE, non sostituisce — e in tutti i casi si DICHIARA quale ha risposto.
+          if [ -n "${DAL_REPO:-}" ]; then
+            echo "::add-mask::$DAL_REPO"
+            printf '%s' "$DAL_REPO" > /tmp/seg
+            echo "strada: secret del repo (CONSUMER_BRIDGE_SECRET_TEST)"
+            echo "lunghezza ${#DAL_REPO} · sha $(printf '%s' "$DAL_REPO" | sha256sum | cut -c1-8)"
+            exit 0
+          fi
+          echo "  · la casella CONSUMER_BRIDGE_SECRET_TEST è vuota: provo la VM"
+
           # 🩹⭐⭐ TRE FONTI E DUE GIRI, e la forma non è un vezzo — è la lezione ⑤ del
           #    passaggio di consegne: *il posto giusto dove interpretare un dato è quello dove
           #    non serve annidare una terza sintassi.* Python dentro ssh dentro YAML non è un
