@@ -95,6 +95,93 @@ export function giornoPiu(giorno: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ⭐⭐ VOCE 179 — DA DOVE NASCONO LE PRENOTAZIONI CHE IL GESTIONALE VEDE
+//
+// 📏 Misurato l'08/09/2026 su `cudi`: il timbro dell'ultimo import è fermo al **07/09 15:30**,
+// cioè ~25 ore fa, e non si muoverà **mai più** — le routine che lo aggiornavano sono state
+// tolte. ⇒ `verdettoScrittura` non può più dire `no`, e ogni verifica risponde `non_ancora`
+// **per sempre**.
+// 🚨 Ed è il guasto peggiore da accorgersene: **si presenta come pazienza.** Il socio aspetta,
+// e aspettare è esattamente quello che gli è stato chiesto di fare — nessuno segnala niente.
+//
+// ⇒ La cura è dire al gestionale **che natura ha**, perché è l'unico che può saperlo: *il
+// gestionale SA, il bot DICE*. Due nature, e cambiano il significato di tutto il resto:
+//   · `import_matchpoint` — la copia è uno SPECCHIO alimentato dall'export. La sua assenza non
+//     prova niente finché un giro non è atterrato dopo la scrittura, e oltre la finestra
+//     dell'export non ne saprà mai niente;
+//   · `nativa` — la copia È l'originale. Non c'è nessun giro da aspettare (la prenotazione si
+//     registra nello **stesso istante** in cui il circolo la conferma, voce 75) e non c'è
+//     nessuna finestra oltre la quale il gestionale smetta di sapere.
+//
+// 🚨⭐⭐ PERCHÉ NON SI RIUSA `scritturaAlCircoloConsentita`, che pure ce l'avremmo già.
+// Sono DUE DOMANDE DIVERSE — *«posso scrivere sul Matchpoint del circolo?»* e *«da dove
+// nascono le prenotazioni che vedo?»* — che oggi coincidono **per costruzione**, non per
+// natura. 📌 *Una funzione che risponde a due domande diverse non risponde a nessuna delle
+// due*, e qui l'errore aprirebbe proprio il ramo che fa uscire un **`no`**: l'unica cosa che
+// questo file esiste per non dire a sproposito.
+// ⇒ La fonte è una **dichiarazione**, non un'inferenza. Il ref di PROD resta, ma come RETE:
+// non decide, **rifiuta** la combinazione pericolosa.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/** La riga `app_setting` con cui il gestionale dichiara la propria natura. */
+export const CHIAVE_FONTE_PRENOTAZIONI = 'pmoFontePrenotazioni';
+
+/**
+ * Il ref del gestionale di PRODUZIONE — qui sta solo per fare da **rete**, non da regola.
+ * 🚨 È lo stesso valore di `REF_PROD` in `scrittura-al-circolo.ts`, e il caso 15 del banco lo
+ * **rilegge da quel file** e li confronta: se uno dei due cambia, il banco cade.
+ * ⛔ Non se ne fa una dodicesima copia byte-identica di quel modulo: quelle undici copie
+ * rispondono alla domanda del RECINTO — *«la penna tocca la carta del circolo?»* — e infilarci
+ * dentro una domanda diversa è il modo in cui un recinto smette di essere una regola.
+ */
+export const REF_PROD_RETE = 'qqbfphyslczzkxoncgex';
+
+export type FontePrenotazioni = 'import_matchpoint' | 'nativa';
+
+/**
+ * Che natura ha questo gestionale, decisa **fallendo chiusa**.
+ *
+ * ⚖️ Il verso degli errori non è simmetrico e comanda tutto il disegno:
+ *   · sbagliare verso `import_matchpoint` costa un `non_ancora` di troppo — si perde
+ *     l'**utilità**;
+ *   · sbagliare verso `nativa` fa uscire un **`no` falso** — si perde la **verità**.
+ * ⇒ Qualunque cosa che non sia esattamente la parola `nativa` vale `import_matchpoint`:
+ * l'assenza della riga, una riga vuota, un refuso, un valore di un altro tipo.
+ */
+export function fonteDichiarata(o: {
+  /** Il valore letto dalla riga `app_setting`, così com'è. */
+  valore: unknown;
+  /** L'indirizzo Supabase di questo gestionale — serve solo alla rete. */
+  supabaseUrl: unknown;
+}): { fonte: FontePrenotazioni; motivo: string } {
+  const detto = String(o.valore ?? '').trim().toLowerCase();
+  if (detto !== 'nativa') {
+    return { fonte: 'import_matchpoint', motivo: detto ? 'dichiarazione_non_riconosciuta' : 'non_dichiarata' };
+  }
+  // 🕸️ LA RETE: su PROD la parola `nativa` non vale, per quanto sia scritta bene. Là le
+  // prenotazioni arrivano davvero da un import, e crederle native farebbe uscire dei «no»
+  // falsi su prenotazioni vere di soci veri.
+  if (eIlGestionaleDiProduzione(o.supabaseUrl)) {
+    return { fonte: 'import_matchpoint', motivo: 'nativa_rifiutata_su_prod' };
+  }
+  return { fonte: 'nativa', motivo: 'dichiarata' };
+}
+
+/** Questo gestionale è quello di PRODUZIONE? Solo per la rete di `fonteDichiarata`. */
+export function eIlGestionaleDiProduzione(supabaseUrl: unknown): boolean {
+  const host = (() => {
+    try {
+      return new URL(String(supabaseUrl ?? '').trim()).hostname.toLowerCase();
+    } catch {
+      return '';
+    }
+  })();
+  if (!host) return false;
+  if (host === `${REF_PROD_RETE}.supabase.co`) return true;
+  return host.startsWith(`${REF_PROD_RETE}.`) && host.endsWith('.supabase.co');
+}
+
 /**
  * Il verdetto su una scrittura di cui non si è saputo l'esito.
  *
@@ -130,6 +217,24 @@ export function verdettoScrittura(o: {
   giornoSlot: string;
   /** Oggi a Roma, `YYYY-MM-DD`. */
   oggi: string;
+  /**
+   * ⭐ VOCE 179 — la copia È la fonte, non uno specchio dell'export.
+   *
+   * ⇒ Cambia **due** rami, non solo la freschezza, ed è la metà che si dimentica:
+   *   · `fuori_finestra` sparisce — quella soglia descrive fin dove arriva l'**export**, e
+   *     senza export non esiste. Lasciarla in piedi direbbe «oltre 60 giorni non lo saprò mai»
+   *     a un gestionale che lo sa benissimo;
+   *   · la freschezza è **adesso** — non c'è nessun giro da aspettare.
+   * ⚠️ Chi non lo sa passa `undefined`, e allora vale tutto come prima: questo campo non può
+   * cambiare un `si` né un `doppione`, che vengono decisi sopra di lui.
+   */
+  fonteNativa?: boolean;
+  /**
+   * Istante di adesso (ISO). Serve **solo** con `fonteNativa`, ed è passato invece di essere
+   * preso qui dentro perché una funzione che legge l'orologio non si può provare due volte
+   * uguale. ⚖️ Se manca, si finisce su `copia_muta` — cioè un `non_ancora`, il verso prudente.
+   */
+  adesso?: string | null;
 }): Verdetto {
   // 🚨 PRIMA del `si`, ed è tutta la cura: il `si` è vero anche quando ce ne sono due — dirlo
   // per primo sarebbe rispondere alla domanda facile e tacere quella che costa.
@@ -141,7 +246,10 @@ export function verdettoScrittura(o: {
   // Fuori dalla finestra dell'export: la copia non ne saprà mai niente, e aspettare è tempo
   // regalato. ⚖️ Sta DOPO il `si` apposta — una prenotazione oltre i 30 giorni può essere
   // visibile lo stesso come `staff_booking`, che è scritto di qua e non dipende dal sync.
-  if (o.giornoSlot > giornoPiu(o.oggi, FINESTRA_SYNC_GIORNI)) {
+  // ⭐ VOCE 179 — solo per uno SPECCHIO: la finestra è quella dell'export, e un gestionale che
+  // è la fonte non ne ha nessuna. 📌 *Una soglia si porta dietro il meccanismo che la spiega:
+  // tolto quello, non è più prudente — è solo sbagliata.*
+  if (!o.fonteNativa && o.giornoSlot > giornoPiu(o.oggi, FINESTRA_SYNC_GIORNI)) {
     return { esito: 'non_ancora', motivo: 'fuori_finestra', attendere: false };
   }
 
@@ -150,13 +258,29 @@ export function verdettoScrittura(o: {
   // guasto — è che il chiamante non ce l'ha detto — e la risposta onesta resta «non lo so».
   if (tScrittura === null) return { esito: 'non_ancora', motivo: 'istante_ignoto', attendere: true };
 
-  const tCopia = ms(o.copiaFrescaAl);
+  // ⭐ VOCE 179 — con una fonte nativa la freschezza è ADESSO: la prenotazione si registra
+  // nello stesso istante in cui il circolo la conferma (voce 75), quindi non c'è nessun giro
+  // da attendere. ⚖️ Se l'istante non arriva si ricade sul valore vecchio e, mancando pure
+  // quello, su `copia_muta`: la fonte nativa può accorciare l'attesa, mai saltare un controllo.
+  const tCopia = o.fonteNativa ? (ms(o.adesso) ?? ms(o.copiaFrescaAl)) : ms(o.copiaFrescaAl);
   // Nessuna riga prenotazione con `synced_at`: il sync non è mai atterrato, o non c'è nulla da
   // sincronizzare. In entrambi i casi la copia non testimonia niente.
   if (tCopia === null) return { esito: 'non_ancora', motivo: 'copia_muta', attendere: true };
 
+  // 🚨 Il MARGINE resta anche per la fonte nativa, e non è una dimenticanza: fra la conferma
+  // del circolo e la riga registrata può esserci un ramo asincrono ancora in volo. La natività
+  // toglie l'ATTESA DEL GIRO, non la prudenza sui 150 secondi.
   if (tCopia >= tScrittura + MARGINE_SCRITTURA_S * 1000) {
-    return { esito: 'no', motivo: 'copia_aggiornata_dopo', attendere: false };
+    return {
+      esito: 'no',
+      // ⚖️ Due motivi distinti per due certezze diverse: «un giro è atterrato dopo» e «qui non
+      // si aspetta nessun giro». Nei log servono separati, o fra un anno non si saprà quale
+      // dei due `no` si stava leggendo.
+      // ⛔ E nessuno dei due nomina un pezzo interno: `NOMI_INTERNI` li scarterebbe, e il
+      // socio si vedrebbe arrivare la frase generica al posto della risposta.
+      motivo: o.fonteNativa ? 'fonte_nativa' : 'copia_aggiornata_dopo',
+      attendere: false,
+    };
   }
   return { esito: 'non_ancora', motivo: 'copia_ferma', attendere: true };
 }

@@ -30,7 +30,8 @@ import { aggiungiACopiaInApp, allineaCopiaInApp } from './allinea-copia-app.ts';
 // stessa ragione del roster: la regola è delicata (un «no» sbagliato è il danno peggiore che
 // questo ponte possa fare) e sepolta dentro l'handler non sarebbe provabile senza scrivere.
 import {
-  dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_ESITO_IGNOTO, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
+  CHIAVE_FONTE_PRENOTAZIONI, dettaglioPerIlBot, esitoIgnotoDaRisposta, fonteDichiarata,
+  MOTIVO_ESITO_IGNOTO, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 // 🗓️ voce 177 — la griglia viene dalla TABELLA `pmo_fasce_prenotabili`, col blocco vecchio
@@ -974,14 +975,44 @@ Deno.serve(async (req: Request) => {
     //    È la fabbrica di WAL che ha portato all'avaria del database quella mattina.
     // 📌 *Un dato che si legge da mille righe obbliga a scrivere mille righe per tenerlo vero:
     //    il costo di una lettura non si paga leggendo, si paga a monte.*
-    const { data: frescoRows, error: frescoErr } = await service
-      .from('pmo_cloud_records')
-      .select('synced_at')
-      .eq('record_type', 'matchpoint_data')
-      .eq('local_key', 'matchpoint_bookings_auto_import_last')
-      .limit(1);
-    if (frescoErr) return err(500, 'DB_ERROR', 'Errore lettura freschezza della copia.');
-    const copiaFrescaAl = clean(frescoRows?.[0]?.synced_at) || null;
+    //
+    // 🔄⭐⭐ 08/09/2026 (voce 179) — E IL TIMBRO PUÒ ESSERE FERMO PER SEMPRE, non per un guasto.
+    //    Sul gestionale nuovo le routine che lo aggiornavano sono state tolte: 📏 misurato
+    //    l'08/09, fermo al **07/09 15:30**, ~25 ore prima, e non si muoverà più.
+    //    ⇒ Di qui non uscirebbe mai più un `no`, e ogni verifica direbbe `non_ancora` **per
+    //    sempre**. 🚨 Un guasto che si presenta come **pazienza** non lo segnala nessuno: il
+    //    socio aspetta, e aspettare è quello che gli è stato chiesto di fare.
+    // ⇒ Si chiede al gestionale **che natura ha**, ed è l'unico che può saperlo. La regola sta
+    //    in `fonteDichiarata`, di là: qui si legge una riga e si passa il risultato.
+    const [frescoRes, fonteRes] = await Promise.all([
+      service
+        .from('pmo_cloud_records')
+        .select('synced_at')
+        .eq('record_type', 'matchpoint_data')
+        .eq('local_key', 'matchpoint_bookings_auto_import_last')
+        .limit(1),
+      service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'app_setting')
+        .eq('local_key', CHIAVE_FONTE_PRENOTAZIONI)
+        .not('deleted', 'is', true)
+        .limit(1),
+    ]);
+    if (frescoRes.error) return err(500, 'DB_ERROR', 'Errore lettura freschezza della copia.');
+    // ⚖️ Un errore sulla DICHIARAZIONE non è fatale, e il verso è quello prudente: senza
+    // risposta si resta `import_matchpoint`, cioè si continua ad aspettare invece di
+    // cominciare a dire dei «no». 📌 *Il ripiego di una lettura fallita dev'essere la risposta
+    // che costa meno se è sbagliata.*
+    if (fonteRes.error) {
+      console.error('[booking-write] fonte non letta, resto sullo specchio:', fonteRes.error.message);
+    }
+    const copiaFrescaAl = clean(frescoRes.data?.[0]?.synced_at) || null;
+    const { fonte, motivo: motivoFonte } = fonteDichiarata({
+      valore: (fonteRes.data?.[0]?.payload as JsonMap | undefined)?.value,
+      supabaseUrl,
+    });
+    const fonteNativa = fonte === 'nativa';
 
     const verdetto = verdettoScrittura({
       presente,
@@ -990,13 +1021,20 @@ Deno.serve(async (req: Request) => {
       copiaFrescaAl,
       giornoSlot: slot.data,
       oggi: today,
+      fonteNativa,
+      adesso: new Date().toISOString(),
     });
     // ⭐ Le PRENOTAZIONI entrano nel registro, ed è la riga che mancava il 23/08: quella di allora
     // diceva «verifica 2026-08-31 09:30 C1 per Maurizio Aprea» — data, ora, campo, nome, e
     // nessun modo di sapere QUALE prenotazione si stesse guardando. Chi ha dovuto capire cosa
     // era successo ha potuto misurarlo solo dal comportamento.
     const quali = [...perPrenotazione.keys()].join(',') || '—';
-    console.log(`[booking-write] verifica ${slot.data} ${slot.ora} C${campo} per ${member.name}: ${verdetto.esito}/${verdetto.motivo} (copia al ${copiaFrescaAl ?? '—'}, sue ${quante} di ${perPrenotazione.size} [${quali}])`);
+    // ⭐ La natura entra nel registro, ed è la riga che permette di rifare il verdetto a mano:
+    // senza, un `no` e un `non_ancora` sullo stesso dato sembrerebbero un capriccio.
+    // ⛔ Resta nel LOG e non nella risposta: `fonte` vale `import_matchpoint`, che
+    // `NOMI_INTERNI` scarterebbe — il socio si vedrebbe arrivare la frase generica al posto
+    // della risposta. 📌 *Un nome interno non è pericoloso dove sta: è pericoloso dove va.*
+    console.log(`[booking-write] verifica ${slot.data} ${slot.ora} C${campo} per ${member.name}: ${verdetto.esito}/${verdetto.motivo} (fonte ${fonte}/${motivoFonte}, copia al ${copiaFrescaAl ?? '—'}, sue ${quante} di ${perPrenotazione.size} [${quali}])`);
     return ok({
       member: { id: member.id, name: member.name },
       ...verdetto,

@@ -17,6 +17,10 @@ import {
   MARGINE_SCRITTURA_S,
   MOTIVO_ESITO_IGNOTO,
   MOTIVO_SCRITTURA_RIFIUTATA,
+  CHIAVE_FONTE_PRENOTAZIONI,
+  REF_PROD_RETE,
+  eIlGestionaleDiProduzione,
+  fonteDichiarata,
   giornoPiu,
   verdettoScrittura,
 } from './esito-scrittura.ts';
@@ -542,6 +546,150 @@ test('24) 🔌 IL CABLAGGIO: il conteggio si fa per PRENOTAZIONE, e arriva al ve
   // ⭐ E il registro deve poter rifare il conto a mano: la riga del 23/08 non nominava nessuna
   // prenotazione, ed è il motivo per cui il difetto si è potuto misurare solo dal comportamento.
   assert.match(src, /sue \$\{quante\} di \$\{perPrenotazione\.size\}/, 'il registro non dice più quante prenotazioni ha visto');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ⭐⭐ VOCE 179 — LA FONTE: `import_matchpoint` (specchio) contro `nativa` (originale)
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+const URL_NUOVO = 'https://cudiqnrrlbyqryrtaprd.supabase.co';
+const URL_PROD = `https://${REF_PROD_RETE}.supabase.co`;
+const f = (valore: unknown, supabaseUrl: unknown = URL_NUOVO) => {
+  const r = fonteDichiarata({ valore, supabaseUrl });
+  return `${r.fonte}/${r.motivo}`;
+};
+
+test('25) LA DICHIARAZIONE: solo la parola `nativa` vale, e vale sul gestionale nuovo', () => {
+  assert.equal(f('nativa'), 'nativa/dichiarata');
+  assert.equal(f('  NATIVA  '), 'nativa/dichiarata', 'spazi e maiuscole non devono cambiare la risposta');
+});
+
+test('26) 🚨 FALLISCE CHIUSA: tutto ciò che non è `nativa` resta lo SPECCHIO', () => {
+  // ⚖️ Il verso non è simmetrico: sbagliare verso lo specchio costa un `non_ancora` di troppo,
+  // sbagliare verso `nativa` fa uscire un «no» FALSO. Ogni caso storto sta di qua.
+  assert.equal(f(undefined), 'import_matchpoint/non_dichiarata', 'la riga assente deve valere specchio');
+  assert.equal(f(null), 'import_matchpoint/non_dichiarata');
+  assert.equal(f(''), 'import_matchpoint/non_dichiarata');
+  assert.equal(f('   '), 'import_matchpoint/non_dichiarata');
+  assert.equal(f('nativo'), 'import_matchpoint/dichiarazione_non_riconosciuta', 'un refuso non deve aprire il ramo del «no»');
+  assert.equal(f('native'), 'import_matchpoint/dichiarazione_non_riconosciuta');
+  assert.equal(f(true), 'import_matchpoint/dichiarazione_non_riconosciuta', 'un booleano non è una dichiarazione');
+  assert.equal(f(1), 'import_matchpoint/dichiarazione_non_riconosciuta');
+  assert.equal(f({ fonte: 'nativa' }), 'import_matchpoint/dichiarazione_non_riconosciuta', 'un oggetto non è la parola');
+  assert.equal(f('import_matchpoint'), 'import_matchpoint/dichiarazione_non_riconosciuta');
+});
+
+test('27) 🕸️ LA RETE: su PROD la parola `nativa` NON vale, per quanto sia scritta bene', () => {
+  assert.equal(f('nativa', URL_PROD), 'import_matchpoint/nativa_rifiutata_su_prod');
+  assert.equal(f('nativa', `  HTTPS://${REF_PROD_RETE.toUpperCase()}.SUPABASE.CO  `), 'import_matchpoint/nativa_rifiutata_su_prod');
+  assert.equal(f('nativa', `https://${REF_PROD_RETE}.functions.supabase.co`), 'import_matchpoint/nativa_rifiutata_su_prod');
+});
+
+test('28) la rete non prende un ref QUALUNQUE che ci somigli', () => {
+  assert.equal(eIlGestionaleDiProduzione(URL_NUOVO), false);
+  assert.equal(eIlGestionaleDiProduzione(`https://${REF_PROD_RETE}.supabase.co.evil.test`), false, 'un suffisso appiccicato non è PROD');
+  assert.equal(eIlGestionaleDiProduzione(`https://non${REF_PROD_RETE}.supabase.co`), false, 'un prefisso appiccicato non è PROD');
+  assert.equal(eIlGestionaleDiProduzione(''), false);
+  assert.equal(eIlGestionaleDiProduzione('non è un indirizzo'), false, 'un indirizzo illeggibile non deve buttare un\'eccezione');
+  assert.equal(eIlGestionaleDiProduzione(undefined), false);
+});
+
+test('29) ⭐ IL «NON_ANCORA» PER SEMPRE: con la fonte nativa il verdetto si scioglie', () => {
+  // 📏 È il caso misurato l'08/09 su `cudi`: il timbro dell'import è fermo al 07/09 15:30 e non
+  // si muoverà mai più ⇒ da specchio esce `non_ancora` all'infinito, e sembra pazienza.
+  const TIMBRO_FERMO = '2026-09-07T15:30:04Z';
+  const base = {
+    presente: false,
+    scrittaAlle: '2026-09-08T10:00:00Z',
+    copiaFrescaAl: TIMBRO_FERMO,
+    giornoSlot: '2026-09-10',
+    oggi: '2026-09-08',
+  };
+  assert.equal(v(base), 'non_ancora/copia_ferma/aspetta', 'da specchio deve restare com\'era');
+  assert.equal(
+    v({ ...base, fonteNativa: true, adesso: '2026-09-08T16:30:00Z' }),
+    'no/fonte_nativa/basta',
+    'da fonte nativa il «no» si può dire, e con un motivo suo',
+  );
+});
+
+test('30) 🚨 IL MARGINE RESTA anche per la fonte nativa: 150 s non sono una formalità', () => {
+  const base = {
+    presente: false,
+    scrittaAlle: '2026-09-08T10:00:00Z',
+    copiaFrescaAl: null,
+    giornoSlot: '2026-09-10',
+    oggi: '2026-09-08',
+    fonteNativa: true,
+  };
+  const piu = (s: number) => new Date(Date.parse('2026-09-08T10:00:00Z') + s * 1000).toISOString();
+  assert.equal(v({ ...base, adesso: piu(MARGINE_SCRITTURA_S - 1) }), 'non_ancora/copia_ferma/aspetta', 'un secondo prima del margine il «no» NON si dice');
+  assert.equal(v({ ...base, adesso: piu(MARGINE_SCRITTURA_S) }), 'no/fonte_nativa/basta');
+});
+
+test('31) ⭐ LA METÀ CHE SI DIMENTICA: `fuori_finestra` non esiste per una fonte nativa', () => {
+  // Il ramo dice «oltre la finestra dell'export non lo saprò mai». Senza export non c'è
+  // finestra: lasciarlo in piedi direbbe «non lo so» a un gestionale che lo sa benissimo.
+  const lontano = giornoPiu(OGGI, FINESTRA_SYNC_GIORNI + 5);
+  const base = {
+    presente: false,
+    scrittaAlle: '2026-08-15T10:00:00Z',
+    copiaFrescaAl: null,
+    giornoSlot: lontano,
+    oggi: OGGI,
+  };
+  assert.equal(v(base), 'non_ancora/fuori_finestra/basta', 'da specchio la finestra deve valere ancora');
+  assert.equal(
+    v({ ...base, fonteNativa: true, adesso: '2026-08-15T10:30:00Z' }),
+    'no/fonte_nativa/basta',
+    'da fonte nativa una data lontana non è più un «non lo saprò mai»',
+  );
+});
+
+test('32) la fonte nativa non può toccare un `si` né un `doppione`', () => {
+  const nat = { fonteNativa: true, adesso: '2026-08-15T23:00:00Z', copiaFrescaAl: null, scrittaAlle: null, giornoSlot: '2026-08-17', oggi: OGGI };
+  assert.equal(v({ ...nat, presente: true }), 'si/trovata/basta');
+  assert.equal(v({ ...nat, presente: true, quante: 2 }), 'doppione/piu_di_una/basta');
+  assert.equal(v({ ...nat, presente: false, quante: 2 }), 'doppione/piu_di_una/basta');
+});
+
+test('33) 🚨 SENZA `adesso` si ricade sul verso prudente, non sul «no»', () => {
+  const base = { presente: false, scrittaAlle: '2026-08-15T10:00:00Z', giornoSlot: '2026-08-17', oggi: OGGI, fonteNativa: true };
+  assert.equal(v({ ...base, adesso: null, copiaFrescaAl: null }), 'non_ancora/copia_muta/aspetta');
+  assert.equal(v({ ...base, adesso: 'boh', copiaFrescaAl: null }), 'non_ancora/copia_muta/aspetta', 'un istante illeggibile non deve valere «adesso»');
+  // ⚖️ E se il timbro vecchio c'è, quello si usa: la natività accorcia l'attesa, non salta i controlli.
+  assert.equal(v({ ...base, adesso: null, copiaFrescaAl: '2026-08-15T10:10:00Z' }), 'no/fonte_nativa/basta');
+});
+
+test('34) 🔌 IL CABLAGGIO: l\'edge legge la dichiarazione e la passa al verdetto', () => {
+  const src = readFileSync(join(cartella, 'index.ts'), 'utf8');
+  assert.match(src, /fonteDichiarata\(\{/, "l'edge non chiama `fonteDichiarata`: sta decidendo per conto suo");
+  // 🩹 La sonda cercava il VALORE della chiave; l'edge usa la COSTANTE. Cercare il valore
+  // avrebbe dato rosso su un file sano — e, peggio, sarebbe diventata verde il giorno in cui
+  // qualcuno avesse scritto la stringa a mano invece di importarla, che è il contrario di ciò
+  // che serve. 📌 *Una sonda deve cercare quello che il codice fa, non quello che avrebbe
+  // fatto se fosse stato scritto come me l'ero immaginato.*
+  assert.match(src, /local_key',\s*CHIAVE_FONTE_PRENOTAZIONI\)/, 'la riga della dichiarazione non si legge più');
+  assert.ok(
+    !new RegExp(`'${CHIAVE_FONTE_PRENOTAZIONI}'`).test(src),
+    'la chiave è stata riscritta a mano nell\'edge invece di importarla: due posti da cambiare insieme',
+  );
+  assert.match(src, /fonteNativa,/, '`fonteNativa` non arriva a `verdettoScrittura`');
+  assert.match(src, /adesso:\s*new Date\(\)\.toISOString\(\)/, "l'istante di adesso non arriva al verdetto");
+  // ⛔ La fonte resta nel LOG e NON nella risposta: `import_matchpoint` contiene un nome che
+  // `NOMI_INTERNI` scarta, e il socio si vedrebbe la frase generica al posto della risposta.
+  const risposta = src.slice(src.indexOf('copia_fresca_al'), src.indexOf('copia_fresca_al') + 400);
+  assert.ok(!/fonte/.test(risposta), 'la fonte è finita nella risposta verso il bot: la guardia dei nomi interni la scarterebbe');
+});
+
+test('35) ⚠️ IL REF DELLA RETE non è andato alla deriva da quello del RECINTO', () => {
+  // 🚨 Il valore è lo stesso di `REF_PROD` in `scrittura-al-circolo.ts`, ma NON se ne fa una
+  // dodicesima copia byte-identica: quelle undici rispondono a un'altra domanda. Il legame lo
+  // tiene questo caso, che rilegge il file canonico invece di fidarsi.
+  const canonico = readFileSync(join(cartella, '..', 'matchpoint-bookings-create', 'scrittura-al-circolo.ts'), 'utf8');
+  const m = canonico.match(/export const REF_PROD = '([^']+)'/);
+  assert.ok(m, 'REF_PROD non si trova più in scrittura-al-circolo.ts: la sonda guarda nel posto sbagliato');
+  assert.equal(REF_PROD_RETE, m![1], 'il ref della rete e quello del recinto sono diversi: uno dei due è stato cambiato da solo');
 });
 
 console.log(`\n${passed} passati, ${failed} falliti`);
