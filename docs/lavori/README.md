@@ -15,6 +15,24 @@ la voce che sbloccava, la **143**, è stata cassata da lui (*«Cassiamo e chiudi
 matchpoint»*). ⇒ Chiedere un gesto per una voce chiusa è la stessa bugia dell'altro verso: *una richiesta che resta scritta dopo che
 non serve più non è vecchia, **mente**.* ⛔ **Nessuna richiesta aperta: non c'è niente che io stia aspettando da lui.**
 
+📅⭐ **UN APPUNTAMENTO PRESO — e NON è una richiesta aperta, la differenza è tutta qui.**
+🗣️ Sue parole dell'**08/09/2026**, dette mentre si lavorava e con la scadenza dichiarata da lui
+stesso:
+
+> *«Quando abbiamo finito il distacco dal gestionale di prod e siamo autonomi con il gestionale di
+> test legato al chatbot, avrei bisogno di confrontarmi con te riguardo a dei test end to end fatti
+> però solo con le cinque persone di segreteria. Ne parliamo quando è finito.»*
+
+⇒ **Non c'è niente da fare adesso**, e lui l'ha detto per esteso (*«ne parliamo quando è finito»*):
+è un **discorso da aprire**, non un lavoro in coda né una cosa che io stia aspettando.
+🎯 **Quando**: a distacco fatto — cioè quando il sistema nuovo è autonomo e il bot ci gira sopra.
+👥 **Il perimetro l'ha già fissato lui**: i collaudi end-to-end si faranno **solo con le cinque
+persone di segreteria** (Maurizio · Lidia · Fabiola · Marco · Laura), che sono esattamente la
+whitelist di oggi. ⇒ Chi arriva a quel punto **apre il discorso**, non improvvisa un piano di
+collaudo e non allarga il pubblico.
+📌 *Un appuntamento scritto fra le richieste aperte diventa una richiesta; scritto da nessuna parte
+diventa un ricordo di chi c'era. Sta qui, marcato per quello che è.*
+
 
 
 
@@ -1763,6 +1781,26 @@ usata. La prima volta che lui tocca una fascia, il bot mente.
 solo**, e peggiora proprio quando il committente usa la funzione appena costruita per lui.
 
 ⛔ **Il bot non si tocca** (⇒ *il gestionale SA, il bot DICE*): il lavoro sta tutto nelle due edge.
+
+🔨 **FATTO E IN SERVIZIO su `cudi` dall'08/09 14:34** — commit `2750b8b2`, deploy `success`, e il
+codice nuovo **verificato nella funzione in servizio** (non solo «il workflow è passato»):
+`pmo_fasce_prenotabili` compare 6 volte nel `consumer-booking-write` vivo e 5 nel
+`consumer-player-readmodel` vivo. La logica sta in `fasce-prenotabili.ts`, modulo **puro**,
+copiato byte-identico nelle due cartelle (Deno non importa fuori dalla propria).
+✅ **Provato**: banco nuovo **24 verdi 0 rosse** con **4 sabotaggi** tutti visti cadere, più un caso
+che pretende le due copie identiche (provato sabotandolo). Banco intero **125 verdi 0 rosse**.
+🩹 Trappola pagata scrivendo il banco: il sabotaggio su `utili === 0` restava **verde**, perché la
+sonda usava `fasceComeGriglia([])` — che esce da una riga **precedente**. 📌 *Due strade diverse
+verso lo stesso `null` non sono lo stesso caso.*
+
+⏳⛔ **PERCHÉ LA VOCE RESTA APERTA, ed è la metà che conta**: il comportamento **vivo** non è
+dimostrato. 📏 Misurato l'08/09 sui log di `cudi`: nelle ultime 24 ore quelle due edge **non
+risultano chiamate da nessuno** — solo righe di boot e shutdown. E chiamarle io non si può senza
+`CONSUMER_BRIDGE_SECRET`, che è un secret di Supabase e non sta nell'ambiente.
+⇒ **Cosa manca per chiuderla**: una chiamata vera che lasci nel registro la riga
+`fonte=pmo_fasce_prenotabili` — cioè un gesto del **bot di prova** da uno dei cinque telefoni di
+casa. Finché non c'è, questa voce è *in servizio ma non provata*, che è diverso da fatta.
+📌 *Un deploy verificato dice che è partito il file giusto, non che fa la cosa giusta.*
 
 ### 178 — 🔌 IL «PASSO ZERO» DEL DISTACCO: la configurazione è controllata PRIMA della barriera
 
