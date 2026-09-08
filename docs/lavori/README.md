@@ -1804,11 +1804,31 @@ casa. Finché non c'è, questa voce è *in servizio ma non provata*, che è dive
 
 ### 178 — 🔌 IL «PASSO ZERO» DEL DISTACCO: la configurazione è controllata PRIMA della barriera
 
-📏 **Misurato l'08/09 nel codice, edge per edge**: in **9 edge su 11** il controllo dei secret
-Matchpoint sta **prima** della barriera `scritturaAlCircoloConsentita`. Il caso campione,
-riverificato: `matchpoint-bookings-create/index.ts` — `WORKER_NOT_CONFIGURED` a **:745**, la barriera
-a **:761**. *(Le tre strade **async** hanno già l'ordine giusto, perché lì i segreti arrivano come
-parametri.)*
+🔄🚨⭐ **È **11 SU 11**, NON «9 su 11» — e la correzione cambia il lavoro, non solo il numero.**
+Il passaggio di consegne diceva *«in 9 edge su 11 la configurazione è controllata prima della
+barriera, e le tre strade async hanno già l'ordine giusto»*. La seconda metà è **vera**; la prima fa
+sembrare **a posto le tre edge delle prenotazioni**, e non lo sono.
+
+📏 **Misurato l'08/09 guardando OGNI occorrenza della barriera, non la prima** *(ed è il punto: la
+prima sonda che ho scritto guardava solo quella, e dava le tre edge per verdi)*:
+
+| edge | barriere | primo controllo config | |
+|---|---|---|---|
+| `matchpoint-bookings-cancel` | :485 · **:586** | :575 | 🔴 |
+| `matchpoint-bookings-create` | :495 · **:761** | :746 | 🔴 |
+| `matchpoint-bookings-edit` | :505 · **:670** | :657 | 🔴 |
+| `charge-write` · `clients-create` · `clients-disable` · `clients-reactivate` · `clients-update` · `payment-void` · `payment-write` · `wallet-correct` | una sola | prima | 🔴 ×8 |
+
+⇒ Le tre edge delle prenotazioni hanno **DUE** barriere, e la configurazione sta **in mezzo**:
+· la barriera **precoce** (:485/:495/:505) è dentro il **ramo asincrono** — quello che gira *dopo*
+  aver già risposto al chiamante — e lì l'ordine è giusto davvero, perché i segreti arrivano come
+  parametri. È la metà che il passaggio di consegne aveva visto;
+· la barriera **tarda** (:586/:761/:670) è la strada **sincrona**, e lì la config viene prima.
+
+🚨 **Perché la differenza conta**: chi curasse «le 9» lascerebbe rotta la strada sincrona di
+**prenotare, annullare e modificare** — cioè le tre cose per cui il sistema esiste. 📌 *Una sonda che
+prende la prima occorrenza di ciò che cerca non ha ancora guardato le altre — e sbaglia dichiarando
+sano proprio il file che ne ha due.*
 
 ⇒ **Cosa comporta, ed è il punto**: togliendo i secret `MATCHPOINT_*` dal sistema nuovo si prende
 un **`500 WORKER_NOT_CONFIGURED`** e **il ramo autonomo non parte mai** — cioè il sistema non
