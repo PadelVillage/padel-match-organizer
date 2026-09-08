@@ -2,12 +2,12 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
 // 🔒 «posso scrivere sul gestionale del circolo?» — la risposta dipende da DOVE gira questa
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
-import { righeDiProvaDaSpegnere } from './bersaglio-prova.ts';
+import { righeNativeDaSpegnere } from './bersaglio-nativo.ts';
 import {
   CODICE_AMBIENTE_DI_PROVA,
-  esitoDiProva,
+  esitoNativo,
   MESSAGGIO_AMBIENTE_DI_PROVA,
-  MESSAGGIO_PROVA_REGISTRATA,
+  MESSAGGIO_SCRITTURA_NATIVA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
@@ -248,7 +248,7 @@ async function callWorkerCancelBooking(opts: {
  * ⚠️ E il caso automatico non poteva accorgersene: misurava che questa funzione fosse CHIAMATA,
  * non che trovasse qualcosa. Struttura ≠ resa.
  */
-async function spegniPartiteDiProvaSulloSlot(opts: {
+async function spegniPartiteNativeSulloSlot(opts: {
   supabaseUrl: string;
   supabaseKey: string;
   cancel: CancelRequest;
@@ -262,9 +262,9 @@ async function spegniPartiteDiProvaSulloSlot(opts: {
     .eq('deleted', false);
   if (error) throw error;
   const righe = (data ?? []) as Array<{ local_key: string; payload: JsonMap }>;
-  // ⭐ La scelta del bersaglio sta in un modulo PURO (`bersaglio-prova.ts`), perché è la parte
+  // ⭐ La scelta del bersaglio sta in un modulo PURO (`bersaglio-nativo.ts`), perché è la parte
   // che si può sbagliare — e che infatti è stata sbagliata. Qui resta solo il girare del database.
-  const stessoSlot = righeDiProvaDaSpegnere(righe, cancel);
+  const stessoSlot = righeNativeDaSpegnere(righe, cancel);
   const adesso = new Date().toISOString();
   for (const r of stessoSlot) {
     // 🚨 Anche qui si guarda l'esito (11/08/2026): questo spegne la riga di una partita di
@@ -483,7 +483,7 @@ async function runCancelJobInBackground(opts: {
   const client = createClient(supabaseUrl, supabaseKey);
   const base = { cancel, cancelled_by_email: actor.email };
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel_async', jobId, cancel }));
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'cancel_async', jobId, cancel }));
     await writeCancelJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
     return;
   }
@@ -585,14 +585,14 @@ Deno.serve(async (req: Request) => {
   // registrasse per prima, un guasto nel mezzo lascerebbe scritto «annullata» accanto a una
   // partita ancora in piedi, che è la contraddizione peggiore da leggere in un registro.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'cancel', cancel }));
-    const workerResult = esitoDiProva('cancel');
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'cancel', cancel }));
+    const workerResult = esitoNativo('cancel');
     let spente = 0;
     try {
-      spente = await spegniPartiteDiProvaSulloSlot({ supabaseUrl, supabaseKey, cancel });
+      spente = await spegniPartiteNativeSulloSlot({ supabaseUrl, supabaseKey, cancel });
       await saveStaffCancelRecord({ supabaseUrl, supabaseKey, actor, cancel, workerResult });
     } catch (dbErr) {
-      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      console.error(JSON.stringify({ event: 'scrittura_nativa_fallita', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_annullato: cancel });
     }
     // 🚨⭐⭐ ZERO SPENTE ⇒ NON si dice «fatto». Trovato dal vivo il 7/08: la prima versione
@@ -603,16 +603,16 @@ Deno.serve(async (req: Request) => {
     // PROVA (per esempio è una partita vera, che di prova non si può annullare). Ma per chi
     // chiede «annulla» le due cose finiscono uguali — non è successo niente — e va detto.
     if (spente === 0) {
-      return err(409, 'PROVA_NIENTE_DA_ANNULLARE',
-        'Ambiente di prova: su quello slot non c\'è nessuna partita di prova da annullare. '
-        + 'Il gestionale del circolo non è stato toccato, e qui non è cambiato niente.',
-        { prova: true, cancel });
+      return err(409, 'NIENTE_DA_ANNULLARE',
+        'Su quello slot non c\'è nessuna partita del gestionale da annullare. '
+        + 'Non è cambiato niente.',
+        { nativa: true, cancel });
     }
     return ok({
-      message: `Annullamento di PROVA: ${spente === 1 ? 'la partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale di prova.`,
-      prova: true,
-      partite_di_prova_spente: spente,
-      nota: MESSAGGIO_PROVA_REGISTRATA,
+      message: `${spente === 1 ? 'La partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale.`,
+      nativa: true,
+      partite_spente: spente,
+      nota: MESSAGGIO_SCRITTURA_NATIVA,
       cancel,
       worker: workerResult,
     });

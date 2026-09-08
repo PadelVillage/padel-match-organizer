@@ -4,16 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
-  esitoDiProva,
-  esitoVieneDaUnaProva,
-  MARCHIO_NATA_IN_PROVA,
+  esitoNativo,
+  esitoNatoNelGestionale,
+  MARCHIO_NATA_NEL_GESTIONALE,
   MESSAGGIO_AMBIENTE_DI_PROVA,
-  MESSAGGIO_PROVA_REGISTRATA,
+  MESSAGGIO_SCRITTURA_NATIVA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 // 📐 La scheda del circolo che una partita nata in prova si scrive da sé. Regola pura, provata
 // da sola: senza, su TEST la partita non ha un organizzatore e non si può gestire.
-import { schedaDiProva } from './scheda-di-prova.ts';
+import { schedaNativa } from './scheda-nativa.ts';
 // ⭐⭐ I TRE ESITI della voce 23 — regola pura, in un modulo a sé e in `.js` perché il banco di
 // prova gira in Node e da un modulo vero si IMPORTA invece di estrarre a fette. Stessa medicina
 // di `conoscenza.js`, e per lo stesso motivo: una regola che nessuno può eseguire è una regola
@@ -380,8 +380,8 @@ async function saveStaffBookingRecord(opts: {
   // partita di prova sparirebbe da sola, senza un errore da nessuna parte.
   // ⚠️ Sta dentro `nostro`, quindi lo fonde la stessa regola degli altri campi: se la riga esiste
   // già ed è vera, l'esistente vince e il marchio non la sporca.
-  if (esitoVieneDaUnaProva(workerResult)) {
-    nostro[MARCHIO_NATA_IN_PROVA] = true;
+  if (esitoNatoNelGestionale(workerResult)) {
+    nostro[MARCHIO_NATA_NEL_GESTIONALE] = true;
     // 🆕⭐⭐ 11/08/2026 — LA PARTITA NATA IN PROVA SI PORTA LA PROPRIA SCHEDA.
     // Su TEST il circolo non viene chiamato ⇒ la `descrizione` (che la scrive Matchpoint) non
     // torna mai, e `organizzatoreDelloSlot` legge SOLO quella: senza, la partita non ha un
@@ -390,10 +390,10 @@ async function saveStaffBookingRecord(opts: {
     // ⛔ Sta DENTRO il ramo della prova di proposito, e non accanto agli altri campi: in
     // produzione uno `staff_booking` con una `descrizione` fabbricata da noi sarebbe una seconda
     // scheda che può contraddire quella vera del circolo ⇒ copie discordi, e l'organizzatore
-    // sparirebbe sul circolo VERO. Il perché per esteso sta in `scheda-di-prova.ts`.
+    // sparirebbe sul circolo VERO. Il perché per esteso sta in `scheda-nativa.ts`.
     // ⚖️ `null` = non si è potuta scrivere fedelmente: si lascia il campo com'era, e si torna
     // all'`organizzatore_ignoto` di prima. Mai una scheda che nomina la persona sbagliata.
-    const scheda = schedaDiProva(booking.giocatori);
+    const scheda = schedaNativa(booking.giocatori);
     if (scheda) nostro.descrizione = scheda;
   }
 
@@ -493,12 +493,12 @@ async function runBookingJobInBackground(opts: {
   // chiamante è già stato detto «in corso», quindi lasciargli un `error` significherebbe far
   // fallire una prova che invece è andata a buon fine. Il circolo, anche qui, non si chiama.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create_async', jobId, booking }));
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'create_async', jobId, booking }));
     // 🆕 22/08 (voce 75): anche la prova segna l'istante. Senza, la regola della lapide
     // fallisce chiusa e su TEST la copia locale non nascerebbe mai su uno slot riprenotato —
     // cioè proprio il difetto che si sta curando, sopravvissuto nell'unico ramo che è di qua.
     const scritturaIniziataAlle = new Date().toISOString();
-    const workerResult = esitoDiProva('create');
+    const workerResult = esitoNativo('create');
     try {
       await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
@@ -507,8 +507,8 @@ async function runBookingJobInBackground(opts: {
     }
     await writeBookingJob(client, jobId, 'done', {
       ...base,
-      prova: true,
-      message: `${tipoLabel} di PROVA registrata: Campo ${booking.campo} · ${booking.data} · ${booking.ora}–${booking.oraFine} · ${booking.nome}`,
+      nativa: true,
+      message: `${tipoLabel} registrata: Campo ${booking.campo} · ${booking.data} · ${booking.ora}–${booking.oraFine} · ${booking.nome}`,
       worker_result: workerResult,
     });
     return;
@@ -763,25 +763,25 @@ Deno.serve(async (req: Request) => {
   // circolo non lo si chiama (`callWorkerCreateBooking` non compare in questo ramo, ed è la cosa
   // che un caso costruito apposta va a verificare). Il perché sta in `scrittura-al-circolo.ts`.
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create', booking }));
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'create', booking }));
     // 🆕 22/08 (voce 75): anche la prova segna l'istante. Senza, la regola della lapide
     // fallisce chiusa e su TEST la copia locale non nascerebbe mai su uno slot riprenotato —
     // cioè proprio il difetto che si sta curando, sopravvissuto nell'unico ramo che è di qua.
     const scritturaIniziataAlle = new Date().toISOString();
-    const workerResult = esitoDiProva('create');
+    const workerResult = esitoNativo('create');
     try {
       await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
     } catch (dbErr) {
       // ⚖️ Qui il rifiuto di prima torna a servire, ed è il verso giusto: se la registrazione non
       // è riuscita, la partita NON esiste da nessuna parte — dirle «fatto» sarebbe la bugia che
       // questo progetto insegue da luglio. Si racconta quello che è successo, non l'intenzione.
-      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      console.error(JSON.stringify({ event: 'scrittura_nativa_fallita', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
     }
     return ok({
-      message: `${tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita'} di PROVA registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
-      prova: true,
-      nota: MESSAGGIO_PROVA_REGISTRATA,
+      message: `${tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita'} registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
+      nativa: true,
+      nota: MESSAGGIO_SCRITTURA_NATIVA,
       booking,
       worker: workerResult,
     });

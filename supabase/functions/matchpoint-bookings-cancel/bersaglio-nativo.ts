@@ -10,13 +10,20 @@
 //
 // ⭐ Il fatto che il caso non poteva indovinare: il ponte dei soci, quando la prenotazione ha un
 // `idReserva`, manda **solo quello** — niente data, niente ora, niente campo. E le partite di
-// prova un `idReserva` ce l'hanno per forza (`PROVA-…`, lo mette `esitoDiProva`). Quindi la
+// prova un `idReserva` ce l'hanno per forza (`PROVA-…`, lo mette `esitoNativo`). Quindi la
 // strada che il bot percorre davvero non era quella che il codice si aspettava.
 
 type JsonMap = Record<string, unknown>;
 
-/** Il marchio; ripetuto qui per non far dipendere una regola pura dal modulo del recinto. */
-const MARCHIO = 'nata_in_prova';
+/**
+ * I marchi; ripetuti qui per non far dipendere una regola pura dal modulo del recinto.
+ * 🔄 08/09/2026 — le righe nuove nascono `nata_nel_gestionale` (non più «di prova»: sono
+ * prenotazioni vere del gestionale nuovo). Il marchio VECCHIO resta riconosciuto perché le righe
+ * scritte prima ci sono ancora — 📏 una viva su `cudi` all'08/09 — e smettere di vederle
+ * vorrebbe dire non riuscire più ad annullarle.
+ */
+const MARCHIO = 'nata_nel_gestionale';
+const MARCHIO_VECCHIO = 'nata_in_prova';
 
 export type RigaStaffBooking = { local_key: string; payload: JsonMap };
 export type ChiaveAnnullo = { idReserva?: string; campo?: number; data?: string; ora?: string };
@@ -36,7 +43,7 @@ function pulisci(v: unknown): string {
  * ridurrebbe a «tutte le partite di prova», e un annullo diventerebbe una pulizia generale.
  * ⛔ E in nessun caso si tocca una riga senza marchio: quelle non sono roba nostra.
  */
-export function righeDiProvaDaSpegnere(
+export function righeNativeDaSpegnere(
   righe: RigaStaffBooking[],
   chiave: ChiaveAnnullo,
 ): RigaStaffBooking[] {
@@ -46,7 +53,7 @@ export function righeDiProvaDaSpegnere(
 
   return righe.filter((r) => {
     const p = (r.payload ?? {}) as JsonMap;
-    if (p[MARCHIO] !== true) return false;
+    if (p[MARCHIO] !== true && p[MARCHIO_VECCHIO] !== true) return false;
     if (idCercato) return pulisci(p.id_reserva) === idCercato;
     return pulisci(p.data) === pulisci(chiave.data)
       && pulisci(p.ora) === pulisci(chiave.ora)

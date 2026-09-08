@@ -1613,7 +1613,7 @@ Deno.serve(async (req) => {
     let skippedStaffOutOfRange = 0;
     // ⭐ Si CONTA, e finisce nel registro insieme agli altri: un numero che nessuno guarda non
     // distingue «non ce n'erano» da «non le sto più saltando». Su PROD dev'essere sempre 0.
-    let skippedStaffDiProva = 0;
+    let skippedStaffNative = 0;
     try {
       const reconcileFrom = clean(range.fromDate || validation.fromDate || '');
       const reconcileTo = clean(range.toDate || validation.toDate || '');
@@ -1648,10 +1648,13 @@ Deno.serve(async (req) => {
         // ⭐ si guarda il DATO, non dove si sta girando — una condizione sull'ambiente sarebbe
         // una seconda verità da tenere allineata a mano.
         // 🚨 Chi le fa sparire, allora? Solo l'annullamento di prova, che le spegne per nome
-        // (`spegniPartiteDiProvaSulloSlot` in `matchpoint-bookings-cancel`). Togliendo questa
+        // (`spegniPartiteNativeSulloSlot` in `matchpoint-bookings-cancel`). Togliendo questa
         // riga, il ciclo di prova si rompe in silenzio: le partite spariscono da sole e chi
         // guarda pensa di aver sbagliato qualcosa.
-        if ((p as any)?.nata_in_prova === true) { skippedStaffDiProva += 1; continue; }
+        // 🔄 08/09/2026 — due marchi, non uno: le righe nuove nascono `nata_nel_gestionale`
+        // (prenotazioni VERE del gestionale nuovo, non più «di prova»), quelle scritte prima
+        // portano ancora `nata_in_prova`. Leggerne uno solo tomberebbe l'altra metà.
+        if ((p as any)?.nata_nel_gestionale === true || (p as any)?.nata_in_prova === true) { skippedStaffNative += 1; continue; }
         if (reconcileFrom && sData < reconcileFrom) { skippedStaffOutOfRange += 1; continue; }
         if (reconcileTo && sData > reconcileTo) { skippedStaffOutOfRange += 1; continue; }
         // DEMOTE per idReserva: solo per le entry nate dal promote (promoted===true).
@@ -1685,7 +1688,7 @@ Deno.serve(async (req) => {
         });
         deletedStaffBookings += 1;
       }
-      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, skippedStaffDiProva, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
+      console.log(JSON.stringify({ event: 'staff_reconcile_done', deletedStaffBookings, demotedStaffBookings, skippedStaffFresh, bypassedGraceConfirmed, skippedStaffOutOfRange, skippedStaffNative, activeStaff: activeStaff.length, reconcileFrom, reconcileTo }));
     } catch (staffErr) {
       console.error(JSON.stringify({ event: 'staff_reconcile_failed', error: errorText(staffErr) }));
     }

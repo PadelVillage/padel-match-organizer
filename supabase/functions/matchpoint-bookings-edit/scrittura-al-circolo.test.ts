@@ -13,9 +13,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  esitoDiProva,
-  esitoVieneDaUnaProva,
-  MARCHIO_NATA_IN_PROVA,
+  esitoNativo,
+  esitoNatoNelGestionale,
+  MARCHIO_NATA_NEL_GESTIONALE,
   REF_PROD,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
@@ -319,7 +319,7 @@ const DENTRO_IL_RAMO: Record<string, { maiChiamare: RegExp; deveFare: RegExp[] }
     // 🚨 Due cose, e la prima è quella trovata ragionando: chi fa sparire una partita annullata
     // NON è questa funzione ma il giro di sincronizzazione, che su una partita di prova non ha
     // niente da leggere. Senza `spegni…`, l'annullamento di prova lascerebbe la partita in piedi.
-    deveFare: [/spegniPartiteDiProvaSulloSlot\(/, /saveStaffCancelRecord\(/],
+    deveFare: [/spegniPartiteNativeSulloSlot\(/, /saveStaffCancelRecord\(/],
   },
 };
 
@@ -354,7 +354,7 @@ test('12) ⚠️ il ramo di prova esiste in tutte e tre, e il ritaglio le trova 
     for (const [n, ramo] of rami.entries()) {
       assert.ok(ramo.split('\n').length > 3, `${rel} ramo ${n + 1}: troppo corto, il ritaglio non ha funzionato`);
     }
-    assert.ok(rami.some((r) => /esitoDiProva\(/.test(r)), `${rel}: in nessun ramo si compone l'esito di prova`);
+    assert.ok(rami.some((r) => /esitoNativo\(/.test(r)), `${rel}: in nessun ramo si compone l'esito di prova`);
   }
 });
 
@@ -365,8 +365,8 @@ test('13) 🚨⭐⭐ il MARCHIO è la stessa parola nel sync — due verità non
   // ⇒ L'unico modo di legarle è un caso che rilegge i due file dal disco.
   const sync = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8');
   assert.ok(
-    sync.includes(MARCHIO_NATA_IN_PROVA),
-    `il sync non conosce il marchio «${MARCHIO_NATA_IN_PROVA}»: le partite di prova verrebbero cancellate`,
+    sync.includes(MARCHIO_NATA_NEL_GESTIONALE),
+    `il sync non conosce il marchio «${MARCHIO_NATA_NEL_GESTIONALE}»: le partite di prova verrebbero cancellate`,
   );
 });
 
@@ -374,7 +374,7 @@ test('14) 🚨 nel sync il salto delle prove sta PRIMA del tombstone (posizione,
   // Stessa idea del caso 9: una riga che salta le prove messa DOPO il `push` che le cancella
   // sarebbe una riga inutile, e la parola ci sarebbe lo stesso.
   const righe = readFileSync(join(FUNZIONI, 'matchpoint-bookings-sync/index.ts'), 'utf8').split('\n');
-  const salto = righe.findIndex((r) => r.includes(MARCHIO_NATA_IN_PROVA) && /continue/.test(r));
+  const salto = righe.findIndex((r) => r.includes(MARCHIO_NATA_NEL_GESTIONALE) && /continue/.test(r));
   assert.notEqual(salto, -1, 'nel sync non c\'è nessuna riga che SALTA le righe di prova');
   // Il tombstone dello staff_booking dentro il ciclo del reconcile: `deleted: true` + push.
   const tombstone = righe.findIndex((r, i) => i > salto && /deleted:\s*true/.test(r));
@@ -382,22 +382,30 @@ test('14) 🚨 nel sync il salto delle prove sta PRIMA del tombstone (posizione,
   assert.ok(salto < tombstone, 'il salto delle prove viene DOPO la cancellazione: non serve a nulla');
 });
 
-test('15) l\'esito di prova si riconosce, e quello vero NON si scambia per una prova', () => {
-  const prova = esitoDiProva('create');
-  assert.equal(esitoVieneDaUnaProva(prova), true);
-  assert.ok(String(prova.idReserva).startsWith('PROVA-'), 'l\'idReserva di prova deve dirsi');
+test('15) l\'esito NATIVO si riconosce, e quello vero NON si scambia per il nostro', () => {
+  const nostro = esitoNativo('create');
+  assert.equal(esitoNatoNelGestionale(nostro), true);
+  // 🔄 08/09/2026 — il prefisso era `PROVA-` e diceva «questa è finta»; adesso è `PMO-` e dice
+  // **di chi è**. La partita non è più una prova: è una prenotazione vera del gestionale nuovo.
+  assert.ok(String(nostro.idReserva).startsWith('PMO-'), 'l\'idReserva nativo deve dire di chi è');
+  assert.equal(nostro.nativa, true);
+  assert.equal(nostro.origine, 'gestionale');
+  assert.ok(!('simulato' in nostro), 'niente `simulato`: non è una simulazione');
   // 🚨 Il verso che conta: un esito VERO del worker non deve mai passare per prova, se no la sua
   // riga verrebbe marcata e il reconcile smetterebbe di sorvegliarla — una partita vera che
   // nessuno controlla più.
-  assert.equal(esitoVieneDaUnaProva({ idReserva: '123456', ok: true }), false);
-  assert.equal(esitoVieneDaUnaProva({ simulato: 'sì' }), false, 'solo il booleano vero conta');
-  assert.equal(esitoVieneDaUnaProva(null), false);
-  assert.equal(esitoVieneDaUnaProva(undefined), false);
+  assert.equal(esitoNatoNelGestionale({ idReserva: '123456', ok: true }), false);
+  assert.equal(esitoNatoNelGestionale({ nativa: 'sì' }), false, 'solo il booleano vero conta');
+  // ⚖️ Il marchio VECCHIO resta riconosciuto: un lavoro partito prima del cambio e atterrato dopo
+  // non dev'essere scambiato per un esito del circolo.
+  assert.equal(esitoNatoNelGestionale({ simulato: true }), true, 'il vecchio marchio si riconosce ancora');
+  assert.equal(esitoNatoNelGestionale(null), false);
+  assert.equal(esitoNatoNelGestionale(undefined), false);
 });
 
 test('16) due prove di fila non sono la stessa prenotazione', () => {
   // Se l'idReserva fosse fisso, la seconda partita di prova sovrascriverebbe la prima.
-  assert.notEqual(esitoDiProva('create').idReserva, esitoDiProva('create').idReserva);
+  assert.notEqual(esitoNativo('create').idReserva, esitoNativo('create').idReserva);
 });
 
 // ── ⑤ 🆕 9/08/2026 · LE CINQUE CHE RIFIUTANO — anche il «no» va misurato ───────────────────
@@ -475,8 +483,8 @@ test('19) 💰⭐⭐ il borsellino RIFIUTA: non registra da nessuna parte', () =
   // «registrare la prova» come fanno le prenotazioni, l'app di TEST vedrebbe un saldo che non
   // esiste su Matchpoint — cioè un SECONDO libro mastro, che in questo progetto è vietato.
   for (const ramo of ramiDiProva('matchpoint-wallet-correct/index.ts')) {
-    assert.equal(/esitoDiProva\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
-    assert.equal(/MARCHIO_NATA_IN_PROVA/.test(ramo), false, 'il borsellino non deve marchiare niente');
+    assert.equal(/esitoNativo\(/.test(ramo), false, 'il borsellino non deve comporre un esito di prova');
+    assert.equal(/MARCHIO_NATA_NEL_GESTIONALE/.test(ramo), false, 'il borsellino non deve marchiare niente');
     assert.ok(/return err\(/.test(ramo), 'il ramo del borsellino deve USCIRE, non proseguire');
   }
 });

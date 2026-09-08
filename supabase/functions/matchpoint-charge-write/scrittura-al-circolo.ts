@@ -19,26 +19,31 @@
 // PROD smetterebbe di scrivere e lo direbbe ad alta voce. È il verso giusto in cui rompersi.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-// 🆕⭐⭐ 7/08/2026 — IL RECINTO NON RIFIUTA PIÙ: REGISTRA. Deciso da lui, con parole sue:
-//        *«per fare una prova reale dobbiamo portare tutto in test»* e *«mi devi lasciare la
-//        possibilità di prenotare una partita in test — logicamente dal bot»*.
+// 🆕⭐⭐ 7/08/2026 — IL RECINTO NON RIFIUTA PIÙ: REGISTRA. Deciso da lui («mi devi lasciare la
+//        possibilità di prenotare una partita in test — logicamente dal bot»). Fuori dalla
+//        produzione il circolo non si chiamava e la partita si registrava qui, marcata di prova,
+//        e il chiamante riceveva un sì onesto: «fatto, di prova».
 //
-// Fino a ieri, fuori dalla produzione, queste funzioni rispondevano `503 AMBIENTE_DI_PROVA`:
-// avevano capito la richiesta e non la eseguivano. Difendeva bene il circolo, ma rendeva
-// **impossibile provare davvero il bot**: si fermava tutto un passo prima del fatto.
-//
-// ⭐ E la sua premessa era GIUSTA, verificata nel codice: l'app di TEST prenota da mesi senza
-// toccare Matchpoint — intercetta la propria chiamata, risponde da sé «accettato» e registra la
-// partita nel gestionale di TEST (`index.html`, `PMO_BOOKINGS_SIMULATE`). Quello che mancava è
-// che la stessa cosa la sapesse fare il **server**, perché il bot un browser non ce l'ha.
-// ⇒ Da qui: fuori dalla produzione **il circolo non si chiama** (esattamente come prima) ma la
-//   partita **si registra qui**, marcata, e il chiamante riceve un sì onesto: «fatto, di prova».
+// 🔄⭐⭐ 08/09/2026 — E ADESSO QUELLA REGISTRAZIONE NON È PIÙ «DI PROVA»: È NATIVA.
+// 🗣️ Parole sue: *«le scritture sono simulate verso Matchpoint, ma devono essere proprio chiuse,
+// non simulate, così siamo tranquilli che in futuro non ci sia dialogo fra Matchpoint e gestionale
+// di test»*; e messo davanti alle due strade — rifiutare tutto, oppure rendere la prenotazione
+// **vera del gestionale nuovo** — ha scelto la seconda.
+// ⇒ Cambia il SIGNIFICATO, non il meccanismo: la riga che prima era la **finta** di una
+//   prenotazione che «sarebbe» andata sul circolo, adesso è una prenotazione **nostra**. Niente
+//   `simulato: true`, niente `ambiente: 'prova'`, niente `PROVA-` davanti all'identificativo:
+//   `nativa: true`, `origine: 'gestionale'`, e un `PMO-…` che dice **di chi è**.
+// 📌 *Una simulazione dichiara che esiste una strada vera altrove. Una scrittura nativa dice che
+//   la strada vera è questa.* Il giorno in cui Matchpoint si spegne, qui non si tocca niente — ed
+//   è esattamente la prova che il verso è giusto.
 //
 // 🚨 Cosa NON è cambiato, ed è il punto: **il worker non viene chiamato**. Il recinto non si è
-//    aperto, ha cambiato verso — da «mi rifiuto» a «lo faccio qui». Chi un domani rimettesse la
-//    chiamata al circolo dentro questo ramo farebbe rosso un caso costruito apposta.
-// ⚖️ Il rifiuto RESTA, come ripiego: se la registrazione di prova non riesce, si risponde ancora
+//    aperto, ha cambiato verso — da «mi rifiuto» a «lo faccio qui, ed è mio». Chi un domani
+//    rimettesse la chiamata al circolo dentro questo ramo farebbe rosso un caso costruito apposta.
+// ⚖️ Il rifiuto RESTA, come ripiego: se la scrittura nativa non riesce, si risponde ancora
 //    `503` invece di raccontare un successo che non c'è stato. Nel dubbio non si dice «fatto».
+// ⛔ E vale **solo su TEST**, cioè sul gestionale che sta diventando il vero: su `main` questo
+//    modulo è quello che RIFIUTA e basta, e i due rami qui divergono di proposito.
 //
 // 🚨⭐⭐ E VALE SOLO PER LE PRENOTAZIONI. Questo modulo vive in **otto** copie: le tre delle
 //    prenotazioni (`bookings-create · edit · cancel`), le quattro dell'ANAGRAFICA
@@ -87,9 +92,8 @@ export const MESSAGGIO_AMBIENTE_DI_PROVA =
   + 'La richiesta è arrivata intera ed è stata capita, ma il gestionale non è stato toccato.';
 
 /** Cosa si risponde quando la prova è stata registrata qui. Dice **dove** è finita, non «ok». */
-export const MESSAGGIO_PROVA_REGISTRATA =
-  'Ambiente di prova: registrata qui, sul gestionale di prova. '
-  + 'Il circolo non è stato chiamato e su Matchpoint non c\'è nulla.';
+export const MESSAGGIO_SCRITTURA_NATIVA =
+  'Scritta nel gestionale. Questa partita nasce qui: il circolo esterno non è stato chiamato.';
 
 /**
  * Il marchio che una riga nata da una prova si porta dietro, dentro il `payload`.
@@ -102,7 +106,16 @@ export const MESSAGGIO_PROVA_REGISTRATA =
  * ⇒ Il reconcile salta le righe che portano questo marchio. Chi lo togliesse di qui vedrebbe le
  *   partite di prova sparire da sole dopo qualche minuto, senza un errore da nessuna parte.
  */
-export const MARCHIO_NATA_IN_PROVA = 'nata_in_prova';
+export const MARCHIO_NATA_NEL_GESTIONALE = 'nata_nel_gestionale';
+
+/**
+ * Il marchio VECCHIO, che alcune righe scritte prima del 08/09/2026 si portano ancora dietro.
+ * ⛔ Non si scrive più: si **riconosce**. 📏 All'08/09 ce n'è ancora **una** riga viva su `cudi`,
+ * e togliere questa costante la farebbe tombare al primo giro di riconciliazione — un dato vero
+ * cancellato da una pulizia di nomi. 📌 *Un nome si può cambiare in avanti; i dati già scritti
+ * col nome vecchio restano, e vanno letti.*
+ */
+export const MARCHIO_VECCHIO_NATA_IN_PROVA = 'nata_in_prova';
 
 /**
  * Vero **solo** se questa funzione sta girando nel progetto di produzione.
@@ -124,27 +137,43 @@ export function scritturaAlCircoloConsentita(supabaseUrl: unknown): boolean {
 }
 
 /**
- * L'esito che si mette al posto di quello del worker quando si registra una prova.
+ * L'esito di una scrittura **NATIVA**: la partita nasce nel gestionale, e basta.
  *
- * ⭐ Ha la **stessa forma** di quello vero (`idReserva`, che è il campo da cui tutto il resto
- * pende) perché il codice a valle non debba sapere di essere in prova: la differenza sta nel
- * **marchio**, non in una strada separata. Due strade diverse vorrebbero dire che quella di prova
- * non prova la strada vera.
- * 🚨 `idReserva` porta il prefisso `PROVA-`: chi lo legge in un registro capisce da sé che quella
- * riga non esiste su Matchpoint, senza dover risalire a chi l'ha scritta.
+ * 🔄⭐⭐ FINO ALL'08/09/2026 QUESTA FUNZIONE SI CHIAMAVA `esitoDiProva` E MENTIVA PER MESTIERE:
+ * rispondeva `simulato: true`, `ambiente: 'prova'`, e un `idReserva` col prefisso `PROVA-`.
+ * 🗣️ Il committente l'ha tolta di mezzo con parole sue: *«le scritture devono essere proprio
+ * chiuse, non simulate, così siamo tranquilli che in futuro non ci sia dialogo fra Matchpoint e
+ * gestionale di test»*, e messo davanti alle due strade ha scelto **native**.
+ * ⇒ La differenza non è di parole: prima questa riga era la **finta** di una prenotazione che
+ * «sarebbe» andata sul circolo; adesso è una prenotazione **vera del gestionale nuovo**, che il
+ * circolo esterno non lo riguarda. Il giorno del distacco non cambia niente qui — ed è la prova
+ * che il verso è quello giusto.
+ *
+ * ⭐ Ha la **stessa forma** dell'esito del worker (`idReserva`, il campo da cui pende tutto il
+ * resto) perché il codice a valle non debba sapere da dove viene: la differenza sta nel
+ * **marchio**, non in una strada separata. Due strade diverse vorrebbero dire che questa non
+ * esercita quella vera.
+ * 🚨 `idReserva` porta il prefisso `PMO-`: dice **di chi è** quella prenotazione — nostra — invece
+ * di dire che è finta.
  */
-export function esitoDiProva(azione: 'create' | 'edit' | 'cancel'): Record<string, unknown> {
+export function esitoNativo(azione: 'create' | 'edit' | 'cancel'): Record<string, unknown> {
   return {
-    simulato: true,
-    ambiente: 'prova',
+    nativa: true,
+    origine: 'gestionale',
     azione,
-    idReserva: `PROVA-${crypto.randomUUID()}`,
-    nota: MESSAGGIO_PROVA_REGISTRATA,
+    idReserva: `PMO-${crypto.randomUUID()}`,
+    nota: MESSAGGIO_SCRITTURA_NATIVA,
   };
 }
 
-/** Vero se questo esito viene da una prova e non dal circolo. Un posto solo per riconoscerlo. */
-export function esitoVieneDaUnaProva(workerResult: unknown): boolean {
-  return !!(workerResult && typeof workerResult === 'object'
-    && (workerResult as Record<string, unknown>).simulato === true);
+/**
+ * Vero se questo esito è nato nel gestionale invece che tornare dal circolo esterno.
+ * ⚖️ Riconosce **anche** il vecchio `simulato: true`: un lavoro partito prima del cambio e atterrato
+ * dopo non deve essere scambiato per un esito del circolo — sarebbe l'unico caso in cui questa
+ * pulizia potrebbe fare danno, e costa una riga evitarlo.
+ */
+export function esitoNatoNelGestionale(workerResult: unknown): boolean {
+  if (!workerResult || typeof workerResult !== 'object') return false;
+  const o = workerResult as Record<string, unknown>;
+  return o.nativa === true || o.simulato === true;
 }

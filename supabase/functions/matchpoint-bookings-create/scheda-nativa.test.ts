@@ -1,5 +1,5 @@
 // La scheda del circolo di una partita nata in prova — test deterministici, nessun database.
-// Esegui:  node supabase/functions/matchpoint-bookings-create/scheda-di-prova.test.ts
+// Esegui:  node supabase/functions/matchpoint-bookings-create/scheda-nativa.test.ts
 //
 // 🚨⭐⭐ Questo banco misura TRE cose, e la seconda è quella che di solito manca:
 //   ① la REGOLA è giusta (che scheda esce, e quando non esce);
@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { schedaDiProva } from './scheda-di-prova.ts';
+import { schedaNativa } from './scheda-nativa.ts';
 // 🔗 I LETTORI VERI, importati e non riscritti: sono quelli che girano nel ponte dei soci.
 import { organizzatoreDelloSlot, playersFromDescrizione } from '../consumer-booking-write/roster-slot.ts';
 
@@ -37,56 +37,56 @@ function test(name: string, fn: () => void) {
 // ── ① la regola ───────────────────────────────────────────────────────────────
 
 test('un solo giocatore: la scheda è quella scritta a mano l\'11/08', () => {
-  assert.equal(schedaDiProva([{ nome: 'Maurizio Aprea' }]), '-Maurizio Aprea.');
+  assert.equal(schedaNativa([{ nome: 'Maurizio Aprea' }]), '-Maurizio Aprea.');
 });
 
 test('più giocatori: attaccati, e nell\'ORDINE del roster', () => {
   assert.equal(
-    schedaDiProva([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]),
+    schedaNativa([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]),
     '-Maurizio Aprea.-Lidia Comes.',
   );
 });
 
 test('🚨 l\'ordine NON si riordina: il primo è l\'organizzatore', () => {
-  const a = schedaDiProva([{ nome: 'Zeta Ultimo' }, { nome: 'Alfa Primo' }]);
+  const a = schedaNativa([{ nome: 'Zeta Ultimo' }, { nome: 'Alfa Primo' }]);
   assert.equal(a, '-Zeta Ultimo.-Alfa Primo.');
   assert.equal(playersFromDescrizione(a)[0], 'Zeta Ultimo', 'riordinare cambierebbe chi comanda');
 });
 
 test('i nomi vuoti si saltano, gli spazi si tolgono', () => {
-  assert.equal(schedaDiProva([{ nome: '  Uno Rossi ' }, { nome: '' }, { nome: '   ' }]), '-Uno Rossi.');
+  assert.equal(schedaNativa([{ nome: '  Uno Rossi ' }, { nome: '' }, { nome: '   ' }]), '-Uno Rossi.');
 });
 
 test('anche le stringhe nude: il roster ha più forme, e questa è una', () => {
-  assert.equal(schedaDiProva(['Uno Rossi', 'Due Bianchi']), '-Uno Rossi.-Due Bianchi.');
+  assert.equal(schedaNativa(['Uno Rossi', 'Due Bianchi']), '-Uno Rossi.-Due Bianchi.');
 });
 
 test('🚨 niente roster ⇒ niente scheda (null, non stringa vuota)', () => {
-  assert.equal(schedaDiProva([]), null);
-  assert.equal(schedaDiProva(undefined), null);
-  assert.equal(schedaDiProva(null), null);
-  assert.equal(schedaDiProva('Uno Rossi'), null, 'una stringa non è un elenco');
-  assert.equal(schedaDiProva([{ nome: '' }]), null);
+  assert.equal(schedaNativa([]), null);
+  assert.equal(schedaNativa(undefined), null);
+  assert.equal(schedaNativa(null), null);
+  assert.equal(schedaNativa('Uno Rossi'), null, 'una stringa non è un elenco');
+  assert.equal(schedaNativa([{ nome: '' }]), null);
 });
 
 test('👤 «Ospite» entra nella scheda: chi la legge decide, non noi', () => {
-  assert.equal(schedaDiProva([{ nome: 'Uno Rossi' }, { nome: 'Ospite' }]), '-Uno Rossi.-Ospite.');
+  assert.equal(schedaNativa([{ nome: 'Uno Rossi' }, { nome: 'Ospite' }]), '-Uno Rossi.-Ospite.');
 });
 
 // ── il fail closed sulla rilettura ────────────────────────────────────────────
 
 test('🚨⭐⭐ un nome col PUNTO non si scrive: si rileggerebbe SPEZZATO', () => {
-  assert.equal(schedaDiProva([{ nome: 'A. Rossi' }]), null);
-  assert.equal(schedaDiProva([{ nome: 'Uno Rossi' }, { nome: 'B. Bianchi' }]), null,
+  assert.equal(schedaNativa([{ nome: 'A. Rossi' }]), null);
+  assert.equal(schedaNativa([{ nome: 'Uno Rossi' }, { nome: 'B. Bianchi' }]), null,
     'basta UNO storto per non scrivere niente: una scheda a metà nomina la persona sbagliata');
 });
 
 test('🚨 un nome che comincia per trattino non si scrive: si rileggerebbe MUTILATO', () => {
-  assert.equal(schedaDiProva([{ nome: '-Strano Nome' }]), null);
+  assert.equal(schedaNativa([{ nome: '-Strano Nome' }]), null);
 });
 
 test('⭐ un trattino IN MEZZO invece va bene: si rilegge intero', () => {
-  const s = schedaDiProva([{ nome: 'Gian-Luca Rossi' }]);
+  const s = schedaNativa([{ nome: 'Gian-Luca Rossi' }]);
   assert.equal(s, '-Gian-Luca Rossi.');
   assert.deepEqual(playersFromDescrizione(s as string), ['Gian-Luca Rossi']);
 });
@@ -95,14 +95,14 @@ test('⭐ un trattino IN MEZZO invece va bene: si rilegge intero', () => {
 
 test('🔗 la scheda si rilegge IDENTICA con il parser vero del ponte', () => {
   for (const nomi of [['Uno Rossi'], ['Uno Rossi', 'Due Bianchi'], ['Uno Rossi', 'Ospite', 'Ospite']]) {
-    const s = schedaDiProva(nomi.map((n) => ({ nome: n })));
+    const s = schedaNativa(nomi.map((n) => ({ nome: n })));
     assert.ok(s, `scheda non scritta per ${nomi.join('+')}`);
     assert.deepEqual(playersFromDescrizione(s as string), nomi);
   }
 });
 
 test('🔗⭐⭐ IL FATTO CHE SERVIVA: con la scheda, la partita di prova HA un organizzatore', () => {
-  const scheda = schedaDiProva([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]);
+  const scheda = schedaNativa([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]);
   const riga = { liste: [['Maurizio Aprea', 'Lidia Comes']], descrizione: scheda, tipo: 'partita' };
   assert.equal(organizzatoreDelloSlot([riga]), 'Maurizio Aprea');
 });
@@ -114,7 +114,7 @@ test('🔗 e SENZA la scheda non ce l\'ha: è l\'`organizzatore_ignoto` dell\'11
 });
 
 test('🔗 la scheda NON contraddice la copia in app: le due copie concordano', () => {
-  const scheda = schedaDiProva([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]);
+  const scheda = schedaNativa([{ nome: 'Maurizio Aprea' }, { nome: 'Lidia Comes' }]);
   const copiaInApp = { liste: [['Maurizio Aprea', 'Lidia Comes']], descrizione: null, tipo: 'partita' };
   const conScheda = { liste: [['Maurizio Aprea', 'Lidia Comes']], descrizione: scheda, tipo: 'partita' };
   assert.equal(organizzatoreDelloSlot([copiaInApp, conScheda]), 'Maurizio Aprea');
@@ -125,18 +125,18 @@ test('🔗 la scheda NON contraddice la copia in app: le due copie concordano', 
 const SORGENTE = readFileSync(join(QUI, 'index.ts'), 'utf8');
 
 test('🚨 l\'edge CHIAMA davvero la funzione (importata, non ricopiata)', () => {
-  assert.match(SORGENTE, /import \{ schedaDiProva \} from '\.\/scheda-di-prova\.ts'/);
-  assert.match(SORGENTE, /schedaDiProva\(booking\.giocatori\)/);
+  assert.match(SORGENTE, /import \{ schedaNativa \} from '\.\/scheda-nativa\.ts'/);
+  assert.match(SORGENTE, /schedaNativa\(booking\.giocatori\)/);
 });
 
 test('🚨⭐⭐ LA CHIAMATA STA DENTRO IL RAMO DELLA PROVA — in produzione non deve scattare', () => {
-  const dopoIlGate = SORGENTE.split('if (esitoVieneDaUnaProva(workerResult))')[1] ?? '';
+  const dopoIlGate = SORGENTE.split('if (esitoNatoNelGestionale(workerResult))')[1] ?? '';
   const chiusuraRamo = dopoIlGate.indexOf('\n  }');
   assert.ok(chiusuraRamo > 0, 'il ramo della prova non si chiude come previsto: rileggere l\'edge');
   const dentroIlRamo = dopoIlGate.slice(0, chiusuraRamo);
-  assert.match(dentroIlRamo, /schedaDiProva\(/, 'la chiamata è uscita dal ramo della prova');
+  assert.match(dentroIlRamo, /schedaNativa\(/, 'la chiamata è uscita dal ramo della prova');
   assert.equal(
-    SORGENTE.split('schedaDiProva(').length - 1, 1,
+    SORGENTE.split('schedaNativa(').length - 1, 1,
     'la funzione si CHIAMA in un punto solo: un secondo punto è una seconda strada, e la '
     + 'seconda è quella che nessuno ricorda di mettere dentro al gate',
   );

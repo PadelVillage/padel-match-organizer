@@ -18,11 +18,11 @@
 // quella vera del circolo è una **seconda voce** che può contraddire la prima: il giorno in cui
 // il roster cambia da fuori l'app, le due divergono e l'organizzatore sparisce — cioè romperemmo
 // sul circolo VERO esattamente la cosa che qui stiamo riparando.
-// ⇒ Chi chiama questa funzione deve averlo già deciso guardando l'esito (`esitoVieneDaUnaProva`).
+// ⇒ Chi chiama questa funzione deve averlo già deciso guardando l'esito (`esitoNatoNelGestionale`).
 //   Il modulo è puro apposta: non sa in che ambiente gira e non deve saperlo.
 //
 // ⭐ Perché un modulo a sé e non tre righe dentro l'edge: è la stessa ragione di
-// `bersaglio-prova.ts` e di `roster-slot.ts` — una regola che si può sbagliare va messa dove la
+// `bersaglio-nativo.ts` e di `roster-slot.ts` — una regola che si può sbagliare va messa dove la
 // si può misurare **da sola**, e qui il modo di sbagliare è silenzioso (una scheda che si rilegge
 // storta nomina la persona sbagliata, e nessuno se ne accorge).
 
@@ -52,7 +52,7 @@ function pulisci(v: unknown): string {
  * segreteria, mai a un vicolo cieco). Meglio quello di un nome sbagliato: è lo stesso verso del
  * dubbio del recinto — un errore può **fermare** una prova, non può **attribuirla** a un altro.
  */
-export function schedaDiProva(giocatori: unknown): string | null {
+export function schedaNativa(giocatori: unknown): string | null {
   if (!Array.isArray(giocatori)) return null;
   const nomi = giocatori
     .map((g) => pulisci((g as GiocatoreDellaRichiesta | null)?.nome ?? g))

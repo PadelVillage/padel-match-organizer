@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 // funzione, non da una spunta che qualcuno può dimenticare. Il perché sta tutto nel modulo.
 import {
   CODICE_AMBIENTE_DI_PROVA,
-  esitoDiProva,
+  esitoNativo,
   MESSAGGIO_AMBIENTE_DI_PROVA,
-  MESSAGGIO_PROVA_REGISTRATA,
+  MESSAGGIO_SCRITTURA_NATIVA,
   scritturaAlCircoloConsentita,
 } from './scrittura-al-circolo.ts';
 import { annotaFallimentoAlCircolo } from '../_shared/traccia-fallimento.ts';
@@ -503,7 +503,7 @@ async function runEditJobInBackground(opts: {
   const base = { edit, created_by_email: actor.email };
   // 🔒 IL RECINTO anche dentro la strada che non torna indietro (difesa in profondità).
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit_async', jobId, edit }));
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'edit_async', jobId, edit }));
     await writeEditJob(client, jobId, 'error', { ...base, error: MESSAGGIO_AMBIENTE_DI_PROVA });
     return;
   }
@@ -670,20 +670,20 @@ Deno.serve(async (req: Request) => {
   // allinea la copia in app da sé (`allineaCopiaInApp` per uscita e togli, `aggiungiACopiaInApp`
   // per l'invito): quindi in prova un giocatore esce e rientra davvero, e si vede.
   if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'edit', edit }));
-    const workerResult = esitoDiProva('edit');
+    console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'edit', edit }));
+    const workerResult = esitoNativo('edit');
     try {
       await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
     } catch (dbErr) {
       // ⚖️ Come in `create`: se non si è riusciti nemmeno a registrare la prova, si torna al
       // rifiuto. Un «fatto» non provato è peggio di un no.
-      console.error(JSON.stringify({ event: 'prova_non_registrata', error: errorText(dbErr) }));
+      console.error(JSON.stringify({ event: 'scrittura_nativa_fallita', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
     }
     return ok({
-      message: 'Modifica di PROVA registrata.',
-      prova: true,
-      nota: MESSAGGIO_PROVA_REGISTRATA,
+      message: 'Modifica registrata.',
+      nativa: true,
+      nota: MESSAGGIO_SCRITTURA_NATIVA,
       edit,
       worker: workerResult,
     });
