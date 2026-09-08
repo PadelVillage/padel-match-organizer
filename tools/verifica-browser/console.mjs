@@ -55,6 +55,11 @@ const RPC_DI_LETTURA = /^pmo_(get|can)_/;
 // insert/update/delete dentro. `upsert_assessment_tokens_admin`, che invece ne ha, resta fuori.
 const RPC_DI_LETTURA_EXTRA = new Set([
   'pmo_supabase_environment_check',
+  // 🗓️ voce 185 — «che orari e che prezzi valgono il giorno X»: legge periodi, fasce e chiusure
+  // e non scrive una riga. Non ha il prefisso `pmo_get_` perché non è un getter di una tabella:
+  // è la funzione che RISOLVE il calendario, e il nome dice quello. Entra NOMINATA, non
+  // allargando la regex — letto `prosrc`: nessun insert/update/delete dentro.
+  'pmo_calendario_effettivo',
   'get_assessment_tokens_admin',
   'get_self_assessments_by_tokens',
 ]);
