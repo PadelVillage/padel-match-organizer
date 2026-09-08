@@ -1930,13 +1930,81 @@ modulo puro):
 🧪 Banco: **20 casi nuovi e 5 sabotaggi visti cadere** — fra cui «il prezzo non deciso diventa zero»
 e «torna a scriversi `lettoAt`».
 
-⏳ **Cosa manca perché la voce si chiuda**, e sono tre cose distinte:
-· ⛔ **la SCHEDA legge ancora dal vivo**: `matchpoint-bookings-edit` con `read: true` è ancora la
-  strada da cui l'app prende importi e roster ⇒ va fatta leggere dalla **copia locale** quando
-  l'importo è nato qui. Finché non si fa, la strada fuori dal recinto **resta aperta**;
-· 📦 **le righe già esistenti** non hanno importi (📏 30 vive su `cudi`, **2** con importi): serve un
-  riempimento una-tantum dal listino, o un riempimento all'apertura della scheda;
-· ➕ **un giocatore aggiunto dopo** non prende ancora il prezzo: nasce senza importo.
+🔨✅ **SECONDA METÀ — TRE PEZZI SU QUATTRO, in servizio su TEST 6.407 e provati sulla pagina viva
+(09/09/2026 notte).**
+
+**⓪ IL QUARTO ESITO DELLA CASELLA — e non era in programma: era un difetto GIÀ IN SERVIZIO, nato
+dalla cura della prima metà.** La regola ④ dice *«non si scrive `lettoAt` su un importo nato qui»*,
+ed è giusta. Ma `_pmoImportoCasella` conosceva **solo** `lettoAt` per distinguere le provenienze ⇒
+un prezzo del listino cadeva nel ramo «letto adesso», e la scheda lo mostrava alla segreteria **come
+se il circolo l'avesse appena confermato**.
+📌 *La regola ④ ha tenuto onesto il database e ha perso lo schermo: una provenienza non è salva
+finché non arriva agli occhi.*
+· `natoQui`, quarto esito, e **`lettoAt` VINCE** su `origineImporto` — se il circolo l'ha poi letto,
+  quel numero **è** letto; nascere dal listino è la sua storia, non la sua provenienza di adesso.
+  ⇒ I tre esiti con un numero sono mutuamente esclusivi **per costruzione**;
+· il «da» del popup lo **dichiara**: `13,00 (dal listino)`. È il punto in cui si chiede a una persona
+  di confermare del denaro, ed è lo stesso ragionamento con cui la 151 aggiunse il terzo «da»;
+· 🚨 e la marca **si toglie** quando l'importo lo decide la segreteria: *una provenienza che
+  sopravvive al dato che descriveva non è un ricordo, è un'etichetta staccata che si riattacca al
+  primo numero che passa*;
+· 🎨 il segno è **puntinato** e non tratteggiato: stesso peso del «ricordato» (il dubbio è dello
+  stesso grado) ma distinguibile — *due segni identici per due cose diverse sono un segno solo*.
+📏 **Provato su TEST**: le dodici combinazioni esercitate sulla funzione viva della pagina, e una
+prenotazione nativa aperta davvero → **bordo `dotted`, «13,00», «Importo a carico di … (dal listino
+del gestionale)»**. 🧪 17 casi, **7 sabotaggi visti cadere**.
+
+**➕ CHI ENTRA DOPO PAGA COME CHI C'ERA GIÀ.** Il giocatore aggiunto nasceva nudo: su una partita
+dove due entrano più tardi la cassa avrebbe metà delle righe da addebitare, e la metà mancante non
+si distingue da una che nessuno ha letto.
+⭐ Il prezzo lo dice il **gestionale**: `pmoCalendarioMappa` è la risposta di
+`pmo_calendario_effettivo`, la stessa che risponde alla creazione e alle due edge del bot. E si
+chiede per lo slot di **quella** prenotazione, non per «adesso» — *il prezzo appartiene allo slot,
+non al momento in cui qualcuno preme*.
+🚨⭐⭐ **Le due copie della regola sono tenute legate da un banco, non dall'attenzione**:
+`importiDalListino` (edge, Deno) e `_pmoImportiDalListino` (app, in pagina) non possono condividere
+un file, quindi il banco le esercita sulla **stessa tabella di 12 casi** e pretende risposte
+identiche. 📌 *Due copie che oggi coincidono sono un guasto che aspetta il primo cambio, a meno che
+qualcosa le tenga legate.*
+📏 **Provato su TEST**: partita nuova con due giocatori → aggiunto il terzo → **1300 · `listino` ·
+nessun `lettoAt`**, e la scheda mostra **tre** caselle puntinate da 13,00. 🧪 11 casi, **8 sabotaggi
+caduti**.
+
+**📦 LE RIGHE CHE C'ERANO GIÀ si riempiono ALL'APERTURA della scheda**, non con una migrazione:
+una migrazione **invecchia** (cura le righe di oggi, non quelle che nascono domani da una strada che
+ancora non conosciamo), questo è **idempotente per costruzione** e mette il prezzo nel momento in
+cui qualcuno sta per usarlo.
+📏 **Provato su TEST** sulla riga vera dell'08/09 Campo 2 18:00: quattro giocatori senza importo →
+**1200 ciascuno**, quattro caselle puntinate da 12,00, e la **seconda** apertura non ha riscritto
+niente. ⭐ E il primo giocatore era una **stringa** invece che un oggetto — il caso della voce 142,
+incontrato dal vivo: convertito e prezzato.
+🧪 12 casi, 8 sabotaggi. 🩹 **E TRE SONO RIMASTI VERDI, che è la cosa più utile della serata**: uno
+era puntato su una riga **ridondante** (due guardie proteggono lo stesso caso, tolta una l'altra
+regge — scritto nel banco invece di fingere un caso che le distingua), e uno non cadeva perché il
+**fixture non conteneva l'input da fermare** — nessuna fascia *senza* prezzo su cui mordere.
+Aggiunta la fascia a prezzo nullo, cade. 📌 *È la lezione ③ del passaggio di consegne, presa in
+flagrante mentre la si applicava.*
+
+⚠️⚠️ **QUANTO COPRE DAVVERO IL RIEMPIMENTO, misurato e non arrotondato: UNA riga su 30.** Delle 30
+`staff_booking` vive su `cudi`, **29 sono nel passato** e il calendario che l'app carica parte da
+**oggi** ⇒ per quelle il prezzo è `null` e non si scrive niente (regola ①: inventarlo a ritroso
+sarebbe peggio del vuoto). ⇒ *«le righe vecchie prendono il prezzo»* è vero per quelle **future**,
+falso per quelle passate, **per costruzione**. Oggi non costa niente — sono avanzi dell'era di prova
+e nessuno le incasserà — ma va saputo prima che qualcuno ci costruisca sopra la cassa.
+
+⏳ **COSA MANCA PERCHÉ LA VOCE SI CHIUDA — uno solo, ed è il più grosso:**
+· ⛔ **la SCHEDA legge ancora dal vivo**: `matchpoint-bookings-edit` con `read: true` è la strada da
+  cui l'app prende importi e roster, e **salta il recinto** (`index.ts:672` — `if (!readOnly && …)`).
+  Finché non si fa, la strada fuori dal recinto **resta aperta**.
+  🔄📏 **E i punti sono QUATTRO, non tre** — il passaggio di consegne ne contava tre, misurati di
+  nuovo il 09/09: `index.html` 44810 · 45040 · 45200 **e 47830**. Il quarto non è dello stesso
+  genere: è `staffCalAskMatchpoint`, che **chiede a Matchpoint se la prenotazione esiste** per
+  sciogliere un esito ignoto. ⇒ Non si può «far leggere dalla copia locale»: dopo il distacco quella
+  domanda **non ha più un destinatario**, e va deciso cosa farne invece di convertirla.
+  ⚖️ **E la strada si chiude DOPO aver riempito, non prima**: un ripiego *«copia locale quando
+  l'importo è nato qui, altrimenti dal vivo»* resterebbe esercitato in silenzio fino al distacco e
+  comincerebbe a fallire **il giorno in cui non c'è più nessuno a rispondere** — cioè si romperebbe
+  da solo nel momento peggiore, senza che nessuno l'abbia mai visto rompersi.
 
 ### 183 — 📐 I PREZZI NON CI SONO, E SENZA QUELLI LA CASSA NON HA UN NUMERO
 
