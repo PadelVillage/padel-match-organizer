@@ -219,6 +219,21 @@ Deno.serve(async (req: Request) => {
     return err(400, 'MISSING_PLAYER', 'idCliente o playerName richiesto: senza, non si sa quale giocatore stornare.');
   }
 
+  // 🔒💰 IL RECINTO — da fuori dalla produzione il registro cassa del circolo NON si tocca.
+  // 🚨 Il worker è **uno solo e condiviso** fra TEST e PROD, quindi «lo provo da test» non è mai
+  // stata una prova — è denaro vero.
+  //
+  // 🆕⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE. Prima i controlli sui secret
+  // `MATCHPOINT_*` stavano qui sopra, e togliere quei secret — che è il modo in cui il distacco
+  // si dimostra — dava un `500 WORKER_NOT_CONFIGURED` senza mai raggiungere questo recinto.
+  // Su PROD il comportamento è identico: là il recinto risponde vero e si prosegue al controllo
+  // dei secret, rimasto appena sotto.
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    const avrebbe_scritto = { op: 'void_payment', idReserva, idCliente, playerName };
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'void-payment', avrebbe_scritto }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
+  }
+
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
@@ -226,15 +241,6 @@ Deno.serve(async (req: Request) => {
   const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
   if (!workerUrl || !workerApiKey) return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato.');
   if (!username || !password) return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
-
-  // 🔒💰 IL RECINTO — da fuori dalla produzione il registro cassa del circolo NON si tocca.
-  // 🚨 Sta QUI, l'ultimo gradino prima del worker: il worker è **uno solo e condiviso** fra TEST e
-  // PROD, quindi «lo provo da test» non è mai stata una prova — è denaro vero.
-  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
-    const avrebbe_scritto = { op: 'void_payment', idReserva, idCliente, playerName };
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'void-payment', avrebbe_scritto }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
-  }
 
   let workerResult: JsonMap;
   try {

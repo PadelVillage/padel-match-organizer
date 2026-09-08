@@ -170,6 +170,20 @@ Deno.serve(async (req: Request) => {
     email: clean(c.email ?? ''),
   };
 
+  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
+  // ⚖️ Riattivare sembra innocuo, ma è la stessa penna: rimette fra i clienti del circolo
+  // qualcuno che ne era stato tolto, e lo specchio notturno non riscrive il circolo.
+  //
+  // 🆕⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE. Prima i controlli sui secret
+  // `MATCHPOINT_*` stavano qui sopra, e togliere quei secret — che è il modo in cui il distacco
+  // si dimostra — dava un `500 WORKER_NOT_CONFIGURED` senza mai raggiungere questo recinto.
+  // Su PROD il comportamento è identico: là il recinto risponde vero e si prosegue al controllo
+  // dei secret, rimasto appena sotto.
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'reactivate-client', client }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client, retryable: false });
+  }
+
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
@@ -181,14 +195,6 @@ Deno.serve(async (req: Request) => {
   }
   if (!username || !password) {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.', { retryable: false });
-  }
-
-  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
-  // ⚖️ Riattivare sembra innocuo, ma è la stessa penna: rimette fra i clienti del circolo
-  // qualcuno che ne era stato tolto, e lo specchio notturno non riscrive il circolo.
-  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'reactivate-client', client }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client, retryable: false });
   }
 
   let workerResult: JsonMap;

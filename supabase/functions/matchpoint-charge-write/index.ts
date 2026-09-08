@@ -207,6 +207,25 @@ Deno.serve(async (req: Request) => {
   if (!Number.isFinite(amountCents) || amountCents < 0) return err(400, 'INVALID_AMOUNT', 'amountCents deve essere un intero >= 0.');
   if (amountCents > MAX_CENTS) return err(400, 'INVALID_AMOUNT', 'amountCents oltre il tetto di sicurezza (1.000,00 €).');
 
+  // 🔒💰 IL RECINTO — da fuori dalla produzione la scheda del circolo NON si tocca.
+  // 🚨 Il worker è **uno solo e condiviso** fra TEST e PROD: «lo provo da test» cambierebbe
+  // l'importo a carico di una persona **vera**, su una partita **vera**.
+  //
+  // 🆕⭐⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE, e non è cosmetica.
+  // Prima i due controlli sui secret `MATCHPOINT_*` stavano qui sopra: chi toglie quei secret
+  // dal gestionale nuovo — che è **il modo in cui il distacco si dimostra** — prendeva un
+  // `500 WORKER_NOT_CONFIGURED` e non arrivava **mai** a questo recinto. Cioè la barriera
+  // c'era e non veniva raggiunta, e il ramo autonomo non partiva.
+  // ⚖️ Su PROD il comportamento è **identico**: là il recinto risponde vero e si prosegue
+  // dritti al controllo dei secret, che è rimasto dov'era, appena sotto.
+  // 📌 *Una barriera che si raggiunge solo se la strada che deve sbarrare è configurata non
+  // sbarra niente: protegge il caso in cui non serviva.*
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    const avrebbe_scritto = { op: 'set_charge', idReserva, idCliente, playerName, amountCents };
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'set-charge', avrebbe_scritto }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
+  }
+
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
@@ -214,15 +233,6 @@ Deno.serve(async (req: Request) => {
   const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
   if (!workerUrl || !workerApiKey) return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato.');
   if (!username || !password) return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
-
-  // 🔒💰 IL RECINTO — da fuori dalla produzione la scheda del circolo NON si tocca.
-  // 🚨 Il worker è **uno solo e condiviso** fra TEST e PROD: «lo provo da test» cambierebbe
-  // l'importo a carico di una persona **vera**, su una partita **vera**.
-  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
-    const avrebbe_scritto = { op: 'set_charge', idReserva, idCliente, playerName, amountCents };
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'set-charge', avrebbe_scritto }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
-  }
 
   let workerResult: JsonMap;
   try {

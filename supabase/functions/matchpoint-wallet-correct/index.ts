@@ -289,15 +289,9 @@ Deno.serve(async (req: Request) => {
   if (wantsStorno && wantsRecharge) return err(400, 'INVALID_AMOUNT', 'Specificare solo subtractCents (storno) OPPURE addCents (ricarica), non entrambi.');
   if (!wantsStorno && !wantsRecharge) return err(400, 'INVALID_AMOUNT', 'subtractCents (storno) o addCents (ricarica) deve essere un intero > 0.');
 
-  const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
-  const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
-  const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
-  const password = clean(Deno.env.get('MATCHPOINT_PASSWORD'));
-  const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
-  if (!workerUrl || !workerApiKey) return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato.');
-  if (!username || !password) return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
-
   // Inoltra solo l'importo della direzione richiesta (il worker rifiuta se ne arrivano due).
+  // ⚠️ Sta QUI e non più sotto perché il recinto lo usa nel suo `avrebbe_scritto`: spostando il
+  // recinto sopra la configurazione (voce 178), questa riga doveva salire con lui.
   const amountPayload: JsonMap = wantsRecharge ? { addCents } : { subtractCents };
 
   // 🔒💰 IL RECINTO — da fuori dalla produzione il borsellino del circolo NON si tocca.
@@ -314,6 +308,18 @@ Deno.serve(async (req: Request) => {
     console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'correct-wallet', avrebbe_scritto }));
     return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto, retryable: false });
   }
+
+  // 🆕⭐ 08/09 (voce 178) — LA CONFIGURAZIONE SI CONTROLLA DOPO IL RECINTO, non prima.
+  // Stava sopra: chi toglie i secret `MATCHPOINT_*` dal gestionale nuovo — che è il modo in cui
+  // il distacco si dimostra — prendeva un `500 WORKER_NOT_CONFIGURED` e non arrivava **mai** al
+  // recinto. Su PROD il comportamento è identico, perché là il recinto risponde vero.
+  const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
+  const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
+  const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
+  const password = clean(Deno.env.get('MATCHPOINT_PASSWORD'));
+  const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
+  if (!workerUrl || !workerApiKey) return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato.');
+  if (!username || !password) return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
 
   let workerResult: JsonMap;
   try {

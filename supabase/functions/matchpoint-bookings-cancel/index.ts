@@ -571,13 +571,14 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = clean(Deno.env.get('SUPABASE_URL'));
   const supabaseKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
 
-  if (!workerUrl || !workerApiKey) {
-    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
-  }
-
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // 🚨 Annullare è il gesto che non si torna indietro: qui il recinto vale doppio, perché una
   // prova finita davvero sul circolo toglierebbe il campo a quattro persone che ci contavano.
+  //
+  // 🆕⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE, che è scesa sotto. Chi toglie i
+  // secret `MATCHPOINT_*` dal gestionale nuovo — che è il modo in cui il distacco si dimostra —
+  // prendeva un `500 WORKER_NOT_CONFIGURED` e non arrivava mai qui. Su PROD identico: là il
+  // recinto risponde vero e si prosegue al controllo dei secret.
   //
   // 🆕 7/08 — di qua non si rifiuta più: si spegne la partita di prova e si registra il gesto,
   // senza chiamare il circolo. 🚨 L'ordine conta: prima si SPEGNE, poi si registra — se si
@@ -615,6 +616,12 @@ Deno.serve(async (req: Request) => {
       cancel,
       worker: workerResult,
     });
+  }
+
+  // 🆕 08/09 (voce 178) — la configurazione si controlla QUI, dopo il recinto, e resta sopra il
+  // ramo asincrono: è quel ramo a passare i segreti al lavoro in sottofondo.
+  if (!workerUrl || !workerApiKey) {
+    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
   }
 
   // ── Modalità asincrona (opzionale): rispondi subito, annulla in sottofondo ──

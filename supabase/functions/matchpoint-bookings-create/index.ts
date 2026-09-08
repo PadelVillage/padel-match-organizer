@@ -742,17 +742,21 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!workerUrl || !workerApiKey) {
-    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
-  }
-  if (!username || !password) {
-    return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
-  }
-
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // 🚨 STA PRIMA DEL RAMO ASINCRONO, e non è un dettaglio: di là la risposta torna subito e la
   // prenotazione parte in sottofondo. Un recinto messo dopo avrebbe lasciato aperta proprio la
   // strada che non si vede tornare indietro.
+  //
+  // 🆕⭐⭐ 08/09 (voce 178) — E STA ANCHE PRIMA DELLA CONFIGURAZIONE, che è scesa sotto.
+  // ⚠️ Questa funzione ha **due** recinti — questo, e quello del ramo asincrono più su — e per
+  // questo sembrava a posto: la misura che guardava solo il primo la dava per sana. Il ramo
+  // asincrono aveva davvero l'ordine giusto (là i segreti arrivano come parametri); questa
+  // strada **sincrona** no. Chi toglie i secret `MATCHPOINT_*` dal gestionale nuovo — che è il
+  // modo in cui il distacco si dimostra — prendeva un `500 WORKER_NOT_CONFIGURED` e non
+  // arrivava mai qui, cioè non riusciva a prenotare **per conto suo**.
+  // ⚖️ Su PROD il comportamento è identico: là il recinto risponde vero e si prosegue dritti al
+  // controllo dei secret, che resta sopra il ramo asincrono perché è lui a passarli al lavoro
+  // in sottofondo.
   // ⭐ Chi vuole vedere COSA succederebbe ha già `provaAVuoto: true`, che esce ancora prima.
   //
   // 🆕 7/08 — di qua NON si rifiuta più: si registra la partita nel gestionale di prova e il
@@ -781,6 +785,16 @@ Deno.serve(async (req: Request) => {
       booking,
       worker: workerResult,
     });
+  }
+
+  // 🆕 08/09 (voce 178) — la configurazione si controlla QUI, dopo il recinto. Resta sopra il
+  // ramo asincrono di proposito: è quel ramo a passare i segreti al lavoro in sottofondo, e un
+  // lavoro avviato senza chiave morirebbe dove nessuno lo vede tornare.
+  if (!workerUrl || !workerApiKey) {
+    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
+  }
+  if (!username || !password) {
+    return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.');
   }
 
   // ── Modalità asincrona (opzionale): rispondi subito, prenota in background ──

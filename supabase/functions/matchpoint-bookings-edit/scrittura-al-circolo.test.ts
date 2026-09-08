@@ -205,6 +205,65 @@ for (const [rel, punti] of Object.entries(PUNTI_DI_NON_RITORNO)) {
   });
 }
 
+// ── ③bis 🆕 08/09/2026 (voce 178) · IL RECINTO DEV'ESSERE RAGGIUNGIBILE ────────────────────
+//
+// 🚨⭐⭐ IL CASO 9 NON BASTA, ed è il buco che questa sezione chiude. Il 9 pretende che il
+// recinto stia sulla strada; non pretende che ci si ARRIVI. Fino all'08/09 in tutte e undici le
+// funzioni i controlli sui secret `MATCHPOINT_*` stavano PRIMA del recinto ⇒ togliendo quei
+// secret — che è esattamente il modo in cui il distacco da Matchpoint si dimostra — si prendeva
+// un `500 WORKER_NOT_CONFIGURED` e il recinto non veniva raggiunto MAI.
+// 📌 *Una barriera che si raggiunge solo se la strada che deve sbarrare è configurata non sbarra
+// niente: protegge il caso in cui non serviva.*
+//
+// ⚖️ E il verso conta: NON si controlla «risalendo dal worker non c'è una config», che sarebbe
+// falso — dopo l'inversione la config sta legittimamente **fra** il recinto e il worker, ed è
+// giusto che ci stia (senza chiave il worker non si chiama). Si controlla il pezzo di strada che
+// sta PRIMA del recinto: da lì un `WORKER_NOT_CONFIGURED` è una porta che si chiude troppo
+// presto.
+//
+// 🩹 Trappola evitata scrivendo il caso, e lasciata scritta: `MATCHPOINT_WORKER_SECRETS_MISSING`
+// e `MATCHPOINT_CREDENTIALS_MISSING` compaiono anche dentro l'insieme `NON_RETRYABLE_CODES` di
+// alcune funzioni, che è una **lista di codici**, non un'uscita. Cercare il nome invece
+// dell'uscita (`return err(500, …`) darebbe rosso su un file sano.
+
+/** Un'uscita che rifiuta per configurazione mancante: è una porta, non una menzione. */
+const USCITA_PER_CONFIGURAZIONE =
+  /return\s+err\(\s*500\s*,\s*'(WORKER_NOT_CONFIGURED|MATCHPOINT_CREDENTIALS_MISSING|MATCHPOINT_WORKER_SECRETS_MISSING)'/;
+
+for (const rel of Object.keys(PUNTI_DI_NON_RITORNO)) {
+  test(`9bis) 🔌 in ${rel.split('/')[0]} al recinto ci si ARRIVA anche senza i secret Matchpoint`, () => {
+    const righe = readFileSync(join(FUNZIONI, rel), 'utf8').split('\n');
+    const guardie = righe
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => /scritturaAlCircoloConsentita\(/.test(r) && !/from '/.test(r))
+      .map(({ i }) => i);
+    assert.ok(guardie.length > 0, 'il recinto non lo chiama nessuno');
+
+    // 🚨 Il caso deve MISURARE qualcosa: se in questo file non ci fosse nessuna uscita per
+    // configurazione, passerebbe a vuoto per sempre — e sarebbe verde proprio il giorno in cui
+    // qualcuno la rimette al posto sbagliato con un altro nome.
+    const uscite = righe.map((r, i) => ({ r, i })).filter(({ r }) => USCITA_PER_CONFIGURAZIONE.test(r)).map(({ i }) => i);
+    assert.ok(
+      uscite.length > 0,
+      'nessuna uscita per configurazione mancante in questo file: il caso non starebbe misurando niente',
+    );
+
+    const INIZIO_FUNZIONE = /^\s*(export\s+)?(async\s+)?function\s|^Deno\.serve\(/;
+    for (const rigaGuardia of guardie) {
+      let trovato = '';
+      for (let i = rigaGuardia - 1; i >= 0 && !trovato; i--) {
+        if (uscite.includes(i)) trovato = `un rifiuto per configurazione (riga ${i + 1})`;
+        else if (INIZIO_FUNZIONE.test(righe[i])) trovato = 'inizio funzione';
+      }
+      assert.equal(
+        trovato, 'inizio funzione',
+        `risalendo dal recinto di riga ${rigaGuardia + 1} ho incontrato prima ${trovato}: `
+        + 'senza i secret Matchpoint quel recinto non verrebbe raggiunto, e il ramo autonomo non partirebbe mai',
+      );
+    }
+  });
+}
+
 // ── ④ 🆕 7/08/2026 · IL RECINTO REGISTRA INVECE DI RIFIUTARE ───────────────────────────────
 //
 // 🚨⭐⭐ Il rischio nuovo, e va detto in faccia: fino a ieri il ramo «non sono la produzione»

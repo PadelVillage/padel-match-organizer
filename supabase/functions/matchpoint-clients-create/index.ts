@@ -168,6 +168,26 @@ Deno.serve(async (req: Request) => {
     soloRicerca: c.soloRicerca === true,
   };
 
+  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
+  // ⚖️ La RICERCA resta viva anche fuori dalla produzione (`soloRicerca`), ed è voluto: cercare
+  // per telefono non scrive niente, ed è la guardia che impedisce i doppioni dentro Matchpoint.
+  // Spegnerla qui vorrebbe dire che una prova non può nemmeno più fare la domanda giusta.
+  // 🚨 Creare invece sì: una scheda nata per gioco NON la ripulisce nessuno. Lo specchio
+  // notturno riscrive l'anagrafica di TEST, non quella del circolo — e da lì quella scheda
+  // tornerebbe dentro PROD con l'import del mattino, che è il contrario di una prova.
+  //
+  // 🆕⭐⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE **e** prima della prova a vuoto.
+  // Prima veniva dopo tutti e due: chi toglie i secret `MATCHPOINT_*` dal gestionale nuovo — che
+  // è il modo in cui il distacco si dimostra — prendeva un `500 WORKER_NOT_CONFIGURED` e non
+  // arrivava **mai** a questo recinto.
+  // ⚖️ I due rami restano separati e non si pestano i piedi: qui si ferma solo la **creazione**
+  // (`soloRicerca !== true`), mentre la prova a vuoto qui sotto gira solo con `soloRicerca ===
+  // true` — che di qua non passa mai. Su PROD il comportamento è identico.
+  if (client.soloRicerca !== true && !scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create-client', client }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client });
+  }
+
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
   const workerApiKey = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_API_KEY'));
   const username = clean(Deno.env.get('MATCHPOINT_USERNAME'));
@@ -199,18 +219,6 @@ Deno.serve(async (req: Request) => {
         'Il worker in servizio non conosce la prova a vuoto: se procedessi CREEREBBE un cliente vero. Non ho fatto niente. Aggiorna il worker e riprova.',
         { featuresDelWorker: sa });
     }
-  }
-
-  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
-  // ⚖️ La RICERCA resta viva anche fuori dalla produzione (`soloRicerca`), ed è voluto: cercare
-  // per telefono non scrive niente, ed è la guardia che impedisce i doppioni dentro Matchpoint.
-  // Spegnerla qui vorrebbe dire che una prova non può nemmeno più fare la domanda giusta.
-  // 🚨 Creare invece sì: una scheda nata per gioco NON la ripulisce nessuno. Lo specchio
-  // notturno riscrive l'anagrafica di TEST, non quella del circolo — e da lì quella scheda
-  // tornerebbe dentro PROD con l'import del mattino, che è il contrario di una prova.
-  if (client.soloRicerca !== true && !scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'create-client', client }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client });
   }
 
   let workerResult: JsonMap;

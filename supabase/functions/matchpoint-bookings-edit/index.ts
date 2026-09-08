@@ -653,13 +653,15 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = clean(Deno.env.get('SUPABASE_URL'));
   const supabaseKey = clean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
 
-  if (!workerUrl || !workerApiKey) {
-    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
-  }
-
   // 🔒 IL RECINTO — l'ultimo passo prima del gestionale del circolo.
   // ⚖️ Solo per le MODIFICHE: `read` legge la scheda e non cambia niente, e resta viva anche di
   // prova (è così che si guarda un roster senza toccarlo).
+  //
+  // 🆕⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE, che è scesa sotto. Chi toglie i
+  // secret `MATCHPOINT_*` dal gestionale nuovo — che è il modo in cui il distacco si dimostra —
+  // prendeva un `500 WORKER_NOT_CONFIGURED` e non arrivava mai qui.
+  // ⚖️ La lettura (`read`) non cambia: di qua passa senza fermarsi e incontra il controllo dei
+  // secret appena sotto, che le serve davvero perché il roster lo va a chiedere al worker.
   // 🚨 Sta DOPO i controlli e PRIMA del worker apposta: la richiesta viene capita per intero e
   // raccontata («ecco cosa avrei fatto»), ma non arriva a destinazione.
   //
@@ -685,6 +687,12 @@ Deno.serve(async (req: Request) => {
       edit,
       worker: workerResult,
     });
+  }
+
+  // 🆕 08/09 (voce 178) — la configurazione si controlla QUI, dopo il recinto, e resta sopra il
+  // ramo asincrono: è quel ramo a passare i segreti al lavoro in sottofondo.
+  if (!workerUrl || !workerApiKey) {
+    return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).');
   }
 
   // ── Modalità asincrona (opzionale): rispondi subito, modifica in sottofondo ──

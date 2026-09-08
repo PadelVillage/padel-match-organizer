@@ -178,20 +178,26 @@ Deno.serve(async (req: Request) => {
   const password = clean(Deno.env.get('MATCHPOINT_PASSWORD'));
   const baseUrl = clean(Deno.env.get('MATCHPOINT_BASE_URL')) || DEFAULT_BASE_URL;
 
+  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
+  // 🚨 Disattivare una scheda per gioco è peggio che crearne una: il socio vero sparisce
+  // dall'elenco clienti del circolo, e lo specchio notturno — che riscrive TEST, non il
+  // circolo — non lo rimette a posto.
+  //
+  // 🆕⭐ 08/09 (voce 178) — STA PRIMA DELLA CONFIGURAZIONE. Prima i controlli sui secret
+  // `MATCHPOINT_*` stavano qui sopra, e togliere quei secret — che è il modo in cui il distacco
+  // si dimostra — dava un `500 WORKER_NOT_CONFIGURED` senza mai raggiungere questo recinto.
+  // Su PROD il comportamento è identico: là il recinto risponde vero e si prosegue al controllo
+  // dei secret, rimasto appena sotto.
+  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
+    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'disable-client', client }));
+    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client, retryable: false });
+  }
+
   if (!workerUrl || !workerApiKey) {
     return err(500, 'WORKER_NOT_CONFIGURED', 'Worker Matchpoint non configurato (URL o API key mancante).', { retryable: false });
   }
   if (!username || !password) {
     return err(500, 'MATCHPOINT_CREDENTIALS_MISSING', 'Credenziali Matchpoint non configurate.', { retryable: false });
-  }
-
-  // 🔒 IL RECINTO — l'ultimo passo prima dell'anagrafica del circolo.
-  // 🚨 Disattivare una scheda per gioco è peggio che crearne una: il socio vero sparisce
-  // dall'elenco clienti del circolo, e lo specchio notturno — che riscrive TEST, non il
-  // circolo — non lo rimette a posto.
-  if (!scritturaAlCircoloConsentita(Deno.env.get('SUPABASE_URL'))) {
-    console.warn(JSON.stringify({ event: 'ambiente_di_prova', azione: 'disable-client', client }));
-    return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: client, retryable: false });
   }
 
   let workerResult: JsonMap;
