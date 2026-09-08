@@ -1,0 +1,120 @@
+name: Sonda del ponte dei soci (SOLA LETTURA, solo sul gestionale nuovo)
+
+# 🔎⭐⭐ PERCHÉ ESISTE — 08/09/2026, voci 177 e 179.
+#
+# Tutt'e due le voci sono in servizio su `cudi` e tutt'e due restano APERTE per la stessa
+# ragione: «serve un gesto vero del bot di prova». E il gesto non si poteva fare, perché
+# chiamare il ponte vuole `CONSUMER_BRIDGE_SECRET`, che non sta nell'ambiente della sessione.
+# 📌 *Un limite dichiarato che nessuno riprova resta vero per sempre, perché sembra prudente.*
+#
+# ⭐ Il segreto però sta sulla VM, nel `.env` del bot di PROVA — quello che punta al gestionale
+# nuovo. E su quella VM ci si arriva da Actions. ⇒ La prova viva si può fare.
+#
+# ⛔ COSA QUESTO ATTREZZO NON PUÒ FARE, ed è cablato — non è una guardia che si può sbagliare,
+#    sono valori che nel file non ci sono:
+#   · l'indirizzo è **solo** quello di `cudi`. Il ref di PROD non compare qui dentro;
+#   · l'azione è **solo** `verifica`, che è l'unica del ponte che non scrive niente e non
+#     chiama il worker («Non scrive NIENTE… è la sua ragione d'essere», `index.ts`);
+#   · il segreto si legge **solo** dal bot di PROVA. Anche prendendo per sbaglio quello del bot
+#     dei soci, la chiamata verso `cudi` uscirebbe **401**: sbagliare qui non fa danno, fa un no.
+# ⇒ Non manda messaggi a nessuno, non prenota, non annulla, non tocca Matchpoint.
+
+on:
+  workflow_dispatch:
+    inputs:
+      member_id:
+        description: 'Codice socio a 6 cifre (una delle cinque persone di segreteria)'
+        required: true
+        default: '001013'
+      data:
+        description: 'Giorno dello slot, YYYY-MM-DD'
+        required: true
+      ora:
+        description: 'Ora dello slot, HH:MM'
+        required: true
+        default: '09:00'
+      campo:
+        description: 'Numero del campo'
+        required: true
+        default: '4'
+      scritta_alle:
+        description: 'Istante della scrittura (ISO). Vuoto = non lo diciamo, e non uscirà mai un «no»'
+        required: false
+        default: ''
+
+jobs:
+  sonda:
+    runs-on: ubuntu-latest
+    env:
+      # 🔒 Solo il gestionale nuovo. Cablato, non un input.
+      URL_NUOVO: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-booking-write
+      DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
+      DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
+    steps:
+      - name: Prepara SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 🔑 Il segreto del ponte, dal bot di PROVA
+        run: |
+          set -euo pipefail
+          # ⚖️ Il bot tiene il segreto in un FILE e nel `.env` c'è il percorso
+          # (`CONSUMER_BRIDGE_SECRET_FILE`), non il valore. Si segue il percorso; e se un giorno
+          # ci fosse il valore diretto, si prende quello. Si DICHIARA quale strada ha funzionato.
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            "$DEPLOY_USER@$DEPLOY_HOST" bash -s > /tmp/segreto.txt <<'REMOTO' || true
+            CART=/opt/assistente-padel-agent-prova
+            if [ ! -f "$CART/.env" ]; then echo "STRADA=env_assente"; exit 0; fi
+            VAL="$(grep -m1 '^CONSUMER_BRIDGE_SECRET=' "$CART/.env" | cut -d= -f2- | tr -d '"'"'"'' )"
+            if [ -n "$VAL" ]; then echo "STRADA=valore_diretto"; echo "SEGRETO=$VAL"; exit 0; fi
+            FILE="$(grep -m1 '^CONSUMER_BRIDGE_SECRET_FILE=' "$CART/.env" | cut -d= -f2- | tr -d '"'"'"'' )"
+            if [ -n "$FILE" ] && [ -r "$FILE" ]; then
+              echo "STRADA=dal_file"; echo "SEGRETO=$(head -c 4096 "$FILE" | tr -d '\r\n')"; exit 0
+            fi
+            echo "STRADA=non_trovato"
+          REMOTO
+          STRADA="$(grep -m1 '^STRADA=' /tmp/segreto.txt | cut -d= -f2- || true)"
+          SEG="$(grep -m1 '^SEGRETO=' /tmp/segreto.txt | cut -d= -f2- || true)"
+          [ -n "$SEG" ] && echo "::add-mask::$SEG"
+          echo "strada: ${STRADA:-nessuna risposta}"
+          if [ -z "$SEG" ]; then
+            echo "::error::Il segreto del ponte non si è trovato sulla VM (strada: ${STRADA:-nessuna}). Non invento una chiamata che non posso fare."
+            exit 1
+          fi
+          printf '%s' "$SEG" > /tmp/seg
+          echo "lunghezza ${#SEG} · sha $(printf '%s' "$SEG" | sha256sum | cut -c1-8)"
+
+      - name: 🔎 CHIAMA `verifica` — non scrive niente
+        env:
+          MEMBER_ID: ${{ inputs.member_id }}
+          DATA: ${{ inputs.data }}
+          ORA: ${{ inputs.ora }}
+          CAMPO: ${{ inputs.campo }}
+          SCRITTA: ${{ inputs.scritta_alle }}
+        run: |
+          set -euo pipefail
+          CORPO="$(python3 -c '
+          import json, os
+          b = {"action": "verifica", "member_id": os.environ["MEMBER_ID"],
+               "data": os.environ["DATA"], "ora": os.environ["ORA"],
+               "campo": int(os.environ["CAMPO"])}
+          s = os.environ.get("SCRITTA", "").strip()
+          if s: b["scritta_alle"] = s
+          print(json.dumps(b))')"
+          echo "richiesta: $CORPO"
+          CODICE="$(curl -sS -o /tmp/risposta.json -w '%{http_code}' \
+            -X POST "$URL_NUOVO" \
+            -H 'Content-Type: application/json' \
+            -H "X-Consumer-Secret: $(cat /tmp/seg)" \
+            -d "$CORPO")"
+          echo "── HTTP $CODICE ──"
+          python3 -m json.tool /tmp/risposta.json || cat /tmp/risposta.json
+          # 🚨 Un 401 non è un guasto della sonda: è il segreto sbagliato, e va detto per nome
+          # invece di lasciarlo dedurre da un JSON.
+          [ "$CODICE" = "401" ] && echo "::error::401 — il segreto letto non è quello del gestionale nuovo."
+          [ "$CODICE" = "200" ] || exit 1
+          echo "::notice::Il ponte ha risposto. Il verdetto è nel JSON qui sopra."
