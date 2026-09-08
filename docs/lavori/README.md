@@ -1843,11 +1843,48 @@ che rispetta *«PROD non si tocca»* nei fatti, non solo nelle intenzioni.
 **senza avere la chiave** per chiamare il worker. Finché i secret ci sono, «non abbiamo chiamato
 Matchpoint» è una promessa; tolti, è un fatto.
 
-🩹 **Guardia da estendere**: `scrittura-al-circolo.test.ts` caso 9 risale dal punto di non ritorno e
-pretende la barriera; serve il **simmetrico** — risalendo non si deve incontrare un
-`WORKER_NOT_CONFIGURED` **prima** di essa. ⚠️ Due prove esterne fissano l'ordine e il testo esatto
-della riga della barriera (`test/assessment-apply-level.test.mjs`, `test/scheda-anagrafica-riordinata.test.mjs`):
-vanno guardate insieme, o si cura una cosa e se ne rompono due.
+🔨✅ **FATTO l'08/09, su tutte e 11, e in servizio su `cudi`** — commit `47c39133`.
+L'ordine adesso è **validazioni → RECINTO → configurazione → worker**.
+⚖️ **Su PROD il comportamento è identico**, perché là il recinto risponde vero e si prosegue
+dritti al controllo dei secret, rimasto dov'era rispetto al worker.
+
+🩹 **Tre file hanno voluto più del semplice scambio**, e vale la pena saperlo:
+· **`bookings-create` · `cancel` · `edit`** — la configurazione è scesa sotto il recinto ma resta
+  **sopra il ramo asincrono**, perché è quel ramo a passare i segreti al lavoro in sottofondo: un
+  lavoro avviato senza chiave morirebbe dove nessuno lo vede tornare;
+· **`clients-create`** — il recinto è salito sopra la configurazione **e** sopra la prova a vuoto.
+  I due rami restano separati e non si pestano i piedi: il recinto ferma solo la **creazione**
+  (`soloRicerca !== true`), la prova a vuoto gira solo con `soloRicerca === true`;
+· **`wallet-correct`** — `amountPayload` è salito col recinto, che lo usa nel suo `avrebbe_scritto`.
+
+🔪 **LA GUARDIA NUOVA — caso `9bis` di `scrittura-al-circolo.test.ts`**: risalendo **DAL RECINTO**
+non si deve incontrare un rifiuto per configurazione prima dell'inizio della funzione.
+🚨 **Il verso conta, ed era la trappola**: *non* si controlla «risalendo dal worker non c'è una
+config», che sarebbe **falso** — dopo l'inversione la config sta **legittimamente** fra recinto e
+worker, ed è giusto che ci stia (senza chiave il worker non si chiama). Si controlla il pezzo di
+strada che sta **prima** del recinto.
+🩹 E una trappola evitata scrivendola: `MATCHPOINT_CREDENTIALS_MISSING` compare anche dentro
+l'insieme `NON_RETRYABLE_CODES` di alcune funzioni — che è una **lista di codici**, non un'uscita.
+Cercare il **nome** invece dell'**uscita** (`return err(500, …`) avrebbe dato rosso su un file sano.
+
+✅ **Provato**: banco **125 verdi 0 rosse**, con `scrittura-al-circolo.test.ts` salito da **45 a 56**
+casi. **Due sabotaggi su file di forma diversa** — `payment-write` e `bookings-create` (quest'ultimo
+sulla **strada sincrona**, quella che la misura superficiale dava per sana) — rimessi all'ordine
+vecchio e visti **diventare rossi sul caso giusto**, poi ripristinati. Sintassi delle 11 controllata,
+e le due prove esterne che fissano l'ordine e il testo della riga del recinto
+(`test/assessment-apply-level.test.mjs`, `test/scheda-anagrafica-riordinata.test.mjs`) restano verdi.
+
+⏳⛔ **PERCHÉ LA VOCE RESTA APERTA**: questo è il passo **zero**, non il distacco. Manca la prova
+vera — **togliere i secret `MATCHPOINT_*` dal gestionale nuovo e vedere una prenotazione nascere
+senza avere la chiave per chiamare il worker**. Finché i secret ci sono, *«non abbiamo chiamato
+Matchpoint»* è una promessa; tolti, è un fatto. 📌 *Aver messo la barriera nel posto giusto non
+dimostra che si sappia vivere senza la strada che sbarra.*
+⚠️ E quel passo **si dice prima**: toglie una chiave a un sistema che il circolo sta per usare.
+
+⛔ **Resta su `test-preview` e non va su `main`**: `supabase/functions/**` non è fra i file che
+`guard-worker-sync` tiene identici, su PROD la modifica non porta niente (PROD tiene Matchpoint fino
+alla pensione) e vale *«il gestionale di prod deve continuare a funzionare come ha funzionato fino
+adesso»*.
 
 ### 179 — ⏳ IL VERDETTO `verifica` SI CONGELA PER SEMPRE, e sembra pazienza
 
