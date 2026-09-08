@@ -33,6 +33,9 @@ import {
   dettaglioPerIlBot, esitoIgnotoDaRisposta, MOTIVO_ESITO_IGNOTO, MOTIVO_SCRITTURA_RIFIUTATA, verdettoScrittura,
 } from './esito-scrittura.ts';
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
+// 🗓️ voce 177 — la griglia viene dalla TABELLA `pmo_fasce_prenotabili`, col blocco vecchio
+// come solo ripiego. Il perché sta per esteso in `fasce-prenotabili.ts`.
+import { fasceComeGriglia, fasceDelGiorno } from './fasce-prenotabili.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
 import { registraConRitenta } from './registra-copia.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte». Stanno in un modulo perché le
@@ -426,18 +429,36 @@ Deno.serve(async (req: Request) => {
     }
 
     // Griglia del giorno (indice 0=domenica, convenzione getDay()).
+    // 🗓️ voce 177 — la FONTE è `pmo_fasce_prenotabili`, che il committente scrive a mano dal
+    // pannello; il blocco `potentialSlotSchedule` (che veniva da Matchpoint e muore col
+    // distacco) resta solo come RIPIEGO. Si leggono tutt'e due in un colpo: il ripiego serve
+    // proprio quando la tabella non risponde, quindi chiederlo dopo vorrebbe dire un secondo
+    // giro nel momento peggiore.
     const dow = new Date(`${dayData}T12:00:00Z`).getUTCDay();
-    const { data: schedRows, error: schedErr } = await service
-      .from('pmo_cloud_records')
-      .select('payload')
-      .eq('record_type', 'app_setting')
-      .eq('local_key', SLOT_SCHEDULE_KEY)
-      .not('deleted', 'is', true)
-      .limit(1);
-    if (schedErr) return err(500, 'DB_ERROR', 'Errore lettura griglia slot.');
-    const schedule = (schedRows?.[0]?.payload as JsonMap | undefined)?.value as JsonMap | undefined;
-    const rawSlots = schedule && Array.isArray(schedule[String(dow)])
-      ? (schedule[String(dow)] as JsonMap[]) : [];
+    const [fasceRes, schedRes] = await Promise.all([
+      service
+        .from('pmo_fasce_prenotabili')
+        .select('giorno, ora_inizio, ora_fine, attiva')
+        .eq('giorno', dow),
+      service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'app_setting')
+        .eq('local_key', SLOT_SCHEDULE_KEY)
+        .not('deleted', 'is', true)
+        .limit(1),
+    ]);
+    // ⚖️ Un errore sulle FASCE non è fatale: c'è il ripiego, e rifiutare qui vorrebbe dire
+    // negare al socio un elenco che sappiamo ancora produrre. Si scrive nel registro e si
+    // tira dritto. Un errore sul RIPIEGO invece resta fatale come prima: se cade anche
+    // quello non è rimasta nessuna griglia da cui rispondere.
+    if (fasceRes.error) {
+      console.error('[booking-write] fasce non lette, uso il ripiego:', fasceRes.error.message);
+    }
+    if (schedRes.error) return err(500, 'DB_ERROR', 'Errore lettura griglia slot.');
+    const griglia = fasceRes.error ? null : fasceComeGriglia(fasceRes.data);
+    const schedule = (schedRes.data?.[0]?.payload as JsonMap | undefined)?.value as JsonMap | undefined;
+    const rawSlots = fasceDelGiorno(griglia, schedule ?? null, dow) as unknown as JsonMap[];
 
     // Ciò che occupa un campo quel giorno: prenotazioni, copie in app E occupazioni «nude»
     // (manutenzioni e lezioni che vivono solo come `booking_occupancy`). Regola e misure in
@@ -470,7 +491,13 @@ Deno.serve(async (req: Request) => {
       slots.push({ ora: start, ora_fine: end, free_campi: freeCampi, campi_totali: CAMPI.length });
     }
 
-    console.log(`[booking-write] availability_day ${dayData} → ${slots.length} fasce per ${etichetta}`);
+    // 🔎 La FONTE va nel registro accanto al numero: «6 fasce» non dice se vengono dalla
+    // tabella o dal blocco vecchio, e nel giorno in cui le due divergono è l'unica cosa
+    // che serve sapere. 📌 *Un conteggio senza la sua provenienza non è una misura.*
+    console.log(
+      `[booking-write] availability_day ${dayData} → ${slots.length} fasce per ${etichetta}` +
+        ` (fonte: ${griglia ? 'pmo_fasce_prenotabili' : 'ripiego potentialSlotSchedule'})`,
+    );
     return ok({ member: { id: member.id, name: member.name }, data: dayData, slots, today });
   }
 
