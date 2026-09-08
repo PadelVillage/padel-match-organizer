@@ -40,10 +40,29 @@
 > | `MATCHPOINT_BROWSER_WORKER_API_KEY` | pm2 sulla VM, dove il worker la chiama **`MATCHPOINT_WORKER_API_KEY`** — nome diverso, stesso valore (`server.mjs:159`) |
 > | `MATCHPOINT_USERNAME` · `MATCHPOINT_PASSWORD` | pm2 sulla VM |
 >
-> ⇒ **I PROSSIMI PASSI, in ordine**: ① lanciare il modo **`verifica`** (sola lettura, non tocca
-> niente) e leggere le quattro righe ✅/❌; ② se sono quattro ✅, **`togli`**; ③ provare che una
-> prenotazione sul sistema nuovo nasce lo stesso — deve rispondere **503 «ambiente di prova»**, non
-> `500 WORKER_NOT_CONFIGURED`; ④ **`rimetti`**, e rileggere.
+> 🚨🚨 **DOVE MI SONO FERMATO DAVVERO — il modo `verifica` è ROSSO, e la seconda volta è rosso per
+> un motivo VERO.** Due giri, e la differenza fra i due è la cosa da capire:
+> · **giro 1** — tre ❌ su quattro. Ma era un **artefatto**: `ssh host 'pm2 jlist'` tornava vuoto
+>   perché `pm2` non sta nel `PATH` di una shell non interattiva, e il `|| true` trasformava quel
+>   silenzio in uno zero. 📌 *Uno zero che nasce da «non ho guardato bene» ha la stessa faccia di
+>   uno che nasce da «non c'è» — e l'attrezzo, su quella faccia, decide se fermarsi.*
+> · **giro 2**, con la sonda corretta — 📏 **pm2 risponde: 5 processi**, `matchpoint-worker`
+>   compreso ⇒ la strada c'è. **Ma le tre variabili NON stanno nel suo `pm2_env`.** Stessi tre ❌,
+>   stavolta **credibili**.
+>
+> ⇒ **IL LAVORO CHE APRE TUTTO IL RESTO: trovare da dove il worker prende davvero quelle tre.**
+> Non è pm2. Piste, in ordine di costo: `/opt/matchpoint-worker/.env` letto a runtime dal processo;
+> l'`ecosystem.config.js` di pm2; oppure — la strada che non mente — `/proc/<pid>/environ` del
+> processo vivo. ⚠️ `leggi-ficha-matchpoint.yml` **dichiara** che pm2 è la fonte e che nel `.env`
+> non ci sono: una delle due affermazioni è invecchiata, e va **misurata**, non ereditata.
+>
+> ⇒ **I PROSSIMI PASSI, in ordine**: ① sciogliere il punto qui sopra e far tornare **quattro ✅** al
+> modo `verifica`; ② **`togli`**; ③ provare che una prenotazione sul sistema nuovo nasce lo stesso —
+> deve rispondere **503 «ambiente di prova»**, non `500 WORKER_NOT_CONFIGURED`; ④ **`rimetti`**, e
+> rileggere.
+> ⭐ **Cosa NON va cambiato**: il blocco. Si è fermato tutt'e due le volte prima di toccare qualcosa,
+> anche quando la misura era sbagliata. *Un attrezzo che si ferma su una misura sbagliata è meglio
+> di uno che procede su una misura giusta per caso.*
 >
 > 🚨🚨 **E IL FATTO CHE VA DETTO A LUI PRIMA DI `togli`, perché non gliel'ho ancora detto:**
 > togliere quei secret **rompe le LETTURE dal vivo** sul sistema nuovo. 📏 Misurato: **9 edge su 20**
