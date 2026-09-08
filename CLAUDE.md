@@ -139,10 +139,14 @@ fino in fondo, guardando cosa succede.
 (`matchpoint-payment-void`), che è lo stesso libro letto al contrario.
 🔄 **E DAL 07/09/2026 NON È PIÙ UN'ECCEZIONE DI QUESTA SEZIONE: è una regola generale del
 progetto.** Qui era scritta come *«l'unica cosa che resta fuori»* dal campo libero di **una** scheda
-segnalata — vera, ma troppo stretta. Lui ha dichiarato che **dal gestionale non si fanno pagamenti,
-mai, su niente** (⇒ *🔌 IL DISTACCO DA MATCHPOINT*, più sotto). ⇒ Non serve più una scheda
-segnalata perché il divieto valga: vale **ovunque e sempre**, e questa riga ne è ormai un caso
-particolare invece che la fonte.
+segnalata — vera, ma troppo stretta. ⇒ Non serve una scheda segnalata perché il divieto valga:
+questa riga ne è ormai un caso particolare invece che la fonte.
+🔄🚨 **E L'08/09 IL DIVIETO SI È RISTRETTO A UN AMBIENTE — qui c'era scritto «mai, su niente».**
+Le sue parole nuove sono *«si incassa solo su test, su PROD mai»* e *«dal gestionale si incassa,
+perché Matchpoint non c'è più»* (⇒ *🔌 IL DISTACCO DA MATCHPOINT*, più sotto, dove sta per esteso).
+⇒ Su **PROD** — l'unico posto dove una «scheda segnalata» esiste oggi — il divieto è **identico e
+non scade**, perché di lì un incasso passa da **Matchpoint**. Sul **sistema nuovo** la cassa nasce
+nostra, e questa riga non la riguarda. 📌 *Il divieto non era sul denaro: era sul tramite.*
 ⚖️ **Il perché, e va capito o la regola si applica male**: un incasso entra nella **cassa del
 circolo**, e una riga di cassa non è una prova — è denaro che qualcuno dovrà quadrare a fine
 serata. 🚨 **L'importo a carico invece NON è un pagamento** (voce 132: *«un importo a carico non è
@@ -227,6 +231,66 @@ sembrassero in contrasto, vale questa: è più recente e più stretta — vale s
 volta, non su tutte.
 
 
+## 🎯 «IL GESTIONALE DI TEST DIVENTA IL VERO» — il disegno nuovo (FERMA, 08/09/2026)
+
+🗣️ **Sue parole**, in risposta alla domanda *«dopo il 27/09 chi incassa?»*:
+
+> **«il gestionale di TEST diventa il vero»**
+
+⇒ **NON stiamo costruendo un mirror per provare. Stiamo portando in produzione un sistema nuovo.**
+`cudiqnrrlbyqryrtaprd` — quello che tutto questo file chiama «TEST» — **diventa il gestionale del
+circolo**. Quello di oggi (`qqbfphyslczzkxoncgex`, `app.padelvillage.club`) **va in pensione insieme
+a Matchpoint**, intorno al **27/09/2026**.
+
+🚨⭐⭐ **QUESTA È LA RIGA CHE CAMBIA COME SI LEGGE TUTTO IL RESTO DEL FILE.** Ogni volta che qui sta
+scritto *«TEST»*, va chiesto quale delle due cose intende: **l'ambiente di prova** (vero fino a
+ieri) o **il sistema che sta diventando quello vero** (vero da oggi). Le salvaguardie scritte per il
+primo **non proteggono** il secondo, e non lo dicono — continuano a suonare prudenti.
+
+**Le quattro frasi che disegnano il lavoro, e ciascuna vieta o impone qualcosa di preciso:**
+
+| 🗣️ sue parole | cosa comporta |
+|---|---|
+| *«il gestionale di prod deve continuare a funzionare come ha funzionato fino adesso»* | ⛔ **PROD NON SI TOCCA.** Non «con prudenza»: **non si tocca.** |
+| *«prod e test devono vivere due vite separate a livello gestionale»* | il travaso è **una-tantum**, mai una sincronia accesa (⇒ le 6 routine tolte l'08/09) |
+| *«si incassa solo su test, su PROD mai»* + *«dal gestionale si incassa, perché Matchpoint non c'è più»* | la **cassa nasce sul sistema nuovo** ⇒ *🔌 IL DISTACCO*, più sotto |
+| *«devi darmi la possibilità di definire io come voglio gli slot prenotabili»* | ⇒ la voce **176**, fatta l'08/09: `pmo_fasce_prenotabili` |
+
+🚨🚨⭐⭐ **LA TRAPPOLA CENTRALE, e NON è «togliere Matchpoint».**
+Il sistema nuovo è servito da `test.padelvillage.club`, e l'app si riconosce «di prova»
+**dall'hostname** (`pmoIsTestHostname`, `/^test\./`). ⇒ Finché si riconosce così, in **produzione**
+si porta dentro tre comportamenti da laboratorio:
+
+*(righe misurate l'08/09 su `test-preview` — si ricontano, non si ricordano: `grep -n` sui tre nomi)*
+
+| cosa | dove | effetto se resta |
+|---|---|---|
+| `WA_TEST_OVERRIDE_NUMBER = '+393357615855'` | `index.html:39121` | **ogni WhatsApp di ogni socio finisce su un solo telefono** |
+| `PMO_PAYMENTS_SIMULATE = PMO_IS_TEST_ENV` | `index.html:8779` | incassi **finti**: il circolo non incassa |
+| `PMO_BOOKINGS_SIMULATE = PMO_IS_TEST_ENV` | `index.html:8793` | prenotazioni **finte nel browser** |
+
+🩹 E non sono tre: c'è almeno un **quarto** della stessa famiglia — `index.html:15936` dirotta le
+email dell'autovalutazione su `aprea.maurizio@gmail.com` quando `PMO_IS_TEST_ENV`. ⇒ **La lista non
+è chiusa**: prima del passaggio va cercata tutta (`grep -n 'PMO_IS_TEST_ENV\|isTestEnv()'`), non
+fidandosi di questa tabella.
+
+⇒ **Il lavoro vero è far diventare produzione un ambiente che TUTTO IL CODICE CONOSCE COME PROVA.**
+⛔ E fallisce nel modo peggiore: **in silenzio e verso l'esterno** — i soci non ricevono, il circolo
+non incassa, e **nessun errore** compare da nessuna parte.
+📌 *Un ambiente che si crede una prova non sbaglia rumorosamente: fa finta, che è il suo mestiere.*
+
+⭐ **LA BUONA NOTIZIA, ed è una protezione che si è composta da sé.** `scritturaAlCircoloConsentita`
+(`scrittura-al-circolo.ts` — 📏 **11 copie, tutte byte-identiche**, misurato l'08/09) è cablata sul
+**ref di PROD** (`REF_PROD = 'qqbfphyslczzkxoncgex'`) ⇒ anche diventando «produzione» per l'app,
+`cudi…` **non potrà chiamare Matchpoint**. Produzione per l'app, non-Matchpoint per la barriera:
+sono due assi diversi, ed è per questo che funzionano insieme.
+⛔ **Quella cablatura ora va tenuta PER SEMPRE**, e chi la trovasse «da generalizzare» stia fermo:
+è l'unica cosa che impedisce al sistema nuovo di scrivere sul Matchpoint del circolo.
+
+⚠️ **E la salvaguardia che SCADE, da sapere prima che scada**: *«su TEST mano libera, tanto non
+tocca Matchpoint»* poggia su Matchpoint, non sui dati. Il giorno in cui le prenotazioni vere vivono
+su `cudi…`, una prova che sporca quel database **sporca il circolo** senza aver sfiorato Matchpoint.
+
 ## 📋 Prima di iniziare: cosa c'è da fare → `docs/lavori/README.md`
 
 **Apri quel file all'inizio di ogni sessione.** Contiene le tre liste — 🔴 urgenti, 📋 in coda,
@@ -285,6 +349,13 @@ repo**, in `~/Desktop/APP desktop/_dismissione-soci-20260725/`.
 
 Admin PROD e Admin TEST sono **file diversi su rami diversi** dello stesso repo: non è un
 ambiente che "punta" a due database, sono due copie dell'app.
+
+🎯🚨 **E DALL'08/09/2026 QUELLA TABELLA VA LETTA CON UNA CHIAVE DIVERSA**: la riga «Admin TEST» non
+è più *l'ambiente di prova*, è **il gestionale che sta diventando quello del circolo**, e la riga
+«Admin PROD» è quello che **va in pensione con Matchpoint** intorno al 27/09. ⇒ Prima di usare
+questa tabella per decidere dove lavorare, leggere *🎯 «IL GESTIONALE DI TEST DIVENTA IL VERO»*
+qui sopra. 📌 *Una tabella giusta nei fatti può essere fuorviante nei nomi: «TEST» dice cosa era,
+non cosa sta diventando.*
 
 **Il caricatore di TEST vive in un 5° repo**: `padel-match-organizer-test` (public):
 `index.html` (il caricatore), **`app.html` (COPIA generata dell'app — non si tocca a mano)**,
@@ -358,30 +429,31 @@ prova senza toccare la produzione; la copia su TEST nasce disarmata.
 contro 2774 al 19/07), perché entrambi sincronizzano dallo stesso Matchpoint. Spostarsi su
 TEST cambia dove finiscono le **scritture**, non rende anonime le letture.
 
-🧊 **E il CALENDARIO di TEST è una FOTOGRAFIA, non un dato vivo — per scelta, dal 14/08/2026.**
-Le prenotazioni (`booking`, `booking_occupancy`, `booking_history`) su `cudi…` **non le aggiorna
-nessun cron**, e non è mai successo: le righe `data_routine_dispatch_bookings_live_*` sono **0** in
-tutta la storia di quel database, contro **1575** su `qqbf…`. Quello che c'è è l'ultimo import
-lanciato **a mano** — al 14/08 fermo al **7 agosto**.
-🔄 **Ricontrollato il 16/08, e il «7 agosto» non vale più**: i giri a mano sono continuati — dei
-**108** istanti di sync distinti di sempre, **3 sono nelle ultime 48 ore** (15/08 21:45, 16/08 03:30,
-16/08 15:30). ⇒ Oggi TEST mostra **un'ora e mezza fa**, non nove giorni fa. ⚖️ L'avvertimento qui
-sotto **regge intero** — nessun cron lo tiene fresco e i buchi vanno da ore a giorni — ma la cifra
-del ritardo **non si può ricordare**: si misura, `max(synced_at)` sulle righe prenotazione.
-L'anagrafica invece è viva
-(`anagrafica-mirror`, 05:00) e i pagamenti pure: **è solo il calendario a essere fermo**, ed è
-esattamente ciò che rende l'inganno credibile.
+🧊🔄🚨⭐⭐ **`cudi…` NON SI RINFRESCA PIÙ DA MATCHPOINT — dall'08/09/2026, e non è più «solo il
+calendario».** 📏 Misurato l'08/09 su `cron.job` di quel progetto: restano **5** job, e **nessuno**
+parla con Matchpoint. Le **sei** routine che lo facevano sono state **tolte** (`cron.unschedule`,
+non `active=false`): calendario, borsellino, pagamenti, pagamenti-oggi, clienti-notturni e
+**`anagrafica-mirror`**.
+⛔⛔ **E QUESTO CORREGGE DUE RIGHE DI QUESTA STESSA SEZIONE, non le affianca:**
+· qui c'era scritto *«le prenotazioni non le aggiorna nessun cron, e non è mai successo»* ⇒ **era
+  falso**: un cron `pmo-calendario-test-solo-prenotazioni` esisteva e girava **5 volte al giorno**.
+  Il fatto («il calendario è indietro») era vero, la **causa** no — e su una causa sbagliata si
+  pianifica sbagliato;
+· qui c'era scritto *«l'anagrafica invece è viva (`anagrafica-mirror`, 05:00) e i pagamenti pure: è
+  **solo** il calendario a essere fermo»* ⇒ **non è più vero di niente.** Oggi è fermo **tutto**.
+🚨 **E `anagrafica-mirror` non era innocua**: *«toglie chi su PROD non esiste»* ⇒ lasciata accesa
+avrebbe **cancellato ogni socio creato sul sistema nuovo**, il giorno dopo averlo creato.
+📏 **La fotografia, misurata l'08/09 e da rimisurare invece che ricordare** — calendario fermo al
+**07/09 17:32** (Roma), **2826** soci, 2605 `payment`, 288 `booking`:
+`select record_type, max(updated_at) from pmo_cloud_records group by 1`.
 
-🔎 **E il PERCHÉ di quello zero, misurato il 19/08 — non è «nessuno ha acceso il cron».** Su `cudi…`
-la funzione `pmo_dispatch_data_routines` è la versione **VECCHIA**: il ramo `bookings_live` — quello
-che su PROD manda il sync ogni 2 minuti — **lì dentro non c'è proprio**, e il suo `else` finale si
-limita a tornare `dispatched: false`. ⇒ Il dispatcher di TEST sa chiedere **solo** le routine a orario
-fisso (clienti, storico, backup): le prenotazioni **non sa nemmeno chiederle**. Le righe sono zero
-perché non possono esistere, non perché un interruttore è giù.
-⚖️ Cambia cosa costa riaccenderlo: non è un `update` su una tabella di schedulazione, è **portare su
-TEST la funzione di PROD** — e quella, come dice il paragrafo qui sotto, è la versione *continua*.
-📌 Si legge senza credere a questo file: `select prosrc from pg_proc where proname =
-'pmo_dispatch_data_routines'` sul progetto di TEST.
+⚖️ **Perché è una SCELTA e non un'avaria, ed è il cuore del disegno nuovo**: *«prod e test devono
+vivere due vite separate a livello gestionale»* (⇒ *🎯 «IL GESTIONALE DI TEST DIVENTA IL VERO»*).
+Un mirror che si rinfresca da PROD non può diventare un sistema **autonomo**: ogni giro riporterebbe
+indietro ciò che il sistema nuovo ha fatto per conto suo. ⇒ Staccare le sei routine **è** il primo
+passo del distacco, non un effetto collaterale.
+📌 *Finché copi, non sei un sistema: sei un riflesso — e un riflesso non può divergere da ciò che
+riflette, che è esattamente la cosa che gli stiamo chiedendo di fare.*
 
 🚨⭐⭐ **E UNA PRENOTAZIONE FATTA DAL BOT SU TEST NON SOPRAVVIVE A UN SYNC.** *(19/08/2026, pagata
 con una prenotazione di prova del committente.)* Su TEST le scritture verso Matchpoint sono
@@ -403,13 +475,12 @@ giocatore tolto non sparisce, una partita nuova del circolo non compare. La prov
 guasto del bot quando il bot era sano, e il 14/08 una scheda che chiamava «riga di prova» una
 partita vera del circolo, a un passo dal farla cancellare.
 
-⚖️ **Perché congelato e non riacceso.** Il motore c'è (`matchpoint-bookings-sync` è ACTIVE anche su
-TEST) e riaccenderlo costerebbe poco — la funzione lì è quella a slot fissi, ~12 dispatch al giorno
-contro i ~720 di PROD sul **worker condiviso**. Non si è fatto perché accendere quel dispatcher
-resuscita anche i **6 sync clienti** ritirati il 3/08, e la prima giornata va guardata nei log del
-worker su Hetzner. ⇒ È un lavoro **dal Mac**, in coda come voce **A-lite**, non una riga di SQL.
-📌 Se un domani si riaccende: **non** copiare la funzione di PROD, che è quella *continua*. Su TEST
-cinque rinfreschi al giorno sono freschezza; il ritmo di PROD è parità, ed è la parità a costare.
+⛔⛔ **E DALL'08/09 NON SI RIACCENDE PIÙ: la domanda «riaccenderlo?» è CHIUSA.** Qui c'era scritto
+che riaccendere il sync su TEST *«costerebbe poco»* ed era **un lavoro in coda come voce A-lite** —
+vero finché `cudi…` era un mirror di prova. ⇒ **Non lo è più**: riaccenderlo riporterebbe indietro
+il lavoro del sistema nuovo a ogni giro, e `anagrafica-mirror` cancellerebbe i soci creati da noi.
+📌 *Una voce in coda che il disegno ha reso dannosa non va rimandata: va tolta, o qualcuno un giorno
+la esegue trovandola scritta.*
 
 🔄 **L'ANTEPRIMA DEL BOT ESISTE — e qui stava scritto il contrario** *(corretta il 16/08/2026)*.
 Sulla VM ci sono **DUE bot**, token diversi e cartelle diverse: `assistente-telegram` (i soci) e
@@ -554,7 +625,7 @@ deploy (che gira sui computer di GitHub) e **`githubstatus.com`**, che è un alt
 sonda che stia altrove.* È la 24ª — la sonda che guarda nel cassetto sbagliato — nella forma in cui
 il cassetto sbagliato è **la propria posizione**.
 
-## 🔌 IL DISTACCO DA MATCHPOINT — e la regola sui PAGAMENTI che ne discende (FERMA, 07/09/2026)
+## 🔌 IL DISTACCO DA MATCHPOINT — e la cassa che ne discende (FERMA, 07/09 · **RIBALTATA l'08/09/2026**)
 
 🗣️ **Sue parole, date la sera in cui ha fatto cassare tutte le voci sui pagamenti** (*«poi ti
 spiego»* — questa è la spiegazione):
@@ -563,41 +634,77 @@ spiego»* — questa è la spiegazione):
 > di numeri da Matchpoint per quanto riguarda gli incassi e i costi delle partite, ma non andremo
 > mai dal nostro gestionale a fare pagamenti che riguardano le partite o qualsiasi altra cosa.»*
 
-⇒ **Due cose in una frase, e vanno tenute separate perché hanno durate diverse:**
-
-| | cosa dice | quanto dura |
-|---|---|---|
-| 📖 **si LEGGE da Matchpoint** | i **numeri**: incassi e costi delle partite. Oggi Matchpoint è ancora la **fonte** di quei dati | **fino al distacco** |
-| ⛔ **non si SCRIVE mai un pagamento** | dal gestionale **non parte nessun pagamento** — né sulle partite né su qualunque altra cosa | **per sempre**, distacco o no |
-
 🗓️ **La data**: detto il **07/09/2026** ⇒ il distacco cade **intorno al 27/09/2026**. ⚠️ È una
 scadenza dichiarata da lui, non una misura: quando arriva, **la riga «si legge da Matchpoint» va
 riletta**, non ereditata. 📌 *Una scadenza scritta senza la data in cui è stata detta diventa
 eterna: «entro venti giorni» letto fra un mese vuol dire ancora venti giorni.*
 
-⛔⛔ **LA METÀ CHE NON SCADE, ed è quella operativa: IL GESTIONALE NON FA PAGAMENTI.**
-Non «non ancora», non «non senza chiedere»: **mai**. Vale per Cash, Card e Wallet, per lo **storno**
-(che è lo stesso libro letto al contrario), per le partite e per qualunque altra cosa.
-⇒ **Cosa comporta, quando si scrive codice o si progetta una prova:**
-· non si apre nessun lavoro la cui prova richieda un pagamento salvato dal gestionale — è la
-  ragione per cui la **143** è stata cassata invece che rimandata;
-· le **letture** restano tutte: `matchpoint-payments-sync`, la sezione **Incassi**, i costi delle
-  partite, il saldo del borsellino. Leggere non è scrivere, e qui la riga passa esattamente lì;
-· una richiesta futura che suoni come *«facciamo pagare dal gestionale»* **contraddice questa
-  regola**: si riporta a lui, non si esegue.
+🔄🚨⭐⭐ **E L'08/09 HA DETTO LA METÀ CHE MANCAVA, che RIBALTA questa sezione invece di aggiungersi.**
+Alla domanda *«dopo il 27/09 chi incassa?»* ha risposto — e sono tre frasi che vanno lette insieme:
 
-⚠️⭐ **E UNA CONSEGUENZA CHE VA PORTATA A LUI, non decisa qui**: nell'app di PROD i **bottoni
-Cash · Card · Wallet esistono e funzionano** (voce 171, chiusa il 07/09 mattina a prova fisica su
-tutti e tre i metodi, `PMO_PAYMENTS_WRITE_ENABLED`). ⇒ Una regola che dice *«mai»* e tre bottoni
-che lo fanno **non possono convivere a lungo**: o i bottoni si tolgono, o la regola ha un'eccezione
-che non è scritta. **La scelta è sua** — qui sta il fatto, non la decisione.
-📌 *Una regola contraddetta da un bottone in servizio non protegge niente: la prima persona che
-preme decide al posto della regola.*
+> *«il gestionale di TEST diventa il vero»* · *«si incassa solo su test, su PROD mai»* ·
+> **«dal gestionale si incassa, perché Matchpoint non c'è più»**
+
+⇒ **IL DIVIETO NON ERA SUL DENARO: ERA SUL TRAMITE.** Finché «il gestionale» era **uno solo**, le
+due cose stavano nella stessa frase e nessuno doveva distinguerle. Da oggi i gestionali sono **due**,
+e la stessa regola cade da parti opposte su ciascuno.
+
+| | **PROD** — `qqbf…`, `app.padelvillage.club` | **il sistema NUOVO** — `cudi…`, oggi «TEST» |
+|---|---|---|
+| chi è | il gestionale di oggi, quello che parla con Matchpoint | 🎯 quello che **diventa il gestionale del circolo** |
+| la cassa | ⛔ **MAI**, e non scade: *«su PROD mai»* | ✅ **è LÌ che nasce**: *«dal gestionale si incassa»* |
+| il perché | il suo canale di cassa **è** Matchpoint ⇒ incassare di lì è incassare **da Matchpoint** | Matchpoint **non c'è più** ⇒ non c'è nessun tramite da attraversare |
+| quanto dura | **fino alla pensione**, insieme a Matchpoint | **da qui in avanti** |
+
+⚖️⭐ **PERCHÉ LA RIGA VECCHIA NON ERA SBAGLIATA, e va capito o la correzione si applica male.**
+Diceva *«dal gestionale non parte nessun pagamento — per sempre, distacco o no»*, e il suo **perché**
+era già quello giusto: *«il giorno del distacco nessun soldo deve restare a metà strada, e l'unico
+modo di garantirlo è che nessun soldo ci sia mai passato»*. ⇒ **Quel perché regge intero.** Ciò che
+non reggeva era la parola **«il gestionale»**, che nel frattempo ha smesso di indicare una cosa sola.
+📌 *Una regola scritta quando il mondo aveva un pezzo solo non invecchia sbagliando: invecchia
+diventando ambigua — e l'ambiguità si scopre solo quando i pezzi diventano due.*
+
+⛔⛔ **L'INVARIANTE CHE NON SCADE, ed è quello da ricordare al posto della riga vecchia:**
+
+> **Nessun soldo passa da MATCHPOINT per mano nostra. Mai.**
+
+⇒ Vale per Cash, Card e Wallet, per lo **storno** (che è lo stesso libro letto al contrario), per le
+partite e per qualunque altra cosa — e vale **su PROD per sempre**, perché su PROD *incassare* e
+*incassare da Matchpoint* sono lo **stesso gesto**. `matchpoint-payment-write` e
+`matchpoint-payment-void` restano quello che erano: strade chiuse.
+✅ **Sul sistema nuovo la cassa è NATIVA**, e non è un'eccezione all'invariante: è l'invariante che
+si avvera. Un incasso che nasce e muore da noi non attraversa Matchpoint **per costruzione** — non
+perché qualcuno si è trattenuto.
+📌 *La prova che la regola è la stessa e non un'altra: il giorno in cui Matchpoint si spegne, la
+cassa del sistema nuovo non se ne accorge.*
+
+⇒ **Cosa comporta, quando si scrive codice o si progetta una prova:**
+· su **PROD** non si apre nessun lavoro la cui prova richieda un pagamento salvato dal gestionale —
+  è la ragione per cui la **143** è stata cassata invece che rimandata, e resta valida;
+· le **letture** restano tutte, e su tutti e due: `matchpoint-payments-sync`, la sezione **Incassi**,
+  i costi delle partite, il saldo del borsellino. Leggere non è scrivere, e qui la riga passa lì;
+· sul **sistema nuovo** la cassa **si costruisce**, ed è lavoro dichiarato — ⚠️ ma **non ha ancora
+  su cosa addebitare**: delle 256 `staff_booking` vive solo **14** portano gli importi, e sono le
+  stesse 14 che qualcuno ha aperto. ⇒ **La lettura nativa della scheda viene PRIMA della cassa**;
+· una richiesta che suoni come *«facciamo pagare da PROD»* **contraddice questa regola**: si riporta
+  a lui, non si esegue.
+
+🔄 **E LA «CONSEGUENZA DA PORTARE A LUI» È SCIOLTA: chiedeva una decisione che ha già preso.**
+Qui c'era scritto che i bottoni **Cash · Card · Wallet** di PROD (voce 171, in servizio,
+`PMO_PAYMENTS_WRITE_ENABLED`) e una regola che dice *«mai»* **non possono convivere a lungo**, e che
+la scelta era sua. ⇒ **L'ha fatta**: *«su PROD mai»* + *«il gestionale di prod deve continuare a
+funzionare come ha funzionato fino adesso»*. I bottoni **restano dove sono e come sono** — è la
+segreteria che li usa ogni giorno, e toglierli sarebbe *toccare* PROD, che è la cosa che ha vietato.
+⚖️ La contraddizione era **apparente**: quei bottoni non incassano *dal gestionale*, incassano **su
+Matchpoint passando dal gestionale** — cioè sono Matchpoint, e muoiono con lui.
+📌 *Due frasi che sembravano incompatibili lo erano solo finché «gestionale» voleva dire due cose in
+una parola sola.*
 
 🎯 **Perché questa regola non è una restrizione ma un disegno**: è la stessa forma già scritta in
 *«il gestionale SA, il bot DICE»* e nei *tre passi*, applicata al denaro. Il giorno del distacco il
 gestionale deve poter smettere di parlare con Matchpoint **senza che nessun soldo resti a metà
-strada** — e l'unico modo di garantirlo è che **nessun soldo ci sia mai passato**.
+strada** — e l'unico modo di garantirlo è che **nessun soldo ci sia mai passato**. Il sistema nuovo
+nasce già così.
 
 ## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
 
@@ -1027,6 +1134,14 @@ passato a vuoto).
   togliere un giocatore, per le **schede doppie messe apposta** nel database di `cudi…` e per
   qualunque copione di `collaudo-conversazione`. ⇒ Davanti a una voce che aspetta una prova, su
   TEST **si prova**, non si chiede il permesso.
+  🚨⭐⭐ **E QUESTA RIGA HA UNA SCADENZA, dall'08/09: `cudi…` sta DIVENTANDO il gestionale vero**
+  (⇒ *🎯 «IL GESTIONALE DI TEST DIVENTA IL VERO»*, più sotto). La mano libera poggiava su
+  *«tanto non tocca il circolo»*, e quel ragionamento guarda **Matchpoint**: il giorno in cui le
+  prenotazioni vere del circolo vivono lì, una prova che sporca `cudi…` sporca **i dati veri**
+  senza aver toccato Matchpoint nemmeno per sbaglio. 📌 *Una salvaguardia che nomina il posto
+  sbagliato non si accorge di essere scaduta: continua a dire il vero su Matchpoint mentre il
+  danno si è spostato altrove.* ⇒ Finché il travaso non è fatto la riga **regge**; da quel
+  momento va **riletta**, non ereditata.
 · 🚨 **PROD — SI DICE PRIMA, sempre.** E adesso c'è **dove** provare: 📏 misurata sul gestionale il
   05/09, **lunedì 7 settembre, ore 09:00, Campo 4**, roster `-Lidia Comes.-Ospite.-Ospite.-Fabiola
   Limuti.`. ⭐ È **arrivata dal sync**, quindi ha la `descrizione` — cioè un **roster leggibile**,
@@ -1040,6 +1155,11 @@ di annunciare una scrittura vera sul Matchpoint del circolo o un messaggio che p
 ⚠️ **È una risorsa che si consuma**: se una prova la lascia diversa da com'era — un giocatore tolto,
 la partita aperta — si rimette com'era, o lo si dice. E la data è **quel** lunedì: passato il 7/09
 la partita non c'è più, e la riga qui sopra va riletta come un esempio, non come un indirizzo.
+🔄 **⏰ E LA DATA È PASSATA: oggi è l'08/09/2026.** Quella partita **non esiste più**, quindi qui
+non c'è nessun indirizzo su cui provare — c'è solo la **forma** del permesso (*«su PROD si dice
+prima, e serve un bersaglio che lui abbia indicato»*). ⇒ Per una prova su PROD il bersaglio **si
+chiede**, e questa riga non lo fornisce. 📌 *Un indirizzo scaduto è peggio di nessun indirizzo:
+sembra una risposta, quindi nessuno fa la domanda.*
 📌 *Il freno su PROD non è mai stato «non toccare»: era «non so su cosa toccare senza fare danno».
 Sciolto quello, resta solo l'annuncio.*
 
@@ -1294,7 +1414,9 @@ dei ref remoti → `git fetch --prune`.
   scritture dietro un interruttore esplicito.
   🔄 **Con UNA eccezione, dal 04/09/2026: la scheda che lui ha segnalato come banco di lavoro.**
   Là il flag si usa senza chiedere — vedi *🎯 LA SCHEDA SEGNALATA DA LUI È CAMPO LIBERO* in testa
-  al file. Resta fuori il **salvataggio di un pagamento**, sempre e ovunque.
+  al file. Resta fuori il **salvataggio di un pagamento su PROD** — sempre, e senza scadenza
+  (⇒ *🔌 IL DISTACCO*: di lì un incasso passa da **Matchpoint**). Sul sistema nuovo la cassa è
+  nostra e questa esclusione non la riguarda.
 
   🔑⭐⭐ **I TRE CANCELLI FRA LA CONSOLE E UN «SALVA» CHE ARRIVA IN FONDO** — misurati il
   04/09/2026 uno per uno, perché sono **indipendenti** e aprirne due su tre non serve a niente:
@@ -1322,7 +1444,7 @@ dei ref remoti → `git fetch --prune`.
   scritta qui proprio perché stavolta si sono aperte anche le porte accanto.
   ⚠️ E va detto per intero: `staff` toglie il freno a **tutte** le scritture della scheda, non solo
   a quella segnalata. La cosa che tiene stretto il perimetro **non è più il ruolo, è la regola** —
-  si scrive solo sulla scheda che lui ha indicato, e mai un pagamento.
+  si scrive solo sulla scheda che lui ha indicato, e su PROD mai un pagamento.
   🩹 Se un domani si volesse restringerlo davvero nel codice, il posto è `pmoIsReadonlyStaff`, che
   oggi guarda **solo il ruolo** e non i permessi: un `role: 'readonly'` con un permesso di
   scrittura spuntato resterebbe bloccato lo stesso. È una scelta che sta in piedi, ma è quella che
