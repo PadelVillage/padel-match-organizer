@@ -669,6 +669,37 @@ Deno.serve(async (req: Request) => {
   // chiamare il circolo. ⭐ Chi porta l'EFFETTO vero è il ponte dei soci, che dopo un `ok`
   // allinea la copia in app da sé (`allineaCopiaInApp` per uscita e togli, `aggiungiACopiaInApp`
   // per l'invito): quindi in prova un giocatore esce e rientra davvero, e si vede.
+  // 🆕⭐⭐ VOCE 180 (09/09/2026) — ANCHE LA LETTURA STA DENTRO IL RECINTO, e fino a oggi no.
+  //
+  // 🚨 `read: true` era **l'unica strada che saltava il recinto**: la riga qui sotto diceva
+  //    `!readOnly && …`, quindi una lettura partiva verso il worker — e quindi verso il Matchpoint
+  //    del circolo — anche da un gestionale che col circolo non c'entra niente. Era l'ultimo punto
+  //    di contatto fra il sistema nuovo e quello vecchio, e non si vedeva **perché una lettura non
+  //    sembra un gesto**.
+  // 📌 *Un recinto che lascia passare chi «guarda soltanto» non è un recinto a metà: è un recinto
+  //    con una porta, e la porta la trova chiunque non stia cercando di forzare niente.*
+  //
+  // ⚖️ **La lettura aveva un senso finché il dato stava solo là.** Adesso l'importo NASCE dal
+  //    listino, il giocatore aggiunto lo prende e le righe vecchie si riempiono all'apertura: la
+  //    copia del gestionale ha quello che serve, e andarlo a chiedere al circolo è rimasto un
+  //    residuo. ⇒ Non si toglie una funzione, si toglie una dipendenza.
+  //
+  // ⛔ E NON è la stessa risposta delle scritture: una modifica di prova si **registra** e si
+  //    risponde «fatto» (nativa), perché il gesto ha un effetto nostro da conservare. Una lettura
+  //    non ha niente da registrare — quindi si **rifiuta a viso aperto**, con un codice suo, e chi
+  //    chiama usa la copia che ha già. Rispondere `ok` con un roster vuoto sarebbe dire «in campo
+  //    non c'è nessuno», che è una risposta che non abbiamo: è la 149 applicata ai nomi.
+  //
+  // ⚠️ Su PROD non cambia NIENTE: là `scritturaAlCircoloConsentita` è vera e la lettura passa
+  //    identica. E l'app ha la sua gemella (`pmoGestionaleCollegatoAlCircolo`) che non la chiama
+  //    nemmeno: due guardie, e questa è quella che vale **per chiunque chiami**, anche per una
+  //    copia vecchia dell'app rimasta aperta in un browser.
+  if (readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
+    console.warn(JSON.stringify({ event: 'lettura_al_circolo_rifiutata', edit }));
+    return err(503, 'LETTURA_AL_CIRCOLO_NON_PREVISTA',
+      'Questo gestionale non è collegato al circolo: la lista giocatori e gli importi si leggono dalla sua copia, non da Matchpoint.');
+  }
+
   if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'edit', edit }));
     const workerResult = esitoNativo('edit');
