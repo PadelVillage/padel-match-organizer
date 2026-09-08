@@ -1,4 +1,4 @@
-# Passaggio di consegne — 08/09/2026, notte (101ª sessione)
+# Passaggio di consegne — 08/09/2026, notte (102ª sessione)
 
 > **Prompt da incollare nella chat nuova.** Copia tutto quello che sta fra le due righe.
 
@@ -8,82 +8,86 @@
 
 > Riprendi il progetto **PADEL MATCH ORGANIZER**.
 >
-> Leggi PRIMA, in quest'ordine: **`CLAUDE.md`** (postulato in testa, e la sezione *«IL GESTIONALE DI
-> TEST DIVENTA IL VERO»*), **`docs/lavori/README.md`**, e questo file.
+> Leggi PRIMA, in quest'ordine: **`CLAUDE.md`** (il postulato in testa, e la sezione *«IL GESTIONALE
+> DI TEST DIVENTA IL VERO»*), **`docs/lavori/README.md`**, e questo file.
 >
 > ### 🚨 PRIMA DI CREDERE A QUALUNQUE CONFRONTO
-> Il checkout locale nasce **stantio e shallow**: `git status` dice «allineato» mentendo. ⇒
+> Il checkout locale nasce **stantio e shallow**, e `git status` dice «allineato» mentendo. ⇒
 > `git fetch --unshallow origin && git fetch origin main test-preview && git reset --hard origin/test-preview`
+> 🚨 **E CONTROLLA SU QUALE RAMO SEI PRIMA DI MISURARE**: stanotte ho letto il recinto su `main`
+> e ho detto al committente una cosa falsa su TEST. `git status -sb`, sempre, prima di un `grep`
+> che diventa un'affermazione.
 >
 > ---
 >
-> ## 🟢 IL PRIMO LAVORO: chiudere la 177, e adesso SI PUÒ
+> ## 🟢 IL PRIMO LAVORO: la SECONDA METÀ della 180
 >
-> La 177 è in servizio su `cudi` da ieri e resta aperta per una sola cosa: **una riga
-> `fonte=pmo_fasce_prenotabili` nel registro**, cioè un gesto vero del bot. Fino a stanotte era
-> impossibile — mancava `CONSUMER_BRIDGE_SECRET`. ⭐ **Adesso c'è**, e la strada è già in piedi:
+> La prima metà è in servizio e provata: **l'importo a carico nasce dal listino** alla creazione
+> nativa (`importo-dal-listino.ts`, modulo puro, 20 casi e 5 sabotaggi). Restano **tre cose
+> distinte**, e la prima è quella che tiene ancora aperta la strada fuori dal recinto:
 >
-> · 🔑 il segreto vive nel secret di repo **`CONSUMER_BRIDGE_SECRET_TEST`**, messo dal committente
->   l'08/09 sera. ⛔ Non è mai passato dalla chat, e non deve passarci mai;
-> · 🔨 l'attrezzo è **`.github/workflows/sonda-ponte-soci.yml`** — sola lettura, cablato su `cudi`
->   e sulla **sola azione `verifica`**, che non scrive niente e non chiama il worker;
-> · 📏 **provato**: tre corse vere stanotte, HTTP 200, verdetti giusti.
+> · ⛔ **la SCHEDA legge ancora dal vivo da Matchpoint.** `matchpoint-bookings-edit` con
+>   `read: true` è l'unica strada che **salta il recinto** (`index.ts:674` — `if (!readOnly && …)`),
+>   e l'app la chiama da **tre punti** di `index.html` (44800 · 45030 · 45190). ⇒ Va fatta leggere
+>   dalla **copia locale** quando l'importo è nato qui (`origineImporto: 'listino'`);
+> · 📦 **le righe già esistenti non hanno importi**: 📏 su `cudi` **30 vive, 2 con importi**. Serve un
+>   riempimento dal listino — una-tantum, o all'apertura della scheda;
+> · ➕ **un giocatore aggiunto dopo non prende il prezzo**: nasce senza importo.
 >
-> 🔨 **Cosa manca, ed è piccolo**: `verifica` non legge le fasce. Le legge l'azione
-> **`availability_day`** (`consumer-booking-write/index.ts:422`, il ramo con
-> `pmo_fasce_prenotabili` + il ripiego `SLOT_SCHEDULE_KEY`). ⇒ Si allarga la sonda a **quella
-> seconda azione**, che è pure lei in sola lettura, si chiama, e si guarda il registro dell'edge.
-> ⚠️ **Va allargata la lista cablata, non aperta a un input**: l'azione resta scelta fra due
-> costanti scritte nel file, o l'attrezzo smette di essere sicuro per costruzione.
-> 🎯 E vale doppio: la stessa chiamata prova anche `consumer-player-readmodel`, l'altro lettore
-> della 177.
+> 🎯 Poi viene la **181** (la cassa nativa), e **non prima**: costruire la cassa su un dato che
+> esiste nel 5% dei casi vorrebbe dire scoprirlo con i soldi veri di qualcuno.
 >
 > ---
 >
 > ## ✅ FATTO IN QUESTA SESSIONE
 >
-> **① Voce 179 — CHIUSA a prova fisica, nei tre versi.** Il gestionale adesso **dichiara la propria
-> natura** (`app_setting` → `pmoFontePrenotazioni`), e la regola sta in `fonteDichiarata`. Prova:
-> stesso socio, stesso slot, tre chiamate in quattro minuti — `nativa` → **`no`/`fonte_nativa`**;
-> difetto **rimesso apposta** → **`non_ancora`/`copia_ferma`**; `nativa` → **`no`**.
-> 📌 *La riga di mezzo è la prova che vale: il difetto è stato fatto succedere di nuovo.*
-> 🚨 **Non si è riusato `scritturaAlCircoloConsentita`**, ed è la decisione da capire: sono **due
-> domande diverse** — «posso scrivere sul Matchpoint del circolo?» e «da dove nascono le
-> prenotazioni che vedo?» — che oggi coincidono **per costruzione**, non per natura. Il ref di PROD
-> resta, ma come **rete**: non decide, rifiuta la combinazione pericolosa.
-> ⭐ E cadono **due** rami, non uno: anche `fuori_finestra`, che descrive l'export e senza export
-> non esiste.
+> **① Voce 185 — IL LISTINO HA UN CALENDARIO** (nuova, da una sua richiesta). Una **griglia base**
+> senza date sempre valida, **periodi** datati che la coprono coi *loro* orari **e** i *loro*
+> prezzi, e le **chiusure** sopra a tutto. Due periodi non si possono sovrapporre e a impedirlo è
+> il **database**; un giorno scoperto **non può esistere** perché la base non ha date.
+> ⭐ A decidere «che orari e che prezzi valgono il giorno X» è **UNA** funzione,
+> `pmo_calendario_effettivo`, chiamata dall'app **e** dalle due edge del bot.
+> 🖥️ Pannello in Amministrazione → *Fasce prenotabili*, in quattro passi: cosa vale oggi · i periodi
+> come bottoni · orari e prezzi (con «copia da…» per giorno) · chiusure + feste italiane in blocco ·
+> **calendario di controllo di un anno**, un quadratino per giorno.
+> ⭐ Un periodo nuovo **nasce come copia** di quello che guardi: un periodo a metà **svuota** i
+> giorni non compilati (misurato).
 >
-> **② L'attrezzo dei secret Matchpoint è pronto e la strada del ritorno è DIMOSTRATA.**
-> 📏 I valori stanno in `/opt/matchpoint-worker/.env` — **non** in `pm2_env`, come si credeva. E i
-> quattro `sha256` **combaciano con i DIGEST che Supabase pubblica** ⇒ `rimetti` riporterebbe
-> **esattamente** il valore che c'è adesso. L'attrezzo lo controlla da sé e **blocca `togli`** se un
-> valore si recupera ma non combacia.
+> **② Voce 183 — I 41 PREZZI, misurati e confermati da lui.** Presi dai **3.336 pagamenti veri** su
+> `cudi` (importo più frequente per giorno+ora, tolte le giornate-torneo a 20 €) e confermati con un
+> «confermo». 8 € di giorno e il sabato · 10 € a pranzo · 12 € alle 18:00 e 21:00 · **13 € alle
+> 19:30**. ⚠️ Quattro fasce non avevano **nessun** pagamento dietro (lun 16:30, mer 14:00, gio 14:00,
+> sab 12:00): il loro numero viene dalla fascia gemella, non da una misura.
+> 📏 **Misurato e non chiesto**: **ospite e socio pagano uguale** (946 vs 949 pagamenti, tipico 12 €).
 >
-> **③ La 183 promossa** da coda a urgente (dichiarata in lista col perché): senza i **suoi prezzi**
-> la 180 non ha un importo da far nascere e la 181 non ha su cosa addebitare. 📏 `null` su **tutte
-> e 41** le fasce.
+> **③ LE SCRITTURE DI TEST SONO CHIUSE, E LE PRENOTAZIONI SONO NATIVE.** Sua richiesta: *«devono
+> essere proprio chiuse, non simulate»*. C'erano **due** finzioni sovrapposte, tolte entrambe:
+> · l'**intercettatore nel browser** fermava le chiamate alle edge di scrittura e **rispondeva da
+>   sé** `{ok:true, simulated:true}` con un `idReserva` inventato (`TEST-…`);
+> · l'edge rispondeva *«fatto, di prova»* con un `PROVA-…`.
+> ⇒ Messo davanti alle due strade — rifiutare tutto o rendere la prenotazione **vera del gestionale
+> nuovo** — ha scelto **native**: `esitoDiProva` → `esitoNativo`, marchio `nata_in_prova` →
+> `nata_nel_gestionale`, prefisso **`PMO-`**, file rinominati (`scheda-nativa`, `bersaglio-nativo`).
+> ⚖️ Il marchio **vecchio resta riconosciuto** da sync e annullo: una riga su `cudi` lo porta ancora.
 >
-> **④ Messa a verbale una sua frase che cambia il perimetro** (⇒ `CLAUDE.md`):
-> *«A noi servirà solamente una volta ricollegarci con il gestionale di prod per riallineare i dati
-> dei soci in anagrafica. Dopodiché Prod si spegnerà per sempre.»*
-> ⇒ *«PROD non si tocca»* ha ora **una sola eccezione, dichiarata da lui**: una riconnessione, in
-> **lettura**, sull'anagrafica — cioè la **voce 182**. E il ponte che serve va verso il
-> **gestionale** di PROD, **non** verso Matchpoint.
+> **④ Voce 180, prima metà** (sopra). **⑤ La settimana comincia dal LUNEDÌ** nel pannello — ordine
+> di visualizzazione, non il numero: `giorno` resta l'indice di `Date.getDay()`.
+>
+> **⑥ Misurato dove punta il bot** (⇒ il blocco qui sotto).
 >
 > ---
 >
-> ## 🎯 LA DECISIONE PRESA SUL `togli`, e il perché
+> ## 🚨 IL BOT DEI SOCI È ATTACCATO A PROD — misurato, e deciso cosa farne
 >
-> 🗣️ Lui: *«decidi tu come procedere»*. ⇒ **Il `togli` dei secret `MATCHPOINT_*` resta PER ULTIMO**,
-> dopo la 180. **Non** per prudenza sul gesto — è dimostrato reversibile — ma perché finché si
-> costruisce la lettura nativa **la scheda è il banco di lavoro**, e accecarla proprio mentre ci si
-> lavora sopra costa e non insegna niente.
-> 🎯 Alla fine invece la prova è quella vera: *tolgo la chiave e non cade niente.*
-> 📏 **La finestra cieca, misurata**: le 6 sync **non** soffrono (il cron su `cudi` è spento, 5 job
-> e nessuno parla con Matchpoint); soffrono la **scheda partita** (roster e importi, via
-> `matchpoint-bookings-edit` con `read:true`, l'unica strada che salta il recinto), il **borsellino**
-> e lo **stato coda**.
+> 📏 **Da due parti indipendenti**: la dichiarazione d'avvio sulla VM (`ponti edge:
+> qqbfphyslczzkxoncgex… (PROD)` · *«scrive sul gestionale VERO»*) **e** i registri dei due database —
+> **6.557 chiamate** ai ponti del bot su `qqbf` in 24 h (`consumer-staff-events` 4.070 ·
+> `consumer-player-readmodel` 2.487) contro **zero** sugli stessi ponti di `cudi`.
+> ✅ Il bot di **prova** punta già a `cudi`, come deve.
+> 🗣️ **Portato a lui, che ha deciso: si sposta AL PASSAGGIO** (voce 184), non adesso — perché oggi
+> vorrebbe dire che le prenotazioni dei soci **non arrivano più a Matchpoint** (il circolo non le
+> vede fino al distacco) e che il bot racconterebbe un calendario **fermo al 07/09 17:32**.
+> ⇒ **Non riaprire la domanda**: è decisa. Va fatta *quando* si fa il passaggio.
 >
 > ---
 >
@@ -91,127 +95,97 @@
 >
 > | | |
 > |---|---|
-> | **PROD** | `v6.397`, **intoccato**. Stanotte su `main` sono andati solo workflow e documenti |
-> | **TEST** (il sistema nuovo) | `v6.401` · edge 177+178+**179** in servizio su `cudi` |
+> | **PROD** | `v6.397`, **intoccata**. Su `main` sono andati solo documenti |
+> | **TEST** (il sistema nuovo) | `v6.404` · edge 177+178+179+**185**+**180a** in servizio su `cudi` |
 > | guardie | `guard-worker-sync` · `guard-docs-truth` **verdi su tutti e due i rami** |
-> | lista lavori | 🔴 **4 urgenti** (177 · 178 · 180 · **183**) · 📋 **3 in coda** (181 · 182 · 184) · 📦 **171 chiuse** |
-> | banco | **125 file verdi, 0 rossi** (7 Deno saltati) |
->
-> ⚠️ **Il codice di 177/178/179 sta SOLO su `test-preview`** e si deploya solo su `cudi`:
-> `supabase/functions/**` non è fra i file che `guard-worker-sync` tiene identici.
+> | lista lavori | 🔴 **5 urgenti** (177 · 178 · 180 · 183 · **185**) · 📋 **4 in coda** (181 · 182 · 184 · **186**) · 📦 **171 chiuse** |
+> | banco | **126 file verdi, 0 rossi** (7 Deno saltati) |
+> | listino | ⚠️ **38 fasce, 37 col prezzo** — *lui le ha modificate a mano stanotte* (erano 41): una fascia nuova è senza prezzo. **Non è un difetto** |
 >
 > ---
 >
-> ## ⏭️ LE VOCI APERTE, con dentro cosa manca a ciascuna
+> ## 🥇 LE COSE DA PORTARSI DIETRO (pagate stanotte)
 >
-> · **177** — un gesto vero che legga le fasce ⇒ **è il primo lavoro qui sopra, ed è sbloccato**;
-> · **178** — la prova del distacco: `togli`. ⭐ L'attrezzo è pronto e il ritorno è **dimostrato**;
->   ⏳ per decisione va **dopo la 180**;
-> · **180** — 💶 **il pezzo più grosso**: la scheda legge i soldi da Matchpoint **dal vivo**, fuori
->   dal recinto (`matchpoint-bookings-edit:670`). 📏 Delle **256** `staff_booking` vive solo **14**
->   portano gli importi: **242 hanno solo i nomi**. ⛔ **Dipende dalla 183**;
-> · **183** — 📐 **i prezzi**: `null` su tutte e 41 le fasce. **È sua**, non mia. E la metà
->   «griglia non fatta rispettare» resta da fare;
-> · **181** cassa nativa (dipende dalla 180) · **182** il travaso una-tantum (⇒ è la riconnessione
->   che lui ha annunciato) · **184** l'ambiente riconosciuto dall'hostname — 🚨 **la più
->   pericolosa**, in coda solo perché va fatta **al momento del passaggio**.
+> **①🚨 GUARDA SU QUALE RAMO SEI PRIMA DI MISURARE.** Ho letto `scrittura-al-circolo.ts` mentre ero
+> su un ramo basato su `main` e ho detto *«su TEST le scritture sono già tutte rifiutate»*: falso.
+> Su `main` quel modulo rifiuta e basta; su `test-preview` aveva il ramo che registrava. ⇒ *Due rami
+> con lo stesso file sono due file: il `grep` non te lo dice, `git status` sì.*
 >
-> ---
+> **②⭐ UNA SONDA CHE NON TROVA NIENTE VA PROVATA SUL CASSETTO GIUSTO.** `window.pmoListino` tornava
+> `undefined` e sembrava «il listino non si carica»: le `let` di script **non sono** proprietà di
+> `window`. Il dato c'era. ⇒ Prima di concludere «non c'è», far dire alla sonda **dove ha guardato**.
 >
-> ## 🥇 LE COSE DA PORTARSI DIETRO (tutte pagate stanotte)
+> **③⭐⭐ UN SABOTAGGIO PROVATO CON UN INPUT INNOCUO RESTA VERDE PER SEMPRE.** Due sabotaggi nuovi
+> non cadevano: il fixture aveva un giorno chiuso **senza fasce**, e quindi non distingueva la cura
+> dal difetto. ⇒ Una guardia si prova sull'input che deve **fermare**.
 >
-> **① Una sonda che interroga UNA fonte risponde su quella fonte, non sul fatto.** Pagata **tre
-> volte** di fila sulla stessa sonda: prima guardando solo `pm2_env`, poi solo una cartella, poi
-> cercando il processo con `pgrep -f <nome pm2>` — che è il nome di pm2, non la riga di comando.
-> ⇒ Si chiede a più fonti **e si dichiara quale ha risposto**.
+> **④ IL DEPLOY DELLE EDGE NON DICE «uguale a prima».** Rideployare 11 funzioni ha bumpato la
+> versione senza cambiare una riga (il codice era già quello): il numero di versione **non** è una
+> misura di cosa c'è dentro. ⇒ Si legge il **sorgente deployato**, non il contatore.
 >
-> **② Un errore silenziato ha la stessa faccia di un valore assente.** I `2>/dev/null` di comodo
-> hanno nascosto proprio la riga che avrebbe spiegato il buco. ⇒ Quando una sonda non trova, deve
-> stampare **dove ha guardato** — solo nomi, mai contenuti.
->
-> **③⭐ Un DIGEST pubblicato è un testimone che non rivela niente e conferma tutto.** Supabase non
-> mostra i valori dei secret ma ne pubblica lo `sha256`: confrontarlo con lo sha di ciò che si è
-> recuperato trasforma «il ritorno è plausibile» in «il ritorno è dimostrato». Stessa idea usata per
-> passarsi il segreto del ponte senza mai vederlo.
->
-> **④⭐⭐ Un mascheramento fuori posto è una misura.** Il primo passaggio del segreto era sbagliato,
-> e lo ha detto il log **senza mostrare niente**: GitHub aveva oscurato l'indirizzo del gestionale
-> (`URL_NUOVO: ***/…`), e censura **solo** il valore del segreto ⇒ nella casella c'era l'indirizzo.
-> *Dice cosa c'è nella cassaforte senza aprirla.*
->
-> **⑤ Il posto giusto dove interpretare un dato è quello dove non serve annidare una terza
-> sintassi.** Python dentro `ssh` dentro un blocco YAML non è un file valido: di là si **raccoglie**,
-> di qua si **interpreta**. E si controlla con `bash -n` sul passo **estratto dal workflow**, non
-> solo con `yaml.safe_load`.
->
-> **⑥ Una regola si applica anche quando è scomoda.** Il primo PR verso `main` era aperto da
-> `test-preview` (75 file, +7779/−2889): chiuso senza mergiare e rifatto **da un ramo basato su
-> `main`, con le sole righe**, come dice la regola 3/4.
+> **⑤ `get_edge_function` che sfora il limite SALVA SU FILE**, e quel file si `grep`a per pochi
+> gettoni: è il modo economico di leggere una funzione deployata (e di prenderne l'`id` per
+> incrociarlo coi registri).
 >
 > ---
 >
 > ## ⛔ COSA NON DARE PER FATTO
-> · **PROD non si tocca** — con l'unica eccezione dichiarata da lui (la 182, in lettura);
+> · **PROD non si tocca** — unica eccezione dichiarata: la 182, in lettura;
 > · **`scritturaAlCircoloConsentita` è cablata sul ref di PROD** (11 copie byte-identiche): è
->   l'unica cosa che impedisce al sistema nuovo di scrivere sul Matchpoint del circolo. **Va tenuta
->   per sempre**, e chi la trovasse «da generalizzare» stia fermo;
+>   l'unica cosa che impedisce al sistema nuovo di scrivere sul Matchpoint del circolo. Va tenuta
+>   **per sempre**;
+> · **su PROD non si salva mai un pagamento**; sul sistema nuovo la cassa nasce nostra (voce 181);
 > · la lista delle simulazioni legate a `PMO_IS_TEST_ENV` **non è chiusa**: prima del passaggio va
->   cercata tutta (`grep -n 'PMO_IS_TEST_ENV\|isTestEnv()'`);
-> · **nessuna regola di prenotazione esiste** oltre a: 30 giorni di anticipo, durata 30-180,
->   07:00-23:30, 4 giocatori. Nessun limite alle partite aperte, nessun preavviso di disdetta,
->   nessuna tabella dei campi, nessun listino, nessun modello di chiusure. Lui **crede** siano
->   definite.
+>   cercata tutta (`grep -n 'PMO_IS_TEST_ENV\|isTestEnv()'`). Ne restano almeno due vive —
+>   `PMO_PAYMENTS_SIMULATE` (che oggi accende solo i bottoni: l'edge **rifiuta**) e
+>   `WA_TEST_OVERRIDE_NUMBER`, che manda **ogni WhatsApp su un solo telefono**;
+> · **il bot non è stato provato** contro le edge nuove: il banco le copre, ma nessun gesto vero ci
+>   è passato. È la prova che manca anche alla **177**.
 
 ---
 
 ## 🔧 DETTAGLI OPERATIVI (fuori dal prompt)
 
-### Gli attrezzi nuovi di stanotte
-| workflow | cosa fa | pericolo |
-|---|---|---|
-| `sonda-ponte-soci.yml` | chiama il ponte di `cudi` in **sola lettura** (`verifica`) | nessuno: non scrive, non chiama il worker, cablato su `cudi` |
-| `secret-matchpoint-sistema-nuovo.yml` | `verifica` · `togli` · `rimetti` dei 4 secret su `cudi` | `togli` acceca le letture dal vivo finché non si `rimetti` |
+### Cosa è nato stanotte, e dove sta
 
-### Come si prova la 179 a mano (e come si rimette a posto)
-```sql
--- guarda com'è adesso
-select payload->>'value' from pmo_cloud_records
- where record_type='app_setting' and local_key='pmoFontePrenotazioni';
--- rimettila com'era, se una prova la lascia diversa
-update pmo_cloud_records
-   set payload = jsonb_build_object('key','pmoFontePrenotazioni','value','nativa')
- where record_type='app_setting' and local_key='pmoFontePrenotazioni';
-```
-⚠️ **Dev'essere `nativa`**: è lo stato in cui la sessione l'ha lasciata, ed è quello giusto per il
-sistema nuovo.
+| pezzo | dove |
+|---|---|
+| tabelle `pmo_listino_periodi` · `pmo_chiusure` · colonna `periodo_id` | `supabase/migrations/20260908220000_voce185_listino_per_periodi.sql` |
+| le 5 funzioni del listino (`pmo_calendario_effettivo` · `get_listino` · `set_periodo` · `elimina_periodo` · `set_chiusure`) | stessa migrazione, applicata a mano su `cudi` |
+| il pannello | `index.html`, blocco «VOCE 185 — IL LISTINO HA UN CALENDARIO» |
+| l'importo dal listino | `supabase/functions/matchpoint-bookings-create/importo-dal-listino.ts` (+ `.test.ts`) |
+| i lettori del bot | `fasce-prenotabili.ts` (2 copie identiche): `giornoDalCalendario`, `grigliaDalCalendario` |
 
-### Ambiente
-- **Non esiste nessun tool MCP per i secret Supabase**: si passa dai workflow.
-- **La VM si raggiunge da Actions via SSH**, non dalla shell della sessione cloud (esce solo la 443).
-- ⭐ **Le edge di `cudi` invece si chiamano direttamente in HTTPS dalla sessione cloud** — misurato
-  stanotte: un `curl` con chiave finta torna `401`, uno con la chiave giusta `200`.
-- Banco: `find supabase consumer-app tools test \( -name '*.test.mjs' -o -name '*.test.ts' \)`, poi
-  `node --experimental-strip-types` su ciascuno. **7 sono Deno** (importano `https://`) e vanno
-  saltati: si riconoscono da `ERR_UNSUPPORTED_ESM_URL_SCHEME`.
-  🚨 **Non contare i file «senza riepilogo» come sani**: formati di output diversi e crash hanno la
-  stessa faccia. Si guarda il **codice di uscita**.
-- I conteggi di `guard-docs-truth` si replicano in locale **prima** di spingere: sono **otto**
-  numeri, e gli `awk` stanno in `.github/workflows/guard-docs-truth.yml` righe 215-300.
+### Prove fisiche fatte (TEST 6.402 → 6.404, console remota)
+- pannello: 41 righe disegnate, calendario di controllo **366 quadratini su 13 mesi**;
+- **periodo creato dal pannello** → nasce con 41 fasce copiate; prezzo cambiato dentro → il **05/11**
+  risponde col periodo e il **31/10** resta base; **chiusura** → quel giorno chiuso, zero fasce;
+  poi **tutto rimesso com'era**;
+- **prenotazione nativa** → `200`, `PMO-7a10c08b…`, marchio `nata_nel_gestionale`, roster leggibile;
+- **anagrafica** → `503 AMBIENTE_DI_PROVA` (rifiuto visibile);
+- **importi**: mercoledì 19:30 → **1300** su entrambi i giocatori, `origineImporto: listino`, nessun
+  `lettoAt`; 07:00 (fuori griglia) → **nessun importo**;
+- annullo nativo → *«La partita è stata tolta dal gestionale»*, riga chiusa. **TEST ripulito.**
 
-### Le misure di stanotte (da non rifare)
+### Misure da non rifare
 | cosa | valore |
 |---|---|
-| i 4 secret Matchpoint su `cudi` | tutti presenti; **sha == digest** su tutti e quattro |
-| dove stanno davvero | `/opt/matchpoint-worker/.env` (**non** in `pm2_env`) |
-| segreto del ponte sulla VM | **non c'è**: pm2 72 chiavi, nessuna di segreto; `/proc` leggibile e senza |
-| ponte su `cudi` | **armato** (401 con chiave finta, non 503) |
-| timbro freschezza su `cudi` | fermo al **07/09 15:30**, e non si muove più |
-| `cron.job` su `cudi` | **5**, nessuno parla con Matchpoint |
-| fasce prenotabili | **41**, prezzo `null` su **tutte** |
-| banco | **125 file verdi, 0 rossi**, 7 Deno saltati |
+| pagamenti veri su `cudi` | **3.336** (24/05 → 07/09), 17 importi distinti |
+| ospite vs socio | stesso prezzo (946 / 949, tipico 12 €) |
+| `staff_booking` vive su `cudi` | **30**, di cui **2** con importi |
+| ponti del bot su `qqbf` (24 h) | 4.070 + 2.487 + 458 · su `cudi`: **0** |
+| bot soci / bot prova | `qqbf` (PROD) / `cudi` (TEST) |
 
-### PR di stanotte su `main`
-**#1487** l'attrezzo dei secret a tre fonti + digest · **#1488** il passaggio di consegne precedente ·
-**#1489** la 183 promossa · **#1490 #1491 #1492 #1494** la sonda del ponte (quattro giri) ·
-**#1493** l'ultimo ponte verso PROD + scheda 179 · **#1495** la 179 chiusa.
-**#1486** chiusa senza mergiare: era aperta dal ramo sbagliato.
+### PR di stanotte su `main` (solo documenti)
+**#1497** la 185 e la 186 in lista · **#1498** le scritture chiuse e le native · **#1499** la 180 a
+metà strada, il bot misurato, TEST 6.404.
+
+### Attrezzi
+- console remota: `cd tools/verifica-browser && npm install` (il container nasce senza
+  `node_modules`), poi `node console.mjs --env test --eval "…"`. Le `PMO_VERIFY_*` **ci sono già**.
+  Su TEST `--allow-writes` si usa senza chiedere; su PROD si dice prima.
+- `pmo_calendario_effettivo` è **fra le RPC di lettura** della console (aggiunta nominata).
+- Banco: `find supabase consumer-app tools test \( -name '*.test.mjs' -o -name '*.test.ts' \)` poi
+  `node --experimental-strip-types` su ciascuno; **7 sono Deno** e vanno saltati.
+- I conteggi di `guard-docs-truth` si replicano in locale **prima** di spingere (gli `awk` stanno
+  nel workflow, righe 215-300).
