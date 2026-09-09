@@ -215,12 +215,22 @@ async function getActor(req: Request, crono?: { segna(n: string): void }): Promi
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false },
   });
-  const { data: userData, error } = await authClient.auth.getUser(token);
-  crono?.segna('auth_getUser');
+  /* ⏱️⭐⭐ VOCE 191 — LE DUE DOMANDE D'INGRESSO SI FANNO INSIEME, perché non dipendono l'una
+   * dall'altra: `pmo_get_my_staff_profile` viaggia sul **JWT**, che è già nell'header del client,
+   * e non sul risultato di `getUser`. Erano in fila per come si scrive di solito, non per un
+   * vincolo. 📏 Misurate una per una prima di toccarle: **372 · 439 · 361 ms** e **335 · 336 ·
+   * 130 ms** su tre giri ⇒ in fila costano la somma, insieme costano la più lenta.
+   * ⛔ E si aspettano **tutte e due** (`Promise.all`) prima di guardare gli esiti: uscire al primo
+   *    errore lascerebbe l'altra promessa senza nessuno che la ascolta. */
+  const [utente, profilo] = await Promise.all([
+    authClient.auth.getUser(token),
+    authClient.rpc('pmo_get_my_staff_profile'),
+  ]);
+  crono?.segna('ingresso_parallelo');
+  const { data: userData, error } = utente;
   if (error || !userData?.user) return null;
 
-  const { data: profileData, error: profileError } = await authClient.rpc('pmo_get_my_staff_profile');
-  crono?.segna('profilo_staff');
+  const { data: profileData, error: profileError } = profilo;
   if (profileError || !profileData) return null;
   const profile = Array.isArray(profileData) ? profileData[0] : profileData;
   if (!profile || profile.status !== 'active') return null;
@@ -359,6 +369,19 @@ async function saveStaffBookingRecord(opts: {
   // cancellerebbe il roster aggiornato. La nostra riga è una RETE DI SICUREZZA (serve se l'app non
   // arriva mai a scrivere: scheda chiusa, crash), non la verità: quindi RIEMPIE I BUCHI e non tocca
   // ciò che c'è già — `{...nostro, ...esistente}`, dove l'esistente vince campo per campo.
+  /* ⏱️⭐⭐ VOCE 191 — IL LISTINO SI CHIEDE **PRIMA** DI ASPETTARE LA RIGA, non dopo.
+   * 📏 Misurati in fila: la lettura della riga **302 · 351 · 154 ms**, il listino **324 · 141 ·
+   * 486 ms**. Nessuno dei due dipende dall'altro — uno guarda cosa c'è già a quella chiave,
+   * l'altro quanto costa quell'ora — ed erano in fila solo per l'ordine in cui il codice li usa.
+   * ⚠️ **COSA COSTA, dichiarato**: partendo prima, il listino si chiede **anche** nel caso in cui
+   * la regola della lapide poi dice di non scrivere. È una lettura **senza effetti** e quel caso è
+   * raro ⇒ si paga una chiamata inutile ogni tanto per toglierne una dalla fila **sempre**.
+   * ⛔ La promessa nasce **solo** se la riga è nostra (`esitoNatoNelGestionale`), o sul percorso
+   *    verso il circolo si chiederebbe un prezzo che quel ramo non usa. */
+  const listinoInVolo = esitoNatoNelGestionale(workerResult)
+    ? client.rpc('pmo_calendario_effettivo', { p_dal: booking.data, p_al: booking.data })
+    : null;
+
   const { data: esistente } = await client
     .from('pmo_cloud_records')
     .select('payload, deleted, updated_at')
@@ -447,10 +470,10 @@ async function saveStaffBookingRecord(opts: {
     // si registra: un importo inventato è peggio di un importo mancante, perché nessuno lo
     // verrà a controllare.
     try {
-      const { data: cal, error: calErr } = await client.rpc('pmo_calendario_effettivo', {
-        p_dal: booking.data, p_al: booking.data,
-      });
-      crono?.segna('listino');
+      // ⏱️ VOCE 191 — già partita più su: qui si raccoglie, e il tempo è quello che AVANZA
+      //    rispetto alla lettura della riga, non la sua durata intera.
+      const { data: cal, error: calErr } = await listinoInVolo!;
+      crono?.segna('listino_residuo');
       if (calErr) throw new Error(calErr.message);
       const giorno = (((cal as JsonMap)?.giorni ?? []) as JsonMap[])
         .find((g) => clean(g?.data) === clean(booking.data)) ?? null;
