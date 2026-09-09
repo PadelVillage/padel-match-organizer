@@ -160,6 +160,105 @@ test('③ 🚨 il sottotitolo del calendario è GENERICO nell\'HTML, e il nome s
     'il testo scritto nell\'HTML è quello generico: è quello che si vede prima di sapere');
 });
 
+// ── ④ LE FRASI CHE SI RISCRIVONO ─────────────────────────────────────────────────────────────
+// 🚨⭐⭐ Le prime nove erano della forma «…su Matchpoint» ⇒ bastava togliere il complemento e la
+//   frase restava vera. Queste hanno il circolo come **soggetto** («Matchpoint ha rifiutato») o
+//   descrivono un **gesto** che senza di lui non esiste («sto guardando su Matchpoint» — dove?).
+//   ⇒ Togliere la parola le lascerebbe **monche o false**, non più generiche.
+// 📌 *Una parola sbagliata si toglie; una frase costruita attorno a quella parola si riscrive.*
+
+function frasi(memoria) {
+  const stato = esegui('pmoCircoloEsternoCollegato', {
+    pmoConfigMemoria: memoria, pmoGestionaleCollegatoAlCircolo: collegato,
+  });
+  const nome = esegui('pmoNomeCircoloEsterno', { pmoCircoloEsternoCollegato: stato });
+  const d = { pmoNomeCircoloEsterno: nome };
+  return {
+    rifiutata: esegui('pmoFraseRifiutata', d),
+    nonHoLaConferma: esegui('pmoFraseNonHoLaConferma', d),
+    lento: esegui('pmoFraseLento', d),
+    nessunaRisposta: esegui('pmoFraseNessunaRisposta', d),
+    lentoAdesso: esegui('pmoFraseLentoAdesso', d),
+    nonVerificabile: esegui('pmoFraseNonVerificabile', d),
+  };
+}
+
+test('④ col circolo le frasi restano ESATTAMENTE quelle di sempre (PROD non cambia)', () => {
+  const f = frasi(PROD);
+  assert.equal(f.rifiutata(), '❌ Matchpoint ha rifiutato: ');
+  assert.equal(f.nonHoLaConferma(1), '⌛ Non ho la conferma — sto guardando su Matchpoint…');
+  assert.equal(f.nonHoLaConferma(3), '⌛ Non ho ancora la conferma — continuo a guardare su Matchpoint (3° tentativo)…');
+  assert.equal(f.lento(), '⌛ Matchpoint è lento: aspetto ancora la conferma…');
+  assert.equal(f.nessunaRisposta(), 'Matchpoint non ha risposto in tempo');
+  assert.equal(f.nonVerificabile(), 'non riesco a raggiungere Matchpoint per verificare');
+});
+
+test('④ 🚨 senza circolo NESSUNA nomina Matchpoint — e nessuna resta monca', () => {
+  const f = frasi(NUOVO);
+  const tutte = [f.rifiutata(), f.nonHoLaConferma(1), f.nonHoLaConferma(3), f.lento(),
+                 f.nessunaRisposta(), f.lentoAdesso(), f.nonVerificabile()];
+  for (const t of tutte) {
+    assert.doesNotMatch(t, /Matchpoint/i, 'nomina il circolo: ' + t);
+    // ⛔ e non deve restare un buco dove stava la parola: niente doppi spazi, niente code appese
+    assert.doesNotMatch(t, /\s{2,}/, 'doppio spazio (parola tolta male): ' + JSON.stringify(t));
+    assert.doesNotMatch(t, /(su|a|di|il)\s*$/, 'frase monca: ' + JSON.stringify(t));
+    assert.ok(t.trim().length > 5, 'frase svuotata: ' + JSON.stringify(t));
+  }
+});
+
+test('④ 🚨⭐⭐ e senza circolo ogni frase è ESATTAMENTE questa — non «una che non dice Matchpoint»', () => {
+  /* 🩹 QUESTA PROVA È NATA DA UN SABOTAGGIO CHE IL BANCO NON VEDEVA. I controlli generici qui
+   * sopra (niente «Matchpoint», niente doppi spazi, niente coda appesa) lasciavano passare
+   * `'non riesco a raggiungere'` — una frase **troncata a metà**, che non nomina il circolo e
+   * finisce con un verbo che pretende un complemento. La regex della «frase monca» cercava una
+   * forma (`…su`, `…a`, `…di`) e quella non ce l'aveva.
+   * 📌 *Una guardia che descrive la forma di uno sbaglio prende quello sbaglio, non la classe:
+   *    per una frase l'unico invariante è la frase stessa.* */
+  const f = frasi(NUOVO);
+  assert.equal(f.rifiutata(), '❌ Rifiutata: ');
+  assert.equal(f.nonHoLaConferma(1), '⌛ Non ho la conferma — sto controllando…');
+  assert.equal(f.nonHoLaConferma(3), '⌛ Non ho ancora la conferma — continuo a controllare (3° tentativo)…');
+  assert.equal(f.lento(), '⌛ Ci sto mettendo più del previsto: aspetto ancora la conferma…');
+  assert.equal(f.nessunaRisposta(), 'nessuna risposta in tempo');
+  assert.equal(f.lentoAdesso(), '⌛ <strong>Sta prendendo più del previsto</strong>');
+  assert.equal(f.nonVerificabile(), 'non riesco a verificare');
+});
+
+test('④ ⛔ e NON nominano nemmeno il WORKER, che è un nome interno', () => {
+  // 🚨 «Matchpoint è lento adesso (coda del worker)» ne nominava DUE, e «worker» non lo deve
+  //    sentire chi lavora né su PROD né sul sistema nuovo.
+  for (const m of [PROD, NUOVO]) {
+    const f = frasi(m);
+    for (const t of [f.lentoAdesso(), f.nessunaRisposta(), f.lento()]) {
+      assert.doesNotMatch(t, /worker|hetzner|playwright|coda del/i, 'nome interno in una frase: ' + t);
+    }
+  }
+});
+
+test('④ ⛔ e nel DUBBIO tacciono il nome, come tutte le altre', () => {
+  const f = frasi({});   // configurazione non ancora arrivata
+  assert.doesNotMatch(f.rifiutata(), /Matchpoint/);
+  assert.doesNotMatch(f.nonHoLaConferma(1), /Matchpoint/);
+  assert.doesNotMatch(f.lento(), /Matchpoint/);
+});
+
+test('④ 📏 e nel sorgente non resta nessuna di quelle frasi scritta a mano', () => {
+  // ⚠️ Guardia TESTUALE, dichiarata per quello che è: dice che le stringhe non ci sono più, non
+  //    che le funzioni vengano chiamate nel posto giusto.
+  const codice = APP.split('\n')
+    .filter((r) => { const t = r.trim(); return !(t.startsWith('*') || t.startsWith('//') || t.startsWith('/*')); })
+    .join('\n');
+  for (const frase of ['❌ Matchpoint ha rifiutato: ',
+                       'sto guardando su Matchpoint…',
+                       'Matchpoint è lento: aspetto',
+                       "'Matchpoint non ha risposto in tempo'",
+                       'NON eseguita su Matchpoint',
+                       'verificata su Matchpoint',
+                       'raggiungere Matchpoint per verificare (']) {
+    assert.ok(!codice.includes(frase), 'ancora scritta a mano nel codice: ' + frase);
+  }
+});
+
 // ── CONTROLLO NEGATIVO ───────────────────────────────────────────────────────────────────────
 
 test('🧪 SABOTAGGI — il banco deve saper cadere', () => {
