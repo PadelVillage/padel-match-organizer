@@ -1202,6 +1202,38 @@ vecchia non era sbagliata quando fu scritta: descriveva chi preme il bottone, in
 quel bottone si premeva.
 📌 *Quando cade il permesso, cade anche la riga che spiegava a chi apparteneva.*
 
+🆕🗣️⭐⭐ **E IL 09/09/2026 IL PERMESSO SI È ALLARGATO A TUTTA L'OPERATIVITÀ — sue parole:**
+
+> *«Puoi fare tutti i test end to end che vuoi. Ricordati di farlo con i cinque nominativi di
+> segreteria che sono Lidia, Maurizio, Marco, Laura e Fabiola. Tanto al momento siamo in una fase in
+> cui **non è operativo il bot con i soci**. Quindi puoi fare i test end to end prenotando,
+> cambiando, levando, **pagando**, tutto quello che puoi fare come operatività fai pure perché non
+> c'è nessun problema. Quindi vedere i saldi, mettere nel borsellino, levare dal borsellino. Puoi
+> fare tutto quanto.»*
+
+⇒ **Sul SISTEMA NUOVO (`cudi`) l'operatività è aperta tutta**, e non serve più chiedere per gesto:
+prenotare · cambiare · togliere un giocatore · **incassare** · stornare · guardare i saldi ·
+ricaricare e scaricare il borsellino. Il perimetro sono i **cinque nominativi di segreteria**, che
+sono gli stessi della whitelist Telegram.
+
+🚨🚨⭐⭐ **E LA RIGA CHE NON SI DEVE LEGGERE DENTRO QUESTA: «pagando» NON VALE SU PROD.** La sua
+frase parla del sistema su cui si sta lavorando — quello dove la cassa è **nativa** (voce 181) e un
+incasso nasce e muore da noi. Su **PROD** *incassare* e *incassare da Matchpoint* restano lo
+**stesso gesto**, e lì vale l'invariante che non scade: **nessun soldo passa da Matchpoint per mano
+nostra, mai** (⇒ *🔌 IL DISTACCO*). ⇒ Chi leggesse questa riga come «adesso si può pagare ovunque»
+la userebbe proprio nell'unico posto in cui è vietata.
+
+⚖️ **E IL PERMESSO POGGIA SU UNA CONDIZIONE CHE SCADRÀ, dichiarata da lui nella frase stessa**:
+*«al momento… non è operativo il bot con i soci»* — ripetuta il giorno stesso in *«tanto non usa
+nessuno il chatbot»*. ⇒ **Il giorno in cui il bot va in servizio coi soci, questa riga non vale
+più**, e non lo dirà nessuno: una prenotazione di prova su uno slot vero, da quel momento, toglie un
+campo a qualcuno. 📌 *Un permesso concesso «tanto non c'è nessuno» è un permesso con dentro una
+scadenza che non ha una data: si rilegge quando la stanza si riempie, non si eredita.*
+
+🧹 **Cosa resta obbligatorio anche dentro il permesso**, ed è la riga di sempre: ciò che una prova
+lascia diverso da com'era **si rimette com'era, o LO SI DICE**. Il permesso toglie la domanda, non
+il resoconto.
+
 ### 🧹 …E UNA VOCE PROVATA SI SPOSTA FRA LE CHIUSE **SUBITO** (FERMA, 04/09/2026 notte)
 
 🗣️ Sue parole, guardando la lista delle urgenti: *«molti di questi task sono chiusi, però non sono
