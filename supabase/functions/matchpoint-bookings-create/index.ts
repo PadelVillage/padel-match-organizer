@@ -85,6 +85,38 @@ function err(status: number, code: string, message: string, extra: JsonMap = {})
   return json({ ok: false, error: code, message, ...extra }, status);
 }
 
+/**
+ * ⏱️⭐⭐ VOCE 191 — IL CRONOMETRO DEI PASSI, e nasce da una regola che questa voce ha già pagato.
+ *
+ * 📏 Il fatto: la scrittura prende **1,3-2,1 s** e il tempo è **tutto qui dentro** — l'app ci mette
+ * 3 ms a ridisegnare il calendario. Ma *«è tutto dentro la edge»* dice **dove**, non **quale passo**.
+ * 🚨 La prima cura di questa voce fu scelta su un **sospetto plausibile** (il polling della coda che
+ * rubava il posto), e rimisurata **non reggeva**: nessun guadagno. ⇒ Adesso si misura **prima**.
+ * 📌 *Una misura che spiega COSA (è avviamento, non lavoro) non spiega anche PERCHÉ: il primo
+ *    sospetto plausibile non è una diagnosi, e prendere l'uno per l'altra fa curare la cosa
+ *    sbagliata con la coscienza a posto.*
+ *
+ * ⚖️ **Resta acceso per sempre**, e costa quanto un `Date.now()` per passo: senza, la prossima
+ * volta che qualcuno vorrà accorciare questa strada ricomincerà da capo a indovinare. Una riga di
+ * registro per creazione — cioè **17 in 100 minuti**, misurato — non è un costo.
+ * ⛔ Non misura la rete fra il browser e qui: quella la vede solo l'app.
+ */
+function cronometro() {
+  const t0 = Date.now();
+  let ultimo = t0;
+  const passi: Record<string, number> = {};
+  return {
+    segna(nome: string) {
+      const ora = Date.now();
+      passi[nome] = ora - ultimo;
+      ultimo = ora;
+    },
+    esito(): JsonMap {
+      return { totale_ms: Date.now() - t0, passi };
+    },
+  };
+}
+
 function clean(value: unknown) {
   return String(value ?? '').trim();
 }
@@ -172,7 +204,7 @@ function chiCiHaChiesto(actor: StaffActor): string {
   return actor.role === 'consumer' ? 'socio' : 'staff';
 }
 
-async function getActor(req: Request): Promise<StaffActor | null> {
+async function getActor(req: Request, crono?: { segna(n: string): void }): Promise<StaffActor | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   const token = clean(req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -184,9 +216,11 @@ async function getActor(req: Request): Promise<StaffActor | null> {
     auth: { persistSession: false },
   });
   const { data: userData, error } = await authClient.auth.getUser(token);
+  crono?.segna('auth_getUser');
   if (error || !userData?.user) return null;
 
   const { data: profileData, error: profileError } = await authClient.rpc('pmo_get_my_staff_profile');
+  crono?.segna('profilo_staff');
   if (profileError || !profileData) return null;
   const profile = Array.isArray(profileData) ? profileData[0] : profileData;
   if (!profile || profile.status !== 'active') return null;
@@ -303,8 +337,10 @@ async function saveStaffBookingRecord(opts: {
    * ciò che stiamo scrivendo, e allora non si tocca). Senza, la regola fallisce chiusa.
    */
   scritturaIniziataAlle?: string | null;
+  /** ⏱️ VOCE 191 — facoltativo: se c'è, questa funzione segna i suoi tre passi. */
+  crono?: { segna(n: string): void };
 }) {
-  const { supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle } = opts;
+  const { supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle, crono } = opts;
   const client = createClient(supabaseUrl, supabaseKey);
   // 🚨⭐⭐ LA CHIAVE È QUELLA DELL'APP, QUANDO L'APP CE LA DÀ (v6.172, 3/08/2026).
   // Prima si usava sempre `staff_booking|<data>|<ora>|Campo <n>|<userId>`, e l'app scriveva la SUA
@@ -329,6 +365,7 @@ async function saveStaffBookingRecord(opts: {
     .eq('record_type', 'staff_booking')
     .eq('local_key', localKey)
     .maybeSingle();
+  crono?.segna('riga_esistente');
 
   // ⛔ Se quella riga è già una lapide, di regola NON la si resuscita: rimetterla viva farebbe
   // ricomparire una prenotazione annullata — è il fantasma che inseguiamo da luglio.
@@ -413,6 +450,7 @@ async function saveStaffBookingRecord(opts: {
       const { data: cal, error: calErr } = await client.rpc('pmo_calendario_effettivo', {
         p_dal: booking.data, p_al: booking.data,
       });
+      crono?.segna('listino');
       if (calErr) throw new Error(calErr.message);
       const giorno = (((cal as JsonMap)?.giorni ?? []) as JsonMap[])
         .find((g) => clean(g?.data) === clean(booking.data)) ?? null;
@@ -461,6 +499,7 @@ async function saveStaffBookingRecord(opts: {
     updated_at: new Date().toISOString(),
     synced_at: new Date().toISOString(),
   }, { onConflict: 'record_type,local_key' });
+  crono?.segna('scrittura_riga');
   if (erroreRiga) throw new Error(`riga della prenotazione non scritta: ${erroreRiga.message}`);
 }
 
@@ -617,7 +656,10 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return err(405, 'METHOD_NOT_ALLOWED', 'Only POST supported');
 
   // Auth: percorso consumer (secret interno) O staff (JWT)
-  const actor = consumerActor(req) ?? await getActor(req).catch(() => null);
+  // ⏱️ VOCE 191 — il cronometro parte QUI, cioè al primo istante in cui questa funzione è sua:
+  //    ciò che sta prima (l'avviamento dell'isolate, la rete) da dentro non è misurabile.
+  const crono = cronometro();
+  const actor = consumerActor(req) ?? await getActor(req, crono).catch(() => null);
   if (!actor) return err(401, 'UNAUTHORIZED', 'Autenticazione richiesta.');
   if (!hasPermission(actor, 'cloud_sync')) {
     return err(403, 'FORBIDDEN', 'Permesso cloud_sync richiesto per prenotare su Matchpoint.');
@@ -809,7 +851,7 @@ Deno.serve(async (req: Request) => {
     const scritturaIniziataAlle = new Date().toISOString();
     const workerResult = esitoNativo('create');
     try {
-      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle });
+      await saveStaffBookingRecord({ supabaseUrl, supabaseKey, actor, booking, workerResult, scritturaIniziataAlle, crono });
     } catch (dbErr) {
       // ⚖️ Qui il rifiuto di prima torna a servire, ed è il verso giusto: se la registrazione non
       // è riuscita, la partita NON esiste da nessuna parte — dirle «fatto» sarebbe la bugia che
@@ -817,6 +859,9 @@ Deno.serve(async (req: Request) => {
       console.error(JSON.stringify({ event: 'scrittura_nativa_fallita', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: booking });
     }
+    // ⏱️ VOCE 191 — una riga di registro per creazione, col dettaglio dei passi. È lo strumento
+    //    che questa voce chiedeva: senza, chi vorrà accorciare questa strada ricomincia a indovinare.
+    console.log(JSON.stringify({ event: 'tempi_creazione', nativa: true, ...crono.esito() }));
     return ok({
       message: `${tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita'} registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
       nativa: true,
