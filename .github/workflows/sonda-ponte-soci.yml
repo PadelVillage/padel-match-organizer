@@ -12,33 +12,80 @@ name: Sonda del ponte dei soci (SOLA LETTURA, solo sul gestionale nuovo)
 #
 # ⛔ COSA QUESTO ATTREZZO NON PUÒ FARE, ed è cablato — non è una guardia che si può sbagliare,
 #    sono valori che nel file non ci sono:
-#   · l'indirizzo è **solo** quello di `cudi`. Il ref di PROD non compare qui dentro;
-#   · l'azione è **solo** `verifica`, che è l'unica del ponte che non scrive niente e non
-#     chiama il worker («Non scrive NIENTE… è la sua ragione d'essere», `index.ts`);
-#   · il segreto si legge **solo** dal bot di PROVA. Anche prendendo per sbaglio quello del bot
-#     dei soci, la chiamata verso `cudi` uscirebbe **401**: sbagliare qui non fa danno, fa un no.
-# ⇒ Non manda messaggi a nessuno, non prenota, non annulla, non tocca Matchpoint.
+#   · gli indirizzi sono **solo** quelli di `cudi`. Il ref di PROD non compare qui dentro;
+#   · il segreto si legge **solo** dal bot di PROVA (o dal secret del repo). Anche prendendo per
+#     sbaglio quello del bot dei soci, la chiamata verso `cudi` uscirebbe **401**: sbagliare qui
+#     non fa danno, fa un no.
+# ⇒ Non manda messaggi a nessuno e non tocca Matchpoint.
+#
+# 🔄🚨⭐ ESTESA IL 09/09/2026 — e la riga vecchia («l'azione è **solo** `verifica`») è stata
+#    CORRETTA, non affiancata: adesso le azioni sono cinque, e lasciare in testa una promessa
+#    più stretta di quello che il file fa sarebbe la peggiore delle note — *una nota sulla UI è
+#    un'affermazione sul codice*, e questa sta sul codice stesso.
+#
+# 📏 LE CINQUE AZIONI, e la colonna che conta è l'ultima:
+#
+#   | azione          | dove va                    | scrive? |
+#   |-----------------|----------------------------|---------|
+#   | `verifica`      | consumer-booking-write     | ⛔ no — non chiama nemmeno il worker |
+#   | `availability_day` | consumer-booking-write  | ⛔ no — è una lettura della griglia (voci 177 · 185) |
+#   | `kb`            | consumer-player-readmodel  | ⛔ no — è ciò che il bot RACCONTA sugli orari (voce 177) |
+#   | `create_prova`  | consumer-booking-write     | ⛔ no — `dry_run: true`, si ferma sulla riga prima di occupare il campo |
+#   | `create_vero`   | consumer-booking-write     | 🚨 **SÌ** — nasce una prenotazione vera. Vuole la parola `PRENOTO` |
+#
+# ⭐⭐ PERCHÉ `create_prova` VALE QUANTO UN `create` VERO, per quello che deve dimostrare.
+#    Il verdetto della griglia (voce 183) sta a `index.ts:591`, cioè nel blocco comune PRIMA
+#    del ramo dell'azione; la prova a vuoto si ferma a `index.ts:912`. ⇒ Fra i due c'è tutto
+#    quello che la 183 deve provare — i cinque rifiuti E il ramo `ok` con la durata presa
+#    dalla FASCIA — e la riga che occupa il campo sta **dopo**.
+#    📌 *Una prova a vuoto che si ferma troppo presto prova un percorso diverso da quello vero;
+#    questa si ferma sull'ultima riga utile, ed è per questo che conta.*
+#
+# ⚖️ E UN RIFIUTO NON È UN GUASTO DELLA SONDA. `create_prova` su un orario fuori griglia esce
+#    **400**, ed è l'esito giusto: nessuno ha scritto niente, e il codice lo dice a chiare
+#    lettere («sono rifiuti puliti, non esiti ignoti»). ⇒ Qui il 400 si stampa e si dichiara,
+#    non fa cadere il job — cadere direbbe «la sonda è rotta» dove il sistema ha risposto bene.
 
 on:
   workflow_dispatch:
     inputs:
+      azione:
+        description: 'Cosa chiedere al ponte'
+        required: true
+        default: 'availability_day'
+        type: choice
+        options:
+          - availability_day
+          - kb
+          - create_prova
+          - verifica
+          - create_vero
       member_id:
         description: 'Codice socio a 6 cifre (una delle cinque persone di segreteria)'
         required: true
         default: '001013'
       data:
-        description: 'Giorno dello slot, YYYY-MM-DD'
-        required: true
+        description: 'Giorno dello slot, YYYY-MM-DD (non serve per `kb`)'
+        required: false
+        default: ''
       ora:
-        description: 'Ora dello slot, HH:MM'
-        required: true
-        default: '09:00'
+        description: 'Ora dello slot, HH:MM (solo per verifica/create_*)'
+        required: false
+        default: '18:00'
       campo:
-        description: 'Numero del campo'
-        required: true
+        description: 'Numero del campo (solo per verifica/create_*)'
+        required: false
         default: '4'
+      durata:
+        description: 'Durata in minuti. VUOTO = non la chiedo, e decide la fascia (voce 183)'
+        required: false
+        default: ''
       scritta_alle:
-        description: 'Istante della scrittura (ISO). Vuoto = non lo diciamo, e non uscirà mai un «no»'
+        description: 'Solo per `verifica`. Vuoto = non lo diciamo, e non uscirà mai un «no»'
+        required: false
+        default: ''
+      conferma_scrittura:
+        description: '🚨 Solo per `create_vero`: scrivere PRENOTO. Qualunque altra cosa ferma il job'
         required: false
         default: ''
 
@@ -48,6 +95,8 @@ jobs:
     env:
       # 🔒 Solo il gestionale nuovo. Cablato, non un input.
       URL_NUOVO: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-booking-write
+      # 🔒 Anche questo solo sul gestionale nuovo: è il lettore che dice cosa il bot RACCONTA.
+      URL_READMODEL: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-player-readmodel
       DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
       DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
     steps:
@@ -167,26 +216,80 @@ jobs:
           printf '%s' "$SEG" > /tmp/seg
           echo "lunghezza ${#SEG} · sha $(printf '%s' "$SEG" | sha256sum | cut -c1-8)"
 
-      - name: 🔎 CHIAMA `verifica` — non scrive niente
+      - name: 🚦 Il cancello della scrittura — prima di comporre qualunque richiesta
         env:
+          AZIONE: ${{ inputs.azione }}
+          CONFERMA: ${{ inputs.conferma_scrittura }}
+        run: |
+          set -euo pipefail
+          # 🚨⭐ STA PRIMA DELLA CHIAMATA, ed è il motivo per cui è un passo suo: un cancello
+          # infilato dentro il passo che chiama si legge dopo che la richiesta è già composta,
+          # e chi lo legge non distingue più «non ho scritto» da «non sono arrivato a scrivere».
+          if [ "$AZIONE" != "create_vero" ]; then
+            echo "azione «$AZIONE»: non scrive niente, si prosegue."
+            exit 0
+          fi
+          if [ "${CONFERMA:-}" != "PRENOTO" ]; then
+            echo "::error::create_vero fa NASCERE una prenotazione vera su cudi, che e' il sistema che diventa quello del circolo. Per farlo va scritto PRENOTO nella casella di conferma."
+            exit 1
+          fi
+          echo "::warning::create_vero confermato: da qui esce una prenotazione VERA sul gestionale nuovo."
+
+      - name: 🔎 Chiama il ponte
+        env:
+          AZIONE: ${{ inputs.azione }}
           MEMBER_ID: ${{ inputs.member_id }}
           DATA: ${{ inputs.data }}
           ORA: ${{ inputs.ora }}
           CAMPO: ${{ inputs.campo }}
+          DURATA: ${{ inputs.durata }}
           SCRITTA: ${{ inputs.scritta_alle }}
         run: |
           set -euo pipefail
-          CORPO="$(python3 -c '
-          import json, os
-          b = {"action": "verifica", "member_id": os.environ["MEMBER_ID"],
-               "data": os.environ["DATA"], "ora": os.environ["ORA"],
-               "campo": int(os.environ["CAMPO"])}
-          s = os.environ.get("SCRITTA", "").strip()
-          if s: b["scritta_alle"] = s
-          print(json.dumps(b))')"
-          echo "richiesta: $CORPO"
+          # ⭐ Il corpo si compone in Python e non in bash: `durata` deve poter essere ASSENTE
+          # (è il caso che la voce 183 chiama «chi non chiede una durata prende quella della
+          # FASCIA»), e in bash «assente» e «vuoto» sono la stessa cosa — cioè proprio la
+          # distinzione da cui dipende il caso da provare.
+          COMPOSTO="$(python3 -c '
+          import json, os, sys
+          a = os.environ["AZIONE"]
+          URL_W = os.environ["URL_NUOVO"]
+          URL_R = os.environ["URL_READMODEL"]
+          mid = os.environ["MEMBER_ID"].strip()
+          def slot(b):
+              b["data"] = os.environ["DATA"].strip()
+              b["ora"] = os.environ["ORA"].strip()
+              b["campo"] = int(os.environ["CAMPO"].strip() or 4)
+              d = os.environ.get("DURATA", "").strip()
+              if d:
+                  b["durata"] = int(d)
+              return b
+          if a == "kb":
+              url, body = URL_R, {"action": "kb"}
+          elif a == "availability_day":
+              url, body = URL_W, {"action": "availability_day", "member_id": mid,
+                                  "data": os.environ["DATA"].strip()}
+          elif a == "verifica":
+              url = URL_W
+              body = slot({"action": "verifica", "member_id": mid})
+              s = os.environ.get("SCRITTA", "").strip()
+              if s:
+                  body["scritta_alle"] = s
+          elif a in ("create_prova", "create_vero"):
+              url = URL_W
+              body = slot({"action": "create", "member_id": mid})
+              if a == "create_prova":
+                  body["dry_run"] = True
+          else:
+              print("azione sconosciuta: %s" % a, file=sys.stderr)
+              raise SystemExit(1)
+          print(json.dumps({"url": url, "body": body}))')"
+          URL="$(printf '%s' "$COMPOSTO" | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')"
+          CORPO="$(printf '%s' "$COMPOSTO" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["body"]))')"
+          echo "verso : $URL"
+          echo "corpo : $CORPO"
           CODICE="$(curl -sS -o /tmp/risposta.json -w '%{http_code}' \
-            -X POST "$URL_NUOVO" \
+            -X POST "$URL" \
             -H 'Content-Type: application/json' \
             -H "X-Consumer-Secret: $(cat /tmp/seg)" \
             -d "$CORPO")"
@@ -194,6 +297,19 @@ jobs:
           python3 -m json.tool /tmp/risposta.json || cat /tmp/risposta.json
           # 🚨 Un 401 non è un guasto della sonda: è il segreto sbagliato, e va detto per nome
           # invece di lasciarlo dedurre da un JSON.
-          [ "$CODICE" = "401" ] && echo "::error::401 — il segreto letto non è quello del gestionale nuovo."
-          [ "$CODICE" = "200" ] || exit 1
+          if [ "$CODICE" = "401" ]; then
+            echo "::error::401 — il segreto letto non è quello del gestionale nuovo."
+            exit 1
+          fi
+          # ⚖️ Il 400 su un `create` è un ESITO, non un guasto: è il rifiuto pulito della
+          # griglia, e nessuno ha scritto niente. Farlo cadere direbbe «la sonda è rotta»
+          # proprio dove il sistema ha risposto come doveva.
+          case "$AZIONE:$CODICE" in
+            create_prova:400|create_vero:400)
+              echo "::notice::Rifiuto pulito (400): la griglia ha detto no e non è stato scritto niente." ;;
+            *:200) : ;;
+            *)
+              echo "::error::HTTP $CODICE inatteso per l'azione $AZIONE."
+              exit 1 ;;
+          esac
           echo "::notice::Il ponte ha risposto. Il verdetto è nel JSON qui sopra."
