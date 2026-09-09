@@ -1912,8 +1912,24 @@ MISURATI e poi confermati da lui.** 📏 Sui **3.336 pagamenti veri** arrivati d
 più frequente sui `paid` dal 01/07, tolte le righe da 20,00 € delle **giornate-torneo** (tutti e
 quattro i campi allo stesso prezzo speciale: eventi, non listino). 🗣️ Guardando la tabella ha
 risposto **«confermo»**.
-⇒ **Le 41 fasce hanno un prezzo**: 8 € il sabato e le fasce di giorno, 10 € il pranzo (12:30-15:30),
-12 € il 18:00 e il 21:00, **13 € il 19:30** infrasettimanale, 10 € la domenica alle 16:00.
+🔄🚨 **E QUESTA RIGA È STATA CORRETTA IL 09/09: diceva «le 41 fasce», e ne dice altre.**
+📏 Misurato sul database di `cudi` il 09/09, prima di lavorarci sopra: le fasce sono **39**, non 41,
+tutte con un prezzo, tutte scritte in **un solo salvataggio** l'08/09 alle 20:35:22 — e il listino
+che c'è **non è quello descritto qui sotto**. In particolare **un prezzo da 8 € non esiste**: il
+minimo è 10 €, e il sabato è tutto a 10 € invece che a 8 €.
+· **lun-gio** (5 fasce): 12:30 e 14:00 → 10 € · 18:00 → 12 € · **19:30 → 13 €** · 21:00 → 12 €
+· **venerdì** (7): 09:30·12:30·14:00·15:30·17:30 → 10 € · 19:00 e 20:30 → 12 €
+· **sabato** e **domenica** (7 e 5): tutte a 10 €
+⚠️ **Chi abbia tolto due fasce e cambiato i prezzi non si può sapere**: una cancellazione non lascia
+traccia in `updated_at`, e le 39 rimaste portano tutte l'istante del salvataggio in blocco.
+📌 *La cassa addebiterà quello che sta nel DATABASE, non quello che sta scritto qui: fra i due, la
+riga da correggere è sempre quella scritta.* ⇒ **Se quei numeri non sono quelli voluti, è una sua
+parola che li cambia** — dal pannello, in un minuto.
+⛔ **La riga vecchia resta sotto perché descrive ciò che fu MISURATO e CONFERMATO l'08/09**, e serve
+a far vedere che i due elenchi non coincidono; non descrive più il sistema:
+
+⇒ ~~**Le 41 fasce hanno un prezzo**: 8 € il sabato e le fasce di giorno, 10 € il pranzo (12:30-15:30),
+12 € il 18:00 e il 21:00, **13 € il 19:30** infrasettimanale, 10 € la domenica alle 16:00.~~
 ⚠️ **Quattro non hanno nessun pagamento dietro** — lunedì 16:30, mercoledì 14:00, giovedì 14:00,
 sabato 12:00 — e il loro numero viene dalla fascia gemella, non da una misura. Altre sei ne hanno
 1-4. 📌 *Un numero misurato su un solo pagamento ha la stessa faccia di uno misurato su cento: la
@@ -1922,8 +1938,60 @@ differenza sta scritta solo dove qualcuno la scrive.*
 (946 e 949 pagamenti, tipico 12 € tutt'e due) ⇒ non serve un secondo listino, e il giorno in cui
 servisse è una decisione, non un adeguamento.
 
-⏳ **Cosa manca per chiuderla**: la metà **GRIGLIA**, qui sotto — che `create` faccia rispettare le
-fasce invece di controllare solo la finestra 07:00-23:30. I prezzi non sono più il pezzo mancante.
+🔨✅ **LA METÀ GRIGLIA È FATTA E IN SERVIZIO su `cudi` dal 09/09 mattina** — commit `1fc47e98`,
+deploy `success`, e il codice nuovo **verificato dentro la funzione in servizio** (non «il workflow è
+passato»): `verdettoSlot` compare **5 volte** nel `consumer-booking-write` vivo, con tutti e cinque i
+codici di rifiuto e la riga di registro `create griglia`.
+
+🚨 **Il difetto era mascherato da un commento onesto**: `create` controllava solo la finestra
+07:00-23:30, con scritto accanto *«limiti larghi: l'autorità vera è Matchpoint»*. **Era vero** — la
+griglia la faceva rispettare lui, a valle. ⇒ Il giorno del distacco quell'autorità non esiste più, e
+resta un controllo che accetta **le 07:13 di un giorno di chiusura**.
+📌 *Un controllo che delega non è un controllo: è un rimando, e vale finché vive chi lo riceve.*
+
+⚖️ **E non è una regola di forma: è ciò che dà un PREZZO alla partita.** Il prezzo vive sulla fascia
+(voce 185); una prenotazione fuori griglia non ne ha nessuno e non lo avrà **mai** — né alla nascita
+né all'apertura della scheda, perché non c'è fascia da cui leggerlo. ⇒ Chiudere la griglia rende vera
+**per costruzione** la frase su cui poggia la **181**: *ogni prenotazione ha un importo*.
+
+⭐ **TRE DECISIONI DI DISEGNO, che valgono più del codice:**
+· ① **si valida contro la STESSA FONTE che ha fatto l'offerta.** `availability_day` propone dal
+  calendario e — se la RPC è muta — dal blocco vecchio. Validando solo sul calendario, in quella
+  finestra il socio si vedrebbe **offrire uno slot e poi rifiutare lo stesso slot**;
+· ② **chi non chiede una durata prende quella della FASCIA.** 📏 Oggi tutte e 39 le fasce durano
+  **90′**, esattamente `DURATA_DEFAULT` ⇒ un confronto secco andrebbe sempre bene. **È un esito, non
+  una regola**: il pannello della 185 gli lascia fare una fascia da 60′, e da quel momento ogni
+  richiesta senza durata sarebbe rifiutata **in silenzio e solo su quella fascia**. Chi invece
+  dichiara una durata diversa si sente dire di no: *correggere in silenzio ciò che qualcuno ha
+  chiesto per iscritto è peggio che rifiutarlo*;
+· ③ **solo `create`, mai gli altri gesti.** Gli altri lavorano su una partita che **esiste già**, e
+  una partita esistente può stare fuori dalla griglia di oggi. Far passare `cancel` di qui vorrebbe
+  dire **impedire di disdire** proprio le prenotazioni che più meritano di sparire.
+
+🔪 **I rifiuti sono CINQUE e non uno**, perché chiedono cose diverse a chi legge — in particolare
+*«quel giorno non c'è niente»* (`GIORNO_SENZA_FASCE`) e *«non ho la griglia»* (`GRIGLIA_SCONOSCIUTA`)
+non sono lo stesso caso. E **tutti e cinque escono 400, non 5xx**: nessuno ha scritto niente, quindi
+è un rifiuto pulito e non un esito ignoto — *un 5xx si legge «forse è passata», e una prenotazione
+riprovata occupa il campo due volte*.
+
+✅ **Provato**: banco nuovo `test/la-griglia-e-un-limite.test.mjs` **16 verdi 0 rossi**, con **SEI
+sabotaggi** tutti visti cadere **sul caso giusto** — e tutti verificati **applicati** prima di
+crederci (la trappola pagata l'08/09: *un sabotaggio che non tocca niente si legge come un successo*).
+Banco intero **131 file verdi, 0 rossi**. Sintassi delle due funzioni controllata.
+⭐ E la regola è stata esercitata **sulla griglia VIVA di `cudi`**, non su un fixture: le 18:00
+passano a 12,00 €, le 19:30 senza durata prendono la fine della fascia a 13,00 €, e **18:30 · 07:13 ·
+una durata da 60′ sulle 18:00** vengono rifiutate.
+🩹 E una sonda sbagliata trovata per strada: `pmo_calendario_effettivo` risponde `AUTH_REQUIRED` a chi
+la chiama dal database senza panni — accetta **staff** o **`service_role`**, che è quello che usa
+l'edge. Il primo `ok:false` sembrava un guasto del calendario ed ero **io nel posto sbagliato**.
+
+⏳⛔ **PERCHÉ LA VOCE RESTA APERTA**: **nessun `create` vero ci è ancora passato.** Il cancello
+dell'edge è un segreto condiviso (`CONSUMER_BRIDGE_SECRET`) che non sta nell'ambiente ⇒ chiamarla io
+non si può. 📌 *Un banco verde e un codice verificato in servizio dicono che il meccanismo è giusto e
+che è partito il file giusto — non che qualcuno ci è passato.*
+⇒ **Cosa la chiude**: un tentativo di prenotazione dal **bot di prova** (che punta a `cudi`), che
+lasci nel registro la riga `create griglia … → ok` o un rifiuto. ⭐ **È la stessa prova che manca alla
+177 e alla metà BOT della 185**: un solo gesto ne chiude tre.
 
 ⚠️ **E non esiste NIENTE di quello che sembra esistere**: nessun limite al numero di partite
 aperte, nessun preavviso di disdetta, **nessuna tabella dei campi** (sono 4, cablati in **tre punti
