@@ -508,5 +508,41 @@ test('⑮ 🆕⭐⭐ LA SCRITTURA NATIVA RISPONDE GIÀ COM\'È FINITA: non c\'è
   assert.equal(okDopo, 2, 'riconoscere l\'esito e non disegnarlo è come non riconoscerlo');
 });
 
+test('⑯ 🚨⭐⭐ LA COPIA DELL\'APP NON POTA LA RIGA DEL GESTIONALE (nate e non piu\' annullabili)', () => {
+  // 📏 IL FATTO, misurato su `cudi` il 09/09/2026 provando la cura — e senza la prova non si
+  //    sarebbe visto: la edge scrive la riga con lo STESSO `local_key` (l'`sbId` che l'app le ha
+  //    passato) e ci mette dentro `nata_nel_gestionale`, `descrizione`, `worker_result`,
+  //    `created_by_*`. La spinta al cloud dell'app fa un upsert a CHIAVI FISSE: passandoci sopra
+  //    le cancella. ⇒ Due prenotazioni nate dopo la cura avevano `nata_nel_gestionale = null`, e
+  //    `matchpoint-bookings-cancel` le rifiutava con `409 NIENTE_DA_ANNULLARE`: nate e non piu'
+  //    annullabili. `righeNativeDaSpegnere` cerca esattamente quel marchio.
+  // ⚖️ Il difetto dormiva da prima: sulla strada di Matchpoint l'annullo va a Matchpoint e del
+  //    marchio non gli importa. Sul sistema nuovo quel marchio e' l'UNICO manico.
+
+  // ① La notizia parte da chi la sa — l'esito nativo e il lavoro — e non viene indovinata.
+  assert.equal(esitoImmediato({ ok: true, nativa: true, worker: { idReserva: 'PMO-x' } }).nativa, true);
+  const poll = soloCodice(dichiarazioneDi('staffCalPollJob'));
+  assert.match(poll, /nativa: data\.nativa === true/,
+    'il poll butta via `nativa`: sulla strada asincrona la riga del gestionale verrebbe potata lo stesso');
+
+  // ② …arriva a `staffCalSaveLocal` da TUTTE E TRE le strade (slot, assistente, ricorrente).
+  const quante = (APP.match(/giaScrittaDalGestionale: !!\(?(?:result && result\.nativa|_nat)\)?/g) || []).length;
+  assert.equal(quante, 4, "le strade che salvano una copia sono quattro: una lasciata fuori e una riga che si pota");
+
+  // ③ …e li' FERMA la spinta, invece di rifarla meglio. Rimettere i campi a mano vorrebbe dire
+  //    inventare `descrizione` e `worker_result`, che l'app non ha.
+  const save = soloCodice(dichiarazioneDi('staffCalSaveLocal'));
+  assert.match(save, /if \(opts && opts\.giaScrittaDalGestionale\)/,
+    'la spinta ridondante parte lo stesso: la riga del gestionale resta potata');
+  // 🚨 Ma NON deve saltare la parte ①, quella che spegne le voci soppiantate sullo stesso slot:
+  //    saltandola, una vecchia prenotazione resterebbe viva accanto alla nuova.
+  assert.ok(save.indexOf('deleted: true') < save.indexOf('opts.giaScrittaDalGestionale'),
+    "il salto arriva prima di spegnere le soppiantate: due partite vive sullo stesso slot");
+  // …e la copia IN PAGINA si fa comunque, o la prenotazione non si vedrebbe subito — che e'
+  // esattamente la cosa che lui ha chiesto.
+  assert.ok(save.indexOf("save('staffBookings', kept)") < save.indexOf('opts.giaScrittaDalGestionale'),
+    'si salta anche la copia in pagina: la prenotazione non comparirebbe sul calendario');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
