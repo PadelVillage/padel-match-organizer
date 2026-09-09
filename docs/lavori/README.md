@@ -1808,7 +1808,86 @@ in quello che lo schermo dice.*
 pannelli di import da Matchpoint ci sono e servono. ⇒ Va distinto **testo che l'operatore legge**
 da **nome interno**, e **PROD** da **sistema nuovo** — cioè si guarda `pmoGestionaleCollegatoAlCircolo`,
 non l'hostname (che il passaggio farà scadere, ⇒ voce 184).
-⏳ **Cosa manca per chiuderla**: l'elenco vero dei testi visibili (non le 1.167 occorrenze), la
+🔨⭐⭐ **09/09/2026 SERA — LA SEPARAZIONE È FATTA, E HA TROVATO DUE COSE DIVERSE DENTRO IL MUCCHIO ①.**
+📏 Classificate le occorrenze **una per una**, non a righe: **419** nomi interni · **348** commenti ·
+il resto candidato a testo visibile. ⚠️ **E 464 non era la risposta, era la rosa**: una regex sa
+distinguere un identificatore da una stringa, **non** sa dire se quella stringa arriva sullo
+schermo. Leggendole, il mucchio ① si è spaccato in **due**, e le due vogliono cure opposte:
+· **①a — frasi che mentono nei gesti di tutti i giorni** (il sottotitolo del calendario, *«Sto
+  elaborando la richiesta su Matchpoint»*, *«Operazione confermata su Matchpoint»*). Si curano;
+· **①b — interi pannelli che esistono solo perché esiste Matchpoint** (l'import Excel di Clienti ·
+  Prenotazioni future · Storico). 🚨 **Lì la cura non è rinominare: è far sparire una funzione** ⇒
+  era una **decisione sua**, e gliel'ho chiesta.
+
+🗣️ **Sua risposta (09/09/2026 sera)**, messo davanti alle tre strade: sul gestionale nuovo quei
+pannelli **«spariscono del tutto»**. ⇒ Matchpoint non produrrà più quegli export: erano tre bottoni
+senza sorgente.
+
+✅ **IN SERVIZIO SU TEST 6.425, in quattro pezzi:**
+· ① **`pmoCircoloEsternoCollegato` — TRE stati, non due.** La configurazione arriva in modo
+  **asincrono** (`PADEL_CONFIG`) ⇒ al primo disegno della pagina **il ref non si conosce**, e una
+  funzione a due stati qui tirerebbe a indovinare sbagliando **per costruzione** metà delle volte.
+  ⚖️⭐⭐ **E il verso del dubbio è OPPOSTO a quello delle scritture, deliberatamente**: sul denaro nel
+  dubbio si resta su PROD (sbagliare di là **fallisce**, e si vede); qui nel dubbio si **tace il
+  nome**, perché la frase generica è vera in **tutti e due** i mondi — su PROD è solo meno precisa.
+  📌 *Quando una delle due frasi è vera ovunque e l'altra solo in un posto, il dubbio ha una
+  risposta giusta e non è una moneta.*
+· ② **il sottotitolo del calendario** — quello che sta sotto «Calendario campi staff» e che lui vede
+  in ogni schermata — porta **nell'HTML** la frase **generica**, e riceve il nome solo se si scopre
+  che il circolo c'è. ⇒ **La prima pittura non mente mai**, e la seconda aggiunge una precisione
+  invece di correggere una bugia. Più **9** frasi dei gesti;
+· ③ **i tre import Excel nascono `hidden`** e compaiono solo col circolo ⇒ sul sistema nuovo non si
+  vedono **mai**, nemmeno per l'istante in cui la configurazione non è ancora arrivata;
+· ④ **l'ASSILLO FALSO spento** — e questo è peggio di una parola sbagliata. Il riquadro «Controllo
+  post-import» conta i giorni dall'ultimo import e **sale di tono da solo** (*«fermo da 2 giorni»*,
+  poi *«non aggiornati da 3 o più giorni. Rischi di lavorare su soci o prenotazioni non
+  aggiornati»*). Sul sistema nuovo quell'import **non si farà mai più** ⇒ quel contatore salirebbe
+  **per sempre**, rimproverando ogni giorno un aggiornamento impossibile. 📌 *Un allarme che non può
+  più essere spento da chi lo legge non lo mette in guardia: gli insegna a non guardarlo.*
+
+🚨⭐⭐ **IL PERIMETRO NON ERA IL PANNELLO, e la misura si è ripagata da sola.** Il riflesso era
+nascondere `#pmoAdminMatchpointDataPanel`, che **si chiama «Dati Matchpoint»** e sembra tutto suo.
+📏 Guardandoci dentro ci vivono anche: il **LISTINO** (`pmo_fasce_prenotabili`, la griglia **nostra**
+— sua richiesta esplicita, voce 176), l'import dei **contatti Google**, il **backup dati** e il
+**parser**. ⇒ Nasconderlo intero gli avrebbe portato via **proprio lo strumento con cui decide gli
+slot prenotabili**.
+📌 *Un contenitore che porta il nome di una cosa non contiene solo quella cosa: il perimetro si
+misura guardandoci dentro, non leggendo l'etichetta.*
+
+🩹 **Trovato misurando, e va saputo**: la copia dell'app di `pmoGestionaleCollegatoAlCircolo` è più
+**STRETTA** di quella dell'edge — non tollera i sottodomini dello stesso progetto. Va nel verso
+**sicuro** (l'app nomina il circolo in meno casi, mai in più) ⇒ non è un difetto, ed è scritta nel
+banco perché è il tipo di divergenza che qualcuno un giorno «uniformerebbe» nel verso sbagliato
+credendo di ripulire. 📌 *Due copie di una regola che non coincidono diventano un guasto il giorno
+in cui qualcuno le allinea senza sapere quale delle due era la severa.*
+
+🧪 **PROVATO**: banco nuovo `il-nome-del-circolo-si-dice-solo-dove-ce` **12 verdi** · banco `.mjs`
+intero **90 file, 0 rossi** · sintassi 5 blocchi 0 errori **col controllo negativo** · e **QUATTRO
+SABOTAGGI SUL SORGENTE VERO, tutti visti** («non lo so» trattato come «sì», i blocchi che non
+nascono più `hidden`, il riquadro che torna ad accendersi da solo, il sottotitolo che torna a dire
+Matchpoint nell'HTML).
+✅ **SULLA PAGINA VIVA DI TEST 6.425**: `pmoCircoloEsternoCollegato()` → **`false`**, nome → **`""`**,
+sottotitolo → *«Visualizza e prenota gli slot dei campi direttamente dall'app»*, i tre import
+**`hidden: true`, `visibile: false`**, e — misurato — **ZERO** occorrenze della parola nel testo
+visibile della pagina. ⭐ E le cose da **non** rompere sono intatte: listino **presente e visibile**,
+contatti Google, backup e parser tutti al loro posto.
+
+⏳ **COSA MANCA PER CHIUDERLA, e non è poco:**
+· **il resto del mucchio ①a**: le frasi del percorso *«⌛ Non ho la conferma — sto guardando su
+  Matchpoint…»*, *«⌛ Matchpoint è lento»*, *«Matchpoint non ha risposto in tempo»*. ⛔ Quelle **non**
+  si curano con una concatenazione: senza il circolo la frase va **riscritta**, non accorciata
+  (*«sto guardando»* dove?). È lavoro di parole, non di meccanismo;
+· ⚠️ **lo «zero occorrenze» vale sulla pagina COM'È APERTA**, non su ogni schermata: `innerText`
+  vede solo ciò che è reso in quel momento, e la sezione amministrazione non era aperta. Va rifatto
+  schermata per schermata prima di dire che la parola è sparita;
+· ⚠️ **il riquadro «Controllo post-import» non era nel DOM** durante la prova (`non trovato`) ⇒ la
+  guardia che lo spegne è **provata al banco e non dal vivo**. Non è un rosso: è una cosa che non ho
+  potuto esercitare, e la dico invece di arrotondarla;
+· ⚠️ i **nomi delle edge** restano quelli (`matchpoint-bookings-*`): rinominarle è un lavoro a
+  parte, e più grosso.
+
+🗄️ **Cosa mancava per chiuderla (testo dell'apertura, tenuto perché il ragionamento regge)**:
+l'elenco vero dei testi visibili (non le 1.167 occorrenze), la
 regola su come si chiamano al loro posto, e la prova sulla pagina viva che quelle frasi non
 compaiano più. ⚠️ I **nomi delle edge** restano quelli: rinominarle è un lavoro a parte, e più
 grosso.
