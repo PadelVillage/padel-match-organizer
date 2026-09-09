@@ -92,6 +92,7 @@ function costanteArray(nome) {
 const azioneDaChiamata = new Function(
   'SVC_AZIONI_DELLAPP',
   dichiarazioneDi('svcAzioneDaChiamata') + '\n' + dichiarazioneDi('svcDoveDelGesto') + '\n'
+    + dichiarazioneDi('svcDoveDellArrivo') + '\n'
     + dichiarazioneDi('svcAffinaEdit') + '\nreturn svcAzioneDaChiamata;'
 )(MAPPA);
 const affinaEdit = new Function(dichiarazioneDi('svcAffinaEdit') + '\nreturn svcAffinaEdit;')();
@@ -435,28 +436,74 @@ test('⑭ 🆕⭐⭐ UNA PRENOTAZIONE NATA NON SI ANNUNCIA: si vede sul calendar
   //    più gli avvisi ma basta che mi fai vedere subito la prenotazione sul calendario che
   //    lampeggia». ⇒ Il verde della striscia sparisce, il lampeggio della cella lo sostituisce.
 
-  // ① IL MARCHIO STA SU UNA SOLA AZIONE, e si legge dalla mappa invece di essere ricordato.
-  const conNascita = Object.keys(MAPPA).filter((k) => MAPPA[k] && MAPPA[k].nascita === true);
-  assert.deepEqual(conNascita, ['matchpoint-bookings-create'],
-    'il silenzio sul «fatto» vale per la CREAZIONE e basta: su modifica, annullo e soldi il calendario non basta a raccontare cosa è successo');
+  // ① CHI TACE SI LEGGE DALLA MAPPA, e sono DUE azioni con due forme diverse.
+  const sulCal = Object.fromEntries(Object.keys(MAPPA)
+    .filter((k) => MAPPA[k] && MAPPA[k].sulCalendario)
+    .map((k) => [k, MAPPA[k].sulCalendario]));
+  assert.deepEqual(sulCal, {
+    'matchpoint-bookings-create': 'nascita',
+    'matchpoint-bookings-edit': 'modifica',
+    'matchpoint-bookings-cancel': 'sparizione',
+  }, 'il silenzio vale per TUTTI i gesti su una prenotazione — sua parola, detta tre volte: «quando sposto un campo, quando aggiungo un giocatore, quando sposto un orario, quando annullo la prenotazione ci sono ancora i banner e non ci devono essere». Un incasso o un cliente nuovo restano fuori: la griglia non cambia di un pixel');
 
   // ② E arriva fino a chi deve leggerlo: se `svcAzioneDaChiamata` non lo propaga, la regola sta
   //    scritta in una mappa che nessuno guarda.
   const creaz = azioneDaChiamata(U('matchpoint-bookings-create'), { data: '2026-09-11', campo: 4, ora: '11:00' });
-  assert.equal(creaz.nascita, true, 'il marchio non esce dalla mappa: la striscia resterebbe verde come prima');
+  assert.equal(creaz.sulCalendario, 'nascita', 'il marchio non esce dalla mappa: la striscia resterebbe verde come prima');
   assert.deepEqual(creaz.dove, { campo: 4, data: '2026-09-11', ora: '11:00' },
     'senza coordinate complete non c\'è nessuna cella da far lampeggiare');
-  // Le altre restano quelle di prima — un `undefined` qui vale «no», e va misurato non supposto.
-  assert.ok(!azioneDaChiamata(U('matchpoint-bookings-cancel'), { data: '2026-09-11', campo: 4, ora: '11:00' }).nascita);
-  assert.ok(!azioneDaChiamata(U('matchpoint-payment-write'), { data: '2026-09-11', campo: 4, ora: '11:00' }).nascita);
+  assert.equal(azioneDaChiamata(U('matchpoint-bookings-cancel'), { data: '2026-09-11', campo: 4, ora: '11:00' }).sulCalendario, 'sparizione');
+  // Le altre restano quelle di prima — e va misurato, non supposto.
+  assert.equal(azioneDaChiamata(U('matchpoint-payment-write'), { data: '2026-09-11', campo: 4, ora: '11:00' }).sulCalendario, null);
+  assert.equal(azioneDaChiamata(U('matchpoint-clients-create'), { data: '2026-09-11', campo: 4, ora: '11:00' }).sulCalendario, null);
+
+  // ②b 🚨 E LE CINQUE FORME DELLA MODIFICA TACCIONO TUTTE. `svcAffinaEdit` costruisce oggetti
+  //     NUOVI (nota, giocatori, spostamento, maestro, descrizione) che di `sulCalendario` non
+  //     sanno niente: leggendolo di lì invece che dalla base, ogni modifica tornerebbe a parlare
+  //     — cinque gesti su cinque, cioè esattamente quelli che lui ha elencato.
+  const cinque = [
+    { move: { campo: 2, data: '2026-09-11', oraInizio: '14:30', oraFine: '16:00' } },
+    { players: { add: ['x'] } },
+    { players: { remove: ['x'] } },
+    { note: 'una nota' },
+    { istruttore: 'LoZio' },
+  ];
+  for (const b of cinque) {
+    const a = azioneDaChiamata(U('matchpoint-bookings-edit'), { data: '2026-09-11', campo: 4, ora: '11:00', ...b });
+    assert.equal(a.sulCalendario, 'modifica', 'questa forma di modifica parla ancora: ' + JSON.stringify(b));
+  }
+
+  // ②c 🚨 E SU UNO SPOSTAMENTO SI ACCENDE IL POSTO D'ARRIVO, non quello di partenza — che nel
+  //     frattempo è tornato libero. È la stessa regola degli avvisi ai soci del 23/08: *le
+  //     coordinate del fatto sono quelle di arrivo, perché è lì che si va a giocare.*
+  const spost = azioneDaChiamata(U('matchpoint-bookings-edit'),
+    { data: '2026-09-11', campo: 4, ora: '11:00', move: { campo: 2, data: '2026-09-11', oraInizio: '14:30', oraFine: '16:00' } });
+  assert.deepEqual(spost.arrivo, { campo: 2, data: '2026-09-11', ora: '14:30' },
+    'lampeggia lo slot di partenza: l\'occhio va dove NON è successo niente');
+  assert.deepEqual(spost.dove, { campo: 4, data: '2026-09-11', ora: '11:00' },
+    'il «dove» di partenza serve ancora: è quello che identifica la prenotazione toccata');
+  // …e senza `move` l'arrivo è il posto stesso, non `null`.
+  assert.deepEqual(azioneDaChiamata(U('matchpoint-bookings-edit'), { data: '2026-09-11', campo: 4, ora: '11:00', note: 'x' }).arrivo,
+    { campo: 4, data: '2026-09-11', ora: '11:00' });
 
   // ③ 🚨 SOLO IL «FATTO» TACE. È la metà che si sarebbe tentati di portarsi dietro, ed è quella
-  //    che costa: su un rifiuto lo slot è rimasto libero — il calendario è identico a com'era
-  //    prima del gesto, quindi non ha niente da mostrare e il silenzio si scambia per successo.
+  //    che costa: su un rifiuto il calendario è identico a com'era prima del gesto, quindi non ha
+  //    niente da mostrare e il silenzio si scambia per successo.
   const chiudi = soloCodice(dichiarazioneDi('svcChiudiAzione'));
-  assert.match(chiudi, /esito === 'fatto' && _svcAzioneLocale\.nascita/,
+  assert.match(chiudi, /esito === 'fatto' && svcTaceSulCalendario\(_svcAzioneLocale\)/,
     'la scorciatoia non guarda l\'esito: un rifiuto diventerebbe muto');
-  assert.match(chiudi, /svcLampeggiaNascita\(dove\)/, 'si tace e basta: nessuno mostra la prenotazione');
+  // ⚖️ E solo la NASCITA lampeggia: su una sparizione lo slot torna nel blocco «Libero» di tutta
+  //    la giornata, e farlo battere vorrebbe dire far lampeggiare otto ore per una partita tolta.
+  assert.match(chiudi, /if \(forma !== 'sparizione'\) \{ try \{ svcLampeggiaNascita\(dove\)/,
+    'o non mostra il gesto, o fa lampeggiare mezzo calendario su un annullo');
+  assert.match(chiudi, /const dove = _svcAzioneLocale\.arrivo \|\| _svcAzioneLocale\.dove;/,
+    'su uno spostamento lampeggia la cella di partenza, che nel frattempo è tornata libera');
+
+  // ④ 🚨 E SI TACE SOLO SE SI SA DOVE: senza coordinate non c'è nessuna cella che racconti il
+  //    gesto, e il silenzio diventa il silenzio e basta.
+  const tace = soloCodice(dichiarazioneDi('svcTaceSulCalendario'));
+  assert.match(tace, /loc\.dove && loc\.dove\.campo && loc\.dove\.ora/,
+    'si tace anche quando nessuno sta parlando al posto tuo: il gesto sparisce senza lasciare traccia');
 
   // ④ 🚨 IL LAMPEGGIO SOPRAVVIVE AI RIDISEGNI, che è l'unica cosa che si può sbagliare qui: la
   //    griglia si ridisegna da sé e con lei sparirebbe la classe. È anche ciò che lo rende immune
@@ -549,24 +596,24 @@ test('⑰ 🆕⭐⭐ UNA NASCITA NON SI ANNUNCIA NEMMENO MENTRE NASCE — nessun
   //    essere». La prima cura toglieva il banner del «fatto» e lasciava quello dell'«in corso»:
   //    toglieva il secondo dei due e teneva il primo.
   const dis = soloCodice(dichiarazioneDi('svcRidisegnaSemaforo'));
-  assert.match(dis, /if \(loc && loc\.nascita && !finita\)/,
+  assert.match(dis, /if \(svcTaceSulCalendario\(loc\) && !finita\)/,
     "mentre nasce la striscia parla ancora: e' il banner che lui vede per primo");
   // 🚨 …ma la CELLA sì, o il secondo e mezzo della scrittura sarebbe completamente muto — e il
   //    silenzio non e' quello che ha chiesto: ha chiesto di vederlo SUL CALENDARIO.
-  const ramo = dis.slice(dis.indexOf('loc.nascita && !finita'));
+  const ramo = dis.slice(dis.indexOf('svcTaceSulCalendario(loc) && !finita'));
   assert.match(ramo.slice(0, 400), /svcAccendiCella\(loc\.dove\)/,
     'la striscia tace e non accende niente: il gesto diventa invisibile finche non e finito');
 
   // ② Il riquadro bianco si chiude all'INIZIO, non a cose fatte: aperto e vuoto sopra la griglia
   //    e' esattamente il rettangolo della sua prima segnalazione.
   const acc = soloCodice(dichiarazioneDi('svcAccendiAzione'));
-  assert.match(acc, /if \(mia\.nascita\)/, 'il riquadro resta aperto e vuoto mentre lui guarda il calendario');
+  assert.match(acc, /if \(svcTaceSulCalendario\(mia\)\)/, 'il riquadro resta aperto e vuoto mentre lui guarda il calendario');
   assert.match(acc, /svcCloseChat\(\)/);
 
   // ③ 🚨 E TORNA SE VA MALE, o il motivo del rifiuto resta scritto dentro una finestra chiusa.
   //    Il silenzio vale sul successo: su un rifiuto sarebbe la bugia di sempre.
   const chi = soloCodice(dichiarazioneDi('svcChiudiAzione'));
-  assert.match(chi, /if \(_svcAzioneLocale\.nascita\) \{ try \{ svcOpenChat\(\)/,
+  assert.match(chi, /if \(svcTaceSulCalendario\(_svcAzioneLocale\)\) \{ try \{ svcOpenChat\(\)/,
     'il riquadro non si riapre sul rifiuto: il dettaglio diventa illeggibile');
   // …e deve stare DOPO l'uscita del «fatto», o si riaprirebbe anche quando e' andata bene.
   assert.ok(chi.indexOf('svcLampeggiaNascita(dove)') < chi.indexOf('svcOpenChat()'),
