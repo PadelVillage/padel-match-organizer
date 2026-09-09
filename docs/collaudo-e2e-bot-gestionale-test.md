@@ -5,6 +5,19 @@ faccia fare all'agente tutti i test tra gestionale di test e bot di test, in man
 sicuri che tutte le intersezioni delle varie funzioni siano corrette… vorrei che un agente
 simulasse tutte le operatività che abbiamo implementato tra bot e gestionale di test»*.
 
+🔄🗣️⭐⭐ **ESTESO IL 09/09/2026, su sua precisazione — e la metà che aggiunge è quella che si
+dimentica:**
+
+> *«il test deve essere fatto sia facendo tutte le prove con gli utenti che abbiamo sul chatbot
+> verso il gestionale, e anche il contrario: dal gestionale, come fosse un utente di segreteria che
+> lo fa sul gestionale, e quindi gli utenti che stanno sul chatbot ricevono le informazioni delle
+> azioni che vengono fatte dal gestionale.»*
+
+⇒ **Il collaudo è BIDIREZIONALE**, e i due versi non si provano con gli stessi attrezzi né si
+rompono negli stessi punti (⇒ §1). La prima stesura aveva tutt'e due i versi, ma il secondo era
+scritto come *«il gestionale consegna i fatti»* — cioè come **meccanismo**, non come **collaudo**:
+si leggeva come un dettaglio di architettura e non come metà del lavoro.
+
 📛 **Come si chiama in gergo quello che c'è qui dentro**: è un **collaudo end-to-end (E2E) di
 integrazione di sistema** su ambiente di **staging** (TEST), con dentro tre cose che hanno nomi
 propri — **contract testing** sulle intersezioni (i ponti `consumer-*`, che vivono su due lati
@@ -44,10 +57,40 @@ particolare governano questo lavoro:
 E l'obbligo che vale su ogni riga della relazione: **si dichiara cosa è stato provato E cosa no.**
 Un caso non eseguito si scrive *non provato, perché…*; non si arrotonda a «funziona».
 
-### 1 · Il perimetro: cosa è "un'intersezione"
+### 1 · I DUE VERSI, e il perimetro
 
-Un'intersezione è un punto in cui **il bot chiede e il gestionale risponde**, o in cui **il
-gestionale produce un fatto che il bot deve dire**. Sono quattro famiglie:
+Un'intersezione è un punto in cui i due sistemi si toccano, e **si tocca in due direzioni**. Il
+collaudo è finito quando **tutt'e due** sono state percorse: provare solo il primo verso dimostra
+che il socio riesce a chiedere, non che il circolo riesce a **dirgli** qualcosa.
+
+```
+  ①  IL SOCIO CHIEDE                        ②  LA SEGRETERIA FA
+     (chatbot → gestionale)                    (gestionale → chatbot)
+
+     socio → bot → ponte → gestionale          segreteria → gestionale
+                              │                     │  (la scheda cambia)
+                              └── risponde ──┐      ↓
+                                             │   il gestionale CONFRONTA
+     il bot traduce in italiano ←────────────┘   le due fotografie
+                                                     ↓
+                                              mette il fatto IN CODA
+                                                     ↓
+                                              il bot RITIRA (non gli si spinge)
+                                                     ↓
+                                              il socio riceve l'avviso
+```
+
+| | verso | famiglie | chi lo fa partire |
+|---|---|---|---|
+| **①** | **il socio chiede** — legge e scrive | **A** (`consumer-player-readmodel`) · **B** (`consumer-booking-write`) · **D** (test di livello) | il **copione** del `collaudo-conversazione`, o la `sonda-ponte-soci` |
+| **②** | **la segreteria fa, il socio riceve** | **C** (`consumer-staff-events` + `matchpoint-bookings-sync/eventi-staff.ts`) | un **gesto vero** sul gestionale di TEST, con la console remota |
+
+⚖️ **Perché i due versi non si provano allo stesso modo**, ed è la ragione per cui hanno sezioni
+separate: nel ① il socio **aspetta una risposta**, quindi il difetto si vede subito e in faccia; nel
+② **nessuno sta aspettando** — il gestionale scrive un fatto in coda, e se il bot non lo ritira, o
+lo ritira e non lo dice, **non se ne accorge nessuno**. ⇒ Nel ② il collaudo non può fermarsi a
+«l'operazione è riuscita»: deve arrivare fino al **contenuto dell'avviso**, e dichiarare dove si è
+fermato. Il ② ha una sezione tutta sua (⇒ §4bis), perché è quello che si prova a metà.
 
 | | famiglia | dove vive nel gestionale |
 |---|---|---|
@@ -77,13 +120,27 @@ riprova resta vero per sempre perché sembra prudente*: questo è stato riprovat
 
 | attrezzo | dove | cosa raggiunge | limite |
 |---|---|---|---|
-| **`collaudo-conversazione.yml`** | repo **`assistente-padel-agent`** (privato: va aggiunto con `add_repo`) | ⭐ **la strada maestra**: parla col **bot vivo di TEST** senza Telegram. Input `verso: test`, `copione` JSON con `chat` + `passi` di `scrivo`/`premo`/`aspetto`; esito nell'artefatto `esito-collaudo.json` (testi e `bottoni[]`) | vuole `chat`, l'**id Telegram di un socio di prova** — 🚨 **non si inventa**: un id a caso manda messaggi a una persona vera. Va misurato o chiesto (§3) |
+| **`collaudo-conversazione.yml`** | repo **`assistente-padel-agent`** (privato: va aggiunto con `add_repo`) | ⭐ **la strada maestra del verso ①**: dà il copione in pasto alle due porte del bot (`gestisciMessaggio` / `gestisciTocco`) col **gestionale vero** e il filo Telegram **finto**. Input `verso: test`, `copione` JSON con `chat` + `passi` di `scrivo`/`premo`/`aspetto`; esito nell'artefatto `esito-collaudo.json` (testi e `bottoni[]`) | vuole `chat`, l'**id Telegram di un socio di prova**: serve a **farsi riconoscere**, e senza non c'è nessuno di cui leggere le prenotazioni |
 | **`sonda-ponte-soci.yml`** | **questo** repo, `workflow_dispatch` | ⭐ chiama i **ponti** verso TEST **senza passare dal bot**: cinque azioni — `availability_day` · `kb` · `verifica` · `create_prova` (`dry_run`, si ferma sulla riga **prima** di occupare il campo) · `create_vero` (🚨 scrive, vuole la parola `PRENOTO`) | copre **cinque** azioni su quindici: `cancel`, `leave`, `remove`, `add`, `entra`, `apri`, `chiudi`, `availability` **non ci sono**. ⇒ Estenderla è la strada, ed è già la sua forma |
 | **`stato-bot.yml`** | stesso repo | il **registro** del bot (`pm2 describe` + log) con una regex a scelta | mostra solo le **ultime 30** righe che combaciano: regex **strette**, o le righe vecchie vengono tagliate via |
 | **`deploy-bot-hetzner.yml`** | stesso repo | aggiorna il bot; bersaglio **`prova`** (predefinito) | ⛔ **bersaglio `soci` MAI in questo lavoro** |
 | **console remota** | `tools/verifica-browser/` (questo repo) | il **gestionale di TEST** sulla pagina viva: `node console.mjs --env test --eval "…"`. Le `PMO_VERIFY_*` sono nell'ambiente | in **sola lettura** per difetto; `--allow-writes` serve per i gesti della segreteria (**su TEST si usa senza chiedere**) |
 | **MCP Supabase** | progetto TEST **`cudiqnrrlbyqryrtaprd`** | lo **stato**: `execute_sql` su `pmo_cloud_records` / `pmo_eventi_staff` / `self_assessments`, e `query_logs` (`function_edge_logs` per HTTP, `function_logs` per i `console.*`) | è la **sonda**, non l'esercizio: dice cosa è successo, non fa succedere |
 | **banco unitario** | repo bot (`npm test`) e `test/handle-test.html` | il meccanismo | ⛔ **non è una prova E2E**: dice che il pezzo è giusto, non che i due lati si parlano |
+
+🔄📏 **CORRETTO IL 09/09/2026, misurando il codice invece di ricordarlo — e la riga vecchia
+spaventava per la ragione sbagliata.** Qui (e in `docs/lavori/README.md`, voce 164) stava scritto che
+l'id `chat` *«non si inventa perché manderebbe messaggi a qualcuno»*. 📏 Falso: `installaIlFinto`
+(`src/telegram/collaudo-conversazione.ts`) sostituisce `globalThis.fetch` **per tutto ciò che va a
+`api.telegram.org`** — e lo fa sul `fetch` e non sulle venti funzioni di `api.ts`, apposta perché
+nessuno possa bucarlo per distrazione. ⇒ **Da un collaudo non parte NESSUN messaggio, verso
+nessuno.** Il `getUpdates` per giunta fallisce di proposito (difesa dal 409): il bot di prova in pm2
+resta su e non gli si ruba niente.
+⇒ Il motivo per cui l'id **serve lo stesso** è un altro, ed è più stretto: è l'identità con cui il
+bot ti riconosce. Un id a caso non fa danno — fa una conversazione con **nessuno**, in cui ogni
+risposta è «non ti conosco», e quella non prova niente.
+📌 *Un limite dichiarato con la ragione sbagliata è peggio di un limite senza ragione: la ragione
+sbagliata sembra prudente, quindi nessuno va a misurarla.*
 
 ⚖️ **Come si combinano, ed è il disegno del collaudo**: si **esercita** dal bot
 (`collaudo-conversazione`), dal gestionale (console remota) o **dal ponte** (`sonda-ponte-soci`), e si
@@ -169,12 +226,9 @@ La **prova a vuoto** (`dry_run: true`) esiste solo per `leave` · `create` · `c
 I gesti sono **cinque**, e sono tutti quelli che esistono: `aggiunto` · `tolto` · `annullata` ·
 `spostata` · `formazione`.
 
-🚨⭐⭐ **IL LIMITE STRUTTURALE DI QUESTA FAMIGLIA, e va letto prima di progettare i casi**: il bot
-di **prova** ha i giri degli avvisi **silenziati** (`silenziaAvvisi`, regola del 5/08) ⇒ **non chiama
-mai `consumer-staff-events`**. Quindi su TEST la catena C **non si chiude fino al messaggio**: si
-prova fino alla **coda** (che il fatto giusto ci sia, per le persone giuste, col contenuto giusto) e
-lì si dichiara il confine. Non provare a scavalcarlo accendendo gli avvisi del bot di prova, e
-**non** spostare la prova sul bot dei soci: quello parla a persone vere.
+🚨 **Questa famiglia è il VERSO ②, e ha una sezione tutta sua qui sotto (§4bis): la tabella dice
+QUALI casi, la §4bis dice FIN DOVE si arriva e con che attrezzo.** Non progettare i casi C senza
+averla letta — il punto in cui la catena si interrompe non è dove sembra.
 
 | # | caso | come | cosa si guarda |
 |---|---|---|---|
@@ -188,6 +242,52 @@ lì si dichiara il confine. Non provare a scavalcarlo accendendo gli avvisi del 
 | C8 | **gli esiti della coda**: `passato_al_bot` · nome non riconosciuto · netto nullo | 🔎 | ⚠️ `passato_al_bot` **non** vuol dire «il socio lo saprà»: dice solo che è uscito verso il bot |
 | C9 | **il tipo con le parole del gestionale**: `lezione` / `partita`, **mai** `Lezione Libera` | 🔎 | è la regola del vocabolario: nessuna parola di Matchpoint arriva al bot |
 | C10 | **la chiusura atomica**: due giri sulla stessa coda non consegnano due volte | 🔎 | nessuna riga con due consegne |
+
+### 4bis · IL VERSO ② IN DETTAGLIO — la segreteria fa, il socio riceve
+
+🗣️ **È la metà che lui ha chiesto esplicitamente il 09/09**, e la ragione per cui ha una sezione sua
+è che **si prova a metà senza accorgersene**: nel verso ① una risposta o arriva o non arriva; qui la
+catena ha **sei anelli**, e i primi quattro possono essere verdi mentre gli ultimi due non succedono
+affatto.
+
+| | anello | dove si misura | si ferma qui se… |
+|---|---|---|---|
+| 1 | la segreteria **salva** la scheda | console remota su TEST | il salvataggio esce in silenzio |
+| 2 | il gestionale **confronta** le due fotografie | `eventi-staff.ts` | i due roster sono identici (⇒ giusto: «toccato ≠ cambiato») |
+| 3 | il fatto entra **in coda** | `pmo_eventi_staff` su `cudi…` | il gesto non è fra i cinque |
+| 4 | il gestionale **risolve il nome** in una persona | esito della riga in coda | omonimi, o nome non in anagrafica |
+| 5 | il bot **ritira** | registro del bot | 🔇 **è qui che oggi si ferma su TEST** — vedi sotto |
+| 6 | il socio **riceve** e il testo è giusto | il telefono, o il finto del collaudo | Telegram, whitelist |
+
+📏 **DOVE SI INTERROMPE, misurato il 09/09 sul codice del bot e non ricordato**: il bot di **prova**
+parte con gli avvisi **silenziati** (`avvio-prova.ts:201`, `if (!conAvvisi) silenziaAvvisi()`), e
+`giroCircolo` esce alla prima riga se `silenziati`. ⇒ Gli anelli **5 e 6 non avvengono**.
+⚖️ **E il silenzio ha una ragione precisa, scritta nel codice**: i due bot leggono le stesse partite
+e chi sta in tutt'e due le liste riceverebbe **ogni avviso due volte**, identico e senza modo di
+capire quale bot l'ha mandato. Non è prudenza generica: è una difesa da un danno preciso.
+
+🔨 **LE TRE STRADE, in ordine di quanto dimostrano — si sceglie, e si dichiara quale si è presa:**
+
+| | strada | fin dove arriva | costo |
+|---|---|---|---|
+| **A** | **fino alla coda** — gesto dalla console, poi `select` su `pmo_eventi_staff` | anelli **1-4**: il fatto giusto, per le persone giuste, col contenuto giusto (`entrati`/`usciti`, `da`, `tipo`) | nessuno: si fa oggi, senza toccare niente |
+| **B** ⭐ | **fino alla FRASE, senza spedire** — un passo nuovo nel copione che chiami `giroCircolo({ prova: true })` | anelli **1-5** + il **testo** dell'avviso, letto senza che parta niente | 📏 **i due mattoni ci sono già**: `giroCircolo(opz.prova)` è esportata, e `eventiStaff({ dryRun })` esiste con scritto *«⭐ Serve al collaudo: senza, i fatti si vedono una volta sola e una prova andata storta li brucia»*. ⚠️ **Manca l'ultimo pezzo**: oggi il ramo `prova` logga solo *«avrei detto N gesti»* (`promemoria.ts:1357`) — il **chi** e il **testo** li ha in mano e non li stampa |
+| **C** | **fino al telefono** — bot di prova riavviato con **`--con-avvisi`** | tutti e **sei** gli anelli | 🚨 **manda messaggi veri**: è irreversibile e si vede da fuori ⇒ **si dice prima**, e solo verso destinatari di casa. E il bot stesso avverte che arriveranno **doppi** a chi è in tutt'e due le liste |
+
+⇒ **Fai la A per ogni caso C.** Proponi la **B** come primo lavoro se il collaudo va ripetuto (è
+piccolo, vive tutto nel repo del bot, e trasforma il verso ② da «provato a metà» a «provato»): ⚠️ è
+una modifica al bot, quindi **si dichiara** — non si intrufola dentro un collaudo. La **C** solo se
+lui la autorizza, e **mai** sul bot dei soci.
+
+📌 *La differenza fra A e B non è di completezza: è che la A prova che il gestionale ha detto la cosa
+giusta, la B prova che il socio l'avrebbe **letta** giusta. Un avviso corretto in coda e sgrammaticato
+sul telefono è comunque un avviso sbagliato.*
+
+⚠️ **E una cosa che il verso ② deve provare e che il ① non tocca affatto**: la regola del 23/08 —
+*«quando la segreteria fa una qualsiasi operazione, le persone che sono dentro la partita devono
+essere avvisate»*. ⇒ Su ogni caso C il conteggio è parte della prova: **quanti** fatti sono nati
+contro **quanti** erano in campo. Un avviso su quattro che manca non si vede guardando l'avviso che
+è arrivato.
 
 #### D — Il test di livello
 
@@ -213,7 +313,9 @@ lì si dichiara il confine. Non provare a scavalcarlo accendendo gli avvisi del 
    che dipende da dati freschi **riesce mostrando il passato**, che è peggio del fallire.
 2. 🚨 **Una prenotazione nata dal bot non sopravvive al sync** e **non ha roster leggibile**:
    serve a provare la scrittura, mai la rilettura. Lanciare il sync per «sbloccarla» la **cancella**.
-3. 🔇 **Il bot di prova ha gli avvisi silenziati** ⇒ la famiglia C non si chiude fino al messaggio.
+3. 🔇 **Il bot di prova ha gli avvisi silenziati** ⇒ senza uno dei rimedi della §4bis il verso ② si
+   ferma all'anello 4. ⛔ E il silenzio **non è un difetto da togliere in fretta**: senza, chi sta in
+   tutt'e due le liste riceve ogni avviso **due volte**.
 4. ⏱️ **Il registro del bot è in ora locale, il database in UTC**: un regex sull'ora sbagliata trova
    zero con la stessa sicurezza con cui troverebbe la verità.
 5. 🔎 **`stato-bot` mostra solo le ultime 30 righe che combaciano**: regex larghi tagliano via
@@ -236,7 +338,8 @@ La relazione ha **quattro** parti, e la terza è quella che le dà valore:
    della coda.
 2. **La matrice compilata**: una riga per caso, con ✅ / ❌ / ⏳ **non provato**, l'**ambiente**
    accanto a ciascuno (qui sempre TEST — scriverlo lo stesso), e il **come** (run del collaudo, sha,
-   query).
+   query). 🚨 **Per ogni caso del verso ② si scrive anche FIN DOVE è arrivato** (l'anello 1-6 della
+   §4bis) e con quale strada: senza quel numero, «provato» nel verso ② non vuol dire niente.
 3. ⚠️ **Cosa NON è stato provato e perché.** Include per forza: la famiglia C oltre la coda, tutto
    ciò che vuole PROD, e ogni caso rimasto senza prerequisito. *Un collaudo che non ha una sezione
    «non provato» non è completo: è un collaudo che non si è guardato.*
@@ -264,7 +367,9 @@ sbloccano a vicenda.
    tutta la famiglia.
 2. **E1-E4** — le guardie: sono veloci e, se una è rossa, cambia come si leggono tutte le altre.
 3. **A** — le letture: non scrivono niente, e ti danno lo stato di partenza.
-4. **C** — i gesti della segreteria: si esercitano dal gestionale e si misurano in coda.
+4. **C — il verso ②** (§4bis): i gesti della segreteria, esercitati dal gestionale e misurati in
+   coda. Scegli la strada **prima** di iniziare, e scrivila: rifare i gesti dopo aver scoperto che
+   servivano più anelli costa tutto il giro.
 5. **B** — le scritture dal bot: per ultime, perché muovono i dati su cui poggiano A e C.
 6. **D** — il test di livello: indipendente dagli altri.
 
