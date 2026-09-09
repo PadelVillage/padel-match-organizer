@@ -517,11 +517,16 @@ test('⑭ 🆕⭐⭐ UNA PRENOTAZIONE NATA NON SI ANNUNCIA: si vede sul calendar
   assert.match(lampeggia, /if \(!dove \|\| !dove\.campo \|\| !dove\.ora\) return;/,
     'mezze coordinate accenderebbero la cella sbagliata');
 
-  // ⑥ E i sei secondi sono gli STESSI del verde che sostituisce: cambia il posto in cui guardare,
-  //    non il tempo che uno ha per accorgersene.
+  // ⑥ 🔄 LA DURATA È DUE SECONDI, sua richiesta del 09/09: «il tempo di azione al massimo di due
+  //    secondi — mi riferisco alla conferma finale quando smette di lampeggiare».
+  //    ⚖️ Qui il banco pretendeva che fosse UGUALE al verde della striscia (6 s), e quel legame era
+  //    il ragionamento sbagliato: un banner va letto, una cella dentro al calendario si vede mentre
+  //    succede. ⇒ Il legame è stato TOLTO, non allentato — e il numero è quello che ha chiesto lui.
   const durata = Number((APP.match(/const SVC_NASCITA_MS = (\d+);/) || [])[1]);
-  assert.equal(durata, ESITI.fatto.durataMs,
-    'il lampeggio dura meno (o più) del verde che ha preso il posto: il tempo per accorgersene è cambiato di nascosto');
+  assert.equal(durata, 2000,
+    'il lampeggio non dura i due secondi che ha chiesto: sopra i due il gesto sembra ancora in corso dopo essere finito');
+  assert.ok(durata < ESITI.fatto.durataMs,
+    'il lampeggio è tornato lungo come il banner che ha sostituito');
 });
 
 const esitoImmediato = new Function(dichiarazioneDi('staffCalEsitoImmediato') + '\nreturn staffCalEsitoImmediato;')();
