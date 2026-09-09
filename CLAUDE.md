@@ -26,6 +26,29 @@ quello che ho detto sia vero**, non scoprire al posto mio se funziona.
 | ④ | **si guarda e si prova su PROD** | io |
 | ⑤ | quando sono sicuro → **gli si dice di andare a controllare** | lui |
 
+🧊🚨⭐⭐ **E DAL 09/09/2026 SERA I PASSI ③ E ④ SONO SOSPESI: PROD È CONGELATA.** Parole sue, date
+mentre si lavorava e senza margini:
+
+> *«Non devi assolutamente portare nulla sul gestionale di prod di quello che stiamo facendo qui.
+> Il gestionale di prod si congela così come adesso.»*
+
+⇒ **La catena si ferma al ②.** Non è «con prudenza», non è «solo le righe del fix»: **niente**, e
+*«così come adesso»* vuol dire che lo stato buono è **quello di oggi** — `main` a **v6.397** — non
+uno stato futuro da raggiungere.
+⚖️ **Perché non è una restrizione ma il disegno**: PROD va in pensione con Matchpoint (⇒ *🎯 «IL
+GESTIONALE DI TEST DIVENTA IL VERO»*). Un gestionale che si spegne fra poche settimane **non ha
+niente da guadagnare** da una cura nuova, e ha tutto da perdere: ogni riga che ci arriva è un
+rischio su un sistema che la segreteria usa **oggi** per lavorare davvero.
+📌 *Non si migliora una cosa che si sta per spegnere: la si lascia in piedi.*
+⛔ **Cosa resta lecito su `main`, e va detto o si blocca il lavoro**: i **documenti** (`docs/`,
+questo file, i workflow), che `guard-worker-sync` pretende **identici** sui due rami. Quelli non
+sono il gestionale — il gestionale è `index.html`, e **quello su `main` non si tocca**.
+⚠️ **L'unica eccezione dichiarata resta la 182**: una riconnessione, **in lettura**,
+sull'anagrafica dei soci, una volta sola.
+🔄 **Questo CORREGGE la sezione *🚀 LA PROMOZIONE A PROD NON SI CHIEDE*, non la affianca**: quella
+toglieva il **permesso** dal passo ③, questa toglie il **passo**. Se un domani sembrassero in
+contrasto, vale questa — è più recente e più stretta.
+
 🚫🚫 **E IL PASSO ③ NON SI CHIEDE — aggiunto il 04/09 sera, detto da lui TRE VOLTE di fila
 perché non restasse frainteso:**
 
@@ -251,7 +274,7 @@ primo **non proteggono** il secondo, e non lo dicono — continuano a suonare pr
 
 | 🗣️ sue parole | cosa comporta |
 |---|---|
-| *«il gestionale di prod deve continuare a funzionare come ha funzionato fino adesso»* | ⛔ **PROD NON SI TOCCA.** Non «con prudenza»: **non si tocca.** |
+| *«il gestionale di prod deve continuare a funzionare come ha funzionato fino adesso»* — 🆕 e il 09/09 sera: *«non devi assolutamente portare nulla sul gestionale di prod di quello che stiamo facendo qui. Il gestionale di prod si congela così come adesso»* | ⛔ **PROD NON SI TOCCA, ed è CONGELATA a com'è oggi** (`main`, **v6.397**). Non «con prudenza», non «solo le righe del fix»: **niente**. Passano solo i **documenti**, che le due guardie pretendono identici sui due rami. |
 | *«prod e test devono vivere due vite separate a livello gestionale»* | il travaso è **una-tantum**, mai una sincronia accesa (⇒ le 6 routine tolte l'08/09) |
 | *«si incassa solo su test, su PROD mai»* + *«dal gestionale si incassa, perché Matchpoint non c'è più»* | la **cassa nasce sul sistema nuovo** ⇒ *🔌 IL DISTACCO*, più sotto |
 | *«devi darmi la possibilità di definire io come voglio gli slot prenotabili»* | ⇒ la voce **176**, fatta l'08/09: `pmo_fasce_prenotabili` |
@@ -1008,6 +1031,13 @@ quello che il postulato ha sostituito.
 ogni volta renderebbe rumore proprio l'avviso che deve farsi notare.
 
 ### 🚀 LA PROMOZIONE A PROD NON SI CHIEDE: È UNA CATENA DI QUATTRO PASSI (FERMA, 04/09/2026)
+
+🧊🚨 **SOSPESA DAL 09/09/2026 SERA — si legge sapendo che oggi il ③ NON SI FA.** *«Non devi
+assolutamente portare nulla sul gestionale di prod… il gestionale di prod si congela così come
+adesso.»* ⇒ Questa sezione descrive **come** si promuove, e resta scritta perché il metodo non è
+sbagliato; ma **oggi non c'è niente da promuovere**, e chi la leggesse come un obbligo porterebbe
+su PROD proprio ciò che lui ha vietato. La riga viva sta **in testa al file**, sotto la tabella dei
+cinque passi.
 
 🗣️ Sue parole, dette due volte nello stesso minuto perché non restassero fraintese:
 
