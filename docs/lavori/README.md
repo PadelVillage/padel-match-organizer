@@ -1750,7 +1750,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 5
 
 🆕 **08/09/2026, 100ª sessione: la lista torna da 0 a 4, e non sono idee di fine giornata.** Tre
 nascono da **misure** fatte guardando il codice (177 · 178 · 179), una dalla misura più pesante di
@@ -2070,7 +2070,90 @@ gesto vero del bot** ha ancora attraversato la strada nuova. ⇒ È la stessa pr
 **177**, e si farà con la sonda del ponte allargata ad `availability_day`.
 📌 *Un banco verde dice che il meccanismo è giusto, non che qualcuno ci è passato.*
 
-## 📋 IN CODA — 5
+
+### 181 — 💰 LA CASSA NATIVA: l'incasso nasce e muore nel gestionale
+
+🆙 **PROMOSSA dalla coda alle urgenti il 09/09/2026, e la promozione si dichiara qui** come vuole
+la regola del 23/08. **Perché**: è la cosa che il circolo deve avere il **giorno stesso** del
+distacco — dal 27/09 Matchpoint non incassa più, e se la cassa non c'è il circolo non prende soldi.
+Non è più una voce che «dipende dalla 180»: la 180 è chiusa, la griglia è chiusa (183), gli importi
+nascono dal listino ⇒ **non aspetta più niente**, e una voce che non aspetta niente in fondo a una
+coda è una voce che nessuno fa.
+⛔ **Cosa scavalca**: nessuna urgente. Si mette **accanto** a 177 · 178 · 183 · 185.
+
+🗣️ **Sue parole dell'08/09**: *«dal gestionale si incassa, perché Matchpoint non c'è più»* +
+*«si incassa solo su test, su PROD mai»*. ⇒ Sono la stessa regola vista da due parti, e
+l'invariante che le tiene insieme è uno solo: **nessun soldo passa da Matchpoint per mano nostra**.
+
+🔨✅ **LA PRIMA METÀ È FATTA, IN SERVIZIO E PROVATA FISICAMENTE** — TEST `6.410`, commit `719e36fa`.
+⇒ La cassa nativa **non è codice nuovo**: è la **simulazione promossa a vera**, con tre cambi che
+la rendono una cassa invece di una finta.
+
+· ① 🚨⭐⭐ **IL CANCELLO GUARDA IL REF SUPABASE, NON L'HOSTNAME.** `PMO_PAYMENTS_SIMULATE =
+  PMO_IS_TEST_ENV` è **cancellata**: rispondeva a *«sto su un indirizzo che comincia per test.»*, e
+  il passaggio (voce **184**) l'avrebbe fatta **scadere** — il giorno del cambio d'indirizzo la
+  cassa si sarebbe spenta **da sola**, e il circolo avrebbe smesso di incassare **senza nessun
+  errore da nessuna parte**. Al suo posto `pmoCassaNativa()` / `pmoCassaNativaPer()`.
+  📌 *Un ambiente si riconosce da CON CHI parla, non da come si chiama.*
+  ⛔ ⇒ **Questa riga sta FUORI dalla lista delle simulazioni da smontare** (come il cancello della
+  180): non è una finzione da togliere, è il verso giusto in cui la cassa deve girare.
+· ② 🔑 **LA CHIAVE È DETERMINISTICA.** `_pmoSimPayKey` metteva `Date.now()` dentro la chiave ⇒
+  **due clic = due incassi**. 📌 *Una chiave che contiene l'istante non è una chiave: è un contatore.*
+· ③ ⛔ **LA SORGENTE CAMBIA NOME**, e non è una questione di nomi: il bottone «🧹 Pulisci
+  simulazioni» cancella **tutto** ciò che porta il tag `pmo_simulate`. Riusandolo, il primo clic su
+  quel bottone avrebbe cancellato **denaro vero**, in silenzio — cancellare righe è esattamente il
+  suo mestiere. La cassa è `pmo_cassa`; le righe vecchie si **stornano** ancora ma non se ne
+  scrivono più. 📌 *Cancellare e stornare non sono lo stesso gesto: il primo fa sparire che sia
+  successo, il secondo dice che è stato disfatto.*
+
+🚨⭐⭐ **E IL DIFETTO CHE HA TROVATO IL BANCO, che vale più della cura: UN CANCELLO CHE FALLISCE
+CHIUSO NON RESTA CHIUSO SE LO SI NEGA.** La prima versione era `!pmoGestionaleCollegatoAlCircolo(url)`,
+e sembra ovvia. Ma quel cancello torna `false` anche su un url **storpiato** — è il suo fallire
+chiuso, *«nel dubbio non chiamo il circolo»*. Negandolo, quel `false` diventa *«la cassa è nostra»*
+⇒ con una configurazione illeggibile l'app avrebbe **registrato denaro** convinta di stare sul
+sistema nuovo.
+📌 *Il fallimento sicuro di una domanda è il fallimento pericoloso della domanda opposta: «nel dubbio
+non chiamo» e «nel dubbio incasso» sono la stessa riga letta al contrario.*
+⇒ Adesso chiede un **fatto positivo**: che l'indirizzo sia un ref Supabase leggibile **e** che quel
+ref non sia quello di PROD. *«Non è PROD»* e *«non so dove sono»* sono due risposte diverse.
+
+🩹 **E una nota della UI che mentiva**, trovata leggendo: diceva *«⛔ Da qui non si incassa — il
+gestionale rifiuta l'incasso»*, sul presupposto che la chiamata arrivasse all'edge. Il presupposto
+era **sbagliato già l'08/09**: il ramo simulato tornava **prima** di chiamare qualunque edge e il
+record `payment` lo scriveva davvero. 📌 *Una nota sulla UI è un'affermazione sul codice: si
+controlla leggendo il ramo che descrive, non ricordando cosa si era deciso di fare.*
+
+📏 **LA PROVA FISICA, sulla pagina viva di TEST 6.409-6.410 con la console remota** — non «si carica»,
+ma il gesto intero fatto e disfatto, su una partita vera (08/09 Campo 2 18:00):
+· il cancello risponde sulla pagina viva: `cassaNativa: true` su `cudi`, **`false`** per il ref di
+  PROD, **`false`** per un url storpiato, e `PMO_PAYMENTS_SIMULATE` **non esiste più**;
+· **incassati 12,00 € in contanti** → riga `pmo_cassa`, `status: paid`, chiave
+  `paycassa|2026-09-08|2|18:00|fabio de luca`;
+· ⭐ **premuto DUE volte** → 📏 **una riga sola** nel database. È il difetto della chiave curato e
+  **visto** non succedere, non dedotto;
+· la sezione **Incassi la vede** dal percorso genuino (1 riga, 1200, `cash`);
+· ⛔ **lanciato il «🧹 Pulisci simulazioni»** → cancella **0** e la riga di cassa **sopravvive**;
+· **stornata** → `voided: true`, `status: void`, e sparisce da Incassi;
+· 🧹 **TEST ripulito**: riga di prova cancellata, **0** righe di cassa, 2605 pagamenti come prima.
+
+✅ **Banco**: `test/la-cassa-e-nostra.test.mjs` **17 verdi 0 rossi**, con **SETTE sabotaggi** tutti
+visti cadere sul caso giusto — e il sesto **verificato applicato su entrambi i punti** (la prima
+volta non si era applicato affatto, e sarebbe passato per un successo). Banco intero **132 verdi,
+0 rossi**; sintassi di tutti e cinque i blocchi `<script>` controllata.
+
+⏳⛔ **PERCHÉ LA VOCE RESTA APERTA — LA SECONDA METÀ: IL BORSELLINO NON SI MUOVE.**
+📏 Misurato il 09/09, non ereditato: nel ramo della cassa nativa **non compare nessuna riga** che
+tocchi il borsellino (`wallet`, `wallet_txn`, `wallet_balance`: zero occorrenze). ⇒ **Un incasso col
+metodo «Wallet» registra l'entrata e NON scala il saldo del socio**, che è un buco vero: il circolo
+avrebbe incassato due volte la stessa ricarica.
+📏 E il mastro su `cudi` **non esiste proprio**: **83** `wallet_balance` (fotografie copiate da
+Matchpoint) e **0** `wallet_txn`; i 67 pagamenti a borsellino vengono tutti da Matchpoint.
+⇒ **Cosa manca per chiuderla**: ① il metodo Wallet muove il saldo, con un movimento che si può
+stornare; ② `wallet_txn` diventa il **mastro** e il saldo si **somma** invece di essere una
+fotografia. 📌 *Una fotografia del saldo non si può stornare: si può solo riscattare — e al distacco
+non ci sarà più nessuno da cui riscattarla.*
+
+## 📋 IN CODA — 4
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2421,7 +2504,7 @@ chiedeva, e per questo non la tengono aperta:
   finisce è un'**attesa**, non una misura;
 · **la 138 aspetta ancora l'id** dove serve a lei: qui l'id c'è, ma è un'altra voce.
 
-### C — Cose sapute e non risolte — 5
+### C — Cose sapute e non risolte — 4
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2456,7 +2539,6 @@ pericolosa di tutte.*
 
 | | |
 |---|---|
-| **181** | 💰 **LA CASSA NATIVA sul sistema nuovo** — 🗣️ sua: *«dal gestionale si incassa, perché Matchpoint non c'è più»* + *«si incassa solo su test, su PROD mai»*. ⛔ **Dipende dalla 180 e non si può anticipare**: oggi solo **14** `staff_booking` su 256 portano gli importi ⇒ non c'è su cosa addebitare. ⭐ **Un precedente c'è già in servizio**: `payment` con sorgente **`pmo_gift`** — 33 righe — cioè una riga di cassa nata da noi e non da Matchpoint. 🚨 **E una cosa da NON portarsi dietro**: il prototipo nel browser ha già il **difetto del doppio incasso** — `_pmoSimPayKey` mette `Date.now()` nella chiave ⇒ **due clic = due incassi**. 📌 *Una chiave che contiene l'istante non è una chiave: è un contatore.* ⚠️ E **`wallet_balance` è una fotografia**, non un saldo calcolato: al distacco va **rovesciato** — `wallet_txn` diventa il mastro e il saldo si somma. |
 | **182** | 📦 **IL TRAVASO da PROD al sistema nuovo — UNA-TANTUM, mai una sincronia** — 🗣️ sua: *«prod e test devono vivere due vite separate a livello gestionale»*. ⭐ **Il meccanismo è già trovato e provato**: si legge da PROD con `pmo_get_records_admin_page`, si scrive sul sistema nuovo con `pmo_upsert_records_admin`, via PostgREST con le utenze staff (`PMO_VERIFY_*`, già nell'ambiente), **file-a-file**. ⇒ **non passa niente da nessuna parte, non serve nessuna edge nuova, e PROD non si tocca** — che è il vincolo. 📏 **Delta misurato**: `booking_history` +5771 · `payment` +748 · `staff_edit` +217 · `staff_cancel` +50 · `wallet_txn` 13 · modelli WhatsApp 42 · `app_setting`. 🚨 **Due chiavi di `app_setting` vanno ESCLUSE**: `assessmentSettings` e `postMatchFeedbackSettings` puntano al `config.js` di **PROD** ⇒ i questionari scriverebbero **nel database sbagliato**. ⏳ **Quando**: dopo la 180 e la 178, e comunque **una volta sola** — rifarlo dopo che il sistema nuovo ha vissuto per conto suo significherebbe seppellire quello che ha fatto. 🆕🗣️ **08/09 sera, sue parole**: *«A noi servirà solamente una volta ricollegarci con il gestionale di prod per riallineare i dati dei soci in anagrafica. Dopodiché Prod si spegnerà per sempre.»* ⇒ Questa voce **è** quella riconnessione, ed è l'unica eccezione dichiarata a *«PROD non si tocca»*: **una**, in **lettura**, sull'**anagrafica**. ⭐ E dice anche una cosa sul distacco: il ponte che resta va verso il **gestionale** di PROD, **non** verso Matchpoint ⇒ nel futuro dichiarato non c'è più niente che chieda al sistema nuovo di chiamare Matchpoint. |
 | **184** | 🎭 **L'AMBIENTE SI RICONOSCE DALL'HOSTNAME — e l'indirizzo nuovo ha una trappola** — 🚨 **è la voce più pericolosa della lista**, e sta in coda solo perché va fatta **al momento del passaggio**, non prima. ⇒ Finché l'app si riconosce «di prova» da `/^test\./`, in produzione entrano i comportamenti da laboratorio: WhatsApp dirottati su **un solo telefono**, incassi **finti**, prenotazioni **finte nel browser**, email dell'autovalutazione dirottate. ⛔ **Fallisce in silenzio e verso l'esterno**: i soci non ricevono, il circolo non incassa, **nessun errore**. 🏠 **L'indirizzo deciso è `soci.padelvillage.club`** — libero dal 25/07 (Pages spento, DNS cancellato). ⚠️ **Ma `pmoDetectPublicBaseUrl()` cade sul fondo** per un hostname che non inizia per `test.` e restituisce `https://app.padelvillage.club/` ⇒ l'app servita da `soci.` prenderebbe la configurazione di **PROD**, si collegherebbe a `qqbf`, e — riconosciuta come produzione — `scritturaAlCircoloConsentita(qqbf)` risponderebbe **vero**: **scriverebbe sul Matchpoint vero**. 🔨 **Tre cose prima di metterci l'app, nessuna saltabile**: ① il caricatore dichiara `window.PMO_PUBLIC_BASE_URL` con la **propria** origine; ② su `soci.` il file si chiama **`config.js`** (non `-test`) e punta a **`cudi`**; ③ `pmoAssertSupabaseMatchesRuntime` impara la coppia (produzione ⇄ `cudi`). 📌 *La lista delle simulazioni NON è chiusa*: prima del passaggio si cerca tutta (`grep -n 'PMO_IS_TEST_ENV\|isTestEnv()'`), non fidandosi di un elenco scritto a memoria. 🔎📏 **MISURATO l'08/09/2026 sera, ed è un pezzo di questa voce che non si sapeva**: il **bot dei soci è agganciato a PROD**, non al sistema nuovo. Verificato da due parti indipendenti — la sua dichiarazione d'avvio sulla VM (`ponti edge: qqbfphyslczzkxoncgex… (PROD)` · *«scrive sul gestionale VERO»*) e i registri dei due database: **6.557 chiamate** ai ponti del bot su `qqbf` nelle ultime 24 h (`consumer-staff-events` 4.070 · `consumer-player-readmodel` 2.487), e **zero** sugli stessi ponti di `cudi`. ⚖️ Il bot di **prova** invece punta già a `cudi` (TEST), come deve. 🗣️ **Portato a lui, che ha deciso: si sposta AL PASSAGGIO, non adesso** — perché spostarlo oggi vorrebbe dire che le prenotazioni dei soci non arrivano più a Matchpoint (il circolo non le vedrebbe fino al distacco) e che il bot racconterebbe un calendario fermo al **07/09 17:32**, visto che `cudi` non si rinfresca più. 📌 *Non è un ritocco di configurazione: è il passaggio, e sta in questa voce perché è qui che va fatto.* |
 | **187** | ❓ **«LA PRENOTAZIONE È PASSATA?» — la domanda che dopo il distacco non ha più un destinatario** — *(Residuo **misurato** della voce 180, aperto nel commit che la chiude. Stessa forma della 176 → 177 e della 111 → 175: il lavoro non curato esce dalla porta invece di sparire col titolo.)* 📏 **Il fatto**: dei quattro punti che leggevano dal vivo da Matchpoint, tre andavano a prendere un **dato** che ormai ha il gestionale ⇒ curati leggendo dalla copia. Il quarto — `staffCalAskMatchpoint` (`index.html`) — è di un **genere diverso**: fa una **domanda**, *«la prenotazione che ho appena provato a scrivere esiste?»*, e la fa a Matchpoint. ⇒ Il giorno del distacco **non c'è più nessuno che possa rispondere**. 🩹 **Cosa è stato fatto adesso, e non è la cura**: sul gestionale non collegato al circolo la funzione **fallisce chiusa** — torna `boh` subito invece di aspettare 90 secondi un worker muto. 🚨 **Mai un «no» inventato**: chi lo legge riprova, e la partita si prenota **due volte**. È la regola già scritta — *il «no» si dice solo con la freschezza certificata dal gestionale, altrimenti la risposta onesta è «non lo so ancora»*. 🔨 **Cosa manca**: la sostituzione, che è **chiedere al gestionale** — la stessa forma della voce **53** (oggi il socio la fa a mano: *«fra qualche minuto chiedimi cosa ho prenotato»*). Sul sistema nuovo la risposta c'è ed è **a portata**: le scritture sono native, quindi la verità sta nella nostra copia, non da nessun'altra parte. ⚖️ **Quanto urge, detto senza gonfiarlo**: su un gestionale con le scritture native un «esito ignoto» può nascere **solo** da una rete caduta verso l'edge, non da un worker muto ⇒ oggi questa strada è quasi irraggiungibile. Ma va costruita **prima** del distacco, o quel giorno il gestionale nuovo avrà una domanda senza risposta nel punto in cui si decide se una partita esiste. 📌 *Un ripiego onesto non è una cura: è il permesso di rimandarla sapendo cosa si sta rimandando.* |
