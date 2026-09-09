@@ -517,14 +517,27 @@ test('⑭ 🆕⭐⭐ UNA PRENOTAZIONE NATA NON SI ANNUNCIA: si vede sul calendar
   assert.match(lampeggia, /if \(!dove \|\| !dove\.campo \|\| !dove\.ora\) return;/,
     'mezze coordinate accenderebbero la cella sbagliata');
 
-  // ⑥ 🔄 LA DURATA È DUE SECONDI, sua richiesta del 09/09: «il tempo di azione al massimo di due
-  //    secondi — mi riferisco alla conferma finale quando smette di lampeggiare».
-  //    ⚖️ Qui il banco pretendeva che fosse UGUALE al verde della striscia (6 s), e quel legame era
-  //    il ragionamento sbagliato: un banner va letto, una cella dentro al calendario si vede mentre
-  //    succede. ⇒ Il legame è stato TOLTO, non allentato — e il numero è quello che ha chiesto lui.
-  const durata = Number((APP.match(/const SVC_NASCITA_MS = (\d+);/) || [])[1]);
-  assert.equal(durata, 2000,
-    'il lampeggio non dura i due secondi che ha chiesto: sopra i due il gesto sembra ancora in corso dopo essere finito');
+  /* ⑥ 🔄⭐⭐ LA DURATA È **UN BATTITO SOLO (1.100 ms)** dal 09/09/2026 notte, e questa riga è stata
+   *    CORRETTA due volte in un giorno. La storia serve, perché qui dentro c'è una decisione:
+   *    · prima il banco pretendeva che fosse **uguale al verde della striscia** (6 s) — legame
+   *      sbagliato: un banner va letto, una cella dentro al calendario si vede **mentre** succede;
+   *    · poi **2.000 ms**, chiesti da lui (*«il tempo di azione al massimo di due secondi»*);
+   *    · adesso **1.100**, e la scelta **l'ha delegata lui** (*«decidi tu per il lampeggio, per me
+   *      va bene come decidi»*) ⇒ è un ciclo intero di `svcCellaNata`, e col tempo di scrittura
+   *      sceso a ~770 ms (voce 191) il totale torna sotto i due secondi che aveva chiesto.
+   * 🚨⭐⭐ E VA DETTO PERCHÉ QUESTA RIGA POTEVA ESSERE TOCCATA: un numero fissato in un banco è una
+   *    **decisione fossilizzata**, non un dettaglio del banco — cambiarlo senza sapere di chi era
+   *    vuol dire rompere la scelta di qualcun altro credendo di curare un difetto. Qui si sapeva:
+   *    era sua, e l'ha delegata. 📌 *Prima di togliere un paletto piantato nel banco, si cerca chi
+   *    l'ha piantato.*
+   * ⚖️ La durata è DERIVATA dal ciclo dell'animazione (`SVC_NASCITA_CICLO_MS`), non scritta a mano:
+   *    il legame è tenuto da `la-cella-si-accende-dove-si-disegna`, qui si controlla il valore. */
+  const ciclo = Number((APP.match(/const SVC_NASCITA_CICLO_MS = (\d+);/) || [])[1]);
+  assert.match(APP, /const SVC_NASCITA_MS = SVC_NASCITA_CICLO_MS;/,
+    'la durata non è più derivata dal ciclo dell\'animazione: tornerebbe tagliata a metà respiro');
+  const durata = ciclo;
+  assert.equal(durata, 1100,
+    'la durata del lampeggio è cambiata: era una DECISIONE (sua, delegata il 09/09), non un dettaglio');
   assert.ok(durata < ESITI.fatto.durataMs,
     'il lampeggio è tornato lungo come il banner che ha sostituito');
 });

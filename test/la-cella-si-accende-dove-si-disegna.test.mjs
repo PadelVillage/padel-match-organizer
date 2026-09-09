@@ -232,5 +232,37 @@ test('🚨 spegnere cerca OVUNQUE: girando il telefono non resta una accesa nell
     'si spegne solo dentro il contenitore scelto: una accesa nell\'altra vista sopravvive al gesto');
 });
 
+// ── ⏱️ LA DURATA DEL LAMPEGGIO (09/09/2026 notte, scelta delegata da lui) ────────────────────
+
+test('⏱️🚨 il lampeggio dura ESATTAMENTE un ciclo dell\'animazione, non un numero tondo a caso', () => {
+  /* ⚖️ A 2.000 ms il lampeggio veniva tagliato a **1,8 cicli**: a metà dissolvenza, in un punto
+   * deciso dall\'animazione e non da noi. Un ciclo intero si chiude sul verde pieno.
+   * 📌 *Un segnale che finisce a metà del proprio respiro non dice «finito»: dice «sono stato
+   *    spento».*
+   * 🚨 E i due numeri vivono in due file diversi — la costante nel JS, `@keyframes svcCellaNata`
+   *    nel CSS — quindi possono divergere in silenzio. Questa guardia li tiene legati. */
+  const mCss = /@keyframes svcCellaNata[\s\S]{0,40}?/.test(APP);
+  const mAnim = /animation:\s*svcCellaNata\s+([\d.]+)s/.exec(APP);
+  assert.ok(mAnim, 'non trovo la durata dell\'animazione svcCellaNata nel CSS');
+  const cicloMs = Math.round(parseFloat(mAnim[1]) * 1000);
+
+  const mConst = /const SVC_NASCITA_CICLO_MS = (\d+);/.exec(APP);
+  assert.ok(mConst, 'non trovo SVC_NASCITA_CICLO_MS');
+  assert.equal(Number(mConst[1]), cicloMs,
+    'la costante e il CSS sono divergenti: il lampeggio tornerebbe tagliato a metà respiro');
+
+  assert.match(APP, /const SVC_NASCITA_MS = SVC_NASCITA_CICLO_MS;/,
+    'la durata non è più DERIVATA dal ciclo: qualcuno l\'ha riscritta a mano');
+});
+
+test('⏱️ e resta un solo battito: non si torna ai due secondi senza accorgersene', () => {
+  const m = /const SVC_NASCITA_CICLO_MS = (\d+);/.exec(APP);
+  assert.ok(m);
+  const ms = Number(m[1]);
+  // ⛔ Non una forbice larga: il numero è una DECISIONE (sua delega del 09/09), e cambiarlo deve
+  //    far cadere questa riga, così chi lo cambia sa che sta cambiando una decisione.
+  assert.equal(ms, 1100, 'la durata del lampeggio è cambiata: era una decisione, non un dettaglio');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
