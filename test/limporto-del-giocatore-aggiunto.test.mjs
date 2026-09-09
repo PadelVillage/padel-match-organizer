@@ -64,7 +64,13 @@ function esegui(nome, ...dipendenze) {
 
 const oraPulita = esegui('_pmoOraPulita');
 const dentroLaFascia = esegui('pmoOraDentroLaFascia');
-const prezzoSlot = esegui('_pmoPrezzoDelloSlot', ['_pmoOraPulita', oraPulita], ['pmoOraDentroLaFascia', dentroLaFascia]);
+// 🆕 VOCE 188/B — `_pmoPrezzoDelloSlot` non contiene più il ciclo: **delega** a
+// `_pmoPerchePrezzoAssente` e ne butta via il motivo. ⇒ Il banco deve costruire prima quella e
+// iniettargliela, o esercita una funzione che nell'app non esiste più.
+// ⚖️ È il prezzo di avere la regola in un posto solo, ed è quello giusto da pagare: prima le due
+//    copie erano due, e questo banco ne provava una sola.
+const percheAssente = esegui('_pmoPerchePrezzoAssente', ['_pmoOraPulita', oraPulita], ['pmoOraDentroLaFascia', dentroLaFascia]);
+const prezzoSlot = esegui('_pmoPrezzoDelloSlot', ['_pmoPerchePrezzoAssente', percheAssente]);
 const importiApp = esegui('_pmoImportiDalListino');
 
 const QUANDO = '2026-09-09T10:00:00.000Z';

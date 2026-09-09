@@ -71,7 +71,11 @@ const oraPulita = esegui('_pmoOraPulita', {});
 //    anche questa dipendenza, il banco cadrebbe su un `is not defined` e sembrerebbe un difetto
 //    della cura invece che del banco.
 const dentroLaFascia = esegui('pmoOraDentroLaFascia', {});
-const prezzoSlot = esegui('_pmoPrezzoDelloSlot', { _pmoOraPulita: oraPulita, pmoOraDentroLaFascia: dentroLaFascia });
+// 🆕 VOCE 188/B — il ciclo sulle fasce vive adesso in `_pmoPerchePrezzoAssente`, e
+// `_pmoPrezzoDelloSlot` gli delega: si monta prima quella, o si esercita una funzione che
+// nell'app non esiste più.
+const percheAssente = esegui('_pmoPerchePrezzoAssente', { _pmoOraPulita: oraPulita, pmoOraDentroLaFascia: dentroLaFascia });
+const prezzoSlot = esegui('_pmoPrezzoDelloSlot', { _pmoPerchePrezzoAssente: percheAssente });
 const importiApp = esegui('_pmoImportiDalListino', {});
 
 /* 🚨 IL FIXTURE DEVE CONTENERE L'INPUT CHE LA GUARDIA DEVE FERMARE, o il sabotaggio resta verde.
