@@ -197,11 +197,28 @@ test('⑧ un id interno che non è un numero non arriva mai al worker', async ()
    📌 *Un attrezzo che tronca l'inizio accusa il pezzo che ha troncato.* */
 const SORGENTE_INCASSO = 'async ' + estrai('_pmoCollectPayment');
 
+/* 🩹 09/09/2026 (voce 181) — LE REGOLE DELLA CASSA ENTRANO NEL CONTESTO, e si estraggono VERE
+ * invece di essere finte. `_pmoCollectPayment` è cresciuta: adesso chiede a `pmoCassaNativaPer`
+ * se la cassa è nostra e a `_pmoCassaVerdettoBorsellino` se il borsellino basta. Senza queste,
+ * questo banco cadeva con `ReferenceError` — e la regola che difende (chi fa scattare la
+ * rilettura del saldo) era **intatta**: è il meccanismo a essere cambiato.
+ * ⚖️ Guardia AGGIORNATA, non allentata: si iniettano le funzioni vere, così se un domani
+ * `pmoCassaNativaPer` dicesse «sì» su un url che non è Supabase, questo banco lo vedrebbe. */
+const SORGENTE_REGOLE_CASSA = [
+  estrai('pmoRefSupabaseDellUrl'),
+  estrai('pmoCassaNativaPer'),
+  estrai('_pmoCassaVerdettoBorsellino'),
+].join('\n');
+
 function bancoIncasso({ metodo = 'wallet', roster = [], edgeOk = true } = {}) {
   const riletture = [];
   const ctx = {
-    PMO_IS_TEST_ENV: false, PMO_PAYMENTS_SIMULATE: false,
+    PMO_IS_TEST_ENV: false,
     PMO_PAYMENTS_COLLECT_ENABLED: true, PMO_PAYMENTS_WRITE_ENABLED: true,
+    // ⭐ Questo banco esercita la strada di MATCHPOINT, e `https://edge` non è un ref Supabase
+    //    ⇒ `pmoCassaNativaPer` risponde `false` da sé. Non è una finta: è la funzione vera che
+    //    dice la cosa giusta su un indirizzo che non conosce.
+    PMO_PROD_SUPABASE_PROJECT_REF: 'qqbfphyslczzkxoncgex',
     staffCalPlayersState: { idReserva: '9844', roster },
     // 🔑 IL BERSAGLIO DEL CASO: si registra CHI viene chiamato, non cosa fa — quello lo provano
     //    i casi ①-⑧.
@@ -225,6 +242,7 @@ function bancoIncasso({ metodo = 'wallet', roster = [], edgeOk = true } = {}) {
     _pmoConfirmCollect: async () => true,
   };
   vm.createContext(ctx);
+  vm.runInContext(SORGENTE_REGOLE_CASSA, ctx);
   vm.runInContext(SORGENTE_INCASSO, ctx);
   return { incassa: ctx._pmoCollectPayment, riletture, metodo };
 }
