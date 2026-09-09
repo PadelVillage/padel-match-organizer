@@ -145,7 +145,7 @@ function bancoStriscia({ schedaAperta, rigaSiVede, azioneLocale }) {
     'document', '_svcAzioneLocale', '_svcUltimoSemaforo', '_svcUltimoSemaforoTs', 'SVC_REMOTO_SCADE_MS',
     'SVC_ESITI', 'svcFraseDellEsito', 'svcAccendiCella', 'svcSchedaAperta', 'svcBarraDoppiaDellaRiga',
     '_svcRigaEsitoSiVede', 'svcAzzeraPosizioneStriscia', 'svcPosizionaPastiglia', 'svcApriDallaPastiglia',
-    'svcScacciaAzione',
+    'svcScacciaAzione', 'svcTaceSulCalendario',
     'return function svcRidisegnaSemaforo() ' + corpo + ';',
   )(
     document, azioneLocale, null, 0, 60000,
@@ -158,6 +158,10 @@ function bancoStriscia({ schedaAperta, rigaSiVede, azioneLocale }) {
     regola,
     () => rigaSiVede,
     () => {}, () => {}, () => {}, () => {},
+    // 🆕 09/09/2026 — la guardia nuova entra QUI dentro, e si passa QUELLA VERA (estratta dal
+    //    sorgente) invece di una finta: una finta proverebbe una regola diversa da quella in
+    //    servizio, che è il modo in cui un banco resta verde su codice cambiato.
+    new Function(corpoDi('svcTaceSulCalendario').replace(/^/, 'return function svcTaceSulCalendario(loc) ') + ';')(),
   );
   f();
   return { striscia, celleAccese };
