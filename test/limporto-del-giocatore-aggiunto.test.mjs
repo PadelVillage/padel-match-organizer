@@ -63,7 +63,8 @@ function esegui(nome, ...dipendenze) {
 }
 
 const oraPulita = esegui('_pmoOraPulita');
-const prezzoSlot = esegui('_pmoPrezzoDelloSlot', ['_pmoOraPulita', oraPulita]);
+const dentroLaFascia = esegui('pmoOraDentroLaFascia');
+const prezzoSlot = esegui('_pmoPrezzoDelloSlot', ['_pmoOraPulita', oraPulita], ['pmoOraDentroLaFascia', dentroLaFascia]);
 const importiApp = esegui('_pmoImportiDalListino');
 
 const QUANDO = '2026-09-09T10:00:00.000Z';
@@ -81,14 +82,31 @@ const MAPPA = {
 // ─────────────────────────────────────────────────────────────────────────────
 // ① LA SCELTA DELLA FASCIA
 // ─────────────────────────────────────────────────────────────────────────────
-test('① la fascia si sceglie sull\'ora d\'INIZIO, e il prezzo è il suo', () => {
+test('① la fascia si sceglie sull\'ora, e il prezzo è il suo', () => {
   assert.equal(prezzoSlot(MAPPA, '2026-12-30', '19:30'), 1300);
   assert.equal(prezzoSlot(MAPPA, '2026-12-30', '18:00'), 1200);
 });
 
-test('① 🚨 un\'ora che cade DENTRO una fascia ma non la comincia ⇒ non lo sappiamo', () => {
-  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '20:00'), null,
-    'indovinare il prezzo di una partita che comincia a metà fascia è inventarlo');
+test('① 🔄 un\'ora che cade DENTRO una fascia ne prende il prezzo (voce 188)', () => {
+  /* 🔄🚨 QUESTA PROVA DICEVA IL CONTRARIO — «⇒ non lo sappiamo», con la motivazione
+     «indovinare il prezzo di una partita che comincia a metà fascia è inventarlo». È stata
+     CORRETTA il 09/09/2026, non affiancata, e la correzione viene da una parola del committente:
+     la griglia è il **menù dei soci**, non l'orario del circolo, e il **prezzo** è del campo a
+     quell'ora ⇒ *«prende il prezzo della fascia»*.
+     ⚖️ La riga vecchia non era una svista: era giusta finché non si sapeva a chi appartenesse la
+     griglia. 📌 *Una regola che nessuno può dire giusta o sbagliata senza sapere a chi appartiene
+     il dato non è una regola tecnica: è una decisione, e va chiesta.* */
+  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '20:00'), 1300);
+  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '18:45'), 1200);
+});
+
+test('① ⛔ l\'ora uguale alla FINE appartiene alla fascia DOPO', () => {
+  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '19:30'), 1300);   // non 1200
+});
+
+test('① fuori da OGNI fascia resta null: lì non c\'è niente da leggere', () => {
+  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '09:00'), null);
+  assert.equal(prezzoSlot(MAPPA, '2026-12-30', '22:30'), null);
 });
 
 test('① una fascia SENZA prezzo resta null: non diventa gratis', () => {

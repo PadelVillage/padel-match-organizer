@@ -67,7 +67,11 @@ function esegui(nome, dip) {
 }
 
 const oraPulita = esegui('_pmoOraPulita', {});
-const prezzoSlot = esegui('_pmoPrezzoDelloSlot', { _pmoOraPulita: oraPulita });
+// 🎯 VOCE 188 — `_pmoPrezzoDelloSlot` chiede adesso la fascia che CONTIENE l'ora: senza montarle
+//    anche questa dipendenza, il banco cadrebbe su un `is not defined` e sembrerebbe un difetto
+//    della cura invece che del banco.
+const dentroLaFascia = esegui('pmoOraDentroLaFascia', {});
+const prezzoSlot = esegui('_pmoPrezzoDelloSlot', { _pmoOraPulita: oraPulita, pmoOraDentroLaFascia: dentroLaFascia });
 const importiApp = esegui('_pmoImportiDalListino', {});
 
 /* 🚨 IL FIXTURE DEVE CONTENERE L'INPUT CHE LA GUARDIA DEVE FERMARE, o il sabotaggio resta verde.

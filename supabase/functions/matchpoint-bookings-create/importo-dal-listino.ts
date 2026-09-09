@@ -67,11 +67,40 @@ export function prezzoDellaFascia(fasce: readonly FasciaListino[] | null | undef
   if (!cercata || !Array.isArray(fasce)) return null;
   for (const f of fasce) {
     if (!f || typeof f !== 'object') continue;
-    if (oraPulita(f.ora_inizio) !== cercata) continue;
+    if (!oraDentroLaFascia(oraPulita(f.ora_inizio), oraPulita(f.ora_fine), cercata)) continue;
     const p = f.prezzo_cents;
     return (typeof p === 'number' && Number.isFinite(p) && p >= 0) ? Math.round(p) : null;
   }
   return null;
+}
+
+/** 🎯⭐⭐ VOCE 188 — LA FASCIA CHE **CONTIENE** L'ORA, non quella che ci comincia sopra.
+ *
+ * 🩹 QUI C'ERA `ora_inizio === cercata`, e cercava l'inizio invece dell'intervallo.
+ * 📏 Misurato su `cudi` il 09/09/2026: delle 32 prenotazioni native vive, **6** stavano DENTRO una
+ * fascia senza cominciare al suo inizio — e restavano **senza prezzo mentre il prezzo esisteva**.
+ * Fra quelle, la partita del committente dell'11/09 alle 14:30: il venerdì la fascia 14:00-15:30
+ * c'è e costa 10 €, la partita ci sta dentro, e la cassa non aveva su cosa addebitare.
+ *
+ * ⚖️ **E la stessa riga, per il BOT, era ed è GIUSTA**: `verdettoSlot` pretende inizio *e* fine
+ * uguali alla fascia, perché al socio si vendono le **fasce intere** — sono il menù. È l'app che
+ * ha riusato il metro del menù per fare un'altra cosa: **leggere un prezzo**.
+ * 📌 *La stessa regola può essere giusta da una parte e sbagliata dall'altra: dipende da cosa le
+ *    si sta chiedendo.*
+ *
+ * 🗣️ E lo conferma il committente (09/09/2026): *«quelle ore di pianificazione che abbiamo messo
+ * dentro amministrazione sono le ore e gli slot che riguardano i soci, poi invece la segreteria su
+ * chiamata personale può prenotare un campo»* ⇒ la griglia è il **menù dei soci**, non l'orario di
+ * apertura del circolo: la segreteria prenota dove vuole, e dove una fascia c'è il prezzo è quello.
+ *
+ * ⚠️ **Una partita che attraversa due fasce di prezzo diverso** (lunedì 19:00-20:30 tocca la 12 €
+ * e la 13 €) prende il prezzo della fascia in cui **comincia**. È una scelta, ed è dichiarata qui.
+ * ⛔ E l'ora uguale alla FINE di una fascia appartiene alla fascia DOPO, non a quella che finisce:
+ * per questo il confronto è `< fine` e non `<= fine`. PURA. */
+export function oraDentroLaFascia(inizio: string | null, fine: string | null, ora: string): boolean {
+  if (!inizio) return false;
+  if (!fine) return inizio === ora;   // una fascia senza fine non è un intervallo: vale il suo inizio
+  return ora >= inizio && ora < fine;
 }
 
 /**

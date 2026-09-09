@@ -43,11 +43,47 @@ prova('PostgREST rende HH:MM:SS e non deve ingannare', () => {
   assert.equal(prezzoDellaFascia(LUNEDI, '18:00:00'), 1200);
 });
 
-prova('un\'ora FUORI dalla griglia non prende un prezzo a caso', () => {
-  // 🚨 18:45 cade DENTRO la fascia 18:00-19:30, e proprio per questo non deve prenderne il prezzo:
-  // una prenotazione che comincia a metà fascia non è quella fascia.
-  assert.equal(prezzoDellaFascia(LUNEDI, '18:45'), null);
+prova('🔄 chi comincia DENTRO una fascia ne prende il prezzo (voce 188)', () => {
+  /* 🔄🚨 QUESTA PROVA DICEVA IL CONTRARIO, ed è stata CORRETTA il 09/09/2026 — non affiancata.
+     Diceva: *«18:45 cade dentro la fascia 18:00-19:30, e proprio per questo non deve prenderne il
+     prezzo: una prenotazione che comincia a metà fascia non è quella fascia»*, e c'era pure un
+     sabotaggio scritto apposta a difenderla.
+
+     ⚖️ Non era una svista: era la regola giusta finché non si sapeva **a chi** appartiene la
+     griglia. Lo ha detto il committente il 09/09: *«quelle ore di pianificazione che abbiamo messo
+     dentro amministrazione sono le ore e gli slot che riguardano i soci, poi invece la segreteria
+     su chiamata personale può prenotare un campo»* — e alla domanda diretta se una partita messa
+     dalla segreteria alle 14:30 dentro la fascia delle 14:00 paghi quei 10 €: **«prende il prezzo
+     della fascia»**.
+     ⇒ La griglia è il **menù dei soci**; il **prezzo** invece è del campo a quell'ora, e vale per
+     chiunque ce lo metta.
+     📏 Il difetto che costava, misurato su `cudi`: delle 32 prenotazioni native vive, **6** stavano
+     dentro una fascia senza cominciare al suo inizio ⇒ **senza prezzo mentre il prezzo esisteva**.
+     📌 *Una regola che nessuno può dire giusta o sbagliata senza sapere a chi appartiene il dato
+        non è una regola tecnica: è una decisione, e va chiesta.* */
+  assert.equal(prezzoDellaFascia(LUNEDI, '18:45'), 1200);
+  assert.equal(prezzoDellaFascia(LUNEDI, '18:00'), 1200);
+  assert.equal(prezzoDellaFascia(LUNEDI, '19:29'), 1200);
+});
+
+prova('⛔ l\'ora uguale alla FINE appartiene alla fascia DOPO, non a quella che finisce', () => {
+  // Se il confronto fosse `<= fine`, le 19:30 prenderebbero 1200 invece di 1300 — e la fascia
+  // vincente sarebbe quella che capita prima nell'elenco, cioè un caso deciso dall'ordinamento.
+  assert.equal(prezzoDellaFascia(LUNEDI, '19:30'), 1300);
+});
+
+prova('fuori da OGNI fascia resta senza prezzo: lì non c\'è niente da leggere', () => {
   assert.equal(prezzoDellaFascia(LUNEDI, '07:00'), null);
+  assert.equal(prezzoDellaFascia(LUNEDI, '21:00'), null);   // dopo l'ultima fascia
+});
+
+prova('una fascia SENZA fine non è un intervallo: vale solo il suo inizio', () => {
+  // 🚨 Senza questa riga, una fascia a cui manca `ora_fine` risponderebbe per QUALUNQUE ora — cioè
+  // un dato incompleto diventerebbe un prezzo per tutta la giornata. Vale il suo inizio e basta.
+  const SENZA_FINE = [{ ora_inizio: '18:00', prezzo_cents: 1200 }];
+  assert.equal(prezzoDellaFascia(SENZA_FINE, '18:00'), 1200);
+  assert.equal(prezzoDellaFascia(SENZA_FINE, '18:30'), null);
+  assert.equal(prezzoDellaFascia(SENZA_FINE, '09:00'), null);
 });
 
 prova('prezzo non deciso ⇒ null, che NON è zero', () => {
@@ -135,7 +171,11 @@ prova('quantiConImporto conta quelli che ce l\'hanno davvero', () => {
 function reggeAncora(M: Record<string, any>): boolean {
   try {
     if (M.prezzoDellaFascia(LUNEDI, '18:00') !== 1200) return false;
-    if (M.prezzoDellaFascia(LUNEDI, '18:45') !== null) return false;
+    if (M.prezzoDellaFascia(LUNEDI, '18:45') !== 1200) return false;
+    if (M.prezzoDellaFascia(LUNEDI, '19:30') !== 1300) return false;
+    if (M.prezzoDellaFascia(LUNEDI, '07:00') !== null) return false;
+    // una fascia senza `ora_fine` non è un intervallo: vale il suo inizio e nient'altro
+    if (M.prezzoDellaFascia([{ ora_inizio: '18:00', prezzo_cents: 1200 }], '18:30') !== null) return false;
     if (M.prezzoDellaFascia([{ ora_inizio: '18:00', prezzo_cents: null }], '18:00') !== null) return false;
     const nulla = M.importiDalListino([{ nome: 'A' }], null, QUANDO);
     if ('importoCents' in nulla[0]) return false;
@@ -178,9 +218,15 @@ await sabota('si sovrascrive un importo già presente',
 await sabota('torna a scriversi `lettoAt`',
   'riga.importoAt = String(quando || \'\');',
   'riga.importoAt = String(quando || \'\'); riga.lettoAt = String(quando || \'\');');
-await sabota('la fascia si cerca «dentro» invece che sull\'inizio',
-  'if (oraPulita(f.ora_inizio) !== cercata) continue;',
-  'if (oraPulita(f.ora_inizio) > cercata) continue;');
+await sabota('la fascia torna a cercarsi sull\'INIZIO invece che dentro (voce 188 al contrario)',
+  'return ora >= inizio && ora < fine;',
+  'return ora === inizio;');
+await sabota('la FINE della fascia diventa inclusiva ⇒ le 19:30 pagherebbero la fascia di prima',
+  'return ora >= inizio && ora < fine;',
+  'return ora >= inizio && ora <= fine;');
+await sabota('una fascia senza FINE si mette a rispondere per tutti',
+  'if (!fine) return inizio === ora;',
+  'if (!fine) return true;');
 await sabota('il pendente nasce a zero invece che uguale all\'importo',
   'if (!(typeof pen === \'number\' && Number.isFinite(pen))) riga.pendenteCents = prezzoCents;',
   'if (!(typeof pen === \'number\' && Number.isFinite(pen))) riga.pendenteCents = 0;');
