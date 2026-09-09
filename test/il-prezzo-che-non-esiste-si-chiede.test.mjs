@@ -43,9 +43,22 @@ const QUI = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(QUI, '..', 'index.html'), 'utf8');
 
 let passed = 0, failed = 0;
-function test(nome, fn) {
-  try { fn(); passed++; console.log('ok   - ' + nome); }
-  catch (e) { failed++; console.log('FAIL - ' + nome + '\n       ' + e.message); }
+/* 🚨⭐⭐ LE PROVE SI REGISTRANO E SI ESEGUONO IN FILA, **aspettandole**.
+ * 📏 Il difetto che questa forma cura, misurato scrivendo il banco: con un `test()` sincuro
+ *   (`try { fn(); passed++ }`) una prova **async** che fallisce viene contata fra le **PASSATE** e
+ *   stampata `ok` — perché `fn()` torna una promessa che nessuno aspetta — e solo dopo il processo
+ *   muore per la promessa rifiutata.
+ * ⇒ Il **codice d'uscita** resta giusto (CI se ne accorge), ma **il resoconto dice il falso**: dice
+ *   «ok» e conta un successo su una prova appena fallita. 📌 *Una guardia che dà la risposta giusta
+ *   per la ragione sbagliata è una guardia che smetterà di darla al primo cambio* — e qui bastava
+ *   una prova async che fallisce **senza** far cadere il processo per non vederla mai. */
+const prove = [];
+function test(nome, fn) { prove.push({ nome, fn }); }
+async function eseguiLeProve() {
+  for (const p of prove) {
+    try { await p.fn(); passed++; console.log('ok   - ' + p.nome); }
+    catch (e) { failed++; console.log('FAIL - ' + p.nome + '\n       ' + e.message); }
+  }
 }
 
 function corpoDi(nome) {
@@ -339,5 +352,6 @@ test('🧪 SABOTAGGI — quattro, e tutti e quattro devono far cadere qualcosa',
     'sabotaggio ⓸ non visto: si potrebbe richiedere del denaro già incassato');
 });
 
+await eseguiLeProve();
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 if (failed) process.exit(1);
