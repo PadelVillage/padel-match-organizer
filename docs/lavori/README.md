@@ -1929,6 +1929,82 @@ prezzo **non esiste** ⇒ il gestionale deve **chiederlo**, invece di lasciarlo 
 ⛔ E non deve **bloccare** chi lavora: la segreteria prenota al telefono, e un ostacolo lì è
 esattamente ciò che lui ha escluso.
 
+🔨⭐⭐ **09/09/2026 SERA — LA METÀ B È COSTRUITA (6.424), E UNA SUA MISURA HA ALLARGATO LA VOCE.**
+📏 **Rimisurato su `cudi` prima di toccare qualunque cosa**, e la spaccatura della metà A si
+riproduce identica: **21** cominciano esattamente a una fascia · **6** stanno dentro senza iniziarla
+· **5** fuori da ogni fascia. ⭐ Delle 5, **una sola è futura** — la sua di **giovedì 10/09, Campo 1,
+ore 11:00**, roster *Maurizio Aprea · Marco Aprea*, **zero importi**. Le altre quattro sono di
+giugno e luglio, e lì vale la riga della 180: *un prezzo a ritroso è peggio del vuoto*.
+
+🚨⭐⭐ **IL FATTO CHE HA CAMBIATO LA FORMA DELLA CURA, misurato sul sorgente DEPLOYATO su `cudi` e
+non su git**: la strada per mettere un importo a mano — `matchpoint-charge-write`, la voce 132 —
+incontra il recinto `scritturaAlCircoloConsentita`, che è cablato sul ref di **PROD**, e risponde
+**`503 AMBIENTE_DI_PROVA`**. E a differenza di `bookings-create · edit · cancel`, quella edge
+importa **solo il rifiuto**: `esitoNativo` non ce l'ha, quindi **non ha un ramo che scriva da noi**.
+⇒ **Sul gestionale che sta diventando il vero non esisteva alcun modo di mettere un importo a
+mano**: il bottone c'è (`PMO_CHARGE_WRITE_ENABLED` è `true`) e la strada dietro è chiusa.
+⚖️ Non è un difetto di quella edge: è la **184 vista da un'altra faccia** — un pezzo scritto quando
+«TEST» voleva dire *laboratorio*, rimasto al suo posto mentre quell'ambiente diventa **produzione**.
+Là il recinto protegge; qui blocca il lavoro vero. 📌 *Le salvaguardie scritte per l'ambiente di
+prova non proteggono il sistema che sta diventando quello vero, e non lo dicono: continuano a
+suonare prudenti.*
+
+✅ **COSA È IN SERVIZIO SU TEST 6.424, in quattro pezzi:**
+· ① **`_pmoPerchePrezzoAssente`** — **cinque motivi** al posto di un `null` solo. `_pmoPrezzoDelloSlot`
+  rispondeva `null` a cinque domande diverse (listino non caricato · giorno chiuso · ora illeggibile ·
+  fuori da ogni fascia · fascia senza prezzo), e **due** vogliono *«chiedi a una persona»* mentre
+  **tre** vogliono *«taci, lo saprai fra un secondo»*. 📌 *Una funzione che risponde «no» a due
+  domande diverse non risponde a nessuna delle due* — la stessa riga già scritta in `CLAUDE.md` per
+  `pmoIsReadonlyStaff`. ⭐ E il ciclo sulle fasce ora vive in **un posto solo**: la vecchia delega,
+  invece di tenerne una seconda copia;
+· ② **la domanda**, all'apertura della scheda e **solo dove manca la risposta** — prenotazione
+  nostra, prezzo impossibile, almeno un importo assente. ⛔ **Non blocca**: la prenotazione è già
+  registrata e lo dice per esteso (*«Puoi anche lasciar perdere adesso»*);
+· ③ **`_pmoSetChargesNativo`** — gestionale scollegato dal circolo ⇒ l'importo **nasce e resta qui**,
+  per la stessa strada che la 180 usa già (copia locale + `staffCalCloudSyncEdit`). 🚨 Il bivio si
+  decide sul **ref** (`pmoGestionaleCollegatoAlCircolo`), **mai sull'hostname** — che il passaggio
+  farà scadere. ⚖️ E nel dubbio si resta sulla strada di **PROD**: sbagliare da lì fa **fallire** un
+  salvataggio e si vede subito; sbagliare dall'altra parte scriverebbe in un libro solo nostro una
+  cifra che il circolo si aspetta di vedere;
+· ④ **il QUINTO esito della casella**, `origineImporto: 'segreteria'`. ⛔ E **non** «nessuna marca»,
+  che era l'altra strada: su PROD nessuna marca vuol dire *«il circolo ha confermato»* (è la marca
+  che `_pmoSetCharges` **toglie** dopo la risposta del worker) ⇒ una cifra decisa a mano si
+  travestirebbe da confermata. È il difetto del **quarto esito della 180 preso dall'altro verso**, e
+  arriva fino al **riepilogo**, cioè dove si chiede di confermare del denaro.
+
+🩹 **Curato per strada, e non era in programma**: il docblock di `_pmoPrezzoDelloSlot` dichiarava
+ancora la regola **opposta** a quella che la riga esegue (*«si guarda l'ora d'INIZIO… indovinarle un
+prezzo sarebbe inventarlo»*), rimasto indietro dalla metà A di stamattina. 📌 *Un commento che
+sopravvive alla regola che descriveva non è vecchio: **mente**, e mente nel punto in cui qualcuno lo
+legge apposta per non dover leggere il codice.*
+
+🧪 **PROVATO — e va letto per quello che dice, non per il verde**:
+· **banco nuovo** `il-prezzo-che-non-esiste-si-chiede` **24 verdi**; i due banchi gemelli riallineati
+  alla delega (12 e 13 verdi); **banco `.mjs` intero: 89 file, 0 rossi**; sintassi 5 blocchi 0 errori
+  **col controllo negativo passato**;
+· 🚨 **CINQUE SABOTAGGI SUL SORGENTE VERO** — non su funzioni finte — **tutti visti**: «fuori fascia»
+  reso silenzioso · «listino non caricato» che invece chiede · la marca che non arriva alla casella ·
+  il pendente riportato a debito su una riga **già riscossa** · il bivio deciso sull'**hostname**
+  invece che sul ref. E il file torna verde al ripristino;
+· ✅ **SULLA PAGINA VIVA DI TEST 6.424**, sulla partita **vera** di giovedì: `10/09 11:00` →
+  `fuori-da-ogni-fascia`, `chiedere: true`; `10/09 12:30` → `10,00 €`; `11/09 14:30` → `10,00 €` (il
+  caso della metà A regge); `11/09 11:30` → fuori. E **aprendo la sua scheda la domanda compare
+  davvero**, col conto giusto: *«Quanto paga ogni giocatore? … mancano tutti. Puoi anche lasciar
+  perdere adesso: la prenotazione è già registrata.»*
+
+⏳ **PERCHÉ LA VOCE RESTA APERTA — manca UNA cosa, ed è la metà che scrive.** Il ramo nativo
+(`_pmoSetChargesNativo`) è provato **al banco** e **sabotato con successo**, ma **non è mai stato
+attraversato sulla pagina viva**: esercitarlo vuol dire `--allow-writes`, e in questa sessione il
+flag è stato **rifiutato dal classificatore dell'ambiente cloud**. ⛔ Non è stato aggirato.
+📌 *Un banco verde dice che il meccanismo è giusto, non che il numero sia arrivato nel database* —
+ed è esattamente la distinzione che la regola della prova fisica esiste per tenere.
+🔎 **Cosa la chiuderebbe**: scrivere un importo dalla scheda della partita di giovedì e **rileggerlo
+dal database** (`origineImporto: 'segreteria'`, nessun `lettoAt`), come si fece per la 180.
+⚠️ **E prima va detto a lui**, perché non è più una prova innocua: `cudi` è il sistema che sta
+diventando il vero, quella partita è **sua**, e la cifra la sceglierei io. La riga *«su TEST mano
+libera, tanto non tocca Matchpoint»* poggia su Matchpoint — ed è la salvaguardia che **scade** (⇒ la
+sezione del disegno nuovo in `CLAUDE.md` lo dice per esteso).
+
 🗄️ **Cosa manca per chiuderla (testo vecchio, tenuto perché il ragionamento regge)**: la cura con la prova
 fisica. ⛔ Le **nove righe già senza prezzo** restano un problema a parte: un prezzo messo a ritroso
 sarebbe peggio del vuoto (è la stessa riga della 180).
