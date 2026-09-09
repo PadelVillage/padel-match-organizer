@@ -1990,7 +1990,43 @@ d'ingresso: prima costava la **somma** (491 · 775 · 707), adesso costa la **pi
 cura: è la somma di due cose, e una non è tua. Si accreditano solo i millisecondi che il disegno
 garantisce.* — è la stessa lezione con cui questa voce era già caduta una volta.
 
-⏳ **PERCHÉ LA VOCE RESTA APERTA**: la sua domanda era *«al massimo due secondi»* riferita alla
+⏱️⭐⭐ **09/09/2026 NOTTE — IL LAMPEGGIO DURA UN BATTITO SOLO (1.100 ms), E LA SCELTA L'HA
+DELEGATA LUI**: *«decidi tu per il lampeggio, per me va bene come decidi»*.
+⚖️ **Perché 1.100 e non un numero tondo**: è **esattamente un ciclo** di `svcCellaNata` (1,1 s). A
+2.000 ms il lampeggio veniva tagliato a **1,8 cicli** — a metà dissolvenza, in un punto deciso
+dall'animazione e non da noi. Un ciclo intero si chiude sul **verde pieno**.
+📌 *Un segnale che finisce a metà del proprio respiro non dice «finito»: dice «sono stato spento».*
+⛔ **SCARTATA una durata ADATTIVA** (`2000 − durata della scrittura`), che pure avrebbe centrato i
+due secondi **sempre**: accorcerebbe il segnale **proprio quando la scrittura è lenta**, cioè quando
+chi guarda ha più bisogno di capire dov'è finita la partita ⇒ il verso sarebbe rovesciato. E un
+gesto che la segreteria ripete tutto il giorno vuole un **ritmo fisso**, che si impara.
+🔒 La durata è **derivata** dal ciclo dell'animazione (`SVC_NASCITA_CICLO_MS`), non scritta a mano
+due volte, e **due guardie** la tengono: una lega la costante al CSS, l'altra fissa il valore.
+✅ **Provato sulla pagina viva di TEST 6.427**: `SVC_NASCITA_MS` = 1100, e il lampeggio si spegne a
+**1105 ms, tre volte su tre**, con **una** cella accesa per giro.
+
+🚨⭐⭐ **E HA RICHIESTO DI TOCCARE UN PALETTO PIANTATO IN UN ALTRO BANCO.** `la-barra-e-il-posto-unico`
+fissava `SVC_NASCITA_MS === 2000` con la sua motivazione accanto. ⇒ Non è un dettaglio del banco: è
+una **decisione fossilizzata**, e cambiarla senza sapere di chi fosse vorrebbe dire rompere la
+scelta di qualcun altro credendo di curare un difetto. Qui si sapeva — era **sua**, e l'ha
+**delegata** — e la storia delle tre durate (6.000 → 2.000 → 1.100) è ora scritta in quel banco.
+📌 *Prima di togliere un paletto piantato nel banco, si cerca chi l'ha piantato.*
+
+⏳ **PERCHÉ LA VOCE RESTA APERTA — e adesso il motivo è UNO SOLO e diverso da prima.**
+📏 I due pezzi sono misurati **separatamente**: scrittura mediana **~770 ms**, lampeggio **1.105 ms**
+⇒ la somma sta a **~1,9 s**, cioè sotto i due secondi che aveva chiesto. ⛔ **Ma è una SOMMA, non una
+misura**: il gesto intero — dalla sua mano alla fine del lampeggio, passando dalla scheda vera —
+**non è stato cronometrato**.
+🩹 **Ci ho provato e la sonda era sbagliata**, e va detto invece di far passare il numero: nel mio
+giro il lampeggio **non restava acceso** (il ridisegno dopo la scrittura lo spegne) ⇒ il
+«gesto intero» risultava scrittura **+ 101 ms**, cioè un giro di polling. Un numero che sembrava
+buono e non misurava niente.
+📌 *Due misure vere sommate non fanno una misura: fanno una previsione — e questa voce è già caduta
+una volta per aver preso una previsione plausibile per un fatto.*
+🔎 **Cosa la chiude**: una prenotazione fatta **dalla scheda**, cronometrata dal clic allo spegnersi
+della cella.
+
+🗄️ **Il motivo di prima (tenuto, perché il ragionamento regge)**: la sua domanda era *«al massimo due secondi»* riferita alla
 **conferma finale**. Oggi è **scrittura ~0,8 s + lampeggio 2 s ≈ 2,8 s** (era 3,3-4,1). ⇒ Per stare
 **sotto** i due secondi non basta più la edge: **i due secondi sono il lampeggio**, e quella durata
 l'ha chiesta lui. 🗣️ **È una decisione sua**, non un'ottimizzazione: o il lampeggio si accorcia, o
