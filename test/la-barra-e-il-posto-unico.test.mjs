@@ -544,5 +544,34 @@ test('⑯ 🚨⭐⭐ LA COPIA DELL\'APP NON POTA LA RIGA DEL GESTIONALE (nate e 
     'si salta anche la copia in pagina: la prenotazione non comparirebbe sul calendario');
 });
 
+test('⑰ 🆕⭐⭐ UNA NASCITA NON SI ANNUNCIA NEMMENO MENTRE NASCE — nessun banner, mai', () => {
+  // 🗣️ Sua seconda parola, davanti alla versione nuova: «Ci sono ancora i banner e non ci devono
+  //    essere». La prima cura toglieva il banner del «fatto» e lasciava quello dell'«in corso»:
+  //    toglieva il secondo dei due e teneva il primo.
+  const dis = soloCodice(dichiarazioneDi('svcRidisegnaSemaforo'));
+  assert.match(dis, /if \(loc && loc\.nascita && !finita\)/,
+    "mentre nasce la striscia parla ancora: e' il banner che lui vede per primo");
+  // 🚨 …ma la CELLA sì, o il secondo e mezzo della scrittura sarebbe completamente muto — e il
+  //    silenzio non e' quello che ha chiesto: ha chiesto di vederlo SUL CALENDARIO.
+  const ramo = dis.slice(dis.indexOf('loc.nascita && !finita'));
+  assert.match(ramo.slice(0, 400), /svcAccendiCella\(loc\.dove\)/,
+    'la striscia tace e non accende niente: il gesto diventa invisibile finche non e finito');
+
+  // ② Il riquadro bianco si chiude all'INIZIO, non a cose fatte: aperto e vuoto sopra la griglia
+  //    e' esattamente il rettangolo della sua prima segnalazione.
+  const acc = soloCodice(dichiarazioneDi('svcAccendiAzione'));
+  assert.match(acc, /if \(mia\.nascita\)/, 'il riquadro resta aperto e vuoto mentre lui guarda il calendario');
+  assert.match(acc, /svcCloseChat\(\)/);
+
+  // ③ 🚨 E TORNA SE VA MALE, o il motivo del rifiuto resta scritto dentro una finestra chiusa.
+  //    Il silenzio vale sul successo: su un rifiuto sarebbe la bugia di sempre.
+  const chi = soloCodice(dichiarazioneDi('svcChiudiAzione'));
+  assert.match(chi, /if \(_svcAzioneLocale\.nascita\) \{ try \{ svcOpenChat\(\)/,
+    'il riquadro non si riapre sul rifiuto: il dettaglio diventa illeggibile');
+  // …e deve stare DOPO l'uscita del «fatto», o si riaprirebbe anche quando e' andata bene.
+  assert.ok(chi.indexOf('svcLampeggiaNascita(dove)') < chi.indexOf('svcOpenChat()'),
+    'il riquadro si riapre anche sul successo: il banner torna dalla finestra');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
