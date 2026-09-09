@@ -29,6 +29,19 @@ function test(nome, fn) {
   catch (e) { failed++; console.log('FAIL - ' + nome + '\n       ' + e.message); }
 }
 
+/** Le sole righe di CODICE. 🩹 Senza questo, la guardia che vieta una parola dà l'allarme sul
+ *  COMMENTO che spiega perché quella parola è vietata — ed è successo alla prima corsa di questo
+ *  banco, su una frase mia scritta per raccontare la cura. È lo stesso rimedio già scritto in
+ *  `la-cella-si-accende-dove-si-disegna`, e si taglia per STRUTTURA (i `/* … *\/` spariscono
+ *  interi) e non per riga: buttare via le righe che COMINCIANO per `//` lascia dentro le righe di
+ *  mezzo di un commento lungo. */
+function soloCodice(testo) {
+  return String(testo)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n').filter(function (r) { return !/^\s*\/\//.test(r); })
+    .join('\n');
+}
+
 /** Il corpo di `function nome(`, contando le graffe dalla PRIMA del corpo. */
 function corpoDi(nome, testo = APP) {
   const i = testo.indexOf('function ' + nome + '(');
@@ -152,22 +165,28 @@ test('il campo si confronta come NUMERO e l\'ora come TESTO', () => {
 /* ── ④ le guardie della disposizione: i pezzi che il gesto usa devono esserci davvero ───── */
 
 test('i segmenti LIBERI si dichiarano tali (o non ci sarebbe dove lasciare)', () => {
-  assert.match(APP, /seg\.dataset\.libero = '1'/);
+  assert.match(soloCodice(APP), /seg\.dataset\.libero = '1'/);
 });
 
 test('solo ciò che NON è di Matchpoint si trascina', () => {
-  assert.match(APP, /if \(!mp\) pmoTrascinaAttacca\(blk/);
+  assert.match(soloCodice(APP), /if \(!mp\) pmoTrascinaAttacca\(blk/);
 });
 
 test('il fantasma non intercetta il puntatore (o `elementFromPoint` troverebbe sempre lui)', () => {
-  assert.match(corpoDi('pmoTrascinaPrendi'), /f\.style\.pointerEvents = 'none'/);
+  assert.match(soloCodice(corpoDi('pmoTrascinaPrendi')), /f\.style\.pointerEvents = 'none'/);
 });
 
 test('🔇 lo spostamento non annuncia più né l\'«in corso» né il «fatto» (voce 189)', () => {
-  const c = corpoDi('staffCalDoMove');
+  const c = soloCodice(corpoDi('staffCalDoMove'));
   assert.ok(!/Spostamento in corso/.test(c), 'è tornato il banner «in corso»');
   assert.ok(!/Prenotazione spostata/.test(c), 'è tornato il banner «fatto»');
   assert.match(c, /Spostamento non riuscito/);   // …ma il RIFIUTO deve continuare a parlare
+});
+
+test('🏷️ la conferma non nomina più Matchpoint (voce 190: è il trascinamento a renderla visibile)', () => {
+  const c = soloCodice(corpoDi('staffCalDoMove'));
+  assert.ok(!/Spostare su Matchpoint/.test(c), 'la conferma nomina ancora Matchpoint');
+  assert.match(c, /Spostare la prenotazione\?/);
 });
 
 console.log('\n' + passed + ' ok · ' + failed + ' KO');
