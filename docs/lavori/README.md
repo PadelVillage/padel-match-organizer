@@ -1522,9 +1522,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **4** — 💰 **09/09/2026 mattina: la 181 sale dalla coda e si CHIUDE nella stessa sessione**, tutt'e due le metà provate sulla pagina viva ⇒ urgenti 4 → 5 → **4**. — 🗓️ **09/09/2026 mattina: la metà GRIGLIA della 183 è in servizio** su `cudi`: `create` non prenota più fuori fascia. Il controllo vecchio guardava solo 07:00-23:30 e delegava a un'autorità — Matchpoint — che il distacco spegne; e senza griglia una prenotazione **non ha un prezzo**, cioè la cassa non ha su cosa addebitare. ⚠️ La voce resta aperta: nessun `create` vero ci è passato, il cancello dell'edge è un segreto che non sta nell'ambiente. 🔄 E una riga di quella scheda è stata **corretta**: le fasce sono **39**, non 41, e un prezzo da 8 € non esiste — ✅ **confermato da lui il 09/09**: *«i prezzi messi sono corretti»* ⇒ sul listino non c'è più niente da decidere. — 💶 **09/09/2026 notte: ESCE la 180, chiusa a prova fisica su TEST 6.408 in tutti e quattro i pezzi** — l'importo nasce dal listino, la casella dichiara la provenienza, chi entra dopo paga come chi c'era già, le righe vecchie si riempiono all'apertura e **anche la lettura sta dentro il recinto** (l'ultima strada verso il Matchpoint del circolo, chiusa da due parti). ⛔ Col **residuo portato fuori** nella voce **187**, non sparito col titolo. ⇒ Urgenti da 5 a 4. — 🆕 **08/09/2026 notte: entra la 185**, il listino con un calendario (periodi, orari e prezzi che cambiano con la stagione, più le chiusure) — nasce da una sua richiesta esplicita e la 183 le ha fatto da innesco. 🎯 **08/09/2026: la lista torna da 0 a 4 col disegno «il gestionale di TEST diventa il vero»** (sua frase), 🆙 **e la sera diventa 5 con la 183 promossa dalla coda** — l'unica della catena che **non può farla chi lavora**: senza i suoi prezzi la 180 non ha un importo da far nascere e la 181 non ha su cosa addebitare (📏 `null` su **tutte e 41** le fasce). 📌 *Una voce che aspetta una decisione altrui va dichiarata per prima, o l'attesa comincia il giorno in cui si scopre che serviva.* Tre nascono da **misure sul codice** — la **177** (i due lettori del bot leggono ancora la griglia vecchia: residuo della 176, e il bot *racconterebbe* i vecchi orari mentre *prenota* sui nuovi), la **178** (in **9 edge su 11** la configurazione è controllata **prima** della barriera ⇒ tolti i secret si prende `500 WORKER_NOT_CONFIGURED` e il ramo autonomo non parte mai: è il **passo zero** del distacco) e la **179** (a sync spento il timbro di freschezza non si muove più ⇒ ogni verifica risponde `non_ancora` **per sempre**, e sembra pazienza). La quarta è la più grossa: la **180** — la scheda legge i soldi da Matchpoint **dal vivo**, fuori dalla barriera, e **242 `staff_booking` su 256 non hanno gli importi** ⇒ la cassa non ha su cosa addebitare, e va **prima** della cassa. — 💶 **la 171 è CHIUSA il 07/09 mattina, a prova fisica su PROD e su TUTTI E TRE i metodi** (contanti 23 s · borsellino 10,8 s · carta 5,1 s, tutti stornati subito), più la cura dell'attesa sul repeater per il `GIOCATORE_NON_TROVATO` intermittente — ⚠️ quella **non** provata contro il guasto visto, e la scheda lo dice. 👛 **E la 174, entrata alle 08:33, è CHIUSA alle 09:19 dello stesso giorno, a PROVA FISICA su PROD con denaro vero**: il borsellino di **Fabiola Limuti è tornato a 0,00 €**, e quegli 8,00 € che non le spettavano **non ci sono più**. |
+| 🔴 **Urgenti** | **1** — 🔻 **09/09/2026 mattina: escono la 177, la 183 e la 185, tutt'e tre con la STESSA prova** — una chiamata vera contro le edge nuove di `cudi`, che ha lasciato nel registro `fonte=pmo_calendario_effettivo` (i due lettori del bot), i cinque verdetti della griglia e una **prenotazione nativa** (`PMO-…`, durata presa dalla fascia, worker mai chiamato). 🚨 Erano ferme per un limite **già tolto**: il passaggio di consegne diceva che il ponte «non si può chiamare», e la sonda gli aveva risposto `HTTP 200` **due ore prima** che quel documento fosse scritto. ⇒ Urgenti da 4 a **1**: resta la **178**, che aspetta una cosa diversa — togliere i secret `MATCHPOINT_*` da `cudi`, cioè un gesto che **si dice prima**. — 💰 **09/09/2026 mattina: la 181 sale dalla coda e si CHIUDE nella stessa sessione**, tutt'e due le metà provate sulla pagina viva ⇒ urgenti 4 → 5 → **4**. — 🗓️ **09/09/2026 mattina: la metà GRIGLIA della 183 è in servizio** su `cudi`: `create` non prenota più fuori fascia. Il controllo vecchio guardava solo 07:00-23:30 e delegava a un'autorità — Matchpoint — che il distacco spegne; e senza griglia una prenotazione **non ha un prezzo**, cioè la cassa non ha su cosa addebitare. ⚠️ La voce resta aperta: nessun `create` vero ci è passato, il cancello dell'edge è un segreto che non sta nell'ambiente. 🔄 E una riga di quella scheda è stata **corretta**: le fasce sono **39**, non 41, e un prezzo da 8 € non esiste — ✅ **confermato da lui il 09/09**: *«i prezzi messi sono corretti»* ⇒ sul listino non c'è più niente da decidere. — 💶 **09/09/2026 notte: ESCE la 180, chiusa a prova fisica su TEST 6.408 in tutti e quattro i pezzi** — l'importo nasce dal listino, la casella dichiara la provenienza, chi entra dopo paga come chi c'era già, le righe vecchie si riempiono all'apertura e **anche la lettura sta dentro il recinto** (l'ultima strada verso il Matchpoint del circolo, chiusa da due parti). ⛔ Col **residuo portato fuori** nella voce **187**, non sparito col titolo. ⇒ Urgenti da 5 a 4. — 🆕 **08/09/2026 notte: entra la 185**, il listino con un calendario (periodi, orari e prezzi che cambiano con la stagione, più le chiusure) — nasce da una sua richiesta esplicita e la 183 le ha fatto da innesco. 🎯 **08/09/2026: la lista torna da 0 a 4 col disegno «il gestionale di TEST diventa il vero»** (sua frase), 🆙 **e la sera diventa 5 con la 183 promossa dalla coda** — l'unica della catena che **non può farla chi lavora**: senza i suoi prezzi la 180 non ha un importo da far nascere e la 181 non ha su cosa addebitare (📏 `null` su **tutte e 41** le fasce). 📌 *Una voce che aspetta una decisione altrui va dichiarata per prima, o l'attesa comincia il giorno in cui si scopre che serviva.* Tre nascono da **misure sul codice** — la **177** (i due lettori del bot leggono ancora la griglia vecchia: residuo della 176, e il bot *racconterebbe* i vecchi orari mentre *prenota* sui nuovi), la **178** (in **9 edge su 11** la configurazione è controllata **prima** della barriera ⇒ tolti i secret si prende `500 WORKER_NOT_CONFIGURED` e il ramo autonomo non parte mai: è il **passo zero** del distacco) e la **179** (a sync spento il timbro di freschezza non si muove più ⇒ ogni verifica risponde `non_ancora` **per sempre**, e sembra pazienza). La quarta è la più grossa: la **180** — la scheda legge i soldi da Matchpoint **dal vivo**, fuori dalla barriera, e **242 `staff_booking` su 256 non hanno gli importi** ⇒ la cassa non ha su cosa addebitare, e va **prima** della cassa. — 💶 **la 171 è CHIUSA il 07/09 mattina, a prova fisica su PROD e su TUTTI E TRE i metodi** (contanti 23 s · borsellino 10,8 s · carta 5,1 s, tutti stornati subito), più la cura dell'attesa sul repeater per il `GIOCATORE_NON_TROVATO` intermittente — ⚠️ quella **non** provata contro il guasto visto, e la scheda lo dice. 👛 **E la 174, entrata alle 08:33, è CHIUSA alle 09:19 dello stesso giorno, a PROVA FISICA su PROD con denaro vero**: il borsellino di **Fabiola Limuti è tornato a 0,00 €**, e quegli 8,00 € che non le spettavano **non ci sono più**. |
 | 📋 **In coda** | **4** — 🆙 **09/09/2026 mattina: ESCE la 181**, salita fra le urgenti (la dichiarazione della promozione sta nella sua scheda). ⇒ Coda da 5 a 4. — 🆕 **09/09/2026 notte: entra la 187**, il residuo della 180 — `staffCalAskMatchpoint` fa una **domanda** («la prenotazione è passata?») che dopo il distacco **non ha più un destinatario**. Oggi fallisce **chiusa** (`boh`, mai un «no» inventato), ma la sostituzione — chiedere al **gestionale**, forma della voce 53 — non è costruita. 📌 *Un ripiego onesto non è una cura: è il permesso di rimandarla sapendo cosa si sta rimandando.* ⇒ Coda da 4 a 5. — 🆕 **08/09/2026 notte: entra la 186** (i prezzi delle partite visibili ai giocatori dal bot, sua richiesta: *«un aggiornamento che dobbiamo fare al chatbot è di far vedere i prezzi delle partite ai giocatori»*) — sta in coda e non fra le urgenti perché **il pezzo mancante è nel repo del bot**, e da qui il gestionale il prezzo lo manda già. 🎯 **08/09/2026: la C torna da 0 a 4**, coi pezzi del disegno nuovo che hanno un **ordine** e non si possono anticipare — 🆙 **e la sera torna a 3: la 183 è salita fra le urgenti** (sta lì la dichiarazione della promozione). Restano: la **181** (la cassa nativa — dipende dalla 180, e il prototipo nel browser ha già il difetto del **doppio incasso**), la **182** (il **travaso una-tantum**, meccanismo già trovato e provato, con due chiavi di `app_setting` da **escludere** o i questionari scrivono nel database sbagliato), e la **184** (l'ambiente si riconosce **dall'hostname** ⇒ WhatsApp su un solo telefono, incassi finti, prenotazioni finte — 🚨 **la più pericolosa della lista**, in coda solo perché va fatta al momento del passaggio). — 🔚 **azzerata il 07/09/2026 notte su sua parola**: *«chiudiamo tutti i task ancora aperti così poi passiamo nell'ultima fase del progetto»*. ⚠️ **Zero non vuol dire «tutto risolto»**, e le schede lo dicono una per una: la **140** e la **118** muoiono col **distacco da Matchpoint** (fra ~20 giorni); la **115** era curata e in servizio; la **124** è un cantiere **mai aperto**; la **121** e la **175** si chiudono **NON curate** e **sopravvivono** al distacco — la 121 è un «tolto» detto prima che il gestionale lo registri, la 175 è il filtro che tiene gli under 14 e i 1708 contatti della rubrica fuori dagli invii, e **non esiste**. 📌 *Una coda a zero è una fotografia della volontà, non dello stato del codice.* — 👛 **la 143 CASSATA da lui il 07/09 notte** (*«poi ti spiego»*), e con lei la richiesta 1️⃣: era l'unica voce aperta sui pagamenti verso Matchpoint, le altre sei erano già chiuse. — 🌙 **quattro chiuse il 07/09 NOTTE su sua parola** (*«Chiudiamo centoundici, centododici, sessantotto e centosessantaquattro»*): la **111** e la **112** come **decisioni**, col loro residuo portato fuori nella voce **175** invece di sparire col titolo; la **68** su una misura che ha smentito la sua stessa scheda; la **164** con la metà «fasce» vista sul suo schermo. ⇒ Entra la **175**, quindi 10 − 4 + 1. — 📱 **esce anche la 119 il 07/09 sera**, sulla sua schermata: sei fasce tutte leggibili e tutte diverse. E la prova ha aperto il seguito — guardandola ha deciso di togliere numero e parola, e oggi le fasce sono `🟢 12:30` e `⛔ 18:00`. Prima erano uscite la 172 e la 142. |
-| 📦 **Chiuse** | **173** — 💰 **la 181 il 09/09/2026 mattina**, la CASSA NATIVA, provata sulla **pagina viva di TEST 6.410-6.411** in tutt'e due le metà. ① L'incasso nasce e muore nel gestionale: premuto **due volte** ⇒ **una riga sola** (la chiave non contiene più l'istante), il bottone «Pulisci simulazioni» cancella **0** e la risparmia, lo storno la mette a `void`. ② Il **borsellino si somma**: 33,00 € → **21,00 €** dopo un incasso da 12,00 col wallet, uno scoperto da 100,00 **rifiutato** senza muovere niente, e lo storno che riporta a **33,00 €**. 🚨⭐⭐ E due difetti trovati dal banco che valgono più della cura: **un cancello che fallisce chiuso non resta chiuso se lo si NEGA** (`!pmoGestionaleCollegatoAlCircolo(url)` dice «incassa» su un url storpiato), e **una guardia che cerca una parola prova che la parola c'è, non che il codice succeda** (il controllo del saldo spento con `if (false)` lasciava tutte le parole al loro posto). — 💶 **la 180 il 09/09/2026 notte**, provata sulla **pagina viva di TEST 6.408**: le dodici combinazioni della casella sulla funzione vera, una prenotazione nativa aperta (bordo puntinato, «13,00 dal listino»), un giocatore aggiunto (1300, `listino`, nessun `lettoAt`), una riga vera riempita all'apertura (quattro giocatori a 12,00, e la seconda apertura non riscrive), l'edge **chiesto davvero** (503 `LETTURA_AL_CIRCOLO_NON_PREVISTA`) e la scheda aperta col recinto chiuso (**zero** chiamate, velo spento, quattro nomi). ⚠️ **Due limiti dichiarati**: il riempimento copre **una riga su 30** (29 sono passate, e un prezzo a ritroso sarebbe peggio del vuoto) e una riga che nessuno apre resta senza importo. 🩹 E **tre difetti trovati nei banchi stessi**, corretti e scritti — un sabotaggio su una riga ridondante, un fixture senza l'input da fermare, una sonda che pescava «il» cancello dove i cancelli erano due. — 🗓️ **la 176 l'08/09/2026**, provata sulla **pagina viva di TEST 6.401**: le fasce prenotabili sono una tabella nostra (`pmo_fasce_prenotabili`, 41 fasce) che lui modifica a mano, e il blocco che veniva da Matchpoint muore col distacco. ⚠️ Si chiude **col residuo portato fuori** nella voce **177**, non sparito col titolo. 📌 *Il banco verde non vede quello che la pagina disegna: 124 prove verdi, e sul vivo il lunedì aveva cinque fasce invece di sei.* — 🔚 **le ultime SEI il 07/09 notte, tutte su sua decisione**, per passare all'ultima fase del progetto: 140 · 124 · 118 · 121 · 115 · 175. — 👛 **la 143 il 07/09 notte, CASSATA da lui**: si chiude **senza** la prova che chiedeva — un pagamento col borsellino premuto dal bottone dell'app — e la scheda lo dice invece di arrotondarlo. — 🚦 **la 111 e la 112 il 07/09 notte**, come **decisioni**: la regola c'è, il filtro no, e il filtro è la **175**. — 🔕 **la 68 il 07/09 notte**, ed è la **26ª**: la sua scheda era del 21/08 e la misura dice **381 eventi consecutivi con un esito, zero muti in sei giorni** — l'avevano curata la 73, la 74, la 76 e la 115 passando di lì, e nessuno era tornato a guardare. ⚠️ La chiusura dichiara il suo limite: `passato_al_bot` è il gestionale che parla del **gestionale**, non un messaggio visto su un telefono. — 🔁 **la 164 il 07/09 notte**, metà a prova fisica e metà a banco, detto quale è quale. — 📱 **la 119 il 07/09 sera**, provata sul suo schermo. — 🪟 **la 142 il 07/09 pomeriggio**, col criterio di chiusura scritto PRIMA della prova. — 🔐 **la 172 il 07/09 pomeriggio**, misurata prima di curare come la sua scheda pretendeva. — 🔥 **la 165 il 07/09 pomeriggio**: era nata su un numero falso (l'«11 GB» era l'avanzamento dell'LSN, non WAL scritto — il WAL vero è **0,4 a 1**), e si è chiusa curando due cose che all'apertura non erano in lista. — 👛 **la 174 il 07/09 alle 09:19**, aperta alle 08:33 e chiusa **46 minuti dopo**: non era il pulsante, era la **stanza**. 📌 *Letture passate + click falliti = la firma di un overlay.* — 💶 **la 171 il 07/09 mattina** (vedi la riga delle urgenti): era il guasto totale dell'incasso, ed erano **tre stanze**, non una. 📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**.* — 💸 **la 173 il 07/09 mattina** (vedi la riga delle urgenti). Con lei una correzione che non era nella voce: le tre funzioni-aiuto di `matchpoint-payments-sync` dichiaravano `ReturnType<typeof createClient>`, che **non è** il tipo che `createClient(url,key)` restituisce ⇒ **8 errori di tipo preesistenti**, portati a **0**. 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna quella CHIAMATA.* — 🪟 **la 169 è ENTRATA E CHIUSA il 06/09 pomeriggio** (TEST 6.379→6.382 → PROD 6.382, PR #1413 e #1414), su sua segnalazione con due schermate: ① il **maestro** non compare più due volte (Matchpoint lo mette anche nel roster, in minuscolo, e la guardia che doveva vederlo stava sul ramo sbagliato **e** confrontava lettera per lettera); ② i **quattro nomi si vedono** — le righe si stringono per gradi finché ci stanno tutte, e il taglio con «+N» è l'ultima spiaggia; ③ «Riprendo una verifica» esce **solo nella barra**. 🚨 Ci sono volute **quattro versioni**, ognuna smentita da una misura e l'ultima **da lui**: *«continuano a vedersi sempre tre giocatori su quattro»* — il «+1» dichiarava il nome mancante, lui lo vuole **leggere**. *Dichiarare un'assenza non è toglierla.* ✅ Provata su TEST **e** PROD a 810 · 740 · 680 px: **0** righe tagliate, **4 nomi su 4**. Con lei la **120**, chiusa a sua parola. |
+| 📦 **Chiuse** | **176** — 🎯 **la 177, la 183 e la 185 il 09/09/2026 mattina**, tutt'e tre con lo stesso giro di prove dal vivo su `cudi` (vedi la riga delle urgenti). — 💰 **la 181 il 09/09/2026 mattina**, la CASSA NATIVA, provata sulla **pagina viva di TEST 6.410-6.411** in tutt'e due le metà. ① L'incasso nasce e muore nel gestionale: premuto **due volte** ⇒ **una riga sola** (la chiave non contiene più l'istante), il bottone «Pulisci simulazioni» cancella **0** e la risparmia, lo storno la mette a `void`. ② Il **borsellino si somma**: 33,00 € → **21,00 €** dopo un incasso da 12,00 col wallet, uno scoperto da 100,00 **rifiutato** senza muovere niente, e lo storno che riporta a **33,00 €**. 🚨⭐⭐ E due difetti trovati dal banco che valgono più della cura: **un cancello che fallisce chiuso non resta chiuso se lo si NEGA** (`!pmoGestionaleCollegatoAlCircolo(url)` dice «incassa» su un url storpiato), e **una guardia che cerca una parola prova che la parola c'è, non che il codice succeda** (il controllo del saldo spento con `if (false)` lasciava tutte le parole al loro posto). — 💶 **la 180 il 09/09/2026 notte**, provata sulla **pagina viva di TEST 6.408**: le dodici combinazioni della casella sulla funzione vera, una prenotazione nativa aperta (bordo puntinato, «13,00 dal listino»), un giocatore aggiunto (1300, `listino`, nessun `lettoAt`), una riga vera riempita all'apertura (quattro giocatori a 12,00, e la seconda apertura non riscrive), l'edge **chiesto davvero** (503 `LETTURA_AL_CIRCOLO_NON_PREVISTA`) e la scheda aperta col recinto chiuso (**zero** chiamate, velo spento, quattro nomi). ⚠️ **Due limiti dichiarati**: il riempimento copre **una riga su 30** (29 sono passate, e un prezzo a ritroso sarebbe peggio del vuoto) e una riga che nessuno apre resta senza importo. 🩹 E **tre difetti trovati nei banchi stessi**, corretti e scritti — un sabotaggio su una riga ridondante, un fixture senza l'input da fermare, una sonda che pescava «il» cancello dove i cancelli erano due. — 🗓️ **la 176 l'08/09/2026**, provata sulla **pagina viva di TEST 6.401**: le fasce prenotabili sono una tabella nostra (`pmo_fasce_prenotabili`, 41 fasce) che lui modifica a mano, e il blocco che veniva da Matchpoint muore col distacco. ⚠️ Si chiude **col residuo portato fuori** nella voce **177**, non sparito col titolo. 📌 *Il banco verde non vede quello che la pagina disegna: 124 prove verdi, e sul vivo il lunedì aveva cinque fasce invece di sei.* — 🔚 **le ultime SEI il 07/09 notte, tutte su sua decisione**, per passare all'ultima fase del progetto: 140 · 124 · 118 · 121 · 115 · 175. — 👛 **la 143 il 07/09 notte, CASSATA da lui**: si chiude **senza** la prova che chiedeva — un pagamento col borsellino premuto dal bottone dell'app — e la scheda lo dice invece di arrotondarlo. — 🚦 **la 111 e la 112 il 07/09 notte**, come **decisioni**: la regola c'è, il filtro no, e il filtro è la **175**. — 🔕 **la 68 il 07/09 notte**, ed è la **26ª**: la sua scheda era del 21/08 e la misura dice **381 eventi consecutivi con un esito, zero muti in sei giorni** — l'avevano curata la 73, la 74, la 76 e la 115 passando di lì, e nessuno era tornato a guardare. ⚠️ La chiusura dichiara il suo limite: `passato_al_bot` è il gestionale che parla del **gestionale**, non un messaggio visto su un telefono. — 🔁 **la 164 il 07/09 notte**, metà a prova fisica e metà a banco, detto quale è quale. — 📱 **la 119 il 07/09 sera**, provata sul suo schermo. — 🪟 **la 142 il 07/09 pomeriggio**, col criterio di chiusura scritto PRIMA della prova. — 🔐 **la 172 il 07/09 pomeriggio**, misurata prima di curare come la sua scheda pretendeva. — 🔥 **la 165 il 07/09 pomeriggio**: era nata su un numero falso (l'«11 GB» era l'avanzamento dell'LSN, non WAL scritto — il WAL vero è **0,4 a 1**), e si è chiusa curando due cose che all'apertura non erano in lista. — 👛 **la 174 il 07/09 alle 09:19**, aperta alle 08:33 e chiusa **46 minuti dopo**: non era il pulsante, era la **stanza**. 📌 *Letture passate + click falliti = la firma di un overlay.* — 💶 **la 171 il 07/09 mattina** (vedi la riga delle urgenti): era il guasto totale dell'incasso, ed erano **tre stanze**, non una. 📌 *Un elemento cercato nel contesto sbagliato non è «assente»: è **altrove**.* — 💸 **la 173 il 07/09 mattina** (vedi la riga delle urgenti). Con lei una correzione che non era nella voce: le tre funzioni-aiuto di `matchpoint-payments-sync` dichiaravano `ReturnType<typeof createClient>`, che **non è** il tipo che `createClient(url,key)` restituisce ⇒ **8 errori di tipo preesistenti**, portati a **0**. 📌 *Un tipo scritto come «quello che torna quella funzione» non descrive quello che torna quella CHIAMATA.* — 🪟 **la 169 è ENTRATA E CHIUSA il 06/09 pomeriggio** (TEST 6.379→6.382 → PROD 6.382, PR #1413 e #1414), su sua segnalazione con due schermate: ① il **maestro** non compare più due volte (Matchpoint lo mette anche nel roster, in minuscolo, e la guardia che doveva vederlo stava sul ramo sbagliato **e** confrontava lettera per lettera); ② i **quattro nomi si vedono** — le righe si stringono per gradi finché ci stanno tutte, e il taglio con «+N» è l'ultima spiaggia; ③ «Riprendo una verifica» esce **solo nella barra**. 🚨 Ci sono volute **quattro versioni**, ognuna smentita da una misura e l'ultima **da lui**: *«continuano a vedersi sempre tre giocatori su quattro»* — il «+1» dichiarava il nome mancante, lui lo vuole **leggere**. *Dichiarare un'assenza non è toglierla.* ✅ Provata su TEST **e** PROD a 810 · 740 · 680 px: **0** righe tagliate, **4 nomi su 4**. Con lei la **120**, chiusa a sua parola. |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1750,7 +1750,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 4
+## 🔴 URGENTI — 1
 
 🆕 **08/09/2026, 100ª sessione: la lista torna da 0 a 4, e non sono idee di fine giornata.** Tre
 nascono da **misure** fatte guardando il codice (177 · 178 · 179), una dalla misura più pesante di
@@ -1763,48 +1763,19 @@ ha trasformato un mirror di prova nel sistema che il circolo userà fra ~20 gior
 ⚠️ **Una coda a zero mentre si fa il lavoro più grosso del progetto non è una lista pulita: è una
 lista che mente**, ed è la stessa malattia che questo file si cura da settimane.
 
-### 177 — 🤖 IL BOT PARLA DEI VECCHI ORARI MENTRE PRENOTA SUI NUOVI
 
-*(Residuo **misurato** della voce 176, aperto nel commit che la chiude. Non è una voce inventata: è
-la metà non curata di una voce chiusa, la stessa forma della 84 → 124 e della 111 → 175.)*
-
-🚨 **Il difetto**: la 176 ha spostato l'app sulla tabella `pmo_fasce_prenotabili`, ma **i due lettori
-del bot leggono ancora il blocco jsonb vecchio** — quello che veniva da Matchpoint:
-· `consumer-booking-write/index.ts` (`availability_day`) → decide **cosa viene OFFERTO** al socio;
-· `consumer-player-readmodel/index.ts` (`kb.slot_schedule`) → decide **cosa il bot RACCONTA** sugli orari.
-
-⇒ **Finché è così le due fonti convivono e possono divergere**, e la divergenza ha una forma
-precisa e brutta: **il bot racconta gli orari vecchi e prenota su quelli nuovi**. Oggi non si vede
-perché le due fonti dicono ancora la stessa cosa — 📏 *zero differenze fra la tabella e il blocco,
-misurato* — ma è esattamente il tipo di zero che non dimostra niente: dice che **nessuno ha ancora
-modificato una fascia dal pannello**, cioè che la cosa che la 176 gli ha dato in mano non è stata
-usata. La prima volta che lui tocca una fascia, il bot mente.
-📌 *Due fonti che oggi concordano non sono una fonte: sono un guasto che aspetta il primo cambio.*
-
-⚖️ **Perché sta fra le urgenti e non in coda**: è l'unico difetto di questa lista che **peggiora da
-solo**, e peggiora proprio quando il committente usa la funzione appena costruita per lui.
-
-⛔ **Il bot non si tocca** (⇒ *il gestionale SA, il bot DICE*): il lavoro sta tutto nelle due edge.
-
-🔨 **FATTO E IN SERVIZIO su `cudi` dall'08/09 14:34** — commit `2750b8b2`, deploy `success`, e il
-codice nuovo **verificato nella funzione in servizio** (non solo «il workflow è passato»):
-`pmo_fasce_prenotabili` compare 6 volte nel `consumer-booking-write` vivo e 5 nel
-`consumer-player-readmodel` vivo. La logica sta in `fasce-prenotabili.ts`, modulo **puro**,
-copiato byte-identico nelle due cartelle (Deno non importa fuori dalla propria).
-✅ **Provato**: banco nuovo **24 verdi 0 rosse** con **4 sabotaggi** tutti visti cadere, più un caso
-che pretende le due copie identiche (provato sabotandolo). Banco intero **125 verdi 0 rosse**.
-🩹 Trappola pagata scrivendo il banco: il sabotaggio su `utili === 0` restava **verde**, perché la
-sonda usava `fasceComeGriglia([])` — che esce da una riga **precedente**. 📌 *Due strade diverse
-verso lo stesso `null` non sono lo stesso caso.*
-
-⏳⛔ **PERCHÉ LA VOCE RESTA APERTA, ed è la metà che conta**: il comportamento **vivo** non è
-dimostrato. 📏 Misurato l'08/09 sui log di `cudi`: nelle ultime 24 ore quelle due edge **non
-risultano chiamate da nessuno** — solo righe di boot e shutdown. E chiamarle io non si può senza
-`CONSUMER_BRIDGE_SECRET`, che è un secret di Supabase e non sta nell'ambiente.
-⇒ **Cosa manca per chiuderla**: una chiamata vera che lasci nel registro la riga
-`fonte=pmo_fasce_prenotabili` — cioè un gesto del **bot di prova** da uno dei cinque telefoni di
-casa. Finché non c'è, questa voce è *in servizio ma non provata*, che è diverso da fatta.
-📌 *Un deploy verificato dice che è partito il file giusto, non che fa la cosa giusta.*
+🔻 **09/09/2026 mattina, 105ª sessione: da 4 a 1 — escono la 177, la 183 e la 185, tutt'e tre con
+LA STESSA PROVA.** Non è una pulizia di fine giornata: aspettavano la medesima cosa — una chiamata
+vera contro le edge nuove di `cudi` — e un solo giro l'ha data a tutte e tre.
+🚨⭐⭐ **E la cosa da portarsi dietro è PERCHÉ erano ferme: per un limite che non esisteva più.**
+Il passaggio di consegne dichiarava, per tutte e tre, che chiamare `consumer-booking-write` *«non si
+può»* senza `CONSUMER_BRIDGE_SECRET` e che la strada era il **bot di prova** — con l'avvertenza che
+quel bot *«non è stato verificato»*. 📏 Era già falso quando è stato scritto: la **sonda del ponte**,
+costruita la sera dell'08/09, aveva già risposto `HTTP 200` col secret del repo (run #5 · #6 · #7,
+fra le 17:31 e le 17:35). Il documento è stato scritto il mattino dopo e si è portato dietro il
+limite di due ore prima.
+📌 *È la 26ª nella sua forma più costosa: non un limite mai provato, ma un limite **già tolto** che
+nessuno ha riletto — e che ha fatto pianificare come impossibile un lavoro di venti minuti.*
 
 ### 178 — 🔌 IL «PASSO ZERO» DEL DISTACCO: la configurazione è controllata PRIMA della barriera
 
@@ -1889,195 +1860,6 @@ dimostra che si sappia vivere senza la strada che sbarra.*
 `guard-worker-sync` tiene identici, su PROD la modifica non porta niente (PROD tiene Matchpoint fino
 alla pensione) e vale *«il gestionale di prod deve continuare a funzionare come ha funzionato fino
 adesso»*.
-
-### 183 — 📐 I PREZZI NON CI SONO, E SENZA QUELLI LA CASSA NON HA UN NUMERO
-
-🆙 **PROMOSSA dalla coda alle urgenti l'08/09/2026 sera, e la promozione si dichiara qui** come
-vuole la regola del 23/08. **Perché**: la **180** deve far nascere gli importi **dal gestionale**, e
-la **181** deve addebitarli — ma 📏 il prezzo è `null` su **tutte e 41** le fasce, quindi nessuna
-delle due ha **da dove prendere un numero**. Finché resta in coda, le due voci più grosse del
-distacco sono bloccate da una casella vuota.
-⛔ **Cosa scavalca**: nessuna urgente. Non prende il posto di 177 · 178 · 179 · 180 — si mette
-**accanto** a loro perché è l'unica della catena che **non può farla chi lavora**: i numeri sono suoi.
-📌 *Una voce che aspetta una decisione altrui non è «meno urgente»: è quella che va dichiarata per
-prima, o l'attesa comincia il giorno in cui si scopre che serviva.*
-
-🚨 **E la metà GRIGLIA resta esattamente com'era** — non è la parte che promuove: 📏 `create`
-controlla il campo, la finestra 07:00-23:30, la durata 30-180 e i 30 giorni di anticipo, ma **mai**
-che l'ora sia **sulla griglia**. Ora che le fasce sono una tabella (voce 176), si può.
-
-✅⭐ **I NUMERI CI SONO, dall'08/09/2026 sera — e non sono stati chiesti a vuoto: sono stati
-MISURATI e poi confermati da lui.** 📏 Sui **3.336 pagamenti veri** arrivati da Matchpoint su `cudi`
-(24/05 → 07/09) l'importo che ogni giocatore ha pagato davvero si legge per (giorno, ora): importo
-più frequente sui `paid` dal 01/07, tolte le righe da 20,00 € delle **giornate-torneo** (tutti e
-quattro i campi allo stesso prezzo speciale: eventi, non listino). 🗣️ Guardando la tabella ha
-risposto **«confermo»**.
-🔄🚨 **E QUESTA RIGA È STATA CORRETTA IL 09/09: diceva «le 41 fasce», e ne dice altre.**
-📏 Misurato sul database di `cudi` il 09/09, prima di lavorarci sopra: le fasce sono **39**, non 41,
-tutte con un prezzo, tutte scritte in **un solo salvataggio** l'08/09 alle 20:35:22 — e il listino
-che c'è **non è quello descritto qui sotto**. In particolare **un prezzo da 8 € non esiste**: il
-minimo è 10 €, e il sabato è tutto a 10 € invece che a 8 €.
-· **lun-gio** (5 fasce): 12:30 e 14:00 → 10 € · 18:00 → 12 € · **19:30 → 13 €** · 21:00 → 12 €
-· **venerdì** (7): 09:30·12:30·14:00·15:30·17:30 → 10 € · 19:00 e 20:30 → 12 €
-· **sabato** e **domenica** (7 e 5): tutte a 10 €
-✅⭐ **E LA DOMANDA È CHIUSA: i prezzi del database sono quelli GIUSTI — sue parole del 09/09**,
-messo davanti alla differenza fra i due elenchi:
-
-> *«i prezzi messi sono corretti»*
-
-⇒ **Non c'è più niente da decidere sul listino**, e chi arriva non deve riaprire la domanda: era la
-riga **scritta** a essere vecchia, non il database. La 39ª fascia e il sabato a 10 € sono il listino
-del circolo.
-⚠️ **Chi abbia tolto due fasce e cambiato i prezzi resta ignoto**, e non serve più saperlo: una
-cancellazione non lascia traccia in `updated_at`, e le 39 rimaste portano tutte l'istante del
-salvataggio in blocco. È scritto perché *non si può* ricostruire, non perché manchi.
-📌 *La cassa addebiterà quello che sta nel DATABASE, non quello che sta scritto qui: fra i due, la
-riga da correggere è sempre quella scritta.* — e stavolta la conferma lo dice per esteso.
-⛔ **La riga vecchia resta sotto perché descrive ciò che fu MISURATO e CONFERMATO l'08/09**, e serve
-a far vedere che i due elenchi non coincidono; non descrive più il sistema:
-
-⇒ ~~**Le 41 fasce hanno un prezzo**: 8 € il sabato e le fasce di giorno, 10 € il pranzo (12:30-15:30),
-12 € il 18:00 e il 21:00, **13 € il 19:30** infrasettimanale, 10 € la domenica alle 16:00.~~
-⚠️ **Quattro non hanno nessun pagamento dietro** — lunedì 16:30, mercoledì 14:00, giovedì 14:00,
-sabato 12:00 — e il loro numero viene dalla fascia gemella, non da una misura. Altre sei ne hanno
-1-4. 📌 *Un numero misurato su un solo pagamento ha la stessa faccia di uno misurato su cento: la
-differenza sta scritta solo dove qualcuno la scrive.*
-🚨 **E una cosa che la misura ha detto e nessuno aveva chiesto**: **ospite e socio pagano uguale**
-(946 e 949 pagamenti, tipico 12 € tutt'e due) ⇒ non serve un secondo listino, e il giorno in cui
-servisse è una decisione, non un adeguamento.
-
-🔨✅ **LA METÀ GRIGLIA È FATTA E IN SERVIZIO su `cudi` dal 09/09 mattina** — commit `1fc47e98`,
-deploy `success`, e il codice nuovo **verificato dentro la funzione in servizio** (non «il workflow è
-passato»): `verdettoSlot` compare **5 volte** nel `consumer-booking-write` vivo, con tutti e cinque i
-codici di rifiuto e la riga di registro `create griglia`.
-
-🚨 **Il difetto era mascherato da un commento onesto**: `create` controllava solo la finestra
-07:00-23:30, con scritto accanto *«limiti larghi: l'autorità vera è Matchpoint»*. **Era vero** — la
-griglia la faceva rispettare lui, a valle. ⇒ Il giorno del distacco quell'autorità non esiste più, e
-resta un controllo che accetta **le 07:13 di un giorno di chiusura**.
-📌 *Un controllo che delega non è un controllo: è un rimando, e vale finché vive chi lo riceve.*
-
-⚖️ **E non è una regola di forma: è ciò che dà un PREZZO alla partita.** Il prezzo vive sulla fascia
-(voce 185); una prenotazione fuori griglia non ne ha nessuno e non lo avrà **mai** — né alla nascita
-né all'apertura della scheda, perché non c'è fascia da cui leggerlo. ⇒ Chiudere la griglia rende vera
-**per costruzione** la frase su cui poggia la **181**: *ogni prenotazione ha un importo*.
-
-⭐ **TRE DECISIONI DI DISEGNO, che valgono più del codice:**
-· ① **si valida contro la STESSA FONTE che ha fatto l'offerta.** `availability_day` propone dal
-  calendario e — se la RPC è muta — dal blocco vecchio. Validando solo sul calendario, in quella
-  finestra il socio si vedrebbe **offrire uno slot e poi rifiutare lo stesso slot**;
-· ② **chi non chiede una durata prende quella della FASCIA.** 📏 Oggi tutte e 39 le fasce durano
-  **90′**, esattamente `DURATA_DEFAULT` ⇒ un confronto secco andrebbe sempre bene. **È un esito, non
-  una regola**: il pannello della 185 gli lascia fare una fascia da 60′, e da quel momento ogni
-  richiesta senza durata sarebbe rifiutata **in silenzio e solo su quella fascia**. Chi invece
-  dichiara una durata diversa si sente dire di no: *correggere in silenzio ciò che qualcuno ha
-  chiesto per iscritto è peggio che rifiutarlo*;
-· ③ **solo `create`, mai gli altri gesti.** Gli altri lavorano su una partita che **esiste già**, e
-  una partita esistente può stare fuori dalla griglia di oggi. Far passare `cancel` di qui vorrebbe
-  dire **impedire di disdire** proprio le prenotazioni che più meritano di sparire.
-
-🔪 **I rifiuti sono CINQUE e non uno**, perché chiedono cose diverse a chi legge — in particolare
-*«quel giorno non c'è niente»* (`GIORNO_SENZA_FASCE`) e *«non ho la griglia»* (`GRIGLIA_SCONOSCIUTA`)
-non sono lo stesso caso. E **tutti e cinque escono 400, non 5xx**: nessuno ha scritto niente, quindi
-è un rifiuto pulito e non un esito ignoto — *un 5xx si legge «forse è passata», e una prenotazione
-riprovata occupa il campo due volte*.
-
-✅ **Provato**: banco nuovo `test/la-griglia-e-un-limite.test.mjs` **16 verdi 0 rossi**, con **SEI
-sabotaggi** tutti visti cadere **sul caso giusto** — e tutti verificati **applicati** prima di
-crederci (la trappola pagata l'08/09: *un sabotaggio che non tocca niente si legge come un successo*).
-Banco intero **131 file verdi, 0 rossi**. Sintassi delle due funzioni controllata.
-⭐ E la regola è stata esercitata **sulla griglia VIVA di `cudi`**, non su un fixture: le 18:00
-passano a 12,00 €, le 19:30 senza durata prendono la fine della fascia a 13,00 €, e **18:30 · 07:13 ·
-una durata da 60′ sulle 18:00** vengono rifiutate.
-🩹 E una sonda sbagliata trovata per strada: `pmo_calendario_effettivo` risponde `AUTH_REQUIRED` a chi
-la chiama dal database senza panni — accetta **staff** o **`service_role`**, che è quello che usa
-l'edge. Il primo `ok:false` sembrava un guasto del calendario ed ero **io nel posto sbagliato**.
-
-⏳⛔ **PERCHÉ LA VOCE RESTA APERTA**: **nessun `create` vero ci è ancora passato.** Il cancello
-dell'edge è un segreto condiviso (`CONSUMER_BRIDGE_SECRET`) che non sta nell'ambiente ⇒ chiamarla io
-non si può. 📌 *Un banco verde e un codice verificato in servizio dicono che il meccanismo è giusto e
-che è partito il file giusto — non che qualcuno ci è passato.*
-⇒ **Cosa la chiude**: un tentativo di prenotazione dal **bot di prova** (che punta a `cudi`), che
-lasci nel registro la riga `create griglia … → ok` o un rifiuto. ⭐ **È la stessa prova che manca alla
-177 e alla metà BOT della 185**: un solo gesto ne chiude tre.
-
-⚠️ **E non esiste NIENTE di quello che sembra esistere**: nessun limite al numero di partite
-aperte, nessun preavviso di disdetta, **nessuna tabella dei campi** (sono 4, cablati in **tre punti
-diversi**), **nessun listino** (le uniche cifre, 40/32, sono una stima da cruscotto **per partita**),
-**nessun modello di chiusure/festività**. 📌 *Una regola che tutti credono scritta è più pericolosa
-di una che manca: nessuno la va a cercare.*
-
-### 185 — 🗓️ IL LISTINO HA UN CALENDARIO: PERIODI, ORARI, PREZZI E CHIUSURE
-
-🆕 **Entrata l'08/09/2026 notte, da una sua richiesta esplicita** — quindi non è un lavoro inventato
-a fine giornata, è una voce nata da una sua parola, come vuole la regola:
-
-> *«ho bisogno di un admin affinché poi in futuro io possa cambiare i prezzi relativamente a un
-> periodo di tempo […] fare dei prezzi per l'estate e dei prezzi per l'inverno»* ·
-> *«devo poter cambiare **sia gli orari degli slot che i prezzi** relativi agli orari inseriti nella
-> griglia»* · *«devo poter inserire delle **festività** […] non devo lasciare dei buchi di giorni»* ·
-> *«fai una cosa **facile da usare e intuibile**»*
-
-⇒ **La voce 176 aveva fatto UNA griglia, valida per sempre. Questa la mette sotto un calendario.**
-
-📐 **Il disegno, e le quattro decisioni che lo tengono in piedi:**
-· ① **una griglia BASE senza date, sempre valida**: i periodi la coprono finché durano, e dove non
-  arriva nessun periodo vale lei. 🚨 È la risposta a *«non devo lasciare buchi»* data **per
-  costruzione** invece che per disciplina — un giorno scoperto non può esistere. L'alternativa
-  (solo periodi) trasforma una data dimenticata in un **circolo chiuso**, e non se ne accorge
-  nessuno finché un socio non ci sbatte contro;
-· ② **i periodi datati non si possono sovrapporre**, e a impedirlo è il **database**
-  (`exclude using gist`), non la buona volontà di chi compila. Due periodi sullo stesso giorno non
-  darebbero un errore: darebbero un prezzo che dipende dall'ordine delle righe, cioè che cambia da solo;
-· ③ **le chiusure stanno SOPRA i periodi**: valgono qualunque griglia sia in vigore, e quelle fisse
-  si segnano `ogni_anno` una volta sola. ⛔ Sono di **giorno intero**: per una domenica in cui si
-  chiude alle 18 si usa un periodo corto, che è cosa che il sistema già sa fare;
-· ④ **chi decide è UNA funzione del gestionale** — `pmo_calendario_effettivo(dal, al)` — e la
-  chiamano **sia l'app sia le due edge del bot**. 📌 *Due posti che calcolano la stessa cosa sono un
-  guasto che aspetta il primo cambio* — ed è la stessa forma della regola «il gestionale SA, il bot
-  DICE», applicata al listino.
-
-🔨 **In servizio su `cudi` dall'08/09 notte.** Migrazione `20260908220000_voce185_listino_per_periodi.sql`:
-tabelle `pmo_listino_periodi` e `pmo_chiusure`, colonna `periodo_id` sulle fasce, e cinque funzioni
-(`pmo_calendario_effettivo` · `pmo_get_listino` · `pmo_set_periodo` · `pmo_elimina_periodo` ·
-`pmo_set_chiusure`). Le due porte della 176 restano e guardano la **base**, così niente si rompe.
-🖥️ **Il pannello** (Amministrazione → *Fasce prenotabili*) è una schermata sola in quattro passi:
-cosa vale **oggi** · i **periodi** come bottoni · **orari e prezzi** della griglia scelta, con
-«**copia da…**» per non riscrivere quattro volte lo stesso giorno · le **chiusure**, con un bottone
-che propone le **feste italiane** in blocco · e un **calendario di controllo di un anno**, un
-quadratino per giorno col colore della griglia che vale davvero.
-⭐ **Un periodo nuovo nasce COME COPIA di quello che stai guardando**, e non è una comodità: un
-periodo con la griglia a metà **svuota** i giorni non compilati — quei giorni non ricadono sulla
-base, perché il periodo li copre lo stesso. Partendo da una copia, il peggio che può capitare è un
-prezzo vecchio. 📏 *Misurato l'08/09 provando un periodo con il solo giovedì: gli altri sei giorni
-sono usciti a zero fasce.*
-
-📏 **Cosa è stato PROVATO** (08/09 notte, su `cudi`): la migrazione applicata; le 41 fasce coi
-prezzi confermati; il calendario risolto giorno per giorno attraverso il confine di un periodo
-(31/10 base → 01/11 periodo) e su una chiusura ricorrente (25/12/2026 **e** 25/12/2027 chiusi);
-**cinque sabotaggi rifiutati** dalle funzioni — periodi sovrapposti, fasce accavallate, periodo
-senza date, cancellazione della base, elenco chiusure vuoto; **banco 125 file verdi, 0 rossi**, e i
-**due sabotaggi nuovi** del modulo delle fasce visti cadere (un giorno chiuso che rende fasce lo
-stesso; la settimana che non scavalca più il chiuso).
-✅⭐ **E PROVATO SULLA PAGINA VIVA DI TEST 6.402**, con la console remota, dal principio alla
-fine — non «si carica», ma *il gesto intero fatto e disfatto*:
-· il pannello **disegna**: 41 righe, la riga «Oggi martedì 8 settembre vale Griglia base — 6 fasce»,
-  **366 quadratini** su 13 mesi nel calendario di controllo, il lunedì a 10 · 10 · 8 · 12 · **13** · 12;
-· **creato un periodo dal pannello** («Prova 185», 1-30/11): nasce con **41 fasce copiate**, non
-  vuoto — la protezione descritta sopra, vista funzionare;
-· cambiato un prezzo dentro il periodo e **salvato**: il 05/11 il calendario risponde **«Prova 185»**
-  col prezzo nuovo, mentre il **31/10 resta «Griglia base»** con le sue 7 fasce. ⇒ *il confine è
-  stato attraversato davvero, non dedotto*;
-· **aggiunta una chiusura** (10/11): quel giorno torna `chiuso=true`, col motivo, e **zero fasce**;
-· **rimesso tutto com'era**: periodo eliminato, chiusura tolta, e il 05/11 torna «Griglia base».
-  📏 Ricontrollato nel database: **1 periodo, 0 chiusure, 41 fasce, 41 prezzi**.
-
-⏳ **Cosa NON è ancora provato, e per questo la voce resta APERTA**: la metà del **BOT**. Le due
-edge (`availability_day` e la `kb`) sono in servizio su `cudi` e il banco le copre, ma **nessun
-gesto vero del bot** ha ancora attraversato la strada nuova. ⇒ È la stessa prova che manca alla
-**177**, e si farà con la sonda del ponte allargata ad `availability_day`.
-📌 *Un banco verde dice che il meccanismo è giusto, non che qualcuno ci è passato.*
-
 
 ## 📋 IN CODA — 4
 
@@ -4585,7 +4367,7 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 09/09/2026 — 173 voci
+## 📦 CHIUSE — dal 13/08 al 09/09/2026 — 176 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
@@ -4597,6 +4379,9 @@ non ne apre un'altra sotto.
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
 
+| **177** | 🤖 **IL BOT NON PARLA PIÙ DEI VECCHI ORARI** — ✅ *(09/09/2026 mattina, 105ª sessione — **provata dal vivo su `cudi`**, leggendo il registro delle edge e non il JSON della sonda)* La cura era in servizio dall'08/09 e la voce restava aperta per una ragione sola: *«nelle ultime 24 ore quelle due edge non risultano chiamate da nessuno»*. ⇒ Adesso ci è passato qualcuno, e i **due** lettori hanno lasciato la loro riga: · `[readmodel] kb env=test slot=sì kb=sì **fonte=pmo_calendario_effettivo**` (ciò che il bot **racconta** sugli orari); · `[booking-write] availability_day 2026-09-24 → **5 fasce** (fonte: pmo_calendario_effettivo/Griglia base)` (ciò che viene **offerto**). ⭐ E le 5 non sono un numero qualunque: sono esattamente le fasce che `pmo_fasce_prenotabili` dichiara per il giovedì (12:30 · 14:00 · 18:00 · 19:30 · 21:00) — 📏 confrontate col database **prima** di lanciare la sonda, così la prova è un confronto e non un «ha risposto». 📌 *Un deploy verificato dice che è partito il file giusto; questa riga dice che qualcuno ci è passato e ha letto la fonte nuova.* |
+| **183** | 📐 **LA GRIGLIA È UN LIMITE, e un `create` vero ci è passato** — ✅ *(09/09/2026 mattina, 105ª sessione — **provata dal vivo su `cudi`**)* La metà GRIGLIA era in servizio dal mattino e la voce restava aperta perché *«nessun `create` vero ci è ancora passato»*. ⇒ Ci sono passati **sei**, e su cinque codici diversi: `ok 18:00-19:30` · `SLOT_FUORI_GRIGLIA` (18:30 e 07:13) · `DURATA_FUORI_GRIGLIA` (60′ su una fascia da 90) · `GIORNO_CHIUSO`. ⭐ **Cinque su sei non hanno scritto niente**, ed è misurato sul codice prima di premere: il verdetto sta a `index.ts:591`, nel blocco comune **prima** del ramo dell'azione, e la prova a vuoto (`dry_run`) si ferma a `index.ts:912`, cioè sull'ultima riga **prima** di quella che occupa il campo. 📌 *Una prova a vuoto che si ferma troppo presto prova un percorso diverso da quello vero.* 🚨 Il `GIORNO_CHIUSO` è stato **provocato** mettendo una chiusura sul 30/09 e togliendola subito: 📏 `pmo_chiusure` ricontata a **0** dopo la prova. ⇒ E poi il sesto, quello che scrive: **la prenotazione è nata**, `PMO-755da605-…`, durata **90 presa dalla fascia** e non da `DURATA_DEFAULT`, `nata_nel_gestionale: true`, e il worker **non è stato chiamato** (`{"event":"scrittura_nativa"}`). ⚖️ ⇒ La frase su cui poggia la 181 — *ogni prenotazione ha un importo* — è vera **per costruzione**, e la catena si legge intera: ponte → griglia → prenotazione nativa → cassa. |
+| **185** | 🗓️ **IL LISTINO HA UN CALENDARIO — anche per il BOT** — ✅ *(09/09/2026 mattina, 105ª sessione)* La metà pannello era chiusa dall'08/09 sulla pagina viva; restava aperta la metà **BOT**, e la scheda diceva esattamente come chiuderla: *«si farà con la sonda del ponte allargata ad `availability_day`»*. ⇒ Fatto, ed è la stessa riga che chiude la 177: `availability_day 2026-09-24 → 5 fasce (**fonte: pmo_calendario_effettivo/Griglia base**)`. Il bot riceve le fasce dal **calendario** — quello che sa di periodi e chiusure — e non dal blocco vecchio. ⭐ La quarta decisione di disegno («chi decide è UNA funzione del gestionale, e la chiamano sia l'app sia le due edge del bot») è adesso **esercitata su tutt'e tre le strade**, non solo dichiarata. |
 | **181** | 💰 **LA CASSA NATIVA: l'incasso nasce e muore nel gestionale** — ✅ *(09/09/2026 mattina, 104ª sessione — **provata sulla pagina viva di TEST 6.410-6.411**, tutt'e due le metà, e TEST ripulito a fine prova)* 🗣️ Sue parole dell'08/09: *«dal gestionale si incassa, perché Matchpoint non c'è più»* + *«si incassa solo su test, su PROD mai»* — la stessa regola vista da due parti, e l'invariante che le tiene insieme è uno: **nessun soldo passa da Matchpoint per mano nostra**. ⇒ **La cassa non è codice nuovo: è la SIMULAZIONE promossa a vera.** ① 🚨⭐⭐ **il cancello guarda il REF SUPABASE, non l'hostname**: `PMO_PAYMENTS_SIMULATE = PMO_IS_TEST_ENV` è **cancellata**, perché il passaggio (voce 184) l'avrebbe fatta scadere e **la cassa si sarebbe spenta da sola**, in silenzio, il giorno del cambio d'indirizzo ⇒ questa riga sta **fuori** dalla lista delle simulazioni da smontare. ② 🔑 **la chiave è deterministica** — prima conteneva `Date.now()`, cioè *«due clic = due incassi»*: 📏 premuto due volte sulla pagina viva ⇒ **una riga sola**. ③ ⛔ **la sorgente cambia nome** (`pmo_cassa`): il bottone «🧹 Pulisci simulazioni» cancella tutto ciò che porta il tag vecchio, e riusandolo il primo clic avrebbe cancellato **denaro vero** — 📏 provato lanciandolo: cancella **0** e la riga sopravvive. ④ 👛 **il borsellino si SOMMA**: la fotografia `wallet_balance` diventa il saldo **d'apertura** e i movimenti nostri ci si sommano — 📏 33,00 € → **21,00 €** dopo un incasso da 12,00 col wallet, uno **scoperto da 100,00 rifiutato** senza muovere niente, e lo storno che riporta a **33,00 €**. ⭐ E **non si scrive un secondo record**: un pagamento col borsellino **è già** un movimento, duplicarlo in `wallet_txn` farebbe **due fonti per lo stesso fatto**. ⛔ Si contano solo i movimenti **successivi alla fotografia**: *una protezione che vale solo finché una cosa resta spenta non è una protezione, è una scommessa*. 🚨⭐⭐ **E DUE DIFETTI TROVATI DAL BANCO, che valgono più della cura:** · **un cancello che fallisce chiuso non resta chiuso se lo si NEGA** — `!pmoGestionaleCollegatoAlCircolo(url)` torna `true` su un url **storpiato**, cioè *«incassa nel dubbio»*: 📌 *il fallimento sicuro di una domanda è il fallimento pericoloso della domanda opposta*; · **una guardia che cerca una PAROLA prova che la parola c'è, non che il codice succeda** — il controllo del saldo, spento con `if (false)`, lasciava intatta la parola `SALDO_INSUFFICIENTE` che il banco cercava ⇒ la regola è stata **staccata in una funzione pura** e adesso il banco la **esegue**. 🩹 E una **regressione mia** su un banco esistente (la 143), corretta e non aggirata: guardia **aggiornata, non allentata**, con le regole della cassa iniettate **vere**. ✅ Due banchi nuovi, **35 casi** e **DODICI sabotaggi** tutti visti cadere; banco intero **133 verdi 0 rossi**. ⚠️ **Cosa NON è provato**: nessun incasso è passato per le **mani della segreteria** — i gesti li ha fatti la console, e la UI (bottoni, pastiglie, il saldo che si vede scendere sulla scheda) è stata letta, non guardata. |
 | **180** | 💶 **LA SCHEDA LEGGE I SOLDI DA MATCHPOINT DAL VIVO — e quella strada era FUORI dalla barriera** — ✅ *(09/09/2026 notte, 103ª sessione — **provata sulla pagina viva di TEST 6.408**, tutti e quattro i pezzi)* 📏 **Il problema**: `matchpoint-bookings-edit` con `read: true` **saltava il recinto** (`if (!readOnly && …)`), e delle `staff_booking` vive **2 su 30** portavano gli importi ⇒ la cassa non aveva su cosa addebitare. 🔨 **La cura è in QUATTRO pezzi, e l'ordine non è quello che sembrava**: prima si RIEMPIE, poi si CHIUDE — chiudere per primo avrebbe reso cieca la scheda su 28 righe su 30. **① l'importo NASCE dal listino** alla creazione (08/09), con quattro regole ognuna un modo di sbagliare già pagato altrove — `null` non è `0` · un importo già presente vince · `pendente` = importo · **mai `lettoAt`**. **② IL QUARTO ESITO della casella** — e non era in programma: era un difetto **già in servizio**, nato dalla cura ①. La regola ④ è giusta, ma `_pmoImportoCasella` conosceva **solo** `lettoAt` per distinguere le provenienze ⇒ un prezzo nostro cadeva nel ramo «letto adesso» e la scheda lo mostrava **come se il circolo l'avesse appena confermato**. 📌 *La regola ④ ha tenuto onesto il database e ha perso lo schermo: una provenienza non è salva finché non arriva agli occhi.* ⇒ `natoQui`, `lettoAt` **vince** su `origineImporto` (i tre esiti con un numero sono esclusivi **per costruzione**), il «da» del popup lo dichiara — `13,00 (dal listino)` — e la marca **si toglie** quando l'importo lo decide la segreteria. **③ CHI ENTRA DOPO paga come chi c'era già** e **le righe che c'erano già** si riempiono all'apertura — idempotente, non una migrazione, perché *una migrazione invecchia*. **④ ANCHE LA LETTURA STA DENTRO IL RECINTO**, chiusa **da due parti**: l'edge rifiuta (`503 LETTURA_AL_CIRCOLO_NON_PREVISTA`) e l'app non chiama più. 🚨⭐⭐ **E il cancello dell'app guarda il REF SUPABASE, non l'hostname**: `PMO_IS_TEST_ENV` risponde a un'altra domanda e il **distacco la farà scadere** — il giorno in cui il gestionale nuovo è servito da un indirizzo che non comincia per `test.`, ogni riga che ci si appoggia ricomincia a chiamare un Matchpoint che non c'è più. 📌 *Un ambiente si riconosce da CON CHI parla, non da come si chiama.* ⇒ Questa riga sta **fuori** dalla lista delle simulazioni da smontare: non è una finzione da togliere, è la barriera da tenere. ⛔ **NESSUN RIPIEGO dal vivo, per scelta**: resterebbe esercitato in silenzio fino al distacco e comincerebbe a fallire il giorno in cui non c'è più nessuno a rispondere — *una strada di riserva che non si percorre mai non è una riserva: è un pezzo di codice che nessuno ha visto funzionare.* ✅ **LE PROVE, tutte su TEST e tutte sulla pagina viva**: le dodici combinazioni della casella esercitate sulla **funzione vera** della pagina · una prenotazione nativa aperta → bordo `dotted`, `13,00`, *«(dal listino del gestionale)»* · un giocatore aggiunto → **1300 · `listino` · nessun `lettoAt`** · la riga vera dell'08/09 C2 18:00 → quattro giocatori senza importo diventati **12,00 ciascuno**, e la **seconda** apertura non riscrive niente · l'edge **chiesto davvero** → **503**, nessuna chiamata al worker · la scheda aperta col recinto chiuso → **zero** chiamate all'edge di lettura, velo spento, quattro caselle piene e i quattro nomi. 🧪 54 casi nuovi, **30 sabotaggi visti cadere**, banco intero **130 file verdi**. ⚠️⚠️ **DUE LIMITI DICHIARATI, e nessuno dei due è una cura a metà.** ① **Il riempimento copre UNA riga su 30**: 29 sono nel **passato** e il calendario che l'app carica parte da oggi ⇒ per quelle il prezzo è `null` e non si scrive niente (inventarlo a ritroso sarebbe peggio del vuoto). Oggi non costa — sono avanzi dell'era di prova — ma va saputo prima che qualcuno ci costruisca sopra la cassa. ② Una riga che **nessuno apre** resta senza importo: è onesto, non completo. 🩹 **E TRE DIFETTI TROVATI NEI BANCHI STESSI, corretti e scritti**: un sabotaggio puntato su una riga **ridondante** (due guardie proteggono lo stesso caso: tolta una, l'altra regge) · un fixture che **non conteneva l'input da fermare** — nessuna fascia *senza* prezzo su cui mordere ⇒ il sabotaggio restava verde · e una sonda che cercava «il» cancello dentro una funzione che ne ha **due**: *pescava, non misurava*. ⛔ **IL RESIDUO NON SPARISCE COL TITOLO**: `staffCalAskMatchpoint` è il quarto punto ed è di un **genere diverso** — non prende un dato, fa una **domanda** che dopo il distacco non ha più un destinatario. Oggi fallisce **chiusa** (`boh`, mai un «no» inventato: chi lo legge riprova e la partita si prenota **due volte**), ma la sostituzione — chiedere al **gestionale** — non è costruita: è la voce **187**, aperta nel commit che chiude questa. 📌 *Una voce che si chiude portandosi via del lavoro non curato non è chiusa: è persa.* |
 | **179** | ⏳ **IL VERDETTO `verifica` SI CONGELA PER SEMPRE, e sembra pazienza** — ✅ *(08/09/2026 sera, 101ª sessione — **provata viva sul ponte di `cudi`, nei TRE versi**)* 📏 A sync spento il timbro della freschezza non si muoveva più ⇒ ogni verifica rispondeva `non_ancora` **per sempre**, e il socio aspettava una cosa che non sarebbe mai arrivata. 🔨 Il gestionale adesso **dichiara la propria natura** (`pmoFontePrenotazioni`), e la regola sta in `fonteDichiarata`: è *il gestionale SA* applicato alla freschezza. 🚨 **Non** si è riusato `scritturaAlCircoloConsentita`: sono due domande diverse che oggi coincidono **per costruzione**, non per natura — e confonderle avrebbe aperto proprio il ramo che fa uscire un «no». Il ref di PROD c'è, ma come **rete**: non decide, rifiuta. ⭐ E cadono **due** rami, non uno: anche `fuori_finestra`, che descriveva l'export e senza export non esiste. 🔪 Cinque sabotaggi al banco (36 casi) più la prova viva: `nativa` → **`no`**, difetto rimesso → **`non_ancora`**, `nativa` → **`no`**. ⚖️ Su PROD identico. ⛔ Il bot non è stato toccato. |
