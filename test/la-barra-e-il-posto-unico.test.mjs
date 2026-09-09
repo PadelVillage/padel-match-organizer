@@ -477,5 +477,36 @@ test('⑭ 🆕⭐⭐ UNA PRENOTAZIONE NATA NON SI ANNUNCIA: si vede sul calendar
     'il lampeggio dura meno (o più) del verde che ha preso il posto: il tempo per accorgersene è cambiato di nascosto');
 });
 
+const esitoImmediato = new Function(dichiarazioneDi('staffCalEsitoImmediato') + '\nreturn staffCalEsitoImmediato;')();
+
+test('⑮ 🆕⭐⭐ LA SCRITTURA NATIVA RISPONDE GIÀ COM\'È FINITA: non c\'è nessun lavoro da seguire', () => {
+  // 📏 Misurato sulla pagina viva del sistema nuovo il 09/09/2026: l'app chiede `async: true`, ma
+  //    la scrittura nativa non apre nessun lavoro e risponde `{ok, nativa, message}` SENZA jobId.
+  //    Chi cercava solo il numero del lavoro tirava «Avvio non riuscito» su una prenotazione GIÀ
+  //    SCRITTA ⇒ `_okMsg` non veniva mai raggiunto ⇒ la partita non compariva sul calendario.
+  const nativa = { ok: true, nativa: true, message: 'Partita registrata: Campo 1 · 2026-09-26 · 15:30–17:00 · Lidia Comes',
+    booking: { campo: 1 }, worker: { nativa: true, origine: 'gestionale', idReserva: 'PMO-abc' } };
+  const e = esitoImmediato(nativa);
+  assert.ok(e, 'la risposta nativa non viene riconosciuta: la prenotazione resta invisibile sul calendario');
+  assert.equal(e.status, 'done');
+  assert.equal(e.idReserva, 'PMO-abc', 'senza idReserva la copia locale nasce orfana');
+
+  // 🚨 E FALLISCE CHIUSA — sono le quattro porte che NON deve aprire, ed è la metà che conta:
+  //    dichiarare «fatto» dove il numero del lavoro manca davvero sarebbe la bugia peggiore.
+  assert.equal(esitoImmediato({ ok: true, jobId: 'j1', nativa: true }), null, 'con un lavoro aperto la verità sta nel poll, non qui');
+  assert.equal(esitoImmediato({ ok: true, message: 'boh' }), null, 'un ok senza `nativa` resta l\'errore che era prima');
+  assert.equal(esitoImmediato({ ok: false, nativa: true }), null);
+  assert.equal(esitoImmediato({ nativa: true, error: 'SLOT_FUORI_GRIGLIA' }), null);
+  assert.equal(esitoImmediato(null), null);
+  assert.equal(esitoImmediato('boh'), null);
+
+  // ⚖️ E LE DUE STRADE LA CHIAMANO TUTTE E DUE. Il 15/08 un rimedio scritto su una sola delle due
+  //    è costato la voce 31: qui la regola sta in un posto solo, ma va anche AGGANCIATA due volte.
+  const quanti = (APP.match(/const subito = staffCalEsitoImmediato\(submit\);/g) || []).length;
+  assert.equal(quanti, 2, 'le strade di creazione sono due (slot e assistente) e devono passare tutte e due di qui');
+  const okDopo = (APP.match(/if \(subito\) \{ _okMsg\(subito\); return; \}/g) || []).length;
+  assert.equal(okDopo, 2, 'riconoscere l\'esito e non disegnarlo è come non riconoscerlo');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
