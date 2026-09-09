@@ -1872,11 +1872,51 @@ sottotitolo → *«Visualizza e prenota gli slot dei campi direttamente dall'app
 visibile della pagina. ⭐ E le cose da **non** rompere sono intatte: listino **presente e visibile**,
 contatti Google, backup e parser tutti al loro posto.
 
+🔨⭐⭐ **09/09/2026, SECONDA MANO (6.426) — LE FRASI CHE NON SI ACCORCIANO: SI RISCRIVONO.**
+📏 Le prime **nove** erano tutte della forma *«…su Matchpoint»* ⇒ bastava togliere il complemento e
+la frase restava vera. Le rimanenti **no**: hanno il circolo come **soggetto** (*«Matchpoint ha
+rifiutato»*) o descrivono un **gesto** che senza di lui non esiste (*«sto guardando su Matchpoint»* —
+guardando **dove**?). ⇒ Togliere la parola le lascerebbe **monche o false**, non più generiche.
+📌 *Una parola sbagliata si toglie; una frase costruita attorno a quella parola si riscrive.*
+🔧 **Sei helper, 26 punti di chiamata**: `pmoFraseRifiutata` · `pmoFraseNonHoLaConferma` (col
+contatore dei tentativi) · `pmoFraseLento` · `pmoFraseLentoAdesso` · `pmoFraseNessunaRisposta` ·
+`pmoFraseNonVerificabile`, più *«NON eseguita»*, *«è CONFERMATA»*, *«l'ho verificata»*.
+🚨 **E due di quelle frasi nominavano ANCHE IL WORKER** (*«coda del worker»*, *«il worker Matchpoint
+non ha risposto»*): è un **nome interno**, e non lo deve sentire chi lavora — **né su PROD né sul
+sistema nuovo**. Il banco lo pretende su tutti e due gli ambienti.
+⛔⭐⭐ **E VA DETTO COSA QUESTA MANO NON È**: quelle frasi appartengono al percorso dell'**esito
+ignoto** (`staffCalAskMatchpoint`), cioè la macchina che quando non sa **va a guardare sul circolo**.
+Sul gestionale nuovo quella domanda **non ha più un destinatario**, ed è la **voce 187**. ⇒ Qui si
+sistemano le **parole** che quella macchina pronuncia se scatta; la macchina resta da **sostituire**,
+non da ribattezzare. 📌 *Rinominare un meccanismo che va rifatto lo rende più difficile da
+riconoscere, non più corretto.*
+🩹 **E il banco aveva una debolezza vera, trovata sabotando**: la guardia sulla «frase monca»
+cercava una **forma** (`…su`, `…a`, `…di`) e lasciava passare `'non riesco a raggiungere'` — una
+frase **troncata** che non nomina il circolo e finisce con un verbo senza complemento. Curata
+fissando **le frasi attese una per una**. 📌 *Una guardia che descrive la forma di uno sbaglio
+prende quello sbaglio, non la classe: per una frase l'unico invariante è la frase stessa.*
+✅ **Provata sulla pagina viva di TEST 6.426**, tutte e sette lette dalla pagina: `❌ Rifiutata:` ·
+`⌛ Non ho la conferma — sto controllando…` · `(3° tentativo)` · `⌛ Ci sto mettendo più del
+previsto…` · `⌛ Sta prendendo più del previsto` · `nessuna risposta in tempo` · `non riesco a
+verificare`. E **zero** occorrenze nel testo visibile.
+🧪 Banco 190 **18 verdi**; banco `.mjs` intero **90 file 0 rossi**; **quattro sabotaggi sul sorgente
+vero**, e il terzo **non era visto** prima della cura del banco.
+
+🚨⭐⭐ **E SI È APERTA UN'ALTRA FAMIGLIA, che NON è una voce in lista e va portata a lui.** Finita
+quella delle **prenotazioni**, restano le frasi dell'**ANAGRAFICA**: *«↻ Sto creando su Matchpoint»* ·
+*«✅ Creato su Matchpoint · codice …»* · *«⚠️ NON creato su Matchpoint»* · *«Disiscrizione su
+Matchpoint non riuscita»* · *«ri-iscritto anche su Matchpoint»*. ⛔ **E non è un problema di parole**:
+le quattro edge `matchpoint-clients-*` stanno nel gruppo del recinto che **rifiuta e basta** (non
+hanno `esitoNativo`) ⇒ sul gestionale nuovo **quei bottoni non funzionano**, esattamente come
+`matchpoint-charge-write` prima della 188. È la **terza volta** che questo schema si presenta —
+188, 190, e qui — ed è sempre la **184 vista da un'altra faccia**.
+📌 *Quando lo stesso difetto si ripresenta per la terza volta con un nome diverso, non è un difetto:
+è la forma del passaggio, e va guardata tutta insieme invece che una casella per volta.*
+
 ⏳ **COSA MANCA PER CHIUDERLA, e non è poco:**
-· **il resto del mucchio ①a**: le frasi del percorso *«⌛ Non ho la conferma — sto guardando su
-  Matchpoint…»*, *«⌛ Matchpoint è lento»*, *«Matchpoint non ha risposto in tempo»*. ⛔ Quelle **non**
-  si curano con una concatenazione: senza il circolo la frase va **riscritta**, non accorciata
-  (*«sto guardando»* dove?). È lavoro di parole, non di meccanismo;
+· ✅ ~~il resto del mucchio ①a delle prenotazioni~~ — **fatto il 09/09 (6.426)**, vedi sopra;
+· 🆕 **la famiglia dell'ANAGRAFICA**, che è un'altra cosa e **non è solo parole** (vedi sopra): va
+  portata a lui prima di aprirla;
 · ⚠️ **lo «zero occorrenze» vale sulla pagina COM'È APERTA**, non su ogni schermata: `innerText`
   vede solo ciò che è reso in quel momento, e la sezione amministrazione non era aperta. Va rifatto
   schermata per schermata prima di dire che la parola è sparita;
