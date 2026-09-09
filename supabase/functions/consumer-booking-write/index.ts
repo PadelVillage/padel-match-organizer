@@ -36,7 +36,7 @@ import {
 import { giocatoreDaAggiungere } from './giocatore-da-aggiungere.ts';
 // 🗓️ voce 177 — la griglia viene dalla TABELLA `pmo_fasce_prenotabili`, col blocco vecchio
 // come solo ripiego. Il perché sta per esteso in `fasce-prenotabili.ts`.
-import { fasceDelGiorno, giornoDalCalendario } from './fasce-prenotabili.ts';
+import { fasceDelGiorno, giornoDalCalendario, verdettoSlot } from './fasce-prenotabili.ts';
 import { righeRicevuta, type GestoScritto } from './ricevuta.ts';
 import { registraConRitenta } from './registra-copia.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte». Stanno in un modulo perché le
@@ -148,7 +148,12 @@ const CAMPI = [1, 2, 3, 4];
 const DURATA_DEFAULT = 90;          // minuti — lo slot padel standard
 const DURATA_MIN = 30;
 const DURATA_MAX = 180;
-const ORARIO_APERTURA = '07:00';    // limiti larghi: l'autorità vera è Matchpoint
+// 🗓️ voce 183 — LIMITI LARGHI, e adesso sono un CONTORNO e non più l'unico controllo.
+// ⚠️ Qui c'era scritto «l'autorità vera è Matchpoint», ed era vero: la griglia la faceva
+// rispettare lui, a valle. Il giorno del distacco quell'autorità non esiste più ⇒ per
+// `create` l'autorità è ora la griglia del gestionale (`verdettoSlot`, più sotto). Questi
+// due restano perché coprono gli ALTRI gesti, che una griglia non ce l'hanno.
+const ORARIO_APERTURA = '07:00';
 const ORARIO_CHIUSURA = '23:30';
 const MAX_GIORNI_AVANTI = 30;
 const SLOT_SCHEDULE_KEY = 'potentialSlotSchedule'; // app_setting.local_key: griglia orari operativa
@@ -546,11 +551,94 @@ Deno.serve(async (req: Request) => {
   if (slotOra < ORARIO_APERTURA || slotOra > ORARIO_CHIUSURA) {
     return err(400, 'SLOT_OUT_OF_HOURS', `Orario fuori apertura (${ORARIO_APERTURA}–${ORARIO_CHIUSURA}).`);
   }
+  // ── 🗓️ voce 183 — LA GRIGLIA È UN LIMITE, non un'offerta ──────────────────
+  // 🚨 Solo per `create`, e la restrizione è il punto: gli altri gesti lavorano su una
+  // partita che ESISTE GIÀ, e una partita esistente può stare fuori dalla griglia di oggi
+  // — perché la griglia è cambiata dopo, o perché l'ha messa la segreteria a mano.
+  // ⛔ Far passare `cancel` di qui vorrebbe dire **impedire di disdire** proprio le
+  // prenotazioni che più meritano di sparire. 📌 *Una regola su ciò che può NASCERE non è
+  // una regola su ciò che ESISTE, e applicarla al passato non è severità: è un blocco.*
+  let durataFinale = durata;
+  if (action === 'create') {
+    // ⭐ Stessa coppia di letture di `availability_day`, e non per simmetria estetica: chi
+    // offre e chi accetta devono guardare lo stesso foglio (vedi `verdettoSlot`).
+    const dowCreate = new Date(`${slotData}T12:00:00Z`).getUTCDay();
+    const [calCreate, schedCreate] = await Promise.all([
+      service.rpc('pmo_calendario_effettivo', { p_dal: slotData, p_al: slotData }),
+      service
+        .from('pmo_cloud_records')
+        .select('payload')
+        .eq('record_type', 'app_setting')
+        .eq('local_key', SLOT_SCHEDULE_KEY)
+        .not('deleted', 'is', true)
+        .limit(1),
+    ]);
+    if (calCreate.error) {
+      console.error('[booking-write] create: calendario non letto, uso il ripiego:', calCreate.error.message);
+    }
+    if (schedCreate.error) {
+      console.error('[booking-write] create: ripiego non letto:', schedCreate.error.message);
+    }
+    const giornoCreate = calCreate.error ? null : giornoDalCalendario(calCreate.data, slotData);
+    const bloccoCreate = (schedCreate.data?.[0]?.payload as JsonMap | undefined)?.value as JsonMap | undefined;
+    const ripiegoCreate = fasceDelGiorno(null, bloccoCreate ?? null, dowCreate);
+
+    // `durata` esplicita ⇒ la fine si dichiara e va confrontata; assente ⇒ decide la fascia.
+    // 🚨 `body.durata` e non `durata`: quest'ultima porta già dentro `DURATA_DEFAULT`, quindi
+    // guardando lei «non l'ha chiesta nessuno» e «ne ha chiesti 90» sarebbero indistinguibili
+    // — ed è proprio la distinzione da cui dipende il caso della fascia non da 90 minuti.
+    const durataChiesta = body.durata != null;
+    const verdetto = verdettoSlot(
+      giornoCreate,
+      ripiegoCreate,
+      slotOra,
+      durataChiesta ? minToTime(timeToMin(slotOra) + durata) : null,
+    );
+
+    console.log(
+      `[booking-write] create griglia ${slotData} ${slotOra}` +
+        ` (fonte: ${giornoCreate ? `pmo_calendario_effettivo/${giornoCreate.periodo_nome ?? '?'}` : 'ripiego potentialSlotSchedule'})` +
+        ` → ${verdetto.ok ? `ok ${verdetto.fascia.start}-${verdetto.fascia.end}` : verdetto.codice}`,
+    );
+
+    if (!verdetto.ok) {
+      // 🚨 Nessuna di queste uscite ha scritto NIENTE da nessuna parte: sono rifiuti puliti,
+      // non esiti ignoti. Chi le legge può dire «non ho prenotato» senza rischiare la doppia
+      // prenotazione — che è la ragione per cui questo controllo sta PRIMA di tutto il resto.
+      const orari = verdetto.fasce.map((f) => f.start).join(', ');
+      if (verdetto.codice === 'GIORNO_CHIUSO') {
+        // Il motivo lo scrive la segreteria in italiano: passa dalla guardia dei nomi interni
+        // come ogni altra casella di testo libera prima di uscire.
+        const perche = verdetto.motivo ? ` (${dettaglioPerIlBot(verdetto.motivo)})` : '';
+        return err(400, 'GIORNO_CHIUSO', `Il circolo è chiuso il ${slotData}${perche}.`);
+      }
+      if (verdetto.codice === 'GIORNO_SENZA_FASCE') {
+        return err(400, 'GIORNO_SENZA_FASCE', `Il ${slotData} non ha orari prenotabili.`);
+      }
+      if (verdetto.codice === 'GRIGLIA_SCONOSCIUTA') {
+        // ⚖️ È un «non lo so», non un «no» — ma la cosa che il chiamante deve sapere è che
+        // NON è stato scritto niente, e quella è certa. Perciò 400 e non 503: un 5xx qui si
+        // legge come *forse è passata*, e una prenotazione riprovata occupa il campo due volte.
+        return err(400, 'GRIGLIA_SCONOSCIUTA', 'Non ho la griglia degli orari: non prenoto a indovinare.');
+      }
+      if (verdetto.codice === 'DURATA_FUORI_GRIGLIA') {
+        const f = verdetto.fascia;
+        return err(400, 'DURATA_FUORI_GRIGLIA', `Alle ${slotOra} lo slot va dalle ${f?.start} alle ${f?.end}.`);
+      }
+      return err(400, 'SLOT_FUORI_GRIGLIA', `Le ${slotOra} non sono un orario prenotabile${orari ? `; quel giorno si comincia alle ${orari}` : ''}.`);
+    }
+
+    // ⭐ La fine la dice la FASCIA, non l'aritmetica su una durata predefinita: è il
+    // gestionale a sapere quanto dura uno slot, e questa riga è dove smette di essere una
+    // frase e diventa il campo che finisce sulla prenotazione.
+    durataFinale = timeToMin(verdetto.fascia.end) - timeToMin(verdetto.fascia.start);
+  }
+
   const slot: SlotInput = {
     data: slotData,
     ora: slotOra,
-    durata,
-    oraFine: minToTime(timeToMin(slotOra) + durata),
+    durata: durataFinale,
+    oraFine: minToTime(timeToMin(slotOra) + durataFinale),
   };
 
   // ── Le righe del giorno, lette UNA volta e smistate in DUE elenchi ────────

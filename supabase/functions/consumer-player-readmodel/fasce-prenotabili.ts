@@ -232,3 +232,116 @@ export function grigliaDalCalendario(risposta: unknown): Griglia | null {
 
   return utili === 0 ? null : griglia;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * VOCE 183 — LA GRIGLIA NON È UN SUGGERIMENTO: È IL LIMITE DI CIÒ CHE SI PUÒ PRENOTARE
+ * ══════════════════════════════════════════════════════════════════════════════
+ * 🚨 IL DIFETTO CHE CURA, e va detto per intero perché il codice vecchio sembrava sano.
+ * `create` controllava che l'ora stesse fra `ORARIO_APERTURA` e `ORARIO_CHIUSURA`, con
+ * scritto accanto: *«limiti larghi: l'autorità vera è Matchpoint»*. ⇒ Era vero: la griglia
+ * la faceva rispettare Matchpoint, a valle. **Il giorno del distacco quell'autorità non
+ * esiste più**, e resta un controllo che accetta le 07:13 di un giorno di chiusura.
+ * 📌 *Un controllo che delega a qualcuno non è un controllo: è un rimando — e vale finché
+ * vive chi lo riceve.*
+ *
+ * ⚖️ E NON È SOLO UNA REGOLA DI FORMA: è ciò che dà un PREZZO alla partita. Il prezzo vive
+ * sulla fascia (voce 185); una prenotazione fuori griglia non ne ha nessuno, e non lo avrà
+ * mai — né alla nascita né all'apertura della scheda, perché non c'è fascia da cui leggerlo.
+ * ⇒ Chiudere la griglia è ciò che rende vera per COSTRUZIONE la frase su cui poggia la cassa
+ * (voce 181): *ogni prenotazione ha un importo*.
+ *
+ * 🔒 Modulo PURO come il resto del file: qui non si legge niente e non si chiama nessuno. Chi
+ * chiama porta il verdetto del calendario e il ripiego, e riceve un sì o un no motivato.
+ *
+ * ⭐ SI VALIDA CONTRO LA STESSA FONTE CHE HA FATTO L'OFFERTA, ed è la ragione per cui il
+ * ripiego arriva fin qui invece di essere un caso a parte. `availability_day` propone dal
+ * calendario e — se non risponde — dal blocco vecchio; se `create` validasse solo sul
+ * calendario, nella finestra in cui la RPC è muta il socio si vedrebbe **offrire uno slot e
+ * poi rifiutare lo stesso slot**. 📌 *Offrire e accettare devono guardare lo stesso foglio, o
+ * il difetto non è un rifiuto: è una presa in giro.*
+ */
+
+/**
+ * I cinque modi in cui uno slot può non stare sulla griglia. Sono cinque e non uno perché
+ * chiedono cose diverse a chi legge: `GIORNO_CHIUSO` è una risposta definitiva,
+ * `GRIGLIA_SCONOSCIUTA` è un «non lo so» che passerà.
+ * 🚨 In particolare `GIORNO_SENZA_FASCE` e `GRIGLIA_SCONOSCIUTA` **non sono lo stesso caso**:
+ * il primo è *lo so, e quel giorno non c'è niente*; il secondo è *non ho la griglia*. Fonderli
+ * darebbe una funzione che risponde «no» a due domande diverse, cioè a nessuna delle due.
+ */
+export type MotivoFuoriGriglia =
+  | 'GIORNO_CHIUSO'
+  | 'GIORNO_SENZA_FASCE'
+  | 'GRIGLIA_SCONOSCIUTA'
+  | 'SLOT_FUORI_GRIGLIA'
+  | 'DURATA_FUORI_GRIGLIA';
+
+export type VerdettoSlot =
+  | { ok: true; fascia: Fascia }
+  | {
+    ok: false;
+    codice: MotivoFuoriGriglia;
+    /** Solo per `GIORNO_CHIUSO`: il testo che la segreteria ha scritto. Mai un nome interno. */
+    motivo: string | null;
+    /** La fascia che l'ora ha trovato, quando il rifiuto riguarda la DURATA e non l'inizio. */
+    fascia: Fascia | null;
+    /** Le fasce di quel giorno, così chi risponde può dire quali sono invece di un «no» secco. */
+    fasce: Fascia[];
+  };
+
+/**
+ * Lo slot chiesto sta sulla griglia di quel giorno?
+ *
+ * @param giorno   il verdetto del gestionale per QUELLA data (`pmo_calendario_effettivo`),
+ *                 oppure `null` se non l'abbiamo — e allora si guarda il ripiego.
+ * @param ripiego  le fasce del blocco vecchio per quel giorno della settimana.
+ * @param ora      l'inizio chiesto, `HH:MM`.
+ * @param oraFine  la fine chiesta, `HH:MM` — **oppure `null`** quando nessuno l'ha chiesta.
+ *
+ * 🚨⭐ IL PARAMETRO `oraFine: null` È IL PEZZO CHE TIENE IN PIEDI IL DOMANI, e non è una
+ * comodità. Oggi **tutte** le fasce durano 90 minuti — esattamente quanto `DURATA_DEFAULT` —
+ * quindi un confronto secco fra la fine chiesta e la fine della fascia andrebbe sempre bene.
+ * 📏 Misurato il 09/09/2026: 39 fasce su 39, tutte da 90′. ⇒ **È un esito, non una regola**: il
+ * pannello della voce 185 gli lascia fare una fascia da 60, e da quel momento ogni richiesta
+ * che non dichiara la durata verrebbe rifiutata — in silenzio, e solo su quella fascia.
+ * ⇒ Chi non chiede una durata **prende quella della fascia**: è il gestionale a sapere quanto
+ * dura uno slot. Chi invece ne chiede una esplicita e diversa si sente dire di no, e non gliela
+ * si cambia sotto: *correggere in silenzio ciò che qualcuno ha chiesto per iscritto è peggio di
+ * rifiutarlo*.
+ */
+export function verdettoSlot(
+  giorno: GiornoCalendario | null,
+  ripiego: readonly Fascia[] | null | undefined,
+  ora: string,
+  oraFine: string | null,
+): VerdettoSlot {
+  const vuoto = { motivo: null, fascia: null, fasce: [] as Fascia[] };
+
+  // ⛔ La chiusura viene PRIMA di tutto: è una risposta, non l'assenza di una risposta. Un
+  // giorno chiuso con delle fasce ancora attaccate resta chiuso — e cercare la fascia prima
+  // vorrebbe dire farsi dire di sì da una griglia che quel giorno non vale.
+  if (giorno?.chiuso === true) {
+    return { ok: false, codice: 'GIORNO_CHIUSO', ...vuoto, motivo: giorno.motivo ?? null };
+  }
+
+  const fasce = giorno ? giorno.fasce : (Array.isArray(ripiego) ? [...ripiego] : []);
+  if (fasce.length === 0) {
+    return { ok: false, codice: giorno ? 'GIORNO_SENZA_FASCE' : 'GRIGLIA_SCONOSCIUTA', ...vuoto };
+  }
+
+  const inizio = normalizzaOra(ora);
+  const fascia = inizio ? (fasce.find((f) => f.start === inizio) ?? null) : null;
+  if (!fascia) return { ok: false, codice: 'SLOT_FUORI_GRIGLIA', ...vuoto, fasce };
+
+  // `null` = «non l'ha chiesta nessuno» ⇒ decide la fascia. Un valore che non si riesce a
+  // leggere NON è la stessa cosa: quello è un rifiuto, o si accetterebbe una richiesta
+  // storpiata trattandola come una richiesta assente.
+  if (oraFine !== null) {
+    const fine = normalizzaOra(oraFine);
+    if (fine !== fascia.end) {
+      return { ok: false, codice: 'DURATA_FUORI_GRIGLIA', ...vuoto, fascia, fasce };
+    }
+  }
+
+  return { ok: true, fascia };
+}
