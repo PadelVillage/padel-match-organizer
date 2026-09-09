@@ -44,6 +44,14 @@
 > perimetro della sessione cloud e sulla VM non c'è shell. Se un gesto non lascia nessuna riga nei
 > log di `cudi`, la prima cosa da guardare è quello, non il codice.
 >
+> ✅⭐ **E UNA DOMANDA CHE NON VA RIAPERTA: I PREZZI SONO QUELLI GIUSTI.** Nei documenti c'era
+> scritto *«41 fasce, 8 € il sabato»*; 📏 misurato, il database ne ha **39** e un prezzo da 8 € **non
+> esiste**. Messo davanti alla differenza, il committente ha risposto — 🗣️ **«i prezzi messi sono
+> corretti»** ⇒ era la riga **scritta** a essere vecchia, non il database. **Sul listino non c'è più
+> niente da decidere**, e la cassa addebiterà quello che sta nella tabella.
+> 📌 *Una domanda che resta aperta dopo la risposta fa lo stesso danno di una richiesta che resta
+> scritta dopo essere stata esaudita: chi arriva la rilegge e la ripone.*
+>
 > ---
 >
 > ## ✅ FATTO IN QUESTA SESSIONE
@@ -192,6 +200,7 @@ sulla scheda sono stati **letti nel codice**, non guardati su uno schermo.
 | fasce su `cudi` | **39**, tutte con prezzo, tutte da **90′**, scritte in un solo salvataggio l'08/09 20:35:22 |
 | il listino vero | lun-gio: 12:30 e 14:00 → 10 € · 18:00 → 12 € · **19:30 → 13 €** · 21:00 → 12 € · venerdì 7 fasce (10 € fino alle 17:30, poi 12 €) · sabato e domenica **tutte a 10 €** |
 | ⚠️ i documenti dicevano | «41 fasce», «8 € il sabato» — **corretto il 09/09**: un prezzo da 8 € **non esiste** |
+| ✅ **e sono CONFERMATI** | 🗣️ sue parole del 09/09: *«i prezzi messi sono corretti»* ⇒ la domanda è **chiusa**, non si riapre |
 | `staff_booking` vive | 30, **nessuna nel futuro** (l'ultima è dell'08/09) |
 | `payment` su `cudi` | 2605 — di cui `pmo_gift` **2** (la scheda diceva 33: era un'altra misura) |
 | borsellino | **83** `wallet_balance` (fotografie del 07/09 21:31), **0** `wallet_txn` |
