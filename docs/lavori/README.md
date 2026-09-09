@@ -1947,7 +1947,58 @@ sua domanda *«si può far sì che il tempo di azione sia al massimo di due seco
 ⚖️ **Cosa è già stato fatto e cosa no**: il **lampeggio** è sceso da 6 s a **2 s** (misurato:
 2.006 ms) — è la metà che era mia. La conferma finale però arriva a **4-6 s**, perché prima del
 lampeggio c'è la scrittura. ⇒ Per stare sotto i due secondi **veri** serve la edge, non la barra.
-✅⭐ **PRIMO PASSO FATTO il 09/09 pomeriggio (6.419), e la misura lo ha scelto al posto mio**: sui log delle edge `matchpoint-queue-status` faceva **169 chiamate in 100 minuti** — la funzione **più chiamata dell'intero progetto** — contro **17** della creazione. E il **minimo** della creazione è **153 ms** ⇒ la mediana a 1,6 s non è lavoro, è **avviamento**: un isolate tirato su ogni volta perché il posto se l'era preso il polling. ⇒ Su un gestionale che Matchpoint non lo chiama quella coda **non esiste**, e adesso non si chiede più (`pmoGestionaleCollegatoAlCircolo`, non l'hostname). 🔄🚨 **RIMISURATO, E L'IPOTESI NON REGGE: togliere il polling NON ha accorciato la scrittura.** 📏 Tre prenotazioni vere dalla scheda, **distanziate di 35 s** (cioè come le fa una persona, non a raffica): la prenotazione compare a **2.066 · 1.307 · 2.021 ms**. Prima della cura, dalla stessa strada, era **1.815 ms**. ⇒ **Nessun guadagno misurabile.** ⚖️ **La cura resta giusta lo stesso, ma per un'altra ragione**: quel polling chiedeva 169 volte ogni 100 minuti una coda che sul gestionale scollegato **non esiste** — è una chiamata inutile tolta, non un acceleratore. ⛔ E la riga che diceva *«a occupare il posto era il polling»* era **un'ipotesi che ho scritto come se fosse una causa**: il minimo di 153 ms dice che il tempo è avviamento, **non dice CHI lo causa**. 📌 *Una misura che spiega COSA (è avviamento, non lavoro) non spiega anche PERCHÉ: il primo sospetto plausibile non è una diagnosi, e prendere l'uno per l'altra fa curare la cosa sbagliata con la coscienza a posto.* ⏳ **Il tempo oggi, misurato**: scrittura **1,3-2,1 s** + lampeggio **2 s** = **3,3-4,1 s** in tutto (contro i **7,6-10 s** di stamattina, quando il lampeggio durava 6 s). 🔎 **Cosa resta, senza indovinare**: cronometrare i passi *dentro* la edge (auth · recinto ·
+✅⭐ **PRIMO PASSO FATTO il 09/09 pomeriggio (6.419), e la misura lo ha scelto al posto mio**: sui log delle edge `matchpoint-queue-status` faceva **169 chiamate in 100 minuti** — la funzione **più chiamata dell'intero progetto** — contro **17** della creazione. E il **minimo** della creazione è **153 ms** ⇒ la mediana a 1,6 s non è lavoro, è **avviamento**: un isolate tirato su ogni volta perché il posto se l'era preso il polling. ⇒ Su un gestionale che Matchpoint non lo chiama quella coda **non esiste**, e adesso non si chiede più (`pmoGestionaleCollegatoAlCircolo`, non l'hostname). 🔄🚨 **RIMISURATO, E L'IPOTESI NON REGGE: togliere il polling NON ha accorciato la scrittura.** 📏 Tre prenotazioni vere dalla scheda, **distanziate di 35 s** (cioè come le fa una persona, non a raffica): la prenotazione compare a **2.066 · 1.307 · 2.021 ms**. Prima della cura, dalla stessa strada, era **1.815 ms**. ⇒ **Nessun guadagno misurabile.** ⚖️ **La cura resta giusta lo stesso, ma per un'altra ragione**: quel polling chiedeva 169 volte ogni 100 minuti una coda che sul gestionale scollegato **non esiste** — è una chiamata inutile tolta, non un acceleratore. ⛔ E la riga che diceva *«a occupare il posto era il polling»* era **un'ipotesi che ho scritto come se fosse una causa**: il minimo di 153 ms dice che il tempo è avviamento, **non dice CHI lo causa**. 📌 *Una misura che spiega COSA (è avviamento, non lavoro) non spiega anche PERCHÉ: il primo sospetto plausibile non è una diagnosi, e prendere l'uno per l'altra fa curare la cosa sbagliata con la coscienza a posto.* ⏳ **Il tempo oggi, misurato**: scrittura **1,3-2,1 s** + lampeggio **2 s** = **3,3-4,1 s** in tutto (contro i **7,6-10 s** di stamattina, quando il lampeggio durava 6 s). ✅⭐⭐ **09/09/2026 NOTTE — MISURATO DENTRO LA EDGE, E LA MISURA HA UCCISO L'IPOTESI DEL COLLO DI
+BOTTIGLIA.** Aggiunto un **cronometro permanente** (`event: tempi_creazione`, una riga di registro
+per creazione) e fatte tre prenotazioni vere sulla edge di `cudi`:
+
+| passo | g1 | g2 | g3 |
+|---|---|---|---|
+| `auth_getUser` | 372 | 439 | 361 |
+| `profilo_staff` | 335 | 336 | 130 |
+| `riga_esistente` | 302 | 351 | 154 |
+| `listino` | 324 | 141 | 486 |
+| `scrittura_riga` | 405 | 384 | 460 |
+| **totale** | **1738** | **1651** | **1591** |
+
+🚨 **NESSUN PASSO DOMINA.** Non c'era un collo di bottiglia da trovare: sono **cinque andate e
+ritorni da 150-490 ms messe in fila**. ⇒ La cura non è accelerare un passo, è **smettere di
+aspettarli uno per volta**.
+📌 *Cercare «il passo lento» presuppone che ce ne sia uno: quando la misura dice che sono tutti
+uguali, la domanda giusta non è quale accorciare ma quali si possono fare insieme.*
+
+🔨 **LA CURA, due paia messe in parallelo:**
+· ① **le due domande d'ingresso insieme** — `pmo_get_my_staff_profile` viaggia sul **JWT**, che è
+  già nell'header del client, e **non** sul risultato di `getUser`: erano in fila per come si
+  scrive di solito, non per un vincolo. ⛔ Si aspettano **tutte e due** (`Promise.all`) prima di
+  guardare gli esiti: uscire al primo errore lascerebbe l'altra promessa senza nessuno che la
+  ascolta;
+· ② **il listino parte prima di aspettare la riga esistente**. ⚠️ **Costo dichiarato**: partendo
+  prima, il listino si chiede **anche** quando la regola della lapide poi dice di non scrivere. È
+  una lettura **senza effetti** e quel caso è raro ⇒ si paga una chiamata inutile ogni tanto per
+  toglierne una dalla fila **sempre**.
+
+📏 **DOPO, sette misure** (contro tre prima): **548 · 687 · 763 · 766 · 1109 · 1210 · 1480 ms**
+⇒ mediana **766** contro **1651**. ⭐ E la separazione è netta: **la più lenta delle nuove (1480) sta
+sotto la più veloce delle vecchie (1591)**.
+
+⚖️🚨 **MA UNA PARTE DEL GUADAGNO NON È DELLA CURA, e va detta o il numero mente.** `scrittura_riga`
+è passata da **405 · 384 · 460** a **~130 ms** — e **quel passo non è stato toccato**. ⇒ È
+l'ambiente, non il codice. Quello che la cura può rivendicare **per costruzione** è il paio
+d'ingresso: prima costava la **somma** (491 · 775 · 707), adesso costa la **più lenta**
+(159-446) — circa **340 ms**, sempre, indipendentemente dal carico.
+📌 *Un totale che migliora mentre migliora anche ciò che non hai toccato non è la prova della tua
+cura: è la somma di due cose, e una non è tua. Si accreditano solo i millisecondi che il disegno
+garantisce.* — è la stessa lezione con cui questa voce era già caduta una volta.
+
+⏳ **PERCHÉ LA VOCE RESTA APERTA**: la sua domanda era *«al massimo due secondi»* riferita alla
+**conferma finale**. Oggi è **scrittura ~0,8 s + lampeggio 2 s ≈ 2,8 s** (era 3,3-4,1). ⇒ Per stare
+**sotto** i due secondi non basta più la edge: **i due secondi sono il lampeggio**, e quella durata
+l'ha chiesta lui. 🗣️ **È una decisione sua**, non un'ottimizzazione: o il lampeggio si accorcia, o
+i due secondi non si raggiungono. Qui si porta il fatto, non la scelta.
+⛔ **Non provato**: il ramo in cui la regola della lapide ferma la scrittura (lì il listino parte e
+si butta) non è stato provocato dal vivo.
+
+🗄️ 🔎 **Cosa restava, senza indovinare (testo dell'apertura)**: cronometrare i passi *dentro* la edge (auth · recinto ·
 lettura del listino · `saveStaffBookingRecord`) invece di ottimizzare a naso, e distinguere
 l'**avviamento a freddo** dal lavoro vero — i quattro giri di fila dicono che non è solo freddo,
 perché il più lento è il **terzo**.
