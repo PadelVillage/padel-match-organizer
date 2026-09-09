@@ -162,6 +162,51 @@ test('il campo si confronta come NUMERO e l\'ora come TESTO', () => {
   assert.equal(sposta(DA, { iso: '2026-09-11', campo: '1', ora: '14:30' }), false);
 });
 
+/* ── ④ il rettangolo del bersaglio: si accende IL POSTO, non il contenitore ─────────────── */
+
+const rett = funzione('pmoTrascinaRettangoloDelBersaglio', 'pezzoLeft, minDa, minutiScelti, durataMin, colW');
+
+test('🎯 il rettangolo è largo quanto la partita DURA, non quanto il pezzo che la ospita', () => {
+  // Un «Libero» 08:00–18:00 (480→1080) è largo 880 px: una partita da 90′ ne occupa 132.
+  assert.deepEqual(rett(100, 480, 480, 90, COLW), { left: 100, width: 132 });
+});
+
+test('🎯 …e sta alla mezz\'ora scelta, non all\'inizio del pezzo', () => {
+  // 10:00 dentro un «Libero» che comincia alle 08:00 = quattro colonne più a destra.
+  assert.deepEqual(rett(100, 480, 600, 90, COLW), { left: 100 + 4 * 44, width: 132 });
+});
+
+test('🎯 una durata diversa cambia la larghezza, non la posizione', () => {
+  assert.deepEqual(rett(0, 600, 600, 60, COLW), { left: 0, width: 88 });
+  assert.deepEqual(rett(0, 600, 600, 120, COLW), { left: 0, width: 176 });
+});
+
+test('una durata mancante o assurda non produce un rettangolo di zero', () => {
+  assert.equal(rett(0, 600, 600, 0, COLW).width, 132);      // ripiega su 90′
+  assert.equal(rett(0, 600, 600, 10, COLW).width, 44);      // mai sotto la mezz'ora
+});
+
+test('coordinate storte non producono un rettangolo: producono `null`', () => {
+  assert.equal(rett(0, 'boh', 600, 90, COLW), null);
+  assert.equal(rett(0, 600, 600, 90, 0), null);
+});
+
+test('🩹 il dito non seleziona il testo del riquadro (la selezione si allargava agli altri)', () => {
+  const c = soloCodice(corpoDi('pmoTrascinaAttacca'));
+  assert.match(c, /userSelect = 'none'/);
+  assert.match(c, /webkitTouchCallout = 'none'/);
+});
+
+test('🩹 e una selezione già cominciata si spegne quando la presa scatta', () => {
+  assert.match(soloCodice(corpoDi('pmoTrascinaPrendi')), /removeAllRanges/);
+});
+
+test('⛔ non si accende più il PEZZO intero della corsia', () => {
+  const c = soloCodice(corpoDi('pmoTrascinaMira'));
+  assert.ok(!/pezzo\.style\.outline/.test(c), 'è tornata l\'evidenza sul pezzo intero');
+  assert.match(c, /pmoTrascinaRettangoloDelBersaglio/);
+});
+
 /* ── ④ le guardie della disposizione: i pezzi che il gesto usa devono esserci davvero ───── */
 
 test('i segmenti LIBERI si dichiarano tali (o non ci sarebbe dove lasciare)', () => {
