@@ -91,5 +91,52 @@ test('7) niente righe, nessun errore', () => {
   assert.equal(righeNativeDaSpegnere([], { idReserva: 'PROVA-aaa' }).length, 0);
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// 🆕⭐⭐ LA TERZA PROVA DI NASCITA: `PMO-…` (09/09/2026)
+//
+// 📏 Pagata con una sua prenotazione che non si lasciava annullare. Il marchio vive nel `payload`,
+// e il `payload` l'app lo RISCRIVE da otto punti diversi con un upsert a chiavi fisse: lo cancella
+// senza accorgersene. La riga resta viva e diventa non annullabile — «su quello slot non c'è
+// nessuna partita del gestionale da annullare» accanto a una partita che si vede sul calendario.
+// ⇒ Il prefisso `PMO-` lo conia `esitoNativo` e nessun altro, e l'`id_reserva` l'app lo porta
+//   sempre con sé perché le serve: è l'unico campo della famiglia che le riscritture non perdono.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+test('la riga POTATA dall\'app si annulla lo stesso: il PMO- basta da solo', () => {
+  const righe = [
+    // niente marchio: l'app ci è passata sopra. È il caso vero del 09/09.
+    { local_key: 'k1', payload: { data: '2026-09-11', ora: '14:00', campo: 1, id_reserva: 'PMO-e6263b79' } },
+  ];
+  const out = righeNativeDaSpegnere(righe, { data: '2026-09-11', ora: '14:00', campo: 1 });
+  assert.equal(out.length, 1, 'una riga nata qui e potata dall\'app resta non annullabile');
+});
+
+test('e si trova anche PER idReserva, che è la strada del bot', () => {
+  const righe = [{ local_key: 'k1', payload: { data: '2026-09-11', ora: '14:00', campo: 1, id_reserva: 'PMO-abc' } }];
+  assert.equal(righeNativeDaSpegnere(righe, { idReserva: 'PMO-abc' }).length, 1);
+});
+
+test('⛔ ma NON si allarga a chi non è nostro: una riga del circolo resta intoccabile', () => {
+  const righe = [
+    // arrivata dal sync di Matchpoint: nessun marchio, e l'id NON è coniato da noi.
+    { local_key: 'mp', payload: { data: '2026-09-11', ora: '14:00', campo: 1, id_reserva: '884321' } },
+    { local_key: 'mp2', payload: { data: '2026-09-11', ora: '14:00', campo: 1, id_reserva: '' } },
+    { local_key: 'mp3', payload: { data: '2026-09-11', ora: '14:00', campo: 1 } },
+    // 🚨 e nemmeno chi si limita a CONTENERE il prefisso senza cominciarci
+    { local_key: 'mp4', payload: { data: '2026-09-11', ora: '14:00', campo: 1, id_reserva: 'X-PMO-1' } },
+  ];
+  assert.equal(righeNativeDaSpegnere(righe, { data: '2026-09-11', ora: '14:00', campo: 1 }).length, 0,
+    'un annullo nativo sta toccando righe che non sono nostre');
+});
+
+test('il marchio vecchio continua a valere: non è una sostituzione, è un\'aggiunta', () => {
+  const righe = [
+    { local_key: 'a', payload: { data: '2026-09-11', ora: '14:00', campo: 1, nata_nel_gestionale: true } },
+    { local_key: 'b', payload: { data: '2026-09-11', ora: '14:00', campo: 1, nata_in_prova: true } },
+  ];
+  assert.equal(righeNativeDaSpegnere(righe, { data: '2026-09-11', ora: '14:00', campo: 1 }).length, 2);
+});
+
 console.log(`\n${passed} passati, ${failed} falliti`);
 if (failed) process.exit(1);

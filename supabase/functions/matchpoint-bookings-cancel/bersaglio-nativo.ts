@@ -25,6 +25,30 @@ type JsonMap = Record<string, unknown>;
 const MARCHIO = 'nata_nel_gestionale';
 const MARCHIO_VECCHIO = 'nata_in_prova';
 
+/**
+ * 🆕⭐⭐ LA TERZA PROVA DI NASCITA, ed è quella che RESISTE (09/09/2026).
+ *
+ * 📏 IL FATTO, pagato con una sua prenotazione che non si lasciava annullare: il marchio vive nel
+ * `payload`, e il `payload` **l'app lo riscrive**. Ogni volta che una copia locale torna al cloud
+ * (`staffCalSaveLocal`, `_staffCalPersistIdReserva`, la promozione di una riga Matchpoint… — 📏
+ * **otto punti** nell'app) parte un upsert con un payload a **chiavi fisse**, che del marchio non
+ * sa niente: lo cancella senza accorgersene. ⇒ La riga resta viva e diventa **non annullabile**,
+ * e chi ci prova legge *«su quello slot non c'è nessuna partita del gestionale da annullare»*
+ * accanto a una partita che si vede benissimo sul calendario.
+ *
+ * ⇒ `PMO-…` è una prova **migliore** del marchio, e per una ragione strutturale: quel prefisso lo
+ * conia `esitoNativo` e **nessun altro** — Matchpoint numera diversamente — quindi un `id_reserva`
+ * che comincia così *è* nato qui, per costruzione. E l'`id_reserva` l'app lo porta **sempre** con
+ * sé, perché le serve: è l'unico campo di questa famiglia che le sue riscritture non perdono.
+ *
+ * ⚖️ NON sostituisce il marchio, si aggiunge: le righe vecchie che il prefisso non ce l'hanno
+ * continuano a essere riconosciute dal marchio, ed è la stessa ragione per cui `nata_in_prova` è
+ * rimasto qui dopo il cambio di nome.
+ * 📌 *Una prova di appartenenza scritta in un campo che qualcun altro riscrive non è una prova:
+ *    è una nota. Quella vera sta in un campo che nessuno può permettersi di perdere.*
+ */
+const PREFISSO_NATIVO = 'PMO-';
+
 export type RigaStaffBooking = { local_key: string; payload: JsonMap };
 export type ChiaveAnnullo = { idReserva?: string; campo?: number; data?: string; ora?: string };
 
@@ -53,7 +77,10 @@ export function righeNativeDaSpegnere(
 
   return righe.filter((r) => {
     const p = (r.payload ?? {}) as JsonMap;
-    if (p[MARCHIO] !== true && p[MARCHIO_VECCHIO] !== true) return false;
+    const nostra = p[MARCHIO] === true
+      || p[MARCHIO_VECCHIO] === true
+      || pulisci(p.id_reserva).startsWith(PREFISSO_NATIVO);
+    if (!nostra) return false;
     if (idCercato) return pulisci(p.id_reserva) === idCercato;
     return pulisci(p.data) === pulisci(chiave.data)
       && pulisci(p.ora) === pulisci(chiave.ora)
