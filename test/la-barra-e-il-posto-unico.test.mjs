@@ -625,5 +625,32 @@ test('⑰ 🆕⭐⭐ UNA NASCITA NON SI ANNUNCIA NEMMENO MENTRE NASCE — nessun
     'il riquadro si riapre anche sul successo: il banner torna dalla finestra');
 });
 
+test('⑱ 🆕⭐⭐ LA CODA DEL WORKER NON SI CHIEDE PIÙ DOVE IL WORKER NON C\'È (09/09/2026)', () => {
+  // 📏 MISURATO sui log delle edge di `cudi`, 14:00-15:40 (100 minuti):
+  //   `matchpoint-queue-status`      169 chiamate · mediana 473 ms · picco 15.487 ms
+  //   `matchpoint-bookings-create`    17 chiamate · mediana 1.602 ms · MINIMO 153 ms
+  // ⇒ Quel minimo dice che la creazione SA rispondere in 153 ms: la mediana a 1,6 s non è lavoro,
+  //   è avviamento — un isolate tirato su ogni volta perché il posto era occupato. E a occuparlo
+  //   169 volte su 200 era questo polling, che su un gestionale scollegato non può scoprire NIENTE.
+  // 📌 Una sonda che non può scoprire niente non costa zero: costa il posto di quella che deve
+  //    rispondere in fretta.
+  const poll = soloCodice(dichiarazioneDi('svcPollQueueStatus'));
+  assert.match(poll, /if \(!pmoGestionaleCollegatoAlCircolo\(supabaseUrl\)\) return;/,
+    'il polling della coda parte anche dove la coda non esiste: 169 giri a vuoto ogni cento minuti');
+
+  // 🚨 E il cancello guarda il REF SUPABASE, non l'hostname: `pmoIsTestHostname` scadrebbe col
+  //    passaggio (voce 184), e quel giorno il polling tornerebbe da solo — in silenzio.
+  assert.doesNotMatch(poll, /pmoIsTestHostname|PMO_IS_TEST_ENV/,
+    'il cancello poggia sull\'hostname: il passaggio lo farebbe scadere senza che nessuno lo dica');
+
+  // ⛔ E DEVE STARE PRIMA della richiesta, o il giro lo si fa lo stesso e si butta la risposta.
+  assert.ok(poll.indexOf('pmoGestionaleCollegatoAlCircolo') < poll.indexOf("'/functions/v1/matchpoint-queue-status'"),
+    'la guardia arriva dopo la fetch: la chiamata parte comunque');
+  // …e DOPO aver letto la configurazione, o `supabaseUrl` non esiste ancora e la guardia
+  // risponderebbe «non collegato» sempre, spegnendo la barra anche su PROD.
+  assert.ok(poll.indexOf('cfg.supabaseUrl') < poll.indexOf('pmoGestionaleCollegatoAlCircolo'),
+    'la guardia legge un url che non è ancora stato caricato: su PROD la barra si spegnerebbe');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
