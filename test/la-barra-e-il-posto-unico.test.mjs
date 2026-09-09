@@ -430,5 +430,52 @@ test('⑬ 🚨 VOCE 147 — UN GESTO IN VOLO SI LEGGE IN UN POSTO SOLO (i posti 
     'la guardia nuova arriva dopo quella che poggia sulla riga tolta dalla 145: non servirebbe a niente');
 });
 
+test('⑭ 🆕⭐⭐ UNA PRENOTAZIONE NATA NON SI ANNUNCIA: si vede sul calendario (09/09/2026)', () => {
+  // 🗣️ Sua richiesta: «quando si fa una prenotazione sul gestionale di test non ci devono essere
+  //    più gli avvisi ma basta che mi fai vedere subito la prenotazione sul calendario che
+  //    lampeggia». ⇒ Il verde della striscia sparisce, il lampeggio della cella lo sostituisce.
+
+  // ① IL MARCHIO STA SU UNA SOLA AZIONE, e si legge dalla mappa invece di essere ricordato.
+  const conNascita = Object.keys(MAPPA).filter((k) => MAPPA[k] && MAPPA[k].nascita === true);
+  assert.deepEqual(conNascita, ['matchpoint-bookings-create'],
+    'il silenzio sul «fatto» vale per la CREAZIONE e basta: su modifica, annullo e soldi il calendario non basta a raccontare cosa è successo');
+
+  // ② E arriva fino a chi deve leggerlo: se `svcAzioneDaChiamata` non lo propaga, la regola sta
+  //    scritta in una mappa che nessuno guarda.
+  const creaz = azioneDaChiamata(U('matchpoint-bookings-create'), { data: '2026-09-11', campo: 4, ora: '11:00' });
+  assert.equal(creaz.nascita, true, 'il marchio non esce dalla mappa: la striscia resterebbe verde come prima');
+  assert.deepEqual(creaz.dove, { campo: 4, data: '2026-09-11', ora: '11:00' },
+    'senza coordinate complete non c\'è nessuna cella da far lampeggiare');
+  // Le altre restano quelle di prima — un `undefined` qui vale «no», e va misurato non supposto.
+  assert.ok(!azioneDaChiamata(U('matchpoint-bookings-cancel'), { data: '2026-09-11', campo: 4, ora: '11:00' }).nascita);
+  assert.ok(!azioneDaChiamata(U('matchpoint-payment-write'), { data: '2026-09-11', campo: 4, ora: '11:00' }).nascita);
+
+  // ③ 🚨 SOLO IL «FATTO» TACE. È la metà che si sarebbe tentati di portarsi dietro, ed è quella
+  //    che costa: su un rifiuto lo slot è rimasto libero — il calendario è identico a com'era
+  //    prima del gesto, quindi non ha niente da mostrare e il silenzio si scambia per successo.
+  const chiudi = soloCodice(dichiarazioneDi('svcChiudiAzione'));
+  assert.match(chiudi, /esito === 'fatto' && _svcAzioneLocale\.nascita/,
+    'la scorciatoia non guarda l\'esito: un rifiuto diventerebbe muto');
+  assert.match(chiudi, /svcLampeggiaNascita\(dove\)/, 'si tace e basta: nessuno mostra la prenotazione');
+
+  // ④ 🚨 IL LAMPEGGIO SOPRAVVIVE AI RIDISEGNI, che è l'unica cosa che si può sbagliare qui: la
+  //    griglia si ridisegna da sé e con lei sparirebbe la classe. È anche ciò che lo rende immune
+  //    all'ORDINE fra la risposta del lavoro e il `renderStaffCalendar` che disegna la cella.
+  assert.match(soloCodice(dichiarazioneDi('svcRiaccendiCellaDopoRidisegno')), /svcRiaccendiNascita\(\)/,
+    'il lampeggio durerebbe fino al primo ridisegno invece dei suoi sei secondi');
+
+  // ⑤ FALLISCE CHIUSA, come la cella «in corso»: coordinate incomplete ⇒ non lampeggia niente.
+  //    Far lampeggiare la cella sbagliata direbbe che è nata una prenotazione dove non è nata.
+  const lampeggia = soloCodice(dichiarazioneDi('svcLampeggiaNascita'));
+  assert.match(lampeggia, /if \(!dove \|\| !dove\.campo \|\| !dove\.ora\) return;/,
+    'mezze coordinate accenderebbero la cella sbagliata');
+
+  // ⑥ E i sei secondi sono gli STESSI del verde che sostituisce: cambia il posto in cui guardare,
+  //    non il tempo che uno ha per accorgersene.
+  const durata = Number((APP.match(/const SVC_NASCITA_MS = (\d+);/) || [])[1]);
+  assert.equal(durata, ESITI.fatto.durataMs,
+    'il lampeggio dura meno (o più) del verde che ha preso il posto: il tempo per accorgersene è cambiato di nascosto');
+});
+
 console.log('\n' + passed + ' passati, ' + failed + ' falliti');
 process.exit(failed ? 1 : 0);
