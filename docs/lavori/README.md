@@ -1877,7 +1877,59 @@ sono almeno tre, e sono decisioni diverse:
   silenzio ⇒ la cassa ha sempre un numero, e il buco non è mai muto.
 🗣️ **La scelta è sua**, perché è una regola su come lavora la segreteria, non un dettaglio tecnico.
 
-⏳ **Cosa manca per chiuderla**: la sua decisione fra le tre strade, e poi la cura con la prova
+✅⭐⭐ **09/09/2026 SERA — LA VOCE È STATA ANALIZZATA CON LUI, E LA MISURA L'HA SPACCATA IN DUE.**
+📏 Rimisurato su `cudi`: **32** prenotazioni native vive, e non sono «9 fuori griglia» — sono **due
+problemi diversi**, perché `prezzoDellaFascia` cercava `ora_inizio === ora`:
+
+| | quante | cosa vuol dire |
+|---|---|---|
+| ✅ cominciano **esattamente** a una fascia | **21** | hanno il prezzo |
+| 🟠 stanno **dentro** una fascia, non al suo inizio | **6** | il prezzo **esisteva e non veniva letto** |
+| 🔴 **fuori** da ogni fascia | **5** | lì un prezzo non esiste |
+
+🗣️⭐⭐ **E LA SUA SPIEGAZIONE HA DECISO TUTTO, compreso far cadere una strada che avevo proposto IO:**
+
+> *«Quelle ore di pianificazione che abbiamo messo dentro amministrazione sono le ore e gli slot che
+> riguardano i soci, poi invece la segreteria su chiamata personale può prenotare un campo, ma solo
+> se ci contattano direttamente.»*
+
+⇒ **La griglia è il MENÙ DEI SOCI, non l'orario di apertura del circolo.**
+· 🔴 **La ④ che avevo proposto — «allargare il listino» — era la cosa peggiore**: riempire i buchi
+  del lunedì mattina non avrebbe corretto un dato incompleto, avrebbe **aperto quelle ore ai soci
+  dal bot**. 📌 *Avevo letto una tabella come se descrivesse il mondo, e descrive una politica.*
+· 🔴 La **①** cade per lo stesso motivo: impedirebbe alla segreteria proprio ciò che fa al telefono.
+· 🟠 La **②** perde senso: prenotare fuori griglia non è un'eccezione da dichiarare, è il lavoro
+  normale della segreteria.
+· ✅ **Resta la ③.**
+
+🗣️ **E la seconda domanda, che le sue parole NON decidevano** — se una partita messa alle 14:30
+dentro la fascia dei soci delle 14:00 paghi quei 10 € — gliel'ho fatta invece di decidere io,
+**perché qualcuno prima aveva deciso il contrario di proposito** (nel banco della 180 c'era un
+sabotaggio scritto apposta a difendere l'inizio esatto, con la sua motivazione: *«indovinare il
+prezzo di una partita che comincia a metà fascia è inventarlo»*). ⇒ Sua risposta: **«prende il
+prezzo della fascia»**.
+📌 *Una regola che nessuno può dire giusta o sbagliata senza sapere a chi appartiene il dato non è
+una regola tecnica: è una decisione, e va chiesta.*
+
+✅ **METÀ A FATTA E PROVATA (6.423)**: il prezzo lo dà la fascia che **contiene** l'ora
+(`oraDentroLaFascia` / `pmoOraDentroLaFascia`), curate le **tre** copie della regola — l'edge e le
+**due** dell'app — perché altrimenti divergevano. ⛔ **Il bot non si tocca**: `verdettoSlot` pretende
+inizio *e* fine uguali alla fascia, e **lì è giusto** — al socio si vendono le fasce intere.
+⛔ L'ora uguale alla **fine** di una fascia appartiene a quella **dopo** (`< fine`, non `<=`), e una
+partita a cavallo di due fasce prende il prezzo di quella in cui **comincia**: dichiarato, non dedotto.
+✅ **Provata sulla pagina viva di TEST 6.423**: venerdì `14:30 → 10,00 €` (era `null`),
+`11:30 → null` (lì la fascia non c'è), e **la sua partita dell'11/09** aperta dalla scheda si è
+riempita davvero — `1000, 1000` **riletti dal database**, non dedotti dallo schermo.
+🧪 Banchi: `importo-dal-listino` **25 verdi** con 3 sabotaggi nuovi, il gemello che tiene legate edge
+e app **13 verdi**, `le-righe-vecchie-prendono-il-prezzo` **12 verdi**. Banco `.mjs` intero: **0 rossi**.
+
+⏳ **COSA MANCA PER CHIUDERLA — la metà B, ed è la strada ③**: quando la prenotazione cade **fuori da
+ogni fascia** (5 su 32, e la partita del committente di giovedì 10/09 alle 11:00 è una di quelle) il
+prezzo **non esiste** ⇒ il gestionale deve **chiederlo**, invece di lasciarlo vuoto in silenzio.
+⛔ E non deve **bloccare** chi lavora: la segreteria prenota al telefono, e un ostacolo lì è
+esattamente ciò che lui ha escluso.
+
+🗄️ **Cosa manca per chiuderla (testo vecchio, tenuto perché il ragionamento regge)**: la cura con la prova
 fisica. ⛔ Le **nove righe già senza prezzo** restano un problema a parte: un prezzo messo a ritroso
 sarebbe peggio del vuoto (è la stessa riga della 180).
 
