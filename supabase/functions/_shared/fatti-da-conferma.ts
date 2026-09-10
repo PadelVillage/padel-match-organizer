@@ -94,7 +94,24 @@ export function campoScritto(campo: unknown): string {
 export function destinatari(roster: readonly unknown[]): string[] {
   const visti = new Set<string>();
   const fuori: string[] = [];
-  for (const g of roster) {
+  for (const grezzo of roster) {
+    /* 🚨⭐⭐ 10/09/2026 (voce 194 ①) — UN GIOCATORE PUÒ ARRIVARE COME OGGETTO, e prima finiva
+     * dentro come una persona di nome «[object Object]».
+     * 📏 Trovato dal banco, non rileggendo: `destinatari([{ nome: 'Maurizio Aprea' }])` tornava
+     * `['[object Object]']`. Nessuna guardia lo fermava — `puoRicevere` non riconosce un
+     * oggetto come «Ospite» né come vuoto, quindi lo lasciava passare, e la riga usciva
+     * `String(g).trim()`.
+     * ⚖️ Non è un caso di scuola: i giocatori viaggiano come `{ nome, codice }` in tutto il
+     * progetto — è la forma di `booking.giocatori` e del payload `staff_booking`. Il primo
+     * chiamante che passa la forma naturale invece dei nomi genera un destinatario che non
+     * esiste, **in silenzio**, e l'avviso non arriva a nessuno senza che niente sia rosso.
+     * 🔨 Si accetta la forma naturale invece di scartarla: scartare in silenzio farebbe lo
+     *    stesso danno con l'aria di una difesa.
+     * ⛔ Sta QUI e non in `puoRicevere`, che è condiviso con il sync (`eventi-staff.ts`): quella
+     *    strada su PROD è viva, e questa cura non ha ragione di toccarla. */
+    const g = (grezzo && typeof grezzo === 'object' && 'nome' in (grezzo as Record<string, unknown>))
+      ? (grezzo as { nome?: unknown }).nome
+      : grezzo;
     if (!puoRicevere(g)) continue;
     const n = normNome(g);
     if (visti.has(n)) continue;
@@ -171,6 +188,62 @@ export function fattiDaAnnullo(opts: {
     campo: slot.campo,
     persona,
     gesto: 'annullata' as const,
+    tipo: tipoDetto,
+  }));
+}
+
+/**
+ * 🆕 UNA PRENOTAZIONE NUOVA CONFERMATA DAL CIRCOLO, detta a TUTTI quelli che ci sono dentro
+ * — 10/09/2026, voce 194 livello ①.
+ *
+ * 🗣️ Nasce dalla sua richiesta (*«bisogna attivare le notifiche sul chatbot quando c'è
+ * qualsiasi operazione»*) e da una misura fatta prima di scrivere: su `cudi`, dall'08/09,
+ * **53 prenotazioni toccate e ZERO avvisi nati**. L'ultimo evento è del 07/09 15:32, cioè
+ * l'ultimo giro di sync prima che le sei routine venissero tolte.
+ *
+ * 🚨⭐⭐ IL BUCO ERA UNO SOLO E PRECISO, e non era «mancano dei gesti»: `matchpoint-bookings-create`
+ * **non dichiarava niente**. Gli altri due gesti (`edit`, `cancel`) erano già passati alla strada
+ * della conferma con la voce 76; la creazione no, perché quando quella voce fu scritta il sync
+ * copriva ancora tutto e il difetto che l'aveva innescata riguardava annullo e spostamento.
+ * ⇒ Finché il sync viveva, la creazione era raccontata da lui. Spento il sync, **non la racconta
+ * più nessuno** — e non lo dice nessun errore.
+ * 📌 *Una strada che copre un buco non lo chiude: lo nasconde finché non si spegne.*
+ *
+ * ⛔ PERCHÉ NON SI RIUSA `fattiDaCambioRoster` con un «prima» vuoto, che è la prima cosa che
+ * viene in mente: quella funzione **rifiuta** un roster vuoto da una parte o dall'altra
+ * (`if (!rosterPrima.length || !rosterDopo.length) return []`), ed è una guardia deliberata —
+ * un «dopo» vuoto è una lettura monca, non una partita svuotata. Passarle un «prima» vuoto per
+ * far uscire degli `aggiunto` vorrebbe dire **smontare quella guardia** per tutti gli altri
+ * chiamanti. ⇒ Qui la creazione si dichiara per quello che è: nessun confronto, un fatto per
+ * ciascuno di quelli che ci sono.
+ *
+ * ⭐ E il gesto è `aggiunto`, non una parola nuova: è **lo stesso** che il sync produceva per
+ * una prenotazione nuova (`eventi-staff.ts`, il ramo degli slot che prima non c'erano). Il bot
+ * lo conosce dal 23/08 ⇒ questa cura **non tocca il repo del bot** e non ha nessun ordine di
+ * messa in servizio da rispettare. *Se ci fosse voluta una parola nuova, il disegno sarebbe
+ * stato sbagliato.*
+ */
+export function fattiDaCreazione(opts: {
+  slot: CoordinateSlot;
+  /** Chi è in campo, dai partecipanti che il circolo ha appena confermato. */
+  roster: readonly unknown[];
+  tipo?: unknown;
+  /** Oggi a Roma: una prenotazione nel passato non produce fatti. */
+  oggi: string;
+}): FattoStaff[] {
+  const { slot, roster, tipo, oggi } = opts;
+  if (!slot.data) return [];
+  // 🚨 Uno slot passato non produce niente, come per tutte le sorelle: un avviso su una partita
+  //    già giocata non è tardivo, è **falso** — dice che sta per succedere qualcosa che è finito.
+  if (oggi && slot.data < oggi) return [];
+  const tipoDetto = tipoDelloSlot(tipo);
+  return destinatari(roster).map((persona) => ({
+    slot: chiave(slot),
+    data: slot.data,
+    ora: slot.ora,
+    campo: slot.campo,
+    persona,
+    gesto: 'aggiunto' as const,
     tipo: tipoDetto,
   }));
 }

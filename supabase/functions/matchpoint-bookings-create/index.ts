@@ -14,6 +14,10 @@ import {
 // 📐 La scheda del circolo che una partita nata in prova si scrive da sé. Regola pura, provata
 // da sola: senza, su TEST la partita non ha un organizzatore e non si può gestire.
 import { schedaNativa } from './scheda-nativa.ts';
+// 🔔 VOCE 194 ① — la prenotazione nuova la racconta il GESTIONALE, non lo specchio.
+// Il perché per esteso, con la misura, sta sopra `fattiDaCreazione`.
+import { accodaFattiDaConferma } from '../_shared/dichiara-fatti.ts';
+import { campoScritto, fattiDaCreazione, oggiRoma } from '../_shared/fatti-da-conferma.ts';
 // 💶 voce 180 — l'importo a carico NASCE dal listino invece di essere letto da Matchpoint.
 // Il perché per esteso sta in `importo-dal-listino.ts`.
 import { importiDalListino, prezzoDellaFascia, quantiConImporto } from './importo-dal-listino.ts';
@@ -524,6 +528,57 @@ async function saveStaffBookingRecord(opts: {
   }, { onConflict: 'record_type,local_key' });
   crono?.segna('scrittura_riga');
   if (erroreRiga) throw new Error(`riga della prenotazione non scritta: ${erroreRiga.message}`);
+
+  /* 🔔⭐⭐ VOCE 194 ① — E ADESSO LO SI DICE A CHI CI GIOCA (10/09/2026).
+   *
+   * 📏 IL BUCO, misurato su `cudi` prima di scrivere una riga: dall'08/09 **53 prenotazioni
+   * toccate e ZERO avvisi nati**. L'ultimo evento è del 07/09 15:32, l'ultimo giro di sync
+   * prima che le sei routine venissero tolte. ⇒ Una prenotazione nuova **non la raccontava
+   * più nessuno**, e non lo diceva nessun errore.
+   * 🔎 Perché proprio la creazione: `edit` e `cancel` erano già passate alla strada della
+   *    conferma con la voce 76; questa no, perché allora il sync copriva ancora tutto.
+   *    📌 *Una strada che copre un buco non lo chiude: lo nasconde finché non si spegne.*
+   *
+   * ⭐ STA QUI, e non nei quattro rami che chiamano questa funzione, per la stessa ragione per
+   *   cui la 189 fu curata sulla classe: i rami sono **quattro** (nativo sincrono, nativo
+   *   asincrono, worker sincrono, worker asincrono) e agganciarlo a ciascuno sarebbe lo stesso
+   *   lavoro fatto quattro volte, con tre occasioni in più di dimenticarsene. Qui ci passano
+   *   tutti — ed è il punto in cui la prenotazione **esiste davvero**: la lapide esce prima
+   *   (nessuna riga scritta ⇒ niente da annunciare) e un upsert fallito ha appena lanciato.
+   *
+   * ⚖️ BEST-EFFORT, come le sorelle: il campo è già prenotato. Un guasto qui non deve poter
+   *    far sembrare fallita una scrittura riuscita — *un avviso perso è un fastidio, una
+   *    prenotazione data per fallita manda la segreteria a rifarla.*
+   *
+   * ⛔ `chiestoDa` NON si passa, ed è deliberato invece che dimenticato: questa edge non lo
+   *    riceve nel corpo della richiesta (`BookingRequest` non ha quel campo). Assente vale «la
+   *    segreteria», che è il comportamento di sempre. A non annunciare al socio ciò che ha
+   *    fatto LUI pensa la **ricevuta** della voce 70, che `consumer-booking-write` lascia già
+   *    sulla `create` — scritta allora come rete, col commento *«oggi non copre niente… regge
+   *    il giorno in cui l'ordine cambiasse»*. Quel giorno è oggi.
+   *
+   * 🚨 E i giocatori si passano per NOME: `destinatari()` fa `String(g)`, quindi un oggetto
+   *    `{nome, codice}` diventerebbe `[object Object]` — un destinatario che non esiste, in
+   *    silenzio. */
+  try {
+    const fatti = fattiDaCreazione({
+      slot: { data: booking.data, ora: booking.ora, campo: campoScritto(booking.campo) },
+      roster: (booking.giocatori ?? []).map((g) => g?.nome).filter(Boolean),
+      tipo: booking.tipo,
+      oggi: oggiRoma(),
+    });
+    if (fatti.length) {
+      // ⚖️ Client fresco come fa `edit`, invece del `client` di questa funzione: il tipo che
+      //    `createClient` restituisce porta generici che cambiano fra le versioni della
+      //    libreria, ed è da lì che venivano 4 dei 5 errori di tipo preesistenti di questo file.
+      await accodaFattiDaConferma({ client: createClient(supabaseUrl, supabaseKey), fatti, azione: 'create' });
+    }
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_creazione_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
 }
 
 // ⚠️ Il client si dichiara per QUELLO CHE SERVE (una tabella su cui fare upsert), non col tipo
