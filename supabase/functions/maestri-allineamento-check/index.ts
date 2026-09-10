@@ -12,9 +12,29 @@ import { confronta, impronta, type Esito } from './confronto.ts';
 // o tolto su Matchpoint, la voce resta nel nostro menu ma al salvataggio il
 // worker non trova più nulla e la lezione perde il maestro IN SILENZIO.
 //
-// Dal dato che già abbiamo non si può dedurre niente: sulle lezioni
-// sincronizzate `istruttore` è sempre null. Va letto Matchpoint → worker
-// /read-instructors (sola lettura).
+// 🔄🚨 CORRETTO IL 10/09/2026 — QUI C'ERA SCRITTO IL FALSO, e su quella riga è stato
+// costruito un piano dei lavori sbagliato. Diceva: «Dal dato che già abbiamo non si può
+// dedurre niente: sulle lezioni sincronizzate `istruttore` è sempre null. Va letto
+// Matchpoint → worker /read-instructors».
+//
+// 📏 MISURATO su tutt'e due gli ambienti, non ricordato:
+//   · `cudi`: 29 slot di lezione, 29 con un codice maestro, ZERO senza;
+//   · PROD:   56 righe di lezione su 102 portano il codice, e i codici sono gli stessi.
+// ⇒ Il dato c'è. Quella riga chiamava la rete per una cosa che era già in casa.
+//
+// 🩹 E SI CAPISCE PERCHÉ SEMBRAVA VERA, che è la parte da non perdere: le righe `booking`
+// GEMELLE dello stesso slot si alternano fra il codice e `null` — 24 slot su 29 hanno copie
+// DISCORDI. ⇒ Chi guardava una riga sola aveva buone probabilità di trovare `null`, e di
+// concluderne «è sempre null». Non era un campo mancante: era un campo che manca su METÀ
+// delle copie della stessa cosa.
+// 📌 *Un limite dichiarato che nessuno riprova è la 26ª; qui costava anche una chiamata di rete.*
+//
+// ⚠️ COSA RESTA DA FARE, ed è dichiarato e non fatto: questa funzione legge ANCORA i maestri
+// dal worker. Il worker muore col distacco (~27/09) ⇒ la guardia si spegne con lui. La forma
+// giusta è un confronto fra due dati NOSTRI — i codici visti nelle prenotazioni contro
+// l'elenco in `pmo_maestri` (voce 202) — che è anche l'unico modo di accorgersi di un codice
+// nuovo. 📏 Oggi ce n'è uno fuori elenco: `Santiago Carabajal` (PROD 14 righe, `cudi` 5,
+// TUTTE cancellate, l'ultima del 18/08) — il codice è il nome per esteso, non «Santiago».
 //
 // ⭐ Confronta la lista che l'app SCARICA DAVVERO (parser_rules.json dal ramo
 // giusto su GitHub), non una copia locale: così controlla la verità operativa.
