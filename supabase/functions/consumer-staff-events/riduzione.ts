@@ -30,7 +30,7 @@ export type FattoInCoda = {
   ora: string;
   campo: string;
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro';
   /** 🔄 Solo su `spostata`: lo slot di PARTENZA. Le altre coordinate sono quelle d'arrivo. */
   da?: { data: string; ora: string; campo: string } | null;
   /**
@@ -41,6 +41,15 @@ export type FattoInCoda = {
    */
   entrati?: string[] | null;
   usciti?: string[] | null;
+  /**
+   * 🆕⏱️ Solo su `durata` (voce 194 ②, 10/09): a che ora si finisce ADESSO e a che ora si
+   * finiva PRIMA, `HH:MM`. In coppia fanno «allungata»/«accorciata», da sole dicono fin quando
+   * si gioca. ⚠️ Assenti ⇒ `null`: il bot dice il fatto senza il dettaglio, mai una riga monca.
+   */
+  fine?: string | null;
+  fine_prima?: string | null;
+  /** 🆕👨‍🏫 Solo su `maestro` (voce 194 ②): chi tiene la lezione ADESSO. */
+  maestro?: string | null;
   /**
    * Quando il fatto è stato visto, in ISO.
    *
@@ -81,7 +90,7 @@ export type EsitoRidotto = {
   campo: string;
   persona: string;
   /** `null` quando il netto è nullo: non c'è niente da dire, e i fatti si chiudono lo stesso. */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | null;
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro' | null;
   /**
    * Il tipo dello slot, dall'ULTIMO fatto della raffica — come tutto il resto qui.
    * ⚖️ Non si fonde e non si vota: una partita non diventa una lezione a metà raffica, e se
@@ -90,6 +99,20 @@ export type EsitoRidotto = {
   tipo?: 'lezione' | 'partita' | null;
   /** 🔄 Lo slot di partenza, dall'ULTIMO fatto della raffica — come il `tipo` qui sopra. */
   da?: { data: string; ora: string; campo: string } | null;
+  /**
+   * 🆕⏱️👨‍🏫 VOCE 194 ② — il contenuto dei due gesti nuovi, presente **solo** sul gesto che lo
+   * usa: un campo pieno dove non serve fa credere a chi legge che serva.
+   *
+   * ⚖️ E qui la regola dell'«ultimo» ha un'ECCEZIONE dichiarata, l'unica di questo tipo: su una
+   * raffica di durate `fine` viene dall'ultimo fatto ma `fine_prima` viene dal **primo**.
+   * 📏 Il caso: 10:30 → 11:00 → 11:30 nello stesso giro. Dall'ultimo fatto uscirebbe «da 11:00
+   * a 11:30» — vero di un pezzo, falso del gesto: il socio aveva in testa **10:30**, e le 11:00
+   * non le ha mai sapute. ⇒ È la regola di `fondiFormazione` (*com'era all'inizio contro com'è
+   * alla fine*) applicata a due orari invece che a due elenchi.
+   */
+  fine?: string | null;
+  fine_prima?: string | null;
+  maestro?: string | null;
   /**
    * 🆕🗣️ Chi ha chiesto il gesto, dall'ULTIMO fatto della raffica — come `tipo` e `da`.
    *
@@ -274,11 +297,36 @@ export function coppia(persona: string, slot: string): string {
 export function statoFinale(gesti: Array<FattoInCoda['gesto']>): EsitoRidotto['gesto'] {
   if (!gesti.length) return null;
 
-  // 👥 `formazione` esce dal conto dentro/fuori: non è uno stato del giocatore. Ciò che resta
-  // decide, e questo torna in ballo solo se al giocatore non è successo niente.
-  const suoi = gesti.filter((g) => g !== 'formazione');
-  const cambiataLaFormazione = suoi.length !== gesti.length;
-  if (!suoi.length) return 'formazione';
+  /* 🚨⭐⭐ 10/09/2026 (voce 194 ②) — `durata` E `maestro` ESCONO DAL CONTO DENTRO/FUORI, e
+   * questa riga è la più importante dell'intera voce.
+   *
+   * 📏 IL DIFETTO CHE EVITA, provato prima di scriverla: con i due gesti nuovi lasciati dentro
+   * `suoi`, un `durata` da solo arrivava in fondo con `eraDentro = true` (il primo gesto non è
+   * `aggiunto`) ed `eDentro = false` (l'ultimo non è `aggiunto`) ⇒ **`tolto`**. Al socio
+   * sarebbe arrivato *«Non sei più nella partita»* per una partita allungata di mezz'ora.
+   * ⛔ E sarebbe stato **invisibile**: il banco del bot verde, il vincolo del database verde,
+   * l'edge verde. A sbagliare non era nessuno dei pezzi nuovi — era un pezzo vecchio che
+   * riceveva una parola che non era stato scritto per ricevere.
+   * 📌 *Una macchina che risponde a «dentro o fuori?» risponde lo stesso a una domanda che non
+   * è quella, e la risposta ha la stessa forma di una giusta.*
+   *
+   * ⚖️ Sono della stessa famiglia di `formazione` — **non sono stati del giocatore** — ma per
+   * una ragione diversa: `formazione` parla degli ALTRI, questi parlano della PARTITA. Escono
+   * dal conto per lo stesso motivo e rientrano con una precedenza diversa, sotto. */
+  const DELLA_PARTITA = new Set(['durata', 'maestro']);
+  const suoi = gesti.filter((g) => g !== 'formazione' && !DELLA_PARTITA.has(String(g)));
+  const cambiataLaFormazione = gesti.some((g) => g === 'formazione');
+  /* ⏱️👨‍🏫 L'ULTIMO dei gesti della partita, che è la stessa regola del resto del modulo — *com'è
+   * alla fine* — applicata a due raffiche possibili (la durata cambiata due volte di fila). */
+  const dellaPartita = gesti.filter((g) => DELLA_PARTITA.has(String(g)));
+  const ultimoDellaPartita = dellaPartita.length ? dellaPartita[dellaPartita.length - 1] : null;
+
+  /* ⚖️ LA PRECEDENZA, e ognuna delle tre righe ha il suo perché:
+   *  · a chi NON è successo niente di suo si dice quello che è successo alla partita;
+   *  · fra un fatto della partita e un cambio di formazione vince il primo, perché la
+   *    formazione è già il ripiego di questa funzione da sempre;
+   *  · e se non è successo proprio niente, `null` come prima. */
+  if (!suoi.length) return ultimoDellaPartita ?? (cambiataLaFormazione ? 'formazione' : null);
 
   // ⚠️ L'ultimo dei gesti SUOI, non l'ultimo in assoluto: un `formazione` arrivato dopo uno
   // spostamento non deve trasformare quello spostamento in un'uscita.
@@ -289,7 +337,13 @@ export function statoFinale(gesti: Array<FattoInCoda['gesto']>): EsitoRidotto['g
   // «dentro» = il giocatore è nella partita. Il primo gesto rivela da dove si partiva.
   const eraDentro = suoi[0] !== 'aggiunto';
   const eDentro = ultimo === 'aggiunto';
-  if (eraDentro === eDentro) return cambiataLaFormazione ? 'formazione' : null;
+  /* 🚨 Il *tolto e rimesso*: al giocatore non è successo niente, ma alla partita sì. Prima
+   * questa riga sapeva solo di `formazione`; adesso un allungamento avvenuto nella stessa
+   * raffica non si perde più — ed era il modo più silenzioso di perderlo, perché il fatto
+   * c'era, era maturo, e veniva chiuso come «niente da dire». */
+  if (eraDentro === eDentro) return ultimoDellaPartita ?? (cambiataLaFormazione ? 'formazione' : null);
+  // ⛔ E se al giocatore è successo qualcosa di SUO, quello vince: a chi è appena stato tolto
+  //    non interessa fino a che ora si gioca in una partita che non è più sua.
   return eDentro ? 'aggiunto' : 'tolto';
 }
 
@@ -403,6 +457,22 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       // ⭐ Escono solo su `formazione`: sugli altri gesti non significano niente, e un campo
       // pieno dove non serve è il modo di far credere a chi legge che serva.
       ...(gesto === 'formazione' ? { entrati, usciti } : {}),
+      /* ⏱️ VOCE 194 ② — LA COPPIA SI PRENDE AI DUE CAPI DELLA RAFFICA, non dall'ultimo fatto.
+       * 📏 Il caso: la segreteria allunga 10:30→11:00 e poi ancora 11:00→11:30 nello stesso
+       * giro. Dall'ultimo fatto uscirebbe «da 11:00 a 11:30», che è vero di un pezzo e falso
+       * del gesto: il socio aveva in testa **10:30**. ⇒ `fine` dall'ULTIMO, `fine_prima` dal
+       * PRIMO — che è la regola già scritta in testa a questo modulo (*com'era all'inizio
+       * contro com'è alla fine*) applicata a due orari invece che a due elenchi. */
+      ...(gesto === 'durata' ? (() => {
+        const d = gruppo.filter((g) => g.gesto === 'durata');
+        return { fine: d[d.length - 1]?.fine ?? null, fine_prima: d[0]?.fine_prima ?? null };
+      })() : {}),
+      // 👨‍🏫 Il maestro dell'ULTIMO: se ne sono passati due, quello che il socio troverà è
+      //    l'ultimo, e i nomi in mezzo non sono mai stati veri per nessuno.
+      ...(gesto === 'maestro' ? (() => {
+        const m = gruppo.filter((g) => g.gesto === 'maestro');
+        return { maestro: m[m.length - 1]?.maestro ?? null };
+      })() : {}),
       ids: gruppo.map((g) => g.id),
     });
   }

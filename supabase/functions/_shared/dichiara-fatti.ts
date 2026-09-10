@@ -38,7 +38,48 @@ export type SlotLocale = {
   coordinate: CoordinateSlot;
   /** Il tipo grezzo, che `fatti-da-conferma` tradurrà in `lezione` o `partita`. */
   tipo?: string;
+  /**
+   * 🆕⏱️ A che ora questo slot FINIVA, `HH:MM` — voce 194 ②.
+   *
+   * ⚖️ Si legge da `ora_fine` quando c'è e altrimenti si **calcola** da `ora` + `durata`, che è
+   * il caso normale: 📏 misurato il 10/09 su `cudi`, le righe `booking` hanno `durata` e **non**
+   * `ora_fine` (0 su 288), quelle `staff_booking` ce l'hanno tutt'e due (34 su 34).
+   * ⚠️ Può mancare: allora il messaggio dice la durata nuova senza il confronto.
+   */
+  fine?: string;
+  /** 🆕👨‍🏫 Il maestro di questo slot, come lo scrive il circolo. Vuoto su una partita. */
+  istruttore?: string;
 };
+
+/**
+ * ⏱️ DA UNA `durata` A DEI MINUTI, e serve perché quel campo ha **due unità con lo stesso nome**.
+ *
+ * 📏 Misurato il 10/09/2026 su `cudi`, ed è una trappola vera, non un caso di scuola:
+ *   · `booking` (dal sync, cioè da Matchpoint) la scrive in **ORE** — `1.5` · `2` · `1` · `3`;
+ *   · `staff_booking` (dall'app) la scrive in **MINUTI** — `90` · `60` · `120`.
+ * ⇒ Leggerla come minuti darebbe a una partita di un'ora e mezza una durata di **un minuto e
+ * mezzo**, e l'ora di fine sarebbe quella d'inizio: un messaggio che sembra giusto e non lo è.
+ *
+ * ⭐ La regola NON è nuova: è quella che l'app applica da sempre (`parseBookingDurationMinutes`,
+ * `index.html`) — `>= 30` vale minuti, sotto vale ore. Si porta invece di inventarne una
+ * seconda, perché due modi di leggere la stessa colonna divergono il giorno in cui qualcuno ne
+ * corregge uno solo.
+ * ⚠️ Torna `null` quando non sa: il chiamante allora non dice l'orario, invece di dirne uno finto.
+ */
+function durataInMinuti(v: unknown): number | null {
+  const n = Number(String(v ?? '').trim().replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n >= 30 ? Math.round(n) : Math.round(n * 60);
+}
+
+/** `09:00` + 90 ⇒ `10:30`. Torna `null` se l'inizio non è un orario o i minuti non si sanno. */
+function oraPiuMinuti(ora: string, minuti: number | null): string | null {
+  const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(ora ?? '').trim());
+  if (!m || minuti == null) return null;
+  // ⚠️ Il modulo 24 h regge una partita che scavalca la mezzanotte senza inventare un «25:30».
+  const tot = ((Number(m[1]) * 60 + Number(m[2]) + minuti) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(tot / 60)).padStart(2, '0')}:${String(tot % 60).padStart(2, '0')}`;
+}
 
 /** Solo le cifre: «Campo 2», «2» e « 2 » sono lo stesso campo. */
 function cifre(v: unknown): string {
@@ -143,8 +184,29 @@ export async function rosterDaCopiaLocale(opts: {
     // futuro, non l'archivio. *Prima di ottimizzare, contare.*
     const esito = await client
       .from('pmo_cloud_records')
-      .select('payload')
-      .eq('record_type', 'booking')
+      .select('record_type, payload')
+      /* 🚨⭐⭐ 10/09/2026 (voce 194 ②) — SI GUARDANO TUTT'E DUE I CASSETTI, e prima era uno solo.
+       *
+       * 📏 IL FATTO, misurato su `cudi` prima di toccare una riga: le 288 righe `booking` sono
+       * ferme al **07/09 15:32** — l'ultimo giro di sync prima che le sei routine venissero
+       * tolte l'08/09 — mentre le `staff_booking` sono state aggiornate **stamattina**. ⇒ Su
+       * `booking` da solo, ogni prenotazione nata dopo l'08/09 è **invisibile**.
+       *
+       * ⛔ E la conseguenza non riguarda solo i due gesti nuovi: `spostata` e `formazione`
+       * viaggiano su questa stessa funzione ⇒ **erano già mute** su tutto ciò che è nato dopo
+       * l'08/09, e non lo diceva nessun errore. Questa non è una riga in più per la voce 194:
+       * è la riparazione della strada su cui la voce 194 doveva salire.
+       * 📌 *È la 194 ① un piano più sotto: una strada che copre un buco non lo chiude, lo
+       * nasconde finché non si spegne. Lì si era spento il sync; qui si è spenta la copia che
+       * il sync riempiva.*
+       *
+       * ⚖️ E i due cassetti non si sostituiscono, si SOMMANO: `booking` tiene lo storico vero
+       * arrivato da Matchpoint, `staff_booking` quello che nasce da noi. Il giorno del distacco
+       * il primo smette di crescere e il secondo resta — che è esattamente il verso giusto.
+       * ⚠️ Su PROD questa riga non cambia niente di visibile: là il sync è vivo e `booking` è
+       * la copia buona; `staff_booking` c'è già ed è la stessa partita vista dall'altra parte,
+       * e a scegliere fra le due resta la regola del **roster più completo**, qui sotto. */
+      .in('record_type', ['booking', 'staff_booking'])
       .eq('deleted', false)
       .eq('payload->>data', data) as { data?: unknown; error?: unknown };
     if (esito?.error) throw esito.error;
@@ -155,19 +217,40 @@ export async function rosterDaCopiaLocale(opts: {
       const p = ((r as { payload?: Record<string, unknown> })?.payload || {}) as Record<string, unknown>;
       if (String(p?.ora ?? '').trim() !== String(ora).trim()) continue;
       if (cifre(p?.campo) !== volute) continue;
-      const nomi = playersFromDescrizione(String(p?.descrizione ?? ''));
+      /* 👥 IL ROSTER STA IN DUE POSTI DIVERSI NEI DUE CASSETTI, misurato il 10/09 su `cudi`:
+       * `booking` lo porta dentro `descrizione` (la riga di testo del tabellone, da cui il sync
+       * ricava le sue fotografie), `staff_booking` lo porta in `giocatori` — 34 righe su 34,
+       * mentre `descrizione` lì c'è **una volta sola**. ⇒ Si prova la prima e si ripiega sulla
+       * seconda, invece di scegliere in base al tipo di riga: così una riga che avesse tutt'e
+       * due non dipende da quale delle due si è deciso di guardare.
+       * ⭐ E `giocatori` arriva come `{ nome, codice }`: è **esattamente** la forma che il banco
+       * della 194 ① ha trovato diventare `'[object Object]'` in silenzio, e che `destinatari()`
+       * adesso accetta alla radice. La cura di ieri è ciò che rende percorribile questa strada
+       * oggi — senza, qui nascerebbero destinatari che non esistono. */
+      const daScheda = playersFromDescrizione(String(p?.descrizione ?? ''));
+      const nomi = daScheda.length
+        ? daScheda
+        : (Array.isArray(p?.giocatori) ? (p.giocatori as unknown[]) : [])
+          .map((g) => (g && typeof g === 'object' && 'nome' in (g as Record<string, unknown>))
+            ? String((g as { nome?: unknown }).nome ?? '').trim()
+            : String(g ?? '').trim())
+          .filter(Boolean);
       if (!nomi.length) continue;   // un titolo libero («Torneo aziendale») non è un roster
       // ⚠️ Il roster PIÙ COMPLETO fra le copie, come fa `fotografia()` nel sync: le righe sono
       // la stessa partita ripetuta, non pezzi da sommare — unirle fonderebbe gli «Ospite».
       if (migliore && migliore.roster.length >= nomi.length) continue;
+      const oraLetta = String(p?.ora ?? '').trim();
       migliore = {
         roster: nomi,
         coordinate: {
           data: String(p?.data ?? '').trim(),
-          ora: String(p?.ora ?? '').trim(),
+          ora: oraLetta,
           campo: String(p?.campo ?? '').trim() || campoScritto(campo),
         },
         tipo: String(p?.tipo ?? '').trim() || undefined,
+        // ⏱️ `ora_fine` quando c'è, altrimenti calcolata: su `booking` non c'è mai (0 su 288).
+        fine: String(p?.ora_fine ?? '').trim() || oraPiuMinuti(oraLetta, durataInMinuti(p?.durata)) || undefined,
+        istruttore: String(p?.istruttore ?? '').trim() || undefined,
       };
     }
     return migliore;

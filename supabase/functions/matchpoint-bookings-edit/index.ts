@@ -14,7 +14,15 @@ import { esitoDelRifiutoDiModifica } from './esito-modifica.ts';
 // 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
 // esteso sopra `dichiaraSpostamentoAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
-import { campoScritto, fattiDaCambioRoster, fattiDaSpostamento, oggiRoma } from '../_shared/fatti-da-conferma.ts';
+import {
+  campoScritto,
+  fattiDaCambioRoster,
+  fattiDaDurata,
+  fattiDaMaestro,
+  fattiDaSpostamento,
+  oggiRoma,
+  soloLaDurataECambiata,
+} from '../_shared/fatti-da-conferma.ts';
 
 type JsonMap = Record<string, unknown>;
 
@@ -338,6 +346,18 @@ function toccaIlRoster(edit: EditRequest): boolean {
   );
 }
 
+/**
+ * 🆕👨‍🏫 Il gesto cambia il MAESTRO? — voce 194 ②.
+ *
+ * ⚠️ Stringa vuota vale «non toccare», ed è il contratto che il campo ha già in `EditRequest`
+ * (*«stringa non vuota = cambia; assente/'' = non toccare»*): il selettore della scheda non
+ * permette di **svuotare** un maestro già impostato, quindi un `''` che arrivasse qui non è una
+ * richiesta di toglierlo — è un campo che nessuno ha toccato.
+ */
+function cambiaIlMaestro(edit: EditRequest): boolean {
+  return String(edit.istruttore ?? '').trim() !== '';
+}
+
 /** Chi c'era in campo prima del gesto, o `null` se non si dichiarerà niente. */
 async function rosterPrimaDelloSpostamento(opts: {
   supabaseUrl: string;
@@ -349,7 +369,10 @@ async function rosterPrimaDelloSpostamento(opts: {
   // nessuna strada veloce e aspettava il sync (misurato: 2-4 minuti sul telefono del socio).
   // ⚖️ Il roster «prima» serve a tutte e due le dichiarazioni; a decidere QUALE si fa sono le
   // due funzioni qui sotto, non questa — che si limita a leggere.
-  if (!edit.move && !toccaIlRoster(edit)) return null;
+  // 🆕👨‍🏫 VOCE 194 ② — e si legge ANCHE per il solo cambio di maestro, che fino a oggi non
+  // aveva nessuna strada: chi va a lezione ci va per il maestro, e trovarne un altro senza
+  // saperlo è il caso da cui la regola del 23/08 nasce.
+  if (!edit.move && !toccaIlRoster(edit) && !cambiaIlMaestro(edit)) return null;
   // 🚨 Move + giocatori nello stesso gesto: nessuna delle due strade sa dire tutto ⇒ tacciono
   // tutt'e due e la cosa resta al sync. Vedi il commento qui sopra.
   if (edit.move && toccaIlRoster(edit)) return null;
@@ -371,16 +394,38 @@ async function dichiaraSpostamentoAlSocio(opts: {
   const move = edit.move;
   if (!move || !prima) return;
   try {
-    const fatti = fattiDaSpostamento({
-      partenza: prima.coordinate,
-      arrivo: {
-        data: String(move.data ?? edit.data ?? '').trim(),
-        ora: String(move.oraInizio ?? '').trim(),
-        campo: campoScritto(move.campo ?? edit.campo),
-      },
-      roster: prima.roster,
-      tipo: prima.tipo,
-    });
+    const arrivo = {
+      data: String(move.data ?? edit.data ?? '').trim(),
+      ora: String(move.oraInizio ?? '').trim(),
+      campo: campoScritto(move.campo ?? edit.campo),
+    };
+    /* ⏱️🔀 VOCE 194 ② — LO STESSO `move` PORTA DUE GESTI, e qui si sceglie quale.
+     *
+     * 📏 L'app manda un cambio di **durata** come un `move` con campo, data e ora d'inizio
+     * identici a prima: cambia solo `oraFine`. ⇒ Prima di oggi quel gesto usciva come
+     * `spostata`, e al socio arrivava *«La tua partita è stata spostata»* seguito dalle
+     * **stesse coordinate** che aveva già — un messaggio che annuncia un cambiamento e poi
+     * non ne mostra nessuno.
+     * ⚖️ Se si muovono tutt'e due, vince `spostata`: dov'è la partita conta più di quanto
+     * dura, e due messaggi sulla stessa conferma sarebbero due notifiche per un fatto solo. */
+    const fatti = soloLaDurataECambiata(prima.coordinate, arrivo)
+      ? fattiDaDurata({
+        slot: prima.coordinate,
+        // ⭐ La fine NUOVA la dice la richiesta, la fine di PRIMA la copia locale: sono due
+        //   fonti diverse per una ragione: la seconda è l'unica che sa com'era, e la prima
+        //   l'unica che sa com'è. Nessuna delle due potrebbe rispondere per l'altra.
+        fine: String(move.oraFine ?? '').trim(),
+        finePrima: prima.fine,
+        roster: prima.roster,
+        tipo: prima.tipo,
+        oggi: oggiRoma(),
+      })
+      : fattiDaSpostamento({
+        partenza: prima.coordinate,
+        arrivo,
+        roster: prima.roster,
+        tipo: prima.tipo,
+      });
     await accodaFattiDaConferma({
       client: createClient(supabaseUrl, supabaseKey),
       fatti,
@@ -390,6 +435,67 @@ async function dichiaraSpostamentoAlSocio(opts: {
   } catch (e) {
     console.warn(JSON.stringify({
       event: 'dichiarazione_spostamento_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
+}
+
+/**
+ * 👨‍🏫 IL MAESTRO CAMBIATO, dichiarato appena il circolo l'ha confermato — 10/09/2026, voce 194 ②.
+ *
+ * 🗣️ Sua richiesta del 10/09 (*«bisogna attivare le notifiche sul chatbot quando c'è qualsiasi
+ * operazione»*), col criterio che ha approvato lui: **si avvisa se il socio deve comportarsi
+ * diversamente**. Chi va a lezione ci va per il maestro.
+ *
+ * ⚠️ SOLO SUL CAMBIO PURO, come le due gemelle: se il gesto muove anche la partita o ne cambia
+ * i giocatori, questa strada tace — non perché non saprebbe, ma perché manderebbe **due**
+ * messaggi per una conferma sola, e il socio leggerebbe due notizie senza capire che sono la
+ * stessa. È il paletto ⑤: dove la conferma non sa dire tutto, si dice una cosa sola.
+ *
+ * ⭐ Il nome è quello CHIESTO e non quello riletto, e va detto perché è l'eccezione alla regola
+ * del 22/08 (*«la richiesta dice cosa si è chiesto, la risposta cosa è successo»*): il worker,
+ * su una modifica, rilegge i **giocatori** e non il maestro — e infatti la scheda dell'app lo
+ * dice al suo operatore con parole sue (*«Matchpoint mi lascia rileggere i giocatori, non la
+ * durata o il maestro»*). ⇒ Qui la scelta non è fra due fonti: è fra questa e **nessuna**.
+ * 🚨 E si arriva qui **solo dopo che il circolo ha confermato**: il gesto è andato a buon fine,
+ * quindi il nome chiesto è quello scritto. Ciò che resta fuori è un maestro *diverso da quello
+ * chiesto*, che Matchpoint non ha modo di raccontarci.
+ *
+ * 🚨 BEST-EFFORT E MUTA NEI GUASTI, come le gemelle: a questo punto il maestro è **già
+ * cambiato sul Matchpoint vero**, e un errore qui non deve poter far sembrare fallita una
+ * scrittura riuscita.
+ */
+async function dichiaraCambioMaestroAlSocio(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  edit: EditRequest;
+  prima: SlotLocale | null;
+}): Promise<void> {
+  const { supabaseUrl, supabaseKey, edit, prima } = opts;
+  if (!prima || !cambiaIlMaestro(edit)) return;
+  // ⛔ Gesto misto ⇒ tace: lo dice la gemella che governa la notizia più grossa.
+  if (edit.move || toccaIlRoster(edit)) return;
+  // ⚠️ Un maestro riconfermato uguale non è un cambiamento: la scheda dell'app confronta col
+  // valore caricato, ma una richiesta che arrivasse da altrove no — e un avviso «è cambiato»
+  // per un maestro rimasto lo stesso è la bugia più facile da mandare senza accorgersene.
+  const chiesto = String(edit.istruttore ?? '').trim();
+  if (chiesto && prima.istruttore && chiesto === prima.istruttore) return;
+  try {
+    await accodaFattiDaConferma({
+      client: createClient(supabaseUrl, supabaseKey),
+      fatti: fattiDaMaestro({
+        slot: prima.coordinate,
+        maestro: chiesto,
+        roster: prima.roster,
+        tipo: prima.tipo,
+        oggi: oggiRoma(),
+      }),
+      azione: 'edit',
+      chiestoDa: edit.chiestoDa,
+    });
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_maestro_saltata',
       error: String((e as Error)?.message ?? e),
     }));
   }
@@ -522,6 +628,7 @@ async function runEditJobInBackground(opts: {
     // che il sync ri-scopra la stessa cosa rileggendo Matchpoint minuti dopo.
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
+    await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await writeEditJob(client, jobId, 'done', {
       ...base,
       message: `Modifica eseguita (idReserva ${edit.idReserva ?? '?'})`,
@@ -782,6 +889,7 @@ Deno.serve(async (req: Request) => {
     // a parlare col socio è il gestionale. ⚠️ Mai in `readOnly`: là non è successo niente.
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
+    await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
   }
 
   if (readOnly) {

@@ -73,7 +73,7 @@ export type FattoStaff = {
    * questa persona ci resta dentro — a cambiare sono i **compagni**. È l'unico gesto il cui
    * destinatario non è chi si è mosso, ed è nato proprio per quello.
    */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro';
   /**
    * Che cosa è lo slot, **detto con le parole del gestionale**: `'lezione'` o `'partita'`.
    *
@@ -101,6 +101,25 @@ export type FattoStaff = {
    */
   entrati?: string[];
   usciti?: string[];
+  /**
+   * 🆕⏱️ Solo su `durata` (voce 194 ②, 10/09/2026): a che ora si finisce ADESSO e a che ora si
+   * finiva PRIMA, `HH:MM`.
+   *
+   * 🚨⭐⭐ `fine_prima` È IN snake_case, E NON È UNA SVISTA: questi oggetti finiscono in
+   * `pmo_eventi_staff` per SPREAD (`{ ...f }` in `accodaFattiDaConferma`) ⇒ ogni nome qui è
+   * **il nome di una colonna**, non un nome di comodo. Un `finePrima` in camelCase farebbe
+   * fallire l'insert dell'intero lotto — cioè perderebbe l'avviso, non solo quel campo.
+   * 📌 *Un tipo che viaggia per spread non ha nomi propri: ha i nomi del posto dove va.*
+   * ⚠️ Tutt'e due possono mancare: a valle il messaggio degrada per gradi invece di mentire.
+   */
+  fine?: string;
+  fine_prima?: string;
+  /**
+   * 🆕👨‍🏫 Solo su `maestro` (voce 194 ②): chi tiene la lezione ADESSO, col nome del circolo.
+   * ⛔ Il maestro di PRIMA non c'è, ed è deliberato: al socio serve chi troverà, non chi non
+   * troverà — e un campo che esiste prima o poi qualcuno lo mostra.
+   */
+  maestro?: string;
 };
 
 /** Che cos'è uno slot, con le parole del gestionale. */

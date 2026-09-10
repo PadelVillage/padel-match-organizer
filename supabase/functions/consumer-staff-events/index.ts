@@ -161,7 +161,18 @@ Deno.serve(async (req: Request) => {
    * migrato. ⚖️ E perdendola non si perde un avviso: si perde l'**attribuzione**, e le frasi
    * tornano quelle del circolo — che è esattamente il comportamento di ieri. La scala dei
    * ripieghi è ordinata dal meno grave al più grave, e questo è il meno grave di tutti. */
-  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da`);
+  /* 🆕⏱️👨‍🏫 VOCE 194 ② (10/09) — `fine`, `fine_prima` e `maestro` sono il ripiego più esterno di
+   * tutti, cioè il PRIMO a cadere: sono le colonne più nuove, quindi le più probabili a mancare
+   * su un progetto non ancora migrato (**PROD è congelata**, e là non ci sono).
+   * ⚖️ E perdendole non si perde un avviso: si perde il **contenuto** di due gesti che da lì non
+   * arrivano comunque, e tutti gli altri continuano a passare. La scala dei ripieghi resta
+   * ordinata dal meno grave al più grave, e questo è il nuovo meno grave. */
+  const COLONNE_194 = 'fine, fine_prima, maestro';
+  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da, ${COLONNE_194}`);
+  if (errore) {
+    console.warn(`[staff-events] coda senza le colonne della 194 (${errore.message}): riprovo senza — durata e maestro restano senza dettaglio`);
+    ({ righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da`));
+  }
   if (errore) {
     console.warn(`[staff-events] coda senza 'chiesto_da' (${errore.message}): riprovo senza — l'attribuzione resta al circolo`);
     ({ righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}`));
@@ -493,6 +504,15 @@ Deno.serve(async (req: Request) => {
       // non deve difendersi da un campo che a volte c'è.
       entrati: e.entrati ?? [],
       usciti: e.usciti ?? [],
+      /* ⏱️👨‍🏫 VOCE 194 ② (10/09): solo su `durata` e su `maestro`, e sono il CONTENUTO del
+       * messaggio, non un contorno — «è cambiata la durata» senza dire fin quando, e «è
+       * cambiato il maestro» senza dire chi, sono due inviti a telefonare in segreteria.
+       * ⚠️ `null` quando non si sanno: il bot degrada per gradi invece di scrivere una riga
+       * monca. Escono SEMPRE (nulli sugli altri gesti), così chi legge non deve difendersi da
+       * un campo che a volte c'è. */
+      fine: e.fine ?? null,
+      fine_prima: e.fine_prima ?? null,
+      maestro: e.maestro ?? null,
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);

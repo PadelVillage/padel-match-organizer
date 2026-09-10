@@ -83,6 +83,19 @@ export function campoScritto(campo: unknown): string {
 }
 
 /**
+ * ⏱️ La forma di un orario, `H:MM` o `HH:MM` — voce 194 ②.
+ *
+ * 🚨 Serve perché queste stringhe finiscono **dentro una frase** che il socio legge come un'ora
+ * («Adesso finisce alle …»): una parola qualunque che passasse di qui diventerebbe un orario
+ * agli occhi di chi legge. È la stessa guardia che il `tipo` ha sull'elenco chiuso, applicata a
+ * un formato invece che a un vocabolario.
+ * ⚖️ La gemella sta nel bot (`ponte.ts`), e le due sono deliberatamente **indipendenti**: qui
+ * decide se un fatto NASCE, là se un pezzo di frase SI DICE. Un giorno in cui una delle due
+ * cadesse, l'altra regge — che è il motivo per cui non se ne fa una sola condivisa.
+ */
+const ORARIO = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+/**
  * I nomi che possono ricevere un messaggio, ognuno una volta sola.
  *
  * 🚨 Il dedup c'è perché un roster ripete i nomi (gli «Ospite» soprattutto) e la copia locale
@@ -245,6 +258,134 @@ export function fattiDaCreazione(opts: {
     persona,
     gesto: 'aggiunto' as const,
     tipo: tipoDetto,
+  }));
+}
+
+/**
+ * ⏱️🔀 LO STESSO `move` PORTA DUE GESTI DIVERSI: quale dei due è questo — voce 194 ②.
+ *
+ * 🚨⭐⭐ IL FATTO DA CUI NASCE, ed è la cosa che non si vede leggendo il payload: l'app manda un
+ * cambio di **durata** come `move: { campo, data, oraInizio, oraFine }` con campo, data e ora
+ * d'inizio **identici** a prima. ⇒ Le due operazioni entrano dalla stessa porta con la stessa
+ * forma, e a distinguerle c'è solo **cosa è rimasto uguale**.
+ * ⛔ Senza questa riga un allungamento sarebbe uscito come `spostata`, e al socio sarebbe
+ * arrivato *«La tua partita è stata spostata — lunedì alle 09:00, campo 4»* ripetendogli le
+ * coordinate che aveva già: un messaggio che annuncia un cambiamento e non ne mostra nessuno.
+ *
+ * ⚖️ E SE SI MUOVONO TUTT'E DUE vince `spostata`, che è la notizia più grossa — dov'è la
+ * partita conta più di quanto dura — e due messaggi sulla stessa conferma sarebbero due
+ * notifiche per un fatto solo. Questa funzione risponde **una** domanda: *è rimasta dov'era?*
+ *
+ * 🚨 Il campo si confronta in CIFRE, come dappertutto in questa strada: la stessa partita esiste
+ * in copie che lo scrivono «Campo 1» e «1», e un confronto sul testo direbbe «si è spostata»
+ * di una partita che non si è mossa di un metro. È la gemella della guardia in `chiaveSlot`.
+ * ⚠️ Coordinate di partenza incomplete ⇒ `false`, cioè si tratta come uno spostamento: è il
+ * ramo che c'era prima di questa voce, e il verso in cui sbagliare costa meno.
+ */
+export function soloLaDurataECambiata(partenza: CoordinateSlot, arrivo: CoordinateSlot): boolean {
+  const cifre = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+  const d = String(partenza.data ?? '').trim();
+  const o = String(partenza.ora ?? '').trim();
+  if (!d || !o) return false;
+  return d === String(arrivo.data ?? '').trim()
+    && o === String(arrivo.ora ?? '').trim()
+    && cifre(partenza.campo) === cifre(arrivo.campo);
+}
+
+/**
+ * ⏱️ LA DURATA CAMBIATA, CONFERMATA DAL CIRCOLO — 10/09/2026, voce 194 ②.
+ *
+ * 🗣️ Sua richiesta: *«bisogna attivare le notifiche sul chatbot quando c'è qualsiasi
+ * operazione»*, col criterio che ha approvato lui: **si avvisa se il socio deve comportarsi
+ * diversamente**, non se è cambiato un campo. Una partita che finisce a un'ora diversa è
+ * esattamente quel caso: chi ha in testa di smettere alle 10:30 e finisce alle 11:00 organizza
+ * la giornata sbagliata, e finora non gliel'ha detto nessuno.
+ *
+ * 🚨⭐⭐ QUESTO GESTO ESISTE PERCHÉ UNA DURATA VIAGGIA DENTRO UNO `move`, E NON È OVVIO.
+ * L'app manda un cambio di durata come `move: { campo, data, oraInizio, oraFine }` con campo,
+ * data e ora d'inizio **identici** a prima: a muoversi è solo la fine. ⇒ Senza questa
+ * distinzione quel gesto sarebbe uscito come **`spostata`**, e al socio sarebbe arrivato
+ * *«La tua partita è stata spostata — lunedì alle 09:00»* con dentro le stesse coordinate di
+ * prima: un messaggio che annuncia un cambiamento e poi non ne mostra nessuno.
+ * 📌 *Due gesti diversi che entrano dalla stessa porta non sono lo stesso gesto: è la porta a
+ * essere una sola.*
+ *
+ * ⚖️ E CHI DECIDE QUALE DEI DUE È CHI CHIAMA, come per lo spostamento puro: qui si riceve già
+ * la risposta del circolo, non la richiesta. Se si muovono **tutt'e due** — le coordinate e la
+ * durata — vince `spostata`, che è la notizia più grossa: dov'è la partita conta più di
+ * quanto dura, e due messaggi sulla stessa conferma sarebbero due notifiche per un fatto solo.
+ */
+export function fattiDaDurata(opts: {
+  slot: CoordinateSlot;
+  /** L'ora di fine NUOVA e quella di PRIMA, `HH:MM`. La seconda può mancare. */
+  fine: string;
+  finePrima?: string;
+  /** Chi c'è in campo, letto dalla copia locale. */
+  roster: readonly unknown[];
+  tipo?: unknown;
+  /** Oggi a Roma: una partita già giocata non produce fatti. */
+  oggi: string;
+}): FattoStaff[] {
+  const { slot, fine, finePrima, roster, tipo, oggi } = opts;
+  if (!slot.data) return [];
+  // 🚨 Senza l'ora di fine NUOVA non resta niente da dire che il socio possa usare: il gesto
+  // sarebbe «è cambiata la durata» e basta, cioè un invito a telefonare. ⇒ Tace, e la cosa
+  // resta al sync — che è il comportamento di prima di questa voce.
+  if (!ORARIO.test(String(fine ?? '').trim())) return [];
+  // ⚠️ Uno slot passato non produce niente, come per tutte le sorelle.
+  if (oggi && slot.data < oggi) return [];
+  const prima = String(finePrima ?? '').trim();
+  const tipoDetto = tipoDelloSlot(tipo);
+  return destinatari(roster).map((persona) => ({
+    slot: chiave(slot),
+    data: slot.data,
+    ora: slot.ora,
+    campo: slot.campo,
+    persona,
+    gesto: 'durata' as const,
+    tipo: tipoDetto,
+    fine: String(fine).trim(),
+    // ⚠️ Il «prima» si manda solo se ha la FORMA di un orario ed è DIVERSO dal nuovo: uguale
+    // non descrive niente di successo, e il bot direbbe «allungata» di zero minuti.
+    ...(ORARIO.test(prima) && prima !== String(fine).trim() ? { fine_prima: prima } : {}),
+  }));
+}
+
+/**
+ * 👨‍🏫 IL MAESTRO CAMBIATO, CONFERMATO DAL CIRCOLO — 10/09/2026, voce 194 ②.
+ *
+ * 🗣️ Stesso criterio suo: chi va a lezione ci va **per il maestro**, e trovarne un altro senza
+ * saperlo è il caso esatto da cui la regola del 23/08 nasce — *«quando la segreteria fa un
+ * qualsiasi tipo di operazione, le persone che sono dentro la partita devono essere avvisate»*.
+ *
+ * ⛔ SI MANDA SOLO IL MAESTRO DI ADESSO, mai quello di prima: al socio serve sapere chi
+ * troverà. Chi se n'è andato è una notizia sul maestro, non sulla sua lezione.
+ * ⚠️ Il nome può mancare (il circolo l'ha cambiato senza che sia arrivato fin qui): allora il
+ * fatto nasce lo stesso e il bot dice che è cambiato **senza dire chi** — un nome inventato
+ * manderebbe il socio a cercare la persona sbagliata. *Dire meno, mai a caso.*
+ */
+export function fattiDaMaestro(opts: {
+  slot: CoordinateSlot;
+  /** Chi tiene la lezione adesso, come lo scrive il circolo. Può mancare. */
+  maestro?: string;
+  roster: readonly unknown[];
+  tipo?: unknown;
+  oggi: string;
+}): FattoStaff[] {
+  const { slot, maestro, roster, tipo, oggi } = opts;
+  if (!slot.data) return [];
+  if (oggi && slot.data < oggi) return [];
+  const chi = String(maestro ?? '').trim();
+  const tipoDetto = tipoDelloSlot(tipo);
+  return destinatari(roster).map((persona) => ({
+    slot: chiave(slot),
+    data: slot.data,
+    ora: slot.ora,
+    campo: slot.campo,
+    persona,
+    gesto: 'maestro' as const,
+    tipo: tipoDetto,
+    ...(chi ? { maestro: chi } : {}),
   }));
 }
 
