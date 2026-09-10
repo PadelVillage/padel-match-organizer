@@ -261,6 +261,67 @@ test('④ 📏 e nel sorgente non resta nessuna di quelle frasi scritta a mano',
 
 // ── CONTROLLO NEGATIVO ───────────────────────────────────────────────────────────────────────
 
+/* ── 🆕 VOCE 190, TERZA MANO (10/09/2026) — quello che la misura SCHERMATA PER SCHERMATA ha
+ * trovato. 📏 Le prime due mani avevano lasciato **due** frasi vive, e nessun conteggio statico le
+ * avrebbe distinte fra le 104 righe che nominano il circolo: si sono viste solo aprendo le dieci
+ * schede una per una sulla pagina viva.
+ * 📌 *Un elenco di occorrenze dice quante volte una parola è scritta, non quante volte qualcuno la
+ *    legge: la seconda si misura solo aprendo lo schermo.* */
+
+test('③ la riga di Amministrazione è generica nell\'HTML, col nome solo in attributo', () => {
+  const riga = APP.split('\n').find((r) => r.includes('bot Telegram e circoli della zona'));
+  assert.ok(riga, 'riga di Amministrazione non trovata');
+  assert.ok(/data-frase-col-circolo="[^"]*Matchpoint/.test(riga),
+    'il nome del circolo deve stare NELL\'ATTRIBUTO, non nel testo');
+  const visibile = riga.replace(/data-frase-col-circolo="[^"]*"/, '');
+  assert.ok(!visibile.includes('Matchpoint'),
+    'la prima pittura nomina il circolo: sul sistema nuovo è falsa prima ancora che la configurazione arrivi');
+});
+
+test('③ il bottone «Sincronizza» degli Incassi esiste solo col circolo', () => {
+  const i = APP.indexOf('pmoPaymentsSyncAll(this)');
+  assert.ok(i > 0, 'bottone di sincronizzazione non trovato');
+  const prima = APP.slice(Math.max(0, i - 400), i);
+  assert.ok(/pmoCircoloEsternoCollegato\(\) === true/.test(prima),
+    'il bottone si disegna sempre: sul sistema nuovo `matchpoint-payments-sync` non ha i secret del worker ⇒ è un bottone senza sorgente');
+});
+
+test('③ il badge «Sola lettura» non porta il nome del circolo per forza', () => {
+  const righe = APP.split('\n').filter((r) => r.includes("'🔒 ") && r.includes('Sola lettura'));
+  assert.equal(righe.length, 2, `attesi 2 badge, trovati ${righe.length}`);
+  for (const r of righe) {
+    assert.ok(/pmoNomeCircoloEsterno\(\)/.test(r),
+      'il badge nomina il circolo sempre — e sta su una CELLA DEL CALENDARIO, cioè in ogni schermata');
+  }
+});
+
+test('③ le quattro spinte dell\'anagrafica escono PRIMA di chiamare la edge', () => {
+  for (const nome of ['pmoCreateMemberInMatchpoint', 'pmoPushMemberUpdateToMatchpoint',
+                      'pmoDisableMemberInMatchpoint', 'pmoReactivateMemberInMatchpoint']) {
+    const i = APP.indexOf('function ' + nome + '(');
+    assert.ok(i > 0, 'funzione non trovata: ' + nome);
+    const corpo = APP.slice(i, i + 9000);
+    const guardia = corpo.indexOf('pmoSistemaNuovoPer');
+    const edge = corpo.indexOf('/functions/v1/');
+    assert.ok(guardia > 0, nome + ': manca la guardia sul ref Supabase');
+    assert.ok(edge < 0 || guardia < edge,
+      nome + ': la guardia arriva dopo la chiamata alla edge ⇒ le frasi del circolo possono ancora comparire');
+  }
+});
+
+test('③ nessuno dice più «Ambiente TEST» a chi lavora', () => {
+  // 🩹 Si guardano le righe di CODICE, non i commenti. 📏 Trovato da questo controllo al primo
+  // giro: la cura porta accanto a sé un commento che cita la frase vecchia **per dire che l'ha
+  // tolta**, e il controllo l'ha letta come se fosse ancora sullo schermo ⇒ rosso su un file
+  // corretto. È lo stesso difetto già preso nel banco della 193, in un banco diverso.
+  // 📌 *Una guardia che legge i commenti non misura il programma: misura come è stato raccontato.*
+  const cattive = APP.split('\n')
+    .filter((r) => !/^\s*(\/\/|\*|\/\*)/.test(r))
+    .filter((r) => /Ambiente <strong>TEST<|scollegato in test/.test(r));
+  assert.equal(cattive.length, 0,
+    'una frase dice all\'operatore che sta su una prova: sul gestionale VERO è la bugia peggiore di tutte');
+});
+
 test('🧪 SABOTAGGI — il banco deve saper cadere', () => {
   const cade = (fn) => { try { fn(); return false; } catch (e) { return true; } };
 
