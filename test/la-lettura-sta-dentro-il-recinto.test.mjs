@@ -40,6 +40,32 @@ function test(nome, fn) {
   try { fn(); passed++; console.log('ok   - ' + nome); }
   catch (e) { failed++; console.log('FAIL - ' + nome + '\n       ' + e.message); }
 }
+// 🚨⭐⭐ SENZA I COMMENTI — aggiunto il 10/09/2026, e non è un abbellimento: è la lezione che
+// nella sessione del 09/09 è costata TRE banchi rossi, sempre nello stesso modo. Una cura porta
+// accanto a sé un commento che CITA la frase vecchia per dire che l'ha tolta, e un controllo
+// testuale la legge come se fosse ancora viva. ⇒ Qui è ricapitato al primo colpo: il commento
+// della voce 187 nomina `matchpoint-bookings-create/index.ts` per spiegare DOVE si è misurato, e
+// il caso ④ l'ha letto come una chiamata al circolo rimasta lì.
+// 📌 *Un banco che legge i commenti non misura il programma: misura come è stato raccontato.*
+// ⚖️ Curata la CLASSE e non l'istanza: passa di qui ogni funzione che questo banco ritaglia — e
+//    `esegui()` ne guadagna, perché una funzione costruita senza commenti è la stessa funzione.
+function senzaCommenti(testo) {
+  let fuori = '', i = 0, stringa = null, prec = '';
+  while (i < testo.length) {
+    const c = testo[i], succ = testo[i + 1];
+    if (stringa) {
+      fuori += c;
+      if (c === stringa && prec !== '\\') stringa = null;
+      prec = (prec === '\\' && c === '\\') ? '' : c;
+      i++; continue;
+    }
+    if (c === '/' && succ === '/') { const f = testo.indexOf('\n', i); i = f < 0 ? testo.length : f; continue; }
+    if (c === '/' && succ === '*') { const f = testo.indexOf('*/', i + 2); i = f < 0 ? testo.length : f + 2; continue; }
+    if (c === '"' || c === "'" || c === '`') stringa = c;
+    fuori += c; prec = c; i++;
+  }
+  return fuori;
+}
 function corpoDi(nome, src) {
   const s = src || APP;
   const i = s.indexOf('function ' + nome + '(');
@@ -51,7 +77,7 @@ function corpoDi(nome, src) {
     if (c === '{') { g++; visto = true; }
     else if (c === '}') { g--; if (visto && g === 0) break; }
   }
-  return out;
+  return senzaCommenti(out);
 }
 function parametriDi(nome) {
   const i = APP.indexOf('function ' + nome + '(');
@@ -147,14 +173,31 @@ test('④ 🚨 NESSUNA chiamata con `read: true` è rimasta fuori dal cancello',
   });
 });
 
-test('④ e anche `staffCalAskMatchpoint` — che NON si converte, ma fallisce chiusa', () => {
+// 🔄⭐ AGGIORNATO IL 10/09/2026 DALLA VOCE 187, e la riga vecchia è stata CORRETTA non affiancata.
+// Diceva «NON si converte, ma fallisce chiusa» e pretendeva un `verdict: 'boh'` in quel ramo:
+// era vera, ed è diventata falsa il giorno in cui la domanda ha trovato un destinatario — il
+// **gestionale**. ⇒ Questo banco era rosso per una cura, non per un difetto: si aggiorna.
+// ⛔ MA NON SI INDEBOLISCE: quello che difendeva — *mai un «no» inventato*, e il cancello prima
+//    della chiamata al circolo — resta preteso qui, parola per parola. Cambia solo che il ramo
+//    adesso DELEGA invece di arrendersi. Il «no» che quella delega può dire è provato riga per
+//    riga in `test/chi-risponde-se-e-passata.test.mjs`, sabotaggi compresi.
+test('④ e anche `staffCalAskMatchpoint` — che ora CHIEDE AL GESTIONALE invece di arrendersi', () => {
   const corpo = corpoDi('staffCalAskMatchpoint');
   assert.match(corpo, /pmoGestionaleCollegatoAlCircolo\(supabaseUrl\)/);
   const iGate = corpo.indexOf('pmoGestionaleCollegatoAlCircolo');
   const iFetch = corpo.indexOf('matchpoint-bookings-edit');
   assert.ok(iGate < iFetch, 'il cancello deve stare PRIMA della chiamata, o non ferma niente');
-  assert.match(corpo.slice(iGate, iGate + 400), /verdict: 'boh'/,
-    '🚨 mai un «no» inventato: chi lo legge riprova, e la partita si prenota due volte');
+  // ⚠️ Il perimetro è il BLOCCO del ramo, non «da qui a lì»: la prima stesura tagliava da `iGate`
+  //    a `iFetch` e si portava dentro mezza riga della chiamata al circolo — `…/functions/v1/` —
+  //    facendo cadere il controllo su una cura che c'era. 📌 *Una sonda che guarda più larga del
+  //    suo bersaglio non è più severa: è sbagliata, e lo sembra dalla parte giusta.*
+  const ramo = corpo.slice(iGate, corpo.indexOf('\n    }', iGate));
+  assert.match(ramo, /staffCalChiediAlGestionale\(/,
+    'senza destinatario la domanda resta senza risposta: il ramo deve chiedere al gestionale');
+  assert.doesNotMatch(ramo, /verdict: 'no'/,
+    '🚨 mai un «no» INVENTATO qui dentro: chi lo legge riprova, e la partita si prenota due volte');
+  assert.doesNotMatch(ramo, /functions\/v1|matchpoint-bookings/,
+    'e il ramo del gestionale non collegato non bussa al circolo per nessuna strada');
 });
 
 test('④ 🚨 e il velo si spegne a mano quando la lettura viva non parte più', () => {
