@@ -1522,7 +1522,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** — 🆙 **10/09/2026 notte, 116ª: ENTRA la 207, da due sue parole.** 🗣️ *«Il torneo è un modo di chiamare una prenotazione»* + *«una voce che manca… si chiama **stage**»* ⇒ **Torneo** e **Stage** devono potersi scegliere quando si prenota: 📏 oggi «Torneo» c'è ma è **spento** (`disabled:true`) e «Stage» non c'è affatto. 🚨 La domanda da portargli: un torneo e uno stage **hanno un maestro** o no? Decide se il Salva lo pretende e quale frase riceve il socio. — La **198** resta, e delle sue tre decisioni **ne ha prese due** (il torneo è una prenotazione; la **ricarica non entra in Incassi**, e 📏 è **già** il comportamento di oggi): aspetta solo la scelta fra **navigazione** e **riconciliazione**, spiegata nella scheda. 📌 *Una lista che cresce perché lui ha risposto non è una lista che peggiora: è una lista che si è sbloccata.* |
+| 🔴 **Urgenti** | **2** — 🆙 **10/09/2026 notte, 116ª: ENTRA la 207, da due sue parole.** 🗣️ *«Il torneo è un modo di chiamare una prenotazione»* + *«una voce che manca… si chiama **stage**»* ⇒ **Torneo** e **Stage** devono potersi scegliere quando si prenota: 📏 oggi «Torneo» c'è ma è **spento** (`disabled:true`) e «Stage» non c'è affatto. ✅ **E la domanda sul maestro l'ha già risposta**: il **torneo** somiglia a una *prenotazione* (niente maestro), lo **stage** a una *lezione* (maestro sì) ⇒ `engine` diverso, e `tipo` che **non** coincide con l'engine, o uno stage si sentirebbe chiamare «lezione». 🚨 Il lavoro vero non sono le due righe: è che 📏 `hasPlayers` confronta i tipi in modo **esatto** ⇒ le due righe da sole darebbero uno stage **senza maestro**, l'opposto di quanto chiesto. — La **198** resta, e delle sue tre decisioni **ne ha prese due** (il torneo è una prenotazione; la **ricarica non entra in Incassi**, e 📏 è **già** il comportamento di oggi): aspetta solo la scelta fra **navigazione** e **riconciliazione**, spiegata nella scheda. 📌 *Una lista che cresce perché lui ha risposto non è una lista che peggiora: è una lista che si è sbloccata.* |
 | 📋 **In coda** | **8** — invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
 | 📦 **Chiuse** | **191** — 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
@@ -1877,13 +1877,40 @@ creazione sono **quattro**, e il quarto è **spento**:
 lavoro non è «creare un tipo»: è dare a questi due un `engine` e un `tipo`, cioè dire **a quale
 motore somigliano**.
 
-🚨⭐⭐ **LA DOMANDA DA PORTARGLI, perché è l'unica cosa che non si indovina**: un torneo e uno stage
-**hanno un maestro** (come una lezione) o **no** (come una partita)? Non è una sfumatura: decide se
-la scheda chiede il maestro, se il **Salva rifiuta** senza averlo (lo fa per le lezioni, voce 201), e
-quale frase riceve il socio — *«Lezione con X»* nasce da lì (voce 205, e la parola «con» cambia
-mestiere secondo cosa la precede).
+✅⭐⭐ **LA DOMANDA È GIÀ RISPOSTA — gliel'ho chiesta e ha risposto nello stesso giro** *(10/09/2026
+notte)*. Era: *un torneo e uno stage hanno un maestro, come una lezione, o no, come una partita?*
+
+> 🗣️ *«Anche lo stage È un tipo di prenotazione come la **lezione** solo con un nome diverso.»*
+
+⇒ **I due non somigliano alla stessa cosa**, e questa è l'informazione che serviva:
+
+| | somiglia a | vuole il maestro? |
+|---|---|---|
+| **Torneo** | una **prenotazione** (*«un modo di chiamare una prenotazione»*) | ❌ no |
+| **Stage** | una **lezione** (*«come la lezione, solo con un nome diverso»*) | ✅ **sì** |
+
+⭐⭐ **E LA FORMA GIUSTA È GIÀ NEL CODICE, NON VA INVENTATA.** 📏 Ogni tipo nella scheda di creazione
+porta **tre** campi, e servono esattamente a questo: `{ key, engine, tipo }` — la **key** è la parola
+che si legge, l'**engine** è il **macchinario** (chi chiede il maestro, chi tiene il roster), il
+**tipo** è ciò che **resta scritto**. ⇒ Le due righe nuove si scrivono da sé:
+```
+{ key:'Torneo', engine:'partita', tipo:'torneo' },
+{ key:'Stage',  engine:'lezione', tipo:'stage'  },
+```
+⚖️ **Perché `engine` e `tipo` NON devono coincidere, ed è il punto**: con `tipo:'lezione'` uno stage
+sarebbe **indistinguibile** da una lezione — e il socio si sentirebbe dire *«Lezione con X»* per uno
+stage. Con `engine:'lezione'` lo stage **eredita il macchinario** (il maestro, il roster, il Salva che
+rifiuta senza maestro — voce 201) e con `tipo:'stage'` **si chiama col suo nome**. 📌 *Il macchinario
+si eredita, il nome no.*
+
+🚨⭐⭐ **E IL LAVORO VERO NON È AGGIUNGERE LE DUE RIGHE: È I POSTI CHE ENUMERANO I TIPI.**
+📏 Misurato: `hasPlayers = ['partita','lezione'].includes(tipoR)` è un confronto **ESATTO** ⇒ con
+`tipo:'stage'` quella riga dice **false**, e una scheda senza `hasPlayers` **non disegna né i
+giocatori né il selettore del maestro**. Cioè: le due righe nuove, da sole, darebbero uno stage
+**senza maestro** — l'opposto di quello che ha chiesto.
 📌 *Un tipo nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo LEGGE* — ed è
-letteralmente la lezione della 201, che si è rotta in tre punti che enumeravano i gesti.
+letteralmente la lezione della 201, che si è rotta in **tre** punti che enumeravano i gesti, **nessuno
+raggiungibile dal banco**.
 
 ⚠️ **E i posti che enumerano i tipi vanno cercati TUTTI prima di toccarne uno**: la 201 ha pagato
 esattamente questo — tre punti della edge che elencavano i gesti e non sapevano del nuovo, **nessuno
