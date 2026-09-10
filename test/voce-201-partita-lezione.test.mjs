@@ -169,3 +169,59 @@ test('🔁 due cambi nello stesso verso: il «prima» resta quello di partenza',
   assert.equal(esiti[0].tipo_prima, 'partita');
   assert.equal(esiti[0].tipo, 'lezione');
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════
+// 🚪🚨⭐⭐ ② LA PORTA — trovata da un GESTO VERO, non da questo banco (10/09 sera)
+// ══════════════════════════════════════════════════════════════════════════════════
+//
+// 📏 Il banco qui sopra era verde su tutto, e su `cudi` il gesto era rotto in DUE modi:
+//   · partita → lezione salvava, ma il fatto che ne nasceva era `maestro` con `tipo: 'partita'`
+//     ⇒ al socio «è cambiato il maestro» **di una partita**, e il cambio di tipo taceva;
+//   · lezione → partita veniva **respinto**: 400 `EDIT_NESSUNA_MODIFICA`.
+// 🔎 Causa unica: la edge ricopia `EditRequest` campo per campo da un elenco esplicito, e il tipo
+//    in quell'elenco non c'era. Il banco non poteva vederlo perché costruisce `edit` A MANO.
+// 📌 *Il posto più pericoloso è quello che legge ciò che scrivi e non sa di doverlo fare.*
+
+import { campiTipoDallaRichiesta, toccaIlTipo } from '../supabase/functions/matchpoint-bookings-edit/campi-tipo.ts';
+
+test('🚪 il tipo SOPRAVVIVE alla lettura della richiesta — nei due versi', () => {
+  assert.deepEqual(campiTipoDallaRichiesta({ tipo: 'lezione', tipoPrima: 'partita' }),
+    { tipo: 'lezione', tipoPrima: 'partita' });
+  assert.deepEqual(campiTipoDallaRichiesta({ tipo: 'partita', tipoPrima: 'lezione' }),
+    { tipo: 'partita', tipoPrima: 'lezione' });
+});
+
+test('🚪 e il verso che NON portava altro con sé è una modifica a tutti gli effetti', () => {
+  // 📏 È il corpo esatto che `cudi` ha respinto con 400: tornando partita il maestro si azzera
+  //    e non viaggia, quindi la richiesta porta SOLO il tipo.
+  const campi = campiTipoDallaRichiesta({
+    campo: 3, data: '2026-09-15', ora: '16:30', tipo: 'partita', tipoPrima: 'lezione',
+  });
+  assert.equal(toccaIlTipo(campi), true, 'senza questo la guardia dice «niente da fare»');
+});
+
+test('🚨 vocabolario CHIUSO sul tipo nuovo: una parola qualunque non entra', () => {
+  // Finirebbe in `staff_booking.tipo` e da lì in una frase che il socio legge.
+  for (const v of ['Lezione Libera', 'manutenzione', 'torneo', '', null, undefined, 42, {}]) {
+    assert.deepEqual(campiTipoDallaRichiesta({ tipo: v }), {}, `«${String(v)}» non deve passare`);
+    assert.equal(toccaIlTipo(campiTipoDallaRichiesta({ tipo: v })), false);
+  }
+  // ⚖️ Ma le maiuscole e gli spazi sì: è la stessa parola.
+  assert.deepEqual(campiTipoDallaRichiesta({ tipo: '  LEZIONE ' }), { tipo: 'lezione' });
+});
+
+test('⚖️ sul «PRIMA» invece la parola GREZZA passa — la traduce `tipoDichiarato`', () => {
+  // Il «prima» può venire dalla copia locale, dove ci sono ancora le parole di Matchpoint.
+  assert.deepEqual(campiTipoDallaRichiesta({ tipo: 'partita', tipoPrima: 'Lezione Libera' }),
+    { tipo: 'partita', tipoPrima: 'Lezione Libera' });
+  // E la regola sta in UN posto solo: è `fattiDaTipo` a decidere che cosa vuol dire.
+  const f = fattiDaTipo({ slot: SLOT, tipo: 'partita', tipoPrima: 'Lezione Libera', roster: ROSTER, oggi: OGGI });
+  assert.equal(f[0].tipo_prima, 'lezione');
+});
+
+test('⛔ un «prima» SENZA il nuovo non è una modifica: fallisce chiuso', () => {
+  assert.deepEqual(campiTipoDallaRichiesta({ tipoPrima: 'partita' }), {},
+    'un mezzo fatto è quello che poi qualcuno completa indovinando');
+  assert.equal(toccaIlTipo({}), false);
+  assert.equal(toccaIlTipo({ tipoPrima: 'partita' }), false);
+});

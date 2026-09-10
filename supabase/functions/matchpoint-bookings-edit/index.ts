@@ -14,6 +14,7 @@ import { esitoDelRifiutoDiModifica } from './esito-modifica.ts';
 // 🆕 VOCE 76 — l'avviso al socio nasce dalla CONFERMA, non dallo specchio. Vedi il commento
 // esteso sopra `dichiaraSpostamentoAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
+import { campiTipoDallaRichiesta, toccaIlTipo } from './campi-tipo.ts';
 import {
   campoScritto,
   fattiDaCambioRoster,
@@ -508,6 +509,17 @@ async function dichiaraCambioMaestroAlSocio(opts: {
   if (!prima || !cambiaIlMaestro(edit)) return;
   // ⛔ Gesto misto ⇒ tace: lo dice la gemella che governa la notizia più grossa.
   if (edit.move || toccaIlRoster(edit)) return;
+  /* 🎭🚨⭐⭐ VOCE 201 — E TACE ANCHE QUANDO CAMBIA IL TIPO, che è la gemella più grossa di tutte.
+   * ⚖️ Diventare una lezione **impone** di scegliere un maestro ⇒ i due gesti arrivano SEMPRE
+   * insieme, e senza questa riga il socio riceverebbe due messaggi per una conferma sola: prima
+   * «è cambiato il maestro» — di una cosa che nel frattempo non è più una partita — e poi «è
+   * diventata una lezione». `fattiDaTipo` il maestro lo dice già dentro, quando serve.
+   * 🚨 E questa riga non è una rifinitura: è la METÀ di una cura, e va nello STESSO commit che fa
+   * arrivare `tipo` alla edge. Finché il tipo non attraversava la porta, `cambiaIlTipo` era
+   * sempre falso e il doppione non poteva vedersi nemmeno provando.
+   * 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo legge — e
+   * qui il lettore che non sapeva di doverlo fare è la sua sorella.* */
+  if (cambiaIlTipo(edit)) return;
   // ⚠️ Un maestro riconfermato uguale non è un cambiamento: la scheda dell'app confronta col
   // valore caricato, ma una richiesta che arrivasse da altrove no — e un avviso «è cambiato»
   // per un maestro rimasto lo stesso è la bugia più facile da mandare senza accorgersene.
@@ -783,6 +795,12 @@ Deno.serve(async (req: Request) => {
   // istruttore (solo lezione): stringa NON vuota → cambia il maestro; assente/'' = non toccare.
   const istruttore = body.istruttore != null ? clean(body.istruttore) : undefined;
   const istruttoreProvided = !!istruttore;
+  /* 🎭 VOCE 201 — IL TIPO, letto con la stessa cura degli altri campi e non «così com'è».
+   * 📏 Prima non veniva letto affatto: l'app lo mandava, il type lo dichiarava, `cambiaIlTipo` lo
+   *    leggeva — e la riga che costruisce `edit` non lo copiava. Le due metà del gesto morivano
+   *    qui, e nessun errore lo diceva. */
+  const campiTipo = campiTipoDallaRichiesta(body);
+  const tipoProvided = toccaIlTipo(campiTipo);
   const readOnly = body.read === true;
 
   // Validation: serve idReserva OPPURE (campo+data+ora). Per modificare serve almeno uno tra
@@ -797,7 +815,11 @@ Deno.serve(async (req: Request) => {
     (Array.isArray(players.remove) && players.remove.length > 0) ||
     players.removeAll === true
   );
-  if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided && !istruttoreProvided) {
+  /* 🎭 VOCE 201 — `tipoProvided` sta in questa riga, o un gesto che cambia SOLO il tipo esce da
+   * qui come «niente da fare». 📏 Misurato su `cudi` il 10/09 con un Salva vero: lezione →
+   * partita azzera il maestro, quindi non manda `istruttore`, e la richiesta portava il solo
+   * tipo ⇒ 400 `EDIT_NESSUNA_MODIFICA`. Metà del gesto non funzionava affatto. */
+  if (!readOnly && !hasMove && !hasPlayers && !noteProvided && !descrizioneProvided && !istruttoreProvided && !tipoProvided) {
     return err(400, 'EDIT_NESSUNA_MODIFICA', 'Serve almeno uno tra move, players, note, descrizione e istruttore.');
   }
 
@@ -825,20 +847,24 @@ Deno.serve(async (req: Request) => {
     // Esclusivo: una delle due, mai tutt'e due nella stessa richiesta.
     const unaSolaCosa = (soloUnaRimozione && aggiungi.length === 0)
       || (solaUnaAggiunta && rimuovi.length === 0);
+    /* 🎭🚨 VOCE 201 — `tipoProvided` sta fra i blocchi, e va messo NELLO STESSO commit in cui il
+     * tipo comincia ad attraversare la porta: finché non arrivava, questa riga era al sicuro per
+     * caso. Trasformare una partita in lezione è un gesto della SEGRETERIA — decide il maestro e
+     * il costo — e dal ponte dei soci non deve passare. */
     const altriBlocchi = players?.removeAll === true
-      || hasMove || noteProvided || descrizioneProvided || istruttoreProvided || readOnly;
+      || hasMove || noteProvided || descrizioneProvided || istruttoreProvided || tipoProvided || readOnly;
     if (!unaSolaCosa || altriBlocchi) {
       console.warn('[bookings-edit] CONSUMER_SCOPE rifiutato:', JSON.stringify({
         remove: rimuovi.length, removeAll: players?.removeAll === true, add: aggiungi.length,
         move: hasMove, note: noteProvided, descrizione: descrizioneProvided,
-        istruttore: istruttoreProvided, read: readOnly,
+        istruttore: istruttoreProvided, tipo: tipoProvided, read: readOnly,
       }));
       return err(403, 'CONSUMER_SCOPE',
         'Dal ponte dei soci si può togliere UN giocatore dal roster, oppure farne entrare UNO: una cosa sola per volta.');
     }
   }
 
-  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, read: readOnly, chiestoDa: String((body as JsonMap)?.chiestoDa ?? '').trim() || undefined };
+  const edit: EditRequest = { idReserva, campo, data, ora, move: hasMove ? move : undefined, players: hasPlayers ? players : undefined, note: noteProvided ? note : undefined, descrizione: descrizioneProvided ? descrizione : undefined, istruttore: istruttoreProvided ? istruttore : undefined, tipo: campiTipo.tipo, tipoPrima: campiTipo.tipoPrima, read: readOnly, chiestoDa: String((body as JsonMap)?.chiestoDa ?? '').trim() || undefined };
 
   // Env vars
   const workerUrl = clean(Deno.env.get('MATCHPOINT_BROWSER_WORKER_URL'));
