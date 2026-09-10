@@ -1,4 +1,4 @@
-/* 🏷️ «L'anagrafica non chiama il circolo» — banco della VOCE 192 (10/09/2026).
+/* 🏷️ «L'anagrafica non chiama il circolo» — banco della VOCE 193 (10/09/2026).
  *
  * 🗣️ Nasce dall'inventario chiesto dal passaggio di consegne: *«la differenza fra i due elenchi è
  *   l'elenco dei bottoni che sul gestionale nuovo non funzionano»*. Guardando le quattro edge
