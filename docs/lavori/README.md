@@ -1522,9 +1522,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** — 🔁 **10/09/2026 notte, 115ª: ESCE la 205 e non entra niente.** La **205** (*«Lezione con X»*) è **chiusa a prova fisica sul vivo di `cudi`**, in tutt'e due i renderer: come maestro *«(lezione con Marco Aprea)»* è diventato *«(lezione **che tieni tu**, con Marco Aprea)»* su 8 lezioni, con le 2 partite invariate; come allievo Marco legge *«Lezione con Maurizio Aprea»* — il maestro, non un compagno. 🚨 **E la diagnosi ereditata era sbagliata su tutt'e due i numeri**: `istruttore` non manca affatto sulle lezioni dal sync (41 slot su 41, e 55 su 55 su PROD) e il maestro è dentro il roster in **93 su 93**, non «13 su 15» ⇒ il dato non mancava, era **irriconoscibile** — codice contro persona. 📌 *La frase sbagliata viveva in DUE posti, e il banco verde su 1789 test non poteva dirlo: il secondo lettore è il **modello**.* — Restano la **198** (Incassi ↔ pagamenti dalla scheda, messa qui **da lui**, e ⛔ **ferma su tre decisioni sue**) e la **202** (i **maestri**), che ora è **a metà**: la tabella `pmo_maestri` c'è ed è quella che ha reso possibile la 205; manca il **pannello** in Amministrazione e il distacco dei tre lettori dell'app da `raw.githubusercontent.com`. |
+| 🔴 **Urgenti** | **1** — 🔁 **10/09/2026 notte, 116ª: ESCE la 202 e non entra niente.** La **202** è **chiusa a prova fisica sulla pagina viva di `cudi`**: il pannello **Maestri** (Impostazioni → Dati, passo 7) esiste, e un maestro aggiunto **dai suoi campi** è comparso nella **scheda che si apre dal calendario** — *«Gianluca Spinazzè»* al posto di *«Spinazze»*, col codice ancora come valore. 🚨 **E i lettori non erano tre ma SETTE**: per questo la cura è **un solo punto di scrittura** invece di sette ritocchi. ⛔ **Resta solo la 198** (Incassi ↔ pagamenti dalla scheda, messa qui **da lui**, e **ferma su tre decisioni sue**: se il *torneo* sia un tipo nuovo, se una **ricarica** debba comparire in Incassi, e se il collegamento sia una **navigazione** o una **riconciliazione**). 📌 *Una lista a uno mentre la 198 aspetta lui non è una lista vuota: è una lista che aspetta una risposta.* |
 | 📋 **In coda** | **8** — invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
-| 📦 **Chiuse** | **190** — 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
+| 📦 **Chiuse** | **191** — 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1750,7 +1750,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 🆕 **08/09/2026, 100ª sessione: la lista torna da 0 a 4, e non sono idee di fine giornata.** Tre
 nascono da **misure** fatte guardando il codice (177 · 178 · 179), una dalla misura più pesante di
@@ -1816,78 +1816,6 @@ alla riga giusta, e che ogni riga si sa **da dove viene**.
 ⚖️ **Dichiarazione della scelta, come vuole la delega**: sta fra le **urgenti** perché ce l'ha messa
 lui (*«metti in urgenti»*) e **non scavalca niente** — la lista era a zero dopo la chiusura della
 196. ⏳ **Non è iniziata: non è stata scritta una riga.**
-
-### 202 — 👨‍🏫 I MAESTRI SI AGGIUNGONO DA UN FILE SU GITHUB, NON DAL GESTIONALE
-
-🆕 *Entrata il 10/09/2026 notte, 113ª sessione — **da una sua parola**:*
-
-> 🗣️ *«bisogna creare un posto nel gestionale di test dove si possono aggiungere e modificare i
-> nomi dei maestri che poi si vedono dentro la scheda che si apre dal calendario»*
-
-📏 **DOV'È OGGI QUELL'ELENCO, misurato e non ricordato**: sono **tre nomi** — `LoZio` ·
-`Spinazze` · `Lucas Vidal` — e vivono in
-`supabase/functions/parser-rules/parser_rules.json` (`campi_opzionali.istruttore.valori_validi`,
-versione `v2.1`). ⇒ **Per aggiungere un maestro bisogna modificare un file in git.**
-
-🚨⭐⭐ **E NON È SOLO SCOMODO: È UNA FRAGILITÀ, ED È GIÀ COSTATA UNA VOLTA.** L'app quel file lo
-**scarica a runtime da `raw.githubusercontent.com`** (`index.html:41550`), con un ripiego cablato
-sui tre nomi. 📏 È **la stessa strada della voce 58**, il 17/08: GitHub strozzò quei download
-anonimi (429) e **TEST restò a terra**. ⇒ Un gestionale che sta per andare in produzione dipende,
-per una lista che la segreteria deve poter cambiare, da un host che non è nostro.
-📌 *Una lista che si modifica altrove non è configurazione: è codice travestito.*
-
-⭐ **LA STRADA C'È GIÀ, e va guardata prima di inventarne una**: esiste `parser-rules-update`, una
-edge che sa **riscrivere quel file su GitHub** (`GITHUB_OWNER`/`REPO`/`PATH` cablati). ⚖️ Ma la
-forma giusta dopo il distacco è un'altra ed è già in casa: **una tabella**, come
-`pmo_fasce_prenotabili` della voce 176 — che è nata dalla stessa sua frase (*«devi darmi la
-possibilità di definire io come voglio…»*), applicata agli slot invece che ai maestri.
-
-🔗 **È LEGATA ALLA 201, e per questo sta in urgenti:** il gesto partita→lezione appena costruito
-chiede di **scegliere un maestro**, e oggi la scelta è fra tre nomi che la segreteria non può
-cambiare. ⚖️ **Non è bloccante** — la 201 funziona con quei tre — ma è la prima cosa che si tocca
-usandola.
-⚖️ **Dichiarazione della scelta, come vuole la delega**: promossa a **urgenti** da chi lavora, non
-da lui (lui ha detto solo *«altro task»*). Il perché è il legame con la 201 e la scadenza del
-distacco; **scavalca** la 198, che non ha una data. Si può ribaltare.
-
-🆙⭐⭐ **METÀ FATTA IL 10/09/2026 NOTTE (115ª), e la metà fatta è quella che non si vedeva.**
-La **tabella esiste** su `cudi` — `pmo_maestri` (`codice`, `nome`, `attivo`, `note`) con le due RPC
-`pmo_get_maestri` / `pmo_set_maestri`, RLS accesa e la porta sulle funzioni, come le fasce della 176.
-📏 Seminata col dato **misurato**: `LoZio`→Maurizio Aprea · `Spinazze`→Gianluca Spinazzè ·
-`Lucas Vidal`→Lucas Vidal, e con quella la persona del maestro si riconosce dentro il roster in
-**93 lezioni su 93**.
-⭐ **E non è stata costruita per la 202: è servita alla 205 la sera stessa.** Senza il legame
-codice→persona, *«Lezione con il maestro, insieme agli allievi»* non si poteva nemmeno scrivere —
-il maestro restava indistinguibile da un allievo. ⇒ Le due voci si sono rivelate **una sola cosa
-vista da due lati**, e la 205 è chiusa perché questa tabella c'è.
-
-⏳ **COSA MANCA, ed è tutto quello che lui ha chiesto:** *«un posto nel gestionale dove si possono
-aggiungere e modificare i nomi dei maestri»*. La tabella oggi si tocca **solo dal database** ⇒ il
-pannello in Amministrazione non c'è. E con lui manca l'altra metà: 📏 i **tre** lettori dell'app
-(`index.html:47230` la scheda · `:51744` la creazione · `:56229` il parser) leggono ancora
-`PARSER_RULES…valori_validi`, cioè il file scaricato da `raw.githubusercontent.com`.
-⭐ **La strada è già chiara e costa poco**: far vincere la tabella su `PARSER_RULES` dopo ogni
-`loadParserRules()` — **un solo punto di scrittura, tre lettori che non si toccano**.
-🚨 **E l'elenco è già incompleto oggi**: nei dati c'è un **quarto** codice, `Santiago` (6 righe su
-PROD, 1 su `cudi`, tutte di luglio), che non sta né in `parser_rules.json` né in `pmo_maestri`.
-⚠️ Non è stato seminato **di proposito**: di `Santiago` non si sa la persona, e inventarla sarebbe
-peggio del ripiego — oggi le sue lezioni ricadono sulla frase di prima, che è il verso giusto.
-
-🩹⭐⭐ **E PER STRADA È SALTATA FUORI UNA RIGA FALSA, che va corretta insieme a questa voce.**
-`supabase/functions/maestri-allineamento-check/index.ts:16` dichiara:
-> *«Dal dato che già abbiamo non si può dedurre niente: sulle lezioni sincronizzate `istruttore` è
-> **sempre null**. Va letto Matchpoint → worker `/read-instructors`.»*
-📏 **È falso su tutt'e due gli ambienti**, misurato il 10/09: su `cudi` `istruttore` c'è su **41
-slot su 41**, su **PROD** su **55 righe su 55**. ⇒ Quella funzione chiama il **worker** per una
-cosa che ha già in casa — ed è la stessa premessa sbagliata che ha fatto entrare la 205 con una
-diagnosi da correggere. 🔌 **E il worker muore col distacco**: una guardia che poggia su di lui si
-spegne fra due settimane. ⚖️ Con `pmo_maestri` quella verifica diventa un confronto **fra due dati
-nostri** (i codici visti nelle prenotazioni contro l'elenco in tabella), che è anche ciò che
-serve a scoprire un `Santiago` il giorno in cui compare.
-📌 *Una riga che dice «da qui non si può dedurre» è la 26ª nella sua forma più cara: un limite
-dichiarato che nessuno riprova, e sopra ci si costruisce una chiamata di rete.*
-
-⏳ **Il resto non è iniziato.**
 
 ## 📋 IN CODA — 8
 
@@ -4691,7 +4619,7 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 10/09/2026 — 190 voci
+## 📦 CHIUSE — dal 13/08 al 10/09/2026 — 191 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
@@ -4703,6 +4631,7 @@ non ne apre un'altra sotto.
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
 
+| **202** | 👨‍🏫 **I MAESTRI SI AGGIUNGEVANO DA UN FILE SU GITHUB, NON DAL GESTIONALE** — ✅ *(10/09/2026 notte, 116ª sessione — **chiusa a PROVA FISICA sulla pagina viva di `cudi`**)*. 🗣️ Sua richiesta: *«bisogna creare un posto nel gestionale di test dove si possono aggiungere e modificare i nomi dei maestri che poi si vedono dentro la scheda che si apre dal calendario»*. ⇒ Pannello **Maestri** in Impostazioni → Dati (passo 7) su `pmo_maestri`. 📏 **LA PROVA, sulla pagina viva**: premuto *«+ Aggiungi maestro»*, scritto nei campi veri, premuto **Salva** (RPC vera, *«4 attivi su 4»*) ⇒ il maestro nuovo è comparso **nella scheda della lezione di Campo 4 del 26/09 alle 10:30**, dove il maestro corrente si legge ora *«Gianluca Spinazzè»* ed è ancora **`Spinazze` come valore**. Poi la tabella è stata **rimessa a 3 righe** com'era. 🚨⭐⭐ **E LA COSA DA PORTARSI DIETRO: i lettori di `valori_validi` NON erano tre — erano SETTE** (la scheda, la creazione, il flusso a bottoni, il parser, e tre del pannello Parser Config). ⇒ La cura non li ha toccati: fa **vincere la tabella su `PARSER_RULES`** dopo ogni `loadParserRules()`, ripiego compreso. 📌 *Una cura che dipende dall'aver contato giusto i lettori si rompe col lettore che nessuno ha contato.* ⚖️ **Il `codice` è il valore, il `nome` è l'etichetta**: sulle righe che esistono il codice **non si modifica** (cambiarlo creerebbe una riga nuova e spegnerebbe la vecchia, lasciando le lezioni fatte a puntare a un maestro spento), e non c'è un bottone *«elimina»* perché la RPC **spegne, non cancella**. ⛔ **Fallisce CHIUSA**: elenco illeggibile ⇒ regole intatte col ripiego cablato, perché un selettore vuoto è una lezione che non si crea più. 🩹 **E una riga FALSA corretta in `maestri-allineamento-check`**: *«sulle lezioni sincronizzate `istruttore` è sempre null»* — 📏 falso, su `cudi` **29 slot su 29** ce l'hanno e su PROD **56 righe su 102**; sembrava vero perché le righe gemelle dello stesso slot si alternano fra codice e `null` (**24 slot su 29** discordi). 📏 E il quarto codice **non si chiama «Santiago»: è `Santiago Carabajal`**, tutte le righe cancellate, nessuna dopo il 18/08. ✅ 21 casi nuovi, **cinque sabotaggi** caduti nel punto giusto; banco **94 file 0 rossi**. ⛔ **NON provato sul vivo**: il terzo selettore (il flusso a bottoni del servizio) sta solo sul banco, e quella funzione legge **ancora il worker** per i maestri — il worker muore col distacco, ed è il lavoro che resta (⇒ voce 202bis da aprire quando serve, oggi scritta nel commento). |
 | **205** | 🎭 **«LEZIONE CON X» DICEVA CHE IL MAESTRO ERA UN COMPAGNO DI BANCO** — ✅ *(10/09/2026 notte, 115ª sessione — **chiusa a PROVA FISICA sul vivo di `cudi`, in tutt'e due i renderer e nei due versi**)*. 📍 Il bot scriveva `Lezione` e poi `con <compagni>`: due pezzi che il socio legge come **una frase sola**, e in italiano *«lezione con X»* vuol dire **«tenuta da X»**. Il bot non inventava niente — rendeva `compagni` per quello che sono; a mentire era la **frase**, e la stessa riga su una **partita** è giusta. 📌 *La parola «con» cambia mestiere a seconda di cosa la precede.* 🚨⭐⭐ **E LA DIAGNOSI EREDITATA ERA SBAGLIATA SU TUTT'E DUE I NUMERI**, misurato prima di scrivere una riga: si diceva che `istruttore` **mancasse** sulle lezioni sincronizzate — **c'è su 41 slot su 41** (e su PROD su 55 su 55) — e che il maestro fosse nel roster in *«13 su 15»*: è dentro il roster in **93 lezioni su 93**. ⇒ Non era un dato mancante, era un dato **irriconoscibile**: il campo porta un **CODICE** (`Spinazze`), il roster la **PERSONA** (`Gianluca Spinazzè`). 🔑 A legarli è `pmo_maestri` (⇒ voce **202**), col seme misurato — e `LoZio` = **Maurizio Aprea** **confermato da lui**, non dedotto dal 9 su 9: quella coincidenza faceva nascere la domanda, non la risposta. 🩹 **E la cura ingenua avrebbe creato un secondo difetto da 18 lezioni su 93**: il maestro `LoZio` è il committente, che è anche utente del bot ⇒ *«Lezione con Maurizio Aprea»* gli avrebbe detto che prende lezione **da sé stesso**. Le frasi sono **tre**, non due: allievo · maestro · non lo so. ⛔ E il terzo ramo non è prudenza generica: cambiare **solo le parole** avrebbe peggiorato le 93 lezioni in cui quel nome **è** già il maestro. 🚨🚨 **LA FRASE VIVEVA IN DUE POSTI, E LA PRIMA CURA NE AVEVA PRESO UNO** — trovato **dal gesto, non dal banco**, che era verde su 9 casi, tre sabotaggi e 1789 test: il collaudo sul bot di prova ha risposto lo stesso *«(lezione con Marco Aprea)»*, perché quella riga **non la scrive `rigaElenco`** — la scrive il **modello**, da ciò che `tools/prenotazioni.ts` gli mette in mano. ⇒ La regola è uscita in `chi-tiene-la-lezione.ts`, che i due chiamano, e al modello si consegna la **frase già fatta** (`con_chi`) invece degli ingredienti. 📌 *Finché la regola sta dentro uno dei due lettori, il secondo non ha nessun modo di accorgersi di esistere.* 📏 **LA PROVA, sul vivo di `cudi` col gestionale vero e solo il filo di Telegram finto**: come **maestro** — *«(lezione con Marco Aprea)»* → *«(lezione **che tieni tu**, con Marco Aprea)»* su 8 lezioni, e le 2 partite **invariate**; come **allievo** — Marco legge *«Lezione con Maurizio Aprea»*, cioè il maestro e non un compagno. ⚖️ I tre campi si **aggiungono**: `compagni` esce identico, ed è letto da mezza dozzina di punti del bot (conteggi, «X resta in campo», promemoria) che con questa frase non c'entrano. Banco: **12 casi nuovi**, di cui **due guardie strutturali** sulla strada sfuggita, e **cinque sabotaggi** visti cadere nel punto giusto. ⛔ **NON provato**: il ramo *«insieme a <altri allievi>»* con **più di un allievo** — sui dati veri di `cudi` nessuna delle cinque persone di casa è allieva in una lezione con altri allievi, quindi quel ramo sta sul banco (caso 3) e non su un gesto. E resta fuori `Santiago`, un quarto codice maestro (1 riga di luglio) che **non è in tabella**: le sue lezioni ricadono sulla frase di prima, che è il verso giusto. |
 | **201** | 🎭 **PARTITA ↔ LEZIONE: IL GESTO CHE NON ESISTEVA** — ✅ *(10/09/2026 notte, 114ª sessione — **chiusa a PROVA FISICA sul vivo di `cudi`, nei DUE versi, con il messaggio consegnato**)*. ⭐ **Nasce nativo per natura**: su Matchpoint una partita e una lezione sono due schede diverse ⇒ è il primo gesto che il gestionale **non eredita, inventa**. 🚨⭐⭐ **E il gesto vero ha trovato QUATTRO posti che se ne erano dimenticati, tutti con la stessa forma — un elenco di gesti scritto prima che questo nascesse.** ① `DELLA_PARTITA` nella riduzione (preso dal banco: usciva **`tolto`**, cioè *«Non sei più nella partita»*); ② la riga che **ricopia** `EditRequest` nella edge — l'app mandava `tipo`, il type lo dichiarava, `cambiaIlTipo` lo leggeva, e **l'oggetto non l'aveva mai portato**; ③ la guardia «niente da fare» ⇒ `lezione → partita` **respinta**, 400 `EDIT_NESSUNA_MODIFICA`; ④ `rosterPrimaDelloSpostamento`, che tornava `null` ⇒ la dichiarazione al socio usciva **senza fatto e senza errore**. 📏 **Prima della cura il socio avrebbe letto «è cambiato il MAESTRO» di una PARTITA** (misurato: due righe `gesto: maestro`, `tipo: partita`, `tipo_prima: null`, e il bot ha davvero detto *«il circolo ha maestro»* alle 17:33). **Dopo**: `gesto: tipo` · `tipo: lezione` · `tipo_prima: partita` · `maestro: LoZio`, **due righe sole** (niente doppione), `passato_al_bot` in **39 secondi**, e il bot **`0 scartati`**. E nel verso opposto `maestro: null` — su una partita il maestro non esiste. ⚖️ **La cura è strutturale**: le due regole escono da `index.ts` (che chiama `Deno.serve` appena importato, quindi **il banco non poteva attraversarlo**) e vanno in `campi-tipo.ts` e `roster-di-prima.ts`, dove si provano riga per riga — 11 casi nuovi, **sei sabotaggi** visti cadere nel punto giusto. 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo **legge**.* ⛔ **Non provato**: che il testo sul telefono sia quello giusto — consegnato e non scartato, ma la frase non l'ho letta io; e Fabiola Limuti non ha una chat col bot **di prova** (`chat not found`), quindi il messaggio è arrivato a uno solo dei due. 🧹 La partita di servizio è stata **rimessa com'era** (partita, senza maestro). |
 | **196** | 👛 **IL BORSELLINO SI RICARICA DA NOI** — ✅ *(10/09/2026 notte, 113ª sessione — **chiusa a PROVA FISICA, e il gesto l'ha fatto LUI sulla pagina viva di TEST**)*. 📏 **La prova, riletta DAL DATABASE e non dalla memoria della pagina** (`pmo_get_records_admin`, `record_type: wallet_txn`): due righe `source: pmo_wallet_nativo` su Maurizio Aprea — **14:20:07** ricarica **+10,00 €** (`pre` 1000 → `post` 2000) e **14:20:28** storno **−20,00 €** (`pre` 2000 → `post` 0). 🗣️ E le sue parole: *«il borsellino funziona ora»*. ⭐⭐ **Ed è la rilettura a essere la prova, non lo schermo**: il difetto della **voce 109** è un `ok: true, count: 0` che muove il saldo per due minuti e poi lo lascia tornare indietro ⇒ un saldo visto salire non dimostra niente, una riga riletta dall'RPC sì. La migrazione che ammette `wallet_txn` **regge**. 🔪 **E la chiusura ha portato due cure, tutt'e due da suoi occhi o da una sua parola:** ① il **riquadro giallo** della finestra di ricarica, tolto su sua richiesta (*«il messaggio in giallo puoi toglierlo»*) — diceva *«Aggiunge credito sul wallet di **Matchpoint**»* su un gestionale dove il borsellino è **nostro** (`pmoCassaNativa()` ⇒ `true`, misurato sulla pagina viva); ② 🚨 **il `player_name` usciva VUOTO in tutte e due le righe** (`chi: ""`), perché la riga leggeva `g.nome` — e un socio dell'anagrafica ha `name`: 📏 `nome` è `undefined` su **2823 soci su 2823**. ⚖️ L'inganno è che `.nome` è il campo **giusto** su un'altra forma di oggetto — i giocatori dentro una prenotazione — da cui la riga era stata copiata. 📌 *Un campo che esiste in un oggetto vicino non sbaglia rumorosamente: torna `undefined`, che `||` trasforma in stringa vuota — e una stringa vuota non è un errore.* ⛔ L'attribuzione al socio **reggeva lo stesso** (`_pmoPagRigaSocio` guarda `member_local_id`/`id_cliente`, mai il nome): il danno era un movimento di denaro **senza intestatario**. ✅ Curato in **tutt'e due** i gemelli, con un caso di banco che **esegue** l'espressione presa dal sorgente (13/13) e il **sabotaggio visto cadere** — rimesso `g.nome`, il caso diventa rosso col messaggio giusto. ⚠️ **Cosa NON è stato toccato, e va portato a lui**: il gemello dello storno (27109) nomina Matchpoint allo stesso modo, **ma la sua seconda frase è vera e utile** (*«da qui non si annulla: per rimettere il credito serve una ricarica»*) ⇒ va **corretto**, non tolto, ed è una decisione sua. ⚠️ E lo storno che ha fatto era **totale**: ha portato via anche i 10,00 € che c'erano **prima**, quindi il borsellino di Maurizio su TEST oggi è a **0,00 €** dove era a 10,00 €. |
