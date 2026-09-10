@@ -1522,9 +1522,9 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **2** — 🆙 **10/09/2026 notte, 116ª: ENTRA la 207, da due sue parole.** 🗣️ *«Il torneo è un modo di chiamare una prenotazione»* + *«una voce che manca… si chiama **stage**»* ⇒ **Torneo** e **Stage** devono potersi scegliere quando si prenota: 📏 oggi «Torneo» c'è ma è **spento** (`disabled:true`) e «Stage» non c'è affatto. ✅ **E la domanda sul maestro l'ha già risposta**: il **torneo** somiglia a una *prenotazione* (niente maestro), lo **stage** a una *lezione* (maestro sì) ⇒ `engine` diverso, e `tipo` che **non** coincide con l'engine, o uno stage si sentirebbe chiamare «lezione». 🚨 Il lavoro vero non sono le due righe: è che 📏 `hasPlayers` confronta i tipi in modo **esatto** ⇒ le due righe da sole darebbero uno stage **senza maestro**, l'opposto di quanto chiesto. — La **198** resta, e delle sue tre decisioni **ne ha prese due** (il torneo è una prenotazione; la **ricarica non entra in Incassi**, e 📏 è **già** il comportamento di oggi): aspetta solo la scelta fra **navigazione** e **riconciliazione**, spiegata nella scheda. 📌 *Una lista che cresce perché lui ha risposto non è una lista che peggiora: è una lista che si è sbloccata.* |
+| 🔴 **Urgenti** | **1** — 🔁 **10/09/2026 notte, 116ª: ESCE la 207, chiusa a prova fisica.** Premuto **Stage** sulla scheda viva di `cudi`, scelto il maestro, premuto **Conferma** ⇒ nel database un record vero con **`tipo: "stage"`** e `istruttore: "Spinazze"`, e riaprendolo la scheda legge `stage` col **macchinario della lezione** e *«Gianluca Spinazzè»* già selezionato. 🚨⭐⭐ **E la prova ha trovato un pezzo che il banco non poteva vedere**: anche il **SERVER** enumerava i tipi (*«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»*) ⇒ la feature sarebbe sembrata completa nell'app e **rotta al salvataggio**. 📌 *Un tipo nuovo si aggiunge dove qualcuno lo LEGGE — e uno dei lettori è il server.* ⛔ **Resta solo la 198**, e aspetta una sua scelta: **navigazione** o **riconciliazione**. Proposta dichiarata — prima le **porte**, poi l'**importo a carico nativo** che riempie il «dovuto», poi il giudice; perché oggi il dovuto esiste su **14 prenotazioni su 256**, e un giudice col 94% dei dati mancanti direbbe *«non pagato»* quasi sempre. |
 | 📋 **In coda** | **8** — invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
-| 📦 **Chiuse** | **191** — 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
+| 📦 **Chiuse** | **192** — 🏆 **la 207 il 10/09/2026 notte**: Torneo e Stage sono prenotazioni con un nome proprio — il **macchinario si eredita, il nome no**. Chiusa creando uno **Stage vero** e rileggendolo dalla scheda. E la prova ha trovato il lettore che il banco non vedeva: il **server**. 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
 e sul suo ponte**. In PROD sono andate due cose — `scheda_del_tolto` (il ponte dice **chi** è stato
@@ -1750,7 +1750,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 2
+## 🔴 URGENTI — 1
 
 🆕 **08/09/2026, 100ª sessione: la lista torna da 0 a 4, e non sono idee di fine giornata.** Tre
 nascono da **misure** fatte guardando il codice (177 · 178 · 179), una dalla misura più pesante di
@@ -1853,77 +1853,6 @@ giudicare. *La riconciliazione non è scartata: è messa dopo la cosa che la ren
 ⚖️ **Dichiarazione della scelta, come vuole la delega**: sta fra le **urgenti** perché ce l'ha messa
 lui (*«metti in urgenti»*) e **non scavalca niente** — la lista era a zero dopo la chiusura della
 196. ⏳ **Non è iniziata: non è stata scritta una riga.**
-
-### 207 — 🏆 «TORNEO» E «STAGE»: DUE NOMI DI PRENOTAZIONE CHE NON SI POSSONO SCEGLIERE
-
-🆕 *Entrata il 10/09/2026 notte, 116ª sessione — **da due sue parole**, date una dopo l'altra:*
-
-> 🗣️ *«Il torneo è un modo di chiamare una prenotazione.»*
-> 🗣️ *«Ho anche una voce che manca e dovremmo aggiungere che si chiama **stage**.»*
-
-🎯 **Cosa chiede**: che **Torneo** e **Stage** si possano scegliere quando si prenota, come si
-sceglie Partita o Lezione. Non sono record nuovi — l'ha detto lui: sono **nomi** di una
-prenotazione.
-
-📏 **DOV'È OGGI, misurato e non ricordato** (`index.html:52053-52056`): i tipi nella scheda di
-creazione sono **quattro**, e il quarto è **spento**:
-```
-{ key:'Partita',      engine:'partita',      tipo:'partita' },
-{ key:'Lezione',      engine:'lezione',      tipo:'lezione' },
-{ key:'Manutenzione', engine:'manutenzione', tipo:'manutenzione' },
-{ key:'Torneo',       engine:null, tipo:null, disabled:true }      ← spento
-```
-⇒ **«Torneo» c'è ma non si può premere**, e **«Stage» non c'è affatto**. ⚖️ Con la sua decisione il
-lavoro non è «creare un tipo»: è dare a questi due un `engine` e un `tipo`, cioè dire **a quale
-motore somigliano**.
-
-✅⭐⭐ **LA DOMANDA È GIÀ RISPOSTA — gliel'ho chiesta e ha risposto nello stesso giro** *(10/09/2026
-notte)*. Era: *un torneo e uno stage hanno un maestro, come una lezione, o no, come una partita?*
-
-> 🗣️ *«Anche lo stage È un tipo di prenotazione come la **lezione** solo con un nome diverso.»*
-
-⇒ **I due non somigliano alla stessa cosa**, e questa è l'informazione che serviva:
-
-| | somiglia a | vuole il maestro? |
-|---|---|---|
-| **Torneo** | una **prenotazione** (*«un modo di chiamare una prenotazione»*) | ❌ no |
-| **Stage** | una **lezione** (*«come la lezione, solo con un nome diverso»*) | ✅ **sì** |
-
-⭐⭐ **E LA FORMA GIUSTA È GIÀ NEL CODICE, NON VA INVENTATA.** 📏 Ogni tipo nella scheda di creazione
-porta **tre** campi, e servono esattamente a questo: `{ key, engine, tipo }` — la **key** è la parola
-che si legge, l'**engine** è il **macchinario** (chi chiede il maestro, chi tiene il roster), il
-**tipo** è ciò che **resta scritto**. ⇒ Le due righe nuove si scrivono da sé:
-```
-{ key:'Torneo', engine:'partita', tipo:'torneo' },
-{ key:'Stage',  engine:'lezione', tipo:'stage'  },
-```
-⚖️ **Perché `engine` e `tipo` NON devono coincidere, ed è il punto**: con `tipo:'lezione'` uno stage
-sarebbe **indistinguibile** da una lezione — e il socio si sentirebbe dire *«Lezione con X»* per uno
-stage. Con `engine:'lezione'` lo stage **eredita il macchinario** (il maestro, il roster, il Salva che
-rifiuta senza maestro — voce 201) e con `tipo:'stage'` **si chiama col suo nome**. 📌 *Il macchinario
-si eredita, il nome no.*
-
-🚨⭐⭐ **E IL LAVORO VERO NON È AGGIUNGERE LE DUE RIGHE: È I POSTI CHE ENUMERANO I TIPI.**
-📏 Misurato: `hasPlayers = ['partita','lezione'].includes(tipoR)` è un confronto **ESATTO** ⇒ con
-`tipo:'stage'` quella riga dice **false**, e una scheda senza `hasPlayers` **non disegna né i
-giocatori né il selettore del maestro**. Cioè: le due righe nuove, da sole, darebbero uno stage
-**senza maestro** — l'opposto di quello che ha chiesto.
-📌 *Un tipo nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo LEGGE* — ed è
-letteralmente la lezione della 201, che si è rotta in **tre** punti che enumeravano i gesti, **nessuno
-raggiungibile dal banco**.
-
-⚠️ **E i posti che enumerano i tipi vanno cercati TUTTI prima di toccarne uno**: la 201 ha pagato
-esattamente questo — tre punti della edge che elencavano i gesti e non sapevano del nuovo, **nessuno
-raggiungibile dal banco**. Lo stesso vale qui per `tipoNorm`/`origTipoNorm`, per `hasPlayers`
-(📏 `['partita','lezione']`, confronto **esatto**: un `tipo` nuovo non entra da sé) e per il parser.
-
-⚖️ **Dichiarazione della scelta, come vuole la delega**: promossa a **urgenti** da chi lavora, non da
-lui (lui ha detto *«dovremmo aggiungere»*). Il perché: ① la **198** ha bisogno che il torneo **esista**
-per poterci arrivare da una scheda, quindi questa le sta davanti; ② la **198** è ferma su una
-decisione sua, questa **no** — le due decisioni che la riguardavano le ha già prese. **Scavalca** la
-198, che aspetta una risposta. Si può ribaltare.
-
-⏳ **Non è iniziata: non è stata scritta una riga.**
 
 ## 📋 IN CODA — 8
 
@@ -4727,7 +4656,7 @@ traduce) che tocca chi legge quel campo. È materiale per la **111**, non una pu
 
 ---
 
-## 📦 CHIUSE — dal 13/08 al 10/09/2026 — 191 voci
+## 📦 CHIUSE — dal 13/08 al 10/09/2026 — 192 voci
 
 ⚠️ **Una sola sezione datata per volta.** `guard-docs-truth` conta le righe di **tutte** le
 intestazioni `CHIUSE —` ma legge il numero della **prima**: due blocchi datati affiancati dichiarano
@@ -4739,6 +4668,7 @@ non ne apre un'altra sotto.
 🩹 *(24/08 notte)* **I conteggi dei blocchi vecchi sono stati TOLTI, non aggiornati.** Sommavano **63** contro **68** righe: cinque di scarto, in un file che si controlla i numeri con una guardia. I primi cinque gruppi sono stati **ricontati riga per riga** e stanno; per gli altri si dice l'**ordine** e non la quantità, che è ciò che serve a chi cerca una voce. 📌 *Un conteggio che non si può stare a verificare si cancella, non si riscrive a occhio* — è la regola del 15/08, applicata a sé stessa.
 
 
+| **207** | 🏆 **«TORNEO» E «STAGE»: DUE NOMI DI PRENOTAZIONE CHE NON SI POTEVANO SCEGLIERE** — ✅ *(10/09/2026 notte, 116ª sessione — **chiusa a PROVA FISICA sulla pagina viva di `cudi`, con un record vero creato e poi rimosso**)*. 🗣️ Due sue parole: *«Il torneo è un modo di chiamare una prenotazione»* · *«Anche lo stage È un tipo di prenotazione come la **lezione** solo con un nome diverso»* ⇒ **i due NON somigliano alla stessa cosa**: torneo come una partita (niente maestro), stage come una lezione (maestro **sì**). ⚖️⭐⭐ **DUE COSE CHE SI CONFONDEVANO IN UNA PAROLA**: `engine` è il **macchinario** (chi chiede il maestro, chi tiene i giocatori) e resta **tre**; `tipo` è il **nome**, ciò che resta scritto. 📌 *Il macchinario si eredita, il nome no* — se coincidessero, al socio arriverebbe *«Lezione con X»* per uno **stage**. 📏 **LA PROVA**: premuto Stage sulla scheda viva, scelto il maestro, premuto Conferma ⇒ record con **`tipo: "stage"`**, `istruttore: "Spinazze"`; riaperto, la scheda legge `tipo` **stage**, `tipoNorm` **lezione**, `hasPlayers` **true** e *«Gianluca Spinazzè»* **già selezionato**. Misurato anche il resto: Stage ⇒ maestro **mostrato** ed etichetta **«Allievi»**, Torneo ⇒ maestro **nascosto** e **«Giocatori»**. Poi il record è stato **cancellato**, e 📏 `pmo_eventi_staff` e `pmo_ricevute_gesti` sono rimasti a **zero**: usando `Ospite` **nessun avviso è partito a nessuno**. 🚨⭐⭐ **E IL PEZZO CHE SOLO IL GESTO POTEVA TROVARE**: al primo Conferma la scrittura è stata **rifiutata** — *«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»* — cioè un punto che enumera i tipi **nel SERVER**, fuori da `index.html`, invisibile a qualunque banco dell'app. Senza la prova fisica la voce sarebbe sembrata **chiusa e sarebbe stata rotta al salvataggio**. ⛔ Curato nella **edge**, non nel **worker**: quello si deploya solo da `main`, è condiviso con PROD e **PROD è congelata** ⇒ al worker si manda una parola che già conosce (`stage`→`lezione`, `torneo`→`partita`), e il nome nostro resta nel nostro record. 📏 **E i punti che enumerano i tipi erano 57**: la grande maggioranza confronta valori **già normalizzati**, quindi è bastato insegnare le parole nuove a **una** funzione invece di correggerne cinquanta. 🆕 **Scoperto per strada**: il server accetta un quinto tipo, **`stagionale`**, che l'app non ha mai offerto — **non aggiunto**, perché non è una sua richiesta. ✅ 29 casi nuovi su due banchi, **dieci sabotaggi** visti cadere; e un banco esistente (`maestro-non-si-butta-col-resto`) **aggiornato e non allentato** dopo 11 rossi su 11. ⛔ **Non provato**: uno Stage che arriva fino a **Matchpoint** (su `cudi` la barriera lo impedisce per costruzione), e il testo che il **bot** direbbe di uno stage — è la famiglia della 206. |
 | **202** | 👨‍🏫 **I MAESTRI SI AGGIUNGEVANO DA UN FILE SU GITHUB, NON DAL GESTIONALE** — ✅ *(10/09/2026 notte, 116ª sessione — **chiusa a PROVA FISICA sulla pagina viva di `cudi`**)*. 🗣️ Sua richiesta: *«bisogna creare un posto nel gestionale di test dove si possono aggiungere e modificare i nomi dei maestri che poi si vedono dentro la scheda che si apre dal calendario»*. ⇒ Pannello **Maestri** in Impostazioni → Dati (passo 7) su `pmo_maestri`. 📏 **LA PROVA, sulla pagina viva**: premuto *«+ Aggiungi maestro»*, scritto nei campi veri, premuto **Salva** (RPC vera, *«4 attivi su 4»*) ⇒ il maestro nuovo è comparso **nella scheda della lezione di Campo 4 del 26/09 alle 10:30**, dove il maestro corrente si legge ora *«Gianluca Spinazzè»* ed è ancora **`Spinazze` come valore**. Poi la tabella è stata **rimessa a 3 righe** com'era. 🚨⭐⭐ **E LA COSA DA PORTARSI DIETRO: i lettori di `valori_validi` NON erano tre — erano SETTE** (la scheda, la creazione, il flusso a bottoni, il parser, e tre del pannello Parser Config). ⇒ La cura non li ha toccati: fa **vincere la tabella su `PARSER_RULES`** dopo ogni `loadParserRules()`, ripiego compreso. 📌 *Una cura che dipende dall'aver contato giusto i lettori si rompe col lettore che nessuno ha contato.* ⚖️ **Il `codice` è il valore, il `nome` è l'etichetta**: sulle righe che esistono il codice **non si modifica** (cambiarlo creerebbe una riga nuova e spegnerebbe la vecchia, lasciando le lezioni fatte a puntare a un maestro spento), e non c'è un bottone *«elimina»* perché la RPC **spegne, non cancella**. ⛔ **Fallisce CHIUSA**: elenco illeggibile ⇒ regole intatte col ripiego cablato, perché un selettore vuoto è una lezione che non si crea più. 🩹 **E una riga FALSA corretta in `maestri-allineamento-check`**: *«sulle lezioni sincronizzate `istruttore` è sempre null»* — 📏 falso, su `cudi` **29 slot su 29** ce l'hanno e su PROD **56 righe su 102**; sembrava vero perché le righe gemelle dello stesso slot si alternano fra codice e `null` (**24 slot su 29** discordi). 📏 E il quarto codice **non si chiama «Santiago»: è `Santiago Carabajal`**, tutte le righe cancellate, nessuna dopo il 18/08. ✅ 21 casi nuovi, **cinque sabotaggi** caduti nel punto giusto; banco **94 file 0 rossi**. ⛔ **NON provato sul vivo**: il terzo selettore (il flusso a bottoni del servizio) sta solo sul banco, e quella funzione legge **ancora il worker** per i maestri — il worker muore col distacco, ed è il lavoro che resta (⇒ voce 202bis da aprire quando serve, oggi scritta nel commento). |
 | **205** | 🎭 **«LEZIONE CON X» DICEVA CHE IL MAESTRO ERA UN COMPAGNO DI BANCO** — ✅ *(10/09/2026 notte, 115ª sessione — **chiusa a PROVA FISICA sul vivo di `cudi`, in tutt'e due i renderer e nei due versi**)*. 📍 Il bot scriveva `Lezione` e poi `con <compagni>`: due pezzi che il socio legge come **una frase sola**, e in italiano *«lezione con X»* vuol dire **«tenuta da X»**. Il bot non inventava niente — rendeva `compagni` per quello che sono; a mentire era la **frase**, e la stessa riga su una **partita** è giusta. 📌 *La parola «con» cambia mestiere a seconda di cosa la precede.* 🚨⭐⭐ **E LA DIAGNOSI EREDITATA ERA SBAGLIATA SU TUTT'E DUE I NUMERI**, misurato prima di scrivere una riga: si diceva che `istruttore` **mancasse** sulle lezioni sincronizzate — **c'è su 41 slot su 41** (e su PROD su 55 su 55) — e che il maestro fosse nel roster in *«13 su 15»*: è dentro il roster in **93 lezioni su 93**. ⇒ Non era un dato mancante, era un dato **irriconoscibile**: il campo porta un **CODICE** (`Spinazze`), il roster la **PERSONA** (`Gianluca Spinazzè`). 🔑 A legarli è `pmo_maestri` (⇒ voce **202**), col seme misurato — e `LoZio` = **Maurizio Aprea** **confermato da lui**, non dedotto dal 9 su 9: quella coincidenza faceva nascere la domanda, non la risposta. 🩹 **E la cura ingenua avrebbe creato un secondo difetto da 18 lezioni su 93**: il maestro `LoZio` è il committente, che è anche utente del bot ⇒ *«Lezione con Maurizio Aprea»* gli avrebbe detto che prende lezione **da sé stesso**. Le frasi sono **tre**, non due: allievo · maestro · non lo so. ⛔ E il terzo ramo non è prudenza generica: cambiare **solo le parole** avrebbe peggiorato le 93 lezioni in cui quel nome **è** già il maestro. 🚨🚨 **LA FRASE VIVEVA IN DUE POSTI, E LA PRIMA CURA NE AVEVA PRESO UNO** — trovato **dal gesto, non dal banco**, che era verde su 9 casi, tre sabotaggi e 1789 test: il collaudo sul bot di prova ha risposto lo stesso *«(lezione con Marco Aprea)»*, perché quella riga **non la scrive `rigaElenco`** — la scrive il **modello**, da ciò che `tools/prenotazioni.ts` gli mette in mano. ⇒ La regola è uscita in `chi-tiene-la-lezione.ts`, che i due chiamano, e al modello si consegna la **frase già fatta** (`con_chi`) invece degli ingredienti. 📌 *Finché la regola sta dentro uno dei due lettori, il secondo non ha nessun modo di accorgersi di esistere.* 📏 **LA PROVA, sul vivo di `cudi` col gestionale vero e solo il filo di Telegram finto**: come **maestro** — *«(lezione con Marco Aprea)»* → *«(lezione **che tieni tu**, con Marco Aprea)»* su 8 lezioni, e le 2 partite **invariate**; come **allievo** — Marco legge *«Lezione con Maurizio Aprea»*, cioè il maestro e non un compagno. ⚖️ I tre campi si **aggiungono**: `compagni` esce identico, ed è letto da mezza dozzina di punti del bot (conteggi, «X resta in campo», promemoria) che con questa frase non c'entrano. Banco: **12 casi nuovi**, di cui **due guardie strutturali** sulla strada sfuggita, e **cinque sabotaggi** visti cadere nel punto giusto. ⛔ **NON provato**: il ramo *«insieme a <altri allievi>»* con **più di un allievo** — sui dati veri di `cudi` nessuna delle cinque persone di casa è allieva in una lezione con altri allievi, quindi quel ramo sta sul banco (caso 3) e non su un gesto. E resta fuori `Santiago`, un quarto codice maestro (1 riga di luglio) che **non è in tabella**: le sue lezioni ricadono sulla frase di prima, che è il verso giusto. |
 | **201** | 🎭 **PARTITA ↔ LEZIONE: IL GESTO CHE NON ESISTEVA** — ✅ *(10/09/2026 notte, 114ª sessione — **chiusa a PROVA FISICA sul vivo di `cudi`, nei DUE versi, con il messaggio consegnato**)*. ⭐ **Nasce nativo per natura**: su Matchpoint una partita e una lezione sono due schede diverse ⇒ è il primo gesto che il gestionale **non eredita, inventa**. 🚨⭐⭐ **E il gesto vero ha trovato QUATTRO posti che se ne erano dimenticati, tutti con la stessa forma — un elenco di gesti scritto prima che questo nascesse.** ① `DELLA_PARTITA` nella riduzione (preso dal banco: usciva **`tolto`**, cioè *«Non sei più nella partita»*); ② la riga che **ricopia** `EditRequest` nella edge — l'app mandava `tipo`, il type lo dichiarava, `cambiaIlTipo` lo leggeva, e **l'oggetto non l'aveva mai portato**; ③ la guardia «niente da fare» ⇒ `lezione → partita` **respinta**, 400 `EDIT_NESSUNA_MODIFICA`; ④ `rosterPrimaDelloSpostamento`, che tornava `null` ⇒ la dichiarazione al socio usciva **senza fatto e senza errore**. 📏 **Prima della cura il socio avrebbe letto «è cambiato il MAESTRO» di una PARTITA** (misurato: due righe `gesto: maestro`, `tipo: partita`, `tipo_prima: null`, e il bot ha davvero detto *«il circolo ha maestro»* alle 17:33). **Dopo**: `gesto: tipo` · `tipo: lezione` · `tipo_prima: partita` · `maestro: LoZio`, **due righe sole** (niente doppione), `passato_al_bot` in **39 secondi**, e il bot **`0 scartati`**. E nel verso opposto `maestro: null` — su una partita il maestro non esiste. ⚖️ **La cura è strutturale**: le due regole escono da `index.ts` (che chiama `Deno.serve` appena importato, quindi **il banco non poteva attraversarlo**) e vanno in `campi-tipo.ts` e `roster-di-prima.ts`, dove si provano riga per riga — 11 casi nuovi, **sei sabotaggi** visti cadere nel punto giusto. 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo **legge**.* ⛔ **Non provato**: che il testo sul telefono sia quello giusto — consegnato e non scartato, ma la frase non l'ho letta io; e Fabiola Limuti non ha una chat col bot **di prova** (`chat not found`), quindi il messaggio è arrivato a uno solo dei due. 🧹 La partita di servizio è stata **rimessa com'era** (partita, senza maestro). |
