@@ -99,8 +99,18 @@ test('la RPC non ammette tipi che la tabella rifiuterebbe: sarebbe un permesso c
 
 test('📌 le due liste NON devono essere uguali, e questo banco non lo pretende', () => {
   // Sta qui per dire una cosa che altrimenti la prossima sessione proverebbe a «sistemare»:
-  // la tabella ne accetta di più della RPC, ed è VOLUTO. `wallet_txn` e `wallet_balance`
-  // riguardano soldi e l'app non li scrive mai — decisione del committente del 29/08/2026.
+  // la tabella ne accetta di più della RPC, ed è VOLUTO.
+  // 🔄👛 CORRETTO il 10/09/2026 (voce 196), e qui c'era scritto il contrario: «`wallet_txn` e
+  // `wallet_balance` riguardano soldi e l'app non li scrive mai — decisione del committente del
+  // 29/08». ⇒ Di `wallet_txn` l'app ne scrive, da oggi: sul gestionale che diventa il vero il
+  // borsellino si ricarica da noi, e quello È il bisogno misurato che il criterio del 29/08
+  // chiedeva (*«si allarga su un bisogno misurato, non per simmetria»*).
+  // ⛔⛔ `wallet_balance` invece RESTA FUORI, e non per simmetria mancante: è la **fotografia**
+  // del saldo, cioè il saldo d'apertura su cui i movimenti nostri si sommano (voce 181).
+  // Lasciarla scrivere all'app farebbe contare ogni ricarica DUE volte, nel verso «credito
+  // regalato». ⇒ È lei, oggi, a tenere vero questo caso.
+  // 📌 *Una differenza fra due liste non è un disallineamento da chiudere: è un'informazione,
+  //    e va scritto QUALE riga la tiene aperta e perché.*
   const soloTabella = [...tipiTabella].filter(t => !tipiRpc.has(t));
   assert.ok(soloTabella.length > 0,
     'le due liste coincidono: se è stato fatto apposta, questa prova va tolta con la sua ragione');
