@@ -1522,7 +1522,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **3** — 🔁 **10/09/2026 notte, 114ª: ESCE la 201 ed ENTRA la 205 ⇒ il numero resta 3, ma non sono le stesse voci.** La **201** (*partita ↔ lezione*) è **chiusa a prova fisica sul vivo di `cudi`, nei due versi**, e la sua riga sta fra le chiuse. 🚨⭐⭐ **Il gesto vero ha trovato QUATTRO posti che se ne erano dimenticati** — la riga che ricopia la richiesta, la guardia «niente da fare», il lettore del roster di prima, più quello già preso dal banco — e prima della cura il socio avrebbe letto *«è cambiato il MAESTRO»* di una **partita**. 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo **legge**.* — 🆕 La **205** è la sorella già in servizio di quel difetto: **il bot chiama «maestro» un altro GIOCATORE** e il maestro vero non lo nomina (misurato sui due lati: il gestionale dice `istruttore: LoZio`, il bot dice *«Lezione · con Marco Aprea»*, e Marco Aprea è un giocatore con l'importo a carico). **Promossa da chi lavora**, lui non ne sa ancora niente; non scavalca niente — entra al posto della 201. ⛔ La **causa non è diagnosticata** e non si indovina: due candidati, due cure diverse. — Restano la **198** (Incassi ↔ pagamenti dalla scheda, messa qui **da lui**) e la **202** (i **maestri**: tre nomi in un JSON su GitHub, scaricato a runtime da `raw.githubusercontent.com` — la strada che nella **58** lasciò TEST a terra; 📏 e i dati ne contengono già un quarto, `Santiago`). |
+| 🔴 **Urgenti** | **3** — 🔁 **10/09/2026 notte, 114ª: ESCE la 201 ed ENTRA la 205 ⇒ il numero resta 3, ma non sono le stesse voci.** La **201** (*partita ↔ lezione*) è **chiusa a prova fisica sul vivo di `cudi`, nei due versi**: il gesto vero ha trovato **quattro** posti che se ne erano dimenticati, e prima della cura il socio avrebbe letto *«è cambiato il MAESTRO»* di una **partita**. 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo **legge**.* — 🆕🔄 La **205** è *«Lezione · con X»*, **e la sua diagnosi è già stata corretta una volta nella stessa notte**: il bot **non inventa** nessun dato, rende `compagni` per quello che sono — a mentire è la **frase**, perché in italiano *«lezione con X»* vuol dire *«tenuta da X»*. 🚨 E la misura che conta è che **su Matchpoint il maestro occupa un posto in campo** (13 lezioni su 15 hanno `Lucas Vidal` dentro il roster) ⇒ oggi quella riga è **giusta per caso** sulle lezioni sincronizzate e **falsa** sull'unica nata da noi — cioè **sbaglierà su tutte** dopo il distacco. ⛔ Cambiare **solo le parole** peggiorerebbe 13 casi su 15: le parole nuove e il campo vero devono atterrare **insieme**, e oggi `consumer-player-readmodel` l'`istruttore` **non lo manda affatto**. **Promossa da chi lavora**; non scavalca niente. — Restano la **198** (Incassi ↔ pagamenti dalla scheda, messa qui **da lui**, e ⛔ **ferma su tre decisioni sue**) e la **202** (i **maestri**: tre nomi in un JSON su GitHub scaricato a runtime — la strada che nella **58** lasciò TEST a terra; 📏 e i dati ne contengono già un quarto, `Santiago`). |
 | 📋 **In coda** | **8** — 🆕 **10/09/2026 notte, 114ª: entra la 206.** Premendo Salva davvero su `cudi` la scheda chiede *«Salvare su **Matchpoint**?»* e sotto elenca *«Tipo: Partita → Lezione»* — un gesto che su Matchpoint **non esiste**. ⚖️ Tre frasi dello stesso Salva, e una dice il falso: il menu Tipo evita di nominare il circolo **di proposito**, e la edge risponde *«Questa partita nasce qui: il circolo esterno non è stato chiamato»*. Si cura **insieme** alla gemella rimasta nei pagamenti (`_pmoConfirmPayment`, voce 190), cercandole tutte in un giro. — Prima c'erano già la **203** (al **primo ingresso** non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
 | 📦 **Chiuse** | **189** — 🎭 **la 201 il 10/09/2026 notte**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiuso a **prova fisica nei due versi**, col fatto giusto in coda (`gesto: tipo`, `tipo_prima` vero, maestro solo verso la lezione), `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. 🧹 La partita di servizio rimessa com'era. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
@@ -1817,43 +1817,77 @@ alla riga giusta, e che ogni riga si sa **da dove viene**.
 lui (*«metti in urgenti»*) e **non scavalca niente** — la lista era a zero dopo la chiusura della
 196. ⏳ **Non è iniziata: non è stata scritta una riga.**
 
-### 205 — 🎭 IL BOT CHIAMA «MAESTRO» UN ALTRO GIOCATORE, E PERDE QUELLO VERO
+### 205 — 🎭 «LEZIONE · CON X»: LA FRASE CHE CAMBIA MESTIERE FRA DUE MONDI
 
-🆕 *Entrata il 10/09/2026 notte, 114ª sessione — **da una misura**, non da una sua parola: è saltata
-fuori leggendo il registro del bot di prova per un'altra ragione.*
+🆕 *Entrata il 10/09/2026 notte, 114ª — **da una misura**. 🔄 **E la sua diagnosi è stata CORRETTA
+poche ore dopo, nella stessa sessione**: vedi il blocco «cosa diceva prima» in fondo. Quella
+vecchia non era sbagliata su un caso — era **giusta su un mondo solo su due**.*
 
-📏 **IL FATTO, misurato sui DUE lati dello stesso slot** — 11/09/2026, 17:30, Campo 4:
+📏 **IL FATTO CHE HA APERTO LA VOCE**, misurato sui due lati dello stesso slot — 11/09, 17:30, C4:
+il gestionale dice `istruttore: "LoZio"` e `giocatori: [Marco Aprea, Maurizio Aprea]` (tutt'e due
+con l'importo a carico ⇒ **allievi**), e il bot dice a Maurizio *«Lezione · con **Marco Aprea**»*.
 
-| dove | cosa dice |
-|---|---|
-| il **gestionale** (`staff_booking` `11d1ad9e…`) | `tipo: lezione` · **`istruttore: "LoZio"`** · `giocatori: [Marco Aprea (cod. 140), Maurizio Aprea (cod. 4)]` — tutt'e due con l'importo a carico |
-| il **bot**, a Maurizio | *«Domani · 17:30 · Campo 4 ⏎ **Lezione · con Marco Aprea**»* |
+🚨⭐⭐ **MA LA MISURA CHE CONTA È UN'ALTRA, ed è quella che ribalta la cura: SU MATCHPOINT IL
+MAESTRO OCCUPA UN POSTO IN CAMPO.** 📏 Delle 15 lezioni vive lette da `v_calendario_pubblico`,
+**13** hanno `Lucas Vidal` — uno dei tre maestri validi — **dentro la `descrizione`**, insieme
+agli allievi. ⇒ Ci sono **due mondi**, e la stessa riga di codice dice il vero in uno e il falso
+nell'altro:
 
-⇒ **Il bot presenta come maestro un GIOCATORE della lezione, e il maestro vero — LoZio — non lo
-nomina affatto.** Non è un nome sbagliato: è la persona sbagliata, e il socio non ha modo di
-accorgersene.
+| lezione | dov'è il maestro | cosa dice il bot | |
+|---|---|---|---|
+| **dal sync** (Matchpoint) — tutte e 15, `ha_staff_booking: false` | **dentro il roster**, insieme agli allievi | *«con Lucas Vidal»* | ✅ giusto — **per caso** |
+| **nativa** (nata da noi) — oggi una sola | in un **campo a parte** (`staff_booking.istruttore`), fuori dal roster | *«con Marco Aprea»* | ⛔ **falso**: nomina un allievo |
 
-🚨 **NON È UN CASO ISOLATO**: nello stesso elenco compaiono *«con Renza Lazzarin»* (10/09, 18:00,
-C3 — dove la descrizione è `-Maurizio Aprea.-Renza Lazzarin.`) e *«con Paola Tamagnone»* (12/09,
-10:30, C3 — `-Maurizio Aprea.-Paola Tamagnone.`). ⇒ In tutti e tre il nome mostrato è **l'altro
-nome del roster**.
+🎯 **E QUESTO NON È UN DIFETTO RARO: È IL FUTURO.** Dopo il distacco le lezioni sono **tutte**
+native, il maestro **esce** dal roster, e quella riga sbaglia su **tutte**. Oggi ne sbaglia una
+perché oggi ce n'è **una sola** nata da noi. 📌 *Un difetto che oggi tocca un caso su quindici non
+è raro se il quindicesimo è l'unico che somiglia a domani.*
 
-⚖️ **PERCHÉ STA FRA LE URGENTI, e la dichiarazione è dovuta dalla delega**: promossa **da chi
-lavora**, lui non ne sa ancora niente. È un **dato che mente detto a un socio** — la stessa
-famiglia che la 201 esisteva per evitare (*«un cambio di tipo che lascia il maestro appeso è un
-dato che mente»*), qui però **già in servizio**, non ipotetica. E vive sul gestionale che fra
-~15 giorni **diventa quello vero**. **Non scavalca niente**: entra al posto della 201, che si
-chiude stanotte.
+🔎 **DOVE STA, misurato e non dedotto** — `src/telegram/gestisci-testi.ts:341`:
+```ts
+if (v.lezione) pezzi.push('Lezione');
+if (v.compagni.length) pezzi.push(`con ${elencoNomi(v.compagni)}`);
+```
+⇒ **Il bot non inventa nessun dato**: rende `compagni` — *«gli altri, come li nomina il ponte»* —
+esattamente per quello che sono. A mentire è la **frase**: in italiano *«Lezione con X»* vuol dire
+*«lezione tenuta da X»*, e su una **partita** la stessa identica riga (*«con Fabiola · 2 posti
+liberi»*) è giusta. 📌 *La parola «con» cambia mestiere a seconda di cosa la precede — e una riga
+che vale per due tipi di prenotazione non se ne accorge.*
 
-🔎 **COSA NON È ANCORA DIAGNOSTICATO, e non si indovina**: da dove il bot prende quel nome. I
-candidati misurati sono **due** — il campo `nome` dello `staff_booking` (che per quello slot vale
-proprio *«Marco Aprea»*) e il **secondo nome della `descrizione`** — e distinguerli vuol dire
-leggere il ponte, non dedurre. ⛔ Finché non è deciso **quale**, la cura non si scrive: sono due
-correzioni diverse in due file diversi.
+⛔ **IL MAESTRO NON ESCE MAI DAL GESTIONALE**, misurato su tutti e due i lati:
+· `consumer-player-readmodel` **non manda** `istruttore` — zero occorrenze nei suoi sorgenti;
+· il bot **non ha nessun campo** per riceverlo (i suoi «maestro» sono tutti la storia del
+  *livello*, un'altra cosa).
+⇒ Il bot **non potrebbe nominarlo nemmeno volendo**, ed è la ragione per cui la cura non è una
+correzione di parole: è *il gestionale SA, il bot DICE* applicato a un dato che oggi non viaggia.
 
-🩹 **E c'è un quarto maestro che i tre nomi validi non contengono**: fra le lezioni vive di `cudi`
-l'`istruttore` vale `LoZio` (3), vuoto (2), **`Santiago`** (1) e `Spinazze` (1). ⇒ Rafforza la
-**202**: l'elenco su GitHub non descrive già più i dati.
+🚨🚨 **LA TRAPPOLA DELL'ORDINE, e va letta prima di toccare qualunque cosa: cambiare SOLO le parole
+del bot PEGGIORA 13 lezioni su 15.** Oggi *«con Lucas Vidal»* è **vero**; trasformarlo in *«insieme
+a Lucas Vidal»* lo renderebbe falso al rovescio — dice «allievo» di un maestro. ⇒ Le **parole
+nuove** e il **campo vero** devono atterrare **insieme**, o si scambia una bugia con un'altra.
+📌 *Una cura che sposta l'errore invece di toglierlo passa tutti i banchi: perché i banchi provano
+la riga, non la frase.*
+
+🔨 **LA CATENA È DI QUATTRO STRATI**, e il campo va aggiunto in tutti o si ferma al primo che non
+lo conosce — è la stessa forma della **201**, che di posti dimenticati ne aveva quattro:
+`consumer-player-readmodel` → `ponte.ts` (`compagni: string[]`) → `lascia-partita.ts`
+(`VocePrenotata`) → `gestisci-testi.ts` (`VoceElenco` → `rigaElenco`).
+
+⚖️ **Dichiarazione della scelta, come vuole la delega**: promossa a **urgenti da chi lavora**, lui
+non ne sa ancora niente. **Non scavalca niente** — è entrata al posto della 201, chiusa la stessa
+notte.
+⏳ **Non è iniziata**: c'è la **diagnosi**, non una riga di cura.
+
+🔄 **COSA DICEVA PRIMA QUESTA SCHEDA, e perché è stata corretta invece che affiancata.** Diceva:
+*«il bot presenta come maestro un GIOCATORE della lezione, e il maestro vero non lo nomina
+affatto»*, e dava come prova altri due casi (*«con Renza Lazzarin»*, *«con Paola Tamagnone»*)
+chiamandoli *«identici»*. ⇒ **Quei due NON sono identici al primo**: vengono dal **sync**, dove il
+maestro sta nel roster — quindi lì il nome mostrato può benissimo **essere** il maestro, e la
+scheda li contava come conferme di un difetto che in quel mondo non c'è. ⚠️ E dichiarava due
+candidati per la causa (*«il campo `nome` dello staff_booking, o il secondo nome della
+descrizione»*): **nessuno dei due**, è `compagni`.
+📌 *Tre casi che sembrano lo stesso difetto perché hanno lo stesso aspetto sono la forma in cui una
+diagnosi sbagliata si fa credere: il numero la fa sembrare misurata.*
 
 ### 202 — 👨‍🏫 I MAESTRI SI AGGIUNGONO DA UN FILE SU GITHUB, NON DAL GESTIONALE
 
