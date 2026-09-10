@@ -233,12 +233,35 @@ entra un socio vero la rubrica smette di essere «gente di casa», e questa riga
 where tolto_il is null` — se compare un nome che non è in tabella, quel nome è **fuori**.
 
 📏 **Perché la domanda era nata, e perché era giusta farla** *(misurato il 05/09 prima di
-scrivere)*: gli avvisi ai soci nascono da **cinque** gesti e solo cinque —
-`aggiunto` · `tolto` · `annullata` · `spostata` · `formazione`
-(`supabase/functions/matchpoint-bookings-sync/eventi-staff.ts`). ⇒ **nota, descrizione, durata e
-importo a carico non fanno partire NIENTE**, e sono la strada per provare la catena senza
-disturbare nessuno. E i destinatari qui sopra hanno **chat_id propri** (non il suo) e esiti
-`passato_al_bot` recenti: i messaggi arrivano davvero, non finiscono nel vuoto.
+scrivere)*: gli avvisi ai soci nascevano da **cinque** gesti e solo cinque —
+`aggiunto` · `tolto` · `annullata` · `spostata` · `formazione`. E i destinatari qui sopra hanno
+**chat_id propri** (non il suo) e esiti `passato_al_bot` recenti: i messaggi arrivano davvero,
+non finiscono nel vuoto.
+
+🔄🆕 **CORRETTO IL 10/09/2026 (voce 194 ②): I GESTI SONO SETTE, e la coda di questo paragrafo è
+diventata pericolosa.** Qui c'era scritto che *«nota, descrizione, **durata** e importo a carico
+non fanno partire NIENTE»*, e che quelli erano *«la strada per provare la catena senza
+disturbare nessuno»*. ⇒ **La durata adesso fa partire un avviso**: chi usasse quella riga come
+prima l'ha letta manderebbe un messaggio vero a un telefono vero credendo di non svegliare
+nessuno. 📌 *Una riga che elenca ciò che è innocuo invecchia peggio di una che elenca ciò che è
+pericoloso: la prima si legge per stare tranquilli.*
+
+| | gesto | da cosa nasce |
+|---|---|---|
+| ① | `aggiunto` | il socio è entrato in campo |
+| ② | `tolto` | il socio non c'è più |
+| ③ | `annullata` | la partita non c'è più |
+| ④ | `spostata` | la partita si è mossa |
+| ⑤ | `formazione` | sono cambiati i compagni |
+| ⑥ | 🆕 `durata` | si finisce a un'ora diversa |
+| ⑦ | 🆕 `maestro` | la lezione la tiene un altro |
+
+⇒ Restano **muti** — e sono loro la strada per provare senza disturbare — **nota**,
+**descrizione**, **importo a carico** e la disattivazione/riattivazione di un socio.
+🚨 **E l'elenco si CONTA, non si ricorda**: il `CHECK` su `pmo_eventi_staff` è la fonte
+(`select pg_get_constraintdef(oid) from pg_constraint where conname =
+'pmo_eventi_staff_gesto_check'`). Il giorno in cui ne nasce un ottavo, questa tabella è vecchia
+e quel comando no.
 
 ⚖️ **Cosa NON diventa libero, e va tenuto distinto**: questa riga dice che **quelle persone** si
 possono avvisare, non che gli avvisi ai soci siano diventati liberi. Verso **chiunque altro**
