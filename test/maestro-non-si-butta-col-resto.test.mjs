@@ -65,7 +65,23 @@ const ctx = {
 };
 ctx.safeLoad = (chiave, ripiego) => (chiave in ctx.magazzino ? ctx.magazzino[chiave] : ripiego);
 vm.createContext(ctx);
+// 🏆 VOCE 207 — le funzioni estratte qui sotto non decidono più da sé «è una lezione?»: lo
+//    chiedono alla fonte unica dei tipi (`pmoTipoEngine`, `pmoTipoVuoleMaestro`), che conosce
+//    anche STAGE e TORNEO. ⇒ Vanno nel contesto, o questo banco proverebbe un mondo in cui quelle
+//    funzioni non esistono — ed è quello che è successo: 11 rossi su 11, tutti
+//    `pmoTipoEngine is not defined`.
+// ⚖️ Il banco è stato AGGIORNATO, non allentato: i casi sono gli stessi e le asserzioni identiche.
+const iTabellaTipi = html.indexOf('const PMO_TIPI_PRENOTAZIONE = [');
+const tabellaTipi = html.slice(iTabellaTipi, html.indexOf('];', iTabellaTipi) + 2);
+
 vm.runInContext([
+  tabellaTipi,
+  estrai('pmoTipoScheda'),
+  estrai('pmoTipoEngine'),
+  estrai('pmoTipoVuoleMaestro'),
+  estrai('pmoTipoHaGiocatori'),
+  estrai('pmoTipoEtichetta'),
+  estrai('pmoTipoParola'),
   estrai('staffCalTodayIso'),
   estrai('_staffCalDurMin'),
   estrai('_staffCalSuppressKey'),
