@@ -587,6 +587,25 @@ Deno.serve(async (req: Request) => {
   if (!scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'cancel', cancel }));
     const workerResult = esitoNativo('cancel');
+    /* 🚨⭐⭐ 10/09/2026 (voce 194 ②) — SI LEGGE E SI DICHIARA ANCHE QUI, E PRIMA NON SUCCEDEVA.
+     *
+     * 📏 Trovato misurando il gemello in `bookings-edit` sulla pagina viva di `cudi`: le
+     * dichiarazioni stavano **solo** sui rami che passano dal worker, e su questo gestionale il
+     * worker non si chiama mai. ⇒ Un annullo qui **non lo sapeva nessuno**.
+     * ⛔ Ed è il peggiore dei tre silenzi, per parole di questo stesso progetto: *«è l'unico
+     * messaggio in cui il silenzio manda qualcuno al campo per una partita che non esiste»*.
+     *
+     * 🎯 E questa è la strada che dopo il distacco sarà l'UNICA: un avviso che vive solo sul
+     * ramo del worker muore con Matchpoint, cioè esattamente ciò che la voce 76 esisteva per
+     * evitare — lasciato su metà dei rami.
+     *
+     * 🚨⭐ L'ORDINE NON È UN DETTAGLIO, ed è lo stesso della gemella col worker: si legge PRIMA
+     * di `spegniPartiteNativeSulloSlot`, che è la riga che seppellisce la copia locale. Leggendo
+     * dopo si troverebbe una tomba, e il roster sarebbe vuoto **proprio quando serve** — cioè
+     * nessun destinatario, cioè un annullo che continua a non dirsi.
+     */
+    const primaDelGestoNativo = await rosterPrimaDellAnnullo({ supabaseUrl, supabaseKey, cancel })
+      .catch(() => null);
     let spente = 0;
     try {
       spente = await spegniPartiteNativeSulloSlot({ supabaseUrl, supabaseKey, cancel });
@@ -608,6 +627,10 @@ Deno.serve(async (req: Request) => {
         + 'Non è cambiato niente.',
         { nativa: true, cancel });
     }
+    // 🔔 Adesso che la partita è davvero sparita, lo si dice a chi ci giocava. Sta DOPO il
+    //    `spente === 0` qui sopra di proposito: se non è stato annullato niente non c'è niente
+    //    da annunciare, e un avviso lì sarebbe la bugia che quel controllo esiste per evitare.
+    await dichiaraAnnulloAlSocio({ supabaseUrl, supabaseKey, cancel, prima: primaDelGestoNativo });
     return ok({
       message: `${spente === 1 ? 'La partita è stata tolta' : `${spente} partite sono state tolte`} dal gestionale.`,
       nativa: true,

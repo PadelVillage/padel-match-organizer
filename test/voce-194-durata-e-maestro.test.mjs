@@ -288,3 +288,76 @@ test('🗄️ un titolo libero senza roster non è un roster', async () => {
   const { client } = clienteFinto([titolo]);
   assert.equal(await rosterDaCopiaLocale({ client, data: '2026-09-15', ora: '09:00', campo: 4 }), null);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════
+// 🎯 ⑦ LA STRADA NATIVA DICHIARA — il buco che il banco NON aveva preso
+//
+// 🚨⭐⭐ QUESTO CASO NASCE DA UNA PROVA FISICA ANDATA STORTA, non da una rilettura. Una
+//    modifica vera su `cudi` è passata (`ok: true`, `nativa: true`) e in `pmo_eventi_staff`
+//    non è nato NIENTE: le dichiarazioni stavano tutt'e due le volte **dopo** la chiamata al
+//    worker, e su quel gestionale il worker non si chiama mai.
+// 🎯 E non è un dettaglio di TEST: la strada nativa è quella che dopo il distacco sarà
+//    l'UNICA. Un avviso che vive solo sul ramo del worker muore con Matchpoint — cioè
+//    esattamente ciò che la voce 76 esisteva per evitare, lasciato su metà dei rami.
+// 📌 *Un banco che prova le funzioni non prova le STRADE: queste tre erano tutte giuste, e
+//    non le percorreva nessuno.*
+// ══════════════════════════════════════════════════════════════════════════════════
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const QUI = dirname(fileURLToPath(import.meta.url));
+
+/** 🚨 Senza i commenti: la cura porta accanto a sé un commento che cita il difetto per dire
+ *  che l'ha tolto, e un controllo testuale lo leggerebbe come se fosse ancora vivo. */
+function senzaCommenti(t) {
+  let out = '', i = 0, str = null, prec = '';
+  while (i < t.length) {
+    const c = t[i], n = t[i + 1];
+    if (str) { out += c; if (c === str && prec !== '\\') str = null; prec = (prec === '\\' && c === '\\') ? '' : c; i++; continue; }
+    if (c === '/' && n === '/') { const f = t.indexOf('\n', i); i = f < 0 ? t.length : f; continue; }
+    if (c === '/' && n === '*') { const f = t.indexOf('*/', i + 2); i = f < 0 ? t.length : f + 2; continue; }
+    if (c === '"' || c === "'" || c === '`') str = c;
+    out += c; prec = c; i++;
+  }
+  return out;
+}
+
+/** Il corpo del ramo nativo che REGISTRA: da `esitoNativo(azione)` al suo `return ok(`.
+ *
+ * 🩹⭐ QUESTA FUNZIONE È STATA RIFATTA, e la prima versione era il difetto ② del passaggio di
+ * consegne — *una sonda che guarda più larga del suo bersaglio non è più severa: è sbagliata*.
+ * Ritagliava da `!scritturaAlCircoloConsentita`, che in `cancel` compare **due** volte: la
+ * prima è il ramo ASINCRONO, che non registra niente e si limita a rifiutare. Il perimetro
+ * prendeva quello, correva fino a un `return ok(` lontanissimo, e falliva su una cura che c'era.
+ * ⇒ Si àncora sul **blocco** — `esitoNativo(azione)` è la riga che identifica il ramo che
+ * scrive davvero — non sulla distanza. */
+function ramoNativo(nudo, azione) {
+  const da = nudo.indexOf(`esitoNativo('${azione}')`);
+  assert.ok(da > 0, `il ramo nativo di ${azione} non si trova più: il perimetro va rifatto`);
+  const a = nudo.indexOf('return ok({', da);
+  assert.ok(a > da, 'il ramo nativo non ha un `return ok(`');
+  return nudo.slice(da, a);
+}
+
+test('🎯 la strada NATIVA di `edit` dichiara tutt\'e tre le cose al socio', () => {
+  const nudo = senzaCommenti(readFileSync(join(QUI, '..', 'supabase/functions/matchpoint-bookings-edit/index.ts'), 'utf8'));
+  const ramo = ramoNativo(nudo, 'edit');
+  for (const f of ['rosterPrimaDelloSpostamento', 'dichiaraSpostamentoAlSocio', 'dichiaraCambioRosterAlSocio', 'dichiaraCambioMaestroAlSocio']) {
+    assert.ok(ramo.includes(f), `la strada nativa non chiama ${f}: su questo gestionale nessuno lo dice al socio`);
+  }
+});
+
+test('🎯 e quella di `cancel` pure — ed è il silenzio che costa di più', () => {
+  const nudo = senzaCommenti(readFileSync(join(QUI, '..', 'supabase/functions/matchpoint-bookings-cancel/index.ts'), 'utf8'));
+  const ramo = ramoNativo(nudo, 'cancel');
+  assert.ok(ramo.includes('dichiaraAnnulloAlSocio'),
+    'un annullo che non si dice manda qualcuno al campo per una partita che non esiste');
+  // 🚨⭐ L'ORDINE: il roster si legge PRIMA della riga che seppellisce la copia locale. Leggendo
+  //    dopo si troverebbe una tomba, cioè zero destinatari — un annullo che continua a non dirsi.
+  const iLettura = ramo.indexOf('rosterPrimaDellAnnullo');
+  const iTomba = ramo.indexOf('spegniPartiteNativeSulloSlot');
+  assert.ok(iLettura > 0 && iTomba > 0, 'il ramo nativo non ha più le due chiamate');
+  assert.ok(iLettura < iTomba, 'si legge DOPO aver seppellito la copia: il roster sarebbe vuoto');
+});

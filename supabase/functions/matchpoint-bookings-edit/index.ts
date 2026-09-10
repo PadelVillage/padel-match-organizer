@@ -810,6 +810,27 @@ Deno.serve(async (req: Request) => {
   if (!readOnly && !scritturaAlCircoloConsentita(supabaseUrl)) {
     console.warn(JSON.stringify({ event: 'scrittura_nativa', azione: 'edit', edit }));
     const workerResult = esitoNativo('edit');
+    /* 🚨⭐⭐ 10/09/2026 (voce 194 ②) — SI LEGGE E SI DICHIARA ANCHE QUI, E PRIMA NON SUCCEDEVA.
+     *
+     * 📏 IL BUCO, misurato sulla pagina viva di `cudi` e non dedotto: una modifica vera è
+     * passata (`ok: true`, `nativa: true`) e in `pmo_eventi_staff` **non è nato niente**. Le tre
+     * dichiarazioni stavano tutt'e due le volte **dopo** la chiamata al worker — e su questo
+     * gestionale il worker non si chiama mai, perché `scritturaAlCircoloConsentita` è cablata
+     * sul ref di PROD.
+     * ⇒ Su `cudi` `spostata`, `formazione`, `durata` e `maestro` da una modifica **non li
+     * diceva nessuno**, e non lo diceva nessun errore.
+     *
+     * 🎯 E NON È UN CASO DI TEST: questa è la strada che dopo il distacco sarà **l'unica**. Un
+     * avviso che vive solo sul ramo del worker è un avviso che muore con Matchpoint — cioè
+     * esattamente ciò che la voce 76 esisteva per evitare, lasciato su metà dei rami.
+     * 📌 *È la 194 ① al terzo piano: una strada che copre un buco non lo chiude, lo nasconde
+     * finché non si spegne.*
+     *
+     * ⚖️ Si legge PRIMA di registrare, come sulle gemelle: la regola del 22/08 vuole il roster
+     * di prima e la dichiarazione dopo la conferma — e qui la conferma è la scrittura nostra.
+     */
+    const primaDelGestoNativo = await rosterPrimaDelloSpostamento({ supabaseUrl, supabaseKey, edit })
+      .catch(() => null);
     try {
       await saveStaffEditRecord({ supabaseUrl, supabaseKey, actor, edit, workerResult });
     } catch (dbErr) {
@@ -818,6 +839,11 @@ Deno.serve(async (req: Request) => {
       console.error(JSON.stringify({ event: 'scrittura_nativa_fallita', error: errorText(dbErr) }));
       return err(503, CODICE_AMBIENTE_DI_PROVA, MESSAGGIO_AMBIENTE_DI_PROVA, { avrebbe_scritto: edit });
     }
+    // 🔔 Adesso che la modifica è registrata, la si dice a chi ci gioca. Best-effort e muta
+    //    nei guasti, come le gemelle: la scrittura è già andata.
+    await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo });
+    await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo, workerResult });
+    await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo });
     return ok({
       message: 'Modifica registrata.',
       nativa: true,
