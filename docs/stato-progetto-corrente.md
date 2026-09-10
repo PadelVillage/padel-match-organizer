@@ -286,6 +286,23 @@ Nota precedente v5.440: TEST e PROD app erano allineati a v5.440. La promozione 
 
 Nota Supabase PROD 2026-05-16 23:24: ricevuto comando esplicito `PROMUOVI PROD`, e' stata applicata solo la migrazione idempotente `supabase/migrations/20260516204711_pmo_post_match_feedback_no_pin_schema.sql` sul project ref PROD `qqbfphyslczzkxoncgex`, gia preparata e testata in TEST al commit `467f536`. Stato verificato dopo applicazione: `post_match_feedback_tokens` e `post_match_feedback_responses` esistono; RPC `upsert_post_match_feedback_tokens_admin`, `submit_post_match_feedback_public` e `get_post_match_feedback_by_tokens` presenti; `upsert_post_match_feedback_tokens_admin('[]'::jsonb)` restituisce `AUTH_REQUIRED` e non errore relazione; `get_post_match_feedback_by_tokens(array[]::text[])` restituisce 0 righe. Non sono stati modificati app HTML, Edge Function, scheduler, segreti, Gmail, WhatsApp, Matchpoint o dati reali; `cron.job` PROD contiene ancora solo `pmo-data-routines-dispatcher-prod`.
 
+## 🎭 Cosa è cambiato il 10/09 NOTTE (115ª) e NON si vede dalla versione dell'app
+
+🚨 **`APP_VERSION` è ferma a 6.440 su TEST e a 6.397 su PROD, e non è un dimenticanza**: la voce
+**205** vive tutta **fuori da `index.html`** — in una tabella, in una edge e nel bot.
+
+| dove | cosa |
+|---|---|
+| **database di TEST** (`cudi`) | 🆕 tabella **`pmo_maestri`** + RPC `pmo_get_maestri` / `pmo_set_maestri` (migrazione `20260911000000`). Lega il **codice** del maestro (`Spinazze`) alla **persona** (`Gianluca Spinazzè`): il dato che non esisteva da nessuna parte, e senza il quale il maestro è indistinguibile da un allievo. Seme misurato, 3 righe. |
+| **edge `consumer-player-readmodel`** (su `cudi`, run #368) | 🆕 modulo `maestro-della-lezione.ts` + tre campi nuovi in uscita — `istruttore` (la persona), `istruttore_sono_io`, `allievi` (i compagni **meno** il maestro). `compagni` esce **identico**: lo leggono mezza dozzina di punti del bot che con questa frase non c'entrano. |
+| **bot** (`c2464d6`, deployato sul **bot di PROVA**) | 🆕 `chi-tiene-la-lezione.ts` — la regola in **un posto solo**, letta dai **due** lettori che scrivono quella frase: `rigaElenco` (l'elenco a bottoni) e `tools/prenotazioni.ts`, che la consegna **già fatta** al modello invece degli ingredienti. |
+
+📏 **Provata sul vivo di `cudi`** col collaudo-conversazione (gestionale vero, solo il filo di
+Telegram finto): come **maestro** *«(lezione con Marco Aprea)»* → *«(lezione **che tieni tu**, con
+Marco Aprea)»* su 8 lezioni, con le **2 partite invariate**; come **allievo** *«Lezione con Maurizio
+Aprea»*, cioè il maestro e non un compagno.
+⛔ **Il bot dei SOCI non è stato toccato**: punta a PROD ed è rimasto al commit di prima.
+
 ## 🕰️ Cosa è cambiato il 18/08 e NON si vede dalla versione dell'app
 
 🚨 **Le versioni qui sopra non si sono mosse, e il sistema sì.** La **voce 59** è stata chiusa senza
