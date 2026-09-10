@@ -20,6 +20,15 @@ import { livelloDimostrato } from './livello-dimostrato.ts';
 // 🗓️ voce 177 — gli orari che il bot RACCONTA vengono dalla stessa tabella su cui
 // l'app fa prenotare. Il perché sta per esteso in `fasce-prenotabili.ts`.
 import { grigliaDalCalendario } from './fasce-prenotabili.ts';
+// 🎭 Voce 205 — chi TIENE la lezione, distinto da chi la subisce. La regola sta nel modulo
+// (dove il banco la carica) e non qui: `index.ts` chiama `Deno.serve` appena importato, quindi
+// tutto ciò che resta in questo file è codice che nessuna prova può attraversare.
+import {
+  allieviSenzaIlMaestro,
+  ilMaestroSonoIo,
+  nomeDelMaestro,
+  type Maestro,
+} from './maestro-della-lezione.ts';
 /* 🆕🔓 VOCE 88 (01/09/2026) — le regole delle «Partite Aperte», nello STESSO modulo che usa
  * `consumer-booking-write` per ammettere. Se le due copie divergessero, questa vetrina
  * mostrerebbe partite in cui poi il gestionale non fa entrare — e il socio non leggerebbe
@@ -743,6 +752,21 @@ Deno.serve(async (req: Request) => {
    * vuol dire che il circolo ha parlato.
    */
   const soloCopieNostreByKey = new Map<string, boolean>();
+  /**
+   * 🎭⭐ VOCE 205 — il CODICE del maestro di questo slot, così come lo scrive il circolo.
+   *
+   * ⚠️ Sta in una mappa a parte e NON dentro `byKey`, ed è una differenza che si paga in
+   * silenzio: `byKey` la riempie il **primo** record vinto (`if (byKey.has(key)) continue`), e
+   * 📏 misurato il 10/09 su `cudi` i record di uno stesso slot NON portano tutti l'istruttore —
+   * le righe `booking` gemelle si alternano fra il codice e `null`. ⇒ Mettendolo in `byKey` il
+   * maestro sarebbe sparito o no **a seconda di quale copia arriva prima**, cioè in modo
+   * irriproducibile: la stessa lezione con e senza maestro a giri diversi.
+   * ⇒ Qui vince il PRIMO NON VUOTO, che è la domanda giusta — «di questo slot, qualcuno ha detto
+   * chi lo tiene?».
+   * 📌 Un campo che manca su metà delle copie di una stessa cosa non è un campo mancante:
+   * è un campo che va cercato su tutte.
+   */
+  const istruttoreByKey = new Map<string, string>();
   const order: string[] = [];
 
   for (const row of bookingRows ?? []) {
@@ -820,6 +844,12 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 🎭 Voce 205 — il maestro si accumula PRIMA dello scarto dei gemelli, perché è proprio nei
+    // gemelli che a volte sta (vedi il commento su `istruttoreByKey`). Primo non vuoto: chi è
+    // arrivato prima ha già risposto alla domanda, e riscriverlo non aggiungerebbe niente.
+    const istruttore = clean(p.istruttore);
+    if (istruttore && !istruttoreByKey.has(key)) istruttoreByKey.set(key, istruttore);
+
     if (byKey.has(key)) continue;
     byKey.set(key, {
       data,
@@ -876,49 +906,102 @@ Deno.serve(async (req: Request) => {
     for (const row of apertureRows ?? []) aperteMie.add(clean(row.local_key));
   }
 
-  const bookings: JsonMap[] = order.map((key) => ({
-    ...(byKey.get(key) as JsonMap),
-    compagni: compagniDelloSlot(listeByKey.get(key) ?? [], nameVariants, MAX_COMPAGNI),
-    // ⭐ L'elenco NELL'ORDINE della scheda, socio compreso: da qui si legge chi ha
-    // organizzato (il primo). `compagni` non basta — è l'elenco meno il socio, quindi la
-    // posizione del socio è persa. La REGOLA non sta qui: il ponte porta il DATO, il bot
-    // applica la regola (una sola implementazione per parte, non una terza copia).
-    // ⚠️ Nessun dato personale in più dei `compagni`: gli stessi nomi, più quello del socio
-    // stesso, che sta già in `member.name`.
-    ...(() => {
-      // ⭐⭐ Voce 71 — `giocatori: []` diceva DUE cose diverse: «il circolo non ha ancora
-      // raccontato la sua scheda» e «l'ordine non si sa». Il bot, non potendole distinguere,
-      // sceglieva la peggiore e diceva a chi aveva appena prenotato *«questa partita non l'hai
-      // organizzata tu»*, mandandolo **da sé stesso**. Ora il perché esce insieme al dato.
-      // ⚠️ `giocatori` non cambia forma né significato: `ordine` si AGGIUNGE, così un bot più
-      // vecchio di questa funzione continua a leggere quello che leggeva.
-      const o = ordineDelloSlot(schedeByKey.get(key) ?? [], soloCopieNostreByKey.get(key) ?? false);
-      // 🆕👀⭐⭐ VOCE 91 (24/08) — `in_campo`: CHI c'è, anche quando l'ORDINE non si sa.
-      // 🗣️ Suo: *«se il gestionale ha detto che è prenotata, la prenotazione già c'è: è un fatto
-      // interno nostro»*. ⇒ Nella finestra fra la conferma e il sync (misurata **2′56″** sul suo
-      // caso del 24/08) `giocatori` è vuoto perché manca la scheda del circolo — ma i nomi la
-      // copia locale ce li ha, e il bot diceva *«non riesco a leggere chi c'è in campo»* di una
-      // partita che avevamo scritto noi trenta secondi prima.
-      // ⚖️ Si AGGIUNGE e non sostituisce: `giocatori` resta l'elenco ORDINATO, che è quello da
-      // cui il bot ricava chi ha organizzato. Riempirlo con una lista senza ordine gli farebbe
-      // incoronare il primo nome che capita — vedi il commento su `inCampoDelloSlot`.
-      // ⭐ Si compone dalle liste GIÀ raccolte per i compagni (`listeByKey`), che sono le stesse
-      // di questa partita: nessuna seconda lettura, nessuna seconda regola di fusione.
-      const inCampo = inCampoDelloSlot(listeByKey.get(key) ?? [], MAX_COMPAGNI + 1);
-      return { giocatori: o.giocatori, ordine: o.ordine, in_campo: inCampo };
-    })(),
-    // ⏱️ Quando questo roster è stato aggiornato l'ultima volta. Serve a chi tiene una memoria
-    // a tempo di ciò che ha appena fatto (il bot) per sapere se il dato che sta leggendo è più
-    // recente del proprio ricordo — cioè se qualcun altro è intervenuto dopo di lui.
-    // ⚠️ `null` quando nessuna riga porta l'istante: chi legge deve trattarlo come «non lo so»
-    // e tenersi il ricordo, che è il verso prudente (nasconde per qualche minuto in più,
-    // invece di mostrare qualcuno che è stato tolto davvero).
-    aggiornato_al: frescoByKey.get(key) ?? null,
-    /* 🆕🔓 VOCE 88 — vero se questa partita è aperta ad altri giocatori.
-     * ⚠️ Si AGGIUNGE e non cambia niente di quello che c'era: un bot più vecchio di questa
-     * funzione continua a leggere esattamente ciò che leggeva. */
-    aperta: aperteMie.has(key),
-  }));
+  /* 🎭⭐⭐ VOCE 205 — I MAESTRI, letti dal gestionale e non conosciuti dal bot.
+   *
+   * ⭐ È il pezzo che rende possibile la cura: il campo `istruttore` porta un CODICE del circolo
+   * (`Spinazze`) e il roster porta la PERSONA (`Gianluca Spinazzè`). Senza questa tabella i due
+   * non si legano, e il maestro resta indistinguibile da un allievo — che è il difetto.
+   * 📏 Misurato il 10/09 sul vivo di `cudi`: con questa tabella il maestro si riconosce dentro
+   * il roster in **93 lezioni su 93**, e nessun codice resta senza persona.
+   *
+   * ⚖️ Si legge QUI e non nel bot per la regola ferrea del 19/08 — *il gestionale SA, il bot
+   * DICE*: il bot riceve il nome già risolto, non sa che `pmo_maestri` esista, e il giorno in cui
+   * i maestri cambiano forma **non si tocca**.
+   *
+   * ⛔ Un errore NON fa fallire la risposta, ed è il verso giusto: senza maestri l'elenco delle
+   * prenotazioni esce comunque e le lezioni tornano a dire quello che dicevano prima di questa
+   * voce. Si perde una frase migliore, non le prenotazioni.
+   * 🚨 E si legge con la chiave di SERVIZIO: `pmo_maestri` ha la RLS accesa senza policy, e la
+   * porta per lo staff sono le due RPC. Questa è un'altra strada, di sola lettura. */
+  let maestri: Maestro[] = [];
+  if (order.length) {
+    const { data: maestriRows, error: maestriErr } = await service
+      .from('pmo_maestri')
+      .select('codice, nome')
+      .eq('attivo', true)
+      .limit(200);
+    if (maestriErr) console.error('[readmodel] maestri non letti (voce 205):', maestriErr.message);
+    maestri = (maestriRows ?? []).map((r) => ({ codice: clean(r.codice), nome: clean(r.nome) }));
+  }
+
+  const bookings: JsonMap[] = order.map((key) => {
+    const compagni = compagniDelloSlot(listeByKey.get(key) ?? [], nameVariants, MAX_COMPAGNI);
+    // 🎭 Voce 205 — chi tiene la lezione, risolto UNA volta e riusato dalle tre uscite qui sotto.
+    const maestro = nomeDelMaestro(istruttoreByKey.get(key), maestri);
+    return {
+      ...(byKey.get(key) as JsonMap),
+      compagni,
+      // ⭐ L'elenco NELL'ORDINE della scheda, socio compreso: da qui si legge chi ha
+      // organizzato (il primo). `compagni` non basta — è l'elenco meno il socio, quindi la
+      // posizione del socio è persa. La REGOLA non sta qui: il ponte porta il DATO, il bot
+      // applica la regola (una sola implementazione per parte, non una terza copia).
+      // ⚠️ Nessun dato personale in più dei `compagni`: gli stessi nomi, più quello del socio
+      // stesso, che sta già in `member.name`.
+      ...(() => {
+        // ⭐⭐ Voce 71 — `giocatori: []` diceva DUE cose diverse: «il circolo non ha ancora
+        // raccontato la sua scheda» e «l'ordine non si sa». Il bot, non potendole distinguere,
+        // sceglieva la peggiore e diceva a chi aveva appena prenotato *«questa partita non l'hai
+        // organizzata tu»*, mandandolo **da sé stesso**. Ora il perché esce insieme al dato.
+        // ⚠️ `giocatori` non cambia forma né significato: `ordine` si AGGIUNGE, così un bot più
+        // vecchio di questa funzione continua a leggere quello che leggeva.
+        const o = ordineDelloSlot(schedeByKey.get(key) ?? [], soloCopieNostreByKey.get(key) ?? false);
+        // 🆕👀⭐⭐ VOCE 91 (24/08) — `in_campo`: CHI c'è, anche quando l'ORDINE non si sa.
+        // 🗣️ Suo: *«se il gestionale ha detto che è prenotata, la prenotazione già c'è: è un fatto
+        // interno nostro»*. ⇒ Nella finestra fra la conferma e il sync (misurata **2′56″** sul suo
+        // caso del 24/08) `giocatori` è vuoto perché manca la scheda del circolo — ma i nomi la
+        // copia locale ce li ha, e il bot diceva *«non riesco a leggere chi c'è in campo»* di una
+        // partita che avevamo scritto noi trenta secondi prima.
+        // ⚖️ Si AGGIUNGE e non sostituisce: `giocatori` resta l'elenco ORDINATO, che è quello da
+        // cui il bot ricava chi ha organizzato. Riempirlo con una lista senza ordine gli farebbe
+        // incoronare il primo nome che capita — vedi il commento su `inCampoDelloSlot`.
+        // ⭐ Si compone dalle liste GIÀ raccolte per i compagni (`listeByKey`), che sono le stesse
+        // di questa partita: nessuna seconda lettura, nessuna seconda regola di fusione.
+        const inCampo = inCampoDelloSlot(listeByKey.get(key) ?? [], MAX_COMPAGNI + 1);
+        return { giocatori: o.giocatori, ordine: o.ordine, in_campo: inCampo };
+      })(),
+      // ⏱️ Quando questo roster è stato aggiornato l'ultima volta. Serve a chi tiene una memoria
+      // a tempo di ciò che ha appena fatto (il bot) per sapere se il dato che sta leggendo è più
+      // recente del proprio ricordo — cioè se qualcun altro è intervenuto dopo di lui.
+      // ⚠️ `null` quando nessuna riga porta l'istante: chi legge deve trattarlo come «non lo so»
+      // e tenersi il ricordo, che è il verso prudente (nasconde per qualche minuto in più,
+      // invece di mostrare qualcuno che è stato tolto davvero).
+      aggiornato_al: frescoByKey.get(key) ?? null,
+      /* 🆕🔓 VOCE 88 — vero se questa partita è aperta ad altri giocatori.
+       * ⚠️ Si AGGIUNGE e non cambia niente di quello che c'era: un bot più vecchio di questa
+       * funzione continua a leggere esattamente ciò che leggeva. */
+      aperta: aperteMie.has(key),
+      /* 🎭⭐⭐ VOCE 205 — LE TRE COSE CHE SERVONO PER NON MENTIRE SU UNA LEZIONE.
+       *
+       * ⚠️ Si AGGIUNGONO e non cambiano niente di quello che c'era: `compagni` esce identico a
+       * prima, e un bot più vecchio di questa funzione continua a leggere ciò che leggeva. È la
+       * stessa scelta già fatta per `ordine` (voce 71), `in_campo` (voce 91) e `aperta` (voce 88).
+       * 🚨 E NON è una precauzione formale: `compagni` è letto da mezza dozzina di punti del bot
+       * che con questa frase non c'entrano — quanti sono in campo, «X resta in campo» quando
+       * qualcuno esce, i conteggi dei promemoria. Togliergli il maestro avrebbe cambiato tutti
+       * quei numeri di uno, in silenzio, per sistemare una frase.
+       *
+       * · `istruttore`         — la PERSONA che tiene la lezione, o `null` se non si sa. `null`
+       *                          vuol dire «lascia la frase com'era»: mai un nome indovinato.
+       * · `istruttore_sono_io` — 📏 vale 18 lezioni su 93: il maestro è anche un utente del bot, e
+       *                          senza questo campo si sentirebbe dire che prende lezione da sé.
+       * · `allievi`            — i compagni MENO il maestro. Su una partita è uguale a `compagni`
+       *                          (nessun maestro da togliere), e va bene così: chi legge guarda
+       *                          `lezione`, non la differenza fra i due elenchi. */
+      istruttore: maestro,
+      istruttore_sono_io: ilMaestroSonoIo(maestro, nameVariants),
+      allievi: allieviSenzaIlMaestro(compagni, maestro),
+      };
+  });
   bookings.sort((a, b) =>
     `${a.data} ${a.ora}`.localeCompare(`${b.data} ${b.ora}`));
 
