@@ -1522,7 +1522,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** — 🔁 **10/09/2026 notte, 116ª: ESCE la 202 e non entra niente.** La **202** è **chiusa a prova fisica sulla pagina viva di `cudi`**: il pannello **Maestri** (Impostazioni → Dati, passo 7) esiste, e un maestro aggiunto **dai suoi campi** è comparso nella **scheda che si apre dal calendario** — *«Gianluca Spinazzè»* al posto di *«Spinazze»*, col codice ancora come valore. 🚨 **E i lettori non erano tre ma SETTE**: per questo la cura è **un solo punto di scrittura** invece di sette ritocchi. ⛔ **Resta solo la 198** (Incassi ↔ pagamenti dalla scheda, messa qui **da lui**, e **ferma su tre decisioni sue**: se il *torneo* sia un tipo nuovo, se una **ricarica** debba comparire in Incassi, e se il collegamento sia una **navigazione** o una **riconciliazione**). 📌 *Una lista a uno mentre la 198 aspetta lui non è una lista vuota: è una lista che aspetta una risposta.* |
+| 🔴 **Urgenti** | **2** — 🆙 **10/09/2026 notte, 116ª: ENTRA la 207, da due sue parole.** 🗣️ *«Il torneo è un modo di chiamare una prenotazione»* + *«una voce che manca… si chiama **stage**»* ⇒ **Torneo** e **Stage** devono potersi scegliere quando si prenota: 📏 oggi «Torneo» c'è ma è **spento** (`disabled:true`) e «Stage» non c'è affatto. ✅ **E la domanda sul maestro l'ha già risposta**: il **torneo** somiglia a una *prenotazione* (niente maestro), lo **stage** a una *lezione* (maestro sì) ⇒ `engine` diverso, e `tipo` che **non** coincide con l'engine, o uno stage si sentirebbe chiamare «lezione». 🚨 Il lavoro vero non sono le due righe: è che 📏 `hasPlayers` confronta i tipi in modo **esatto** ⇒ le due righe da sole darebbero uno stage **senza maestro**, l'opposto di quanto chiesto. — La **198** resta, e delle sue tre decisioni **ne ha prese due** (il torneo è una prenotazione; la **ricarica non entra in Incassi**, e 📏 è **già** il comportamento di oggi): aspetta solo la scelta fra **navigazione** e **riconciliazione**, spiegata nella scheda. 📌 *Una lista che cresce perché lui ha risposto non è una lista che peggiora: è una lista che si è sbloccata.* |
 | 📋 **In coda** | **8** — invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
 | 📦 **Chiuse** | **191** — 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
@@ -1750,7 +1750,7 @@ INSERT di verifica stavano in **transazioni annullate**: verificato dopo, 0 resi
 
 ---
 
-## 🔴 URGENTI — 1
+## 🔴 URGENTI — 2
 
 🆕 **08/09/2026, 100ª sessione: la lista torna da 0 a 4, e non sono idee di fine giornata.** Tre
 nascono da **misure** fatte guardando il codice (177 · 178 · 179), una dalla misura più pesante di
@@ -1806,16 +1806,124 @@ incassato il doppio». ⇒ *«collegare»* non vuol dire «sommare»: vuol dire 
 alla riga giusta, e che ogni riga si sa **da dove viene**.
 📌 *Due libri si collegano con un rimando, non versandoli l'uno nell'altro.*
 
-⛔ **COSA VA DECISO DA LUI PRIMA DI SCRIVERE CODICE, e non si indovina:**
-· **il torneo non esiste**: va creato come tipo, o «torneo» è un modo di chiamare una prenotazione?
-  Sono due lavori di taglia molto diversa;
-· una **ricarica** deve comparire in Incassi? Se sì **come** — voce a parte, o solo un rimando?
-· il collegamento è una **navigazione** (dalla scheda ci si arriva) o una **riconciliazione** (i due
-  elenchi si quadrano)? La seconda è il lavoro grosso.
+🔄✅ **DUE DELLE TRE DECISIONI LE HA PRESE IL 10/09/2026 NOTTE. Qui sotto c'erano tre domande
+aperte: ne resta UNA.**
+
+① 🗣️ *«Il torneo è un modo di chiamare una prenotazione.»*
+⇒ **NON si crea un tipo di record nuovo.** Un torneo è una `booking` con un nome diverso, come una
+lezione. ⚖️ Taglia del lavoro: quella piccola delle due — e si è portata dietro un secondo nome (⇒ la
+**207**, sotto).
+
+② 🗣️ *«la ricarica del borsellino non deve comparire nell'incasso giornaliero perché poi comparirà
+quando verrà scalato per giocare una partita oppure fare una lezione oppure un torneo.»*
+⇒ **L'incasso nasce quando il credito si SPENDE, non quando si carica.**
+📏 **E MISURATO IL 10/09: è già il comportamento di oggi, non un lavoro da fare.** La ricarica è un
+`wallet_txn` (6 righe su `cudi`) e `_incassiFetch` legge **solo** i `payment` ⇒ non la vede. Lo scalo
+è un `payment` con `method: 'wallet'` (67 righe, 751,00 €) ⇒ la vede. **Non c'è da costruirlo: c'è da
+non romperlo.**
+🩹 **E una riga di questa scheda era FALSA, corretta nello stesso giro**: diceva che *«Incassi scarta
+tutto ciò che non ha `source === PMO_CASSA_SOURCE`»*. 📏 `_incassiFetch` **non filtra la fonte
+affatto** — legge tutti i `payment`. Quel filtro esiste, ma in due altri posti e per due altri
+mestieri: il **peso sul borsellino** (`_pmoWalletPesoRiga`) e **quali righe si possono stornare**.
+📌 *Una riga che attribuisce a una funzione il filtro di un'altra non è imprecisa: manda a cercare la
+cura nel posto sbagliato.*
+
+⛔ **LA DECISIONE CHE RESTA, ed è l'unica — il collegamento è una NAVIGAZIONE o una
+RICONCILIAZIONE?** 🗣️ Sua richiesta del 10/09: *«Spiegami meglio»* ⇒ spiegata, e la differenza non è
+di grado ma **di categoria**:
+
+| | cosa fa | se sbaglia | costo |
+|---|---|---|---|
+| 🚪 **navigazione** | dalla scheda si **arriva** ai pagamenti, e dalla riga di Incassi si torna alla scheda | apre la pagina sbagliata: te ne accorgi subito | **poco** |
+| ⚖️ **riconciliazione** | sa **quanto doveva entrare**, vede quanto è entrato, e dice la **differenza** (*«mancano 16 €: Tizio»*) | **accusa una persona** che aveva pagato | **molto** |
+
+🚨⭐⭐ **IL RISCHIO NON È SIMMETRICO, ed è questo che decide.** Un conto che mente è **peggio di
+nessun conto**: chi lo legge ci crede e va a chiedere i soldi a chi li ha già dati.
+📏 **E il «dovuto» oggi non c'è**: delle **256** prenotazioni vive solo **14** portano gli importi ⇒
+una riconciliazione costruita adesso giudicherebbe col 94% dei dati mancanti, e direbbe *«non
+pagato»* quasi sempre, **sbagliando**.
+⭐ **Quello che invece c'è già**: la scheda ha la sezione *«Giocatori e pagamenti»* con lo stato
+**persona per persona**, e ha già il **terzo stato** (`_statoIgnoto`) — *non lo so*. ⇒ Se un giorno
+si fa il giudice, vuole **tre** esiti e non due, o chiamerebbe «non pagato» ciò che è solo «non
+letto»: è la trappola della regola sull'età (voce 111) un'altra volta.
+📌 **Proposta dichiarata** *(si può ribaltare)*: ① le **porte** nei due versi, ② l'**importo a carico
+nativo** che riempie il «dovuto» (già previsto, 188/B), ③ **poi** il giudice, quando ha su cosa
+giudicare. *La riconciliazione non è scartata: è messa dopo la cosa che la rende possibile.*
 
 ⚖️ **Dichiarazione della scelta, come vuole la delega**: sta fra le **urgenti** perché ce l'ha messa
 lui (*«metti in urgenti»*) e **non scavalca niente** — la lista era a zero dopo la chiusura della
 196. ⏳ **Non è iniziata: non è stata scritta una riga.**
+
+### 207 — 🏆 «TORNEO» E «STAGE»: DUE NOMI DI PRENOTAZIONE CHE NON SI POSSONO SCEGLIERE
+
+🆕 *Entrata il 10/09/2026 notte, 116ª sessione — **da due sue parole**, date una dopo l'altra:*
+
+> 🗣️ *«Il torneo è un modo di chiamare una prenotazione.»*
+> 🗣️ *«Ho anche una voce che manca e dovremmo aggiungere che si chiama **stage**.»*
+
+🎯 **Cosa chiede**: che **Torneo** e **Stage** si possano scegliere quando si prenota, come si
+sceglie Partita o Lezione. Non sono record nuovi — l'ha detto lui: sono **nomi** di una
+prenotazione.
+
+📏 **DOV'È OGGI, misurato e non ricordato** (`index.html:52053-52056`): i tipi nella scheda di
+creazione sono **quattro**, e il quarto è **spento**:
+```
+{ key:'Partita',      engine:'partita',      tipo:'partita' },
+{ key:'Lezione',      engine:'lezione',      tipo:'lezione' },
+{ key:'Manutenzione', engine:'manutenzione', tipo:'manutenzione' },
+{ key:'Torneo',       engine:null, tipo:null, disabled:true }      ← spento
+```
+⇒ **«Torneo» c'è ma non si può premere**, e **«Stage» non c'è affatto**. ⚖️ Con la sua decisione il
+lavoro non è «creare un tipo»: è dare a questi due un `engine` e un `tipo`, cioè dire **a quale
+motore somigliano**.
+
+✅⭐⭐ **LA DOMANDA È GIÀ RISPOSTA — gliel'ho chiesta e ha risposto nello stesso giro** *(10/09/2026
+notte)*. Era: *un torneo e uno stage hanno un maestro, come una lezione, o no, come una partita?*
+
+> 🗣️ *«Anche lo stage È un tipo di prenotazione come la **lezione** solo con un nome diverso.»*
+
+⇒ **I due non somigliano alla stessa cosa**, e questa è l'informazione che serviva:
+
+| | somiglia a | vuole il maestro? |
+|---|---|---|
+| **Torneo** | una **prenotazione** (*«un modo di chiamare una prenotazione»*) | ❌ no |
+| **Stage** | una **lezione** (*«come la lezione, solo con un nome diverso»*) | ✅ **sì** |
+
+⭐⭐ **E LA FORMA GIUSTA È GIÀ NEL CODICE, NON VA INVENTATA.** 📏 Ogni tipo nella scheda di creazione
+porta **tre** campi, e servono esattamente a questo: `{ key, engine, tipo }` — la **key** è la parola
+che si legge, l'**engine** è il **macchinario** (chi chiede il maestro, chi tiene il roster), il
+**tipo** è ciò che **resta scritto**. ⇒ Le due righe nuove si scrivono da sé:
+```
+{ key:'Torneo', engine:'partita', tipo:'torneo' },
+{ key:'Stage',  engine:'lezione', tipo:'stage'  },
+```
+⚖️ **Perché `engine` e `tipo` NON devono coincidere, ed è il punto**: con `tipo:'lezione'` uno stage
+sarebbe **indistinguibile** da una lezione — e il socio si sentirebbe dire *«Lezione con X»* per uno
+stage. Con `engine:'lezione'` lo stage **eredita il macchinario** (il maestro, il roster, il Salva che
+rifiuta senza maestro — voce 201) e con `tipo:'stage'` **si chiama col suo nome**. 📌 *Il macchinario
+si eredita, il nome no.*
+
+🚨⭐⭐ **E IL LAVORO VERO NON È AGGIUNGERE LE DUE RIGHE: È I POSTI CHE ENUMERANO I TIPI.**
+📏 Misurato: `hasPlayers = ['partita','lezione'].includes(tipoR)` è un confronto **ESATTO** ⇒ con
+`tipo:'stage'` quella riga dice **false**, e una scheda senza `hasPlayers` **non disegna né i
+giocatori né il selettore del maestro**. Cioè: le due righe nuove, da sole, darebbero uno stage
+**senza maestro** — l'opposto di quello che ha chiesto.
+📌 *Un tipo nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo LEGGE* — ed è
+letteralmente la lezione della 201, che si è rotta in **tre** punti che enumeravano i gesti, **nessuno
+raggiungibile dal banco**.
+
+⚠️ **E i posti che enumerano i tipi vanno cercati TUTTI prima di toccarne uno**: la 201 ha pagato
+esattamente questo — tre punti della edge che elencavano i gesti e non sapevano del nuovo, **nessuno
+raggiungibile dal banco**. Lo stesso vale qui per `tipoNorm`/`origTipoNorm`, per `hasPlayers`
+(📏 `['partita','lezione']`, confronto **esatto**: un `tipo` nuovo non entra da sé) e per il parser.
+
+⚖️ **Dichiarazione della scelta, come vuole la delega**: promossa a **urgenti** da chi lavora, non da
+lui (lui ha detto *«dovremmo aggiungere»*). Il perché: ① la **198** ha bisogno che il torneo **esista**
+per poterci arrivare da una scheda, quindi questa le sta davanti; ② la **198** è ferma su una
+decisione sua, questa **no** — le due decisioni che la riguardavano le ha già prese. **Scavalca** la
+198, che aspetta una risposta. Si può ribaltare.
+
+⏳ **Non è iniziata: non è stata scritta una riga.**
 
 ## 📋 IN CODA — 8
 
