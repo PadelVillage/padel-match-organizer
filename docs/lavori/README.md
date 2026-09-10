@@ -2084,9 +2084,25 @@ menu vecchio, non che non ce ne siano altre. ⛔ Chi arriva **non** deve leggere
 «caso archiviato»: deve leggerla come *«una spiegazione è stata esclusa, il giro non è stato
 fatto»*.
 📌 *Escludere una causa non è aver risposto alla domanda: è aver tolto la risposta più comoda.*
-🎯 **Come si chiude**: una partita di là e una di qua, **lo stesso tipo di prenotazione**, i due
-menu fotografati insieme; più la ragione per cui su `cudi` quella partita risulta «in movimento» —
-che è l'unica differenza vera trovata finora, e non è un menu.
+🎯🗣️⭐⭐ **COME SI CHIUDE — e il perimetro l'ha dato lui, non io:**
+
+> *«bisogna fare un controllo di tutte le funzionalità, dei bottoni, delle regole e altro, tra il
+> bot di prod e quello di test, e portare in test tutti gli aggiornamenti»*
+
+⇒ **Non è una verifica puntuale su `/prenotazioni`: è un CENSIMENTO.** Va percorso il bot dei soci
+e quello di prova **sulla stessa cosa**, voce per voce — i **bottoni** di una partita (invita ·
+inviti mandati · apri ad altri · togli), le **regole** (le 48 ore, l'apertura, chi può fare cosa),
+gli avvisi, il menu ☰ — e ogni differenza va scritta con **la sua causa**, che può essere solo una
+di tre: **dati diversi**, **stato diverso**, o **deploy diverso**.
+⭐ **La quarta non esiste**, ed è la cosa che la misura di stasera ha stabilito: girano dallo
+**stesso ramo**, quindi *«hanno codice diverso»* non è una causa possibile finché quel ramo è uno.
+🩹 E se la causa è un **deploy**, la cura è **lanciare il deploy** (`deploy-bot-hetzner.yml`,
+bersaglio `prova`), non copiare righe da un bot all'altro — che è la strada da cui nasce il drift.
+
+⚠️ **E c'è un pezzo che va fatto comunque, prima di qualunque confronto**: il bot di prova **non ha
+il commit `fe52ad7`** (l'ottavo gesto della voce 201). ⇒ Quel deploy serve alla 201 **e** apre
+questo censimento con i due bot allineati, che è l'unico modo di confrontarli senza confondere le
+cause.
 
 ## 🔓 VOCE 196 — 👛 IL BORSELLINO SI RICARICA DA NOI — ✅ **CHIUSA il 10/09/2026 notte**
 
