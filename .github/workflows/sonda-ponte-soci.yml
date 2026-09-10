@@ -31,7 +31,17 @@ name: Sonda del ponte dei soci (SOLA LETTURA, solo sul gestionale nuovo)
 #   | `availability_day` | consumer-booking-write  | ⛔ no — è una lettura della griglia (voci 177 · 185) |
 #   | `kb`            | consumer-player-readmodel  | ⛔ no — è ciò che il bot RACCONTA sugli orari (voce 177) |
 #   | `create_prova`  | consumer-booking-write     | ⛔ no — `dry_run: true`, si ferma sulla riga prima di occupare il campo |
+#   | `eventi_staff`  | consumer-staff-events      | ⛔ no — `dry_run: true`: guarda la coda senza chiuderla (voce 194 ②) |
 #   | `create_vero`   | consumer-booking-write     | 🚨 **SÌ** — nasce una prenotazione vera. Vuole la parola `PRENOTO` |
+#
+# 🚨⭐⭐ E SU `eventi_staff` IL `dry_run` NON È UNA COMODITÀ, È L'UNICO MODO DI GUARDARE.
+#    Ogni fatto si ritira **una volta sola**: il gestionale lo marca consegnato nel momento in
+#    cui risponde. ⇒ Una chiamata senza `dry_run` da qui **brucerebbe** la coda — i fatti
+#    risulterebbero consegnati e nessun bot li direbbe mai a nessuno.
+#    📏 Verificato nel codice prima di aggiungere l'azione: `if (!dryRun && daChiudere.length)`
+#    e `if (!dryRun && coperti.length)` sono le due sole righe che chiudono, e `dry_run` le
+#    salta tutt'e due. ⇒ La sonda passa `dry_run: true` sempre, e non c'è modo di toglierlo
+#    dalla casella: non è un'opzione, è parte dell'azione.
 #
 # ⭐⭐ PERCHÉ `create_prova` VALE QUANTO UN `create` VERO, per quello che deve dimostrare.
 #    Il verdetto della griglia (voce 183) sta a `index.ts:591`, cioè nel blocco comune PRIMA
@@ -57,6 +67,7 @@ on:
         options:
           - availability_day
           - kb
+          - eventi_staff
           - create_prova
           - verifica
           - create_vero
@@ -97,6 +108,8 @@ jobs:
       URL_NUOVO: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-booking-write
       # 🔒 Anche questo solo sul gestionale nuovo: è il lettore che dice cosa il bot RACCONTA.
       URL_READMODEL: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-player-readmodel
+      # 🆕 VOCE 194 ② — la terza porta: quella da cui il bot ritira i fatti della segreteria.
+      URL_EVENTI: https://cudiqnrrlbyqryrtaprd.supabase.co/functions/v1/consumer-staff-events
       DEPLOY_HOST: ${{ vars.HETZNER_WORKER_HOST || '91.99.131.243' }}
       DEPLOY_USER: ${{ vars.HETZNER_WORKER_USER || 'root' }}
     steps:
@@ -275,6 +288,10 @@ jobs:
               s = os.environ.get("SCRITTA", "").strip()
               if s:
                   body["scritta_alle"] = s
+          elif a == "eventi_staff":
+              # ⛔ `dry_run` è cablato qui e non arriva da nessuna casella: senza, questa
+              #    chiamata chiuderebbe la coda senza consegnare niente a nessuno.
+              url, body = os.environ["URL_EVENTI"], {"dry_run": True}
           elif a in ("create_prova", "create_vero"):
               url = URL_W
               body = slot({"action": "create", "member_id": mid})
@@ -294,7 +311,29 @@ jobs:
             -H "X-Consumer-Secret: $(cat /tmp/seg)" \
             -d "$CORPO")"
           echo "── HTTP $CODICE ──"
-          python3 -m json.tool /tmp/risposta.json || cat /tmp/risposta.json
+          # 🩹 La coda può avere centinaia di fatti: stamparli tutti NASCONDE quello che si
+          #    cerca. ⇒ Su `eventi_staff` si stampa un riassunto per gesto più le righe dello
+          #    slot chiesto; su tutto il resto la risposta intera, come prima.
+          if [ "$AZIONE" = "eventi_staff" ]; then
+            DATA="$DATA" ORA="$ORA" CAMPO="$CAMPO" python3 -c '
+          import json, os
+          d = json.load(open("/tmp/risposta.json"))
+          ev = d.get("eventi") or []
+          print("fatti che il bot riceverebbe: %d · troncato: %s · non riconosciuti: %s"
+                % (len(ev), d.get("troncato"), d.get("non_riconosciuti")))
+          conteggio = {}
+          for e in ev:
+              conteggio[e.get("gesto")] = conteggio.get(e.get("gesto"), 0) + 1
+          print("per gesto:", json.dumps(conteggio, ensure_ascii=False))
+          dd, oo, cc = os.environ["DATA"].strip(), os.environ["ORA"].strip(), os.environ["CAMPO"].strip()
+          voluti = [e for e in ev if (e.get("partita") or {}).get("data") == dd
+                    and (e.get("partita") or {}).get("ora") == oo
+                    and "".join(ch for ch in str((e.get("partita") or {}).get("campo","")) if ch.isdigit()) == cc]
+          print("── lo slot chiesto (%s %s campo %s): %d ──" % (dd, oo, cc, len(voluti)))
+          print(json.dumps(voluti, ensure_ascii=False, indent=2))' || cat /tmp/risposta.json
+          else
+            python3 -m json.tool /tmp/risposta.json || cat /tmp/risposta.json
+          fi
           # 🚨 Un 401 non è un guasto della sonda: è il segreto sbagliato, e va detto per nome
           # invece di lasciarlo dedurre da un JSON.
           if [ "$CODICE" = "401" ]; then
