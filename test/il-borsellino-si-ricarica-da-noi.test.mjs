@@ -218,6 +218,33 @@ test('🚫 la ricarica NON chiama la regola dello storno (o sarebbe copiata a sp
   assert.ok(!corpoDi('_pmoRechargeWallet').includes('_pmoWalletStornoAmmesso'));
 });
 
+test('🏷️⭐ il NOME dell\'intestatario si legge da un campo che i soci HANNO DAVVERO', () => {
+  /* 🚨 Nasce da un difetto vero, trovato rileggendo le righe che il suo gesto aveva scritto:
+   *    `player_name` era **vuoto** in tutte e due (`chi: ""`), perché la riga leggeva `g.nome`.
+   * 📏 Misurato sulla pagina viva di `cudi`: un socio dell'anagrafica ha `name`; `nome` è
+   *    `undefined` su **2823 soci su 2823**.
+   * ⚖️ E l'inganno è che `.nome` è il campo giusto su un'ALTRA forma di oggetto — i giocatori
+   *    dentro una prenotazione — da cui la riga era stata copiata.
+   * ⭐ Il caso ESEGUE l'espressione presa dal sorgente, invece di cercarne il testo: è la
+   *    lezione della 181 — *una guardia che cerca una parola prova che la parola c'è, non che
+   *    il codice succeda*. Rimettendo `g.nome` da solo, questo caso diventa rosso. */
+  const SOCIO = { name: 'Maurizio Aprea', firstName: 'Maurizio', surname: 'Aprea' }; // niente `.nome`: la forma VERA
+  for (const fn of ['_pmoRechargeWallet', '_pmoVoidWallet']) {
+    const c = corpoDi(fn);
+    const i = c.indexOf('const playerName =');
+    assert.ok(i > 0, fn + ': la riga del nome non c\'è più');
+    const fine = c.indexOf(';', i);
+    const espr = c.slice(i + 'const playerName ='.length, fine);
+    const calcola = new Function('opts', 'g', 'playerFullName', 'return (' + espr + ');');
+    const esito = calcola({}, SOCIO, function (p) { return ((p.firstName || '') + ' ' + (p.surname || '')).trim(); });
+    assert.equal(esito, 'Maurizio Aprea', fn + ': il movimento resterebbe senza intestatario (esito: ' + JSON.stringify(esito) + ')');
+    // ⛔ E chi passa il nome esplicitamente deve continuare a vincere.
+    assert.equal(calcola({ playerName: 'Chi Chiama' }, SOCIO, null), 'Chi Chiama', fn + ': opts.playerName ignorato');
+    // ⛔ Senza socio non si inventa un nome: stringa vuota, non `undefined`.
+    assert.equal(calcola({}, null, null), '', fn + ': senza socio il nome non è una stringa vuota');
+  }
+});
+
 await esegui();
 console.log(`\n1..${passed + failed}\n# pass ${passed}\n# fail ${failed}`);
 if (failed) process.exit(1);
