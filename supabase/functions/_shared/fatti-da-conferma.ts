@@ -390,6 +390,103 @@ export function fattiDaMaestro(opts: {
 }
 
 /**
+ * 🎭⭐⭐ IL TIPO CAMBIATO — L'OTTAVO GESTO, voce 201, 10/09/2026.
+ *
+ * 🗣️ È il terzo gesto che il committente aveva approvato con la voce 194 e che allora non si
+ * poté fare, **per una misura e non per una scelta**: quel gesto non esisteva. Il tipo si
+ * sceglieva solo in creazione — non nella scheda, non in `EditRequest` — e in 3621 prenotazioni
+ * non era mai cambiato. ⇒ *«se lo vuoi il lavoro è prima creare l'operazione.. si lo voglio»*.
+ *
+ * 🎯⭐ E NASCE NATIVO, che è la cosa che lo rende diverso dai suoi sette fratelli. Su Matchpoint
+ * una partita e una lezione sono **due schede diverse** (`FichaPartida…` / `FichaClaseSuelta…`):
+ * là dentro quel gesto non può esistere, e infatti il worker non ce l'ha. ⇒ Qui il `tipo` è un
+ * campo del **nostro** `staff_booking`, e cambiarlo è una cosa che il sistema nuovo sa fare e
+ * quello vecchio no. 📌 *Il primo gesto che il gestionale non eredita: lo inventa.*
+ *
+ * ⛔ SI TACE SENZA IL TIPO NUOVO. «È cambiato il tipo» da solo è un invito a telefonare, non una
+ * notizia — stesso verso di `fattiDaDurata` senza l'ora di fine. E si tace anche se il nuovo è
+ * **uguale** al vecchio: un messaggio che annuncia un cambiamento e non ne mostra nessuno è il
+ * difetto esatto per cui `durata` esiste separata da `spostata`.
+ *
+ * 👨‍🏫 IL MAESTRO VIAGGIA SOLO VERSO LA LEZIONE, e non è un dettaglio di stile: su una partita
+ * un maestro **non esiste**, quindi mandarlo lì sarebbe un dato che mente — ed è precisamente
+ * il rischio che il committente ha nominato aprendo il lavoro (*«un cambio di tipo che lascia
+ * il maestro appeso è un dato che mente»*). ⇒ Verso `partita` non si manda affatto; verso
+ * `lezione` si manda se lo si sa, e se non lo si sa la riga semplicemente non c'è.
+ *
+ * ⚖️ CHI VINCE SUI GESTI MISTI lo decide chi chiama, come per la durata: qui si riceve già la
+ * conferma, non la richiesta.
+ */
+/**
+ * 🎭🚨⭐⭐ IL TIPO **DICHIARATO**, o `null` — e perché non si usa `tipoDelloSlot`.
+ *
+ * 📏 Trovato dal banco, non rileggendo: `tipoDelloSlot` **non torna mai `null`** — la sua riga è
+ * `eLezione(x) ? 'lezione' : 'partita'`, e la sua regola è *«assente = non lo so ⇒ vale partita,
+ * cioè il comportamento di prima»*. Giustissima per il suo mestiere (dare un nome allo slot in
+ * una frase), **sbagliata** per questo, che è un mestiere diverso: qui la domanda non è *«come lo
+ * chiamo?»* ma *«me l'hanno detto?»*.
+ *
+ * ⛔ COSA COMBINAVA, prima di questa funzione — due difetti, tutt'e due invisibili:
+ *   · senza `tipoPrima` il fatto nasceva con `tipo_prima: 'partita'` **inventato**, e il socio
+ *     leggeva *«la tua partita è diventata una lezione»* di una cosa che partita non era;
+ *   · e il guardiano `if (!ora) return []` era **codice morto**: `ora` non poteva essere falso.
+ *     ⇒ Due casi del banco erano **verdi per la ragione sbagliata** — passavano perché il
+ *     «prima» inventato coincideva col «dopo» inventato, non perché il codice tacesse.
+ * 📌 *Una funzione che non sa dire «non lo so» costringe chi la chiama a fingere di saperlo.*
+ *
+ * ⚖️ Le parole GREZZE si traducono lo stesso (`Lezione Libera` ⇒ `lezione`): il «prima» può
+ * arrivare dalla copia locale, dove ci sono ancora le parole di Matchpoint. Ma una parola che non
+ * è né l'una né l'altra vale **`null`**, non `partita`: su questo gesto un tipo indovinato non
+ * degrada il messaggio, lo rende **falso**.
+ */
+function tipoDichiarato(v: unknown): TipoSlot | null {
+  const t = String(v ?? '').trim();
+  if (!t) return null;
+  // ⭐ La traduzione resta UNA, in `tipoDelloSlot`: qui si aggiunge solo il «non lo so».
+  if (tipoDelloSlot(t) === 'lezione') return 'lezione';
+  return /^partita$/i.test(t) ? 'partita' : null;
+}
+
+export function fattiDaTipo(opts: {
+  slot: CoordinateSlot;
+  /** Che cos'è ADESSO, con le parole del gestionale. Senza, non si dice niente. */
+  tipo: unknown;
+  /** Che cos'era PRIMA. Può mancare: allora si dice solo che cos'è adesso. */
+  tipoPrima?: unknown;
+  /** Il maestro di adesso — si manda SOLO se è diventata una lezione. */
+  maestro?: string;
+  /** Chi c'è in campo, letto dalla copia locale. */
+  roster: readonly unknown[];
+  /** Oggi a Roma: una partita già giocata non produce fatti. */
+  oggi: string;
+}): FattoStaff[] {
+  const { slot, tipo, tipoPrima, maestro, roster, oggi } = opts;
+  if (!slot.data) return [];
+  // ⚠️ Uno slot passato non produce niente, come per tutte le sorelle (voce 197).
+  if (oggi && slot.data < oggi) return [];
+  const ora = tipoDichiarato(tipo);
+  // ⛔ Senza il tipo NUOVO non resta niente che il socio possa usare. ⭐ E adesso questa riga
+  //    può davvero scattare: con `tipoDelloSlot` era codice morto (vedi `tipoDichiarato`).
+  if (!ora) return [];
+  const prima = tipoDichiarato(tipoPrima);
+  // 🚨 Uguale = non è successo niente.
+  if (prima && prima === ora) return [];
+  const chi = String(maestro ?? '').trim();
+  return destinatari(roster).map((persona) => ({
+    slot: chiave(slot),
+    data: slot.data,
+    ora: slot.ora,
+    campo: slot.campo,
+    persona,
+    gesto: 'tipo' as const,
+    tipo: ora,
+    ...(prima ? { tipo_prima: prima } : {}),
+    // 👨‍🏫 Solo verso la lezione: su una partita il maestro non esiste.
+    ...(ora === 'lezione' && chi ? { maestro: chi } : {}),
+  }));
+}
+
+/**
  * 👥 UN CAMBIO DI GIOCATORI CONFERMATO DAL CIRCOLO — 31/08/2026, il seguito della voce 79.
  *
  * 🗣️ Il committente, appena visto arrivare il primo avviso `formazione`: *«ha funzionato però

@@ -73,7 +73,7 @@ export type FattoStaff = {
    * questa persona ci resta dentro — a cambiare sono i **compagni**. È l'unico gesto il cui
    * destinatario non è chi si è mosso, ed è nato proprio per quello.
    */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro' | 'tipo';
   /**
    * Che cosa è lo slot, **detto con le parole del gestionale**: `'lezione'` o `'partita'`.
    *
@@ -84,6 +84,18 @@ export type FattoStaff = {
    * ⚠️ Assente = non lo so ⇒ a valle vale «partita», che è il comportamento di prima.
    */
   tipo?: TipoSlot;
+  /**
+   * 🎭 Solo su `tipo`, l'OTTAVO gesto (voce 201): che cos'era PRIMA.
+   *
+   * ⚖️ Il tipo di ADESSO sta in `tipo` come su ogni altro gesto, e non si duplica qui: sono due
+   * domande diverse — *«che cos'è?»* e *«che cos'era?»* — e chi scrive il messaggio ha bisogno
+   * di tutt'e due per dire «è **diventata**». Con il solo «adesso» la frase descrive uno stato,
+   * non un cambiamento, e chi legge non capisce se è la sua.
+   * ⚠️ Assente ⇒ a valle si dice solo che cos'è adesso: meno, ma vero.
+   * 🚨 Uguale a `tipo` ⇒ non è successo niente, e il bot tace. È lo stesso controllo che
+   *    `durata` fa su `fine_prima`.
+   */
+  tipo_prima?: TipoSlot;
   /**
    * 🔄 Solo su `spostata`: **da dove** si è mossa. Le coordinate principali del fatto sono
    * quelle NUOVE — è lì che si va a giocare — e queste dicono da dove, perché il socio quella

@@ -20,6 +20,7 @@ import {
   fattiDaDurata,
   fattiDaMaestro,
   fattiDaSpostamento,
+  fattiDaTipo,
   oggiRoma,
   soloLaDurataECambiata,
 } from '../_shared/fatti-da-conferma.ts';
@@ -64,6 +65,25 @@ type EditRequest = {
   note?: string;            // Osservazioni Matchpoint (← nota app). '' = azzera; assente = non toccare.
   descrizione?: string;     // SOLO manutenzione: descrizione (TextBox2, testo del tabellone). '' = azzera; assente = non toccare.
   istruttore?: string;      // SOLO lezione: maestro (dropdown "Monitor"). Stringa non vuota = cambia; assente/'' = non toccare.
+  /**
+   * 🎭 VOCE 201 — IL TIPO NUOVO: `'partita'` o `'lezione'`. Assente = non toccare.
+   *
+   * 🎯⭐ È IL PRIMO CAMPO DI QUESTA RICHIESTA CHE IL WORKER NON SA ESEGUIRE, e non è una
+   * mancanza da colmare: su Matchpoint una partita e una lezione sono **due schede diverse**
+   * (`FichaPartida…` / `FichaClaseSuelta…`), quindi quel gesto **là dentro non esiste**. Qui il
+   * tipo è un campo del **nostro** `staff_booking` ⇒ il gesto è **nativo per natura**, non per
+   * ripiego. 📌 *Il primo gesto che il gestionale non eredita: lo inventa.*
+   * ⛔ Sul ramo che parla col worker si registra e si dichiara, ma **non si chiede a Matchpoint**
+   *    di farlo: non saprebbe come, e fingere che sappia sarebbe un «fatto» mai avvenuto.
+   */
+  tipo?: string;
+  /**
+   * 🎭 Che cos'era PRIMA, come lo sa l'app che ha aperto la scheda. Serve **solo** a scrivere il
+   * messaggio («la tua *partita* è diventata una *lezione*») e non decide niente.
+   * ⚠️ Assente ⇒ si ripiega sulla copia locale, e se manca anche là si dice solo che cos'è
+   *    adesso: meno, ma vero.
+   */
+  tipoPrima?: string;
   read?: boolean;           // lettura sola: restituisce i partecipanti attuali senza modificare
   /**
    * 🆕🗣️ CHI ha chiesto la modifica, quando non è la segreteria — 01/09/2026, voce 79.
@@ -296,6 +316,10 @@ async function saveStaffEditRecord(opts: {
       players: edit.players ?? null,
       note: edit.note ?? null,
       istruttore: edit.istruttore ?? null,
+      // 🎭 VOCE 201: senza queste due righe il gesto passerebbe senza lasciare traccia nel
+      //    registro — e il registro è l'unico posto in cui si può poi chiedere «chi l'ha fatto».
+      tipo: edit.tipo ?? null,
+      tipo_prima: edit.tipoPrima ?? null,
       edited_by_email: actor.email,
       edited_by_role: actor.role,
       worker_result: workerResult,
@@ -356,6 +380,15 @@ function toccaIlRoster(edit: EditRequest): boolean {
  */
 function cambiaIlMaestro(edit: EditRequest): boolean {
   return String(edit.istruttore ?? '').trim() !== '';
+}
+
+/** 🎭 VOCE 201 — la richiesta chiede di cambiare partita ↔ lezione? */
+function cambiaIlTipo(edit: EditRequest): boolean {
+  const t = String(edit.tipo ?? '').trim().toLowerCase();
+  // 🚨 ELENCO CHIUSO, e non «stringa non vuota» come il gemello del maestro: un maestro è un
+  //    nome libero, un tipo è una parola di un vocabolario di due. Qualunque altra cosa qui
+  //    dentro finirebbe in `staff_booking.tipo` e da lì in una frase che il socio legge.
+  return t === 'partita' || t === 'lezione';
 }
 
 /** Chi c'era in campo prima del gesto, o `null` se non si dichiarerà niente. */
@@ -502,6 +535,55 @@ async function dichiaraCambioMaestroAlSocio(opts: {
 }
 
 /**
+ * 🎭⭐⭐ IL TIPO CAMBIATO, dichiarato al socio — VOCE 201, 10/09/2026.
+ *
+ * ⛔ TACE SUI GESTI MISTI, come le sorelle: se nello stesso salvataggio la partita si è anche
+ * mossa o ha cambiato giocatori, la notizia più grossa la dice l'altra e questa sta zitta. Due
+ * messaggi sulla stessa conferma sarebbero due notifiche per un fatto solo.
+ *
+ * 👨‍🏫 IL MAESTRO SI PASSA SEMPRE E FILTRA `fattiDaTipo`, che lo manda solo verso la lezione: la
+ * regola sta in **un** posto, non in due. Qui si dice **quale** maestro (quello chiesto, o
+ * quello che c'era già), là si decide **se** dirlo.
+ * ⚖️ E si preferisce quello CHIESTO a quello di prima: se il gesto è «diventa una lezione col
+ * maestro X», il socio deve leggere X — non chi non c'è mai stato.
+ */
+async function dichiaraCambioTipoAlSocio(opts: {
+  supabaseUrl: string;
+  supabaseKey: string;
+  edit: EditRequest;
+  prima: SlotLocale | null;
+}): Promise<void> {
+  const { supabaseUrl, supabaseKey, edit, prima } = opts;
+  if (!prima || !cambiaIlTipo(edit)) return;
+  // ⛔ Gesto misto ⇒ tace: lo dice la gemella che governa la notizia più grossa.
+  if (edit.move || toccaIlRoster(edit)) return;
+  try {
+    await accodaFattiDaConferma({
+      client: createClient(supabaseUrl, supabaseKey),
+      fatti: fattiDaTipo({
+        slot: prima.coordinate,
+        tipo: edit.tipo,
+        /* ⚠️ Il «prima» lo manda l'app (che ha aperto la scheda e sa da dove parte); senza, si
+         * ripiega sulla copia locale. 📌 Due fonti per lo stesso fatto non sono un doppione:
+         * la prima è più fresca, la seconda regge quando la prima tace — ed è la sola che
+         * esista per una richiesta che non venga dalla scheda. */
+        tipoPrima: edit.tipoPrima ?? prima.tipo,
+        maestro: String(edit.istruttore ?? '').trim() || prima.istruttore,
+        roster: prima.roster,
+        oggi: oggiRoma(),
+      }),
+      azione: 'edit',
+      chiestoDa: edit.chiestoDa,
+    });
+  } catch (e) {
+    console.warn(JSON.stringify({
+      event: 'dichiarazione_tipo_saltata',
+      error: String((e as Error)?.message ?? e),
+    }));
+  }
+}
+
+/**
  * 👥 IL CAMBIO DI GIOCATORI, dichiarato appena il circolo l'ha confermato — 31/08/2026.
  *
  * 🗣️ Nasce dalla sua frase davanti al primo avviso della voce 79: *«ha funzionato però ci ha
@@ -629,6 +711,10 @@ async function runEditJobInBackground(opts: {
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
     await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
+    // 🎭 VOCE 201 — l'ottavo gesto anche su questa strada. ⛔ Non si CHIEDE a Matchpoint di
+    //    cambiare il tipo (non saprebbe: là sono due schede diverse) — si registra il fatto
+    //    nostro e lo si dice a chi ci gioca, che è tutto ciò che quel gesto è.
+    await dichiaraCambioTipoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await writeEditJob(client, jobId, 'done', {
       ...base,
       message: `Modifica eseguita (idReserva ${edit.idReserva ?? '?'})`,
@@ -844,6 +930,11 @@ Deno.serve(async (req: Request) => {
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo });
     await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo, workerResult });
     await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo });
+    // 🎭 VOCE 201 — l'ottavo gesto. ⭐ Sta qui e basterebbe qui: è nativo per natura (su
+    //    Matchpoint una partita e una lezione sono due schede diverse) ⇒ il ramo del worker non
+    //    ha niente da chiedergli. Lo si aggancia lo stesso anche là, perché la registrazione e
+    //    l'avviso valgono su tutt'e due le strade finché tutt'e due esistono.
+    await dichiaraCambioTipoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGestoNativo });
     return ok({
       message: 'Modifica registrata.',
       nativa: true,
@@ -916,6 +1007,10 @@ Deno.serve(async (req: Request) => {
     await dichiaraSpostamentoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
     await dichiaraCambioRosterAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto, workerResult });
     await dichiaraCambioMaestroAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
+    // 🎭 VOCE 201 — l'ottavo gesto anche su questa strada. ⛔ Non si CHIEDE a Matchpoint di
+    //    cambiare il tipo (non saprebbe: là sono due schede diverse) — si registra il fatto
+    //    nostro e lo si dice a chi ci gioca, che è tutto ciò che quel gesto è.
+    await dichiaraCambioTipoAlSocio({ supabaseUrl, supabaseKey, edit, prima: primaDelGesto });
   }
 
   if (readOnly) {

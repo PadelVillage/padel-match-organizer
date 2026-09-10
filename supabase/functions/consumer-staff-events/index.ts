@@ -168,7 +168,17 @@ Deno.serve(async (req: Request) => {
    * arrivano comunque, e tutti gli altri continuano a passare. La scala dei ripieghi resta
    * ordinata dal meno grave al più grave, e questo è il nuovo meno grave. */
   const COLONNE_194 = 'fine, fine_prima, maestro';
-  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da, ${COLONNE_194}`);
+  /* 🎭 VOCE 201 (10/09) — `tipo_prima` è il ripiego più esterno di TUTTI, cioè il primo a
+   * cadere: è la colonna più nuova in assoluto, e **su PROD non c'è** (è congelata).
+   * ⚖️ Perdendola non si perde un avviso: il gesto passa lo stesso e il bot dice *«Adesso è una
+   * lezione»* invece di *«La tua partita è diventata una lezione»* — meno, ma vero. La scala
+   * dei ripieghi resta ordinata dal meno grave al più grave, e questo è il nuovo meno grave. */
+  const COLONNE_201 = 'tipo_prima';
+  let { righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da, ${COLONNE_194}, ${COLONNE_201}`);
+  if (errore) {
+    console.warn(`[staff-events] coda senza 'tipo_prima' (${errore.message}): riprovo senza — il cambio di tipo dirà cos'è adesso, non da cosa`);
+    ({ righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da, ${COLONNE_194}`));
+  }
   if (errore) {
     console.warn(`[staff-events] coda senza le colonne della 194 (${errore.message}): riprovo senza — durata e maestro restano senza dettaglio`);
     ({ righe, errore } = await leggiCoda(`${COLONNE}, origine, ${COLONNE_79}, chiesto_da`));
@@ -513,6 +523,12 @@ Deno.serve(async (req: Request) => {
       fine: e.fine ?? null,
       fine_prima: e.fine_prima ?? null,
       maestro: e.maestro ?? null,
+      /* 🎭 VOCE 201 (10/09): solo su `tipo`, ed è metà del contenuto del messaggio — con lui il
+       * bot dice «la tua **partita** è diventata una **lezione**», senza dice solo «adesso è una
+       * lezione». ⛔ Il tipo NUOVO non esce di qui: viaggia già in `partita.tipo`, dove sta il
+       * tipo dello slot su ogni gesto. Due campi per lo stesso valore sono due valori che un
+       * giorno divergono. */
+      tipo_prima: e.tipo_prima ?? null,
     });
     idsPerEvento.push([...e.ids]);
     daChiudere.push(...e.ids);

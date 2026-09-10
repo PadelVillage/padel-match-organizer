@@ -30,7 +30,7 @@ export type FattoInCoda = {
   ora: string;
   campo: string;
   persona: string;
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro';
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro' | 'tipo';
   /** 🔄 Solo su `spostata`: lo slot di PARTENZA. Le altre coordinate sono quelle d'arrivo. */
   da?: { data: string; ora: string; campo: string } | null;
   /**
@@ -80,6 +80,8 @@ export type FattoInCoda = {
   chiesto_da?: string | null;
   /** `lezione` o `partita` — la parola del GESTIONALE, non quella di Matchpoint (voce 74). */
   tipo?: 'lezione' | 'partita' | null;
+  /** 🎭 VOCE 201 — che cos'era PRIMA, solo sul gesto `tipo`. Il tipo di ADESSO sta in `tipo`. */
+  tipo_prima?: 'lezione' | 'partita' | null;
 };
 
 /** Cosa dire a una persona di una partita, dopo aver fuso tutto quello che le è successo. */
@@ -90,13 +92,15 @@ export type EsitoRidotto = {
   campo: string;
   persona: string;
   /** `null` quando il netto è nullo: non c'è niente da dire, e i fatti si chiudono lo stesso. */
-  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro' | null;
+  gesto: 'aggiunto' | 'tolto' | 'annullata' | 'spostata' | 'formazione' | 'durata' | 'maestro' | 'tipo' | null;
   /**
    * Il tipo dello slot, dall'ULTIMO fatto della raffica — come tutto il resto qui.
    * ⚖️ Non si fonde e non si vota: una partita non diventa una lezione a metà raffica, e se
    * un giorno succedesse è comunque l'ultimo stato quello che si racconta.
    */
   tipo?: 'lezione' | 'partita' | null;
+  /** 🎭 VOCE 201 — che cos'era PRIMA, solo sul gesto `tipo`. Il tipo di ADESSO sta in `tipo`. */
+  tipo_prima?: 'lezione' | 'partita' | null;
   /** 🔄 Lo slot di partenza, dall'ULTIMO fatto della raffica — come il `tipo` qui sopra. */
   da?: { data: string; ora: string; campo: string } | null;
   /**
@@ -313,7 +317,15 @@ export function statoFinale(gesti: Array<FattoInCoda['gesto']>): EsitoRidotto['g
    * ⚖️ Sono della stessa famiglia di `formazione` — **non sono stati del giocatore** — ma per
    * una ragione diversa: `formazione` parla degli ALTRI, questi parlano della PARTITA. Escono
    * dal conto per lo stesso motivo e rientrano con una precedenza diversa, sotto. */
-  const DELLA_PARTITA = new Set(['durata', 'maestro']);
+  /* 🎭⭐⭐ 10/09/2026 (voce 201) — `tipo` ENTRA IN QUESTA RIGA, ed è la cosa più importante
+   * dell'ottava voce esattamente come lo era della settima.
+   * ⛔ Senza, un `tipo` da solo arriverebbe in fondo con `eraDentro = true` (il primo gesto non
+   *   è `aggiunto`) ed `eDentro = false` (l'ultimo non è `aggiunto`) ⇒ **`tolto`**: al socio
+   *   arriverebbe *«Non sei più nella partita»* per una partita diventata lezione. E sarebbe
+   *   invisibile — banco del bot verde, vincolo del database verde, edge verde.
+   * 📌 *Un gesto nuovo non si aggiunge dove lo si scrive: si aggiunge dove qualcuno lo LEGGE, e
+   *   il posto più pericoloso è quello che non è stato scritto per riceverlo.* */
+  const DELLA_PARTITA = new Set(['durata', 'maestro', 'tipo']);
   const suoi = gesti.filter((g) => g !== 'formazione' && !DELLA_PARTITA.has(String(g)));
   const cambiataLaFormazione = gesti.some((g) => g === 'formazione');
   /* ⏱️👨‍🏫 L'ULTIMO dei gesti della partita, che è la stessa regola del resto del modulo — *com'è
@@ -472,6 +484,23 @@ export function riduci(fatti: FattoInCoda[], adesso: number): EsitoRidotto[] {
       ...(gesto === 'maestro' ? (() => {
         const m = gruppo.filter((g) => g.gesto === 'maestro');
         return { maestro: m[m.length - 1]?.maestro ?? null };
+      })() : {}),
+      /* 🎭 VOCE 201 — LA COPPIA AI DUE CAPI DELLA RAFFICA, identica alla durata e per la stessa
+       * ragione: se la segreteria fa partita→lezione e poi lezione→partita nello stesso giro,
+       * dall'ultimo fatto uscirebbe «lezione → partita», che è vero di un pezzo e falso del
+       * gesto — e `fattiDaTipo` a valle vedrebbe due parole uguali e tacerebbe, che è la cosa
+       * giusta: non è successo niente. ⇒ `tipo` dall'ULTIMO, `tipo_prima` dal PRIMO.
+       * 👨‍🏫 E il maestro viaggia anche qui, perché una partita diventata lezione ne ha uno e la
+       *   frase lo dice — è lo stesso campo, su un gesto diverso. */
+      ...(gesto === 'tipo' ? (() => {
+        const t = gruppo.filter((g) => g.gesto === 'tipo');
+        /* ⛔ NIENTE «tipo nuovo» qui: `tipo` dell'esito lo prende già da `ultimo.tipo`, e su
+         * questo gesto quello È il tipo nuovo. Un secondo campo che dice la stessa cosa è un
+         * campo che un giorno dirà una cosa diversa. */
+        return {
+          tipo_prima: t[0]?.tipo_prima ?? null,
+          maestro: t[t.length - 1]?.maestro ?? null,
+        };
       })() : {}),
       ids: gruppo.map((g) => g.id),
     });
