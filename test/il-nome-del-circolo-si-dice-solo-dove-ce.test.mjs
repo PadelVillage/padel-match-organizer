@@ -322,6 +322,20 @@ test('③ nessuno dice più «Ambiente TEST» a chi lavora', () => {
     'una frase dice all\'operatore che sta su una prova: sul gestionale VERO è la bugia peggiore di tutte');
 });
 
+test('③ nessun ATTRIBUTO visibile nomina il circolo senza condizione', () => {
+  // 🚨⭐⭐ IL BUCO CHE `innerText` NON POTEVA VEDERE, trovato il 10/09 aprendo la scheda di una
+  // prenotazione: il campo note aveva `placeholder="Osservazioni per Matchpoint..."`.
+  // 📏 La misura «zero occorrenze» delle prime due mani leggeva `document.body.innerText`, che
+  // **non contiene** placeholder, `title`, `aria-label` né `alt` — e non contiene niente di ciò
+  // che sta dentro una scheda chiusa. ⇒ Il verde diceva «la parola non si vede» e voleva dire
+  // «la parola non sta nel testo che ho guardato».
+  // 📌 *Una misura che non dice cosa NON guarda si legge come se guardasse tutto.*
+  const attributi = /(?:placeholder|title|aria-label|alt)\s*=\s*("|')((?:(?!\1).)*Matchpoint(?:(?!\1).)*)\1/g;
+  const trovati = [...APP.matchAll(attributi)].map((m) => m[2].slice(0, 70));
+  assert.deepEqual(trovati, [],
+    'attributi che nominano il circolo comunque:\n       ' + trovati.join('\n       '));
+});
+
 test('🧪 SABOTAGGI — il banco deve saper cadere', () => {
   const cade = (fn) => { try { fn(); return false; } catch (e) { return true; } };
 
