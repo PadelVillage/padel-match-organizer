@@ -247,6 +247,53 @@ async function getActor(req: Request, crono?: { segna(n: string): void }): Promi
   };
 }
 
+/* ╔══════════════════════════════════════════════════════════════════════════════════╗
+   ║ 🏆 I TIPI NOSTRI E LA PAROLA CHE IL WORKER CONOSCE (voce 207)                    ║
+   ╚══════════════════════════════════════════════════════════════════════════════════╝
+
+   🗣️ Sue parole del 10/09/2026: «Il torneo è un modo di chiamare una prenotazione» ·
+      «Anche lo stage È un tipo di prenotazione come la LEZIONE solo con un nome diverso.»
+
+   🚨⭐⭐ QUESTO PEZZO L'HA TROVATO LA PROVA VERA, NON IL BANCO. Con i due tipi aggiunti
+      nell'app, premere «Conferma» su uno Stage tornava:
+         «tipo deve essere uno di: partita, lezione, manutenzione, stagionale.»
+      ⇒ Un punto che ENUMERA i tipi, e sta **fuori da `index.html`**: nessun banco dell'app
+      poteva vederlo. È la voce 201 un'altra volta — *un tipo nuovo si aggiunge dove qualcuno
+      lo LEGGE* — e stavolta chi lo legge è il server.
+
+   ⚖️ DUE PAROLE PER DUE DESTINATARI, e non si possono confondere:
+      · `tipo`            = la parola NOSTRA, che resta scritta nel nostro record ⇒ «stage»;
+      · `tipoPerIlWorker` = la parola che MATCHPOINT conosce ⇒ «lezione».
+   ⛔ Il worker accetta solo `partita | lezione | manutenzione | stagionale`, e NON si tocca:
+      si deploya solo da `main`, è condiviso con PROD, e PROD è CONGELATA. ⇒ Non si allarga la
+      sua lista: gli si manda una parola che già capisce. 📌 *Il macchinario si eredita, il
+      nome no* — la stessa riga scritta nell'app, qui vista dal lato del server.
+   🎯 E il giorno del distacco questa traduzione non serve più: il worker muore con Matchpoint,
+      e resta solo la parola nostra. Togliendola, non cambia niente di ciò che scriviamo. */
+const PMO_TIPI_NOSTRI: Record<string, string> = {
+  partita: 'partita',
+  lezione: 'lezione',
+  manutenzione: 'manutenzione',
+  stagionale: 'stagionale',
+  stage: 'lezione',      // 🆕 un nome nuovo sul macchinario della lezione (maestro compreso)
+  torneo: 'partita',     // 🆕 un nome nuovo sul macchinario della partita
+};
+
+/** La parola che il worker (e quindi Matchpoint) sa leggere. */
+function tipoPerIlWorker(tipo: string | undefined): string {
+  return PMO_TIPI_NOSTRI[clean(tipo || '').toLowerCase()] || 'partita';
+}
+
+/** L'etichetta da mostrare: il NOME nostro, con l'iniziale grande. */
+function etichettaTipo(tipo: string | undefined): string {
+  const t = clean(tipo || '').toLowerCase();
+  const ETICHETTE: Record<string, string> = {
+    partita: 'Partita', lezione: 'Lezione', manutenzione: 'Manutenzione',
+    stagionale: 'Prenotazione stagionale', stage: 'Stage', torneo: 'Torneo',
+  };
+  return ETICHETTE[t] || 'Partita';
+}
+
 async function callWorkerCreateBooking(opts: {
   workerUrl: string;
   workerApiKey: string;
@@ -268,7 +315,14 @@ async function callWorkerCreateBooking(opts: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${workerApiKey}`,
       },
-      body: JSON.stringify({ username, password, baseUrl, booking, operatore: operatore ?? '', chiestoDa: chiestoDa ?? '' }),
+      // 🏆 VOCE 207 — al worker va la parola che CONOSCE: `stage` → `lezione`, `torneo` →
+      //    `partita`. Il nostro `tipo` resta quello scelto in ciò che salviamo noi (vedi
+      //    `saveStaffBookingRecord`): è l'unico punto in cui le due parole si separano.
+      body: JSON.stringify({
+        username, password, baseUrl,
+        booking: { ...booking, tipo: tipoPerIlWorker(booking.tipo) },
+        operatore: operatore ?? '', chiestoDa: chiestoDa ?? '',
+      }),
     });
   } catch (netErr) {
     // NESSUN retry: la prenotazione potrebbe essere già stata creata dal worker.
@@ -638,7 +692,7 @@ async function runBookingJobInBackground(opts: {
   const { jobId, supabaseUrl, supabaseKey, actor, booking, workerUrl, workerApiKey, username, password, baseUrl } = opts;
   const client = createClient(supabaseUrl, supabaseKey);
   const base = { booking, created_by_email: actor.email };
-  const tipoLabel = booking.tipo === 'lezione' ? 'Lezione' : booking.tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
+  const tipoLabel = etichettaTipo(booking.tipo);   // 🏆 voce 207 — «Stage» e «Torneo» compresi
   // 🔒 IL RECINTO, di nuovo — e non è una ripetizione inutile: qui si arriva DOPO aver già
   // risposto al chiamante, quindi un giro sbagliato di qua non lo vedrebbe più nessuno. La
   // difesa deve stare anche dentro la strada che non torna indietro, non solo davanti al bivio.
@@ -834,7 +888,9 @@ Deno.serve(async (req: Request) => {
       };
     })
     .filter((g) => g.nome);
-  const VALID_TIPOS = ['partita', 'lezione', 'manutenzione', 'stagionale'];
+  // 🏆 VOCE 207 — `stage` e `torneo` sono parole NOSTRE: si accettano qui, e si traducono in
+  //    una parola che il worker conosce solo quando gli si parla (⇒ `tipoPerIlWorker`).
+  const VALID_TIPOS = Object.keys(PMO_TIPI_NOSTRI);
 
   if (!campo || campo < 1 || campo > 4) return err(400, 'INVALID_CAMPO', 'Campo deve essere un numero da 1 a 4.');
   if (!isValidIso(data)) return err(400, 'INVALID_DATA', 'Data deve essere nel formato YYYY-MM-DD.');
@@ -941,7 +997,7 @@ Deno.serve(async (req: Request) => {
     //    che questa voce chiedeva: senza, chi vorrà accorciare questa strada ricomincia a indovinare.
     console.log(JSON.stringify({ event: 'tempi_creazione', nativa: true, ...crono.esito() }));
     return ok({
-      message: `${tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita'} registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
+      message: `${etichettaTipo(tipo)} registrata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,   // 🏆 voce 207
       nativa: true,
       nota: MESSAGGIO_SCRITTURA_NATIVA,
       booking,
@@ -1016,7 +1072,7 @@ Deno.serve(async (req: Request) => {
     console.error(JSON.stringify({ event: 'db_save_failed', error: errorText(dbErr) }));
   }
 
-  const tipoLabel = tipo === 'lezione' ? 'Lezione' : tipo === 'manutenzione' ? 'Manutenzione' : 'Partita';
+  const tipoLabel = etichettaTipo(tipo);   // 🏆 voce 207
   return ok({
     message: `${tipoLabel} creata: Campo ${campo} · ${data} · ${ora}–${oraFine} · ${nome}`,
     booking,
