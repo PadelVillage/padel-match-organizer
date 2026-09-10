@@ -15,6 +15,7 @@ import { esitoDelRifiutoDiModifica } from './esito-modifica.ts';
 // esteso sopra `dichiaraSpostamentoAlSocio`.
 import { accodaFattiDaConferma, rosterDaCopiaLocale, type SlotLocale } from '../_shared/dichiara-fatti.ts';
 import { campiTipoDallaRichiesta, toccaIlTipo } from './campi-tipo.ts';
+import { serveIlRosterDiPrima } from './roster-di-prima.ts';
 import {
   campoScritto,
   fattiDaCambioRoster,
@@ -406,10 +407,20 @@ async function rosterPrimaDelloSpostamento(opts: {
   // 🆕👨‍🏫 VOCE 194 ② — e si legge ANCHE per il solo cambio di maestro, che fino a oggi non
   // aveva nessuna strada: chi va a lezione ci va per il maestro, e trovarne un altro senza
   // saperlo è il caso da cui la regola del 23/08 nasce.
-  if (!edit.move && !toccaIlRoster(edit) && !cambiaIlMaestro(edit)) return null;
-  // 🚨 Move + giocatori nello stesso gesto: nessuna delle due strade sa dire tutto ⇒ tacciono
-  // tutt'e due e la cosa resta al sync. Vedi il commento qui sopra.
-  if (edit.move && toccaIlRoster(edit)) return null;
+  /* 🎭🚨⭐⭐ VOCE 201 — LA REGOLA STA IN `roster-di-prima.ts`, e ci sta perché QUI si è
+   * dimenticata. 📏 Misurato su `cudi` con un Salva vero: un cambio di **solo** tipo
+   * (`lezione → partita`, che il maestro lo TOGLIE e quindi non porta niente con sé) usciva da
+   * questa riga con `null`, e `dichiaraCambioTipoAlSocio` si fermava alla sua prima riga —
+   * nessun fatto, nessun errore. Il verso opposto funzionava solo perché `partita → lezione`
+   * IMPONE di scegliere un maestro, cioè **per caso**.
+   * ⇒ Spostata in un modulo che il banco può caricare: `index.ts` chiama `Deno.serve` appena
+   * importato, quindi finché la regola stava qui nessuna prova poteva attraversarla. */
+  if (!serveIlRosterDiPrima({
+    move: !!edit.move,
+    roster: toccaIlRoster(edit),
+    maestro: cambiaIlMaestro(edit),
+    tipo: cambiaIlTipo(edit),
+  })) return null;
   // Senza le coordinate di PARTENZA non si sa quale slot è stato mosso: l'app le manda
   // (`campo/data/ora` di primo livello), ma non sono obbligatorie. Assenti ⇒ tace.
   if (!edit.data || !edit.ora) return null;

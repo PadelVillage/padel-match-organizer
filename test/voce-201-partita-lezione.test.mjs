@@ -225,3 +225,45 @@ test('⛔ un «prima» SENZA il nuovo non è una modifica: fallisce chiuso', () 
   assert.equal(toccaIlTipo({}), false);
   assert.equal(toccaIlTipo({ tipoPrima: 'partita' }), false);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════
+// 👥🚨 ③ CHI LEGGE «CHI C'ERA PRIMA» — il QUARTO posto che aveva dimenticato il gesto
+// ══════════════════════════════════════════════════════════════════════════════════
+//
+// 📏 Trovato dal verso OPPOSTO, sul vivo: `lezione → partita` toglie il maestro, quindi non porta
+//    niente con sé — e `rosterPrimaDelloSpostamento` tornava `null`, cioè la dichiarazione al
+//    socio usciva alla prima riga SENZA FATTO E SENZA ERRORE. Il verso in avanti funzionava solo
+//    perché diventare lezione IMPONE di scegliere un maestro: per caso.
+// 📌 *Metà di un gesto che funziona perché viaggia appoggiata a un'altra non è una metà che
+//    funziona: è una che non è ancora stata provata da sola.*
+
+import { serveIlRosterDiPrima } from '../supabase/functions/matchpoint-bookings-edit/roster-di-prima.ts';
+
+test('👥 il TIPO DA SOLO fa leggere il roster — è il caso che era rotto', () => {
+  assert.equal(serveIlRosterDiPrima({ tipo: true }), true);
+});
+
+test('👥 e i quattro gesti, ciascuno DA SOLO, lo fanno leggere', () => {
+  // 🚨 Il controllo che impedisce alla cura di essere una regressione travestita.
+  assert.equal(serveIlRosterDiPrima({ move: true }), true);
+  assert.equal(serveIlRosterDiPrima({ roster: true }), true);
+  assert.equal(serveIlRosterDiPrima({ maestro: true }), true);
+  assert.equal(serveIlRosterDiPrima({ tipo: true }), true);
+});
+
+test('⛔ nessun gesto ⇒ non si legge niente (una nota non deve costare una query)', () => {
+  assert.equal(serveIlRosterDiPrima({}), false);
+  assert.equal(serveIlRosterDiPrima({ move: false, roster: false, maestro: false, tipo: false }), false);
+});
+
+test('🚨 `move` + `roster` insieme tacciono, e il TIPO non li sblocca', () => {
+  // Dire «spostata» a chi è stato TOLTO sarebbe falso: tacciono tutt'e due, resta al sync.
+  assert.equal(serveIlRosterDiPrima({ move: true, roster: true }), false);
+  assert.equal(serveIlRosterDiPrima({ move: true, roster: true, tipo: true }), false,
+    'il gesto nuovo non deve poter riaprire un\'esclusione decisa per un altro motivo');
+  assert.equal(serveIlRosterDiPrima({ move: true, roster: true, maestro: true }), false);
+});
+
+test('🎭 tipo + maestro insieme (il verso «diventa lezione») si legge', () => {
+  assert.equal(serveIlRosterDiPrima({ tipo: true, maestro: true }), true);
+});
