@@ -1522,8 +1522,8 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** — 🔁 **10/09/2026 notte, 116ª: ESCE la 207, chiusa a prova fisica.** Premuto **Stage** sulla scheda viva di `cudi`, scelto il maestro, premuto **Conferma** ⇒ nel database un record vero con **`tipo: "stage"`** e `istruttore: "Spinazze"`, e riaprendolo la scheda legge `stage` col **macchinario della lezione** e *«Gianluca Spinazzè»* già selezionato. 🚨⭐⭐ **E la prova ha trovato un pezzo che il banco non poteva vedere**: anche il **SERVER** enumerava i tipi (*«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»*) ⇒ la feature sarebbe sembrata completa nell'app e **rotta al salvataggio**. 📌 *Un tipo nuovo si aggiunge dove qualcuno lo LEGGE — e uno dei lettori è il server.* ⛔ **Resta solo la 198**, e aspetta una sua scelta: **navigazione** o **riconciliazione**. Proposta dichiarata — prima le **porte**, poi l'**importo a carico nativo** che riempie il «dovuto», poi il giudice; perché oggi il dovuto esiste su **14 prenotazioni su 256**, e un giudice col 94% dei dati mancanti direbbe *«non pagato»* quasi sempre. |
-| 📋 **In coda** | **8** — invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
+| 🔴 **Urgenti** | **1** — 🔁 **11/09/2026, 117ª: la 198 ha il PRIMO PASSO FATTO e provato sul vivo, e resta aperta per gli altri due.** Le **due porte** fra la scheda e gli Incassi funzionano nei due versi: dalla scheda del 03/09 C3 18:00 il focus mostra **48,00 € su 4 pagamenti** (i numeri contati nel database prima di guardare lo schermo), e dalla parte opposta una **lezione** si apre come lezione — `60 min` e **il maestro «Lucas Vidal» visibile**, dove prima il tipo era **cablato a `partita`** e il selettore del maestro **non veniva disegnato**. 🚨⭐⭐ **E la prova fisica ha trovato un difetto che il banco verde non vedeva, per la seconda volta di fila**: il ramo `incassi` di `switchTab` sta in un `setTimeout(…, 0)`, quindi azzerava il focus **dopo** che l'avevo scritto. 📌 *Decide chi gira per ultimo, non l'ordine delle righe.* ⛔ **Limite dichiarato**: fuori dal giorno caricato in memoria il lookup torna `null` e la scheda cade sul ripiego `partita`/90 ⇒ è il primo pezzo del prossimo giro. ⏳ Restano il **② importo a carico nativo** (188/B) e il **③ giudice**, in quest'ordine, perché oggi il «dovuto» esiste su **14 prenotazioni su 256**. Prima — 🔁 **10/09/2026 notte, 116ª: ESCE la 207, chiusa a prova fisica.** Premuto **Stage** sulla scheda viva di `cudi`, scelto il maestro, premuto **Conferma** ⇒ nel database un record vero con **`tipo: "stage"`** e `istruttore: "Spinazze"`, e riaprendolo la scheda legge `stage` col **macchinario della lezione** e *«Gianluca Spinazzè»* già selezionato. 🚨⭐⭐ **E la prova ha trovato un pezzo che il banco non poteva vedere**: anche il **SERVER** enumerava i tipi (*«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»*) ⇒ la feature sarebbe sembrata completa nell'app e **rotta al salvataggio**. 📌 *Un tipo nuovo si aggiunge dove qualcuno lo LEGGE — e uno dei lettori è il server.* ⛔ **Resta solo la 198**, e aspetta una sua scelta: **navigazione** o **riconciliazione**. Proposta dichiarata — prima le **porte**, poi l'**importo a carico nativo** che riempie il «dovuto», poi il giudice; perché oggi il dovuto esiste su **14 prenotazioni su 256**, e un giudice col 94% dei dati mancanti direbbe *«non pagato»* quasi sempre. |
+| 📋 **In coda** | **12** — 🔁 **11/09/2026: QUATTRO VOCI NUOVE, tutte da sue segnalazioni della mattina, tutte messe in coda DA LUI** (*«altro task in coda»*, detto ogni volta) — la **208** (la fila dei quattro bottoni in testa alla scheda: mescolano tre mestieri, e l'unico irreversibile sta accanto a quello che non fa niente), la **209** (chiudendo una scheda resta un riquadro vuoto con la ✕ che **copre la prima fascia oraria** del calendario), la **210** (Cash e Card premuti in fila accodano **dieci** conferme, e la scritta *«↓ 10 nuovi»* dice che nascono **fuori dalla vista** ⇒ l'incasso non parte perché nessuno può confermarlo) e la **211** (*«perché non mi fa salvare il pagamento?»* — sul Salva l'app ha ragione, ma la domanda nasce dalla 210). 📌 *Le due ultime sono probabilmente la stessa cosa, e si guardano insieme.* Invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
 | 📦 **Chiuse** | **192** — 🏆 **la 207 il 10/09/2026 notte**: Torneo e Stage sono prenotazioni con un nome proprio — il **macchinario si eredita, il nome no**. Chiusa creando uno **Stage vero** e rileggendolo dalla scheda. E la prova ha trovato il lettore che il banco non vedeva: il **server**. 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
 **Neanche la 28ª ha toccato `index.html`**, come la 27ª: il lavoro è stato tutto sul **bot dei soci
@@ -1846,15 +1846,55 @@ pagato»* quasi sempre, **sbagliando**.
 **persona per persona**, e ha già il **terzo stato** (`_statoIgnoto`) — *non lo so*. ⇒ Se un giorno
 si fa il giudice, vuole **tre** esiti e non due, o chiamerebbe «non pagato» ciò che è solo «non
 letto»: è la trappola della regola sull'età (voce 111) un'altra volta.
-📌 **Proposta dichiarata** *(si può ribaltare)*: ① le **porte** nei due versi, ② l'**importo a carico
-nativo** che riempie il «dovuto» (già previsto, 188/B), ③ **poi** il giudice, quando ha su cosa
+✅⭐⭐ **IL PASSO ① È FATTO E PROVATO SUL VIVO — 11/09/2026, e la voce RESTA APERTA per il ② e il ③.**
+🗣️ Alla domanda *«navigazione o riconciliazione?»* ha risposto *«Fai come pensi sia giusto»* ⇒ scelta
+la **navigazione**, e dichiarata col suo perché: **il rischio non è simmetrico**.
+
+📏 **LE DUE PORTE, provate nei due versi e con numeri che vengono dal database:**
+· **dalla scheda a Incassi** — bottone *«Vedi gli incassi di questa prenotazione»* in fondo a
+  «Giocatori e pagamenti». Premuto sulla scheda del **03/09 Campo 3 · 18:00** ⇒ barra *«Solo i
+  pagamenti di questa prenotazione»*, e totale **48,00 €** su **4 pagamenti**: esattamente i
+  4 movimenti da 4.800 cent contati in `pmo_cloud_records` **prima** di guardare lo schermo;
+· **da Incassi alla scheda** — `pmoIncassiApriPartita` **esisteva già** e non è stata rifatta: è
+  stata **curata**. 🚨 Dei **12** chiamanti di `staffCalEditPlayers` esattamente **uno** cablava il
+  tipo (`'partita'`, `90`), ed era questo ⇒ una riga di cassa di una **lezione** apriva la scheda
+  come partita, e una scheda «partita» **non disegna il selettore del maestro**. 📏 Provato sulla
+  lezione vera di **C1 · 11/09 · 18:00**: arrivano `tipo: lezione` e `durata: "1"`, la durata è
+  mostrata **60 min**, e **il maestro c'è con «Lucas Vidal» dentro**.
+
+🚨⭐⭐ **E LA PROVA FISICA HA TROVATO UN DIFETTO CHE IL BANCO VERDE NON VEDEVA**, per la seconda
+volta di fila su questo progetto (la prima è la **207**, col lettore nel server). Su **6.443** il
+bottone portava in Incassi **senza filtro**: il ramo `incassi` di `switchTab` sta dentro un
+**`setTimeout(…, 0)`** ⇒ il suo `focus = null` girava **dopo** l'assegnazione che nel codice lo
+seguiva, e la cancellava.
+📌 *Fra due scritture dello stesso stato non decide l'ordine delle righe: decide chi gira per
+ultimo — e con un lavoro differito in mezzo, le due cose sono opposte.*
+⇒ Curato **togliendo la seconda scrittura** invece di metterle in fila: il focus lo scrive **un
+punto solo**, quello che gira per ultimo, consumando un `_incassiFocusPending`.
+
+🩹 **E UNA MIA MISURA ERA CIRCOLARE, dichiarata perché è la trappola più facile di questo giro**:
+il lookup sembrava trovare la lezione, ma l'apertura della scheda — fatta un attimo prima nella
+**stessa** prova — aveva scritto lei stessa il record (`staffBookings` **35 → 36**). Rifatta a
+freddo tornava `null`. ⇒ È la **24ª** nella forma in cui la sonda misura **il proprio effetto**.
+
+⛔⛔ **IL LIMITE CHE RESTA, e non si arrotonda a «funziona»**: il tipo si legge dalle **tre** fonti
+in memoria del browser (📏 `prenotazioni` **288** · `prenotazioniOccupazione` **163** ·
+`staffBookings` **36**), e quelle tengono il **giorno caricato**. Per il **03/09** il lookup torna
+`null` ⇒ quella scheda si apre col **ripiego `partita`/90**, cioè per le prenotazioni fuori dal
+giorno in casa **il difetto vecchio si ripresenta**. ⏳ È il primo pezzo del prossimo giro.
+⚠️ **E una cosa non è stata provata**: il **click su una riga vera** della tabella Incassi. La
+strada è la stessa funzione, esercitata per nome — ma il dito su quella riga non c'è stato.
+
+📌 **Cosa resta della proposta** *(si può ribaltare)*: ✅ ① le **porte** nei due versi — **fatto**;
+⏳ ② l'**importo a carico nativo** che riempie il «dovuto» (già previsto, 188/B); ⏳ ③ **poi** il
+giudice, quando ha su cosa
 giudicare. *La riconciliazione non è scartata: è messa dopo la cosa che la rende possibile.*
 
 ⚖️ **Dichiarazione della scelta, come vuole la delega**: sta fra le **urgenti** perché ce l'ha messa
 lui (*«metti in urgenti»*) e **non scavalca niente** — la lista era a zero dopo la chiusura della
 196. ⏳ **Non è iniziata: non è stata scritta una riga.**
 
-## 📋 IN CODA — 8
+## 📋 IN CODA — 12
 
 Le sezioni **A** (cose sue già decise), **B** (lavoretti minuti) ed **E** (manutenzione memoria) sono **vuote**. La **C** era salita tutta in urgenti il 16/08 ed è tornata a **1** la sera stessa con la 52, poi a **2** con la 53 — messa in coda **da lui**, nella stessa frase in cui autorizzava la sua metà piccola.
 
@@ -2084,6 +2124,37 @@ percorso dei pagamenti (`_pmoConfirmPayment`: *«Operazione reale su Matchpoint:
 famiglia della voce **190**). 📌 *Curare l'istanza invece della classe non è una cura*: si cercano
 tutte in un giro (`grep -n 'Matchpoint' index.html`) e si decide quali sono ancora vere su quale
 dei due gestionali.
+
+🆕🗣️⭐ **RIBADITA DA LUI L'11/09/2026, e con il perimetro che prima non c'era:**
+
+> *«sulle schede aperte dal calendario che ancora scritto matchpoint, è da levare»* · *«altro task
+> in coda»*
+
+⇒ **Due cose, e la seconda è un'istruzione sull'ordine**: il bersaglio sono le **schede aperte dal
+calendario** (non solo il dialogo del Salva che ha aperto la voce), e lui l'ha messa **in coda** —
+detto due volte, la seconda con la parola *«in coda»*. ⚖️ Registrata subito perché **una sua parola
+non misurata si perde**; **non promossa**, perché l'ordine l'ha dato lui.
+
+📏 **IL PERIMETRO, misurato l'11/09 e non stimato** — e cambia la forma della cura:
+· nella zona della scheda (`index.html` 46900-49700) le righe **non-commento** che nominano
+  Matchpoint sono **99**, di cui almeno **20 sono frasi VISIBILI all'utente**, cablate nel testo:
+  *«Leggo i giocatori da Matchpoint…»* · *«Descrizione e note allineate a Matchpoint.»* ·
+  *«verranno salvate su Matchpoint»* · *«con «Salva» finisce su Matchpoint»* · *«Stato del pagamento
+  non ancora letto da Matchpoint»* · *«Controlla la scheda su Matchpoint»*;
+· 🚨⭐⭐ **e l'astrazione per non nominarlo ESISTE GIÀ**: `pmoNomeCircoloEsterno()` torna il nome
+  **solo se il gestionale è davvero collegato al circolo**, `''` altrimenti (voce **190**, con
+  `pmoSuCircoloEsterno()` e `pmoFraseRifiutata()` per le frasi che vanno riscritte invece di
+  accorciate). ⇒ **Il difetto non è che manchi il meccanismo: è che questi punti non lo
+  attraversano.** Sul sistema nuovo `pmoCircoloEsternoCollegato()` risponde già di suo.
+📌 *Quando la cura esiste e il difetto resta, il lavoro non è inventarla: è contare i punti che le
+passano accanto.*
+
+⚠️ **E la trappola di questa voce, dichiarata prima di iniziarla**: le frasi **non si accorciano
+tutte**. Alcune hanno il circolo come **soggetto** o descrivono un **gesto che senza di lui non
+esiste** (*«rileggo da Matchpoint…»* — rileggo **dove**?): togliere la parola le lascerebbe **monche
+o false**, non più generiche. È scritto nel commento della 190 sopra `pmoFraseRifiutata`, e vale
+identico qui. ⇒ Servono **tre** esiti per ogni frase — *si toglie* · *si riscrive* · *è ancora vera*
+— non due.
 
 ⏳ **Non è iniziata.**
 
@@ -2497,7 +2568,7 @@ chiedeva, e per questo non la tengono aperta:
   finisce è un'**attesa**, non una misura;
 · **la 138 aspetta ancora l'id** dove serve a lei: qui l'id c'è, ma è un'altra voce.
 
-### C — Cose sapute e non risolte — 8
+### C — Cose sapute e non risolte — 12
 
 🆕 **21/08, 47ª sessione: entra la 68** — messa in coda **da lui**: *«Metti in coda un fix quando
 da gestionale faccio un'azione…»*. ⇒ **Coda da 1 a 2.**
@@ -2540,6 +2611,10 @@ pericolosa di tutte.*
 | **203** | 👋 **AL PRIMO INGRESSO NON GLI SI DICE COSA PUÒ FARE** — 🗣️ sua, 10/09/2026 notte: *«la prima volta che un utente è stato invitato ad entrare nel chatbot bisogna scrivergli, in breve, quello che può fare»*. 📏 **Misurato nel repo del bot, e la riga ESISTE GIÀ**: `testoAmmesso` dice *«Da adesso puoi chiedermi le tue prossime partite, il borsellino, il tuo livello e i campi liberi, oppure prenotare»* — ma **solo** sulla strada di chi si registra la prima volta. ⛔ `testoRimessoInRubrica` — quella del suo screenshot, chi era **già** registrato e apre un invito — dice *«Il link ha funzionato… ti ho messo nel gruppo di X»* e **si ferma lì**: dice dove sei finito, non cosa puoi farci. ⇒ Non è una frase da inventare, è una frase da **portare** dove manca. 🚨 E le strade d'ingresso sono **dodici** (`ingresso-testi.ts`): prima di aggiungerla vanno guardate tutte, o si cura l'istanza invece della classe. ⭐ Esiste già anche `faq.ts` (*«Ecco cosa puoi chiedermi:»*) ⇒ **una fonte sola**, non una terza copia che un giorno dirà altro. |
 | **204** | 🤖 **«IL MENU DEL BOT DI TEST È DIVERSO DA QUELLO DI PROD»** — 🗣️ sua segnalazione del 10/09/2026 notte. 🚨⭐⭐ **MISURATO SUBITO, E LA MISURA PUNTA DALL'ALTRA PARTE**: i due bot girano dallo **stesso repo e stesso ramo**, e il confronto dei due registri sullo stesso comando a due minuti di distanza dice che **il testo è identico** — su una *lezione* tutt'e due rispondono, parola per parola, *«Se hai bisogno di modificare o gestire una lezione, chiama la segreteria al +39 379 115 1472»*. ⇒ A essere diverso non è il menu: è **cosa c'è prenotato**. Su TEST le prime quattro voci sono **lezioni**, e una lezione **per disegno** non ha bottoni di gestione; la sua schermata di PROD è una **partita**, che li ha tutti. 📏 E la quinta di TEST, che *è* una partita, non mostra i bottoni ma **`⏳ Questo elenco sta cambiando proprio adesso`** — cioè uno **stato** del roster su `cudi`, non un menu vecchio. ⛔ **E se uno dei due è indietro è PROD**: riavviato il **07/09 21:45** (uptime 2 giorni), contro il bot di prova riavviato **oggi alle 16:00**. ⚖️ **Cosa NON è dimostrato**: è stato confrontato **un comando solo**, e 🗣️ **lui ha detto subito *«ma ce ne sono altri da verificare»*** ⇒ la misura esclude una causa, non chiude la segnalazione. Chiude con un confronto affiancato **sullo stesso tipo di prenotazione** — una partita di là e una di qua — e con la ragione per cui su `cudi` quella partita risulta «in movimento». |
 | **206** | 🔌 **«SALVARE SU MATCHPOINT?» — LA DOMANDA CHE IL SISTEMA NUOVO NON DOVREBBE FARE** — 📏 misurato il 10/09/2026 notte premendo Salva davvero su `cudi`: la scheda chiede *«Salvare su **Matchpoint**?»* e sotto elenca *«Tipo: Partita → Lezione»* — cioè un gesto che su Matchpoint **non esiste**, perché là una partita e una lezione sono due schede diverse. ⚖️ La riga sotto al menu Tipo evita il circolo **di proposito** (*«dire ‹verrà salvato sul circolo› sarebbe falso»*), e due centimetri più in là il dialogo lo nomina lo stesso. 🎯 **Non è una pignoleria di parole**: sul sistema che fra ~15 giorni diventa quello vero, la risposta della edge dice già *«Questa partita nasce qui: il circolo esterno non è stato chiamato»* ⇒ la domanda e la risposta si contraddicono nello stesso gesto. ⛔ **Stessa famiglia della frase rimasta in `_pmoConfirmPayment`** (*«Operazione reale su Matchpoint: crea un cobro»*, voce 190): si curano insieme, cercandole tutte (`grep -n 'Matchpoint' index.html`), non una per volta. |
+| **208** | 🔘 **LA FILA DEI BOTTONI IN TESTA ALLA SCHEDA VA RIPENSATA** — 🗣️ sua, 11/09/2026: *«ottimizzare la posizione dei bottoni nella scheda (salva + aggiungi + chiudi + annulla)»*. 📏 Misurato sul suo schermo: in testa stanno **quattro** bottoni in una riga — `✓ Salva` · `✕ Chiudi` · `+ Aggiungi giocatore` a sinistra, `🗑 Annulla prenotazione` spinto a destra. ⚖️ **Il problema non è l'estetica, è che mescolano tre mestieri**: uno **salva**, uno **esce senza fare niente**, uno **modifica l'elenco**, e uno **cancella la prenotazione** — cioè l'unico irreversibile sta nella stessa riga di quello che non fa nulla. 🚨 E la loro posizione è già stata **spostata una volta** (voce **167**: «+ Aggiungi giocatore» era in fondo alla sezione giocatori e fu portato in testa *«con gli altri tre»*) ⇒ chi rifà questo lavoro deve leggere quella voce prima, o disfa una decisione già presa per una ragione scritta. ⭐ **E c'è un fatto nuovo che allora non c'era**: dall'11/09 la sezione «Giocatori e pagamenti» ha in fondo un bottone di sola **navigazione** (`Vedi gli incassi di questa prenotazione`, voce 198), messo lì **di proposito** per non stare in fila con i gesti che scrivono. 📌 *Un bottone che guarda non si mette dove stanno i bottoni che fanno* — e questa voce è dove quel criterio si applica agli altri quattro. |
+| **209** | 🫥 **CHIUDENDO UNA SCHEDA RESTA UN RIQUADRO VUOTO CON LA ✕** — 🗣️ sua, 11/09/2026: *«quando chiudo una scheda rimane questo banner»*, con lo schermo allegato. 📏 **Il difetto si VEDE**: dopo la chiusura, al posto della scheda resta una striscia bianca alta ~60 px con il solo bottone **✕** in alto a destra, sopra il calendario — un contenitore svuotato del contenuto ma non rimosso. ⛔ **Non è cosmetico**: quel riquadro **copre la prima fascia oraria** del calendario (nello schermo suo nasconde la riga sopra C1) e resta cliccabile ⇒ chi prova a prenotare in quella fascia clicca su un contenitore morto. 🔎 **Dove cercare**: la scheda vive in `#svcChatMessages`/`.svc-flow-card` dentro il pannello di servizio ⇒ l'ipotesi è che il gesto di chiusura svuoti il **contenuto** (`innerHTML = ''`) senza nascondere il **contenitore**, o che nasconda la scheda lasciando su il pannello. ⚠️ **Ipotesi, non misura**: va riprodotto con la console remota guardando chi resta nel DOM dopo la chiusura, e poi curato dove il contenitore si spegne — non aggiungendo un secondo posto che lo nasconde. |
+| **210** | 🔁 **CASH E CARD PREMUTI IN FILA ACCODANO DIECI CONFERME** — 🗣️ sua, 11/09/2026: *«Perché se io clicco i bottoni cash e card uno dopo l'altro mi fa questo, dovrebbe non darmi tutti questi tentativi oppure è giusto? è perché c'è un doppio banner»*. 📏 **Misurato dal suo schermo, e la cifra è nel suo schermo**: in fondo alla pagina compare **`↓ 10 nuovi · 💰 CASSA DEL GESTIONALE — Incassare 12,00 € da Lidia Comes in Card?`** ⇒ ogni click ha accodato **una richiesta di conferma**, e ne sono rimaste **dieci** in attesa. 🚨⭐⭐ **E la risposta alla sua domanda è «no, non è giusto», per un motivo che non è il fastidio**: quelle conferme **non sono un dialogo modale** — sono messaggi nel pannello di servizio, e la scritta *«↓ 10 nuovi»* dice che stanno **fuori dalla vista**. ⇒ Chi preme non vede cosa gli è stato chiesto, e l'incasso **non parte** perché nessuno può confermarlo. ⚖️ **Due cose da decidere, e sono diverse**: ① un secondo click sullo stesso giocatore deve **sostituire** la richiesta aperta, non aggiungerne una (una persona non paga due volte la stessa quota); ② la richiesta deve **farsi vedere** — una conferma che nasce sotto lo schermo è una conferma che non c'è. 🔗 **Probabilmente è la stessa cosa della 211**, e le due si guardano insieme. |
+| **211** | 💾 **«PERCHÉ NON MI FA SALVARE IL PAGAMENTO?»** — 🗣️ sua domanda, 11/09/2026, con lo schermo: scheda del 14/09 Campo 3 · 18:00, Lidia Comes, *A carico 12,00 € · Già incassato 0,00 € · Manca all'appello 12,00 €*, e premendo **Salva** esce **`💰 Nessuna modifica da salvare.`** ⇒ **Due risposte, e vanno date entrambe perché una sola sarebbe fuorviante:** ① 📏 **Su quel gesto l'app ha ragione**: `Salva` salva le **modifiche della scheda** (importo a carico, tipo, note, giocatori, slot) e lui non aveva cambiato niente — l'importo era già 12,00 € ⇒ *«nessuna modifica»* è **vero**. L'incasso non passa dal Salva: passa da **Cash · Card · Wallet**, ed è una separazione **voluta** (*«cambiare un importo NON è incassare»*, voce 132). ② 🚨 **Ma la domanda nasce da un difetto vero, e sta nella 210**: i tre bottoni dell'incasso aprono una conferma che finisce **fuori dalla vista** (`↓ 10 nuovi`) ⇒ lui li ha premuti, non ha visto nulla succedere, e ha provato col Salva. 📌 *Quando qualcuno usa il bottone sbagliato, la prima domanda non è perché ha sbagliato: è cosa ha fatto il bottone giusto quando l'ha premuto.* ⏳ **Cosa manca per chiuderla**: curata la 210, riprovare **questo** gesto e vedere l'incasso arrivare in Incassi. ⚠️ E va deciso se il Salva, con *«Manca all'appello»* pieno, deve **dire dove si incassa** invece di rispondere solo *«nessuna modifica»*: oggi è una risposta vera che non aiuta. |
 
 | banco | indice su `updated_at` | indice sull'espressione `payload` | `fillfactor` | HOT |
 |---|---|---|---|---|
