@@ -35,8 +35,14 @@ const RADICE = join(QUI, '..');
 const APP = readFileSync(join(RADICE, 'index.html'), 'utf8');
 
 function sorgenteDi(nome) {
-  const i = APP.indexOf('function ' + nome + '(');
+  let i = APP.indexOf('function ' + nome + '(');
   assert.ok(i > 0, 'funzione non trovata: ' + nome);
+  /* 🩹 `async function` — senza questo, l'estrazione ritaglia la funzione SENZA la parola
+     `async` e il `new Function` che la monta muore con «await is only valid in async
+     functions». ⇒ Il banco sarebbe rosso per un difetto del BANCO, e la prima reazione sarebbe
+     cercarlo nel codice. 📌 *Un estrattore che perde una parola chiave non estrae la funzione:
+     ne estrae una che non compila.* */
+  if (APP.slice(Math.max(0, i - 6), i) === 'async ') i -= 6;
   const apre = APP.indexOf(') {', i);
   let g = 0, visto = false, k = apre + 2;
   for (; k < APP.length; k++) {
@@ -105,6 +111,7 @@ function montaLookup(staffBookings, occupazione, elenco) {
   const sorgente = [
     sorgenteDi('pmoTipoScheda'),
     sorgenteDi('pmoTipoParola'),
+    sorgenteDi('_pmoOraNorm'),
     sorgenteDi('_pmoTrovaSlot'),
     sorgenteDi('_pmoLookupTipoDurata'),
   ].join('\n');
@@ -318,6 +325,7 @@ test('e chi la normalizza sa leggere tutti e due i formati', () => {
 function montaDovuto(staffBookings) {
   const sorgente = [
     sorgenteDi('_pmoContoPartita'),
+    sorgenteDi('_pmoOraNorm'),
     sorgenteDi('_pmoTrovaSlot'),
     sorgenteDi('_pmoDovutoDelloSlot'),
   ].join('\n');
@@ -423,4 +431,197 @@ test('anche l\'incassato in più ha una spiegazione, non un allarme', () => {
   assert.ok(/in più/.test(blocco), 'il caso incassato > dovuto non è previsto');
   assert.ok(/importo cambiato dopo l'incasso/.test(blocco),
     'manca la spiegazione del caso «in più»: senza, sembra un errore di chi ha incassato');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ⑤ 11/09/2026 — LO SLOT NON SI TROVA QUASI MAI, E IL LIMITE DICHIARATO ERA PIÙ PICCOLO
+//    DEL VERO.
+//
+// 🚨⭐⭐ La 117ª aveva scritto che il lookup fallisce *«fuori dal giorno caricato»*, come se
+//    mancasse un giorno. 📏 Rimisurato l'11/09 sulla pagina viva di TEST, su TUTTE le righe di
+//    cassa: delle **705** terne `data+campo+ora` distinte dei pagamenti, la memoria ne trovava
+//    **19** ⇒ **686 su 705 (97,3%)** aprivano col ripiego. Non un caso di bordo: la regola.
+// ⚖️ E il perché non è il giorno, è la FINESTRA: le fonti in memoria tengono il FUTURO
+//    (`booking` e `booking_occupancy` 07/09→07/10) mentre ogni incasso guarda il PASSATO
+//    (pagamenti dal 01/06 al 07/09). Le due finestre quasi non si toccano.
+// 📌 *Un limite dichiarato e mai rimisurato resta vero per sempre — e quando è espresso come
+//    un caso raro, nessuno va a contare quanto raro sia.*
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+function montaOraNorm() {
+  return new Function(`${sorgenteDi('_pmoOraNorm')}\nreturn _pmoOraNorm;`)();
+}
+
+test('l\'ora si pareggia prima del confronto: «9:00» e «09:00» sono la stessa ora', () => {
+  // 📏 Misurato su cudi l'11/09: 129 righe `payment` su 2.605 hanno l'ora NON paddata, e TUTTE
+  //    le fonti dello slot ce l'hanno paddata (booking 288/288, booking_history 2.881/2.881,
+  //    booking_occupancy 163/163, staff_booking 37/37). ⇒ Quelle 129 non potevano combaciare.
+  const n = montaOraNorm();
+  assert.equal(n('9:00'), '09:00');
+  assert.equal(n('09:00'), '09:00');
+  assert.equal(n('9:5'), '09:05', 'anche i minuti vanno paddati, o «9:5» resta diverso da «09:05»');
+  assert.equal(n('21:30'), '21:30', 'un\'ora già a posto non si deve rovinare');
+  assert.equal(n(''), '', 'il vuoto resta vuoto: non si inventa un\'ora');
+  assert.equal(n(null), '', 'e nemmeno da null');
+});
+
+test('lo slot si trova anche quando il pagamento scrive l\'ora senza lo zero davanti', () => {
+  // Il caso vero: la riga di cassa dice «9:00», la prenotazione dice «09:00».
+  const lookup = montaLookup([{ data: '2026-06-06', campo: '2', ora: '09:00', tipo: 'lezione', durata: 60 }], []);
+  const r = lookup('2026-06-06', 2, '9:00');
+  assert.equal(r.tipo, 'lezione', 'l\'ora non paddata del pagamento deve trovare lo slot paddato');
+  assert.equal(r.durata, 60);
+
+  /* 🚨⭐⭐ E ANCHE AL CONTRARIO — questo caso è nato da un SABOTAGGIO, non da una rilettura.
+   * Rimettendo il confronto grezzo sul lato del RECORD (`String(x.ora).trim()`) il banco
+   * restava **verde**: normalizzare la sola domanda basta finché tutti gli slot sono paddati,
+   * e oggi lo sono (📏 288+2.881+163+37 su altrettanti). ⇒ La sonda provava METÀ della guardia.
+   * ⚖️ La normalizzazione sui due lati si tiene lo stesso: gli `staff_booking` li scriviamo
+   *   NOI, e il giorno in cui uno nasce con `9:00` la metà non provata sarebbe quella che serve.
+   * 📌 *Una guardia simmetrica va sabotata da tutt'e due i lati, o metà non è mai stata provata.* */
+  const rovescio = montaLookup([{ data: '2026-06-06', campo: '2', ora: '9:00', tipo: 'lezione', durata: 60 }], []);
+  assert.equal(rovescio('2026-06-06', 2, '09:00').tipo, 'lezione',
+    'uno slot scritto con l\'ora non paddata non si trova: la normalizzazione manca sul lato del record');
+});
+
+test('e il DOVUTO smette di dire «non so» per una ragione di formato', () => {
+  // ⚖️ Il terzo esito della voce (*«dovuto non so»*) usciva FALSO su quelle righe: il dato
+  //    c'era, era il confronto a non riuscire. Un «non so» falso è peggio di un «non so» vero.
+  const dovuto = montaDovuto([
+    { data: '2026-06-06', campo: '2', ora: '09:00', giocatori: [{ nome: 'A', importoCents: 1200 }, { nome: 'B', importoCents: 1200 }] },
+  ]);
+  const d = dovuto('2026-06-06', 2, '9:00');
+  assert.equal(d.trovato, true, 'con l\'ora pareggiata lo slot si trova');
+  assert.equal(d.cents, 2400);
+  assert.equal(d.ignoti, 0);
+});
+
+// ── LA STRADA VERSO IL CLOUD ──────────────────────────────────────────────────────────────
+function montaOvunque(inMemoria, righeCloud, { rpcRompe = false } = {}) {
+  const sorgente = [
+    sorgenteDi('pmoTipoScheda'),
+    sorgenteDi('pmoTipoParola'),
+    sorgenteDi('_pmoOraNorm'),
+    sorgenteDi('_pmoTrovaSlot'),
+    sorgenteDi('_pmoLookupTipoDurata'),
+    sorgenteDi('_pmoSlotChiave'),
+    sorgenteDi('_pmoIndiceSlotDalCloud'),
+    sorgenteDi('_pmoTipoDurataOvunque'),
+  ].join('\n');
+  const tabella = (() => {
+    const m = APP.match(/const PMO_TIPI_PRENOTAZIONE = \[([\s\S]*?)\n  \];/);
+    assert.ok(m, 'non trovo PMO_TIPI_PRENOTAZIONE');
+    return (m[1].match(/\{[^}]*\}/g) || []).map((r) => ({
+      tipo: (r.match(/tipo:\s*'([^']+)'/) || [])[1],
+      etichetta: (r.match(/etichetta:\s*'([^']+)'/) || [])[1],
+      engine: (r.match(/engine:\s*'([^']+)'/) || [])[1],
+      giocatori: /giocatori:\s*true/.test(r),
+      maestro: /maestro:\s*true/.test(r),
+    }));
+  })();
+  const conti = { chiamate: 0 };
+  const fab = new Function('SB', 'CLOUD', 'ROMPE', 'CONTI', `
+    const PMO_TIPI_PRENOTAZIONE = ${JSON.stringify(tabella)};
+    const safeLoad = (k, d) => (k === 'staffBookings' ? SB : d);
+    const prenotazioniOccupazione = [];
+    const prenotazioni = [];
+    const console = { warn() {} };
+    /* Lo STATO dell'indice: nel sorgente vero sono due \`var\` accanto alle funzioni, e qui
+       vanno dichiarate o il montaggio esplode con un ReferenceError che si scambia per un
+       difetto del codice. ⇒ La sonda qui sotto verifica che nel sorgente ci siano davvero,
+       così una rinomina non passa verde per via di questa impalcatura. */
+    let _pmoSlotCloudIdx = null;
+    let _pmoSlotCloudInVolo = null;
+    const pmoStaffRpcPaged = async () => { CONTI.chiamate++; if (ROMPE) throw new Error('rete giù'); return CLOUD; };
+    ${sorgente}
+    return { ovunque: _pmoTipoDurataOvunque, indice: _pmoIndiceSlotDalCloud };
+  `);
+  return { ...fab(inMemoria, righeCloud, rpcRompe, conti), conti };
+}
+
+const RIGA = (t, data, campo, ora, payload) => ({ record_type: t, deleted: false, payload: { data, campo, ora, ...payload } });
+
+test('se la memoria sa, il cloud non si disturba nemmeno', async () => {
+  const m = montaOvunque([{ data: '2026-09-08', campo: '3', ora: '18:00', tipo: 'lezione', durata: 60 }], []);
+  const r = await m.ovunque('2026-09-08', 3, '18:00');
+  assert.equal(r.tipo, 'lezione');
+  assert.equal(r.fonte, 'memoria');
+  assert.equal(m.conti.chiamate, 0, 'una partita recente non deve costare 3.000 record');
+});
+
+test('se la memoria non sa, lo slot si va a leggere nello STORICO del cloud', async () => {
+  // 📏 `booking_history` ha 2.881 righe vive sul cloud e `storicoPrenotazioni` in memoria ne
+  //    ha 0: l'app non lo idrata. ⇒ La funzione se lo carica, invece di scommettere.
+  const m = montaOvunque([], [RIGA('booking_history', '2026-06-01', 'Campo 3', '18:00', { tipo: 'Lezione Libera', durata: '1.5' })]);
+  const r = await m.ovunque('2026-06-01', 3, '18:00');
+  assert.equal(r.tipo, 'lezione', '«Lezione Libera» del circolo è una lezione');
+  assert.equal(r.durata, '1.5', 'la durata passa GREZZA: la normalizza _staffCalDurMin, e convertirla due volte la romperebbe');
+  assert.equal(r.fonte, 'cloud');
+});
+
+test('la nostra scheda vince su quella del circolo, a parità di slot', async () => {
+  // ⚖️ `staff_booking` è la scheda che qualcuno ha aperto e corretto; `booking_history` è la
+  //    copia arrivata dal circolo. Se si contraddicono, quella vera è la nostra.
+  const m = montaOvunque([], [
+    RIGA('booking_history', '2026-06-01', '3', '18:00', { tipo: 'Partita', durata: '1.5' }),
+    RIGA('staff_booking', '2026-06-01', '3', '18:00', { tipo: 'lezione', durata: 60 }),
+  ]);
+  const r = await m.ovunque('2026-06-01', 3, '18:00');
+  assert.equal(r.tipo, 'lezione', 'ha vinto la copia del circolo: l\'ordine di priorità non è applicato');
+  assert.equal(r.durata, 60);
+});
+
+test('l\'indice si costruisce UNA volta sola, non a ogni click', async () => {
+  const m = montaOvunque([], [RIGA('booking_history', '2026-06-01', '3', '18:00', { tipo: 'Partita', durata: '1.5' })]);
+  await m.ovunque('2026-06-01', 3, '18:00');
+  await m.ovunque('2026-06-02', 4, '21:00');
+  await m.ovunque('2026-06-03', 1, '10:00');
+  assert.equal(m.conti.chiamate, 1, 'tre click hanno riletto il cloud ' + m.conti.chiamate + ' volte');
+});
+
+test('«non c\'è» e «non sono riuscito a leggere» restano due risposte diverse', async () => {
+  // 🚨 È lo zero che non sa dire «rotto» della voce 165. Se la lettura fallita tornasse una
+  //    mappa vuota, l'operatore leggerebbe «questa partita non esiste più» per un guasto di rete.
+  const rotto = montaOvunque([], [], { rpcRompe: true });
+  const a = await rotto.ovunque('2026-06-01', 3, '18:00');
+  assert.equal(a.fonte, 'illeggibile');
+  assert.equal(await rotto.indice(), null, 'una lettura fallita deve tornare null, non una mappa vuota');
+
+  const vuoto = montaOvunque([], []);
+  const b = await vuoto.ovunque('2026-06-01', 3, '18:00');
+  assert.equal(b.fonte, 'assente', 'il cloud risponde e non ce l\'ha: è un\'assenza, non un guasto');
+});
+
+// ── IL RIPIEGO SI DICHIARA ────────────────────────────────────────────────────────────────
+test('la porta ASPETTA la risposta invece di ripiegare subito', () => {
+  // 🚨 Sabotaggio che questa sonda deve fermare: togliere l'`await` lascerebbe `_td` uguale a
+  //    una Promise — sempre «vera», mai con `.tipo` ⇒ il ripiego SEMPRE, e in silenzio.
+  const i = APP.indexOf('function pmoIncassiApriPartita(');
+  assert.ok(i > 0);
+  const corpo = APP.slice(i, APP.indexOf('\n    }', i));
+  assert.ok(/async function pmoIncassiApriPartita\(/.test(APP.slice(Math.max(0, i - 10), i + 40)),
+    'pmoIncassiApriPartita non è più async: non può aspettare la lettura del cloud');
+  assert.ok(/await\s+_pmoTipoDurataOvunque\(/.test(corpo),
+    'la porta non aspetta _pmoTipoDurataOvunque: senza await, `_td` è una Promise e il ripiego scatta sempre');
+});
+
+test('quando ripiega, la scheda lo DICE: non apre «partita/90» in silenzio', () => {
+  // 📏 Il ripiego tocca 324 slot su 704 — quasi la metà. A quel volume il silenzio non è un
+  //    arrotondamento: è un'affermazione falsa ripetuta, con la faccia di un dato letto.
+  const i = APP.indexOf('function pmoIncassiApriPartita(');
+  const corpo = APP.slice(i, APP.indexOf('\n    }', i));
+  const g = corpo.indexOf('if (!(_td && _td.tipo))');
+  assert.ok(g > 0, 'manca il ramo che riconosce il ripiego');
+  const ramo = corpo.slice(g, corpo.indexOf('if (typeof staffCalEditPlayers', g));
+  assert.ok(/showAlert\(/.test(ramo), 'il ramo del ripiego non avvisa nessuno');
+  assert.ok(/maestro/i.test(ramo), 'l\'avviso non dice la conseguenza vera: che di una lezione non si vedrebbe il maestro');
+  assert.ok(/illeggibile/.test(ramo), 'l\'avviso non distingue «non c\'è più» da «non sono riuscito a leggere»');
+});
+
+test('lo stato dell\'indice esiste nel sorgente, non solo nell\'impalcatura del banco', () => {
+  // 🚨 Sabotaggio che ferma: rinominare le due variabili farebbe passare il banco (che le
+  //    dichiara da sé) mentre la pagina vera muore con un ReferenceError al primo click.
+  // 📌 *Un banco che dichiara ciò che sta provando non prova più niente: si prova da solo.*
+  assert.ok(/\bvar _pmoSlotCloudIdx\s*=/.test(APP), 'nel sorgente manca la dichiarazione di _pmoSlotCloudIdx');
+  assert.ok(/\bvar _pmoSlotCloudInVolo\s*=/.test(APP), 'nel sorgente manca la dichiarazione di _pmoSlotCloudInVolo');
 });
