@@ -83,6 +83,14 @@ function banco(pagamentiInArchivio = []) {
     'function renderStaffCalendar(){}',
     estrai('_payCampoNum'),
     estrai('_payOraHm'),
+    // ↩︎ VOCE 217 — `_staffCalRefreshPaidIndex` marca le righe della cassa NOSTRA: senza queste
+    //    due costanti e senza `_payRigaNostra` il ciclo esplode e l'indice resta VUOTO — cioè il
+    //    banco accuserebbe la cura di un difetto che non ha. 📌 *Un banco che ritaglia una
+    //    funzione ne eredita le dipendenze: quando la funzione ne prende una nuova, il banco la
+    //    scopre diventando rosso su casi che non c'entrano.*
+    "const PMO_CASSA_SOURCE = 'pmo_cassa';",
+    "const PMO_CASSA_SOURCE_VECCHIA = 'pmo_simulate';",
+    estrai('_payRigaNostra'),
     estrai('_payBucket'),
     estrai('_payNormName'),
     estrai('_payNatKey'),
@@ -214,11 +222,13 @@ const _CONDIZIONE_STORNO = (function () {
   if (!m) throw new Error('la condizione dello storno ha cambiato forma: ' + r);
   return m[1];
 })();
-const stornoOfferto = new Function('_payVoidActive', 'isGift', 'stato', 'return !!(' + _CONDIZIONE_STORNO + ');');
+/* ↩︎ VOCE 217 — il cancello guarda ANCHE l'archivio (`_payInfo`), perché una riga della cassa
+   nostra non riceverà mai la conferma del circolo: va passato, o qui esplode. */
+const stornoOfferto = new Function('_payVoidActive', 'isGift', 'stato', '_payInfo', 'return !!(' + _CONDIZIONE_STORNO + ');');
 
 function segno(stato, payInfo) {
   const s = decideSegno(true, stato, payInfo);
-  return Object.assign({}, s, { stornabile: s.isPaid && stornoOfferto(true, false, stato) });
+  return Object.assign({}, s, { stornabile: s.isPaid && stornoOfferto(true, false, stato, payInfo) });
 }
 
 test('② il worker ha risposto «riscosso» → ✓, e si può stornare', () => {
@@ -234,10 +244,36 @@ test('② ⭐ il worker NON ha ancora risposto ma il gestionale sa → ✓ subit
   assert.equal(s._statoIgnoto, false);
 });
 
-test('② 🚨 …ma NON si può stornare finché il circolo non conferma', () => {
+test('② 🚨 …ma NON si può stornare finché il circolo non conferma — RIGA DI MATCHPOINT', () => {
   // Un dato basta per informare molto prima di bastare per agire: lo storno muove denaro vero.
+  // ⚖️ VOCE 217 — questo caso è rimasto com'era, ed è la metà che dimostra che la 142 NON è
+  //    stata allentata: senza `nostro`, la riga viene dal libro del circolo e la conferma serve.
   const s = segno(null, { methods: ['carta'], cents: 800 });
+
   assert.equal(s.stornabile, false, 'lo storno si offre su uno stato che il circolo non ha confermato');
+});
+
+/* ↩︎🚨⭐⭐ VOCE 217 — E IL GEMELLO, che è la cura: sulla cassa NOSTRA la conferma del circolo non
+   arriverà MAI, perché il circolo non c'è. Aspettarla vuol dire non stornare mai.
+   📏 È il caso che lui ha visto con gli occhi: «non c'è la possibilità di fare lo storno».
+   ⚖️ I due casi vanno letti insieme — stesso `stato: null`, esito OPPOSTO — e ciò che li separa
+      è l'unica cosa che deve separarli: da quale libro viene la riga. */
+test('② ↩︎ …ma una riga della CASSA NOSTRA si storna senza aspettare nessuno', () => {
+  const s = segno(null, { methods: ['contanti'], cents: 1200, nostro: true });
+  assert.equal(s.isPaid, true, 'un incasso nostro non risulta nemmeno pagato');
+  assert.equal(s.stornabile, true,
+    'il ↩︎ non compare su un incasso NOSTRO: è la voce 217, e da lì non si storna in nessun altro posto');
+});
+
+test('② ⛔ e «nostro» deve essere DETTO, non somigliante', () => {
+  /* 🚨 Un valore qualunque che accendesse il ↩︎ lo accenderebbe anche su una riga di Matchpoint
+     malformata, dove lo storno nativo non fa niente: un bottone che si preme a vuoto. */
+  const falsi = [{ methods: ['contanti'], cents: 1200, nostro: 'si' },
+                 { methods: ['contanti'], cents: 1200, nostro: 1 }];
+  for (const pi of falsi) {
+    assert.equal(segno(null, pi).stornabile, false,
+      'il ↩︎ si accende su un `nostro` che non è `true`: la marcatura ha smesso di essere esplicita');
+  }
 });
 
 test('② 🚨 nessuno dei due sa → «non lo so ancora», MAI la ✗ rossa', () => {
