@@ -42,11 +42,30 @@ jobs:
           cat files.tsv || true
           echo "--------------------------------"
 
-          # Regola 2: vietate le PR che cancellano file
-          if [ "$REMOVED" -gt 0 ]; then
-            echo "::error::PR vietata: cancella $REMOVED file. Verso 'main' non si cancellano file."
-            awk -F'\t' '$1=="removed"{print "  - cancellato: "$2}' files.tsv
+          # Regola 2: vietate le PR che cancellano file — TRANNE dentro `docs/`.
+          #
+          # 🗣️ ECCEZIONE APERTA DAL COMMITTENTE l'11/09/2026, messo davanti a questo ostacolo:
+          #    voleva eliminare `docs/circoli-esterni-disegno.md` (progetto annullato) e questa
+          #    regola lo vietava senza via d'uscita — nessuna label, nessuna parola chiave.
+          #    ⇒ «Cancellarlo davvero, allentando la guardia».
+          #
+          # ⚖️ PERCHÉ L'ECCEZIONE È SICURA, e perché è STRETTA: questa guardia difende il
+          #    GESTIONALE di PROD dai merge all'ingrosso e dalle cancellazioni accidentali.
+          #    `docs/` non è il gestionale: è il racconto del lavoro, e un documento che descrive
+          #    un progetto annullato non protegge niente — invita a ripartire da lì.
+          #    ⛔ Tutto il resto resta vietato IDENTICO: `index.html`, i workflow, il worker, le
+          #    edge. Un file cancellato fuori da `docs/` blocca la PR come prima.
+          #
+          # 📌 Cancellare un documento non lo toglie dalla storia di git: toglie solo l'invito a
+          #    leggerlo come se fosse ancora vivo.
+          REMOVED_FUORI_DOCS=$(awk -F'\t' '$1=="removed" && $2 !~ /^docs\//{c++} END{print c+0}' files.tsv)
+          if [ "$REMOVED_FUORI_DOCS" -gt 0 ]; then
+            echo "::error::PR vietata: cancella $REMOVED_FUORI_DOCS file fuori da 'docs/'. Verso 'main' non si cancellano file del gestionale."
+            awk -F'\t' '$1=="removed" && $2 !~ /^docs\//{print "  - cancellato: "$2}' files.tsv
             FAIL=1
+          elif [ "$REMOVED" -gt 0 ]; then
+            echo "ℹ️  $REMOVED file cancellati, tutti dentro 'docs/': consentito (eccezione dichiarata 11/09/2026)."
+            awk -F'\t' '$1=="removed"{print "  - cancellato (docs): "$2}' files.tsv
           fi
 
           # Regola 3: vietate le PR che toccano troppi file (sospetto merge all'ingrosso)
