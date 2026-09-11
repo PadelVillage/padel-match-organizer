@@ -40,16 +40,28 @@ function sorgenteDi(nome) {
   return APP.slice(i, k);
 }
 
-// ── un pannello di servizio finto, ma con la stessa FORMA di quello vero ─────────────────
+/* ── un pannello di servizio finto, con la STRUTTURA VERA del messaggio ──────────────────
+ * 🚨⭐⭐ E la struttura è stata MISURATA sulla pagina viva, non immaginata. Il primo banco
+ *    modellava il messaggio come «una riga sola», e su quel modello la cura sembrava corretta.
+ *    📏 Guardando il DOM vero, i figli sono TRE: `.svc-msg-label` · la riga della domanda ·
+ *    `.svc-step-buttons`. ⇒ `:scope > div:last-child` **non è la domanda, sono i bottoni** —
+ *    e la prima versione della cura ci scriveva dentro la nota, ottenendo l'effetto giusto per
+ *    la ragione sbagliata.
+ * 📌 *Un banco che modella una struttura più semplice di quella vera non prova la cura: prova
+ *    la cura contro il proprio disegno.* */
 function finsiMessaggio() {
-  const riga = { innerHTML: '' };
-  const bottoni = [];
-  return {
-    _riga: riga, _bottoni: bottoni, innerHTML: '',
-    querySelector: (sel) => (sel === ':scope > div:last-child' ? riga : null),
-    querySelectorAll: () => bottoni.slice(),
-    appendChild: (b) => { bottoni.push(b); return b; },
+  const label = { tag: 'label', innerHTML: '🤖 Sistema' };
+  const domanda = { tag: 'domanda', innerHTML: '' };
+  const figli = [label, domanda];
+  const m = {
+    _label: label, _domanda: domanda, _figli: figli, innerHTML: '',
+    get _bottoni() { return figli.filter((f) => f.tag === 'btns'); },
+    get _note() { return figli.filter((f) => f.tag === 'nota'); },
+    querySelector: (sel) => (sel === ':scope > div:last-child' ? figli[figli.length - 1] : null),
+    querySelectorAll: (sel) => (/button/.test(sel) ? figli.filter((f) => f.tag === 'btns') : []),
+    appendChild: (n) => { figli.push(n); return n; },
   };
+  return m;
 }
 
 function monta() {
@@ -66,15 +78,16 @@ function monta() {
     const escapeHtml = (s) => String(s == null ? '' : s);
     const _incassiEuro = (c) => (c / 100).toFixed(2).replace('.', ',') + ' €';
     const requestAnimationFrame = (f) => f();
-    const document = { getElementById: () => REG.cont };
     const svcAddMessage = function (chi, html) {
-      const m = NUOVO(); m.innerHTML = html; m._riga.innerHTML = html;
-      REG.messaggi.push(m); return m;
+      const m = NUOVO(); m._domanda.innerHTML = html;
+      REG.messaggi.push(m); REG.ultimo = m; return m;
     };
     const svcMakeStepButtons = function (labels, onChoose, onCancel) {
-      const b = { _si: onChoose, _no: onCancel, remove() { b._tolto = true; } };
+      const b = { tag: 'btns', _si: onChoose, _no: onCancel,
+        remove() { b._tolto = true; const i = REG.ultimo._figli.indexOf(b); if (i >= 0) REG.ultimo._figli.splice(i, 1); } };
       return b;
     };
+    const document = { getElementById: () => REG.cont, createElement: () => ({ tag: 'nota', style: {}, innerHTML: '', className: '' }) };
     ${sorgente}
     return {
       chiedi: _pmoConfirmCollect,
@@ -107,10 +120,16 @@ test('la richiesta sostituita lo SCRIVE: non sparisce in silenzio', async () => 
   m.chiedi('Lidia Comes', 'Cash', 1200);
   m.chiedi('Lidia Comes', 'Card', 1200);
   await new Promise((r) => setImmediate(r));
-  const vecchia = m.reg.messaggi[0]._riga.innerHTML;
-  assert.match(vecchia, /sostituita/i, 'la vecchia non dice di essere stata sostituita');
-  assert.match(vecchia, /non è stato incassato/i, 'non dice la cosa che conta sui soldi: che non è stato incassato niente');
-  assert.match(vecchia, /Card/, 'non dice QUALE richiesta l\'ha sostituita');
+  const vecchia = m.reg.messaggi[0];
+  const nota = vecchia._note.map((n) => n.innerHTML).join(' ');
+  assert.match(nota, /sostituita/i, 'la vecchia non dice di essere stata sostituita');
+  assert.match(nota, /non è stato incassato/i, 'non dice la cosa che conta sui soldi: che non è stato incassato niente');
+  assert.match(nota, /Card/, 'non dice QUALE richiesta l\'ha sostituita');
+  // 🚨 E LA DOMANDA DEVE RESTARE LEGGIBILE: se la nota la sovrascrivesse, avrei tolto in
+  //    silenzio la richiesta di denaro che stavo dichiarando di non voler togliere in silenzio.
+  assert.match(vecchia._domanda.innerHTML, /Incassare/,
+    'la nota ha cancellato la domanda: chi scorre indietro non sa più cosa gli era stato chiesto');
+  assert.match(vecchia._domanda.innerHTML, /Cash/, 'e non sa più con quale metodo');
 });
 
 test('i bottoni della richiesta sostituita spariscono: un «Sì, incassa» morto è una bugia', async () => {
@@ -215,4 +234,27 @@ test('la domanda si porta in vista DOPO che i bottoni sono attaccati', () => {
   const iVista = src.indexOf('_pmoPortaInVista(msg)');
   assert.ok(iBtn > 0 && iVista > 0, 'manca uno dei due pezzi');
   assert.ok(iVista > iBtn, 'il porta-in-vista gira PRIMA dei bottoni: il messaggio crescerà e riuscirà dal bordo');
+});
+
+/* 🚨⭐⭐ IL CASO IN CUI L'APPROCCIO VECCHIO FACEVA DANNO DAVVERO.
+ * La prima versione scriveva la nota dentro `:scope > div:last-child`, credendo fosse la riga
+ * della domanda. 📏 Nel DOM vero l'ultimo figlio sono **i bottoni**, quindi la domanda restava —
+ * per caso. ⛔ Ma se i bottoni NON sono attaccati (l'`appendChild` sta dentro un `try`, e
+ * `svcMakeStepButtons` può fallire) l'ultimo figlio torna a essere **la domanda**, e la nota la
+ * cancella: sparirebbe in silenzio proprio la richiesta di denaro che questa voce vuole non far
+ * sparire in silenzio.
+ * 📌 *Il caso che smaschera una premessa falsa non è quello frequente: è quello in cui la
+ *    coincidenza che la teneva in piedi non c'è.* */
+test('anche senza i bottoni attaccati, la domanda sopravvive alla sostituzione', async () => {
+  const m = monta();
+  m.chiedi('Lidia Comes', 'Cash', 1200);
+  await new Promise((r) => setImmediate(r));
+  const vecchia = m.reg.messaggi[0];
+  // I bottoni non sono mai arrivati: ora l'ultimo figlio è la riga della domanda.
+  vecchia._figli.length = 2;
+  m.chiedi('Lidia Comes', 'Card', 1200);
+  await new Promise((r) => setImmediate(r));
+  assert.match(vecchia._domanda.innerHTML, /Incassare/,
+    'senza bottoni la nota ha cancellato la domanda: la richiesta di denaro è sparita in silenzio');
+  assert.ok(vecchia._note.length >= 1, 'e la nota della sostituzione non è stata scritta da nessuna parte');
 });
