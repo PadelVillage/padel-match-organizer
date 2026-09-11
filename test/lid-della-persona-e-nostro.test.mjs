@@ -31,6 +31,9 @@ import vm from 'node:vm';
 
 const QUI = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(QUI, '..', 'index.html'), 'utf8');
+/* 🆔🚨 VOCE 215 — il banco guarda ANCHE il server, ed è la lezione che questa voce ha pagato:
+   la catena era giusta in tutta l'app e si interrompeva nell'edge, che dall'app non si vede. */
+const EDGE = readFileSync(join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'index.ts'), 'utf8');
 assert.ok(APP.length > 500000, 'sorgente non letto: questo banco non direbbe niente');
 
 let passed = 0, failed = 0;
@@ -211,6 +214,32 @@ test('③ 🚨 i BOTTONI della scheda passano il PMO della riga', () => {
   const zona = APP.slice(i, APP.indexOf('};', APP.indexOf('sourceBtns', i)));
   assert.match(zona, /pmoId:\s*\(p\.pmoId != null \? String\(p\.pmoId\) : ''\)/,
     'i bottoni non passano più il PMO della riga: l\'incasso nascerebbe senza proprietario');
+});
+
+test('③ 🚨🚨 IL SERVER non pota il PMO — trovato dalla PROVA FISICA, non dal banco', () => {
+  /* 📏 L'11/09 una prenotazione vera creata su TEST aveva `pmoId: "PMO-000583"` in memoria e, nel
+     database, la stessa riga con solo `{nome, codice, codiceCliente}`. ⇒ La normalizzazione
+     dell'edge RICOSTRUISCE l'oggetto a chiavi fisse, quindi ogni campo nuovo muore in silenzio —
+     ed è la stessa trappola che nel 2026 aveva già ucciso `codiceCliente`.
+     📌 *Un campo nuovo si aggiunge dove qualcuno lo LEGGE, e uno dei lettori è il server.* */
+  const i = EDGE.indexOf('const giocatori = (Array.isArray(body.giocatori)');
+  assert.ok(i > 0, 'la normalizzazione dei giocatori nell\'edge è sparita');
+  const zona = EDGE.slice(i, EDGE.indexOf('.filter((g) => g.nome);', i));
+  assert.ok(/pmoId:\s*clean\(o\.pmoId \?\? o\.pmoPlayerId\)/.test(zona),
+    'l\'edge ricostruisce i giocatori SENZA il PMO: la riga nel database nasce senza proprietario');
+  assert.ok(/if \(typeof g === 'string'\) return \{[^}]*pmoId: ''/.test(zona),
+    'il ramo delle voci-stringa non dichiara il PMO: due forme dello stesso dato con chiavi diverse');
+});
+
+test('③ e la funzione degli importi non lo pota a sua volta', () => {
+  /* Passa dopo la normalizzazione e RICOSTRUISCE le righe: se non usasse lo spread, il PMO
+     morirebbe un passo più in là — e la cura sopra sembrerebbe fatta. */
+  const LIST = readFileSync(join(QUI, '..', 'supabase', 'functions', 'matchpoint-bookings-create', 'importo-dal-listino.ts'), 'utf8');
+  const i = LIST.indexOf('export function importiDalListino(');
+  assert.ok(i > 0, '`importiDalListino` è sparita');
+  const zona = LIST.slice(i, i + 1400);
+  assert.ok(/const riga: GiocatoreRiga = \{ \.\.\.g \};/.test(zona),
+    '`importiDalListino` non copia più tutti i campi: il PMO si perde aggiungendo gli importi');
 });
 
 console.log('\n— ' + passed + ' verdi, ' + failed + ' rossi —');

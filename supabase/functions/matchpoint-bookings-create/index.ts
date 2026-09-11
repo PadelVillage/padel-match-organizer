@@ -59,7 +59,9 @@ type BookingRequest = {
   // scambiate: `codice` è l'id interno (HiddenFieldIdPeople), `codiceCliente` è il codice
   // della tendina «000140-Nome». Confonderle è ciò che il 2/08/2026 ha fatto sparire un
   // giocatore da una lezione (PR #624).
-  giocatori?: { nome: string; codice?: string; codiceCliente?: string }[];
+  // 🆔 VOCE 215 — `pmoId` è l'id NOSTRO della persona (`PMO-000583`), e non è una terza
+  // numerazione di Matchpoint: è quella che resta quando Matchpoint non c'è più.
+  giocatori?: { nome: string; codice?: string; codiceCliente?: string; pmoId?: string; pmoPlayerId?: string }[];
   // ⭐ L'id che l'APP dà alla prenotazione, generato PRIMA di chiamarci (_staffCalNewSbId) e usato
   // da lei come chiave del proprio record cloud. Se c'è, è la chiave anche per noi: così la nostra
   // riga e la sua sono LA STESSA riga invece di due. Assente quando prenota il BOT → chiave nostra.
@@ -877,14 +879,27 @@ Deno.serve(async (req: Request) => {
   // ⚠️ `memberId` NON è più un ripiego per `codice`: memberId è il CODICE CLIENTE, mentre il
   //    worker usa `codice` come id interno atteso. Metterlo lì significava passargli un numero
   //    dell'altra numerazione — la stessa confusione del guasto di PR #624. Ora va dove deve.
+  // 🆔⭐⭐ VOCE 215 — E QUI SI PERDEVA IL `PMO-` DELLA PERSONA, esattamente come sopra si perdeva
+  // il `codiceCliente`: questa normalizzazione **ricostruisce** l'oggetto a chiavi fisse, quindi
+  // ogni campo nuovo che l'app manda muore in silenzio.
+  // 📏 TROVATO DALLA PROVA FISICA l'11/09/2026, e il banco non poteva vederlo: creata una
+  //    prenotazione vera su TEST, in memoria il giocatore aveva `pmoId: "PMO-000583"` e nel
+  //    database la stessa riga aveva solo `{nome, codice, codiceCliente}`. ⇒ La catena era giusta
+  //    nell'app e si interrompeva **nel server**, che è un lettore che dall'app non si vede.
+  // 📌 *È la voce 207 un'altra volta: un campo nuovo si aggiunge dove qualcuno lo LEGGE — e uno
+  //    dei lettori è il server.*
+  // ⚖️ `pmoPlayerId` è accettato come sinonimo: è il nome che il campo ha in anagrafica, e chi
+  //    scrivesse un ponte nuovo lo chiamerebbe naturalmente così.
   const giocatori = (Array.isArray(body.giocatori) ? body.giocatori : [])
     .map((g) => {
-      if (typeof g === 'string') return { nome: clean(g), codice: '', codiceCliente: '' };
+      if (typeof g === 'string') return { nome: clean(g), codice: '', codiceCliente: '', pmoId: '' };
       const o = (g ?? {}) as JsonMap;
       return {
         nome: clean(o.nome ?? o.name),
         codice: clean(o.codice ?? o.id),
         codiceCliente: clean(o.codiceCliente ?? o.memberId),
+        // 🆔 l'id NOSTRO della persona: l'unico che sopravvive al distacco da Matchpoint.
+        pmoId: clean(o.pmoId ?? o.pmoPlayerId),
       };
     })
     .filter((g) => g.nome);
