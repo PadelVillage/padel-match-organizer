@@ -137,8 +137,11 @@
 > `staff_booking` vive hanno tutte un `id_reserva`, comprese le **4** non promosse ⇒ il caso che
 > sblocca **non esiste ancora**. Famiglia della **92** e della **83**. La chiuderà il distacco.
 >
-> 📋 **Spinte**: gestionale `test-preview` → `b507f6d7` (TEST **6.450**) · `main` → `4e2abf34`
-> (**solo documenti**, PR #1558 · #1559 · #1560). Bot **non toccato**. PROD **non toccata**.
+> 📋 **Spinte**: gestionale `test-preview` (TEST **6.450**) · `main` **solo documenti**
+> (PR #1558 · #1559 · #1560 · #1561). Bot **non toccato**. PROD **non toccata**.
+> 🚨 **Gli sha NON stanno qui, di proposito**: il commit che porta questo file è uno di quelli che
+> li cambia ⇒ una riga che li cita **nasce falsa**, non invecchia. Si misurano:
+> `git rev-parse --short origin/main origin/test-preview`.
 >
 > ---
 >
@@ -269,13 +272,13 @@
 > | | |
 > |---|---|
 > | **PROD** | `v6.397`, **CONGELATA e non toccata** — misurata sul vivo. Su `main` sono passati **solo documenti**, e `index.html` ha **0** commit oggi |
-> | **TEST** (il sistema nuovo) | `v6.450`, servita. `app-meta.json` → `source_sha` **f33bc878**: corretto, i commit dopo hanno toccato **solo i documenti** |
+> | **TEST** (il sistema nuovo) | `v6.450`, servita. ⚠️ `app-meta.json` può dichiarare un `source_sha` **più vecchio dell'ultimo commit**: è corretto quando i commit dopo hanno toccato **solo i documenti**. Si confronta con `git log --oneline -- index.html` |
 > | **bot dei soci** | non toccato |
 > | **bot di prova** | non toccato — ⚠️ ha una segnalazione aperta (voce **212**) |
 > | guardie | ✅ **verdi tutte** sull'ultimo commit di **entrambi** i rami |
 > | lista lavori | 🔴 **1 urgente** (211) · 📋 **12 in coda** · 📦 **194 chiuse** |
 > | banco gestionale | **150 file, 0 rossi** · +32 casi nuovi, **venticinque sabotaggi** caduti |
-> | rami | gestionale `main` `4e2abf34` · `test-preview` `b507f6d7` |
+> | rami | `main` e `test-preview`, **identici** su `docs/`, workflow, `CLAUDE.md` e `server.mjs` (0 file di scarto). 🚨 Gli sha si **misurano**, non si leggono da qui |
 > | worker | **identico sui due rami**, e non toccato |
 > | `CLAUDE.md` | **12 sezioni** — se ne conti meno, stai leggendo una copia vecchia |
 
