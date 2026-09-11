@@ -772,6 +772,70 @@ gestionale deve poter smettere di parlare con Matchpoint **senza che nessun sold
 strada** — e l'unico modo di garantirlo è che **nessun soldo ci sia mai passato**. Il sistema nuovo
 nasce già così.
 
+### 🧹🚨 «TUTTO CIÒ CHE FA RIFERIMENTO A MATCHPOINT DEVE SCOMPARIRE» (FERMA, 11/09/2026)
+
+🗣️ **Sue parole, date una dopo l'altra mentre stavo per costruire sopra la cosa sbagliata:**
+
+> *«Ricordati che il Matchpoint ID interno non ci serve.»*
+> *«Tutto ciò che fa riferimento a Matchpoint dentro gestionale test deve scomparire.»*
+
+⇒ **Non è una pulizia estetica: è una regola su QUALE IDENTITÀ si usa.** Sul sistema nuovo una
+persona si riconosce da un id **nostro**, mai da un codice del sistema che stiamo spegnendo. È la
+stessa regola già scritta per l'`idReserva` (voce **213**) e per il denaro (*«il `member_local_id`
+è il **nostro** id, e viene PRIMA del codice Matchpoint»*): qui diventa generale.
+
+🚨⭐⭐ **E VA LETTA PRIMA DI CURARE, non dopo — perché la scorciatoia è invisibile e sembra giusta.**
+📏 L'11/09 stavo per curare il nome-non-cliccabile (voce 218) agganciando il socio con
+`matchpointIdInterno`: **funzionava**, ed era misurato (`codice 1034` nella prenotazione ==
+`matchpointIdInterno 1034` in anagrafica). ⇒ Sarebbe stata la **213 rifatta**: una cura che il
+giorno del distacco si sarebbe dovuta disfare. Mi ha fermato lui, non il codice.
+📌 *Una cura che funziona può essere sbagliata lo stesso: se poggia su un pezzo che sta per essere
+tolto, non è una cura — è un debito che scade a data nota.*
+
+✅⭐⭐ **L'ID NOSTRO ESISTE GIÀ, e questo rende la regola applicabile invece che aspirazionale.**
+🗣️ Sua: *«noi utilizziamo anche un nostro id interno della gestione dei test, mi sembra si chiama
+PMO»*. 📏 **Misurato l'11/09 su `cudi`, e la sua memoria è giusta sul concetto con una precisazione:**
+
+| dove | l'id nostro | quanti |
+|---|---|---|
+| **prenotazioni** | `PMO-ab603e6c-…` — il prefisso `PMO-` è proprio quello | tutte |
+| **soci** | un **UUID** pulito (`008c03a3-981e-…`) | **1783** |
+| **soci importati** | `matchpoint_100hip6` — **nostro**, ma col nome di Matchpoint addosso | **1043** |
+
+⇒ **Per agganciare un socio non serve nessun codice Matchpoint**: `member.id` è già nostro, ed è
+quello che finisce in `member_local_id`. Chi cura la **215** o la **218** usa quello.
+
+🔎 **E LA PARTE CHE RENDE LA REGOLA PIÙ DIFFICILE DI COME SUONA**: per **1043** soci l'id nostro
+**si chiama** `matchpoint_…`. ⇒ *«Far scomparire Matchpoint»* non è solo togliere campi: è
+distinguere **ciò che è di Matchpoint** da **ciò che ha solo il suo nome addosso**. Il primo si
+toglie, il secondo si **rinomina** — e sono due lavori diversi con due rischi diversi, perché
+rinominare una chiave in uso **rompe i riferimenti** di chi la cita (i `member_local_id` già scritti
+sui pagamenti, per dirne uno).
+🔑⭐⭐ **E `local_key` È UNIVOCO — sua intuizione, misurata e confermata; ma la misura corregge anche
+una mia frase, e la correzione è la parte utile.** 🗣️ Sua: *«quello è un riferimento univoco, secondo
+me»*. 📏 **Vero**: su **2828** soci vivi, le `local_key` distinte sono **2828** — zero doppioni.
+⚠️ **Ma non ha la forma che avevo scritto**: avevo generalizzato da un solo record (Lidia,
+`email:…`) e detto *«è l'email»*. 📏 Contate: **`phone:` 2798** · **`email:` 22** · altre 8 (UUID
+nudi, un `name:`). ⇒ Il 99% delle chiavi è un **numero di telefono**.
+⚖️ **Cosa comporta, ed è il motivo per cui non è la chiave su cui agganciare**: `local_key` è
+univoca ma **poggia sui contatti**, e un contatto cambia. Il giorno in cui un socio cambia numero,
+quella chiave cambia con lui — e chi ci avesse legato un pagamento lo perde. ⇒ Per **identificare**
+va benissimo; per **agganciare** si usa `member.id`, che è nostro e **non cambia**.
+📌 *Univoco e stabile sono due proprietà diverse: la prima dice che non ci sono due persone dietro
+la stessa chiave, la seconda che dietro la stessa persona non ci saranno due chiavi.*
+
+⛔ **Cosa comporta quando si scrive codice:**
+· una cura non si aggancia mai a `matchpointIdInterno`, `memberId` (il codice tessera Matchpoint),
+  `idReserva` o a un qualunque `id_*` che nasca di là: se il caso lo richiede, **la voce è un'altra**
+  e va portata a lui, non risolta con la scorciatoia;
+· 🎯 **la prova del futuro, applicata alle identità**: *il giorno in cui Matchpoint si spegne, questa
+  riga non si tocca.* Se un identificativo dovesse cambiare quel giorno, quella riga è già sbagliata
+  oggi;
+· ⚠️ **la lista NON è chiusa** e non si eredita da qui: prima di dichiarare fatto il lavoro va
+  cercata tutta (`grep -n 'matchpoint\|Matchpoint\|MATCHPOINT'`), perché la parola vive anche nei
+  **nomi dei dati**, non solo nelle chiamate.
+
+
 ## 🧭 IL BOT NON È AUTONOMO: tutto quello che sa, glielo dice il GESTIONALE (FERMA)
 
 **Regola di architettura fissata dal committente il 16/08/2026**, e vale **anche e soprattutto per

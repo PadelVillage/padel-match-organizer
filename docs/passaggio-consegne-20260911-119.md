@@ -142,6 +142,21 @@
 > giorno della partita, perché l'indice della scheda lo **preferisce**. Misurato **prima** di toccare.
 > ⏳ **Resta APERTA**: vuole un incasso **nuovo** che compaia in «Oggi», e quello è un gesto suo.
 >
+> ### 🧹🚨⭐⭐ DUE REGOLE SUE, DATE A FINE GIORNATA — e la seconda mi ha fermato a un passo
+> 🗣️ *«Ricordati che il Matchpoint ID interno non ci serve.»* · *«Tutto ciò che fa riferimento a
+> Matchpoint dentro gestionale test deve scomparire.»* ⇒ **Scritte in `CLAUDE.md`**, non solo qui:
+> sono architettura, non una voce di lista.
+> 🚨 **Perché contano subito**: stavo per curare il nome-non-cliccabile (218) agganciando il socio con
+> `matchpointIdInterno`. **Funzionava** ed era misurato (`codice 1034` = `matchpointIdInterno 1034`).
+> Sarebbe stata la **213 rifatta**. 📌 *Una cura che funziona può essere sbagliata lo stesso: se
+> poggia su un pezzo che sta per essere tolto, non è una cura — è un debito che scade a data nota.*
+> ✅ **La chiave giusta c'è già ed è NOSTRA**: `member.id` — 📏 un **UUID** per **1783** soci,
+> `matchpoint_…` per **1043** (nostro anche quello, solo col nome addosso). Le prenotazioni usano
+> `PMO-…`, come lui ricordava.
+> 🔑 E `local_key` è **univoca** (2828 su 2828, sua intuizione confermata) ma poggia sui **contatti**
+> — 📏 `phone:` per **2798**, `email:` per **22** ⇒ identifica, non aggancia.
+> 📌 *Univoco e stabile sono due proprietà diverse.*
+>
 > ### ↩︎🔗 VOCI 217 e 218 — **APERTE**, due sue segnalazioni di fine giornata
 > 🗣️ *«Non c'è la possibilità di fare lo storno né nella sezione incassi né nella scheda»* e *«i nomi
 > dei giocatori dentro la scheda della partita non sono cliccabili»*.
@@ -284,7 +299,7 @@
 > | banco gestionale | **153 verdi, 0 rossi** · tre banchi nuovi (8 + 11 + 6 casi), **venti sabotaggi** caduti |
 > | rami | `main` e `test-preview`, **identici** su `docs/`, workflow, `CLAUDE.md` e `server.mjs` (0 file di scarto) |
 > | worker | **identico sui due rami**, e non toccato |
-> | `CLAUDE.md` | **12 sezioni** — se ne conti meno, stai leggendo una copia vecchia |
+> | `CLAUDE.md` | **12 sezioni** (🆕 dentro la sezione del DISTACCO c'è il blocco nuovo sulle identità) — se ne conti meno, stai leggendo una copia vecchia |
 > | 💶 in sospeso | la riga di prova da **12,00 €** è **viva** nel libro di cassa di `cudi`: **decisione sua**, si storna o resta |
 
 ---
