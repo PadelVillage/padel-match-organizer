@@ -142,6 +142,23 @@
 > giorno della partita, perché l'indice della scheda lo **preferisce**. Misurato **prima** di toccare.
 > ⏳ **Resta APERTA**: vuole un incasso **nuovo** che compaia in «Oggi», e quello è un gesto suo.
 >
+> ### ↩︎🔗 VOCI 217 e 218 — **APERTE**, due sue segnalazioni di fine giornata
+> 🗣️ *«Non c'è la possibilità di fare lo storno né nella sezione incassi né nella scheda»* e *«i nomi
+> dei giocatori dentro la scheda della partita non sono cliccabili»*.
+> 📏 **Misurate tutt'e due, e nessuna è «una funzione che manca»:**
+> · **217** — `PMO_PAYMENTS_VOID_ENABLED` è **`true`**: il bottone esiste, ma vive in **un posto
+>   solo**, la lista pagamenti dentro la scheda del **socio**. 🚨 E per un incasso nostro è
+>   **doppiamente** irraggiungibile, perché quella lista non aggancia le nostre righe (⇒ 215) ⇒ **un
+>   incasso fatto oggi non si può stornare da nessun posto dell'app.** 🆙 Promossa fra le urgenti
+>   perché **blocca la prova della 216**; lui l'ha data come «task», può ribaltarla;
+> · **218** — il nome si aggancia **solo se il socio si trova**, e `_staffCalSocioDelGiocatore`
+>   confronta **id con id, mai per nome** (di proposito: è la regola della **138**). Su una
+>   prenotazione nata da noi l'`idCliente` non c'è.
+> 🔗🚨⭐⭐ **E QUESTA È LA COSA DA PORTARSI DIETRO: la 218 è la 215.** Stesso difetto, **terzo**
+> sintomo — ① l'incasso senza proprietario · ② il **Wallet** spento · ③ il nome che non si apre.
+> 📌 *Tre sintomi che sembrano tre voci sono un buon segno che la voce è una.* ⇒ Curata la 215 vanno
+> **verificati tutti e tre**, non dato per fatto che cadano insieme.
+>
 > 📋 **Spinte**: gestionale `test-preview` (TEST **6.453**) · `main` **solo documenti** (PR #1563 ·
 > #1564 · #1565). Bot **non toccato**. PROD **non toccata**.
 > 🚨 **Gli sha NON stanno qui, di proposito**: si misurano con
@@ -157,11 +174,16 @@
 > ⇒ **Storno + nuovo incasso** sulla stessa scheda (14/09 · C3 · 18:00 · Lidia Comes) fa tre cose in
 > un colpo: toglie la riga vecchia, **chiude la 216** (la nuova deve comparire in **Oggi**) e prova
 > la strada dello **storno**, che da qui non è mai stata percorsa.
-> ⚠️ Lo deve premere **lui**: il comando con `--allow-writes` viene rifiutato (*Real-World
-> Transactions*), vedi ③. ⛔ E resta **decisione sua** se lasciare o togliere: è denaro finto in un
-> libro vero.
+> 🚨⭐⭐ **MA OGGI QUEL GESTO NON SI PUÒ FARE, ed è la scoperta di fine giornata**: lo **storno non è
+> raggiungibile** da nessun posto dell'app per un incasso nostro (⇒ voce **217**). ⇒ **La 216 non si
+> può chiudere finché non è curata la 217.** Quest'ordine non si inverte, e va detto a lui prima di
+> chiedergli qualunque gesto sulla cassa.
+> ⛔ Resta **decisione sua** se la riga da 12,00 € va tolta o lasciata: è denaro finto in un libro
+> vero. ⚠️ E il gesto, quando sarà possibile, lo deve premere **lui**: il comando con
+> `--allow-writes` viene rifiutato (*Real-World Transactions*), vedi ③.
 >
-> ### ② 🔴 LE URGENTI SONO DUE: la 215 e la 216
+> ### ② 🔴 LE URGENTI SONO TRE: 215 · 216 · 217 — e la 217 viene PRIMA
+> Perché la 216 non si chiude senza di lei (sopra), e perché la 215 spegne **tre** sintomi in un colpo (⇒ 218).
 > Scheda completa in `docs/lavori/README.md`. 🔨 La cura è piccola e la chiave c'è; la **prova** è la
 > metà che costa: serve un incasso vero su una scheda **nata da noi** che arrivi in fondo **e**
 > compaia nella scheda del socio. ⇒ Quella seconda metà **vuole un suo click** (vedi ③).
@@ -183,7 +205,7 @@
 > permessi.
 >
 > ### ④ 📋 LA CODA, 11 voci
-> **182** (il travaso da PROD — ha una misura che le dà una data: **324** terne di cassa su 704 non
+> **218** (i nomi non cliccabili — **è la 215**) · **182** (il travaso da PROD — ha una misura che le dà una data: **324** terne di cassa su 704 non
 > trovano la partita, e **295** di quelle esistono su PROD ⇒ si passerebbe da 380 a **675 su 704**) ·
 > **184** · **186** · **199** · **200** · **203** · **204** · **206** · **208** · **212** · **213**.
 > 📌 La **213** è curata e in servizio ma **non provabile oggi** (tutte le prenotazioni vive hanno un
@@ -258,7 +280,7 @@
 > | **bot dei soci** | non toccato |
 > | **bot di prova** | non toccato — ⚠️ ha una segnalazione aperta (voce **212**) |
 > | guardie | ✅ **verdi tutte** sull'ultimo commit di **entrambi** i rami |
-> | lista lavori | 🔴 **2 urgenti** (215 · 216) · 📋 **11 in coda** · 📦 **197 chiuse** |
+> | lista lavori | 🔴 **3 urgenti** (215 · 216 · 217) · 📋 **12 in coda** · 📦 **197 chiuse** |
 > | banco gestionale | **153 verdi, 0 rossi** · tre banchi nuovi (8 + 11 + 6 casi), **venti sabotaggi** caduti |
 > | rami | `main` e `test-preview`, **identici** su `docs/`, workflow, `CLAUDE.md` e `server.mjs` (0 file di scarto) |
 > | worker | **identico sui due rami**, e non toccato |
