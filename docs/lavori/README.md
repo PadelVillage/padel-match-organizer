@@ -2085,6 +2085,37 @@ famiglia della voce **190**). 📌 *Curare l'istanza invece della classe non è 
 tutte in un giro (`grep -n 'Matchpoint' index.html`) e si decide quali sono ancora vere su quale
 dei due gestionali.
 
+🆕🗣️⭐ **RIBADITA DA LUI L'11/09/2026, e con il perimetro che prima non c'era:**
+
+> *«sulle schede aperte dal calendario che ancora scritto matchpoint, è da levare»* · *«altro task
+> in coda»*
+
+⇒ **Due cose, e la seconda è un'istruzione sull'ordine**: il bersaglio sono le **schede aperte dal
+calendario** (non solo il dialogo del Salva che ha aperto la voce), e lui l'ha messa **in coda** —
+detto due volte, la seconda con la parola *«in coda»*. ⚖️ Registrata subito perché **una sua parola
+non misurata si perde**; **non promossa**, perché l'ordine l'ha dato lui.
+
+📏 **IL PERIMETRO, misurato l'11/09 e non stimato** — e cambia la forma della cura:
+· nella zona della scheda (`index.html` 46900-49700) le righe **non-commento** che nominano
+  Matchpoint sono **99**, di cui almeno **20 sono frasi VISIBILI all'utente**, cablate nel testo:
+  *«Leggo i giocatori da Matchpoint…»* · *«Descrizione e note allineate a Matchpoint.»* ·
+  *«verranno salvate su Matchpoint»* · *«con «Salva» finisce su Matchpoint»* · *«Stato del pagamento
+  non ancora letto da Matchpoint»* · *«Controlla la scheda su Matchpoint»*;
+· 🚨⭐⭐ **e l'astrazione per non nominarlo ESISTE GIÀ**: `pmoNomeCircoloEsterno()` torna il nome
+  **solo se il gestionale è davvero collegato al circolo**, `''` altrimenti (voce **190**, con
+  `pmoSuCircoloEsterno()` e `pmoFraseRifiutata()` per le frasi che vanno riscritte invece di
+  accorciate). ⇒ **Il difetto non è che manchi il meccanismo: è che questi punti non lo
+  attraversano.** Sul sistema nuovo `pmoCircoloEsternoCollegato()` risponde già di suo.
+📌 *Quando la cura esiste e il difetto resta, il lavoro non è inventarla: è contare i punti che le
+passano accanto.*
+
+⚠️ **E la trappola di questa voce, dichiarata prima di iniziarla**: le frasi **non si accorciano
+tutte**. Alcune hanno il circolo come **soggetto** o descrivono un **gesto che senza di lui non
+esiste** (*«rileggo da Matchpoint…»* — rileggo **dove**?): togliere la parola le lascerebbe **monche
+o false**, non più generiche. È scritto nel commento della 190 sopra `pmoFraseRifiutata`, e vale
+identico qui. ⇒ Servono **tre** esiti per ogni frase — *si toglie* · *si riscrive* · *è ancora vera*
+— non due.
+
 ⏳ **Non è iniziata.**
 
 ## 🔓 VOCE 196 — 👛 IL BORSELLINO SI RICARICA DA NOI — ✅ **CHIUSA il 10/09/2026 notte**
