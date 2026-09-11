@@ -101,13 +101,13 @@ test('nessun chiamante di staffCalEditPlayers cabla il tipo', () => {
 });
 
 // ── ③ L'HELPER LEGGE IL CAMPO CHE ESISTE NEI RECORD, E NORMALIZZA ────────────────────────
-function montaLookup(staffBookings, occupazione) {
+function montaLookup(staffBookings, occupazione, elenco) {
   const sorgente = [
     sorgenteDi('pmoTipoScheda'),
     sorgenteDi('pmoTipoParola'),
     sorgenteDi('_pmoLookupTipoDurata'),
   ].join('\n');
-  const fab = new Function('SB', 'OCC', `
+  const fab = new Function('SB', 'OCC', 'PRE', `
     const PMO_TIPI_PRENOTAZIONE = ${JSON.stringify(
       // la tabella vera, riletta dal sorgente: se un tipo nuovo entra, entra anche qui
       (() => {
@@ -123,12 +123,13 @@ function montaLookup(staffBookings, occupazione) {
         }));
       })()
     )};
-    const safeLoad = (k, d) => (k === 'staffBookings' ? SB : d);
+    const safeLoad = (k, d) => (k === 'staffBookings' ? SB : (k === 'prenotazioni' ? PRE : d));
     const prenotazioniOccupazione = OCC;
+    const prenotazioni = PRE;
     ${sorgente}
     return _pmoLookupTipoDurata;
   `);
-  return fab(staffBookings, occupazione);
+  return fab(staffBookings, occupazione, elenco || []);
 }
 
 test('il tipo si legge dal campo `tipo` dei record, non da `tipoReale` che non esiste', () => {
@@ -252,4 +253,47 @@ test('il bottone della scheda passa le coordinate della prenotazione aperta', ()
   const intorno = APP.slice(i, i + 900);
   assert.ok(/pmoSchedaApriIncassi\(st\.origIso, st\.origCampo, st\.origOra/.test(intorno),
     'il bottone non passa st.orig* — cioè le stesse coordinate con cui l\'altro verso apre questa scheda');
+});
+
+// ── ⑦ LE FONTI SONO TRE, E LA TERZA È LA PIÙ CAPIENTE ───────────────────────────────────
+/* 📏 Contate sulla pagina viva di TEST l'11/09: `prenotazioni` **288** · `occupazione` **163** ·
+ * `staffBookings` **36**. Fermarsi alle due fonti di `_staffCalLookupIdReserva` lasciava fuori
+ * la più grande — e con lei gli slot per cui il ripiego «partita» nasconde il maestro.
+ * 📌 *Riusare le fonti di un'altra funzione non garantisce che bastino alla propria domanda:
+ *    quella cercava un id, questa cerca un tipo, e i due non vivono negli stessi posti.* */
+test('il tipo si trova anche nella terza fonte, `prenotazioni`', () => {
+  const lookup = montaLookup([], [], [{ data: '2026-09-20', campo: '1', ora: '18:00', tipo: 'Lezione Libera', durata: '1.5' }]);
+  const r = lookup('2026-09-20', 1, '18:00');
+  assert.equal(r.tipo, 'lezione', 'la terza fonte non viene guardata');
+});
+
+test('le nostre fonti vincono su quelle del circolo', () => {
+  // stesso slot in due fonti con tipi diversi: deve vincere `staffBookings`
+  const lookup = montaLookup(
+    [{ data: '2026-09-21', campo: '2', ora: '10:00', tipo: 'stage', durata: 120 }],
+    [{ data: '2026-09-21', campo: '2', ora: '10:00', tipo: 'Partita', durata: '2' }],
+    []);
+  assert.equal(lookup('2026-09-21', 2, '10:00').tipo, 'stage',
+    'una fonte importata ha scavalcato la nostra: il nome proprio della prenotazione si perde');
+});
+
+// ── ⑧ LA DURATA HA DUE FORMATI, E NON SI CONVERTE DUE VOLTE ─────────────────────────────
+/* 📏 Misurato: `staffBookings` tiene la durata in MINUTI (`90`), le fonti del circolo in ORE
+ * come stringa (`"1.5"`, `"2"`). L'helper la restituisce GREZZA perché la normalizza
+ * `_staffCalDurMin` dentro `staffCalEditPlayers` — e quella sa leggere entrambi.
+ * 📌 *Normalizzare due volte è peggio che una: la seconda conversione riceve un numero già
+ *    convertito e non ha modo di saperlo.* */
+test('la durata in ORE non viene convertita qui, ma passa grezza a chi sa farlo', () => {
+  const lookup = montaLookup([], [{ data: '2026-09-22', campo: '3', ora: '09:00', tipo: 'Partita', durata: '1.5' }], []);
+  assert.equal(lookup('2026-09-22', 3, '09:00').durata, '1.5',
+    'la durata è stata convertita qui: verrà riconvertita da _staffCalDurMin e uscirà sbagliata');
+});
+
+test('e chi la normalizza sa leggere tutti e due i formati', () => {
+  const dur = new Function(`${sorgenteDi('_staffCalDurMin')}; return _staffCalDurMin;`)();
+  assert.equal(dur('1.5'), 90, 'ore stringa → minuti');
+  assert.equal(dur(90), 90, 'minuti → minuti');
+  assert.equal(dur('2'), 120, 'due ore → 120 minuti');
+  assert.equal(dur(60), 60, 'sessanta minuti restano sessanta');
+  assert.equal(dur(null), 90, 'senza durata, il ripiego dichiarato');
 });
