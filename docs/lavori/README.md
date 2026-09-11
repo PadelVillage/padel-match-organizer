@@ -1522,7 +1522,7 @@ contesto**, non eseguire il compito scritto.
 
 | | |
 |---|---|
-| 🔴 **Urgenti** | **1** — 🔁 **10/09/2026 notte, 116ª: ESCE la 207, chiusa a prova fisica.** Premuto **Stage** sulla scheda viva di `cudi`, scelto il maestro, premuto **Conferma** ⇒ nel database un record vero con **`tipo: "stage"`** e `istruttore: "Spinazze"`, e riaprendolo la scheda legge `stage` col **macchinario della lezione** e *«Gianluca Spinazzè»* già selezionato. 🚨⭐⭐ **E la prova ha trovato un pezzo che il banco non poteva vedere**: anche il **SERVER** enumerava i tipi (*«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»*) ⇒ la feature sarebbe sembrata completa nell'app e **rotta al salvataggio**. 📌 *Un tipo nuovo si aggiunge dove qualcuno lo LEGGE — e uno dei lettori è il server.* ⛔ **Resta solo la 198**, e aspetta una sua scelta: **navigazione** o **riconciliazione**. Proposta dichiarata — prima le **porte**, poi l'**importo a carico nativo** che riempie il «dovuto», poi il giudice; perché oggi il dovuto esiste su **14 prenotazioni su 256**, e un giudice col 94% dei dati mancanti direbbe *«non pagato»* quasi sempre. |
+| 🔴 **Urgenti** | **1** — 🔁 **11/09/2026, 117ª: la 198 ha il PRIMO PASSO FATTO e provato sul vivo, e resta aperta per gli altri due.** Le **due porte** fra la scheda e gli Incassi funzionano nei due versi: dalla scheda del 03/09 C3 18:00 il focus mostra **48,00 € su 4 pagamenti** (i numeri contati nel database prima di guardare lo schermo), e dalla parte opposta una **lezione** si apre come lezione — `60 min` e **il maestro «Lucas Vidal» visibile**, dove prima il tipo era **cablato a `partita`** e il selettore del maestro **non veniva disegnato**. 🚨⭐⭐ **E la prova fisica ha trovato un difetto che il banco verde non vedeva, per la seconda volta di fila**: il ramo `incassi` di `switchTab` sta in un `setTimeout(…, 0)`, quindi azzerava il focus **dopo** che l'avevo scritto. 📌 *Decide chi gira per ultimo, non l'ordine delle righe.* ⛔ **Limite dichiarato**: fuori dal giorno caricato in memoria il lookup torna `null` e la scheda cade sul ripiego `partita`/90 ⇒ è il primo pezzo del prossimo giro. ⏳ Restano il **② importo a carico nativo** (188/B) e il **③ giudice**, in quest'ordine, perché oggi il «dovuto» esiste su **14 prenotazioni su 256**. Prima — 🔁 **10/09/2026 notte, 116ª: ESCE la 207, chiusa a prova fisica.** Premuto **Stage** sulla scheda viva di `cudi`, scelto il maestro, premuto **Conferma** ⇒ nel database un record vero con **`tipo: "stage"`** e `istruttore: "Spinazze"`, e riaprendolo la scheda legge `stage` col **macchinario della lezione** e *«Gianluca Spinazzè»* già selezionato. 🚨⭐⭐ **E la prova ha trovato un pezzo che il banco non poteva vedere**: anche il **SERVER** enumerava i tipi (*«tipo deve essere uno di: partita, lezione, manutenzione, stagionale»*) ⇒ la feature sarebbe sembrata completa nell'app e **rotta al salvataggio**. 📌 *Un tipo nuovo si aggiunge dove qualcuno lo LEGGE — e uno dei lettori è il server.* ⛔ **Resta solo la 198**, e aspetta una sua scelta: **navigazione** o **riconciliazione**. Proposta dichiarata — prima le **porte**, poi l'**importo a carico nativo** che riempie il «dovuto», poi il giudice; perché oggi il dovuto esiste su **14 prenotazioni su 256**, e un giudice col 94% dei dati mancanti direbbe *«non pagato»* quasi sempre. |
 | 📋 **In coda** | **12** — 🔁 **11/09/2026: QUATTRO VOCI NUOVE, tutte da sue segnalazioni della mattina, tutte messe in coda DA LUI** (*«altro task in coda»*, detto ogni volta) — la **208** (la fila dei quattro bottoni in testa alla scheda: mescolano tre mestieri, e l'unico irreversibile sta accanto a quello che non fa niente), la **209** (chiudendo una scheda resta un riquadro vuoto con la ✕ che **copre la prima fascia oraria** del calendario), la **210** (Cash e Card premuti in fila accodano **dieci** conferme, e la scritta *«↓ 10 nuovi»* dice che nascono **fuori dalla vista** ⇒ l'incasso non parte perché nessuno può confermarlo) e la **211** (*«perché non mi fa salvare il pagamento?»* — sul Salva l'app ha ragione, ma la domanda nasce dalla 210). 📌 *Le due ultime sono probabilmente la stessa cosa, e si guardano insieme.* Invariate: la **206** (il Salva che chiede *«Salvare su **Matchpoint**?»* su una scheda che nasce da noi, gemella di quella nei pagamenti), la **203** (al primo ingresso non gli si dice cosa può fare) e la **204** (il confronto fra i due bot: 🗣️ *«ce ne sono altri da verificare»* ⇒ una causa esclusa, non la segnalazione chiusa). |
 | 📦 **Chiuse** | **192** — 🏆 **la 207 il 10/09/2026 notte**: Torneo e Stage sono prenotazioni con un nome proprio — il **macchinario si eredita, il nome no**. Chiusa creando uno **Stage vero** e rileggendolo dalla scheda. E la prova ha trovato il lettore che il banco non vedeva: il **server**. 👨‍🏫 **la 202 il 10/09/2026 notte**: i maestri si aggiungono dal gestionale, e l'elenco **vince su `PARSER_RULES`** in un punto solo — forma scelta proprio perché i lettori erano **sette** e non tre. Chiusa **aprendo la scheda di una lezione vera** e leggendo il nome della persona dove prima c'era un codice. 🎭 **la 205 il 10/09/2026 notte**: la frase che cambiava mestiere fra una partita e una lezione, curata dove la regola può essere letta da tutti e due i posti che la scrivono (`chi-tiene-la-lezione.ts`) invece che dentro uno solo. Trovata a metà **dal gesto e non dal banco**, per la seconda volta di fila su questa voce. — 🎭 e la **201**, *partita ↔ lezione*: il primo gesto che il gestionale **non eredita, inventa** — chiusa a **prova fisica nei due versi**, `passato_al_bot` in **39 s** e **`0 scartati`** dal bot. — 👛 e la **196**, il borsellino che si ricarica da noi: chiusa **dal suo gesto sulla pagina viva**, e provata **rileggendo il database** invece dello schermo. |
 
@@ -1846,8 +1846,48 @@ pagato»* quasi sempre, **sbagliando**.
 **persona per persona**, e ha già il **terzo stato** (`_statoIgnoto`) — *non lo so*. ⇒ Se un giorno
 si fa il giudice, vuole **tre** esiti e non due, o chiamerebbe «non pagato» ciò che è solo «non
 letto»: è la trappola della regola sull'età (voce 111) un'altra volta.
-📌 **Proposta dichiarata** *(si può ribaltare)*: ① le **porte** nei due versi, ② l'**importo a carico
-nativo** che riempie il «dovuto» (già previsto, 188/B), ③ **poi** il giudice, quando ha su cosa
+✅⭐⭐ **IL PASSO ① È FATTO E PROVATO SUL VIVO — 11/09/2026, e la voce RESTA APERTA per il ② e il ③.**
+🗣️ Alla domanda *«navigazione o riconciliazione?»* ha risposto *«Fai come pensi sia giusto»* ⇒ scelta
+la **navigazione**, e dichiarata col suo perché: **il rischio non è simmetrico**.
+
+📏 **LE DUE PORTE, provate nei due versi e con numeri che vengono dal database:**
+· **dalla scheda a Incassi** — bottone *«Vedi gli incassi di questa prenotazione»* in fondo a
+  «Giocatori e pagamenti». Premuto sulla scheda del **03/09 Campo 3 · 18:00** ⇒ barra *«Solo i
+  pagamenti di questa prenotazione»*, e totale **48,00 €** su **4 pagamenti**: esattamente i
+  4 movimenti da 4.800 cent contati in `pmo_cloud_records` **prima** di guardare lo schermo;
+· **da Incassi alla scheda** — `pmoIncassiApriPartita` **esisteva già** e non è stata rifatta: è
+  stata **curata**. 🚨 Dei **12** chiamanti di `staffCalEditPlayers` esattamente **uno** cablava il
+  tipo (`'partita'`, `90`), ed era questo ⇒ una riga di cassa di una **lezione** apriva la scheda
+  come partita, e una scheda «partita» **non disegna il selettore del maestro**. 📏 Provato sulla
+  lezione vera di **C1 · 11/09 · 18:00**: arrivano `tipo: lezione` e `durata: "1"`, la durata è
+  mostrata **60 min**, e **il maestro c'è con «Lucas Vidal» dentro**.
+
+🚨⭐⭐ **E LA PROVA FISICA HA TROVATO UN DIFETTO CHE IL BANCO VERDE NON VEDEVA**, per la seconda
+volta di fila su questo progetto (la prima è la **207**, col lettore nel server). Su **6.443** il
+bottone portava in Incassi **senza filtro**: il ramo `incassi` di `switchTab` sta dentro un
+**`setTimeout(…, 0)`** ⇒ il suo `focus = null` girava **dopo** l'assegnazione che nel codice lo
+seguiva, e la cancellava.
+📌 *Fra due scritture dello stesso stato non decide l'ordine delle righe: decide chi gira per
+ultimo — e con un lavoro differito in mezzo, le due cose sono opposte.*
+⇒ Curato **togliendo la seconda scrittura** invece di metterle in fila: il focus lo scrive **un
+punto solo**, quello che gira per ultimo, consumando un `_incassiFocusPending`.
+
+🩹 **E UNA MIA MISURA ERA CIRCOLARE, dichiarata perché è la trappola più facile di questo giro**:
+il lookup sembrava trovare la lezione, ma l'apertura della scheda — fatta un attimo prima nella
+**stessa** prova — aveva scritto lei stessa il record (`staffBookings` **35 → 36**). Rifatta a
+freddo tornava `null`. ⇒ È la **24ª** nella forma in cui la sonda misura **il proprio effetto**.
+
+⛔⛔ **IL LIMITE CHE RESTA, e non si arrotonda a «funziona»**: il tipo si legge dalle **tre** fonti
+in memoria del browser (📏 `prenotazioni` **288** · `prenotazioniOccupazione` **163** ·
+`staffBookings` **36**), e quelle tengono il **giorno caricato**. Per il **03/09** il lookup torna
+`null` ⇒ quella scheda si apre col **ripiego `partita`/90**, cioè per le prenotazioni fuori dal
+giorno in casa **il difetto vecchio si ripresenta**. ⏳ È il primo pezzo del prossimo giro.
+⚠️ **E una cosa non è stata provata**: il **click su una riga vera** della tabella Incassi. La
+strada è la stessa funzione, esercitata per nome — ma il dito su quella riga non c'è stato.
+
+📌 **Cosa resta della proposta** *(si può ribaltare)*: ✅ ① le **porte** nei due versi — **fatto**;
+⏳ ② l'**importo a carico nativo** che riempie il «dovuto» (già previsto, 188/B); ⏳ ③ **poi** il
+giudice, quando ha su cosa
 giudicare. *La riconciliazione non è scartata: è messa dopo la cosa che la rende possibile.*
 
 ⚖️ **Dichiarazione della scelta, come vuole la delega**: sta fra le **urgenti** perché ce l'ha messa
