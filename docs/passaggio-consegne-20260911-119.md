@@ -21,7 +21,20 @@
 > aveva **11 sezioni invece di 12**.
 > ⇒ **Rileggi `CLAUDE.md` dal disco** (`grep -c '^## ' CLAUDE.md`): le sezioni sono **12**.
 >
-> **② 🚨🚨⭐⭐ UN COMANDO RIFIUTATO NON È AVVENUTO — MA LA SESSIONE CONTINUA COME SE SÌ.**
+> **② 🚨🚨⭐⭐ IL RAMO SU CUI CREDI DI ESSERE NON È QUELLO SU CUI SEI — due volte in un giorno.**
+> ⓐ La prima: `git checkout test-preview` dentro un **comando composto** che il classificatore ha
+> rifiutato. Un comando rifiutato **non è avvenuto**, ma la sessione continua come se sì: ho scritto
+> una cura intera sopra l'`index.html` di **PROD**, che è congelata.
+> ⓑ La seconda, a fine giornata: dopo il giro di una **PR** ero rimasto sul ramo dei documenti
+> (`docs-…`, basato su `main`) e ci ho committato sopra. ⚠️ **Avevo già scritto la regola ⓐ in questo
+> file e non l'ho applicata a ⓑ** — perché l'avevo scritta per i *rifiuti*, e questa era una *PR*.
+> 📌 *Una regola scritta per la causa che l'ha generata non copre la classe: il difetto non era «i
+> comandi rifiutati», era «non guardo su che ramo sono».*
+> 🔨 **La regola, nella forma larga**: il `checkout` sta **da solo**, mai in un comando composto; e
+> `git rev-parse --abbrev-ref HEAD` si lancia **prima di ogni commit**, non solo dopo un rifiuto.
+> ⭐ **A trovarle sono stati i numeri, non le riletture**: la prima `APP_VERSION 6.397` invece di
+> 6.451 e il banco a **123 file invece di 152**; la seconda un `git push` che rispondeva
+> *«Everything up-to-date»* quando avevo appena committato.
 > È la lezione nuova di oggi, e mi è costata un'ora. Ho messo `git checkout test-preview` **dentro**
 > un comando composto, il classificatore ha rifiutato **tutto il comando**, e io ho continuato a
 > lavorare credendo di essermi spostato: ho scritto una cura intera sopra l'`index.html` di **PROD**,
@@ -295,7 +308,7 @@
 > | **bot dei soci** | non toccato |
 > | **bot di prova** | non toccato — ⚠️ ha una segnalazione aperta (voce **212**) |
 > | guardie | ✅ **verdi tutte** sull'ultimo commit di **entrambi** i rami |
-> | lista lavori | 🔴 **3 urgenti** (215 · 216 · 217) · 📋 **12 in coda** · 📦 **197 chiuse** |
+> | lista lavori | 🔴 **3 urgenti** (215 · 216 · 217) · 📋 **12 in coda** (dentro c'è la **218**, che **è** la 215) · 📦 **197 chiuse** |
 > | banco gestionale | **153 verdi, 0 rossi** · tre banchi nuovi (8 + 11 + 6 casi), **venti sabotaggi** caduti |
 > | rami | `main` e `test-preview`, **identici** su `docs/`, workflow, `CLAUDE.md` e `server.mjs` (0 file di scarto) |
 > | worker | **identico sui due rami**, e non toccato |
