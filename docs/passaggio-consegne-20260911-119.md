@@ -51,7 +51,7 @@
 >
 > ---
 >
-> ## 🔬 LE ALTRE TRE LEZIONI (tutte pagate qui)
+> ## 🔬 LE ALTRE QUATTRO LEZIONI (tutte pagate qui)
 >
 > **① ⭐⭐ «ZERO IN TUTTO» E «ZERO VIVE» SONO DUE FRASI DIVERSE.** Avevo dichiarato, ereditandolo dal
 > passaggio della 118ª, che le righe `pmo_cassa` su `cudi` erano *«0 in tutto»*. 📏 **Falso**: erano
@@ -66,7 +66,14 @@
 > quelle sfuggite — e ho concluso che la correzione non aveva funzionato. ⇒ Prima di dichiarare
 > fallita una cura, **controlla la sonda**: `perl -pe 's/\\\|//g'` prima di contare.
 >
-> **③ 🚨 ALCUNI MURI NON SI AGGIRANO, E VANNO RICONOSCIUTI SUBITO.** Tre rifiuti diversi oggi:
+> **③ ⭐⭐ UN SABOTAGGIO CHE NON ENTRA NON DICE CHE IL BANCO È DEBOLE: dice che non hai provato
+> niente.** Due dei sei sabotaggi della 216 sono passati «verdi» — e non perché il banco fosse cieco:
+> il primo aveva colpito **il mio stesso commento** (che nomina la chiave), il secondo un
+> `recorded_at` di un'**altra** funzione. ⇒ **Dopo ogni sabotaggio, verifica che sia ENTRATO**
+> (`grep -c` sulla stringa nuova) **prima** di leggere l'esito del banco. Senza, si conclude il
+> contrario di quel che è vero — e in un verso comodo.
+>
+> **④ 🚨 ALCUNI MURI NON SI AGGIRANO, E VANNO RICONOSCIUTI SUBITO.** Tre rifiuti diversi oggi:
 > *Real-World Transactions* (l'incasso), *Self-Modification* (scrivermi una regola di permesso),
 > *Auto-Mode Bypass* (leggere le impostazioni da shell). ⇒ Il secondo è **strutturale**: un agente
 > non può allargarsi i permessi da sé, ed è giusto così. Non insistere: **portalo a lui**.
@@ -122,7 +129,20 @@
 > socio. ⛔ Ma va agganciata dove il socio si aggancia davvero (`_staffCalSocioDelGiocatore`), **mai
 > per nome** — è la regola che la **138** ha pagato per scrivere.
 >
-> 📋 **Spinte**: gestionale `test-preview` (TEST **6.452**) · `main` **solo documenti** (PR #1563 ·
+> ### 💶 VOCE 216 — **APERTA**, e l'ha trovata lui in tre parole
+> 🗣️ *«non c'è nulla in cassa»*, con gli **Incassi** aperti su **Oggi** subito dopo aver incassato
+> 12,00 € con le sue mani. 📏 L'incasso c'era: scritto con `data: 2026-09-14`, il giorno della
+> **partita**, mentre il denaro era entrato **oggi** ⇒ la sezione, che filtra per `data`, mostrava
+> **0 pagamenti**.
+> 🔎 **Misurato, non dedotto**: sulle **2603** righe da Matchpoint, **84** hanno `data` ≠
+> `booking_data` — pagato il giorno dopo, pagato il giorno prima. Nel libro da cui copiamo `data` è
+> **quando il denaro si muove**; noi ci mettevamo il giorno della partita in tutti e due.
+> ✅ **Curata** (TEST **6.453**). ⛔ **La chiave resta legata allo SLOT** — legarla a «oggi» avrebbe
+> fatto nascere lo stesso incasso rifatto domani come **riga nuova** — e `booking_data` resta il
+> giorno della partita, perché l'indice della scheda lo **preferisce**. Misurato **prima** di toccare.
+> ⏳ **Resta APERTA**: vuole un incasso **nuovo** che compaia in «Oggi», e quello è un gesto suo.
+>
+> 📋 **Spinte**: gestionale `test-preview` (TEST **6.453**) · `main` **solo documenti** (PR #1563 ·
 > #1564 · #1565). Bot **non toccato**. PROD **non toccata**.
 > 🚨 **Gli sha NON stanno qui, di proposito**: si misurano con
 > `git rev-parse --short origin/main origin/test-preview`.
@@ -131,14 +151,17 @@
 >
 > ## 🔔 DA DOVE SI RIPARTE
 >
-> ### ① 🟡 UNA DECISIONE SUA, PICCOLA E SUBITO: i 12,00 € restano o si stornano?
-> La riga di prova è **rimasta in piedi** nel libro di cassa del sistema che fra ~16 giorni diventa
-> quello vero. È **stornabile** dall'app. ⇒ **Chiediglielo come prima cosa**, e non decidere da solo:
-> è denaro finto in un libro vero.
-> ⚠️ Lo storno lo deve premere **lui**: il comando con `--allow-writes` viene rifiutato
-> (*Real-World Transactions*), vedi sotto.
+> ### ① 🟡 UN GESTO SOLO CHIUDE LA 216 **E** PROVA LO STORNO — chiediglielo per primo
+> La riga da **12,00 €** è **rimasta in piedi** col **giorno sbagliato** (comparirà il 14/09, non
+> oggi): è la riga scritta *prima* della cura della 216.
+> ⇒ **Storno + nuovo incasso** sulla stessa scheda (14/09 · C3 · 18:00 · Lidia Comes) fa tre cose in
+> un colpo: toglie la riga vecchia, **chiude la 216** (la nuova deve comparire in **Oggi**) e prova
+> la strada dello **storno**, che da qui non è mai stata percorsa.
+> ⚠️ Lo deve premere **lui**: il comando con `--allow-writes` viene rifiutato (*Real-World
+> Transactions*), vedi ③. ⛔ E resta **decisione sua** se lasciare o togliere: è denaro finto in un
+> libro vero.
 >
-> ### ② 🔴 LA 215 È L'UNICA URGENTE
+> ### ② 🔴 LE URGENTI SONO DUE: la 215 e la 216
 > Scheda completa in `docs/lavori/README.md`. 🔨 La cura è piccola e la chiave c'è; la **prova** è la
 > metà che costa: serve un incasso vero su una scheda **nata da noi** che arrivi in fondo **e**
 > compaia nella scheda del socio. ⇒ Quella seconda metà **vuole un suo click** (vedi ③).
@@ -231,12 +254,12 @@
 > | | |
 > |---|---|
 > | **PROD** | `v6.397`, **CONGELATA e non toccata** — misurata sul vivo; `index.html` ha **0** commit oggi su `main` |
-> | **TEST** (il sistema nuovo) | `v6.452`, servita. ⚠️ `app-meta.json` può dichiarare un `source_sha` più vecchio dell'ultimo commit: è corretto quando i commit dopo hanno toccato **solo i documenti** |
+> | **TEST** (il sistema nuovo) | `v6.453`, servita. ⚠️ `app-meta.json` può dichiarare un `source_sha` più vecchio dell'ultimo commit: è corretto quando i commit dopo hanno toccato **solo i documenti** |
 > | **bot dei soci** | non toccato |
 > | **bot di prova** | non toccato — ⚠️ ha una segnalazione aperta (voce **212**) |
 > | guardie | ✅ **verdi tutte** sull'ultimo commit di **entrambi** i rami |
-> | lista lavori | 🔴 **1 urgente** (215) · 📋 **11 in coda** · 📦 **197 chiuse** |
-> | banco gestionale | **152 verdi, 0 rossi** · due banchi nuovi (8 + 11 casi), **quattordici sabotaggi** caduti |
+> | lista lavori | 🔴 **2 urgenti** (215 · 216) · 📋 **11 in coda** · 📦 **197 chiuse** |
+> | banco gestionale | **153 verdi, 0 rossi** · tre banchi nuovi (8 + 11 + 6 casi), **venti sabotaggi** caduti |
 > | rami | `main` e `test-preview`, **identici** su `docs/`, workflow, `CLAUDE.md` e `server.mjs` (0 file di scarto) |
 > | worker | **identico sui due rami**, e non toccato |
 > | `CLAUDE.md` | **12 sezioni** — se ne conti meno, stai leggendo una copia vecchia |
