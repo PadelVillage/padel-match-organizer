@@ -183,17 +183,25 @@ const GRUPPO = 'view_administration';
 // ══════════════════════════════════════════════════════════════════════════════════════════
 // ① IL DIFETTO SUO, esattamente come l'ha visto: spunto il capitolo, i figli si accendono.
 // ══════════════════════════════════════════════════════════════════════════════════════════
-test('① spuntando «Impostazioni» le cinque sottosezioni si accendono da sole', () => {
+test('① spuntando «Impostazioni» le sue sottosezioni si accendono da sole', () => {
   const b0 = banco({});
   const b = banco(tuttoSpento(b0.ctx));
   const padre = b.perChiave(GRUPPO);
-  assert.equal(b.figliDi(GRUPPO).length, 5, 'il capitolo Impostazioni non ha più cinque sottosezioni: il caso va riscritto sui dati veri');
+  /* 🧹 VOCE 199 (11/09/2026) — erano CINQUE, adesso sono QUATTRO: «Circoli» è stata tolta.
+     ⚖️ Il numero non è la regola — la regola è «il padre accende TUTTI i figli, quanti che siano»
+     — ma un banco che non ne conta nessuno passerebbe verde anche con zero figli, cioè col
+     meccanismo morto. ⇒ Si pretende che ce ne sia più d'uno, e li si controlla tutti.
+     📌 *Un conteggio cablato invecchia a ogni pulizia; toglierlo del tutto toglie anche la
+     difesa. La via di mezzo è pretendere la FORMA, non la cifra.* */
+  const figli = b.figliDi(GRUPPO);
+  assert.ok(figli.length >= 2, 'il capitolo Impostazioni non ha più sottosezioni da accendere: il meccanismo non è più osservabile');
 
   b.clic(padre, true);
 
-  assert.deepEqual(b.figliDi(GRUPPO).map((k) => k.checked), [true, true, true, true, true],
-    'il click sul capitolo NON propaga: è il difetto del 06/09, tornato');
-  assert.equal(b.contatore(GRUPPO), '5 / 5', 'il contatore non dice il vero');
+  const dopo = b.figliDi(GRUPPO);
+  assert.deepEqual(dopo.map((k) => k.checked), dopo.map(() => true),
+    'il click sul capitolo NON propaga a tutti i figli: è il difetto del 06/09, tornato');
+  assert.equal(b.contatore(GRUPPO), dopo.length + ' / ' + dopo.length, 'il contatore non dice il vero');
 });
 
 test('① e il salvataggio raccoglie ciò che le caselle mostrano, senza sorprese', () => {
@@ -212,13 +220,15 @@ test('① e il salvataggio raccoglie ciò che le caselle mostrano, senza sorpres
 test('② togliendo il capitolo si spengono anche i figli: niente `true` orfani in archivio', () => {
   const b0 = banco({});
   const b = banco({});                                   // fail-open: tutto spuntato
-  assert.deepEqual(b.figliDi(GRUPPO).map((k) => k.checked), [true, true, true, true, true]);
+  const accesi = b.figliDi(GRUPPO);
+  assert.deepEqual(accesi.map((k) => k.checked), accesi.map(() => true));
 
   b.clic(b.perChiave(GRUPPO), false);
 
-  assert.deepEqual(b.figliDi(GRUPPO).map((k) => k.checked), [false, false, false, false, false],
+  const spenti = b.figliDi(GRUPPO);
+  assert.deepEqual(spenti.map((k) => k.checked), spenti.map(() => false),
     'i figli restano accesi sotto un padre spento: cinque `true` illeggibili in archivio');
-  assert.equal(b.contatore(GRUPPO), '0 / 5', 'il contatore dice «5 / 5» di un gruppo spento');
+  assert.equal(b.contatore(GRUPPO), '0 / ' + spenti.length, 'il contatore dice il totale pieno di un gruppo spento');
   const p = b.ctx.pmoCollectAdminPermissions();
   assert.equal(p.view_administration, false);
   assert.equal(p.view_admin_utenti, false);
@@ -231,11 +241,12 @@ test('② i figli NON restano disabilitati: si può sempre riaprirne uno solo', 
   //    porta a chiave dall'interno: nessuno potrebbe più riaccenderne uno.
   const b = banco({});
   b.clic(b.perChiave(GRUPPO), false);
-  assert.deepEqual(b.figliDi(GRUPPO).map((k) => k.disabled), [false, false, false, false, false]);
+  const liberi = b.figliDi(GRUPPO);
+  assert.deepEqual(liberi.map((k) => k.disabled), liberi.map(() => false));
 
   const uno = b.figliDi(GRUPPO)[0];
   b.clic(uno, true);
-  assert.equal(b.contatore(GRUPPO), '1 / 5');
+  assert.equal(b.contatore(GRUPPO), '1 / ' + liberi.length);
   assert.equal(b.perChiave(GRUPPO).indeterminate, true, 'un gruppo a metà deve dirlo, o la casella mente');
   assert.equal(b.perChiave(GRUPPO).checked, false);
   assert.equal(b.ctx.pmoCollectAdminPermissions().view_admin_utenti, true);

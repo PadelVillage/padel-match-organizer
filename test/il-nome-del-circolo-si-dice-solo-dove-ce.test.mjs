@@ -269,7 +269,12 @@ test('④ 📏 e nel sorgente non resta nessuna di quelle frasi scritta a mano',
  *    legge: la seconda si misura solo aprendo lo schermo.* */
 
 test('③ la riga di Amministrazione è generica nell\'HTML, col nome solo in attributo', () => {
-  const riga = APP.split('\n').find((r) => r.includes('bot Telegram e circoli della zona'));
+  /* 🧹 VOCE 199 (11/09/2026) — l'ancora era «bot Telegram e circoli della zona», e la pulizia ha
+     tolto quella sezione: il caso cercava un testo che non esiste più. ⇒ Si àncora a ciò che la
+     riga È (l'attributo che porta la variante col nome), non a una coda che può cambiare.
+     📌 *Un banco ancorato a una frase cade quando la frase migliora, e sembra che sia caduta la
+     regola.* */
+  const riga = APP.split('\n').find((r) => r.includes('data-frase-col-circolo') && r.includes('bot Telegram'));
   assert.ok(riga, 'riga di Amministrazione non trovata');
   assert.ok(/data-frase-col-circolo="[^"]*Matchpoint/.test(riga),
     'il nome del circolo deve stare NELL\'ATTRIBUTO, non nel testo');
