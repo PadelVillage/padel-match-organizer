@@ -1880,7 +1880,24 @@ nessuno ha riletto — e che ha fatto pianificare come impossibile un lavoro di 
 ❓ **COSA DEVE DECIDERE LUI, ed è una cosa sola**: se **travasare i saldi di tutti i soci** da Matchpoint prima che si spenga (è uno scraping, costa un giro sul worker e va fatto **una volta**, vicino al distacco per essere fresco) — oppure accettare che il borsellino riparta dai soli **83** noti e dai movimenti fatti da noi.
 ⛔ Qui si **propone**, non si fa: riguarda il credito dei soci.
 
-⏳ **Non iniziata.**
+✅⭐ **IL CALCOLO È FATTO E IN SERVIZIO (TEST 6.456)** — la metà che non dipendeva da nessuna decisione.
+🧮 `_pmoWalletSaldoDaNoi(righe, socio)`: **fotografia + i movimenti venuti DOPO di lei**. 🚨 Il «dopo» è la cosa che il banco difende più di tutte: i movimenti **precedenti** sono già dentro il numero fotografato, e sommarli tutti conterebbe **due volte** le stesse ricariche — cioè **regalerebbe credito**. 📌 *Una fotografia non è un punto di partenza vuoto: è un totale che contiene già una parte di ciò che si sta per aggiungere.*
+⚖️ **Tre esiti, e chi mostra il numero deve tenerli distinti**: `fotografia` (si sa, e da quando) · `nostri` (**parziale**: solo ciò che è passato da noi — e il tooltip del bottone lo **dichiara**) · `null` (**non si sa**, e non è zero).
+⛔ Si accende **solo** dove la cassa è nostra, e **non sovrascrive** un saldo che il worker ha già portato: riempie i buchi. Su PROD quel ramo non gira mai.
+🧪 Banco `il-borsellino-lo-contiamo-noi`: **12 casi**, **otto sabotaggi** caduti. ⚠️ Due andati storti al primo giro, nessuno dei due un falso allarme: uno **non era entrato** (la stringa compariva due volte, andava colpita la seconda), l'altro passava verde perché il **caso** cercava una stringa presente due volte nel blocco. Rifatti mirati.
+✅⭐⭐ **PROVATO SULLA PAGINA VIVA di TEST 6.456** (sola lettura), su righe vere lette dal cloud — e la prova mostra **esattamente** la distinzione che la voce difende:
+
+| socio | saldo | base |
+|---|---|---|
+| Davide Zanardo | **1,00 €** | `fotografia` |
+| Luca Geraci | **0,00 €** | `fotografia` — uno zero **vero**: quel socio ha zero, e lo sappiamo |
+| Andrea Girardi | **0,00 €** | `fotografia` |
+| Mini Tennis | **`null`** | **ignoto** — mai guardato |
+
+📌 *Due soci a «0,00 €» e uno a «non lo so» sulla stessa schermata sono la prova che la regola del terzo segno è viva: senza di lei sarebbero stati tre zeri, e il terzo sarebbe stato una bugia.*
+⛔ **Quello che resta non provato**: il numero dentro la **scheda di una partita** con quel socio in campo — cioè il bottone Wallet che si riaccende. Il calcolo è provato, il suo effetto sulla scheda no.
+
+⏳ **PERCHÉ RESTA APERTA — e non è il codice**: manca la **decisione sul travaso**, che è sua e ha una scadenza. Finché le fotografie sono **83 su 2826**, il calcolo è giusto ma risponde *«non lo so»* a **2743** soci — che è onesto e inutile.
 
 ### 216 — 💶 «NON C'È NULLA IN CASSA»: l'incasso finiva nel giorno della PARTITA
 
