@@ -200,11 +200,34 @@ test('la barra del focus sta nella parte STICKY, insieme ai totali che spiega', 
   assert.ok(m[0].indexOf('${_fxBar}') < m[0].indexOf('${summary}'), 'la barra deve stare PRIMA dei totali che filtra');
 });
 
-test('entrare in Incassi dal menu azzera il focus', () => {
+test('entrare in Incassi dal menu NON lascia un focus appeso', () => {
   const m = APP.match(/if \(tabName === 'incassi'\) \{[^}]*\}/);
   assert.ok(m, 'non trovo l\'ingresso nella sezione Incassi');
-  assert.ok(/_incassiState\.focus = null/.test(m[0]),
-    'il focus sopravvive al menu: chi apre «Incassi» troverebbe una tabella filtrata senza averlo chiesto');
+  // Il ramo CONSUMA il pending: dal menu è vuoto ⇒ focus a null; dalla porta è pieno ⇒ applicato.
+  assert.ok(/_incassiState\.focus = _incassiFocusPending/.test(m[0]),
+    'il ramo non consuma il focus «in arrivo»');
+  assert.ok(/_incassiFocusPending = null/.test(m[0]),
+    'il pending non viene svuotato: il focus tornerebbe al prossimo ingresso dal menu');
+});
+
+/* 🚨⭐⭐ QUESTO TEST NASCE DA UN DIFETTO CHE IL BANCO VERDE NON VEDEVA, e l'ha trovato il DITO.
+ * 📏 Premuto il bottone sulla pagina viva di TEST 6.443: si arrivava in Incassi e il filtro
+ *    **non c'era** (totale «Oggi · 2026-09-11», nessuna barra). Causa: il ramo `incassi` di
+ *    `switchTab` sta dentro un `setTimeout(…, 0)`, quindi il suo azzeramento girava DOPO
+ *    l'assegnazione che nel codice veniva dopo di lui — e la cancellava.
+ * 📌 *Fra due scritture dello stesso stato non decide l'ordine delle righe: decide chi gira per
+ *    ultimo. Con un lavoro differito in mezzo, le due cose sono opposte.*
+ * ⇒ La forma che questo test pretende non è «l'ordine giusto»: è che **non ci siano due
+ *   scritture** da mettere in ordine. */
+test('la porta CHIEDE il focus, non lo scrive prima di switchTab', () => {
+  const corpo = sorgenteDi('pmoSchedaApriIncassi');
+  const iSwitch = corpo.indexOf("switchTab('incassi')");
+  assert.ok(iSwitch > 0, 'la porta non chiama più switchTab');
+  const prima = corpo.slice(0, iSwitch);
+  assert.ok(!/_incassiState\.focus\s*=/.test(prima),
+    'la porta scrive `_incassiState.focus` PRIMA di switchTab: il ramo differito di switchTab lo cancellerà, e il filtro non si applicherà (misurato sulla pagina viva)');
+  assert.ok(/_incassiFocusPending\s*=\s*\{/.test(prima),
+    'la porta non chiede il focus tramite il pending');
 });
 
 test('col focus il vuoto non parla di intervalli, e non accusa nessuno', () => {
