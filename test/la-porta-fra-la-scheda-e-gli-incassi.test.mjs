@@ -105,6 +105,7 @@ function montaLookup(staffBookings, occupazione, elenco) {
   const sorgente = [
     sorgenteDi('pmoTipoScheda'),
     sorgenteDi('pmoTipoParola'),
+    sorgenteDi('_pmoTrovaSlot'),
     sorgenteDi('_pmoLookupTipoDurata'),
   ].join('\n');
   const fab = new Function('SB', 'OCC', 'PRE', `
@@ -197,8 +198,12 @@ test('il focus guarda la PRENOTAZIONE, non il giorno in cui si è incassato', ()
 test('la barra del focus sta nella parte STICKY, insieme ai totali che spiega', () => {
   const m = APP.match(/root\.innerHTML = `<div style="position:sticky[^`]*`;/);
   assert.ok(m, 'non trovo il render finale di Incassi');
-  assert.ok(m[0].includes('${_fxBar}'), 'la barra del focus non è nella parte sticky: scorrerebbe via lasciando numeri parziali senza spiegazione');
-  assert.ok(m[0].indexOf('${_fxBar}') < m[0].indexOf('${summary}'), 'la barra deve stare PRIMA dei totali che filtra');
+  assert.ok(m[0].includes('${_fxBar('), 'la barra del focus non è nella parte sticky: scorrerebbe via lasciando numeri parziali senza spiegazione');
+  assert.ok(m[0].indexOf('${_fxBar(') < m[0].indexOf('${summary}'), 'la barra deve stare PRIMA dei totali che filtra');
+  /* 🩹 La barra riceve l'incassato SOLO col focus attivo: passarlo sempre farebbe comparire un
+     confronto anche nell'elenco intero, dove «dovuto» non vuol dire niente. */
+  assert.ok(/_fxBar\(_fx \? sel\.totale : undefined\)/.test(m[0]),
+    'la barra deve ricevere l\'incassato solo quando il focus è attivo');
 });
 
 test('entrare in Incassi dal menu NON lascia un focus appeso', () => {
@@ -296,4 +301,126 @@ test('e chi la normalizza sa leggere tutti e due i formati', () => {
   assert.equal(dur('2'), 120, 'due ore → 120 minuti');
   assert.equal(dur(60), 60, 'sessanta minuti restano sessanta');
   assert.equal(dur(null), 90, 'senza durata, il ripiego dichiarato');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// ⑨ IL CONFRONTO COL DOVUTO — passo ③, e si ferma alla PARTITA
+// ══════════════════════════════════════════════════════════════════════════════════════════
+/* 🚨⭐⭐ PERCHÉ PER PARTITA E NON PER PERSONA: è una MISURA dell'11/09, non una preferenza.
+ * Abbinando le 17 righe giocatore che hanno un importo ai pagamenti per `data+campo+ora+nome`:
+ *  · **12** non hanno nessun pagamento sullo slot ⇒ lì «non pagato» sarebbe vero;
+ *  · **07/09 C2 18:00**: il dovuto è di *Fabio De Luca* e i 3 pagamenti sono di **altre tre
+ *    persone** ⇒ un conto per nome direbbe che lui non ha pagato, e può essere **falso**;
+ *  · **03/09 C2 21:00**: nel roster ci sono **DUE «Ospite»** e pagamenti «Ospite» ⇒ per persona
+ *    è **indecidibile**.
+ * 📌 *Quando l'unità di misura sbagliata produce un'accusa, non si affina: si cambia unità.* */
+
+function montaDovuto(staffBookings) {
+  const sorgente = [
+    sorgenteDi('_pmoContoPartita'),
+    sorgenteDi('_pmoTrovaSlot'),
+    sorgenteDi('_pmoDovutoDelloSlot'),
+  ].join('\n');
+  const fab = new Function('SB', `
+    const safeLoad = (k, d) => (k === 'staffBookings' ? SB : d);
+    const prenotazioniOccupazione = [];
+    const prenotazioni = [];
+    ${sorgente}
+    return _pmoDovutoDelloSlot;
+  `);
+  return fab(staffBookings);
+}
+
+const SLOT = { data: '2026-09-03', campo: '2', ora: '21:00' };
+const conSlot = (giocatori) => [Object.assign({}, SLOT, { giocatori })];
+
+test('il dovuto della partita è la somma delle quote', () => {
+  const dov = montaDovuto(conSlot([
+    { nome: 'Dominik', importoCents: 1200 }, { nome: 'Jury', importoCents: 1200 },
+    { nome: 'Ospite', importoCents: 1200 }, { nome: 'Ospite', importoCents: 1200 },
+  ]));
+  const r = dov('2026-09-03', 2, '21:00');
+  assert.equal(r.cents, 4800, 'quattro quote da 12,00 € fanno 48,00 €');
+  assert.equal(r.ignoti, 0);
+  assert.equal(r.righe, 4);
+  assert.equal(r.trovato, true);
+});
+
+/* ⛔ LA RIGA CHE IMPEDISCE L'ACCUSA: se una quota non ha importo, il dovuto è un MINIMO.
+ * 📌 *Un totale che ha saltato una riga non è un totale approssimato: è un totale falso, e non
+ *    si distingue da uno vero guardandolo* — voce 152, e qui costerebbe un'accusa. */
+test('una quota senza importo rende il dovuto INCOMPLETO, non più piccolo', () => {
+  const dov = montaDovuto(conSlot([
+    { nome: 'A', importoCents: 1200 }, { nome: 'B' }, { nome: 'C', importoCents: 1200 },
+  ]));
+  const r = dov('2026-09-03', 2, '21:00');
+  assert.equal(r.ignoti, 1, 'la riga senza importo deve essere CONTATA a parte');
+  assert.equal(r.cents, 2400, 'e la somma resta quella delle righe note: è un minimo');
+  assert.equal(r.righe, 3);
+});
+
+test('zero giocatori non è dovuto zero: è «niente da addebitare»', () => {
+  const dov = montaDovuto(conSlot([]));
+  const r = dov('2026-09-03', 2, '21:00');
+  assert.equal(r.righe, 0);
+  assert.equal(r.cents, null, 'con nessun giocatore il dovuto non è 0: non esiste');
+  assert.equal(r.trovato, true, 'la prenotazione però ESISTE, e va distinta da una non trovata');
+});
+
+test('una prenotazione che non è in casa dà «non lo so», non zero', () => {
+  const dov = montaDovuto([]);
+  const r = dov('2026-09-03', 2, '21:00');
+  assert.equal(r.trovato, false, 'non trovata deve essere distinguibile da trovata-e-vuota');
+  assert.equal(r.cents, null);
+});
+
+test('il dovuto NON guarda chi ha pagato: `incassato` è false per tutte', () => {
+  // Se passasse `incassato: true` per le righe già saldate, `aCaricoCents` resterebbe uguale
+  // ma il significato cambierebbe — e l'incassato verrebbe contato DUE volte nel focus, una
+  // dalla prenotazione e una dai pagamenti.
+  const src = sorgenteDi('_pmoDovutoDelloSlot');
+  assert.ok(/incassato:\s*false/.test(src),
+    'il dovuto deve chiedere il conto con incassato:false, o somma due verità diverse');
+  assert.ok(!/pendenteCents/.test(src),
+    'il dovuto non deve guardare `pendenteCents`: nel focus l\'incassato si sa dai pagamenti');
+});
+
+// ── la barra: i TRE esiti, e nessuno accusa una persona ─────────────────────────────────
+test('la barra del focus ha TRE esiti e non due', () => {
+  const i = APP.indexOf('VOCE 198, passo ③ — IL CONFRONTO');
+  assert.ok(i > 0, 'manca il blocco del confronto');
+  const blocco = APP.slice(i, i + 3000);
+  assert.ok(/quadra/.test(blocco), 'manca l\'esito «quadra»');
+  assert.ok(/mancano/.test(blocco), 'manca l\'esito «mancano»');
+  assert.ok(/dovuto <strong>non so<\/strong>/.test(blocco), 'manca il terzo esito: «non so»');
+  assert.ok(/incompleto/.test(blocco), 'manca l\'esito del dovuto incompleto (ignoti > 0)');
+});
+
+test('la barra non dice mai che una PERSONA non ha pagato', () => {
+  const i = APP.indexOf('VOCE 198, passo ③ — IL CONFRONTO');
+  const blocco = APP.slice(i, i + 3000);
+  // le frasi mostrate all'utente stanno fra apici/backtick: qui si cerca l'accusa in chiaro
+  assert.ok(!/non ha pagato/.test(blocco), 'la barra accusa una persona');
+  assert.ok(/sulla PARTITA, non su una persona/.test(blocco),
+    'manca la dichiarazione che la differenza è della partita: senza, chi legge la attribuisce a chi è in riga');
+});
+
+test('col dovuto incompleto la barra NON dichiara una differenza', () => {
+  const i = APP.indexOf('VOCE 198, passo ③ — IL CONFRONTO');
+  const blocco = APP.slice(i, i + 3000);
+  // il ramo ignoti>0 deve venire PRIMA dei rami che confrontano, o si annuncerebbe un «mancano»
+  // calcolato su un dovuto che è solo un minimo.
+  const iIgnoti = blocco.indexOf('d.ignoti > 0');
+  const iQuadra = blocco.indexOf('incassatoCents === d.cents');
+  assert.ok(iIgnoti > 0 && iQuadra > 0, 'non trovo i due rami');
+  assert.ok(iIgnoti < iQuadra,
+    'il ramo del dovuto incompleto deve essere controllato PRIMA del confronto, o si annuncia una differenza calcolata su un minimo');
+});
+
+test('anche l\'incassato in più ha una spiegazione, non un allarme', () => {
+  const i = APP.indexOf('VOCE 198, passo ③ — IL CONFRONTO');
+  const blocco = APP.slice(i, i + 3000);
+  assert.ok(/in più/.test(blocco), 'il caso incassato > dovuto non è previsto');
+  assert.ok(/importo cambiato dopo l'incasso/.test(blocco),
+    'manca la spiegazione del caso «in più»: senza, sembra un errore di chi ha incassato');
 });
