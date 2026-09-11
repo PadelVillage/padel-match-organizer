@@ -97,5 +97,23 @@ test('⑦ i passi che nominano Matchpoint per DIRE IL VERO sono rimasti', () => 
     'tolto il nome della FONTE da passi che leggono davvero da Matchpoint: adesso non dicono da dove prendono i dati');
 });
 
+test('④bis 🚨🚨 il bottone «Dati» APRE la sezione — la SECONDA strada, quella che comanda', () => {
+  /* 🚨 TROVATO DALLA PROVA FISICA, e il banco non lo vedeva: c'è una mappa in
+     `runSidebarSectionAction` che decide PRIMA di `pmoAdminSectionKey`, e cercava
+     `includes('dati matchpoint')`. Rinominata la voce in «Dati», il bottone lasciava aperta
+     «Utenti» — in silenzio, senza nessun errore.
+     📌 *Due strade che rispondono alla stessa domanda vanno provate tutte e due: quella che non
+     si prova è quella che comanda.* */
+  const i = APP.indexOf("if (tabName === 'administration') {");
+  assert.ok(i > 0, 'il ramo administration della mappa è sparito');
+  const zona = APP.slice(i, i + 2600);
+  const riga = zona.split('\n').find((r) => r.includes("pmoSetAdminSection('matchpoint-data'"));
+  assert.ok(riga, 'nessuna riga porta più alla sezione Dati');
+  assert.ok(/key === 'dati'/.test(riga),
+    'la voce «Dati» non combacia più: il bottone del menu lascerebbe aperta la sezione precedente, senza errori');
+  assert.ok(/dati matchpoint/.test(riga),
+    'tolta la chiave vecchia: chi arriva da un link o da uno stato salvato con «Dati Matchpoint» non atterra più');
+});
+
 console.log('\n— ' + passed + ' verdi, ' + failed + ' rossi —');
 process.exit(failed ? 1 : 0);
